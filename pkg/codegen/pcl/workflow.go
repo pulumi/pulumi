@@ -71,9 +71,11 @@ type WorkflowGraphTrigger struct {
 }
 
 type WorkflowStepDefinition struct {
-	Name    string `hcl:"name,label"`
-	Command string `hcl:"command,optional"`
-	Expr    string `hcl:"expr,optional"`
+	Name       string `hcl:"name,label"`
+	InputType  string `hcl:"input_type,optional"`
+	OutputType string `hcl:"output_type,optional"`
+	Command    string `hcl:"command,optional"`
+	Expr       string `hcl:"expr,optional"`
 }
 
 type WorkflowJobDefinition struct {
@@ -300,6 +302,20 @@ func (p *WorkflowProgram) StepDefinitionForUse(uses string) (WorkflowStepDefinit
 	}
 	step, exists := p.stepsByName[name]
 	return step, exists
+}
+
+func (p *WorkflowProgram) StepByName(name string) (WorkflowStepDefinition, bool) {
+	step, ok := p.stepsByName[name]
+	return step, ok
+}
+
+func (p *WorkflowProgram) StepNames() []string {
+	names := make([]string, 0, len(p.stepsByName))
+	for name := range p.stepsByName {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func (p *WorkflowProgram) JobDefinitionForUse(uses string) (WorkflowJobDefinition, bool) {

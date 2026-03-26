@@ -335,6 +335,8 @@ type MockWorkflow struct {
 	GetTriggerF       func(context.Context, *pulumirpc.GetTriggerRequest) (*pulumirpc.GetTriggerResponse, error)
 	GetJobsF          func(context.Context, *pulumirpc.GetJobsRequest) (*pulumirpc.GetJobsResponse, error)
 	GetJobF           func(context.Context, *pulumirpc.GetJobRequest) (*pulumirpc.GetJobResponse, error)
+	GetStepsF         func(context.Context, *pulumirpc.GetStepsRequest) (*pulumirpc.GetStepsResponse, error)
+	GetStepF          func(context.Context, *pulumirpc.GetStepRequest) (*pulumirpc.GetStepResponse, error)
 	GenerateGraphF    func(context.Context, *pulumirpc.GenerateGraphRequest) (*pulumirpc.GenerateNodeResponse, error)
 	GenerateJobF      func(context.Context, *pulumirpc.GenerateJobRequest) (*pulumirpc.GenerateNodeResponse, error)
 	RunTriggerMockF   func(context.Context, *pulumirpc.RunTriggerMockRequest) (*pulumirpc.RunTriggerMockResponse, error)
@@ -423,6 +425,24 @@ func (m *MockWorkflow) GetJob(
 		return m.GetJobF(ctx, req)
 	}
 	return nil, errors.New("GetJob not implemented")
+}
+
+func (m *MockWorkflow) GetSteps(
+	ctx context.Context, req *pulumirpc.GetStepsRequest,
+) (*pulumirpc.GetStepsResponse, error) {
+	if m.GetStepsF != nil {
+		return m.GetStepsF(ctx, req)
+	}
+	return nil, errors.New("GetSteps not implemented")
+}
+
+func (m *MockWorkflow) GetStep(
+	ctx context.Context, req *pulumirpc.GetStepRequest,
+) (*pulumirpc.GetStepResponse, error) {
+	if m.GetStepF != nil {
+		return m.GetStepF(ctx, req)
+	}
+	return nil, errors.New("GetStep not implemented")
 }
 
 func (m *MockWorkflow) GenerateGraph(

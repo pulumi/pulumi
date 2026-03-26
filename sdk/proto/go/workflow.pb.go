@@ -92,7 +92,7 @@ func (x DependencyExpression_Operator) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DependencyExpression_Operator.Descriptor instead.
 func (DependencyExpression_Operator) EnumDescriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{24, 0}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{28, 0}
 }
 
 type PlatformSelector_MatchPolicy int32
@@ -141,7 +141,7 @@ func (x PlatformSelector_MatchPolicy) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PlatformSelector_MatchPolicy.Descriptor instead.
 func (PlatformSelector_MatchPolicy) EnumDescriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{26, 0}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{30, 0}
 }
 
 type RunSensorResponse_Decision int32
@@ -190,7 +190,7 @@ func (x RunSensorResponse_Decision) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use RunSensorResponse_Decision.Descriptor instead.
 func (RunSensorResponse_Decision) EnumDescriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{32, 0}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{36, 0}
 }
 
 // WorkflowContext identifies a workflow definition and execution.
@@ -1224,6 +1224,186 @@ func (x *GetJobResponse) GetInputProperties() []*InputProperty {
 	return nil
 }
 
+type GetStepsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStepsRequest) Reset() {
+	*x = GetStepsRequest{}
+	mi := &file_pulumi_workflow_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStepsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStepsRequest) ProtoMessage() {}
+
+func (x *GetStepsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_workflow_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStepsRequest.ProtoReflect.Descriptor instead.
+func (*GetStepsRequest) Descriptor() ([]byte, []int) {
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{21}
+}
+
+type GetStepsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified exported step tokens.
+	Steps         []string `protobuf:"bytes,1,rep,name=steps,proto3" json:"steps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStepsResponse) Reset() {
+	*x = GetStepsResponse{}
+	mi := &file_pulumi_workflow_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStepsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStepsResponse) ProtoMessage() {}
+
+func (x *GetStepsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_workflow_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStepsResponse.ProtoReflect.Descriptor instead.
+func (*GetStepsResponse) Descriptor() ([]byte, []int) {
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetStepsResponse) GetSteps() []string {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+type GetStepRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Fully-qualified step token to fetch.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStepRequest) Reset() {
+	*x = GetStepRequest{}
+	mi := &file_pulumi_workflow_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStepRequest) ProtoMessage() {}
+
+func (x *GetStepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_workflow_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStepRequest.ProtoReflect.Descriptor instead.
+func (*GetStepRequest) Descriptor() ([]byte, []int) {
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetStepRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type GetStepResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Type token for step input value shape.
+	InputType *TypeReference `protobuf:"bytes,1,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
+	// Type token for step output value shape.
+	OutputType    *TypeReference `protobuf:"bytes,2,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStepResponse) Reset() {
+	*x = GetStepResponse{}
+	mi := &file_pulumi_workflow_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStepResponse) ProtoMessage() {}
+
+func (x *GetStepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_workflow_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStepResponse.ProtoReflect.Descriptor instead.
+func (*GetStepResponse) Descriptor() ([]byte, []int) {
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetStepResponse) GetInputType() *TypeReference {
+	if x != nil {
+		return x.InputType
+	}
+	return nil
+}
+
+func (x *GetStepResponse) GetOutputType() *TypeReference {
+	if x != nil {
+		return x.OutputType
+	}
+	return nil
+}
+
 type InputProperty struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Field name on the job input object.
@@ -1240,7 +1420,7 @@ type InputProperty struct {
 
 func (x *InputProperty) Reset() {
 	*x = InputProperty{}
-	mi := &file_pulumi_workflow_proto_msgTypes[21]
+	mi := &file_pulumi_workflow_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1252,7 +1432,7 @@ func (x *InputProperty) String() string {
 func (*InputProperty) ProtoMessage() {}
 
 func (x *InputProperty) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[21]
+	mi := &file_pulumi_workflow_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1265,7 +1445,7 @@ func (x *InputProperty) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InputProperty.ProtoReflect.Descriptor instead.
 func (*InputProperty) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{21}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *InputProperty) GetName() string {
@@ -1311,7 +1491,7 @@ type WorkflowError struct {
 
 func (x *WorkflowError) Reset() {
 	*x = WorkflowError{}
-	mi := &file_pulumi_workflow_proto_msgTypes[22]
+	mi := &file_pulumi_workflow_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1323,7 +1503,7 @@ func (x *WorkflowError) String() string {
 func (*WorkflowError) ProtoMessage() {}
 
 func (x *WorkflowError) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[22]
+	mi := &file_pulumi_workflow_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1336,7 +1516,7 @@ func (x *WorkflowError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkflowError.ProtoReflect.Descriptor instead.
 func (*WorkflowError) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{22}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *WorkflowError) GetReason() string {
@@ -1374,7 +1554,7 @@ type DependencyTerm struct {
 
 func (x *DependencyTerm) Reset() {
 	*x = DependencyTerm{}
-	mi := &file_pulumi_workflow_proto_msgTypes[23]
+	mi := &file_pulumi_workflow_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1386,7 +1566,7 @@ func (x *DependencyTerm) String() string {
 func (*DependencyTerm) ProtoMessage() {}
 
 func (x *DependencyTerm) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[23]
+	mi := &file_pulumi_workflow_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1399,7 +1579,7 @@ func (x *DependencyTerm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DependencyTerm.ProtoReflect.Descriptor instead.
 func (*DependencyTerm) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{23}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *DependencyTerm) GetTerm() isDependencyTerm_Term {
@@ -1460,7 +1640,7 @@ type DependencyExpression struct {
 
 func (x *DependencyExpression) Reset() {
 	*x = DependencyExpression{}
-	mi := &file_pulumi_workflow_proto_msgTypes[24]
+	mi := &file_pulumi_workflow_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1472,7 +1652,7 @@ func (x *DependencyExpression) String() string {
 func (*DependencyExpression) ProtoMessage() {}
 
 func (x *DependencyExpression) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[24]
+	mi := &file_pulumi_workflow_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1485,7 +1665,7 @@ func (x *DependencyExpression) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DependencyExpression.ProtoReflect.Descriptor instead.
 func (*DependencyExpression) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{24}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *DependencyExpression) GetOperator() DependencyExpression_Operator {
@@ -1518,7 +1698,7 @@ type PlatformRequirements struct {
 
 func (x *PlatformRequirements) Reset() {
 	*x = PlatformRequirements{}
-	mi := &file_pulumi_workflow_proto_msgTypes[25]
+	mi := &file_pulumi_workflow_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1530,7 +1710,7 @@ func (x *PlatformRequirements) String() string {
 func (*PlatformRequirements) ProtoMessage() {}
 
 func (x *PlatformRequirements) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[25]
+	mi := &file_pulumi_workflow_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1543,7 +1723,7 @@ func (x *PlatformRequirements) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlatformRequirements.ProtoReflect.Descriptor instead.
 func (*PlatformRequirements) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{25}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *PlatformRequirements) GetOs() string {
@@ -1588,7 +1768,7 @@ type PlatformSelector struct {
 
 func (x *PlatformSelector) Reset() {
 	*x = PlatformSelector{}
-	mi := &file_pulumi_workflow_proto_msgTypes[26]
+	mi := &file_pulumi_workflow_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1600,7 +1780,7 @@ func (x *PlatformSelector) String() string {
 func (*PlatformSelector) ProtoMessage() {}
 
 func (x *PlatformSelector) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[26]
+	mi := &file_pulumi_workflow_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1613,7 +1793,7 @@ func (x *PlatformSelector) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlatformSelector.ProtoReflect.Descriptor instead.
 func (*PlatformSelector) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{26}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *PlatformSelector) GetTarget() string {
@@ -1651,7 +1831,7 @@ type ErrorRecord struct {
 
 func (x *ErrorRecord) Reset() {
 	*x = ErrorRecord{}
-	mi := &file_pulumi_workflow_proto_msgTypes[27]
+	mi := &file_pulumi_workflow_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1663,7 +1843,7 @@ func (x *ErrorRecord) String() string {
 func (*ErrorRecord) ProtoMessage() {}
 
 func (x *ErrorRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[27]
+	mi := &file_pulumi_workflow_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1676,7 +1856,7 @@ func (x *ErrorRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorRecord.ProtoReflect.Descriptor instead.
 func (*ErrorRecord) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{27}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ErrorRecord) GetStepPath() string {
@@ -1724,7 +1904,7 @@ type GenerateJobRequest struct {
 
 func (x *GenerateJobRequest) Reset() {
 	*x = GenerateJobRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[28]
+	mi := &file_pulumi_workflow_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1736,7 +1916,7 @@ func (x *GenerateJobRequest) String() string {
 func (*GenerateJobRequest) ProtoMessage() {}
 
 func (x *GenerateJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[28]
+	mi := &file_pulumi_workflow_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1749,7 +1929,7 @@ func (x *GenerateJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateJobRequest.ProtoReflect.Descriptor instead.
 func (*GenerateJobRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{28}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GenerateJobRequest) GetContext() *WorkflowContext {
@@ -1801,7 +1981,7 @@ type GenerateGraphRequest struct {
 
 func (x *GenerateGraphRequest) Reset() {
 	*x = GenerateGraphRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[29]
+	mi := &file_pulumi_workflow_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1813,7 +1993,7 @@ func (x *GenerateGraphRequest) String() string {
 func (*GenerateGraphRequest) ProtoMessage() {}
 
 func (x *GenerateGraphRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[29]
+	mi := &file_pulumi_workflow_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1826,7 +2006,7 @@ func (x *GenerateGraphRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateGraphRequest.ProtoReflect.Descriptor instead.
 func (*GenerateGraphRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{29}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GenerateGraphRequest) GetContext() *WorkflowContext {
@@ -1860,7 +2040,7 @@ type GenerateNodeResponse struct {
 
 func (x *GenerateNodeResponse) Reset() {
 	*x = GenerateNodeResponse{}
-	mi := &file_pulumi_workflow_proto_msgTypes[30]
+	mi := &file_pulumi_workflow_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1872,7 +2052,7 @@ func (x *GenerateNodeResponse) String() string {
 func (*GenerateNodeResponse) ProtoMessage() {}
 
 func (x *GenerateNodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[30]
+	mi := &file_pulumi_workflow_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1885,7 +2065,7 @@ func (x *GenerateNodeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateNodeResponse.ProtoReflect.Descriptor instead.
 func (*GenerateNodeResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{30}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *GenerateNodeResponse) GetError() *WorkflowError {
@@ -1909,7 +2089,7 @@ type RunSensorRequest struct {
 
 func (x *RunSensorRequest) Reset() {
 	*x = RunSensorRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[31]
+	mi := &file_pulumi_workflow_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1921,7 +2101,7 @@ func (x *RunSensorRequest) String() string {
 func (*RunSensorRequest) ProtoMessage() {}
 
 func (x *RunSensorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[31]
+	mi := &file_pulumi_workflow_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1934,7 +2114,7 @@ func (x *RunSensorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunSensorRequest.ProtoReflect.Descriptor instead.
 func (*RunSensorRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{31}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *RunSensorRequest) GetContext() *WorkflowContext {
@@ -1976,7 +2156,7 @@ type RunSensorResponse struct {
 
 func (x *RunSensorResponse) Reset() {
 	*x = RunSensorResponse{}
-	mi := &file_pulumi_workflow_proto_msgTypes[32]
+	mi := &file_pulumi_workflow_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1988,7 +2168,7 @@ func (x *RunSensorResponse) String() string {
 func (*RunSensorResponse) ProtoMessage() {}
 
 func (x *RunSensorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[32]
+	mi := &file_pulumi_workflow_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2001,7 +2181,7 @@ func (x *RunSensorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunSensorResponse.ProtoReflect.Descriptor instead.
 func (*RunSensorResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{32}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *RunSensorResponse) GetError() *WorkflowError {
@@ -2051,7 +2231,7 @@ type RunStepRequest struct {
 
 func (x *RunStepRequest) Reset() {
 	*x = RunStepRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[33]
+	mi := &file_pulumi_workflow_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2063,7 +2243,7 @@ func (x *RunStepRequest) String() string {
 func (*RunStepRequest) ProtoMessage() {}
 
 func (x *RunStepRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[33]
+	mi := &file_pulumi_workflow_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2076,7 +2256,7 @@ func (x *RunStepRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunStepRequest.ProtoReflect.Descriptor instead.
 func (*RunStepRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{33}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *RunStepRequest) GetContext() *WorkflowContext {
@@ -2105,7 +2285,7 @@ type RunStepResponse struct {
 
 func (x *RunStepResponse) Reset() {
 	*x = RunStepResponse{}
-	mi := &file_pulumi_workflow_proto_msgTypes[34]
+	mi := &file_pulumi_workflow_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2117,7 +2297,7 @@ func (x *RunStepResponse) String() string {
 func (*RunStepResponse) ProtoMessage() {}
 
 func (x *RunStepResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[34]
+	mi := &file_pulumi_workflow_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2130,7 +2310,7 @@ func (x *RunStepResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunStepResponse.ProtoReflect.Descriptor instead.
 func (*RunStepResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{34}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *RunStepResponse) GetError() *WorkflowError {
@@ -2159,7 +2339,7 @@ type ResolveJobResultRequest struct {
 
 func (x *ResolveJobResultRequest) Reset() {
 	*x = ResolveJobResultRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[35]
+	mi := &file_pulumi_workflow_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2171,7 +2351,7 @@ func (x *ResolveJobResultRequest) String() string {
 func (*ResolveJobResultRequest) ProtoMessage() {}
 
 func (x *ResolveJobResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[35]
+	mi := &file_pulumi_workflow_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2184,7 +2364,7 @@ func (x *ResolveJobResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveJobResultRequest.ProtoReflect.Descriptor instead.
 func (*ResolveJobResultRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{35}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ResolveJobResultRequest) GetContext() *WorkflowContext {
@@ -2213,7 +2393,7 @@ type ResolveJobResultResponse struct {
 
 func (x *ResolveJobResultResponse) Reset() {
 	*x = ResolveJobResultResponse{}
-	mi := &file_pulumi_workflow_proto_msgTypes[36]
+	mi := &file_pulumi_workflow_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2225,7 +2405,7 @@ func (x *ResolveJobResultResponse) String() string {
 func (*ResolveJobResultResponse) ProtoMessage() {}
 
 func (x *ResolveJobResultResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[36]
+	mi := &file_pulumi_workflow_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2238,7 +2418,7 @@ func (x *ResolveJobResultResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveJobResultResponse.ProtoReflect.Descriptor instead.
 func (*ResolveJobResultResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{36}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ResolveJobResultResponse) GetError() *WorkflowError {
@@ -2267,7 +2447,7 @@ type RunTriggerMockRequest struct {
 
 func (x *RunTriggerMockRequest) Reset() {
 	*x = RunTriggerMockRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[37]
+	mi := &file_pulumi_workflow_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2279,7 +2459,7 @@ func (x *RunTriggerMockRequest) String() string {
 func (*RunTriggerMockRequest) ProtoMessage() {}
 
 func (x *RunTriggerMockRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[37]
+	mi := &file_pulumi_workflow_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2292,7 +2472,7 @@ func (x *RunTriggerMockRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunTriggerMockRequest.ProtoReflect.Descriptor instead.
 func (*RunTriggerMockRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{37}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *RunTriggerMockRequest) GetToken() string {
@@ -2319,7 +2499,7 @@ type RunTriggerMockResponse struct {
 
 func (x *RunTriggerMockResponse) Reset() {
 	*x = RunTriggerMockResponse{}
-	mi := &file_pulumi_workflow_proto_msgTypes[38]
+	mi := &file_pulumi_workflow_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2331,7 +2511,7 @@ func (x *RunTriggerMockResponse) String() string {
 func (*RunTriggerMockResponse) ProtoMessage() {}
 
 func (x *RunTriggerMockResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[38]
+	mi := &file_pulumi_workflow_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2344,7 +2524,7 @@ func (x *RunTriggerMockResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunTriggerMockResponse.ProtoReflect.Descriptor instead.
 func (*RunTriggerMockResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{38}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *RunTriggerMockResponse) GetValue() *structpb.Struct {
@@ -2366,7 +2546,7 @@ type RunFilterRequest struct {
 
 func (x *RunFilterRequest) Reset() {
 	*x = RunFilterRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[39]
+	mi := &file_pulumi_workflow_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2378,7 +2558,7 @@ func (x *RunFilterRequest) String() string {
 func (*RunFilterRequest) ProtoMessage() {}
 
 func (x *RunFilterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[39]
+	mi := &file_pulumi_workflow_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2391,7 +2571,7 @@ func (x *RunFilterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunFilterRequest.ProtoReflect.Descriptor instead.
 func (*RunFilterRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{39}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *RunFilterRequest) GetPath() string {
@@ -2417,7 +2597,7 @@ type RunFilterResponse struct {
 
 func (x *RunFilterResponse) Reset() {
 	*x = RunFilterResponse{}
-	mi := &file_pulumi_workflow_proto_msgTypes[40]
+	mi := &file_pulumi_workflow_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2429,7 +2609,7 @@ func (x *RunFilterResponse) String() string {
 func (*RunFilterResponse) ProtoMessage() {}
 
 func (x *RunFilterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[40]
+	mi := &file_pulumi_workflow_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2442,7 +2622,7 @@ func (x *RunFilterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunFilterResponse.ProtoReflect.Descriptor instead.
 func (*RunFilterResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{40}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *RunFilterResponse) GetPass() bool {
@@ -2466,7 +2646,7 @@ type RunOnErrorRequest struct {
 
 func (x *RunOnErrorRequest) Reset() {
 	*x = RunOnErrorRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[41]
+	mi := &file_pulumi_workflow_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2478,7 +2658,7 @@ func (x *RunOnErrorRequest) String() string {
 func (*RunOnErrorRequest) ProtoMessage() {}
 
 func (x *RunOnErrorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[41]
+	mi := &file_pulumi_workflow_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2491,7 +2671,7 @@ func (x *RunOnErrorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunOnErrorRequest.ProtoReflect.Descriptor instead.
 func (*RunOnErrorRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{41}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *RunOnErrorRequest) GetContext() *WorkflowContext {
@@ -2528,7 +2708,7 @@ type RunOnErrorResponse struct {
 
 func (x *RunOnErrorResponse) Reset() {
 	*x = RunOnErrorResponse{}
-	mi := &file_pulumi_workflow_proto_msgTypes[42]
+	mi := &file_pulumi_workflow_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2540,7 +2720,7 @@ func (x *RunOnErrorResponse) String() string {
 func (*RunOnErrorResponse) ProtoMessage() {}
 
 func (x *RunOnErrorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[42]
+	mi := &file_pulumi_workflow_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2553,7 +2733,7 @@ func (x *RunOnErrorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunOnErrorResponse.ProtoReflect.Descriptor instead.
 func (*RunOnErrorResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{42}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *RunOnErrorResponse) GetError() *WorkflowError {
@@ -2595,7 +2775,7 @@ type RegisterTriggerRequest struct {
 
 func (x *RegisterTriggerRequest) Reset() {
 	*x = RegisterTriggerRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[43]
+	mi := &file_pulumi_workflow_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2607,7 +2787,7 @@ func (x *RegisterTriggerRequest) String() string {
 func (*RegisterTriggerRequest) ProtoMessage() {}
 
 func (x *RegisterTriggerRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[43]
+	mi := &file_pulumi_workflow_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2620,7 +2800,7 @@ func (x *RegisterTriggerRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterTriggerRequest.ProtoReflect.Descriptor instead.
 func (*RegisterTriggerRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{43}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *RegisterTriggerRequest) GetContext() *WorkflowContext {
@@ -2674,7 +2854,7 @@ type RegisterSensorRequest struct {
 
 func (x *RegisterSensorRequest) Reset() {
 	*x = RegisterSensorRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[44]
+	mi := &file_pulumi_workflow_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2686,7 +2866,7 @@ func (x *RegisterSensorRequest) String() string {
 func (*RegisterSensorRequest) ProtoMessage() {}
 
 func (x *RegisterSensorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[44]
+	mi := &file_pulumi_workflow_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2699,7 +2879,7 @@ func (x *RegisterSensorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterSensorRequest.ProtoReflect.Descriptor instead.
 func (*RegisterSensorRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{44}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *RegisterSensorRequest) GetContext() *WorkflowContext {
@@ -2748,7 +2928,7 @@ type RegisterJobRequest struct {
 
 func (x *RegisterJobRequest) Reset() {
 	*x = RegisterJobRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[45]
+	mi := &file_pulumi_workflow_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2760,7 +2940,7 @@ func (x *RegisterJobRequest) String() string {
 func (*RegisterJobRequest) ProtoMessage() {}
 
 func (x *RegisterJobRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[45]
+	mi := &file_pulumi_workflow_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2773,7 +2953,7 @@ func (x *RegisterJobRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterJobRequest.ProtoReflect.Descriptor instead.
 func (*RegisterJobRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{45}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *RegisterJobRequest) GetContext() *WorkflowContext {
@@ -2827,7 +3007,7 @@ type RegisterGraphRequest struct {
 
 func (x *RegisterGraphRequest) Reset() {
 	*x = RegisterGraphRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[46]
+	mi := &file_pulumi_workflow_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2839,7 +3019,7 @@ func (x *RegisterGraphRequest) String() string {
 func (*RegisterGraphRequest) ProtoMessage() {}
 
 func (x *RegisterGraphRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[46]
+	mi := &file_pulumi_workflow_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2852,7 +3032,7 @@ func (x *RegisterGraphRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterGraphRequest.ProtoReflect.Descriptor instead.
 func (*RegisterGraphRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{46}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *RegisterGraphRequest) GetContext() *WorkflowContext {
@@ -2901,7 +3081,7 @@ type RegisterStepRequest struct {
 
 func (x *RegisterStepRequest) Reset() {
 	*x = RegisterStepRequest{}
-	mi := &file_pulumi_workflow_proto_msgTypes[47]
+	mi := &file_pulumi_workflow_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2913,7 +3093,7 @@ func (x *RegisterStepRequest) String() string {
 func (*RegisterStepRequest) ProtoMessage() {}
 
 func (x *RegisterStepRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[47]
+	mi := &file_pulumi_workflow_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2926,7 +3106,7 @@ func (x *RegisterStepRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterStepRequest.ProtoReflect.Descriptor instead.
 func (*RegisterStepRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{47}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *RegisterStepRequest) GetContext() *WorkflowContext {
@@ -2974,7 +3154,7 @@ type RegisterNodeResponse struct {
 
 func (x *RegisterNodeResponse) Reset() {
 	*x = RegisterNodeResponse{}
-	mi := &file_pulumi_workflow_proto_msgTypes[48]
+	mi := &file_pulumi_workflow_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2986,7 +3166,7 @@ func (x *RegisterNodeResponse) String() string {
 func (*RegisterNodeResponse) ProtoMessage() {}
 
 func (x *RegisterNodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_workflow_proto_msgTypes[48]
+	mi := &file_pulumi_workflow_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2999,7 +3179,7 @@ func (x *RegisterNodeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterNodeResponse.ProtoReflect.Descriptor instead.
 func (*RegisterNodeResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_workflow_proto_rawDescGZIP(), []int{48}
+	return file_pulumi_workflow_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *RegisterNodeResponse) GetValue() *structpb.Value {
@@ -3073,7 +3253,17 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"{\n" +
 	"\x0eGetJobResponse\x12$\n" +
 	"\x03job\x18\x01 \x01(\v2\x12.pulumirpc.JobInfoR\x03job\x12C\n" +
-	"\x10input_properties\x18\x02 \x03(\v2\x18.pulumirpc.InputPropertyR\x0finputProperties\"u\n" +
+	"\x10input_properties\x18\x02 \x03(\v2\x18.pulumirpc.InputPropertyR\x0finputProperties\"\x11\n" +
+	"\x0fGetStepsRequest\"(\n" +
+	"\x10GetStepsResponse\x12\x14\n" +
+	"\x05steps\x18\x01 \x03(\tR\x05steps\"&\n" +
+	"\x0eGetStepRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\x85\x01\n" +
+	"\x0fGetStepResponse\x127\n" +
+	"\n" +
+	"input_type\x18\x01 \x01(\v2\x18.pulumirpc.TypeReferenceR\tinputType\x129\n" +
+	"\voutput_type\x18\x02 \x01(\v2\x18.pulumirpc.TypeReferenceR\n" +
+	"outputType\"u\n" +
 	"\rInputProperty\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1a\n" +
@@ -3206,7 +3396,7 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\fhas_on_error\x18\x05 \x01(\bR\n" +
 	"hasOnError\"D\n" +
 	"\x14RegisterNodeResponse\x12,\n" +
-	"\x05value\x18\x01 \x01(\v2\x16.google.protobuf.ValueR\x05value2\xfc\t\n" +
+	"\x05value\x18\x01 \x01(\v2\x16.google.protobuf.ValueR\x05value2\x87\v\n" +
 	"\x11WorkflowEvaluator\x12X\n" +
 	"\tHandshake\x12#.pulumirpc.WorkflowHandshakeRequest\x1a$.pulumirpc.WorkflowHandshakeResponse\"\x00\x12W\n" +
 	"\x0eGetPackageInfo\x12 .pulumirpc.GetPackageInfoRequest\x1a!.pulumirpc.GetPackageInfoResponse\"\x00\x12H\n" +
@@ -3216,7 +3406,9 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\n" +
 	"GetTrigger\x12\x1c.pulumirpc.GetTriggerRequest\x1a\x1d.pulumirpc.GetTriggerResponse\"\x00\x12B\n" +
 	"\aGetJobs\x12\x19.pulumirpc.GetJobsRequest\x1a\x1a.pulumirpc.GetJobsResponse\"\x00\x12?\n" +
-	"\x06GetJob\x12\x18.pulumirpc.GetJobRequest\x1a\x19.pulumirpc.GetJobResponse\"\x00\x12O\n" +
+	"\x06GetJob\x12\x18.pulumirpc.GetJobRequest\x1a\x19.pulumirpc.GetJobResponse\"\x00\x12E\n" +
+	"\bGetSteps\x12\x1a.pulumirpc.GetStepsRequest\x1a\x1b.pulumirpc.GetStepsResponse\"\x00\x12B\n" +
+	"\aGetStep\x12\x19.pulumirpc.GetStepRequest\x1a\x1a.pulumirpc.GetStepResponse\"\x00\x12O\n" +
 	"\vGenerateJob\x12\x1d.pulumirpc.GenerateJobRequest\x1a\x1f.pulumirpc.GenerateNodeResponse\"\x00\x12S\n" +
 	"\rGenerateGraph\x12\x1f.pulumirpc.GenerateGraphRequest\x1a\x1f.pulumirpc.GenerateNodeResponse\"\x00\x12H\n" +
 	"\tRunSensor\x12\x1b.pulumirpc.RunSensorRequest\x1a\x1c.pulumirpc.RunSensorResponse\"\x00\x12B\n" +
@@ -3246,7 +3438,7 @@ func file_pulumi_workflow_proto_rawDescGZIP() []byte {
 }
 
 var file_pulumi_workflow_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_pulumi_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
+var file_pulumi_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 53)
 var file_pulumi_workflow_proto_goTypes = []any{
 	(DependencyExpression_Operator)(0), // 0: pulumirpc.DependencyExpression.Operator
 	(PlatformSelector_MatchPolicy)(0),  // 1: pulumirpc.PlatformSelector.MatchPolicy
@@ -3272,36 +3464,40 @@ var file_pulumi_workflow_proto_goTypes = []any{
 	(*GetJobsResponse)(nil),            // 21: pulumirpc.GetJobsResponse
 	(*GetJobRequest)(nil),              // 22: pulumirpc.GetJobRequest
 	(*GetJobResponse)(nil),             // 23: pulumirpc.GetJobResponse
-	(*InputProperty)(nil),              // 24: pulumirpc.InputProperty
-	(*WorkflowError)(nil),              // 25: pulumirpc.WorkflowError
-	(*DependencyTerm)(nil),             // 26: pulumirpc.DependencyTerm
-	(*DependencyExpression)(nil),       // 27: pulumirpc.DependencyExpression
-	(*PlatformRequirements)(nil),       // 28: pulumirpc.PlatformRequirements
-	(*PlatformSelector)(nil),           // 29: pulumirpc.PlatformSelector
-	(*ErrorRecord)(nil),                // 30: pulumirpc.ErrorRecord
-	(*GenerateJobRequest)(nil),         // 31: pulumirpc.GenerateJobRequest
-	(*GenerateGraphRequest)(nil),       // 32: pulumirpc.GenerateGraphRequest
-	(*GenerateNodeResponse)(nil),       // 33: pulumirpc.GenerateNodeResponse
-	(*RunSensorRequest)(nil),           // 34: pulumirpc.RunSensorRequest
-	(*RunSensorResponse)(nil),          // 35: pulumirpc.RunSensorResponse
-	(*RunStepRequest)(nil),             // 36: pulumirpc.RunStepRequest
-	(*RunStepResponse)(nil),            // 37: pulumirpc.RunStepResponse
-	(*ResolveJobResultRequest)(nil),    // 38: pulumirpc.ResolveJobResultRequest
-	(*ResolveJobResultResponse)(nil),   // 39: pulumirpc.ResolveJobResultResponse
-	(*RunTriggerMockRequest)(nil),      // 40: pulumirpc.RunTriggerMockRequest
-	(*RunTriggerMockResponse)(nil),     // 41: pulumirpc.RunTriggerMockResponse
-	(*RunFilterRequest)(nil),           // 42: pulumirpc.RunFilterRequest
-	(*RunFilterResponse)(nil),          // 43: pulumirpc.RunFilterResponse
-	(*RunOnErrorRequest)(nil),          // 44: pulumirpc.RunOnErrorRequest
-	(*RunOnErrorResponse)(nil),         // 45: pulumirpc.RunOnErrorResponse
-	(*RegisterTriggerRequest)(nil),     // 46: pulumirpc.RegisterTriggerRequest
-	(*RegisterSensorRequest)(nil),      // 47: pulumirpc.RegisterSensorRequest
-	(*RegisterJobRequest)(nil),         // 48: pulumirpc.RegisterJobRequest
-	(*RegisterGraphRequest)(nil),       // 49: pulumirpc.RegisterGraphRequest
-	(*RegisterStepRequest)(nil),        // 50: pulumirpc.RegisterStepRequest
-	(*RegisterNodeResponse)(nil),       // 51: pulumirpc.RegisterNodeResponse
-	(*structpb.Struct)(nil),            // 52: google.protobuf.Struct
-	(*structpb.Value)(nil),             // 53: google.protobuf.Value
+	(*GetStepsRequest)(nil),            // 24: pulumirpc.GetStepsRequest
+	(*GetStepsResponse)(nil),           // 25: pulumirpc.GetStepsResponse
+	(*GetStepRequest)(nil),             // 26: pulumirpc.GetStepRequest
+	(*GetStepResponse)(nil),            // 27: pulumirpc.GetStepResponse
+	(*InputProperty)(nil),              // 28: pulumirpc.InputProperty
+	(*WorkflowError)(nil),              // 29: pulumirpc.WorkflowError
+	(*DependencyTerm)(nil),             // 30: pulumirpc.DependencyTerm
+	(*DependencyExpression)(nil),       // 31: pulumirpc.DependencyExpression
+	(*PlatformRequirements)(nil),       // 32: pulumirpc.PlatformRequirements
+	(*PlatformSelector)(nil),           // 33: pulumirpc.PlatformSelector
+	(*ErrorRecord)(nil),                // 34: pulumirpc.ErrorRecord
+	(*GenerateJobRequest)(nil),         // 35: pulumirpc.GenerateJobRequest
+	(*GenerateGraphRequest)(nil),       // 36: pulumirpc.GenerateGraphRequest
+	(*GenerateNodeResponse)(nil),       // 37: pulumirpc.GenerateNodeResponse
+	(*RunSensorRequest)(nil),           // 38: pulumirpc.RunSensorRequest
+	(*RunSensorResponse)(nil),          // 39: pulumirpc.RunSensorResponse
+	(*RunStepRequest)(nil),             // 40: pulumirpc.RunStepRequest
+	(*RunStepResponse)(nil),            // 41: pulumirpc.RunStepResponse
+	(*ResolveJobResultRequest)(nil),    // 42: pulumirpc.ResolveJobResultRequest
+	(*ResolveJobResultResponse)(nil),   // 43: pulumirpc.ResolveJobResultResponse
+	(*RunTriggerMockRequest)(nil),      // 44: pulumirpc.RunTriggerMockRequest
+	(*RunTriggerMockResponse)(nil),     // 45: pulumirpc.RunTriggerMockResponse
+	(*RunFilterRequest)(nil),           // 46: pulumirpc.RunFilterRequest
+	(*RunFilterResponse)(nil),          // 47: pulumirpc.RunFilterResponse
+	(*RunOnErrorRequest)(nil),          // 48: pulumirpc.RunOnErrorRequest
+	(*RunOnErrorResponse)(nil),         // 49: pulumirpc.RunOnErrorResponse
+	(*RegisterTriggerRequest)(nil),     // 50: pulumirpc.RegisterTriggerRequest
+	(*RegisterSensorRequest)(nil),      // 51: pulumirpc.RegisterSensorRequest
+	(*RegisterJobRequest)(nil),         // 52: pulumirpc.RegisterJobRequest
+	(*RegisterGraphRequest)(nil),       // 53: pulumirpc.RegisterGraphRequest
+	(*RegisterStepRequest)(nil),        // 54: pulumirpc.RegisterStepRequest
+	(*RegisterNodeResponse)(nil),       // 55: pulumirpc.RegisterNodeResponse
+	(*structpb.Struct)(nil),            // 56: google.protobuf.Struct
+	(*structpb.Value)(nil),             // 57: google.protobuf.Value
 }
 var file_pulumi_workflow_proto_depIdxs = []int32{
 	6,  // 0: pulumirpc.GraphInfo.input_type:type_name -> pulumirpc.TypeReference
@@ -3315,93 +3511,99 @@ var file_pulumi_workflow_proto_depIdxs = []int32{
 	6,  // 8: pulumirpc.GetTriggerResponse.output_type:type_name -> pulumirpc.TypeReference
 	9,  // 9: pulumirpc.GetJobsResponse.jobs:type_name -> pulumirpc.JobInfo
 	9,  // 10: pulumirpc.GetJobResponse.job:type_name -> pulumirpc.JobInfo
-	24, // 11: pulumirpc.GetJobResponse.input_properties:type_name -> pulumirpc.InputProperty
-	52, // 12: pulumirpc.WorkflowError.details:type_name -> google.protobuf.Struct
-	27, // 13: pulumirpc.DependencyTerm.expression:type_name -> pulumirpc.DependencyExpression
-	0,  // 14: pulumirpc.DependencyExpression.operator:type_name -> pulumirpc.DependencyExpression.Operator
-	26, // 15: pulumirpc.DependencyExpression.terms:type_name -> pulumirpc.DependencyTerm
-	28, // 16: pulumirpc.PlatformSelector.requirements:type_name -> pulumirpc.PlatformRequirements
-	1,  // 17: pulumirpc.PlatformSelector.match_policy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
-	3,  // 18: pulumirpc.GenerateJobRequest.context:type_name -> pulumirpc.WorkflowContext
-	52, // 19: pulumirpc.GenerateJobRequest.input_value:type_name -> google.protobuf.Struct
-	3,  // 20: pulumirpc.GenerateGraphRequest.context:type_name -> pulumirpc.WorkflowContext
-	25, // 21: pulumirpc.GenerateNodeResponse.error:type_name -> pulumirpc.WorkflowError
-	3,  // 22: pulumirpc.RunSensorRequest.context:type_name -> pulumirpc.WorkflowContext
-	53, // 23: pulumirpc.RunSensorRequest.cursor:type_name -> google.protobuf.Value
-	25, // 24: pulumirpc.RunSensorResponse.error:type_name -> pulumirpc.WorkflowError
-	2,  // 25: pulumirpc.RunSensorResponse.decision:type_name -> pulumirpc.RunSensorResponse.Decision
-	53, // 26: pulumirpc.RunSensorResponse.cursor:type_name -> google.protobuf.Value
-	53, // 27: pulumirpc.RunSensorResponse.event:type_name -> google.protobuf.Value
-	3,  // 28: pulumirpc.RunStepRequest.context:type_name -> pulumirpc.WorkflowContext
-	25, // 29: pulumirpc.RunStepResponse.error:type_name -> pulumirpc.WorkflowError
-	53, // 30: pulumirpc.RunStepResponse.result:type_name -> google.protobuf.Value
-	3,  // 31: pulumirpc.ResolveJobResultRequest.context:type_name -> pulumirpc.WorkflowContext
-	25, // 32: pulumirpc.ResolveJobResultResponse.error:type_name -> pulumirpc.WorkflowError
-	53, // 33: pulumirpc.ResolveJobResultResponse.result:type_name -> google.protobuf.Value
-	52, // 34: pulumirpc.RunTriggerMockResponse.value:type_name -> google.protobuf.Struct
-	53, // 35: pulumirpc.RunFilterRequest.value:type_name -> google.protobuf.Value
-	3,  // 36: pulumirpc.RunOnErrorRequest.context:type_name -> pulumirpc.WorkflowContext
-	30, // 37: pulumirpc.RunOnErrorRequest.errors:type_name -> pulumirpc.ErrorRecord
-	25, // 38: pulumirpc.RunOnErrorResponse.error:type_name -> pulumirpc.WorkflowError
-	3,  // 39: pulumirpc.RegisterTriggerRequest.context:type_name -> pulumirpc.WorkflowContext
-	52, // 40: pulumirpc.RegisterTriggerRequest.spec:type_name -> google.protobuf.Struct
-	3,  // 41: pulumirpc.RegisterSensorRequest.context:type_name -> pulumirpc.WorkflowContext
-	52, // 42: pulumirpc.RegisterSensorRequest.spec:type_name -> google.protobuf.Struct
-	3,  // 43: pulumirpc.RegisterJobRequest.context:type_name -> pulumirpc.WorkflowContext
-	27, // 44: pulumirpc.RegisterJobRequest.dependencies:type_name -> pulumirpc.DependencyExpression
-	29, // 45: pulumirpc.RegisterJobRequest.platform:type_name -> pulumirpc.PlatformSelector
-	3,  // 46: pulumirpc.RegisterGraphRequest.context:type_name -> pulumirpc.WorkflowContext
-	27, // 47: pulumirpc.RegisterGraphRequest.dependencies:type_name -> pulumirpc.DependencyExpression
-	3,  // 48: pulumirpc.RegisterStepRequest.context:type_name -> pulumirpc.WorkflowContext
-	27, // 49: pulumirpc.RegisterStepRequest.dependencies:type_name -> pulumirpc.DependencyExpression
-	53, // 50: pulumirpc.RegisterNodeResponse.value:type_name -> google.protobuf.Value
-	4,  // 51: pulumirpc.WorkflowEvaluator.Handshake:input_type -> pulumirpc.WorkflowHandshakeRequest
-	10, // 52: pulumirpc.WorkflowEvaluator.GetPackageInfo:input_type -> pulumirpc.GetPackageInfoRequest
-	12, // 53: pulumirpc.WorkflowEvaluator.GetGraphs:input_type -> pulumirpc.GetGraphsRequest
-	14, // 54: pulumirpc.WorkflowEvaluator.GetGraph:input_type -> pulumirpc.GetGraphRequest
-	16, // 55: pulumirpc.WorkflowEvaluator.GetTriggers:input_type -> pulumirpc.GetTriggersRequest
-	18, // 56: pulumirpc.WorkflowEvaluator.GetTrigger:input_type -> pulumirpc.GetTriggerRequest
-	20, // 57: pulumirpc.WorkflowEvaluator.GetJobs:input_type -> pulumirpc.GetJobsRequest
-	22, // 58: pulumirpc.WorkflowEvaluator.GetJob:input_type -> pulumirpc.GetJobRequest
-	31, // 59: pulumirpc.WorkflowEvaluator.GenerateJob:input_type -> pulumirpc.GenerateJobRequest
-	32, // 60: pulumirpc.WorkflowEvaluator.GenerateGraph:input_type -> pulumirpc.GenerateGraphRequest
-	34, // 61: pulumirpc.WorkflowEvaluator.RunSensor:input_type -> pulumirpc.RunSensorRequest
-	36, // 62: pulumirpc.WorkflowEvaluator.RunStep:input_type -> pulumirpc.RunStepRequest
-	38, // 63: pulumirpc.WorkflowEvaluator.ResolveJobResult:input_type -> pulumirpc.ResolveJobResultRequest
-	40, // 64: pulumirpc.WorkflowEvaluator.RunTriggerMock:input_type -> pulumirpc.RunTriggerMockRequest
-	42, // 65: pulumirpc.WorkflowEvaluator.RunFilter:input_type -> pulumirpc.RunFilterRequest
-	44, // 66: pulumirpc.WorkflowEvaluator.RunOnError:input_type -> pulumirpc.RunOnErrorRequest
-	46, // 67: pulumirpc.GraphMonitor.RegisterTrigger:input_type -> pulumirpc.RegisterTriggerRequest
-	47, // 68: pulumirpc.GraphMonitor.RegisterSensor:input_type -> pulumirpc.RegisterSensorRequest
-	48, // 69: pulumirpc.GraphMonitor.RegisterJob:input_type -> pulumirpc.RegisterJobRequest
-	49, // 70: pulumirpc.GraphMonitor.RegisterGraph:input_type -> pulumirpc.RegisterGraphRequest
-	50, // 71: pulumirpc.GraphMonitor.RegisterStep:input_type -> pulumirpc.RegisterStepRequest
-	5,  // 72: pulumirpc.WorkflowEvaluator.Handshake:output_type -> pulumirpc.WorkflowHandshakeResponse
-	11, // 73: pulumirpc.WorkflowEvaluator.GetPackageInfo:output_type -> pulumirpc.GetPackageInfoResponse
-	13, // 74: pulumirpc.WorkflowEvaluator.GetGraphs:output_type -> pulumirpc.GetGraphsResponse
-	15, // 75: pulumirpc.WorkflowEvaluator.GetGraph:output_type -> pulumirpc.GetGraphResponse
-	17, // 76: pulumirpc.WorkflowEvaluator.GetTriggers:output_type -> pulumirpc.GetTriggersResponse
-	19, // 77: pulumirpc.WorkflowEvaluator.GetTrigger:output_type -> pulumirpc.GetTriggerResponse
-	21, // 78: pulumirpc.WorkflowEvaluator.GetJobs:output_type -> pulumirpc.GetJobsResponse
-	23, // 79: pulumirpc.WorkflowEvaluator.GetJob:output_type -> pulumirpc.GetJobResponse
-	33, // 80: pulumirpc.WorkflowEvaluator.GenerateJob:output_type -> pulumirpc.GenerateNodeResponse
-	33, // 81: pulumirpc.WorkflowEvaluator.GenerateGraph:output_type -> pulumirpc.GenerateNodeResponse
-	35, // 82: pulumirpc.WorkflowEvaluator.RunSensor:output_type -> pulumirpc.RunSensorResponse
-	37, // 83: pulumirpc.WorkflowEvaluator.RunStep:output_type -> pulumirpc.RunStepResponse
-	39, // 84: pulumirpc.WorkflowEvaluator.ResolveJobResult:output_type -> pulumirpc.ResolveJobResultResponse
-	41, // 85: pulumirpc.WorkflowEvaluator.RunTriggerMock:output_type -> pulumirpc.RunTriggerMockResponse
-	43, // 86: pulumirpc.WorkflowEvaluator.RunFilter:output_type -> pulumirpc.RunFilterResponse
-	45, // 87: pulumirpc.WorkflowEvaluator.RunOnError:output_type -> pulumirpc.RunOnErrorResponse
-	51, // 88: pulumirpc.GraphMonitor.RegisterTrigger:output_type -> pulumirpc.RegisterNodeResponse
-	51, // 89: pulumirpc.GraphMonitor.RegisterSensor:output_type -> pulumirpc.RegisterNodeResponse
-	51, // 90: pulumirpc.GraphMonitor.RegisterJob:output_type -> pulumirpc.RegisterNodeResponse
-	51, // 91: pulumirpc.GraphMonitor.RegisterGraph:output_type -> pulumirpc.RegisterNodeResponse
-	51, // 92: pulumirpc.GraphMonitor.RegisterStep:output_type -> pulumirpc.RegisterNodeResponse
-	72, // [72:93] is the sub-list for method output_type
-	51, // [51:72] is the sub-list for method input_type
-	51, // [51:51] is the sub-list for extension type_name
-	51, // [51:51] is the sub-list for extension extendee
-	0,  // [0:51] is the sub-list for field type_name
+	28, // 11: pulumirpc.GetJobResponse.input_properties:type_name -> pulumirpc.InputProperty
+	6,  // 12: pulumirpc.GetStepResponse.input_type:type_name -> pulumirpc.TypeReference
+	6,  // 13: pulumirpc.GetStepResponse.output_type:type_name -> pulumirpc.TypeReference
+	56, // 14: pulumirpc.WorkflowError.details:type_name -> google.protobuf.Struct
+	31, // 15: pulumirpc.DependencyTerm.expression:type_name -> pulumirpc.DependencyExpression
+	0,  // 16: pulumirpc.DependencyExpression.operator:type_name -> pulumirpc.DependencyExpression.Operator
+	30, // 17: pulumirpc.DependencyExpression.terms:type_name -> pulumirpc.DependencyTerm
+	32, // 18: pulumirpc.PlatformSelector.requirements:type_name -> pulumirpc.PlatformRequirements
+	1,  // 19: pulumirpc.PlatformSelector.match_policy:type_name -> pulumirpc.PlatformSelector.MatchPolicy
+	3,  // 20: pulumirpc.GenerateJobRequest.context:type_name -> pulumirpc.WorkflowContext
+	56, // 21: pulumirpc.GenerateJobRequest.input_value:type_name -> google.protobuf.Struct
+	3,  // 22: pulumirpc.GenerateGraphRequest.context:type_name -> pulumirpc.WorkflowContext
+	29, // 23: pulumirpc.GenerateNodeResponse.error:type_name -> pulumirpc.WorkflowError
+	3,  // 24: pulumirpc.RunSensorRequest.context:type_name -> pulumirpc.WorkflowContext
+	57, // 25: pulumirpc.RunSensorRequest.cursor:type_name -> google.protobuf.Value
+	29, // 26: pulumirpc.RunSensorResponse.error:type_name -> pulumirpc.WorkflowError
+	2,  // 27: pulumirpc.RunSensorResponse.decision:type_name -> pulumirpc.RunSensorResponse.Decision
+	57, // 28: pulumirpc.RunSensorResponse.cursor:type_name -> google.protobuf.Value
+	57, // 29: pulumirpc.RunSensorResponse.event:type_name -> google.protobuf.Value
+	3,  // 30: pulumirpc.RunStepRequest.context:type_name -> pulumirpc.WorkflowContext
+	29, // 31: pulumirpc.RunStepResponse.error:type_name -> pulumirpc.WorkflowError
+	57, // 32: pulumirpc.RunStepResponse.result:type_name -> google.protobuf.Value
+	3,  // 33: pulumirpc.ResolveJobResultRequest.context:type_name -> pulumirpc.WorkflowContext
+	29, // 34: pulumirpc.ResolveJobResultResponse.error:type_name -> pulumirpc.WorkflowError
+	57, // 35: pulumirpc.ResolveJobResultResponse.result:type_name -> google.protobuf.Value
+	56, // 36: pulumirpc.RunTriggerMockResponse.value:type_name -> google.protobuf.Struct
+	57, // 37: pulumirpc.RunFilterRequest.value:type_name -> google.protobuf.Value
+	3,  // 38: pulumirpc.RunOnErrorRequest.context:type_name -> pulumirpc.WorkflowContext
+	34, // 39: pulumirpc.RunOnErrorRequest.errors:type_name -> pulumirpc.ErrorRecord
+	29, // 40: pulumirpc.RunOnErrorResponse.error:type_name -> pulumirpc.WorkflowError
+	3,  // 41: pulumirpc.RegisterTriggerRequest.context:type_name -> pulumirpc.WorkflowContext
+	56, // 42: pulumirpc.RegisterTriggerRequest.spec:type_name -> google.protobuf.Struct
+	3,  // 43: pulumirpc.RegisterSensorRequest.context:type_name -> pulumirpc.WorkflowContext
+	56, // 44: pulumirpc.RegisterSensorRequest.spec:type_name -> google.protobuf.Struct
+	3,  // 45: pulumirpc.RegisterJobRequest.context:type_name -> pulumirpc.WorkflowContext
+	31, // 46: pulumirpc.RegisterJobRequest.dependencies:type_name -> pulumirpc.DependencyExpression
+	33, // 47: pulumirpc.RegisterJobRequest.platform:type_name -> pulumirpc.PlatformSelector
+	3,  // 48: pulumirpc.RegisterGraphRequest.context:type_name -> pulumirpc.WorkflowContext
+	31, // 49: pulumirpc.RegisterGraphRequest.dependencies:type_name -> pulumirpc.DependencyExpression
+	3,  // 50: pulumirpc.RegisterStepRequest.context:type_name -> pulumirpc.WorkflowContext
+	31, // 51: pulumirpc.RegisterStepRequest.dependencies:type_name -> pulumirpc.DependencyExpression
+	57, // 52: pulumirpc.RegisterNodeResponse.value:type_name -> google.protobuf.Value
+	4,  // 53: pulumirpc.WorkflowEvaluator.Handshake:input_type -> pulumirpc.WorkflowHandshakeRequest
+	10, // 54: pulumirpc.WorkflowEvaluator.GetPackageInfo:input_type -> pulumirpc.GetPackageInfoRequest
+	12, // 55: pulumirpc.WorkflowEvaluator.GetGraphs:input_type -> pulumirpc.GetGraphsRequest
+	14, // 56: pulumirpc.WorkflowEvaluator.GetGraph:input_type -> pulumirpc.GetGraphRequest
+	16, // 57: pulumirpc.WorkflowEvaluator.GetTriggers:input_type -> pulumirpc.GetTriggersRequest
+	18, // 58: pulumirpc.WorkflowEvaluator.GetTrigger:input_type -> pulumirpc.GetTriggerRequest
+	20, // 59: pulumirpc.WorkflowEvaluator.GetJobs:input_type -> pulumirpc.GetJobsRequest
+	22, // 60: pulumirpc.WorkflowEvaluator.GetJob:input_type -> pulumirpc.GetJobRequest
+	24, // 61: pulumirpc.WorkflowEvaluator.GetSteps:input_type -> pulumirpc.GetStepsRequest
+	26, // 62: pulumirpc.WorkflowEvaluator.GetStep:input_type -> pulumirpc.GetStepRequest
+	35, // 63: pulumirpc.WorkflowEvaluator.GenerateJob:input_type -> pulumirpc.GenerateJobRequest
+	36, // 64: pulumirpc.WorkflowEvaluator.GenerateGraph:input_type -> pulumirpc.GenerateGraphRequest
+	38, // 65: pulumirpc.WorkflowEvaluator.RunSensor:input_type -> pulumirpc.RunSensorRequest
+	40, // 66: pulumirpc.WorkflowEvaluator.RunStep:input_type -> pulumirpc.RunStepRequest
+	42, // 67: pulumirpc.WorkflowEvaluator.ResolveJobResult:input_type -> pulumirpc.ResolveJobResultRequest
+	44, // 68: pulumirpc.WorkflowEvaluator.RunTriggerMock:input_type -> pulumirpc.RunTriggerMockRequest
+	46, // 69: pulumirpc.WorkflowEvaluator.RunFilter:input_type -> pulumirpc.RunFilterRequest
+	48, // 70: pulumirpc.WorkflowEvaluator.RunOnError:input_type -> pulumirpc.RunOnErrorRequest
+	50, // 71: pulumirpc.GraphMonitor.RegisterTrigger:input_type -> pulumirpc.RegisterTriggerRequest
+	51, // 72: pulumirpc.GraphMonitor.RegisterSensor:input_type -> pulumirpc.RegisterSensorRequest
+	52, // 73: pulumirpc.GraphMonitor.RegisterJob:input_type -> pulumirpc.RegisterJobRequest
+	53, // 74: pulumirpc.GraphMonitor.RegisterGraph:input_type -> pulumirpc.RegisterGraphRequest
+	54, // 75: pulumirpc.GraphMonitor.RegisterStep:input_type -> pulumirpc.RegisterStepRequest
+	5,  // 76: pulumirpc.WorkflowEvaluator.Handshake:output_type -> pulumirpc.WorkflowHandshakeResponse
+	11, // 77: pulumirpc.WorkflowEvaluator.GetPackageInfo:output_type -> pulumirpc.GetPackageInfoResponse
+	13, // 78: pulumirpc.WorkflowEvaluator.GetGraphs:output_type -> pulumirpc.GetGraphsResponse
+	15, // 79: pulumirpc.WorkflowEvaluator.GetGraph:output_type -> pulumirpc.GetGraphResponse
+	17, // 80: pulumirpc.WorkflowEvaluator.GetTriggers:output_type -> pulumirpc.GetTriggersResponse
+	19, // 81: pulumirpc.WorkflowEvaluator.GetTrigger:output_type -> pulumirpc.GetTriggerResponse
+	21, // 82: pulumirpc.WorkflowEvaluator.GetJobs:output_type -> pulumirpc.GetJobsResponse
+	23, // 83: pulumirpc.WorkflowEvaluator.GetJob:output_type -> pulumirpc.GetJobResponse
+	25, // 84: pulumirpc.WorkflowEvaluator.GetSteps:output_type -> pulumirpc.GetStepsResponse
+	27, // 85: pulumirpc.WorkflowEvaluator.GetStep:output_type -> pulumirpc.GetStepResponse
+	37, // 86: pulumirpc.WorkflowEvaluator.GenerateJob:output_type -> pulumirpc.GenerateNodeResponse
+	37, // 87: pulumirpc.WorkflowEvaluator.GenerateGraph:output_type -> pulumirpc.GenerateNodeResponse
+	39, // 88: pulumirpc.WorkflowEvaluator.RunSensor:output_type -> pulumirpc.RunSensorResponse
+	41, // 89: pulumirpc.WorkflowEvaluator.RunStep:output_type -> pulumirpc.RunStepResponse
+	43, // 90: pulumirpc.WorkflowEvaluator.ResolveJobResult:output_type -> pulumirpc.ResolveJobResultResponse
+	45, // 91: pulumirpc.WorkflowEvaluator.RunTriggerMock:output_type -> pulumirpc.RunTriggerMockResponse
+	47, // 92: pulumirpc.WorkflowEvaluator.RunFilter:output_type -> pulumirpc.RunFilterResponse
+	49, // 93: pulumirpc.WorkflowEvaluator.RunOnError:output_type -> pulumirpc.RunOnErrorResponse
+	55, // 94: pulumirpc.GraphMonitor.RegisterTrigger:output_type -> pulumirpc.RegisterNodeResponse
+	55, // 95: pulumirpc.GraphMonitor.RegisterSensor:output_type -> pulumirpc.RegisterNodeResponse
+	55, // 96: pulumirpc.GraphMonitor.RegisterJob:output_type -> pulumirpc.RegisterNodeResponse
+	55, // 97: pulumirpc.GraphMonitor.RegisterGraph:output_type -> pulumirpc.RegisterNodeResponse
+	55, // 98: pulumirpc.GraphMonitor.RegisterStep:output_type -> pulumirpc.RegisterNodeResponse
+	76, // [76:99] is the sub-list for method output_type
+	53, // [53:76] is the sub-list for method input_type
+	53, // [53:53] is the sub-list for extension type_name
+	53, // [53:53] is the sub-list for extension extendee
+	0,  // [0:53] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_workflow_proto_init() }
@@ -3410,7 +3612,7 @@ func file_pulumi_workflow_proto_init() {
 		return
 	}
 	file_pulumi_workflow_proto_msgTypes[1].OneofWrappers = []any{}
-	file_pulumi_workflow_proto_msgTypes[23].OneofWrappers = []any{
+	file_pulumi_workflow_proto_msgTypes[27].OneofWrappers = []any{
 		(*DependencyTerm_Path)(nil),
 		(*DependencyTerm_Expression)(nil),
 	}
@@ -3420,7 +3622,7 @@ func file_pulumi_workflow_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_workflow_proto_rawDesc), len(file_pulumi_workflow_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   49,
+			NumMessages:   53,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

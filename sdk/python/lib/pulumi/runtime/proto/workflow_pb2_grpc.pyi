@@ -106,6 +106,21 @@ class WorkflowEvaluatorStub:
     ]
     """Returns schema metadata for one exported job token."""
 
+    GetSteps: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetStepsRequest,
+        pulumi.workflow_pb2.GetStepsResponse,
+    ]
+    """Returns the list of exported step tokens.
+
+    These are reusable top-level step definitions that can be referenced from jobs.
+    """
+
+    GetStep: grpc.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetStepRequest,
+        pulumi.workflow_pb2.GetStepResponse,
+    ]
+    """Returns schema metadata for one exported step token."""
+
     GenerateJob: grpc.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GenerateJobRequest,
         pulumi.workflow_pb2.GenerateNodeResponse,
@@ -261,6 +276,21 @@ class WorkflowEvaluatorAsyncStub:
         pulumi.workflow_pb2.GetJobResponse,
     ]
     """Returns schema metadata for one exported job token."""
+
+    GetSteps: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetStepsRequest,
+        pulumi.workflow_pb2.GetStepsResponse,
+    ]
+    """Returns the list of exported step tokens.
+
+    These are reusable top-level step definitions that can be referenced from jobs.
+    """
+
+    GetStep: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.workflow_pb2.GetStepRequest,
+        pulumi.workflow_pb2.GetStepResponse,
+    ]
+    """Returns schema metadata for one exported step token."""
 
     GenerateJob: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.workflow_pb2.GenerateJobRequest,
@@ -433,6 +463,25 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetJobResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetJobResponse]]:
         """Returns schema metadata for one exported job token."""
+
+    
+    def GetSteps(
+        self,
+        request: pulumi.workflow_pb2.GetStepsRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetStepsResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetStepsResponse]]:
+        """Returns the list of exported step tokens.
+
+        These are reusable top-level step definitions that can be referenced from jobs.
+        """
+
+    
+    def GetStep(
+        self,
+        request: pulumi.workflow_pb2.GetStepRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.workflow_pb2.GetStepResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetStepResponse]]:
+        """Returns schema metadata for one exported step token."""
 
     
     def GenerateJob(

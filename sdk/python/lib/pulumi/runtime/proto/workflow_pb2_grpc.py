@@ -65,6 +65,16 @@ class WorkflowEvaluatorStub(object):
                 request_serializer=pulumi_dot_workflow__pb2.GetJobRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetJobResponse.FromString,
                 )
+        self.GetSteps = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetSteps',
+                request_serializer=pulumi_dot_workflow__pb2.GetStepsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetStepsResponse.FromString,
+                )
+        self.GetStep = channel.unary_unary(
+                '/pulumirpc.WorkflowEvaluator/GetStep',
+                request_serializer=pulumi_dot_workflow__pb2.GetStepRequest.SerializeToString,
+                response_deserializer=pulumi_dot_workflow__pb2.GetStepResponse.FromString,
+                )
         self.GenerateJob = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GenerateJob',
                 request_serializer=pulumi_dot_workflow__pb2.GenerateJobRequest.SerializeToString,
@@ -180,6 +190,22 @@ class WorkflowEvaluatorServicer(object):
 
     def GetJob(self, request, context):
         """Returns schema metadata for one exported job token.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetSteps(self, request, context):
+        """Returns the list of exported step tokens.
+
+        These are reusable top-level step definitions that can be referenced from jobs.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetStep(self, request, context):
+        """Returns schema metadata for one exported step token.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -310,6 +336,16 @@ def add_WorkflowEvaluatorServicer_to_server(servicer, server):
                     servicer.GetJob,
                     request_deserializer=pulumi_dot_workflow__pb2.GetJobRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetJobResponse.SerializeToString,
+            ),
+            'GetSteps': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSteps,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetStepsRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetStepsResponse.SerializeToString,
+            ),
+            'GetStep': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetStep,
+                    request_deserializer=pulumi_dot_workflow__pb2.GetStepRequest.FromString,
+                    response_serializer=pulumi_dot_workflow__pb2.GetStepResponse.SerializeToString,
             ),
             'GenerateJob': grpc.unary_unary_rpc_method_handler(
                     servicer.GenerateJob,
@@ -505,6 +541,40 @@ class WorkflowEvaluator(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetJob',
             pulumi_dot_workflow__pb2.GetJobRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetJobResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetSteps(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetSteps',
+            pulumi_dot_workflow__pb2.GetStepsRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetStepsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetStep(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetStep',
+            pulumi_dot_workflow__pb2.GetStepRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.GetStepResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

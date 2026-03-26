@@ -163,6 +163,50 @@ function deserialize_pulumirpc_GetPackageInfoResponse(buffer_arg) {
   return pulumi_workflow_pb.GetPackageInfoResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GetStepRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetStepRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetStepRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetStepRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetStepRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetStepResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetStepResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetStepResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetStepResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetStepResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetStepsRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetStepsRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GetStepsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetStepsRequest(buffer_arg) {
+  return pulumi_workflow_pb.GetStepsRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GetStepsResponse(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.GetStepsResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GetStepsResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GetStepsResponse(buffer_arg) {
+  return pulumi_workflow_pb.GetStepsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_GetTriggerRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GetTriggerRequest)) {
     throw new Error('Expected argument of type pulumirpc.GetTriggerRequest');
@@ -543,6 +587,32 @@ getJob: {
     requestDeserialize: deserialize_pulumirpc_GetJobRequest,
     responseSerialize: serialize_pulumirpc_GetJobResponse,
     responseDeserialize: deserialize_pulumirpc_GetJobResponse,
+  },
+  // Returns the list of exported step tokens.
+//
+// These are reusable top-level step definitions that can be referenced from jobs.
+getSteps: {
+    path: '/pulumirpc.WorkflowEvaluator/GetSteps',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetStepsRequest,
+    responseType: pulumi_workflow_pb.GetStepsResponse,
+    requestSerialize: serialize_pulumirpc_GetStepsRequest,
+    requestDeserialize: deserialize_pulumirpc_GetStepsRequest,
+    responseSerialize: serialize_pulumirpc_GetStepsResponse,
+    responseDeserialize: deserialize_pulumirpc_GetStepsResponse,
+  },
+  // Returns schema metadata for one exported step token.
+getStep: {
+    path: '/pulumirpc.WorkflowEvaluator/GetStep',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_workflow_pb.GetStepRequest,
+    responseType: pulumi_workflow_pb.GetStepResponse,
+    requestSerialize: serialize_pulumirpc_GetStepRequest,
+    requestDeserialize: deserialize_pulumirpc_GetStepRequest,
+    responseSerialize: serialize_pulumirpc_GetStepResponse,
+    responseDeserialize: deserialize_pulumirpc_GetStepResponse,
   },
   // Generates a concrete job shape for either:
 // - an exported top-level job (`name`), or

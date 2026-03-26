@@ -31,6 +31,8 @@ type Workflow interface {
 	GetTrigger(context.Context, *pulumirpc.GetTriggerRequest) (*pulumirpc.GetTriggerResponse, error)
 	GetJobs(context.Context, *pulumirpc.GetJobsRequest) (*pulumirpc.GetJobsResponse, error)
 	GetJob(context.Context, *pulumirpc.GetJobRequest) (*pulumirpc.GetJobResponse, error)
+	GetSteps(context.Context, *pulumirpc.GetStepsRequest) (*pulumirpc.GetStepsResponse, error)
+	GetStep(context.Context, *pulumirpc.GetStepRequest) (*pulumirpc.GetStepResponse, error)
 	GenerateGraph(context.Context, *pulumirpc.GenerateGraphRequest) (*pulumirpc.GenerateNodeResponse, error)
 	GenerateJob(context.Context, *pulumirpc.GenerateJobRequest) (*pulumirpc.GenerateNodeResponse, error)
 	RunTriggerMock(context.Context, *pulumirpc.RunTriggerMockRequest) (*pulumirpc.RunTriggerMockResponse, error)

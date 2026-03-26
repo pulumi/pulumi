@@ -130,6 +130,33 @@ func (e *WorkflowEvaluator) GetJob(
 	return nil, status.Error(codes.NotFound, "no exported jobs")
 }
 
+func (e *WorkflowEvaluator) GetSteps(
+	context.Context, *pulumirpc.GetStepsRequest,
+) (*pulumirpc.GetStepsResponse, error) {
+	resp := &pulumirpc.GetStepsResponse{}
+	for _, name := range e.program.StepNames() {
+		resp.Steps = append(resp.Steps, e.stepToken(name))
+	}
+	return resp, nil
+}
+
+func (e *WorkflowEvaluator) GetStep(
+	_ context.Context, req *pulumirpc.GetStepRequest,
+) (*pulumirpc.GetStepResponse, error) {
+	name, ok := e.resolveStepToken(req.GetToken())
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "unknown step token %q", req.GetToken())
+	}
+	step, ok := e.program.StepByName(name)
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "unknown step token %q", req.GetToken())
+	}
+	return &pulumirpc.GetStepResponse{
+		InputType:  &pulumirpc.TypeReference{Token: defaultTypeToken(step.InputType)},
+		OutputType: &pulumirpc.TypeReference{Token: defaultTypeToken(step.OutputType)},
+	}, nil
+}
+
 func (e *WorkflowEvaluator) GenerateGraph(
 	ctx context.Context, req *pulumirpc.GenerateGraphRequest,
 ) (*pulumirpc.GenerateNodeResponse, error) {
@@ -277,18 +304,19 @@ func (e *WorkflowEvaluator) RunStep(
 ) (*pulumirpc.RunStepResponse, error) {
 	step, ok := e.stepsByPath[req.GetPath()]
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, "unknown step path %q", req.GetPath())
+		name, resolved := e.resolveStepToken(req.GetPath())
+		if !resolved {
+			return nil, status.Errorf(codes.NotFound, "unknown step path %q", req.GetPath())
+		}
+		step, ok = e.program.StepByName(name)
+		if !ok {
+			return nil, status.Errorf(codes.NotFound, "unknown step path %q", req.GetPath())
+		}
 	}
 
-	var value string
-	if step.Command != "" {
-		out, err := exec.Command("/bin/sh", "-c", step.Command).CombinedOutput() //nolint:gosec
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "step command failed: %v", err)
-		}
-		value = strings.TrimSpace(string(out))
-	} else {
-		value = step.Expr
+	value, err := executeStepDefinition(step)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pulumirpc.RunStepResponse{
@@ -357,6 +385,10 @@ func (e *WorkflowEvaluator) triggerToken(name string) string {
 	return fmt.Sprintf("%s:index:%s", e.packageName, name)
 }
 
+func (e *WorkflowEvaluator) stepToken(name string) string {
+	return fmt.Sprintf("%s:index:%s", e.packageName, name)
+}
+
 func (e *WorkflowEvaluator) hasTriggerToken(token string) bool {
 	for _, name := range e.program.TriggerNames() {
 		if token == name || token == e.triggerToken(name) {
@@ -364,6 +396,33 @@ func (e *WorkflowEvaluator) hasTriggerToken(token string) bool {
 		}
 	}
 	return false
+}
+
+func (e *WorkflowEvaluator) resolveStepToken(token string) (string, bool) {
+	for _, name := range e.program.StepNames() {
+		if token == name || token == e.stepToken(name) {
+			return name, true
+		}
+	}
+	return "", false
+}
+
+func defaultTypeToken(token string) string {
+	if token != "" {
+		return token
+	}
+	return "pulumi:json#/Any"
+}
+
+func executeStepDefinition(step codegenpcl.WorkflowStepDefinition) (string, error) {
+	if step.Command != "" {
+		out, err := exec.Command("/bin/sh", "-c", step.Command).CombinedOutput() //nolint:gosec
+		if err != nil {
+			return "", status.Errorf(codes.Internal, "step command failed: %v", err)
+		}
+		return strings.TrimSpace(string(out)), nil
+	}
+	return step.Expr, nil
 }
 
 func (e *WorkflowEvaluator) stepDefinitionForJobStep(

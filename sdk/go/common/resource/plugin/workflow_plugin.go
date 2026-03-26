@@ -209,6 +209,18 @@ func (p *workflowPlugin) GetJob(
 	return p.clientRaw.GetJob(ctx, req)
 }
 
+func (p *workflowPlugin) GetSteps(
+	ctx context.Context, req *pulumirpc.GetStepsRequest,
+) (*pulumirpc.GetStepsResponse, error) {
+	return p.clientRaw.GetSteps(ctx, req)
+}
+
+func (p *workflowPlugin) GetStep(
+	ctx context.Context, req *pulumirpc.GetStepRequest,
+) (*pulumirpc.GetStepResponse, error) {
+	return p.clientRaw.GetStep(ctx, req)
+}
+
 func (p *workflowPlugin) GenerateGraph(
 	ctx context.Context, req *pulumirpc.GenerateGraphRequest,
 ) (*pulumirpc.GenerateNodeResponse, error) {

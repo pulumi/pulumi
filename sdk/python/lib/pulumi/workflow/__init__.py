@@ -1290,6 +1290,34 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             prop.required = bool(property_spec["required"])
         return response
 
+    def GetSteps(
+        self,
+        request: workflow_pb2.GetStepsRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetStepsResponse:
+        _ = request
+        _ = context
+        response = workflow_pb2.GetStepsResponse()
+        for token in sorted(self._workflow_registry._steps):
+            response.steps.append(token)
+        return response
+
+    def GetStep(
+        self,
+        request: workflow_pb2.GetStepRequest,
+        context: grpc.ServicerContext,
+    ) -> workflow_pb2.GetStepResponse:
+        resolved_token = self._workflow_registry.resolve_step_token(request.token)
+        step = self._workflow_registry._steps.get(resolved_token)
+        if step is None:
+            context.abort(
+                grpc.StatusCode.NOT_FOUND, f"unknown step token {request.token}"
+            )
+        response = workflow_pb2.GetStepResponse()
+        response.input_type.token = _type_token(step.input_type)
+        response.output_type.token = _type_token(step.output_type)
+        return response
+
     def RunTriggerMock(
         self,
         request: workflow_pb2.RunTriggerMockRequest,

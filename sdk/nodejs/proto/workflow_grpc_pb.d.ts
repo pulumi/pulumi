@@ -17,6 +17,8 @@ interface IWorkflowEvaluatorService extends grpc.ServiceDefinition<grpc.UntypedS
     getTrigger: IWorkflowEvaluatorService_IGetTrigger;
     getJobs: IWorkflowEvaluatorService_IGetJobs;
     getJob: IWorkflowEvaluatorService_IGetJob;
+    getSteps: IWorkflowEvaluatorService_IGetSteps;
+    getStep: IWorkflowEvaluatorService_IGetStep;
     generateJob: IWorkflowEvaluatorService_IGenerateJob;
     generateGraph: IWorkflowEvaluatorService_IGenerateGraph;
     runSensor: IWorkflowEvaluatorService_IRunSensor;
@@ -98,6 +100,24 @@ interface IWorkflowEvaluatorService_IGetJob extends grpc.MethodDefinition<pulumi
     requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetJobRequest>;
     responseSerialize: grpc.serialize<pulumi_workflow_pb.GetJobResponse>;
     responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetJobResponse>;
+}
+interface IWorkflowEvaluatorService_IGetSteps extends grpc.MethodDefinition<pulumi_workflow_pb.GetStepsRequest, pulumi_workflow_pb.GetStepsResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/GetSteps";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.GetStepsRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetStepsRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.GetStepsResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetStepsResponse>;
+}
+interface IWorkflowEvaluatorService_IGetStep extends grpc.MethodDefinition<pulumi_workflow_pb.GetStepRequest, pulumi_workflow_pb.GetStepResponse> {
+    path: "/pulumirpc.WorkflowEvaluator/GetStep";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_workflow_pb.GetStepRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_workflow_pb.GetStepRequest>;
+    responseSerialize: grpc.serialize<pulumi_workflow_pb.GetStepResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_workflow_pb.GetStepResponse>;
 }
 interface IWorkflowEvaluatorService_IGenerateJob extends grpc.MethodDefinition<pulumi_workflow_pb.GenerateJobRequest, pulumi_workflow_pb.GenerateNodeResponse> {
     path: "/pulumirpc.WorkflowEvaluator/GenerateJob";
@@ -183,6 +203,8 @@ export interface IWorkflowEvaluatorServer extends grpc.UntypedServiceImplementat
     getTrigger: grpc.handleUnaryCall<pulumi_workflow_pb.GetTriggerRequest, pulumi_workflow_pb.GetTriggerResponse>;
     getJobs: grpc.handleUnaryCall<pulumi_workflow_pb.GetJobsRequest, pulumi_workflow_pb.GetJobsResponse>;
     getJob: grpc.handleUnaryCall<pulumi_workflow_pb.GetJobRequest, pulumi_workflow_pb.GetJobResponse>;
+    getSteps: grpc.handleUnaryCall<pulumi_workflow_pb.GetStepsRequest, pulumi_workflow_pb.GetStepsResponse>;
+    getStep: grpc.handleUnaryCall<pulumi_workflow_pb.GetStepRequest, pulumi_workflow_pb.GetStepResponse>;
     generateJob: grpc.handleUnaryCall<pulumi_workflow_pb.GenerateJobRequest, pulumi_workflow_pb.GenerateNodeResponse>;
     generateGraph: grpc.handleUnaryCall<pulumi_workflow_pb.GenerateGraphRequest, pulumi_workflow_pb.GenerateNodeResponse>;
     runSensor: grpc.handleUnaryCall<pulumi_workflow_pb.RunSensorRequest, pulumi_workflow_pb.RunSensorResponse>;
@@ -218,6 +240,12 @@ export interface IWorkflowEvaluatorClient {
     getJob(request: pulumi_workflow_pb.GetJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     getJob(request: pulumi_workflow_pb.GetJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     getJob(request: pulumi_workflow_pb.GetJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
+    getSteps(request: pulumi_workflow_pb.GetStepsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    getSteps(request: pulumi_workflow_pb.GetStepsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    getSteps(request: pulumi_workflow_pb.GetStepsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    getStep(request: pulumi_workflow_pb.GetStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
+    getStep(request: pulumi_workflow_pb.GetStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
+    getStep(request: pulumi_workflow_pb.GetStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
     generateJob(request: pulumi_workflow_pb.GenerateJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
     generateJob(request: pulumi_workflow_pb.GenerateJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
     generateJob(request: pulumi_workflow_pb.GenerateJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
@@ -270,6 +298,12 @@ export class WorkflowEvaluatorClient extends grpc.Client implements IWorkflowEva
     public getJob(request: pulumi_workflow_pb.GetJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     public getJob(request: pulumi_workflow_pb.GetJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     public getJob(request: pulumi_workflow_pb.GetJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
+    public getSteps(request: pulumi_workflow_pb.GetStepsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    public getSteps(request: pulumi_workflow_pb.GetStepsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    public getSteps(request: pulumi_workflow_pb.GetStepsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    public getStep(request: pulumi_workflow_pb.GetStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
+    public getStep(request: pulumi_workflow_pb.GetStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
+    public getStep(request: pulumi_workflow_pb.GetStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
     public generateJob(request: pulumi_workflow_pb.GenerateJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
     public generateJob(request: pulumi_workflow_pb.GenerateJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;
     public generateJob(request: pulumi_workflow_pb.GenerateJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_workflow_pb.GenerateNodeResponse) => void): grpc.ClientUnaryCall;

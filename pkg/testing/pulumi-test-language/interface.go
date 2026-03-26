@@ -1167,22 +1167,34 @@ func runLanguageTests(
 			return fmt.Sprintf(`{"name": "%s", "main": "%s"}`, testName, run.Main)
 		}()
 
-		// Check the PCL is valid and get the list of packages it reports
-		program, diags, err := pcl.BindDirectory(sourceDir, loader)
+		programKind, err := pcl.DetectProgramKindFromDirectory(sourceDir)
 		if err != nil {
-			return nil, fmt.Errorf("bind PCL program: %v", err)
+			return nil, fmt.Errorf("detect PCL program kind: %w", err)
 		}
-		if diags.HasErrors() {
-			return nil, fmt.Errorf("bind PCL program: %v", diags)
+		if programKind == pcl.ProgramKindMixed {
+			return nil, fmt.Errorf("mixed resource/workflow program kinds are not supported in language tests")
 		}
-		programPackages := program.PackageReferences()
+
+		// Check the PCL is valid and get the list of packages it reports.
+		programPackages := []schema.PackageReference{}
+		if programKind == pcl.ProgramKindResource {
+			program, diags, err := pcl.BindDirectory(sourceDir, loader)
+			if err != nil {
+				return nil, fmt.Errorf("bind PCL program: %v", err)
+			}
+			if diags.HasErrors() {
+				return nil, fmt.Errorf("bind PCL program: %v", diags)
+			}
+			programPackages = program.PackageReferences()
+		}
 
 		if i == 0 || !test.RunsShareSource {
 			// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 			var diagnostics hcl.Diagnostics
 
-			// If we're running in local mode we need to generate the packages first before calling GenerateProject
-			if token.Local {
+			// If we're running in local mode we need to generate the packages first before calling GenerateProject.
+			// Workflow programs currently don't report provider package references here.
+			if token.Local && programKind == pcl.ProgramKindResource {
 				for _, pkg := range packages {
 					sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 					sdkTargetDir := filepath.Join(projectDir, "sdks", sdkName)
@@ -1253,6 +1265,54 @@ func runLanguageTests(
 					}
 				}
 			}
+		}
+
+		if _, statErr := os.Stat(filepath.Join(projectDir, "PulumiPlugin.yaml")); statErr == nil {
+			pluginProject, err := workspace.LoadPluginProject(filepath.Join(projectDir, "PulumiPlugin.yaml"))
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("load plugin project: %v", err)), nil
+			}
+			pluginInfo := plugin.NewProgramInfo(
+				projectDir, /* rootDirectory */
+				projectDir, /* programDirectory */
+				".",        /* entryPoint */
+				pluginProject.Runtime.Options(),
+			)
+
+			resp := installDependencies(languageClient, pluginInfo, true /* isPlugin */)
+			if resp != nil {
+				return resp, nil
+			}
+
+			workflow, err := pctx.Host.Workflow(projectDir)
+			if err != nil {
+				return makeTestResponse(fmt.Sprintf("load workflow plugin: %v", err)), nil
+			}
+			defer contract.IgnoreClose(workflow)
+
+			assertWorkflow := run.AssertWorkflow
+			if assertWorkflow == nil {
+				assertWorkflow = func(l *tests.L, args tests.AssertWorkflowArgs) {
+					require.NoErrorf(l, args.Err, "expected no error in workflow test setup")
+				}
+			}
+			result = tests.WithL(func(l *tests.L) {
+				assertWorkflow(l, tests.AssertWorkflowArgs{
+					ProjectDirectory: projectDir,
+					Err:              nil,
+					Workflow:         workflow,
+					SDKs:             sdks,
+				})
+			})
+			if result.Failed {
+				return &testingrpc.RunLanguageTestResponse{
+					Success:  false,
+					Messages: result.Messages,
+					Stdout:   stdout.String(),
+					Stderr:   stderr.String(),
+				}, nil
+			}
+			continue
 		}
 
 		project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))

@@ -452,6 +452,75 @@ class GetJobResponse(google.protobuf.message.Message):
 global___GetJobResponse = GetJobResponse
 
 @typing.final
+class GetStepsRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    def __init__(
+        self,
+    ) -> None: ...
+
+global___GetStepsRequest = GetStepsRequest
+
+@typing.final
+class GetStepsResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    STEPS_FIELD_NUMBER: builtins.int
+    @property
+    def steps(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Fully-qualified exported step tokens."""
+
+    def __init__(
+        self,
+        *,
+        steps: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["steps", b"steps"]) -> None: ...
+
+global___GetStepsResponse = GetStepsResponse
+
+@typing.final
+class GetStepRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    """Fully-qualified step token to fetch."""
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
+
+global___GetStepRequest = GetStepRequest
+
+@typing.final
+class GetStepResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INPUT_TYPE_FIELD_NUMBER: builtins.int
+    OUTPUT_TYPE_FIELD_NUMBER: builtins.int
+    @property
+    def input_type(self) -> global___TypeReference:
+        """Type token for step input value shape."""
+
+    @property
+    def output_type(self) -> global___TypeReference:
+        """Type token for step output value shape."""
+
+    def __init__(
+        self,
+        *,
+        input_type: global___TypeReference | None = ...,
+        output_type: global___TypeReference | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type"]) -> None: ...
+
+global___GetStepResponse = GetStepResponse
+
+@typing.final
 class InputProperty(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 

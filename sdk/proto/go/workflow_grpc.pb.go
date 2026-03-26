@@ -41,6 +41,8 @@ const (
 	WorkflowEvaluator_GetTrigger_FullMethodName       = "/pulumirpc.WorkflowEvaluator/GetTrigger"
 	WorkflowEvaluator_GetJobs_FullMethodName          = "/pulumirpc.WorkflowEvaluator/GetJobs"
 	WorkflowEvaluator_GetJob_FullMethodName           = "/pulumirpc.WorkflowEvaluator/GetJob"
+	WorkflowEvaluator_GetSteps_FullMethodName         = "/pulumirpc.WorkflowEvaluator/GetSteps"
+	WorkflowEvaluator_GetStep_FullMethodName          = "/pulumirpc.WorkflowEvaluator/GetStep"
 	WorkflowEvaluator_GenerateJob_FullMethodName      = "/pulumirpc.WorkflowEvaluator/GenerateJob"
 	WorkflowEvaluator_GenerateGraph_FullMethodName    = "/pulumirpc.WorkflowEvaluator/GenerateGraph"
 	WorkflowEvaluator_RunSensor_FullMethodName        = "/pulumirpc.WorkflowEvaluator/RunSensor"
@@ -91,6 +93,12 @@ type WorkflowEvaluatorClient interface {
 	GetJobs(ctx context.Context, in *GetJobsRequest, opts ...grpc.CallOption) (*GetJobsResponse, error)
 	// Returns schema metadata for one exported job token.
 	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
+	// Returns the list of exported step tokens.
+	//
+	// These are reusable top-level step definitions that can be referenced from jobs.
+	GetSteps(ctx context.Context, in *GetStepsRequest, opts ...grpc.CallOption) (*GetStepsResponse, error)
+	// Returns schema metadata for one exported step token.
+	GetStep(ctx context.Context, in *GetStepRequest, opts ...grpc.CallOption) (*GetStepResponse, error)
 	// Generates a concrete job shape for either:
 	// - an exported top-level job (`name`), or
 	// - an inline graph-scoped job (`path`).
@@ -224,6 +232,26 @@ func (c *workflowEvaluatorClient) GetJob(ctx context.Context, in *GetJobRequest,
 	return out, nil
 }
 
+func (c *workflowEvaluatorClient) GetSteps(ctx context.Context, in *GetStepsRequest, opts ...grpc.CallOption) (*GetStepsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStepsResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetSteps_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowEvaluatorClient) GetStep(ctx context.Context, in *GetStepRequest, opts ...grpc.CallOption) (*GetStepResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStepResponse)
+	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetStep_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *workflowEvaluatorClient) GenerateJob(ctx context.Context, in *GenerateJobRequest, opts ...grpc.CallOption) (*GenerateNodeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GenerateNodeResponse)
@@ -344,6 +372,12 @@ type WorkflowEvaluatorServer interface {
 	GetJobs(context.Context, *GetJobsRequest) (*GetJobsResponse, error)
 	// Returns schema metadata for one exported job token.
 	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
+	// Returns the list of exported step tokens.
+	//
+	// These are reusable top-level step definitions that can be referenced from jobs.
+	GetSteps(context.Context, *GetStepsRequest) (*GetStepsResponse, error)
+	// Returns schema metadata for one exported step token.
+	GetStep(context.Context, *GetStepRequest) (*GetStepResponse, error)
 	// Generates a concrete job shape for either:
 	// - an exported top-level job (`name`), or
 	// - an inline graph-scoped job (`path`).
@@ -420,6 +454,12 @@ func (UnimplementedWorkflowEvaluatorServer) GetJobs(context.Context, *GetJobsReq
 }
 func (UnimplementedWorkflowEvaluatorServer) GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJob not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) GetSteps(context.Context, *GetStepsRequest) (*GetStepsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSteps not implemented")
+}
+func (UnimplementedWorkflowEvaluatorServer) GetStep(context.Context, *GetStepRequest) (*GetStepResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStep not implemented")
 }
 func (UnimplementedWorkflowEvaluatorServer) GenerateJob(context.Context, *GenerateJobRequest) (*GenerateNodeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GenerateJob not implemented")
@@ -610,6 +650,42 @@ func _WorkflowEvaluator_GetJob_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowEvaluator_GetSteps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStepsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetSteps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetSteps_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetSteps(ctx, req.(*GetStepsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowEvaluator_GetStep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStepRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowEvaluatorServer).GetStep(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowEvaluator_GetStep_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowEvaluatorServer).GetStep(ctx, req.(*GetStepRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WorkflowEvaluator_GenerateJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GenerateJobRequest)
 	if err := dec(in); err != nil {
@@ -792,6 +868,14 @@ var WorkflowEvaluator_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetJob",
 			Handler:    _WorkflowEvaluator_GetJob_Handler,
+		},
+		{
+			MethodName: "GetSteps",
+			Handler:    _WorkflowEvaluator_GetSteps_Handler,
+		},
+		{
+			MethodName: "GetStep",
+			Handler:    _WorkflowEvaluator_GetStep_Handler,
 		},
 		{
 			MethodName: "GenerateJob",

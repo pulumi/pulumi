@@ -64,6 +64,14 @@ service WorkflowEvaluator {
     // Returns schema metadata for one exported job token.
     rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
 
+    // Returns the list of exported step tokens.
+    //
+    // These are reusable top-level step definitions that can be referenced from jobs.
+    rpc GetSteps(GetStepsRequest) returns (GetStepsResponse) {}
+
+    // Returns schema metadata for one exported step token.
+    rpc GetStep(GetStepRequest) returns (GetStepResponse) {}
+
     // Generates a concrete job shape for either:
     // - an exported top-level job (`name`), or
     // - an inline graph-scoped job (`path`).
@@ -257,6 +265,23 @@ message GetJobResponse {
     JobInfo job = 1;
     // Input object fields accepted by this job.
     repeated InputProperty input_properties = 2;
+}
+
+message GetStepsRequest {}
+message GetStepsResponse {
+    // Fully-qualified exported step tokens.
+    repeated string steps = 1;
+}
+
+message GetStepRequest {
+    // Fully-qualified step token to fetch.
+    string token = 1;
+}
+message GetStepResponse {
+    // Type token for step input value shape.
+    TypeReference input_type = 1;
+    // Type token for step output value shape.
+    TypeReference output_type = 2;
 }
 
 message InputProperty {

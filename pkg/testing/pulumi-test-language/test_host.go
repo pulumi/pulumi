@@ -182,7 +182,7 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 }
 
 func (h *testHost) Workflow(programPath string) (plugin.Workflow, error) {
-	return nil, fmt.Errorf("workflow plugins are not supported by testHost: %s", programPath)
+	return plugin.NewWorkflow(h, h.ctx, programPath)
 }
 
 // LanguageRuntime returns the language runtime initialized by the test host.
