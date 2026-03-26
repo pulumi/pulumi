@@ -471,8 +471,7 @@ class WorkflowRegistry:
     def graph(
         self,
         name: str,
-        fn: Optional[GraphCallback] = None,
-    ) -> Union[GraphCallback, Callable[[GraphCallback], GraphCallback]]:
+    ) -> Callable[[GraphCallback], GraphCallback]:
         """Registers a graph export by simple name."""
 
         def register(registered_fn: GraphCallback) -> GraphCallback:
@@ -481,35 +480,36 @@ class WorkflowRegistry:
             self._graphs[name] = registered_fn
             return registered_fn
 
-        if fn is not None:
-            return register(fn)
         return register
 
     def trigger(
         self,
         token: str,
         input_type: Type[TInput],
-        mock: TriggerMockCallback[TOutput],
-    ) -> None:
+    ) -> Callable[[TriggerMockCallback[TOutput]], TriggerMockCallback[TOutput]]:
         """Registers an exported trigger by token with typed input/output and mock behavior."""
-        if not token:
-            raise WorkflowError("trigger token is required")
-        resolved_token = self.resolve_trigger_token(token)
-        if resolved_token in self._triggers:
-            raise WorkflowError(f"trigger '{resolved_token}' is already registered")
-        if not callable(mock):
-            raise WorkflowError("trigger mock must be callable")
+        def register(mock: TriggerMockCallback[TOutput]) -> TriggerMockCallback[TOutput]:
+            if not token:
+                raise WorkflowError("trigger token is required")
+            resolved_token = self.resolve_trigger_token(token)
+            if resolved_token in self._triggers:
+                raise WorkflowError(f"trigger '{resolved_token}' is already registered")
+            if not callable(mock):
+                raise WorkflowError("trigger mock must be callable")
 
-        _validate_record_type(input_type, "trigger input type")
-        output_type = _mock_return_type(mock)
-        _validate_record_type(output_type, "trigger output type")
+            _validate_record_type(input_type, "trigger input type")
+            output_type = _mock_return_type(mock)
+            _validate_record_type(output_type, "trigger output type")
 
-        self._triggers[resolved_token] = _TriggerDefinition(
-            token=resolved_token,
-            input_type=input_type,
-            output_type=output_type,
-            mock=mock,
-        )
+            self._triggers[resolved_token] = _TriggerDefinition(
+                token=resolved_token,
+                input_type=input_type,
+                output_type=output_type,
+                mock=mock,
+            )
+            return mock
+
+        return register
 
     def resolve_trigger_token(self, token: str) -> str:
         if token in self._triggers:
@@ -520,55 +520,61 @@ class WorkflowRegistry:
     def job(
         self,
         token: str,
-        fn: Callable[[JobContext], Output[TOutput]],
         *,
         on_error: Optional[OnErrorHandler] = None,
-    ) -> None:
-        if not token:
-            raise WorkflowError("job token is required")
-        resolved_token = self.resolve_job_token(token)
-        if resolved_token in self._jobs:
-            raise WorkflowError(f"job '{resolved_token}' is already registered")
-        if not callable(fn):
-            raise WorkflowError("job callback must be callable")
+    ) -> Callable[[Callable[[JobContext], Output[TOutput]]], Callable[[JobContext], Output[TOutput]]]:
+        def register(fn: Callable[[JobContext], Output[TOutput]]) -> Callable[[JobContext], Output[TOutput]]:
+            if not token:
+                raise WorkflowError("job token is required")
+            resolved_token = self.resolve_job_token(token)
+            if resolved_token in self._jobs:
+                raise WorkflowError(f"job '{resolved_token}' is already registered")
+            if not callable(fn):
+                raise WorkflowError("job callback must be callable")
 
-        output_type = _job_return_output_type(fn)
-        _validate_record_type(output_type, "job output type")
+            output_type = _job_return_output_type(fn)
+            _validate_record_type(output_type, "job output type")
 
-        self._jobs[resolved_token] = _ExportedJobDefinition(
-            token=resolved_token,
-            output_type=output_type,
-            fn=cast(Callable[[JobContext], Output[Any]], fn),
-            on_error=on_error,
-        )
+            self._jobs[resolved_token] = _ExportedJobDefinition(
+                token=resolved_token,
+                output_type=output_type,
+                fn=cast(Callable[[JobContext], Output[Any]], fn),
+                on_error=on_error,
+            )
+            return fn
+
+        return register
 
     def step(
         self,
         token: str,
         input_type: Type[TInput],
-        fn: Callable[[TInput], TOutput],
         *,
         on_error: Optional[OnErrorHandler] = None,
-    ) -> None:
-        if not token:
-            raise WorkflowError("step token is required")
-        resolved_token = self.resolve_step_token(token)
-        if resolved_token in self._steps:
-            raise WorkflowError(f"step '{resolved_token}' is already registered")
-        if not callable(fn):
-            raise WorkflowError("step callback must be callable")
+    ) -> Callable[[Callable[[TInput], TOutput]], Callable[[TInput], TOutput]]:
+        def register(fn: Callable[[TInput], TOutput]) -> Callable[[TInput], TOutput]:
+            if not token:
+                raise WorkflowError("step token is required")
+            resolved_token = self.resolve_step_token(token)
+            if resolved_token in self._steps:
+                raise WorkflowError(f"step '{resolved_token}' is already registered")
+            if not callable(fn):
+                raise WorkflowError("step callback must be callable")
 
-        _validate_record_type(input_type, "step input type")
-        output_type = _step_return_type(fn)
-        _validate_record_type(output_type, "step output type")
+            _validate_record_type(input_type, "step input type")
+            output_type = _step_return_type(fn)
+            _validate_record_type(output_type, "step output type")
 
-        self._steps[resolved_token] = _ExportedStepDefinition(
-            token=resolved_token,
-            input_type=input_type,
-            output_type=output_type,
-            fn=cast(StepCallback, fn),
-            on_error=on_error,
-        )
+            self._steps[resolved_token] = _ExportedStepDefinition(
+                token=resolved_token,
+                input_type=input_type,
+                output_type=output_type,
+                fn=cast(StepCallback, fn),
+                on_error=on_error,
+            )
+            return fn
+
+        return register
 
     def resolve_job_token(self, token: str) -> str:
         if token in self._jobs:

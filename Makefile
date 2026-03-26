@@ -145,13 +145,14 @@ lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
 define lint_golang_pkg
 	@echo "[golangci-lint] Linting $(1)..."
-	@(cd $(1) && golangci-lint run $(GOLANGCI_LINT_ARGS) \
+	@(cd $(1) && GOCACHE=/tmp/go-build GOMODCACHE=/tmp/go-mod-cache golangci-lint run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--max-same-issues 0 \
 			--max-issues-per-linter 0 \
-			--timeout 5m)
+			--timeout 5m \
+			./...)
 	@echo "[requiredfield] Linting $(1)..."
-	@(cd $(1) && go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...)
+	@(cd $(1) && GOCACHE=/tmp/go-build GOMODCACHE=/tmp/go-mod-cache go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...)
 
 endef
 

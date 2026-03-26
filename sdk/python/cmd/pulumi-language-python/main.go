@@ -1992,7 +1992,10 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 	} else {
 		for _, graph := range program.Workflows {
 			graphFn := pythonIdentifier(graph.Name) + "_graph"
-			b.WriteString("    registry.graph(" + pythonQuoteString(graph.Name) + ", " + graphFn + ")\n")
+			registerFn := pythonIdentifier("register_" + graph.Name + "_graph")
+			b.WriteString("    @registry.graph(" + pythonQuoteString(graph.Name) + ")\n")
+			b.WriteString("    def " + registerFn + "(ctx: workflow.Context) -> None:\n")
+			b.WriteString("        " + graphFn + "(ctx)\n")
 		}
 	}
 

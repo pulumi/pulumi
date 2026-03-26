@@ -106,7 +106,7 @@ func TestGenerateWorkflowPackagePython(t *testing.T) {
 	}()
 	defer server.Stop()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	conn, err := grpc.NewClient(
 		"passthrough:///workflow-loader",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -134,7 +134,7 @@ func TestGenerateWorkflowPackagePython(t *testing.T) {
 
 	assert.Contains(t, string(generated), `PACKAGE_NAME = "example-workflow"`)
 	assert.Contains(t, string(generated), `def graph_example_index_ci(`)
-	assert.Contains(t, string(generated), `registry.graph("example:index:ci", fn)`)
+	assert.Contains(t, string(generated), `registry.graph("example:index:ci")(fn)`)
 	assert.Contains(t, string(generated), `def trigger_example_index_cron(`)
 	assert.Contains(t, string(generated), `def job_example_index_build(`)
 }

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 var ErrLanguageRuntimeIsClosed = errors.New("language runtime is shutting down")
@@ -188,6 +189,12 @@ func (p *languageRuntime) GeneratePackage(
 	string, string, map[string][]byte, string, map[string]string, bool,
 ) (hcl.Diagnostics, error) {
 	return nil, errors.New("GeneratePackage is not supported")
+}
+
+func (p *languageRuntime) GenerateWorkflowPackage(
+	string, *codegenrpc.WorkflowPackageDescriptor, string,
+) (hcl.Diagnostics, error) {
+	return nil, errors.New("GenerateWorkflowPackage is not supported")
 }
 
 func (p *languageRuntime) GenerateProgram(map[string]string, string, bool) (map[string][]byte, hcl.Diagnostics, error) {

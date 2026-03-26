@@ -180,6 +180,10 @@ def main_graph(ctx: workflow.Context) -> None:
 
 
 def register_workflows(registry: workflow.WorkflowRegistry) -> None:
+    @registry.trigger(
+        "cron",
+        CronTriggerInput,
+    )
     def cron_trigger_mock(args: list[str]) -> CronTriggerOutput:
         if len(args) != 1:
             raise ValueError("cron trigger expects exactly one arg: timestamp")
@@ -190,24 +194,14 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
             timestamp = timestamp.replace(tzinfo=timezone.utc)
         return CronTriggerOutput(timestamp=timestamp.isoformat())
 
-    registry.trigger(
-        "cron",
-        CronTriggerInput,
-        cron_trigger_mock,
-    )
-
+    @registry.job("compose-message")
     def compose_message_job(
         job: workflow.JobContext,
     ) -> Output[ExportedJobOutput]:
-        execution = Output.all(job.execution_id, job.workflow_version)
-
-        @job.step("seed", execution)
-        def seed_step(execution_value: Any) -> dict[str, Any]:
+        @job.step("seed")
+        def seed_step() -> dict[str, Any]:
             cwd = os.getcwd()
-            if isinstance(execution_value, list) and len(execution_value) == 2:
-                seed_text = f"{execution_value[0]}:{execution_value[1]}"
-            else:
-                seed_text = "unknown:unknown"
+            seed_text = f"{job.execution_id}:{job.workflow_version}"
             with open(os.path.join(cwd, "exported-job-seed.txt"), "w", encoding="utf-8") as f:
                 f.write(seed_text)
             return {"seed": seed_text}
@@ -240,17 +234,17 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
 
         return finalize_step
 
-    registry.job("compose-message", compose_message_job)
-
+    @registry.step("to-upper", ExternalStepInput)
     def to_upper_step(step_input: ExternalStepInput) -> ExternalStepOutput:
         return ExternalStepOutput(value=step_input.value.upper())
 
+    @registry.step("example:add-suffix", ExternalStepOutput)
     def add_suffix_step(step_input: ExternalStepOutput) -> ExternalStepOutput:
         return ExternalStepOutput(value=step_input.value + "!")
 
-    registry.step("to-upper", ExternalStepInput, to_upper_step)
-    registry.step("example:add-suffix", ExternalStepOutput, add_suffix_step)
-    registry.graph("main", main_graph)
+    @registry.graph("main")
+    def registered_main_graph(ctx: workflow.Context) -> None:
+        main_graph(ctx)
 
 
 if __name__ == "__main__":

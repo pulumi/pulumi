@@ -17,6 +17,7 @@ package python
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -59,7 +60,7 @@ func GenerateWorkflowPackage(
 	loader codegenrpc.WorkflowLoaderClient,
 ) error {
 	if descriptor == nil {
-		return fmt.Errorf("workflow package descriptor is required")
+		return errors.New("workflow package descriptor is required")
 	}
 
 	if err := os.MkdirAll(directory, 0o700); err != nil {
@@ -101,14 +102,19 @@ func GenerateWorkflowPackage(
 		for _, graph := range graphsResp.GetGraphs() {
 			token := graph.GetToken()
 			name := pythonSafeIdent(token)
-			b.WriteString("def graph_" + name + "(registry: workflow.WorkflowRegistry, fn: Callable[[workflow.Context], None]) -> None:\n")
-			b.WriteString("    registry.graph(" + pythonQuote(token) + ", fn)\n\n")
+			b.WriteString(
+				"def graph_" + name +
+					"(registry: workflow.WorkflowRegistry, fn: Callable[[workflow.Context], None]) -> None:\n",
+			)
+			b.WriteString("    registry.graph(" + pythonQuote(token) + ")(fn)\n\n")
 		}
 		for _, trigger := range triggersResp.GetTriggers() {
 			name := pythonSafeIdent(trigger)
 			b.WriteString(
 				"def trigger_" + name +
-					"(ctx: workflow.Context, name: str, spec: Optional[Any] = None, options: Optional[workflow.TriggerOptions] = None):\n")
+					"(ctx: workflow.Context, name: str, spec: Optional[Any] = None, " +
+					"options: Optional[workflow.TriggerOptions] = None):\n",
+			)
 			b.WriteString("    return ctx.trigger(name, " + pythonQuote(trigger) + ", spec, options=options)\n\n")
 		}
 		for _, job := range jobsResp.GetJobs() {
