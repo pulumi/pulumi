@@ -1,52 +1,60 @@
 # Conformance Test Optimization — Autoresearch
 
-## Results
+## Results (38 experiments)
 
 | Metric | Before | After | Improvement |
 |---|---|---|---|
-| TSC variant | 578s | 139s | **75.8%** |
-| All 3 variants (parallel) | ~1478s est | 336s | **77.2%** |
+| TSC variant | 578s | ~200s | **65.4%** |
+| All 3 variants (parallel) | ~1478s est | ~450s | **~70%** |
 
-## Optimizations (ranked by impact)
+## Active Optimizations (13)
 
 ### Infrastructure
-1. **tmpfs (RAM disk)** for test temp dirs — largest single win (-44.8%)
-2. **Parallel variant execution** (TSC+TSNode+Bun run simultaneously)
-3. **c5.4xlarge** instance (16 vCPU, 32GB RAM)
+1. **tmpfs (RAM disk)** for test temp dirs — largest single win
+2. **c5.4xlarge** instance (16 vCPU, 32GB RAM)
+3. **Parallel variant execution** (TSC+TSNode+Bun simultaneously)
 
-### Code changes
-4. **`--skipLibCheck` in SDK Pack build** (`main.go:1986`) — -20.4% by skipping .d.ts type-checking during SDK packaging
-5. **`--skipLibCheck` in test tsc** (`main.go:1190`) — -15.4% by skipping .d.ts type-checking in test compilation
-6. **Skip shared-source reinstall** (`interface.go:1310`) — -15.4% by not re-running npm install for multi-run tests
-7. **Shared PCL PackageCache** (`interface.go:72`) — PCL binding 192ms→42ms avg (78% reduction)
-8. **npm `--no-audit --no-fund --no-optional`** (`npm.go:84`) — removes unnecessary npm overhead
-9. **Skip local=true variant early** (`language_test.go:150`) — avoids server spawn for skipped variant
-10. **Policy pack install caching** (`interface.go:1559`) — shared policy pack dir with locking
-11. **Cache binary build** (`language_test.go:43`) — sync.Once across 3 variants
-12. **npm flags in Pack** (`main.go:1974`) — `--no-audit --no-fund --no-optional` for SDK packaging
+### Code — Test Framework (`pkg/testing/pulumi-test-language/`)
+4. **Per-test PCL PackageCache** — reuse loaded schemas within same test
+5. **Pre-warm npm cache** with core SDK install before tests
+6. **Skip installDependencies for shared-source re-runs**
+7. **Policy pack install caching** with double-checked locking
+8. **Skip local=true variant early** — avoid server spawn for skipped variant
+9. **Cache binary build** (`sync.Once`) across 3 variants
+10. **OTel file-based trace exporter** + comprehensive span instrumentation
 
-### OTel instrumentation
-- File-based trace exporter (`PULUMI_TEST_TRACE_FILE`)
-- Spans: RunLanguageTest, SetupProviders, GenerateSDKs, InstallDependencies, GenerateProject, PreviewStack, UpdateStack, PackCoreSdk, BindPCLDirectory, GetProgramDependencies
+### Code — Language Host (`sdk/nodejs/`)
+11. **`--skipLibCheck`** in test tsc, SDK Pack build, and core SDK build
+12. **npm flags**: `--no-audit --no-fund --no-optional --install-strategy=shallow --legacy-peer-deps`
+13. **Pack npm flags**: same optimization flags for SDK packaging npm install
 
-## Trace Analysis (latest TSC run)
+## Trace-Based Time Breakdown (TSC, 2280s serial across 130 tests)
 
-| Span | Total (serial) | Count | Avg | Notes |
-|---|---|---|---|---|
-| InstallDependencies | 997s | 78 | 12.8s | Still 60% of serial time |
-| pulumi-plan | 496s | 145 | 3.4s | Stack preview+update engine |
-| GenerateSDKs | 354s | 68 | 5.2s | First-time gen only |
-| UpdateStack | 257s | 74 | 3.5s | |
-| PreviewStack | 239s | 74 | 3.2s | |
-| BindPCLDirectory | 6.8s | 160 | 42ms | 78% reduction with cache |
+| Phase | Serial Time | % | Effective (16 parallel) |
+|---|---|---|---|
+| InstallDependencies | 1044s | 45.8% | ~65s |
+| GenerateSDKs | 506s | 22.2% | ~32s |
+| PreviewStack | 323s | 14.2% | ~20s |
+| UpdateStack | 286s | 12.5% | ~18s |
+| SetupProviders | 105s | 4.6% | ~7s |
+| Other | 16s | 0.7% | ~1s |
+| **Total** | **2280s** | | **~143s + critical path** |
 
-## Dead Ends
-- node_modules hardlink caching (copy overhead > savings)
-- npm prefer-offline (crashes with local tarballs)
-- Reduced parallelism (makes everything slower)
-- --ignore-scripts (no improvement)
-- --install-strategy=shallow (marginal)
-- Increased parallelism beyond default (no improvement)
+## Dead Ends (25 experiments discarded)
+- node_modules hardlink/symlink/cp caching (npm re-resolves anyway)
+- npm prefer-offline (incompatible with local tarballs)
+- Reduced/increased parallelism (default is near-optimal)
+- npm cache on tmpfs (cold cache worse than warm disk)
+- bun wrapper (lock file incompatibility with GetProgramDependencies)
+- Pre-seeded node_modules (npm ignores existing and re-resolves)
+- --ignore-scripts, --no-package-lock (breaks dependency validation)
+- Shared PackageCache (correctness bug: version conflicts across tests)
 
-## Remaining Bottleneck
-npm install at 12.8s per test is the irreducible floor with current npm. To go further would require fundamentally changing the package manager (pnpm) or pre-installing shared node_modules.
+## Bug Fixed
+- Shared PCL PackageCache caused `l2-resource-option-plugin-download-url` failure
+  (simple@2.0.0 cached instead of simple@27.0.0). Fixed with per-test cache.
+
+## Critical Path Analysis
+- `l1-builtin-require-pulumi-version`: 84-155s (2 runs, PreviewStack=38s for bail)
+- Component provider tests: 34-68s (provider npm install in SetupProviders)
+- Policy tests: 50-100s (policy pack npm install)
