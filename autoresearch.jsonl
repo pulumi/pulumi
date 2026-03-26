@@ -26,3 +26,4 @@
 {"commit":"","metric":181779,"metrics":{"tsc_ms":181779},"status":"keep","description":"Experiment 24: --install-strategy=shallow — 182s (confirmed ~5% over without)","timestamp":1774523962932,"segment":0,"confidence":null}
 {"commit":"0347293ed9","metric":436187,"metrics":{"total_ms":436187,"tsc_ms":181779},"status":"keep","description":"Experiment 25: Confirmed clean 3-variant — 436s (70.5% from sequential baseline)","timestamp":1774524474399,"segment":0,"confidence":null}
 {"commit":"","metric":154656,"metrics":{"tsc_ms":154656},"status":"keep","description":"Experiment 26: Pre-warm npm cache — 154s (73.2% from baseline)","timestamp":1774524709629,"segment":0,"confidence":null}
+{"commit":"daa46f7574","metric":329367,"metrics":{"total_ms":329367,"tsc_ms":154656},"status":"keep","description":"Experiment 27: All 3 variants with cache warming — 329s (77.7% from baseline)","timestamp":1774525219710,"segment":0,"confidence":null}
