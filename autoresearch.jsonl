@@ -31,3 +31,4 @@
 {"commit":"cf0f31388a","metric":536378,"metrics":{"total_ms":536378},"status":"keep","description":"Experiment 29: All 3 variants cold cache — 536s (variance from 329s warm)","timestamp":1774532217600,"segment":0,"confidence":null}
 {"commit":"","metric":192565,"metrics":{"tsc_ms":192565},"status":"keep","description":"Experiment 30: Improved cache warming (add typescript + @types/node) — 192s cold","timestamp":1774532492533,"segment":0,"confidence":null}
 {"commit":"","metric":134748,"metrics":{"tsc_ms":134748},"status":"keep","description":"Experiment 31: --legacy-peer-deps — 134s (76.7% from baseline)","timestamp":1774532699973,"segment":0,"confidence":null}
+{"commit":"78bdf5770e","metric":458694,"metrics":{"total_ms":458694,"tsc_ms":134748},"status":"keep","description":"Experiment 32: All 3 variants with --legacy-peer-deps — 458s warm cache","timestamp":1774534628077,"segment":0,"confidence":null}
