@@ -66,6 +66,9 @@ import (
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
+// policyPackLocks provides per-policy-pack locking for concurrent test installation.
+var policyPackLocks gsync.Map[string, *sync.Mutex]
+
 type LanguageTestServer interface {
 	testingrpc.LanguageTestServer
 	pulumirpc.EngineServer
@@ -1555,37 +1558,57 @@ func runLanguageTests(
 				}
 			}
 
-			// Copy the policy pack to a temporary directory and link in the core SDK into it
+			// Copy the policy pack to a temporary directory and link in the core SDK into it.
+			// Use a shared directory per policy pack name so that multiple tests reuse the same
+			// installed dependencies rather than each installing independently.
 			policyPackDir := filepath.Join(token.TemporaryDirectory, "policy_packs", policyPack)
-			err = os.MkdirAll(policyPackDir, 0o755)
-			if err != nil {
-				return nil, fmt.Errorf("create policy pack dir: %w", err)
-			}
-			err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
-			if err != nil {
-				return nil, fmt.Errorf("copy policy pack: %w", err)
-			}
 
-			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
+			// Use a per-policy-pack lock to ensure only one test installs at a time.
+			// After the first install, subsequent tests reuse the installed directory.
+			policyLockFile := policyPackDir + ".installed"
+			if _, statErr := os.Stat(policyLockFile); statErr != nil {
+				// Not yet installed — copy, link, and install (with lock)
+				policyLock, _ := policyPackLocks.LoadOrStore(policyPackDir, &sync.Mutex{})
+				policyLock.Lock()
+				// Double-check after acquiring lock
+				if _, statErr := os.Stat(policyLockFile); statErr != nil {
+					err = os.MkdirAll(policyPackDir, 0o755)
+					if err != nil {
+						policyLock.Unlock()
+						return nil, fmt.Errorf("create policy pack dir: %w", err)
+					}
+					err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
+					if err != nil {
+						policyLock.Unlock()
+						return nil, fmt.Errorf("copy policy pack: %w", err)
+					}
 
-			// Link the core SDK into the policy pack
-			linkDeps := []workspace.LinkablePackageDescriptor{{
-				Path: token.CoreArtifact,
-				Descriptor: workspace.PackageDescriptor{
-					PluginDescriptor: workspace.PluginDescriptor{
-						Name: "pulumi",
-					},
-				},
-			}}
-			_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
-			if err != nil {
-				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
-			}
+					policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
 
-			// Install the dependencies for the policy pack
-			resp := installDependencies(ctx, languageClient, policyInfo, true /* isPlugin */)
-			if resp != nil {
-				return resp, nil
+					linkDeps := []workspace.LinkablePackageDescriptor{{
+						Path: token.CoreArtifact,
+						Descriptor: workspace.PackageDescriptor{
+							PluginDescriptor: workspace.PluginDescriptor{
+								Name: "pulumi",
+							},
+						},
+					}}
+					_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
+					if err != nil {
+						policyLock.Unlock()
+						return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
+					}
+
+					resp := installDependencies(ctx, languageClient, policyInfo, true /* isPlugin */)
+					if resp != nil {
+						policyLock.Unlock()
+						return resp, nil
+					}
+
+					// Mark as installed so other tests skip the install
+					_ = os.WriteFile(policyLockFile, []byte("ok"), 0o644)
+				}
+				policyLock.Unlock()
 			}
 
 			pack := engine.LocalPolicyPack{
