@@ -17,9 +17,8 @@ package plugin
 import (
 	"context"
 	"fmt"
-	"os/exec"
+	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -28,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -42,36 +42,31 @@ type workflowPlugin struct {
 }
 
 // NewWorkflow launches a workflow evaluator plugin and establishes a gRPC connection.
-func NewWorkflow(host Host, ctx *Context, programPath string) (Workflow, error) {
-	absProgramPath, err := filepath.Abs(programPath)
+//
+// The workflow source follows normal plugin conventions:
+// - path to an executable binary, or
+// - path to a directory (or plugin path) containing PulumiPlugin.yaml.
+func NewWorkflow(host Host, ctx *Context, source string) (Workflow, error) {
+	pluginPath, err := resolveWorkflowPluginPath(host, ctx, source)
 	if err != nil {
-		return nil, fmt.Errorf("resolve workflow program path: %w", err)
+		return nil, err
 	}
 
-	prefix := fmt.Sprintf("%v (workflow)", filepath.Base(absProgramPath))
-	pluginDir := filepath.Dir(absProgramPath)
-	var pluginBin string
-	var pluginArgs []string
-	if strings.EqualFold(filepath.Ext(absProgramPath), ".pp") {
-		pclHost, err := exec.LookPath("pulumi-language-pcl")
-		if err != nil {
-			return nil, fmt.Errorf("find pulumi-language-pcl on PATH: %w", err)
-		}
-		pluginBin = pclHost
-		pluginArgs = []string{"--workflow-plugin", absProgramPath}
-	} else {
-		pythonBin, err := exec.LookPath("python3")
-		if err != nil {
-			return nil, fmt.Errorf("find python3: %w", err)
-		}
-		pluginBin = pythonBin
-		pluginArgs = []string{absProgramPath}
+	absPluginPath, err := filepath.Abs(pluginPath)
+	if err != nil {
+		return nil, fmt.Errorf("resolve workflow plugin path: %w", err)
 	}
+
+	prefix := fmt.Sprintf("%v (workflow)", filepath.Base(absPluginPath))
+	pluginDir := absPluginPath
 
 	handshake := func(
 		ctx context.Context, bin string, prefix string, conn *grpc.ClientConn,
 	) (*pulumirpc.WorkflowHandshakeResponse, error) {
 		client := pulumirpc.NewWorkflowEvaluatorClient(conn)
+		if stat, err := os.Stat(bin); err == nil && !stat.IsDir() {
+			pluginDir = filepath.Dir(bin)
+		}
 		res, err := client.Handshake(ctx, &pulumirpc.WorkflowHandshakeRequest{
 			EngineAddress:    host.ServerAddr(),
 			RootDirectory:    &pluginDir,
@@ -92,26 +87,44 @@ func NewWorkflow(host Host, ctx *Context, programPath string) (Workflow, error) 
 	plug, _, err := newPlugin(
 		ctx,
 		ctx.Pwd,
-		pluginBin,
+		absPluginPath,
 		prefix,
 		apitype.WorkflowPlugin,
-		pluginArgs,
+		nil,
 		env.Global(),
 		handshake,
-		workflowPluginDialOptions(ctx, absProgramPath),
-		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: filepath.Base(absProgramPath)}),
+		workflowPluginDialOptions(ctx, absPluginPath),
+		host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: filepath.Base(absPluginPath)}),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	contract.Assertf(plug != nil, "unexpected nil workflow plugin for %s", absProgramPath)
+	contract.Assertf(plug != nil, "unexpected nil workflow plugin for %s", absPluginPath)
 
 	return &workflowPlugin{
-		path:      absProgramPath,
+		path:      absPluginPath,
 		plug:      plug,
 		clientRaw: pulumirpc.NewWorkflowEvaluatorClient(plug.Conn),
 	}, nil
+}
+
+func resolveWorkflowPluginPath(host Host, ctx *Context, source string) (string, error) {
+	if IsLocalPluginPath(ctx.baseContext, source) {
+		return source, nil
+	}
+
+	spec, err := workspace.NewPluginDescriptor(ctx.baseContext, source, apitype.WorkflowPlugin, nil, "", nil)
+	if err != nil {
+		return "", err
+	}
+
+	path, err := workspace.GetPluginPath(ctx.baseContext, ctx.Diag, spec, host.GetProjectPlugins())
+	if err != nil {
+		return "", err
+	}
+	contract.Assertf(path != "", "unexpected empty path for workflow source %s", source)
+	return path, nil
 }
 
 func workflowPluginDialOptions(ctx *Context, path string) []grpc.DialOption {
