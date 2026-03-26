@@ -214,11 +214,6 @@ type languageTestServer struct {
 	// A map storing the paths to the generated package artifacts
 	artifactMap gsync.Map[string, string]
 
-	// nodeModulesCache maps a hash of package.json dependencies to a cached node_modules directory.
-	// This avoids re-running npm install for tests with identical dependencies.
-	nodeModulesCache gsync.Map[string, string]
-	nodeModulesLocks gsync.Map[string, *sync.Mutex]
-
 	// Used by _bad snapshot_ tests to disable snapshot writing.
 	DisableSnapshotWriting bool
 
@@ -1044,8 +1039,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects",
-		&eng.nodeModulesCache, &eng.nodeModulesLocks)
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
 		return languageTestResult, err
 	}
@@ -1091,8 +1085,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project",
-		&eng.nodeModulesCache, &eng.nodeModulesLocks)
+		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
 }
 
 func createStackReferences(
@@ -1149,8 +1142,6 @@ func runLanguageTests(
 	stdout, stderr *bytes.Buffer,
 	pctx *plugin.Context,
 	projectDir string,
-	nodeModulesCache *gsync.Map[string, string],
-	nodeModulesLocks *gsync.Map[string, *sync.Mutex],
 ) (*testingrpc.RunLanguageTestResponse, error) {
 	ctx, runSpan := startSpan(ctx, "runLanguageTests",
 		attribute.String("test", testName),

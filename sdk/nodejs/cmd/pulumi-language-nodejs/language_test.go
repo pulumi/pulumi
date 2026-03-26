@@ -147,7 +147,11 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 				// npm error   stdout: "error TS2688: Cannot find type definition file for 'node'.\n" +
 				// npm error     '  The file is in the program because:\n' +
 				// npm error     "    Entry point of type library 'node' specified in compilerOptions\n",
+				//
+				// Skip early to avoid spawning a language plugin server and calling
+				// PrepareLanguageTests for a variant that will never run any tests.
 				t.Skip("node doesn't currently work with local SDKs")
+				return
 			}
 
 			cancel := make(chan bool)

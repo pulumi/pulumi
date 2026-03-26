@@ -8,3 +8,4 @@
 {"commit":"","metric":319259,"metrics":{"tsc_ms":319259},"status":"keep","description":"Experiment 6: tmpfs (RAM disk) for test temp directories - 44.8% improvement","timestamp":1774470613526,"segment":0,"confidence":null}
 {"commit":"","metric":721088,"metrics":{"tsc_ms":721088},"status":"discard","description":"Experiment 7: tmpfs + parallel=32 (SLOWER - too much parallelism on tmpfs causes OOM/swapping)","timestamp":1774472050915,"segment":0,"confidence":null}
 {"commit":"","metric":607393,"metrics":{"total_ms":607393},"status":"keep","description":"Experiment 8: All 3 variants (TSC+TSNode+Bun) in parallel with tmpfs — 607s total vs 578s for TSC alone baseline","timestamp":1774474006460,"segment":0,"confidence":null}
+{"commit":"","metric":268454,"metrics":{"tsc_ms":268454},"status":"keep","description":"Experiment 9: Skip local=true early + npm --no-audit --no-fund — 268s (53.6% improvement from baseline)","timestamp":1774515424190,"segment":0,"confidence":null}
