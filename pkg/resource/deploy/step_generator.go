@@ -2785,7 +2785,7 @@ func processIgnoreChanges(d diag.Sink, urn resource.URN, inputs, oldInputs resou
 	ignoredInputs := inputs.Copy()
 	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
-		path, err := resource.ParsePropertyPath(ignoreChange)
+		path, err := resource.ParsePropertyPath(ignoreChange) //nolint:staticcheck // TODO: migrate to property.Path
 		if err != nil {
 			continue
 		}
@@ -2862,7 +2862,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 
 	replaceOnChangePaths := slice.Prealloc[resource.PropertyPath](len(replaceOnChanges))
 	for _, p := range replaceOnChanges {
-		path, err := resource.ParsePropertyPath(p)
+		path, err := resource.ParsePropertyPath(p) //nolint:staticcheck // TODO: migrate to property.Path
 		if err != nil {
 			return diff, err
 		}
@@ -2874,7 +2874,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 	if diff.DetailedDiff != nil {
 		modifiedDiff = map[string]plugin.PropertyDiff{}
 		for p, v := range diff.DetailedDiff {
-			diffPath, err := resource.ParsePropertyPath(p)
+			diffPath, err := resource.ParsePropertyPath(p) //nolint:staticcheck // TODO: migrate to property.Path
 			if err != nil {
 				return diff, err
 			}
@@ -2899,7 +2899,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 	}
 	for _, k := range diff.ChangedKeys {
 		for _, replaceOnChangePath := range replaceOnChangePaths {
-			keyPath, err := resource.ParsePropertyPath(string(k))
+			keyPath, err := resource.ParsePropertyPath(string(k)) //nolint:staticcheck // TODO: migrate to property.Path
 			if err != nil {
 				continue
 			}
@@ -2917,6 +2917,7 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 	modifiedChanges := diff.Changes
 	if hasInitErrors {
 		for _, replaceOnChangePath := range replaceOnChangePaths {
+			//nolint:staticcheck // TODO: migrate to property.Path
 			initErrPath, err := resource.ParsePropertyPath(initErrorSpecialKey)
 			if err != nil {
 				continue

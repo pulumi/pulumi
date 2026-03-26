@@ -154,7 +154,7 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				"a": {Kind: DiffAdd},
 			},
 			expectedPaths: map[string]property.Path{
-				"a": {property.NewSegment("a")},
+				"a": property.PathFromSegments(property.NewSegment("a")),
 			},
 		},
 		"simple update": {
@@ -167,7 +167,7 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				"a": {Kind: DiffUpdate},
 			},
 			expectedPaths: map[string]property.Path{
-				"a": {property.NewSegment("a")},
+				"a": property.PathFromSegments(property.NewSegment("a")),
 			},
 		},
 		"nested update": {
@@ -184,7 +184,7 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				"a.b": {Kind: DiffUpdate},
 			},
 			expectedPaths: map[string]property.Path{
-				"a.b": {property.NewSegment("a"), property.NewSegment("b")},
+				"a.b": property.PathFromSegments(property.NewSegment("a"), property.NewSegment("b")),
 			},
 		},
 		"nested update with quoted keys": {
@@ -204,8 +204,8 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				`a["b.c"]`:            {Kind: DiffUpdate},
 			},
 			expectedPaths: map[string]property.Path{
-				`a["\"quoted key\""]`: {property.NewSegment("a"), property.NewSegment(`"quoted key"`)},
-				`a["b.c"]`:            {property.NewSegment("a"), property.NewSegment("b.c")},
+				`a["\"quoted key\""]`: property.PathFromSegments(property.NewSegment("a"), property.NewSegment(`"quoted key"`)),
+				`a["b.c"]`:            property.PathFromSegments(property.NewSegment("a"), property.NewSegment("b.c")),
 			},
 		},
 	}

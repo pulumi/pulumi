@@ -752,9 +752,9 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"fizzbuzz.other": U,
 			},
 			hideDiff: []property.Glob{
-				{property.NewSegment("foo")},
-				{property.NewSegment("fizzbuzz"), property.NewSegment("bar")},
-				{property.NewSegment("not"), property.NewSegment("updated")},
+				property.GlobFromSegments(property.NewSegment("foo")),
+				property.GlobFromSegments(property.NewSegment("fizzbuzz"), property.NewSegment("bar")),
+				property.GlobFromSegments(property.NewSegment("not"), property.NewSegment("updated")),
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
