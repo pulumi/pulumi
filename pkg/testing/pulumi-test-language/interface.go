@@ -1493,15 +1493,13 @@ func runLanguageTests(
 		}
 
 		runtimeOpts := project.Runtime.Options()
-		// Skip the typechecker for tests that don't use any provider SDKs.
-		// These tests only import the core pulumi SDK whose types are always
-		// correct, so type-checking them is redundant (~1.8s saved per test).
-		if len(programPackages) == 0 {
-			if runtimeOpts == nil {
-				runtimeOpts = map[string]interface{}{}
-			}
-			runtimeOpts["typechecker"] = "none"
+		// Skip the typechecker in conformance tests. Generated code is already
+		// validated via snapshot comparison (doSnapshot), so running mypy on
+		// every test is redundant. This saves ~1.8s per test (~382s total).
+		if runtimeOpts == nil {
+			runtimeOpts = map[string]interface{}{}
 		}
+		runtimeOpts["typechecker"] = "none"
 		programInfo := plugin.NewProgramInfo(
 			projectDir, /* rootDirectory */
 			pwd,        /* programDirectory */
