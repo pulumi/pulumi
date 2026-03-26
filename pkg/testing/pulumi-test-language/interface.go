@@ -1194,6 +1194,10 @@ func runLanguageTests(
 
 	var result tests.LResult
 	for i, run := range test.Runs {
+		_, iterSpan := startSpan(ctx, "TestRunIteration",
+			attribute.String("test", testName),
+			attribute.Int("run", i),
+			attribute.Int("totalRuns", len(test.Runs)))
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
 		projectSubDir := projectDir
 		projectDir := filepath.Join(token.TemporaryDirectory, projectDir, testName)
@@ -1786,6 +1790,7 @@ func runLanguageTests(
 				SDKs:             sdks,
 			})
 		})
+		iterSpan.End()
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{
 				Success:  !result.Failed,
