@@ -21,3 +21,4 @@
 {"commit":"b4d4d63adc","metric":505403,"metrics":{"total_ms":505403,"tsc_ms":180898},"status":"keep","description":"Experiment 19: Final 3-variant benchmark — 505s total (66% from baseline)","timestamp":1774521666760,"segment":0,"confidence":null}
 {"commit":"","metric":175541,"metrics":{"tsc_ms":175541},"status":"keep","description":"Experiment 20: Shared PackageCache for PCL binding + npm flags in Pack — 175s (69.7% from baseline)","timestamp":1774522122321,"segment":0,"confidence":null}
 {"commit":"","metric":139809,"metrics":{"tsc_ms":139809},"status":"keep","description":"Experiment 21: --skipLibCheck in SDK Pack build — 139s (75.8% from baseline 578s)","timestamp":1774522430956,"segment":0,"confidence":null}
+{"commit":"586670b270","metric":336526,"metrics":{"total_ms":336526,"tsc_ms":139809},"status":"keep","description":"Experiment 22: All 3 variants — 336s (77.2% from sequential baseline)","timestamp":1774522946307,"segment":0,"confidence":null}
