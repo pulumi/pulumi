@@ -1305,9 +1305,13 @@ func runLanguageTests(
 			main,
 			project.Runtime.Options())
 
-		resp := installDependencies(ctx, languageClient, programInfo, false /* isPlugin */)
-		if resp != nil {
-			return resp, nil
+		// Only install dependencies for the first run of shared-source tests (subsequent runs
+		// reuse the same project directory which already has node_modules installed).
+		if i == 0 || !test.RunsShareSource {
+			resp := installDependencies(ctx, languageClient, programInfo, false /* isPlugin */)
+			if resp != nil {
+				return resp, nil
+			}
 		}
 
 		// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
