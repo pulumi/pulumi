@@ -5636,7 +5636,6 @@ context: (f = msg.getContext()) && proto.pulumirpc.WorkflowContext.toObject(incl
 name: jspb.Message.getFieldWithDefault(msg, 2, ""),
 path: jspb.Message.getFieldWithDefault(msg, 3, ""),
 graphMonitorAddress: jspb.Message.getFieldWithDefault(msg, 4, ""),
-inputPath: jspb.Message.getFieldWithDefault(msg, 5, ""),
 inputValue: (f = msg.getInputValue()) && google_protobuf_struct_pb.Value.toObject(includeInstance, f)
   };
 
@@ -5692,10 +5691,6 @@ proto.pulumirpc.GenerateJobRequest.deserializeBinaryFromReader = function(msg, r
       msg.setGraphMonitorAddress(value);
       break;
     case 5:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setInputPath(value);
-      break;
-    case 6:
       var value = new google_protobuf_struct_pb.Value;
       reader.readMessage(value,google_protobuf_struct_pb.Value.deserializeBinaryFromReader);
       msg.setInputValue(value);
@@ -5758,17 +5753,10 @@ proto.pulumirpc.GenerateJobRequest.serializeBinaryToWriter = function(message, w
       f
     );
   }
-  f = message.getInputPath();
-  if (f.length > 0) {
-    writer.writeString(
-      5,
-      f
-    );
-  }
   f = message.getInputValue();
   if (f != null) {
     writer.writeMessage(
-      6,
+      5,
       f,
       google_protobuf_struct_pb.Value.serializeBinaryToWriter
     );
@@ -5868,30 +5856,12 @@ proto.pulumirpc.GenerateJobRequest.prototype.setGraphMonitorAddress = function(v
 
 
 /**
- * optional string input_path = 5;
- * @return {string}
- */
-proto.pulumirpc.GenerateJobRequest.prototype.getInputPath = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.pulumirpc.GenerateJobRequest} returns this
- */
-proto.pulumirpc.GenerateJobRequest.prototype.setInputPath = function(value) {
-  return jspb.Message.setProto3StringField(this, 5, value);
-};
-
-
-/**
- * optional google.protobuf.Value input_value = 6;
+ * optional google.protobuf.Value input_value = 5;
  * @return {?proto.google.protobuf.Value}
  */
 proto.pulumirpc.GenerateJobRequest.prototype.getInputValue = function() {
   return /** @type{?proto.google.protobuf.Value} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 6));
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Value, 5));
 };
 
 
@@ -5900,7 +5870,7 @@ proto.pulumirpc.GenerateJobRequest.prototype.getInputValue = function() {
  * @return {!proto.pulumirpc.GenerateJobRequest} returns this
 */
 proto.pulumirpc.GenerateJobRequest.prototype.setInputValue = function(value) {
-  return jspb.Message.setWrapperField(this, 6, value);
+  return jspb.Message.setWrapperField(this, 5, value);
 };
 
 
@@ -5918,7 +5888,7 @@ proto.pulumirpc.GenerateJobRequest.prototype.clearInputValue = function() {
  * @return {boolean}
  */
 proto.pulumirpc.GenerateJobRequest.prototype.hasInputValue = function() {
-  return jspb.Message.getField(this, 6) != null;
+  return jspb.Message.getField(this, 5) != null;
 };
 
 

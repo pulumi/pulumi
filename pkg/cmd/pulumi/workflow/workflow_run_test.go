@@ -19,6 +19,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -62,6 +63,29 @@ func TestParseInputJSONDefaultsToNullWhenInputNotProvided(t *testing.T) {
 	if value != nil {
 		t.Fatalf("expected nil default input, got %#v", value)
 	}
+}
+
+func TestResolveExecutionID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("uses provided value", func(t *testing.T) {
+		t.Parallel()
+		const expected = "manual-id-123"
+		if got := resolveExecutionID(expected); got != expected {
+			t.Fatalf("expected %q, got %q", expected, got)
+		}
+	})
+
+	t.Run("defaults to uuid", func(t *testing.T) {
+		t.Parallel()
+		got := resolveExecutionID("")
+		if got == "" {
+			t.Fatalf("expected non-empty execution id")
+		}
+		if _, err := uuid.Parse(got); err != nil {
+			t.Fatalf("expected UUID execution id, got %q: %v", got, err)
+		}
+	})
 }
 
 func TestRunObservedStepsAppliesStepFilters(t *testing.T) {

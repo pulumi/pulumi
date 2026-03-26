@@ -113,7 +113,7 @@ class _EvalState:
     monitor: workflow_pb2_grpc.GraphMonitorStub
     context: workflow_pb2.WorkflowContext
     graph_path: str
-    input_path: str
+    input_value_path: str
     input_value: Optional[struct_pb2.Value]
     registry: "WorkflowRegistry"
     jobs: Dict[str, _JobDefinition]
@@ -162,7 +162,7 @@ class Context:
             return _new_workflow_output(
                 trigger_path,
                 _workflow_input_value(
-                    self._state.input_path, self._state.input_value, trigger_path
+                    self._state.input_value_path, self._state.input_value, trigger_path
                 ),
             )
         request.context.CopyFrom(self._state.context)
@@ -180,7 +180,7 @@ class Context:
         return _new_workflow_output(
             trigger_path,
             _workflow_input_value(
-                self._state.input_path, self._state.input_value, trigger_path
+                self._state.input_value_path, self._state.input_value, trigger_path
             ),
         )
 
@@ -239,7 +239,7 @@ class Context:
             job_output = _new_workflow_output(
                 job_path,
                 _workflow_input_value(
-                    self._state.input_path, self._state.input_value, job_path
+                    self._state.input_value_path, self._state.input_value, job_path
                 ),
             )
             if (
@@ -777,9 +777,9 @@ def _from_proto_value(value: struct_pb2.Value) -> Any:
 
 
 def _workflow_input_value(
-    input_path: str, input_value: Optional[struct_pb2.Value], path: str
+    input_value_path: str, input_value: Optional[struct_pb2.Value], path: str
 ) -> Any:
-    if input_path != path:
+    if input_value_path != path:
         return None
     if input_value is None:
         return None
@@ -809,6 +809,23 @@ def _workflow_dependency_paths(values: List[Any]) -> Set[str]:
     for value in values:
         paths.update(_workflow_output_paths(value))
     return paths
+
+
+def _infer_input_value_path_for_job(job_path: str, job: _JobDefinition) -> str:
+    candidates: Set[str] = set(job.dependencies)
+    if job.fn is not None:
+        try:
+            closure = inspect.getclosurevars(job.fn)
+            for value in closure.nonlocals.values():
+                candidates.update(_workflow_output_paths(value))
+        except TypeError:
+            pass
+
+    if len(candidates) == 1:
+        return next(iter(candidates))
+    if len(candidates) == 0:
+        return job_path
+    raise WorkflowError("input_value for graph jobs with multiple dependencies is ambiguous")
 
 
 def _new_workflow_output(path: str, value: Any) -> Output[Any]:
@@ -913,7 +930,7 @@ def _evaluate_graph(
     context: workflow_pb2.WorkflowContext,
     graph_monitor_address: str,
     target_job_name: Optional[str] = None,
-    input_path: str = "",
+    input_value_path: str = "",
     input_value: Optional[struct_pb2.Value] = None,
     default_workflow_version: str = "",
 ) -> Tuple[Dict[str, _JobDefinition], Dict[str, FilterCallback]]:
@@ -946,7 +963,7 @@ def _evaluate_graph(
                     monitor=monitor,
                     context=effective_context,
                     graph_path=token,
-                    input_path=input_path,
+                    input_value_path=input_value_path,
                     input_value=input_value,
                     registry=registry,
                     jobs=jobs,
@@ -1304,10 +1321,37 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 request.context,
                 request.graph_monitor_address,
                 target_job_name=job_name,
-                input_path=request.input_path,
-                input_value=request.input_value if request.HasField("input_value") else None,
                 default_workflow_version=self._package_version,
             )
+            input_value = request.input_value if request.HasField("input_value") else None
+            if input_value is not None:
+                target_job_path = request.path
+                target_job = jobs.get(target_job_path)
+                if target_job is None:
+                    context.abort(
+                        grpc.StatusCode.NOT_FOUND,
+                        f"unknown job path {target_job_path}",
+                    )
+                try:
+                    input_value_path = _infer_input_value_path_for_job(
+                        target_job_path, target_job
+                    )
+                except WorkflowError as error:
+                    context.abort(
+                        grpc.StatusCode.INVALID_ARGUMENT,
+                        str(error),
+                    )
+                jobs, filters = _evaluate_graph(
+                    graph_path,
+                    self._workflow_registry,
+                    graph_fn,
+                    request.context,
+                    request.graph_monitor_address,
+                    target_job_name=job_name,
+                    input_value_path=input_value_path,
+                    input_value=input_value,
+                    default_workflow_version=self._package_version,
+                )
             self._jobs_by_path.update(jobs)
             self._filters_by_path.update(filters)
 
@@ -1340,27 +1384,23 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         if exported is None:
             context.abort(grpc.StatusCode.NOT_FOUND, f"unknown job token {request.name}")
 
-        if request.input_path and request.input_path != request.name:
-            context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                "input_path for exported jobs must match request.name",
-            )
+        runtime_job_path = request.path if request.path else resolved_token
         synthetic_job = _JobDefinition(
             fn=lambda job_ctx: exported.fn(job_ctx),
             on_error=exported.on_error,
             dependencies=[],
         )
         steps, step_filters, job_output = _evaluate_job(
-            resolved_token,
+            runtime_job_path,
             synthetic_job,
             self._workflow_registry,
             request.context,
             request.graph_monitor_address,
             default_workflow_version=self._package_version,
         )
-        self._steps_by_path.update(self._materialize_job_steps(request.name, steps))
+        self._steps_by_path.update(self._materialize_job_steps(runtime_job_path, steps))
         self._filters_by_path.update(step_filters)
-        self._job_outputs_by_path[resolved_token] = job_output
+        self._job_outputs_by_path[runtime_job_path] = job_output
         return workflow_pb2.GenerateNodeResponse()
 
     def RunFilter(

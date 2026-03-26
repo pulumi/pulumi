@@ -1627,14 +1627,13 @@ type GenerateJobRequest struct {
 	// Must be set when generating a top-level exported job.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// Full path to a graph-scoped inline job (for example: graph/jobs/main).
-	// Must be set when generating an inline graph job.
+	// Must be set for inline jobs, and for exported jobs this is the runtime path where that
+	// exported job is being materialized in the current graph execution.
 	Path string `protobuf:"bytes,3,opt,name=path,proto3" json:"path,omitempty"`
 	// Scheduler-hosted GraphMonitor address used for node registration callbacks.
 	GraphMonitorAddress string `protobuf:"bytes,4,opt,name=graph_monitor_address,json=graphMonitorAddress,proto3" json:"graph_monitor_address,omitempty"`
-	// Path whose value should be treated as this evaluation's resolved input source.
-	InputPath string `protobuf:"bytes,5,opt,name=input_path,json=inputPath,proto3" json:"input_path,omitempty"`
-	// Resolved input value (PropertyValue-encoded) associated with `input_path`.
-	InputValue    *structpb.Value `protobuf:"bytes,6,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
+	// Resolved input value (PropertyValue-encoded) associated with `path`.
+	InputValue    *structpb.Value `protobuf:"bytes,5,opt,name=input_value,json=inputValue,proto3" json:"input_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1693,13 +1692,6 @@ func (x *GenerateJobRequest) GetPath() string {
 func (x *GenerateJobRequest) GetGraphMonitorAddress() string {
 	if x != nil {
 		return x.GraphMonitorAddress
-	}
-	return ""
-}
-
-func (x *GenerateJobRequest) GetInputPath() string {
-	if x != nil {
-		return x.InputPath
 	}
 	return ""
 }
@@ -3032,15 +3024,13 @@ const file_pulumi_workflow_proto_rawDesc = "" +
 	"\vErrorRecord\x12\x1b\n" +
 	"\tstep_path\x18\x01 \x01(\tR\bstepPath\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\x12\x1a\n" +
-	"\bcategory\x18\x03 \x01(\tR\bcategory\"\xfe\x01\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\"\xdf\x01\n" +
 	"\x12GenerateJobRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04path\x18\x03 \x01(\tR\x04path\x122\n" +
-	"\x15graph_monitor_address\x18\x04 \x01(\tR\x13graphMonitorAddress\x12\x1d\n" +
-	"\n" +
-	"input_path\x18\x05 \x01(\tR\tinputPath\x127\n" +
-	"\vinput_value\x18\x06 \x01(\v2\x16.google.protobuf.ValueR\n" +
+	"\x15graph_monitor_address\x18\x04 \x01(\tR\x13graphMonitorAddress\x127\n" +
+	"\vinput_value\x18\x05 \x01(\v2\x16.google.protobuf.ValueR\n" +
 	"inputValue\"\x94\x01\n" +
 	"\x14GenerateGraphRequest\x124\n" +
 	"\acontext\x18\x01 \x01(\v2\x1a.pulumirpc.WorkflowContextR\acontext\x12\x12\n" +

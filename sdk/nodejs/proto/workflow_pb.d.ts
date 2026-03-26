@@ -691,8 +691,6 @@ export class GenerateJobRequest extends jspb.Message {
     setPath(value: string): GenerateJobRequest;
     getGraphMonitorAddress(): string;
     setGraphMonitorAddress(value: string): GenerateJobRequest;
-    getInputPath(): string;
-    setInputPath(value: string): GenerateJobRequest;
 
     hasInputValue(): boolean;
     clearInputValue(): void;
@@ -715,7 +713,6 @@ export namespace GenerateJobRequest {
         name: string,
         path: string,
         graphMonitorAddress: string,
-        inputPath: string,
         inputValue?: google_protobuf_struct_pb.Value.AsObject,
     }
 }

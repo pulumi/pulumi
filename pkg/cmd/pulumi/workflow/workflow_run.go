@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -40,6 +41,7 @@ type stepResult struct {
 func newWorkflowRunCmd() *cobra.Command {
 	var inputJSON string
 	var emitJSON bool
+	var executionID string
 
 	cmd := &cobra.Command{
 		Use:   "run <plugin-path> <job>",
@@ -58,7 +60,7 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 				return err
 			}
 
-			results, jobToken, jobResultJSON, err := runExportedJob(ctx, pluginPath, jobNameOrToken, input)
+			results, jobToken, jobResultJSON, err := runExportedJob(ctx, pluginPath, jobNameOrToken, input, resolveExecutionID(executionID))
 			if err != nil {
 				return err
 			}
@@ -99,6 +101,7 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 	})
 	cmd.Flags().StringVar(&inputJSON, "input", "", "JSON object input passed to the job (defaults to null when omitted)")
 	cmd.Flags().BoolVar(&emitJSON, "json", false, "Emit machine-readable JSON output")
+	cmd.Flags().StringVar(&executionID, "execution-id", "", "Execution ID for this run (defaults to a generated UUID)")
 
 	return cmd
 }
@@ -123,6 +126,7 @@ func runExportedJob(
 	pluginPath string,
 	jobNameOrToken string,
 	input any,
+	executionID string,
 ) ([]stepResult, string, string, error) {
 	server := &monitorServer{}
 	grpcServer := grpc.NewServer()
@@ -166,14 +170,13 @@ func runExportedJob(
 		return nil, "", "", fmt.Errorf("encode job input: %w", err)
 	}
 	workflowContext := &pulumirpc.WorkflowContext{
-		ExecutionId: "cli-run",
+		ExecutionId: executionID,
 	}
 
 	generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
 		Context:             workflowContext,
 		Name:                jobToken,
 		GraphMonitorAddress: listener.Addr().String(),
-		InputPath:           jobToken,
 		InputValue:          inputValue,
 	})
 	if err != nil {
@@ -199,6 +202,13 @@ func runExportedJob(
 	}
 
 	return results, jobToken, jobResultJSON, nil
+}
+
+func resolveExecutionID(userProvided string) string {
+	if userProvided != "" {
+		return userProvided
+	}
+	return uuid.NewString()
 }
 
 func resolveJobToken(

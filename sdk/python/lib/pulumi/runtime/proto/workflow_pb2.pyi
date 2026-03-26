@@ -656,7 +656,6 @@ class GenerateJobRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     PATH_FIELD_NUMBER: builtins.int
     GRAPH_MONITOR_ADDRESS_FIELD_NUMBER: builtins.int
-    INPUT_PATH_FIELD_NUMBER: builtins.int
     INPUT_VALUE_FIELD_NUMBER: builtins.int
     name: builtins.str
     """Name/token of an exported top-level job.
@@ -664,19 +663,18 @@ class GenerateJobRequest(google.protobuf.message.Message):
     """
     path: builtins.str
     """Full path to a graph-scoped inline job (for example: graph/jobs/main).
-    Must be set when generating an inline graph job.
+    Must be set for inline jobs, and for exported jobs this is the runtime path where that
+    exported job is being materialized in the current graph execution.
     """
     graph_monitor_address: builtins.str
     """Scheduler-hosted GraphMonitor address used for node registration callbacks."""
-    input_path: builtins.str
-    """Path whose value should be treated as this evaluation's resolved input source."""
     @property
     def context(self) -> global___WorkflowContext:
         """Execution context for this materialization."""
 
     @property
     def input_value(self) -> google.protobuf.struct_pb2.Value:
-        """Resolved input value (PropertyValue-encoded) associated with `input_path`."""
+        """Resolved input value (PropertyValue-encoded) associated with `path`."""
 
     def __init__(
         self,
@@ -685,11 +683,10 @@ class GenerateJobRequest(google.protobuf.message.Message):
         name: builtins.str = ...,
         path: builtins.str = ...,
         graph_monitor_address: builtins.str = ...,
-        input_path: builtins.str = ...,
         input_value: google.protobuf.struct_pb2.Value | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["context", b"context", "input_value", b"input_value"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["context", b"context", "graph_monitor_address", b"graph_monitor_address", "input_path", b"input_path", "input_value", b"input_value", "name", b"name", "path", b"path"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["context", b"context", "graph_monitor_address", b"graph_monitor_address", "input_value", b"input_value", "name", b"name", "path", b"path"]) -> None: ...
 
 global___GenerateJobRequest = GenerateJobRequest
 
