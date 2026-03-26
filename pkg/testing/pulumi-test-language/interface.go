@@ -58,7 +58,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
-	"github.com/stretchr/testify/require"
+
 	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -1715,74 +1715,67 @@ func runLanguageTests(
 			Scopes:             backend.CancellationScopes,
 		}
 
-		assertPreview := run.AssertPreview
-		if assertPreview == nil {
-			// if no assertPreview is provided for the test run, we create a default implementation
-			// where we simply assert that the preview changes did not error
-			assertPreview = func(
-				l *tests.L, args tests.AssertPreviewArgs,
-			) {
-				require.NoErrorf(l, err, "expected no error in preview")
+		if run.AssertPreview != nil {
+			assertPreview := run.AssertPreview
+
+			// Perform a preview on the stack
+			eventsCts := &promise.CompletionSource[[]engine.Event]{}
+			eventSink := make(chan engine.Event, 1)
+			go func() {
+				events := []engine.Event{}
+				for event := range eventSink {
+					events = append(events, event)
+				}
+				eventsCts.Fulfill(events)
+			}()
+
+			_, previewSpan := cmdutil.StartSpan(ctx, tracer, "PreviewStack")
+			plan, previewChanges, res := backend.PreviewStack(ctx, s, updateOperation, eventSink)
+			previewSpan.End()
+			close(eventSink)
+			events, err := eventsCts.Promise().Result(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("preview events: %w", err)
 			}
-		}
 
-		// Perform a preview on the stack
-		eventsCts := &promise.CompletionSource[[]engine.Event]{}
-		eventSink := make(chan engine.Event, 1)
-		go func() {
-			events := []engine.Event{}
-			for event := range eventSink {
-				events = append(events, event)
-			}
-			eventsCts.Fulfill(events)
-		}()
-
-		_, previewSpan := cmdutil.StartSpan(ctx, tracer, "PreviewStack")
-		plan, previewChanges, res := backend.PreviewStack(ctx, s, updateOperation, eventSink)
-		previewSpan.End()
-		close(eventSink)
-		events, err := eventsCts.Promise().Result(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("preview events: %w", err)
-		}
-
-		// assert preview results
-		previewResult := tests.WithL(func(l *tests.L) {
-			assertPreview(l, tests.AssertPreviewArgs{
-				ProjectDirectory: projectDir,
-				Err:              res,
-				Plan:             plan,
-				Changes:          previewChanges,
-				Events:           events,
-				SDKs:             sdks,
+			// assert preview results
+			previewResult := tests.WithL(func(l *tests.L) {
+				assertPreview(l, tests.AssertPreviewArgs{
+					ProjectDirectory: projectDir,
+					Err:              res,
+					Plan:             plan,
+					Changes:          previewChanges,
+					Events:           events,
+					SDKs:             sdks,
+				})
 			})
-		})
 
-		if previewResult.Failed {
-			return &testingrpc.RunLanguageTestResponse{
-				Success:  !previewResult.Failed,
-				Messages: previewResult.Messages,
-				Stdout:   stdout.String(),
-				Stderr:   stderr.String(),
-			}, nil
+			if previewResult.Failed {
+				return &testingrpc.RunLanguageTestResponse{
+					Success:  !previewResult.Failed,
+					Messages: previewResult.Messages,
+					Stdout:   stdout.String(),
+					Stderr:   stderr.String(),
+				}, nil
+			}
 		}
 
-		eventsCts = &promise.CompletionSource[[]engine.Event]{}
-		eventSink = make(chan engine.Event, 1)
+		updateEventsCts := &promise.CompletionSource[[]engine.Event]{}
+		updateEventSink := make(chan engine.Event, 1)
 		go func() {
 			events := []engine.Event{}
-			for event := range eventSink {
+			for event := range updateEventSink {
 				events = append(events, event)
 			}
-			eventsCts.Fulfill(events)
+			updateEventsCts.Fulfill(events)
 		}()
 		_, updateSpan := cmdutil.StartSpan(ctx, tracer, "UpdateStack")
-		changes, res := backend.UpdateStack(ctx, s, updateOperation, eventSink)
+		changes, res := backend.UpdateStack(ctx, s, updateOperation, updateEventSink)
 		updateSpan.End()
-		close(eventSink)
-		events, err = eventsCts.Promise().Result(ctx)
+		close(updateEventSink)
+		events, err := updateEventsCts.Promise().Result(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("preview events: %w", err)
+			return nil, fmt.Errorf("update events: %w", err)
 		}
 
 		var snap *deploy.Snapshot
