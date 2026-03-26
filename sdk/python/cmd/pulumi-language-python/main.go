@@ -243,6 +243,11 @@ type pythonLanguageHost struct {
 	// Since packages don't change between preview and update for the same program,
 	// caching avoids redundant lockfile parsing and Python subprocess calls.
 	requiredPackagesCache sync.Map // map[string]*pulumirpc.GetRequiredPackagesResponse
+
+	// toolchainCache caches resolved toolchain instances by program directory.
+	// ResolveToolchain calls searchup() for pyproject.toml/uv.lock on every call,
+	// which is redundant filesystem I/O for the same program directory.
+	toolchainCache sync.Map // map[string]toolchain.Toolchain
 }
 
 func parseOptions(
@@ -317,6 +322,20 @@ func newLanguageHost(exec, engineAddress, tracing, otelEndpoint, typechecker, to
 	}
 }
 
+// resolveToolchainCached returns a cached toolchain for the given options, creating one if needed.
+func (host *pythonLanguageHost) resolveToolchainCached(opts toolchain.PythonOptions) (toolchain.Toolchain, error) {
+	key := opts.ProgramDir
+	if cached, ok := host.toolchainCache.Load(key); ok {
+		return cached.(toolchain.Toolchain), nil
+	}
+	tc, err := toolchain.ResolveToolchain(opts)
+	if err != nil {
+		return nil, err
+	}
+	host.toolchainCache.Store(key, tc)
+	return tc, nil
+}
+
 func (host *pythonLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Closer, error) {
 	if host.engineAddress == "" {
 		return nil, nil, errors.New("when debugging or running explicitly, must call Handshake before Run")
@@ -349,7 +368,7 @@ func (host *pythonLanguageHost) GetRequiredPackages(ctx context.Context,
 		return nil, err
 	}
 
-	tc, err := toolchain.ResolveToolchain(opts)
+	tc, err := host.resolveToolchainCached(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1251,7 +1270,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
 
-	tc, err := toolchain.ResolveToolchain(opts)
+	tc, err := host.resolveToolchainCached(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1595,7 +1614,7 @@ func (host *pythonLanguageHost) InstallDependencies(
 
 	stdout.Write([]byte("Installing dependencies...\n\n"))
 
-	tc, err := toolchain.ResolveToolchain(opts)
+	tc, err := host.resolveToolchainCached(opts)
 	if err != nil {
 		return err
 	}
@@ -1708,7 +1727,7 @@ func (host *pythonLanguageHost) Template(
 		return nil, err
 	}
 
-	tc, err := toolchain.ResolveToolchain(opts)
+	tc, err := host.resolveToolchainCached(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1734,7 +1753,7 @@ func (host *pythonLanguageHost) About(ctx context.Context,
 		opts = aboutOpts
 	}
 
-	tc, err := toolchain.ResolveToolchain(opts)
+	tc, err := host.resolveToolchainCached(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1763,7 +1782,7 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 		return nil, err
 	}
 
-	tc, err := toolchain.ResolveToolchain(opts)
+	tc, err := host.resolveToolchainCached(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -1813,7 +1832,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	if err != nil {
 		return err
 	}
-	tc, err := toolchain.ResolveToolchain(opts)
+	tc, err := host.resolveToolchainCached(opts)
 	if err != nil {
 		return err
 	}
@@ -2309,7 +2328,7 @@ func (host *pythonLanguageHost) Link(
 		}
 	}
 
-	tc, err := toolchain.ResolveToolchain(opts)
+	tc, err := host.resolveToolchainCached(opts)
 	if err != nil {
 		return nil, err
 	}
