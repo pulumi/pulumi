@@ -69,9 +69,9 @@ import (
 // policyPackLocks provides per-policy-pack locking for concurrent test installation.
 var policyPackLocks gsync.Map[string, *sync.Mutex]
 
-// sharedPackageCache is shared across all BindDirectory calls to avoid re-loading
-// the same package schemas from provider plugins for every test.
-var sharedPackageCache = pcl.NewPackageCache()
+// Note: We intentionally do NOT share a PackageCache across tests because different
+// tests may use different versions of the same provider (e.g., simple@2.0.0 vs simple@27.0.0).
+// A shared cache would return the wrong version for tests that need a non-default version.
 
 type LanguageTestServer interface {
 	testingrpc.LanguageTestServer
@@ -890,7 +890,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		_, bindSpan := startSpan(ctx, "BindPCLDirectory",
 			attribute.String("test", req.Test),
 			attribute.Int("run", i))
-		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader, pcl.Cache(sharedPackageCache))
+		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
 		bindSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
@@ -1235,7 +1235,7 @@ func runLanguageTests(
 			attribute.String("test", testName),
 			attribute.Int("run", i),
 			attribute.String("phase", "runLanguageTests"))
-		program, diags, err := pcl.BindDirectory(sourceDir, loader, pcl.Cache(sharedPackageCache))
+		program, diags, err := pcl.BindDirectory(sourceDir, loader)
 		bindSpan2.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
