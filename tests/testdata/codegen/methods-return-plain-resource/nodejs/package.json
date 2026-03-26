@@ -9,7 +9,7 @@
         "@pulumi/tls": "4.10"
     },
     "devDependencies": {
-        "@types/node": "^18",
+        "@types/node": "^20",
         "typescript": "^4.7.0"
     },
     "pulumi": {
