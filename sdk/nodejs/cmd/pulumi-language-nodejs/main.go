@@ -1187,7 +1187,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 		// program. We probably want to see about making something like this an explicit "pulumi build" step, but for
 		// now shim'ing this in here works well enough for conformance testing. Note that we skip this step when
 		// installing dependencies for plugins, as they may not be written in typescript or have tsc configured.
-		tscCmd := exec.Command("npx", "tsc")
+		tscCmd := exec.Command("npx", "tsc", "--skipLibCheck")
 		tscCmd.Dir = req.Info.ProgramDirectory
 		if err := runWithOutput(tscCmd, stdout, stderr); err != nil {
 			return fmt.Errorf("failed to run tsc: %w", err)
