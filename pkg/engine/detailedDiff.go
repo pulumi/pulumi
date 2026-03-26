@@ -58,9 +58,9 @@ func getProperty(key any, v resource.PropertyValue) resource.PropertyValue {
 func addDiff(path property.Path, kind plugin.DiffKind, parent *resource.ValueDiff,
 	oldParent, newParent resource.PropertyValue,
 ) {
-	contract.Requiref(len(path) > 0, "path", "must not be empty")
+	contract.Requiref(path.Len() > 0, "path", "must not be empty")
 
-	element := path[0]
+	element := path.Head()
 
 	old, new := getProperty(element, oldParent), getProperty(element, newParent)
 
@@ -78,7 +78,7 @@ func addDiff(path property.Path, kind plugin.DiffKind, parent *resource.ValueDif
 
 		// For leaf diffs, the provider tells us exactly what to record. For other diffs, we will derive the
 		// difference from the old and new property values.
-		if len(path) == 1 {
+		if path.Len() == 1 {
 			switch kind {
 			case plugin.DiffAdd, plugin.DiffAddReplace:
 				parent.Array.Adds[element] = new
@@ -101,7 +101,7 @@ func addDiff(path property.Path, kind plugin.DiffKind, parent *resource.ValueDif
 				parent.Array.Deletes[element] = old
 			default:
 				ed := parent.Array.Updates[element]
-				addDiff(path[1:], kind, &ed, old, new)
+				addDiff(path.Rest(), kind, &ed, old, new)
 				parent.Array.Updates[element] = ed
 			}
 		}
@@ -117,7 +117,7 @@ func addDiff(path property.Path, kind plugin.DiffKind, parent *resource.ValueDif
 		}
 
 		e := resource.PropertyKey(element)
-		if len(path) == 1 {
+		if path.Len() == 1 {
 			switch kind {
 			case plugin.DiffAdd, plugin.DiffAddReplace:
 				parent.Object.Adds[e] = new
@@ -140,7 +140,7 @@ func addDiff(path property.Path, kind plugin.DiffKind, parent *resource.ValueDif
 				parent.Object.Deletes[e] = old
 			default:
 				ed := parent.Object.Updates[e]
-				addDiff(path[1:], kind, &ed, old, new)
+				addDiff(path.Rest(), kind, &ed, old, new)
 				parent.Object.Updates[e] = ed
 			}
 		}
@@ -173,7 +173,7 @@ diffs:
 	for path, pdiff := range step.DetailedDiff {
 		var elements property.Path
 		if err := elements.UnmarshalText([]byte(path)); err != nil {
-			elements = property.Path{property.NewSegment(path)}
+			elements = property.PathFromSegments(property.NewSegment(path))
 		}
 
 		for _, hiddenPath := range hiddenPaths {

@@ -41,14 +41,6 @@ var (
 	_ encoding.TextUnmarshaler = &Path{}
 )
 
-func (g Path) String() string {
-	text, err := g.MarshalText()
-	if err != nil {
-		return "[invalid]"
-	}
-	return string(text)
-}
-
 func (g Path) MarshalText() (text []byte, err error) {
 	return g.AsGlob().MarshalText()
 }
@@ -288,4 +280,23 @@ func (g Path) Segments(yield func(PathSegment) bool) {
 			return
 		}
 	}
+}
+
+func (g Path) Len() int { return g.len() }
+
+func (g Path) Head() (segment PathSegment) {
+	for v := range g.segments {
+		segment = v.(PathSegment)
+		break
+	}
+	return segment
+}
+
+func (g Path) Rest() Path {
+	_, p := g.split(1)
+	return Path{pathRepr: p}
+}
+
+func (g Path) Append(s PathSegment) Path {
+	return Path{pathRepr: g.appendGlobSegment(s)}
 }

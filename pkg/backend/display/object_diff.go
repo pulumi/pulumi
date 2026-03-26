@@ -497,7 +497,7 @@ func getResourceOutputsPropertiesString(
 		out := outs[k]
 
 		for _, p := range hiddenProperties {
-			if p.Matches(property.Path{property.NewSegment(string(k))}) {
+			if p.Matches(property.PathFromSegments(property.NewSegment(string(k)))) {
 				continue
 			}
 		}

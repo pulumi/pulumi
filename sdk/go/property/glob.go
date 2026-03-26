@@ -36,14 +36,6 @@ var (
 	_ encoding.TextUnmarshaler = &Glob{}
 )
 
-func (g Glob) String() string {
-	text, err := g.MarshalText()
-	if err != nil {
-		return "[invalid]"
-	}
-	return string(text)
-}
-
 func (g Glob) MarshalText() (text []byte, err error) {
 	if g.len() == 0 {
 		return nil, errors.New("cannot marshal an empty glob")
@@ -369,4 +361,14 @@ func (g Glob) Segments(yield func(GlobSegment) bool) {
 			return
 		}
 	}
+}
+
+func (g Glob) Len() int { return g.len() }
+
+func (g Glob) Head() (segment GlobSegment) {
+	for v := range g.segments {
+		segment = v
+		break
+	}
+	return segment
 }
