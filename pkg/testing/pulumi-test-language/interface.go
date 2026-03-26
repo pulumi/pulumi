@@ -550,6 +550,27 @@ func (eng *languageTestServer) PrepareLanguageTests(
 		}
 	}
 
+	// Pre-warm the npm cache by doing a dummy install of the core SDK.
+	// This ensures subsequent per-test npm installs can use cached packages
+	// instead of extracting from tarballs each time.
+	if coreArtifact != "" {
+		_, warmSpan := startSpan(ctx, "WarmNpmCache")
+		warmDir := filepath.Join(req.TemporaryDirectory, "npm-cache-warm")
+		if mkErr := os.MkdirAll(warmDir, 0o755); mkErr == nil {
+			packageJSON := fmt.Sprintf(`{"name":"cache-warm","dependencies":{"@pulumi/pulumi":"%s"}}`, coreArtifact)
+			if writeErr := os.WriteFile(filepath.Join(warmDir, "package.json"), []byte(packageJSON), 0o644); writeErr == nil {
+				resp := installDependencies(ctx, languageClient,
+					plugin.NewProgramInfo(warmDir, warmDir, ".", nil), false)
+				if resp != nil {
+					// Non-fatal: cache warming failure shouldn't block tests
+					_ = resp
+				}
+			}
+			_ = os.RemoveAll(warmDir)
+		}
+		warmSpan.End()
+	}
+
 	edits := []replacement{}
 	for _, replace := range req.SnapshotEdits {
 		edits = append(edits, replacement{
