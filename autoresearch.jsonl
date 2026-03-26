@@ -19,3 +19,4 @@
 {"commit":"","metric":184288,"metrics":{"tsc_ms":184288},"status":"discard","description":"Experiment 17: --ignore-scripts — no improvement (184s vs 181s, within noise)","timestamp":1774520671756,"segment":0,"confidence":null}
 {"commit":"","metric":179838,"metrics":{"tsc_ms":179838},"status":"discard","description":"Experiment 18: --install-strategy=shallow — marginal (179s vs 181s)","timestamp":1774520905703,"segment":0,"confidence":null}
 {"commit":"b4d4d63adc","metric":505403,"metrics":{"total_ms":505403,"tsc_ms":180898},"status":"keep","description":"Experiment 19: Final 3-variant benchmark — 505s total (66% from baseline)","timestamp":1774521666760,"segment":0,"confidence":null}
+{"commit":"","metric":175541,"metrics":{"tsc_ms":175541},"status":"keep","description":"Experiment 20: Shared PackageCache for PCL binding + npm flags in Pack — 175s (69.7% from baseline)","timestamp":1774522122321,"segment":0,"confidence":null}

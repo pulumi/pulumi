@@ -69,6 +69,10 @@ import (
 // policyPackLocks provides per-policy-pack locking for concurrent test installation.
 var policyPackLocks gsync.Map[string, *sync.Mutex]
 
+// sharedPackageCache is shared across all BindDirectory calls to avoid re-loading
+// the same package schemas from provider plugins for every test.
+var sharedPackageCache = pcl.NewPackageCache()
+
 type LanguageTestServer interface {
 	testingrpc.LanguageTestServer
 	pulumirpc.EngineServer
@@ -863,7 +867,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		_, bindSpan := startSpan(ctx, "BindPCLDirectory",
 			attribute.String("test", req.Test),
 			attribute.Int("run", i))
-		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
+		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader, pcl.Cache(sharedPackageCache))
 		bindSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
@@ -1208,7 +1212,7 @@ func runLanguageTests(
 			attribute.String("test", testName),
 			attribute.Int("run", i),
 			attribute.String("phase", "runLanguageTests"))
-		program, diags, err := pcl.BindDirectory(sourceDir, loader)
+		program, diags, err := pcl.BindDirectory(sourceDir, loader, pcl.Cache(sharedPackageCache))
 		bindSpan2.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
