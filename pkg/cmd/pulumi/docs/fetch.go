@@ -53,6 +53,56 @@ func contentPrefix(path string) (prefix, trimmedPath string) {
 	return "/docs/", trimmedPath
 }
 
+// isAPIDocsPath returns true if the path refers to a registry API docs page
+// (e.g. "registry/packages/aws/api-docs/provider").
+func isAPIDocsPath(path string) bool {
+	return strings.Contains(path, "/api-docs")
+}
+
+// FetchCLIDoc attempts to fetch a terminal-friendly CLI markdown file for a registry API docs path.
+// CLI docs are static files at /registry/packages/{pkg}/api-docs/{resource}/cli.md.
+// The file contains all languages wrapped in chooser comments; the CLI resolves to
+// the user's preferred language at render time.
+// Returns the body and title, or an error if the file isn't available.
+func FetchCLIDoc(baseURL, path string) (body string, title string, err error) {
+	base := strings.TrimRight(baseURL, "/")
+	trimmed := strings.Trim(path, "/")
+	// Strip the "registry/" prefix to get the path under /registry/
+	after := strings.TrimPrefix(trimmed, "registry/")
+	after = strings.TrimPrefix(after, "registry")
+
+	cliURL := fmt.Sprintf("%s/registry/%s/cli.md", base, strings.Trim(after, "/"))
+
+	//nolint:gosec // URL is constructed from user-provided base URL and path
+	resp, err := http.Get(cliURL)
+	if err != nil {
+		return "", "", fmt.Errorf("fetching CLI docs: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("CLI docs not available (status %d)", resp.StatusCode)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("reading CLI docs response: %w", err)
+	}
+	raw := strings.ReplaceAll(string(data), "\r\n", "\n")
+	raw = strings.ReplaceAll(raw, "\t", "    ")
+
+	// CLI docs use "# Title" as the first line instead of YAML frontmatter
+	title = ""
+	if strings.HasPrefix(raw, "# ") {
+		if idx := strings.Index(raw, "\n"); idx >= 0 {
+			title = strings.TrimPrefix(raw[:idx], "# ")
+			raw = strings.TrimLeft(raw[idx+1:], "\n")
+		}
+	}
+
+	return raw, title, nil
+}
+
 // FetchDoc fetches a markdown doc page from the docs or registry site.
 // Returns the body (with frontmatter stripped) and the title.
 // If the markdown 404s, it tries the HTML page to find redirects or meta refreshes.
@@ -80,11 +130,14 @@ func FetchDoc(baseURL, path string) (body string, title string, err error) {
 		return body, title, nil
 	}
 
-	if resp.StatusCode != http.StatusNotFound {
+	// CloudFront returns 403 for missing content, so treat it the same as 404.
+	notFound := resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden
+
+	if !notFound {
 		return "", "", fmt.Errorf("unexpected status %d fetching docs page: %s", resp.StatusCode, path)
 	}
 
-	// Registry 404s get a specific error for graceful fallback
+	// Registry pages without markdown get a specific error for graceful fallback
 	if isRegistryPath(path) {
 		return "", "", &RegistryNotAvailableError{Path: path}
 	}
@@ -198,7 +251,7 @@ type SitemapPage struct {
 	Title     string        `json:"title"`
 	Path      string        `json:"path"`
 	SelfLabel string        `json:"selfLabel,omitempty"`
-	Children  []SitemapPage `json:"children"`
+	Children  []SitemapPage `json:"children,omitempty"`
 }
 
 // ViewLabel returns the label for viewing this page itself (when it has children).

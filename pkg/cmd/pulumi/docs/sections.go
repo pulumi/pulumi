@@ -104,12 +104,38 @@ type heading struct {
 
 // extractIntro returns the content before the first ## heading.
 func extractIntro(md string) string {
-	for i, line := range strings.Split(md, "\n") {
+	lines := strings.Split(md, "\n")
+	for i, line := range lines {
 		if strings.HasPrefix(strings.TrimSpace(line), "## ") {
-			return strings.TrimSpace(strings.Join(strings.Split(md, "\n")[:i], "\n"))
+			intro := strings.TrimSpace(strings.Join(lines[:i], "\n"))
+			if intro != "" {
+				return intro
+			}
+			// No text before first ##, include the first section too.
+			// Find the end of this section (next ## at same or higher level).
+			for j := i + 1; j < len(lines); j++ {
+				if strings.HasPrefix(strings.TrimSpace(lines[j]), "## ") {
+					return strings.TrimSpace(strings.Join(lines[:j], "\n"))
+				}
+			}
+			// Only one section — return the whole thing.
+			return md
 		}
 	}
 	return md
+}
+
+// introContainsFirstHeading returns true if the intro (as returned by extractIntro)
+// includes the first ## heading because there was no text before it.
+func introContainsFirstHeading(md string) bool {
+	for _, line := range strings.Split(md, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		return strings.HasPrefix(trimmed, "## ")
+	}
+	return false
 }
 
 // extractHeadings returns all ## and deeper headings from the markdown.

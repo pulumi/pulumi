@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -33,6 +34,7 @@ type docsCmd struct {
 	osFlag          string
 	raw             bool
 	toc             bool
+	jsonOutput      bool
 	fullPage        bool
 	sectionsView    bool
 }
@@ -50,7 +52,8 @@ func NewDocsCmd() *cobra.Command {
 			"  pulumi docs read <path>        Read a specific page\n" +
 			"  pulumi docs browse [path]      Browse interactively\n" +
 			"  pulumi docs registry <pkg>     Read a registry package\n" +
-			"  pulumi docs search <query>     Search documentation",
+			"  pulumi docs search <query>     Search documentation\n" +
+			"  pulumi docs sitemap            List available pages",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
 				// Bare path shortcut → read
@@ -68,8 +71,9 @@ func NewDocsCmd() *cobra.Command {
 	if envURL := os.Getenv("PULUMI_DOCS_BASE_URL"); envURL != "" {
 		dc.baseURL = envURL
 	}
-	// Registry base URL: PULUMI_REGISTRY_BASE_URL > PULUMI_DOCS_BASE_URL > default
-	dc.registryBaseURL = dc.baseURL
+	// Registry base URL defaults to production independently of the docs base URL,
+	// so that overriding PULUMI_DOCS_BASE_URL for testing doesn't break registry fetches.
+	dc.registryBaseURL = "https://www.pulumi.com"
 	if envURL := os.Getenv("PULUMI_REGISTRY_BASE_URL"); envURL != "" {
 		dc.registryBaseURL = envURL
 	}
@@ -86,6 +90,7 @@ func NewDocsCmd() *cobra.Command {
 	cmd.AddCommand(dc.newBrowseCmd())
 	cmd.AddCommand(dc.newSearchCmd())
 	cmd.AddCommand(dc.newRegistryCmd())
+	cmd.AddCommand(dc.newSitemapCmd())
 
 	return cmd
 }
@@ -118,6 +123,8 @@ func (dc *docsCmd) newReadCmd() *cobra.Command {
 		"Output raw markdown without formatting or chooser resolution")
 	cmd.Flags().BoolVar(&dc.toc, "toc", false,
 		"Show table of contents (list of sections)")
+	cmd.Flags().BoolVar(&dc.jsonOutput, "json", false,
+		"Output as JSON (use with --toc for structured section list)")
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "path"}},
 	})
@@ -165,6 +172,8 @@ func (dc *docsCmd) newSearchCmd() *cobra.Command {
 			return runSearch(dc, query)
 		},
 	}
+	cmd.Flags().BoolVar(&dc.jsonOutput, "json", false,
+		"Output results as JSON")
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "query"}},
 		Required:  1,
@@ -191,15 +200,23 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 	}
 
 	fetchBase := dc.baseURLForPath(path)
-	body, title, err := FetchDoc(fetchBase, path)
+
+	// For registry API docs paths, try CLI markdown first (single static file with chooser comments).
+	// Fall back to standard FetchDoc if CLI docs aren't available or this isn't an API docs path.
+	var body, title string
+	var err error
+	isAPI := isAPIDocsPath(path)
+	if isAPI {
+		body, title, err = FetchCLIDoc(fetchBase, path)
+	}
+	if !isAPI || err != nil {
+		body, title, err = FetchDoc(fetchBase, path)
+	}
 	if err != nil {
-		// Graceful fallback for registry pages that aren't available yet
+		// Graceful fallback for registry pages that aren't available in the terminal
 		var regErr *RegistryNotAvailableError
 		if errors.As(err, &regErr) {
-			fmt.Fprintf(os.Stderr,
-				"Registry docs are not yet available for terminal viewing.\nVisit %s instead.\n",
-				webURL(fetchBase, path))
-			return nil
+			return dc.handleRegistryFallback(path)
 		}
 		return err
 	}
@@ -255,6 +272,58 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 	return nil
 }
 
+// handleRegistryFallback provides a graceful fallback when a registry page (typically
+// an API docs page) isn't available as markdown for terminal viewing.
+func (dc *docsCmd) handleRegistryFallback(path string) error {
+	pageWebURL := webURL(dc.registryBaseURL, path)
+
+	// Check if this is an API docs page and extract the package overview path.
+	// e.g. "registry/packages/aws/api-docs/provider" → "registry/packages/aws"
+	var overviewPath string
+	trimmed := strings.Trim(path, "/")
+	if idx := strings.Index(trimmed, "/api-docs"); idx >= 0 {
+		overviewPath = trimmed[:idx]
+	}
+
+	fmt.Fprintln(os.Stderr)
+	if overviewPath != "" {
+		fmt.Fprintln(os.Stderr, "Registry API docs are not available for terminal viewing.")
+	} else {
+		fmt.Fprintln(os.Stderr, "This registry page is not available for terminal viewing.")
+	}
+
+	if cmdutil.Interactive() && overviewPath != "" {
+		optOverview := "View package overview"
+		optBrowser := "Open in web browser"
+		options := []string{optOverview, optBrowser}
+
+		fmt.Fprintln(os.Stderr)
+		selected := ui.PromptUser(
+			"What would you like to do?",
+			options,
+			optOverview,
+			cmdutil.GetGlobalColorization(),
+		)
+
+		switch selected {
+		case optOverview:
+			return dc.fetchAndRender(overviewPath)
+		case optBrowser:
+			fmt.Fprintf(os.Stderr, "Opening %s\n\n", pageWebURL)
+			return browser.OpenURL(pageWebURL)
+		}
+		return nil
+	}
+
+	// Non-interactive or no overview available
+	fmt.Fprintf(os.Stderr, "Visit: %s\n", pageWebURL)
+	if overviewPath != "" {
+		fmt.Fprintf(os.Stderr, "Or view the package overview: pulumi docs read %s\n", overviewPath)
+	}
+	fmt.Fprintln(os.Stderr)
+	return nil
+}
+
 // renderBody processes markdown through the chooser and rendering pipeline.
 func (dc *docsCmd) renderBody(body, title string) (string, error) {
 	prefs, err := LoadPreferences()
@@ -300,6 +369,19 @@ func (dc *docsCmd) showTOC(body string, section *string) error {
 	if len(headings) == 0 {
 		fmt.Println("No sections found.")
 		return nil
+	}
+
+	if dc.jsonOutput {
+		type tocEntry struct {
+			Title string `json:"title"`
+			Slug  string `json:"slug"`
+			Depth int    `json:"depth"`
+		}
+		entries := make([]tocEntry, len(headings))
+		for i, h := range headings {
+			entries[i] = tocEntry{Title: h.text, Slug: h.slug, Depth: h.level}
+		}
+		return ui.PrintJSON(entries)
 	}
 
 	if !cmdutil.Interactive() {

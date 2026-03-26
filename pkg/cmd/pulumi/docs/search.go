@@ -63,12 +63,17 @@ func (h algoliaHit) displayTitle() string {
 	return title
 }
 
+// sectionName returns "registry" or "docs" based on the hit's href.
+func (h algoliaHit) sectionName() string {
+	if strings.Contains(h.Href, "/registry/") {
+		return "registry"
+	}
+	return "docs"
+}
+
 // sectionTag returns a short tag like "[docs]" or "[registry]" for display in search results.
 func (h algoliaHit) sectionTag() string {
-	if strings.Contains(h.Href, "/registry/") {
-		return "[registry]"
-	}
-	return "[docs]"
+	return "[" + h.sectionName() + "]"
 }
 
 // fetchCLIConfig fetches the CLI config file from the docs site.
@@ -179,14 +184,37 @@ func runSearch(cmd *docsCmd, query string) error {
 	}
 
 	if len(hits) == 0 {
+		if cmd.jsonOutput {
+			fmt.Println("[]")
+			return nil
+		}
 		fmt.Println("No results found.")
 		return nil
+	}
+
+	if cmd.jsonOutput {
+		type searchResult struct {
+			Title       string `json:"title"`
+			Section     string `json:"section"`
+			Description string `json:"description,omitempty"`
+			Href        string `json:"href"`
+		}
+		results := make([]searchResult, len(hits))
+		for i, hit := range hits {
+			results[i] = searchResult{
+				Title:       hit.displayTitle(),
+				Section:     hit.sectionName(),
+				Description: hit.Description,
+				Href:        hit.Href,
+			}
+		}
+		return ui.PrintJSON(results)
 	}
 
 	interactive := cmdutil.Interactive()
 
 	if interactive {
-		// Build selectable list
+		// Build selectable list with title on first line and description indented on second.
 		options := make([]string, len(hits))
 		for i, hit := range hits {
 			tag := hit.sectionTag()
@@ -195,7 +223,7 @@ func runSearch(cmd *docsCmd, query string) error {
 				desc = desc[:77] + "..."
 			}
 			if desc != "" {
-				options[i] = fmt.Sprintf("%s %s — %s", tag, hit.displayTitle(), desc)
+				options[i] = fmt.Sprintf("%s %s\n     %s", tag, hit.displayTitle(), desc)
 			} else {
 				options[i] = fmt.Sprintf("%s %s", tag, hit.displayTitle())
 			}

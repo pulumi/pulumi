@@ -28,6 +28,7 @@ import (
 const (
 	navUp       = "↑ Up a level"
 	navBack     = "← Back"
+	navHome     = "🏠 Home"
 	navDone     = "🛑 Done"
 	navSections = "📑 Sections"
 	navFullPage = "📄 View full page"
@@ -82,25 +83,25 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 			_ = prefs.Save()
 		}
 
-		var pageLinks []docLink
+		var navItems []navOption
+		introIncludesFirstSection := false
 		if node.body != "" {
 			if useSections {
-				intro := extractIntro(node.body)
-				rendered, err := dc.renderBody(intro, node.title)
+				introIncludesFirstSection = introContainsFirstHeading(node.body)
+				introNav, err := renderIntro(dc, node.body, node.title, path)
 				if err != nil {
 					return err
 				}
-				fmt.Print(rendered)
-				fmt.Print(browseFooter(dc.baseURLForPath(path), path))
+				navItems = introNav
 			} else {
 				displayBody, links := numberLinks(node.body)
-				pageLinks = links
 				rendered, err := dc.renderBody(displayBody, node.title)
 				if err != nil {
 					return err
 				}
 				fmt.Print(rendered)
 				fmt.Print(browseFooter(dc.baseURLForPath(path), path))
+				navItems = numberedNavLinks(links)
 			}
 		}
 
@@ -119,10 +120,7 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 			return nil
 		}
 
-		var navItems []navOption
-		if len(pageLinks) > 0 {
-			navItems = numberedNavLinks(pageLinks)
-		} else {
+		if len(navItems) == 0 {
 			navItems = node.items
 		}
 
@@ -133,11 +131,14 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 
 		activeItems := navItems
 		sectionIdx := -1
+		if introIncludesFirstSection {
+			sectionIdx = 0
+		}
 		navigated := false
 		for !navigated {
 			isRoot := path == ""
 			hasHeadings := len(headings) > 0
-			menu := buildBrowseMenu(activeItems, isRoot, hasHeadings, len(history) > 0, sectionIdx, headings)
+			menu := buildBrowseMenu(activeItems, isRoot, hasHeadings, len(history) > 0, !introIncludesFirstSection, sectionIdx, headings)
 
 			promptTitle := node.title
 			if promptTitle == "" {
@@ -175,9 +176,21 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 				path = parentPath(path)
 				navigated = true
 
+			case navHome:
+				history = append(history, path)
+				path = ""
+				navigated = true
+
 			case navSections:
-				idx := showBrowseSectionsIdx(headings)
-				if idx >= 0 {
+				hasIntro := !introIncludesFirstSection
+				idx := showBrowseSectionsIdx(headings, hasIntro)
+				if idx == -1 {
+					introNav, renderErr := renderIntro(dc, node.body, node.title, path)
+					if renderErr == nil {
+						activeItems = introNav
+					}
+					sectionIdx = -1
+				} else if idx >= 0 {
 					renderSectionByIdx(dc, node.body, headings, idx, &activeItems)
 					sectionIdx = idx
 				}
@@ -193,9 +206,16 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 				sectionIdx = -1
 
 			default:
-				if strings.HasPrefix(selected, navPrev) && sectionIdx > 0 {
+				if strings.HasPrefix(selected, navPrev) && sectionIdx > -1 {
 					sectionIdx--
-					renderSectionByIdx(dc, node.body, headings, sectionIdx, &activeItems)
+					if sectionIdx == -1 {
+						introNav, renderErr := renderIntro(dc, node.body, node.title, path)
+						if renderErr == nil {
+							activeItems = introNav
+						}
+					} else {
+						renderSectionByIdx(dc, node.body, headings, sectionIdx, &activeItems)
+					}
 				} else if strings.HasPrefix(selected, navNext) && sectionIdx+1 < len(headings) {
 					sectionIdx++
 					renderSectionByIdx(dc, node.body, headings, sectionIdx, &activeItems)
@@ -335,7 +355,7 @@ func (dc *docsCmd) resolveDocsPage(path string) browseNode {
 
 // buildBrowseMenu constructs the menu options for a browse prompt.
 // sectionIdx is the current section index (-1 if not viewing a section).
-func buildBrowseMenu(items []navOption, isRoot, hasHeadings, hasHistory bool, sectionIdx int, headings []heading) []string {
+func buildBrowseMenu(items []navOption, isRoot, hasHeadings, hasHistory, hasIntro bool, sectionIdx int, headings []heading) []string {
 	var menu []string
 
 	if !isRoot {
@@ -344,8 +364,17 @@ func buildBrowseMenu(items []navOption, isRoot, hasHeadings, hasHistory bool, se
 	if hasHeadings {
 		menu = append(menu, navSections)
 	}
-	if sectionIdx > 0 {
-		menu = append(menu, navPrev+" — "+headings[sectionIdx-1].text)
+	// Show "Previous" when viewing a section. Allow going back to intro only if there is one.
+	minIdx := 0
+	if hasIntro {
+		minIdx = -1
+	}
+	if sectionIdx > minIdx {
+		prevLabel := "Introduction"
+		if sectionIdx > 0 {
+			prevLabel = headings[sectionIdx-1].text
+		}
+		menu = append(menu, navPrev+" — "+prevLabel)
 	}
 	if hasHeadings {
 		nextIdx := sectionIdx + 1
@@ -362,22 +391,30 @@ func buildBrowseMenu(items []navOption, isRoot, hasHeadings, hasHistory bool, se
 	if hasHistory {
 		menu = append(menu, navBack)
 	}
+	if !isRoot {
+		menu = append(menu, navHome)
+	}
 	menu = append(menu, navDone)
 
 	return menu
 }
 
 // showBrowseSectionsIdx displays a TOC picker. Returns the selected heading
-// index, or -1 if the user cancelled.
-func showBrowseSectionsIdx(headings []heading) int {
+// index, or -1 for "Introduction" (when hasIntro is true), or -2 if cancelled.
+func showBrowseSectionsIdx(headings []heading, hasIntro bool) int {
 	if len(headings) == 0 {
-		return -1
+		return -2
 	}
 
-	options := make([]string, len(headings))
-	for i, h := range headings {
+	var options []string
+	introOffset := 0
+	if hasIntro {
+		options = append(options, "Introduction")
+		introOffset = 1
+	}
+	for _, h := range headings {
 		indent := strings.Repeat("  ", h.level-2)
-		options[i] = indent + h.text
+		options = append(options, indent+h.text)
 	}
 	options = append(options, navBack)
 
@@ -388,15 +425,33 @@ func showBrowseSectionsIdx(headings []heading) int {
 		cmdutil.GetGlobalColorization(),
 	)
 	if selected == "" || selected == navBack {
+		return -2
+	}
+	if hasIntro && selected == "Introduction" {
 		return -1
 	}
 
 	for i, opt := range options {
-		if opt == selected && i < len(headings) {
-			return i
+		idx := i - introOffset
+		if opt == selected && idx >= 0 && idx < len(headings) {
+			return idx
 		}
 	}
-	return -1
+	return -2
+}
+
+// renderIntro renders the page introduction (content before the first heading),
+// prints it with the footer, and returns the nav options from any links found.
+func renderIntro(dc *docsCmd, body, title, path string) ([]navOption, error) {
+	intro := extractIntro(body)
+	displayIntro, links := numberLinks(intro)
+	rendered, err := dc.renderBody(displayIntro, title)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Print(rendered)
+	fmt.Print(browseFooter(dc.baseURLForPath(path), path))
+	return numberedNavLinks(links), nil
 }
 
 // renderSectionByIdx renders the section at the given heading index and
