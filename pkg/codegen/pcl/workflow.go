@@ -116,13 +116,13 @@ type workflowStepDefinitionRaw struct {
 	InputType  hcl.Expression `hcl:"input_type,optional"`
 	OutputType string         `hcl:"output_type,optional"`
 	Command    string         `hcl:"command,optional"`
-	Expr       string         `hcl:"expr,optional"`
+	Expr       hcl.Expression `hcl:"expr,optional"`
 }
 
 type workflowJobDefinitionRaw struct {
 	Name      string            `hcl:"name,label"`
 	InputType hcl.Expression    `hcl:"input_type,optional"`
-	Expr      string            `hcl:"expr,optional"`
+	Expr      hcl.Expression    `hcl:"expr,optional"`
 	Steps     []WorkflowJobStep `hcl:"step,block"`
 }
 
@@ -185,12 +185,16 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 			if err != nil {
 				return nil, fmt.Errorf("decode workflow pcl file %q: step %q input_type: %w", filePath, rawStep.Name, err)
 			}
+			expr, err := parseWorkflowExpr(rawStep.Expr)
+			if err != nil {
+				return nil, fmt.Errorf("decode workflow pcl file %q: step %q expr: %w", filePath, rawStep.Name, err)
+			}
 			p.Steps = append(p.Steps, WorkflowStepDefinition{
 				Name:       rawStep.Name,
 				InputType:  inputType,
 				OutputType: rawStep.OutputType,
 				Command:    rawStep.Command,
-				Expr:       rawStep.Expr,
+				Expr:       expr,
 			})
 		}
 		for _, rawJob := range file.Jobs {
@@ -198,10 +202,14 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 			if err != nil {
 				return nil, fmt.Errorf("decode workflow pcl file %q: job %q input_type: %w", filePath, rawJob.Name, err)
 			}
+			expr, err := parseWorkflowExpr(rawJob.Expr)
+			if err != nil {
+				return nil, fmt.Errorf("decode workflow pcl file %q: job %q expr: %w", filePath, rawJob.Name, err)
+			}
 			p.Jobs = append(p.Jobs, WorkflowJobDefinition{
 				Name:      rawJob.Name,
 				InputType: inputType,
-				Expr:      rawJob.Expr,
+				Expr:      expr,
 				Steps:     rawJob.Steps,
 			})
 		}
@@ -309,6 +317,54 @@ func parseTypeNameExpr(expr hcl.Expression) (string, error) {
 		return "", fmt.Errorf("expected identifier")
 	}
 	return strings.TrimSpace(root.Name), nil
+}
+
+func parseWorkflowExpr(expr hcl.Expression) (string, error) {
+	if expr == nil {
+		return "", nil
+	}
+	if v, diags := expr.Value(nil); !diags.HasErrors() {
+		if v.IsNull() {
+			return "", nil
+		}
+		if v.Type() == cty.String {
+			return strings.TrimSpace(v.AsString()), nil
+		}
+	}
+	switch e := expr.(type) {
+	case *hclsyntax.UnaryOpExpr:
+		if e.Op == hclsyntax.OpLogicalNot {
+			inner, err := parseWorkflowTraversalExpr(e.Val)
+			if err != nil {
+				return "", err
+			}
+			return "!" + inner, nil
+		}
+	}
+	return parseWorkflowTraversalExpr(expr)
+}
+
+func parseWorkflowTraversalExpr(expr hcl.Expression) (string, error) {
+	traversal, diags := hcl.AbsTraversalForExpr(expr)
+	if diags.HasErrors() {
+		return "", fmt.Errorf("must be string, identifier, traversal, or !traversal")
+	}
+	if len(traversal) == 0 {
+		return "", fmt.Errorf("empty expression")
+	}
+	root, ok := traversal[0].(hcl.TraverseRoot)
+	if !ok {
+		return "", fmt.Errorf("expected identifier")
+	}
+	parts := []string{root.Name}
+	for _, step := range traversal[1:] {
+		attr, ok := step.(hcl.TraverseAttr)
+		if !ok {
+			return "", fmt.Errorf("unsupported traversal")
+		}
+		parts = append(parts, attr.Name)
+	}
+	return strings.Join(parts, "."), nil
 }
 
 func DetectProgramKindFromDirectory(dir string) (ProgramKind, error) {

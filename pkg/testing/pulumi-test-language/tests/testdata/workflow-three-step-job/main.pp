@@ -2,7 +2,7 @@ job "build" {
   input_type = {
     input = string
   }
-  expr = "third"
+  expr = third
 
   step "first" {
     expr = "input"

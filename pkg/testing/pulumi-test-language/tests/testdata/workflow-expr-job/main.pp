@@ -2,5 +2,5 @@ job "build" {
   input_type = {
     input = bool
   }
-  expr       = "!input"
+  expr       = !args.input
 }

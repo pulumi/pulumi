@@ -2,14 +2,14 @@ step "invert" {
   input_type = {
     input = bool
   }
-  expr       = "!input"
+  expr       = !args.input
 }
 
 job "build" {
   input_type = {
     input = bool
   }
-  expr       = "invert"
+  expr       = invert
 
   step "invert" {
     uses = "invert"

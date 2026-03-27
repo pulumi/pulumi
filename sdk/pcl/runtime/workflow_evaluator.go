@@ -573,6 +573,17 @@ func inferStepOutputType(step codegenpcl.WorkflowStepDefinition) string {
 	case "!input", "not input":
 		return "bool"
 	default:
+		if field, ok := inputFieldExpr(expr); ok {
+			if step.InputType.IsStruct() {
+				if t, has := step.InputType.Fields[field]; has {
+					return t
+				}
+			}
+			return "pulumi:json#/Any"
+		}
+		if _, ok := negatedInputFieldExpr(expr); ok {
+			return "bool"
+		}
 		if expr != "" {
 			return "string"
 		}
@@ -665,8 +676,41 @@ func executeStepDefinition(step codegenpcl.WorkflowStepDefinition, input *struct
 		}
 		return structpb.NewBoolValue(!inputBool), nil
 	default:
+		if field, ok := inputFieldExpr(expr); ok {
+			if input == nil || input.GetStructValue() == nil {
+				return structpb.NewNullValue(), nil
+			}
+			if v, has := input.GetStructValue().GetFields()[field]; has {
+				return v, nil
+			}
+			return structpb.NewNullValue(), nil
+		}
+		if field, ok := negatedInputFieldExpr(expr); ok {
+			if input == nil || input.GetStructValue() == nil {
+				return nil, status.Error(codes.InvalidArgument, "step expression requires bool input")
+			}
+			v, has := input.GetStructValue().GetFields()[field]
+			if !has {
+				return nil, status.Error(codes.InvalidArgument, "step expression requires bool input")
+			}
+			return structpb.NewBoolValue(!v.GetBoolValue()), nil
+		}
 		return structpb.NewStringValue(step.Expr), nil
 	}
+}
+
+func inputFieldExpr(expr string) (string, bool) {
+	if strings.HasPrefix(expr, "args.") && len(expr) > len("args.") {
+		return strings.TrimSpace(strings.TrimPrefix(expr, "args.")), true
+	}
+	return "", false
+}
+
+func negatedInputFieldExpr(expr string) (string, bool) {
+	if strings.HasPrefix(expr, "!args.") && len(expr) > len("!args.") {
+		return strings.TrimSpace(strings.TrimPrefix(expr, "!args.")), true
+	}
+	return "", false
 }
 
 func (e *WorkflowEvaluator) stepDefinitionForJobStep(
