@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -2352,7 +2352,7 @@ func getAccountDetails(
 	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
 		GetPulumiAccountDetails(ctx)
-	if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
+	if errors.Is(err, backenderr.LoginRequiredError{}) {
 		return "", nil, nil, ErrUnauthorized
 	}
 	return username, organizations, tokenInfo, err

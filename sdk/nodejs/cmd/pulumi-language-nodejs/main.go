@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -75,6 +75,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
@@ -1135,7 +1136,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	tracer := otel.Tracer("pulumi-language-nodejs")
 	ctx, otelSpan := tracer.Start(ctx, "InstallDependencies",
-		trace.WithAttributes(append(programInfoAttributes(req.Info),
+		trace.WithAttributes(append(tracing.ProgramInfoAttributes(req.Info),
 			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
 			attribute.Bool("isPlugin", req.IsPlugin),
 		)...),
@@ -2243,13 +2244,5 @@ func setOptionsAttributes(opts nodeOptions) []attribute.KeyValue {
 		attribute.String("nodeOptions.packageManager", string(opts.packagemanager)),
 		attribute.String("nodeOptions.tsConfigPath", opts.tsconfigpath),
 		attribute.String("nodeOptions.nodeArgs", opts.nodeargs),
-	}
-}
-
-func programInfoAttributes(info *pulumirpc.ProgramInfo) []attribute.KeyValue {
-	return []attribute.KeyValue{
-		attribute.String("programInfo.entryPoint", info.EntryPoint),
-		attribute.String("programInfo.programDirectory", info.ProgramDirectory),
-		attribute.String("programInfo.rootDirectory", info.RootDirectory),
 	}
 }

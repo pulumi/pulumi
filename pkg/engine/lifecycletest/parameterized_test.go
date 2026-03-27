@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ func TestPackageRef(t *testing.T) {
 				pcs.MustFulfill(ref)
 			}()
 		}
-		ctx := context.Background()
+		ctx := context.Background() //nolint:usetesting // ctx outlives t.Context inside the engine
 		expected, err := promises[0].Result(ctx)
 		require.NoError(t, err)
 		for i := 1; i < 100; i++ {

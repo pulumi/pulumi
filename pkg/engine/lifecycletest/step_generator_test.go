@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -449,4 +450,81 @@ func TestReadNilOutputs(t *testing.T) {
 			assert.ErrorContains(t, err,
 				"BAIL: step executor errored: step application failed: resource 'my-resource-id' does not exist")
 		})
+}
+
+// TestExternalEventMetadata tests that the External field on StepEventStateMetadata is set correctly
+// for external (read) resources and non-external (managed) resources.
+func TestExternalEventMetadata(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         "created-id",
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		// Register a normal (non-external) resource.
+		_, err := monitor.RegisterResource("pkgA:m:typA", "managedRes", true)
+		require.NoError(t, err)
+
+		// Register an external (read) resource.
+		_, _, err = monitor.ReadResource("pkgA:m:typA", "externalRes", "read-id", "", nil, "", "", "", nil, "", "")
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient,
+		func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			foundManaged := false
+			foundExternal := false
+			for _, e := range events {
+				var step StepEventMetadata
+				//nolint:exhaustive // We only care about a subset of events here
+				switch e.Type {
+				case ResourcePreEvent:
+					step = e.Payload().(ResourcePreEventPayload).Metadata
+				case ResourceOutputsEvent:
+					step = e.Payload().(ResourceOutputsEventPayload).Metadata
+				default:
+					continue
+				}
+
+				if step.URN.Name() == "managedRes" && step.New != nil {
+					assert.False(t, step.New.External, "managed resource should not be external")
+					foundManaged = true
+				}
+				if step.URN.Name() == "externalRes" && step.New != nil {
+					assert.True(t, step.New.External, "read resource should be external")
+					foundExternal = true
+				}
+			}
+			assert.True(t, foundManaged, "should have found managed resource event")
+			assert.True(t, foundExternal, "should have found external resource event")
+			return err
+		},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, snap)
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ runtime: yaml`
 		var stdout bytes.Buffer
 		parent := newConfigEnvCmdForInitTest(stdin, &stdout, projectYAML, "", &newStackYAML, envDefMap{})
 		init := &configEnvInitCmd{parent: parent, newCrypter: newBase64EvalCrypter, yes: true}
-		ctx := context.Background()
+		ctx := t.Context()
 		err := init.run(ctx, nil)
 		require.NoError(t, err)
 
@@ -94,7 +94,7 @@ runtime: yaml`
 	t.Run("some config", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
@@ -158,7 +158,7 @@ runtime: yaml`
 	t.Run("some config, show secrets", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),
@@ -221,7 +221,7 @@ runtime: yaml`
 	t.Run("other env, some config, show secrets", func(t *testing.T) {
 		t.Parallel()
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		cfg := map[config.Key]config.Value{
 			config.MustMakeKey("aws", "region"):   config.NewValue("us-west-2"),

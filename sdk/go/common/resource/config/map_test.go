@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package config
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -1531,7 +1530,7 @@ func TestPropertyMap(t *testing.T) {
 			t.Parallel()
 
 			decrypter := nopCrypter{}
-			propMap, err := test.Config.AsDecryptedPropertyMap(context.Background(), decrypter)
+			propMap, err := test.Config.AsDecryptedPropertyMap(t.Context(), decrypter)
 			require.NoError(t, err)
 
 			assert.Equal(t, test.Expected, propMap)

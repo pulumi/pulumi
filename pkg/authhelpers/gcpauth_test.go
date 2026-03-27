@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package authhelpers
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -35,7 +34,7 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 		"client_id": "your-client-id"
 	}`)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	scope := "some-scope"
 
 	credentials, err := ResolveGoogleCredentials(ctx, scope)
@@ -58,7 +57,7 @@ func TestResolveGoogleCredentials_ValidCredentials(t *testing.T) {
 func TestResolveGoogleCredentials_InvalidCredentials(t *testing.T) {
 	t.Setenv("GOOGLE_CREDENTIALS", `{}`)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	scope := "some-scope"
 
 	credentials, err := ResolveGoogleCredentials(ctx, scope)
@@ -72,7 +71,7 @@ func TestResolveGoogleCredentials_OAuthAccessToken(t *testing.T) {
 	expectedAccessToken := "your-access-token"
 	t.Setenv("GOOGLE_OAUTH_ACCESS_TOKEN", expectedAccessToken)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	scope := "some-scope"
 
 	credentials, err := ResolveGoogleCredentials(ctx, scope)

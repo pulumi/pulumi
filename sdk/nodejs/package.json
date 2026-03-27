@@ -1,6 +1,6 @@
 {
     "name": "@pulumi/pulumi",
-    "version": "3.226.1",
+    "version": "3.229.0",
     "description": "Pulumi's Node.js SDK",
     "license": "Apache-2.0",
     "repository": {
@@ -31,7 +31,7 @@
         "js-yaml": "^3.14.2",
         "minimist": "^1.2.6",
         "normalize-package-data": "^6.0.0",
-        "picomatch": "^3.0.1",
+        "picomatch": "^4.0.0",
         "package-directory": "^8.1.0",
         "require-from-string": "^2.0.1",
         "semver": "^7.5.2",
@@ -65,7 +65,7 @@
     },
     "peerDependencies": {
         "ts-node": ">= 7.0.1 < 12",
-        "typescript": ">= 3.8.3 < 6"
+        "typescript": ">= 3.8.3 < 7"
     },
     "peerDependenciesMeta": {
         "typescript": {

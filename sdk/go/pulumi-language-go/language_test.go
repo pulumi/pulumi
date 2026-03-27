@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -99,31 +99,29 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-config-types-object": "fails to compile",
-	"l1-proxy-index":         "fails to compile",
-	"l2-proxy-index":         "fails to compile",
-	"l1-builtin-try":         "pulumi#18506 Support try in Go program generation",
-	"l1-builtin-can":         "pulumi#18570 Support can in Go program generation",
-	"l1-builtin-list":        "list(string) config decoded as string; element/split emit TODO stubs",
-	"l1-builtin-object":      "entries/lookup emit TODO stubs",
-	"l2-builtin-object":      "entries/lookup emit TODO stubs",
-	"l1-builtin-to-json":     "Go doesn't support output based toJSON",
+	"l1-config-types-object":        "fails to compile",
+	"l1-builtin-try":                "pulumi#18506 Support try in Go program generation",
+	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
+	"l1-builtin-list":               "list(string) config decoded as string; element/split emit TODO stubs",
+	"l1-builtin-object":             "entries/lookup emit TODO stubs",
+	"l2-builtin-object":             "entries/lookup emit TODO stubs",
+	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
+	"l2-resource-config-primitives": "cannot convert secretBool (variable of struct type pulumi.BoolOutput) to type pulumi.Bool, etc", //nolint:lll
+	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
+	"l2-discriminated-union":        "pulumi#21829: does not compile",
 
 	// pulumi/pulumi#18345
-	"l2-snake-names":                      "nesting apply is not generated correctly",
-	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
-	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal", //nolint:lll
-	"l2-discriminated-union":              "pulumi#21829: does not compile",
+	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",                     //nolint:lll
+	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",                     //nolint:lll
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
-	"l2-component-call-simple":            "pulumi#18202: syntax error: unexpected / in parameter list; possibly missing comma or )",                                     //nolint:lll
-	"l2-resource-invoke-dynamic-function": "pulumi#18423: pulumi.Interface{} unexpected {, expected )",                                                                   //nolint:lll
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll
 	"l3-range-resource-output-traversal":  "pulumi#21678: cannot range over an ArrayOutput",
 	"l3-for":                              "syntax errors",
 	"l3-for-resource":                     "syntax errors",
-	"l2-resource-order":                   "cannot convert localVar (variable of struct type pulumi.BoolOutput) to type pulumi.Bool", //nolint:lll
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
+
+	"l3-rewrite-conversions": "does not compile; missing necessary casts for pulumi inputs",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

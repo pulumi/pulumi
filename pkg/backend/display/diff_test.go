@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,11 +23,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -266,4 +269,81 @@ func TestCreateDiffRequiresColor(t *testing.T) {
 	_, err := CreateDiff([]engine.Event{}, Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "color must be specified")
+}
+
+func TestCreateDiffDoesNotIndentBeneathHiddenParent(t *testing.T) {
+	t.Parallel()
+
+	stackURN := resource.URN("urn:pulumi:dev::project::pulumi:pulumi:Stack::project-dev")
+	parentURN := resource.URN("urn:pulumi:dev::project::pkg:index:Parent::parentRes")
+	childURN := resource.URN("urn:pulumi:dev::project::pkg:index:Parent$pkg:index:Child::childRes")
+	siblingURN := resource.URN("urn:pulumi:dev::project::pkg:index:Sibling::siblingRes")
+
+	newState := func(urn resource.URN, parent resource.URN) *engine.StepEventStateMetadata {
+		return &engine.StepEventStateMetadata{
+			URN:    urn,
+			Type:   urn.Type(),
+			Parent: parent,
+			Inputs: resource.PropertyMap{},
+		}
+	}
+
+	events := []engine.Event{
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN:  stackURN,
+				Type: stackURN.Type(),
+				Op:   deploy.OpSame,
+				Old:  newState(stackURN, ""),
+				New:  newState(stackURN, ""),
+				Res:  newState(stackURN, ""),
+			},
+		}),
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN:  parentURN,
+				Type: parentURN.Type(),
+				Op:   deploy.OpSame,
+				Old:  newState(parentURN, stackURN),
+				New:  newState(parentURN, stackURN),
+				Res:  newState(parentURN, stackURN),
+			},
+		}),
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN:  siblingURN,
+				Type: siblingURN.Type(),
+				Op:   deploy.OpCreate,
+				New:  newState(siblingURN, stackURN),
+				Res:  newState(siblingURN, stackURN),
+			},
+		}),
+		engine.NewEvent(engine.ResourcePreEventPayload{
+			Metadata: engine.StepEventMetadata{
+				URN:  childURN,
+				Type: childURN.Type(),
+				Op:   deploy.OpUpdate,
+				Old:  newState(childURN, parentURN),
+				New:  newState(childURN, parentURN),
+				Res:  newState(childURN, parentURN),
+			},
+		}),
+		engine.NewCancelEvent(),
+	}
+
+	diff, err := CreateDiff(events, Options{
+		Color:                colors.Never,
+		ShowSameResources:    false,
+		ShowReplacementSteps: true,
+	})
+	require.NoError(t, err)
+
+	expected := `pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:dev::project::pulumi:pulumi:Stack::project-dev]
+    + pkg:index:Sibling: (create)
+        [urn=urn:pulumi:dev::project::pkg:index:Sibling::siblingRes]
+    ~ pkg:index:Child: (update)
+        [urn=urn:pulumi:dev::project::pkg:index:Parent$pkg:index:Child::childRes]
+`
+	assert.Equal(t, strings.TrimSuffix(expected, "\n"), diff)
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package plugin
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"sync"
@@ -34,7 +33,7 @@ func TestClosePanic(t *testing.T) {
 	t.Parallel()
 
 	sink := diagtest.LogSink(t)
-	ctx, err := NewContext(context.Background(), sink, sink, nil, nil, "", nil, false, nil, nil)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 	host, ok := ctx.Host.(*defaultHost)
 	require.True(t, ok)
@@ -61,7 +60,7 @@ func TestClosePanic(t *testing.T) {
 func TestIsLocalPluginPath(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name     string

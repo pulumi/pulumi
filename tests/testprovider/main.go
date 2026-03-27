@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"strings"
 
@@ -100,9 +99,6 @@ func providerForURN(urn string) (testProvider, string, bool) {
 
 //nolint:unused
 func main() {
-	// Basic --help support, used for some `plugin run` tests.
-	flag.Parse()
-
 	if err := provider.Main(providerName, func(host *provider.HostClient) (rpc.ResourceProviderServer, error) {
 		return makeProvider(host, providerName, version)
 	}); err != nil {

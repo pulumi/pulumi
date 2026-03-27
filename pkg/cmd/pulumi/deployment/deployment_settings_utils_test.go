@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ func TestRepoLookup(t *testing.T) {
 	t.Run("should handle directories that are a git repo", func(t *testing.T) {
 		t.Parallel()
 
-		repoDir := setUpGitWorkspace(context.Background(), t)
+		repoDir := setUpGitWorkspace(t.Context(), t)
 		workDir := filepath.Join(repoDir, "goproj")
 
 		rl, err := newRepoLookup(workDir)
@@ -90,7 +90,7 @@ type relativeDirectoryValidationCase struct {
 func TestValidateRelativeDirectory(t *testing.T) {
 	t.Parallel()
 
-	repoDir := setUpGitWorkspace(context.Background(), t)
+	repoDir := setUpGitWorkspace(t.Context(), t)
 	workDir := filepath.Join(repoDir, "goproj")
 
 	// relative directory values are always linux type paths

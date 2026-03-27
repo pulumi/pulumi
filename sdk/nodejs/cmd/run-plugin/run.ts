@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ import * as tsnode from "ts-node";
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
+import * as semver from "semver";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
@@ -37,7 +38,7 @@ const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
  * Attempts to provide a detailed error message for module load failure if the
  * module that failed to load is the top-level module.
  * @param program The name of the program given to `run`, i.e. the top level module
- * @param error The error that occured. Must be a module load error.
+ * @param error The error that occurred. Must be a module load error.
  */
 function reportModuleLoadFailure(program: string, error: Error): never {
     throwOrPrintModuleLoadError(program, error);
@@ -172,14 +173,18 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         const skipProject = !fs.existsSync(tsConfigPath);
         const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         const tsn: typeof tsnode = require(tsnodeRequire);
+        const ts = require(typescriptRequire);
+        const tsVersion = semver.parse(ts.version);
+        // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
+        const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
         tsn.register({
             typeCheck: true,
             skipProject: skipProject,
             compiler: typescriptRequire,
             compilerOptions: {
                 target: "ES2020", // TypeScript 3.8 supports this
-                module: "commonjs",
-                moduleResolution: "node",
+                module: useNodeNext ? "nodenext" : "commonjs",
+                moduleResolution: useNodeNext ? "nodenext" : "node",
                 sourceMap: "true",
                 ...compilerOptions,
             },

@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -196,7 +196,7 @@ func (p *ResourceProperty) Value(*hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 		case hcl.TraverseIndex:
 			switch t.Key.Type() {
 			case cty.String:
-				_, err = fmt.Fprintf(&buffer, "[%s]", t.Key.AsString())
+				_, err = fmt.Fprintf(&buffer, `["%s"]`, model.EscapeString(t.Key.AsString()))
 			case cty.Number:
 				idx, _ := t.Key.AsBigFloat().Int64()
 				_, err = fmt.Fprintf(&buffer, "[%d]", idx)

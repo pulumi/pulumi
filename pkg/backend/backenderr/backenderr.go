@@ -1,4 +1,4 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -198,9 +198,17 @@ func (ForbiddenError) Is(other error) bool {
 	}
 }
 
-type LoginRequiredError struct{}
+// LoginRequiredError is returned when a command requires authentication
+// but the user is not logged in or their session has expired.
+type LoginRequiredError struct {
+	// ReauthURL, if set, is the URL the user should visit to re-authenticate.
+	ReauthURL string
+}
 
-func (LoginRequiredError) Error() string {
+func (err LoginRequiredError) Error() string {
+	if err.ReauthURL != "" {
+		return fmt.Sprintf("SAML SSO authentication is required. Log in at:\n\n    %s\n", err.ReauthURL)
+	}
 	return "this command requires logging in; try running `pulumi login` first"
 }
 

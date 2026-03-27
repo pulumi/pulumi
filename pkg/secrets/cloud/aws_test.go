@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ import (
 )
 
 func getAwsCaller(t *testing.T) (context.Context, aws.Config, *sts.GetCallerIdentityOutput) {
-	ctx := context.Background()
+	ctx := context.Background() //nolint:usetesting // ctx is used in t.Cleanup, which runs after t.Context is canceled
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		t.Logf("Skipping, could not load aws config: %s", err)

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,7 +33,7 @@ func await(out pulumi.Output) (any, bool, bool, []pulumi.Resource, error) {
 func TestBasicOutputs(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+	ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 		Project: "proj",
 		Stack:   "stack",
 	})

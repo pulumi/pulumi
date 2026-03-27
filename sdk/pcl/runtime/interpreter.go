@@ -81,10 +81,24 @@ type Interpreter struct {
 	evalLock    sync.Mutex
 	evalContext *hcl.EvalContext
 	stackURN    string
+
+	// namePrefix is prepended to resource and component names when this interpreter is executing
+	// inside a component. For example, if a component named "myComp" contains a resource "res",
+	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
+	namePrefix string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
 	return &Interpreter{program: program, info: info}
+}
+
+// effectiveName returns the name to use when registering a resource or component with the given
+// logical name, prepending the current namePrefix if one is set.
+func (i *Interpreter) effectiveName(logicalName string) string {
+	if i.namePrefix == "" {
+		return logicalName
+	}
+	return i.namePrefix + "-" + logicalName
 }
 
 func (i *Interpreter) Run(ctx context.Context) error {
@@ -237,29 +251,27 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 }
 
 func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema.Resource, error) {
-	components := strings.Split(token, ":")
-	contract.Assertf(len(components) == 3, "invalid token format: %s", token)
-	if components[1] == "" {
-		components[1] = "index"
-	}
-	token = fmt.Sprintf("%s:%s:%s", components[0], components[1], components[2])
-	pkgName := components[0]
-	if components[0] == "pulumi" && components[1] == "providers" {
-		pkgName = components[2]
+	pkg, mod, typ, diags := pcl.DecomposeToken(token, hcl.Range{})
+	contract.Assertf(!diags.HasErrors(), "invalid token format for resource token %s", token)
+
+	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
+	pkgName := pkg
+	if pkg == "pulumi" && mod == "providers" {
+		pkgName = typ
 	}
 
 	// Fall back to just the package name and passed in version if we don't have a descriptor.
 	descriptor := &schema.PackageDescriptor{
 		Name: pkgName,
 	}
-	pkg, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil {
 		return nil, fmt.Errorf("load package for token %s: %w", token, err)
 	}
-	if components[0] == "pulumi" && components[1] == "providers" {
-		return pkg.Provider()
+	if pkg == "pulumi" && mod == "providers" {
+		return pkgref.Provider()
 	}
-	resources := pkg.Resources()
+	resources := pkgref.Resources()
 	schemaResource, ok, err := resources.Get(token)
 	if err != nil {
 		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
@@ -271,11 +283,16 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		for iter.Next() {
 			resToken := iter.Token()
 			// Canonicalize the resources token via TokenToModule
-			mod := pkg.TokenToModule(resToken)
-			components := strings.Split(resToken, ":")
-			resToken = fmt.Sprintf("%s:%s:%s", components[0], mod, components[2])
+			mod := pkgref.TokenToModule(resToken)
+			if mod == "" {
+				mod = "index"
+			}
+			pkg, _, typ, diags := pcl.DecomposeToken(resToken, hcl.Range{})
+			contract.Assertf(!diags.HasErrors(), "invalid token format in package %s: %s", pkg, resToken)
+			resToken = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 			if token == resToken {
 				token = iter.Token()
+				var err error
 				schemaResource, err = iter.Resource()
 				if err != nil {
 					return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
@@ -588,7 +605,7 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 
 func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) error {
 	lexicalBaseName := res.Name()
-	logicalBaseName := res.LogicalName()
+	logicalBaseName := i.effectiveName(res.LogicalName())
 	if res.Options == nil || res.Options.Range == nil {
 		result, err := i.registerResourceWith(ctx, res, i.evalContext, logicalBaseName)
 		if err != nil {
@@ -735,18 +752,6 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 func (i *Interpreter) registerResourceWith(
 	ctx context.Context, res *pcl.Resource, evalCtx *hcl.EvalContext, logicalName string,
 ) (cty.Value, error) {
-	inputs := resource.PropertyMap{}
-	for _, attr := range res.Inputs {
-		val, poison, diags := i.evalExpressionWith(attr.Value, evalCtx)
-		if poison != nil {
-			return makePoisonValue(*poison), nil
-		}
-		if diags.HasErrors() {
-			return cty.NilVal, diags
-		}
-		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
-	}
-
 	schemaResource, err := i.lookupResource(ctx, res.Token)
 	if err != nil {
 		return cty.NilVal, fmt.Errorf("lookup resource schema for token %s: %w", res.Token, err)
@@ -754,6 +759,30 @@ func (i *Interpreter) registerResourceWith(
 	token := res.Token
 	if schemaResource != nil {
 		token = schemaResource.Token
+	}
+
+	inputs := resource.PropertyMap{}
+	for _, attr := range res.Inputs {
+		targetType := attr.Value.Type()
+		if obj, ok := res.InputType.(*model.ObjectType); ok {
+			if prop, ok := obj.Properties[attr.Name]; ok {
+				targetType = prop
+			}
+		}
+
+		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
+		if diags.HasErrors() {
+			return cty.NilVal, diags
+		}
+
+		val, poison, diags := i.evalExpressionWith(expr, evalCtx)
+		if poison != nil {
+			return makePoisonValue(*poison), nil
+		}
+		if diags.HasErrors() {
+			return cty.NilVal, diags
+		}
+		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
 	}
 
 	if schemaResource != nil {
@@ -1270,8 +1299,8 @@ func (i *Interpreter) registerResourceWith(
 							return cty.NilVal, fmt.Errorf("providers: %w", err)
 						}
 						typ := resource.URN(urn).Type()
-						components := strings.Split(string(typ), ":")
-						pkg := components[2]
+						_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
+						contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
 
 						var idstr string
 						if id.IsString() {
@@ -1369,10 +1398,22 @@ func (i *Interpreter) registerResourceWith(
 	return propertyValueToCty(ctx, i.monitor, result)
 }
 
-func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) error {
+func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
 	inputs := resource.PropertyMap{}
 	for _, attr := range component.Inputs {
-		val, poison, diags := i.evalExpression(attr.Value)
+		targetType := attr.Value.Type()
+		if obj, ok := component.InputType.(*model.ObjectType); ok {
+			if prop, ok := obj.Properties[attr.Name]; ok {
+				targetType = prop
+			}
+		}
+
+		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
+		if diags.HasErrors() {
+			return diags
+		}
+
+		val, poison, diags := i.evalExpression(expr)
 		if poison != nil {
 			i.setRawVariable(ctx, component.Name(), makePoisonValue(*poison))
 			return nil
@@ -1390,13 +1431,18 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to marshal component inputs",
+			Detail:   err.Error(),
+		}}
 	}
 	marshalOpts.KeepOutputValues = true
 
+	componentName := i.effectiveName(component.LogicalName())
 	request := &pulumirpc.RegisterResourceRequest{
 		Type:            "components:index:" + component.DeclarationName(),
-		Name:            component.LogicalName(),
+		Name:            componentName,
 		Custom:          false,
 		Object:          obj,
 		AcceptSecrets:   true,
@@ -1415,7 +1461,11 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		if !parent.IsNull() && !parent.IsComputed() {
 			urn, _, err := unwrapResource(parent)
 			if err != nil {
-				return fmt.Errorf("parent: %w", err)
+				return hcl.Diagnostics{{
+					Severity: hcl.DiagError,
+					Summary:  "Failed to unwrap parent resource",
+					Detail:   err.Error(),
+				}}
 			}
 			request.Parent = urn
 		}
@@ -1423,10 +1473,18 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 
 	resp, err := i.monitor.RegisterResource(ctx, request)
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to register component",
+			Detail:   err.Error(),
+		}}
 	}
 	if resp.GetResult() != pulumirpc.Result_SUCCESS {
-		return fmt.Errorf("component registration failed: %s", resp.GetResult())
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Component registration failed",
+			Detail:   resp.GetResult().String(),
+		}}
 	}
 
 	componentEval := &hcl.EvalContext{}
@@ -1440,17 +1498,26 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		loader:      i.loader,
 		evalContext: componentEval,
 		stackURN:    resp.GetUrn(),
+		namePrefix:  componentName,
 	}
 
 	for k, v := range inputs {
 		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
-			return fmt.Errorf("set component input %s: %w", k, err)
+			return hcl.Diagnostics{{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("Failed to set component input %s", k),
+				Detail:   err.Error(),
+			}}
 		}
 	}
 
 	componentOutputs, err := componentInterpreter.executeProgramNodes(ctx)
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to execute component program nodes",
+			Detail:   err.Error(),
+		}}
 	}
 	for key, val := range componentOutputs {
 		componentOutputs[key] = collapseResourceReferences(val)
@@ -1458,14 +1525,22 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 
 	outObj, err := plugin.MarshalProperties(componentOutputs, marshalOpts)
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to marshal component outputs",
+			Detail:   err.Error(),
+		}}
 	}
 	_, err = i.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn:     resp.GetUrn(),
 		Outputs: outObj,
 	})
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to register component outputs",
+			Detail:   err.Error(),
+		}}
 	}
 
 	componentObject := resource.PropertyMap{
@@ -1482,7 +1557,11 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		Known:        true,
 	})
 	if err := i.setVariable(ctx, component.Name(), result); err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to set component output" + component.Name(),
+			Detail:   err.Error(),
+		}}
 	}
 	return nil
 }

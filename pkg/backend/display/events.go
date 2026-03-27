@@ -1,4 +1,4 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -356,6 +356,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Provider:       md.Provider,
 		Protect:        md.Protect,
 		Taint:          md.Taint,
+		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,
@@ -625,6 +626,7 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Provider:       md.Provider,
 		Protect:        md.Protect,
 		Taint:          md.Taint,
+		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,

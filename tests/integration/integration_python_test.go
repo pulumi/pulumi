@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package ints
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -2574,7 +2573,7 @@ func TestGetLanguageRuntimeMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	p := metadata.GetLanguageRuntimeMetadata(t.Context(), e.RootPath, project)
-	meta, err := p.Result(context.Background())
+	meta, err := p.Result(t.Context())
 
 	require.NoError(t, err)
 	require.Equal(t, meta["runtime.name"], "python")

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -431,6 +431,7 @@ func NewPreviewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
+			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()

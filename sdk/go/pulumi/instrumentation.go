@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -59,7 +60,12 @@ func initTracing(ctx context.Context) context.Context {
 		return ctx
 	}
 
-	res := resource.NewWithAttributes("", semconv.ServiceName("pulumi-sdk-go"))
+	res, err := resource.Merge(
+		resource.Environment(),
+		resource.NewWithAttributes("", semconv.ServiceName("pulumi-sdk-go")),
+	)
+	contract.AssertNoErrorf(err, "resource.Merge should never fail")
+
 	tracerProvider = sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -290,10 +290,11 @@ func InitOtelTracing(serviceName, endpoint string) error {
 		return fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
-	res := resource.NewWithAttributes(
-		"",
-		semconv.ServiceName(serviceName),
+	res, err := resource.Merge(
+		resource.Environment(),
+		resource.NewWithAttributes("", semconv.ServiceName(serviceName)),
 	)
+	contract.AssertNoErrorf(err, "resource.Merge should never fail")
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExporter),
@@ -384,6 +385,16 @@ func StartSpan(
 
 	opts = append(opts, trace.WithAttributes(attribute.String("code.stacktrace", stackBuilder.String())))
 	return tracer.Start(ctx, name, opts...)
+}
+
+func SetStringSpanAttributes(ctx context.Context, attrs map[string]string) {
+	span := trace.SpanFromContext(ctx)
+	if !span.SpanContext().IsValid() {
+		return
+	}
+	for k, v := range attrs {
+		span.SetAttributes(attribute.String(k, v))
+	}
 }
 
 // Starts an AppDash server listening on any available TCP port
