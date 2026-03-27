@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi template ls` and `pulumi template info` commands for private registry template discovery
