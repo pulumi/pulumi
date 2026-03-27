@@ -20,10 +20,10 @@ import (
 	"strings"
 )
 
-var linkRe = regexp.MustCompile(`\[([^\]]+)\]\((/(docs|registry)/[^)]+)\)`)
+var linkRe = regexp.MustCompile(`\[([^\]\n]+)\]\((/(docs|registry)/[^\)\n]+)\)`)
 
-// allLinkRe matches any markdown link.
-var allLinkRe = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
+// allLinkRe matches any markdown link (single-line only).
+var allLinkRe = regexp.MustCompile(`\[([^\]\n]+)\]\([^)\n]+\)`)
 
 // stripExternalLinks replaces non-internal markdown links with just their
 // display text. Internal links (/docs/... and /registry/...) are preserved.

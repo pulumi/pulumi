@@ -204,17 +204,19 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 	// Fall back to standard FetchDoc if the bundle isn't available or the key isn't found.
 	var body, title string
 	var err error
+	var bundle *CLIDocsBundle
 	if isAPIDocsPath(path) {
 		pkgName, docKey, ok := ParseAPIDocsPath(path)
 		if ok && docKey != "" {
-			bundle, bundleErr := FetchCLIDocsBundle(fetchBase, pkgName)
-			if bundleErr == nil {
+			bundle, _ = FetchCLIDocsBundle(fetchBase, pkgName)
+			if bundle != nil {
 				if b, t, found := LookupBundleDoc(bundle, docKey); found {
 					body, title = b, t
 				}
 			}
 		}
 	}
+
 	if body == "" {
 		body, title, err = FetchDoc(fetchBase, path)
 	}
@@ -225,6 +227,14 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 			return dc.handleRegistryFallback(path)
 		}
 		return err
+	}
+
+	// Replace Modules/Resources/Functions sections with formatted bundle tables
+	// (descriptions + aligned columns), matching the browse mode rendering.
+	if bundle != nil {
+		if _, docKey, ok := ParseAPIDocsPath(path); ok {
+			body = ReplaceBundleSections(body, bundle, docKey)
+		}
 	}
 
 	// --toc: interactive section picker or plain list
