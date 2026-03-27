@@ -215,10 +215,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			}
 			token = fmt.Sprintf("%s:%s:%s", pkg, mod, member)
 
-			// Fall back to just the package name and passed in version if we don't have a descriptor.
-			descriptor := &schema.PackageDescriptor{
-				Name: pkg,
-			}
+			descriptor := i.lookupPackageDescriptor(pkg)
 			pkgref, err := i.loader.LoadPackageReferenceV2(context.TODO(), descriptor)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("load package for token %s: %w", token, err)
@@ -273,6 +270,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			request := &pulumirpc.ResourceInvokeRequest{
 				Tok:  token,
 				Args: obj,
+			}
+			request.PackageRef, err = i.getPackageRefFromToken(token)
+			if err != nil {
+				return cty.NilVal, err
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -454,6 +455,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			request := &pulumirpc.ResourceCallRequest{
 				Tok:  fun.Token,
 				Args: obj,
+			}
+			request.PackageRef, err = i.getPackageRefFromToken(fun.Token)
+			if err != nil {
+				return cty.NilVal, err
 			}
 
 			var dependsOn []resource.URN
