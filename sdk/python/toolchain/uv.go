@@ -218,7 +218,10 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 
 	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
 	// install the dependencies.
-	syncArgs := []string{"sync"}
+	// --no-install-project skips installing the project itself as an editable
+	// package. Pulumi programs aren't real packages, so this saves the overhead
+	// of building/installing the project during sync.
+	syncArgs := []string{"sync", "--no-install-project"}
 	// When a lockfile already exists, use --frozen to skip dependency
 	// resolution and install directly from the lock. This avoids the
 	// resolver entirely and is significantly faster.
