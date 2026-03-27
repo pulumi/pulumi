@@ -512,3 +512,122 @@ func TestRenderBundleTable(t *testing.T) {
 		assert.Contains(t, table, "getRandomString")
 	})
 }
+
+func TestClassifyBundleKeys(t *testing.T) {
+	t.Parallel()
+
+	bundle := &CLIDocsBundle{
+		Package: "aws",
+		Resources: map[string]string{
+			"s3/bucket":        "# Bucket\n\nContent",
+			"s3/bucketPolicy":  "# BucketPolicy\n\nContent",
+			"ec2/instance":     "# Instance\n\nContent",
+			"rootresource":     "# RootResource\n\nContent",
+		},
+		Functions: map[string]string{
+			"s3/getBucket": "# getBucket\n\nContent",
+			"rootfunc":     "# rootFunc\n\nContent",
+		},
+	}
+
+	t.Run("root level", func(t *testing.T) {
+		t.Parallel()
+		ck := classifyBundleKeys(bundle, "")
+		assert.Contains(t, ck.subModules, "s3")
+		assert.Contains(t, ck.subModules, "ec2")
+		require.Len(t, ck.resources, 1)
+		assert.Equal(t, "RootResource", ck.resources[0].title)
+		require.Len(t, ck.functions, 1)
+		assert.Equal(t, "rootFunc", ck.functions[0].title)
+	})
+
+	t.Run("specific module", func(t *testing.T) {
+		t.Parallel()
+		ck := classifyBundleKeys(bundle, "s3")
+		assert.Empty(t, ck.subModules)
+		require.Len(t, ck.resources, 2)
+		require.Len(t, ck.functions, 1)
+	})
+
+	t.Run("module with no keys", func(t *testing.T) {
+		t.Parallel()
+		ck := classifyBundleKeys(bundle, "nonexistent")
+		assert.Empty(t, ck.subModules)
+		assert.Empty(t, ck.resources)
+		assert.Empty(t, ck.functions)
+	})
+
+	t.Run("empty bundle", func(t *testing.T) {
+		t.Parallel()
+		empty := &CLIDocsBundle{}
+		ck := classifyBundleKeys(empty, "")
+		assert.Empty(t, ck.subModules)
+		assert.Empty(t, ck.resources)
+		assert.Empty(t, ck.functions)
+	})
+}
+
+func TestReplaceBundleSections(t *testing.T) {
+	t.Parallel()
+
+	bundle := &CLIDocsBundle{
+		Package: "aws",
+		Resources: map[string]string{
+			"s3/bucket": "# Bucket\n\nAn S3 bucket.",
+		},
+		Functions: map[string]string{
+			"s3/getBucket": "# getBucket\n\nLooks up a bucket.",
+		},
+	}
+
+	t.Run("replaces sections", func(t *testing.T) {
+		t.Parallel()
+		body := "# aws\n\nOverview.\n\n## Modules\n\nOld module list.\n\n" +
+			"## Resources\n\nOld resource list.\n\n## Other\n\nUnchanged."
+		result := ReplaceBundleSections(body, bundle, "")
+		assert.Contains(t, result, "## Modules")
+		assert.Contains(t, result, "s3")
+		assert.NotContains(t, result, "Old module list.")
+		assert.Contains(t, result, "## Other")
+		assert.Contains(t, result, "Unchanged.")
+	})
+
+	t.Run("no matching sections unchanged", func(t *testing.T) {
+		t.Parallel()
+		body := "# Page\n\n## Overview\n\nJust text."
+		result := ReplaceBundleSections(body, bundle, "")
+		assert.Equal(t, body, result)
+	})
+}
+
+func TestBundleSectionNav(t *testing.T) {
+	t.Parallel()
+
+	bundle := &CLIDocsBundle{
+		Package: "aws",
+		Resources: map[string]string{
+			"s3/bucket":    "# Bucket\n\nContent",
+			"rootresource": "# RootResource\n\nContent",
+		},
+		Functions: map[string]string{
+			"rootfunc": "# rootFunc\n\nContent",
+		},
+	}
+
+	t.Run("returns nav for sections", func(t *testing.T) {
+		t.Parallel()
+		nav := BundleSectionNav(bundle, "", "aws")
+		assert.Contains(t, nav, sectionModules)
+		assert.Contains(t, nav, sectionResources)
+		assert.Contains(t, nav, sectionFunctions)
+		require.Len(t, nav[sectionModules], 1)
+		assert.Contains(t, nav[sectionModules][0].label, "s3")
+	})
+
+	t.Run("empty bundle returns empty map", func(t *testing.T) {
+		t.Parallel()
+		empty := &CLIDocsBundle{}
+		nav := BundleSectionNav(empty, "", "test")
+		assert.Empty(t, nav)
+	})
+}
