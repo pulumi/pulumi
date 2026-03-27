@@ -29,8 +29,9 @@ import (
 type workflowJobMonitor struct {
 	pulumirpc.UnimplementedGraphMonitorServer
 
-	mu    sync.Mutex
-	steps []string
+	mu       sync.Mutex
+	steps    []string
+	stepDeps map[string][]string
 }
 
 func (m *workflowJobMonitor) RegisterGraph(
@@ -61,9 +62,19 @@ func (m *workflowJobMonitor) RegisterStep(
 	_ context.Context, req *pulumirpc.RegisterStepRequest,
 ) (*pulumirpc.RegisterNodeResponse, error) {
 	stepPath := req.GetJob() + "/steps/" + req.GetName()
+	dependencies := make([]string, 0, len(req.GetDependencies().GetTerms()))
+	for _, term := range req.GetDependencies().GetTerms() {
+		if p := term.GetPath(); p != "" {
+			dependencies = append(dependencies, p)
+		}
+	}
 
 	m.mu.Lock()
+	if m.stepDeps == nil {
+		m.stepDeps = map[string][]string{}
+	}
 	m.steps = append(m.steps, stepPath)
+	m.stepDeps[stepPath] = dependencies
 	m.mu.Unlock()
 
 	return &pulumirpc.RegisterNodeResponse{}, nil
@@ -81,6 +92,16 @@ func (m *workflowJobMonitor) snapshotStepsForJob(jobPath string) []string {
 		}
 	}
 	return steps
+}
+
+func (m *workflowJobMonitor) snapshotStepDependencies(stepPath string) []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	deps := m.stepDeps[stepPath]
+	out := make([]string, len(deps))
+	copy(out, deps)
+	return out
 }
 
 func init() {
