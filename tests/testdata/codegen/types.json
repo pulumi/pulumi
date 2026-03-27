@@ -557,8 +557,8 @@
                   "plain": "outputs.Object | any[] | undefined"
                 },
                 "python": {
-                  "input": "Optional[Any]",
-                  "plain": "Optional[Any]"
+                  "input": "Optional[pulumi.Input[Union['outputs.ObjectArgs', Sequence[Any]]]]",
+                  "plain": "Optional[Union['outputs.Object', Sequence[Any]]]"
                 }
               }
             }
