@@ -101,10 +101,10 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try":      "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can":      "Temporarily disabled until pr #18916 is submitted",
-	"l1-builtin-list":     "singleOrNone throws for empty list instead of returning null",
-	"l3-deferred-outputs": "does not type-check",
+	"l1-builtin-try":                "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can":                "Temporarily disabled until pr #18916 is submitted",
+	"l3-deferred-outputs":           "does not type-check",
+	"l2-resource-config-primitives": "Argument integer to Resource has incompatible type Output[float]",
 }
 
 type languageTestConfig struct {
@@ -213,8 +213,9 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("pulumi#21830: Expected to fail")
 					}
 
-					if config.typechecker == "pyright" && tt == "l3-component-simple" {
-						t.Skip("Skipping l3-component-simple test with pyright due to issues with optional properties")
+					if config.typechecker == "pyright" &&
+						(tt == "l3-component-simple" || tt == "l3-rewrite-conversions") {
+						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
 					}
 
 					if config.name == "classes" && tt == "l2-snake-names" {

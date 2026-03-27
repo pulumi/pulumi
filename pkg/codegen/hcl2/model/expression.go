@@ -1322,7 +1322,7 @@ func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string 
 		if !escaped {
 			return value.AsString()
 		}
-		s := escapeString(value.AsString())
+		s := EscapeString(value.AsString())
 		if quoted {
 			return fmt.Sprintf(`"%s"`, s)
 		}
@@ -1332,7 +1332,7 @@ func literalText(value cty.Value, rawBytes []byte, escaped, quoted bool) string 
 	}
 }
 
-func escapeString(s string) string {
+func EscapeString(s string) string {
 	// Escape the string using only HCL-compatible escape sequences.
 	// HCL supports: \n, \r, \t, \\, \", \uXXXX, \UXXXXXXXX
 	// Go's strconv.Quote produces \a, \b, \f, \v, \xHH which are NOT valid HCL.
@@ -1982,6 +1982,17 @@ func (x *ScopeTraversalExpression) Typecheck(typecheckOperands bool) hcl.Diagnos
 
 func (x *ScopeTraversalExpression) Evaluate(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
 	var diagnostics hcl.Diagnostics
+
+	// If the last part is a ValueTraversable, use its value directly. This handles
+	// types like ResourceProperty that accumulate the full traversal path at each step,
+	// so the last part already encodes the complete path (e.g. "details[0].key").
+	if last, ok := x.Parts[len(x.Parts)-1].(ValueTraversable); ok {
+		val, diags := last.Value(context)
+		if diags.HasErrors() {
+			return cty.NilVal, diags
+		}
+		return val, append(diagnostics, diags...)
+	}
 
 	root, hasValue := x.Parts[0].(ValueTraversable)
 	if !hasValue {

@@ -19,8 +19,14 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"os/signal"
 	"time"
 
+	opentracing "github.com/opentracing/opentracing-go"
+	"go.opentelemetry.io/otel"
+	otbridge "go.opentelemetry.io/otel/bridge/opentracing"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -50,13 +56,57 @@ func MainContext(
 
 	// Initialize loggers before going any further.
 	logging.InitLogging(false, 0, false)
-	cmdutil.InitTracing(name, name, tracing)
 
-	cancelChannel := make(chan bool)
-	go func() {
-		<-ctx.Done()
-		close(cancelChannel)
-	}()
+	// When the CLI provides an OTel endpoint, we use OTel as the primary tracing backend and bridge legacy OpenTracing
+	// calls through it so all spans end up in the same OTel trace. Otherwise fall back to legacy OpenTracing/AppDash.
+	otelEP := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
+	var serverOpts []grpc.ServerOption
+	if otelEP != "" {
+		if err := cmdutil.InitOtelTracing(name, otelEP); err != nil {
+			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+		} else {
+			defer cmdutil.CloseOtelTracing()
+
+			// The otbridge tracer forwards OpenTracing API calls to the OpenTelemetry SDK. This allows providers that
+			// are instrumented using OpenTracing to be seamlessly integrated with our OTel traces. Eventually we might
+			// want to replace this code in the bridge and/or providers to actually use OTel, which well let us drop
+			// this bridge.
+			bridgeTracer := otbridge.NewBridgeTracer()
+			bridgeTracer.SetOpenTelemetryTracer(otel.Tracer(name))
+			opentracing.SetGlobalTracer(bridgeTracer)
+
+			serverOpts = rpcutil.OTelServerInterceptorOptions()
+			// We need to add the OTel span to the context so that the bridgeTracer can properly attach the spans to it.
+			bridgeUnary := func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+				if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+					ctx = bridgeTracer.ContextWithBridgeSpan(ctx, span)
+				}
+				return handler(ctx, req)
+			}
+			bridgeStream := func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+				ctx := ss.Context()
+				if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+					ctx = bridgeTracer.ContextWithBridgeSpan(ctx, span)
+					ss = &wrappedServerStream{ServerStream: ss, ctx: ctx}
+				}
+				return handler(srv, ss)
+			}
+			serverOpts = append(serverOpts,
+				grpc.ChainUnaryInterceptor(bridgeUnary),
+				grpc.ChainStreamInterceptor(bridgeStream),
+			)
+		}
+	} else {
+		cmdutil.InitTracing(name, name, tracing)
+		serverOpts = rpcutil.OpenTracingServerInterceptorOptions(nil)
+	}
+
+	// When the engine is done with this provider it sends SIGINT. We catch the signalhere to trigger a graceful
+	// shutdown: we cancel the ctx, the cancelChannel closes, the gRPC server calls GracefulStop, handle.Done at the
+	// bottom of this function unblocks and returns, and finally the deferred CloseOtelTracing flushes any buffered
+	// spans before the process exits.
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
+	defer cancel()
 
 	// Read the non-flags args and connect to the engine.
 	args := flag.Args()
@@ -71,7 +121,7 @@ func MainContext(
 		}
 
 		// If we have a host cancel our cancellation context if it fails the healthcheck
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel = context.WithCancel(ctx)
 		// map the context Done channel to the rpcutil boolean cancel channel
 		err = rpcutil.Healthcheck(ctx, args[0], 5*time.Minute, cancel)
 		if err != nil {
@@ -80,6 +130,12 @@ func MainContext(
 	} else {
 		return errors.New("fatal: could not connect to host RPC; missing argument")
 	}
+
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
@@ -92,7 +148,7 @@ func MainContext(
 			pulumirpc.RegisterResourceProviderServer(srv, prov)
 			return nil
 		},
-		Options: rpcutil.TracingServerInterceptorOptions(nil),
+		Options: serverOpts,
 	})
 	if err != nil {
 		return fmt.Errorf("fatal: %w", err)
@@ -108,3 +164,11 @@ func MainContext(
 
 	return nil
 }
+
+// wrappedServerStream overrides the context of a grpc.ServerStream.
+type wrappedServerStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s *wrappedServerStream) Context() context.Context { return s.ctx }

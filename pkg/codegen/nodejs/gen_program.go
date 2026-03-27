@@ -336,8 +336,8 @@ func generateTSConfig(runtimeName string, files map[string][]byte) []byte {
 		"strict": true,
 		"outDir": "bin",
 		"target": "es2016",
-		"module": "commonjs",
-		"moduleResolution": "node",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
 		"sourceMap": true,
 		"experimentalDecorators": true,
 		"pretty": true,
@@ -1382,7 +1382,9 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				loweredExpression := g.lowerExpression(attr.Value, attr.Value.Type())
+				destType, diagnostics := component.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+				loweredExpression := g.lowerExpression(attr.Value, destType.(model.Type))
 				g.Fgenf(w, fmtString, propertyName, loweredExpression)
 			}
 		})

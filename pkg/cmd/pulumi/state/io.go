@@ -44,22 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
-// runStateEdit runs the given state edit function on a resource with the given URN in a given stack.
-func runStateEdit(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, stackName string,
-	showPrompt bool, urn resource.URN, operation edit.OperationFunc,
-) error {
-	return runTotalStateEdit(ctx, sink, ws, lm, stackName, showPrompt,
-		func(opts display.Options, snap *deploy.Snapshot) error {
-			res, err := locateStackResource(opts, snap, urn)
-			if err != nil {
-				return err
-			}
-
-			return operation(snap, res)
-		})
-}
-
 // runTotalStateEdit runs a snapshot-mutating function on the entirety of the given stack's snapshot.
 // Before mutating, the user may be prompted to for confirmation if the current session is interactive.
 func runTotalStateEdit(
@@ -227,6 +211,16 @@ func locateStackResource(opts display.Options, snap *deploy.Snapshot, urn resour
 	}
 
 	return optionMap[option], nil
+}
+
+// resolveStateResourceArg resolves a CLI argument (must be a valid resource URN) to a resource
+// in the snapshot, with interactive disambiguation when multiple state entries share the same URN.
+func resolveStateResourceArg(opts display.Options, snap *deploy.Snapshot, arg string) (*resource.State, error) {
+	urn := resource.URN(arg)
+	if !urn.IsValid() {
+		return nil, fmt.Errorf("%q is not a valid resource URN", arg)
+	}
+	return locateStackResource(opts, snap, urn)
 }
 
 // Prompt the user to select a URN from the passed in state.

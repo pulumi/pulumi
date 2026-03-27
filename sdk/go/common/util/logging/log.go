@@ -182,6 +182,9 @@ func CreateFilter(secrets []string, replacement string) Filter {
 		if len(secret) < 3 {
 			continue
 		}
+		if strings.EqualFold(secret, "true") || strings.EqualFold(secret, "false") {
+			continue
+		}
 		items = append(items, secret, replacement)
 
 		// Catch secrets that are serialized to JSON.
