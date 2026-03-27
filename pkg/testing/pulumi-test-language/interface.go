@@ -1024,19 +1024,8 @@ func (eng *languageTestServer) RunLanguageTest(
 				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
 
 				// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-				// Again we need to make a snapshot edit for this.
-				sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
-				}
-				validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
-				// If we made a snapshot edit we can clean it up now
-				if sdkSnapshotDir != sdkTempDir {
-					err := os.RemoveAll(sdkSnapshotDir)
-					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
-					}
-				}
+				// Use inline edits to avoid creating a temp directory copy.
+				validations, err = compareDirectoriesWithEdits(sdkTempDir, snapshotDir, true /* allowNewFiles */, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
 				}

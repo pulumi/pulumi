@@ -104,11 +104,26 @@ func copyDirectory(fs iofs.FS, src string, dst string, edits []compiledReplaceme
 	})
 }
 
+// compareDirectoriesWithEdits compares two directories while applying edits to the actual files inline,
+// avoiding the need to create a temporary directory copy. This is equivalent to editSnapshot + compareDirectories
+// but without the I/O overhead of copying.
+func compareDirectoriesWithEdits(
+	actualDir, expectedDir string, allowNewFiles bool, edits []compiledReplacement,
+) ([]string, error) {
+	return compareDirectoriesImpl(actualDir, expectedDir, allowNewFiles, edits)
+}
+
 // compareDirectories compares two directories, returning a list of validation failures where files had
 // different contents, or we only present in on of the directories. If allowNewFiles is true then it's ok to
 // have extra files in the actual directory, we use this for checking building SDKs doesn't mutate any files,
 // but doing so might add new build files (which would then normally be .gitignored).
 func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]string, error) {
+	return compareDirectoriesImpl(actualDir, expectedDir, allowNewFiles, nil)
+}
+
+func compareDirectoriesImpl(
+	actualDir, expectedDir string, allowNewFiles bool, edits []compiledReplacement,
+) ([]string, error) {
 	// Validate files, we need to walk twice to get this correct because we need to check all expected
 	// files are present, but also that no unexpected files are present.
 
@@ -140,6 +155,17 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 			validations = append(validations, fmt.Sprintf("expected file %s could not be read", relativePath))
 			// Move on to the next file
 			return nil
+		}
+
+		// Apply inline edits to actual contents if provided (avoids creating temp directory copies)
+		if len(edits) > 0 {
+			actualStr := string(actualContents)
+			for _, edit := range edits {
+				if edit.Path.MatchString(relativePath) {
+					actualStr = edit.Pattern.ReplaceAllString(actualStr, edit.Replacement)
+				}
+			}
+			actualContents = []byte(actualStr)
 		}
 
 		if !bytes.Equal(actualContents, expectedContents) {
