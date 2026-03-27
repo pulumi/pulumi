@@ -30,6 +30,9 @@ import (
 
 func TestProjectRoundtripComments(t *testing.T) {
 	t.Parallel()
+	if os.Getenv("BAZEL_TEST") != "" {
+		t.Skip("Skipping in Bazel environment: requires non-Bazel path resolution")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -109,6 +112,9 @@ resources:
 
 func TestConfigRoundtripComments(t *testing.T) {
 	t.Parallel()
+	if os.Getenv("BAZEL_TEST") != "" {
+		t.Skip("Skipping in Bazel environment: requires non-Bazel path resolution")
+	}
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()

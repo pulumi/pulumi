@@ -25,6 +25,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// skipInBazel skips tests that require external toolchains when running in Bazel's sandbox
+func skipInBazel(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires external language toolchains")
+	}
+}
+
 // TODO: add tests using other languages https://github.com/pulumi/pulumi/issues/17669
 
 func otelTracesEndpoint(t *testing.T) string {
@@ -43,6 +51,7 @@ func otelResourceEnv(t *testing.T) []string {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfEmptyUpdate(t *testing.T) {
+	skipInBazel(t)
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 6300 * time.Millisecond,
@@ -65,6 +74,7 @@ func TestPerfEmptyUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfManyComponentUpdate(t *testing.T) {
+	skipInBazel(t)
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 18100 * time.Millisecond,
@@ -90,6 +100,7 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfParentChainUpdate(t *testing.T) {
+	skipInBazel(t)
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T:                  t,
 		MaxPreviewDuration: 19300 * time.Millisecond,
@@ -115,6 +126,7 @@ func TestPerfParentChainUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfSecretsBatchUpdate(t *testing.T) {
+	skipInBazel(t)
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T: t,
 		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
@@ -138,6 +150,7 @@ func TestPerfSecretsBatchUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
+	skipInBazel(t)
 	benchmarkEnforcer := &integration.AssertPerfBenchmark{
 		T: t,
 		// TODO https://github.com/pulumi/pulumi/issues/20476: lower threshold back to 5 seconds
@@ -185,6 +198,7 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfManyResourcesWithJournaling(t *testing.T) {
+	skipInBazel(t)
 	initialBenchmark := &integration.AssertPerfBenchmark{
 		T:                      t,
 		MaxUpdateDuration:      110 * time.Second,

@@ -39,6 +39,19 @@ const (
 	go19Version = "go1.9"
 )
 
+// testdataPath returns the path to testdata files, handling Bazel runfiles.
+func testdataPath(path string) string {
+	// In Bazel, testdata is in runfiles at pkg/resource/testdata
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		return filepath.Join(runfilesDir, "_main", "pkg", "resource", path)
+	}
+	if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		return filepath.Join(testSrcDir, "_main", "pkg", "resource", path)
+	}
+	// In regular Go tests, use the relative path
+	return filepath.Join("..", "..", "..", "..", "pkg", "resource", path)
+}
+
 // TODO[pulumi/pulumi#8647]
 func skipWindows(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -427,7 +440,7 @@ func TestDeserializeMissingHash(t *testing.T) {
 func TestAssetFile(t *testing.T) {
 	t.Parallel()
 
-	asset, err := rasset.FromPath("../../../../pkg/resource/testdata/Fox.txt")
+	asset, err := rasset.FromPath(testdataPath("testdata/Fox.txt"))
 	require.NoError(t, err)
 	assert.Equal(t, "85e5f2698ac92d10d50e2f2802ed0d51a13e7c81d0d0a5998a75349469e774c5", asset.Hash)
 	assertAssetTextEquals(t, asset,
@@ -441,7 +454,7 @@ asset jumps over the archive.
 func TestArchiveDir(t *testing.T) {
 	t.Parallel()
 
-	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir")
+	arch, err := rarchive.FromPath(testdataPath("testdata/test_dir"))
 	require.NoError(t, err)
 	switch runtime.Version() {
 	case go19Version:
@@ -457,7 +470,7 @@ func TestArchiveTar(t *testing.T) {
 	t.Parallel()
 
 	// Note that test data was generated using the Go 1.9 headers
-	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir.tar")
+	arch, err := rarchive.FromPath(testdataPath("testdata/test_dir.tar"))
 	require.NoError(t, err)
 	assert.Equal(t, "c618d74a40f87de3092ca6a6c4cca834aa5c6a3956c6ceb2054b40d04bb4cd76", arch.Hash)
 	validateTestDirArchive(t, arch, 3)
@@ -467,7 +480,7 @@ func TestArchiveTgz(t *testing.T) {
 	t.Parallel()
 
 	// Note that test data was generated using the Go 1.9 headers
-	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir.tgz")
+	arch, err := rarchive.FromPath(testdataPath("testdata/test_dir.tgz"))
 	require.NoError(t, err)
 	assert.Equal(t, "f9b33523b6a3538138aff0769ff9e7d522038e33c5cfe28b258332b3f15790c8", arch.Hash)
 	validateTestDirArchive(t, arch, 3)
@@ -477,7 +490,7 @@ func TestArchiveZip(t *testing.T) {
 	t.Parallel()
 
 	// Note that test data was generated using the Go 1.9 headers
-	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir.zip")
+	arch, err := rarchive.FromPath(testdataPath("testdata/test_dir.zip"))
 	require.NoError(t, err)
 	assert.Equal(t, "343da72cec1302441efd4a490d66f861d393fb270afb3ced27f92a0d96abc068", arch.Hash)
 	validateTestDirArchive(t, arch, 3)
@@ -486,7 +499,7 @@ func TestArchiveZip(t *testing.T) {
 func TestArchiveJar(t *testing.T) {
 	t.Parallel()
 
-	arch, err := rarchive.FromPath("../../../../pkg/resource/testdata/test_dir.jar")
+	arch, err := rarchive.FromPath(testdataPath("testdata/test_dir.jar"))
 	require.NoError(t, err)
 	assert.Equal(t, "dfb9eb69f433564b07df524068621c5ac65c08868e6094b8fa4ee388a5ee66e7", arch.Hash)
 	validateTestDirArchive(t, arch, 4)

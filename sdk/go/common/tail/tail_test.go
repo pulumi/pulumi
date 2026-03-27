@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -24,6 +25,35 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
 )
+
+// testSourcePath returns the path to test source files, handling Bazel runfiles.
+func testSourcePath(filename string) string {
+	// In Bazel, check various environment variables for runfiles location
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		return filepath.Join(runfilesDir, "_main", "sdk", "go", "common", "tail", filename)
+	}
+	if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		return filepath.Join(testSrcDir, "_main", "sdk", "go", "common", "tail", filename)
+	}
+	// Fallback: try to find the file relative to the test binary location
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		// Check if we're in a Bazel runfiles tree
+		if candidate := filepath.Join(dir, filename); fileExists(candidate) {
+			return candidate
+		}
+		// Check parent directories for runfiles structure
+		if candidate := filepath.Join(dir, "..", filename); fileExists(candidate) {
+			return candidate
+		}
+	}
+	return filename
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
 
 func ExampleFile() {
 	// Keep tracking a file even when recreated.
@@ -69,7 +99,7 @@ func TestMustExist(t *testing.T) {
 		t.Error("MustExist:false is violated")
 	}
 	require.ErrorContains(t, tail.Stop(), "Failed to detect creation of /no/such/file")
-	_, err = File("tail_test.go", Config{Follow: true, MustExist: true})
+	_, err = File(testSourcePath("tail_test.go"), Config{Follow: true, MustExist: true})
 	if err != nil {
 		t.Error("MustExist:true on an existing file is violated")
 	}

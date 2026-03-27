@@ -29,6 +29,7 @@ import (
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccMinimal_withLocalState(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "minimal"),
@@ -51,6 +52,7 @@ func TestAccMinimal_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/simple"),
@@ -67,6 +69,7 @@ func TestAccDynamicProviderSimple_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccFormattable_withLocalState(t *testing.T) {
+	skipInBazel(t)
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{

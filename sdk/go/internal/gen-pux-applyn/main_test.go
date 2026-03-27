@@ -17,12 +17,25 @@ package main
 import (
 	"io/fs"
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// pulumixPath returns the path to the pulumix directory, handling Bazel runfiles.
+func pulumixPath() string {
+	// In Bazel, check various environment variables for runfiles location
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		return filepath.Join(runfilesDir, "_main", "sdk", "go", "pulumix")
+	}
+	if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		return filepath.Join(testSrcDir, "_main", "sdk", "go", "pulumix")
+	}
+	return "../../pulumix"
+}
 
 // Verifies that the code in the pulumix package is up to date.
 // If the parameters in pulumix/gen.go ever change,
@@ -39,7 +52,7 @@ func TestPulumixIsUpToDate(t *testing.T) {
 
 	// Compare the generated code to the code in pulumix.
 	expected := os.DirFS(outDir)
-	actual := os.DirFS("../../pulumix")
+	actual := os.DirFS(pulumixPath())
 
 	err := fs.WalkDir(expected, ".", func(path string, d fs.DirEntry, err error) error {
 		if d.IsDir() || err != nil {

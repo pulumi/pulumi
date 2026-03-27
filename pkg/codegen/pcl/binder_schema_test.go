@@ -16,7 +16,6 @@ package pcl
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -27,7 +26,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
+var testdataPath = utils.TestdataPath()
 
 func BenchmarkLoadPackage(b *testing.B) {
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))

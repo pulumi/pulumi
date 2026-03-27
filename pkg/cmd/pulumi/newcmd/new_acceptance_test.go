@@ -257,6 +257,7 @@ func TestRunNewYesNoTemplate(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestRunNewYesWithTemplate(t *testing.T) {
+	skipInBazel(t)
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
@@ -281,6 +282,7 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 //
 //nolint:paralleltest // changes directory for process
 func TestRunNewYesWithAILanguage(t *testing.T) {
+	skipInBazel(t)
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
@@ -368,5 +370,12 @@ func skipIfShortOrNoPulumiAccessToken(t *testing.T) {
 	}
 	if testing.Short() {
 		t.Skip("Skipped in short test run")
+	}
+}
+
+func skipInBazel(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires language plugins")
 	}
 }

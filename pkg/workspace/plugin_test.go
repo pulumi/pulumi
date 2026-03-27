@@ -17,6 +17,7 @@ package workspace
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/blang/semver"
@@ -116,6 +117,11 @@ func TestInstallPluginErrorText(t *testing.T) {
 
 func TestPluginInstallCancellation(t *testing.T) {
 	t.Parallel()
+
+	// Skip in Bazel - requires network access to GitHub
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires network access to GitHub")
+	}
 
 	// Create a new cancellable context.
 	ctx, cancel := context.WithCancel(t.Context())

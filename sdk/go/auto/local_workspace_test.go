@@ -60,6 +60,19 @@ const (
 	pulumiTestOrg = "moolumi"
 )
 
+// testProjPath returns the path to the test project directory, handling Bazel runfiles.
+func testProjPath() string {
+	// In Bazel, use RUNFILES_DIR to find test data
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		return filepath.Join(runfilesDir, "_main", "sdk", "go", "auto", "test", "testproj")
+	}
+	if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		return filepath.Join(testSrcDir, "_main", "sdk", "go", "auto", "test", "testproj")
+	}
+	// Not in Bazel, use relative path
+	return filepath.Join(".", "test", "testproj")
+}
+
 type mockPulumiCommand struct {
 	version      semver.Version
 	stdout       string
@@ -185,7 +198,7 @@ func TestRemoveWithForce(t *testing.T) {
 	}
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -265,7 +278,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	}
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -378,7 +391,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	}
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1405,7 +1418,7 @@ func TestConfigFlagLike(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1437,7 +1450,7 @@ func TestGetAllConfigCorrectArgs(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	m := mockPulumiCommand{
 		stdout:   `{"key1": {"Value": "value1", "Secret": false}}`,
 		stderr:   "",
@@ -1467,7 +1480,7 @@ func TestConfigWithOptions(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -1882,7 +1895,7 @@ func TestConfigAllWithOptions(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -2173,7 +2186,7 @@ func TestSetAllConfigJson(t *testing.T) {
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err, "failed to initialize stack")
 
@@ -2367,7 +2380,7 @@ func TestTagFunctions(t *testing.T) {
 	ctx := t.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -2427,7 +2440,7 @@ func TestStructuredOutput(t *testing.T) {
 	}
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -3320,7 +3333,7 @@ func TestWhoAmIDetailed(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, ptesting.RandomStackName())
 
 	// initialize
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
@@ -3353,7 +3366,7 @@ func TestListStacks(t *testing.T) {
 
 	ctx := t.Context()
 
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	m := mockPulumiCommand{
 		stdout: `[{"name": "testorg1/testproj1/teststack1",
 				   "current": false,
@@ -3386,7 +3399,7 @@ func TestListStacksCorrectArgs(t *testing.T) {
 
 	ctx := t.Context()
 
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	m := mockPulumiCommand{
 		stdout: `[{"name": "testorg1/testproj1/teststack1",
 				"current": false,
@@ -3413,7 +3426,7 @@ func TestListAllStacks(t *testing.T) {
 
 	ctx := t.Context()
 
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	m := mockPulumiCommand{
 		stdout: `[{"name": "testorg1/testproj1/teststack1",
 				   "current": false,
@@ -3446,7 +3459,7 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 
 	ctx := t.Context()
 
-	pDir := filepath.Join(".", "test", "testproj")
+	pDir := testProjPath()
 	m := mockPulumiCommand{
 		stdout: `[{"name": "testorg1/testproj1/teststack1",
 				"current": false,

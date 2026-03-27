@@ -37,7 +37,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
+var testdataPath = utils.TestdataPath()
 
 func TestCollectImports(t *testing.T) {
 	t.Parallel()

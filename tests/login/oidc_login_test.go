@@ -39,6 +39,7 @@ const (
 
 func TestOIDCLogin(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t) // Requires PULUMI_ACCESS_TOKEN for cloud backend
 
 	t.Run("OrganizationToken", func(t *testing.T) {
 		t.Parallel()

@@ -42,6 +42,14 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// skipInBazel skips tests that require external paths or toolchains when running in Bazel's sandbox
+func skipInBazel(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires external paths or toolchains")
+	}
+}
+
 func TestStackCommands(t *testing.T) {
 	// stack init, stack ls, stack rm, stack ls
 	t.Run("SanityTest", func(t *testing.T) {
@@ -258,6 +266,7 @@ func TestStackCommands(t *testing.T) {
 	})
 
 	t.Run("FixingInvalidResources", func(t *testing.T) {
+		skipInBazel(t)
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
 		stackName := addRandomSuffix("invalid-resources")
@@ -309,6 +318,7 @@ func TestStackCommands(t *testing.T) {
 
 func TestStackBackups(t *testing.T) {
 	t.Run("StackBackupCreatedSanityTest", func(t *testing.T) {
+		skipInBazel(t)
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
 
@@ -382,6 +392,7 @@ func TestStackBackups(t *testing.T) {
 
 //nolint:paralleltest // mutates environment variables
 func TestDestroySetsEncryptionsalt(t *testing.T) {
+	skipInBazel(t)
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -715,6 +726,7 @@ func stackFileFormatAsserters(t *testing.T, e *ptesting.Environment, projectName
 }
 
 func TestLocalStateGzip(t *testing.T) { //nolint:paralleltest
+	skipInBazel(t)
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	stackName := addRandomSuffix("gzip-state")
@@ -944,6 +956,7 @@ func TestEmptyStackRm(t *testing.T) {
 //
 //nolint:paralleltest // mutates environment variables
 func TestStackExportDoesNotEscapeHTML(t *testing.T) {
+	skipInBazel(t)
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 

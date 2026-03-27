@@ -17,6 +17,7 @@ package tests
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -24,6 +25,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// skipInBazel skips tests that require external services when running in Bazel's sandbox
+func skipInBazel(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires external services/authentication")
+	}
+}
 
 func TestLogin(t *testing.T) {
 	t.Parallel()
@@ -44,6 +53,7 @@ func TestLogin(t *testing.T) {
 
 func TestInsecureLogin(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t) // Requires PULUMI_ACCESS_TOKEN for cloud backend
 
 	// Setup a mock server to act as a Pulumi Service backend.
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

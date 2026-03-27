@@ -29,6 +29,12 @@ func TestInfoXTerm(t *testing.T) {
 	t.Parallel()
 	info := OpenInfo("xterm")
 
+	// In sandboxed environments (like Bazel), terminfo database may not be available.
+	// If terminfo lookup failed, skip the test.
+	if _, ok := info.(defaultInfo); ok {
+		t.Skip("terminfo database not available")
+	}
+
 	out := bytes.NewBuffer(nil)
 	info.ClearLine(out)
 	require.Equal(t, "\x1b[1K\x1b[K", out.String())
@@ -65,6 +71,12 @@ func TestInfoVT102(t *testing.T) {
 	t.Parallel()
 
 	info := OpenInfo("vt102")
+
+	// In sandboxed environments (like Bazel), terminfo database may not be available.
+	// If terminfo lookup failed, skip the test.
+	if _, ok := info.(defaultInfo); ok {
+		t.Skip("terminfo database not available")
+	}
 
 	out := bytes.NewBuffer(nil)
 	info.ClearLine(out)

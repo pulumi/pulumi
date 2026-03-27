@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
@@ -71,6 +72,11 @@ func TestHistoryCommand(t *testing.T) {
 	// The "history" command uses the currently selected stack.
 	t.Run("CurrentlySelectedStack", func(t *testing.T) {
 		t.Parallel()
+
+		// Skip in Bazel - this test requires external directories and yarn toolchain
+		if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+			t.Skip("Skipping test in Bazel environment - requires external directories and yarn")
+		}
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()

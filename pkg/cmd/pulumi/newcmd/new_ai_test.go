@@ -66,6 +66,7 @@ func TestErrorsOnNonHTTPBackend(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process, mocks backendInstance
 func TestGeneratingProjectWithAIPromptSucceeds(t *testing.T) {
+	skipInBazel(t)
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 

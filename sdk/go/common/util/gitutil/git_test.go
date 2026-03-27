@@ -40,6 +40,34 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// testdataPath returns the path to the testdata directory, handling both
+// Bazel runfiles and regular test execution.
+func testdataPath(path string) string {
+	var result string
+	// In Bazel with local=True, BUILD_WORKSPACE_DIRECTORY points to actual source
+	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
+		result = filepath.Join(wsDir, "sdk", "go", "common", "util", "gitutil", path)
+	} else if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		// In Bazel, use RUNFILES_DIR to find testdata
+		result = filepath.Join(runfilesDir, "_main", "sdk", "go", "common", "util", "gitutil", path)
+	} else if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		// Also check TEST_SRCDIR which is another Bazel env var
+		result = filepath.Join(testSrcDir, "_main", "sdk", "go", "common", "util", "gitutil", path)
+	} else {
+		// Not in Bazel, use relative path
+		result = path
+	}
+	// go-git's file transport doesn't work with Bazel runfiles structure
+	// (directories are real, but files inside are symlinks). Resolve through
+	// a known file to get the actual source path.
+	headFile := filepath.Join(result, "HEAD")
+	if resolved, err := filepath.EvalSymlinks(headFile); err == nil {
+		// Get the parent directory of the resolved HEAD file
+		result = filepath.Dir(resolved)
+	}
+	return result
+}
+
 func TestMain(m *testing.M) {
 	if runtime.GOOS == "windows" {
 		// These tests are skipped as part of enabling running unit tests on windows and MacOS in
@@ -648,7 +676,7 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 
 			dir := t.TempDir()
 
-			err := GitCloneAndCheckoutRevision(t.Context(), "testdata/revision-test.git", c.revision, dir)
+			err := GitCloneAndCheckoutRevision(t.Context(), testdataPath("testdata/revision-test.git"), c.revision, dir)
 			if c.expectedError != "" {
 				require.ErrorContains(t, err, c.expectedError)
 				return
@@ -764,7 +792,7 @@ func TestGetLatestTagOrHash(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			v, err := GetLatestTagOrHash(t.Context(), c.dataDir)
+			v, err := GetLatestTagOrHash(t.Context(), testdataPath(c.dataDir))
 			require.NoError(t, err)
 			assert.Equal(t, c.expected.String(), v.String())
 		})

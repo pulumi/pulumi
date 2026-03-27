@@ -27,6 +27,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// skipInBazel skips tests that require language plugins when running in Bazel's sandbox
+func skipInBazel(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires language plugins")
+	}
+}
+
 // TestYamlConvert is an entrypoint for debugging `pulumi convert`. To use this with an editor such as
 // VS Code, drop a Pulumi.yaml in the testdata folder and with the VS Code Go extension, the
 // code lens (grayed out text above TestConvert) should display an option to "debug test".
@@ -91,6 +99,7 @@ output result {
 // Tests that project names default to the directory of the source project.
 func TestProjectNameDefaults(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t) // Requires pulumi-language-yaml
 
 	// Arrange.
 	outDir := t.TempDir()
@@ -124,6 +133,7 @@ func TestProjectNameDefaults(t *testing.T) {
 // Tests that project names can be overridden by the user.
 func TestProjectNameOverrides(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t) // Requires pulumi-language-yaml
 
 	// Arrange.
 	outDir := t.TempDir()

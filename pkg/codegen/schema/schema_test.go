@@ -46,7 +46,7 @@ import (
 
 func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", file))
+	schemaBytes, err := os.ReadFile(filepath.Join(utils.TestdataPath(), file))
 	if err != nil {
 		panic(err)
 	}
@@ -70,7 +70,7 @@ func TestRoundtripRemoteTypeRef(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/13000
 	t.Parallel()
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("remoteref-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
@@ -94,7 +94,7 @@ func TestRoundtripLocalTypeRef(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/13671
 	t.Parallel()
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("localref-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
@@ -131,7 +131,7 @@ func TestRoundtripEnum(t *testing.T) {
 		}, enum.Elements)
 	}
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("enum-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
@@ -243,7 +243,7 @@ func TestRoundtripPlainProperties(t *testing.T) {
 		check(exampleResource.Properties)
 	}
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("plain-properties-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
@@ -678,7 +678,7 @@ func TestImportResourceRef(t *testing.T) {
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
-				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
+				filepath.Join(utils.TestdataPath(), tt.schemaFile))
 			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
@@ -2394,7 +2394,7 @@ func TestResourceWithKeynameOverlapType(t *testing.T) {
 func TestRoundtripAliasesJSON(t *testing.T) {
 	t.Parallel()
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("aliases-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
@@ -2409,7 +2409,7 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 	jsonData, err := json.Marshal(&newSpec)
 	require.NoError(t, err)
 
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.json"))
+	schemaBytes, err := os.ReadFile(filepath.Join(utils.TestdataPath(), "aliases-1.0.0.json"))
 	require.NoError(t, err)
 
 	assert.JSONEq(t, string(schemaBytes), string(jsonData))
@@ -2418,7 +2418,7 @@ func TestRoundtripAliasesJSON(t *testing.T) {
 func TestRoundtripAliasesYAML(t *testing.T) {
 	t.Parallel()
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("aliases-1.0.0.yaml")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
@@ -2433,7 +2433,7 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 	yamlData, err := yaml.Marshal(&newSpec)
 	require.NoError(t, err)
 
-	schemaBytes, err := os.ReadFile(filepath.Join("..", "testing", "test", "testdata", "aliases-1.0.0.yaml"))
+	schemaBytes, err := os.ReadFile(filepath.Join(utils.TestdataPath(), "aliases-1.0.0.yaml"))
 	require.NoError(t, err)
 
 	assert.YAMLEq(t, string(schemaBytes), string(yamlData))
@@ -2442,7 +2442,7 @@ func TestRoundtripAliasesYAML(t *testing.T) {
 func TestDanglingReferences(t *testing.T) {
 	t.Parallel()
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("dangling-reference-bad-0.1.0.json")
 	_, diags, _ := BindSpec(pkgSpec, loader, ValidationOptions{})
@@ -2458,7 +2458,7 @@ func TestDanglingReferences(t *testing.T) {
 func TestNoDanglingReferences(t *testing.T) {
 	t.Parallel()
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("dangling-reference-good-0.1.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{})
@@ -2618,7 +2618,7 @@ func TestProviderRefWarning(t *testing.T) {
 func TestBindParameterizedExternals(t *testing.T) {
 	t.Parallel()
 
-	testdataPath := filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas")
+	testdataPath := filepath.Join(utils.TestdataPath(), "parameterized-schemas")
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("parameterized-schemas/parameterizedref-1.0.0.json")
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{

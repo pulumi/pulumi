@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -39,11 +40,61 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// getWorkspaceDir returns the workspace root directory, handling both normal and Bazel environments.
+func getWorkspaceDir() string {
+	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
+		return wsDir
+	}
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		// In Bazel without BUILD_WORKSPACE_DIRECTORY, resolve through a testdata file symlink
+		testdataFile := filepath.Join(runfilesDir, "_main", "sdk", "go", "pulumi-language-go",
+			"testdata", "sample", "prog", "main.go")
+		if resolved, err := filepath.EvalSymlinks(testdataFile); err == nil {
+			// Go up from sdk/go/pulumi-language-go/testdata/sample/prog/main.go to workspace root
+			return filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(resolved)))))))
+		}
+	}
+	return ""
+}
+
+// getSdkDirectory returns the path to the SDK directory.
+func getSdkDirectory() string {
+	if wsDir := getWorkspaceDir(); wsDir != "" {
+		return filepath.Join(wsDir, "sdk")
+	}
+	return "../.."
+}
+
+// getTestdataPath returns the path to a testdata subdirectory.
+func getTestdataPath(subpath string) string {
+	if wsDir := getWorkspaceDir(); wsDir != "" {
+		return filepath.Join(wsDir, "sdk", "go", "pulumi-language-go", "testdata", subpath)
+	}
+	return filepath.Join("./testdata", subpath)
+}
+
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../pkg", "-o", binary, "./testing/pulumi-test-language")
+
+	// Find the source directory for pulumi-test-language
+	testLanguageDir := "../../../cmd/pulumi-test-language"
+	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
+		// In Bazel, use the workspace directory
+		testLanguageDir = filepath.Join(wsDir, "cmd", "pulumi-test-language")
+	} else if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		// In Bazel without BUILD_WORKSPACE_DIRECTORY, resolve through a testdata file symlink
+		// to find the actual workspace directory
+		testdataFile := filepath.Join(runfilesDir, "_main", "sdk", "go", "pulumi-language-go",
+			"testdata", "sample", "prog", "main.go")
+		if resolved, err := filepath.EvalSymlinks(testdataFile); err == nil {
+			wsDir := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(resolved)))))))
+			testLanguageDir = filepath.Join(wsDir, "cmd", "pulumi-test-language")
+		}
+	}
+
+	cmd := exec.Command("go", "build", "-C", testLanguageDir, "-o", binary)
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
 	require.NoError(t, err)
@@ -218,7 +269,7 @@ func TestLanguage(t *testing.T) {
 			// Create a temp project dir for the test to run in
 			rootDir := t.TempDir()
 
-			snapshotDir := filepath.Join("./testdata", config.name)
+			snapshotDir := getTestdataPath(config.name)
 
 			// Prepare to run the tests
 			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
@@ -226,9 +277,9 @@ func TestLanguage(t *testing.T) {
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				TemporaryDirectory:   rootDir,
 				SnapshotDirectory:    snapshotDir,
-				CoreSdkDirectory:     "../..",
+				CoreSdkDirectory:     getSdkDirectory(),
 				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "./testdata/policies",
+				PolicyPackDirectory:  getTestdataPath("policies"),
 				Local:                config.local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{

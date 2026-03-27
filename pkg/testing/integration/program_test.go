@@ -98,6 +98,11 @@ func TestDepRootCalc(t *testing.T) {
 func TestGoModEdits(t *testing.T) {
 	t.Parallel()
 
+	// Skip in Bazel - requires sdk/go.mod which isn't in runfiles
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires sdk/go.mod")
+	}
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 

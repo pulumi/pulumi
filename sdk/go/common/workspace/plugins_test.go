@@ -44,6 +44,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testdataPath returns the path to the testdata directory, handling both
+// Bazel runfiles and regular test execution.
+func testdataPath(path string) string {
+	var result string
+	// In Bazel with local=True, BUILD_WORKSPACE_DIRECTORY points to actual source
+	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
+		result = filepath.Join(wsDir, "sdk", "go", "common", "workspace", path)
+	} else if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		// In Bazel, use RUNFILES_DIR to find testdata
+		result = filepath.Join(runfilesDir, "_main", "sdk", "go", "common", "workspace", path)
+	} else if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		// Also check TEST_SRCDIR which is another Bazel env var
+		result = filepath.Join(testSrcDir, "_main", "sdk", "go", "common", "workspace", path)
+	} else {
+		// Not in Bazel, use relative path
+		return path
+	}
+	// go-git's file transport doesn't work with Bazel runfiles structure
+	// (directories are real, but files inside are symlinks). Resolve through
+	// a known file to get the actual source path.
+	headFile := filepath.Join(result, "HEAD")
+	if resolved, err := filepath.EvalSymlinks(headFile); err == nil {
+		// Get the parent directory of the resolved HEAD file
+		result = filepath.Dir(resolved)
+	}
+	return result
+}
+
 func TestPluginNameRegexp(t *testing.T) {
 	t.Parallel()
 
@@ -2182,7 +2210,7 @@ func TestGitSourceGetLatestVersion(t *testing.T) {
 	t.Parallel()
 
 	gitSource := &gitSource{
-		url: "testdata/latest-version.git",
+		url: testdataPath("testdata/latest-version.git"),
 	}
 	version, err := gitSource.GetLatestVersion(t.Context(), func(*http.Request) (io.ReadCloser, int64, error) {
 		panic("should not be called")

@@ -15,6 +15,7 @@
 package tests
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -24,9 +25,18 @@ import (
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
+// skipInBazel skips tests that require external paths or toolchains when running in Bazel's sandbox
+func skipInBazel(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires external paths or toolchains")
+	}
+}
+
 func TestPreviewOnlyFlag(t *testing.T) {
 	t.Run("PreviewOnlyRefresh", func(t *testing.T) {
 		t.Parallel()
+		skipInBazel(t)
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
@@ -67,6 +77,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 
 	t.Run("PreviewOnlyDestroy", func(t *testing.T) {
 		t.Parallel()
+		skipInBazel(t)
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()
@@ -107,6 +118,7 @@ func TestPreviewOnlyFlag(t *testing.T) {
 
 	t.Run("PreviewOnlyImport", func(t *testing.T) {
 		t.Parallel()
+		skipInBazel(t) // Requires pulumi-language-nodejs
 
 		e := ptesting.NewEnvironment(t)
 		defer e.DeleteIfNotFailed()

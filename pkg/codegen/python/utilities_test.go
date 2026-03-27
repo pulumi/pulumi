@@ -15,7 +15,6 @@
 package python
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -28,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
+var testdataPath = utils.TestdataPath()
 
 func parseAndBindProgram(t *testing.T, text, name string, options ...pcl.BindOption) (*pcl.Program, hcl.Diagnostics) {
 	parser := syntax.NewParser()

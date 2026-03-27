@@ -40,7 +40,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
+var testdataPath = utils.TestdataPath()
 
 func TestBindProgram(t *testing.T) {
 	t.Parallel()

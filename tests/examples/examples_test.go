@@ -16,6 +16,7 @@ package examples
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,8 +30,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// skipInBazel skips tests that require external toolchains when running in Bazel's sandbox
+func skipInBazel(t *testing.T) {
+	t.Helper()
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		t.Skip("Skipping in Bazel environment: requires external language toolchains")
+	}
+}
+
 //nolint:paralleltest // uses parallel programtest
 func TestAccMinimal(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "minimal"),
@@ -52,6 +62,7 @@ func TestAccMinimal(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderSimple(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/simple"),
@@ -67,6 +78,7 @@ func TestAccDynamicProviderSimple(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderClassWithComments(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/class-with-comments"),
@@ -77,6 +89,7 @@ func TestAccDynamicProviderClassWithComments(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      filepath.Join(getCwd(t), "dynamic-provider/class-with-comments"),
@@ -88,6 +101,7 @@ func TestAccDynamicProviderClassWithComments_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
@@ -106,6 +120,7 @@ func TestAccDynamicProviderMultipleTurns(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns"),
@@ -125,6 +140,7 @@ func TestAccDynamicProviderMultipleTurns_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
@@ -135,6 +151,7 @@ func TestAccDynamicProviderMultipleTurns2(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      filepath.Join(getCwd(t), "dynamic-provider/multiple-turns-2"),
@@ -146,6 +163,7 @@ func TestAccDynamicProviderMultipleTurns2_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderSecrets(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/secrets"),
@@ -175,6 +193,7 @@ func TestAccDynamicProviderSecrets(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
@@ -185,6 +204,7 @@ func TestAccDynamicProviderDerivedInputs(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestDynamicProviderGenericTypes(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "dynamic-provider/generic-types"),
@@ -195,6 +215,7 @@ func TestDynamicProviderGenericTypes(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir:      filepath.Join(getCwd(t), "dynamic-provider/derived-inputs"),
@@ -206,6 +227,7 @@ func TestAccDynamicProviderDerivedInputs_withLocalState(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccFormattable(t *testing.T) {
+	skipInBazel(t)
 	var formattableStdout, formattableStderr bytes.Buffer
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
@@ -224,6 +246,7 @@ func TestAccFormattable(t *testing.T) {
 
 //nolint:paralleltest // uses parallel programtest
 func TestAccSecrets(t *testing.T) {
+	skipInBazel(t)
 	test := getBaseOptions().
 		With(integration.ProgramTestOptions{
 			Dir: filepath.Join(getCwd(t), "secrets"),

@@ -737,6 +737,7 @@ func TestProjectExists(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestGenerateOnlyProjectCheck(t *testing.T) {
+	skipInBazel(t)
 	// Regression test for https://github.com/pulumi/pulumi/issues/13527, make sure various combinations of
 	// project name and stack work when generateOnly is set (thus skipping backend checks).
 
@@ -898,6 +899,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 
 //nolint:paralleltest // changes directory for process
 func TestPulumiPromptRuntimeOptions(t *testing.T) {
+	skipInBazel(t)
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
@@ -1169,6 +1171,7 @@ Available Templates:
 
 //nolint:paralleltest // Sets a global mock backend, changes the directory
 func TestPulumiNewOrgTemplate(t *testing.T) {
+	skipInBazel(t)
 	// Set environment variable to disable registry resolution and use org templates
 	t.Setenv("PULUMI_DISABLE_REGISTRY_RESOLVE", "true")
 	tempdir := tempProjectDir(t)

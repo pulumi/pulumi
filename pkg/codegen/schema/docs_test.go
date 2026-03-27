@@ -26,6 +26,8 @@ import (
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
 // Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
@@ -38,7 +40,7 @@ import (
 // Aside from just being verbose, the voluminous output makes `gotestsum` analysis less useful and
 // prevents use of the `ci-matrix` tool.
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
+var testdataPath = utils.TestdataPath()
 
 var nodeAssertions = testutil.DefaultNodeAssertions().Union(testutil.NodeAssertions{
 	KindShortcode: func(t *testing.T, sourceExpected, sourceActual []byte, expected, actual ast.Node) bool {

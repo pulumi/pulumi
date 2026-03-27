@@ -164,7 +164,7 @@ resource "test-organization" "tfe:index/organization:Organization" {
 	program, diags, err := parseAndBindProgram(t,
 		source,
 		"main.pp",
-		filepath.Join("..", "testing", "test", "testdata", "parameterized-schemas"))
+		filepath.Join(utils.TestdataPath(), "parameterized-schemas"))
 
 	require.NoError(t, err)
 	require.False(t, diags.HasErrors(), "unexpected diags: %v", diags)

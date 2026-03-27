@@ -30,7 +30,7 @@ import (
 
 func readSchemaFile(file string) (pkgSpec schema.PackageSpec) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := os.ReadFile(filepath.Join("testing", "test", "testdata", file))
+	schemaBytes, err := os.ReadFile(filepath.Join(utils.TestdataPath(), file))
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +53,7 @@ func readSchemaFile(file string) (pkgSpec schema.PackageSpec) {
 func TestResolvingPackageReferences(t *testing.T) {
 	t.Parallel()
 
-	testdataPath := filepath.Join("testing", "test", "testdata")
+	testdataPath := utils.TestdataPath()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 	pkgSpec := readSchemaFile("awsx-1.0.0-beta.5.json")
 	pkg, diags, err := schema.BindSpec(pkgSpec, loader, schema.ValidationOptions{

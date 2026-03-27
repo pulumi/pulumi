@@ -49,9 +49,23 @@ var Languages = map[string]string{
 	"dotnet": "csharp",
 }
 
+// isBazelTest returns true if running in Bazel's test environment
+func isBazelTest() bool {
+	return os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != ""
+}
+
+// skipInBazel skips the test if running in Bazel's sandboxed environment
+func skipInBazel(t *testing.T, reason string) {
+	t.Helper()
+	if isBazelTest() {
+		t.Skipf("Skipping in Bazel environment: %s", reason)
+	}
+}
+
 // Quick sanity tests for each downstream language to check that a minimal example can be created and run.
 func TestLanguageNewSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading templates and plugins from the internet")
 
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
@@ -81,6 +95,7 @@ func TestLanguageNewSmoke(t *testing.T) {
 // Quick sanity tests that YAML convert works.
 func TestYamlConvertSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins from the internet")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -113,6 +128,7 @@ output name {
 // Quick sanity tests for each downstream language to check that convert works.
 func TestLanguageConvertSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins from the internet")
 
 	for _, rt := range Runtimes {
 		t.Run(rt, func(t *testing.T) {
@@ -148,6 +164,7 @@ func TestLanguageConvertSmoke(t *testing.T) {
 // Quick sanity tests for each downstream language to check that non-strict convert works.
 func TestLanguageConvertLenientSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins from the internet")
 
 	for _, rt := range Runtimes {
 		t.Run(rt, func(t *testing.T) {
@@ -178,6 +195,7 @@ func TestLanguageConvertLenientSmoke(t *testing.T) {
 // Quick sanity tests for each downstream language to check that convert with components works.
 func TestLanguageConvertComponentSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins from the internet")
 
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
@@ -217,6 +235,7 @@ func TestLanguageConvertComponentSmoke(t *testing.T) {
 // Quick sanity tests for each downstream language to check that sdk-gen works.
 func TestLanguageGenerateSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires language toolchains not available in sandbox")
 
 	for _, runtime := range Runtimes {
 		if runtime == "yaml" {
@@ -238,6 +257,7 @@ func TestLanguageGenerateSmoke(t *testing.T) {
 
 func TestPackageGetSchema(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins and testprovider")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -333,6 +353,7 @@ backend:
 
 func TestPackageGetMappingToFile(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -363,6 +384,7 @@ func TestPackageGetMappingToFile(t *testing.T) {
 
 func TestPackageGetMapping(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -389,6 +411,7 @@ func TestPackageGetMapping(t *testing.T) {
 // Quick sanity tests for each downstream language to check that import works.
 func TestLanguageImportSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins")
 
 	for _, runtime := range Runtimes {
 		t.Run(runtime, func(t *testing.T) {
@@ -417,6 +440,7 @@ func TestLanguageImportSmoke(t *testing.T) {
 // Test that PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION disables plugin acquisition in convert.
 func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires plugin installation")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -450,6 +474,7 @@ func TestConvertDisableAutomaticPluginAcquisition(t *testing.T) {
 // Small integration test for preview --import-file
 func TestPreviewImportFile(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires plugins and npm/yarn")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -504,6 +529,7 @@ func TestPreviewImportFile(t *testing.T) {
 // https://github.com/pulumi/pulumi/issues/15467.
 func TestRelativePluginPath(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires testprovider and relative paths")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -523,6 +549,7 @@ func TestRelativePluginPath(t *testing.T) {
 // Quick sanity tests for https://github.com/pulumi/pulumi/issues/16248. Ensure we can run plugins and auto-fetch them.
 func TestPluginRun(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -539,6 +566,7 @@ func TestPluginRun(t *testing.T) {
 // Test that we can run a local file plugin via `pulumi plugin run`.
 func TestPluginRunFile(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires go build and testprovider")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -564,6 +592,7 @@ func TestPluginRunFile(t *testing.T) {
 
 func TestInstall(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins and language toolchains")
 
 	for _, runtime := range Runtimes {
 		// Reassign runtime before capture since it changes while looping.
@@ -608,6 +637,7 @@ func TestInstall(t *testing.T) {
 // configuration is respected and not clobbered or overwritten.
 func TestSecretsProvidersInitializationSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins")
 
 	// This example salt was generated using the default passphrase from ptesting.Environment.
 	testEncryptionSalt := "v1:3ZcVRCMzEbk=:v1:A4wYnaSVLIkK0AhS:2SrOnSDh9wVGmoyZt97KYJN3WfDDHA=="
@@ -714,6 +744,7 @@ backend:
 // is set.
 func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins")
 
 	operations := [][]string{
 		{"up", "--yes"},
@@ -780,6 +811,7 @@ func TestSecretsProvidersFallbackSmoke(t *testing.T) {
 // shouldn't matter for the test.
 func TestImportVersionSmoke(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires plugins and go toolchain")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -816,6 +848,7 @@ func TestImportVersionSmoke(t *testing.T) {
 // Test that the warning for upgrading and then running a refresh is shown.
 func TestRefreshUpgradeWarning(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires plugins and go toolchain")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -855,6 +888,7 @@ func TestRefreshUpgradeWarning(t *testing.T) {
 // Test that the warning for upgrading and then running a destroy is shown.
 func TestDestroyUpgradeWarning(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires plugins and npm toolchain")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -907,6 +941,7 @@ func TestDestroyUpgradeWarning(t *testing.T) {
 // parameterized packages.
 func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires plugins and npm toolchain")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -953,6 +988,8 @@ func TestDestroyUpgradeWarningParameterized(t *testing.T) {
 }
 
 func testImportParameterizedSmoke(t *testing.T, withUp bool) {
+	skipInBazel(t, "requires plugins and python toolchain")
+
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
@@ -1053,6 +1090,7 @@ func TestImportParameterizedSmokeFreshStateWithExperimental(t *testing.T) {
 // Test for https://github.com/pulumi/pulumi/issues/18814, check that --parallel respects cgroups limits.
 func TestParallelCgroups(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires docker")
 
 	// This test mounts the pulumi binary into a linux docker container so the host needs to be linux as well.
 	if runtime.GOOS != "linux" {
@@ -1095,6 +1133,7 @@ func TestParallelCgroups(t *testing.T) {
 // Test for https://github.com/pulumi/pulumi/issues/20035 check --stack missing doesn't panic for the console command
 func TestConsoleCommandMissingStack(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires PULUMI_ACCESS_TOKEN for cloud backend")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1108,6 +1147,7 @@ func TestConsoleCommandMissingStack(t *testing.T) {
 // parameterized provider all the way from the registry to a python environment.
 func TestPulumiPackageAddForTerraformProvider(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading plugins and python toolchain")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
@@ -1153,6 +1193,7 @@ example = aptible.Provider("provider")`)
 // Test that `destroy --exclude-protected --remove` removes the stack if the stack is empty.
 func TestDestroyProtectedEmpty(t *testing.T) {
 	t.Parallel()
+	skipInBazel(t, "requires downloading templates")
 
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()

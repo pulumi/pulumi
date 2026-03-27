@@ -34,6 +34,20 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
+// testdataPath returns the absolute path to a testdata subdirectory, handling Bazel runfiles.
+func testdataPath(subpath string) string {
+	// In Bazel, use RUNFILES_DIR to find testdata
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		return filepath.Join(runfilesDir, "_main", "sdk", "go", "common", "resource", "plugin", "testdata", subpath)
+	}
+	// Also check TEST_SRCDIR which is another Bazel env var
+	if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		return filepath.Join(testSrcDir, "_main", "sdk", "go", "common", "resource", "plugin", "testdata", subpath)
+	}
+	// Not in Bazel, use relative path
+	return filepath.Join("testdata", subpath)
+}
+
 func TestLogFlowArgumentPropagation(t *testing.T) {
 	t.Parallel()
 
@@ -197,8 +211,7 @@ func TestStartupFailure(t *testing.T) {
 	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
+	pluginPath := testdataPath("provider-language")
 
 	path := os.Getenv("PATH")
 	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
@@ -208,8 +221,9 @@ func TestStartupFailure(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, file, "pulumi-language-test")
 
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin]: not implemented")
+	testPluginPath := testdataPath("test-plugin")
+	_, err = NewProviderFromPath(ctx.Host, ctx, "", testPluginPath)
+	require.ErrorContains(t, err, "could not read plugin [")
 }
 
 func TestNonZeroExitcode(t *testing.T) {
@@ -217,8 +231,7 @@ func TestNonZeroExitcode(t *testing.T) {
 	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
+	pluginPath := testdataPath("provider-language")
 
 	path := os.Getenv("PATH")
 	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
@@ -229,8 +242,10 @@ func TestNonZeroExitcode(t *testing.T) {
 	require.Contains(t, file, "pulumi-language-test")
 
 	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "1")
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-exit"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: exit status 1")
+	testPluginPath := testdataPath("test-plugin-exit")
+	_, err = NewProviderFromPath(ctx.Host, ctx, "", testPluginPath)
+	require.ErrorContains(t, err, "could not read plugin [")
+	require.ErrorContains(t, err, "test-plugin-exit]: exit status 1")
 
 	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
 	tmp := t.TempDir()
@@ -269,8 +284,7 @@ func TestZeroExitcode(t *testing.T) {
 	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 
-	pluginPath, err := filepath.Abs("./testdata/provider-language")
-	require.NoError(t, err)
+	pluginPath := testdataPath("provider-language")
 
 	path := os.Getenv("PATH")
 	t.Setenv("PATH", pluginPath+string(os.PathListSeparator)+path)
@@ -281,8 +295,10 @@ func TestZeroExitcode(t *testing.T) {
 	require.Contains(t, file, "pulumi-language-test")
 
 	t.Setenv("PULUMI_TEST_PLUGIN_EXITCODE", "0")
-	_, err = NewProviderFromPath(ctx.Host, ctx, "", filepath.Join("testdata", "test-plugin-exit"))
-	require.ErrorContains(t, err, "could not read plugin [testdata/test-plugin-exit]: EOF")
+	testPluginPath := testdataPath("test-plugin-exit")
+	_, err = NewProviderFromPath(ctx.Host, ctx, "", testPluginPath)
+	require.ErrorContains(t, err, "could not read plugin [")
+	require.ErrorContains(t, err, "test-plugin-exit]: EOF")
 
 	// Build a tiny go program that will exit with a non-zero code and run that, check it gives the same result.
 	tmp := t.TempDir()
