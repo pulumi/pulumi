@@ -17,6 +17,7 @@ import * as tsnode from "ts-node";
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
+import * as semver from "semver";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import { defaultErrorMessage } from "../run/error";
@@ -169,14 +170,18 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         const skipProject = !fs.existsSync(tsConfigPath);
         const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         const tsn: typeof tsnode = require(tsnodeRequire);
+        const ts = require(typescriptRequire);
+        const tsVersion = semver.parse(ts.version);
+        // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
+        const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
         tsn.register({
             typeCheck: true,
             skipProject: skipProject,
             compiler: typescriptRequire,
             compilerOptions: {
                 target: "ES2020", // TypeScript 3.8 supports this
-                module: "commonjs",
-                moduleResolution: "node",
+                module: useNodeNext ? "nodenext" : "commonjs",
+                moduleResolution: useNodeNext ? "nodenext" : "node",
                 sourceMap: "true",
                 ...compilerOptions,
             },

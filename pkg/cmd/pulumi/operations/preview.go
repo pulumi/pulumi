@@ -264,6 +264,7 @@ func NewPreviewCmd() *cobra.Command {
 	var planFilePath string
 	var importFilePath string
 	var showSecrets bool
+	var showURNs bool
 
 	// Flags for remote operations.
 	remoteArgs := deployment.RemoteArgs{}
@@ -347,6 +348,7 @@ func NewPreviewCmd() *cobra.Command {
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
 				ShowSecrets:            showSecrets,
+				ShowURNs:               showURNs,
 				SuppressOutputs:        suppressOutputs,
 				SuppressProgress:       suppressProgress,
 				TruncateOutput:         !showFullOutput,
@@ -431,6 +433,7 @@ func NewPreviewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
+			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
@@ -694,6 +697,9 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReads, "show-reads", false,
 		"Show resources that are being read in, alongside those being managed directly in the stack")
+	cmd.PersistentFlags().BoolVar(
+		&showURNs, "urns", false,
+		"Display full URNs instead of short resource names")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")

@@ -90,6 +90,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -193,6 +194,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var color string
 	var memProfileRate int
 	var rootSpan oteltrace.Span
+
+	processStartTime := time.Now()
 
 	updateCheckResult := make(chan *updateCheckResult)
 
@@ -305,7 +308,14 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
-				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
+
+				if traceparent := os.Getenv("TRACEPARENT"); traceparent != "" {
+					carrier := propagation.MapCarrier{"traceparent": traceparent}
+					ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+				}
+
+				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi",
+					oteltrace.WithTimestamp(processStartTime))
 
 				for k, v := range metadata {
 					rootSpan.SetAttributes(attribute.String("cli."+strings.ToLower(k), v))
@@ -315,6 +325,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				sc := rootSpan.SpanContext()
 				cmdutil.SetAppDashTraceParent(sc.TraceID(), sc.SpanID())
 			}
+			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
