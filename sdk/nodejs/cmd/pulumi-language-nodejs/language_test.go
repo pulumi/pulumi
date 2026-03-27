@@ -212,6 +212,11 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
 
+					// Workflow conformance tests are currently enabled for Python only.
+					if strings.HasPrefix(tt, "workflow-") {
+						t.Skip("Skipping workflow tests for Node.js/Bun language runtime")
+					}
+
 					// Skip l2-large-string on Node.js 24 https://github.com/nodejs/node/issues/58197
 					// TODO: https://github.com/pulumi/pulumi/issues/19442
 					if runtime == "nodejs" && tt == "l2-large-string" {

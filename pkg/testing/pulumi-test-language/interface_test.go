@@ -109,6 +109,21 @@ func TestLanguageProviders(t *testing.T) {
 	}
 }
 
+// Ensure every run has exactly one assertion style configured.
+func TestRunAssertions(t *testing.T) {
+	t.Parallel()
+
+	for testName, test := range tests.LanguageTests {
+		if strings.HasPrefix(testName, "internal-") {
+			continue
+		}
+		for runIndex, run := range test.Runs {
+			assert.NotEqual(t, run.Assert != nil, run.AssertWorkflow != nil,
+				"test %s run %d must set exactly one of Assert or AssertWorkflow", testName, runIndex)
+		}
+	}
+}
+
 // Ensure GetTests doesn't return internal- tests.
 func TestNoInternalTests(t *testing.T) {
 	t.Parallel()

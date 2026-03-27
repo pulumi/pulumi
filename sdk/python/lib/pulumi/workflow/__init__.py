@@ -559,9 +559,9 @@ class WorkflowRegistry:
             if not callable(fn):
                 raise WorkflowError("step callback must be callable")
 
-            _validate_record_type(input_type, "step input type")
+            _validate_step_type(input_type, "step input type")
             output_type = _step_return_type(fn)
-            _validate_record_type(output_type, "step output type")
+            _validate_step_type(output_type, "step output type")
 
             self._steps[resolved_token] = _ExportedStepDefinition(
                 token=resolved_token,
@@ -665,6 +665,18 @@ def _coerce_to_struct_data(value: Any) -> Dict[str, Any]:
 
 
 def _type_token(record_type: Type[Any]) -> str:
+    if record_type is bool:
+        return "bool"
+    if record_type is int:
+        return "int"
+    if record_type is float:
+        return "float"
+    if record_type is str:
+        return "string"
+    if record_type is list:
+        return "list"
+    if record_type is dict:
+        return "object"
     return f"{record_type.__module__}.{record_type.__qualname__}"
 
 
@@ -771,7 +783,9 @@ def _step_return_type(fn: Callable[..., Any]) -> Type[Any]:
     if get_origin(return_type) is Output:
         raise WorkflowError("step callback return type must be plain T, not Output[T]")
     if not inspect.isclass(return_type):
-        raise WorkflowError("step callback output type must be a class/record type")
+        raise WorkflowError(
+            "step callback output type must be a class/record or primitive type"
+        )
     return cast(Type[Any], return_type)
 
 
@@ -799,6 +813,51 @@ def _coerce_record_instance(record_type: Type[Any], value: Any, label: str) -> A
     raise WorkflowError(
         f"{label} must decode to {record_type.__name__} (got {type(value).__name__})"
     )
+
+
+def _is_primitive_type(t: Type[Any]) -> bool:
+    return t in (bool, int, float, str, list, dict)
+
+
+def _validate_step_type(type_value: Type[Any], label: str) -> None:
+    if _is_primitive_type(type_value):
+        return
+    _validate_record_type(type_value, label)
+
+
+def _coerce_typed_value(expected_type: Type[Any], value: Any, label: str) -> Any:
+    if _is_primitive_type(expected_type):
+        if expected_type is bool:
+            if isinstance(value, bool):
+                return value
+            raise WorkflowError(f"{label} must decode to bool (got {type(value).__name__})")
+        if expected_type is int:
+            if isinstance(value, bool):
+                raise WorkflowError(f"{label} must decode to int (got bool)")
+            if isinstance(value, int):
+                return value
+            if isinstance(value, float) and value.is_integer():
+                return int(value)
+            raise WorkflowError(f"{label} must decode to int (got {type(value).__name__})")
+        if expected_type is float:
+            if isinstance(value, bool):
+                raise WorkflowError(f"{label} must decode to float (got bool)")
+            if isinstance(value, (int, float)):
+                return float(value)
+            raise WorkflowError(f"{label} must decode to float (got {type(value).__name__})")
+        if expected_type is str:
+            if isinstance(value, str):
+                return value
+            raise WorkflowError(f"{label} must decode to str (got {type(value).__name__})")
+        if expected_type is list:
+            if isinstance(value, list):
+                return value
+            raise WorkflowError(f"{label} must decode to list (got {type(value).__name__})")
+        if expected_type is dict:
+            if isinstance(value, dict):
+                return value
+            raise WorkflowError(f"{label} must decode to dict (got {type(value).__name__})")
+    return _coerce_record_instance(expected_type, value, label)
 
 
 def _from_proto_value(value: struct_pb2.Value) -> Any:
@@ -1147,17 +1206,17 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 exported_step: _ExportedStepDefinition = exported,
                 exported_path: str = step_path,
             ) -> Any:
-                coerced = _coerce_record_instance(
+                coerced = _coerce_typed_value(
                     exported_step.input_type,
                     arg_value,
                     f"step input for {exported_path}",
                 )
                 result = exported_step.fn(coerced)
-                if not isinstance(result, exported_step.output_type):
-                    raise WorkflowError(
-                        f"external step {exported_step.token} must return {exported_step.output_type.__name__}"
-                    )
-                return result
+                return _coerce_typed_value(
+                    exported_step.output_type,
+                    result,
+                    f"external step {exported_step.token} output",
+                )
 
             materialized[step_path] = _StepDefinition(
                 has_arg=True,
@@ -1512,6 +1571,32 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
     ) -> workflow_pb2.RunStepResponse:
         step = self._steps_by_path.get(request.path)
         if step is None:
+            resolved_token = self._workflow_registry.resolve_step_token(request.path)
+            exported = self._workflow_registry._steps.get(resolved_token)
+            if exported is not None:
+                input_value = _from_proto_value(request.input) if request.HasField("input") else None
+                try:
+                    coerced_input = _coerce_typed_value(
+                        exported.input_type,
+                        input_value,
+                        f"step input for {resolved_token}",
+                    )
+                    result_value = exported.fn(coerced_input)
+                    result = _coerce_typed_value(
+                        exported.output_type,
+                        result_value,
+                        f"step output for {resolved_token}",
+                    )
+                except Exception as error:  # pylint: disable=broad-except
+                    response = workflow_pb2.RunStepResponse()
+                    response.error.reason = str(error)
+                    response.error.category = "step_failed"
+                    return response
+
+                response = workflow_pb2.RunStepResponse()
+                response.result.CopyFrom(_to_proto_value(result))
+                return response
+
             context.abort(
                 grpc.StatusCode.NOT_FOUND, f"unknown step path {request.path}"
             )

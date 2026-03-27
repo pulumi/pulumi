@@ -264,6 +264,11 @@ func TestLanguage(t *testing.T) {
 						t.Skip("Skipping provider tests")
 					}
 
+					// Workflow conformance tests are currently enabled for Python only.
+					if strings.HasPrefix(tt, "workflow-") {
+						t.Skip("Skipping workflow tests for Go language runtime")
+					}
+
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}

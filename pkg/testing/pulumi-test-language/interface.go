@@ -1268,6 +1268,13 @@ func runLanguageTests(
 		}
 
 		if _, statErr := os.Stat(filepath.Join(projectDir, "PulumiPlugin.yaml")); statErr == nil {
+			if run.AssertWorkflow == nil {
+				return nil, fmt.Errorf(
+					"test %q run %d config error: workflow project requires AssertWorkflow (Assert path is not used)",
+					testName, i,
+				)
+			}
+
 			pluginProject, err := workspace.LoadPluginProject(filepath.Join(projectDir, "PulumiPlugin.yaml"))
 			if err != nil {
 				return makeTestResponse(fmt.Sprintf("load plugin project: %v", err)), nil
@@ -1314,6 +1321,13 @@ func runLanguageTests(
 				}, nil
 			}
 			continue
+		}
+
+		if run.AssertWorkflow != nil {
+			return nil, fmt.Errorf(
+				"test %q run %d config error: AssertWorkflow is only valid for workflow projects",
+				testName, i,
+			)
 		}
 
 		project, err := workspace.LoadProject(filepath.Join(projectDir, "Pulumi.yaml"))
@@ -1722,8 +1736,15 @@ func runLanguageTests(
 			}
 		}
 
+		assertUpdate := run.Assert
+		if assertUpdate == nil {
+			assertUpdate = func(l *tests.L, args tests.AssertArgs) {
+				require.NoErrorf(l, args.Err, "expected no error in update")
+			}
+		}
+
 		result = tests.WithL(func(l *tests.L) {
-			run.Assert(l, tests.AssertArgs{
+			assertUpdate(l, tests.AssertArgs{
 				ProjectDirectory: projectDir,
 				Err:              res,
 				Snap:             snap,

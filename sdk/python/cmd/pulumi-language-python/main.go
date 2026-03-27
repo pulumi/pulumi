@@ -1707,6 +1707,84 @@ func (host *pythonLanguageHost) RunPlugin(
 func (host *pythonLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
+	programKind, err := pcl.DetectProgramKindFromDirectory(req.SourceDirectory)
+	if err != nil {
+		return nil, err
+	}
+	if programKind == pcl.ProgramKindMixed {
+		return nil, errors.New("PCL program mixes workflow and resource blocks")
+	}
+
+	var project workspace.Project
+	if err := json.Unmarshal([]byte(req.Project), &project); err != nil {
+		return nil, err
+	}
+
+	if programKind == pcl.ProgramKindWorkflow {
+		source, err := pcl.ReadProgramSourcesFromDirectory(req.SourceDirectory)
+		if err != nil {
+			return nil, err
+		}
+		files, err := generatePythonWorkflowProgram(source)
+		if err != nil {
+			return nil, err
+		}
+
+		rootDirectory := req.TargetDirectory
+		directory := rootDirectory
+		if project.Main != "" {
+			directory = filepath.Join(rootDirectory, project.Main)
+			if err := os.MkdirAll(directory, 0o700); err != nil {
+				return nil, fmt.Errorf("create main directory: %w", err)
+			}
+		}
+
+		for filename, data := range files {
+			outPath := filepath.Join(directory, filename)
+			if err := os.WriteFile(outPath, data, 0o600); err != nil {
+				return nil, fmt.Errorf("could not write output program: %w", err)
+			}
+		}
+
+		requirements := workflowRequirementsTxt(req.LocalDependencies, host.typechecker)
+		if err := os.WriteFile(filepath.Join(directory, "requirements.txt"), requirements, 0o600); err != nil {
+			return nil, fmt.Errorf("could not write requirements.txt: %w", err)
+		}
+		if err := os.WriteFile(filepath.Join(directory, ".gitignore"), []byte("*.pyc\nvenv/"), 0o600); err != nil {
+			return nil, fmt.Errorf("could not write .gitignore: %w", err)
+		}
+
+		var options map[string]any
+		if _, ok := req.LocalDependencies["pulumi"]; ok {
+			options = map[string]any{
+				"virtualenv": "venv",
+			}
+		}
+		if host.typechecker != "" {
+			if options == nil {
+				options = map[string]any{}
+			}
+			options["typechecker"] = host.typechecker
+		}
+		if host.toolchain != "" {
+			if options == nil {
+				options = map[string]any{}
+			}
+			options["toolchain"] = host.toolchain
+		}
+
+		pluginProject := workspace.PluginProject{
+			Runtime: workspace.NewProjectRuntimeInfo("python", options),
+		}
+		if err := pluginProject.Save(filepath.Join(rootDirectory, "PulumiPlugin.yaml")); err != nil {
+			return nil, fmt.Errorf("write PulumiPlugin.yaml: %w", err)
+		}
+
+		return &pulumirpc.GenerateProjectResponse{
+			Diagnostics: nil,
+		}, nil
+	}
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1733,11 +1811,6 @@ func (host *pythonLanguageHost) GenerateProject(
 		}, nil
 	}
 
-	var project workspace.Project
-	if err := json.Unmarshal([]byte(req.Project), &project); err != nil {
-		return nil, err
-	}
-
 	err = codegen.GenerateProject(
 		req.TargetDirectory, project, program, req.LocalDependencies, host.typechecker, host.toolchain)
 	if err != nil {
@@ -1749,6 +1822,26 @@ func (host *pythonLanguageHost) GenerateProject(
 	return &pulumirpc.GenerateProjectResponse{
 		Diagnostics: rpcDiagnostics,
 	}, nil
+}
+
+func workflowRequirementsTxt(localDependencies map[string]string, typechecker string) []byte {
+	requirements := []string{}
+	if path, ok := localDependencies["pulumi"]; ok {
+		requirements = append(requirements, path)
+	} else {
+		requirements = append(requirements, "pulumi>=3.0.0,<4.0.0")
+	}
+	for name, path := range localDependencies {
+		if name == "pulumi" {
+			continue
+		}
+		requirements = append(requirements, path)
+	}
+	if typechecker != "" {
+		requirements = append(requirements, typechecker)
+	}
+	slices.Sort(requirements)
+	return []byte(strings.Join(requirements, "\n") + "\n")
 }
 
 func (host *pythonLanguageHost) GenerateProgram(
@@ -1855,6 +1948,40 @@ func pythonQuoteString(v string) string {
 	return string(b)
 }
 
+func pythonTypeFromPCLType(pclType string) string {
+	switch strings.TrimSpace(strings.ToLower(pclType)) {
+	case "bool", "boolean":
+		return "bool"
+	case "int", "integer":
+		return "int"
+	case "number", "float":
+		return "float"
+	case "string":
+		return "str"
+	case "list":
+		return "list"
+	case "object", "map":
+		return "dict"
+	default:
+		return "dict"
+	}
+}
+
+func pythonStepExpr(stepDef pcl.WorkflowStepDefinition) string {
+	switch {
+	case stepDef.Command != "":
+		return "subprocess.check_output(" + pythonQuoteString(stepDef.Command) + ", shell=True, text=True).strip()"
+	case stepDef.Expr == "input":
+		return "input"
+	case stepDef.Expr == "!input", stepDef.Expr == "not input":
+		return "not input"
+	case stepDef.Expr != "":
+		return pythonQuoteString(stepDef.Expr)
+	default:
+		return "\"\""
+	}
+}
+
 func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte, error) {
 	program, err := pcl.BindWorkflowSource(source)
 	if err != nil {
@@ -1863,6 +1990,7 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 
 	var b strings.Builder
 	b.WriteString("import subprocess\n")
+	b.WriteString("from typing import Any\n")
 	b.WriteString("from pulumi import Output\n")
 	b.WriteString("import pulumi.workflow as workflow\n\n\n")
 
@@ -1971,25 +2099,31 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 						strings.Join(stepDecoratorOptions, ", ") + "))\n")
 				}
 				stepFn := pythonIdentifier(graph.Name + "_" + graphJob.Name + "_" + step.Name + "_step")
-				b.WriteString("        def " + stepFn + "() -> str:\n")
-				switch {
-				case stepDef.Command != "":
-					b.WriteString("            return subprocess.check_output(" + pythonQuoteString(stepDef.Command) +
-						", shell=True, text=True).strip()\n")
-				case stepDef.Expr != "":
-					b.WriteString("            return " + pythonQuoteString(stepDef.Expr) + "\n")
-				default:
-					b.WriteString("            return \"\"\n")
-				}
+				b.WriteString("        def " + stepFn + "() -> Any:\n")
+				b.WriteString("            return " + pythonStepExpr(stepDef) + "\n")
 			}
 		}
 		b.WriteByte('\n')
 	}
 
 	b.WriteString("def register_workflows(registry: workflow.WorkflowRegistry) -> None:\n")
-	if len(program.Workflows) == 0 {
+	if len(program.Steps) == 0 && len(program.Workflows) == 0 {
 		b.WriteString("    pass\n")
 	} else {
+		for _, step := range program.Steps {
+			stepInputType := pythonTypeFromPCLType(step.InputType)
+			stepOutputType := pythonTypeFromPCLType(step.OutputType)
+			if stepInputType == "dict" {
+				stepInputType = "Any"
+			}
+			if stepOutputType == "dict" {
+				stepOutputType = "Any"
+			}
+			stepFn := pythonIdentifier("register_step_" + step.Name)
+			b.WriteString("    @registry.step(" + pythonQuoteString(step.Name) + ", " + stepInputType + ")\n")
+			b.WriteString("    def " + stepFn + "(input: " + stepInputType + ") -> " + stepOutputType + ":\n")
+			b.WriteString("        return " + pythonStepExpr(step) + "\n")
+		}
 		for _, graph := range program.Workflows {
 			graphFn := pythonIdentifier(graph.Name) + "_graph"
 			registerFn := pythonIdentifier("register_" + graph.Name + "_graph")
