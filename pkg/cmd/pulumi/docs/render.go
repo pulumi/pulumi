@@ -343,6 +343,9 @@ func boxFooter(width int) string {
 func webURL(baseURL, path string) string {
 	base := strings.TrimRight(baseURL, "/")
 	prefix, trimmed := contentPrefix(path)
+	if trimmed == "" {
+		return base + prefix
+	}
 	return fmt.Sprintf("%s%s%s/", base, prefix, trimmed)
 }
 
