@@ -306,3 +306,125 @@ func TestResolveObservedJobResultErrors(t *testing.T) {
 		}
 	})
 }
+
+func TestParseRunStepArgs(t *testing.T) {
+	t.Parallel()
+
+	opts, err := parseRunStepArgs(
+		[]string{"--json", "--execution-id", "exec-1", "--input", `{"message":"hello","count":2}`},
+		"default-id",
+	)
+	if err != nil {
+		t.Fatalf("parseRunStepArgs failed: %v", err)
+	}
+	if !opts.emitJSON {
+		t.Fatalf("expected emitJSON=true")
+	}
+	if opts.executionID != "exec-1" {
+		t.Fatalf("unexpected execution id: %q", opts.executionID)
+	}
+	if got := opts.input.GetStructValue().GetFields()["message"].GetStringValue(); got != "hello" {
+		t.Fatalf("unexpected message field: %q", got)
+	}
+}
+
+func TestRunExportedStepWithPlugin(t *testing.T) {
+	t.Parallel()
+
+	var gotReq *pulumirpc.RunStepRequest
+	workflowPlugin := &plugin.MockWorkflow{
+		RunStepF: func(_ context.Context, req *pulumirpc.RunStepRequest) (*pulumirpc.RunStepResponse, error) {
+			gotReq = req
+			return &pulumirpc.RunStepResponse{
+				Result: structpb.NewStringValue("done"),
+			}, nil
+		},
+	}
+
+	result, emitJSON, err := runExportedStepWithPlugin(
+		t.Context(),
+		workflowPlugin,
+		"example:index:touch",
+		[]string{"--json", "--execution-id", "exec-123", "--input", `{"message":"hello"}`},
+		"default-id",
+	)
+	if err != nil {
+		t.Fatalf("runExportedStepWithPlugin failed: %v", err)
+	}
+	if !emitJSON {
+		t.Fatalf("expected emitJSON=true")
+	}
+	if result != `"done"` {
+		t.Fatalf("unexpected result JSON: %q", result)
+	}
+	if gotReq == nil {
+		t.Fatalf("expected RunStep request")
+	}
+	if gotReq.GetPath() != "example:index:touch" {
+		t.Fatalf("unexpected step path: %q", gotReq.GetPath())
+	}
+	if gotReq.GetContext().GetExecutionId() != "exec-123" {
+		t.Fatalf("unexpected execution id: %q", gotReq.GetContext().GetExecutionId())
+	}
+	if got := gotReq.GetInput().GetStructValue().GetFields()["message"].GetStringValue(); got != "hello" {
+		t.Fatalf("unexpected input message: %q", got)
+	}
+}
+
+func TestResolveRunnableToken(t *testing.T) {
+	t.Parallel()
+
+	t.Run("job by short name", func(t *testing.T) {
+		t.Parallel()
+		workflowPlugin := &plugin.MockWorkflow{
+			GetJobsF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetJobsResponse, error) {
+				return &pulumirpc.GetJobsResponse{Jobs: []*pulumirpc.JobInfo{{Token: "build"}}}, nil
+			},
+			GetStepsF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetStepsResponse, error) {
+				return &pulumirpc.GetStepsResponse{Steps: []string{"touch"}}, nil
+			},
+		}
+		kind, token, err := resolveRunnableToken(t.Context(), workflowPlugin, "build")
+		if err != nil {
+			t.Fatalf("resolveRunnableToken failed: %v", err)
+		}
+		if kind != runnableKindJob || token != "build" {
+			t.Fatalf("unexpected resolution: kind=%q token=%q", kind, token)
+		}
+	})
+
+	t.Run("step by short name", func(t *testing.T) {
+		t.Parallel()
+		workflowPlugin := &plugin.MockWorkflow{
+			GetJobsF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetJobsResponse, error) {
+				return &pulumirpc.GetJobsResponse{Jobs: []*pulumirpc.JobInfo{{Token: "build"}}}, nil
+			},
+			GetStepsF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetStepsResponse, error) {
+				return &pulumirpc.GetStepsResponse{Steps: []string{"touch"}}, nil
+			},
+		}
+		kind, token, err := resolveRunnableToken(t.Context(), workflowPlugin, "touch")
+		if err != nil {
+			t.Fatalf("resolveRunnableToken failed: %v", err)
+		}
+		if kind != runnableKindStep || token != "touch" {
+			t.Fatalf("unexpected resolution: kind=%q token=%q", kind, token)
+		}
+	})
+
+	t.Run("ambiguous short name", func(t *testing.T) {
+		t.Parallel()
+		workflowPlugin := &plugin.MockWorkflow{
+			GetJobsF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetJobsResponse, error) {
+				return &pulumirpc.GetJobsResponse{Jobs: []*pulumirpc.JobInfo{{Token: "build"}}}, nil
+			},
+			GetStepsF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetStepsResponse, error) {
+				return &pulumirpc.GetStepsResponse{Steps: []string{"build"}}, nil
+			},
+		}
+		_, _, err := resolveRunnableToken(t.Context(), workflowPlugin, "build")
+		if err == nil {
+			t.Fatalf("expected ambiguity error")
+		}
+	})
+}

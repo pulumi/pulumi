@@ -39,11 +39,18 @@ type stepResult struct {
 	ResultJSON string `json:"resultJson"`
 }
 
+type runnableKind string
+
+const (
+	runnableKindJob  runnableKind = "job"
+	runnableKindStep runnableKind = "step"
+)
+
 func newWorkflowRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run <plugin-path> <job>",
-		Short: "Run an exported workflow job",
-		Long: `Run an exported workflow job from a workflow package plugin path.
+		Use:   "run <plugin-path> <job-or-step>",
+		Short: "Run an exported workflow job or step",
+		Long: `Run an exported workflow job or step from a workflow package plugin path.
 
 For now, <plugin-path> must be a local path (for example to a Python workflow program).`,
 		DisableFlagParsing: true,
@@ -57,11 +64,11 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 			}
 			ctx := cmd.Context()
 			pluginPath := args[0]
-			jobNameOrToken := args[1]
+			targetNameOrToken := args[1]
 			runArgs := args[2:]
 
-			results, jobToken, jobResultJSON, emitJSON, err := runExportedJob(
-				ctx, pluginPath, jobNameOrToken, runArgs, resolveExecutionID(""),
+			results, targetToken, resultJSON, emitJSON, err := runExportedTarget(
+				ctx, pluginPath, targetNameOrToken, runArgs, resolveExecutionID(""),
 			)
 			if err != nil {
 				return err
@@ -73,8 +80,8 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 					ResultJSON string       `json:"resultJson"`
 					Steps      []stepResult `json:"steps"`
 				}{
-					Job:        jobToken,
-					ResultJSON: jobResultJSON,
+					Job:        targetToken,
+					ResultJSON: resultJSON,
 					Steps:      results,
 				}
 				bytes, err := json.MarshalIndent(payload, "", "  ")
@@ -85,8 +92,8 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 				return nil
 			}
 
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Ran %s\n", jobToken)
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Result: %s\n", jobResultJSON)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Ran %s\n", targetToken)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Result: %s\n", resultJSON)
 			for _, result := range results {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", result.Path, result.ResultJSON)
 			}
@@ -97,7 +104,7 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
 			{Name: "plugin-path"},
-			{Name: "job"},
+			{Name: "job-or-step"},
 		},
 		Required: 2,
 	})
@@ -124,6 +131,16 @@ func runExportedJob(
 	ctx context.Context,
 	pluginPath string,
 	jobNameOrToken string,
+	runArgs []string,
+	defaultExecutionID string,
+) ([]stepResult, string, string, bool, error) {
+	return runExportedTarget(ctx, pluginPath, jobNameOrToken, runArgs, defaultExecutionID)
+}
+
+func runExportedTarget(
+	ctx context.Context,
+	pluginPath string,
+	targetNameOrToken string,
 	runArgs []string,
 	defaultExecutionID string,
 ) ([]stepResult, string, string, bool, error) {
@@ -159,10 +176,35 @@ func runExportedJob(
 		_ = workflowPlugin.Close()
 	}()
 
-	jobToken, err := resolveJobToken(ctx, workflowPlugin, jobNameOrToken)
+	kind, token, err := resolveRunnableToken(ctx, workflowPlugin, targetNameOrToken)
 	if err != nil {
 		return nil, "", "", false, err
 	}
+	switch kind {
+	case runnableKindStep:
+		resultJSON, emitJSON, err := runExportedStepWithPlugin(ctx, workflowPlugin, token, runArgs, defaultExecutionID)
+		if err != nil {
+			return nil, "", "", false, err
+		}
+		return nil, token, resultJSON, emitJSON, nil
+	case runnableKindJob:
+		return runExportedJobWithPlugin(
+			ctx, workflowPlugin, server, listener.Addr().String(), token, runArgs, defaultExecutionID,
+		)
+	default:
+		return nil, "", "", false, fmt.Errorf("unsupported runnable kind %q", kind)
+	}
+}
+
+func runExportedJobWithPlugin(
+	ctx context.Context,
+	workflowPlugin plugin.Workflow,
+	server *monitorServer,
+	graphMonitorAddress string,
+	jobToken string,
+	runArgs []string,
+	defaultExecutionID string,
+) ([]stepResult, string, string, bool, error) {
 
 	jobInfo, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: jobToken})
 	if err != nil {
@@ -185,7 +227,7 @@ func runExportedJob(
 	generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
 		Context:             workflowContext,
 		Name:                jobToken,
-		GraphMonitorAddress: listener.Addr().String(),
+		GraphMonitorAddress: graphMonitorAddress,
 		InputValue:          inputValue,
 	})
 	if err != nil {
@@ -213,6 +255,46 @@ func runExportedJob(
 	return results, jobToken, jobResultJSON, parsedOptions.emitJSON, nil
 }
 
+type runStepOptions struct {
+	input       *structpb.Value
+	executionID string
+	emitJSON    bool
+}
+
+func runExportedStepWithPlugin(
+	ctx context.Context,
+	workflowPlugin plugin.Workflow,
+	stepToken string,
+	runArgs []string,
+	defaultExecutionID string,
+) (string, bool, error) {
+	options, err := parseRunStepArgs(runArgs, defaultExecutionID)
+	if err != nil {
+		return "", false, err
+	}
+	workflowContext := &pulumirpc.WorkflowContext{ExecutionId: options.executionID}
+
+	resp, err := workflowPlugin.RunStep(ctx, &pulumirpc.RunStepRequest{
+		Context: workflowContext,
+		Path:    stepToken,
+		Input:   options.input,
+	})
+	if err != nil {
+		return "", false, fmt.Errorf("run step %q: %w", stepToken, err)
+	}
+	if resp.GetError() != nil && resp.GetError().GetReason() != "" {
+		return "", false, fmt.Errorf("run step %q failed: %s", stepToken, resp.GetError().GetReason())
+	}
+	if resp.GetResult() == nil {
+		return "null", options.emitJSON, nil
+	}
+	bytes, err := protojson.Marshal(resp.GetResult())
+	if err != nil {
+		return "", false, fmt.Errorf("marshal step result for %q: %w", stepToken, err)
+	}
+	return string(bytes), options.emitJSON, nil
+}
+
 func resolveExecutionID(userProvided string) string {
 	if userProvided != "" {
 		return userProvided
@@ -224,6 +306,61 @@ type runJobOptions struct {
 	input       map[string]any
 	executionID string
 	emitJSON    bool
+}
+
+func parseRunStepArgs(args []string, defaultExecutionID string) (runStepOptions, error) {
+	options := runStepOptions{
+		executionID: defaultExecutionID,
+	}
+	for i := 0; i < len(args); i++ {
+		token := args[i]
+		if !strings.HasPrefix(token, "--") {
+			return runStepOptions{}, fmt.Errorf("unexpected argument %q; expected flags", token)
+		}
+		name, value, hasValue := splitFlag(token)
+
+		switch name {
+		case "json":
+			if !hasValue {
+				options.emitJSON = true
+				continue
+			}
+			parsed, err := strconv.ParseBool(value)
+			if err != nil {
+				return runStepOptions{}, fmt.Errorf("invalid --json value %q", value)
+			}
+			options.emitJSON = parsed
+		case "execution-id":
+			if !hasValue {
+				if i+1 >= len(args) {
+					return runStepOptions{}, fmt.Errorf("--execution-id requires a value")
+				}
+				i++
+				value = args[i]
+			}
+			options.executionID = value
+		case "input":
+			if !hasValue {
+				if i+1 >= len(args) {
+					return runStepOptions{}, fmt.Errorf("--input requires a value")
+				}
+				i++
+				value = args[i]
+			}
+			var decoded any
+			if err := json.Unmarshal([]byte(value), &decoded); err != nil {
+				return runStepOptions{}, fmt.Errorf("invalid --input JSON value: %w", err)
+			}
+			inputValue, err := structpb.NewValue(decoded)
+			if err != nil {
+				return runStepOptions{}, fmt.Errorf("encode --input value: %w", err)
+			}
+			options.input = inputValue
+		default:
+			return runStepOptions{}, fmt.Errorf("unknown flag --%s", name)
+		}
+	}
+	return options, nil
 }
 
 func parseRunJobArgs(
@@ -409,6 +546,54 @@ func resolveJobToken(
 		sort.Strings(matches)
 		return "", fmt.Errorf("job name %q is ambiguous; use full token (%s)", jobNameOrToken, strings.Join(matches, ", "))
 	}
+}
+
+func resolveRunnableToken(
+	ctx context.Context,
+	workflowPlugin plugin.Workflow,
+	name string,
+) (runnableKind, string, error) {
+	jobsResp, err := workflowPlugin.GetJobs(ctx, &pulumirpc.EmptyRequest{})
+	if err != nil {
+		return "", "", fmt.Errorf("get jobs: %w", err)
+	}
+	stepsResp, err := workflowPlugin.GetSteps(ctx, &pulumirpc.EmptyRequest{})
+	if err != nil {
+		return "", "", fmt.Errorf("get steps: %w", err)
+	}
+
+	jobMatches := []string{}
+	for _, job := range jobsResp.GetJobs() {
+		jobName := job.GetToken()
+		if jobName == name {
+			jobMatches = append(jobMatches, jobName)
+		}
+	}
+	stepMatches := []string{}
+	for _, stepToken := range stepsResp.GetSteps() {
+		if stepToken == name {
+			stepMatches = append(stepMatches, stepToken)
+		}
+	}
+
+	if len(jobMatches) == 1 && len(stepMatches) == 0 {
+		return runnableKindJob, jobMatches[0], nil
+	}
+	if len(jobMatches) == 0 && len(stepMatches) == 1 {
+		return runnableKindStep, stepMatches[0], nil
+	}
+	if len(jobMatches) == 0 && len(stepMatches) == 0 {
+		return "", "", fmt.Errorf("workflow runnable %q not found", name)
+	}
+
+	matches := append([]string{}, jobMatches...)
+	matches = append(matches, stepMatches...)
+	sort.Strings(matches)
+	return "", "", fmt.Errorf(
+		"workflow runnable name %q is ambiguous (%s)",
+		name,
+		strings.Join(matches, ", "),
+	)
 }
 
 func runStepWithRetry(
