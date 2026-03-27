@@ -37,7 +37,7 @@ func init() {
 					job, err := args.Workflow.GetJob(args.Context, &pulumirpc.GetJobRequest{Token: jobToken})
 					require.NoError(l, err)
 					require.NotNil(l, job.GetJob())
-					assert.Equal(l, "bool", job.GetJob().GetInputType().GetToken())
+					assert.Equal(l, "workflow:index:BoolInput", job.GetJob().GetInputType().GetToken())
 
 					monitor := &workflowJobMonitor{}
 					grpcServer := grpc.NewServer()
@@ -74,11 +74,15 @@ func init() {
 					require.NoError(l, err)
 					require.True(l, filterResp.GetPass())
 
-					// Feed the job input value to the external step.
+					// Feed the job input struct to the external step.
 					runResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
 						Context: workflowContext,
 						Path:    steps[0],
-						Input:   structpb.NewBoolValue(true),
+						Input: structpb.NewStructValue(&structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"input": structpb.NewBoolValue(true),
+							},
+						}),
 					})
 					require.NoError(l, err)
 					require.Empty(l, runResp.GetError().GetReason())

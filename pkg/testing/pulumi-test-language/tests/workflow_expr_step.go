@@ -31,11 +31,19 @@ func init() {
 					require.Len(l, steps.GetSteps(), 1)
 
 					stepToken := steps.GetSteps()[0]
+					step, err := args.Workflow.GetStep(args.Context, &pulumirpc.GetStepRequest{Token: stepToken})
+					require.NoError(l, err)
+					require.NotNil(l, step.GetInputType())
+					assert.Equal(l, "workflow:index:BoolInput", step.GetInputType().GetToken())
 
 					runTrueResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
 						Context: &pulumirpc.WorkflowContext{ExecutionId: "test-true"},
 						Path:    stepToken,
-						Input:   structpb.NewBoolValue(true),
+						Input: structpb.NewStructValue(&structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"input": structpb.NewBoolValue(true),
+							},
+						}),
 					})
 					require.NoError(l, err)
 					require.NotNil(l, runTrueResp.GetResult())
@@ -44,7 +52,11 @@ func init() {
 					runFalseResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
 						Context: &pulumirpc.WorkflowContext{ExecutionId: "test-false"},
 						Path:    stepToken,
-						Input:   structpb.NewBoolValue(false),
+						Input: structpb.NewStructValue(&structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"input": structpb.NewBoolValue(false),
+							},
+						}),
 					})
 					require.NoError(l, err)
 					require.NotNil(l, runFalseResp.GetResult())

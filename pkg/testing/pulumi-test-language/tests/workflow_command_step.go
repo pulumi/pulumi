@@ -33,6 +33,10 @@ func init() {
 					require.Len(l, steps.GetSteps(), 1)
 
 					stepToken := steps.GetSteps()[0]
+					step, err := args.Workflow.GetStep(args.Context, &pulumirpc.GetStepRequest{Token: stepToken})
+					require.NoError(l, err)
+					require.NotNil(l, step.GetInputType())
+					require.Equal(l, "workflow:index:CommandStepInput", step.GetInputType().GetToken())
 					outputFile := filepath.Join(args.ProjectDirectory, "command-step-output.txt")
 					_ = os.Remove(outputFile)
 

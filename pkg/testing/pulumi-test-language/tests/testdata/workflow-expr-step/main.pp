@@ -1,4 +1,4 @@
 step "invert" {
-  input_type = "bool"
+  input_type = "workflow:index:BoolInput"
   expr       = "!input"
 }

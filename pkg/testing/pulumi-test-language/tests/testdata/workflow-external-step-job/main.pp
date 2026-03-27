@@ -1,10 +1,10 @@
 step "invert" {
-  input_type = "bool"
+  input_type = "workflow:index:BoolInput"
   expr       = "!input"
 }
 
 job "build" {
-  input_type = "bool"
+  input_type = "workflow:index:BoolInput"
   expr       = "invert"
 
   step "invert" {
