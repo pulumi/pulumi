@@ -60,7 +60,12 @@ func newMockBackendForAnalyze() (*backend.MockBackend, *backend.MockStack) {
 	var be *backend.MockBackend
 	stk := &backend.MockStack{
 		BackendF: func() backend.Backend { return be },
-		RefF:     func() backend.StackReference { return &backend.MockStackReference{} },
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				NameV:    tokens.MustParseStackName("stack"),
+				ProjectV: "project",
+			}
+		},
 	}
 	be = &backend.MockBackend{
 		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
