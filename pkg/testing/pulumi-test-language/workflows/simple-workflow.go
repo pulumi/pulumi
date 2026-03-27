@@ -22,31 +22,25 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-type SimpleWorkflow struct{}
+type SimpleStepWorkflow struct{}
 
-type simpleWorkflow struct{}
-
-var _ plugin.Workflow = (*simpleWorkflow)(nil)
-
-func (w *SimpleWorkflow) New() plugin.Workflow {
-	return &simpleWorkflow{}
-}
+var _ plugin.Workflow = (*SimpleStepWorkflow)(nil)
 
 func workflowNotImplemented(method string) error {
 	return fmt.Errorf("%s not implemented", method)
 }
 
-func (w *simpleWorkflow) Close() error {
+func (w *SimpleStepWorkflow) Close() error {
 	return nil
 }
 
-func (w *simpleWorkflow) Handshake(
+func (w *SimpleStepWorkflow) Handshake(
 	context.Context, *pulumirpc.WorkflowHandshakeRequest,
 ) (*pulumirpc.WorkflowHandshakeResponse, error) {
 	return nil, workflowNotImplemented("Handshake")
 }
 
-func (w *simpleWorkflow) GetPackageInfo(
+func (w *SimpleStepWorkflow) GetPackageInfo(
 	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetPackageInfoResponse, error) {
 	return &pulumirpc.GetPackageInfoResponse{
@@ -57,91 +51,91 @@ func (w *simpleWorkflow) GetPackageInfo(
 	}, nil
 }
 
-func (w *simpleWorkflow) GetGraphs(
+func (w *SimpleStepWorkflow) GetGraphs(
 	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetGraphsResponse, error) {
 	return &pulumirpc.GetGraphsResponse{}, nil
 }
 
-func (w *simpleWorkflow) GetGraph(
+func (w *SimpleStepWorkflow) GetGraph(
 	context.Context, *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetGraphResponse, error) {
 	return nil, workflowNotImplemented("GetGraph")
 }
 
-func (w *simpleWorkflow) GetTriggers(
+func (w *SimpleStepWorkflow) GetTriggers(
 	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetTriggersResponse, error) {
 	return &pulumirpc.GetTriggersResponse{}, nil
 }
 
-func (w *simpleWorkflow) GetTrigger(
+func (w *SimpleStepWorkflow) GetTrigger(
 	context.Context, *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetTriggerResponse, error) {
 	return nil, workflowNotImplemented("GetTrigger")
 }
 
-func (w *simpleWorkflow) GetJobs(
+func (w *SimpleStepWorkflow) GetJobs(
 	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetJobsResponse, error) {
 	return &pulumirpc.GetJobsResponse{}, nil
 }
 
-func (w *simpleWorkflow) GetJob(
+func (w *SimpleStepWorkflow) GetJob(
 	context.Context, *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetJobResponse, error) {
 	return nil, workflowNotImplemented("GetJob")
 }
 
-func (w *simpleWorkflow) GetSteps(
+func (w *SimpleStepWorkflow) GetSteps(
 	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetStepsResponse, error) {
 	return nil, workflowNotImplemented("GetSteps")
 }
 
-func (w *simpleWorkflow) GetStep(
+func (w *SimpleStepWorkflow) GetStep(
 	context.Context, *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetStepResponse, error) {
 	return nil, workflowNotImplemented("GetStep")
 }
 
-func (w *simpleWorkflow) GenerateGraph(
+func (w *SimpleStepWorkflow) GenerateGraph(
 	context.Context, *pulumirpc.GenerateGraphRequest,
 ) (*pulumirpc.GenerateNodeResponse, error) {
 	return nil, workflowNotImplemented("GenerateGraph")
 }
 
-func (w *simpleWorkflow) GenerateJob(
+func (w *SimpleStepWorkflow) GenerateJob(
 	context.Context, *pulumirpc.GenerateJobRequest,
 ) (*pulumirpc.GenerateNodeResponse, error) {
 	return nil, workflowNotImplemented("GenerateJob")
 }
 
-func (w *simpleWorkflow) RunTriggerMock(
+func (w *SimpleStepWorkflow) RunTriggerMock(
 	context.Context, *pulumirpc.RunTriggerMockRequest,
 ) (*pulumirpc.RunTriggerMockResponse, error) {
 	return nil, workflowNotImplemented("RunTriggerMock")
 }
 
-func (w *simpleWorkflow) RunFilter(
+func (w *SimpleStepWorkflow) RunFilter(
 	context.Context, *pulumirpc.RunFilterRequest,
 ) (*pulumirpc.RunFilterResponse, error) {
 	return nil, workflowNotImplemented("RunFilter")
 }
 
-func (w *simpleWorkflow) RunStep(
+func (w *SimpleStepWorkflow) RunStep(
 	context.Context, *pulumirpc.RunStepRequest,
 ) (*pulumirpc.RunStepResponse, error) {
 	return nil, workflowNotImplemented("RunStep")
 }
 
-func (w *simpleWorkflow) RunOnError(
+func (w *SimpleStepWorkflow) RunOnError(
 	context.Context, *pulumirpc.RunOnErrorRequest,
 ) (*pulumirpc.RunOnErrorResponse, error) {
 	return nil, workflowNotImplemented("RunOnError")
 }
 
-func (w *simpleWorkflow) ResolveJobResult(
+func (w *SimpleStepWorkflow) ResolveJobResult(
 	context.Context, *pulumirpc.ResolveJobResultRequest,
 ) (*pulumirpc.ResolveJobResultResponse, error) {
 	return nil, workflowNotImplemented("ResolveJobResult")

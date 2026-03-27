@@ -29,7 +29,7 @@ import (
 func init() {
 	LanguageTests["workflow-external-step-job"] = LanguageTest{
 		Workflows: []func() plugin.Workflow{
-			(&workflows.SimpleWorkflow{}).New,
+			func() plugin.Workflow { return &workflows.SimpleStepWorkflow{} },
 		},
 		Runs: []TestRun{
 			{
