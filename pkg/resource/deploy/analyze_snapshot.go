@@ -151,7 +151,7 @@ func stateToAnalyzerResource(
 //
 // Returns true if any mandatory policy violations were found.
 func AnalyzeSnapshot(
-	_ context.Context,
+	ctx context.Context,
 	snap *Snapshot,
 	analyzers []plugin.Analyzer,
 	events PolicyEvents,
@@ -200,6 +200,7 @@ func AnalyzeSnapshot(
 					// Report what would be remediated without applying it.
 					events.OnPolicyRemediation(res.URN, tresult, analyzerRes.Properties, tresult.Properties)
 				}
+				// A remediation might not set diagnostic or properties, we just ignore them.
 			}
 			summary := resourceanalyzer.NewRemediatePolicySummary(res.URN, response, info)
 			events.OnPolicyRemediateSummary(summary)

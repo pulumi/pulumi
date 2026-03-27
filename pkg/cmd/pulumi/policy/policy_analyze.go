@@ -158,6 +158,8 @@ func newPolicyAnalyzeCmd(
 	cmd.Flags().StringArrayVar(&policyPackConfigs, "policy-pack-config", []string{},
 		"Path to a JSON config file for the corresponding --policy-pack")
 
+	cmd.MarkFlagsMutuallyExclusive("json", "diff")
+
 	return cmd
 }
 
@@ -230,9 +232,10 @@ func newAnalyzeEvents(
 	}
 	events := make(chan engine.Event)
 	done := make(chan bool)
+	project, _ := stackRef.Project()
 	go display.ShowEvents(
 		"analyze", apitype.UpdateUpdate,
-		stackName(stackRef), projectName(stackRef),
+		stackRef.Name(), tokens.PackageName(project),
 		"", events, done, opts, false)
 
 	return &analyzeEvents{
@@ -260,34 +263,6 @@ func policyPackVersions(analyzers []plugin.Analyzer) (map[string]string, error) 
 		policyPacks[info.Name] = info.Version
 	}
 	return policyPacks, nil
-}
-
-func projectName(stackRef backend.StackReference) tokens.PackageName {
-	project, ok := safeProjectName(stackRef)
-	if ok {
-		return tokens.PackageName(project.Q())
-	}
-	return tokens.PackageName("project")
-}
-
-func stackName(stackRef backend.StackReference) (name tokens.StackName) {
-	name = tokens.MustParseStackName("stack")
-	defer func() {
-		if recover() != nil {
-			name = tokens.MustParseStackName("stack")
-		}
-	}()
-	return stackRef.Name()
-}
-
-func safeProjectName(stackRef backend.StackReference) (name tokens.Name, ok bool) {
-	defer func() {
-		if recover() != nil {
-			name = ""
-			ok = false
-		}
-	}()
-	return stackRef.Project()
 }
 
 func (e *analyzeEvents) writeEvent(event engine.Event) {
@@ -347,6 +322,10 @@ func (e *analyzeEvents) OnPolicyRemediation(
 	}))
 }
 
+// Summary callbacks are intentionally no-ops: the progress, diff, and JSON
+// display renderers all drop PolicyAnalyzeSummary/PolicyRemediateSummary/
+// PolicyAnalyzeStackSummary events. The "Policies:" section in the progress
+// display is built from per-violation events, not aggregate summaries.
 func (e *analyzeEvents) OnPolicyAnalyzeSummary(_ plugin.PolicySummary)      {}
 func (e *analyzeEvents) OnPolicyRemediateSummary(_ plugin.PolicySummary)    {}
 func (e *analyzeEvents) OnPolicyAnalyzeStackSummary(_ plugin.PolicySummary) {}
