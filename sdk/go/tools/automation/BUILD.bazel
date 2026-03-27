@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "automation_lib",
+    srcs = [
+        "main.go",
+        "types.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation",
+    visibility = ["//visibility:private"],
+    deps = ["@com_github_iancoleman_strcase//:strcase"],
+)
+
+go_binary(
+    name = "automation",
+    embed = [":automation_lib"],
+    visibility = ["//visibility:public"],
+)

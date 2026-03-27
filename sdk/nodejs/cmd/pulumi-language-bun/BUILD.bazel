@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "pulumi-language-bun_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-bun",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "pulumi-language-bun",
+    embed = [":pulumi-language-bun_lib"],
+    visibility = ["//visibility:public"],
+)

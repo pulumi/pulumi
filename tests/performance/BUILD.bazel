@@ -1,0 +1,13 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "performance_test",
+    srcs = ["performance_test.go"],
+    data = [
+        "//pkg/cmd/pulumi",
+    ],
+    deps = [
+        "//pkg/testing/integration",
+        "@com_github_stretchr_testify//require",
+    ],
+)

@@ -1,0 +1,15 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "generate_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/util/generate",
+    visibility = ["//visibility:private"],
+    deps = ["@com_github_google_go_github_v55//github"],
+)
+
+go_binary(
+    name = "generate",
+    embed = [":generate_lib"],
+    visibility = ["//visibility:public"],
+)

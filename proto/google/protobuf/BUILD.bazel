@@ -1,0 +1,30 @@
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "status_proto",
+    srcs = ["status.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["@protobuf//:any_proto"],
+)
+
+go_proto_library(
+    name = "status_go_proto",
+    importpath = "google.golang.org/genproto/googleapis/rpc/status",
+    proto = ":status_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "status",
+    embed = [":status_go_proto"],
+    importpath = "google.golang.org/genproto/googleapis/rpc/status",
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":status",
+    visibility = ["//visibility:public"],
+)

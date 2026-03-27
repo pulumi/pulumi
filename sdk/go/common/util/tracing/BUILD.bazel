@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "tracing",
+    srcs = ["attributes.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/proto/go",
+        "@io_opentelemetry_go_otel//attribute",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":tracing",
+    visibility = ["//visibility:public"],
+)

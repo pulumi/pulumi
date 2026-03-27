@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+# Export all codegen testdata files
+filegroup(
+    name = "codegen",
+    srcs = glob(["codegen/**"]),
+    visibility = ["//visibility:public"],
+)

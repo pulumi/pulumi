@@ -1,0 +1,67 @@
+load("@rules_python//python:defs.bzl", "py_test", "py_library")
+
+# Helper library for tests
+py_library(
+    name = "testlib",
+    srcs = glob(
+        ["**/*.py"],
+        exclude = ["test_*.py", "**/test_*.py"],
+    ),
+    imports = ["../.."],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/python/lib/pulumi",
+        "@pip//pytest",
+        "@pip//pytest_asyncio",
+        "@pip//pytest_timeout",
+    ],
+)
+
+# Individual test targets for each major test file in root test directory
+py_test(
+    name = "test_output",
+    srcs = ["test_output.py"],
+    imports = ["../.."],
+    deps = [
+        ":testlib",
+        "//sdk/python/lib/pulumi",
+        "@pip//pytest",
+    ],
+    tags = ["manual"],  # Run manually since may need setup
+)
+
+py_test(
+    name = "test_resource",
+    srcs = ["test_resource.py"],
+    imports = ["../.."],
+    deps = [
+        ":testlib",
+        "//sdk/python/lib/pulumi",
+        "@pip//pytest",
+    ],
+    tags = ["manual"],
+)
+
+py_test(
+    name = "test_config",
+    srcs = ["test_config.py"],
+    imports = ["../.."],
+    deps = [
+        ":testlib",
+        "//sdk/python/lib/pulumi",
+        "@pip//pytest",
+    ],
+    tags = ["manual"],
+)
+
+py_test(
+    name = "test_invoke",
+    srcs = ["test_invoke.py"],
+    imports = ["../.."],
+    deps = [
+        ":testlib",
+        "//sdk/python/lib/pulumi",
+        "@pip//pytest",
+    ],
+    tags = ["manual"],
+)

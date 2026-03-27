@@ -1,0 +1,25 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+# Export all files for use as test data
+filegroup(
+    name = "testproj_files",
+    srcs = glob(["*"]),
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "testproj_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/pulumi/pulumi/sdk/v3/go/auto/test/testproj",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/config",
+    ],
+)
+
+go_binary(
+    name = "testproj",
+    embed = [":testproj_lib"],
+    visibility = ["//visibility:public"],
+)

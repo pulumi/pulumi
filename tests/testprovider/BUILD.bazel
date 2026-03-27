@@ -1,0 +1,36 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "testprovider_lib",
+    srcs = [
+        "component.go",
+        "echo.go",
+        "fails_on_create.go",
+        "fails_on_delete.go",
+        "flaky_create.go",
+        "main.go",
+        "named.go",
+        "random.go",
+    ],
+    importpath = "github.com/pulumi/pulumi/tests/testprovider",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//pkg/codegen/schema",
+        "//pkg/resource/provider",
+        "//sdk/go/common/resource",
+        "//sdk/go/common/resource/plugin",
+        "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/rpcutil/rpcerror",
+        "//sdk/go/pulumi",
+        "//sdk/go/pulumi/provider",
+        "//sdk/proto/go",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_protobuf//types/known/emptypb",
+    ],
+)
+
+go_binary(
+    name = "testprovider",
+    embed = [":testprovider_lib"],
+    visibility = ["//visibility:public"],
+)
