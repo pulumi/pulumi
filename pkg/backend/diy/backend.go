@@ -66,6 +66,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // UpgradeOptions customizes the behavior of the upgrade operation.
@@ -336,6 +339,21 @@ func newDIYBackend(
 		return nil, fmt.Errorf(
 			"state store unsupported: 'meta.yaml' version (%d) is not supported "+
 				"by this version of the Pulumi CLI", meta.Version)
+	}
+
+	// If we're not in project mode and the user hasn't disabled the warning, warn that legacy mode is deprecated and
+	// due to be removed.
+	if !projectMode && !opts.Env.GetBool(env.DIYBackendIgnoreDeprecationWarning) {
+		d.Warningf(diag.Message("", `
+================================================================================
+Legacy DIY state is deprecated, please upgrade your state to project mode using:
+'pulumi state upgrade'
+
+It is due to be removed in a future release before the end of this year (2026).
+If you have any feedback or concerns, please let us know by commenting on the
+issue at https://github.com/pulumi/pulumi/issues/19566.
+Set PULUMI_DIY_BACKEND_IGNORE_DEPRECATION_WARNING=1 to disable this warning.
+================================================================================`))
 	}
 
 	// If we're not in project mode, or we've disabled the warning, we're done.
@@ -1175,6 +1193,13 @@ func (b *diyBackend) apply(
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
+		// than a logical span, but this is a convenient way to record this information.
+		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
+			tracer := otel.Tracer("pulumi-cli")
+			_, span := tracer.Start(ctx, "time-to-first-print", trace.WithTimestamp(startTime))
+			span.End()
+		}
 		// Print a banner so it's clear this is a diy deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)

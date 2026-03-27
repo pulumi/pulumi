@@ -1,0 +1,10 @@
+<{%reset%}>Configuration:<{%reset%}>
+<{%reset%}>  urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev: (same)
+<{%reset%}><{%fg 1%}>- urn:pulumi:dev::myproject::my:component:Child::mychild: (delete)
+<{%fg 1%}>    [id=mychild-id]
+<{%reset%}><{%reset%}>    <{%fg 1%}>- urn:pulumi:dev::myproject::my:component:Component::mycomponent: (delete)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 7s

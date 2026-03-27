@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 	"testing"
 
@@ -81,7 +82,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 
 				actualState = renderResource(t, res)
 				return nil
-			}, []*resource.State{state}, snapshot, names)
+			}, []*resource.State{state}, snapshot, maps.Clone(names))
 			require.NoError(t, err)
 
 			assert.Equal(t, state.Type, actualState.Type)
@@ -105,6 +106,183 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGenerateLanguageDefinitionsReferencesOtherResources(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	var generatedProgram strings.Builder
+	generator := func(_ io.Writer, p *pcl.Program) error {
+		for _, content := range p.Source() {
+			generatedProgram.WriteString(content)
+		}
+		return nil
+	}
+
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::myBucket",
+			ID:       "bucket-1",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
+			Inputs:   map[string]any{},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::obj",
+			ID:     "bucket-object-1",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]any{
+				"bucket": "bucket-1",
+			},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+	}
+
+	states := slice.Prealloc[*resource.State](len(resources))
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	var names NameTable
+	err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, names)
+	require.NoError(t, err)
+	// notice here the generated program doesn't have any references because
+	// we retried the codegen without guessing the dependencies between the resources.
+	expectedCode := `package aws {
+    baseProviderName = "aws"
+
+}
+
+resource myBucket "aws:s3/bucket:Bucket" {
+
+}
+
+resource obj "aws:s3/bucketObject:BucketObject" {
+    bucket = myBucket.id
+
+}
+`
+	assert.Equal(t, expectedCode, generatedProgram.String())
+}
+
+func TestGenerateLanguageDefinitionsReferencesOtherResourcesByName(t *testing.T) {
+	t.Parallel()
+
+	testAttribute := func(t *testing.T, names NameTable, expectedCode string) {
+		t.Helper()
+		loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+		var generatedProgram strings.Builder
+		generator := func(_ io.Writer, p *pcl.Program) error {
+			for _, content := range p.Source() {
+				generatedProgram.WriteString(content)
+			}
+			return nil
+		}
+
+		snapshot := []*resource.State{
+			{
+				ID:     "123",
+				Custom: true,
+				Type:   "pulumi:providers:aws",
+				URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			},
+		}
+
+		resources := []apitype.ResourceV3{
+			{
+				URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com",
+				ID:       "bucket-1",
+				Custom:   true,
+				Type:     "aws:s3/bucket:Bucket",
+				Inputs:   map[string]any{},
+				Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			},
+			{
+				URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::obj",
+				ID:     "bucket-object-1",
+				Custom: true,
+				Type:   "aws:s3/bucketObject:BucketObject",
+				Inputs: map[string]any{
+					"bucket": "bucket-1",
+				},
+				Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+			},
+		}
+
+		states := slice.Prealloc[*resource.State](len(resources))
+		for _, r := range resources {
+			state, err := stack.DeserializeResource(r, config.NopDecrypter)
+			require.NoError(t, err)
+			states = append(states, state)
+		}
+
+		err := GenerateLanguageDefinitions(io.Discard, loader, generator, states, snapshot, names)
+		require.NoError(t, err)
+		assert.Equal(t, expectedCode, generatedProgram.String())
+	}
+
+	// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that given names are used in
+	// attribute lookups.
+	t.Run("GivenName", func(t *testing.T) {
+		t.Parallel()
+		names := NameTable{
+			"urn:pulumi:stack::project::aws:s3/bucket:Bucket::my.Bucket.com": "myBucket",
+		}
+		expectedCode := `package aws {
+    baseProviderName = "aws"
+
+}
+
+resource myBucket "aws:s3/bucket:Bucket" {
+    __logicalName = "my.Bucket.com"
+
+}
+
+resource obj "aws:s3/bucketObject:BucketObject" {
+    bucket = myBucket.id
+
+}
+`
+		testAttribute(t, names, expectedCode)
+	})
+
+	// Regression test for https://github.com/pulumi/pulumi/issues/22058, check that sanitized names are used in
+	// attribute lookups.
+	t.Run("SanitizedName", func(t *testing.T) {
+		t.Parallel()
+		var names NameTable
+		expectedCode := `package aws {
+    baseProviderName = "aws"
+
+}
+
+resource my_Bucket_com "aws:s3/bucket:Bucket" {
+    __logicalName = "my.Bucket.com"
+
+}
+
+resource obj "aws:s3/bucketObject:BucketObject" {
+    bucket = my_Bucket_com.id
+
+}
+`
+		testAttribute(t, names, expectedCode)
+	})
 }
 
 func TestGenerateLanguageDefinitionsRetriesCodegenWhenEncounteringCircularReferences(t *testing.T) {

@@ -581,26 +581,59 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 		}
 	}
 
+	// Check whether the method's schema signature accepts an args parameter.
+	// Methods with no inputs (other than __self__) don't take an args parameter at all.
+	methodHasArgs := methodSchemaHasArgs(res.Schema, method)
+
 	// Generate: self.Method(ctx, &mod.ResourceMethodArgs{...})
-	g.Fgenf(w, "%v.%s(ctx, ", self, methodName)
-	if len(args.Items) > 0 {
-		argsTypeName := fmt.Sprintf("%s.%s%sArgs", modOrAlias, resourceName, methodName)
-		g.Fgenf(w, "&%s{\n", argsTypeName)
-		for _, item := range args.Items {
-			key := item.Key.(*model.LiteralValueExpression).Value.AsString()
-			if destType, ok := propTypes[key]; ok {
-				g.Fgenf(w, "%s: ", Title(key))
-				g.genInputValue(w, item.Value, destType)
-				g.Fgenf(w, ",\n")
-			} else {
-				g.Fgenf(w, "%s: %.v,\n", Title(key), item.Value)
+	// or:       self.Method(ctx) when the method has no args parameter.
+	if methodHasArgs {
+		g.Fgenf(w, "%v.%s(ctx, ", self, methodName)
+		if len(args.Items) > 0 {
+			argsTypeName := fmt.Sprintf("%s.%s%sArgs", modOrAlias, resourceName, methodName)
+			g.Fgenf(w, "&%s{\n", argsTypeName)
+			for _, item := range args.Items {
+				key := item.Key.(*model.LiteralValueExpression).Value.AsString()
+				if destType, ok := propTypes[key]; ok {
+					g.Fgenf(w, "%s: ", Title(key))
+					g.genInputValue(w, item.Value, destType)
+					g.Fgenf(w, ",\n")
+				} else {
+					g.Fgenf(w, "%s: %.v,\n", Title(key), item.Value)
+				}
+			}
+			g.Fprint(w, "}")
+		} else {
+			g.Fprint(w, "nil")
+		}
+		g.Fprint(w, ")")
+	} else {
+		g.Fgenf(w, "%v.%s(ctx)", self, methodName)
+	}
+}
+
+// methodSchemaHasArgs returns true if the named method on the resource schema accepts
+// an args parameter (i.e. has inputs other than __self__). When no schema is available,
+// it conservatively returns true.
+func methodSchemaHasArgs(res *schema.Resource, methodName string) bool {
+	if res == nil {
+		return true
+	}
+	for _, m := range res.Methods {
+		if m.Name != methodName {
+			continue
+		}
+		if m.Function.Inputs == nil {
+			return false
+		}
+		for _, p := range m.Function.Inputs.Properties {
+			if p.Name != "__self__" {
+				return true
 			}
 		}
-		g.Fprint(w, "}")
-	} else {
-		g.Fprint(w, "nil")
+		return false
 	}
-	g.Fprint(w, ")")
+	return true
 }
 
 // genInputValue generates a value expression with the appropriate input type wrapper
@@ -730,6 +763,14 @@ func (g *generator) genObjectConsExpression(
 ) {
 	isInput = isInput || isInputty(destType)
 
+	// Track plain object context for nested rendering. If we enter a
+	// non-plain (input) context, clear the flag so nested objects get &.
+	savedPlain := g.inPlainObjectField
+	if isInput {
+		g.inPlainObjectField = false
+	}
+	defer func() { g.inPlainObjectField = savedPlain }()
+
 	typeName := g.argumentTypeName(destType, isInput)
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
@@ -775,6 +816,8 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		}
 	} else if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
 		g.Fgenf(w, "%s", typeName)
+	} else if g.inPlainObjectField {
+		g.Fgenf(w, "%s", typeName)
 	} else {
 		g.Fgenf(w, "&%s", typeName)
 	}
@@ -791,10 +834,47 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			g.Fgenf(w, "%.v", item.Key)
 		}
 
+		// When rendering a plain struct field, collection-typed properties
+		// (maps, arrays) need explicit type info from the parent struct's
+		// model type. Without this, ObjectConsExpression renders as
+		// map[string]interface{} instead of map[string]string, and empty
+		// TupleConsExpression renders as []interface{} instead of []bool.
+		if g.inPlainObjectField && !isMap {
+			if lit, ok := g.literalKey(item.Key); ok {
+				if propType := g.plainPropertyType(destType, lit); propType != nil {
+					switch v := item.Value.(type) {
+					case *model.ObjectConsExpression:
+						if _, ok := propType.(*model.MapType); ok {
+							g.Fgenf(w, ": ")
+							g.genObjectConsExpression(w, v, propType, false)
+							g.Fgenf(w, ",\n")
+							continue
+						}
+					case *model.TupleConsExpression:
+						if _, ok := propType.(*model.ListType); ok {
+							g.Fgenf(w, ": ")
+							g.genTupleConsExpression(w, v, propType)
+							g.Fgenf(w, ",\n")
+							continue
+						}
+					}
+				}
+			}
+		}
+
 		g.Fgenf(w, ": %.v,\n", item.Value)
 	}
 
 	g.Fgenf(w, "}")
+}
+
+// plainPropertyType returns the model type for a property of a plain struct.
+// It looks up the property by name in the model ObjectType's properties map.
+func (g *generator) plainPropertyType(destType model.Type, key string) model.Type {
+	if obj, ok := destType.(*model.ObjectType); ok {
+		return obj.Properties[key]
+	}
+	return nil
 }
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
