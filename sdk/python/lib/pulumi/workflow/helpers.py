@@ -192,7 +192,7 @@ def _job_return_output_type(fn: Callable[..., Any]) -> Type[Any]:
         raise WorkflowError("job callback return type must be Output[T]")
     output_type = args[0]
     if not inspect.isclass(output_type):
-        raise WorkflowError("job callback output type T must be a class/record type")
+        raise WorkflowError("job callback output type T must be a class/record or primitive type")
     return cast(Type[Any], output_type)
 
 
@@ -255,6 +255,11 @@ def _step_return_type(fn: Callable[..., Any]) -> Type[Any]:
 
 
 def _coerce_record_instance(record_type: Type[Any], value: Any, label: str) -> Any:
+    if value is None:
+        try:
+            return record_type()
+        except TypeError:
+            pass
     if isinstance(value, record_type):
         return value
     if isinstance(value, dict):

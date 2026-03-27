@@ -568,7 +568,7 @@ class WorkflowRegistry:
             _validate_record_type(input_type, "job input type")
 
             output_type = _job_return_output_type(fn)
-            _validate_record_type(output_type, "job output type")
+            _validate_step_type(output_type, "job output type")
 
             self._jobs[resolved_token] = _ExportedJobDefinition(
                 token=resolved_token,

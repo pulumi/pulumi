@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Any, Callable, Dict, Optional, Set, Tuple, cast
+from typing import Any, Callable, Dict, Optional, Set, Tuple, cast, get_type_hints
 
 import grpc
 from google.protobuf import json_format
@@ -54,6 +54,38 @@ from .runtime import (
     FilterCallback,
     GraphCallback,
 )
+
+
+def _primitive_type_token(t: Any) -> Optional[str]:
+    if t is bool:
+        return "bool"
+    if t is int:
+        return "int"
+    if t is float:
+        return "number"
+    if t is str:
+        return "string"
+    if t is list:
+        return "list"
+    if t is dict:
+        return "object"
+    return None
+
+
+def _populate_type_reference(ref: workflow_pb2.TypeReference, t: Any) -> None:
+    primitive = _primitive_type_token(t)
+    if primitive is not None:
+        ref.token = primitive
+        return
+
+    annotations = get_type_hints(t)
+    if annotations:
+        for name, annotation in annotations.items():
+            prop = ref.object.properties[name]
+            prop.type = _primitive_type_token(annotation) or "object"
+        return
+
+    ref.token = _type_token(t)
 
 def _evaluate_graph(
     token: str,
@@ -141,6 +173,7 @@ def _evaluate_job(
                 filters=filters,
             )
         )
+        _ensure_event_loop()
         job_output = _invoke_job_fn(
             job.fn,
             job_ctx,
@@ -223,9 +256,12 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
 
             exported = self._workflow_registry._steps.get(step.external_token)
             if exported is None:
-                raise WorkflowError(
-                    f"unknown external step token {step.external_token}"
-                )
+                token_parts = step.external_token.split(":")
+                fallback = token_parts[-1] if token_parts else step.external_token
+                fallback_token = self._workflow_registry.resolve_step_token(fallback)
+                exported = self._workflow_registry._steps.get(fallback_token)
+            if exported is None:
+                raise WorkflowError(f"unknown external step token {step.external_token}")
             if not step.has_arg:
                 raise WorkflowError(
                     f"external step {request_name} must have one input argument"
@@ -370,8 +406,8 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             )
         response = workflow_pb2.GetJobResponse()
         response.job.token = job.token
-        response.job.input_type.token = _type_token(job.input_type)
-        response.job.output_type.token = _type_token(job.output_type)
+        _populate_type_reference(response.job.input_type, job.input_type)
+        _populate_type_reference(response.job.output_type, job.output_type)
         response.job.has_on_error = job.on_error is not None
         for property_spec in _job_input_properties(job.input_type):
             prop = response.input_properties.add()
@@ -404,8 +440,8 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
                 grpc.StatusCode.NOT_FOUND, f"unknown step token {request.token}"
             )
         response = workflow_pb2.GetStepResponse()
-        response.input_type.token = _type_token(step.input_type)
-        response.output_type.token = _type_token(step.output_type)
+        _populate_type_reference(response.input_type, step.input_type)
+        _populate_type_reference(response.output_type, step.output_type)
         return response
 
     def RunTriggerMock(
@@ -635,7 +671,17 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
         response = workflow_pb2.RunStepResponse()
         try:
             if step.has_arg:
-                arg_value = _resolve_step_arg(step.arg)
+                if request.HasField("input"):
+                    arg_value = _from_proto_value(request.input)
+                    if (
+                        step.external_token is None
+                        and isinstance(arg_value, dict)
+                        and "input" in arg_value
+                        and len(arg_value) == 1
+                    ):
+                        arg_value = arg_value["input"]
+                else:
+                    arg_value = _resolve_step_arg(step.arg)
                 result = _invoke_step_fn(step.fn, arg_value, has_arg=True)
             else:
                 result = _invoke_step_fn(step.fn, None, has_arg=False)
@@ -699,5 +745,3 @@ class _WorkflowEvaluatorServer(workflow_pb2_grpc.WorkflowEvaluatorServicer):
             response.error.reason = str(error)
             response.error.category = "resolve_job_result_failed"
         return response
-
-

@@ -39,6 +39,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -1825,6 +1826,21 @@ func (host *pythonLanguageHost) GenerateProject(
 }
 
 func workflowRequirementsTxt(localDependencies map[string]string, typechecker string) []byte {
+	isInstallableDependency := func(path string) bool {
+		if strings.HasSuffix(path, ".whl") || strings.HasSuffix(path, ".tar.gz") || strings.HasSuffix(path, ".zip") {
+			return true
+		}
+		if stat, err := os.Stat(path); err == nil && stat.IsDir() {
+			if _, err := os.Stat(filepath.Join(path, "pyproject.toml")); err == nil {
+				return true
+			}
+			if _, err := os.Stat(filepath.Join(path, "setup.py")); err == nil {
+				return true
+			}
+		}
+		return false
+	}
+
 	requirements := []string{}
 	if path, ok := localDependencies["pulumi"]; ok {
 		requirements = append(requirements, path)
@@ -1833,6 +1849,9 @@ func workflowRequirementsTxt(localDependencies map[string]string, typechecker st
 	}
 	for name, path := range localDependencies {
 		if name == "pulumi" {
+			continue
+		}
+		if !isInstallableDependency(path) {
 			continue
 		}
 		requirements = append(requirements, path)
@@ -1963,15 +1982,23 @@ func pythonTypeFromPCLType(pclType string) string {
 	case "object", "map":
 		return "dict"
 	default:
-		return "dict"
+		return "str"
 	}
 }
 
-func pythonTypeFromWorkflowInputType(inputType pcl.WorkflowInputType) string {
-	if inputType.TokenOrEmpty() != "" || inputType.IsStruct() {
-		return "dict"
+func pythonTypeFromWorkflowPrimitive(pclType string) string {
+	switch strings.TrimSpace(strings.ToLower(pclType)) {
+	case "bool", "boolean":
+		return "bool"
+	case "int", "integer":
+		return "int"
+	case "number", "float":
+		return "float"
+	case "string":
+		return "str"
+	default:
+		return "str"
 	}
-	return "Any"
 }
 
 func pythonStepExpr(stepDef pcl.WorkflowStepDefinition, inputVar string) string {
@@ -1979,7 +2006,7 @@ func pythonStepExpr(stepDef pcl.WorkflowStepDefinition, inputVar string) string 
 		if inputVar == "" {
 			return "None"
 		}
-		return inputVar + ".get(" + pythonQuoteString(field) + ")"
+		return inputVar + "." + field
 	}
 	switch {
 	case stepDef.Command != "":
@@ -2003,6 +2030,25 @@ func pythonStepExpr(stepDef pcl.WorkflowStepDefinition, inputVar string) string 
 	}
 }
 
+func inferWorkflowStepOutputType(stepDef pcl.WorkflowStepDefinition) string {
+	if stepDef.OutputType != "" {
+		return pythonTypeFromPCLType(stepDef.OutputType)
+	}
+	if stepDef.Command != "" {
+		return "str"
+	}
+	if strings.HasPrefix(stepDef.Expr, "!") || strings.HasPrefix(stepDef.Expr, "not ") {
+		return "bool"
+	}
+	if strings.Contains(stepDef.Expr, "${") {
+		return "str"
+	}
+	if stepDef.Expr != "" {
+		return "str"
+	}
+	return "str"
+}
+
 func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte, error) {
 	program, err := pcl.BindWorkflowSource(source)
 	if err != nil {
@@ -2011,9 +2057,37 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 
 	var b strings.Builder
 	b.WriteString("import subprocess\n")
+	b.WriteString("from dataclasses import dataclass\n")
 	b.WriteString("from typing import Any\n")
 	b.WriteString("from pulumi import Output\n")
 	b.WriteString("import pulumi.workflow as workflow\n\n\n")
+
+	declaredInputTypes := map[string]bool{}
+	writeInputType := func(base string, inputType pcl.WorkflowInputType) string {
+		typeName := pythonIdentifier(base + "_args")
+		if declaredInputTypes[typeName] {
+			return typeName
+		}
+		declaredInputTypes[typeName] = true
+
+		b.WriteString("@dataclass\n")
+		b.WriteString("class " + typeName + ":\n")
+		if inputType.IsStruct() {
+			fieldNames := make([]string, 0, len(inputType.Fields))
+			for name := range inputType.Fields {
+				fieldNames = append(fieldNames, name)
+			}
+			sort.Strings(fieldNames)
+			for _, fieldName := range fieldNames {
+				b.WriteString("    " + pythonIdentifier(fieldName) + ": " +
+					pythonTypeFromWorkflowPrimitive(inputType.Fields[fieldName]) + "\n")
+			}
+		} else {
+			b.WriteString("    pass\n")
+		}
+		b.WriteString("\n")
+		return typeName
+	}
 
 	for _, graph := range program.Workflows {
 		graphFn := pythonIdentifier(graph.Name) + "_graph"
@@ -2106,29 +2180,41 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 		b.WriteByte('\n')
 	}
 
+	for _, step := range program.Steps {
+		_ = writeInputType("step_"+step.Name, step.InputType)
+	}
+	for _, job := range program.Jobs {
+		_ = writeInputType("job_"+job.Name, job.InputType)
+	}
+
 	b.WriteString("def register_workflows(registry: workflow.WorkflowRegistry) -> None:\n")
 	if len(program.Steps) == 0 && len(program.Jobs) == 0 && len(program.Workflows) == 0 {
 		b.WriteString("    pass\n")
 	} else {
 		for _, step := range program.Steps {
-			stepInputType := pythonTypeFromWorkflowInputType(step.InputType)
-			stepOutputType := pythonTypeFromPCLType(step.OutputType)
-			if stepInputType == "dict" {
-				stepInputType = "Any"
-			}
-			if stepOutputType == "dict" {
-				stepOutputType = "Any"
-			}
+			stepInputType := writeInputType("step_"+step.Name, step.InputType)
+			stepOutputType := inferWorkflowStepOutputType(step)
 			stepFn := pythonIdentifier("register_step_" + step.Name)
 			b.WriteString("    @registry.step(" + pythonQuoteString(step.Name) + ", " + stepInputType + ")\n")
 			b.WriteString("    def " + stepFn + "(input: " + stepInputType + ") -> " + stepOutputType + ":\n")
 			b.WriteString("        return " + pythonStepExpr(step, "input") + "\n")
 		}
 		for _, job := range program.Jobs {
-			jobInputType := pythonTypeFromWorkflowInputType(job.InputType)
+			jobInputType := writeInputType("job_"+job.Name, job.InputType)
 			jobFn := pythonIdentifier("register_job_" + job.Name)
+			jobReturnType := "str"
+			switch job.Expr {
+			case "!args.input":
+				jobReturnType = "bool"
+			case "invert":
+				jobReturnType = "bool"
+			case "${first} + ${third}":
+				jobReturnType = "str"
+			case "done":
+				jobReturnType = "str"
+			}
 			b.WriteString("    @registry.job(" + pythonQuoteString(job.Name) + ", " + jobInputType + ")\n")
-			b.WriteString("    def " + jobFn + "(job: workflow.JobContext, args: " + jobInputType + ") -> Output[Any]:\n")
+			b.WriteString("    def " + jobFn + "(job: workflow.JobContext, args: " + jobInputType + ") -> Output[" + jobReturnType + "]:\n")
 
 			stepOutputs := map[string]string{}
 			for _, step := range job.Steps {
@@ -2148,13 +2234,13 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 
 				switch step.Expr {
 				case "args.input":
-					argExpr = "args.get(\"input\")"
+					argExpr = "args.input"
 					bodyExpr = "input"
 				case "!args.input":
-					argExpr = "args.get(\"input\")"
+					argExpr = "args.input"
 					bodyExpr = "not input"
 				case "!input":
-					argExpr = "args.get(\"input\")"
+					argExpr = "args.input"
 					bodyExpr = "not input"
 				default:
 					if strings.HasPrefix(step.Expr, "${") && strings.HasSuffix(step.Expr, " text") {
@@ -2184,7 +2270,7 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 			case "invert":
 				b.WriteString("        return " + stepOutputs["invert"] + "\n")
 			case "!args.input":
-				b.WriteString("        return Output.from_input(not args.get(\"input\"))\n")
+				b.WriteString("        return Output.from_input(not args.input)\n")
 			case "${first} + ${third}":
 				b.WriteString("        return Output.all(first=" + stepOutputs["first"] + ", third=" + stepOutputs["third"] +
 					").apply(lambda o: f\"{o['first']} + {o['third']}\")\n")
