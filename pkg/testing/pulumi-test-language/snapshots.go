@@ -251,6 +251,29 @@ func editSnapshot(snapshotDirectory string, edits []compiledReplacement) (string
 	return result, nil
 }
 
+// doSnapshotWithEdits performs a snapshot check with inline edits applied to the source directory
+// during comparison, avoiding the need to create a temporary copy of the source directory.
+func doSnapshotWithEdits(
+	disableSnapshotWriting bool,
+	sourceDirectory, snapshotDirectory string,
+	edits []compiledReplacement,
+) ([]string, error) {
+	if !disableSnapshotWriting && cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
+		// When accepting, we need to create the edited copy to write
+		editedDir, err := editSnapshot(sourceDirectory, edits)
+		if err != nil {
+			return nil, err
+		}
+		defer func() {
+			if editedDir != sourceDirectory {
+				os.RemoveAll(editedDir)
+			}
+		}()
+		return doSnapshot(disableSnapshotWriting, editedDir, snapshotDirectory)
+	}
+	return compareDirectoriesWithEdits(sourceDirectory, snapshotDirectory, false, edits)
+}
+
 // Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
 // write the new files instead.
 func doSnapshot(
