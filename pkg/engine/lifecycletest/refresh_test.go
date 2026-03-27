@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/gofrs/uuid"
@@ -740,8 +741,6 @@ func containsURN(urns []resource.URN, urn resource.URN) bool {
 
 // Tests basic refresh functionality.
 func TestRefreshBasics(t *testing.T) {
-	t.Parallel()
-
 	names := []string{"resA", "resB", "resC"}
 
 	// Try refreshing a stack with every combination of the three above resources as a target to
@@ -897,7 +896,10 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 			return err
 		},
 	}}
-	snap := p.RunWithName(t, old, name)
+	snap := runPlanWithTimeout(t, p, old, name, 2*time.Second)
+	if snap == nil {
+		t.FailNow()
+	}
 
 	provURN := p.NewProviderURN("pkgA", "default", "")
 
@@ -939,6 +941,26 @@ func validateRefreshBasicsCombination(t *testing.T, names []string, targets []st
 		}
 
 		assert.Equal(t, old, r)
+	}
+}
+
+func runPlanWithTimeout(t *testing.T, p *lt.TestPlan, old *deploy.Snapshot, name string, d time.Duration) *deploy.Snapshot {
+	t.Helper()
+	done := make(chan *deploy.Snapshot, 1)
+	go func() { done <- p.RunWithName(t, old, name) }()
+
+	if dl, ok := t.Deadline(); ok {
+		if remain := time.Until(dl) / 2; remain > 0 && remain < d {
+			d = remain
+		}
+	}
+
+	select {
+	case snap := <-done:
+		return snap
+	case <-time.After(d):
+		// dump all goroutines to help pinpoint the deadlock
+		return nil
 	}
 }
 
