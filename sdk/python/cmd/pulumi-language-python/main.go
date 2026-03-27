@@ -1967,6 +1967,13 @@ func pythonTypeFromPCLType(pclType string) string {
 	}
 }
 
+func pythonTypeFromWorkflowInputType(inputType pcl.WorkflowInputType) string {
+	if inputType.TokenOrEmpty() != "" || inputType.IsStruct() {
+		return "dict"
+	}
+	return "dict"
+}
+
 func pythonStepExpr(stepDef pcl.WorkflowStepDefinition) string {
 	switch {
 	case stepDef.Command != "":
@@ -2026,13 +2033,6 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 		for _, graphJob := range graph.Jobs {
 			if graphJob.Uses != "" && strings.Contains(graphJob.Uses, ":") {
 				options := []string{"name=" + pythonQuoteString(graphJob.Name)}
-				if len(graphJob.DependsOn) > 0 {
-					deps := make([]string, 0, len(graphJob.DependsOn))
-					for _, dep := range graphJob.DependsOn {
-						deps = append(deps, pythonQuoteString(dep))
-					}
-					options = append(options, "dependencies=["+strings.Join(deps, ", ")+"]")
-				}
 				if graphJob.Filter != nil {
 					options = append(options, fmt.Sprintf("filter=Output.from_input(%t)", *graphJob.Filter))
 				}
@@ -2049,13 +2049,6 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 			}
 
 			jobDecoratorOptions := []string{}
-			if len(graphJob.DependsOn) > 0 {
-				deps := make([]string, 0, len(graphJob.DependsOn))
-				for _, dep := range graphJob.DependsOn {
-					deps = append(deps, pythonQuoteString(dep))
-				}
-				jobDecoratorOptions = append(jobDecoratorOptions, "dependencies=["+strings.Join(deps, ", ")+"]")
-			}
 			if graphJob.Filter != nil {
 				jobDecoratorOptions = append(jobDecoratorOptions, fmt.Sprintf("filter=Output.from_input(%t)", *graphJob.Filter))
 			}
@@ -2082,13 +2075,6 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 					}
 				}
 				stepDecoratorOptions := []string{}
-				if len(step.DependsOn) > 0 {
-					deps := make([]string, 0, len(step.DependsOn))
-					for _, dep := range step.DependsOn {
-						deps = append(deps, pythonQuoteString(dep))
-					}
-					stepDecoratorOptions = append(stepDecoratorOptions, "dependencies=["+strings.Join(deps, ", ")+"]")
-				}
 				if step.Filter != nil {
 					stepDecoratorOptions = append(stepDecoratorOptions, fmt.Sprintf("filter=Output.from_input(%t)", *step.Filter))
 				}
@@ -2111,7 +2097,7 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 		b.WriteString("    pass\n")
 	} else {
 		for _, step := range program.Steps {
-			stepInputType := pythonTypeFromPCLType(step.InputType)
+			stepInputType := pythonTypeFromWorkflowInputType(step.InputType)
 			stepOutputType := pythonTypeFromPCLType(step.OutputType)
 			if stepInputType == "dict" {
 				stepInputType = "Any"
