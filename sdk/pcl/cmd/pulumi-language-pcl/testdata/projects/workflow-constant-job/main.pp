@@ -1,0 +1,3 @@
+job "build" {
+  expr = "done"
+}

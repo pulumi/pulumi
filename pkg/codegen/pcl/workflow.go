@@ -469,7 +469,7 @@ func DetectProgramKindFromSource(source map[string]string) (ProgramKind, error) 
 			switch block.Type {
 			case "workflow", "graph", "trigger", "job", "step":
 				hasWorkflowBlocks = true
-			case "resource", "config", "output", "local", "component", "pulumi", "package":
+			case "resource", "config", "output", "local", "component", "pulumi":
 				hasResourceBlocks = true
 			}
 		}

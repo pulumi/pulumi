@@ -127,4 +127,19 @@ workflow "main" {}`,
 	if kind != ProgramKindMixed {
 		t.Fatalf("expected mixed kind, got %v", kind)
 	}
+
+	kind, err = DetectProgramKindFromSource(map[string]string{
+		"main.pp": `package external {
+  version = "1.0.0"
+}
+step "invert" {
+  expr = true
+}`,
+	})
+	if err != nil {
+		t.Fatalf("detect kind failed: %v", err)
+	}
+	if kind != ProgramKindWorkflow {
+		t.Fatalf("expected workflow kind with package block, got %v", kind)
+	}
 }

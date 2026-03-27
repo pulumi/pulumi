@@ -1352,7 +1352,15 @@ func (eng *languageTestServer) RunLanguageTest(
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
 		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
-	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
+	hasWorkflowAssertions := false
+	for _, run := range test.Runs {
+		if run.AssertWorkflow != nil {
+			hasWorkflowAssertions = true
+			break
+		}
+	}
+	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" ||
+		req.SkipConvertTests || hasWorkflowAssertions {
 		return languageTestResult, err
 	}
 
@@ -1603,28 +1611,32 @@ func runLanguageTests(
 			}
 		}
 
-		if _, statErr := os.Stat(filepath.Join(projectDir, "PulumiPlugin.yaml")); statErr == nil {
-			if run.AssertWorkflow == nil {
+		pluginProjectPath := filepath.Join(projectDir, "PulumiPlugin.yaml")
+		_, pluginProjectErr := os.Stat(pluginProjectPath)
+		if run.AssertWorkflow != nil {
+			if programKind != pcl.ProgramKindWorkflow {
 				return nil, fmt.Errorf(
-					"test %q run %d config error: workflow project requires AssertWorkflow (Assert path is not used)",
+					"test %q run %d config error: AssertWorkflow is only valid for workflow projects",
 					testName, i,
 				)
 			}
 
-			pluginProject, err := workspace.LoadPluginProject(filepath.Join(projectDir, "PulumiPlugin.yaml"))
-			if err != nil {
-				return makeTestResponse(fmt.Sprintf("load plugin project: %v", err)), nil
-			}
-			pluginInfo := plugin.NewProgramInfo(
-				projectDir, /* rootDirectory */
-				projectDir, /* programDirectory */
-				".",        /* entryPoint */
-				pluginProject.Runtime.Options(),
-			)
+			if pluginProjectErr == nil {
+				pluginProject, err := workspace.LoadPluginProject(pluginProjectPath)
+				if err != nil {
+					return makeTestResponse(fmt.Sprintf("load plugin project: %v", err)), nil
+				}
+				pluginInfo := plugin.NewProgramInfo(
+					projectDir, /* rootDirectory */
+					projectDir, /* programDirectory */
+					".",        /* entryPoint */
+					pluginProject.Runtime.Options(),
+				)
 
-			resp := installDependencies(languageClient, pluginInfo, true /* isPlugin */)
-			if resp != nil {
-				return resp, nil
+				resp := installDependencies(languageClient, pluginInfo, true /* isPlugin */)
+				if resp != nil {
+					return resp, nil
+				}
 			}
 
 			workflow, err := pctx.Host.Workflow(projectDir)
@@ -1659,9 +1671,9 @@ func runLanguageTests(
 			continue
 		}
 
-		if run.AssertWorkflow != nil {
+		if pluginProjectErr == nil {
 			return nil, fmt.Errorf(
-				"test %q run %d config error: AssertWorkflow is only valid for workflow projects",
+				"test %q run %d config error: workflow project requires AssertWorkflow (Assert path is not used)",
 				testName, i,
 			)
 		}
