@@ -1,0 +1,10 @@
+{
+    "name": "provider-builtin-info-component",
+    "devDependencies": {
+        "@types/node": "^18"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+        "@pulumi/builtin-info-component": "ROOT/artifacts/pulumi-builtin-info-component-34.0.0.tgz"
+    }
+}

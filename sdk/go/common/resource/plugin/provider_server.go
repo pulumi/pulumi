@@ -798,6 +798,7 @@ func (p *providerServer) Construct(ctx context.Context,
 	info := ConstructInfo{
 		Project:          req.GetProject(),
 		Stack:            req.GetStack(),
+		Organization:     req.GetOrganization(),
 		Config:           cfg,
 		ConfigSecretKeys: cfgSecretKeys,
 		DryRun:           req.GetDryRun(),
