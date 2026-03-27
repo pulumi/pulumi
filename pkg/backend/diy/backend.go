@@ -66,6 +66,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // UpgradeOptions customizes the behavior of the upgrade operation.
@@ -1190,6 +1193,13 @@ func (b *diyBackend) apply(
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
+		// than a logical span, but this is a convenient way to record this information.
+		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
+			tracer := otel.Tracer("pulumi-cli")
+			_, span := tracer.Start(ctx, "time-to-first-print", trace.WithTimestamp(startTime))
+			span.End()
+		}
 		// Print a banner so it's clear this is a diy deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
