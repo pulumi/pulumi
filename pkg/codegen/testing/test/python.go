@@ -16,6 +16,7 @@ package test
 
 import (
 	filesystem "io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -53,6 +54,12 @@ func GeneratePythonYAMLBatchTest(t *testing.T, rootDir string, genProgram GenPro
 }
 
 func checkPython(t *testing.T, path string, _ codegen.StringSet) {
+	// Skip external toolchain checks in Bazel - Python compilation is verified
+	// through Bazel's own build rules.
+	if os.Getenv("TEST_SRCDIR") != "" || os.Getenv("BAZEL_TEST") != "" {
+		t.Skip("Skipping Python toolchain checks in Bazel environment")
+	}
+
 	CompilePython(t, filepath.Dir(path))
 }
 

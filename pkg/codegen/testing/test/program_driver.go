@@ -61,7 +61,7 @@ type ProgramTest struct {
 	PluginHost         plugin.Host
 }
 
-var testdataPath = filepath.Join("..", "testing", "test", "testdata")
+var testdataPath = utils.TestdataPath()
 
 // Get batch number k (base-1 indexed) of tests out of n batches total.
 func ProgramTestBatch(k, n int) []ProgramTest {

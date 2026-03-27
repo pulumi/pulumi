@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 )
 
 // Defines an extra check logic that accepts the directory with the
@@ -564,7 +565,7 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) { // revive:disable-l
 		t.Skip("TestSDKCodegen is skipped on Windows")
 	}
 
-	defaultDir := filepath.Join("..", "testing", "test", "testdata")
+	defaultDir := utils.TestdataPath()
 	var testInputDir string
 	if opts.InputDir != "" {
 		testInputDir = opts.InputDir

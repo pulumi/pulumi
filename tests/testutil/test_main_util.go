@@ -32,6 +32,31 @@ import (
 // $PATH environment variable to include this directory, so that when the tests run we will use the newly built binaries
 // without polluting the global $PATH, where the integration tests usually expect to find the binaries.
 func SetupPulumiBinary() {
+	// In Bazel environment, skip git operations and use runfiles
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		// In Bazel, the pulumi binary is available via runfiles
+		// The binary path is set up by the test environment
+		if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+			candidate := filepath.Join(runfilesDir, "_main", "pkg", "cmd", "pulumi", "pulumi_", "pulumi")
+			if _, err := os.Stat(candidate); err == nil {
+				os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", candidate)
+				// Add the directory containing the binary to PATH
+				os.Setenv("PATH", fmt.Sprintf("%s:%s", filepath.Dir(candidate), os.Getenv("PATH")))
+				return
+			}
+		}
+		if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+			candidate := filepath.Join(testSrcDir, "_main", "pkg", "cmd", "pulumi", "pulumi_", "pulumi")
+			if _, err := os.Stat(candidate); err == nil {
+				os.Setenv("PULUMI_INTEGRATION_BINARY_PATH", candidate)
+				os.Setenv("PATH", fmt.Sprintf("%s:%s", filepath.Dir(candidate), os.Getenv("PATH")))
+				return
+			}
+		}
+		// Bazel environment but pulumi not found in runfiles - tests may still work if pulumi is in PATH
+		return
+	}
+
 	// Find the root of the repository
 	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {
@@ -67,6 +92,11 @@ func SetupPulumiBinary() {
 
 // This runs pulumi install on the python provider so it's venv is setup for running.
 func InstallPythonProvider() {
+	// Skip in Bazel environment - python provider setup is handled differently
+	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
+		return
+	}
+
 	// Find the root of the repository
 	stdout, err := exec.Command("git", "rev-parse", "--show-toplevel").Output()
 	if err != nil {

@@ -381,6 +381,12 @@ func GetPulumiHomeDir() (string, error) {
 		return dir, nil
 	}
 
+	// In Bazel test environments, use TEST_TMPDIR to allow tests to run in parallel
+	// without requiring write access to the user's home directory.
+	if testTmpDir := os.Getenv("TEST_TMPDIR"); testTmpDir != "" {
+		return filepath.Join(testTmpDir, BookkeepingDir), nil
+	}
+
 	// Otherwise, use the current user's home dir + .pulumi
 	user, err := user.Current()
 	if err != nil {

@@ -307,6 +307,21 @@ func (e *Environment) resolvePulumiPath() string {
 	if pulumiPath, isSet := os.LookupEnv(pulumiBinaryPathEnvVar); isSet {
 		return pulumiPath
 	}
+	// Check for Bazel runfiles
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		// In Bazel, the binary is at _main/pkg/cmd/pulumi/pulumi_/pulumi
+		candidate := filepath.Join(runfilesDir, "_main", "pkg", "cmd", "pulumi", "pulumi_", "pulumi")
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+		// Alternative Bazel runfiles path
+		candidate := filepath.Join(testSrcDir, "_main", "pkg", "cmd", "pulumi", "pulumi_", "pulumi")
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
 	pulumiPath, err := exec.LookPath("pulumi")
 	if err == nil {
 		return pulumiPath

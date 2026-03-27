@@ -109,6 +109,19 @@ func NewPulumiCommand(opts *PulumiCommandOptions) (PulumiCommand, error) {
 		if runtime.GOOS == "windows" {
 			command += ".exe"
 		}
+	} else {
+		// Check for Bazel runfiles location
+		if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+			candidate := filepath.Join(runfilesDir, "_main", "pkg", "cmd", "pulumi", "pulumi_", "pulumi")
+			if _, err := os.Stat(candidate); err == nil {
+				command = candidate
+			}
+		} else if testSrcDir := os.Getenv("TEST_SRCDIR"); testSrcDir != "" {
+			candidate := filepath.Join(testSrcDir, "_main", "pkg", "cmd", "pulumi", "pulumi_", "pulumi")
+			if _, err := os.Stat(candidate); err == nil {
+				command = candidate
+			}
+		}
 	}
 
 	cmd := exec.Command(command, "version")

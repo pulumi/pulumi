@@ -69,6 +69,12 @@ func GenerateGoYAMLBatchTest(t *testing.T, rootDir string, genProgram GenProgram
 }
 
 func checkGo(t *testing.T, path string, deps codegen.StringSet, pulumiSDKPath string) {
+	// Skip external toolchain checks in Bazel - the SDK isn't available as a complete
+	// source tree in the sandbox. Bazel builds verify compilation through go_library rules.
+	if os.Getenv("TEST_SRCDIR") != "" || os.Getenv("BAZEL_TEST") != "" {
+		t.Skip("Skipping Go toolchain checks in Bazel environment")
+	}
+
 	dir := filepath.Dir(path)
 	ex, err := executable.FindExecutable("go")
 	require.NoError(t, err)
