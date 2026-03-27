@@ -681,7 +681,7 @@ func (host *defaultHost) SignalCancellation() error {
 		}
 
 		for _, plug := range host.languagePlugins {
-			if err := plug.Plugin.Cancel(); err != nil {
+			if err := plug.Plugin.Cancel(""); err != nil {
 				result = multierror.Append(result, fmt.Errorf(
 					"Error signaling cancellation to language runtime '%s': %w", plug.Name, err))
 			}

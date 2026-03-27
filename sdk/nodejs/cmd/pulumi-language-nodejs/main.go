@@ -2220,7 +2220,7 @@ func (host *nodeLanguageHost) Link(
 	}, nil
 }
 
-func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+func (host *nodeLanguageHost) Cancel(ctx context.Context, req *pulumirpc.CancelRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 

@@ -142,8 +142,9 @@ type LanguageRuntimeClient interface {
 	// user on how to use the linked package in the project.
 	Link(ctx context.Context, in *LinkRequest, opts ...grpc.CallOption) (*LinkResponse, error)
 	// `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
-	// Operations aborted in this way will return an error.
-	Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Operations aborted in this way will return an error. If a specific `execution_id` is provided,
+	// only that operation is cancelled; otherwise all ongoing operations are cancelled.
+	Cancel(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type languageRuntimeClient struct {
@@ -333,7 +334,7 @@ func (c *languageRuntimeClient) Link(ctx context.Context, in *LinkRequest, opts 
 	return out, nil
 }
 
-func (c *languageRuntimeClient) Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *languageRuntimeClient) Cancel(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, LanguageRuntime_Cancel_FullMethodName, in, out, cOpts...)
@@ -432,8 +433,9 @@ type LanguageRuntimeServer interface {
 	// user on how to use the linked package in the project.
 	Link(context.Context, *LinkRequest) (*LinkResponse, error)
 	// `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
-	// Operations aborted in this way will return an error.
-	Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	// Operations aborted in this way will return an error. If a specific `execution_id` is provided,
+	// only that operation is cancelled; otherwise all ongoing operations are cancelled.
+	Cancel(context.Context, *CancelRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedLanguageRuntimeServer()
 }
 
@@ -492,7 +494,7 @@ func (UnimplementedLanguageRuntimeServer) Pack(context.Context, *PackRequest) (*
 func (UnimplementedLanguageRuntimeServer) Link(context.Context, *LinkRequest) (*LinkResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Link not implemented")
 }
-func (UnimplementedLanguageRuntimeServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (UnimplementedLanguageRuntimeServer) Cancel(context.Context, *CancelRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) mustEmbedUnimplementedLanguageRuntimeServer() {}
@@ -791,7 +793,7 @@ func _LanguageRuntime_Link_Handler(srv interface{}, ctx context.Context, dec fun
 }
 
 func _LanguageRuntime_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(CancelRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -803,7 +805,7 @@ func _LanguageRuntime_Cancel_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: LanguageRuntime_Cancel_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LanguageRuntimeServer).Cancel(ctx, req.(*emptypb.Empty))
+		return srv.(LanguageRuntimeServer).Cancel(ctx, req.(*CancelRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

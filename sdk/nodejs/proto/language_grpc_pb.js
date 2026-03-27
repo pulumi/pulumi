@@ -56,6 +56,17 @@ function deserialize_pulumirpc_AboutResponse(buffer_arg) {
   return pulumi_language_pb.AboutResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_CancelRequest(arg) {
+  if (!(arg instanceof pulumi_language_pb.CancelRequest)) {
+    throw new Error('Expected argument of type pulumirpc.CancelRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_CancelRequest(buffer_arg) {
+  return pulumi_language_pb.CancelRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_GeneratePackageRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.GeneratePackageRequest)) {
     throw new Error('Expected argument of type pulumirpc.GeneratePackageRequest');
@@ -620,15 +631,16 @@ link: {
     responseDeserialize: deserialize_pulumirpc_LinkResponse,
   },
   // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
-// Operations aborted in this way will return an error.
+// Operations aborted in this way will return an error. If a specific `execution_id` is provided,
+// only that operation is cancelled; otherwise all ongoing operations are cancelled.
 cancel: {
     path: '/pulumirpc.LanguageRuntime/Cancel',
     requestStream: false,
     responseStream: false,
-    requestType: google_protobuf_empty_pb.Empty,
+    requestType: pulumi_language_pb.CancelRequest,
     responseType: google_protobuf_empty_pb.Empty,
-    requestSerialize: serialize_google_protobuf_Empty,
-    requestDeserialize: deserialize_google_protobuf_Empty,
+    requestSerialize: serialize_pulumirpc_CancelRequest,
+    requestDeserialize: deserialize_pulumirpc_CancelRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },

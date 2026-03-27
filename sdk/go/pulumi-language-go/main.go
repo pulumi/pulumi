@@ -1706,6 +1706,6 @@ func (host *goLanguageHost) Link(
 	}, nil
 }
 
-func (host *goLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+func (host *goLanguageHost) Cancel(ctx context.Context, req *pulumirpc.CancelRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }

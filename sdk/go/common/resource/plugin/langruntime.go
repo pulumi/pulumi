@@ -180,8 +180,9 @@ type LanguageRuntime interface {
 	Link(info ProgramInfo, localDependencies []workspace.LinkablePackageDescriptor, loaderTarget string) (string, error)
 
 	// Cancel signals the language runtime to gracefully shut down and abort any ongoing operations.
-	// Operations aborted in this way will return an error.
-	Cancel() error
+	// Operations aborted in this way will return an error. If executionID is non-empty, only the
+	// operation with that ID is cancelled; otherwise all ongoing operations are cancelled.
+	Cancel(executionID string) error
 }
 
 // DependencyInfo contains information about a dependency reported by a language runtime.
@@ -208,6 +209,7 @@ type RunPluginInfo struct {
 	Kind             string
 	AttachDebugger   bool
 	LoaderAddress    string
+	ExecutionID      string
 }
 
 // RunInfo contains all of the information required to perform a plan or deployment operation.

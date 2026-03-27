@@ -198,11 +198,12 @@ class LanguageRuntimeStub:
     """
 
     Cancel: grpc.UnaryUnaryMultiCallable[
-        google.protobuf.empty_pb2.Empty,
+        pulumi.language_pb2.CancelRequest,
         google.protobuf.empty_pb2.Empty,
     ]
     """`Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
-    Operations aborted in this way will return an error.
+    Operations aborted in this way will return an error. If a specific `execution_id` is provided,
+    only that operation is cancelled; otherwise all ongoing operations are cancelled.
     """
 
 class LanguageRuntimeAsyncStub:
@@ -368,11 +369,12 @@ class LanguageRuntimeAsyncStub:
     """
 
     Cancel: grpc.aio.UnaryUnaryMultiCallable[
-        google.protobuf.empty_pb2.Empty,
+        pulumi.language_pb2.CancelRequest,
         google.protobuf.empty_pb2.Empty,
     ]
     """`Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
-    Operations aborted in this way will return an error.
+    Operations aborted in this way will return an error. If a specific `execution_id` is provided,
+    only that operation is cancelled; otherwise all ongoing operations are cancelled.
     """
 
 class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
@@ -572,11 +574,12 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
     
     def Cancel(
         self,
-        request: google.protobuf.empty_pb2.Empty,
+        request: pulumi.language_pb2.CancelRequest,
         context: _ServicerContext,
     ) -> typing.Union[google.protobuf.empty_pb2.Empty, collections.abc.Awaitable[google.protobuf.empty_pb2.Empty]]:
         """`Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
-        Operations aborted in this way will return an error.
+        Operations aborted in this way will return an error. If a specific `execution_id` is provided,
+        only that operation is cancelled; otherwise all ongoing operations are cancelled.
         """
 
 def add_LanguageRuntimeServicer_to_server(servicer: LanguageRuntimeServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

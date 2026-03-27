@@ -485,7 +485,7 @@ func (host *pluginHost) SignalCancellation() error {
 	}
 
 	if host.languageRuntime != nil {
-		if lErr := host.languageRuntime.Cancel(); lErr != nil {
+		if lErr := host.languageRuntime.Cancel(""); lErr != nil {
 			err = lErr
 		}
 	}

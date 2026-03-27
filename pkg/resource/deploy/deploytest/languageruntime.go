@@ -202,7 +202,7 @@ func (p *languageRuntime) Link(plugin.ProgramInfo, []workspace.LinkablePackageDe
 	return "", errors.New("Link is not supported")
 }
 
-func (p *languageRuntime) Cancel() error {
+func (p *languageRuntime) Cancel(_ string) error {
 	p.closed = true
 
 	if p.shutdown != nil {

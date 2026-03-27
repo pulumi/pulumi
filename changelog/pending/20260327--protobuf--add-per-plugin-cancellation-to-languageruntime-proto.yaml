@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: protobuf
+  description: Add per-plugin cancellation to LanguageRuntime proto

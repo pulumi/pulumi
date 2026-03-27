@@ -622,6 +622,8 @@ export class RunPluginRequest extends jspb.Message {
     setAttachDebugger(value: boolean): RunPluginRequest;
     getLoaderTarget(): string;
     setLoaderTarget(value: string): RunPluginRequest;
+    getExecutionId(): string;
+    setExecutionId(value: string): RunPluginRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunPluginRequest.AsObject;
@@ -644,6 +646,7 @@ export namespace RunPluginRequest {
         name: string,
         attachDebugger: boolean,
         loaderTarget: string,
+        executionId: string,
     }
 }
 
@@ -694,6 +697,26 @@ export namespace RunPluginResponse {
         EXITCODE = 3,
     }
 
+}
+
+export class CancelRequest extends jspb.Message { 
+    getExecutionId(): string;
+    setExecutionId(value: string): CancelRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): CancelRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: CancelRequest): CancelRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: CancelRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): CancelRequest;
+    static deserializeBinaryFromReader(message: CancelRequest, reader: jspb.BinaryReader): CancelRequest;
+}
+
+export namespace CancelRequest {
+    export type AsObject = {
+        executionId: string,
+    }
 }
 
 export class GenerateProgramRequest extends jspb.Message { 

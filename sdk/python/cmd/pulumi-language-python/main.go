@@ -2006,7 +2006,7 @@ func (host *pythonLanguageHost) Link(
 	}, nil
 }
 
-func (host *pythonLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+func (host *pythonLanguageHost) Cancel(ctx context.Context, req *pulumirpc.CancelRequest) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 

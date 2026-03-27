@@ -153,7 +153,7 @@ func (m *MockLanguageRuntimeClient) Handshake(
 }
 
 func (m *MockLanguageRuntimeClient) Cancel(
-	ctx context.Context, req *emptypb.Empty, opts ...grpc.CallOption,
+	ctx context.Context, req *pulumirpc.CancelRequest, opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
 	panic("not implemented")
 }

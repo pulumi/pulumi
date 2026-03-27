@@ -778,6 +778,7 @@ class RunPluginRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     ATTACH_DEBUGGER_FIELD_NUMBER: builtins.int
     LOADER_TARGET_FIELD_NUMBER: builtins.int
+    EXECUTION_ID_FIELD_NUMBER: builtins.int
     pwd: builtins.str
     """The plugin program's working directory."""
     program: builtins.str
@@ -796,6 +797,10 @@ class RunPluginRequest(google.protobuf.message.Message):
     """True if a plugin should be started under a debugger."""
     loader_target: builtins.str
     """The target of a codegen.LoaderServer to use for loading schemas."""
+    execution_id: builtins.str
+    """A unique identifier for this plugin execution, used to target cancellation via
+    [](pulumirpc.LanguageRuntime.Cancel).
+    """
     @property
     def args(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
         """Any arguments to pass to the plugin program."""
@@ -820,9 +825,10 @@ class RunPluginRequest(google.protobuf.message.Message):
         name: builtins.str = ...,
         attach_debugger: builtins.bool = ...,
         loader_target: builtins.str = ...,
+        execution_id: builtins.str = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["info", b"info"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "env", b"env", "info", b"info", "kind", b"kind", "loader_target", b"loader_target", "name", b"name", "program", b"program", "pwd", b"pwd"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["args", b"args", "attach_debugger", b"attach_debugger", "env", b"env", "execution_id", b"execution_id", "info", b"info", "kind", b"kind", "loader_target", b"loader_target", "name", b"name", "program", b"program", "pwd", b"pwd"]) -> None: ...
 
 global___RunPluginRequest = RunPluginRequest
 
@@ -853,6 +859,26 @@ class RunPluginResponse(google.protobuf.message.Message):
     def WhichOneof(self, oneof_group: typing.Literal["output", b"output"]) -> typing.Literal["stdout", "stderr", "exitcode"] | None: ...
 
 global___RunPluginResponse = RunPluginResponse
+
+@typing.final
+class CancelRequest(google.protobuf.message.Message):
+    """`CancelRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Cancel) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    EXECUTION_ID_FIELD_NUMBER: builtins.int
+    execution_id: builtins.str
+    """If set, cancel only the operation with this execution ID (as specified in
+    [](pulumirpc.RunPluginRequest.execution_id)). If empty, cancel all ongoing operations.
+    """
+    def __init__(
+        self,
+        *,
+        execution_id: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["execution_id", b"execution_id"]) -> None: ...
+
+global___CancelRequest = CancelRequest
 
 @typing.final
 class GenerateProgramRequest(google.protobuf.message.Message):

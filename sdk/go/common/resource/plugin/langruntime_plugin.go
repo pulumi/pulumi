@@ -681,6 +681,7 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 		Kind:           info.Kind,
 		AttachDebugger: info.AttachDebugger,
 		LoaderTarget:   info.LoaderAddress,
+		ExecutionId:    info.ExecutionID,
 	})
 	if err != nil {
 		// If there was an error starting the plugin kill the context for this request to ensure any lingering
@@ -944,11 +945,13 @@ func (h *langhost) Link(
 	return res.ImportInstructions, nil
 }
 
-func (h *langhost) Cancel() error {
-	label := fmt.Sprintf("langhost[%v].Cancel()", h.runtime)
+func (h *langhost) Cancel(executionID string) error {
+	label := fmt.Sprintf("langhost[%v].Cancel(%s)", h.runtime, executionID)
 	logging.V(7).Infof("%s executing", label)
 
-	_, err := h.client.Cancel(h.ctx.Request(), &emptypb.Empty{})
+	_, err := h.client.Cancel(h.ctx.Request(), &pulumirpc.CancelRequest{
+		ExecutionId: executionID,
+	})
 	if err != nil {
 		status, ok := status.FromError(err)
 		if ok && status.Code() == codes.Unimplemented {

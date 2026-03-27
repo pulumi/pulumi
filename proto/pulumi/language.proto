@@ -125,8 +125,9 @@ service LanguageRuntime {
     rpc Link(LinkRequest) returns (LinkResponse) {}
 
     // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
-    // Operations aborted in this way will return an error.
-    rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    // Operations aborted in this way will return an error. If a specific `execution_id` is provided,
+    // only that operation is cancelled; otherwise all ongoing operations are cancelled.
+    rpc Cancel(CancelRequest) returns (google.protobuf.Empty) {}
 }
 
 // A `ProgramInfo` struct specifies a Pulumi program, and is built typically based on the location of a `Pulumi.yaml`
@@ -487,6 +488,10 @@ message RunPluginRequest{
 
     // The target of a codegen.LoaderServer to use for loading schemas.
     string loader_target = 9;
+
+    // A unique identifier for this plugin execution, used to target cancellation via
+    // [](pulumirpc.LanguageRuntime.Cancel).
+    string execution_id = 10;
 }
 
 // `RunPluginResponse` is the type of responses streamed by a [](pulumirpc.LanguageRuntime.RunPlugin) call.
@@ -501,6 +506,13 @@ message RunPluginResponse {
         // An exit code that the plugin program has terminated with. This should be the last message sent by the host.
         int32 exitcode = 3;
     }
+}
+
+// `CancelRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Cancel) call.
+message CancelRequest {
+    // If set, cancel only the operation with this execution ID (as specified in
+    // [](pulumirpc.RunPluginRequest.execution_id)). If empty, cancel all ongoing operations.
+    string execution_id = 1;
 }
 
 // `GenerateProgramRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProgram)
