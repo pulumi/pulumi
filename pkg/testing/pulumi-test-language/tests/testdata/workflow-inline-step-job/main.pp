@@ -2,9 +2,9 @@ job "build" {
   input_type = {
     input = bool
   }
-  expr       = "invert"
+  expr       = invert
 
   step "invert" {
-    expr = "!input"
+    expr = !input
   }
 }

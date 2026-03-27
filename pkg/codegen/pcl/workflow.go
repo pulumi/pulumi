@@ -120,10 +120,19 @@ type workflowStepDefinitionRaw struct {
 }
 
 type workflowJobDefinitionRaw struct {
-	Name      string            `hcl:"name,label"`
-	InputType hcl.Expression    `hcl:"input_type,optional"`
-	Expr      hcl.Expression    `hcl:"expr,optional"`
-	Steps     []WorkflowJobStep `hcl:"step,block"`
+	Name      string               `hcl:"name,label"`
+	InputType hcl.Expression       `hcl:"input_type,optional"`
+	Expr      hcl.Expression       `hcl:"expr,optional"`
+	Steps     []workflowJobStepRaw `hcl:"step,block"`
+}
+
+type workflowJobStepRaw struct {
+	Name      string         `hcl:"name,label"`
+	Uses      string         `hcl:"uses,optional"`
+	Command   string         `hcl:"command,optional"`
+	Expr      hcl.Expression `hcl:"expr,optional"`
+	Filter    *bool          `hcl:"filter,optional"`
+	DependsOn []string       `hcl:"depends_on,optional"`
 }
 
 type WorkflowJobStep struct {
@@ -206,11 +215,32 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 			if err != nil {
 				return nil, fmt.Errorf("decode workflow pcl file %q: job %q expr: %w", filePath, rawJob.Name, err)
 			}
+			steps := make([]WorkflowJobStep, 0, len(rawJob.Steps))
+			for _, rawStep := range rawJob.Steps {
+				stepExpr, err := parseWorkflowExpr(rawStep.Expr)
+				if err != nil {
+					return nil, fmt.Errorf(
+						"decode workflow pcl file %q: job %q step %q expr: %w",
+						filePath,
+						rawJob.Name,
+						rawStep.Name,
+						err,
+					)
+				}
+				steps = append(steps, WorkflowJobStep{
+					Name:      rawStep.Name,
+					Uses:      rawStep.Uses,
+					Command:   rawStep.Command,
+					Expr:      stepExpr,
+					Filter:    rawStep.Filter,
+					DependsOn: rawStep.DependsOn,
+				})
+			}
 			p.Jobs = append(p.Jobs, WorkflowJobDefinition{
 				Name:      rawJob.Name,
 				InputType: inputType,
 				Expr:      expr,
-				Steps:     rawJob.Steps,
+				Steps:     steps,
 			})
 		}
 		p.Workflows = append(p.Workflows, file.Workflows...)
