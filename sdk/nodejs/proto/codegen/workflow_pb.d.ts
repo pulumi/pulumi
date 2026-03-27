@@ -206,6 +206,11 @@ export class TypeReference extends jspb.Message {
     getToken(): string;
     setToken(value: string): TypeReference;
 
+    hasObject(): boolean;
+    clearObject(): void;
+    getObject(): StructObject | undefined;
+    setObject(value?: StructObject): TypeReference;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): TypeReference.AsObject;
     static toObject(includeInstance: boolean, msg: TypeReference): TypeReference.AsObject;
@@ -219,6 +224,49 @@ export class TypeReference extends jspb.Message {
 export namespace TypeReference {
     export type AsObject = {
         token: string,
+        object?: StructObject.AsObject,
+    }
+}
+
+export class PropertySpec extends jspb.Message { 
+    getType(): string;
+    setType(value: string): PropertySpec;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): PropertySpec.AsObject;
+    static toObject(includeInstance: boolean, msg: PropertySpec): PropertySpec.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: PropertySpec, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): PropertySpec;
+    static deserializeBinaryFromReader(message: PropertySpec, reader: jspb.BinaryReader): PropertySpec;
+}
+
+export namespace PropertySpec {
+    export type AsObject = {
+        type: string,
+    }
+}
+
+export class StructObject extends jspb.Message { 
+
+    getPropertiesMap(): jspb.Map<string, PropertySpec>;
+    clearPropertiesMap(): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): StructObject.AsObject;
+    static toObject(includeInstance: boolean, msg: StructObject): StructObject.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: StructObject, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): StructObject;
+    static deserializeBinaryFromReader(message: StructObject, reader: jspb.BinaryReader): StructObject;
+}
+
+export namespace StructObject {
+    export type AsObject = {
+
+        propertiesMap: Array<[string, PropertySpec.AsObject]>,
     }
 }
 

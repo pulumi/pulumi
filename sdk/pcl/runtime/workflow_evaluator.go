@@ -135,7 +135,7 @@ func (e *WorkflowEvaluator) GetJobs(
 		job, _ := e.program.JobByName(name)
 		resp.Jobs = append(resp.Jobs, &pulumirpc.JobInfo{
 			Token:      e.jobToken(name),
-			InputType:  &pulumirpc.TypeReference{Token: defaultTypeToken(job.InputType)},
+			InputType:  typeReferenceFromInputType(job.InputType),
 			OutputType: &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
 		})
 	}
@@ -156,7 +156,7 @@ func (e *WorkflowEvaluator) GetJob(
 	return &pulumirpc.GetJobResponse{
 		Job: &pulumirpc.JobInfo{
 			Token:      e.jobToken(name),
-			InputType:  &pulumirpc.TypeReference{Token: defaultTypeToken(job.InputType)},
+			InputType:  typeReferenceFromInputType(job.InputType),
 			OutputType: &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
 		},
 	}, nil
@@ -184,7 +184,7 @@ func (e *WorkflowEvaluator) GetStep(
 		return nil, status.Errorf(codes.NotFound, "unknown step token %q", req.GetToken())
 	}
 	return &pulumirpc.GetStepResponse{
-		InputType:  &pulumirpc.TypeReference{Token: defaultTypeToken(step.InputType)},
+		InputType:  typeReferenceFromInputType(step.InputType),
 		OutputType: &pulumirpc.TypeReference{Token: defaultTypeToken(inferStepOutputType(step))},
 	}, nil
 }
@@ -245,7 +245,7 @@ func (e *WorkflowEvaluator) GenerateJob(
 		defer func() { _ = conn.Close() }()
 
 		jobPath := e.jobToken(name)
-		return e.registerJob(ctx, req.GetContext(), jobPath, req.GetInputValue(), jobDef.Steps, jobDef.InputType, jobDef.Expr, monitor)
+		return e.registerJob(ctx, req.GetContext(), jobPath, req.GetInputValue(), jobDef.Steps, typeReferenceTokenForInputType(jobDef.InputType), jobDef.Expr, monitor)
 	}
 
 	parts := strings.Split(req.GetPath(), "/jobs/")
@@ -297,7 +297,7 @@ func (e *WorkflowEvaluator) GenerateJob(
 			return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Uses)
 		}
 		jobSteps = jobDef.Steps
-		jobInputType = jobDef.InputType
+		jobInputType = typeReferenceTokenForInputType(jobDef.InputType)
 		if jobExpr == "" {
 			jobExpr = jobDef.Expr
 		}
@@ -488,7 +488,7 @@ func (e *WorkflowEvaluator) ResolveJobResult(
 
 	if inputValue, ok := e.jobInputByPath[jobPath]; ok {
 		value, err := executeStepDefinition(codegenpcl.WorkflowStepDefinition{
-			InputType: e.jobInputTypeByPath[jobPath],
+			InputType: codegenpcl.WorkflowInputType{Token: e.jobInputTypeByPath[jobPath]},
 			Expr:      expr,
 		}, inputValue)
 		if err != nil {
@@ -569,7 +569,7 @@ func inferStepOutputType(step codegenpcl.WorkflowStepDefinition) string {
 	expr := strings.TrimSpace(step.Expr)
 	switch expr {
 	case "input":
-		return step.InputType
+		return typeReferenceTokenForInputType(step.InputType)
 	case "!input", "not input":
 		return "bool"
 	default:
@@ -578,6 +578,34 @@ func inferStepOutputType(step codegenpcl.WorkflowStepDefinition) string {
 		}
 	}
 	return ""
+}
+
+func typeReferenceTokenForInputType(inputType codegenpcl.WorkflowInputType) string {
+	if inputType.TokenOrEmpty() != "" {
+		return inputType.TokenOrEmpty()
+	}
+	if inputType.IsStruct() {
+		return "pulumi:json#/Any"
+	}
+	return ""
+}
+
+func typeReferenceFromInputType(inputType codegenpcl.WorkflowInputType) *pulumirpc.TypeReference {
+	if inputType.TokenOrEmpty() != "" {
+		return &pulumirpc.TypeReference{Token: inputType.TokenOrEmpty()}
+	}
+	if inputType.IsStruct() {
+		properties := map[string]*pulumirpc.PropertySpec{}
+		for name, typ := range inputType.Fields {
+			properties[name] = &pulumirpc.PropertySpec{Type: typ}
+		}
+		return &pulumirpc.TypeReference{
+			Object: &pulumirpc.StructObject{
+				Properties: properties,
+			},
+		}
+	}
+	return &pulumirpc.TypeReference{Token: "pulumi:json#/Any"}
 }
 
 func executeStepDefinition(step codegenpcl.WorkflowStepDefinition, input *structpb.Value) (*structpb.Value, error) {

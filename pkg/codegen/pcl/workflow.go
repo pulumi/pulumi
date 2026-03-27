@@ -20,11 +20,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type ProgramKind int
@@ -71,16 +73,55 @@ type WorkflowGraphTrigger struct {
 }
 
 type WorkflowStepDefinition struct {
-	Name       string `hcl:"name,label"`
-	InputType  string `hcl:"input_type,optional"`
-	OutputType string `hcl:"output_type,optional"`
-	Command    string `hcl:"command,optional"`
-	Expr       string `hcl:"expr,optional"`
+	Name       string            `hcl:"name,label"`
+	InputType  WorkflowInputType `hcl:"-"`
+	OutputType string            `hcl:"output_type,optional"`
+	Command    string            `hcl:"command,optional"`
+	Expr       string            `hcl:"expr,optional"`
 }
 
 type WorkflowJobDefinition struct {
 	Name      string            `hcl:"name,label"`
-	InputType string            `hcl:"input_type,optional"`
+	InputType WorkflowInputType `hcl:"-"`
+	Expr      string            `hcl:"expr,optional"`
+	Steps     []WorkflowJobStep `hcl:"step,block"`
+}
+
+type WorkflowInputType struct {
+	// Token supports existing token-style declarations:
+	// input_type = "pkg:index:Type"
+	Token string
+	// Fields supports struct-style declarations:
+	// input_type = { field = bool, other = string }
+	Fields map[string]string
+}
+
+func (t WorkflowInputType) TokenOrEmpty() string {
+	return t.Token
+}
+
+func (t WorkflowInputType) IsStruct() bool {
+	return len(t.Fields) > 0
+}
+
+type workflowProgramFile struct {
+	Triggers  []WorkflowTriggerDefinition `hcl:"trigger,block"`
+	Steps     []workflowStepDefinitionRaw `hcl:"step,block"`
+	Jobs      []workflowJobDefinitionRaw  `hcl:"job,block"`
+	Workflows []WorkflowGraph             `hcl:"workflow,block"`
+}
+
+type workflowStepDefinitionRaw struct {
+	Name       string         `hcl:"name,label"`
+	InputType  hcl.Expression `hcl:"input_type,optional"`
+	OutputType string         `hcl:"output_type,optional"`
+	Command    string         `hcl:"command,optional"`
+	Expr       string         `hcl:"expr,optional"`
+}
+
+type workflowJobDefinitionRaw struct {
+	Name      string            `hcl:"name,label"`
+	InputType hcl.Expression    `hcl:"input_type,optional"`
 	Expr      string            `hcl:"expr,optional"`
 	Steps     []WorkflowJobStep `hcl:"step,block"`
 }
@@ -133,14 +174,37 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 		if diags.HasErrors() {
 			return nil, fmt.Errorf("parse workflow pcl file %q: %s", filePath, diags.Error())
 		}
-		var file WorkflowProgram
+		var file workflowProgramFile
 		decodeDiags := gohcl.DecodeBody(hclFile.Body, nil, &file)
 		if decodeDiags.HasErrors() {
 			return nil, fmt.Errorf("decode workflow pcl file %q: %s", filePath, decodeDiags.Error())
 		}
 		p.Triggers = append(p.Triggers, file.Triggers...)
-		p.Steps = append(p.Steps, file.Steps...)
-		p.Jobs = append(p.Jobs, file.Jobs...)
+		for _, rawStep := range file.Steps {
+			inputType, err := parseWorkflowInputType(rawStep.InputType)
+			if err != nil {
+				return nil, fmt.Errorf("decode workflow pcl file %q: step %q input_type: %w", filePath, rawStep.Name, err)
+			}
+			p.Steps = append(p.Steps, WorkflowStepDefinition{
+				Name:       rawStep.Name,
+				InputType:  inputType,
+				OutputType: rawStep.OutputType,
+				Command:    rawStep.Command,
+				Expr:       rawStep.Expr,
+			})
+		}
+		for _, rawJob := range file.Jobs {
+			inputType, err := parseWorkflowInputType(rawJob.InputType)
+			if err != nil {
+				return nil, fmt.Errorf("decode workflow pcl file %q: job %q input_type: %w", filePath, rawJob.Name, err)
+			}
+			p.Jobs = append(p.Jobs, WorkflowJobDefinition{
+				Name:      rawJob.Name,
+				InputType: inputType,
+				Expr:      rawJob.Expr,
+				Steps:     rawJob.Steps,
+			})
+		}
 		p.Workflows = append(p.Workflows, file.Workflows...)
 	}
 
@@ -181,6 +245,70 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 	}
 
 	return &p, nil
+}
+
+func parseWorkflowInputType(expr hcl.Expression) (WorkflowInputType, error) {
+	if expr == nil {
+		return WorkflowInputType{}, nil
+	}
+
+	// Backward compatible token form:
+	// input_type = "pkg:index:Type"
+	if v, diags := expr.Value(nil); !diags.HasErrors() {
+		if v.IsNull() {
+			return WorkflowInputType{}, nil
+		}
+		if v.Type() == cty.String {
+			return WorkflowInputType{Token: v.AsString()}, nil
+		}
+	}
+
+	obj, ok := expr.(*hclsyntax.ObjectConsExpr)
+	if !ok {
+		return WorkflowInputType{}, fmt.Errorf("must be string token or object field map")
+	}
+
+	fields := map[string]string{}
+	for _, item := range obj.Items {
+		key, err := parseTypeNameExpr(item.KeyExpr)
+		if err != nil {
+			return WorkflowInputType{}, fmt.Errorf("invalid field name: %w", err)
+		}
+		if key == "" {
+			return WorkflowInputType{}, fmt.Errorf("field name must not be empty")
+		}
+
+		typeName, err := parseTypeNameExpr(item.ValueExpr)
+		if err != nil {
+			return WorkflowInputType{}, fmt.Errorf("invalid type for field %q: %w", key, err)
+		}
+		if typeName == "" {
+			return WorkflowInputType{}, fmt.Errorf("invalid type for field %q", key)
+		}
+		fields[key] = typeName
+	}
+	return WorkflowInputType{Fields: fields}, nil
+}
+
+func parseTypeNameExpr(expr hcl.Expression) (string, error) {
+	if expr == nil {
+		return "", fmt.Errorf("missing expression")
+	}
+	if v, diags := expr.Value(nil); !diags.HasErrors() && v.Type() == cty.String {
+		return strings.TrimSpace(v.AsString()), nil
+	}
+	traversal, diags := hcl.AbsTraversalForExpr(expr)
+	if diags.HasErrors() {
+		return "", fmt.Errorf("expected identifier or string")
+	}
+	if len(traversal) == 0 {
+		return "", fmt.Errorf("empty traversal")
+	}
+	root, ok := traversal[0].(hcl.TraverseRoot)
+	if !ok {
+		return "", fmt.Errorf("expected identifier")
+	}
+	return strings.TrimSpace(root.Name), nil
 }
 
 func DetectProgramKindFromDirectory(dir string) (ProgramKind, error) {

@@ -37,7 +37,9 @@ func init() {
 					job, err := args.Workflow.GetJob(args.Context, &pulumirpc.GetJobRequest{Token: jobToken})
 					require.NoError(l, err)
 					require.NotNil(l, job.GetJob())
-					assert.Equal(l, "workflow:index:BoolInput", job.GetJob().GetInputType().GetToken())
+					require.NotNil(l, job.GetJob().GetInputType().GetObject())
+					require.Contains(l, job.GetJob().GetInputType().GetObject().GetProperties(), "input")
+					assert.Equal(l, "bool", job.GetJob().GetInputType().GetObject().GetProperties()["input"].GetType())
 					monitor := &workflowJobMonitor{}
 					grpcServer := grpc.NewServer()
 					pulumirpc.RegisterGraphMonitorServer(grpcServer, monitor)

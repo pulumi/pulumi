@@ -1,4 +1,6 @@
 step "touch-file" {
-  input_type = "workflow:index:CommandStepInput"
+  input_type = {
+    input_file = string
+  }
   command = "touch \"$input_file\""
 }

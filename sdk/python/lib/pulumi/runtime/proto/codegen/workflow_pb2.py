@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dpulumi/codegen/workflow.proto\x12\x07\x63odegen\"P\n\x19WorkflowPackageDescriptor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\"T\n\x1dGetWorkflowPackageInfoRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\"O\n\x18GetWorkflowGraphsRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\"]\n\x17GetWorkflowGraphRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\x12\r\n\x05token\x18\x02 \x01(\t\"Q\n\x1aGetWorkflowTriggersRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\"_\n\x19GetWorkflowTriggerRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\x12\r\n\x05token\x18\x02 \x01(\t\"M\n\x16GetWorkflowJobsRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\"[\n\x15GetWorkflowJobRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\x12\r\n\x05token\x18\x02 \x01(\t\"\x1e\n\rTypeReference\x12\r\n\x05token\x18\x01 \x01(\t\"B\n\x0bPackageInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x03 \x01(\t\"\x89\x01\n\tGraphInfo\x12\r\n\x05token\x18\x01 \x01(\t\x12*\n\ninput_type\x18\x02 \x01(\x0b\x32\x16.codegen.TypeReference\x12+\n\x0boutput_type\x18\x03 \x01(\x0b\x32\x16.codegen.TypeReference\x12\x14\n\x0chas_on_error\x18\x04 \x01(\x08\"\x87\x01\n\x07JobInfo\x12\r\n\x05token\x18\x01 \x01(\t\x12*\n\ninput_type\x18\x02 \x01(\x0b\x32\x16.codegen.TypeReference\x12+\n\x0boutput_type\x18\x03 \x01(\x0b\x32\x16.codegen.TypeReference\x12\x14\n\x0chas_on_error\x18\x04 \x01(\x08\"?\n\x16GetPackageInfoResponse\x12%\n\x07package\x18\x01 \x01(\x0b\x32\x14.codegen.PackageInfo\"7\n\x11GetGraphsResponse\x12\"\n\x06graphs\x18\x01 \x03(\x0b\x32\x12.codegen.GraphInfo\"5\n\x10GetGraphResponse\x12!\n\x05graph\x18\x01 \x01(\x0b\x32\x12.codegen.GraphInfo\"\'\n\x13GetTriggersResponse\x12\x10\n\x08triggers\x18\x01 \x03(\t\"m\n\x12GetTriggerResponse\x12*\n\ninput_type\x18\x01 \x01(\x0b\x32\x16.codegen.TypeReference\x12+\n\x0boutput_type\x18\x02 \x01(\x0b\x32\x16.codegen.TypeReference\"1\n\x0fGetJobsResponse\x12\x1e\n\x04jobs\x18\x01 \x03(\x0b\x32\x10.codegen.JobInfo\"/\n\x0eGetJobResponse\x12\x1d\n\x03job\x18\x01 \x01(\x0b\x32\x10.codegen.JobInfo2\xb8\x04\n\x0eWorkflowLoader\x12[\n\x0eGetPackageInfo\x12&.codegen.GetWorkflowPackageInfoRequest\x1a\x1f.codegen.GetPackageInfoResponse\"\x00\x12L\n\tGetGraphs\x12!.codegen.GetWorkflowGraphsRequest\x1a\x1a.codegen.GetGraphsResponse\"\x00\x12I\n\x08GetGraph\x12 .codegen.GetWorkflowGraphRequest\x1a\x19.codegen.GetGraphResponse\"\x00\x12R\n\x0bGetTriggers\x12#.codegen.GetWorkflowTriggersRequest\x1a\x1c.codegen.GetTriggersResponse\"\x00\x12O\n\nGetTrigger\x12\".codegen.GetWorkflowTriggerRequest\x1a\x1b.codegen.GetTriggerResponse\"\x00\x12\x46\n\x07GetJobs\x12\x1f.codegen.GetWorkflowJobsRequest\x1a\x18.codegen.GetJobsResponse\"\x00\x12\x43\n\x06GetJob\x12\x1e.codegen.GetWorkflowJobRequest\x1a\x17.codegen.GetJobResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1dpulumi/codegen/workflow.proto\x12\x07\x63odegen\"P\n\x19WorkflowPackageDescriptor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64ownload_url\x18\x03 \x01(\t\"T\n\x1dGetWorkflowPackageInfoRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\"O\n\x18GetWorkflowGraphsRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\"]\n\x17GetWorkflowGraphRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\x12\r\n\x05token\x18\x02 \x01(\t\"Q\n\x1aGetWorkflowTriggersRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\"_\n\x19GetWorkflowTriggerRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\x12\r\n\x05token\x18\x02 \x01(\t\"M\n\x16GetWorkflowJobsRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\"[\n\x15GetWorkflowJobRequest\x12\x33\n\x07package\x18\x01 \x01(\x0b\x32\".codegen.WorkflowPackageDescriptor\x12\r\n\x05token\x18\x02 \x01(\t\"E\n\rTypeReference\x12\r\n\x05token\x18\x01 \x01(\t\x12%\n\x06object\x18\x02 \x01(\x0b\x32\x15.codegen.StructObject\"\x1c\n\x0cPropertySpec\x12\x0c\n\x04type\x18\x01 \x01(\t\"\x93\x01\n\x0cStructObject\x12\x39\n\nproperties\x18\x01 \x03(\x0b\x32%.codegen.StructObject.PropertiesEntry\x1aH\n\x0fPropertiesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12$\n\x05value\x18\x02 \x01(\x0b\x32\x15.codegen.PropertySpec:\x02\x38\x01\"B\n\x0bPackageInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x03 \x01(\t\"\x89\x01\n\tGraphInfo\x12\r\n\x05token\x18\x01 \x01(\t\x12*\n\ninput_type\x18\x02 \x01(\x0b\x32\x16.codegen.TypeReference\x12+\n\x0boutput_type\x18\x03 \x01(\x0b\x32\x16.codegen.TypeReference\x12\x14\n\x0chas_on_error\x18\x04 \x01(\x08\"\x87\x01\n\x07JobInfo\x12\r\n\x05token\x18\x01 \x01(\t\x12*\n\ninput_type\x18\x02 \x01(\x0b\x32\x16.codegen.TypeReference\x12+\n\x0boutput_type\x18\x03 \x01(\x0b\x32\x16.codegen.TypeReference\x12\x14\n\x0chas_on_error\x18\x04 \x01(\x08\"?\n\x16GetPackageInfoResponse\x12%\n\x07package\x18\x01 \x01(\x0b\x32\x14.codegen.PackageInfo\"7\n\x11GetGraphsResponse\x12\"\n\x06graphs\x18\x01 \x03(\x0b\x32\x12.codegen.GraphInfo\"5\n\x10GetGraphResponse\x12!\n\x05graph\x18\x01 \x01(\x0b\x32\x12.codegen.GraphInfo\"\'\n\x13GetTriggersResponse\x12\x10\n\x08triggers\x18\x01 \x03(\t\"m\n\x12GetTriggerResponse\x12*\n\ninput_type\x18\x01 \x01(\x0b\x32\x16.codegen.TypeReference\x12+\n\x0boutput_type\x18\x02 \x01(\x0b\x32\x16.codegen.TypeReference\"1\n\x0fGetJobsResponse\x12\x1e\n\x04jobs\x18\x01 \x03(\x0b\x32\x10.codegen.JobInfo\"/\n\x0eGetJobResponse\x12\x1d\n\x03job\x18\x01 \x01(\x0b\x32\x10.codegen.JobInfo2\xb8\x04\n\x0eWorkflowLoader\x12[\n\x0eGetPackageInfo\x12&.codegen.GetWorkflowPackageInfoRequest\x1a\x1f.codegen.GetPackageInfoResponse\"\x00\x12L\n\tGetGraphs\x12!.codegen.GetWorkflowGraphsRequest\x1a\x1a.codegen.GetGraphsResponse\"\x00\x12I\n\x08GetGraph\x12 .codegen.GetWorkflowGraphRequest\x1a\x19.codegen.GetGraphResponse\"\x00\x12R\n\x0bGetTriggers\x12#.codegen.GetWorkflowTriggersRequest\x1a\x1c.codegen.GetTriggersResponse\"\x00\x12O\n\nGetTrigger\x12\".codegen.GetWorkflowTriggerRequest\x1a\x1b.codegen.GetTriggerResponse\"\x00\x12\x46\n\x07GetJobs\x12\x1f.codegen.GetWorkflowJobsRequest\x1a\x18.codegen.GetJobsResponse\"\x00\x12\x43\n\x06GetJob\x12\x1e.codegen.GetWorkflowJobRequest\x1a\x17.codegen.GetJobResponse\"\x00\x42\x32Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -21,6 +21,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.codegen.workflow_pb2
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegen'
+  _STRUCTOBJECT_PROPERTIESENTRY._options = None
+  _STRUCTOBJECT_PROPERTIESENTRY._serialized_options = b'8\001'
   _globals['_WORKFLOWPACKAGEDESCRIPTOR']._serialized_start=42
   _globals['_WORKFLOWPACKAGEDESCRIPTOR']._serialized_end=122
   _globals['_GETWORKFLOWPACKAGEINFOREQUEST']._serialized_start=124
@@ -38,27 +40,33 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['_GETWORKFLOWJOBREQUEST']._serialized_start=645
   _globals['_GETWORKFLOWJOBREQUEST']._serialized_end=736
   _globals['_TYPEREFERENCE']._serialized_start=738
-  _globals['_TYPEREFERENCE']._serialized_end=768
-  _globals['_PACKAGEINFO']._serialized_start=770
-  _globals['_PACKAGEINFO']._serialized_end=836
-  _globals['_GRAPHINFO']._serialized_start=839
-  _globals['_GRAPHINFO']._serialized_end=976
-  _globals['_JOBINFO']._serialized_start=979
-  _globals['_JOBINFO']._serialized_end=1114
-  _globals['_GETPACKAGEINFORESPONSE']._serialized_start=1116
-  _globals['_GETPACKAGEINFORESPONSE']._serialized_end=1179
-  _globals['_GETGRAPHSRESPONSE']._serialized_start=1181
-  _globals['_GETGRAPHSRESPONSE']._serialized_end=1236
-  _globals['_GETGRAPHRESPONSE']._serialized_start=1238
-  _globals['_GETGRAPHRESPONSE']._serialized_end=1291
-  _globals['_GETTRIGGERSRESPONSE']._serialized_start=1293
-  _globals['_GETTRIGGERSRESPONSE']._serialized_end=1332
-  _globals['_GETTRIGGERRESPONSE']._serialized_start=1334
-  _globals['_GETTRIGGERRESPONSE']._serialized_end=1443
-  _globals['_GETJOBSRESPONSE']._serialized_start=1445
-  _globals['_GETJOBSRESPONSE']._serialized_end=1494
-  _globals['_GETJOBRESPONSE']._serialized_start=1496
-  _globals['_GETJOBRESPONSE']._serialized_end=1543
-  _globals['_WORKFLOWLOADER']._serialized_start=1546
-  _globals['_WORKFLOWLOADER']._serialized_end=2114
+  _globals['_TYPEREFERENCE']._serialized_end=807
+  _globals['_PROPERTYSPEC']._serialized_start=809
+  _globals['_PROPERTYSPEC']._serialized_end=837
+  _globals['_STRUCTOBJECT']._serialized_start=840
+  _globals['_STRUCTOBJECT']._serialized_end=987
+  _globals['_STRUCTOBJECT_PROPERTIESENTRY']._serialized_start=915
+  _globals['_STRUCTOBJECT_PROPERTIESENTRY']._serialized_end=987
+  _globals['_PACKAGEINFO']._serialized_start=989
+  _globals['_PACKAGEINFO']._serialized_end=1055
+  _globals['_GRAPHINFO']._serialized_start=1058
+  _globals['_GRAPHINFO']._serialized_end=1195
+  _globals['_JOBINFO']._serialized_start=1198
+  _globals['_JOBINFO']._serialized_end=1333
+  _globals['_GETPACKAGEINFORESPONSE']._serialized_start=1335
+  _globals['_GETPACKAGEINFORESPONSE']._serialized_end=1398
+  _globals['_GETGRAPHSRESPONSE']._serialized_start=1400
+  _globals['_GETGRAPHSRESPONSE']._serialized_end=1455
+  _globals['_GETGRAPHRESPONSE']._serialized_start=1457
+  _globals['_GETGRAPHRESPONSE']._serialized_end=1510
+  _globals['_GETTRIGGERSRESPONSE']._serialized_start=1512
+  _globals['_GETTRIGGERSRESPONSE']._serialized_end=1551
+  _globals['_GETTRIGGERRESPONSE']._serialized_start=1553
+  _globals['_GETTRIGGERRESPONSE']._serialized_end=1662
+  _globals['_GETJOBSRESPONSE']._serialized_start=1664
+  _globals['_GETJOBSRESPONSE']._serialized_end=1713
+  _globals['_GETJOBRESPONSE']._serialized_start=1715
+  _globals['_GETJOBRESPONSE']._serialized_end=1762
+  _globals['_WORKFLOWLOADER']._serialized_start=1765
+  _globals['_WORKFLOWLOADER']._serialized_end=2333
 # @@protoc_insertion_point(module_scope)

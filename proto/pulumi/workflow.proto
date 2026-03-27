@@ -179,6 +179,18 @@ message WorkflowHandshakeResponse {}
 message TypeReference {
     // Package-qualified type token, e.g. workflow:index:TriggerInput.
     string token = 1;
+    // Inline object schema when type is declared structurally instead of by token.
+    StructObject object = 2;
+}
+
+message PropertySpec {
+    // Primitive workflow property type (e.g. "bool", "string", "number").
+    string type = 1;
+}
+
+message StructObject {
+    // Object property schema.
+    map<string, PropertySpec> properties = 1;
 }
 
 message PackageInfo {

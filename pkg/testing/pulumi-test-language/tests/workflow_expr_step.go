@@ -34,7 +34,9 @@ func init() {
 					step, err := args.Workflow.GetStep(args.Context, &pulumirpc.GetStepRequest{Token: stepToken})
 					require.NoError(l, err)
 					require.NotNil(l, step.GetInputType())
-					assert.Equal(l, "workflow:index:BoolInput", step.GetInputType().GetToken())
+					require.NotNil(l, step.GetInputType().GetObject())
+					require.Contains(l, step.GetInputType().GetObject().GetProperties(), "input")
+					assert.Equal(l, "bool", step.GetInputType().GetObject().GetProperties()["input"].GetType())
 
 					runTrueResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
 						Context: &pulumirpc.WorkflowContext{ExecutionId: "test-true"},

@@ -58,6 +58,15 @@ message GetWorkflowJobRequest {
 
 message TypeReference {
     string token = 1;
+    StructObject object = 2;
+}
+
+message PropertySpec {
+    string type = 1;
+}
+
+message StructObject {
+    map<string, PropertySpec> properties = 1;
 }
 
 message PackageInfo {

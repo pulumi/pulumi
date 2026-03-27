@@ -177,7 +177,22 @@ func typeToken(t *pulumirpc.TypeReference) string {
 	if t == nil {
 		return ""
 	}
-	return t.GetToken()
+	if t.GetToken() != "" {
+		return t.GetToken()
+	}
+	if t.GetObject() == nil || len(t.GetObject().GetProperties()) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(t.GetObject().GetProperties()))
+	for k := range t.GetObject().GetProperties() {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s:%s", k, t.GetObject().GetProperties()[k].GetType()))
+	}
+	return "{" + strings.Join(parts, ", ") + "}"
 }
 
 func resolveGraphToken(

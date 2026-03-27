@@ -120,16 +120,75 @@ class TypeReference(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     TOKEN_FIELD_NUMBER: builtins.int
+    OBJECT_FIELD_NUMBER: builtins.int
     token: builtins.str
     """Package-qualified type token, e.g. workflow:index:TriggerInput."""
+    @property
+    def object(self) -> global___StructObject:
+        """Inline object schema when type is declared structurally instead of by token."""
+
     def __init__(
         self,
         *,
         token: builtins.str = ...,
+        object: global___StructObject | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["object", b"object"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["object", b"object", "token", b"token"]) -> None: ...
 
 global___TypeReference = TypeReference
+
+@typing.final
+class PropertySpec(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TYPE_FIELD_NUMBER: builtins.int
+    type: builtins.str
+    """Primitive workflow property type (e.g. "bool", "string", "number")."""
+    def __init__(
+        self,
+        *,
+        type: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["type", b"type"]) -> None: ...
+
+global___PropertySpec = PropertySpec
+
+@typing.final
+class StructObject(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class PropertiesEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> global___PropertySpec: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: global___PropertySpec | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    PROPERTIES_FIELD_NUMBER: builtins.int
+    @property
+    def properties(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, global___PropertySpec]:
+        """Object property schema."""
+
+    def __init__(
+        self,
+        *,
+        properties: collections.abc.Mapping[builtins.str, global___PropertySpec] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["properties", b"properties"]) -> None: ...
+
+global___StructObject = StructObject
 
 @typing.final
 class PackageInfo(google.protobuf.message.Message):

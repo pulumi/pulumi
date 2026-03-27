@@ -36,7 +36,9 @@ func init() {
 					step, err := args.Workflow.GetStep(args.Context, &pulumirpc.GetStepRequest{Token: stepToken})
 					require.NoError(l, err)
 					require.NotNil(l, step.GetInputType())
-					require.Equal(l, "workflow:index:CommandStepInput", step.GetInputType().GetToken())
+					require.NotNil(l, step.GetInputType().GetObject())
+					require.Contains(l, step.GetInputType().GetObject().GetProperties(), "input_file")
+					require.Equal(l, "string", step.GetInputType().GetObject().GetProperties()["input_file"].GetType())
 					outputFile := filepath.Join(args.ProjectDirectory, "command-step-output.txt")
 					_ = os.Remove(outputFile)
 
