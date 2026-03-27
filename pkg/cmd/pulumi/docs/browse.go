@@ -128,8 +128,6 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 
 		// Merge sitemap/bundle nav items with any numbered links from the body.
 		navItems = append(navItems, node.items...)
-		// Always include pinned nav items (e.g. "API Docs" shortcut).
-		navItems = append(navItems, node.pinnedNav...)
 
 		// Display bundle table (modules/resources/functions) before the menu,
 		// but only when the page has no body content (pure listing page).
@@ -137,7 +135,7 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 			fmt.Print(node.bundleTable)
 		}
 
-		if len(navItems) == 0 && node.body == "" {
+		if len(navItems) == 0 && len(node.pinnedNav) == 0 && node.body == "" {
 			// No terminal content — try to open in browser, otherwise show the URL.
 			pageURL := webURL(dc.baseURLForPath(path), path)
 			if err := browser.OpenURL(pageURL); err != nil {
@@ -163,7 +161,10 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 		for !navigated {
 			isRoot := path == ""
 			hasHeadings := len(headings) > 0
-			menu := buildBrowseMenu(activeItems, isRoot, hasHeadings, len(history) > 0, !introIncludesFirstSection, sectionIdx, headings)
+			// Always include pinned nav items (e.g. "API Docs" shortcut) even after
+			// section navigation replaces activeItems.
+			menuItems := append(activeItems, node.pinnedNav...)
+			menu := buildBrowseMenu(menuItems, isRoot, hasHeadings, len(history) > 0, !introIncludesFirstSection, sectionIdx, headings)
 
 			promptTitle := node.title
 			if promptTitle == "" {
@@ -245,8 +246,8 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 					sectionIdx++
 					renderSectionByIdx(dc, node.body, headings, sectionIdx, &activeItems, node.sectionNav)
 				} else {
-					// Find the selected nav item
-					for _, item := range activeItems {
+					// Find the selected nav item (search menuItems which includes pinnedNav)
+					for _, item := range menuItems {
 						if item.label == selected {
 							// External link — open in browser instead of navigating
 							if item.href != "" {
