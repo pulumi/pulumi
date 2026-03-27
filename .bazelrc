@@ -1,0 +1,49 @@
+# Common Bazel settings for Pulumi
+
+# Build with optimizations by default
+build --compilation_mode=opt
+
+# Use purego tag to avoid assembly issues in cloudflare/circl
+build --@rules_go//go/config:tags=purego
+
+# Enable test output
+test --test_output=errors
+
+# Allow tests to write to a temp directory
+test --test_env=HOME
+test --test_env=TEST_TMPDIR
+test --sandbox_writable_path=/tmp
+
+# Set PULUMI_HOME to test tmpdir so tests can write to .pulumi directory
+test --test_env=PULUMI_HOME
+
+# Pass through PATH so tests can find external tools (go, git, curl, etc.)
+test --test_env=PATH
+
+# Disable GOWORK for tests - testdata modules have their own go.mod with replace directives
+test --test_env=GOWORK=off
+
+# Pass BUILD_WORKSPACE_DIRECTORY so tests can find actual source files
+test --test_env=BUILD_WORKSPACE_DIRECTORY
+
+# Set BAZEL_TEST so tests can detect Bazel environment and skip incompatible checks
+test --test_env=BAZEL_TEST=1
+
+# Allow git to access directories with different ownership (needed for testdata git repos)
+test --test_env=GIT_CONFIG_COUNT=1
+test --test_env=GIT_CONFIG_KEY_0=safe.directory
+test --test_env=GIT_CONFIG_VALUE_0=*
+
+# Run tests locally without sandboxing to allow access to system tools
+test --strategy=TestRunner=local
+
+# Keep going after errors to see all issues
+build --keep_going
+test --keep_going
+
+# Enable symlinks for convenience
+build --experimental_convenience_symlinks=normal
+
+# Remote caching (disabled by default, uncomment to enable)
+# build --remote_cache=grpcs://remote.buildbuddy.io
+# build --remote_timeout=3600

@@ -1,0 +1,16 @@
+diff --git a/dh/x25519/BUILD.bazel b/dh/x25519/BUILD.bazel
+index 1234567..abcdefg 100644
+--- a/dh/x25519/BUILD.bazel
++++ b/dh/x25519/BUILD.bazel
+@@ -4,10 +4,8 @@ go_library(
+     name = "x25519",
+     srcs = [
+         "curve.go",
+-        "curve_amd64.go",
+-        "curve_amd64.h",
+-        "curve_amd64.s",
+         "curve_generic.go",
++        "curve_noasm.go",
+         "doc.go",
+         "key.go",
+         "table.go",

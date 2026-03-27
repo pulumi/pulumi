@@ -1,0 +1,17 @@
+protobuf>=3.20.3,<7
+grpcio>=1.68.1,<2
+dill==0.4
+semver==3.0.2
+pyyaml==6.0.2
+debugpy==1.8.7
+pip==24.3.1
+typing-extensions==4.12.2
+pytest==8.4.0
+pytest-timeout==2.3.1
+pytest-asyncio==0.24.0
+iniconfig==2.0.0
+pluggy==1.5.0
+packaging==24.2
+exceptiongroup==1.2.2
+tomli==2.0.1
+pygments==2.18.0
