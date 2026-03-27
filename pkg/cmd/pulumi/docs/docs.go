@@ -207,9 +207,9 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 	var bundle *CLIDocsBundle
 	if isAPIDocsPath(path) {
 		pkgName, docKey, ok := ParseAPIDocsPath(path)
-		if ok && docKey != "" {
+		if ok {
 			bundle, _ = FetchCLIDocsBundle(fetchBase, pkgName)
-			if bundle != nil {
+			if bundle != nil && docKey != "" {
 				if b, t, found := LookupBundleDoc(bundle, docKey); found {
 					body, title = b, t
 				}
