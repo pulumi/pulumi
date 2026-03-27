@@ -600,25 +600,19 @@ func TestProviderCancellation(t *testing.T) {
 func TestLanguageRuntimeCancellation(t *testing.T) {
 	t.Parallel()
 
-	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
-	// The program signals ready, then an external goroutine cancels.
-	// This mirrors TestProviderCancellation's pattern: the program
-	// blocks until the engine acknowledges cancellation via Shutdown,
-	// ensuring the executor always detects cancellation via ctx.Done()
-	// rather than racing with the source completion event.
-	ready := make(chan struct{})
-	go func() {
-		<-ready
-		cancel()
-	}()
-
+	// The program cancels the deployment context then blocks until
+	// the engine acknowledges cancellation via the language runtime's
+	// Cancel method (called from SignalCancellation). Because the
+	// program is blocked, the source iterator stays blocked too, so
+	// the executor's event loop can only exit via ctx.Done() — no
+	// race with the source completion event.
 	shutdownCh := make(chan struct{})
 	gracefulShutdown := false
 	programF := func() plugin.LanguageRuntime {
 		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			close(ready)
+			cancel()
 			<-shutdownCh
 			return nil
 		}, func() {
