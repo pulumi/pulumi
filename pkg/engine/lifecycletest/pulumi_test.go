@@ -599,19 +599,31 @@ func TestProviderCancellation(t *testing.T) {
 
 func TestLanguageRuntimeCancellation(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO[https://github.com/pulumi/pulumi/issues/20325]: Flaky")
 
-	ctx, cancel := context.WithCancel(t.Context())
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
+	ctx, cancel := context.WithCancel(context.Background())
 
+	// The program signals ready, then an external goroutine cancels.
+	// This mirrors TestProviderCancellation's pattern: the program
+	// blocks until the engine acknowledges cancellation via Shutdown,
+	// ensuring the executor always detects cancellation via ctx.Done()
+	// rather than racing with the source completion event.
+	ready := make(chan struct{})
+	go func() {
+		<-ready
+		cancel()
+	}()
+
+	shutdownCh := make(chan struct{})
 	gracefulShutdown := false
 	programF := func() plugin.LanguageRuntime {
 		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			time.Sleep(1 * time.Second)
-			cancel()
-
+			close(ready)
+			<-shutdownCh
 			return nil
 		}, func() {
 			gracefulShutdown = true
+			close(shutdownCh)
 		})
 	}
 
@@ -624,7 +636,7 @@ func TestLanguageRuntimeCancellation(t *testing.T) {
 	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 
 	assert.Error(t, err)
-	assert.Equal(t, err.Error(), "BAIL: canceled")
+	assert.Equal(t, "BAIL: canceled", err.Error())
 	assert.True(t, gracefulShutdown)
 }
 
