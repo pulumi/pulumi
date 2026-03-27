@@ -54,7 +54,7 @@ func (h *workflowSimpleJobLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("expected strict generation")
 	}
 
-	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "workflow-simple-job") {
+	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "workflow-constant-job") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
 	}
 
@@ -149,14 +149,6 @@ func (p *workflowSimpleJobPlugin) GenerateJob(
 		return nil, fmt.Errorf("register job: %w", err)
 	}
 
-	_, err = monitor.RegisterStep(ctx, &pulumirpc.RegisterStepRequest{
-		Job:  req.GetName(),
-		Name: "constant",
-	})
-	if err != nil {
-		return nil, fmt.Errorf("register step: %w", err)
-	}
-
 	return &pulumirpc.GenerateNodeResponse{}, nil
 }
 
@@ -169,12 +161,7 @@ func (p *workflowSimpleJobPlugin) RunFilter(
 func (p *workflowSimpleJobPlugin) RunStep(
 	_ context.Context, req *pulumirpc.RunStepRequest,
 ) (*pulumirpc.RunStepResponse, error) {
-	if req.Path != "example:index:build/steps/constant" {
-		return nil, fmt.Errorf("unexpected step path %q", req.Path)
-	}
-	return &pulumirpc.RunStepResponse{
-		Result: structpb.NewStringValue("done"),
-	}, nil
+	return nil, fmt.Errorf("unexpected step execution %q", req.Path)
 }
 
 func (p *workflowSimpleJobPlugin) ResolveJobResult(
@@ -183,6 +170,7 @@ func (p *workflowSimpleJobPlugin) ResolveJobResult(
 	if req.Path != "example:index:build" {
 		return nil, fmt.Errorf("unexpected resolve path %q", req.Path)
 	}
+
 	return &pulumirpc.ResolveJobResultResponse{
 		Result: structpb.NewStringValue("done"),
 	}, nil
@@ -265,7 +253,7 @@ func TestWorkflowSimpleJob(t *testing.T) {
 
 	runResponse, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 		Token: token,
-		Test:  "workflow-simple-job",
+		Test:  "workflow-constant-job",
 	})
 	require.NoError(t, err)
 	assert.True(t, runResponse.Success)
@@ -279,7 +267,7 @@ func TestWorkflowSimpleJob_GenerateJobError(t *testing.T) {
 
 	runResponse, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 		Token: token,
-		Test:  "workflow-simple-job",
+		Test:  "workflow-constant-job",
 	})
 	require.NoError(t, err)
 	assert.False(t, runResponse.Success)

@@ -35,9 +35,9 @@ import (
 type workflowSimpleStepLanguageHost struct {
 	pulumirpc.UnimplementedLanguageRuntimeServer
 
-	tempDir           string
-	getStepsError     string
-	returnInputResult bool
+	tempDir             string
+	getStepsError       string
+	returnWrongConstant bool
 }
 
 func (h *workflowSimpleStepLanguageHost) Pack(
@@ -55,7 +55,7 @@ func (h *workflowSimpleStepLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("expected strict generation")
 	}
 
-	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "workflow-simple-step") {
+	if req.TargetDirectory != filepath.Join(h.tempDir, "projects", "workflow-constant-step") {
 		return nil, fmt.Errorf("unexpected target directory %s", req.TargetDirectory)
 	}
 
@@ -91,8 +91,8 @@ func (h *workflowSimpleStepLanguageHost) InstallDependencies(
 type workflowSimpleStepPlugin struct {
 	pulumirpc.UnimplementedWorkflowEvaluatorServer
 
-	getStepsError     string
-	returnInputResult bool
+	getStepsError       string
+	returnWrongConstant bool
 }
 
 func (p *workflowSimpleStepPlugin) Handshake(
@@ -120,8 +120,8 @@ func (p *workflowSimpleStepPlugin) GetStep(
 		return nil, fmt.Errorf("unexpected step token %q", req.Token)
 	}
 	return &pulumirpc.GetStepResponse{
-		InputType:  &pulumirpc.TypeReference{Token: "bool"},
-		OutputType: &pulumirpc.TypeReference{Token: "bool"},
+		InputType:  &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
+		OutputType: &pulumirpc.TypeReference{Token: "string"},
 	}, nil
 }
 
@@ -131,18 +131,13 @@ func (p *workflowSimpleStepPlugin) RunStep(
 	if req.Path != "echo" {
 		return nil, fmt.Errorf("unexpected step path %q", req.Path)
 	}
-	input := req.GetInput()
-	if input == nil {
-		return nil, fmt.Errorf("missing step input")
-	}
-
-	output := !input.GetBoolValue()
-	if p.returnInputResult {
-		output = input.GetBoolValue()
+	output := "done"
+	if p.returnWrongConstant {
+		output = "not-done"
 	}
 
 	return &pulumirpc.RunStepResponse{
-		Result: structpb.NewBoolValue(output),
+		Result: structpb.NewStringValue(output),
 	}, nil
 }
 
@@ -154,8 +149,8 @@ func (h *workflowSimpleStepLanguageHost) RunPlugin(
 	}
 
 	workflowPlugin := &workflowSimpleStepPlugin{
-		getStepsError:     h.getStepsError,
-		returnInputResult: h.returnInputResult,
+		getStepsError:       h.getStepsError,
+		returnWrongConstant: h.returnWrongConstant,
 	}
 	stop := make(chan bool)
 	go func() {
@@ -224,7 +219,7 @@ func TestWorkflowSimpleStep(t *testing.T) {
 
 	runResponse, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 		Token: token,
-		Test:  "workflow-simple-step",
+		Test:  "workflow-constant-step",
 	})
 	require.NoError(t, err)
 	assert.True(t, runResponse.Success)
@@ -238,7 +233,7 @@ func TestWorkflowSimpleStep_GetStepsError(t *testing.T) {
 
 	runResponse, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 		Token: token,
-		Test:  "workflow-simple-step",
+		Test:  "workflow-constant-step",
 	})
 	require.NoError(t, err)
 	assert.False(t, runResponse.Success)
@@ -248,15 +243,15 @@ func TestWorkflowSimpleStep_GetStepsError(t *testing.T) {
 
 func TestWorkflowSimpleStep_RunStepUnexpectedResult(t *testing.T) {
 	engine, token := prepareWorkflowSimpleStepTest(t, &workflowSimpleStepLanguageHost{
-		returnInputResult: true,
+		returnWrongConstant: true,
 	})
 
 	runResponse, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 		Token: token,
-		Test:  "workflow-simple-step",
+		Test:  "workflow-constant-step",
 	})
 	require.NoError(t, err)
 	assert.False(t, runResponse.Success)
 	require.NotEmpty(t, runResponse.Messages)
-	assert.Contains(t, runResponse.Messages[0], "Should be false")
+	assert.Contains(t, runResponse.Messages[0], "not-done")
 }

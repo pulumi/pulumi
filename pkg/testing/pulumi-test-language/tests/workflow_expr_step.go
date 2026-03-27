@@ -18,10 +18,11 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func init() {
-	LanguageTests["workflow-constant-step"] = LanguageTest{
+	LanguageTests["workflow-expr-step"] = LanguageTest{
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
@@ -30,13 +31,24 @@ func init() {
 					require.Len(l, steps.GetSteps(), 1)
 
 					stepToken := steps.GetSteps()[0]
-					runResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
-						Context: &pulumirpc.WorkflowContext{ExecutionId: "test"},
+
+					runTrueResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
+						Context: &pulumirpc.WorkflowContext{ExecutionId: "test-true"},
 						Path:    stepToken,
+						Input:   structpb.NewBoolValue(true),
 					})
 					require.NoError(l, err)
-					require.NotNil(l, runResp.GetResult())
-					assert.Equal(l, "done", runResp.GetResult().GetStringValue())
+					require.NotNil(l, runTrueResp.GetResult())
+					assert.False(l, runTrueResp.GetResult().GetBoolValue())
+
+					runFalseResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
+						Context: &pulumirpc.WorkflowContext{ExecutionId: "test-false"},
+						Path:    stepToken,
+						Input:   structpb.NewBoolValue(false),
+					})
+					require.NoError(l, err)
+					require.NotNil(l, runFalseResp.GetResult())
+					assert.True(l, runFalseResp.GetResult().GetBoolValue())
 				},
 			},
 		},

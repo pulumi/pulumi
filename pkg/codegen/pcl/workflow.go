@@ -80,6 +80,7 @@ type WorkflowStepDefinition struct {
 
 type WorkflowJobDefinition struct {
 	Name  string            `hcl:"name,label"`
+	Expr  string            `hcl:"expr,optional"`
 	Steps []WorkflowJobStep `hcl:"step,block"`
 }
 
@@ -95,6 +96,7 @@ type WorkflowJobStep struct {
 type WorkflowGraphJob struct {
 	Name      string            `hcl:"name,label"`
 	Uses      string            `hcl:"uses,optional"`
+	Expr      string            `hcl:"expr,optional"`
 	Filter    *bool             `hcl:"filter,optional"`
 	Steps     []WorkflowJobStep `hcl:"step,block"`
 	DependsOn []string          `hcl:"depends_on,optional"`
@@ -331,6 +333,20 @@ func (p *WorkflowProgram) JobDefinitionForUse(uses string) (WorkflowJobDefinitio
 	}
 	job, exists := p.jobsByName[name]
 	return job, exists
+}
+
+func (p *WorkflowProgram) JobByName(name string) (WorkflowJobDefinition, bool) {
+	job, ok := p.jobsByName[name]
+	return job, ok
+}
+
+func (p *WorkflowProgram) JobNames() []string {
+	names := make([]string, 0, len(p.jobsByName))
+	for name := range p.jobsByName {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func splitUseReference(uses string) (string, string, bool) {

@@ -15,76 +15,17 @@
 package tests
 
 import (
-	"context"
 	"net"
-	"strings"
-	"sync"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type workflowJobMonitor struct {
-	pulumirpc.UnimplementedGraphMonitorServer
-
-	mu    sync.Mutex
-	steps []string
-}
-
-func (m *workflowJobMonitor) RegisterGraph(
-	context.Context, *pulumirpc.RegisterGraphRequest,
-) (*pulumirpc.RegisterNodeResponse, error) {
-	return &pulumirpc.RegisterNodeResponse{}, nil
-}
-
-func (m *workflowJobMonitor) RegisterTrigger(
-	context.Context, *pulumirpc.RegisterTriggerRequest,
-) (*pulumirpc.RegisterNodeResponse, error) {
-	return &pulumirpc.RegisterNodeResponse{}, nil
-}
-
-func (m *workflowJobMonitor) RegisterSensor(
-	context.Context, *pulumirpc.RegisterSensorRequest,
-) (*pulumirpc.RegisterNodeResponse, error) {
-	return &pulumirpc.RegisterNodeResponse{}, nil
-}
-
-func (m *workflowJobMonitor) RegisterJob(
-	context.Context, *pulumirpc.RegisterJobRequest,
-) (*pulumirpc.RegisterNodeResponse, error) {
-	return &pulumirpc.RegisterNodeResponse{}, nil
-}
-
-func (m *workflowJobMonitor) RegisterStep(
-	_ context.Context, req *pulumirpc.RegisterStepRequest,
-) (*pulumirpc.RegisterNodeResponse, error) {
-	stepPath := req.GetJob() + "/steps/" + req.GetName()
-
-	m.mu.Lock()
-	m.steps = append(m.steps, stepPath)
-	m.mu.Unlock()
-
-	return &pulumirpc.RegisterNodeResponse{}, nil
-}
-
-func (m *workflowJobMonitor) snapshotStepsForJob(jobPath string) []string {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	steps := make([]string, 0, len(m.steps))
-	prefix := jobPath + "/steps/"
-	for _, step := range m.steps {
-		if strings.HasPrefix(step, prefix) {
-			steps = append(steps, step)
-		}
-	}
-	return steps
-}
-
 func init() {
-	LanguageTests["workflow-constant-job"] = LanguageTest{
+	LanguageTests["workflow-expr-job"] = LanguageTest{
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
@@ -93,10 +34,6 @@ func init() {
 					require.Len(l, jobs.GetJobs(), 1)
 
 					jobToken := jobs.GetJobs()[0].GetToken()
-					job, err := args.Workflow.GetJob(args.Context, &pulumirpc.GetJobRequest{Token: jobToken})
-					require.NoError(l, err)
-					require.NotNil(l, job.GetJob())
-
 					monitor := &workflowJobMonitor{}
 					grpcServer := grpc.NewServer()
 					pulumirpc.RegisterGraphMonitorServer(grpcServer, monitor)
@@ -107,10 +44,7 @@ func init() {
 						_ = listener.Close()
 						grpcServer.Stop()
 					}()
-
-					go func() {
-						_ = grpcServer.Serve(listener)
-					}()
+					go func() { _ = grpcServer.Serve(listener) }()
 
 					workflowContext := &pulumirpc.WorkflowContext{ExecutionId: "test"}
 					generateResp, err := args.Workflow.GenerateJob(args.Context, &pulumirpc.GenerateJobRequest{
@@ -122,7 +56,16 @@ func init() {
 					require.Empty(l, generateResp.GetError().GetReason())
 
 					steps := monitor.snapshotStepsForJob(jobToken)
-					require.Empty(l, steps)
+					require.Len(l, steps, 1)
+
+					runResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
+						Context: workflowContext,
+						Path:    steps[0],
+						Input:   structpb.NewBoolValue(true),
+					})
+					require.NoError(l, err)
+					require.Empty(l, runResp.GetError().GetReason())
+					assert.False(l, runResp.GetResult().GetBoolValue())
 
 					result, err := args.Workflow.ResolveJobResult(args.Context, &pulumirpc.ResolveJobResultRequest{
 						Context: workflowContext,
@@ -131,7 +74,7 @@ func init() {
 					require.NoError(l, err)
 					require.Empty(l, result.GetError().GetReason())
 					require.NotNil(l, result.GetResult())
-					assert.Equal(l, "done", result.GetResult().GetStringValue())
+					assert.False(l, result.GetResult().GetBoolValue())
 				},
 			},
 		},

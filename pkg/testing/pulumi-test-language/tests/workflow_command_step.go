@@ -15,13 +15,16 @@
 package tests
 
 import (
+	"os"
+	"path/filepath"
+
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func init() {
-	LanguageTests["workflow-constant-step"] = LanguageTest{
+	LanguageTests["workflow-command-step"] = LanguageTest{
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
@@ -30,13 +33,23 @@ func init() {
 					require.Len(l, steps.GetSteps(), 1)
 
 					stepToken := steps.GetSteps()[0]
+					outputFile := filepath.Join(args.ProjectDirectory, "command-step-output.txt")
+					_ = os.Remove(outputFile)
+
 					runResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
 						Context: &pulumirpc.WorkflowContext{ExecutionId: "test"},
 						Path:    stepToken,
+						Input: structpb.NewStructValue(&structpb.Struct{
+							Fields: map[string]*structpb.Value{
+								"input_file": structpb.NewStringValue(outputFile),
+							},
+						}),
 					})
 					require.NoError(l, err)
-					require.NotNil(l, runResp.GetResult())
-					assert.Equal(l, "done", runResp.GetResult().GetStringValue())
+					require.Empty(l, runResp.GetError().GetReason())
+
+					_, statErr := os.Stat(outputFile)
+					require.NoError(l, statErr, "command step should create output file")
 				},
 			},
 		},

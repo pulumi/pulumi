@@ -17,6 +17,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -38,6 +39,8 @@ type WorkflowEvaluator struct {
 	packageVersion string
 	program        *codegenpcl.WorkflowProgram
 	stepsByPath    map[string]codegenpcl.WorkflowStepDefinition
+	stepResults    map[string]*structpb.Value
+	jobExprByPath  map[string]string
 	filtersByPath  map[string]bool
 }
 
@@ -53,6 +56,8 @@ func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
 		packageVersion: "0.0.1",
 		program:        program,
 		stepsByPath:    map[string]codegenpcl.WorkflowStepDefinition{},
+		stepResults:    map[string]*structpb.Value{},
+		jobExprByPath:  map[string]string{},
 		filtersByPath:  map[string]bool{},
 	}, nil
 }
@@ -121,13 +126,34 @@ func (e *WorkflowEvaluator) GetTrigger(
 func (e *WorkflowEvaluator) GetJobs(
 	context.Context, *pulumirpc.GetJobsRequest,
 ) (*pulumirpc.GetJobsResponse, error) {
-	return &pulumirpc.GetJobsResponse{}, nil
+	resp := &pulumirpc.GetJobsResponse{}
+	for _, name := range e.program.JobNames() {
+		resp.Jobs = append(resp.Jobs, &pulumirpc.JobInfo{
+			Token:      e.jobToken(name),
+			InputType:  &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
+			OutputType: &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
+		})
+	}
+	return resp, nil
 }
 
 func (e *WorkflowEvaluator) GetJob(
-	context.Context, *pulumirpc.GetJobRequest,
+	_ context.Context, req *pulumirpc.GetJobRequest,
 ) (*pulumirpc.GetJobResponse, error) {
-	return nil, status.Error(codes.NotFound, "no exported jobs")
+	name, ok := e.resolveJobToken(req.GetToken())
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "unknown job token %q", req.GetToken())
+	}
+	if _, ok := e.program.JobByName(name); !ok {
+		return nil, status.Errorf(codes.NotFound, "unknown job token %q", req.GetToken())
+	}
+	return &pulumirpc.GetJobResponse{
+		Job: &pulumirpc.JobInfo{
+			Token:      e.jobToken(name),
+			InputType:  &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
+			OutputType: &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
+		},
+	}, nil
 }
 
 func (e *WorkflowEvaluator) GetSteps(
@@ -153,7 +179,7 @@ func (e *WorkflowEvaluator) GetStep(
 	}
 	return &pulumirpc.GetStepResponse{
 		InputType:  &pulumirpc.TypeReference{Token: defaultTypeToken(step.InputType)},
-		OutputType: &pulumirpc.TypeReference{Token: defaultTypeToken(step.OutputType)},
+		OutputType: &pulumirpc.TypeReference{Token: defaultTypeToken(inferStepOutputType(step))},
 	}, nil
 }
 
@@ -194,6 +220,28 @@ func (e *WorkflowEvaluator) GenerateGraph(
 func (e *WorkflowEvaluator) GenerateJob(
 	ctx context.Context, req *pulumirpc.GenerateJobRequest,
 ) (*pulumirpc.GenerateNodeResponse, error) {
+	if req.GetPath() == "" {
+		if req.GetName() == "" {
+			return nil, status.Error(codes.InvalidArgument, "either path or name is required")
+		}
+		name, ok := e.resolveJobToken(req.GetName())
+		if !ok {
+			return nil, status.Errorf(codes.NotFound, "unknown job token %q", req.GetName())
+		}
+		jobDef, ok := e.program.JobByName(name)
+		if !ok {
+			return nil, status.Errorf(codes.NotFound, "unknown job token %q", req.GetName())
+		}
+		monitor, conn, err := graphMonitor(req.GetGraphMonitorAddress())
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = conn.Close() }()
+
+		jobPath := e.jobToken(name)
+		return e.registerJob(ctx, req.GetContext(), jobPath, jobDef.Steps, jobDef.Expr, monitor)
+	}
+
 	parts := strings.Split(req.GetPath(), "/jobs/")
 	if len(parts) != 2 {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid job path %q", req.GetPath())
@@ -233,31 +281,32 @@ func (e *WorkflowEvaluator) GenerateJob(
 	if selected == nil {
 		return nil, status.Errorf(codes.NotFound, "unknown job %q", req.GetPath())
 	}
+
 	jobSteps := selected.Steps
+	jobExpr := selected.Expr
 	if selected.Uses != "" {
 		jobDef, ok := e.program.JobDefinitionForUse(selected.Uses)
 		if !ok {
 			return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Uses)
 		}
 		jobSteps = jobDef.Steps
+		if jobExpr == "" {
+			jobExpr = jobDef.Expr
+		}
 	}
 
 	jobPath := graphName + "/jobs/" + jobName
-	jobDependencies := &pulumirpc.DependencyExpression{
-		Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
-	}
-	for _, dep := range selected.DependsOn {
-		jobDependencies.Terms = append(jobDependencies.Terms, &pulumirpc.DependencyTerm{
-			Term: &pulumirpc.DependencyTerm_Path{Path: graphName + "/jobs/" + dep},
-		})
-	}
 	if _, err := monitor.RegisterJob(ctx, &pulumirpc.RegisterJobRequest{
-		Context:      req.GetContext(),
-		Path:         jobPath,
-		Dependencies: jobDependencies,
+		Context: req.GetContext(),
+		Path:    jobPath,
+		Dependencies: &pulumirpc.DependencyExpression{
+			Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
+		},
 	}); err != nil {
 		return nil, err
 	}
+	e.jobExprByPath[jobPath] = jobExpr
+
 	if selected.Filter != nil {
 		e.filtersByPath[jobPath] = *selected.Filter
 	}
@@ -293,6 +342,47 @@ func (e *WorkflowEvaluator) GenerateJob(
 	return &pulumirpc.GenerateNodeResponse{}, nil
 }
 
+func (e *WorkflowEvaluator) registerJob(
+	ctx context.Context,
+	wfContext *pulumirpc.WorkflowContext,
+	jobPath string,
+	jobSteps []codegenpcl.WorkflowJobStep,
+	jobExpr string,
+	monitor pulumirpc.GraphMonitorClient,
+) (*pulumirpc.GenerateNodeResponse, error) {
+	if _, err := monitor.RegisterJob(ctx, &pulumirpc.RegisterJobRequest{
+		Context: wfContext,
+		Path:    jobPath,
+		Dependencies: &pulumirpc.DependencyExpression{
+			Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
+		},
+	}); err != nil {
+		return nil, err
+	}
+	e.jobExprByPath[jobPath] = jobExpr
+
+	for _, step := range jobSteps {
+		stepDef, err := e.stepDefinitionForJobStep(step)
+		if err != nil {
+			return nil, err
+		}
+		stepPath := jobPath + "/steps/" + step.Name
+		if _, err := monitor.RegisterStep(ctx, &pulumirpc.RegisterStepRequest{
+			Context: wfContext,
+			Name:    step.Name,
+			Job:     jobPath,
+			Dependencies: &pulumirpc.DependencyExpression{
+				Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
+			},
+		}); err != nil {
+			return nil, err
+		}
+		e.stepsByPath[stepPath] = stepDef
+	}
+
+	return &pulumirpc.GenerateNodeResponse{}, nil
+}
+
 func (e *WorkflowEvaluator) RunSensor(
 	context.Context, *pulumirpc.RunSensorRequest,
 ) (*pulumirpc.RunSensorResponse, error) {
@@ -318,6 +408,7 @@ func (e *WorkflowEvaluator) RunStep(
 	if err != nil {
 		return nil, err
 	}
+	e.stepResults[req.GetPath()] = value
 	return &pulumirpc.RunStepResponse{Result: value}, nil
 }
 
@@ -360,10 +451,24 @@ func (e *WorkflowEvaluator) RunOnError(
 }
 
 func (e *WorkflowEvaluator) ResolveJobResult(
-	context.Context, *pulumirpc.ResolveJobResultRequest,
+	_ context.Context, req *pulumirpc.ResolveJobResultRequest,
 ) (*pulumirpc.ResolveJobResultResponse, error) {
+	jobPath := req.GetPath()
+	if jobPath == "" {
+		return nil, status.Error(codes.InvalidArgument, "job path is required")
+	}
+	expr := strings.TrimSpace(e.jobExprByPath[jobPath])
+	if expr == "" {
+		return &pulumirpc.ResolveJobResultResponse{
+			Result: structpb.NewNullValue(),
+		}, nil
+	}
+
+	if stepValue, ok := e.stepResults[jobPath+"/steps/"+expr]; ok {
+		return &pulumirpc.ResolveJobResultResponse{Result: stepValue}, nil
+	}
 	return &pulumirpc.ResolveJobResultResponse{
-		Result: structpb.NewNullValue(),
+		Result: structpb.NewStringValue(expr),
 	}, nil
 }
 
@@ -386,6 +491,10 @@ func (e *WorkflowEvaluator) stepToken(name string) string {
 	return fmt.Sprintf("%s:index:%s", e.packageName, name)
 }
 
+func (e *WorkflowEvaluator) jobToken(name string) string {
+	return fmt.Sprintf("%s:index:%s", e.packageName, name)
+}
+
 func (e *WorkflowEvaluator) hasTriggerToken(token string) bool {
 	for _, name := range e.program.TriggerNames() {
 		if token == name || token == e.triggerToken(name) {
@@ -404,6 +513,15 @@ func (e *WorkflowEvaluator) resolveStepToken(token string) (string, bool) {
 	return "", false
 }
 
+func (e *WorkflowEvaluator) resolveJobToken(token string) (string, bool) {
+	for _, name := range e.program.JobNames() {
+		if token == name || token == e.jobToken(name) {
+			return name, true
+		}
+	}
+	return "", false
+}
+
 func defaultTypeToken(token string) string {
 	if token != "" {
 		return token
@@ -411,9 +529,45 @@ func defaultTypeToken(token string) string {
 	return "pulumi:json#/Any"
 }
 
+func inferStepOutputType(step codegenpcl.WorkflowStepDefinition) string {
+	if step.OutputType != "" {
+		return step.OutputType
+	}
+	if step.Command != "" {
+		return "string"
+	}
+
+	expr := strings.TrimSpace(step.Expr)
+	switch expr {
+	case "input":
+		return step.InputType
+	case "!input", "not input":
+		return "bool"
+	default:
+		if expr != "" {
+			return "string"
+		}
+	}
+	return ""
+}
+
 func executeStepDefinition(step codegenpcl.WorkflowStepDefinition, input *structpb.Value) (*structpb.Value, error) {
 	if step.Command != "" {
-		out, err := exec.Command("/bin/sh", "-c", step.Command).CombinedOutput() //nolint:gosec
+		cmd := exec.Command("/bin/sh", "-c", step.Command) //nolint:gosec
+		cmd.Env = os.Environ()
+		if input != nil {
+			switch kind := input.GetKind().(type) {
+			case *structpb.Value_StructValue:
+				for key, value := range kind.StructValue.GetFields() {
+					s := value.GetStringValue()
+					cmd.Env = append(cmd.Env, key+"="+s)
+					cmd.Env = append(cmd.Env, strings.ToUpper(key)+"="+s)
+				}
+			default:
+				cmd.Env = append(cmd.Env, "INPUT="+input.GetStringValue())
+			}
+		}
+		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "step command failed: %v", err)
 		}
