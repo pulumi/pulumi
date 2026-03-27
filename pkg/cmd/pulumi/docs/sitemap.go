@@ -15,7 +15,7 @@
 package docs
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -67,7 +67,7 @@ func (dc *docsCmd) fetchSitemapForScope(scope string) ([]SitemapPage, error) {
 		parts := strings.SplitN(strings.TrimPrefix(scope, "registry/packages/"), "/", 2)
 		pkg := parts[0]
 		if pkg == "" {
-			return nil, fmt.Errorf("missing package name — use: pulumi docs sitemap registry/packages/<pkg>")
+			return nil, errors.New("missing package name — use: pulumi docs sitemap registry/packages/<pkg>")
 		}
 		return FetchPackageSitemap(dc.registryBaseURL, pkg)
 	}

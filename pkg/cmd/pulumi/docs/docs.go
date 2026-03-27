@@ -108,7 +108,7 @@ func (dc *docsCmd) newReadCmd() *cobra.Command {
 			if dc.toc && len(args) == 0 {
 				prefs, _ := LoadPreferences()
 				if prefs.LastPage == "" {
-					return fmt.Errorf("no page specified and no previously viewed page — provide a path")
+					return errors.New("no page specified and no previously viewed page — provide a path")
 				}
 				return dc.fetchAndRender(prefs.LastPage)
 			}

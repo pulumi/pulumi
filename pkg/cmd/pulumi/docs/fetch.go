@@ -44,7 +44,7 @@ type RegistryNotAvailableError struct {
 }
 
 func (e *RegistryNotAvailableError) Error() string {
-	return fmt.Sprintf("registry docs not available for: %s", e.Path)
+	return "registry docs not available for: " + e.Path
 }
 
 // isRegistryPath returns true if the path refers to registry content.
@@ -238,13 +238,13 @@ type sitemapResponse struct {
 
 // FetchSitemap fetches the docs site navigation structure.
 func FetchSitemap(baseURL string) ([]SitemapPage, error) {
-	url := fmt.Sprintf("%s/docs/cli-sitemap.json", strings.TrimRight(baseURL, "/"))
+	url := strings.TrimRight(baseURL, "/") + "/docs/cli-sitemap.json"
 	return fetchSitemapJSON(url, "sitemap")
 }
 
 // FetchRegistrySitemap fetches the top-level registry navigation (list of all packages).
 func FetchRegistrySitemap(baseURL string) ([]SitemapPage, error) {
-	url := fmt.Sprintf("%s/registry/cli-sitemap.json", strings.TrimRight(baseURL, "/"))
+	url := strings.TrimRight(baseURL, "/") + "/registry/cli-sitemap.json"
 	return fetchSitemapJSON(url, "registry sitemap")
 }
 
@@ -252,7 +252,7 @@ func FetchRegistrySitemap(baseURL string) ([]SitemapPage, error) {
 func FetchPackageSitemap(baseURL, packageName string) ([]SitemapPage, error) {
 	url := fmt.Sprintf("%s/registry/packages/%s/cli-sitemap.json",
 		strings.TrimRight(baseURL, "/"), packageName)
-	return fetchSitemapJSON(url, fmt.Sprintf("package sitemap for %s", packageName))
+	return fetchSitemapJSON(url, "package sitemap for "+packageName)
 }
 
 func fetchSitemapJSON(url, label string) ([]SitemapPage, error) {

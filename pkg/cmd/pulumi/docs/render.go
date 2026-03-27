@@ -199,7 +199,8 @@ func buildSegments(md string, width int) []segment {
 				lang := strings.TrimPrefix(trimmed, "```")
 				lang = strings.TrimSpace(lang)
 				// Emit top border as verbatim
-				segments = append(segments, segment{verbatim: glamourMargin + boxHeader(displayLang(lang), width-len(glamourMargin)) + "\n"})
+				border := glamourMargin + boxHeader(displayLang(lang), width-len(glamourMargin)) + "\n"
+				segments = append(segments, segment{verbatim: border})
 				// The fence itself and content go through glamour
 				flushCode = true
 				mdBuf.WriteString(line + "\n")

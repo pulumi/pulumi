@@ -17,6 +17,7 @@ package docs
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -78,7 +79,7 @@ func (h algoliaHit) sectionTag() string {
 
 // fetchCLIConfig fetches the CLI config file from the docs site.
 func fetchCLIConfig(baseURL string) (*cliConfig, error) {
-	configURL := fmt.Sprintf("%s/docs/cli-config.json", strings.TrimRight(baseURL, "/"))
+	configURL := strings.TrimRight(baseURL, "/") + "/docs/cli-config.json"
 
 	//nolint:gosec // URL is constructed from user-provided base URL
 	resp, err := http.Get(configURL)
@@ -120,7 +121,7 @@ func getAlgoliaCredentials(baseURL string) (appID, apiKey, indexName string, err
 	}
 
 	if cfg.Algolia.AppID == "" || cfg.Algolia.SearchKey == "" {
-		return "", "", "", fmt.Errorf("CLI config missing Algolia credentials")
+		return "", "", "", errors.New("CLI config missing Algolia credentials")
 	}
 
 	indexName = cfg.Algolia.IndexName
@@ -255,4 +256,3 @@ func runSearch(cmd *docsCmd, query string) error {
 	}
 	return nil
 }
-

@@ -15,7 +15,6 @@
 package docs
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -69,7 +68,7 @@ func (dc *docsCmd) newRegistryCmd() *cobra.Command {
 //	["aws", "api", "s3"]   → "registry/packages/aws/api-docs/s3"
 func resolveRegistryPath(args []string) string {
 	pkg := args[0]
-	base := fmt.Sprintf("registry/packages/%s", pkg)
+	base := "registry/packages/" + pkg
 
 	if len(args) < 2 {
 		return base

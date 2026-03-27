@@ -147,12 +147,12 @@ func TestBundleNavItems(t *testing.T) {
 	bundle := &CLIDocsBundle{
 		Package: "aws",
 		Resources: map[string]string{
-			"s3/bucket":              "# Bucket\n\nContent",
-			"s3/bucketPolicy":       "# BucketPolicy\n\nContent",
-			"ec2/instance":           "# Instance\n\nContent",
-			"ec2/vpc":                "# Vpc\n\nContent",
+			"s3/bucket":                "# Bucket\n\nContent",
+			"s3/bucketPolicy":          "# BucketPolicy\n\nContent",
+			"ec2/instance":             "# Instance\n\nContent",
+			"ec2/vpc":                  "# Vpc\n\nContent",
 			"ec2/transitgateway/route": "# Route\n\nContent",
-			"rootresource":           "# RootResource\n\nContent",
+			"rootresource":             "# RootResource\n\nContent",
 		},
 		Functions: map[string]string{
 			"s3/getBucket": "# getBucket\n\nContent",
@@ -165,7 +165,7 @@ func TestBundleNavItems(t *testing.T) {
 		items := BundleNavItems(bundle, "s3", "aws")
 
 		// Should have: Bucket, BucketPolicy (resources), getBucket (function)
-		assert.Len(t, items, 3)
+		require.Len(t, items, 3)
 
 		labels := make([]string, len(items))
 		for i, item := range items {
@@ -217,7 +217,7 @@ func TestBundleNavItems(t *testing.T) {
 		t.Parallel()
 		items := BundleNavItems(bundle, "ec2/transitgateway", "aws")
 
-		assert.Len(t, items, 1)
+		require.Len(t, items, 1)
 		assert.Equal(t, "🔗 Route", items[0].label)
 		assert.Equal(t, "registry/packages/aws/api-docs/ec2/transitgateway/route", items[0].path)
 	})
@@ -250,7 +250,8 @@ func TestFetchCLIDocsBundle(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/registry/packages/testpkg-fetch/api-docs/cli-docs.json", r.URL.Path)
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(testBundle)
+			err := json.NewEncoder(w).Encode(testBundle)
+			require.NoError(t, err)
 		}))
 		defer srv.Close()
 
@@ -285,6 +286,7 @@ func TestFetchCLIDocsBundle(t *testing.T) {
 	})
 
 	t.Run("in-memory cache hit", func(t *testing.T) {
+		t.Parallel()
 		// Pre-populate memory cache
 		cacheKey := "mem-cached-pkg"
 		bundleMemCache.Store(cacheKey, &testBundle)
@@ -473,7 +475,7 @@ func TestRenderBundleTable(t *testing.T) {
 				"ec2/subnet": "# Subnet\n\nA subnet.",
 			},
 			Functions: map[string]string{
-				"getarn":      "# getArn\n\nParses an ARN.",
+				"getarn":       "# getArn\n\nParses an ARN.",
 				"s3/getbucket": "# getBucket\n\nLooks up a bucket.",
 			},
 		}
@@ -519,10 +521,10 @@ func TestClassifyBundleKeys(t *testing.T) {
 	bundle := &CLIDocsBundle{
 		Package: "aws",
 		Resources: map[string]string{
-			"s3/bucket":        "# Bucket\n\nContent",
-			"s3/bucketPolicy":  "# BucketPolicy\n\nContent",
-			"ec2/instance":     "# Instance\n\nContent",
-			"rootresource":     "# RootResource\n\nContent",
+			"s3/bucket":       "# Bucket\n\nContent",
+			"s3/bucketPolicy": "# BucketPolicy\n\nContent",
+			"ec2/instance":    "# Instance\n\nContent",
+			"rootresource":    "# RootResource\n\nContent",
 		},
 		Functions: map[string]string{
 			"s3/getBucket": "# getBucket\n\nContent",

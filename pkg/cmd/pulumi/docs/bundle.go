@@ -16,6 +16,7 @@ package docs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -57,11 +58,13 @@ type BundleNotAvailableError struct {
 }
 
 func (e *BundleNotAvailableError) Error() string {
-	return fmt.Sprintf("CLI docs bundle not available for package: %s", e.Package)
+	return "CLI docs bundle not available for package: " + e.Package
 }
 
-const bundleCacheDir = "cli-docs-cache"
-const bundleCacheTTL = 1 * time.Hour
+const (
+	bundleCacheDir = "cli-docs-cache"
+	bundleCacheTTL = 1 * time.Hour
+)
 
 var bundleMemCache sync.Map
 
@@ -216,7 +219,7 @@ func loadBundleFromDisk(packageName string) (*CLIDocsBundle, error) {
 		return nil, err
 	}
 	if time.Since(meta.FetchedAt) > bundleCacheTTL {
-		return nil, fmt.Errorf("cache expired")
+		return nil, errors.New("cache expired")
 	}
 
 	bundlePath := filepath.Join(cacheDir, packageName+".json")
@@ -298,7 +301,7 @@ type classifiedEntry struct {
 
 // classifiedKeys is the result of scanning bundle keys for a given module prefix.
 type classifiedKeys struct {
-	subModules []string         // sorted sub-module names
+	subModules []string          // sorted sub-module names
 	resources  []classifiedEntry // sorted direct-child resources
 	functions  []classifiedEntry // sorted direct-child functions
 }
@@ -371,7 +374,7 @@ func BundleNavItems(bundle *CLIDocsBundle, modulePrefix string, pkgName string) 
 	basePath := fmt.Sprintf("registry/packages/%s/api-docs", pkgName)
 	ck := classifyBundleKeys(bundle, modulePrefix)
 
-	var opts []navOption
+	opts := make([]navOption, 0, len(ck.subModules)+len(ck.resources)+len(ck.functions))
 
 	for _, mod := range ck.subModules {
 		modPath := basePath
@@ -399,7 +402,7 @@ func BundleSectionNav(bundle *CLIDocsBundle, modulePrefix string, pkgName string
 	result := map[string][]navOption{}
 
 	if len(ck.subModules) > 0 {
-		var modNav []navOption
+		modNav := make([]navOption, 0, len(ck.subModules))
 		for _, mod := range ck.subModules {
 			modPath := basePath
 			if modulePrefix != "" {
@@ -412,7 +415,7 @@ func BundleSectionNav(bundle *CLIDocsBundle, modulePrefix string, pkgName string
 	}
 
 	if len(ck.resources) > 0 {
-		var resNav []navOption
+		resNav := make([]navOption, 0, len(ck.resources))
 		for _, r := range ck.resources {
 			resNav = append(resNav, navOption{label: "🔗 " + r.title, path: basePath + "/" + r.key})
 		}
@@ -420,7 +423,7 @@ func BundleSectionNav(bundle *CLIDocsBundle, modulePrefix string, pkgName string
 	}
 
 	if len(ck.functions) > 0 {
-		var fnNav []navOption
+		fnNav := make([]navOption, 0, len(ck.functions))
 		for _, f := range ck.functions {
 			fnNav = append(fnNav, navOption{label: "🔗 " + f.title, path: basePath + "/" + f.key})
 		}

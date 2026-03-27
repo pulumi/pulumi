@@ -164,7 +164,8 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 			// Always include pinned nav items (e.g. "API Docs" shortcut) even after
 			// section navigation replaces activeItems.
 			menuItems := append(activeItems, node.pinnedNav...)
-			menu := buildBrowseMenu(menuItems, isRoot, hasHeadings, len(history) > 0, !introIncludesFirstSection, sectionIdx, headings)
+			menu := buildBrowseMenu(menuItems, isRoot, hasHeadings,
+				len(history) > 0, !introIncludesFirstSection, sectionIdx, headings)
 
 			promptTitle := node.title
 			if promptTitle == "" {
@@ -459,7 +460,10 @@ func (dc *docsCmd) resolveDocsPage(path string) browseNode {
 
 // buildBrowseMenu constructs the menu options for a browse prompt.
 // sectionIdx is the current section index (-1 if not viewing a section).
-func buildBrowseMenu(items []navOption, isRoot, hasHeadings, hasHistory, hasIntro bool, sectionIdx int, headings []heading) []string {
+func buildBrowseMenu(
+	items []navOption, isRoot, hasHeadings, hasHistory, hasIntro bool,
+	sectionIdx int, headings []heading,
+) []string {
 	var menu []string
 
 	if !isRoot {
@@ -629,7 +633,7 @@ func numberedNavLinks(links []docLink) []navOption {
 // sitemapToNavOptions converts sitemap pages to nav options.
 // baseURL is used to build full URLs for external/case-sensitive links.
 func sitemapToNavOptions(pages []SitemapPage, baseURL string) []navOption {
-	var opts []navOption
+	opts := make([]navOption, 0, len(pages))
 	for _, p := range pages {
 		label := p.Title
 		if len(p.Children) > 0 {
