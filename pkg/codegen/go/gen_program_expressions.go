@@ -763,6 +763,14 @@ func (g *generator) genObjectConsExpression(
 ) {
 	isInput = isInput || isInputty(destType)
 
+	// Track plain object context for nested rendering. If we enter a
+	// non-plain (input) context, clear the flag so nested objects get &.
+	savedPlain := g.inPlainObjectField
+	if isInput {
+		g.inPlainObjectField = false
+	}
+	defer func() { g.inPlainObjectField = savedPlain }()
+
 	typeName := g.argumentTypeName(destType, isInput)
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
 		if obj, ok := codegen.UnwrapType(schemaType).(*schema.ObjectType); ok {
@@ -808,6 +816,8 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 		}
 	} else if isMap || !strings.HasSuffix(typeName, "Args") || strings.HasSuffix(typeName, "OutputArgs") {
 		g.Fgenf(w, "%s", typeName)
+	} else if g.inPlainObjectField {
+		g.Fgenf(w, "%s", typeName)
 	} else {
 		g.Fgenf(w, "&%s", typeName)
 	}
@@ -824,10 +834,47 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			g.Fgenf(w, "%.v", item.Key)
 		}
 
+		// When rendering a plain struct field, collection-typed properties
+		// (maps, arrays) need explicit type info from the parent struct's
+		// model type. Without this, ObjectConsExpression renders as
+		// map[string]interface{} instead of map[string]string, and empty
+		// TupleConsExpression renders as []interface{} instead of []bool.
+		if g.inPlainObjectField && !isMap {
+			if lit, ok := g.literalKey(item.Key); ok {
+				if propType := g.plainPropertyType(destType, lit); propType != nil {
+					switch v := item.Value.(type) {
+					case *model.ObjectConsExpression:
+						if _, ok := propType.(*model.MapType); ok {
+							g.Fgenf(w, ": ")
+							g.genObjectConsExpression(w, v, propType, false)
+							g.Fgenf(w, ",\n")
+							continue
+						}
+					case *model.TupleConsExpression:
+						if _, ok := propType.(*model.ListType); ok {
+							g.Fgenf(w, ": ")
+							g.genTupleConsExpression(w, v, propType)
+							g.Fgenf(w, ",\n")
+							continue
+						}
+					}
+				}
+			}
+		}
+
 		g.Fgenf(w, ": %.v,\n", item.Value)
 	}
 
 	g.Fgenf(w, "}")
+}
+
+// plainPropertyType returns the model type for a property of a plain struct.
+// It looks up the property by name in the model ObjectType's properties map.
+func (g *generator) plainPropertyType(destType model.Type, key string) model.Type {
+	if obj, ok := destType.(*model.ObjectType); ok {
+		return obj.Properties[key]
+	}
+	return nil
 }
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
