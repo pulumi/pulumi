@@ -1,0 +1,2 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>read failure for urn:pulumi:test-stack::test-project::pkgA:m:typA::resA<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>read failure for urn:pulumi:test-stack::test-project::pkgA:m:typA::resA<{%reset%}>

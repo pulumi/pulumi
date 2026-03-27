@@ -181,6 +181,30 @@ func TestProgressEvents(t *testing.T) {
 	}
 }
 
+// TestProgressEventsWithURNs tests that ShowProgressEvents renders full URNs when ShowURNs is set.
+func TestProgressEventsWithURNs(t *testing.T) {
+	t.Parallel()
+
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+
+	entries, err := os.ReadDir("testdata/not-truncated")
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/not-truncated", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			opts := defaultOpts()
+			opts.ShowURNs = true
+			testProgressEvents(t, path, accept, ".urns-non-interactive", opts, 200, 80, false)
+		})
+	}
+}
+
 func sliceToBufferedChan[T any](slice []T) <-chan T {
 	ch := make(chan T, len(slice))
 	for _, v := range slice {

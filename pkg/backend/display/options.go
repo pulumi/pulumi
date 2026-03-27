@@ -57,6 +57,7 @@ type Options struct {
 	SuppressTimings          bool                // true to suppress displaying timings of resource actions
 	SuppressProgress         bool                // true to suppress displaying progress spinner.
 	ShowSecrets              bool                // true to display secrets in the output.
+	ShowURNs                 bool                // true to display full URNs instead of short resource names.
 	SuppressDiagEventsInDiff bool                // true to suppress displaying diagnostic events in the diff display
 
 	// Neo options
