@@ -122,7 +122,7 @@ func main() {
 			"Statement": []map[string]interface{}{
 				map[string]interface{}{
 					"Action": "sts:AssumeRole",
-					"Principal": map[string]interface{}{
+					"Principal": map[string]string{
 						"Service": "eks.amazonaws.com",
 					},
 					"Effect": "Allow",
@@ -159,7 +159,7 @@ func main() {
 			"Statement": []map[string]interface{}{
 				map[string]interface{}{
 					"Action": "sts:AssumeRole",
-					"Principal": map[string]interface{}{
+					"Principal": map[string]string{
 						"Service": "ec2.amazonaws.com",
 					},
 					"Effect": "Allow",
@@ -250,9 +250,9 @@ func main() {
 						"name": "kubernetes",
 					},
 				},
-				"contexts": []map[string]interface{}{
-					map[string]interface{}{
-						"contest": map[string]interface{}{
+				"contexts": []map[string]map[string]string{
+					{
+						"contest": {
 							"cluster": "kubernetes",
 							"user":    "aws",
 						},
@@ -264,7 +264,7 @@ func main() {
 					map[string]interface{}{
 						"name": "aws",
 						"user": map[string]interface{}{
-							"exec": map[string]interface{}{
+							"exec": map[string]string{
 								"apiVersion": "client.authentication.k8s.io/v1alpha1",
 								"command":    "aws-iam-authenticator",
 							},

@@ -16,14 +16,14 @@ func main() {
 					"Effect":   "Allow",
 					"Action":   "lambda:*",
 					"Resource": "arn:aws:lambda:*:*:function:*",
-					"Condition": map[string]interface{}{
-						"StringEquals": map[string]interface{}{
+					"Condition": map[string]map[string][]string{
+						"StringEquals": map[string][]string{
 							"aws:RequestTag/Team": []string{
 								"iamuser-admin",
 								"iamuser2-admin",
 							},
 						},
-						"ForAllValues:StringEquals": map[string]interface{}{
+						"ForAllValues:StringEquals": map[string][]string{
 							"aws:TagKeys": []string{
 								"Team",
 							},

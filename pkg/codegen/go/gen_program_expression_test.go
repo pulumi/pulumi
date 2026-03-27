@@ -191,7 +191,7 @@ func TestArgumentTypeName(t *testing.T) {
 	})
 
 	plainUniformObjectType := g.argumentTypeName(uniformObjectType, false /*isInput*/)
-	assert.Equal(t, "map[string]interface{}", plainUniformObjectType)
+	assert.Equal(t, "map[string]int", plainUniformObjectType)
 	inputUniformObjectType := g.argumentTypeName(uniformObjectType, true /*isInput*/)
 	assert.Equal(t, "pulumi.IntMap", inputUniformObjectType)
 
@@ -313,7 +313,7 @@ func TestConditionalExpression(t *testing.T) {
 		},
 		{
 			hcl2Expr: "{foo = true ? 2 : 0}",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\nmap[string]float64{\n\"foo\": tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
@@ -335,17 +335,16 @@ func TestObjectConsExpression(t *testing.T) {
 	scope := env.scope()
 	cases := []exprTestCase{
 		{
-			// TODO probably a bug in the binder. Single value objects should just be maps
 			hcl2Expr: "{foo = 1}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+			goCode:   "map[string]float64{\n\"foo\": 1,\n}",
 		},
 		{
 			hcl2Expr: "{\"foo\" = 1}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+			goCode:   "map[string]float64{\n\"foo\": 1,\n}",
 		},
 		{
 			hcl2Expr: "{1 = 1}",
-			goCode:   "map[string]interface{}{\n\"1\": 1,\n}",
+			goCode:   "map[string]float64{\n\"1\": 1,\n}",
 		},
 		{
 			hcl2Expr: "{(a) = 1}",

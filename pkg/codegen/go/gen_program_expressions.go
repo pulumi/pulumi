@@ -765,8 +765,10 @@ func (g *generator) genObjectConsExpression(
 
 	// Track plain object context for nested rendering. If we enter a
 	// non-plain (input) context, clear the flag so nested objects get &.
+	// However, if the flag was explicitly set (the property is schema-plain),
+	// preserve it: plain properties use value types regardless of the input context.
 	savedPlain := g.inPlainObjectField
-	if isInput {
+	if isInput && !g.inPlainObjectField {
 		g.inPlainObjectField = false
 	}
 	defer func() { g.inPlainObjectField = savedPlain }()
@@ -862,7 +864,19 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 			}
 		}
 
+		// For struct properties (not maps), check if the property is plain
+		// in the schema. Plain properties use value types in the Go SDK,
+		// so nested Args structs should not have the & pointer prefix.
+		savedPlain := g.inPlainObjectField
+		if !isMap && !strings.HasSuffix(typeName, "Map") {
+			if lit, ok := g.literalKey(item.Key); ok {
+				if g.isPlainSchemaProperty(destType, lit) {
+					g.inPlainObjectField = true
+				}
+			}
+		}
 		g.Fgenf(w, ": %.v,\n", item.Value)
+		g.inPlainObjectField = savedPlain
 	}
 
 	g.Fgenf(w, "}")
@@ -875,6 +889,27 @@ func (g *generator) plainPropertyType(destType model.Type, key string) model.Typ
 		return obj.Properties[key]
 	}
 	return nil
+}
+
+// isPlainSchemaProperty checks whether the named property is marked Plain in
+// the schema type associated with destType. Plain properties use value types
+// (not pointers/Input types) in the Go SDK.
+func (g *generator) isPlainSchemaProperty(destType model.Type, propertyName string) bool {
+	schemaType, ok := pcl.GetSchemaForType(destType)
+	if !ok {
+		return false
+	}
+	schemaType = simplifySchemaUnion(schemaType)
+	obj, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return false
+	}
+	for _, prop := range obj.Properties {
+		if prop.Name == propertyName {
+			return prop.Plain
+		}
+	}
+	return false
 }
 
 func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.RelativeTraversalExpression) {
@@ -1115,6 +1150,7 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 	}
 
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
+		schemaType = simplifySchemaUnion(schemaType)
 		return (&pkgContext{
 			pkg:              (&schema.Package{Name: "main"}).Reference(),
 			externalPackages: g.externalCache,
@@ -1153,23 +1189,25 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			return string(*destType)
 		}
 	case *model.ObjectType:
-
-		if isInput {
-			// check for element type uniformity and return appropriate type if so
-			allSameType := true
-			var elmType string
-			for _, v := range destType.Properties {
-				valType := g.argumentTypeName(v, true)
-				if elmType != "" && elmType != valType {
-					allSameType = false
-					break
-				}
-				elmType = valType
+		// Check for element type uniformity and return the appropriate map type.
+		allSameType := true
+		var elmType string
+		for _, v := range destType.Properties {
+			valType := g.argumentTypeName(v, isInput)
+			if elmType != "" && elmType != valType {
+				allSameType = false
+				break
 			}
+			elmType = valType
+		}
+		if isInput {
 			if allSameType && elmType != "" {
 				return elmType + "Map"
 			}
 			return "pulumi.Map"
+		}
+		if allSameType && elmType != "" {
+			return "map[string]" + elmType
 		}
 		return "map[string]interface{}"
 	case *model.MapType:
@@ -1252,6 +1290,8 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				return g.argumentTypeName(ut, isInput)
 			case *model.MapType:
 				return g.argumentTypeName(ut, isInput)
+			case *model.ObjectType:
+				return g.argumentTypeName(ut, isInput)
 			}
 		}
 		return "interface{}"
@@ -1261,6 +1301,58 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		contract.Failf("unexpected destType type %T", destType)
 	}
 	return ""
+}
+
+// simplifySchemaUnion reduces a schema.UnionType whose elements are all ObjectTypes that are
+// input/plain shape pairs of the same type down to a single ObjectType (the input shape).
+// This arises when a non-plain property's model type is UnionType(ObjectType_input, OutputType(ObjectType_plain))
+// and GetSchemaForType collects both shapes into a schema union. Without simplification,
+// argsType falls back to "interface{}" for non-enum unions.
+func simplifySchemaUnion(t schema.Type) schema.Type {
+	// Unwrap InputType only when the inner type is an ObjectType.
+	// For UnionType, only unwrap if the union can be simplified to a
+	// single ObjectType (all elements are input/plain pairs of the same type).
+	// Blindly unwrapping InputType for primitive types or non-ObjectType unions
+	// (e.g., InputType(UnionType(int, string))) would lose the signal that
+	// argsType/typeStringImpl needs to generate Pulumi wrapper types.
+	if input, ok := t.(*schema.InputType); ok {
+		switch inner := input.ElementType.(type) {
+		case *schema.ObjectType:
+			return simplifySchemaUnion(inner)
+		case *schema.UnionType:
+			simplified := simplifySchemaUnion(inner)
+			if _, isObj := simplified.(*schema.ObjectType); isObj {
+				return simplified
+			}
+			return t
+		default:
+			return t
+		}
+	}
+	union, ok := t.(*schema.UnionType)
+	if !ok {
+		return t
+	}
+	var resolved *schema.ObjectType
+	for _, et := range union.ElementTypes {
+		obj, ok := et.(*schema.ObjectType)
+		if !ok {
+			return t
+		}
+		// Normalize to the input shape.
+		if obj.IsPlainShape() && obj.InputShape != nil {
+			obj = obj.InputShape
+		}
+		if resolved == nil {
+			resolved = obj
+		} else if resolved != obj {
+			return t
+		}
+	}
+	if resolved != nil {
+		return resolved
+	}
+	return t
 }
 
 func (g *generator) genRelativeTraversal(w io.Writer,
