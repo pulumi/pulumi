@@ -1,0 +1,3 @@
+name: remote-test-infra
+runtime: nodejs
+description: EC2 instance for running Pulumi tests remotely

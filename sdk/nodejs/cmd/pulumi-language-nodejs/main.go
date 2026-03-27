@@ -1187,7 +1187,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 		// program. We probably want to see about making something like this an explicit "pulumi build" step, but for
 		// now shim'ing this in here works well enough for conformance testing. Note that we skip this step when
 		// installing dependencies for plugins, as they may not be written in typescript or have tsc configured.
-		tscCmd := exec.Command("npx", "tsc")
+		tscCmd := exec.Command("npx", "tsc", "--skipLibCheck")
 		tscCmd.Dir = req.Info.ProgramDirectory
 		if err := runWithOutput(tscCmd, stdout, stderr); err != nil {
 			return fmt.Errorf("failed to run tsc: %w", err)
@@ -1940,11 +1940,11 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 			return nil, fmt.Errorf("yarn install: %w", err)
 		}
 
-		err = writeString("$ yarn run tsc\n")
+		err = writeString("$ npx tsc --skipLibCheck\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		yarnTscCmd := exec.Command(yarn, "run", "tsc")
+		yarnTscCmd := exec.Command("npx", "tsc", "--skipLibCheck")
 		yarnTscCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, fmt.Errorf("yarn run tsc: %w", err)
@@ -1971,7 +1971,8 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		npmInstallCmd := exec.Command(npm, "install")
+		npmInstallCmd := exec.Command(npm, "install", "--no-audit", "--no-fund", "--no-optional",
+			"--install-strategy=shallow", "--legacy-peer-deps")
 		npmInstallCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
 			return nil, errutil.ErrorWithStderr(err, "npm install")
@@ -1979,14 +1980,16 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 
 		// Pulumi SDKs always define a build command that will run tsc writing to a bin directory.
 		// So we can run that, then edit the package.json in that directory, and then pack it.
-		err = writeString("$ npm run build\n")
+		// We pass --skipLibCheck to avoid type-checking library .d.ts files, which is
+		// unnecessary for SDK packaging and significantly speeds up the build.
+		err = writeString("$ npx tsc --skipLibCheck\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		npmBuildCmd := exec.Command(npm, "run", "build")
+		npmBuildCmd := exec.Command("npx", "tsc", "--skipLibCheck")
 		npmBuildCmd.Dir = req.PackageDirectory
 		if err := runWithOutput(npmBuildCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, errutil.ErrorWithStderr(err, "npm run build")
+			return nil, errutil.ErrorWithStderr(err, "npx tsc --skipLibCheck")
 		}
 
 		// "build" in SDKs isn't setup to copy the package.json to ./bin/

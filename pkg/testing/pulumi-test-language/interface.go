@@ -33,6 +33,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+	"go.opentelemetry.io/otel/attribute"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	backendDisplay "github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
@@ -64,6 +66,13 @@ import (
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
+// policyPackLocks provides per-policy-pack locking for concurrent test installation.
+var policyPackLocks gsync.Map[string, *sync.Mutex]
+
+// Note: We use per-test PackageCaches (not shared across tests) because different
+// tests may use different versions of the same provider (e.g., simple@2.0.0 vs simple@27.0.0).
+// Within a single test, the cache is safe to share since the provider set is fixed.
+
 type LanguageTestServer interface {
 	testingrpc.LanguageTestServer
 	pulumirpc.EngineServer
@@ -88,10 +97,15 @@ func newLanguageTestServer() *languageTestServer {
 }
 
 func installDependencies(
+	ctx context.Context,
 	languageClient plugin.LanguageRuntime,
 	programInfo plugin.ProgramInfo,
 	isPlugin bool,
 ) *testingrpc.RunLanguageTestResponse {
+	_, installSpan := startSpan(ctx, "InstallDependencies",
+		attribute.Bool("isPlugin", isPlugin),
+		attribute.String("rootDir", programInfo.RootDirectory()))
+	defer installSpan.End()
 	installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
 		plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
 	)
@@ -527,11 +541,36 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	var coreArtifact string
 	if req.CoreSdkDirectory != "" {
+		_, packSpan := startSpan(ctx, "PackCoreSdk")
 		coreArtifact, err = languageClient.Pack(
 			req.CoreSdkDirectory, filepath.Join(req.TemporaryDirectory, "artifacts"))
+		packSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("pack core SDK: %w", err)
 		}
+	}
+
+	// Pre-warm the npm cache by doing a dummy install of the core SDK.
+	// This ensures subsequent per-test npm installs can use cached packages
+	// instead of extracting from tarballs each time.
+	if coreArtifact != "" {
+		_, warmSpan := startSpan(ctx, "WarmNpmCache")
+		warmDir := filepath.Join(req.TemporaryDirectory, "npm-cache-warm")
+		if mkErr := os.MkdirAll(warmDir, 0o755); mkErr == nil {
+			packageJSON := fmt.Sprintf(
+				`{"name":"cache-warm","devDependencies":{"@types/node":"^18"},"dependencies":{"typescript":"^4.0.0","@pulumi/pulumi":"%s"}}`,
+				coreArtifact)
+			if writeErr := os.WriteFile(filepath.Join(warmDir, "package.json"), []byte(packageJSON), 0o644); writeErr == nil {
+				resp := installDependencies(ctx, languageClient,
+					plugin.NewProgramInfo(warmDir, warmDir, ".", nil), false)
+				if resp != nil {
+					// Non-fatal: cache warming failure shouldn't block tests
+					_ = resp
+				}
+			}
+			_ = os.RemoveAll(warmDir)
+		}
+		warmSpan.End()
 	}
 
 	edits := []replacement{}
@@ -632,10 +671,18 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
+	ctx, span := startSpan(ctx, "RunLanguageTest",
+		attribute.String("test", req.Test))
+	defer span.End()
+
 	test, has := tests.LanguageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
 	}
+
+	// Create a per-test PackageCache to reuse loaded package schemas across
+	// the multiple BindDirectory calls within this test.
+	testPkgCache := pcl.NewPackageCache()
 
 	// Decode the test token
 	tokenBytes, err := b64.StdEncoding.DecodeString(req.Token)
@@ -724,6 +771,10 @@ func (eng *languageTestServer) RunLanguageTest(
 	host.loaderAddress = grpcServer.Addr()
 
 	// And fill that host with our test providers
+	ctx, providerSpan := startSpan(ctx, "SetupProviders",
+		attribute.String("test", req.Test),
+		attribute.Int("count", len(test.Providers)))
+
 	for _, provider := range test.Providers {
 		p := provider()
 		version, err := getProviderVersion(p)
@@ -781,7 +832,7 @@ func (eng *languageTestServer) RunLanguageTest(
 					return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
 				}
 
-				resp := installDependencies(languageClient, providerInfo, true /* isPlugin */)
+				resp := installDependencies(ctx, languageClient, providerInfo, true /* isPlugin */)
 				if resp != nil {
 					return resp, nil
 				}
@@ -802,7 +853,12 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
+	providerSpan.End()
+
 	// Generate SDKs for all the packages we need
+	ctx, sdkSpan := startSpan(ctx, "GenerateSDKs",
+		attribute.String("test", req.Test))
+
 	artifactsDir := filepath.Join(token.TemporaryDirectory, "artifacts")
 
 	// For each test run collect the packages reported by PCL
@@ -835,7 +891,11 @@ func (eng *languageTestServer) RunLanguageTest(
 			sourceDir = filepath.Join(sourceDir, run.Main)
 		}
 
-		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
+		_, bindSpan := startSpan(ctx, "BindPCLDirectory",
+			attribute.String("test", req.Test),
+			attribute.Int("run", i))
+		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader, pcl.Cache(testPkgCache))
+		bindSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
 		}
@@ -933,18 +993,7 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 
 				snapshotDir := filepath.Join(token.SnapshotDirectory, "sdks", sdkName)
-				sdkSnapshotDir, err := editSnapshot(sdkTempDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
-				}
-				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
-				// If we made a snapshot edit we can clean it up now
-				if sdkSnapshotDir != sdkTempDir {
-					err := os.RemoveAll(sdkSnapshotDir)
-					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
-					}
-				}
+				validations, err := doSnapshotWithEdits(eng.DisableSnapshotWriting, sdkTempDir, snapshotDir, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("sdk snapshot validation for %s: %w", pkg.Name, err)
 				}
@@ -964,19 +1013,8 @@ func (eng *languageTestServer) RunLanguageTest(
 				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
 
 				// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-				// Again we need to make a snapshot edit for this.
-				sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
-				}
-				validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
-				// If we made a snapshot edit we can clean it up now
-				if sdkSnapshotDir != sdkTempDir {
-					err := os.RemoveAll(sdkSnapshotDir)
-					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
-					}
-				}
+				// Use inline edits to avoid creating a temp directory copy.
+				validations, err = compareDirectoriesWithEdits(sdkTempDir, snapshotDir, true /* allowNewFiles */, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("sdk post pack change validation for %s: %w", pkg.Name, err)
 				}
@@ -993,6 +1031,8 @@ func (eng *languageTestServer) RunLanguageTest(
 			}
 		}
 	}
+
+	sdkSpan.End()
 
 	// Just use base64 "secrets" for these tests
 	sm := b64secrets.NewBase64SecretsManager()
@@ -1015,7 +1055,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects",
+		testPkgCache)
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
 		return languageTestResult, err
 	}
@@ -1061,7 +1102,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
+		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project",
+		testPkgCache)
 }
 
 func createStackReferences(
@@ -1118,12 +1160,22 @@ func runLanguageTests(
 	stdout, stderr *bytes.Buffer,
 	pctx *plugin.Context,
 	projectDir string,
+	pkgCache *pcl.PackageCache,
 ) (*testingrpc.RunLanguageTestResponse, error) {
+	ctx, runSpan := startSpan(ctx, "runLanguageTests",
+		attribute.String("test", testName),
+		attribute.Int("runs", len(test.Runs)))
+	defer runSpan.End()
+
 	sm := b64secrets.NewBase64SecretsManager()
 	dec := sm.Decrypter()
 
 	var result tests.LResult
 	for i, run := range test.Runs {
+		_, iterSpan := startSpan(ctx, "TestRunIteration",
+			attribute.String("test", testName),
+			attribute.Int("run", i),
+			attribute.Int("totalRuns", len(test.Runs)))
 		sourceDir := filepath.Join(token.TemporaryDirectory, "source", testName)
 		projectSubDir := projectDir
 		projectDir := filepath.Join(token.TemporaryDirectory, projectDir, testName)
@@ -1168,7 +1220,12 @@ func runLanguageTests(
 		}()
 
 		// Check the PCL is valid and get the list of packages it reports
-		program, diags, err := pcl.BindDirectory(sourceDir, loader)
+		_, bindSpan2 := startSpan(ctx, "BindPCLDirectory",
+			attribute.String("test", testName),
+			attribute.Int("run", i),
+			attribute.String("phase", "runLanguageTests"))
+		program, diags, err := pcl.BindDirectory(sourceDir, loader, pcl.Cache(pkgCache))
+		bindSpan2.End()
 		if err != nil {
 			return nil, fmt.Errorf("bind PCL program: %v", err)
 		}
@@ -1214,8 +1271,12 @@ func runLanguageTests(
 					return nil, fmt.Errorf("copy override testdata: %w", err)
 				}
 			} else {
+				_, genSpan := startSpan(ctx, "GenerateProject",
+					attribute.String("test", testName),
+					attribute.Int("run", i))
 				diagnostics, err = languageClient.GenerateProject(
 					sourceDir, projectDir, projectJSON, true, grpcServer.Addr(), localDependencies)
+				genSpan.End()
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate project: %v", err)), nil
 				}
@@ -1234,23 +1295,12 @@ func runLanguageTests(
 				if len(test.Runs) > 1 && !test.RunsShareSource {
 					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))
 				}
-				projectDirSnapshot, err := editSnapshot(projectDir, snapshotEdits)
-				if err != nil {
-					return nil, fmt.Errorf("program snapshot creation: %w", err)
-				}
-				validations, err := doSnapshot(disableSnapshotWriting, projectDirSnapshot, snapshotDir)
+				validations, err := doSnapshotWithEdits(disableSnapshotWriting, projectDir, snapshotDir, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("program snapshot validation: %w", err)
 				}
 				if len(validations) > 0 {
 					return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
-				}
-				// If we made a snapshot edit we can clean it up now
-				if projectDirSnapshot != projectDir {
-					err = os.RemoveAll(projectDirSnapshot)
-					if err != nil {
-						return nil, fmt.Errorf("remove snapshot dir: %w", err)
-					}
 				}
 			}
 		}
@@ -1272,9 +1322,13 @@ func runLanguageTests(
 			main,
 			project.Runtime.Options())
 
-		resp := installDependencies(languageClient, programInfo, false /* isPlugin */)
-		if resp != nil {
-			return resp, nil
+		// Only install dependencies for the first run of shared-source tests (subsequent runs
+		// reuse the same project directory which already has node_modules installed).
+		if i == 0 || !test.RunsShareSource {
+			resp := installDependencies(ctx, languageClient, programInfo, false /* isPlugin */)
+			if resp != nil {
+				return resp, nil
+			}
 		}
 
 		// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
@@ -1283,7 +1337,11 @@ func runLanguageTests(
 		// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
 		// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
 		// well.
+		_, depSpan := startSpan(ctx, "GetProgramDependencies",
+			attribute.String("test", testName),
+			attribute.Int("run", i))
 		dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
+		depSpan.End()
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
 		}
@@ -1505,37 +1563,57 @@ func runLanguageTests(
 				}
 			}
 
-			// Copy the policy pack to a temporary directory and link in the core SDK into it
+			// Copy the policy pack to a temporary directory and link in the core SDK into it.
+			// Use a shared directory per policy pack name so that multiple tests reuse the same
+			// installed dependencies rather than each installing independently.
 			policyPackDir := filepath.Join(token.TemporaryDirectory, "policy_packs", policyPack)
-			err = os.MkdirAll(policyPackDir, 0o755)
-			if err != nil {
-				return nil, fmt.Errorf("create policy pack dir: %w", err)
-			}
-			err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
-			if err != nil {
-				return nil, fmt.Errorf("copy policy pack: %w", err)
-			}
 
-			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
+			// Use a per-policy-pack lock to ensure only one test installs at a time.
+			// After the first install, subsequent tests reuse the installed directory.
+			policyLockFile := policyPackDir + ".installed"
+			if _, statErr := os.Stat(policyLockFile); statErr != nil {
+				// Not yet installed — copy, link, and install (with lock)
+				policyLock, _ := policyPackLocks.LoadOrStore(policyPackDir, &sync.Mutex{})
+				policyLock.Lock()
+				// Double-check after acquiring lock
+				if _, statErr := os.Stat(policyLockFile); statErr != nil {
+					err = os.MkdirAll(policyPackDir, 0o755)
+					if err != nil {
+						policyLock.Unlock()
+						return nil, fmt.Errorf("create policy pack dir: %w", err)
+					}
+					err = copyDirectory(os.DirFS(token.PolicyPackDirectory), policyPack, policyPackDir, nil, nil)
+					if err != nil {
+						policyLock.Unlock()
+						return nil, fmt.Errorf("copy policy pack: %w", err)
+					}
 
-			// Link the core SDK into the policy pack
-			linkDeps := []workspace.LinkablePackageDescriptor{{
-				Path: token.CoreArtifact,
-				Descriptor: workspace.PackageDescriptor{
-					PluginDescriptor: workspace.PluginDescriptor{
-						Name: "pulumi",
-					},
-				},
-			}}
-			_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
-			if err != nil {
-				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
-			}
+					policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
 
-			// Install the dependencies for the policy pack
-			resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
-			if resp != nil {
-				return resp, nil
+					linkDeps := []workspace.LinkablePackageDescriptor{{
+						Path: token.CoreArtifact,
+						Descriptor: workspace.PackageDescriptor{
+							PluginDescriptor: workspace.PluginDescriptor{
+								Name: "pulumi",
+							},
+						},
+					}}
+					_, err = languageClient.Link(policyInfo, linkDeps, grpcServer.Addr())
+					if err != nil {
+						policyLock.Unlock()
+						return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
+					}
+
+					resp := installDependencies(ctx, languageClient, policyInfo, true /* isPlugin */)
+					if resp != nil {
+						policyLock.Unlock()
+						return resp, nil
+					}
+
+					// Mark as installed so other tests skip the install
+					_ = os.WriteFile(policyLockFile, []byte("ok"), 0o644)
+				}
+				policyLock.Unlock()
 			}
 
 			pack := engine.LocalPolicyPack{
@@ -1596,7 +1674,11 @@ func runLanguageTests(
 			eventsCts.Fulfill(events)
 		}()
 
+		_, previewSpan := startSpan(ctx, "PreviewStack",
+			attribute.String("test", testName),
+			attribute.Int("run", i))
 		plan, previewChanges, res := backend.PreviewStack(ctx, s, updateOperation, eventSink)
+		previewSpan.End()
 		close(eventSink)
 		events, err := eventsCts.Promise().Result(ctx)
 		if err != nil {
@@ -1633,7 +1715,11 @@ func runLanguageTests(
 			}
 			eventsCts.Fulfill(events)
 		}()
+		_, updateSpan := startSpan(ctx, "UpdateStack",
+			attribute.String("test", testName),
+			attribute.Int("run", i))
 		changes, res := backend.UpdateStack(ctx, s, updateOperation, eventSink)
+		updateSpan.End()
 		close(eventSink)
 		events, err = eventsCts.Promise().Result(ctx)
 		if err != nil {
@@ -1671,6 +1757,7 @@ func runLanguageTests(
 				SDKs:             sdks,
 			})
 		})
+		iterSpan.End()
 		if result.Failed {
 			return &testingrpc.RunLanguageTestResponse{
 				Success:  !result.Failed,
@@ -1716,14 +1803,7 @@ func (rtc roundTripClient) GenerateProject(
 		rel, relErr := filepath.Rel(rtc.projectsBaseDir, targetDirectory)
 		if relErr == nil {
 			ejectSnapshotDir := filepath.Join(rtc.ejectSnapshotBaseDir, rel)
-			pclDirSnapshot, snapErr := editSnapshot(pclDir, rtc.snapshotEdits)
-			if snapErr != nil {
-				return diags, fmt.Errorf("eject PCL snapshot creation: %w", snapErr)
-			}
-			validations, snapErr := doSnapshot(rtc.disableSnapshotWriting, pclDirSnapshot, ejectSnapshotDir)
-			if pclDirSnapshot != pclDir {
-				contract.IgnoreError(os.RemoveAll(pclDirSnapshot))
-			}
+			validations, snapErr := doSnapshotWithEdits(rtc.disableSnapshotWriting, pclDir, ejectSnapshotDir, rtc.snapshotEdits)
 			if snapErr != nil {
 				return diags, fmt.Errorf("eject PCL snapshot validation: %w", snapErr)
 			}
