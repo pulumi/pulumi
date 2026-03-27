@@ -1,0 +1,16 @@
+<{%reset%}>  urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test-stack::test-project::pkgA:index:Resource::resA: (same)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::prov::id-prov-a]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::prov: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test-stack::test-project::pkgB:index:Component::compA: (create-replacement)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test-stack::test-project::pkgB:index:Component::compA: (replace)
+<{%reset%}>    [id=2]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 13%}>+-1 replaced<{%reset%}>
+    3 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
