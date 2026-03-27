@@ -428,6 +428,102 @@ func (x *GetWorkflowJobRequest) GetToken() string {
 	return ""
 }
 
+type GetWorkflowStepsRequest struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Package       *WorkflowPackageDescriptor `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkflowStepsRequest) Reset() {
+	*x = GetWorkflowStepsRequest{}
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkflowStepsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkflowStepsRequest) ProtoMessage() {}
+
+func (x *GetWorkflowStepsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkflowStepsRequest.ProtoReflect.Descriptor instead.
+func (*GetWorkflowStepsRequest) Descriptor() ([]byte, []int) {
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetWorkflowStepsRequest) GetPackage() *WorkflowPackageDescriptor {
+	if x != nil {
+		return x.Package
+	}
+	return nil
+}
+
+type GetWorkflowStepRequest struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Package       *WorkflowPackageDescriptor `protobuf:"bytes,1,opt,name=package,proto3" json:"package,omitempty"`
+	Token         string                     `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWorkflowStepRequest) Reset() {
+	*x = GetWorkflowStepRequest{}
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWorkflowStepRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWorkflowStepRequest) ProtoMessage() {}
+
+func (x *GetWorkflowStepRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWorkflowStepRequest.ProtoReflect.Descriptor instead.
+func (*GetWorkflowStepRequest) Descriptor() ([]byte, []int) {
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetWorkflowStepRequest) GetPackage() *WorkflowPackageDescriptor {
+	if x != nil {
+		return x.Package
+	}
+	return nil
+}
+
+func (x *GetWorkflowStepRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
 type TypeReference struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
@@ -438,7 +534,7 @@ type TypeReference struct {
 
 func (x *TypeReference) Reset() {
 	*x = TypeReference{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[8]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -450,7 +546,7 @@ func (x *TypeReference) String() string {
 func (*TypeReference) ProtoMessage() {}
 
 func (x *TypeReference) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[8]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -463,7 +559,7 @@ func (x *TypeReference) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TypeReference.ProtoReflect.Descriptor instead.
 func (*TypeReference) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{8}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *TypeReference) GetToken() string {
@@ -489,7 +585,7 @@ type PropertySpec struct {
 
 func (x *PropertySpec) Reset() {
 	*x = PropertySpec{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[9]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -501,7 +597,7 @@ func (x *PropertySpec) String() string {
 func (*PropertySpec) ProtoMessage() {}
 
 func (x *PropertySpec) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[9]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -514,7 +610,7 @@ func (x *PropertySpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PropertySpec.ProtoReflect.Descriptor instead.
 func (*PropertySpec) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{9}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PropertySpec) GetType() string {
@@ -533,7 +629,7 @@ type StructObject struct {
 
 func (x *StructObject) Reset() {
 	*x = StructObject{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[10]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -545,7 +641,7 @@ func (x *StructObject) String() string {
 func (*StructObject) ProtoMessage() {}
 
 func (x *StructObject) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[10]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -558,7 +654,7 @@ func (x *StructObject) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StructObject.ProtoReflect.Descriptor instead.
 func (*StructObject) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{10}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *StructObject) GetProperties() map[string]*PropertySpec {
@@ -579,7 +675,7 @@ type PackageInfo struct {
 
 func (x *PackageInfo) Reset() {
 	*x = PackageInfo{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[11]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -591,7 +687,7 @@ func (x *PackageInfo) String() string {
 func (*PackageInfo) ProtoMessage() {}
 
 func (x *PackageInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[11]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -604,7 +700,7 @@ func (x *PackageInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PackageInfo.ProtoReflect.Descriptor instead.
 func (*PackageInfo) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{11}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *PackageInfo) GetName() string {
@@ -640,7 +736,7 @@ type GraphInfo struct {
 
 func (x *GraphInfo) Reset() {
 	*x = GraphInfo{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[12]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -652,7 +748,7 @@ func (x *GraphInfo) String() string {
 func (*GraphInfo) ProtoMessage() {}
 
 func (x *GraphInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[12]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -665,7 +761,7 @@ func (x *GraphInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GraphInfo.ProtoReflect.Descriptor instead.
 func (*GraphInfo) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{12}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *GraphInfo) GetToken() string {
@@ -708,7 +804,7 @@ type JobInfo struct {
 
 func (x *JobInfo) Reset() {
 	*x = JobInfo{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[13]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -720,7 +816,7 @@ func (x *JobInfo) String() string {
 func (*JobInfo) ProtoMessage() {}
 
 func (x *JobInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[13]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -733,7 +829,7 @@ func (x *JobInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JobInfo.ProtoReflect.Descriptor instead.
 func (*JobInfo) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{13}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *JobInfo) GetToken() string {
@@ -773,7 +869,7 @@ type GetPackageInfoResponse struct {
 
 func (x *GetPackageInfoResponse) Reset() {
 	*x = GetPackageInfoResponse{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[14]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -785,7 +881,7 @@ func (x *GetPackageInfoResponse) String() string {
 func (*GetPackageInfoResponse) ProtoMessage() {}
 
 func (x *GetPackageInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[14]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -798,7 +894,7 @@ func (x *GetPackageInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPackageInfoResponse.ProtoReflect.Descriptor instead.
 func (*GetPackageInfoResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{14}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GetPackageInfoResponse) GetPackage() *PackageInfo {
@@ -817,7 +913,7 @@ type GetGraphsResponse struct {
 
 func (x *GetGraphsResponse) Reset() {
 	*x = GetGraphsResponse{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[15]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -829,7 +925,7 @@ func (x *GetGraphsResponse) String() string {
 func (*GetGraphsResponse) ProtoMessage() {}
 
 func (x *GetGraphsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[15]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -842,7 +938,7 @@ func (x *GetGraphsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGraphsResponse.ProtoReflect.Descriptor instead.
 func (*GetGraphsResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{15}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetGraphsResponse) GetGraphs() []*GraphInfo {
@@ -861,7 +957,7 @@ type GetGraphResponse struct {
 
 func (x *GetGraphResponse) Reset() {
 	*x = GetGraphResponse{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[16]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -873,7 +969,7 @@ func (x *GetGraphResponse) String() string {
 func (*GetGraphResponse) ProtoMessage() {}
 
 func (x *GetGraphResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[16]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -886,7 +982,7 @@ func (x *GetGraphResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetGraphResponse.ProtoReflect.Descriptor instead.
 func (*GetGraphResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{16}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetGraphResponse) GetGraph() *GraphInfo {
@@ -905,7 +1001,7 @@ type GetTriggersResponse struct {
 
 func (x *GetTriggersResponse) Reset() {
 	*x = GetTriggersResponse{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[17]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -917,7 +1013,7 @@ func (x *GetTriggersResponse) String() string {
 func (*GetTriggersResponse) ProtoMessage() {}
 
 func (x *GetTriggersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[17]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -930,7 +1026,7 @@ func (x *GetTriggersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTriggersResponse.ProtoReflect.Descriptor instead.
 func (*GetTriggersResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{17}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetTriggersResponse) GetTriggers() []string {
@@ -950,7 +1046,7 @@ type GetTriggerResponse struct {
 
 func (x *GetTriggerResponse) Reset() {
 	*x = GetTriggerResponse{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[18]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -962,7 +1058,7 @@ func (x *GetTriggerResponse) String() string {
 func (*GetTriggerResponse) ProtoMessage() {}
 
 func (x *GetTriggerResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[18]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -975,7 +1071,7 @@ func (x *GetTriggerResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTriggerResponse.ProtoReflect.Descriptor instead.
 func (*GetTriggerResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{18}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetTriggerResponse) GetInputType() *TypeReference {
@@ -1001,7 +1097,7 @@ type GetJobsResponse struct {
 
 func (x *GetJobsResponse) Reset() {
 	*x = GetJobsResponse{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[19]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1013,7 +1109,7 @@ func (x *GetJobsResponse) String() string {
 func (*GetJobsResponse) ProtoMessage() {}
 
 func (x *GetJobsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[19]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1026,7 +1122,7 @@ func (x *GetJobsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobsResponse.ProtoReflect.Descriptor instead.
 func (*GetJobsResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{19}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetJobsResponse) GetJobs() []*JobInfo {
@@ -1045,7 +1141,7 @@ type GetJobResponse struct {
 
 func (x *GetJobResponse) Reset() {
 	*x = GetJobResponse{}
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[20]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1057,7 +1153,7 @@ func (x *GetJobResponse) String() string {
 func (*GetJobResponse) ProtoMessage() {}
 
 func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_codegen_workflow_proto_msgTypes[20]
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1070,12 +1166,108 @@ func (x *GetJobResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetJobResponse.ProtoReflect.Descriptor instead.
 func (*GetJobResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{20}
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetJobResponse) GetJob() *JobInfo {
 	if x != nil {
 		return x.Job
+	}
+	return nil
+}
+
+type GetStepsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Steps         []string               `protobuf:"bytes,1,rep,name=steps,proto3" json:"steps,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStepsResponse) Reset() {
+	*x = GetStepsResponse{}
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStepsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStepsResponse) ProtoMessage() {}
+
+func (x *GetStepsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStepsResponse.ProtoReflect.Descriptor instead.
+func (*GetStepsResponse) Descriptor() ([]byte, []int) {
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetStepsResponse) GetSteps() []string {
+	if x != nil {
+		return x.Steps
+	}
+	return nil
+}
+
+type GetStepResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	InputType     *TypeReference         `protobuf:"bytes,1,opt,name=input_type,json=inputType,proto3" json:"input_type,omitempty"`
+	OutputType    *TypeReference         `protobuf:"bytes,2,opt,name=output_type,json=outputType,proto3" json:"output_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStepResponse) Reset() {
+	*x = GetStepResponse{}
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStepResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStepResponse) ProtoMessage() {}
+
+func (x *GetStepResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_codegen_workflow_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStepResponse.ProtoReflect.Descriptor instead.
+func (*GetStepResponse) Descriptor() ([]byte, []int) {
+	return file_pulumi_codegen_workflow_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetStepResponse) GetInputType() *TypeReference {
+	if x != nil {
+		return x.InputType
+	}
+	return nil
+}
+
+func (x *GetStepResponse) GetOutputType() *TypeReference {
+	if x != nil {
+		return x.OutputType
 	}
 	return nil
 }
@@ -1104,6 +1296,11 @@ const file_pulumi_codegen_workflow_proto_rawDesc = "" +
 	"\x16GetWorkflowJobsRequest\x12<\n" +
 	"\apackage\x18\x01 \x01(\v2\".codegen.WorkflowPackageDescriptorR\apackage\"k\n" +
 	"\x15GetWorkflowJobRequest\x12<\n" +
+	"\apackage\x18\x01 \x01(\v2\".codegen.WorkflowPackageDescriptorR\apackage\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\"W\n" +
+	"\x17GetWorkflowStepsRequest\x12<\n" +
+	"\apackage\x18\x01 \x01(\v2\".codegen.WorkflowPackageDescriptorR\apackage\"l\n" +
+	"\x16GetWorkflowStepRequest\x12<\n" +
 	"\apackage\x18\x01 \x01(\v2\".codegen.WorkflowPackageDescriptorR\apackage\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\"T\n" +
 	"\rTypeReference\x12\x14\n" +
@@ -1154,7 +1351,14 @@ const file_pulumi_codegen_workflow_proto_rawDesc = "" +
 	"\x0fGetJobsResponse\x12$\n" +
 	"\x04jobs\x18\x01 \x03(\v2\x10.codegen.JobInfoR\x04jobs\"4\n" +
 	"\x0eGetJobResponse\x12\"\n" +
-	"\x03job\x18\x01 \x01(\v2\x10.codegen.JobInfoR\x03job2\xb8\x04\n" +
+	"\x03job\x18\x01 \x01(\v2\x10.codegen.JobInfoR\x03job\"(\n" +
+	"\x10GetStepsResponse\x12\x14\n" +
+	"\x05steps\x18\x01 \x03(\tR\x05steps\"\x81\x01\n" +
+	"\x0fGetStepResponse\x125\n" +
+	"\n" +
+	"input_type\x18\x01 \x01(\v2\x16.codegen.TypeReferenceR\tinputType\x127\n" +
+	"\voutput_type\x18\x02 \x01(\v2\x16.codegen.TypeReferenceR\n" +
+	"outputType2\xcb\x05\n" +
 	"\x0eWorkflowLoader\x12[\n" +
 	"\x0eGetPackageInfo\x12&.codegen.GetWorkflowPackageInfoRequest\x1a\x1f.codegen.GetPackageInfoResponse\"\x00\x12L\n" +
 	"\tGetGraphs\x12!.codegen.GetWorkflowGraphsRequest\x1a\x1a.codegen.GetGraphsResponse\"\x00\x12I\n" +
@@ -1163,7 +1367,9 @@ const file_pulumi_codegen_workflow_proto_rawDesc = "" +
 	"\n" +
 	"GetTrigger\x12\".codegen.GetWorkflowTriggerRequest\x1a\x1b.codegen.GetTriggerResponse\"\x00\x12F\n" +
 	"\aGetJobs\x12\x1f.codegen.GetWorkflowJobsRequest\x1a\x18.codegen.GetJobsResponse\"\x00\x12C\n" +
-	"\x06GetJob\x12\x1e.codegen.GetWorkflowJobRequest\x1a\x17.codegen.GetJobResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
+	"\x06GetJob\x12\x1e.codegen.GetWorkflowJobRequest\x1a\x17.codegen.GetJobResponse\"\x00\x12I\n" +
+	"\bGetSteps\x12 .codegen.GetWorkflowStepsRequest\x1a\x19.codegen.GetStepsResponse\"\x00\x12F\n" +
+	"\aGetStep\x12\x1f.codegen.GetWorkflowStepRequest\x1a\x18.codegen.GetStepResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
 
 var (
 	file_pulumi_codegen_workflow_proto_rawDescOnce sync.Once
@@ -1177,7 +1383,7 @@ func file_pulumi_codegen_workflow_proto_rawDescGZIP() []byte {
 	return file_pulumi_codegen_workflow_proto_rawDescData
 }
 
-var file_pulumi_codegen_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_pulumi_codegen_workflow_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_pulumi_codegen_workflow_proto_goTypes = []any{
 	(*WorkflowPackageDescriptor)(nil),     // 0: codegen.WorkflowPackageDescriptor
 	(*GetWorkflowPackageInfoRequest)(nil), // 1: codegen.GetWorkflowPackageInfoRequest
@@ -1187,20 +1393,24 @@ var file_pulumi_codegen_workflow_proto_goTypes = []any{
 	(*GetWorkflowTriggerRequest)(nil),     // 5: codegen.GetWorkflowTriggerRequest
 	(*GetWorkflowJobsRequest)(nil),        // 6: codegen.GetWorkflowJobsRequest
 	(*GetWorkflowJobRequest)(nil),         // 7: codegen.GetWorkflowJobRequest
-	(*TypeReference)(nil),                 // 8: codegen.TypeReference
-	(*PropertySpec)(nil),                  // 9: codegen.PropertySpec
-	(*StructObject)(nil),                  // 10: codegen.StructObject
-	(*PackageInfo)(nil),                   // 11: codegen.PackageInfo
-	(*GraphInfo)(nil),                     // 12: codegen.GraphInfo
-	(*JobInfo)(nil),                       // 13: codegen.JobInfo
-	(*GetPackageInfoResponse)(nil),        // 14: codegen.GetPackageInfoResponse
-	(*GetGraphsResponse)(nil),             // 15: codegen.GetGraphsResponse
-	(*GetGraphResponse)(nil),              // 16: codegen.GetGraphResponse
-	(*GetTriggersResponse)(nil),           // 17: codegen.GetTriggersResponse
-	(*GetTriggerResponse)(nil),            // 18: codegen.GetTriggerResponse
-	(*GetJobsResponse)(nil),               // 19: codegen.GetJobsResponse
-	(*GetJobResponse)(nil),                // 20: codegen.GetJobResponse
-	nil,                                   // 21: codegen.StructObject.PropertiesEntry
+	(*GetWorkflowStepsRequest)(nil),       // 8: codegen.GetWorkflowStepsRequest
+	(*GetWorkflowStepRequest)(nil),        // 9: codegen.GetWorkflowStepRequest
+	(*TypeReference)(nil),                 // 10: codegen.TypeReference
+	(*PropertySpec)(nil),                  // 11: codegen.PropertySpec
+	(*StructObject)(nil),                  // 12: codegen.StructObject
+	(*PackageInfo)(nil),                   // 13: codegen.PackageInfo
+	(*GraphInfo)(nil),                     // 14: codegen.GraphInfo
+	(*JobInfo)(nil),                       // 15: codegen.JobInfo
+	(*GetPackageInfoResponse)(nil),        // 16: codegen.GetPackageInfoResponse
+	(*GetGraphsResponse)(nil),             // 17: codegen.GetGraphsResponse
+	(*GetGraphResponse)(nil),              // 18: codegen.GetGraphResponse
+	(*GetTriggersResponse)(nil),           // 19: codegen.GetTriggersResponse
+	(*GetTriggerResponse)(nil),            // 20: codegen.GetTriggerResponse
+	(*GetJobsResponse)(nil),               // 21: codegen.GetJobsResponse
+	(*GetJobResponse)(nil),                // 22: codegen.GetJobResponse
+	(*GetStepsResponse)(nil),              // 23: codegen.GetStepsResponse
+	(*GetStepResponse)(nil),               // 24: codegen.GetStepResponse
+	nil,                                   // 25: codegen.StructObject.PropertiesEntry
 }
 var file_pulumi_codegen_workflow_proto_depIdxs = []int32{
 	0,  // 0: codegen.GetWorkflowPackageInfoRequest.package:type_name -> codegen.WorkflowPackageDescriptor
@@ -1210,39 +1420,47 @@ var file_pulumi_codegen_workflow_proto_depIdxs = []int32{
 	0,  // 4: codegen.GetWorkflowTriggerRequest.package:type_name -> codegen.WorkflowPackageDescriptor
 	0,  // 5: codegen.GetWorkflowJobsRequest.package:type_name -> codegen.WorkflowPackageDescriptor
 	0,  // 6: codegen.GetWorkflowJobRequest.package:type_name -> codegen.WorkflowPackageDescriptor
-	10, // 7: codegen.TypeReference.object:type_name -> codegen.StructObject
-	21, // 8: codegen.StructObject.properties:type_name -> codegen.StructObject.PropertiesEntry
-	8,  // 9: codegen.GraphInfo.input_type:type_name -> codegen.TypeReference
-	8,  // 10: codegen.GraphInfo.output_type:type_name -> codegen.TypeReference
-	8,  // 11: codegen.JobInfo.input_type:type_name -> codegen.TypeReference
-	8,  // 12: codegen.JobInfo.output_type:type_name -> codegen.TypeReference
-	11, // 13: codegen.GetPackageInfoResponse.package:type_name -> codegen.PackageInfo
-	12, // 14: codegen.GetGraphsResponse.graphs:type_name -> codegen.GraphInfo
-	12, // 15: codegen.GetGraphResponse.graph:type_name -> codegen.GraphInfo
-	8,  // 16: codegen.GetTriggerResponse.input_type:type_name -> codegen.TypeReference
-	8,  // 17: codegen.GetTriggerResponse.output_type:type_name -> codegen.TypeReference
-	13, // 18: codegen.GetJobsResponse.jobs:type_name -> codegen.JobInfo
-	13, // 19: codegen.GetJobResponse.job:type_name -> codegen.JobInfo
-	9,  // 20: codegen.StructObject.PropertiesEntry.value:type_name -> codegen.PropertySpec
-	1,  // 21: codegen.WorkflowLoader.GetPackageInfo:input_type -> codegen.GetWorkflowPackageInfoRequest
-	2,  // 22: codegen.WorkflowLoader.GetGraphs:input_type -> codegen.GetWorkflowGraphsRequest
-	3,  // 23: codegen.WorkflowLoader.GetGraph:input_type -> codegen.GetWorkflowGraphRequest
-	4,  // 24: codegen.WorkflowLoader.GetTriggers:input_type -> codegen.GetWorkflowTriggersRequest
-	5,  // 25: codegen.WorkflowLoader.GetTrigger:input_type -> codegen.GetWorkflowTriggerRequest
-	6,  // 26: codegen.WorkflowLoader.GetJobs:input_type -> codegen.GetWorkflowJobsRequest
-	7,  // 27: codegen.WorkflowLoader.GetJob:input_type -> codegen.GetWorkflowJobRequest
-	14, // 28: codegen.WorkflowLoader.GetPackageInfo:output_type -> codegen.GetPackageInfoResponse
-	15, // 29: codegen.WorkflowLoader.GetGraphs:output_type -> codegen.GetGraphsResponse
-	16, // 30: codegen.WorkflowLoader.GetGraph:output_type -> codegen.GetGraphResponse
-	17, // 31: codegen.WorkflowLoader.GetTriggers:output_type -> codegen.GetTriggersResponse
-	18, // 32: codegen.WorkflowLoader.GetTrigger:output_type -> codegen.GetTriggerResponse
-	19, // 33: codegen.WorkflowLoader.GetJobs:output_type -> codegen.GetJobsResponse
-	20, // 34: codegen.WorkflowLoader.GetJob:output_type -> codegen.GetJobResponse
-	28, // [28:35] is the sub-list for method output_type
-	21, // [21:28] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	0,  // 7: codegen.GetWorkflowStepsRequest.package:type_name -> codegen.WorkflowPackageDescriptor
+	0,  // 8: codegen.GetWorkflowStepRequest.package:type_name -> codegen.WorkflowPackageDescriptor
+	12, // 9: codegen.TypeReference.object:type_name -> codegen.StructObject
+	25, // 10: codegen.StructObject.properties:type_name -> codegen.StructObject.PropertiesEntry
+	10, // 11: codegen.GraphInfo.input_type:type_name -> codegen.TypeReference
+	10, // 12: codegen.GraphInfo.output_type:type_name -> codegen.TypeReference
+	10, // 13: codegen.JobInfo.input_type:type_name -> codegen.TypeReference
+	10, // 14: codegen.JobInfo.output_type:type_name -> codegen.TypeReference
+	13, // 15: codegen.GetPackageInfoResponse.package:type_name -> codegen.PackageInfo
+	14, // 16: codegen.GetGraphsResponse.graphs:type_name -> codegen.GraphInfo
+	14, // 17: codegen.GetGraphResponse.graph:type_name -> codegen.GraphInfo
+	10, // 18: codegen.GetTriggerResponse.input_type:type_name -> codegen.TypeReference
+	10, // 19: codegen.GetTriggerResponse.output_type:type_name -> codegen.TypeReference
+	15, // 20: codegen.GetJobsResponse.jobs:type_name -> codegen.JobInfo
+	15, // 21: codegen.GetJobResponse.job:type_name -> codegen.JobInfo
+	10, // 22: codegen.GetStepResponse.input_type:type_name -> codegen.TypeReference
+	10, // 23: codegen.GetStepResponse.output_type:type_name -> codegen.TypeReference
+	11, // 24: codegen.StructObject.PropertiesEntry.value:type_name -> codegen.PropertySpec
+	1,  // 25: codegen.WorkflowLoader.GetPackageInfo:input_type -> codegen.GetWorkflowPackageInfoRequest
+	2,  // 26: codegen.WorkflowLoader.GetGraphs:input_type -> codegen.GetWorkflowGraphsRequest
+	3,  // 27: codegen.WorkflowLoader.GetGraph:input_type -> codegen.GetWorkflowGraphRequest
+	4,  // 28: codegen.WorkflowLoader.GetTriggers:input_type -> codegen.GetWorkflowTriggersRequest
+	5,  // 29: codegen.WorkflowLoader.GetTrigger:input_type -> codegen.GetWorkflowTriggerRequest
+	6,  // 30: codegen.WorkflowLoader.GetJobs:input_type -> codegen.GetWorkflowJobsRequest
+	7,  // 31: codegen.WorkflowLoader.GetJob:input_type -> codegen.GetWorkflowJobRequest
+	8,  // 32: codegen.WorkflowLoader.GetSteps:input_type -> codegen.GetWorkflowStepsRequest
+	9,  // 33: codegen.WorkflowLoader.GetStep:input_type -> codegen.GetWorkflowStepRequest
+	16, // 34: codegen.WorkflowLoader.GetPackageInfo:output_type -> codegen.GetPackageInfoResponse
+	17, // 35: codegen.WorkflowLoader.GetGraphs:output_type -> codegen.GetGraphsResponse
+	18, // 36: codegen.WorkflowLoader.GetGraph:output_type -> codegen.GetGraphResponse
+	19, // 37: codegen.WorkflowLoader.GetTriggers:output_type -> codegen.GetTriggersResponse
+	20, // 38: codegen.WorkflowLoader.GetTrigger:output_type -> codegen.GetTriggerResponse
+	21, // 39: codegen.WorkflowLoader.GetJobs:output_type -> codegen.GetJobsResponse
+	22, // 40: codegen.WorkflowLoader.GetJob:output_type -> codegen.GetJobResponse
+	23, // 41: codegen.WorkflowLoader.GetSteps:output_type -> codegen.GetStepsResponse
+	24, // 42: codegen.WorkflowLoader.GetStep:output_type -> codegen.GetStepResponse
+	34, // [34:43] is the sub-list for method output_type
+	25, // [25:34] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_codegen_workflow_proto_init() }
@@ -1256,7 +1474,7 @@ func file_pulumi_codegen_workflow_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_codegen_workflow_proto_rawDesc), len(file_pulumi_codegen_workflow_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -15,6 +15,8 @@ interface IWorkflowLoaderService extends grpc.ServiceDefinition<grpc.UntypedServ
     getTrigger: IWorkflowLoaderService_IGetTrigger;
     getJobs: IWorkflowLoaderService_IGetJobs;
     getJob: IWorkflowLoaderService_IGetJob;
+    getSteps: IWorkflowLoaderService_IGetSteps;
+    getStep: IWorkflowLoaderService_IGetStep;
 }
 
 interface IWorkflowLoaderService_IGetPackageInfo extends grpc.MethodDefinition<pulumi_codegen_workflow_pb.GetWorkflowPackageInfoRequest, pulumi_codegen_workflow_pb.GetPackageInfoResponse> {
@@ -80,6 +82,24 @@ interface IWorkflowLoaderService_IGetJob extends grpc.MethodDefinition<pulumi_co
     responseSerialize: grpc.serialize<pulumi_codegen_workflow_pb.GetJobResponse>;
     responseDeserialize: grpc.deserialize<pulumi_codegen_workflow_pb.GetJobResponse>;
 }
+interface IWorkflowLoaderService_IGetSteps extends grpc.MethodDefinition<pulumi_codegen_workflow_pb.GetWorkflowStepsRequest, pulumi_codegen_workflow_pb.GetStepsResponse> {
+    path: "/codegen.WorkflowLoader/GetSteps";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_codegen_workflow_pb.GetWorkflowStepsRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_codegen_workflow_pb.GetWorkflowStepsRequest>;
+    responseSerialize: grpc.serialize<pulumi_codegen_workflow_pb.GetStepsResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_codegen_workflow_pb.GetStepsResponse>;
+}
+interface IWorkflowLoaderService_IGetStep extends grpc.MethodDefinition<pulumi_codegen_workflow_pb.GetWorkflowStepRequest, pulumi_codegen_workflow_pb.GetStepResponse> {
+    path: "/codegen.WorkflowLoader/GetStep";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_codegen_workflow_pb.GetWorkflowStepRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_codegen_workflow_pb.GetWorkflowStepRequest>;
+    responseSerialize: grpc.serialize<pulumi_codegen_workflow_pb.GetStepResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_codegen_workflow_pb.GetStepResponse>;
+}
 
 export const WorkflowLoaderService: IWorkflowLoaderService;
 
@@ -91,6 +111,8 @@ export interface IWorkflowLoaderServer extends grpc.UntypedServiceImplementation
     getTrigger: grpc.handleUnaryCall<pulumi_codegen_workflow_pb.GetWorkflowTriggerRequest, pulumi_codegen_workflow_pb.GetTriggerResponse>;
     getJobs: grpc.handleUnaryCall<pulumi_codegen_workflow_pb.GetWorkflowJobsRequest, pulumi_codegen_workflow_pb.GetJobsResponse>;
     getJob: grpc.handleUnaryCall<pulumi_codegen_workflow_pb.GetWorkflowJobRequest, pulumi_codegen_workflow_pb.GetJobResponse>;
+    getSteps: grpc.handleUnaryCall<pulumi_codegen_workflow_pb.GetWorkflowStepsRequest, pulumi_codegen_workflow_pb.GetStepsResponse>;
+    getStep: grpc.handleUnaryCall<pulumi_codegen_workflow_pb.GetWorkflowStepRequest, pulumi_codegen_workflow_pb.GetStepResponse>;
 }
 
 export interface IWorkflowLoaderClient {
@@ -115,6 +137,12 @@ export interface IWorkflowLoaderClient {
     getJob(request: pulumi_codegen_workflow_pb.GetWorkflowJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     getJob(request: pulumi_codegen_workflow_pb.GetWorkflowJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     getJob(request: pulumi_codegen_workflow_pb.GetWorkflowJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
+    getSteps(request: pulumi_codegen_workflow_pb.GetWorkflowStepsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    getSteps(request: pulumi_codegen_workflow_pb.GetWorkflowStepsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    getSteps(request: pulumi_codegen_workflow_pb.GetWorkflowStepsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    getStep(request: pulumi_codegen_workflow_pb.GetWorkflowStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
+    getStep(request: pulumi_codegen_workflow_pb.GetWorkflowStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
+    getStep(request: pulumi_codegen_workflow_pb.GetWorkflowStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
 }
 
 export class WorkflowLoaderClient extends grpc.Client implements IWorkflowLoaderClient {
@@ -140,4 +168,10 @@ export class WorkflowLoaderClient extends grpc.Client implements IWorkflowLoader
     public getJob(request: pulumi_codegen_workflow_pb.GetWorkflowJobRequest, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     public getJob(request: pulumi_codegen_workflow_pb.GetWorkflowJobRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
     public getJob(request: pulumi_codegen_workflow_pb.GetWorkflowJobRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetJobResponse) => void): grpc.ClientUnaryCall;
+    public getSteps(request: pulumi_codegen_workflow_pb.GetWorkflowStepsRequest, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    public getSteps(request: pulumi_codegen_workflow_pb.GetWorkflowStepsRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    public getSteps(request: pulumi_codegen_workflow_pb.GetWorkflowStepsRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepsResponse) => void): grpc.ClientUnaryCall;
+    public getStep(request: pulumi_codegen_workflow_pb.GetWorkflowStepRequest, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
+    public getStep(request: pulumi_codegen_workflow_pb.GetWorkflowStepRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
+    public getStep(request: pulumi_codegen_workflow_pb.GetWorkflowStepRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_codegen_workflow_pb.GetStepResponse) => void): grpc.ClientUnaryCall;
 }

@@ -40,6 +40,8 @@ const (
 	WorkflowLoader_GetTrigger_FullMethodName     = "/codegen.WorkflowLoader/GetTrigger"
 	WorkflowLoader_GetJobs_FullMethodName        = "/codegen.WorkflowLoader/GetJobs"
 	WorkflowLoader_GetJob_FullMethodName         = "/codegen.WorkflowLoader/GetJob"
+	WorkflowLoader_GetSteps_FullMethodName       = "/codegen.WorkflowLoader/GetSteps"
+	WorkflowLoader_GetStep_FullMethodName        = "/codegen.WorkflowLoader/GetStep"
 )
 
 // WorkflowLoaderClient is the client API for WorkflowLoader service.
@@ -55,6 +57,8 @@ type WorkflowLoaderClient interface {
 	GetTrigger(ctx context.Context, in *GetWorkflowTriggerRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error)
 	GetJobs(ctx context.Context, in *GetWorkflowJobsRequest, opts ...grpc.CallOption) (*GetJobsResponse, error)
 	GetJob(ctx context.Context, in *GetWorkflowJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
+	GetSteps(ctx context.Context, in *GetWorkflowStepsRequest, opts ...grpc.CallOption) (*GetStepsResponse, error)
+	GetStep(ctx context.Context, in *GetWorkflowStepRequest, opts ...grpc.CallOption) (*GetStepResponse, error)
 }
 
 type workflowLoaderClient struct {
@@ -135,6 +139,26 @@ func (c *workflowLoaderClient) GetJob(ctx context.Context, in *GetWorkflowJobReq
 	return out, nil
 }
 
+func (c *workflowLoaderClient) GetSteps(ctx context.Context, in *GetWorkflowStepsRequest, opts ...grpc.CallOption) (*GetStepsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStepsResponse)
+	err := c.cc.Invoke(ctx, WorkflowLoader_GetSteps_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *workflowLoaderClient) GetStep(ctx context.Context, in *GetWorkflowStepRequest, opts ...grpc.CallOption) (*GetStepResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStepResponse)
+	err := c.cc.Invoke(ctx, WorkflowLoader_GetStep_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // WorkflowLoaderServer is the server API for WorkflowLoader service.
 // All implementations must embed UnimplementedWorkflowLoaderServer
 // for forward compatibility.
@@ -148,6 +172,8 @@ type WorkflowLoaderServer interface {
 	GetTrigger(context.Context, *GetWorkflowTriggerRequest) (*GetTriggerResponse, error)
 	GetJobs(context.Context, *GetWorkflowJobsRequest) (*GetJobsResponse, error)
 	GetJob(context.Context, *GetWorkflowJobRequest) (*GetJobResponse, error)
+	GetSteps(context.Context, *GetWorkflowStepsRequest) (*GetStepsResponse, error)
+	GetStep(context.Context, *GetWorkflowStepRequest) (*GetStepResponse, error)
 	mustEmbedUnimplementedWorkflowLoaderServer()
 }
 
@@ -178,6 +204,12 @@ func (UnimplementedWorkflowLoaderServer) GetJobs(context.Context, *GetWorkflowJo
 }
 func (UnimplementedWorkflowLoaderServer) GetJob(context.Context, *GetWorkflowJobRequest) (*GetJobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJob not implemented")
+}
+func (UnimplementedWorkflowLoaderServer) GetSteps(context.Context, *GetWorkflowStepsRequest) (*GetStepsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSteps not implemented")
+}
+func (UnimplementedWorkflowLoaderServer) GetStep(context.Context, *GetWorkflowStepRequest) (*GetStepResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStep not implemented")
 }
 func (UnimplementedWorkflowLoaderServer) mustEmbedUnimplementedWorkflowLoaderServer() {}
 func (UnimplementedWorkflowLoaderServer) testEmbeddedByValue()                        {}
@@ -326,6 +358,42 @@ func _WorkflowLoader_GetJob_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WorkflowLoader_GetSteps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkflowStepsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowLoaderServer).GetSteps(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowLoader_GetSteps_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowLoaderServer).GetSteps(ctx, req.(*GetWorkflowStepsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _WorkflowLoader_GetStep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkflowStepRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkflowLoaderServer).GetStep(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkflowLoader_GetStep_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkflowLoaderServer).GetStep(ctx, req.(*GetWorkflowStepRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // WorkflowLoader_ServiceDesc is the grpc.ServiceDesc for WorkflowLoader service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -360,6 +428,14 @@ var WorkflowLoader_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetJob",
 			Handler:    _WorkflowLoader_GetJob_Handler,
+		},
+		{
+			MethodName: "GetSteps",
+			Handler:    _WorkflowLoader_GetSteps_Handler,
+		},
+		{
+			MethodName: "GetStep",
+			Handler:    _WorkflowLoader_GetStep_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

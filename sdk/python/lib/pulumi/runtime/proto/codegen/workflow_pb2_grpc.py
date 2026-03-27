@@ -50,6 +50,16 @@ class WorkflowLoaderStub(object):
                 request_serializer=pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowJobRequest.SerializeToString,
                 response_deserializer=pulumi_dot_codegen_dot_workflow__pb2.GetJobResponse.FromString,
                 )
+        self.GetSteps = channel.unary_unary(
+                '/codegen.WorkflowLoader/GetSteps',
+                request_serializer=pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowStepsRequest.SerializeToString,
+                response_deserializer=pulumi_dot_codegen_dot_workflow__pb2.GetStepsResponse.FromString,
+                )
+        self.GetStep = channel.unary_unary(
+                '/codegen.WorkflowLoader/GetStep',
+                request_serializer=pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowStepRequest.SerializeToString,
+                response_deserializer=pulumi_dot_codegen_dot_workflow__pb2.GetStepResponse.FromString,
+                )
 
 
 class WorkflowLoaderServicer(object):
@@ -98,6 +108,18 @@ class WorkflowLoaderServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetSteps(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetStep(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_WorkflowLoaderServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -135,6 +157,16 @@ def add_WorkflowLoaderServicer_to_server(servicer, server):
                     servicer.GetJob,
                     request_deserializer=pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowJobRequest.FromString,
                     response_serializer=pulumi_dot_codegen_dot_workflow__pb2.GetJobResponse.SerializeToString,
+            ),
+            'GetSteps': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSteps,
+                    request_deserializer=pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowStepsRequest.FromString,
+                    response_serializer=pulumi_dot_codegen_dot_workflow__pb2.GetStepsResponse.SerializeToString,
+            ),
+            'GetStep': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetStep,
+                    request_deserializer=pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowStepRequest.FromString,
+                    response_serializer=pulumi_dot_codegen_dot_workflow__pb2.GetStepResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -263,5 +295,39 @@ class WorkflowLoader(object):
         return grpc.experimental.unary_unary(request, target, '/codegen.WorkflowLoader/GetJob',
             pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowJobRequest.SerializeToString,
             pulumi_dot_codegen_dot_workflow__pb2.GetJobResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetSteps(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/codegen.WorkflowLoader/GetSteps',
+            pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowStepsRequest.SerializeToString,
+            pulumi_dot_codegen_dot_workflow__pb2.GetStepsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetStep(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/codegen.WorkflowLoader/GetStep',
+            pulumi_dot_codegen_dot_workflow__pb2.GetWorkflowStepRequest.SerializeToString,
+            pulumi_dot_codegen_dot_workflow__pb2.GetStepResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

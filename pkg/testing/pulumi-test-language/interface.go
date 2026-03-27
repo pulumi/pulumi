@@ -618,6 +618,41 @@ func (l *workflowLoader) GetJob(
 	return &codegenrpc.GetJobResponse{Job: toCodegenJobInfo(resp.GetJob())}, nil
 }
 
+func (l *workflowLoader) GetSteps(
+	ctx context.Context, req *codegenrpc.GetWorkflowStepsRequest,
+) (*codegenrpc.GetStepsResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetSteps(ctx, &pulumirpc.EmptyRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return &codegenrpc.GetStepsResponse{Steps: resp.GetSteps()}, nil
+}
+
+func (l *workflowLoader) GetStep(
+	ctx context.Context, req *codegenrpc.GetWorkflowStepRequest,
+) (*codegenrpc.GetStepResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetStep(ctx, &pulumirpc.TokenLookupRequest{Token: req.GetToken()})
+	if err != nil {
+		return nil, err
+	}
+	return &codegenrpc.GetStepResponse{
+		InputType:  toCodegenTypeReference(resp.GetInputType()),
+		OutputType: toCodegenTypeReference(resp.GetOutputType()),
+	}, nil
+}
+
 func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
 	req *testingrpc.GetLanguageTestsRequest,

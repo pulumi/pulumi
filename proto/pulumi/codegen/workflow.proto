@@ -56,6 +56,15 @@ message GetWorkflowJobRequest {
     string token = 2;
 }
 
+message GetWorkflowStepsRequest {
+    WorkflowPackageDescriptor package = 1;
+}
+
+message GetWorkflowStepRequest {
+    WorkflowPackageDescriptor package = 1;
+    string token = 2;
+}
+
 message TypeReference {
     string token = 1;
     StructObject object = 2;
@@ -118,6 +127,15 @@ message GetJobResponse {
     JobInfo job = 1;
 }
 
+message GetStepsResponse {
+    repeated string steps = 1;
+}
+
+message GetStepResponse {
+    TypeReference input_type = 1;
+    TypeReference output_type = 2;
+}
+
 // WorkflowLoader provides schema-fetching APIs for workflow package SDK generation.
 service WorkflowLoader {
     rpc GetPackageInfo(GetWorkflowPackageInfoRequest) returns (GetPackageInfoResponse) {}
@@ -127,4 +145,6 @@ service WorkflowLoader {
     rpc GetTrigger(GetWorkflowTriggerRequest) returns (GetTriggerResponse) {}
     rpc GetJobs(GetWorkflowJobsRequest) returns (GetJobsResponse) {}
     rpc GetJob(GetWorkflowJobRequest) returns (GetJobResponse) {}
+    rpc GetSteps(GetWorkflowStepsRequest) returns (GetStepsResponse) {}
+    rpc GetStep(GetWorkflowStepRequest) returns (GetStepResponse) {}
 }

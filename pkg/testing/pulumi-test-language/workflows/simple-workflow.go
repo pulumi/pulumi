@@ -90,13 +90,26 @@ func (w *SimpleStepWorkflow) GetJob(
 func (w *SimpleStepWorkflow) GetSteps(
 	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetStepsResponse, error) {
-	return nil, workflowNotImplemented("GetSteps")
+	return &pulumirpc.GetStepsResponse{
+		Steps: []string{"external:invert"},
+	}, nil
 }
 
 func (w *SimpleStepWorkflow) GetStep(
 	context.Context, *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetStepResponse, error) {
-	return nil, workflowNotImplemented("GetStep")
+	return &pulumirpc.GetStepResponse{
+		InputType: &pulumirpc.TypeReference{
+			Object: &pulumirpc.StructObject{
+				Properties: map[string]*pulumirpc.PropertySpec{
+					"input": {Type: "bool"},
+				},
+			},
+		},
+		OutputType: &pulumirpc.TypeReference{
+			Token: "bool",
+		},
+	}, nil
 }
 
 func (w *SimpleStepWorkflow) GenerateGraph(

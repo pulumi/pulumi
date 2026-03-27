@@ -2061,6 +2061,20 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 	b.WriteString("from typing import Any\n")
 	b.WriteString("from pulumi import Output\n")
 	b.WriteString("import pulumi.workflow as workflow\n\n\n")
+	workflowPackageModules := map[string]string{}
+	workflowPackageNames := make([]string, 0, len(program.Packages))
+	for pkgName := range program.Packages {
+		workflowPackageNames = append(workflowPackageNames, pkgName)
+	}
+	sort.Strings(workflowPackageNames)
+	for _, pkgName := range workflowPackageNames {
+		moduleName := codegen.PyPack("", pkgName)
+		workflowPackageModules[pkgName] = moduleName
+		b.WriteString("import " + moduleName + "\n")
+	}
+	if len(workflowPackageNames) > 0 {
+		b.WriteString("\n")
+	}
 
 	declaredInputTypes := map[string]bool{}
 	writeInputType := func(base string, inputType pcl.WorkflowInputType) string {
@@ -2224,6 +2238,17 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 				argExpr := "None"
 				bodyExpr := "\"\""
 				if step.Uses != "" && strings.Contains(step.Uses, ":") {
+					parts := strings.SplitN(step.Uses, ":", 2)
+					pkgName := parts[0]
+					if moduleName, ok := workflowPackageModules[pkgName]; ok {
+						stepFn := pythonIdentifier("step_" + step.Uses)
+						stepArgsType := pythonIdentifier("step_" + step.Uses + "_args")
+						b.WriteString(
+							"        " + outputVar + " = " + moduleName + "." + stepFn + "(" +
+								"job, " + moduleName + "." + stepArgsType + "(input=args.input), " +
+								"workflow.StepOptions(name=" + pythonQuoteString(step.Name) + "))\n")
+						continue
+					}
 					argExpr = "args"
 					b.WriteString(
 						"        " + outputVar + " = job.step(" +

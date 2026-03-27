@@ -5,6 +5,8 @@ from pulumi import Output
 import pulumi.workflow as workflow
 
 
+import pulumi_external
+
 @dataclass
 class step_invert_args:
     input: bool
@@ -19,7 +21,7 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
         return not input.input
     @registry.job("build", job_build_args)
     def register_job_build(job: workflow.JobContext, args: job_build_args) -> Output[bool]:
-        build_invert_output = job.step("external:invert", args, workflow.StepOptions(name="invert"))
+        build_invert_output = pulumi_external.step_external_invert(job, pulumi_external.step_external_invert_args(input=args.input), workflow.StepOptions(name="invert"))
         return build_invert_output
 
 

@@ -1,2 +1,3 @@
 ROOT/artifacts/pulumi-CORE.VERSION-py3-none-any.whl
+/var/folders/0k/6j80f8p15_s_cctm05zpd_xm0000gn/T/TestLanguageTOMLlocal=false168048081/001/sdks/workflow-external-0.0.0
 pyright

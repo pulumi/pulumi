@@ -74,6 +74,28 @@ function deserialize_codegen_GetPackageInfoResponse(buffer_arg) {
   return pulumi_codegen_workflow_pb.GetPackageInfoResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_codegen_GetStepResponse(arg) {
+  if (!(arg instanceof pulumi_codegen_workflow_pb.GetStepResponse)) {
+    throw new Error('Expected argument of type codegen.GetStepResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_GetStepResponse(buffer_arg) {
+  return pulumi_codegen_workflow_pb.GetStepResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_codegen_GetStepsResponse(arg) {
+  if (!(arg instanceof pulumi_codegen_workflow_pb.GetStepsResponse)) {
+    throw new Error('Expected argument of type codegen.GetStepsResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_GetStepsResponse(buffer_arg) {
+  return pulumi_codegen_workflow_pb.GetStepsResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_codegen_GetTriggerResponse(arg) {
   if (!(arg instanceof pulumi_codegen_workflow_pb.GetTriggerResponse)) {
     throw new Error('Expected argument of type codegen.GetTriggerResponse');
@@ -149,6 +171,28 @@ function serialize_codegen_GetWorkflowPackageInfoRequest(arg) {
 
 function deserialize_codegen_GetWorkflowPackageInfoRequest(buffer_arg) {
   return pulumi_codegen_workflow_pb.GetWorkflowPackageInfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_codegen_GetWorkflowStepRequest(arg) {
+  if (!(arg instanceof pulumi_codegen_workflow_pb.GetWorkflowStepRequest)) {
+    throw new Error('Expected argument of type codegen.GetWorkflowStepRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_GetWorkflowStepRequest(buffer_arg) {
+  return pulumi_codegen_workflow_pb.GetWorkflowStepRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_codegen_GetWorkflowStepsRequest(arg) {
+  if (!(arg instanceof pulumi_codegen_workflow_pb.GetWorkflowStepsRequest)) {
+    throw new Error('Expected argument of type codegen.GetWorkflowStepsRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_codegen_GetWorkflowStepsRequest(buffer_arg) {
+  return pulumi_codegen_workflow_pb.GetWorkflowStepsRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_codegen_GetWorkflowTriggerRequest(arg) {
@@ -252,6 +296,28 @@ var WorkflowLoaderService = exports.WorkflowLoaderService = {
     requestDeserialize: deserialize_codegen_GetWorkflowJobRequest,
     responseSerialize: serialize_codegen_GetJobResponse,
     responseDeserialize: deserialize_codegen_GetJobResponse,
+  },
+  getSteps: {
+    path: '/codegen.WorkflowLoader/GetSteps',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_codegen_workflow_pb.GetWorkflowStepsRequest,
+    responseType: pulumi_codegen_workflow_pb.GetStepsResponse,
+    requestSerialize: serialize_codegen_GetWorkflowStepsRequest,
+    requestDeserialize: deserialize_codegen_GetWorkflowStepsRequest,
+    responseSerialize: serialize_codegen_GetStepsResponse,
+    responseDeserialize: deserialize_codegen_GetStepsResponse,
+  },
+  getStep: {
+    path: '/codegen.WorkflowLoader/GetStep',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_codegen_workflow_pb.GetWorkflowStepRequest,
+    responseType: pulumi_codegen_workflow_pb.GetStepResponse,
+    requestSerialize: serialize_codegen_GetWorkflowStepRequest,
+    requestDeserialize: deserialize_codegen_GetWorkflowStepRequest,
+    responseSerialize: serialize_codegen_GetStepResponse,
+    responseDeserialize: deserialize_codegen_GetStepResponse,
   },
 };
 

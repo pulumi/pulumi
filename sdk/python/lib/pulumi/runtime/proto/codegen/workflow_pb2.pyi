@@ -177,6 +177,43 @@ class GetWorkflowJobRequest(google.protobuf.message.Message):
 global___GetWorkflowJobRequest = GetWorkflowJobRequest
 
 @typing.final
+class GetWorkflowStepsRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_FIELD_NUMBER: builtins.int
+    @property
+    def package(self) -> global___WorkflowPackageDescriptor: ...
+    def __init__(
+        self,
+        *,
+        package: global___WorkflowPackageDescriptor | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["package", b"package"]) -> None: ...
+
+global___GetWorkflowStepsRequest = GetWorkflowStepsRequest
+
+@typing.final
+class GetWorkflowStepRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    PACKAGE_FIELD_NUMBER: builtins.int
+    TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    @property
+    def package(self) -> global___WorkflowPackageDescriptor: ...
+    def __init__(
+        self,
+        *,
+        package: global___WorkflowPackageDescriptor | None = ...,
+        token: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["package", b"package", "token", b"token"]) -> None: ...
+
+global___GetWorkflowStepRequest = GetWorkflowStepRequest
+
+@typing.final
 class TypeReference(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -439,3 +476,40 @@ class GetJobResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["job", b"job"]) -> None: ...
 
 global___GetJobResponse = GetJobResponse
+
+@typing.final
+class GetStepsResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    STEPS_FIELD_NUMBER: builtins.int
+    @property
+    def steps(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]: ...
+    def __init__(
+        self,
+        *,
+        steps: collections.abc.Iterable[builtins.str] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["steps", b"steps"]) -> None: ...
+
+global___GetStepsResponse = GetStepsResponse
+
+@typing.final
+class GetStepResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    INPUT_TYPE_FIELD_NUMBER: builtins.int
+    OUTPUT_TYPE_FIELD_NUMBER: builtins.int
+    @property
+    def input_type(self) -> global___TypeReference: ...
+    @property
+    def output_type(self) -> global___TypeReference: ...
+    def __init__(
+        self,
+        *,
+        input_type: global___TypeReference | None = ...,
+        output_type: global___TypeReference | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["input_type", b"input_type", "output_type", b"output_type"]) -> None: ...
+
+global___GetStepResponse = GetStepResponse

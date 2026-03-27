@@ -69,6 +69,16 @@ class WorkflowLoaderStub:
         pulumi.codegen.workflow_pb2.GetJobResponse,
     ]
 
+    GetSteps: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.workflow_pb2.GetWorkflowStepsRequest,
+        pulumi.codegen.workflow_pb2.GetStepsResponse,
+    ]
+
+    GetStep: grpc.UnaryUnaryMultiCallable[
+        pulumi.codegen.workflow_pb2.GetWorkflowStepRequest,
+        pulumi.codegen.workflow_pb2.GetStepResponse,
+    ]
+
 class WorkflowLoaderAsyncStub:
     """WorkflowLoader provides schema-fetching APIs for workflow package SDK generation."""
 
@@ -105,6 +115,16 @@ class WorkflowLoaderAsyncStub:
     GetJob: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.codegen.workflow_pb2.GetWorkflowJobRequest,
         pulumi.codegen.workflow_pb2.GetJobResponse,
+    ]
+
+    GetSteps: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.codegen.workflow_pb2.GetWorkflowStepsRequest,
+        pulumi.codegen.workflow_pb2.GetStepsResponse,
+    ]
+
+    GetStep: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.codegen.workflow_pb2.GetWorkflowStepRequest,
+        pulumi.codegen.workflow_pb2.GetStepResponse,
     ]
 
 class WorkflowLoaderServicer(metaclass=abc.ABCMeta):
@@ -158,5 +178,19 @@ class WorkflowLoaderServicer(metaclass=abc.ABCMeta):
         request: pulumi.codegen.workflow_pb2.GetWorkflowJobRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.codegen.workflow_pb2.GetJobResponse, collections.abc.Awaitable[pulumi.codegen.workflow_pb2.GetJobResponse]]: ...
+
+    @abc.abstractmethod
+    def GetSteps(
+        self,
+        request: pulumi.codegen.workflow_pb2.GetWorkflowStepsRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.codegen.workflow_pb2.GetStepsResponse, collections.abc.Awaitable[pulumi.codegen.workflow_pb2.GetStepsResponse]]: ...
+
+    @abc.abstractmethod
+    def GetStep(
+        self,
+        request: pulumi.codegen.workflow_pb2.GetWorkflowStepRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.codegen.workflow_pb2.GetStepResponse, collections.abc.Awaitable[pulumi.codegen.workflow_pb2.GetStepResponse]]: ...
 
 def add_WorkflowLoaderServicer_to_server(servicer: WorkflowLoaderServicer, server: typing.Union[grpc.Server, grpc.aio.Server]) -> None: ...

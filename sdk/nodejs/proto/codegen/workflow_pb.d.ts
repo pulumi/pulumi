@@ -202,6 +202,55 @@ export namespace GetWorkflowJobRequest {
     }
 }
 
+export class GetWorkflowStepsRequest extends jspb.Message { 
+
+    hasPackage(): boolean;
+    clearPackage(): void;
+    getPackage(): WorkflowPackageDescriptor | undefined;
+    setPackage(value?: WorkflowPackageDescriptor): GetWorkflowStepsRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetWorkflowStepsRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetWorkflowStepsRequest): GetWorkflowStepsRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetWorkflowStepsRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetWorkflowStepsRequest;
+    static deserializeBinaryFromReader(message: GetWorkflowStepsRequest, reader: jspb.BinaryReader): GetWorkflowStepsRequest;
+}
+
+export namespace GetWorkflowStepsRequest {
+    export type AsObject = {
+        pb_package?: WorkflowPackageDescriptor.AsObject,
+    }
+}
+
+export class GetWorkflowStepRequest extends jspb.Message { 
+
+    hasPackage(): boolean;
+    clearPackage(): void;
+    getPackage(): WorkflowPackageDescriptor | undefined;
+    setPackage(value?: WorkflowPackageDescriptor): GetWorkflowStepRequest;
+    getToken(): string;
+    setToken(value: string): GetWorkflowStepRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetWorkflowStepRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GetWorkflowStepRequest): GetWorkflowStepRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetWorkflowStepRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetWorkflowStepRequest;
+    static deserializeBinaryFromReader(message: GetWorkflowStepRequest, reader: jspb.BinaryReader): GetWorkflowStepRequest;
+}
+
+export namespace GetWorkflowStepRequest {
+    export type AsObject = {
+        pb_package?: WorkflowPackageDescriptor.AsObject,
+        token: string,
+    }
+}
+
 export class TypeReference extends jspb.Message { 
     getToken(): string;
     setToken(value: string): TypeReference;
@@ -527,5 +576,56 @@ export class GetJobResponse extends jspb.Message {
 export namespace GetJobResponse {
     export type AsObject = {
         job?: JobInfo.AsObject,
+    }
+}
+
+export class GetStepsResponse extends jspb.Message { 
+    clearStepsList(): void;
+    getStepsList(): Array<string>;
+    setStepsList(value: Array<string>): GetStepsResponse;
+    addSteps(value: string, index?: number): string;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetStepsResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetStepsResponse): GetStepsResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetStepsResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetStepsResponse;
+    static deserializeBinaryFromReader(message: GetStepsResponse, reader: jspb.BinaryReader): GetStepsResponse;
+}
+
+export namespace GetStepsResponse {
+    export type AsObject = {
+        stepsList: Array<string>,
+    }
+}
+
+export class GetStepResponse extends jspb.Message { 
+
+    hasInputType(): boolean;
+    clearInputType(): void;
+    getInputType(): TypeReference | undefined;
+    setInputType(value?: TypeReference): GetStepResponse;
+
+    hasOutputType(): boolean;
+    clearOutputType(): void;
+    getOutputType(): TypeReference | undefined;
+    setOutputType(value?: TypeReference): GetStepResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GetStepResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GetStepResponse): GetStepResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GetStepResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GetStepResponse;
+    static deserializeBinaryFromReader(message: GetStepResponse, reader: jspb.BinaryReader): GetStepResponse;
+}
+
+export namespace GetStepResponse {
+    export type AsObject = {
+        inputType?: TypeReference.AsObject,
+        outputType?: TypeReference.AsObject,
     }
 }
