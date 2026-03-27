@@ -108,12 +108,6 @@ func MainContext(
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
-	cancelChannel := make(chan bool)
-	go func() {
-		<-ctx.Done()
-		close(cancelChannel)
-	}()
-
 	// Read the non-flags args and connect to the engine.
 	args := flag.Args()
 	var host *HostClient
@@ -127,7 +121,7 @@ func MainContext(
 		}
 
 		// If we have a host cancel our cancellation context if it fails the healthcheck
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel = context.WithCancel(ctx)
 		// map the context Done channel to the rpcutil boolean cancel channel
 		err = rpcutil.Healthcheck(ctx, args[0], 5*time.Minute, cancel)
 		if err != nil {
@@ -136,6 +130,12 @@ func MainContext(
 	} else {
 		return errors.New("fatal: could not connect to host RPC; missing argument")
 	}
+
+	cancelChannel := make(chan bool)
+	go func() {
+		<-ctx.Done()
+		close(cancelChannel)
+	}()
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
