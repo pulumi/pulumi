@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: codegen
+  description: Deduplicate identical apply arguments to avoid unnecessary Promise.all/pulumi.all/Output.All in generated code
