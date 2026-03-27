@@ -105,9 +105,33 @@ func describeWorkflow(
 
 	switch kind {
 	case "job":
-		token, err := resolveJobToken(ctx, workflowPlugin, nameOrToken)
-		if err != nil {
-			return "", err
+		token := nameOrToken
+		if !strings.Contains(nameOrToken, ":") {
+			resp, err := workflowPlugin.GetJobs(ctx, &pulumirpc.EmptyRequest{})
+			if err != nil {
+				return "", fmt.Errorf("get jobs: %w", err)
+			}
+			matches := make([]string, 0)
+			for _, job := range resp.GetJobs() {
+				candidate := job.GetToken()
+				parts := strings.Split(candidate, ":")
+				if len(parts) > 0 && parts[len(parts)-1] == nameOrToken {
+					matches = append(matches, candidate)
+				}
+			}
+			switch len(matches) {
+			case 0:
+				return "", fmt.Errorf("exported job %q not found", nameOrToken)
+			case 1:
+				token = matches[0]
+			default:
+				sort.Strings(matches)
+				return "", fmt.Errorf("job name %q is ambiguous; use full token (%s)", nameOrToken, strings.Join(matches, ", "))
+			}
+		} else {
+			if _, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: token}); err != nil {
+				return "", fmt.Errorf("get job metadata for %q: %w", token, err)
+			}
 		}
 		resp, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: token})
 		if err != nil {

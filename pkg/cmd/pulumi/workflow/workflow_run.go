@@ -60,7 +60,7 @@ For now, <plugin-path> must be a local path (for example to a Python workflow pr
 				return cmd.Help()
 			}
 			if len(args) < 2 {
-				return fmt.Errorf("expected arguments: <plugin-path> <job>")
+				return fmt.Errorf("expected arguments: <plugin-path> <job-or-step>")
 			}
 			ctx := cmd.Context()
 			pluginPath := args[0]
@@ -127,16 +127,6 @@ func parseInputJSON(input string, provided bool) (any, error) {
 	return value, nil
 }
 
-func runExportedJob(
-	ctx context.Context,
-	pluginPath string,
-	jobNameOrToken string,
-	runArgs []string,
-	defaultExecutionID string,
-) ([]stepResult, string, string, bool, error) {
-	return runExportedTarget(ctx, pluginPath, jobNameOrToken, runArgs, defaultExecutionID)
-}
-
 func runExportedTarget(
 	ctx context.Context,
 	pluginPath string,
@@ -188,71 +178,56 @@ func runExportedTarget(
 		}
 		return nil, token, resultJSON, emitJSON, nil
 	case runnableKindJob:
-		return runExportedJobWithPlugin(
-			ctx, workflowPlugin, server, listener.Addr().String(), token, runArgs, defaultExecutionID,
-		)
+		jobInfo, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: token})
+		if err != nil {
+			return nil, "", "", false, fmt.Errorf("get job metadata for %q: %w", token, err)
+		}
+
+		parsedOptions, err := parseRunJobArgs(runArgs, jobInfo.GetInputProperties(), defaultExecutionID)
+		if err != nil {
+			return nil, "", "", false, err
+		}
+
+		inputValue, err := encodeJobInputStruct(parsedOptions.input)
+		if err != nil {
+			return nil, "", "", false, fmt.Errorf("encode job input: %w", err)
+		}
+		workflowContext := &pulumirpc.WorkflowContext{
+			ExecutionId: parsedOptions.executionID,
+		}
+
+		generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
+			Context:             workflowContext,
+			Name:                token,
+			GraphMonitorAddress: listener.Addr().String(),
+			InputValue:          inputValue,
+		})
+		if err != nil {
+			return nil, "", "", false, fmt.Errorf("generate exported job %q: %w", token, err)
+		}
+		if generateResp.GetError() != nil && generateResp.GetError().GetReason() != "" {
+			return nil, "", "", false, fmt.Errorf("generate exported job %q failed: %s", token, generateResp.GetError().GetReason())
+		}
+
+		steps := server.snapshotStepsForJob(token)
+		if len(steps) == 0 {
+			return nil, "", "", false, fmt.Errorf("exported job %q has no steps", token)
+		}
+
+		results, err := runObservedSteps(ctx, workflowPlugin, workflowContext, steps)
+		if err != nil {
+			return nil, "", "", false, err
+		}
+
+		jobResultJSON, err := resolveObservedJobResult(ctx, workflowPlugin, workflowContext, token)
+		if err != nil {
+			return nil, "", "", false, err
+		}
+
+		return results, token, jobResultJSON, parsedOptions.emitJSON, nil
 	default:
 		return nil, "", "", false, fmt.Errorf("unsupported runnable kind %q", kind)
 	}
-}
-
-func runExportedJobWithPlugin(
-	ctx context.Context,
-	workflowPlugin plugin.Workflow,
-	server *monitorServer,
-	graphMonitorAddress string,
-	jobToken string,
-	runArgs []string,
-	defaultExecutionID string,
-) ([]stepResult, string, string, bool, error) {
-
-	jobInfo, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: jobToken})
-	if err != nil {
-		return nil, "", "", false, fmt.Errorf("get job metadata for %q: %w", jobToken, err)
-	}
-
-	parsedOptions, err := parseRunJobArgs(runArgs, jobInfo.GetInputProperties(), defaultExecutionID)
-	if err != nil {
-		return nil, "", "", false, err
-	}
-
-	inputValue, err := encodeJobInputStruct(parsedOptions.input)
-	if err != nil {
-		return nil, "", "", false, fmt.Errorf("encode job input: %w", err)
-	}
-	workflowContext := &pulumirpc.WorkflowContext{
-		ExecutionId: parsedOptions.executionID,
-	}
-
-	generateResp, err := workflowPlugin.GenerateJob(ctx, &pulumirpc.GenerateJobRequest{
-		Context:             workflowContext,
-		Name:                jobToken,
-		GraphMonitorAddress: graphMonitorAddress,
-		InputValue:          inputValue,
-	})
-	if err != nil {
-		return nil, "", "", false, fmt.Errorf("generate exported job %q: %w", jobToken, err)
-	}
-	if generateResp.GetError() != nil && generateResp.GetError().GetReason() != "" {
-		return nil, "", "", false, fmt.Errorf("generate exported job %q failed: %s", jobToken, generateResp.GetError().GetReason())
-	}
-
-	steps := server.snapshotStepsForJob(jobToken)
-	if len(steps) == 0 {
-		return nil, "", "", false, fmt.Errorf("exported job %q has no steps", jobToken)
-	}
-
-	results, err := runObservedSteps(ctx, workflowPlugin, workflowContext, steps)
-	if err != nil {
-		return nil, "", "", false, err
-	}
-
-	jobResultJSON, err := resolveObservedJobResult(ctx, workflowPlugin, workflowContext, jobToken)
-	if err != nil {
-		return nil, "", "", false, err
-	}
-
-	return results, jobToken, jobResultJSON, parsedOptions.emitJSON, nil
 }
 
 type runStepOptions struct {
@@ -509,43 +484,6 @@ func encodeJobInputStruct(input any) (*structpb.Struct, error) {
 		return nil, fmt.Errorf("job input must be a JSON object (got %T)", input)
 	}
 	return structpb.NewStruct(obj)
-}
-
-func resolveJobToken(
-	ctx context.Context,
-	workflowPlugin plugin.Workflow,
-	jobNameOrToken string,
-) (string, error) {
-	// If already token-like, validate and use directly.
-	if strings.Contains(jobNameOrToken, ":") {
-		if _, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: jobNameOrToken}); err != nil {
-			return "", fmt.Errorf("get job metadata for %q: %w", jobNameOrToken, err)
-		}
-		return jobNameOrToken, nil
-	}
-
-	resp, err := workflowPlugin.GetJobs(ctx, &pulumirpc.EmptyRequest{})
-	if err != nil {
-		return "", fmt.Errorf("get jobs: %w", err)
-	}
-	matches := make([]string, 0)
-	for _, job := range resp.GetJobs() {
-		token := job.GetToken()
-		parts := strings.Split(token, ":")
-		if len(parts) > 0 && parts[len(parts)-1] == jobNameOrToken {
-			matches = append(matches, token)
-		}
-	}
-
-	switch len(matches) {
-	case 0:
-		return "", fmt.Errorf("exported job %q not found", jobNameOrToken)
-	case 1:
-		return matches[0], nil
-	default:
-		sort.Strings(matches)
-		return "", fmt.Errorf("job name %q is ambiguous; use full token (%s)", jobNameOrToken, strings.Join(matches, ", "))
-	}
 }
 
 func resolveRunnableToken(

@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Pulumi workflow package public API."""
+"""Workflow registration API exports."""
 
-from pulumi import Output
-
-from .context import Context, JobContext
-from .registry import JobOptions, StepOptions, TriggerOptions, WorkflowError, WorkflowRegistry
-from .runtime import run
+from .runtime import (
+    JobOptions,
+    StepOptions,
+    TriggerOptions,
+    WorkflowError,
+    WorkflowRegistry,
+)
 
 __all__ = [
-    "Context",
-    "JobContext",
     "TriggerOptions",
     "JobOptions",
     "StepOptions",
-    "WorkflowRegistry",
     "WorkflowError",
-    "Output",
-    "run",
+    "WorkflowRegistry",
 ]
 
