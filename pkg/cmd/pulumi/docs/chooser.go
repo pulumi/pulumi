@@ -31,6 +31,9 @@ var (
 	// chooserTagRe matches leftover chooser/option comment tags for cleanup.
 	// Only targets chooser-specific tags, not arbitrary HTML comments.
 	chooserTagRe = regexp.MustCompile(`^\s*<!--\s*/?(chooser|option)[\s:]*\w*\s*-->\s*$`)
+
+	// codeFenceOpenRe matches opening code fences with a language tag.
+	codeFenceOpenRe = regexp.MustCompile("^```(\\w+)\\s*$")
 )
 
 // ContentBlock represents either plain text or a chooser in the document.
@@ -210,6 +213,139 @@ func stripLeftoverTags(s string) string {
 		cleaned = append(cleaned, line)
 	}
 	return strings.Join(cleaned, "\n")
+}
+
+// FilterCodeBlocksByLanguage removes unwanted language code blocks from markdown
+// that lacks chooser comments. It detects groups of consecutive fenced code blocks
+// (separated only by blank lines) and keeps only the block matching the selected language.
+// This handles bundle content where Example Usage sections concatenate all languages
+// without chooser wrappers.
+func FilterCodeBlocksByLanguage(markdown, language string) string {
+	if language == "" {
+		return markdown
+	}
+
+	lines := strings.Split(markdown, "\n")
+
+	// codeBlock represents a parsed fenced code block.
+	type codeBlock struct {
+		lang      string
+		startLine int // index of the opening ``` line
+		endLine   int // index of the closing ``` line
+	}
+
+	// Parse all code blocks with their positions.
+	var blocks []codeBlock
+	i := 0
+	for i < len(lines) {
+		m := codeFenceOpenRe.FindStringSubmatch(lines[i])
+		if m == nil {
+			i++
+			continue
+		}
+		lang := m[1]
+		start := i
+		i++
+		for i < len(lines) && lines[i] != "```" {
+			i++
+		}
+		if i < len(lines) {
+			blocks = append(blocks, codeBlock{lang: lang, startLine: start, endLine: i})
+		}
+		i++
+	}
+
+	if len(blocks) == 0 {
+		return markdown
+	}
+
+	// Group consecutive code blocks separated only by blank lines.
+	type blockGroup struct {
+		blocks []codeBlock
+	}
+	var groups []blockGroup
+	current := blockGroup{blocks: []codeBlock{blocks[0]}}
+
+	for j := 1; j < len(blocks); j++ {
+		prev := current.blocks[len(current.blocks)-1]
+		// Check if only blank lines exist between previous block's end and this block's start.
+		allBlank := true
+		for k := prev.endLine + 1; k < blocks[j].startLine; k++ {
+			if strings.TrimSpace(lines[k]) != "" {
+				allBlank = false
+				break
+			}
+		}
+		if allBlank {
+			current.blocks = append(current.blocks, blocks[j])
+		} else {
+			groups = append(groups, current)
+			current = blockGroup{blocks: []codeBlock{blocks[j]}}
+		}
+	}
+	groups = append(groups, current)
+
+	// Build a set of line ranges to exclude.
+	// For each group with multiple language blocks, remove all except the matching one.
+	excludeLines := map[int]bool{}
+	for _, g := range groups {
+		if len(g.blocks) < 2 {
+			continue
+		}
+		// Check if this group has different languages (multi-language example).
+		langs := map[string]bool{}
+		for _, b := range g.blocks {
+			langs[b.lang] = true
+		}
+		if len(langs) < 2 {
+			continue
+		}
+
+		// Find the matching block.
+		matchIdx := -1
+		for idx, b := range g.blocks {
+			if b.lang == language {
+				matchIdx = idx
+				break
+			}
+		}
+		if matchIdx == -1 {
+			// No match — keep all.
+			continue
+		}
+
+		// Exclude all blocks except the match, including surrounding blank lines.
+		for idx, b := range g.blocks {
+			if idx == matchIdx {
+				continue
+			}
+			// Exclude the block and any blank lines before it (back to previous block or content).
+			start := b.startLine
+			for start > 0 && strings.TrimSpace(lines[start-1]) == "" {
+				start--
+				// Don't eat past the previous block's closing fence.
+				if idx > 0 && start <= g.blocks[idx-1].endLine {
+					start = g.blocks[idx-1].endLine + 1
+					break
+				}
+			}
+			for k := start; k <= b.endLine; k++ {
+				excludeLines[k] = true
+			}
+		}
+	}
+
+	if len(excludeLines) == 0 {
+		return markdown
+	}
+
+	var result []string
+	for idx, line := range lines {
+		if !excludeLines[idx] {
+			result = append(result, line)
+		}
+	}
+	return strings.Join(result, "\n")
 }
 
 func resolveChooser(

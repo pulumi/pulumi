@@ -71,9 +71,8 @@ func NewDocsCmd() *cobra.Command {
 	if envURL := os.Getenv("PULUMI_DOCS_BASE_URL"); envURL != "" {
 		dc.baseURL = envURL
 	}
-	// Registry base URL defaults to production independently of the docs base URL,
-	// so that overriding PULUMI_DOCS_BASE_URL for testing doesn't break registry fetches.
-	dc.registryBaseURL = "https://www.pulumi.com"
+	// Registry base URL: check its own env var first, then fall back to the docs base URL.
+	dc.registryBaseURL = dc.baseURL
 	if envURL := os.Getenv("PULUMI_REGISTRY_BASE_URL"); envURL != "" {
 		dc.registryBaseURL = envURL
 	}
@@ -201,15 +200,22 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 
 	fetchBase := dc.baseURLForPath(path)
 
-	// For registry API docs paths, try CLI markdown first (single static file with chooser comments).
-	// Fall back to standard FetchDoc if CLI docs aren't available or this isn't an API docs path.
+	// For registry API docs paths, try the CLI docs bundle first (all docs for a package in one JSON file).
+	// Fall back to standard FetchDoc if the bundle isn't available or the key isn't found.
 	var body, title string
 	var err error
-	isAPI := isAPIDocsPath(path)
-	if isAPI {
-		body, title, err = FetchCLIDoc(fetchBase, path)
+	if isAPIDocsPath(path) {
+		pkgName, docKey, ok := ParseAPIDocsPath(path)
+		if ok && docKey != "" {
+			bundle, bundleErr := FetchCLIDocsBundle(fetchBase, pkgName)
+			if bundleErr == nil {
+				if b, t, found := LookupBundleDoc(bundle, docKey); found {
+					body, title = b, t
+				}
+			}
+		}
 	}
-	if !isAPI || err != nil {
+	if body == "" {
 		body, title, err = FetchDoc(fetchBase, path)
 	}
 	if err != nil {
@@ -293,19 +299,22 @@ func (dc *docsCmd) handleRegistryFallback(path string) error {
 	}
 
 	if cmdutil.Interactive() && overviewPath != "" {
+		optBrowseAPI := "Browse API docs"
 		optOverview := "View package overview"
 		optBrowser := "Open in web browser"
-		options := []string{optOverview, optBrowser}
+		options := []string{optBrowseAPI, optOverview, optBrowser}
 
 		fmt.Fprintln(os.Stderr)
 		selected := ui.PromptUser(
 			"What would you like to do?",
 			options,
-			optOverview,
+			optBrowseAPI,
 			cmdutil.GetGlobalColorization(),
 		)
 
 		switch selected {
+		case optBrowseAPI:
+			return dc.browseLoop(overviewPath + "/api-docs")
 		case optOverview:
 			return dc.fetchAndRender(overviewPath)
 		case optBrowser:
@@ -334,6 +343,14 @@ func (dc *docsCmd) renderBody(body, title string) (string, error) {
 	interactive := cmdutil.Interactive()
 	blocks := ParseChoosers(body)
 	resolved := ResolveChoosers(blocks, prefs, dc.language, dc.osFlag, interactive)
+
+	// Filter unwrapped code blocks by language (handles bundle content without chooser comments).
+	lang := dc.language
+	if lang == "" {
+		lang = prefs.Language
+	}
+	resolved = FilterCodeBlocksByLanguage(resolved, lang)
+
 	return RenderMarkdown(title, resolved)
 }
 

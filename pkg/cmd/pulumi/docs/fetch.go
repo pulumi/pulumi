@@ -21,7 +21,19 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 )
+
+// httpClient is a shared HTTP client with a reasonable timeout to prevent
+// hanging on slow or unresponsive servers (e.g. external SDK docs redirects).
+var httpClient = &http.Client{Timeout: 10 * time.Second}
+
+// bundleHTTPClient uses a longer timeout for large bundle downloads.
+var bundleHTTPClient = &http.Client{Timeout: 5 * time.Minute}
+
+// sitemapCache provides session-level caching for sitemap fetches, keyed by URL.
+var sitemapCache sync.Map
 
 var metaRefreshRe = regexp.MustCompile(`(?i)url=([^"'>]+)`)
 
@@ -59,50 +71,6 @@ func isAPIDocsPath(path string) bool {
 	return strings.Contains(path, "/api-docs")
 }
 
-// FetchCLIDoc attempts to fetch a terminal-friendly CLI markdown file for a registry API docs path.
-// CLI docs are static files at /registry/packages/{pkg}/api-docs/{resource}/cli.md.
-// The file contains all languages wrapped in chooser comments; the CLI resolves to
-// the user's preferred language at render time.
-// Returns the body and title, or an error if the file isn't available.
-func FetchCLIDoc(baseURL, path string) (body string, title string, err error) {
-	base := strings.TrimRight(baseURL, "/")
-	trimmed := strings.Trim(path, "/")
-	// Strip the "registry/" prefix to get the path under /registry/
-	after := strings.TrimPrefix(trimmed, "registry/")
-	after = strings.TrimPrefix(after, "registry")
-
-	cliURL := fmt.Sprintf("%s/registry/%s/cli.md", base, strings.Trim(after, "/"))
-
-	//nolint:gosec // URL is constructed from user-provided base URL and path
-	resp, err := http.Get(cliURL)
-	if err != nil {
-		return "", "", fmt.Errorf("fetching CLI docs: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("CLI docs not available (status %d)", resp.StatusCode)
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", fmt.Errorf("reading CLI docs response: %w", err)
-	}
-	raw := strings.ReplaceAll(string(data), "\r\n", "\n")
-	raw = strings.ReplaceAll(raw, "\t", "    ")
-
-	// CLI docs use "# Title" as the first line instead of YAML frontmatter
-	title = ""
-	if strings.HasPrefix(raw, "# ") {
-		if idx := strings.Index(raw, "\n"); idx >= 0 {
-			title = strings.TrimPrefix(raw[:idx], "# ")
-			raw = strings.TrimLeft(raw[idx+1:], "\n")
-		}
-	}
-
-	return raw, title, nil
-}
-
 // FetchDoc fetches a markdown doc page from the docs or registry site.
 // Returns the body (with frontmatter stripped) and the title.
 // If the markdown 404s, it tries the HTML page to find redirects or meta refreshes.
@@ -113,7 +81,7 @@ func FetchDoc(baseURL, path string) (body string, title string, err error) {
 	mdURL := fmt.Sprintf("%s%s%s/index.md", base, prefix, trimmedPath)
 
 	//nolint:gosec // URL is constructed from user-provided base URL and path
-	resp, err := http.Get(mdURL)
+	resp, err := httpClient.Get(mdURL)
 	if err != nil {
 		return "", "", fmt.Errorf("fetching docs: %w", err)
 	}
@@ -144,11 +112,11 @@ func FetchDoc(baseURL, path string) (body string, title string, err error) {
 
 	// 404 on .md — try the HTML page to find a redirect
 	redirectPath, err := resolveRedirect(base, path)
-	if err != nil || redirectPath == "" {
+	if err != nil || redirectPath == "" || redirectPath == strings.Trim(path, "/") {
 		return "", "", fmt.Errorf("documentation page not found: %s", path)
 	}
 
-	// Try fetching the markdown at the redirected path
+	// Try fetching the markdown at the redirected path (one level only)
 	return FetchDoc(baseURL, redirectPath)
 }
 
@@ -160,6 +128,7 @@ func resolveRedirect(base, path string) (string, error) {
 
 	// Use a client that doesn't follow redirects so we can see 301/302
 	client := &http.Client{
+		Timeout: 10 * time.Second,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
@@ -287,8 +256,12 @@ func FetchPackageSitemap(baseURL, packageName string) ([]SitemapPage, error) {
 }
 
 func fetchSitemapJSON(url, label string) ([]SitemapPage, error) {
+	if cached, ok := sitemapCache.Load(url); ok {
+		return cached.([]SitemapPage), nil
+	}
+
 	//nolint:gosec // URL is constructed from user-provided base URL
-	resp, err := http.Get(url)
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("fetching %s: %w", label, err)
 	}
@@ -302,5 +275,6 @@ func fetchSitemapJSON(url, label string) ([]SitemapPage, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decoding %s: %w", label, err)
 	}
+	sitemapCache.Store(url, result.Pages)
 	return result.Pages, nil
 }
