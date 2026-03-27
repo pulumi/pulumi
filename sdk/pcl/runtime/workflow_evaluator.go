@@ -35,13 +35,15 @@ import (
 type WorkflowEvaluator struct {
 	pulumirpc.UnimplementedWorkflowEvaluatorServer
 
-	packageName    string
-	packageVersion string
-	program        *codegenpcl.WorkflowProgram
-	stepsByPath    map[string]codegenpcl.WorkflowStepDefinition
-	stepResults    map[string]*structpb.Value
-	jobExprByPath  map[string]string
-	filtersByPath  map[string]bool
+	packageName        string
+	packageVersion     string
+	program            *codegenpcl.WorkflowProgram
+	stepsByPath        map[string]codegenpcl.WorkflowStepDefinition
+	stepResults        map[string]*structpb.Value
+	jobInputByPath     map[string]*structpb.Value
+	jobExprByPath      map[string]string
+	jobInputTypeByPath map[string]string
+	filtersByPath      map[string]bool
 }
 
 func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
@@ -52,13 +54,15 @@ func NewWorkflowEvaluator(programPath string) (*WorkflowEvaluator, error) {
 
 	name := strings.TrimSuffix(filepath.Base(programPath), filepath.Ext(programPath))
 	return &WorkflowEvaluator{
-		packageName:    name,
-		packageVersion: "0.0.1",
-		program:        program,
-		stepsByPath:    map[string]codegenpcl.WorkflowStepDefinition{},
-		stepResults:    map[string]*structpb.Value{},
-		jobExprByPath:  map[string]string{},
-		filtersByPath:  map[string]bool{},
+		packageName:        name,
+		packageVersion:     "0.0.1",
+		program:            program,
+		stepsByPath:        map[string]codegenpcl.WorkflowStepDefinition{},
+		stepResults:        map[string]*structpb.Value{},
+		jobInputByPath:     map[string]*structpb.Value{},
+		jobExprByPath:      map[string]string{},
+		jobInputTypeByPath: map[string]string{},
+		filtersByPath:      map[string]bool{},
 	}, nil
 }
 
@@ -128,9 +132,10 @@ func (e *WorkflowEvaluator) GetJobs(
 ) (*pulumirpc.GetJobsResponse, error) {
 	resp := &pulumirpc.GetJobsResponse{}
 	for _, name := range e.program.JobNames() {
+		job, _ := e.program.JobByName(name)
 		resp.Jobs = append(resp.Jobs, &pulumirpc.JobInfo{
 			Token:      e.jobToken(name),
-			InputType:  &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
+			InputType:  &pulumirpc.TypeReference{Token: defaultTypeToken(job.InputType)},
 			OutputType: &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
 		})
 	}
@@ -144,13 +149,14 @@ func (e *WorkflowEvaluator) GetJob(
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, "unknown job token %q", req.GetToken())
 	}
-	if _, ok := e.program.JobByName(name); !ok {
+	job, ok := e.program.JobByName(name)
+	if !ok {
 		return nil, status.Errorf(codes.NotFound, "unknown job token %q", req.GetToken())
 	}
 	return &pulumirpc.GetJobResponse{
 		Job: &pulumirpc.JobInfo{
 			Token:      e.jobToken(name),
-			InputType:  &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
+			InputType:  &pulumirpc.TypeReference{Token: defaultTypeToken(job.InputType)},
 			OutputType: &pulumirpc.TypeReference{Token: "pulumi:json#/Any"},
 		},
 	}, nil
@@ -239,7 +245,7 @@ func (e *WorkflowEvaluator) GenerateJob(
 		defer func() { _ = conn.Close() }()
 
 		jobPath := e.jobToken(name)
-		return e.registerJob(ctx, req.GetContext(), jobPath, jobDef.Steps, jobDef.Expr, monitor)
+		return e.registerJob(ctx, req.GetContext(), jobPath, req.GetInputValue(), jobDef.Steps, jobDef.InputType, jobDef.Expr, monitor)
 	}
 
 	parts := strings.Split(req.GetPath(), "/jobs/")
@@ -283,6 +289,7 @@ func (e *WorkflowEvaluator) GenerateJob(
 	}
 
 	jobSteps := selected.Steps
+	jobInputType := ""
 	jobExpr := selected.Expr
 	if selected.Uses != "" {
 		jobDef, ok := e.program.JobDefinitionForUse(selected.Uses)
@@ -290,6 +297,7 @@ func (e *WorkflowEvaluator) GenerateJob(
 			return nil, status.Errorf(codes.NotFound, "unknown job definition %q", selected.Uses)
 		}
 		jobSteps = jobDef.Steps
+		jobInputType = jobDef.InputType
 		if jobExpr == "" {
 			jobExpr = jobDef.Expr
 		}
@@ -306,9 +314,13 @@ func (e *WorkflowEvaluator) GenerateJob(
 		return nil, err
 	}
 	e.jobExprByPath[jobPath] = jobExpr
+	e.jobInputTypeByPath[jobPath] = jobInputType
 
 	if selected.Filter != nil {
 		e.filtersByPath[jobPath] = *selected.Filter
+	}
+	if req.GetInputValue() != nil {
+		e.jobInputByPath[jobPath] = structpb.NewStructValue(req.GetInputValue())
 	}
 
 	for _, step := range jobSteps {
@@ -346,7 +358,9 @@ func (e *WorkflowEvaluator) registerJob(
 	ctx context.Context,
 	wfContext *pulumirpc.WorkflowContext,
 	jobPath string,
+	inputValue *structpb.Struct,
 	jobSteps []codegenpcl.WorkflowJobStep,
+	jobInputType string,
 	jobExpr string,
 	monitor pulumirpc.GraphMonitorClient,
 ) (*pulumirpc.GenerateNodeResponse, error) {
@@ -360,6 +374,10 @@ func (e *WorkflowEvaluator) registerJob(
 		return nil, err
 	}
 	e.jobExprByPath[jobPath] = jobExpr
+	e.jobInputTypeByPath[jobPath] = jobInputType
+	if inputValue != nil {
+		e.jobInputByPath[jobPath] = structpb.NewStructValue(inputValue)
+	}
 
 	for _, step := range jobSteps {
 		stepDef, err := e.stepDefinitionForJobStep(step)
@@ -466,6 +484,17 @@ func (e *WorkflowEvaluator) ResolveJobResult(
 
 	if stepValue, ok := e.stepResults[jobPath+"/steps/"+expr]; ok {
 		return &pulumirpc.ResolveJobResultResponse{Result: stepValue}, nil
+	}
+
+	if inputValue, ok := e.jobInputByPath[jobPath]; ok {
+		value, err := executeStepDefinition(codegenpcl.WorkflowStepDefinition{
+			InputType: e.jobInputTypeByPath[jobPath],
+			Expr:      expr,
+		}, inputValue)
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.ResolveJobResultResponse{Result: value}, nil
 	}
 	return &pulumirpc.ResolveJobResultResponse{
 		Result: structpb.NewStringValue(expr),
@@ -574,17 +603,39 @@ func executeStepDefinition(step codegenpcl.WorkflowStepDefinition, input *struct
 		return structpb.NewStringValue(strings.TrimSpace(string(out))), nil
 	}
 	expr := strings.TrimSpace(step.Expr)
+	inputBool := false
+	hasInputBool := false
+	if input != nil {
+		if input.GetKind() != nil {
+			switch input.GetKind().(type) {
+			case *structpb.Value_BoolValue:
+				inputBool = input.GetBoolValue()
+				hasInputBool = true
+			case *structpb.Value_StructValue:
+				if field, ok := input.GetStructValue().GetFields()["input"]; ok {
+					inputBool = field.GetBoolValue()
+					hasInputBool = true
+				}
+			}
+		}
+	}
+
 	switch expr {
 	case "input":
 		if input == nil {
 			return structpb.NewNullValue(), nil
 		}
+		if input.GetStructValue() != nil {
+			if field, ok := input.GetStructValue().GetFields()["input"]; ok {
+				return field, nil
+			}
+		}
 		return input, nil
 	case "!input", "not input":
-		if input == nil {
+		if !hasInputBool {
 			return nil, status.Error(codes.InvalidArgument, "step expression requires bool input")
 		}
-		return structpb.NewBoolValue(!input.GetBoolValue()), nil
+		return structpb.NewBoolValue(!inputBool), nil
 	default:
 		return structpb.NewStringValue(step.Expr), nil
 	}

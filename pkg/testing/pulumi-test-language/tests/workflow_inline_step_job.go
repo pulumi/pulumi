@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	LanguageTests["workflow-expr-job"] = LanguageTest{
+	LanguageTests["workflow-inline-step-job"] = LanguageTest{
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
@@ -38,6 +38,7 @@ func init() {
 					require.NoError(l, err)
 					require.NotNil(l, job.GetJob())
 					assert.Equal(l, "bool", job.GetJob().GetInputType().GetToken())
+
 					monitor := &workflowJobMonitor{}
 					grpcServer := grpc.NewServer()
 					pulumirpc.RegisterGraphMonitorServer(grpcServer, monitor)
@@ -65,7 +66,23 @@ func init() {
 					require.Empty(l, generateResp.GetError().GetReason())
 
 					steps := monitor.snapshotStepsForJob(jobToken)
-					require.Empty(l, steps)
+					require.Len(l, steps, 1)
+
+					filterResp, err := args.Workflow.RunFilter(args.Context, &pulumirpc.RunFilterRequest{
+						Path: steps[0],
+					})
+					require.NoError(l, err)
+					require.True(l, filterResp.GetPass())
+
+					// Feed the job input value to the inline step.
+					runResp, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
+						Context: workflowContext,
+						Path:    steps[0],
+						Input:   structpb.NewBoolValue(true),
+					})
+					require.NoError(l, err)
+					require.Empty(l, runResp.GetError().GetReason())
+					assert.False(l, runResp.GetResult().GetBoolValue())
 
 					result, err := args.Workflow.ResolveJobResult(args.Context, &pulumirpc.ResolveJobResultRequest{
 						Context: workflowContext,

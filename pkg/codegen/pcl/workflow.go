@@ -79,9 +79,10 @@ type WorkflowStepDefinition struct {
 }
 
 type WorkflowJobDefinition struct {
-	Name  string            `hcl:"name,label"`
-	Expr  string            `hcl:"expr,optional"`
-	Steps []WorkflowJobStep `hcl:"step,block"`
+	Name      string            `hcl:"name,label"`
+	InputType string            `hcl:"input_type,optional"`
+	Expr      string            `hcl:"expr,optional"`
+	Steps     []WorkflowJobStep `hcl:"step,block"`
 }
 
 type WorkflowJobStep struct {
@@ -175,7 +176,7 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 		p.jobsByName[job.Name] = job
 	}
 
-	if len(p.graphsByName) == 0 {
+	if len(p.graphsByName) == 0 && len(p.jobsByName) == 0 && len(p.stepsByName) == 0 && len(p.triggersByName) == 0 {
 		return nil, errors.New("no workflow blocks found")
 	}
 
