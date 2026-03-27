@@ -54,6 +54,8 @@ StepCallback = Callable[[Any], Any]
 _WORKFLOW_OUTPUT_PATHS_ATTR = "_pulumi_workflow_output_paths"
 _WORKFLOW_OUTPUT_VALUE_ATTR = "_pulumi_workflow_output_value"
 _WORKFLOW_OUTPUT_MARKER_ATTR = "_pulumi_workflow_output_marker"
+_WORKFLOW_EXTERNAL_JOB_TOKEN_ATTR = "_pulumi_workflow_external_job_token"
+_WORKFLOW_EXTERNAL_STEP_TOKEN_ATTR = "_pulumi_workflow_external_step_token"
 
 
 @dataclass
@@ -217,14 +219,18 @@ class Context:
         if effective_filter is None and options is not None:
             effective_filter = options.filter
 
-        is_external_job = fn is None and ":" in name
+        referenced_external_token = _external_job_token(fn)
+        is_external_job = (fn is None and ":" in name) or referenced_external_token is not None
         registered_name = name
         external_token: Optional[str] = None
         if is_external_job:
-            external_token = self._state.registry.resolve_job_token(name)
+            if referenced_external_token is not None:
+                external_token = referenced_external_token
+            else:
+                external_token = self._state.registry.resolve_job_token(name)
             if options is not None and options.name:
                 registered_name = options.name
-            else:
+            elif ":" in name:
                 registered_name = _default_job_name_for_token(name)
 
         def register(registered_fn: JobCallback) -> Output[Any]:
@@ -364,14 +370,18 @@ class JobContext:
         if fn is None and callable(arg):
             fn = cast(Callable[[T], U], arg)
             arg = None
-        is_external_step = fn is None and ":" in name
+        referenced_external_token = _external_step_token(fn)
+        is_external_step = (fn is None and ":" in name) or referenced_external_token is not None
         registered_name = name
         external_token: Optional[str] = None
         if is_external_step:
-            external_token = self._state.registry.resolve_step_token(name)
+            if referenced_external_token is not None:
+                external_token = referenced_external_token
+            else:
+                external_token = self._state.registry.resolve_step_token(name)
             if options is not None and options.name:
                 registered_name = options.name
-            else:
+            elif ":" in name:
                 registered_name = _default_step_name_for_token(name)
 
         def register(registered_fn: Callable[[T], U]) -> Output[U]:
@@ -519,6 +529,11 @@ class WorkflowRegistry:
         *,
         on_error: Optional[OnErrorHandler] = None,
     ) -> Callable[[Callable[[JobContext, TInput], Output[TOutput]]], Callable[[JobContext, TInput], Output[TOutput]]]:
+        """Registers an exported job.
+
+        The decorated function is also returned with an attached external token marker,
+        so it can be passed to `Context.job(...)` when composing graphs.
+        """
         def register(fn: Callable[[JobContext, TInput], Output[TOutput]]) -> Callable[[JobContext, TInput], Output[TOutput]]:
             if not token:
                 raise WorkflowError("job token is required")
@@ -539,6 +554,7 @@ class WorkflowRegistry:
                 fn=cast(Callable[[JobContext, Any], Output[Any]], fn),
                 on_error=on_error,
             )
+            setattr(fn, _WORKFLOW_EXTERNAL_JOB_TOKEN_ATTR, resolved_token)
             return fn
 
         return register
@@ -550,6 +566,11 @@ class WorkflowRegistry:
         *,
         on_error: Optional[OnErrorHandler] = None,
     ) -> Callable[[Callable[[TInput], TOutput]], Callable[[TInput], TOutput]]:
+        """Registers an exported step.
+
+        The decorated function is also returned with an attached external token marker,
+        so it can be passed to `JobContext.step(...)` when composing jobs.
+        """
         def register(fn: Callable[[TInput], TOutput]) -> Callable[[TInput], TOutput]:
             if not token:
                 raise WorkflowError("step token is required")
@@ -570,6 +591,7 @@ class WorkflowRegistry:
                 fn=cast(StepCallback, fn),
                 on_error=on_error,
             )
+            setattr(fn, _WORKFLOW_EXTERNAL_STEP_TOKEN_ATTR, resolved_token)
             return fn
 
         return register
@@ -712,6 +734,24 @@ def _qualify_step_token(package_name: str, token: str) -> str:
 def _default_step_name_for_token(token: str) -> str:
     parts = token.split(":")
     return parts[-1] if len(parts) > 0 else token
+
+
+def _external_job_token(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    token = getattr(value, _WORKFLOW_EXTERNAL_JOB_TOKEN_ATTR, None)
+    if isinstance(token, str) and token != "":
+        return token
+    return None
+
+
+def _external_step_token(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    token = getattr(value, _WORKFLOW_EXTERNAL_STEP_TOKEN_ATTR, None)
+    if isinstance(token, str) and token != "":
+        return token
+    return None
 
 
 def _job_return_output_type(fn: Callable[..., Any]) -> Type[Any]:

@@ -42,7 +42,12 @@ class ExternalStepOutput:
     value: str
 
 
-def main_graph(ctx: workflow.Context) -> None:
+def main_graph(
+    ctx: workflow.Context,
+    compose_message_job_ref=None,
+    to_upper_step_ref=None,
+    add_suffix_step_ref=None,
+) -> None:
     def cron_filter(value: Any) -> bool:
         if not isinstance(value, dict) or "timestamp" not in value:
             return False
@@ -133,16 +138,26 @@ def main_graph(ctx: workflow.Context) -> None:
             "result": results[1]["jobResult"],
         })
 
-    ctx.job("example:compose-message", workflow.JobOptions(name="external-compose"))
+    if compose_message_job_ref is None:
+        ctx.job("example:compose-message", workflow.JobOptions(name="external-compose"))
+    else:
+        ctx.job("external-compose", compose_message_job_ref)
 
     @ctx.job("external-steps")
     def external_steps_job(job: workflow.JobContext) -> None:
-        upper = job.step("example:to-upper", ExternalStepInput(value="alpha"))
-        with_suffix = job.step(
-            "example:add-suffix",
-            upper,
-            workflow.StepOptions(name="suffix-step"),
-        )
+        if to_upper_step_ref is None:
+            upper = job.step("example:to-upper", ExternalStepInput(value="alpha"))
+        else:
+            upper = job.step("to-upper", ExternalStepInput(value="alpha"), to_upper_step_ref)
+
+        if add_suffix_step_ref is None:
+            with_suffix = job.step(
+                "example:add-suffix",
+                upper,
+                workflow.StepOptions(name="suffix-step"),
+            )
+        else:
+            with_suffix = job.step("suffix-step", upper, add_suffix_step_ref)
 
         @job.step("emit", with_suffix, dependencies=["to-upper", "suffix-step"])
         def emit_step(result: ExternalStepOutput) -> dict[str, Any]:
@@ -244,7 +259,12 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
 
     @registry.graph("main")
     def registered_main_graph(ctx: workflow.Context) -> None:
-        main_graph(ctx)
+        main_graph(
+            ctx,
+            compose_message_job_ref=compose_message_job,
+            to_upper_step_ref=to_upper_step,
+            add_suffix_step_ref=add_suffix_step,
+        )
 
 
 if __name__ == "__main__":
