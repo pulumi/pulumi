@@ -48,6 +48,7 @@ type testHost struct {
 	runtime     plugin.LanguageRuntime
 	runtimeName string
 	providers   map[string]func() (plugin.Provider, error)
+	workflows   map[string]func() (plugin.Workflow, error)
 
 	connectionsMutex sync.Mutex
 	connections      map[plugin.Provider]io.Closer
@@ -182,6 +183,9 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 }
 
 func (h *testHost) Workflow(programPath string) (plugin.Workflow, error) {
+	if workflowFactory, ok := h.workflows[programPath]; ok {
+		return workflowFactory()
+	}
 	return plugin.NewWorkflow(h, h.ctx, programPath)
 }
 

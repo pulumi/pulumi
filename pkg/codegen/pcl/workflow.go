@@ -26,6 +26,8 @@ import (
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -42,6 +44,7 @@ type WorkflowProgram struct {
 	Steps     []WorkflowStepDefinition    `hcl:"step,block"`
 	Jobs      []WorkflowJobDefinition     `hcl:"job,block"`
 	Workflows []WorkflowGraph             `hcl:"workflow,block"`
+	Packages  map[string]*schema.PackageDescriptor
 
 	graphsByName   map[string]WorkflowGraph
 	triggersByName map[string]WorkflowTriggerDefinition
@@ -109,6 +112,7 @@ type workflowProgramFile struct {
 	Steps     []workflowStepDefinitionRaw `hcl:"step,block"`
 	Jobs      []workflowJobDefinitionRaw  `hcl:"job,block"`
 	Workflows []WorkflowGraph             `hcl:"workflow,block"`
+	Remain    hcl.Body                    `hcl:",remain"`
 }
 
 type workflowStepDefinitionRaw struct {
@@ -167,6 +171,11 @@ func BindWorkflowDirectory(dir string) (*WorkflowProgram, error) {
 }
 
 func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
+	packages, err := bindWorkflowPackageDescriptors(source)
+	if err != nil {
+		return nil, err
+	}
+
 	parser := hclparse.NewParser()
 	keys := make([]string, 0, len(source))
 	for path := range source {
@@ -175,6 +184,7 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 	sort.Strings(keys)
 
 	var p WorkflowProgram
+	p.Packages = packages
 	for _, filePath := range keys {
 		hclFile, diags := parser.ParseHCL([]byte(source[filePath]), filePath)
 		if diags.HasErrors() {
@@ -279,6 +289,31 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 	}
 
 	return &p, nil
+}
+
+func bindWorkflowPackageDescriptors(source map[string]string) (map[string]*schema.PackageDescriptor, error) {
+	parser := syntax.NewParser()
+	keys := make([]string, 0, len(source))
+	for path := range source {
+		keys = append(keys, path)
+	}
+	sort.Strings(keys)
+	for _, filePath := range keys {
+		if filepath.Ext(filePath) != ".pp" {
+			continue
+		}
+		if err := parser.ParseFile(strings.NewReader(source[filePath]), filePath); err != nil {
+			return nil, fmt.Errorf("parse workflow pcl file %q: %w", filePath, err)
+		}
+	}
+	if parser.Diagnostics.HasErrors() {
+		return nil, fmt.Errorf("parse workflow pcl package blocks: %s", parser.Diagnostics.Error())
+	}
+	packages, diags := ReadAllPackageDescriptors(parser.Files)
+	if diags.HasErrors() {
+		return nil, fmt.Errorf("decode workflow pcl package blocks: %s", diags.Error())
+	}
+	return packages, nil
 }
 
 func parseWorkflowInputType(expr hcl.Expression) (WorkflowInputType, error) {

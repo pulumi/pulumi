@@ -15,8 +15,10 @@
 package tests
 
 import (
+	"context"
 	"net"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +28,37 @@ import (
 
 func init() {
 	LanguageTests["workflow-external-step-job"] = LanguageTest{
+		Workflows: []func() plugin.Workflow{
+			func() plugin.Workflow {
+				return &plugin.MockWorkflow{
+					GetPackageInfoF: func(
+						_ context.Context, _ *pulumirpc.EmptyRequest,
+					) (*pulumirpc.GetPackageInfoResponse, error) {
+						return &pulumirpc.GetPackageInfoResponse{
+							Package: &pulumirpc.PackageInfo{
+								Name:    "external",
+								Version: "1.0.0",
+							},
+						}, nil
+					},
+					GetGraphsF: func(
+						_ context.Context, _ *pulumirpc.EmptyRequest,
+					) (*pulumirpc.GetGraphsResponse, error) {
+						return &pulumirpc.GetGraphsResponse{}, nil
+					},
+					GetTriggersF: func(
+						_ context.Context, _ *pulumirpc.EmptyRequest,
+					) (*pulumirpc.GetTriggersResponse, error) {
+						return &pulumirpc.GetTriggersResponse{}, nil
+					},
+					GetJobsF: func(
+						_ context.Context, _ *pulumirpc.EmptyRequest,
+					) (*pulumirpc.GetJobsResponse, error) {
+						return &pulumirpc.GetJobsResponse{}, nil
+					},
+				}
+			},
+		},
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {

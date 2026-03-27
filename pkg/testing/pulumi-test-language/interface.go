@@ -56,6 +56,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/require"
@@ -399,6 +400,210 @@ func (l *providerLoader) LoadPackageV2(
 	return ref.Definition()
 }
 
+type workflowLoader struct {
+	codegenrpc.UnimplementedWorkflowLoaderServer
+
+	host plugin.Host
+}
+
+func (l *workflowLoader) loadWorkflow(
+	ctx context.Context,
+	descriptor *codegenrpc.WorkflowPackageDescriptor,
+) (plugin.Workflow, error) {
+	if descriptor == nil || descriptor.GetName() == "" {
+		return nil, errors.New("workflow package descriptor name is required")
+	}
+
+	keys := []string{descriptor.GetName()}
+	if descriptor.GetVersion() != "" {
+		keys = append([]string{fmt.Sprintf("%s@%s", descriptor.GetName(), descriptor.GetVersion())}, keys...)
+	}
+
+	var lastErr error
+	for _, key := range keys {
+		workflow, err := l.host.Workflow(key)
+		if err == nil {
+			return workflow, nil
+		}
+		lastErr = err
+	}
+
+	return nil, fmt.Errorf("load workflow package %q: %w", descriptor.GetName(), lastErr)
+}
+
+func toCodegenTypeReference(t *pulumirpc.TypeReference) *codegenrpc.TypeReference {
+	if t == nil {
+		return nil
+	}
+	properties := map[string]*codegenrpc.PropertySpec{}
+	if t.GetObject() != nil {
+		for k, spec := range t.GetObject().GetProperties() {
+			properties[k] = &codegenrpc.PropertySpec{Type: spec.GetType()}
+		}
+	}
+	ref := &codegenrpc.TypeReference{
+		Token: t.GetToken(),
+	}
+	if t.GetObject() != nil {
+		ref.Object = &codegenrpc.StructObject{Properties: properties}
+	}
+	return ref
+}
+
+func toCodegenGraphInfo(info *pulumirpc.GraphInfo) *codegenrpc.GraphInfo {
+	if info == nil {
+		return nil
+	}
+	return &codegenrpc.GraphInfo{
+		Token:      info.GetToken(),
+		InputType:  toCodegenTypeReference(info.GetInputType()),
+		OutputType: toCodegenTypeReference(info.GetOutputType()),
+		HasOnError: info.GetHasOnError(),
+	}
+}
+
+func toCodegenJobInfo(info *pulumirpc.JobInfo) *codegenrpc.JobInfo {
+	if info == nil {
+		return nil
+	}
+	return &codegenrpc.JobInfo{
+		Token:      info.GetToken(),
+		InputType:  toCodegenTypeReference(info.GetInputType()),
+		OutputType: toCodegenTypeReference(info.GetOutputType()),
+		HasOnError: info.GetHasOnError(),
+	}
+}
+
+func (l *workflowLoader) GetPackageInfo(
+	ctx context.Context, req *codegenrpc.GetWorkflowPackageInfoRequest,
+) (*codegenrpc.GetPackageInfoResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetPackageInfo(ctx, &pulumirpc.EmptyRequest{})
+	if err != nil {
+		return nil, err
+	}
+	pkg := resp.GetPackage()
+	return &codegenrpc.GetPackageInfoResponse{
+		Package: &codegenrpc.PackageInfo{
+			Name:        pkg.GetName(),
+			Version:     pkg.GetVersion(),
+			DisplayName: pkg.GetDisplayName(),
+		},
+	}, nil
+}
+
+func (l *workflowLoader) GetGraphs(
+	ctx context.Context, req *codegenrpc.GetWorkflowGraphsRequest,
+) (*codegenrpc.GetGraphsResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetGraphs(ctx, &pulumirpc.EmptyRequest{})
+	if err != nil {
+		return nil, err
+	}
+	graphs := make([]*codegenrpc.GraphInfo, 0, len(resp.GetGraphs()))
+	for _, graph := range resp.GetGraphs() {
+		graphs = append(graphs, toCodegenGraphInfo(graph))
+	}
+	return &codegenrpc.GetGraphsResponse{Graphs: graphs}, nil
+}
+
+func (l *workflowLoader) GetGraph(
+	ctx context.Context, req *codegenrpc.GetWorkflowGraphRequest,
+) (*codegenrpc.GetGraphResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetGraph(ctx, &pulumirpc.TokenLookupRequest{Token: req.GetToken()})
+	if err != nil {
+		return nil, err
+	}
+	return &codegenrpc.GetGraphResponse{Graph: toCodegenGraphInfo(resp.GetGraph())}, nil
+}
+
+func (l *workflowLoader) GetTriggers(
+	ctx context.Context, req *codegenrpc.GetWorkflowTriggersRequest,
+) (*codegenrpc.GetTriggersResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetTriggers(ctx, &pulumirpc.EmptyRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return &codegenrpc.GetTriggersResponse{Triggers: resp.GetTriggers()}, nil
+}
+
+func (l *workflowLoader) GetTrigger(
+	ctx context.Context, req *codegenrpc.GetWorkflowTriggerRequest,
+) (*codegenrpc.GetTriggerResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetTrigger(ctx, &pulumirpc.TokenLookupRequest{Token: req.GetToken()})
+	if err != nil {
+		return nil, err
+	}
+	return &codegenrpc.GetTriggerResponse{
+		InputType:  toCodegenTypeReference(resp.GetInputType()),
+		OutputType: toCodegenTypeReference(resp.GetOutputType()),
+	}, nil
+}
+
+func (l *workflowLoader) GetJobs(
+	ctx context.Context, req *codegenrpc.GetWorkflowJobsRequest,
+) (*codegenrpc.GetJobsResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetJobs(ctx, &pulumirpc.EmptyRequest{})
+	if err != nil {
+		return nil, err
+	}
+	jobs := make([]*codegenrpc.JobInfo, 0, len(resp.GetJobs()))
+	for _, job := range resp.GetJobs() {
+		jobs = append(jobs, toCodegenJobInfo(job))
+	}
+	return &codegenrpc.GetJobsResponse{Jobs: jobs}, nil
+}
+
+func (l *workflowLoader) GetJob(
+	ctx context.Context, req *codegenrpc.GetWorkflowJobRequest,
+) (*codegenrpc.GetJobResponse, error) {
+	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(workflow)
+
+	resp, err := workflow.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: req.GetToken()})
+	if err != nil {
+		return nil, err
+	}
+	return &codegenrpc.GetJobResponse{Job: toCodegenJobInfo(resp.GetJob())}, nil
+}
+
 func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
 	req *testingrpc.GetLanguageTestsRequest,
@@ -702,6 +907,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		runtime:                     languageClient,
 		runtimeName:                 token.LanguagePluginName,
 		providers:                   make(map[string]func() (plugin.Provider, error)),
+		workflows:                   make(map[string]func() (plugin.Workflow, error)),
 		connections:                 make(map[plugin.Provider]io.Closer),
 		skipEnsurePluginsValidation: test.SkipEnsurePluginsValidation,
 	}
@@ -715,7 +921,12 @@ func (eng *languageTestServer) RunLanguageTest(
 		host:         host,
 	}
 	loaderServer := schema.NewLoaderServer(loader)
-	grpcServer, err := plugin.NewServer(pctx, schema.LoaderRegistration(loaderServer))
+	workflowLoaderServer := &workflowLoader{host: host}
+	grpcServer, err := plugin.NewServer(
+		pctx,
+		schema.LoaderRegistration(loaderServer),
+		func(server *grpc.Server) { codegenrpc.RegisterWorkflowLoaderServer(server, workflowLoaderServer) },
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -802,11 +1013,39 @@ func (eng *languageTestServer) RunLanguageTest(
 		}
 	}
 
+	for _, workflowFactory := range test.Workflows {
+		wfFactory := workflowFactory
+		workflow := wfFactory()
+		pkgInfo, err := workflow.GetPackageInfo(ctx, &pulumirpc.EmptyRequest{})
+		if err != nil {
+			return nil, fmt.Errorf("get workflow package info: %w", err)
+		}
+		if closeErr := workflow.Close(); closeErr != nil {
+			return nil, fmt.Errorf("close workflow plugin after package info: %w", closeErr)
+		}
+		pkg := pkgInfo.GetPackage()
+		if pkg == nil || pkg.GetName() == "" {
+			return nil, errors.New("workflow package info must include a name")
+		}
+
+		name := pkg.GetName()
+		host.workflows[name] = func() (plugin.Workflow, error) {
+			return wfFactory(), nil
+		}
+		if pkg.GetVersion() != "" {
+			versioned := fmt.Sprintf("%s@%s", name, pkg.GetVersion())
+			host.workflows[versioned] = func() (plugin.Workflow, error) {
+				return wfFactory(), nil
+			}
+		}
+	}
+
 	// Generate SDKs for all the packages we need
 	artifactsDir := filepath.Join(token.TemporaryDirectory, "artifacts")
 
 	// For each test run collect the packages reported by PCL
 	packages := []*schema.Package{}
+	workflowPackagesByName := map[string]*codegenrpc.WorkflowPackageDescriptor{}
 	for i, run := range test.Runs {
 		if i > 0 && test.RunsShareSource {
 			break
@@ -835,33 +1074,58 @@ func (eng *languageTestServer) RunLanguageTest(
 			sourceDir = filepath.Join(sourceDir, run.Main)
 		}
 
-		program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
+		programKind, err := pcl.DetectProgramKindFromDirectory(sourceDir)
 		if err != nil {
-			return nil, fmt.Errorf("bind PCL program: %v", err)
+			return nil, fmt.Errorf("detect PCL program kind: %w", err)
 		}
-		if diagnostics.HasErrors() {
-			return nil, fmt.Errorf("bind PCL program: %v", diagnostics)
-		}
-
-		pkgs := program.PackageReferences()
-		// We should be able to get a full def for each package
-		for _, pkg := range pkgs {
-			if pkg.Name() == "pulumi" {
-				// No need to write the pulumi package, it's builtin to core SDKs
-				continue
-			}
-			def, err := pkg.Definition()
+		switch programKind {
+		case pcl.ProgramKindResource:
+			program, diagnostics, err := pcl.BindDirectory(sourceDir, loader)
 			if err != nil {
-				return nil, fmt.Errorf("get package definition: %w", err)
+				return nil, fmt.Errorf("bind PCL program: %v", err)
 			}
-			exists := false
-			for _, existing := range packages {
-				if existing.Name == def.Name {
-					exists = true
+			if diagnostics.HasErrors() {
+				return nil, fmt.Errorf("bind PCL program: %v", diagnostics)
+			}
+
+			pkgs := program.PackageReferences()
+			// We should be able to get a full def for each package
+			for _, pkg := range pkgs {
+				if pkg.Name() == "pulumi" {
+					// No need to write the pulumi package, it's builtin to core SDKs
+					continue
+				}
+				def, err := pkg.Definition()
+				if err != nil {
+					return nil, fmt.Errorf("get package definition: %w", err)
+				}
+				exists := false
+				for _, existing := range packages {
+					if existing.Name == def.Name {
+						exists = true
+					}
+				}
+				if !exists {
+					packages = append(packages, def)
 				}
 			}
-			if !exists {
-				packages = append(packages, def)
+		case pcl.ProgramKindWorkflow:
+			program, err := pcl.BindWorkflowDirectory(sourceDir)
+			if err != nil {
+				return nil, fmt.Errorf("bind workflow program: %v", err)
+			}
+			for _, descriptor := range program.Packages {
+				if descriptor == nil || descriptor.Name == "" {
+					continue
+				}
+				version := ""
+				if descriptor.PackageVersion() != nil {
+					version = descriptor.PackageVersion().String()
+				}
+				workflowPackagesByName[descriptor.Name] = &codegenrpc.WorkflowPackageDescriptor{
+					Name:    descriptor.Name,
+					Version: version,
+				}
 			}
 		}
 	}
@@ -986,6 +1250,78 @@ func (eng *languageTestServer) RunLanguageTest(
 							pkg.Name, strings.Join(validations, "\n"))), nil
 				}
 
+				return nil, nil
+			}()
+			if response != nil || err != nil {
+				return response, err
+			}
+		}
+	}
+
+	if len(workflowPackagesByName) > 0 {
+		workflowPackageNames := make([]string, 0, len(workflowPackagesByName))
+		for name := range workflowPackagesByName {
+			workflowPackageNames = append(workflowPackageNames, name)
+		}
+		sort.Strings(workflowPackageNames)
+
+		for _, workflowPackageName := range workflowPackageNames {
+			descriptor := workflowPackagesByName[workflowPackageName]
+			if descriptor == nil {
+				continue
+			}
+
+			sdkVersion := descriptor.GetVersion()
+			if sdkVersion == "" {
+				sdkVersion = "0.0.0"
+			}
+			sdkName := fmt.Sprintf("workflow-%s-%s", descriptor.GetName(), sdkVersion)
+			sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
+			sdks[sdkName] = sdkTempDir
+
+			response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
+				lock, _ := eng.sdkLocks.LoadOrStore(sdkTempDir, &sync.Mutex{})
+				lock.Lock()
+				defer lock.Unlock()
+
+				if token.Local {
+					if err := os.MkdirAll(sdkTempDir, 0o755); err != nil {
+						return nil, fmt.Errorf("create workflow sdk temp dir: %w", err)
+					}
+					diags, err := languageClient.GenerateWorkflowPackage(sdkTempDir, descriptor, grpcServer.Addr())
+					if err != nil {
+						return makeTestResponse(fmt.Sprintf("generate workflow package %s: %v", descriptor.GetName(), err)), nil
+					}
+					if diags.HasErrors() {
+						return makeTestResponse(fmt.Sprintf("generate workflow package %s: %v", descriptor.GetName(), diags)), nil
+					}
+					localDependencies[descriptor.GetName()] = sdkTempDir
+					return nil, nil
+				}
+
+				sdkArtifact, ok := eng.artifactMap.Load(sdkTempDir)
+				if ok {
+					localDependencies[descriptor.GetName()] = sdkArtifact
+					return nil, nil
+				}
+
+				if err := os.MkdirAll(sdkTempDir, 0o755); err != nil {
+					return nil, fmt.Errorf("create workflow sdk temp dir: %w", err)
+				}
+				diags, err := languageClient.GenerateWorkflowPackage(sdkTempDir, descriptor, grpcServer.Addr())
+				if err != nil {
+					return makeTestResponse(fmt.Sprintf("generate workflow package %s: %v", descriptor.GetName(), err)), nil
+				}
+				if diags.HasErrors() {
+					return makeTestResponse(fmt.Sprintf("generate workflow package %s: %v", descriptor.GetName(), diags)), nil
+				}
+
+				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
+				if err != nil {
+					return nil, fmt.Errorf("workflow sdk packing for %s: %w", descriptor.GetName(), err)
+				}
+				localDependencies[descriptor.GetName()] = sdkArtifact
+				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
 				return nil, nil
 			}()
 			if response != nil || err != nil {

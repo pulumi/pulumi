@@ -222,6 +222,7 @@ var (
 
 type LanguageTest struct {
 	Providers []func() plugin.Provider
+	Workflows []func() plugin.Workflow
 
 	// A list of provider names that should be loaded from the languages providers directory.
 	LanguageProviders []string

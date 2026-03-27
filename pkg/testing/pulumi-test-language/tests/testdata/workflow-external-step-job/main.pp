@@ -1,3 +1,7 @@
+package external {
+  version = "1.0.0"
+}
+
 step "invert" {
   input_type = {
     input = bool
@@ -12,6 +16,6 @@ job "build" {
   expr       = invert
 
   step "invert" {
-    uses = "invert"
+    uses = "external:invert"
   }
 }
