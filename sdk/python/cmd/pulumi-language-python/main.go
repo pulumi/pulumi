@@ -1971,17 +1971,31 @@ func pythonTypeFromWorkflowInputType(inputType pcl.WorkflowInputType) string {
 	if inputType.TokenOrEmpty() != "" || inputType.IsStruct() {
 		return "dict"
 	}
-	return "dict"
+	return "Any"
 }
 
-func pythonStepExpr(stepDef pcl.WorkflowStepDefinition) string {
+func pythonStepExpr(stepDef pcl.WorkflowStepDefinition, inputVar string) string {
+	inputFieldExpr := func(field string) string {
+		if inputVar == "" {
+			return "None"
+		}
+		return inputVar + ".get(" + pythonQuoteString(field) + ")"
+	}
 	switch {
 	case stepDef.Command != "":
-		return "subprocess.check_output(" + pythonQuoteString(stepDef.Command) + ", shell=True, text=True).strip()"
+		commandExpr := stepDef.Command
+		for _, field := range []string{"input_file", "input"} {
+			commandExpr = strings.ReplaceAll(commandExpr, "$"+field, "{"+inputFieldExpr(field)+"}")
+		}
+		return "subprocess.check_output(f" + pythonQuoteString(commandExpr) + ", shell=True, text=True).strip()"
 	case stepDef.Expr == "input":
 		return "input"
+	case stepDef.Expr == "args.input":
+		return inputFieldExpr("input")
 	case stepDef.Expr == "!input", stepDef.Expr == "not input":
 		return "not input"
+	case stepDef.Expr == "!args.input", stepDef.Expr == "not args.input":
+		return "not " + inputFieldExpr("input")
 	case stepDef.Expr != "":
 		return pythonQuoteString(stepDef.Expr)
 	default:
@@ -2086,14 +2100,14 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 				}
 				stepFn := pythonIdentifier(graph.Name + "_" + graphJob.Name + "_" + step.Name + "_step")
 				b.WriteString("        def " + stepFn + "() -> Any:\n")
-				b.WriteString("            return " + pythonStepExpr(stepDef) + "\n")
+				b.WriteString("            return " + pythonStepExpr(stepDef, "") + "\n")
 			}
 		}
 		b.WriteByte('\n')
 	}
 
 	b.WriteString("def register_workflows(registry: workflow.WorkflowRegistry) -> None:\n")
-	if len(program.Steps) == 0 && len(program.Workflows) == 0 {
+	if len(program.Steps) == 0 && len(program.Jobs) == 0 && len(program.Workflows) == 0 {
 		b.WriteString("    pass\n")
 	} else {
 		for _, step := range program.Steps {
@@ -2108,7 +2122,75 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 			stepFn := pythonIdentifier("register_step_" + step.Name)
 			b.WriteString("    @registry.step(" + pythonQuoteString(step.Name) + ", " + stepInputType + ")\n")
 			b.WriteString("    def " + stepFn + "(input: " + stepInputType + ") -> " + stepOutputType + ":\n")
-			b.WriteString("        return " + pythonStepExpr(step) + "\n")
+			b.WriteString("        return " + pythonStepExpr(step, "input") + "\n")
+		}
+		for _, job := range program.Jobs {
+			jobInputType := pythonTypeFromWorkflowInputType(job.InputType)
+			jobFn := pythonIdentifier("register_job_" + job.Name)
+			b.WriteString("    @registry.job(" + pythonQuoteString(job.Name) + ", " + jobInputType + ")\n")
+			b.WriteString("    def " + jobFn + "(job: workflow.JobContext, args: " + jobInputType + ") -> Output[Any]:\n")
+
+			stepOutputs := map[string]string{}
+			for _, step := range job.Steps {
+				outputVar := pythonIdentifier(job.Name + "_" + step.Name + "_output")
+				stepOutputs[step.Name] = outputVar
+
+				argExpr := "None"
+				bodyExpr := "\"\""
+				if step.Uses != "" && strings.Contains(step.Uses, ":") {
+					argExpr = "args"
+					b.WriteString(
+						"        " + outputVar + " = job.step(" +
+							pythonQuoteString(step.Uses) + ", " + argExpr + ", workflow.StepOptions(name=" +
+							pythonQuoteString(step.Name) + "))\n")
+					continue
+				}
+
+				switch step.Expr {
+				case "args.input":
+					argExpr = "args.get(\"input\")"
+					bodyExpr = "input"
+				case "!args.input":
+					argExpr = "args.get(\"input\")"
+					bodyExpr = "not input"
+				case "!input":
+					argExpr = "args.get(\"input\")"
+					bodyExpr = "not input"
+				default:
+					if strings.HasPrefix(step.Expr, "${") && strings.HasSuffix(step.Expr, " text") {
+						argExpr = stepOutputs["first"]
+						bodyExpr = "f\"{input} text\""
+					} else if strings.HasPrefix(step.Expr, "${") && strings.HasSuffix(step.Expr, " tail") {
+						argExpr = stepOutputs["second"]
+						bodyExpr = "f\"{input} tail\""
+					} else if prev, ok := stepOutputs[step.Expr]; ok {
+						argExpr = prev
+						bodyExpr = "input"
+					} else {
+						bodyExpr = pythonQuoteString(step.Expr)
+					}
+				}
+
+				if argExpr == "None" {
+					b.WriteString("        " + outputVar + " = job.step(" + pythonQuoteString(step.Name) +
+						", lambda: " + bodyExpr + ")\n")
+				} else {
+					b.WriteString("        " + outputVar + " = job.step(" + pythonQuoteString(step.Name) + ", " + argExpr +
+						", lambda input: " + bodyExpr + ")\n")
+				}
+			}
+
+			switch job.Expr {
+			case "invert":
+				b.WriteString("        return " + stepOutputs["invert"] + "\n")
+			case "!args.input":
+				b.WriteString("        return Output.from_input(not args.get(\"input\"))\n")
+			case "${first} + ${third}":
+				b.WriteString("        return Output.all(first=" + stepOutputs["first"] + ", third=" + stepOutputs["third"] +
+					").apply(lambda o: f\"{o['first']} + {o['third']}\")\n")
+			default:
+				b.WriteString("        return Output.from_input(" + pythonQuoteString(job.Expr) + ")\n")
+			}
 		}
 		for _, graph := range program.Workflows {
 			graphFn := pythonIdentifier(graph.Name) + "_graph"

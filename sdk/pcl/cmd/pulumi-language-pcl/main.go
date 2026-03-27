@@ -501,12 +501,128 @@ func (host *pclLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest,
 	server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	return errors.New("not implemented")
+	if req.Kind != string(apitype.WorkflowPlugin) {
+		return fmt.Errorf("PCL RunPlugin only supports kind %q, got %q", apitype.WorkflowPlugin, req.Kind)
+	}
+
+	if req.Info == nil {
+		return errors.New("missing program info")
+	}
+
+	programDir := req.Info.ProgramDirectory
+	if programDir == "" {
+		programDir = req.Pwd
+	}
+	if programDir == "" {
+		programDir = host.cwd
+	}
+
+	workflowFile := filepath.Join(programDir, "main.pp")
+	if req.Info.EntryPoint != "" && req.Info.EntryPoint != "." {
+		workflowFile = req.Info.EntryPoint
+		if !filepath.IsAbs(workflowFile) {
+			workflowFile = filepath.Join(programDir, workflowFile)
+		}
+	}
+
+	closer, stdout, _, err := rpcutil.MakeRunPluginStreams(server, false /* isTerminal */)
+	if err != nil {
+		return err
+	}
+	defer closer.Close()
+
+	evaluator, err := pclruntime.NewWorkflowEvaluator(workflowFile)
+	if err != nil {
+		return err
+	}
+
+	grpcServer := grpc.NewServer(rpcutil.OpenTracingServerInterceptorOptions(nil)...)
+	pulumirpc.RegisterWorkflowEvaluatorServer(grpcServer, evaluator)
+
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		return fmt.Errorf("could not listen for workflow plugin RPC server: %w", err)
+	}
+	defer listener.Close()
+
+	if _, err = fmt.Fprintf(stdout, "%d\n", listener.Addr().(*net.TCPAddr).Port); err != nil {
+		return err
+	}
+
+	serveResult := make(chan error, 1)
+	go func() {
+		serveResult <- grpcServer.Serve(listener)
+	}()
+
+	select {
+	case <-server.Context().Done():
+		grpcServer.Stop()
+		<-serveResult
+	case err := <-serveResult:
+		if err != nil {
+			_ = server.Send(&pulumirpc.RunPluginResponse{
+				Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: 1},
+			})
+			return err
+		}
+	}
+
+	err = server.Send(&pulumirpc.RunPluginResponse{
+		Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: 0},
+	})
+	if err != nil {
+		return err
+	}
+
+	return closer.Close()
 }
 
 func (host *pclLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
+	programKind, err := pcl.DetectProgramKindFromDirectory(req.SourceDirectory)
+	if err != nil {
+		return nil, err
+	}
+	if programKind == pcl.ProgramKindMixed {
+		return nil, errors.New("PCL program mixes workflow and resource blocks")
+	}
+
+	var project workspace.Project
+	if err := json.Unmarshal([]byte(req.Project), &project); err != nil {
+		return nil, err
+	}
+
+	if err := os.MkdirAll(req.TargetDirectory, 0o755); err != nil {
+		return nil, fmt.Errorf("create target directory: %w", err)
+	}
+
+	// If main is set the project source should be in a subdirectory.
+	directory := req.TargetDirectory
+	if project.Main != "" {
+		directory = path.Join(directory, project.Main)
+		if err := os.MkdirAll(directory, 0o700); err != nil {
+			return nil, fmt.Errorf("create output directory: %w", err)
+		}
+	}
+
+	filter := func(info os.FileInfo) bool {
+		return info.Name() != "Pulumi.yaml" && info.Name() != "PulumiPlugin.yaml"
+	}
+	if err := aferoutil.CopyDir(afero.NewOsFs(), req.SourceDirectory, directory, filter); err != nil {
+		return nil, fmt.Errorf("copy source directory: %w", err)
+	}
+
+	if programKind == pcl.ProgramKindWorkflow {
+		pluginProject := workspace.PluginProject{
+			Runtime: workspace.NewProjectRuntimeInfo("pcl", nil),
+		}
+		if err := pluginProject.Save(filepath.Join(req.TargetDirectory, "PulumiPlugin.yaml")); err != nil {
+			return nil, fmt.Errorf("write PulumiPlugin.yaml: %w", err)
+		}
+		return &pulumirpc.GenerateProjectResponse{}, nil
+	}
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -536,11 +652,6 @@ func (host *pclLanguageHost) GenerateProject(
 		return nil, errors.New("internal error: program was nil")
 	}
 
-	var project workspace.Project
-	if err := json.Unmarshal([]byte(req.Project), &project); err != nil {
-		return nil, err
-	}
-
 	project.Runtime = workspace.NewProjectRuntimeInfo("pcl", nil)
 
 	projectBytes, err := pulumiencoding.YAML.Marshal(project)
@@ -548,29 +659,8 @@ func (host *pclLanguageHost) GenerateProject(
 		return nil, err
 	}
 
-	if err := os.MkdirAll(req.TargetDirectory, 0o755); err != nil {
-		return nil, fmt.Errorf("create target directory: %w", err)
-	}
-
 	if err := os.WriteFile(filepath.Join(req.TargetDirectory, "Pulumi.yaml"), projectBytes, 0o600); err != nil {
 		return nil, fmt.Errorf("write Pulumi.yaml: %w", err)
-	}
-
-	// If main is set the Main.yaml file should be in a subdirectory
-	directory := req.TargetDirectory
-	if project.Main != "" {
-		directory = path.Join(directory, project.Main)
-		err := os.MkdirAll(directory, 0o700)
-		if err != nil {
-			return nil, fmt.Errorf("create output directory: %w", err)
-		}
-	}
-
-	filter := func(info os.FileInfo) bool {
-		return info.Name() != "Pulumi.yaml"
-	}
-	if err := aferoutil.CopyDir(afero.NewOsFs(), req.SourceDirectory, directory, filter); err != nil {
-		return nil, fmt.Errorf("copy source directory: %w", err)
 	}
 
 	// Only copy local dependencies that the program actually references.

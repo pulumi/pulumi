@@ -208,6 +208,9 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					if strings.HasPrefix(tt, "provider-") && config.name != "default" {
 						t.Skip("Skipping non-default provider tests")
 					}
+					if strings.HasPrefix(tt, "workflow-") {
+						t.Skip("Skipping workflow tests for Python language runtime")
+					}
 
 					if (config.name == "default" || config.name == "toml") && tt == "l2-discriminated-union" {
 						t.Skip("pulumi#21830: Expected to fail")

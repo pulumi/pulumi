@@ -53,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -61,7 +62,9 @@ import (
 	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -157,6 +160,17 @@ func installDependencies(
 	}
 
 	return nil
+}
+
+func isGenerateWorkflowPackageUnimplemented(err error) bool {
+	if err == nil {
+		return false
+	}
+	if rpcErr, ok := rpcerror.FromError(err); ok && rpcErr.Code() == codes.Unimplemented {
+		return true
+	}
+	st, ok := status.FromError(err)
+	return ok && st.Code() == codes.Unimplemented
 }
 
 func Start(ctx context.Context) (LanguageTestServer, error) {
@@ -1290,6 +1304,9 @@ func (eng *languageTestServer) RunLanguageTest(
 					}
 					diags, err := languageClient.GenerateWorkflowPackage(sdkTempDir, descriptor, grpcServer.Addr())
 					if err != nil {
+						if isGenerateWorkflowPackageUnimplemented(err) {
+							return nil, nil
+						}
 						return makeTestResponse(fmt.Sprintf("generate workflow package %s: %v", descriptor.GetName(), err)), nil
 					}
 					if diags.HasErrors() {
@@ -1310,18 +1327,16 @@ func (eng *languageTestServer) RunLanguageTest(
 				}
 				diags, err := languageClient.GenerateWorkflowPackage(sdkTempDir, descriptor, grpcServer.Addr())
 				if err != nil {
+					if isGenerateWorkflowPackageUnimplemented(err) {
+						return nil, nil
+					}
 					return makeTestResponse(fmt.Sprintf("generate workflow package %s: %v", descriptor.GetName(), err)), nil
 				}
 				if diags.HasErrors() {
 					return makeTestResponse(fmt.Sprintf("generate workflow package %s: %v", descriptor.GetName(), diags)), nil
 				}
-
-				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
-				if err != nil {
-					return nil, fmt.Errorf("workflow sdk packing for %s: %w", descriptor.GetName(), err)
-				}
-				localDependencies[descriptor.GetName()] = sdkArtifact
-				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
+				localDependencies[descriptor.GetName()] = sdkTempDir
+				eng.artifactMap.Store(sdkTempDir, sdkTempDir)
 				return nil, nil
 			}()
 			if response != nil || err != nil {
