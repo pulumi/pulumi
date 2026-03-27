@@ -89,6 +89,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -304,6 +305,12 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
+
+				if traceparent := os.Getenv("TRACEPARENT"); traceparent != "" {
+					carrier := propagation.MapCarrier{"traceparent": traceparent}
+					ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+				}
+
 				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
 
 				for k, v := range metadata {

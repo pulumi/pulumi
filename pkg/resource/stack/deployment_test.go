@@ -910,6 +910,22 @@ func ArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 	return LiteralArchiveObjectGenerator(maxDepth)
 }
 
+// FloatObjectGenerator generates float object values representing NaN and Inf, matching the
+// wire format used by SerializePropertyValue.
+func FloatObjectGenerator() *rapid.Generator[map[string]any] {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
+		hex := rapid.SampledFrom([]string{
+			"7ff8000000000001", // NaN
+			"7ff0000000000000", // +Inf
+			"fff0000000000000", // -Inf
+		}).Draw(t, "float hex")
+		return map[string]any{
+			resource.SigKey: floatSignature,
+			"value":         hex,
+		}
+	})
+}
+
 // ResourceReferenceObjectGenerator generates resource reference object values.
 func ResourceReferenceObjectGenerator() *rapid.Generator[any] {
 	return rapid.Custom(func(t *rapid.T) any {
@@ -971,6 +987,7 @@ func ObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
 		NumberObjectGenerator().AsAny(),
 		StringObjectGenerator().AsAny(),
 		AssetObjectGenerator().AsAny(),
+		FloatObjectGenerator().AsAny(),
 		ResourceReferenceObjectGenerator(),
 	}
 	if maxDepth > 0 {

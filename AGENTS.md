@@ -54,6 +54,7 @@ All commands assume you're at the repo root.
 - Changelog entries are required for most PRs. Run `mise exec -- make changelog` to create one.
 - PRs are squash-merged — the PR description becomes the commit message.
 - Integration tests need the CLI and SDKs built first. `bin/` must be on `PATH`.
+- Copyright headers for new files should always be stamped with the current year.
 
 ## Forbidden actions
 

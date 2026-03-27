@@ -129,6 +129,7 @@ func NewWatchCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
+			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
