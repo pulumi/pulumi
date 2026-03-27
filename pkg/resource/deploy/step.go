@@ -1372,6 +1372,8 @@ type RefreshStep struct {
 	cts *promise.CompletionSource[*resource.State]
 	// the old views for this resource.
 	oldViews []plugin.View
+	// whether the step is internal
+	internal bool
 }
 
 // NewRefreshStep creates a new Refresh step.
@@ -1395,6 +1397,28 @@ func NewRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resou
 	}
 }
 
+// NewInternalRefreshStep creates a new Refresh step that's internal and thus not displayed to the user
+func NewInternalRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resource.State], old *resource.State,
+	oldViews []plugin.View, new *resource.State,
+) Step {
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.ViewOf == "", "old", "must not be a view")
+
+	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
+	if new == nil {
+		new = old
+	}
+
+	return &RefreshStep{
+		deployment: deployment,
+		old:        old,
+		new:        new,
+		cts:        cts,
+		oldViews:   oldViews,
+		internal:   true,
+	}
+}
+
 // True if this is a persisted refresh step that should be respected by the snapshot system.
 func (s *RefreshStep) Persisted() bool { return s.cts != nil }
 
@@ -1414,6 +1438,10 @@ func (s *RefreshStep) Res() *resource.State                         { return s.o
 func (s *RefreshStep) Logical() bool                                { return false }
 func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
 func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
+
+func (s *RefreshStep) IsInternal() bool {
+	return s.internal
+}
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
