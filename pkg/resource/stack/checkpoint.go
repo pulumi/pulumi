@@ -15,6 +15,7 @@
 package stack
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -100,15 +101,30 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(
 func MarshalUntypedDeploymentToVersionedCheckpoint(
 	stack tokens.QName, deployment *apitype.UntypedDeployment,
 ) (*apitype.VersionedCheckpoint, error) {
+	return MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(encoding.JSON, stack, deployment)
+}
+
+func MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+	m encoding.Marshaler,
+	stack tokens.QName,
+	deployment *apitype.UntypedDeployment,
+) (*apitype.VersionedCheckpoint, error) {
+	contract.Requiref(deployment != nil, "deployment", "must not be nil")
+
+	latest, err := marshalRawCheckpointMessage(m, deployment.Deployment)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
+	}
+
 	chk := struct {
 		Stack  tokens.QName    `json:"stack,omitempty"`
 		Latest json.RawMessage `json:"latest,omitempty"`
 	}{
 		Stack:  stack,
-		Latest: deployment.Deployment,
+		Latest: latest,
 	}
 
-	bytes, err := encoding.JSON.Marshal(chk)
+	bytes, err := m.Marshal(chk)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
@@ -118,6 +134,24 @@ func MarshalUntypedDeploymentToVersionedCheckpoint(
 		Features:   deployment.Features,
 		Checkpoint: bytes,
 	}, nil
+}
+
+func marshalRawCheckpointMessage(m encoding.Marshaler, raw json.RawMessage) (json.RawMessage, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return nil, err
+	}
+
+	encoded, err := m.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(json.RawMessage(nil), bytes.TrimSpace(encoded)...), nil
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.
@@ -158,12 +192,22 @@ func DeploymentV3ToCheckpoint(
 	version int,
 	features []string,
 ) (*apitype.VersionedCheckpoint, error) {
+	return DeploymentV3ToCheckpointWithMarshaler(encoding.JSON, stack, deployment, version, features)
+}
+
+func DeploymentV3ToCheckpointWithMarshaler(
+	m encoding.Marshaler,
+	stack tokens.QName,
+	deployment *apitype.DeploymentV3,
+	version int,
+	features []string,
+) (*apitype.VersionedCheckpoint, error) {
 	chk := apitype.CheckpointV3{
 		Stack:  stack,
 		Latest: deployment,
 	}
 
-	b, err := encoding.JSON.Marshal(chk)
+	b, err := m.Marshal(chk)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
