@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -31,6 +32,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+var stepRefPattern = regexp.MustCompile(`\$\{([A-Za-z_][A-Za-z0-9_-]*)\}`)
 
 type WorkflowEvaluator struct {
 	pulumirpc.UnimplementedWorkflowEvaluatorServer
@@ -329,19 +332,11 @@ func (e *WorkflowEvaluator) GenerateJob(
 			return nil, err
 		}
 		stepPath := jobPath + "/steps/" + step.Name
-		stepDependencies := &pulumirpc.DependencyExpression{
-			Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
-		}
-		for _, dep := range step.DependsOn {
-			stepDependencies.Terms = append(stepDependencies.Terms, &pulumirpc.DependencyTerm{
-				Term: &pulumirpc.DependencyTerm_Path{Path: jobPath + "/steps/" + dep},
-			})
-		}
 		if _, err := monitor.RegisterStep(ctx, &pulumirpc.RegisterStepRequest{
 			Context:      req.GetContext(),
 			Name:         step.Name,
 			Job:          jobPath,
-			Dependencies: stepDependencies,
+			Dependencies: expressionDependencies(jobPath, step.Name, step.Expr, jobSteps),
 		}); err != nil {
 			return nil, err
 		}
@@ -386,12 +381,10 @@ func (e *WorkflowEvaluator) registerJob(
 		}
 		stepPath := jobPath + "/steps/" + step.Name
 		if _, err := monitor.RegisterStep(ctx, &pulumirpc.RegisterStepRequest{
-			Context: wfContext,
-			Name:    step.Name,
-			Job:     jobPath,
-			Dependencies: &pulumirpc.DependencyExpression{
-				Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
-			},
+			Context:      wfContext,
+			Name:         step.Name,
+			Job:          jobPath,
+			Dependencies: expressionDependencies(jobPath, step.Name, step.Expr, jobSteps),
 		}); err != nil {
 			return nil, err
 		}
@@ -422,7 +415,7 @@ func (e *WorkflowEvaluator) RunStep(
 		}
 	}
 
-	value, err := executeStepDefinition(step, req.GetInput())
+	value, err := executeStepDefinition(step, req.GetInput(), e.stepReferenceResolver(req.GetPath()))
 	if err != nil {
 		return nil, err
 	}
@@ -490,7 +483,7 @@ func (e *WorkflowEvaluator) ResolveJobResult(
 		value, err := executeStepDefinition(codegenpcl.WorkflowStepDefinition{
 			InputType: codegenpcl.WorkflowInputType{Token: e.jobInputTypeByPath[jobPath]},
 			Expr:      expr,
-		}, inputValue)
+		}, inputValue, e.stepReferenceResolver(jobPath))
 		if err != nil {
 			return nil, err
 		}
@@ -619,7 +612,11 @@ func typeReferenceFromInputType(inputType codegenpcl.WorkflowInputType) *pulumir
 	return &pulumirpc.TypeReference{Token: "pulumi:json#/Any"}
 }
 
-func executeStepDefinition(step codegenpcl.WorkflowStepDefinition, input *structpb.Value) (*structpb.Value, error) {
+func executeStepDefinition(
+	step codegenpcl.WorkflowStepDefinition,
+	input *structpb.Value,
+	resolveStepRef func(string) (*structpb.Value, bool),
+) (*structpb.Value, error) {
 	if step.Command != "" {
 		cmd := exec.Command("/bin/sh", "-c", step.Command) //nolint:gosec
 		cmd.Env = os.Environ()
@@ -676,6 +673,11 @@ func executeStepDefinition(step codegenpcl.WorkflowStepDefinition, input *struct
 		}
 		return structpb.NewBoolValue(!inputBool), nil
 	default:
+		if resolveStepRef != nil {
+			if stepValue, ok := resolveStepRef(expr); ok {
+				return stepValue, nil
+			}
+		}
 		if field, ok := inputFieldExpr(expr); ok {
 			if input == nil || input.GetStructValue() == nil {
 				return structpb.NewNullValue(), nil
@@ -695,7 +697,102 @@ func executeStepDefinition(step codegenpcl.WorkflowStepDefinition, input *struct
 			}
 			return structpb.NewBoolValue(!v.GetBoolValue()), nil
 		}
+		if strings.Contains(expr, "${") {
+			return structpb.NewStringValue(interpolateStepRefs(expr, resolveStepRef)), nil
+		}
 		return structpb.NewStringValue(step.Expr), nil
+	}
+}
+
+func expressionDependencies(
+	jobPath string,
+	stepName string,
+	expr string,
+	jobSteps []codegenpcl.WorkflowJobStep,
+) *pulumirpc.DependencyExpression {
+	deps := &pulumirpc.DependencyExpression{
+		Operator: pulumirpc.DependencyExpression_OPERATOR_ALL,
+	}
+	expr = strings.TrimSpace(expr)
+	if expr == "" {
+		return deps
+	}
+
+	stepNames := map[string]struct{}{}
+	for _, step := range jobSteps {
+		stepNames[step.Name] = struct{}{}
+	}
+
+	appendDep := func(name string) {
+		if name == "" || name == stepName {
+			return
+		}
+		if _, ok := stepNames[name]; !ok {
+			return
+		}
+		path := jobPath + "/steps/" + name
+		for _, term := range deps.Terms {
+			if t, ok := term.Term.(*pulumirpc.DependencyTerm_Path); ok && t.Path == path {
+				return
+			}
+		}
+		deps.Terms = append(deps.Terms, &pulumirpc.DependencyTerm{
+			Term: &pulumirpc.DependencyTerm_Path{Path: path},
+		})
+	}
+
+	if _, ok := stepNames[expr]; ok {
+		appendDep(expr)
+	}
+	for _, m := range stepRefPattern.FindAllStringSubmatch(expr, -1) {
+		if len(m) == 2 {
+			appendDep(m[1])
+		}
+	}
+	return deps
+}
+
+func (e *WorkflowEvaluator) stepReferenceResolver(path string) func(string) (*structpb.Value, bool) {
+	jobPath := path
+	if i := strings.Index(path, "/steps/"); i >= 0 {
+		jobPath = path[:i]
+	}
+	return func(name string) (*structpb.Value, bool) {
+		v, ok := e.stepResults[jobPath+"/steps/"+name]
+		return v, ok
+	}
+}
+
+func interpolateStepRefs(expr string, resolveStepRef func(string) (*structpb.Value, bool)) string {
+	return stepRefPattern.ReplaceAllStringFunc(expr, func(match string) string {
+		m := stepRefPattern.FindStringSubmatch(match)
+		if len(m) != 2 || resolveStepRef == nil {
+			return ""
+		}
+		v, ok := resolveStepRef(m[1])
+		if !ok || v == nil {
+			return ""
+		}
+		return workflowValueString(v)
+	})
+}
+
+func workflowValueString(v *structpb.Value) string {
+	if v == nil || v.GetKind() == nil {
+		return ""
+	}
+	switch k := v.GetKind().(type) {
+	case *structpb.Value_StringValue:
+		return k.StringValue
+	case *structpb.Value_BoolValue:
+		if k.BoolValue {
+			return "true"
+		}
+		return "false"
+	case *structpb.Value_NumberValue:
+		return fmt.Sprintf("%v", k.NumberValue)
+	default:
+		return v.String()
 	}
 }
 

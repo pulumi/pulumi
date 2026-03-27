@@ -127,30 +127,27 @@ type workflowJobDefinitionRaw struct {
 }
 
 type workflowJobStepRaw struct {
-	Name      string         `hcl:"name,label"`
-	Uses      string         `hcl:"uses,optional"`
-	Command   string         `hcl:"command,optional"`
-	Expr      hcl.Expression `hcl:"expr,optional"`
-	Filter    *bool          `hcl:"filter,optional"`
-	DependsOn []string       `hcl:"depends_on,optional"`
+	Name    string         `hcl:"name,label"`
+	Uses    string         `hcl:"uses,optional"`
+	Command string         `hcl:"command,optional"`
+	Expr    hcl.Expression `hcl:"expr,optional"`
+	Filter  *bool          `hcl:"filter,optional"`
 }
 
 type WorkflowJobStep struct {
-	Name      string   `hcl:"name,label"`
-	Uses      string   `hcl:"uses,optional"`
-	Command   string   `hcl:"command,optional"`
-	Expr      string   `hcl:"expr,optional"`
-	Filter    *bool    `hcl:"filter,optional"`
-	DependsOn []string `hcl:"depends_on,optional"`
+	Name    string `hcl:"name,label"`
+	Uses    string `hcl:"uses,optional"`
+	Command string `hcl:"command,optional"`
+	Expr    string `hcl:"expr,optional"`
+	Filter  *bool  `hcl:"filter,optional"`
 }
 
 type WorkflowGraphJob struct {
-	Name      string            `hcl:"name,label"`
-	Uses      string            `hcl:"uses,optional"`
-	Expr      string            `hcl:"expr,optional"`
-	Filter    *bool             `hcl:"filter,optional"`
-	Steps     []WorkflowJobStep `hcl:"step,block"`
-	DependsOn []string          `hcl:"depends_on,optional"`
+	Name   string            `hcl:"name,label"`
+	Uses   string            `hcl:"uses,optional"`
+	Expr   string            `hcl:"expr,optional"`
+	Filter *bool             `hcl:"filter,optional"`
+	Steps  []WorkflowJobStep `hcl:"step,block"`
 }
 
 func BindWorkflowProgram(programPath string) (*WorkflowProgram, error) {
@@ -228,12 +225,11 @@ func BindWorkflowSource(source map[string]string) (*WorkflowProgram, error) {
 					)
 				}
 				steps = append(steps, WorkflowJobStep{
-					Name:      rawStep.Name,
-					Uses:      rawStep.Uses,
-					Command:   rawStep.Command,
-					Expr:      stepExpr,
-					Filter:    rawStep.Filter,
-					DependsOn: rawStep.DependsOn,
+					Name:    rawStep.Name,
+					Uses:    rawStep.Uses,
+					Command: rawStep.Command,
+					Expr:    stepExpr,
+					Filter:  rawStep.Filter,
 				})
 			}
 			p.Jobs = append(p.Jobs, WorkflowJobDefinition{
@@ -370,6 +366,22 @@ func parseWorkflowExpr(expr hcl.Expression) (string, error) {
 			}
 			return "!" + inner, nil
 		}
+	case *hclsyntax.TemplateExpr:
+		var b strings.Builder
+		for _, part := range e.Parts {
+			if v, diags := part.Value(nil); !diags.HasErrors() && v.Type() == cty.String {
+				b.WriteString(v.AsString())
+				continue
+			}
+			partExpr, err := parseWorkflowExpr(part)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString("${")
+			b.WriteString(partExpr)
+			b.WriteString("}")
+		}
+		return strings.TrimSpace(b.String()), nil
 	}
 	return parseWorkflowTraversalExpr(expr)
 }

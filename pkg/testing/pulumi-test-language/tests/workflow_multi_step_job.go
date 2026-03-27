@@ -25,7 +25,7 @@ import (
 )
 
 func init() {
-	LanguageTests["workflow-three-step-job"] = LanguageTest{
+	LanguageTests["workflow-multi-step-job"] = LanguageTest{
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
@@ -86,20 +86,18 @@ func init() {
 					runSecond, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
 						Context: workflowContext,
 						Path:    second,
-						Input:   structpb.NewStringValue(runFirst.GetResult().GetStringValue()),
 					})
 					require.NoError(l, err)
 					require.Empty(l, runSecond.GetError().GetReason())
-					assert.Equal(l, "alpha", runSecond.GetResult().GetStringValue())
+					assert.Equal(l, "alpha text", runSecond.GetResult().GetStringValue())
 
 					runThird, err := args.Workflow.RunStep(args.Context, &pulumirpc.RunStepRequest{
 						Context: workflowContext,
 						Path:    third,
-						Input:   structpb.NewStringValue(runSecond.GetResult().GetStringValue() + "-omega"),
 					})
 					require.NoError(l, err)
 					require.Empty(l, runThird.GetError().GetReason())
-					assert.Equal(l, "alpha-omega", runThird.GetResult().GetStringValue())
+					assert.Equal(l, "alpha text tail", runThird.GetResult().GetStringValue())
 
 					result, err := args.Workflow.ResolveJobResult(args.Context, &pulumirpc.ResolveJobResultRequest{
 						Context: workflowContext,
@@ -108,7 +106,7 @@ func init() {
 					require.NoError(l, err)
 					require.Empty(l, result.GetError().GetReason())
 					require.NotNil(l, result.GetResult())
-					assert.Equal(l, "alpha-omega", result.GetResult().GetStringValue())
+					assert.Equal(l, "alpha + alpha text tail", result.GetResult().GetStringValue())
 				},
 			},
 		},
