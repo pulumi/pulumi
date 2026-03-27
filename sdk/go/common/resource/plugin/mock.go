@@ -328,15 +328,15 @@ func (m *MockProvider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 type MockWorkflow struct {
 	CloseF            func() error
 	HandshakeF        func(context.Context, *pulumirpc.WorkflowHandshakeRequest) (*pulumirpc.WorkflowHandshakeResponse, error)
-	GetPackageInfoF   func(context.Context, *pulumirpc.GetPackageInfoRequest) (*pulumirpc.GetPackageInfoResponse, error)
-	GetGraphsF        func(context.Context, *pulumirpc.GetGraphsRequest) (*pulumirpc.GetGraphsResponse, error)
-	GetGraphF         func(context.Context, *pulumirpc.GetGraphRequest) (*pulumirpc.GetGraphResponse, error)
-	GetTriggersF      func(context.Context, *pulumirpc.GetTriggersRequest) (*pulumirpc.GetTriggersResponse, error)
-	GetTriggerF       func(context.Context, *pulumirpc.GetTriggerRequest) (*pulumirpc.GetTriggerResponse, error)
-	GetJobsF          func(context.Context, *pulumirpc.GetJobsRequest) (*pulumirpc.GetJobsResponse, error)
-	GetJobF           func(context.Context, *pulumirpc.GetJobRequest) (*pulumirpc.GetJobResponse, error)
-	GetStepsF         func(context.Context, *pulumirpc.GetStepsRequest) (*pulumirpc.GetStepsResponse, error)
-	GetStepF          func(context.Context, *pulumirpc.GetStepRequest) (*pulumirpc.GetStepResponse, error)
+	GetPackageInfoF   func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetPackageInfoResponse, error)
+	GetGraphsF        func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetGraphsResponse, error)
+	GetGraphF         func(context.Context, *pulumirpc.TokenLookupRequest) (*pulumirpc.GetGraphResponse, error)
+	GetTriggersF      func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetTriggersResponse, error)
+	GetTriggerF       func(context.Context, *pulumirpc.TokenLookupRequest) (*pulumirpc.GetTriggerResponse, error)
+	GetJobsF          func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetJobsResponse, error)
+	GetJobF           func(context.Context, *pulumirpc.TokenLookupRequest) (*pulumirpc.GetJobResponse, error)
+	GetStepsF         func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetStepsResponse, error)
+	GetStepF          func(context.Context, *pulumirpc.TokenLookupRequest) (*pulumirpc.GetStepResponse, error)
 	GenerateGraphF    func(context.Context, *pulumirpc.GenerateGraphRequest) (*pulumirpc.GenerateNodeResponse, error)
 	GenerateJobF      func(context.Context, *pulumirpc.GenerateJobRequest) (*pulumirpc.GenerateNodeResponse, error)
 	RunTriggerMockF   func(context.Context, *pulumirpc.RunTriggerMockRequest) (*pulumirpc.RunTriggerMockResponse, error)
@@ -365,7 +365,7 @@ func (m *MockWorkflow) Handshake(
 }
 
 func (m *MockWorkflow) GetPackageInfo(
-	ctx context.Context, req *pulumirpc.GetPackageInfoRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetPackageInfoResponse, error) {
 	if m.GetPackageInfoF != nil {
 		return m.GetPackageInfoF(ctx, req)
@@ -374,7 +374,7 @@ func (m *MockWorkflow) GetPackageInfo(
 }
 
 func (m *MockWorkflow) GetGraphs(
-	ctx context.Context, req *pulumirpc.GetGraphsRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetGraphsResponse, error) {
 	if m.GetGraphsF != nil {
 		return m.GetGraphsF(ctx, req)
@@ -383,7 +383,7 @@ func (m *MockWorkflow) GetGraphs(
 }
 
 func (m *MockWorkflow) GetGraph(
-	ctx context.Context, req *pulumirpc.GetGraphRequest,
+	ctx context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetGraphResponse, error) {
 	if m.GetGraphF != nil {
 		return m.GetGraphF(ctx, req)
@@ -392,7 +392,7 @@ func (m *MockWorkflow) GetGraph(
 }
 
 func (m *MockWorkflow) GetTriggers(
-	ctx context.Context, req *pulumirpc.GetTriggersRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetTriggersResponse, error) {
 	if m.GetTriggersF != nil {
 		return m.GetTriggersF(ctx, req)
@@ -401,7 +401,7 @@ func (m *MockWorkflow) GetTriggers(
 }
 
 func (m *MockWorkflow) GetTrigger(
-	ctx context.Context, req *pulumirpc.GetTriggerRequest,
+	ctx context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetTriggerResponse, error) {
 	if m.GetTriggerF != nil {
 		return m.GetTriggerF(ctx, req)
@@ -410,7 +410,7 @@ func (m *MockWorkflow) GetTrigger(
 }
 
 func (m *MockWorkflow) GetJobs(
-	ctx context.Context, req *pulumirpc.GetJobsRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetJobsResponse, error) {
 	if m.GetJobsF != nil {
 		return m.GetJobsF(ctx, req)
@@ -419,7 +419,7 @@ func (m *MockWorkflow) GetJobs(
 }
 
 func (m *MockWorkflow) GetJob(
-	ctx context.Context, req *pulumirpc.GetJobRequest,
+	ctx context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetJobResponse, error) {
 	if m.GetJobF != nil {
 		return m.GetJobF(ctx, req)
@@ -428,7 +428,7 @@ func (m *MockWorkflow) GetJob(
 }
 
 func (m *MockWorkflow) GetSteps(
-	ctx context.Context, req *pulumirpc.GetStepsRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetStepsResponse, error) {
 	if m.GetStepsF != nil {
 		return m.GetStepsF(ctx, req)
@@ -437,7 +437,7 @@ func (m *MockWorkflow) GetSteps(
 }
 
 func (m *MockWorkflow) GetStep(
-	ctx context.Context, req *pulumirpc.GetStepRequest,
+	ctx context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetStepResponse, error) {
 	if m.GetStepF != nil {
 		return m.GetStepF(ctx, req)

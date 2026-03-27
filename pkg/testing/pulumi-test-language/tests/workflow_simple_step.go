@@ -25,7 +25,7 @@ func init() {
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
-					steps, err := args.Workflow.GetSteps(args.Context, &pulumirpc.GetStepsRequest{})
+					steps, err := args.Workflow.GetSteps(args.Context, &pulumirpc.EmptyRequest{})
 					require.NoError(l, err)
 					require.Len(l, steps.GetSteps(), 1)
 

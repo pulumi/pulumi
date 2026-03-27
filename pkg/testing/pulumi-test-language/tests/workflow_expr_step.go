@@ -26,12 +26,12 @@ func init() {
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
-					steps, err := args.Workflow.GetSteps(args.Context, &pulumirpc.GetStepsRequest{})
+					steps, err := args.Workflow.GetSteps(args.Context, &pulumirpc.EmptyRequest{})
 					require.NoError(l, err)
 					require.Len(l, steps.GetSteps(), 1)
 
 					stepToken := steps.GetSteps()[0]
-					step, err := args.Workflow.GetStep(args.Context, &pulumirpc.GetStepRequest{Token: stepToken})
+					step, err := args.Workflow.GetStep(args.Context, &pulumirpc.TokenLookupRequest{Token: stepToken})
 					require.NoError(l, err)
 					require.NotNil(l, step.GetInputType())
 					require.NotNil(l, step.GetInputType().GetObject())

@@ -160,7 +160,7 @@ func (p *workflowPlugin) Handshake(
 }
 
 func (p *workflowPlugin) GetPackageInfo(
-	ctx context.Context, req *pulumirpc.GetPackageInfoRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetPackageInfoResponse, error) {
 	label := fmt.Sprintf("Workflow[%s, %p].GetPackageInfo", p.path, p)
 	logging.V(7).Infof("%s executing", label)
@@ -174,49 +174,49 @@ func (p *workflowPlugin) GetPackageInfo(
 }
 
 func (p *workflowPlugin) GetGraphs(
-	ctx context.Context, req *pulumirpc.GetGraphsRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetGraphsResponse, error) {
 	return p.clientRaw.GetGraphs(ctx, req)
 }
 
 func (p *workflowPlugin) GetGraph(
-	ctx context.Context, req *pulumirpc.GetGraphRequest,
+	ctx context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetGraphResponse, error) {
 	return p.clientRaw.GetGraph(ctx, req)
 }
 
 func (p *workflowPlugin) GetTriggers(
-	ctx context.Context, req *pulumirpc.GetTriggersRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetTriggersResponse, error) {
 	return p.clientRaw.GetTriggers(ctx, req)
 }
 
 func (p *workflowPlugin) GetTrigger(
-	ctx context.Context, req *pulumirpc.GetTriggerRequest,
+	ctx context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetTriggerResponse, error) {
 	return p.clientRaw.GetTrigger(ctx, req)
 }
 
 func (p *workflowPlugin) GetJobs(
-	ctx context.Context, req *pulumirpc.GetJobsRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetJobsResponse, error) {
 	return p.clientRaw.GetJobs(ctx, req)
 }
 
 func (p *workflowPlugin) GetJob(
-	ctx context.Context, req *pulumirpc.GetJobRequest,
+	ctx context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetJobResponse, error) {
 	return p.clientRaw.GetJob(ctx, req)
 }
 
 func (p *workflowPlugin) GetSteps(
-	ctx context.Context, req *pulumirpc.GetStepsRequest,
+	ctx context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetStepsResponse, error) {
 	return p.clientRaw.GetSteps(ctx, req)
 }
 
 func (p *workflowPlugin) GetStep(
-	ctx context.Context, req *pulumirpc.GetStepRequest,
+	ctx context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetStepResponse, error) {
 	return p.clientRaw.GetStep(ctx, req)
 }

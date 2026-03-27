@@ -243,19 +243,19 @@ export namespace JobInfo {
     }
 }
 
-export class GetPackageInfoRequest extends jspb.Message { 
+export class EmptyRequest extends jspb.Message { 
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetPackageInfoRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetPackageInfoRequest): GetPackageInfoRequest.AsObject;
+    toObject(includeInstance?: boolean): EmptyRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: EmptyRequest): EmptyRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetPackageInfoRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetPackageInfoRequest;
-    static deserializeBinaryFromReader(message: GetPackageInfoRequest, reader: jspb.BinaryReader): GetPackageInfoRequest;
+    static serializeBinaryToWriter(message: EmptyRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): EmptyRequest;
+    static deserializeBinaryFromReader(message: EmptyRequest, reader: jspb.BinaryReader): EmptyRequest;
 }
 
-export namespace GetPackageInfoRequest {
+export namespace EmptyRequest {
     export type AsObject = {
     }
 }
@@ -283,23 +283,6 @@ export namespace GetPackageInfoResponse {
     }
 }
 
-export class GetGraphsRequest extends jspb.Message { 
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetGraphsRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetGraphsRequest): GetGraphsRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetGraphsRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetGraphsRequest;
-    static deserializeBinaryFromReader(message: GetGraphsRequest, reader: jspb.BinaryReader): GetGraphsRequest;
-}
-
-export namespace GetGraphsRequest {
-    export type AsObject = {
-    }
-}
-
 export class GetGraphsResponse extends jspb.Message { 
     clearGraphsList(): void;
     getGraphsList(): Array<GraphInfo>;
@@ -322,21 +305,21 @@ export namespace GetGraphsResponse {
     }
 }
 
-export class GetGraphRequest extends jspb.Message { 
+export class TokenLookupRequest extends jspb.Message { 
     getToken(): string;
-    setToken(value: string): GetGraphRequest;
+    setToken(value: string): TokenLookupRequest;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetGraphRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetGraphRequest): GetGraphRequest.AsObject;
+    toObject(includeInstance?: boolean): TokenLookupRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: TokenLookupRequest): TokenLookupRequest.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetGraphRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetGraphRequest;
-    static deserializeBinaryFromReader(message: GetGraphRequest, reader: jspb.BinaryReader): GetGraphRequest;
+    static serializeBinaryToWriter(message: TokenLookupRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): TokenLookupRequest;
+    static deserializeBinaryFromReader(message: TokenLookupRequest, reader: jspb.BinaryReader): TokenLookupRequest;
 }
 
-export namespace GetGraphRequest {
+export namespace TokenLookupRequest {
     export type AsObject = {
         token: string,
     }
@@ -365,23 +348,6 @@ export namespace GetGraphResponse {
     }
 }
 
-export class GetTriggersRequest extends jspb.Message { 
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetTriggersRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetTriggersRequest): GetTriggersRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetTriggersRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetTriggersRequest;
-    static deserializeBinaryFromReader(message: GetTriggersRequest, reader: jspb.BinaryReader): GetTriggersRequest;
-}
-
-export namespace GetTriggersRequest {
-    export type AsObject = {
-    }
-}
-
 export class GetTriggersResponse extends jspb.Message { 
     clearTriggersList(): void;
     getTriggersList(): Array<string>;
@@ -401,26 +367,6 @@ export class GetTriggersResponse extends jspb.Message {
 export namespace GetTriggersResponse {
     export type AsObject = {
         triggersList: Array<string>,
-    }
-}
-
-export class GetTriggerRequest extends jspb.Message { 
-    getToken(): string;
-    setToken(value: string): GetTriggerRequest;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetTriggerRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetTriggerRequest): GetTriggerRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetTriggerRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetTriggerRequest;
-    static deserializeBinaryFromReader(message: GetTriggerRequest, reader: jspb.BinaryReader): GetTriggerRequest;
-}
-
-export namespace GetTriggerRequest {
-    export type AsObject = {
-        token: string,
     }
 }
 
@@ -453,23 +399,6 @@ export namespace GetTriggerResponse {
     }
 }
 
-export class GetJobsRequest extends jspb.Message { 
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetJobsRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetJobsRequest): GetJobsRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetJobsRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetJobsRequest;
-    static deserializeBinaryFromReader(message: GetJobsRequest, reader: jspb.BinaryReader): GetJobsRequest;
-}
-
-export namespace GetJobsRequest {
-    export type AsObject = {
-    }
-}
-
 export class GetJobsResponse extends jspb.Message { 
     clearJobsList(): void;
     getJobsList(): Array<JobInfo>;
@@ -489,26 +418,6 @@ export class GetJobsResponse extends jspb.Message {
 export namespace GetJobsResponse {
     export type AsObject = {
         jobsList: Array<JobInfo.AsObject>,
-    }
-}
-
-export class GetJobRequest extends jspb.Message { 
-    getToken(): string;
-    setToken(value: string): GetJobRequest;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetJobRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetJobRequest): GetJobRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetJobRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetJobRequest;
-    static deserializeBinaryFromReader(message: GetJobRequest, reader: jspb.BinaryReader): GetJobRequest;
-}
-
-export namespace GetJobRequest {
-    export type AsObject = {
-        token: string,
     }
 }
 
@@ -540,23 +449,6 @@ export namespace GetJobResponse {
     }
 }
 
-export class GetStepsRequest extends jspb.Message { 
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetStepsRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetStepsRequest): GetStepsRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetStepsRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetStepsRequest;
-    static deserializeBinaryFromReader(message: GetStepsRequest, reader: jspb.BinaryReader): GetStepsRequest;
-}
-
-export namespace GetStepsRequest {
-    export type AsObject = {
-    }
-}
-
 export class GetStepsResponse extends jspb.Message { 
     clearStepsList(): void;
     getStepsList(): Array<string>;
@@ -576,26 +468,6 @@ export class GetStepsResponse extends jspb.Message {
 export namespace GetStepsResponse {
     export type AsObject = {
         stepsList: Array<string>,
-    }
-}
-
-export class GetStepRequest extends jspb.Message { 
-    getToken(): string;
-    setToken(value: string): GetStepRequest;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetStepRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetStepRequest): GetStepRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetStepRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetStepRequest;
-    static deserializeBinaryFromReader(message: GetStepRequest, reader: jspb.BinaryReader): GetStepRequest;
-}
-
-export namespace GetStepRequest {
-    export type AsObject = {
-        token: string,
     }
 }
 

@@ -281,14 +281,14 @@ class JobInfo(google.protobuf.message.Message):
 global___JobInfo = JobInfo
 
 @typing.final
-class GetPackageInfoRequest(google.protobuf.message.Message):
+class EmptyRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     def __init__(
         self,
     ) -> None: ...
 
-global___GetPackageInfoRequest = GetPackageInfoRequest
+global___EmptyRequest = EmptyRequest
 
 @typing.final
 class GetPackageInfoResponse(google.protobuf.message.Message):
@@ -310,16 +310,6 @@ class GetPackageInfoResponse(google.protobuf.message.Message):
 global___GetPackageInfoResponse = GetPackageInfoResponse
 
 @typing.final
-class GetGraphsRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-
-global___GetGraphsRequest = GetGraphsRequest
-
-@typing.final
 class GetGraphsResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -338,12 +328,12 @@ class GetGraphsResponse(google.protobuf.message.Message):
 global___GetGraphsResponse = GetGraphsResponse
 
 @typing.final
-class GetGraphRequest(google.protobuf.message.Message):
+class TokenLookupRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     TOKEN_FIELD_NUMBER: builtins.int
     token: builtins.str
-    """Fully-qualified graph token to fetch."""
+    """Fully-qualified token to fetch."""
     def __init__(
         self,
         *,
@@ -351,7 +341,7 @@ class GetGraphRequest(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
 
-global___GetGraphRequest = GetGraphRequest
+global___TokenLookupRequest = TokenLookupRequest
 
 @typing.final
 class GetGraphResponse(google.protobuf.message.Message):
@@ -373,16 +363,6 @@ class GetGraphResponse(google.protobuf.message.Message):
 global___GetGraphResponse = GetGraphResponse
 
 @typing.final
-class GetTriggersRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-
-global___GetTriggersRequest = GetTriggersRequest
-
-@typing.final
 class GetTriggersResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -399,22 +379,6 @@ class GetTriggersResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["triggers", b"triggers"]) -> None: ...
 
 global___GetTriggersResponse = GetTriggersResponse
-
-@typing.final
-class GetTriggerRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    TOKEN_FIELD_NUMBER: builtins.int
-    token: builtins.str
-    """Fully-qualified trigger token to fetch."""
-    def __init__(
-        self,
-        *,
-        token: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
-
-global___GetTriggerRequest = GetTriggerRequest
 
 @typing.final
 class GetTriggerResponse(google.protobuf.message.Message):
@@ -442,16 +406,6 @@ class GetTriggerResponse(google.protobuf.message.Message):
 global___GetTriggerResponse = GetTriggerResponse
 
 @typing.final
-class GetJobsRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-
-global___GetJobsRequest = GetJobsRequest
-
-@typing.final
 class GetJobsResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -468,22 +422,6 @@ class GetJobsResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["jobs", b"jobs"]) -> None: ...
 
 global___GetJobsResponse = GetJobsResponse
-
-@typing.final
-class GetJobRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    TOKEN_FIELD_NUMBER: builtins.int
-    token: builtins.str
-    """Fully-qualified job token to fetch."""
-    def __init__(
-        self,
-        *,
-        token: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
-
-global___GetJobRequest = GetJobRequest
 
 @typing.final
 class GetJobResponse(google.protobuf.message.Message):
@@ -511,16 +449,6 @@ class GetJobResponse(google.protobuf.message.Message):
 global___GetJobResponse = GetJobResponse
 
 @typing.final
-class GetStepsRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-
-global___GetStepsRequest = GetStepsRequest
-
-@typing.final
 class GetStepsResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -537,22 +465,6 @@ class GetStepsResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["steps", b"steps"]) -> None: ...
 
 global___GetStepsResponse = GetStepsResponse
-
-@typing.final
-class GetStepRequest(google.protobuf.message.Message):
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    TOKEN_FIELD_NUMBER: builtins.int
-    token: builtins.str
-    """Fully-qualified step token to fetch."""
-    def __init__(
-        self,
-        *,
-        token: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["token", b"token"]) -> None: ...
-
-global___GetStepRequest = GetStepRequest
 
 @typing.final
 class GetStepResponse(google.protobuf.message.Message):

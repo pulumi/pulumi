@@ -32,47 +32,47 @@ class WorkflowEvaluatorStub(object):
                 )
         self.GetPackageInfo = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetPackageInfo',
-                request_serializer=pulumi_dot_workflow__pb2.GetPackageInfoRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetPackageInfoResponse.FromString,
                 )
         self.GetGraphs = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetGraphs',
-                request_serializer=pulumi_dot_workflow__pb2.GetGraphsRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetGraphsResponse.FromString,
                 )
         self.GetGraph = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetGraph',
-                request_serializer=pulumi_dot_workflow__pb2.GetGraphRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.TokenLookupRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetGraphResponse.FromString,
                 )
         self.GetTriggers = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetTriggers',
-                request_serializer=pulumi_dot_workflow__pb2.GetTriggersRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetTriggersResponse.FromString,
                 )
         self.GetTrigger = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetTrigger',
-                request_serializer=pulumi_dot_workflow__pb2.GetTriggerRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.TokenLookupRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetTriggerResponse.FromString,
                 )
         self.GetJobs = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetJobs',
-                request_serializer=pulumi_dot_workflow__pb2.GetJobsRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetJobsResponse.FromString,
                 )
         self.GetJob = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetJob',
-                request_serializer=pulumi_dot_workflow__pb2.GetJobRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.TokenLookupRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetJobResponse.FromString,
                 )
         self.GetSteps = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetSteps',
-                request_serializer=pulumi_dot_workflow__pb2.GetStepsRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetStepsResponse.FromString,
                 )
         self.GetStep = channel.unary_unary(
                 '/pulumirpc.WorkflowEvaluator/GetStep',
-                request_serializer=pulumi_dot_workflow__pb2.GetStepRequest.SerializeToString,
+                request_serializer=pulumi_dot_workflow__pb2.TokenLookupRequest.SerializeToString,
                 response_deserializer=pulumi_dot_workflow__pb2.GetStepResponse.FromString,
                 )
         self.GenerateJob = channel.unary_unary(
@@ -304,47 +304,47 @@ def add_WorkflowEvaluatorServicer_to_server(servicer, server):
             ),
             'GetPackageInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPackageInfo,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetPackageInfoRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.EmptyRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetPackageInfoResponse.SerializeToString,
             ),
             'GetGraphs': grpc.unary_unary_rpc_method_handler(
                     servicer.GetGraphs,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetGraphsRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.EmptyRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetGraphsResponse.SerializeToString,
             ),
             'GetGraph': grpc.unary_unary_rpc_method_handler(
                     servicer.GetGraph,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetGraphRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.TokenLookupRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetGraphResponse.SerializeToString,
             ),
             'GetTriggers': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTriggers,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetTriggersRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.EmptyRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetTriggersResponse.SerializeToString,
             ),
             'GetTrigger': grpc.unary_unary_rpc_method_handler(
                     servicer.GetTrigger,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetTriggerRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.TokenLookupRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetTriggerResponse.SerializeToString,
             ),
             'GetJobs': grpc.unary_unary_rpc_method_handler(
                     servicer.GetJobs,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetJobsRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.EmptyRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetJobsResponse.SerializeToString,
             ),
             'GetJob': grpc.unary_unary_rpc_method_handler(
                     servicer.GetJob,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetJobRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.TokenLookupRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetJobResponse.SerializeToString,
             ),
             'GetSteps': grpc.unary_unary_rpc_method_handler(
                     servicer.GetSteps,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetStepsRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.EmptyRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetStepsResponse.SerializeToString,
             ),
             'GetStep': grpc.unary_unary_rpc_method_handler(
                     servicer.GetStep,
-                    request_deserializer=pulumi_dot_workflow__pb2.GetStepRequest.FromString,
+                    request_deserializer=pulumi_dot_workflow__pb2.TokenLookupRequest.FromString,
                     response_serializer=pulumi_dot_workflow__pb2.GetStepResponse.SerializeToString,
             ),
             'GenerateJob': grpc.unary_unary_rpc_method_handler(
@@ -437,7 +437,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetPackageInfo',
-            pulumi_dot_workflow__pb2.GetPackageInfoRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetPackageInfoResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -454,7 +454,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetGraphs',
-            pulumi_dot_workflow__pb2.GetGraphsRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetGraphsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -471,7 +471,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetGraph',
-            pulumi_dot_workflow__pb2.GetGraphRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.TokenLookupRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetGraphResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -488,7 +488,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetTriggers',
-            pulumi_dot_workflow__pb2.GetTriggersRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetTriggersResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -505,7 +505,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetTrigger',
-            pulumi_dot_workflow__pb2.GetTriggerRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.TokenLookupRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetTriggerResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -522,7 +522,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetJobs',
-            pulumi_dot_workflow__pb2.GetJobsRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetJobsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -539,7 +539,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetJob',
-            pulumi_dot_workflow__pb2.GetJobRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.TokenLookupRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetJobResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -556,7 +556,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetSteps',
-            pulumi_dot_workflow__pb2.GetStepsRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.EmptyRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetStepsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -573,7 +573,7 @@ class WorkflowEvaluator(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.WorkflowEvaluator/GetStep',
-            pulumi_dot_workflow__pb2.GetStepRequest.SerializeToString,
+            pulumi_dot_workflow__pb2.TokenLookupRequest.SerializeToString,
             pulumi_dot_workflow__pb2.GetStepResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

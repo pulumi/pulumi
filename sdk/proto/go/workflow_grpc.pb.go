@@ -78,27 +78,27 @@ type WorkflowEvaluatorClient interface {
 	//
 	// This is analogous to package identity APIs in provider/language protocols and is expected
 	// to be stable for a plugin process lifetime.
-	GetPackageInfo(ctx context.Context, in *GetPackageInfoRequest, opts ...grpc.CallOption) (*GetPackageInfoResponse, error)
+	GetPackageInfo(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetPackageInfoResponse, error)
 	// Returns the list of exported graph tokens.
 	//
 	// This should include only top-level exported graphs, not inline subgraphs.
-	GetGraphs(ctx context.Context, in *GetGraphsRequest, opts ...grpc.CallOption) (*GetGraphsResponse, error)
+	GetGraphs(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetGraphsResponse, error)
 	// Returns schema metadata for one exported graph token.
-	GetGraph(ctx context.Context, in *GetGraphRequest, opts ...grpc.CallOption) (*GetGraphResponse, error)
+	GetGraph(ctx context.Context, in *TokenLookupRequest, opts ...grpc.CallOption) (*GetGraphResponse, error)
 	// Returns the list of exported trigger tokens.
-	GetTriggers(ctx context.Context, in *GetTriggersRequest, opts ...grpc.CallOption) (*GetTriggersResponse, error)
+	GetTriggers(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetTriggersResponse, error)
 	// Returns schema metadata for one exported trigger token.
-	GetTrigger(ctx context.Context, in *GetTriggerRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error)
+	GetTrigger(ctx context.Context, in *TokenLookupRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error)
 	// Returns the list of exported top-level job tokens.
-	GetJobs(ctx context.Context, in *GetJobsRequest, opts ...grpc.CallOption) (*GetJobsResponse, error)
+	GetJobs(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetJobsResponse, error)
 	// Returns schema metadata for one exported job token.
-	GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
+	GetJob(ctx context.Context, in *TokenLookupRequest, opts ...grpc.CallOption) (*GetJobResponse, error)
 	// Returns the list of exported step tokens.
 	//
 	// These are reusable top-level step definitions that can be referenced from jobs.
-	GetSteps(ctx context.Context, in *GetStepsRequest, opts ...grpc.CallOption) (*GetStepsResponse, error)
+	GetSteps(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetStepsResponse, error)
 	// Returns schema metadata for one exported step token.
-	GetStep(ctx context.Context, in *GetStepRequest, opts ...grpc.CallOption) (*GetStepResponse, error)
+	GetStep(ctx context.Context, in *TokenLookupRequest, opts ...grpc.CallOption) (*GetStepResponse, error)
 	// Generates a concrete job shape for either:
 	// - an exported top-level job (`name`), or
 	// - an inline graph-scoped job (`path`).
@@ -162,7 +162,7 @@ func (c *workflowEvaluatorClient) Handshake(ctx context.Context, in *WorkflowHan
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetPackageInfo(ctx context.Context, in *GetPackageInfoRequest, opts ...grpc.CallOption) (*GetPackageInfoResponse, error) {
+func (c *workflowEvaluatorClient) GetPackageInfo(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetPackageInfoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPackageInfoResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetPackageInfo_FullMethodName, in, out, cOpts...)
@@ -172,7 +172,7 @@ func (c *workflowEvaluatorClient) GetPackageInfo(ctx context.Context, in *GetPac
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetGraphs(ctx context.Context, in *GetGraphsRequest, opts ...grpc.CallOption) (*GetGraphsResponse, error) {
+func (c *workflowEvaluatorClient) GetGraphs(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetGraphsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetGraphsResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetGraphs_FullMethodName, in, out, cOpts...)
@@ -182,7 +182,7 @@ func (c *workflowEvaluatorClient) GetGraphs(ctx context.Context, in *GetGraphsRe
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetGraph(ctx context.Context, in *GetGraphRequest, opts ...grpc.CallOption) (*GetGraphResponse, error) {
+func (c *workflowEvaluatorClient) GetGraph(ctx context.Context, in *TokenLookupRequest, opts ...grpc.CallOption) (*GetGraphResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetGraphResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetGraph_FullMethodName, in, out, cOpts...)
@@ -192,7 +192,7 @@ func (c *workflowEvaluatorClient) GetGraph(ctx context.Context, in *GetGraphRequ
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetTriggers(ctx context.Context, in *GetTriggersRequest, opts ...grpc.CallOption) (*GetTriggersResponse, error) {
+func (c *workflowEvaluatorClient) GetTriggers(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetTriggersResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetTriggersResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetTriggers_FullMethodName, in, out, cOpts...)
@@ -202,7 +202,7 @@ func (c *workflowEvaluatorClient) GetTriggers(ctx context.Context, in *GetTrigge
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetTrigger(ctx context.Context, in *GetTriggerRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error) {
+func (c *workflowEvaluatorClient) GetTrigger(ctx context.Context, in *TokenLookupRequest, opts ...grpc.CallOption) (*GetTriggerResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetTriggerResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetTrigger_FullMethodName, in, out, cOpts...)
@@ -212,7 +212,7 @@ func (c *workflowEvaluatorClient) GetTrigger(ctx context.Context, in *GetTrigger
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetJobs(ctx context.Context, in *GetJobsRequest, opts ...grpc.CallOption) (*GetJobsResponse, error) {
+func (c *workflowEvaluatorClient) GetJobs(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetJobsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetJobsResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetJobs_FullMethodName, in, out, cOpts...)
@@ -222,7 +222,7 @@ func (c *workflowEvaluatorClient) GetJobs(ctx context.Context, in *GetJobsReques
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetJob(ctx context.Context, in *GetJobRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
+func (c *workflowEvaluatorClient) GetJob(ctx context.Context, in *TokenLookupRequest, opts ...grpc.CallOption) (*GetJobResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetJobResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetJob_FullMethodName, in, out, cOpts...)
@@ -232,7 +232,7 @@ func (c *workflowEvaluatorClient) GetJob(ctx context.Context, in *GetJobRequest,
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetSteps(ctx context.Context, in *GetStepsRequest, opts ...grpc.CallOption) (*GetStepsResponse, error) {
+func (c *workflowEvaluatorClient) GetSteps(ctx context.Context, in *EmptyRequest, opts ...grpc.CallOption) (*GetStepsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStepsResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetSteps_FullMethodName, in, out, cOpts...)
@@ -242,7 +242,7 @@ func (c *workflowEvaluatorClient) GetSteps(ctx context.Context, in *GetStepsRequ
 	return out, nil
 }
 
-func (c *workflowEvaluatorClient) GetStep(ctx context.Context, in *GetStepRequest, opts ...grpc.CallOption) (*GetStepResponse, error) {
+func (c *workflowEvaluatorClient) GetStep(ctx context.Context, in *TokenLookupRequest, opts ...grpc.CallOption) (*GetStepResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStepResponse)
 	err := c.cc.Invoke(ctx, WorkflowEvaluator_GetStep_FullMethodName, in, out, cOpts...)
@@ -357,27 +357,27 @@ type WorkflowEvaluatorServer interface {
 	//
 	// This is analogous to package identity APIs in provider/language protocols and is expected
 	// to be stable for a plugin process lifetime.
-	GetPackageInfo(context.Context, *GetPackageInfoRequest) (*GetPackageInfoResponse, error)
+	GetPackageInfo(context.Context, *EmptyRequest) (*GetPackageInfoResponse, error)
 	// Returns the list of exported graph tokens.
 	//
 	// This should include only top-level exported graphs, not inline subgraphs.
-	GetGraphs(context.Context, *GetGraphsRequest) (*GetGraphsResponse, error)
+	GetGraphs(context.Context, *EmptyRequest) (*GetGraphsResponse, error)
 	// Returns schema metadata for one exported graph token.
-	GetGraph(context.Context, *GetGraphRequest) (*GetGraphResponse, error)
+	GetGraph(context.Context, *TokenLookupRequest) (*GetGraphResponse, error)
 	// Returns the list of exported trigger tokens.
-	GetTriggers(context.Context, *GetTriggersRequest) (*GetTriggersResponse, error)
+	GetTriggers(context.Context, *EmptyRequest) (*GetTriggersResponse, error)
 	// Returns schema metadata for one exported trigger token.
-	GetTrigger(context.Context, *GetTriggerRequest) (*GetTriggerResponse, error)
+	GetTrigger(context.Context, *TokenLookupRequest) (*GetTriggerResponse, error)
 	// Returns the list of exported top-level job tokens.
-	GetJobs(context.Context, *GetJobsRequest) (*GetJobsResponse, error)
+	GetJobs(context.Context, *EmptyRequest) (*GetJobsResponse, error)
 	// Returns schema metadata for one exported job token.
-	GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error)
+	GetJob(context.Context, *TokenLookupRequest) (*GetJobResponse, error)
 	// Returns the list of exported step tokens.
 	//
 	// These are reusable top-level step definitions that can be referenced from jobs.
-	GetSteps(context.Context, *GetStepsRequest) (*GetStepsResponse, error)
+	GetSteps(context.Context, *EmptyRequest) (*GetStepsResponse, error)
 	// Returns schema metadata for one exported step token.
-	GetStep(context.Context, *GetStepRequest) (*GetStepResponse, error)
+	GetStep(context.Context, *TokenLookupRequest) (*GetStepResponse, error)
 	// Generates a concrete job shape for either:
 	// - an exported top-level job (`name`), or
 	// - an inline graph-scoped job (`path`).
@@ -434,31 +434,31 @@ type UnimplementedWorkflowEvaluatorServer struct{}
 func (UnimplementedWorkflowEvaluatorServer) Handshake(context.Context, *WorkflowHandshakeRequest) (*WorkflowHandshakeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Handshake not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetPackageInfo(context.Context, *GetPackageInfoRequest) (*GetPackageInfoResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetPackageInfo(context.Context, *EmptyRequest) (*GetPackageInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPackageInfo not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetGraphs(context.Context, *GetGraphsRequest) (*GetGraphsResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetGraphs(context.Context, *EmptyRequest) (*GetGraphsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGraphs not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetGraph(context.Context, *GetGraphRequest) (*GetGraphResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetGraph(context.Context, *TokenLookupRequest) (*GetGraphResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetGraph not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetTriggers(context.Context, *GetTriggersRequest) (*GetTriggersResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetTriggers(context.Context, *EmptyRequest) (*GetTriggersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTriggers not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetTrigger(context.Context, *GetTriggerRequest) (*GetTriggerResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetTrigger(context.Context, *TokenLookupRequest) (*GetTriggerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTrigger not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetJobs(context.Context, *GetJobsRequest) (*GetJobsResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetJobs(context.Context, *EmptyRequest) (*GetJobsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJobs not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetJob(context.Context, *GetJobRequest) (*GetJobResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetJob(context.Context, *TokenLookupRequest) (*GetJobResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetJob not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetSteps(context.Context, *GetStepsRequest) (*GetStepsResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetSteps(context.Context, *EmptyRequest) (*GetStepsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSteps not implemented")
 }
-func (UnimplementedWorkflowEvaluatorServer) GetStep(context.Context, *GetStepRequest) (*GetStepResponse, error) {
+func (UnimplementedWorkflowEvaluatorServer) GetStep(context.Context, *TokenLookupRequest) (*GetStepResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStep not implemented")
 }
 func (UnimplementedWorkflowEvaluatorServer) GenerateJob(context.Context, *GenerateJobRequest) (*GenerateNodeResponse, error) {
@@ -525,7 +525,7 @@ func _WorkflowEvaluator_Handshake_Handler(srv interface{}, ctx context.Context, 
 }
 
 func _WorkflowEvaluator_GetPackageInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetPackageInfoRequest)
+	in := new(EmptyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -537,13 +537,13 @@ func _WorkflowEvaluator_GetPackageInfo_Handler(srv interface{}, ctx context.Cont
 		FullMethod: WorkflowEvaluator_GetPackageInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetPackageInfo(ctx, req.(*GetPackageInfoRequest))
+		return srv.(WorkflowEvaluatorServer).GetPackageInfo(ctx, req.(*EmptyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GetGraphs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGraphsRequest)
+	in := new(EmptyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -555,13 +555,13 @@ func _WorkflowEvaluator_GetGraphs_Handler(srv interface{}, ctx context.Context, 
 		FullMethod: WorkflowEvaluator_GetGraphs_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetGraphs(ctx, req.(*GetGraphsRequest))
+		return srv.(WorkflowEvaluatorServer).GetGraphs(ctx, req.(*EmptyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GetGraph_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetGraphRequest)
+	in := new(TokenLookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -573,13 +573,13 @@ func _WorkflowEvaluator_GetGraph_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: WorkflowEvaluator_GetGraph_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetGraph(ctx, req.(*GetGraphRequest))
+		return srv.(WorkflowEvaluatorServer).GetGraph(ctx, req.(*TokenLookupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GetTriggers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTriggersRequest)
+	in := new(EmptyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -591,13 +591,13 @@ func _WorkflowEvaluator_GetTriggers_Handler(srv interface{}, ctx context.Context
 		FullMethod: WorkflowEvaluator_GetTriggers_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetTriggers(ctx, req.(*GetTriggersRequest))
+		return srv.(WorkflowEvaluatorServer).GetTriggers(ctx, req.(*EmptyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GetTrigger_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTriggerRequest)
+	in := new(TokenLookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -609,13 +609,13 @@ func _WorkflowEvaluator_GetTrigger_Handler(srv interface{}, ctx context.Context,
 		FullMethod: WorkflowEvaluator_GetTrigger_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetTrigger(ctx, req.(*GetTriggerRequest))
+		return srv.(WorkflowEvaluatorServer).GetTrigger(ctx, req.(*TokenLookupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GetJobs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetJobsRequest)
+	in := new(EmptyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -627,13 +627,13 @@ func _WorkflowEvaluator_GetJobs_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: WorkflowEvaluator_GetJobs_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetJobs(ctx, req.(*GetJobsRequest))
+		return srv.(WorkflowEvaluatorServer).GetJobs(ctx, req.(*EmptyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GetJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetJobRequest)
+	in := new(TokenLookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -645,13 +645,13 @@ func _WorkflowEvaluator_GetJob_Handler(srv interface{}, ctx context.Context, dec
 		FullMethod: WorkflowEvaluator_GetJob_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetJob(ctx, req.(*GetJobRequest))
+		return srv.(WorkflowEvaluatorServer).GetJob(ctx, req.(*TokenLookupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GetSteps_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetStepsRequest)
+	in := new(EmptyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -663,13 +663,13 @@ func _WorkflowEvaluator_GetSteps_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: WorkflowEvaluator_GetSteps_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetSteps(ctx, req.(*GetStepsRequest))
+		return srv.(WorkflowEvaluatorServer).GetSteps(ctx, req.(*EmptyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _WorkflowEvaluator_GetStep_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetStepRequest)
+	in := new(TokenLookupRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -681,7 +681,7 @@ func _WorkflowEvaluator_GetStep_Handler(srv interface{}, ctx context.Context, de
 		FullMethod: WorkflowEvaluator_GetStep_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(WorkflowEvaluatorServer).GetStep(ctx, req.(*GetStepRequest))
+		return srv.(WorkflowEvaluatorServer).GetStep(ctx, req.(*TokenLookupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

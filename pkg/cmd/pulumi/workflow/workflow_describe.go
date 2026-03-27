@@ -91,7 +91,7 @@ func describeWorkflow(
 	kind string,
 	nameOrToken string,
 ) (string, error) {
-	pkgInfoResp, err := workflowPlugin.GetPackageInfo(ctx, &pulumirpc.GetPackageInfoRequest{})
+	pkgInfoResp, err := workflowPlugin.GetPackageInfo(ctx, &pulumirpc.EmptyRequest{})
 	if err != nil {
 		return "", fmt.Errorf("get package info: %w", err)
 	}
@@ -109,7 +109,7 @@ func describeWorkflow(
 		if err != nil {
 			return "", err
 		}
-		resp, err := workflowPlugin.GetJob(ctx, &pulumirpc.GetJobRequest{Token: token})
+		resp, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: token})
 		if err != nil {
 			return "", fmt.Errorf("get job %q: %w", token, err)
 		}
@@ -124,7 +124,7 @@ func describeWorkflow(
 		if err != nil {
 			return "", err
 		}
-		resp, err := workflowPlugin.GetGraph(ctx, &pulumirpc.GetGraphRequest{Token: token})
+		resp, err := workflowPlugin.GetGraph(ctx, &pulumirpc.TokenLookupRequest{Token: token})
 		if err != nil {
 			return "", fmt.Errorf("get graph %q: %w", token, err)
 		}
@@ -139,7 +139,7 @@ func describeWorkflow(
 		if err != nil {
 			return "", err
 		}
-		resp, err := workflowPlugin.GetTrigger(ctx, &pulumirpc.GetTriggerRequest{Token: token})
+		resp, err := workflowPlugin.GetTrigger(ctx, &pulumirpc.TokenLookupRequest{Token: token})
 		if err != nil {
 			return "", fmt.Errorf("get trigger %q: %w", token, err)
 		}
@@ -202,13 +202,13 @@ func resolveGraphToken(
 ) (string, error) {
 	// If already token-like, validate and use directly.
 	if strings.Contains(graphNameOrToken, ":") {
-		if _, err := workflowPlugin.GetGraph(ctx, &pulumirpc.GetGraphRequest{Token: graphNameOrToken}); err != nil {
+		if _, err := workflowPlugin.GetGraph(ctx, &pulumirpc.TokenLookupRequest{Token: graphNameOrToken}); err != nil {
 			return "", fmt.Errorf("get graph metadata for %q: %w", graphNameOrToken, err)
 		}
 		return graphNameOrToken, nil
 	}
 
-	resp, err := workflowPlugin.GetGraphs(ctx, &pulumirpc.GetGraphsRequest{})
+	resp, err := workflowPlugin.GetGraphs(ctx, &pulumirpc.EmptyRequest{})
 	if err != nil {
 		return "", fmt.Errorf("get graphs: %w", err)
 	}

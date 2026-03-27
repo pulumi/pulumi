@@ -27,19 +27,19 @@ func TestDescribeWorkflowJobByName(t *testing.T) {
 	t.Parallel()
 
 	workflowPlugin := &plugin.MockWorkflow{
-		GetPackageInfoF: func(context.Context, *pulumirpc.GetPackageInfoRequest) (*pulumirpc.GetPackageInfoResponse, error) {
+		GetPackageInfoF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetPackageInfoResponse, error) {
 			return &pulumirpc.GetPackageInfoResponse{
 				Package: &pulumirpc.PackageInfo{Name: "example", Version: "1.2.3"},
 			}, nil
 		},
-		GetJobsF: func(context.Context, *pulumirpc.GetJobsRequest) (*pulumirpc.GetJobsResponse, error) {
+		GetJobsF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetJobsResponse, error) {
 			return &pulumirpc.GetJobsResponse{
 				Jobs: []*pulumirpc.JobInfo{
 					{Token: "example:index:build"},
 				},
 			}, nil
 		},
-		GetJobF: func(_ context.Context, req *pulumirpc.GetJobRequest) (*pulumirpc.GetJobResponse, error) {
+		GetJobF: func(_ context.Context, req *pulumirpc.TokenLookupRequest) (*pulumirpc.GetJobResponse, error) {
 			return &pulumirpc.GetJobResponse{
 				Job: &pulumirpc.JobInfo{
 					Token:      req.GetToken(),
@@ -76,12 +76,12 @@ func TestDescribeWorkflowTriggerByToken(t *testing.T) {
 	t.Parallel()
 
 	workflowPlugin := &plugin.MockWorkflow{
-		GetPackageInfoF: func(context.Context, *pulumirpc.GetPackageInfoRequest) (*pulumirpc.GetPackageInfoResponse, error) {
+		GetPackageInfoF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetPackageInfoResponse, error) {
 			return &pulumirpc.GetPackageInfoResponse{
 				Package: &pulumirpc.PackageInfo{Name: "example", Version: "1.0.0"},
 			}, nil
 		},
-		GetTriggerF: func(_ context.Context, req *pulumirpc.GetTriggerRequest) (*pulumirpc.GetTriggerResponse, error) {
+		GetTriggerF: func(_ context.Context, req *pulumirpc.TokenLookupRequest) (*pulumirpc.GetTriggerResponse, error) {
 			if req.GetToken() != "example:index:cron" {
 				t.Fatalf("unexpected trigger token: %q", req.GetToken())
 			}
@@ -112,7 +112,7 @@ func TestDescribeWorkflowUnknownKind(t *testing.T) {
 	t.Parallel()
 
 	workflowPlugin := &plugin.MockWorkflow{
-		GetPackageInfoF: func(context.Context, *pulumirpc.GetPackageInfoRequest) (*pulumirpc.GetPackageInfoResponse, error) {
+		GetPackageInfoF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetPackageInfoResponse, error) {
 			return &pulumirpc.GetPackageInfoResponse{}, nil
 		},
 	}
@@ -130,7 +130,7 @@ func TestResolveGraphTokenAmbiguous(t *testing.T) {
 	t.Parallel()
 
 	workflowPlugin := &plugin.MockWorkflow{
-		GetGraphsF: func(context.Context, *pulumirpc.GetGraphsRequest) (*pulumirpc.GetGraphsResponse, error) {
+		GetGraphsF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetGraphsResponse, error) {
 			return &pulumirpc.GetGraphsResponse{
 				Graphs: []*pulumirpc.GraphInfo{
 					{Token: "example:index:main"},

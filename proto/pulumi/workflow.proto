@@ -42,35 +42,35 @@ service WorkflowEvaluator {
     //
     // This is analogous to package identity APIs in provider/language protocols and is expected
     // to be stable for a plugin process lifetime.
-    rpc GetPackageInfo(GetPackageInfoRequest) returns (GetPackageInfoResponse) {}
+    rpc GetPackageInfo(EmptyRequest) returns (GetPackageInfoResponse) {}
 
     // Returns the list of exported graph tokens.
     //
     // This should include only top-level exported graphs, not inline subgraphs.
-    rpc GetGraphs(GetGraphsRequest) returns (GetGraphsResponse) {}
+    rpc GetGraphs(EmptyRequest) returns (GetGraphsResponse) {}
 
     // Returns schema metadata for one exported graph token.
-    rpc GetGraph(GetGraphRequest) returns (GetGraphResponse) {}
+    rpc GetGraph(TokenLookupRequest) returns (GetGraphResponse) {}
 
     // Returns the list of exported trigger tokens.
-    rpc GetTriggers(GetTriggersRequest) returns (GetTriggersResponse) {}
+    rpc GetTriggers(EmptyRequest) returns (GetTriggersResponse) {}
 
     // Returns schema metadata for one exported trigger token.
-    rpc GetTrigger(GetTriggerRequest) returns (GetTriggerResponse) {}
+    rpc GetTrigger(TokenLookupRequest) returns (GetTriggerResponse) {}
 
     // Returns the list of exported top-level job tokens.
-    rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {}
+    rpc GetJobs(EmptyRequest) returns (GetJobsResponse) {}
 
     // Returns schema metadata for one exported job token.
-    rpc GetJob(GetJobRequest) returns (GetJobResponse) {}
+    rpc GetJob(TokenLookupRequest) returns (GetJobResponse) {}
 
     // Returns the list of exported step tokens.
     //
     // These are reusable top-level step definitions that can be referenced from jobs.
-    rpc GetSteps(GetStepsRequest) returns (GetStepsResponse) {}
+    rpc GetSteps(EmptyRequest) returns (GetStepsResponse) {}
 
     // Returns schema metadata for one exported step token.
-    rpc GetStep(GetStepRequest) returns (GetStepResponse) {}
+    rpc GetStep(TokenLookupRequest) returns (GetStepResponse) {}
 
     // Generates a concrete job shape for either:
     // - an exported top-level job (`name`), or
@@ -224,20 +224,19 @@ message JobInfo {
     bool has_on_error = 4;
 }
 
-message GetPackageInfoRequest {}
+message EmptyRequest {}
 message GetPackageInfoResponse {
     // Package metadata.
     PackageInfo package = 1;
 }
 
-message GetGraphsRequest {}
 message GetGraphsResponse {
     // Exported graph definitions.
     repeated GraphInfo graphs = 1;
 }
 
-message GetGraphRequest {
-    // Fully-qualified graph token to fetch.
+message TokenLookupRequest {
+    // Fully-qualified token to fetch.
     string token = 1;
 }
 message GetGraphResponse {
@@ -245,16 +244,11 @@ message GetGraphResponse {
     GraphInfo graph = 1;
 }
 
-message GetTriggersRequest {}
 message GetTriggersResponse {
     // Fully-qualified trigger tokens.
     repeated string triggers = 1;
 }
 
-message GetTriggerRequest {
-    // Fully-qualified trigger token to fetch.
-    string token = 1;
-}
 message GetTriggerResponse {
     // Type token for trigger input args shape.
     TypeReference input_type = 1;
@@ -262,16 +256,11 @@ message GetTriggerResponse {
     TypeReference output_type = 2;
 }
 
-message GetJobsRequest {}
 message GetJobsResponse {
     // Exported job definitions.
     repeated JobInfo jobs = 1;
 }
 
-message GetJobRequest {
-    // Fully-qualified job token to fetch.
-    string token = 1;
-}
 message GetJobResponse {
     // Job metadata for the requested token.
     JobInfo job = 1;
@@ -279,16 +268,11 @@ message GetJobResponse {
     repeated InputProperty input_properties = 2;
 }
 
-message GetStepsRequest {}
 message GetStepsResponse {
     // Fully-qualified exported step tokens.
     repeated string steps = 1;
 }
 
-message GetStepRequest {
-    // Fully-qualified step token to fetch.
-    string token = 1;
-}
 message GetStepResponse {
     // Type token for step input value shape.
     TypeReference input_type = 1;

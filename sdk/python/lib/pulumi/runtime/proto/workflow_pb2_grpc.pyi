@@ -58,7 +58,7 @@ class WorkflowEvaluatorStub:
     """
 
     GetPackageInfo: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetPackageInfoRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetPackageInfoResponse,
     ]
     """Returns high-level package metadata (name/version/display name/etc).
@@ -68,7 +68,7 @@ class WorkflowEvaluatorStub:
     """
 
     GetGraphs: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetGraphsRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetGraphsResponse,
     ]
     """Returns the list of exported graph tokens.
@@ -77,37 +77,37 @@ class WorkflowEvaluatorStub:
     """
 
     GetGraph: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetGraphRequest,
+        pulumi.workflow_pb2.TokenLookupRequest,
         pulumi.workflow_pb2.GetGraphResponse,
     ]
     """Returns schema metadata for one exported graph token."""
 
     GetTriggers: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetTriggersRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetTriggersResponse,
     ]
     """Returns the list of exported trigger tokens."""
 
     GetTrigger: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetTriggerRequest,
+        pulumi.workflow_pb2.TokenLookupRequest,
         pulumi.workflow_pb2.GetTriggerResponse,
     ]
     """Returns schema metadata for one exported trigger token."""
 
     GetJobs: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetJobsRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetJobsResponse,
     ]
     """Returns the list of exported top-level job tokens."""
 
     GetJob: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetJobRequest,
+        pulumi.workflow_pb2.TokenLookupRequest,
         pulumi.workflow_pb2.GetJobResponse,
     ]
     """Returns schema metadata for one exported job token."""
 
     GetSteps: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetStepsRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetStepsResponse,
     ]
     """Returns the list of exported step tokens.
@@ -116,7 +116,7 @@ class WorkflowEvaluatorStub:
     """
 
     GetStep: grpc.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetStepRequest,
+        pulumi.workflow_pb2.TokenLookupRequest,
         pulumi.workflow_pb2.GetStepResponse,
     ]
     """Returns schema metadata for one exported step token."""
@@ -229,7 +229,7 @@ class WorkflowEvaluatorAsyncStub:
     """
 
     GetPackageInfo: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetPackageInfoRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetPackageInfoResponse,
     ]
     """Returns high-level package metadata (name/version/display name/etc).
@@ -239,7 +239,7 @@ class WorkflowEvaluatorAsyncStub:
     """
 
     GetGraphs: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetGraphsRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetGraphsResponse,
     ]
     """Returns the list of exported graph tokens.
@@ -248,37 +248,37 @@ class WorkflowEvaluatorAsyncStub:
     """
 
     GetGraph: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetGraphRequest,
+        pulumi.workflow_pb2.TokenLookupRequest,
         pulumi.workflow_pb2.GetGraphResponse,
     ]
     """Returns schema metadata for one exported graph token."""
 
     GetTriggers: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetTriggersRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetTriggersResponse,
     ]
     """Returns the list of exported trigger tokens."""
 
     GetTrigger: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetTriggerRequest,
+        pulumi.workflow_pb2.TokenLookupRequest,
         pulumi.workflow_pb2.GetTriggerResponse,
     ]
     """Returns schema metadata for one exported trigger token."""
 
     GetJobs: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetJobsRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetJobsResponse,
     ]
     """Returns the list of exported top-level job tokens."""
 
     GetJob: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetJobRequest,
+        pulumi.workflow_pb2.TokenLookupRequest,
         pulumi.workflow_pb2.GetJobResponse,
     ]
     """Returns schema metadata for one exported job token."""
 
     GetSteps: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetStepsRequest,
+        pulumi.workflow_pb2.EmptyRequest,
         pulumi.workflow_pb2.GetStepsResponse,
     ]
     """Returns the list of exported step tokens.
@@ -287,7 +287,7 @@ class WorkflowEvaluatorAsyncStub:
     """
 
     GetStep: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.workflow_pb2.GetStepRequest,
+        pulumi.workflow_pb2.TokenLookupRequest,
         pulumi.workflow_pb2.GetStepResponse,
     ]
     """Returns schema metadata for one exported step token."""
@@ -404,7 +404,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetPackageInfo(
         self,
-        request: pulumi.workflow_pb2.GetPackageInfoRequest,
+        request: pulumi.workflow_pb2.EmptyRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetPackageInfoResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetPackageInfoResponse]]:
         """Returns high-level package metadata (name/version/display name/etc).
@@ -416,7 +416,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetGraphs(
         self,
-        request: pulumi.workflow_pb2.GetGraphsRequest,
+        request: pulumi.workflow_pb2.EmptyRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetGraphsResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetGraphsResponse]]:
         """Returns the list of exported graph tokens.
@@ -427,7 +427,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetGraph(
         self,
-        request: pulumi.workflow_pb2.GetGraphRequest,
+        request: pulumi.workflow_pb2.TokenLookupRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetGraphResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetGraphResponse]]:
         """Returns schema metadata for one exported graph token."""
@@ -435,7 +435,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetTriggers(
         self,
-        request: pulumi.workflow_pb2.GetTriggersRequest,
+        request: pulumi.workflow_pb2.EmptyRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetTriggersResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetTriggersResponse]]:
         """Returns the list of exported trigger tokens."""
@@ -443,7 +443,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetTrigger(
         self,
-        request: pulumi.workflow_pb2.GetTriggerRequest,
+        request: pulumi.workflow_pb2.TokenLookupRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetTriggerResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetTriggerResponse]]:
         """Returns schema metadata for one exported trigger token."""
@@ -451,7 +451,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetJobs(
         self,
-        request: pulumi.workflow_pb2.GetJobsRequest,
+        request: pulumi.workflow_pb2.EmptyRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetJobsResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetJobsResponse]]:
         """Returns the list of exported top-level job tokens."""
@@ -459,7 +459,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetJob(
         self,
-        request: pulumi.workflow_pb2.GetJobRequest,
+        request: pulumi.workflow_pb2.TokenLookupRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetJobResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetJobResponse]]:
         """Returns schema metadata for one exported job token."""
@@ -467,7 +467,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetSteps(
         self,
-        request: pulumi.workflow_pb2.GetStepsRequest,
+        request: pulumi.workflow_pb2.EmptyRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetStepsResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetStepsResponse]]:
         """Returns the list of exported step tokens.
@@ -478,7 +478,7 @@ class WorkflowEvaluatorServicer(metaclass=abc.ABCMeta):
     
     def GetStep(
         self,
-        request: pulumi.workflow_pb2.GetStepRequest,
+        request: pulumi.workflow_pb2.TokenLookupRequest,
         context: _ServicerContext,
     ) -> typing.Union[pulumi.workflow_pb2.GetStepResponse, collections.abc.Awaitable[pulumi.workflow_pb2.GetStepResponse]]:
         """Returns schema metadata for one exported step token."""

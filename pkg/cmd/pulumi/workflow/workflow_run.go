@@ -164,7 +164,7 @@ func runExportedJob(
 		return nil, "", "", false, err
 	}
 
-	jobInfo, err := workflowPlugin.GetJob(ctx, &pulumirpc.GetJobRequest{Token: jobToken})
+	jobInfo, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: jobToken})
 	if err != nil {
 		return nil, "", "", false, fmt.Errorf("get job metadata for %q: %w", jobToken, err)
 	}
@@ -381,13 +381,13 @@ func resolveJobToken(
 ) (string, error) {
 	// If already token-like, validate and use directly.
 	if strings.Contains(jobNameOrToken, ":") {
-		if _, err := workflowPlugin.GetJob(ctx, &pulumirpc.GetJobRequest{Token: jobNameOrToken}); err != nil {
+		if _, err := workflowPlugin.GetJob(ctx, &pulumirpc.TokenLookupRequest{Token: jobNameOrToken}); err != nil {
 			return "", fmt.Errorf("get job metadata for %q: %w", jobNameOrToken, err)
 		}
 		return jobNameOrToken, nil
 	}
 
-	resp, err := workflowPlugin.GetJobs(ctx, &pulumirpc.GetJobsRequest{})
+	resp, err := workflowPlugin.GetJobs(ctx, &pulumirpc.EmptyRequest{})
 	if err != nil {
 		return "", fmt.Errorf("get jobs: %w", err)
 	}

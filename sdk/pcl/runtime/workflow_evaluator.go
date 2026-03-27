@@ -73,7 +73,7 @@ func (e *WorkflowEvaluator) Handshake(
 }
 
 func (e *WorkflowEvaluator) GetPackageInfo(
-	context.Context, *pulumirpc.GetPackageInfoRequest,
+	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetPackageInfoResponse, error) {
 	return &pulumirpc.GetPackageInfoResponse{
 		Package: &pulumirpc.PackageInfo{
@@ -85,7 +85,7 @@ func (e *WorkflowEvaluator) GetPackageInfo(
 }
 
 func (e *WorkflowEvaluator) GetGraphs(
-	context.Context, *pulumirpc.GetGraphsRequest,
+	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetGraphsResponse, error) {
 	resp := &pulumirpc.GetGraphsResponse{}
 	for _, graph := range e.program.Workflows {
@@ -96,7 +96,7 @@ func (e *WorkflowEvaluator) GetGraphs(
 }
 
 func (e *WorkflowEvaluator) GetGraph(
-	_ context.Context, req *pulumirpc.GetGraphRequest,
+	_ context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetGraphResponse, error) {
 	if _, ok := e.program.GraphByName(req.GetToken()); !ok {
 		return nil, status.Errorf(codes.NotFound, "unknown graph token %q", req.GetToken())
@@ -105,7 +105,7 @@ func (e *WorkflowEvaluator) GetGraph(
 }
 
 func (e *WorkflowEvaluator) GetTriggers(
-	_ context.Context, req *pulumirpc.GetTriggersRequest,
+	_ context.Context, req *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetTriggersResponse, error) {
 	_ = req
 	resp := &pulumirpc.GetTriggersResponse{}
@@ -116,7 +116,7 @@ func (e *WorkflowEvaluator) GetTriggers(
 }
 
 func (e *WorkflowEvaluator) GetTrigger(
-	_ context.Context, req *pulumirpc.GetTriggerRequest,
+	_ context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetTriggerResponse, error) {
 	if !e.hasTriggerToken(req.GetToken()) {
 		return nil, status.Errorf(codes.NotFound, "unknown trigger token %q", req.GetToken())
@@ -128,7 +128,7 @@ func (e *WorkflowEvaluator) GetTrigger(
 }
 
 func (e *WorkflowEvaluator) GetJobs(
-	context.Context, *pulumirpc.GetJobsRequest,
+	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetJobsResponse, error) {
 	resp := &pulumirpc.GetJobsResponse{}
 	for _, name := range e.program.JobNames() {
@@ -143,7 +143,7 @@ func (e *WorkflowEvaluator) GetJobs(
 }
 
 func (e *WorkflowEvaluator) GetJob(
-	_ context.Context, req *pulumirpc.GetJobRequest,
+	_ context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetJobResponse, error) {
 	name, ok := e.resolveJobToken(req.GetToken())
 	if !ok {
@@ -163,7 +163,7 @@ func (e *WorkflowEvaluator) GetJob(
 }
 
 func (e *WorkflowEvaluator) GetSteps(
-	context.Context, *pulumirpc.GetStepsRequest,
+	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetStepsResponse, error) {
 	resp := &pulumirpc.GetStepsResponse{}
 	for _, name := range e.program.StepNames() {
@@ -173,7 +173,7 @@ func (e *WorkflowEvaluator) GetSteps(
 }
 
 func (e *WorkflowEvaluator) GetStep(
-	_ context.Context, req *pulumirpc.GetStepRequest,
+	_ context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetStepResponse, error) {
 	name, ok := e.resolveStepToken(req.GetToken())
 	if !ok {

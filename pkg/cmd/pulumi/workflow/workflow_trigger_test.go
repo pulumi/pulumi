@@ -33,7 +33,7 @@ func TestRunTriggerMockByName(t *testing.T) {
 	var calledToken string
 	var calledArgs []string
 	workflowPlugin := &plugin.MockWorkflow{
-		GetTriggersF: func(context.Context, *pulumirpc.GetTriggersRequest) (*pulumirpc.GetTriggersResponse, error) {
+		GetTriggersF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetTriggersResponse, error) {
 			return &pulumirpc.GetTriggersResponse{
 				Triggers: []string{"example:index:cron"},
 			}, nil
@@ -83,7 +83,7 @@ func TestRunTriggerMockByToken(t *testing.T) {
 	var getTriggerToken string
 	var runTriggerToken string
 	workflowPlugin := &plugin.MockWorkflow{
-		GetTriggerF: func(_ context.Context, req *pulumirpc.GetTriggerRequest) (*pulumirpc.GetTriggerResponse, error) {
+		GetTriggerF: func(_ context.Context, req *pulumirpc.TokenLookupRequest) (*pulumirpc.GetTriggerResponse, error) {
 			getTriggerToken = req.GetToken()
 			return &pulumirpc.GetTriggerResponse{}, nil
 		},
@@ -117,7 +117,7 @@ func TestResolveTriggerTokenAmbiguous(t *testing.T) {
 	t.Parallel()
 
 	workflowPlugin := &plugin.MockWorkflow{
-		GetTriggersF: func(context.Context, *pulumirpc.GetTriggersRequest) (*pulumirpc.GetTriggersResponse, error) {
+		GetTriggersF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetTriggersResponse, error) {
 			return &pulumirpc.GetTriggersResponse{
 				Triggers: []string{"example:index:cron", "other:index:cron"},
 			}, nil
@@ -137,7 +137,7 @@ func TestResolveTriggerTokenNotFound(t *testing.T) {
 	t.Parallel()
 
 	workflowPlugin := &plugin.MockWorkflow{
-		GetTriggersF: func(context.Context, *pulumirpc.GetTriggersRequest) (*pulumirpc.GetTriggersResponse, error) {
+		GetTriggersF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetTriggersResponse, error) {
 			return &pulumirpc.GetTriggersResponse{
 				Triggers: []string{"example:index:push"},
 			}, nil
@@ -157,7 +157,7 @@ func TestRunTriggerMockReturnsError(t *testing.T) {
 	t.Parallel()
 
 	workflowPlugin := &plugin.MockWorkflow{
-		GetTriggersF: func(context.Context, *pulumirpc.GetTriggersRequest) (*pulumirpc.GetTriggersResponse, error) {
+		GetTriggersF: func(context.Context, *pulumirpc.EmptyRequest) (*pulumirpc.GetTriggersResponse, error) {
 			return &pulumirpc.GetTriggersResponse{
 				Triggers: []string{"example:index:cron"},
 			}, nil

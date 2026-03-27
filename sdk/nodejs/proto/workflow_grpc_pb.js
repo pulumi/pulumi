@@ -20,6 +20,17 @@ var grpc = require('@grpc/grpc-js');
 var pulumi_workflow_pb = require('./workflow_pb.js');
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 
+function serialize_pulumirpc_EmptyRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.EmptyRequest)) {
+    throw new Error('Expected argument of type pulumirpc.EmptyRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_EmptyRequest(buffer_arg) {
+  return pulumi_workflow_pb.EmptyRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_GenerateGraphRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GenerateGraphRequest)) {
     throw new Error('Expected argument of type pulumirpc.GenerateGraphRequest');
@@ -53,17 +64,6 @@ function deserialize_pulumirpc_GenerateNodeResponse(buffer_arg) {
   return pulumi_workflow_pb.GenerateNodeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_GetGraphRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetGraphRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetGraphRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetGraphRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetGraphRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_GetGraphResponse(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GetGraphResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetGraphResponse');
@@ -73,17 +73,6 @@ function serialize_pulumirpc_GetGraphResponse(arg) {
 
 function deserialize_pulumirpc_GetGraphResponse(buffer_arg) {
   return pulumi_workflow_pb.GetGraphResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_GetGraphsRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetGraphsRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetGraphsRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetGraphsRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetGraphsRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetGraphsResponse(arg) {
@@ -97,17 +86,6 @@ function deserialize_pulumirpc_GetGraphsResponse(buffer_arg) {
   return pulumi_workflow_pb.GetGraphsResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_GetJobRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetJobRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetJobRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetJobRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetJobRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_GetJobResponse(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GetJobResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetJobResponse');
@@ -117,17 +95,6 @@ function serialize_pulumirpc_GetJobResponse(arg) {
 
 function deserialize_pulumirpc_GetJobResponse(buffer_arg) {
   return pulumi_workflow_pb.GetJobResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_GetJobsRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetJobsRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetJobsRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetJobsRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetJobsRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetJobsResponse(arg) {
@@ -141,17 +108,6 @@ function deserialize_pulumirpc_GetJobsResponse(buffer_arg) {
   return pulumi_workflow_pb.GetJobsResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_GetPackageInfoRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetPackageInfoRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetPackageInfoRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetPackageInfoRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetPackageInfoRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_GetPackageInfoResponse(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GetPackageInfoResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetPackageInfoResponse');
@@ -161,17 +117,6 @@ function serialize_pulumirpc_GetPackageInfoResponse(arg) {
 
 function deserialize_pulumirpc_GetPackageInfoResponse(buffer_arg) {
   return pulumi_workflow_pb.GetPackageInfoResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_GetStepRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetStepRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetStepRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetStepRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetStepRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetStepResponse(arg) {
@@ -185,17 +130,6 @@ function deserialize_pulumirpc_GetStepResponse(buffer_arg) {
   return pulumi_workflow_pb.GetStepResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_GetStepsRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetStepsRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetStepsRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetStepsRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetStepsRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_GetStepsResponse(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GetStepsResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetStepsResponse');
@@ -207,17 +141,6 @@ function deserialize_pulumirpc_GetStepsResponse(buffer_arg) {
   return pulumi_workflow_pb.GetStepsResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_GetTriggerRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetTriggerRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetTriggerRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetTriggerRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetTriggerRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_GetTriggerResponse(arg) {
   if (!(arg instanceof pulumi_workflow_pb.GetTriggerResponse)) {
     throw new Error('Expected argument of type pulumirpc.GetTriggerResponse');
@@ -227,17 +150,6 @@ function serialize_pulumirpc_GetTriggerResponse(arg) {
 
 function deserialize_pulumirpc_GetTriggerResponse(buffer_arg) {
   return pulumi_workflow_pb.GetTriggerResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_GetTriggersRequest(arg) {
-  if (!(arg instanceof pulumi_workflow_pb.GetTriggersRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GetTriggersRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GetTriggersRequest(buffer_arg) {
-  return pulumi_workflow_pb.GetTriggersRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_GetTriggersResponse(arg) {
@@ -449,6 +361,17 @@ function deserialize_pulumirpc_RunTriggerMockResponse(buffer_arg) {
   return pulumi_workflow_pb.RunTriggerMockResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_TokenLookupRequest(arg) {
+  if (!(arg instanceof pulumi_workflow_pb.TokenLookupRequest)) {
+    throw new Error('Expected argument of type pulumirpc.TokenLookupRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_TokenLookupRequest(buffer_arg) {
+  return pulumi_workflow_pb.TokenLookupRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_WorkflowHandshakeRequest(arg) {
   if (!(arg instanceof pulumi_workflow_pb.WorkflowHandshakeRequest)) {
     throw new Error('Expected argument of type pulumirpc.WorkflowHandshakeRequest');
@@ -507,10 +430,10 @@ getPackageInfo: {
     path: '/pulumirpc.WorkflowEvaluator/GetPackageInfo',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetPackageInfoRequest,
+    requestType: pulumi_workflow_pb.EmptyRequest,
     responseType: pulumi_workflow_pb.GetPackageInfoResponse,
-    requestSerialize: serialize_pulumirpc_GetPackageInfoRequest,
-    requestDeserialize: deserialize_pulumirpc_GetPackageInfoRequest,
+    requestSerialize: serialize_pulumirpc_EmptyRequest,
+    requestDeserialize: deserialize_pulumirpc_EmptyRequest,
     responseSerialize: serialize_pulumirpc_GetPackageInfoResponse,
     responseDeserialize: deserialize_pulumirpc_GetPackageInfoResponse,
   },
@@ -521,10 +444,10 @@ getGraphs: {
     path: '/pulumirpc.WorkflowEvaluator/GetGraphs',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetGraphsRequest,
+    requestType: pulumi_workflow_pb.EmptyRequest,
     responseType: pulumi_workflow_pb.GetGraphsResponse,
-    requestSerialize: serialize_pulumirpc_GetGraphsRequest,
-    requestDeserialize: deserialize_pulumirpc_GetGraphsRequest,
+    requestSerialize: serialize_pulumirpc_EmptyRequest,
+    requestDeserialize: deserialize_pulumirpc_EmptyRequest,
     responseSerialize: serialize_pulumirpc_GetGraphsResponse,
     responseDeserialize: deserialize_pulumirpc_GetGraphsResponse,
   },
@@ -533,10 +456,10 @@ getGraph: {
     path: '/pulumirpc.WorkflowEvaluator/GetGraph',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetGraphRequest,
+    requestType: pulumi_workflow_pb.TokenLookupRequest,
     responseType: pulumi_workflow_pb.GetGraphResponse,
-    requestSerialize: serialize_pulumirpc_GetGraphRequest,
-    requestDeserialize: deserialize_pulumirpc_GetGraphRequest,
+    requestSerialize: serialize_pulumirpc_TokenLookupRequest,
+    requestDeserialize: deserialize_pulumirpc_TokenLookupRequest,
     responseSerialize: serialize_pulumirpc_GetGraphResponse,
     responseDeserialize: deserialize_pulumirpc_GetGraphResponse,
   },
@@ -545,10 +468,10 @@ getTriggers: {
     path: '/pulumirpc.WorkflowEvaluator/GetTriggers',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetTriggersRequest,
+    requestType: pulumi_workflow_pb.EmptyRequest,
     responseType: pulumi_workflow_pb.GetTriggersResponse,
-    requestSerialize: serialize_pulumirpc_GetTriggersRequest,
-    requestDeserialize: deserialize_pulumirpc_GetTriggersRequest,
+    requestSerialize: serialize_pulumirpc_EmptyRequest,
+    requestDeserialize: deserialize_pulumirpc_EmptyRequest,
     responseSerialize: serialize_pulumirpc_GetTriggersResponse,
     responseDeserialize: deserialize_pulumirpc_GetTriggersResponse,
   },
@@ -557,10 +480,10 @@ getTrigger: {
     path: '/pulumirpc.WorkflowEvaluator/GetTrigger',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetTriggerRequest,
+    requestType: pulumi_workflow_pb.TokenLookupRequest,
     responseType: pulumi_workflow_pb.GetTriggerResponse,
-    requestSerialize: serialize_pulumirpc_GetTriggerRequest,
-    requestDeserialize: deserialize_pulumirpc_GetTriggerRequest,
+    requestSerialize: serialize_pulumirpc_TokenLookupRequest,
+    requestDeserialize: deserialize_pulumirpc_TokenLookupRequest,
     responseSerialize: serialize_pulumirpc_GetTriggerResponse,
     responseDeserialize: deserialize_pulumirpc_GetTriggerResponse,
   },
@@ -569,10 +492,10 @@ getJobs: {
     path: '/pulumirpc.WorkflowEvaluator/GetJobs',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetJobsRequest,
+    requestType: pulumi_workflow_pb.EmptyRequest,
     responseType: pulumi_workflow_pb.GetJobsResponse,
-    requestSerialize: serialize_pulumirpc_GetJobsRequest,
-    requestDeserialize: deserialize_pulumirpc_GetJobsRequest,
+    requestSerialize: serialize_pulumirpc_EmptyRequest,
+    requestDeserialize: deserialize_pulumirpc_EmptyRequest,
     responseSerialize: serialize_pulumirpc_GetJobsResponse,
     responseDeserialize: deserialize_pulumirpc_GetJobsResponse,
   },
@@ -581,10 +504,10 @@ getJob: {
     path: '/pulumirpc.WorkflowEvaluator/GetJob',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetJobRequest,
+    requestType: pulumi_workflow_pb.TokenLookupRequest,
     responseType: pulumi_workflow_pb.GetJobResponse,
-    requestSerialize: serialize_pulumirpc_GetJobRequest,
-    requestDeserialize: deserialize_pulumirpc_GetJobRequest,
+    requestSerialize: serialize_pulumirpc_TokenLookupRequest,
+    requestDeserialize: deserialize_pulumirpc_TokenLookupRequest,
     responseSerialize: serialize_pulumirpc_GetJobResponse,
     responseDeserialize: deserialize_pulumirpc_GetJobResponse,
   },
@@ -595,10 +518,10 @@ getSteps: {
     path: '/pulumirpc.WorkflowEvaluator/GetSteps',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetStepsRequest,
+    requestType: pulumi_workflow_pb.EmptyRequest,
     responseType: pulumi_workflow_pb.GetStepsResponse,
-    requestSerialize: serialize_pulumirpc_GetStepsRequest,
-    requestDeserialize: deserialize_pulumirpc_GetStepsRequest,
+    requestSerialize: serialize_pulumirpc_EmptyRequest,
+    requestDeserialize: deserialize_pulumirpc_EmptyRequest,
     responseSerialize: serialize_pulumirpc_GetStepsResponse,
     responseDeserialize: deserialize_pulumirpc_GetStepsResponse,
   },
@@ -607,10 +530,10 @@ getStep: {
     path: '/pulumirpc.WorkflowEvaluator/GetStep',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_workflow_pb.GetStepRequest,
+    requestType: pulumi_workflow_pb.TokenLookupRequest,
     responseType: pulumi_workflow_pb.GetStepResponse,
-    requestSerialize: serialize_pulumirpc_GetStepRequest,
-    requestDeserialize: deserialize_pulumirpc_GetStepRequest,
+    requestSerialize: serialize_pulumirpc_TokenLookupRequest,
+    requestDeserialize: deserialize_pulumirpc_TokenLookupRequest,
     responseSerialize: serialize_pulumirpc_GetStepResponse,
     responseDeserialize: deserialize_pulumirpc_GetStepResponse,
   },

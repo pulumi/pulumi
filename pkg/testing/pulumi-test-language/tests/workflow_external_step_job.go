@@ -29,12 +29,12 @@ func init() {
 		Runs: []TestRun{
 			{
 				AssertWorkflow: func(l *L, args AssertWorkflowArgs) {
-					jobs, err := args.Workflow.GetJobs(args.Context, &pulumirpc.GetJobsRequest{})
+					jobs, err := args.Workflow.GetJobs(args.Context, &pulumirpc.EmptyRequest{})
 					require.NoError(l, err)
 					require.Len(l, jobs.GetJobs(), 1)
 
 					jobToken := jobs.GetJobs()[0].GetToken()
-					job, err := args.Workflow.GetJob(args.Context, &pulumirpc.GetJobRequest{Token: jobToken})
+					job, err := args.Workflow.GetJob(args.Context, &pulumirpc.TokenLookupRequest{Token: jobToken})
 					require.NoError(l, err)
 					require.NotNil(l, job.GetJob())
 					require.NotNil(l, job.GetJob().GetInputType().GetObject())

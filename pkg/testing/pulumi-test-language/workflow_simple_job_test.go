@@ -100,7 +100,7 @@ func (p *workflowSimpleJobPlugin) Handshake(
 }
 
 func (p *workflowSimpleJobPlugin) GetJobs(
-	context.Context, *pulumirpc.GetJobsRequest,
+	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetJobsResponse, error) {
 	return &pulumirpc.GetJobsResponse{
 		Jobs: []*pulumirpc.JobInfo{
@@ -110,7 +110,7 @@ func (p *workflowSimpleJobPlugin) GetJobs(
 }
 
 func (p *workflowSimpleJobPlugin) GetJob(
-	_ context.Context, req *pulumirpc.GetJobRequest,
+	_ context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetJobResponse, error) {
 	if req.Token != "example:index:build" {
 		return nil, fmt.Errorf("unexpected job token %q", req.Token)

@@ -102,7 +102,7 @@ func (p *workflowSimpleStepPlugin) Handshake(
 }
 
 func (p *workflowSimpleStepPlugin) GetSteps(
-	context.Context, *pulumirpc.GetStepsRequest,
+	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetStepsResponse, error) {
 	if p.getStepsError != "" {
 		return nil, errors.New(p.getStepsError)
@@ -114,7 +114,7 @@ func (p *workflowSimpleStepPlugin) GetSteps(
 }
 
 func (p *workflowSimpleStepPlugin) GetStep(
-	_ context.Context, req *pulumirpc.GetStepRequest,
+	_ context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetStepResponse, error) {
 	if req.Token != "echo" {
 		return nil, fmt.Errorf("unexpected step token %q", req.Token)

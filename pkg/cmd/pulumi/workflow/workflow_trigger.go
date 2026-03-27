@@ -120,13 +120,13 @@ func resolveTriggerToken(
 ) (string, error) {
 	// If already token-like, validate and use directly.
 	if strings.Contains(triggerNameOrToken, ":") {
-		if _, err := workflowPlugin.GetTrigger(ctx, &pulumirpc.GetTriggerRequest{Token: triggerNameOrToken}); err != nil {
+		if _, err := workflowPlugin.GetTrigger(ctx, &pulumirpc.TokenLookupRequest{Token: triggerNameOrToken}); err != nil {
 			return "", fmt.Errorf("get trigger metadata for %q: %w", triggerNameOrToken, err)
 		}
 		return triggerNameOrToken, nil
 	}
 
-	resp, err := workflowPlugin.GetTriggers(ctx, &pulumirpc.GetTriggersRequest{})
+	resp, err := workflowPlugin.GetTriggers(ctx, &pulumirpc.EmptyRequest{})
 	if err != nil {
 		return "", fmt.Errorf("get triggers: %w", err)
 	}
