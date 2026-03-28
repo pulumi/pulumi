@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // The mode in which the step generator is running.
@@ -2782,14 +2783,17 @@ func issueCheckFailures(printf func(*diag.Diag, ...any), new *resource.State, ur
 func processIgnoreChanges(d diag.Sink, urn resource.URN, inputs, oldInputs resource.PropertyMap,
 	ignoreChanges []string,
 ) resource.PropertyMap {
-	ignoredInputs := inputs.Copy()
+	old := property.New(resource.FromResourcePropertyMap(oldInputs))
+	cur := property.New(resource.FromResourcePropertyMap(inputs))
+
 	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
-		path, err := resource.ParsePropertyPath(ignoreChange) //nolint:staticcheck // TODO: migrate to property.Path
-		if err != nil {
+		var g property.Glob
+		if err := g.UnmarshalText([]byte(ignoreChange)); err != nil {
 			continue
 		}
-		ok := path.Reset(oldInputs, ignoredInputs)
+		var ok bool
+		cur, ok = resetGlob(g, old, cur)
 		if !ok {
 			invalidPaths = append(invalidPaths, ignoreChange)
 		}
@@ -2798,7 +2802,71 @@ func processIgnoreChanges(d diag.Sink, urn resource.URN, inputs, oldInputs resou
 		d.Infof(diag.Message(urn, "cannot ignore changes in added or removed elements of the path: %q"),
 			strings.Join(invalidPaths, ", "))
 	}
-	return ignoredInputs
+	return resource.ToResourcePropertyMap(cur.AsMap())
+}
+
+// resetGlob resets all paths matched by g in cur to their values in old.
+//
+// If old has a value at a matched path, that value is copied into cur.
+// If old does not have a value at a matched path, the value is deleted from cur.
+// Returns false if the glob refers to structurally incompatible paths (e.g. added or
+// removed array elements).
+func resetGlob(g property.Glob, old, cur property.Value) (property.Value, bool) {
+	curMatches, curErr := g.Get(cur)
+	oldMatches, oldErr := g.Get(old)
+
+	// If neither old nor cur match the glob, this is fine — both lack the path.
+	if curErr != nil && oldErr != nil {
+		return cur, true
+	}
+
+	// If only old matches, copy old's values into cur.
+	// If only cur matches, delete cur's values.
+	// If both match, reconcile.
+
+	// When the glob contains wildcards ([*]), we only reset paths present in both
+	// old and cur — extra paths in either side are left alone.
+	// Without wildcards, a path missing in old means we should delete it from cur.
+	hasWildcard := false
+	for s := range g.Segments {
+		if s == property.Splat {
+			hasWildcard = true
+			break
+		}
+	}
+
+	for path := range curMatches {
+		oldVal, inOld := oldMatches[path]
+		if inOld {
+			updated, err := path.Set(cur, oldVal)
+			if err != nil {
+				return cur, false
+			}
+			cur = updated
+		} else if !hasWildcard {
+			// Only delete from cur when not using wildcards.
+			updated, err := path.Delete(cur)
+			if err != nil {
+				return cur, false
+			}
+			cur = updated
+		}
+	}
+
+	// Copy paths that exist in old but not in cur (only for non-wildcard globs).
+	if !hasWildcard {
+		for path, oldVal := range oldMatches {
+			if _, inCur := curMatches[path]; !inCur {
+				updated, err := path.Set(cur, oldVal)
+				if err != nil {
+					return cur, false
+				}
+				cur = updated
+			}
+		}
+	}
+
+	return cur, true
 }
 
 func (sg *stepGenerator) loadResourceProvider(
@@ -2860,13 +2928,13 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 		return diff, nil
 	}
 
-	replaceOnChangePaths := slice.Prealloc[resource.PropertyPath](len(replaceOnChanges))
+	replaceOnChangeGlobs := slice.Prealloc[property.Glob](len(replaceOnChanges))
 	for _, p := range replaceOnChanges {
-		path, err := resource.ParsePropertyPath(p) //nolint:staticcheck // TODO: migrate to property.Path
-		if err != nil {
+		var g property.Glob
+		if err := g.UnmarshalText([]byte(p)); err != nil {
 			return diff, err
 		}
-		replaceOnChangePaths = append(replaceOnChangePaths, path)
+		replaceOnChangeGlobs = append(replaceOnChangeGlobs, g)
 	}
 
 	// Calculate the new DetailedDiff
@@ -2874,13 +2942,13 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 	if diff.DetailedDiff != nil {
 		modifiedDiff = map[string]plugin.PropertyDiff{}
 		for p, v := range diff.DetailedDiff {
-			diffPath, err := resource.ParsePropertyPath(p) //nolint:staticcheck // TODO: migrate to property.Path
-			if err != nil {
+			var diffPath property.Path
+			if err := diffPath.UnmarshalText([]byte(p)); err != nil {
 				return diff, err
 			}
 			changeToReplace := false
-			for _, replaceOnChangePath := range replaceOnChangePaths {
-				if replaceOnChangePath.Contains(diffPath) {
+			for _, g := range replaceOnChangeGlobs {
+				if g.Matches(diffPath) {
 					changeToReplace = true
 					break
 				}
@@ -2898,12 +2966,9 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 		modifiedReplaceKeysMap[k] = struct{}{}
 	}
 	for _, k := range diff.ChangedKeys {
-		for _, replaceOnChangePath := range replaceOnChangePaths {
-			keyPath, err := resource.ParsePropertyPath(string(k)) //nolint:staticcheck // TODO: migrate to property.Path
-			if err != nil {
-				continue
-			}
-			if replaceOnChangePath.Contains(keyPath) {
+		for _, g := range replaceOnChangeGlobs {
+			keyPath := property.PathFromSegments(property.NewSegment(string(k)))
+			if g.Matches(keyPath) {
 				modifiedReplaceKeysMap[k] = struct{}{}
 			}
 		}
@@ -2916,13 +2981,9 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 	// Add init errors to modified diff results
 	modifiedChanges := diff.Changes
 	if hasInitErrors {
-		for _, replaceOnChangePath := range replaceOnChangePaths {
-			//nolint:staticcheck // TODO: migrate to property.Path
-			initErrPath, err := resource.ParsePropertyPath(initErrorSpecialKey)
-			if err != nil {
-				continue
-			}
-			if replaceOnChangePath.Contains(initErrPath) {
+		initErrPath := property.PathFromSegments(property.NewSegment(initErrorSpecialKey))
+		for _, g := range replaceOnChangeGlobs {
+			if g.Matches(initErrPath) {
 				modifiedReplaceKeys = append(modifiedReplaceKeys, initErrorSpecialKey)
 				if modifiedDiff != nil {
 					modifiedDiff[initErrorSpecialKey] = plugin.PropertyDiff{

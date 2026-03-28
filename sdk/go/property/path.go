@@ -129,6 +129,49 @@ func (p Path) Set(src, newValue Value) (Value, error) {
 	}
 }
 
+// Delete removes the value at p from v.
+//
+// Delete does not mutate v, instead a copy of v with the value removed is returned.
+//
+// Deleting a key from a map removes the key. Deleting an index from an array removes
+// the element at that index, shifting subsequent elements.
+//
+// Any returned error will implement [PathApplyFailure].
+func (p Path) Delete(v Value) (Value, error) {
+	if p.len() == 0 {
+		return Value{}, nil
+	}
+
+	butLast, last := p.last()
+	parent, err := Path{butLast, struct{}{}}.Get(v)
+	if err != nil {
+		return Value{}, err
+	}
+	switch {
+	case parent.IsMap():
+		k, ok := last.(KeySegment)
+		if !ok {
+			return Value{}, pathErrorf(parent, "expected a KeySegment, found %T", last)
+		}
+		return Path{butLast, struct{}{}}.Set(v, New(parent.AsMap().Delete(k.string)))
+	case parent.IsArray():
+		i, ok := last.(IndexSegment)
+		if !ok {
+			return Value{}, pathErrorf(parent, "expected an IndexSegment, found %T", last)
+		}
+		arr := parent.AsArray().AsSlice()
+		if i.int < 0 || i.int >= len(arr) {
+			return Value{}, pathApplyIndexOutOfBoundsError{found: parent.AsArray(), idx: i.int}
+		}
+		newArr := make([]Value, 0, len(arr)-1)
+		newArr = append(newArr, arr[:i.int]...)
+		newArr = append(newArr, arr[i.int+1:]...)
+		return Path{butLast, struct{}{}}.Set(v, New(newArr))
+	default:
+		return Value{}, pathApplyKeyExpectedMapError{found: parent}
+	}
+}
+
 // Alter changes the value at p by applying f.
 //
 // To preserve metadata, use [WithGoValue] in conjunction with Alter:
