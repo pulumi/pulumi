@@ -257,6 +257,8 @@ type nodeLanguageHost struct {
 	runtime       string
 	tracing       string
 	otelEndpoint  string
+	cancelCtx     context.Context    // Cancelled when we receive the `Cancel` RPC
+	cancelFunc    context.CancelFunc // Cancel the cancelCtx
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
@@ -356,12 +358,15 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 func newLanguageHost(
 	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		otelEndpoint:  otelEndpoint,
 		forceTsc:      forceTsc,
 		runtime:       runtime,
+		cancelCtx:     ctx,
+		cancelFunc:    cancel,
 	}
 }
 
@@ -946,8 +951,17 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	// #nosec G204
-	cmd := exec.CommandContext(ctx, runtimeBin, runtimeArgs...)
+	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
+	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, cmdCancel)
+	cmd := exec.CommandContext(cmdCtx, runtimeBin, runtimeArgs...)
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 
 	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
 
@@ -1520,25 +1534,71 @@ func startDebugging(
 	return nil
 }
 
-func (host *nodeLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
-) error {
-	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
-}
-
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
-	ctx := server.Context()
 
+	return host.runPlugin(server.Context(), server.Context(), server.Context(), server, req)
+}
+
+func (host *nodeLanguageHost) RunPlugin2(
+	stream pulumirpc.LanguageRuntime_RunPlugin2Server,
+) error {
+	// Receive the first message which must be a start request.
+	msg, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("receiving start request: %w", err)
+	}
+	req := msg.GetStart()
+	if req == nil {
+		return fmt.Errorf("first message must be a start request")
+	}
+
+	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
+
+	// softCtx is a child of host.cancelCtx so that global Cancel RPC triggers graceful SIGINT.
+	softCtx, softCancel := context.WithCancel(host.cancelCtx)
+	defer softCancel()
+	// hardCtx is a child of the stream context, so it is cancelled by an explicit force cancel message or stream death.
+	hardCtx, hardCancel := context.WithCancel(stream.Context())
+	defer hardCancel()
+
+	// Listen for cancel messages on the bidi stream.
+	go func() {
+		for {
+			msg, err := stream.Recv()
+			if err != nil {
+				return
+			}
+			if cancel := msg.GetCancel(); cancel != nil {
+				if cancel.Force {
+					hardCancel()
+				} else {
+					softCancel()
+				}
+				return
+			}
+		}
+	}()
+
+	return host.runPlugin(stream.Context(), softCtx, hardCtx, stream, req)
+}
+
+func (host *nodeLanguageHost) runPlugin(
+	ctx context.Context,
+	softCtx context.Context,
+	hardCtx context.Context,
+	sender rpcutil.RunPluginSender,
+	req *pulumirpc.RunPluginRequest,
+) error {
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
 		return err
 	}
 	defer closer.Close()
 
-	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(sender, false)
 	if err != nil {
 		return err
 	}
@@ -1661,8 +1721,21 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.CommandContext(ctx, runtimeBin, args...)
+	cmd := exec.CommandContext(softCtx, runtimeBin, args...)
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
+	if hardCtx != nil {
+		context.AfterFunc(hardCtx, func() {
+			if cmd.Process != nil {
+				cmd.Process.Kill() //nolint:errcheck // best-effort kill
+			}
+		})
+	}
 	// node policy packs used to always run with the working directory set to the policy pack directory, not
 	// the main working directory. We need to continue that for backwards compatibility.
 	if req.Kind == string(apitype.AnalyzerPlugin) {
@@ -2227,6 +2300,7 @@ func (host *nodeLanguageHost) Link(
 }
 
 func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	host.cancelFunc()
 	return &emptypb.Empty{}, nil
 }
 

@@ -536,10 +536,10 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
-		rctx, kill := context.WithCancel(ctx.Request()) //nolint:govet // lostcancel
+		rctx, cancelStream := context.WithCancel(ctx.Request())
 
 		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
-		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
+		stdout, stderr, cancelPlugin, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
 			Info:             info,
 			WorkingDirectory: ctx.Pwd,
 			Args:             args,
@@ -549,14 +549,31 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			LoaderAddress:    ctx.Host.LoaderAddr(),
 		})
 		if err != nil {
-			return nil, err //nolint:govet // lostcancel
+			cancelStream()
+			return nil, err
 		}
 
 		return &Plugin{
-			Bin:    bin,
-			Args:   args,
-			Env:    environment,
-			Kill:   func() error { kill(); return nil },
+			Bin:  bin,
+			Args: args,
+			Env:  environment,
+			Kill: sync.OnceValue(func() error {
+				cancelPlugin(false /* force */)
+				softTimeout, softCancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer softCancel()
+				_, err := done.Result(softTimeout)
+				if errors.Is(err, context.DeadlineExceeded) {
+					cancelPlugin(true /* force */)
+					hardTimeout, hardCancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer hardCancel()
+					_, err = done.Result(hardTimeout)
+					if errors.Is(err, context.DeadlineExceeded) {
+						// Still not dead, force-cancel the gRPC stream.
+						cancelStream()
+					}
+				}
+				return nil
+			}),
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
 			Wait: func(ctx context.Context) (int, error) {

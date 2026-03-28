@@ -133,9 +133,17 @@ func MakeInstallDependenciesStreams(
 		isTerminal)
 }
 
-// Returns a pair of streams for use with the language runtimes RunPlugin method
+// RunPluginSender is an interface satisfied by both LanguageRuntime_RunPluginServer
+// and LanguageRuntime_RunPlugin2Server for streaming RunPluginResponse messages.
+type RunPluginSender interface {
+	Send(*pulumirpc.RunPluginResponse) error
+}
+
+// MakeRunPluginStreams returns a pair of streams for use with the language runtimes RunPlugin
+// or RunPlugin2 methods. The server parameter can be either LanguageRuntime_RunPluginServer
+// or LanguageRuntime_RunPlugin2Server.
 func MakeRunPluginStreams(
-	server pulumirpc.LanguageRuntime_RunPluginServer,
+	server RunPluginSender,
 	isTerminal bool,
 ) (io.Closer, io.Writer, io.Writer, error) {
 	return makeStreams(

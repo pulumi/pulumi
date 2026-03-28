@@ -128,7 +128,7 @@ func TestLanguageRuntime(t *testing.T) {
 		p := &languageRuntime{}
 		t.Run("RunPlugin", func(t *testing.T) {
 			t.Parallel()
-			_, _, _, err := p.RunPlugin(t.Context(), plugin.RunPluginInfo{})
+			_, _, _, _, err := p.RunPlugin(t.Context(), plugin.RunPluginInfo{})
 			assert.ErrorContains(t, err, "are not currently supported")
 		})
 		t.Run("GenerateProject", func(t *testing.T) {
