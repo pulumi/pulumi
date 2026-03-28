@@ -15,12 +15,12 @@
 import * as asset from "../asset";
 import { isGrpcError } from "../errors";
 import * as log from "../log";
-import { getAllResources, Input, Inputs, isUnknown, Output, unknown, OutputToStringError } from "../output";
+import { getAllResources, Input, Inputs, isUnknown, Output, OutputToStringError, unknown } from "../output";
 import { ComponentResource, CustomResource, DependencyResource, ProviderResource, Resource } from "../resource";
 import { debuggablePromise, debugPromiseLeaks, errorString } from "./debuggable";
 import { getAllTransitivelyReferencedResourceURNs } from "./dependsOn";
 import { excessiveDebugOutput, isDryRun } from "./settings";
-import { getStore, getResourcePackages, getResourceModules } from "./state";
+import { getResourceModules, getResourcePackages, getStore } from "./state";
 
 import * as gstruct from "google-protobuf/google/protobuf/struct_pb";
 import * as semver from "semver";
@@ -776,12 +776,17 @@ export function deserializeProperty(prop: any, keepUnknowns?: boolean): any {
                     const urn = prop["urn"];
                     const version = prop["packageVersion"];
 
-                    const urnParts = urn.split("::");
-                    const qualifiedType = urnParts[2];
-                    const urnName = urnParts[3];
-
-                    const type = qualifiedType.split("$").pop()!;
-                    const typeParts = type.split(":");
+                    // New engines send type and name as distinct fields
+                    let urnType = prop["type"];
+                    let urnName = prop["name"];
+                    // Old engines don't and we have to parse the URN.
+                    if (urnName === undefined || urnType === undefined) {
+                        const urnParts = urn.split("::");
+                        const qualifiedType = urnParts[2];
+                        urnName = urnParts[3];
+                        urnType = qualifiedType.split("$").pop()!;
+                    }
+                    const typeParts = urnType.split(":");
                     const pkgName = typeParts[0];
                     const modName = typeParts.length > 1 ? typeParts[1] : "";
                     const typName = typeParts.length > 2 ? typeParts[2] : "";
@@ -790,12 +795,12 @@ export function deserializeProperty(prop: any, keepUnknowns?: boolean): any {
                     if (isProvider) {
                         const resourcePackage = getResourcePackage(typName, version);
                         if (resourcePackage) {
-                            return resourcePackage.constructProvider(urnName, type, urn);
+                            return resourcePackage.constructProvider(urnName, urnType, urn);
                         }
                     } else {
                         const resourceModule = getResourceModule(pkgName, modName, version);
                         if (resourceModule) {
-                            return resourceModule.construct(urnName, type, urn);
+                            return resourceModule.construct(urnName, urnType, urn);
                         }
                     }
 
