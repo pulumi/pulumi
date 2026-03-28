@@ -1119,12 +1119,6 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(ctx, stack.Ref())
-
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
@@ -1137,6 +1131,12 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 			ctx, apitype.RefreshUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil, nil)
 }
