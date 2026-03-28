@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/policy
+  description: Add a new `policy analyze` command to run a policy pack against existing state
