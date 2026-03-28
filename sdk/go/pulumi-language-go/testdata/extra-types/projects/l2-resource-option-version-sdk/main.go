@@ -11,7 +11,7 @@ func main() {
 		// and that the version resource option is elided.
 		_, err := simple.NewResource(ctx, "withV2", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
-		}, pulumi.Version("2.0.0"))
+		})
 		if err != nil {
 			return err
 		}
