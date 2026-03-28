@@ -300,6 +300,17 @@ func (p *Program) ConfigVariables() []*ConfigVariable {
 	return configVars
 }
 
+// Hooks returns the hook nodes of the program.
+func (p *Program) Hooks() []*Hook {
+	var hooks []*Hook
+	for _, node := range p.Nodes {
+		if h, ok := node.(*Hook); ok {
+			hooks = append(hooks, h)
+		}
+	}
+	return hooks
+}
+
 // OutputVariables returns the output variable nodes of the program
 func (p *Program) OutputVariables() []*OutputVariable {
 	var outputs []*OutputVariable
