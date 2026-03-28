@@ -80,7 +80,10 @@ type generator struct {
 	// inGenTupleConExprListArgs indicates that a the generator is processing an args list within a TupleConExpression.
 	inGenTupleConExprListArgs bool
 	isPtrArg                  bool
-	isComponent               bool
+	// inPlainObjectField indicates that the generator is producing a value for a plain (non-input)
+	// struct field, so the object literal should be emitted as a value rather than a pointer.
+	inPlainObjectField bool
+	isComponent        bool
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -1410,7 +1413,20 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if len(r.Inputs) > 0 {
 			g.Fgenf(w, "&%s.%sArgs{\n", modOrAlias, typ)
 			for _, attr := range r.Inputs {
+				// Check if this property is marked as plain in the schema.
+				// Plain required properties generate value-typed struct
+				// fields in the Go SDK, so nested object literals must be
+				// emitted without the & prefix.
+				if r.Schema != nil {
+					for _, prop := range r.Schema.InputProperties {
+						if prop.Name == attr.Name && prop.Plain {
+							g.inPlainObjectField = true
+							break
+						}
+					}
+				}
 				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.inPlainObjectField = false
 			}
 			g.Fprint(w, "}")
 		} else {

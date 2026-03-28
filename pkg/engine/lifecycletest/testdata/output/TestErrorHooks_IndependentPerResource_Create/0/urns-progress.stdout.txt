@@ -1,0 +1,24 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (1/100)<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%fg 2%}>created<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (1/100)<{%reset%}>
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (1/100)<{%reset%}>
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%bold%}><{%fg 2%}>creating<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (2/100)<{%reset%}>
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%fg 2%}>created<{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (2/100)<{%reset%}>
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>urn:pulumi:test::test::pkgA:m:typA::resA:<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (1/100)<{%reset%}>
+
+  <{%fg 12%}>urn:pulumi:test::test::pkgA:m:typA::resB:<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (1/100)<{%reset%}>
+    <{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying create due to on-error hook request (2/100)<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

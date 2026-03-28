@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+Loading policy packs...: starting
+Loading policy packs...: done
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-proj::pkgA:m:typA::resA <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test-proj::pkgA:m:typA::resA <{%fg 2%}>created<{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Policies:<{%reset%}>
+    ✅ <{%fg 5%}>analyzerA@v<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

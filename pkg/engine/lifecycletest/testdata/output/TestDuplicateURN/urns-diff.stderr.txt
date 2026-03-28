@@ -1,0 +1,1 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>Duplicate resource URN 'urn:pulumi:test::test::pkgA:m:typA::resA'; try giving it a unique name<{%reset%}>
