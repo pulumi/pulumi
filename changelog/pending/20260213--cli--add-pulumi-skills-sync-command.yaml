@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi skills sync` command for syncing agent skills to AI assistant config directories

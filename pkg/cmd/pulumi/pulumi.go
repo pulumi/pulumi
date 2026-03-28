@@ -69,6 +69,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/policy"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schema"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/skills"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templatecmd"
@@ -469,6 +470,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
 				templatecmd.NewTemplateCmd(),
+				skills.NewSkillsCmd(),
 			},
 		},
 		{
