@@ -45,7 +45,7 @@ func (w *SimpleStepWorkflow) GetPackageInfo(
 ) (*pulumirpc.GetPackageInfoResponse, error) {
 	return &pulumirpc.GetPackageInfoResponse{
 		Package: &pulumirpc.PackageInfo{
-			Name:    "external",
+			Name:    "simple-step-workflow",
 			Version: "1.0.0",
 		},
 	}, nil
@@ -91,7 +91,7 @@ func (w *SimpleStepWorkflow) GetSteps(
 	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetStepsResponse, error) {
 	return &pulumirpc.GetStepsResponse{
-		Steps: []string{"external:invert"},
+		Steps: []string{"invert"},
 	}, nil
 }
 

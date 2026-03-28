@@ -1,4 +1,4 @@
-package external {
+package simple-step-workflow {
   version = "1.0.0"
 }
 
@@ -16,6 +16,6 @@ job "build" {
   expr       = invert
 
   step "invert" {
-    uses = "external:invert"
+    uses = "simple-step-workflow:invert"
   }
 }

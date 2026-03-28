@@ -420,6 +420,24 @@ type workflowLoader struct {
 	host plugin.Host
 }
 
+func qualifyWorkflowName(packageName, name string) string {
+	if name == "" || strings.Contains(name, ":") {
+		return name
+	}
+	return fmt.Sprintf("%s:%s", packageName, name)
+}
+
+func localWorkflowName(packageName, name string) string {
+	parts := strings.Split(name, ":")
+	if len(parts) == 2 && parts[0] == packageName {
+		return parts[1]
+	}
+	if len(parts) == 3 && parts[0] == packageName {
+		return parts[2]
+	}
+	return name
+}
+
 func (l *workflowLoader) loadWorkflow(
 	ctx context.Context,
 	descriptor *codegenrpc.WorkflowPackageDescriptor,
@@ -621,6 +639,7 @@ func (l *workflowLoader) GetJob(
 func (l *workflowLoader) GetSteps(
 	ctx context.Context, req *codegenrpc.GetWorkflowStepsRequest,
 ) (*codegenrpc.GetStepsResponse, error) {
+	descriptor := req.GetPackage()
 	workflow, err := l.loadWorkflow(ctx, req.GetPackage())
 	if err != nil {
 		return nil, err
@@ -631,7 +650,11 @@ func (l *workflowLoader) GetSteps(
 	if err != nil {
 		return nil, err
 	}
-	return &codegenrpc.GetStepsResponse{Steps: resp.GetSteps()}, nil
+	steps := make([]string, 0, len(resp.GetSteps()))
+	for _, step := range resp.GetSteps() {
+		steps = append(steps, qualifyWorkflowName(descriptor.GetName(), step))
+	}
+	return &codegenrpc.GetStepsResponse{Steps: steps}, nil
 }
 
 func (l *workflowLoader) GetStep(
@@ -643,7 +666,9 @@ func (l *workflowLoader) GetStep(
 	}
 	defer contract.IgnoreClose(workflow)
 
-	resp, err := workflow.GetStep(ctx, &pulumirpc.TokenLookupRequest{Token: req.GetToken()})
+	lookup := localWorkflowName(req.GetPackage().GetName(), req.GetToken())
+
+	resp, err := workflow.GetStep(ctx, &pulumirpc.TokenLookupRequest{Token: lookup})
 	if err != nil {
 		return nil, err
 	}
