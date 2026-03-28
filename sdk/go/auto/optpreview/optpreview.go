@@ -253,6 +253,8 @@ type Options struct {
 	SuppressOutputs bool
 	// Save any creates seen during the preview into an import file to use with pulumi import
 	ImportFile string
+	// Continue to perform the preview operation despite the occurrence of errors.
+	ContinueOnError bool
 	// Run the process under a debugger, and pause until a debugger is attached
 	AttachDebugger bool
 	// Run using the configuration values in the specified file rather than detecting the file name
