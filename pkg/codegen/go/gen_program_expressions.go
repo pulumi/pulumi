@@ -976,6 +976,38 @@ func (g *generator) genScopeTraversalExpression(
 		}
 	}
 
+	// Hook command expressions may reference `args.X` to access resource data at call time.
+	if g.inHookCmd && rootName == "args" && len(expr.Traversal) >= 2 {
+		if attr, ok := expr.Traversal[1].(hcl.TraverseAttr); ok {
+			switch attr.Name {
+			case "name":
+				g.Fgenf(w, "args.Name")
+				return
+			case "urn":
+				g.Fgenf(w, "string(args.URN)")
+				return
+			case "id":
+				g.Fgenf(w, "string(args.ID)")
+				return
+			case "type":
+				g.Fgenf(w, "string(args.Type)")
+				return
+			}
+			mapFields := map[string]string{
+				"new_inputs":  "NewInputs",
+				"old_inputs":  "OldInputs",
+				"new_outputs": "NewOutputs",
+				"old_outputs": "OldOutputs",
+			}
+			if goField, ok := mapFields[attr.Name]; ok && len(expr.Traversal) >= 3 {
+				if subAttr, ok := expr.Traversal[2].(hcl.TraverseAttr); ok {
+					g.Fgenf(w, `fmt.Sprintf("%%v", args.%s["%s"].V)`, goField, subAttr.Name)
+					return
+				}
+			}
+		}
+	}
+
 	// TODO: this isn't exhaustively correct as "range" could be a legit var name
 	// instead we should probably use a fn call expression here for entries/range
 	// similar to other languages

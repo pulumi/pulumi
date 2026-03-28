@@ -872,6 +872,10 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
 	rootName := makeValidIdentifier(expr.RootName)
+	// In hook command callbacks the parameter is named `_args`, not `args`.
+	if g.inHookCmd && rootName == "args" {
+		rootName = "_args"
+	}
 	if g.isComponent {
 		if expr.RootName == "this" {
 			// special case for parent: this

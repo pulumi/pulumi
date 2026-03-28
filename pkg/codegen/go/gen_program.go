@@ -88,6 +88,9 @@ type generator struct {
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
 	deferredOutputVariables    []*pcl.DeferredOutputVariable
+
+	// inHookCmd marks that codegen is currently rendering a hook command expression.
+	inHookCmd bool
 }
 
 // GenerateProgramOptions are used to configure optional generator behavior.
@@ -930,6 +933,14 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
 	}
 
+	// Add os/exec import if the program contains hook blocks.
+	for _, n := range program.Nodes {
+		switch n.(type) {
+		case *pcl.Hook:
+			g.importer.Import("os/exec", "exec")
+		}
+	}
+
 	return helpers
 }
 
@@ -1122,7 +1133,52 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genLocalVariable(w, n)
 	case *pcl.PulumiBlock:
 		g.genPulumi(w, n)
+	case *pcl.Hook:
+		g.genHookNode(w, n)
 	}
+}
+
+// genHookNode generates a ctx.RegisterResourceHook call for a named hook block.
+func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
+	varName := makeValidIdentifier(h.Name())
+	hookName := h.LogicalName()
+
+	// Extract the command expressions from the Command tuple.
+	var cmdExprs []model.Expression
+	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
+		cmdExprs = tuple.Expressions
+	}
+
+	g.Fgenf(w, "%s%s, err := ctx.RegisterResourceHook(%q, func(args *pulumi.ResourceHookArgs) error {\n",
+		g.Indent, varName, hookName)
+	g.Indented(func() {
+		if len(cmdExprs) > 0 {
+			g.inHookCmd = true
+			g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
+			for _, arg := range cmdExprs[1:] {
+				g.Fgenf(w, ", %v", arg)
+			}
+			g.inHookCmd = false
+			g.Fgenf(w, ").Run()\n")
+		} else {
+			g.Fgenf(w, "%sreturn nil\n", g.Indent)
+		}
+	})
+	if h.OnDryRun != nil {
+		g.Fgenf(w, "%s}, &pulumi.ResourceHookOptions{OnDryRun: %v})\n", g.Indent, h.OnDryRun)
+	} else {
+		g.Fgenf(w, "%s}, nil)\n", g.Indent)
+	}
+	g.Fgenf(w, "%sif err != nil {\n", g.Indent)
+	g.Indented(func() {
+		if g.isComponent {
+			g.Fgenf(w, "%sreturn nil, err\n", g.Indent)
+		} else {
+			g.Fgenf(w, "%sreturn err\n", g.Indent)
+		}
+	})
+	g.Fgenf(w, "%s}\n", g.Indent)
+	g.isErrAssigned = true
 }
 
 var resourceType = model.NewOpaqueType("pulumi.Resource")
@@ -1252,8 +1308,8 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *sche
 	return block, temps
 }
 
-func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
-	if block == nil {
+func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hookVars map[string][]string) {
+	if block == nil && len(hookVars) == 0 {
 		return
 	}
 
@@ -1345,6 +1401,10 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 		g.Fgenf(w, ", pulumi.%s(%s)", attr.Name, valBuffer)
 	}
+
+	if len(hookVars) > 0 {
+		g.genResourceHooksOption(w, hookVars)
+	}
 }
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
@@ -1390,6 +1450,10 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	}
 
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
+	var hookVars map[string][]string
+	if r.Options != nil && r.Options.Hooks != nil {
+		hookVars = g.genHookDeclarations(r)
+	}
 
 	// Blockname is not always equal to resourceName or varName, it is often
 	// surrounded by quotes, or obfuscated when there is keyword overlap.
@@ -1432,7 +1496,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		} else {
 			g.Fprint(w, "nil")
 		}
-		g.genResourceOptions(w, options)
+		g.genResourceOptions(w, options, hookVars)
 		g.Fprint(w, ")\n")
 		g.Fgenf(w, "if err != nil {\n")
 		if g.isComponent {
@@ -1448,6 +1512,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		g.genTrivia(w, l)
 	}
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
+
 	if r.Options != nil && r.Options.Range != nil {
 		rangeType := model.ResolveOutputs(r.Options.Range.Type())
 		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType)
@@ -1490,6 +1555,47 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		}
 		instantiate(resNameVar, r.Name(), resourceName, w)
 	}
+}
+
+// genHookDeclarations collects per-resource hook bindings keyed by hook type.
+func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
+	hookVars := make(map[string][]string)
+	obj, ok := r.Options.Hooks.(*model.ObjectConsExpression)
+	if !ok {
+		return hookVars
+	}
+	for _, item := range obj.Items {
+		key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+		contract.Assertf(len(diags) == 0, "Expected no diagnostics evaluating hook type key, got %d", len(diags))
+		hookType := key.AsString()
+		hookList, ok := item.Value.(*model.TupleConsExpression)
+		if !ok {
+			continue
+		}
+		for _, hookExpr := range hookList.Expressions {
+			// Hooks must be references to named hook blocks.
+			if trav, ok := hookExpr.(*model.ScopeTraversalExpression); ok {
+				hookVars[hookType] = append(hookVars[hookType], makeValidIdentifier(trav.RootName))
+			}
+		}
+	}
+	return hookVars
+}
+
+// genResourceHooksOption writes ", pulumi.ResourceHooks(&pulumi.ResourceHookBinding{...})"
+// using hookVars.
+func (g *generator) genResourceHooksOption(w io.Writer, hookVars map[string][]string) {
+	hookTypes := make([]string, 0, len(hookVars))
+	for ht := range hookVars {
+		hookTypes = append(hookTypes, ht)
+	}
+	sort.Strings(hookTypes)
+	g.Fgenf(w, ", pulumi.ResourceHooks(&pulumi.ResourceHookBinding{")
+	for _, hookType := range hookTypes {
+		vars := hookVars[hookType]
+		g.Fgenf(w, "%s: []*pulumi.ResourceHook{%s}, ", Title(hookType), strings.Join(vars, ", "))
+	}
+	g.Fgenf(w, "})")
 }
 
 func AnnotateComponentInputs(component *pcl.Component) {
@@ -1739,7 +1845,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		} else {
 			g.Fprint(w, "nil")
 		}
-		g.genResourceOptions(w, options)
+		g.genResourceOptions(w, options, nil)
 		g.Fprint(w, ")\n")
 		g.Fgenf(w, "if err != nil {\n")
 		if g.isComponent {
