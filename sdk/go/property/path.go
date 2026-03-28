@@ -18,6 +18,8 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Path provides access and alteration methods on [Value]s.
@@ -112,10 +114,10 @@ func (p Path) Set(src, newValue Value) (Value, error) {
 			return Value{}, pathErrorf(v, "expected an IndexSegment, found %T", last)
 		}
 		slice := v.AsArray().AsSlice()
-		if i.int < 0 || i.int >= len(slice) {
-			return Value{}, pathApplyIndexOutOfBoundsError{found: v.AsArray(), idx: i.int}
+		if i.Index() >= len(slice) {
+			return Value{}, pathApplyIndexOutOfBoundsError{found: v.AsArray(), idx: i.Index()}
 		}
-		slice[i.int] = newValue
+		slice[i.Index()] = newValue
 		return Path{butLast, struct{}{}}.Set(src, New(slice))
 	case v.IsMap():
 		k, ok := last.(KeySegment)
@@ -159,7 +161,8 @@ func NewSegment[T interface{ string | int }](v T) PathSegment {
 	case string:
 		return KeySegment{v}
 	case int:
-		return IndexSegment{v}
+		contract.Assertf(v >= 0, "index must be non-negative, got %d", v)
+		return IndexSegment{uint32(v)} //nolint:gosec // checked above
 	default:
 		panic("impossible")
 	}
@@ -179,6 +182,8 @@ type PathApplyFailure interface {
 // To create an KeySegment, use [NewSegment].
 type KeySegment struct{ string }
 
+func (k KeySegment) Key() string { return k.string }
+
 func (k KeySegment) apply(v Value) (Value, PathApplyFailure) {
 	if v.IsMap() {
 		m := v.AsMap()
@@ -194,15 +199,17 @@ func (k KeySegment) apply(v Value) (Value, PathApplyFailure) {
 // IndexSegment represents an index into an [Array].
 //
 // To create an IndexSegment, use [NewSegment].
-type IndexSegment struct{ int }
+type IndexSegment struct{ uint32 }
+
+func (k IndexSegment) Index() int { return int(k.uint32) }
 
 func (k IndexSegment) apply(v Value) (Value, PathApplyFailure) {
 	if v.IsArray() {
 		a := v.AsArray()
-		if k.int < 0 || k.int >= a.Len() {
-			return Value{}, pathApplyIndexOutOfBoundsError{found: a, idx: k.int}
+		if int(k.uint32) >= a.Len() {
+			return Value{}, pathApplyIndexOutOfBoundsError{found: a, idx: int(k.uint32)}
 		}
-		return a.Get(k.int), nil
+		return a.Get(int(k.uint32)), nil
 	}
 	return Value{}, pathApplyIndexExpectedArrayError{found: v}
 }
