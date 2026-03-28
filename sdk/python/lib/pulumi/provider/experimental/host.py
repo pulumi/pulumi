@@ -31,12 +31,13 @@ def component_provider_host(
     version: Optional[str] = None,
 ):
     """
-    component_provider_host starts the provider and hosts the passed in components.
-    The provider's schema is inferred from the type annotations of the components.
-    See `analyzer.py` for more details.
+    component_provider_host starts the provider and hosts the passed in components. The provider's schema is
+    inferred from the type annotations of the components. See `analyzer.py` for more details.
 
-    :param metadata: The metadata for the provider. If not provided, the name
-    defaults to the plugin's directory name, and version defaults to "0.0.1".
+    :param name: The Pulumi package name for this provider.
+    :param namespace: The optional namespace for the provider.
+    :param version: Optional version string for the provider;defaults to "0.0.0". Will be overridden by git
+        version if plugin is downloaded via git.
     """
     global is_hosting  # noqa
     if is_hosting:
