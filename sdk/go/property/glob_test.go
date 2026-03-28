@@ -145,6 +145,8 @@ func TestGlobEncoding(t *testing.T) {
 			{"x.*", GlobFromSegments(KeySegment{"x"}, Splat)},
 			{"*", GlobFromSegments(Splat)},
 			{`["x"]`, GlobFromSegments(KeySegment{"x"})},
+			{"[16383]", GlobFromSegments(IndexSegment{16383})},
+			{"[0]", GlobFromSegments(IndexSegment{0})},
 		}
 
 		for _, tt := range tests {
@@ -169,6 +171,8 @@ func TestGlobEncoding(t *testing.T) {
 			{"[1", "unclosed number [1"},
 			{`["x`, `unclosed string ["x`},
 			{`["x"`, `unclosed index ["x"`},
+			{"[-1]", "indexes cannot be negative"},
+			{"[16384]", "indexes cannot exceed 16,383"},
 		}
 		for _, tt := range tests {
 			t.Run(tt.text, func(t *testing.T) {
