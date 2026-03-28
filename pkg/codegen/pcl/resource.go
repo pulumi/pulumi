@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -132,7 +133,7 @@ func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagn
 }
 
 func (r *Resource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-	if value, hasValue := context.Variables[r.Name()]; hasValue {
+	if value, hasValue := hcl2.LookupVariable(context, r.Name()); hasValue {
 		return value, nil
 	}
 	return cty.DynamicVal, nil

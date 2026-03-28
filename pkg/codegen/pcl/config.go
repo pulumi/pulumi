@@ -17,6 +17,7 @@ package pcl
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -50,7 +51,7 @@ func (cv *ConfigVariable) SyntaxNode() hclsyntax.Node {
 }
 
 func (cv *ConfigVariable) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-	if value, hasValue := context.Variables[cv.Name()]; hasValue {
+	if value, hasValue := hcl2.LookupVariable(context, cv.Name()); hasValue {
 		return value, nil
 	}
 	return cty.DynamicVal, nil
