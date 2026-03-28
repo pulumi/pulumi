@@ -21,7 +21,7 @@ def register_workflows(registry: workflow.WorkflowRegistry) -> None:
         return not input.input
     @registry.job("build", job_build_args)
     def register_job_build(job: workflow.JobContext, args: job_build_args) -> Output[bool]:
-        build_invert_output = pulumi_simple_step_workflow.step_simple_step_workflow_invert(job, pulumi_simple_step_workflow.step_simple_step_workflow_invert_args(input=args.input), workflow.StepOptions(name="invert"))
+        build_invert_output = pulumi_simple_step_workflow.step_invert(job, pulumi_simple_step_workflow.step_invert_args(input=args.input), workflow.StepOptions(name="invert"))
         return build_invert_output
 
 

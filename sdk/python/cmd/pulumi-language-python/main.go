@@ -2241,8 +2241,12 @@ func generatePythonWorkflowProgram(source map[string]string) (map[string][]byte,
 					parts := strings.SplitN(step.Uses, ":", 2)
 					pkgName := parts[0]
 					if moduleName, ok := workflowPackageModules[pkgName]; ok {
-						stepFn := pythonIdentifier("step_" + step.Uses)
-						stepArgsType := pythonIdentifier("step_" + step.Uses + "_args")
+						member := step.Uses
+						if idx := strings.LastIndex(step.Uses, ":"); idx != -1 && idx < len(step.Uses)-1 {
+							member = step.Uses[idx+1:]
+						}
+						stepFn := pythonIdentifier("step_" + member)
+						stepArgsType := pythonIdentifier("step_" + member + "_args")
 						b.WriteString(
 							"        " + outputVar + " = " + moduleName + "." + stepFn + "(" +
 								"job, " + moduleName + "." + stepArgsType + "(input=args.input), " +

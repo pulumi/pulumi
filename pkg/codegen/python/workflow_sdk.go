@@ -69,6 +69,17 @@ func workflowPrimitivePythonType(typ string) string {
 	}
 }
 
+func workflowTokenMember(token string) string {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return ""
+	}
+	if idx := strings.LastIndex(token, ":"); idx != -1 && idx < len(token)-1 {
+		return token[idx+1:]
+	}
+	return token
+}
+
 func workflowTypeRefToPythonType(
 	ref *codegenrpc.TypeReference,
 	fallbackName string,
@@ -214,7 +225,8 @@ func GenerateWorkflowPackage(
 				return err
 			}
 
-			name := pythonSafeIdent(stepToken)
+			memberName := workflowTokenMember(stepToken)
+			name := pythonSafeIdent(memberName)
 			inputType := workflowTypeRefToPythonType(
 				stepResp.GetInputType(),
 				"step_"+name+"_args",

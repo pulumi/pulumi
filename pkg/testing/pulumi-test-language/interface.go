@@ -666,9 +666,7 @@ func (l *workflowLoader) GetStep(
 	}
 	defer contract.IgnoreClose(workflow)
 
-	lookup := localWorkflowName(req.GetPackage().GetName(), req.GetToken())
-
-	resp, err := workflow.GetStep(ctx, &pulumirpc.TokenLookupRequest{Token: lookup})
+	resp, err := workflow.GetStep(ctx, &pulumirpc.TokenLookupRequest{Token: req.GetToken()})
 	if err != nil {
 		return nil, err
 	}

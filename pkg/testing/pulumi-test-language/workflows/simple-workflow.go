@@ -91,13 +91,17 @@ func (w *SimpleStepWorkflow) GetSteps(
 	context.Context, *pulumirpc.EmptyRequest,
 ) (*pulumirpc.GetStepsResponse, error) {
 	return &pulumirpc.GetStepsResponse{
-		Steps: []string{"invert"},
+		Steps: []string{"simple-step-workflow:invert"},
 	}, nil
 }
 
 func (w *SimpleStepWorkflow) GetStep(
-	context.Context, *pulumirpc.TokenLookupRequest,
+	_ context.Context, req *pulumirpc.TokenLookupRequest,
 ) (*pulumirpc.GetStepResponse, error) {
+	if req.Token != "simple-step-workflow:invert" {
+		return nil, fmt.Errorf("unexpected step token: %s", req.Token)
+	}
+
 	return &pulumirpc.GetStepResponse{
 		InputType: &pulumirpc.TypeReference{
 			Object: &pulumirpc.StructObject{
