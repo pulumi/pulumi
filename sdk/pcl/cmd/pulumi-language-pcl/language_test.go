@@ -102,7 +102,8 @@ until this merges: it's a cyclic dependency in-repo.
 To break the cycle - I'm temporarily skipping this test. As soon as https://github.com/pulumi/pulumi/pull/22326 merges,
 I'll update the linked version of pulumi/pulumi in this module & remove the skip.`,
 
-	"l3-deferred-outputs": "incorrectly detects cycle",
+	"l3-deferred-outputs":   "incorrectly detects cycle",
+	"l3-range-parent-scope": "requires go.mod update to pick up the LookupVariable fix from pkg/",
 }
 
 func TestLanguage(t *testing.T) {
