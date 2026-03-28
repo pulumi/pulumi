@@ -28,7 +28,7 @@ import (
 func genKeySegment() *rapid.Generator[PathSegment] { return rapid.Map(rapid.String(), NewSegment) }
 
 func genIndexSegment() *rapid.Generator[PathSegment] {
-	return rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 && i < 16_384 }), NewSegment)
+	return rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), NewSegment)
 }
 
 func genGlobSegments() *rapid.Generator[[]GlobSegment] {
@@ -67,8 +67,8 @@ func genTextGlobPath() *rapid.Generator[tup[string, Glob]] {
 		rapid.Just(ret{"*", Splat}),   // Raw Splat
 		rapid.Just(ret{"[*]", Splat}), // Index Splat
 		// Number
-		rapid.Map(rapid.Uint32().Filter(func(i uint32) bool { return i < 1<<14 }), func(i uint32) ret {
-			return ret{"[" + strconv.FormatInt(int64(i), 10) + "]", IndexSegment{int(i)}}
+		rapid.Map(rapid.Uint32(), func(i uint32) ret {
+			return ret{"[" + strconv.FormatInt(int64(i), 10) + "]", IndexSegment{i}}
 		}),
 		// Unquoted property path
 		rapid.Map(rapid.StringMatching("[a-zA-Z_][a-zA-Z0-9_]*"), func(s string) ret {
@@ -145,7 +145,7 @@ func TestGlobEncoding(t *testing.T) {
 			{"x.*", GlobFromSegments(KeySegment{"x"}, Splat)},
 			{"*", GlobFromSegments(Splat)},
 			{`["x"]`, GlobFromSegments(KeySegment{"x"})},
-			{"[16383]", GlobFromSegments(IndexSegment{16383})},
+			{"[4294967295]", GlobFromSegments(IndexSegment{4294967295})},
 			{"[0]", GlobFromSegments(IndexSegment{0})},
 		}
 
@@ -172,7 +172,7 @@ func TestGlobEncoding(t *testing.T) {
 			{`["x`, `unclosed string ["x`},
 			{`["x"`, `unclosed index ["x"`},
 			{"[-1]", "indexes cannot be negative"},
-			{"[16384]", "indexes cannot exceed 16,383"},
+			{"[4294967296]", "indexes cannot exceed 4294967295"},
 		}
 		for _, tt := range tests {
 			t.Run(tt.text, func(t *testing.T) {
@@ -214,7 +214,7 @@ func TestMatches(t *testing.T) {
 		prefixLen := rapid.IntRange(0, path.len()-1).Draw(t, "mutation index")
 		switch s := glob[prefixLen].(type) {
 		case IndexSegment:
-			glob[prefixLen] = NewSegment(s.int + 1)
+			glob[prefixLen] = NewSegment(s.Index() + 1)
 		case KeySegment:
 			glob[prefixLen] = NewSegment(s.string + "!")
 		default:

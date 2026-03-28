@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"math"
 	"strconv"
 	"strings"
 
@@ -62,7 +63,7 @@ segment:
 			b.WriteString(p.string)
 		case IndexSegment:
 			b.WriteRune('[')
-			b.WriteString(strconv.FormatInt(int64(p.int), 10))
+			b.WriteString(strconv.FormatInt(int64(p.Index()), 10))
 			b.WriteRune(']')
 		case GlobSegment:
 			b.WriteString("[*]")
@@ -177,10 +178,13 @@ func parseIndex(runes []rune) (GlobSegment, []rune, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		if n >= 1<<14 {
-			return nil, nil, errors.New("indexes cannot exceed 16,383")
+		if n < 0 {
+			return nil, nil, errors.New("indexes cannot be negative")
 		}
-		return IndexSegment{n}, runes[i+1:], nil
+		if n > math.MaxUint32 {
+			return nil, nil, fmt.Errorf("indexes cannot exceed %d", math.MaxUint32)
+		}
+		return IndexSegment{uint32(n)}, runes[i+1:], nil //nolint:gosec // checked above
 	case runes[0] == '"':
 		i := 1
 		for ; ; i++ {
@@ -231,7 +235,7 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 				case e.val.IsArray():
 					for j, v := range e.val.AsArray().AsSlice() {
 						expansion = append(expansion, entry{
-							path: e.path.appendIndex(j),
+							path: e.path.appendIndex(uint32(j)), //nolint:gosec // j is a slice index
 							val:  v,
 						})
 					}
@@ -290,7 +294,7 @@ type splat struct{}
 
 func (splat) GoString() string          { return "property.Splat" }
 func (s KeySegment) GoString() string   { return fmt.Sprintf("property.NewSegment(%q)", s.string) }
-func (i IndexSegment) GoString() string { return fmt.Sprintf("property.NewSegment(%d)", i.int) }
+func (i IndexSegment) GoString() string { return fmt.Sprintf("property.NewSegment(%d)", i.uint32) }
 
 func (splat) globApply(v Value) ([]Value, PathApplyFailure) {
 	switch {
