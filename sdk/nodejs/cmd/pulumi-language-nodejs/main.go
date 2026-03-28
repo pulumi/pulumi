@@ -1535,24 +1535,69 @@ func startDebugging(
 }
 
 func (host *nodeLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
+	stream pulumirpc.LanguageRuntime_RunPlugin2Server,
 ) error {
-	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
+	// Receive the first message which must be a start request.
+	msg, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("receiving start request: %w", err)
+	}
+	req := msg.GetStart()
+	if req == nil {
+		return errors.New("first message must be a start request")
+	}
+
+	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
+
+	// softCtx is a child of host.cancelCtx so that global Cancel RPC triggers graceful SIGINT.
+	softCtx, softCancel := context.WithCancel(host.cancelCtx)
+	defer softCancel()
+	// hardCtx is a child of the stream context, so it is cancelled by an explicit force cancel message or stream death.
+	hardCtx, hardCancel := context.WithCancel(stream.Context())
+	defer hardCancel()
+	context.AfterFunc(hardCtx, softCancel)
+
+	// Listen for cancel messages on the bidi stream.
+	go func() {
+		for {
+			msg, err := stream.Recv()
+			if err != nil {
+				return
+			}
+			if cancel := msg.GetCancel(); cancel != nil {
+				if cancel.Force {
+					hardCancel()
+					return
+				}
+				softCancel()
+			}
+		}
+	}()
+
+	return host.runPlugin(softCtx, hardCtx, stream, req)
 }
 
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
-	ctx := server.Context()
 
+	return host.runPlugin(server.Context(), server.Context(), server, req)
+}
+
+func (host *nodeLanguageHost) runPlugin(
+	softCtx context.Context,
+	hardCtx context.Context,
+	sender rpcutil.RunPluginSender,
+	req *pulumirpc.RunPluginRequest,
+) error {
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
 		return err
 	}
 	defer closer.Close()
 
-	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(sender, false)
 	if err != nil {
 		return err
 	}
@@ -1560,7 +1605,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	defer closer.Close()
 
 	if host.runtime == "bun" {
-		if err := checkPulumiSDKVersion(ctx, req.Info.ProgramDirectory); err != nil {
+		if err := checkPulumiSDKVersion(softCtx, req.Info.ProgramDirectory); err != nil {
 			return err
 		}
 	}
@@ -1601,7 +1646,7 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, true)
+	runPath, err = locateModule(softCtx, runPath, req.Info.ProgramDirectory, runtimeBin, true)
 	if err != nil {
 		return err
 	}
@@ -1645,12 +1690,12 @@ func (host *nodeLanguageHost) RunPlugin(
 	// we then need to wait for the _real_ policy pack to start up and shim all it's other request/responses.
 	var policyPackServer *sdk.PolicyProxy
 	if req.Kind == string(apitype.AnalyzerPlugin) {
-		policyPackServer, stdout, err = sdk.NewPolicyProxy(ctx, stdout)
+		policyPackServer, stdout, err = sdk.NewPolicyProxy(softCtx, stdout)
 		if err != nil {
 			return fmt.Errorf("could not start policy pack proxy: %w", err)
 		}
 
-		config, err := policyPackServer.AwaitConfiguration(ctx)
+		config, err := policyPackServer.AwaitConfiguration(softCtx)
 		if err != nil {
 			return fmt.Errorf("could not get stack configuration: %w", err)
 		}
@@ -1675,8 +1720,19 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.CommandContext(ctx, runtimeBin, args...)
+	cmd := exec.CommandContext(softCtx, runtimeBin, args...)
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
+	context.AfterFunc(hardCtx, func() {
+		if cmd.Process != nil {
+			cmd.Process.Kill() //nolint:errcheck // best-effort kill
+		}
+	})
 	// node policy packs used to always run with the working directory set to the policy pack directory, not
 	// the main working directory. We need to continue that for backwards compatibility.
 	if req.Kind == string(apitype.AnalyzerPlugin) {
@@ -1704,14 +1760,14 @@ func (host *nodeLanguageHost) RunPlugin(
 					return errors.New("timed out waiting for bun inspector to be ready")
 				}
 			}
-			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name), host.runtime)
+			err := startDebugging(softCtx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name), host.runtime)
 			if err != nil {
 				return err
 			}
 		}
 		// If we've got a proxy policy then tell it to attach now
 		if policyPackServer != nil {
-			err = policyPackServer.Attach(ctx, cmd)
+			err = policyPackServer.Attach(softCtx, cmd)
 			if err != nil {
 				return fmt.Errorf("could not attach policy pack proxy: %w", err)
 			}

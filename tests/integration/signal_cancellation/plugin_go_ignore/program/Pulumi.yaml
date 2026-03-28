@@ -1,0 +1,9 @@
+name: signal-cancellation-plugin-go-ignore-test
+runtime: yaml
+plugins:
+  providers:
+    - name: test-provider
+      path: ../provider
+resources:
+  comp:
+    type: test-provider:index:Component

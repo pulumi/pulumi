@@ -173,9 +173,9 @@ func (p *languageRuntime) GetProgramDependencies(
 }
 
 func (p *languageRuntime) RunPlugin(ctx context.Context, info plugin.RunPluginInfo) (
-	io.Reader, io.Reader, *promise.Promise[int32], error,
+	io.Reader, io.Reader, func(force bool), *promise.Promise[int32], error,
 ) {
-	return nil, nil, nil, errors.New("inline plugins are not currently supported")
+	return nil, nil, nil, nil, errors.New("inline plugins are not currently supported")
 }
 
 func (p *languageRuntime) GenerateProject(string, string, string,

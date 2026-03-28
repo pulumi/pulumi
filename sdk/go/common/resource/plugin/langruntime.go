@@ -154,7 +154,10 @@ type LanguageRuntime interface {
 	GetProgramDependencies(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error)
 
 	// RunPlugin executes a plugin program and returns its result asynchronously.
-	RunPlugin(ctx context.Context, info RunPluginInfo) (io.Reader, io.Reader, *promise.Promise[int32], error)
+	// The returned cancel function requests shutdown of the plugin: force=false sends a
+	// graceful signal (SIGINT), force=true kills immediately (SIGKILL).
+	RunPlugin(ctx context.Context, info RunPluginInfo) (io.Reader, io.Reader, func(force bool),
+		*promise.Promise[int32], error)
 
 	// GenerateProject generates a program project in the given directory. This will include metadata files such
 	// as Pulumi.yaml and package.json.

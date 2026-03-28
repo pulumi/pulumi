@@ -1318,9 +1318,46 @@ func (host *goLanguageHost) GetProgramDependencies(
 }
 
 func (host *goLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
+	stream pulumirpc.LanguageRuntime_RunPlugin2Server,
 ) error {
-	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
+	// Receive the first message which must be a start request.
+	msg, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("receiving start request: %w", err)
+	}
+	start := msg.GetStart()
+	if start == nil {
+		return errors.New("first message must be a start request")
+	}
+
+	logging.V(5).Infof("Attempting to run go plugin in %s", start.Info.ProgramDirectory)
+
+	// softCtx is a child of host.cancelCtx so that global Cancel RPC triggers graceful SIGINT.
+	softCtx, softCancel := context.WithCancel(host.cancelCtx)
+	defer softCancel()
+	// hardCtx is a child of the stream context, so it is cancelled by an explicit force cancel message or stream death.
+	hardCtx, hardCancel := context.WithCancel(stream.Context())
+	defer hardCancel()
+	context.AfterFunc(hardCtx, softCancel)
+
+	// Listen for cancel messages on the bidi stream.
+	go func() {
+		for {
+			msg, err := stream.Recv()
+			if err != nil {
+				return
+			}
+			if cancel := msg.GetCancel(); cancel != nil {
+				if cancel.Force {
+					hardCancel()
+					return
+				}
+				softCancel()
+			}
+		}
+	}()
+
+	return host.runPlugin(softCtx, hardCtx, stream, start)
 }
 
 func (host *goLanguageHost) RunPlugin(
@@ -1328,6 +1365,15 @@ func (host *goLanguageHost) RunPlugin(
 ) error {
 	logging.V(5).Infof("Attempting to run go plugin in %s", req.Info.ProgramDirectory)
 
+	return host.runPlugin(server.Context(), server.Context(), server, req)
+}
+
+func (host *goLanguageHost) runPlugin(
+	softCtx context.Context,
+	hardCtx context.Context,
+	sender rpcutil.RunPluginSender,
+	req *pulumirpc.RunPluginRequest,
+) error {
 	if host.engineAddress == "" {
 		return errors.New("when debugging or running explicitly, must call Handshake before RunPlugin")
 	}
@@ -1338,14 +1384,13 @@ func (host *goLanguageHost) RunPlugin(
 	}
 	defer contract.IgnoreClose(closer)
 
-	program, err := compileProgram(
-		server.Context(), engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
+	program, err := compileProgram(softCtx, engineClient, req.Info.ProgramDirectory, "", false, os.Stdout, os.Stderr)
 	if err != nil {
 		return errutil.ErrorWithStderr(err, "error in compiling Go")
 	}
 	defer os.Remove(program)
 
-	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(sender, false)
 	if err != nil {
 		return err
 	}
@@ -1355,16 +1400,15 @@ func (host *goLanguageHost) RunPlugin(
 	var cmd *exec.Cmd
 	if req.GetAttachDebugger() {
 		var dbg *debugger
-		cmd, dbg, err = debugCommand(server.Context(), program, req.Args...)
+		cmd, dbg, err = debugCommand(softCtx, program, req.Args...)
 		if err != nil {
 			return err
 		}
 		defer dbg.Cleanup()
-		// create a sub-context to cancel the startDebugging operation when the process exits.
-		ctx, cancel := context.WithCancel(server.Context())
-		defer cancel()
+		dbgCtx, dbgCancel := context.WithCancel(softCtx)
+		defer dbgCancel()
 		go func() {
-			err := startDebugging(ctx, engineClient, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+			err := startDebugging(dbgCtx, engineClient, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
 			if err != nil {
 				// kill the plugin if we can't start debugging.
 				logging.Errorf("Unable to start debugging: %v", err)
@@ -1372,16 +1416,28 @@ func (host *goLanguageHost) RunPlugin(
 			}
 		}()
 	} else {
-		cmd = exec.CommandContext(server.Context(), program, req.Args...)
+		cmd = exec.CommandContext(softCtx, program, req.Args...)
 		cmd.Dir = req.Pwd
 		cmd.Env = req.Env
 		cmd.Stdout, cmd.Stderr = stdout, stderr
 	}
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
+	context.AfterFunc(hardCtx, func() {
+		if cmd.Process != nil {
+			cmd.Process.Kill() //nolint:errcheck // best-effort kill
+		}
+	})
 
 	if err = cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				err = server.Send(&pulumirpc.RunPluginResponse{
+				err = sender.Send(&pulumirpc.RunPluginResponse{
 					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
