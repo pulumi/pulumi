@@ -158,6 +158,8 @@ func parseIndex(runes []rune) (GlobSegment, []rune, error) {
 	}
 
 	switch {
+	case len(runes) > 1 && runes[0] == '-' && isNumberCharacter(runes[1]):
+		return nil, nil, errors.New("indexes cannot be negative")
 	case isNumberCharacter(runes[0]):
 		i := 1
 		for ; ; i++ {
@@ -174,6 +176,9 @@ func parseIndex(runes []rune) (GlobSegment, []rune, error) {
 		n, err := strconv.Atoi(string(runes[0:i]))
 		if err != nil {
 			return nil, nil, err
+		}
+		if n >= 1<<14 {
+			return nil, nil, errors.New("indexes cannot exceed 16,383")
 		}
 		return IndexSegment{n}, runes[i+1:], nil
 	case runes[0] == '"':
