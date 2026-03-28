@@ -58,6 +58,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -2185,10 +2186,11 @@ func errorToMessage(err error, inputs resource.PropertyMap) string {
 		if len(e.InputPropertiesErrors()) > 0 {
 			props := resource.NewProperty(inputs)
 			for _, err := range e.InputPropertiesErrors() {
-				propertyPath, e := resource.ParsePropertyPath(err.PropertyPath)
+				var propertyPath property.Path
+				e := propertyPath.UnmarshalText([]byte(err.PropertyPath))
 				if e == nil {
-					value, ok := propertyPath.Get(props)
-					if ok {
+					value, getErr := propertyPath.Get(resource.FromResourcePropertyValue(props))
+					if getErr == nil {
 						message = fmt.Sprintf("%v\n\t\t- property %v with value '%v' has a problem: %v",
 							message, err.PropertyPath, value, err.Reason)
 						continue
@@ -2610,9 +2612,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	protect := opts.Protect
 	ignoreChanges := opts.IgnoreChanges
-	hiddenDiffs := slice.Prealloc[resource.PropertyPath](len(opts.GetHideDiff()))
+	hiddenDiffs := slice.Prealloc[property.Glob](len(opts.GetHideDiff()))
 	for i, v := range opts.GetHideDiff() {
-		path, err := resource.ParsePropertyPath(v)
+		var path property.Glob
+		err := path.UnmarshalText([]byte(v))
 		if err != nil {
 			return nil, fmt.Errorf("%d: %w", i, err)
 		}

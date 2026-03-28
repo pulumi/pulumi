@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
@@ -162,7 +161,7 @@ func (m Map) Get(k Key, path bool) (_ Value, ok bool, err error) {
 
 	// If we only have a single path segment, go ahead and lookup the value.
 	root, ok := m[configKey]
-	if len(p) == 1 {
+	if p.Len() == 1 {
 		return root, ok, nil
 	}
 
@@ -170,7 +169,7 @@ func (m Map) Get(k Key, path bool) (_ Value, ok bool, err error) {
 	if err != nil {
 		return Value{}, false, err
 	}
-	objValue, ok, err := obj.Get(p[1:])
+	objValue, ok, err := obj.Get(p.Rest())
 	if !ok || err != nil {
 		return Value{}, ok, err
 	}
@@ -197,7 +196,7 @@ func (m Map) Remove(k Key, path bool) error {
 
 	// If we only have a single path segment, delete the key and return.
 	root, ok := m[configKey]
-	if len(p) == 1 {
+	if p.Len() == 1 {
 		delete(m, configKey)
 		return nil
 	}
@@ -209,7 +208,7 @@ func (m Map) Remove(k Key, path bool) error {
 	if err != nil {
 		return err
 	}
-	err = obj.Delete(p[1:], p[1:])
+	err = obj.Delete(p.Rest(), p.Rest())
 	if err != nil {
 		return err
 	}
@@ -236,14 +235,14 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	var newV object
-	if len(p) > 1 || v.typ != TypeUnknown {
+	if p.Len() > 1 || v.typ != TypeUnknown {
 		newV, err = v.coerceObject()
 		if err != nil {
 			return err
 		}
 	}
 
-	if len(p) == 1 {
+	if p.Len() == 1 {
 		m[configKey] = v
 		return nil
 	}
@@ -255,9 +254,9 @@ func (m Map) Set(k Key, v Value, path bool) error {
 			return err
 		}
 	} else {
-		obj = object{value: newContainer(p[1])}
+		obj = object{value: newContainer(p.Rest().Head())}
 	}
-	err = obj.Set(p[:1], p[1:], newV)
+	err = obj.Set(property.PathFromSegments(p.Head()), p.Rest(), newV)
 	if err != nil {
 		return err
 	}
@@ -329,26 +328,24 @@ func (m *Map) UnmarshalYAML(unmarshal func(any) error) error {
 
 // parseKeyPath returns the property paths in the key and a new config key with the first
 // path segment as the name.
-func parseKeyPath(k Key) (resource.PropertyPath, Key, error) {
+func parseKeyPath(k Key) (property.Path, Key, error) {
 	// Parse the path, which will be in the name portion of the key.
-	p, err := resource.ParsePropertyPathStrict(k.Name())
+	var p property.Path
+	err := p.UnmarshalText([]byte(k.Name()))
 	if err != nil {
-		return nil, Key{}, fmt.Errorf("invalid config key path: %w", err)
-	}
-	if len(p) == 0 {
-		return nil, Key{}, errors.New("empty config key path")
+		return property.Path{}, Key{}, fmt.Errorf("invalid config key path: %w", err)
 	}
 
 	// Create a new key that has the first path segment as the name.
-	firstKey, ok := p[0].(string)
+	firstKey, ok := p.Head().(property.KeySegment)
 	if !ok {
-		return nil, Key{}, errors.New("first path segement of config key must be a string")
+		return property.Path{}, Key{}, errors.New("first path segement of config key must be a string")
 	}
-	if firstKey == "" {
-		return nil, Key{}, errors.New("config key is empty")
+	if firstKey.Value() == "" {
+		return property.Path{}, Key{}, errors.New("config key is empty")
 	}
 
-	configKey := MustMakeKey(k.Namespace(), firstKey)
+	configKey := MustMakeKey(k.Namespace(), firstKey.Value())
 
 	return p, configKey, nil
 }

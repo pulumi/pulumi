@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -141,7 +142,7 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 		diff          *resource.ObjectDiff
 		inputDiff     bool
 		expected      map[string]PropertyDiff
-		expectedPaths map[string]resource.PropertyPath
+		expectedPaths map[string]property.Path
 	}{
 		"simple add": {
 			diff: &resource.ObjectDiff{
@@ -152,8 +153,8 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 			expected: map[string]PropertyDiff{
 				"a": {Kind: DiffAdd},
 			},
-			expectedPaths: map[string]resource.PropertyPath{
-				"a": {"a"},
+			expectedPaths: map[string]property.Path{
+				"a": property.PathFromSegments(property.NewSegment("a")),
 			},
 		},
 		"simple update": {
@@ -165,8 +166,8 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 			expected: map[string]PropertyDiff{
 				"a": {Kind: DiffUpdate},
 			},
-			expectedPaths: map[string]resource.PropertyPath{
-				"a": {"a"},
+			expectedPaths: map[string]property.Path{
+				"a": property.PathFromSegments(property.NewSegment("a")),
 			},
 		},
 		"nested update": {
@@ -182,8 +183,8 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 			expected: map[string]PropertyDiff{
 				"a.b": {Kind: DiffUpdate},
 			},
-			expectedPaths: map[string]resource.PropertyPath{
-				"a.b": {"a", "b"},
+			expectedPaths: map[string]property.Path{
+				"a.b": property.PathFromSegments(property.NewSegment("a"), property.NewSegment("b")),
 			},
 		},
 		"nested update with quoted keys": {
@@ -202,9 +203,9 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				`a["\"quoted key\""]`: {Kind: DiffUpdate},
 				`a["b.c"]`:            {Kind: DiffUpdate},
 			},
-			expectedPaths: map[string]resource.PropertyPath{
-				`a["\"quoted key\""]`: {"a", `"quoted key"`},
-				`a["b.c"]`:            {"a", "b.c"},
+			expectedPaths: map[string]property.Path{
+				`a["\"quoted key\""]`: property.PathFromSegments(property.NewSegment("a"), property.NewSegment(`"quoted key"`)),
+				`a["b.c"]`:            property.PathFromSegments(property.NewSegment("a"), property.NewSegment("b.c")),
 			},
 		},
 	}
@@ -217,7 +218,8 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 
 			for k := range result {
-				path, err := resource.ParsePropertyPath(k)
+				var path property.Path
+				err := path.UnmarshalText([]byte(k))
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedPaths[k], path)
 			}

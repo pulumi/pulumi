@@ -14,7 +14,9 @@
 
 package apitype
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+)
 
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
@@ -246,7 +248,7 @@ type StepEventStateMetadata struct {
 	// InitErrors is the set of errors encountered in the process of initializing resource.
 	InitErrors []string `json:"initErrors,omitempty"`
 	// HideDiffs is the set of property paths where diffs are not displayed.
-	HideDiffs []resource.PropertyPath `json:"hideDiffs,omitempty"`
+	HideDiffs []property.Glob `json:"hideDiffs,omitempty"`
 }
 
 // ResourcePreEvent is emitted before a resource is modified.

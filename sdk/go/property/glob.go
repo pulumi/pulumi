@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -268,6 +269,37 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 	return result, nil
 }
 
+// Delete removes all values matched by the glob from v.
+//
+// Delete does not mutate v, instead a copy of v with the matched values removed is
+// returned. Paths are deleted in reverse order to preserve index stability for arrays.
+//
+// Any returned error will implement [PathApplyFailure].
+func (g Glob) Delete(v Value) (Value, error) {
+	matches, err := g.Get(v)
+	if err != nil {
+		return Value{}, err
+	}
+	// Collect paths and sort in reverse so that higher array indices are deleted
+	// before lower ones, preserving index validity.
+	paths := make([]Path, 0, len(matches))
+	for p := range matches {
+		paths = append(paths, p)
+	}
+	// Sort in reverse lexicographic order of the binary representation so that
+	// higher array indices are deleted before lower ones.
+	slices.SortFunc(paths, func(a, b Path) int {
+		return strings.Compare(b.string, a.string)
+	})
+	for _, p := range paths {
+		v, err = p.Delete(v)
+		if err != nil {
+			return Value{}, err
+		}
+	}
+	return v, nil
+}
+
 type GlobSegment interface {
 	fmt.GoStringer
 	globApply(Value) ([]Value, PathApplyFailure)
@@ -361,4 +393,14 @@ func (g Glob) Segments(yield func(GlobSegment) bool) {
 			return
 		}
 	}
+}
+
+func (g Glob) Len() int { return g.len() }
+
+func (g Glob) Head() (segment GlobSegment) {
+	for v := range g.segments {
+		segment = v
+		break
+	}
+	return segment
 }
