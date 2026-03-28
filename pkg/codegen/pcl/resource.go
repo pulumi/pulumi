@@ -77,6 +77,8 @@ type ResourceOptions struct {
 	ReplacementTrigger model.Expression
 	// Environment variable mappings for provider resources.
 	EnvVarMappings model.Expression
+	// Hooks are lifecycle hooks for the resource, keyed by hook type with lists of command arrays.
+	Hooks model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.
