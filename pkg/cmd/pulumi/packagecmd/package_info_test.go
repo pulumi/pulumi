@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -324,4 +325,146 @@ Inputs marked with '*' are required
 \x1b[1mOutputs\x1b[0m:
  - \x1b[1moutput1\x1b[0m (\x1b[4mstring\x1b[0m\x1b[4m\x1b[0m): the first and only output
 `, strings.ReplaceAll(output.String(), "\x1b", "\\x1b"))
+}
+
+func TestPackageInfoJSON(t *testing.T) {
+	t.Parallel()
+
+	schema := generateSchema(t)
+	tmpDir := t.TempDir()
+	schemaPath := filepath.Join(tmpDir, "schema.json")
+
+	err := os.WriteFile(schemaPath, schema, 0o600)
+	require.NoError(t, err)
+
+	cmd := newPackageInfoCmd()
+	cmd.SetArgs([]string{"--json", schemaPath})
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+
+	var result providerInfo
+	err = json.Unmarshal(output.Bytes(), &result)
+	require.NoError(t, err)
+	assert.Equal(t, "test", result.Name)
+	assert.Equal(t, "0.0.1", result.Version)
+	assert.Equal(t, "test description markdown formatted", result.Description)
+	assert.Equal(t, 3, result.TotalResources)
+	assert.Equal(t, 2, result.TotalFunctions)
+	assert.Equal(t, []string{"another", "funs", "index"}, result.Modules)
+}
+
+func TestModuleInfoJSON(t *testing.T) {
+	t.Parallel()
+
+	schema := generateSchema(t)
+	tmpDir := t.TempDir()
+	schemaPath := filepath.Join(tmpDir, "schema.json")
+
+	err := os.WriteFile(schemaPath, schema, 0o600)
+	require.NoError(t, err)
+
+	cmd := newPackageInfoCmd()
+	cmd.SetArgs([]string{"--json", "--module", "index", schemaPath})
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+
+	var result moduleInfo
+	err = json.Unmarshal(output.Bytes(), &result)
+	require.NoError(t, err)
+	assert.Equal(t, "test", result.Name)
+	assert.Equal(t, "index", result.Module)
+	assert.Equal(t, "0.0.1", result.Version)
+	assert.Equal(t, 2, len(result.Resources))
+	assert.Contains(t, result.Resources, "Test")
+	assert.Contains(t, result.Resources, "Test2")
+	assert.Equal(t, 0, len(result.Functions))
+}
+
+func TestResourceInfoJSON(t *testing.T) {
+	t.Parallel()
+
+	schema := generateSchema(t)
+	tmpDir := t.TempDir()
+	schemaPath := filepath.Join(tmpDir, "schema.json")
+
+	err := os.WriteFile(schemaPath, schema, 0o600)
+	require.NoError(t, err)
+
+	cmd := newPackageInfoCmd()
+	cmd.SetArgs([]string{"--json", "--module", "index", "--resource", "Test", schemaPath})
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+
+	var result resourceInfo
+	err = json.Unmarshal(output.Bytes(), &result)
+	require.NoError(t, err)
+	assert.Equal(t, "test:index:Test", result.Resource)
+	assert.Equal(t, "test resource description", result.Description)
+	assert.Equal(t, 1, len(result.Inputs))
+	assert.Equal(t, "string", result.Inputs["prop1"].Type)
+	assert.Equal(t, 4, len(result.Outputs))
+	assert.Equal(t, "[]TestType", result.Outputs["arrayProp"].Type)
+	assert.False(t, result.Outputs["arrayProp"].Required)
+	assert.True(t, result.Outputs["prop1"].Required)
+}
+
+func TestFunctionInfoJSON(t *testing.T) {
+	t.Parallel()
+
+	schema := generateSchema(t)
+	tmpDir := t.TempDir()
+	schemaPath := filepath.Join(tmpDir, "schema.json")
+
+	err := os.WriteFile(schemaPath, schema, 0o600)
+	require.NoError(t, err)
+
+	// Function with simple return type
+	cmd := newPackageInfoCmd()
+	cmd.SetArgs([]string{"--json", "--module", "funs", "--function", "TestFunction", schemaPath})
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+
+	var result functionInfo
+	err = json.Unmarshal(output.Bytes(), &result)
+	require.NoError(t, err)
+	assert.Equal(t, "test:funs:TestFunction", result.Function)
+	assert.Equal(t, "this is a test function", result.Description)
+	assert.Equal(t, 1, len(result.Inputs))
+	assert.Contains(t, result.Inputs, "input1")
+	assert.False(t, result.Inputs["input1"].Required)
+	require.NotNil(t, result.Outputs)
+	assert.Equal(t, "string", result.Outputs.Type)
+	assert.Empty(t, result.Outputs.Properties)
+
+	// Function with object return type
+	cmd = newPackageInfoCmd()
+	cmd.SetArgs([]string{"--json", "--function", "TestFunction2", schemaPath})
+	output.Reset()
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	err = cmd.Execute()
+	require.NoError(t, err)
+
+	var result2 functionInfo
+	err = json.Unmarshal(output.Bytes(), &result2)
+	require.NoError(t, err)
+	assert.Equal(t, "test:funs:TestFunction2", result2.Function)
+	assert.Equal(t, 1, len(result2.Inputs))
+	assert.True(t, result2.Inputs["input1"].Required)
+	require.NotNil(t, result2.Outputs)
+	assert.Empty(t, result2.Outputs.Type)
+	assert.Equal(t, 1, len(result2.Outputs.Properties))
+	assert.Contains(t, result2.Outputs.Properties, "output1")
 }
