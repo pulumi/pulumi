@@ -1586,6 +1586,11 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 	// at the single point where all plugin download requests are constructed, so it is
 	// transparently effective for every source type (GitHub, GitLab, get.pulumi.com, custom
 	// HTTP sources) without requiring any source-specific logic.
+	//
+	// Note: mutating req.URL.Host means that downstream error helpers which inspect the host
+	// (e.g. newDownloadError's private-repo hint for api.github.com 404s) will see the proxy
+	// hostname instead of the original one.  Those hints are best-effort and this is an
+	// acceptable trade-off for the simplicity of a single rewrite point.
 	if to, ok := pluginHostOverridesParsed[req.URL.Host]; ok {
 		logging.V(9).Infof("plugin host override: %s -> %s (full URL: %s)", req.URL.Host, to, req.URL)
 		req.URL.Host = to
@@ -1671,6 +1676,9 @@ func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
 }
 
 // Create a new downloadError.
+// Note: when PULUMI_PLUGIN_HOST_OVERRIDES is set the host in url will be the proxy hostname
+// rather than "api.github.com", so the private-repo hint below will not fire for proxied
+// requests. This is a known, accepted limitation of the host-rewrite approach.
 func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	if url.Host == "api.github.com" && statusCode == 404 {
 		return newGithubPrivateRepoError(statusCode, url)

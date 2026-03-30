@@ -1323,7 +1323,9 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		})
 
 		spec := PluginDescriptor{
-			Name:    "otherdl", // not in the "pulumi" org fast-path
+			// "otherdl" has no real GitHub releases, so both GitHub download attempts
+			// return 404 and fallbackSource falls through to get.pulumi.com.
+			Name:    "otherdl",
 			Kind:    apitype.ResourcePlugin,
 			Version: &version,
 		}
