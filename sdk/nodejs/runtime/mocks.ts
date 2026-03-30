@@ -214,6 +214,10 @@ export class MockMonitor {
         }
     }
 
+    public getRegisteredResources(): Map<string, { urn: string; id: string | null; state: any }> {
+        return new Map(this.resources);
+    }
+
     public registerResourceOutputs(req: any, callback: (err: any, innerResponse: any) => void) {
         try {
             const registeredResource = this.resources.get(req.getUrn());

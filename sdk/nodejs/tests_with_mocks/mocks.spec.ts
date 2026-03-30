@@ -15,6 +15,7 @@
 import * as assert from "assert";
 import * as pulumi from "../index";
 import { CustomResourceOptions } from "../resource";
+import { MockMonitor } from "../runtime/mocks";
 import { MockCallArgs, MockCallResult, MockResourceArgs, MockResourceResult } from "../runtime";
 
 const callMock = (args: MockCallArgs): MockCallResult => {
@@ -140,6 +141,17 @@ setups.forEach(([test, isAsyncNewResource, isAsyncCall]) => {
             read = MyCustom.get("mycustom", "read");
             invokeResult = invoke();
             remoteComponent = new MyRemoteComponent("myremotecomponent", pulumi.interpolate`hello: ${instance.id}`);
+        });
+
+        describe("registered resources", function () {
+            it("exposes currently registered resources", async function () {
+                const monitor = pulumi.runtime.getMonitor() as MockMonitor | undefined;
+                const resources = monitor?.getRegisteredResources();
+
+                for (const resource of [component, instance, custom, remoteComponent]) {
+                    assert.ok(resources?.has(await resource.urn.promise()));
+                }
+            });
         });
 
         describe("component", function () {
