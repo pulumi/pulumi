@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add CLI docs bundle system for offline registry API documentation

@@ -29,6 +29,9 @@ import (
 // hanging on slow or unresponsive servers (e.g. external SDK docs redirects).
 var httpClient = &http.Client{Timeout: 10 * time.Second}
 
+// bundleHTTPClient uses a longer timeout for large bundle downloads.
+var bundleHTTPClient = &http.Client{Timeout: 5 * time.Minute}
+
 // sitemapCache provides session-level caching for sitemap fetches, keyed by URL.
 var sitemapCache sync.Map
 
@@ -60,6 +63,12 @@ func contentPrefix(path string) (prefix, trimmedPath string) {
 		return "/registry/", after
 	}
 	return "/docs/", trimmedPath
+}
+
+// isAPIDocsPath returns true if the path refers to a registry API docs page
+// (e.g. "registry/packages/aws/api-docs/provider").
+func isAPIDocsPath(path string) bool {
+	return strings.Contains(path, "/api-docs")
 }
 
 // FetchDoc fetches a markdown doc page from the docs or registry site.
