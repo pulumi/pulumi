@@ -3481,3 +3481,86 @@ func TestRefreshV2ExcludesChildWithExcludedParent(t *testing.T) {
 		RunStep(p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+// Test that --exclude correctly skips resources during a RefreshV2 operation.
+// This is a regression test for https://github.com/pulumi/pulumi/issues/22403
+// where the exclude logic in GenerateRefreshes was inverted, causing excluded
+// resources to be refreshed and non-excluded resources to be skipped.
+func TestRefreshV2ExcludeTarget(t *testing.T) {
+	t.Parallel()
+
+	p := &lt.TestPlan{}
+	project := p.GetProject()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{
+							ID: req.ID,
+							Outputs: resource.PropertyMap{
+								"refreshed": resource.NewProperty(true),
+							},
+						},
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true)
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, program, loaders...)
+	opts := lt.TestUpdateOptions{T: t, HostF: hostF}
+
+	// First, create all resources with a normal update.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), opts, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4) // default provider + 3 resources
+
+	// Now run RefreshV2 excluding resB.
+	var resBURN resource.URN
+	for _, r := range snap.Resources {
+		if r.URN.Name() == "resB" {
+			resBURN = r.URN
+			break
+		}
+	}
+	require.NotEmpty(t, resBURN, "resB should exist in snapshot")
+
+	opts = lt.TestUpdateOptions{T: t, HostF: hostF}
+	opts.Excludes = deploy.NewUrnTargetsFromUrns([]resource.URN{resBURN})
+
+	snap, err = lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.Len(t, snap.Resources, 4)
+
+	// resA and resC should have been refreshed (have the "refreshed" output).
+	// resB should NOT have been refreshed (excluded).
+	// Look up by name since ordering may change due to parallelism.
+	refreshed := resource.NewProperty(true)
+	for _, r := range snap.Resources {
+		switch r.URN.Name() {
+		case "resA":
+			assert.Equal(t, refreshed, r.Outputs["refreshed"], "resA should have been refreshed")
+		case "resB":
+			assert.NotContains(t, r.Outputs, resource.PropertyKey("refreshed"), "resB should NOT have been refreshed (excluded)")
+		case "resC":
+			assert.Equal(t, refreshed, r.Outputs["refreshed"], "resC should have been refreshed")
+		}
+	}
+}

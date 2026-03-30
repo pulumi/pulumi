@@ -756,10 +756,12 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// resource, to call back into GenerateSteps later.
 	//
 	// Only need to do refresh steps here for custom non-provider resources that have an old state.
+	// Skip if the resource is excluded from the operation.
 	if old != nil &&
 		sg.refresh &&
 		goal.Custom &&
-		!sdkproviders.IsProviderType(goal.Type) {
+		!sdkproviders.IsProviderType(goal.Type) &&
+		!(sg.deployment.opts.Excludes.IsConstrained() && sg.isExcludedFromUpdate(old)) {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go PanicRecovery(sg.deployment.panicErrs, func() {
@@ -2051,7 +2053,7 @@ func (sg *stepGenerator) GenerateRefreshes(
 				// transitive dependents as well.
 				var add bool
 				if excludesOpt.IsConstrained() {
-					add = excludesOpt.Contains(res.URN)
+					add = !excludesOpt.Contains(res.URN)
 
 					// In the case of `--exclude-dependents`, we need to flag all our dependents as excluded as well. We
 					// always visit the target before its dependents, so when we get round to the dependent in the loop
