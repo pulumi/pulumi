@@ -164,7 +164,8 @@ var PluginDownloadURLOverrides = env.String("PLUGIN_DOWNLOAD_URL_OVERRIDES", "")
 //
 // For example, to route plugin downloads through Artifactory generic remote repositories:
 //
-//	PULUMI_PLUGIN_HOST_OVERRIDES=api.github.com=https://artifactory.example.com/artifactory/github-api-remote,github.com=https://artifactory.example.com/artifactory/github-com-remote
+//	PULUMI_PLUGIN_HOST_OVERRIDES=api.github.com=https://artifactory.example.com/artifactory/github-api-remote,
+//	github.com=https://artifactory.example.com/artifactory/github-com-remote
 //
 // This rewrites a request for
 // https://api.github.com/repos/pulumi/pulumi-aws/releases/latest
