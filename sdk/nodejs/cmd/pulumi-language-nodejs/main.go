@@ -1520,6 +1520,12 @@ func startDebugging(
 	return nil
 }
 
+func (host *nodeLanguageHost) RunPlugin2(
+	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
+) error {
+	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
+}
+
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
