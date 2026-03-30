@@ -625,7 +625,7 @@ func TestReplacementTriggerInputConversion(t *testing.T) {
 
 			var buf bytes.Buffer
 
-			g.genResourceOptions(&buf, block)
+			g.genResourceOptions(&buf, block, nil)
 			assert.Contains(t, buf.String(), tt.expectedOutput)
 		})
 	}

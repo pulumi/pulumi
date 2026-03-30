@@ -819,6 +819,29 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
+	// Hook command expressions may reference `args.X` to access resource data at call time.
+	if g.inHookCmd && expr.RootName == "args" && len(expr.Traversal) >= 2 {
+		if attr, ok := expr.Traversal[1].(hcl.TraverseAttr); ok {
+			switch attr.Name {
+			case "urn", "id", "name", "type":
+				g.Fgenf(w, "args.%s", attr.Name)
+				return
+			}
+			mapFields := map[string]string{
+				"new_inputs":  "new_inputs",
+				"old_inputs":  "old_inputs",
+				"new_outputs": "new_outputs",
+				"old_outputs": "old_outputs",
+			}
+			if pyField, ok := mapFields[attr.Name]; ok && len(expr.Traversal) >= 3 {
+				if subAttr, ok := expr.Traversal[2].(hcl.TraverseAttr); ok {
+					g.Fgenf(w, `str(args.%s["%s"])`, pyField, subAttr.Name)
+					return
+				}
+			}
+		}
+	}
+
 	rootName := PyName(expr.RootName)
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
