@@ -110,16 +110,18 @@ func TestSaveCheckpointBucketOps(t *testing.T) {
 			wantExistsCalls: 1, // just backup the current file
 		},
 		{
-			name:            "gzip compression, file exists, same format",
-			compression:     encoding.CompressionGzip,
-			createExisting:  true,
-			wantExistsCalls: 1, // just backup the current file
+			name:                "gzip compression, file exists, same format",
+			compression:         encoding.CompressionGzip,
+			existingCompression: encoding.CompressionGzip,
+			createExisting:      true,
+			wantExistsCalls:     1, // just backup the current file
 		},
 		{
-			name:            "zstd compression, file exists, same format",
-			compression:     encoding.CompressionZstd,
-			createExisting:  true,
-			wantExistsCalls: 1, // just backup the current file
+			name:                "zstd compression, file exists, same format",
+			compression:         encoding.CompressionZstd,
+			existingCompression: encoding.CompressionZstd,
+			createExisting:      true,
+			wantExistsCalls:     1, // just backup the current file
 		},
 		{
 			name:            "no compression, no existing file (first save)",
@@ -160,7 +162,7 @@ func TestSaveCheckpointBucketOps(t *testing.T) {
 			// Create the backend with the existing compression first (to create the file),
 			// then switch to the target compression.
 			existingStore := env.MapStore{}
-			switch tt.existingCompression {
+			switch tt.existingCompression { //nolint:exhaustive // CompressionNone needs no env vars
 			case encoding.CompressionGzip:
 				existingStore[env.DIYBackendGzip.Var().Name()] = "true"
 			case encoding.CompressionZstd:
@@ -187,7 +189,7 @@ func TestSaveCheckpointBucketOps(t *testing.T) {
 			// Now create the backend with the target compression and wrap the
 			// bucket to count operations.
 			targetStore := env.MapStore{}
-			switch tt.compression {
+			switch tt.compression { //nolint:exhaustive // CompressionNone needs no env vars
 			case encoding.CompressionGzip:
 				targetStore[env.DIYBackendGzip.Var().Name()] = "true"
 			case encoding.CompressionZstd:
@@ -202,9 +204,6 @@ func TestSaveCheckpointBucketOps(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			spy := &spyBucket{inner: b.bucket}
-			b.bucket = spy
-
 			diyRef := ref.(*diyBackendReference)
 
 			// Get or create a checkpoint to save.
@@ -216,6 +215,11 @@ func TestSaveCheckpointBucketOps(t *testing.T) {
 				Version:    3,
 				Checkpoint: mustMarshalCheckpoint(t, chk),
 			}
+
+			// Set up the spy after getCheckpoint so we only count
+			// Exists calls made by saveCheckpoint itself.
+			spy := &spyBucket{inner: b.bucket}
+			b.bucket = spy
 
 			_, _, err = b.saveCheckpoint(ctx, diyRef, vchk)
 			require.NoError(t, err)
