@@ -15,6 +15,7 @@
 package property
 
 import (
+	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -67,8 +68,8 @@ func genTextGlobPath() *rapid.Generator[tup[string, Glob]] {
 		rapid.Just(ret{"*", Splat}),   // Raw Splat
 		rapid.Just(ret{"[*]", Splat}), // Index Splat
 		// Number
-		rapid.Map(rapid.Uint32(), func(i uint32) ret {
-			return ret{"[" + strconv.FormatInt(int64(i), 10) + "]", IndexSegment{i}}
+		rapid.Map(rapid.Uint64().Filter(func(i uint64) bool { return i < math.MaxInt64 }), func(i uint64) ret {
+			return ret{"[" + strconv.FormatInt(int64(i), 10) + "]", IndexSegment{i}} //nolint:gosec // checked above
 		}),
 		// Unquoted property path
 		rapid.Map(rapid.StringMatching("[a-zA-Z_][a-zA-Z0-9_]*"), func(s string) ret {
@@ -145,7 +146,7 @@ func TestGlobEncoding(t *testing.T) {
 			{"x.*", GlobFromSegments(KeySegment{"x"}, Splat)},
 			{"*", GlobFromSegments(Splat)},
 			{`["x"]`, GlobFromSegments(KeySegment{"x"})},
-			{"[4294967295]", GlobFromSegments(IndexSegment{4294967295})},
+			{"[9223372036854775807]", GlobFromSegments(IndexSegment{9223372036854775807})},
 			{"[0]", GlobFromSegments(IndexSegment{0})},
 		}
 
@@ -172,7 +173,7 @@ func TestGlobEncoding(t *testing.T) {
 			{`["x`, `unclosed string ["x`},
 			{`["x"`, `unclosed index ["x"`},
 			{"[-1]", "indexes cannot be negative"},
-			{"[4294967296]", "indexes cannot exceed 4294967295"},
+			{"[9223372036854775808]", "indexes cannot exceed 9223372036854775807"},
 		}
 		for _, tt := range tests {
 			t.Run(tt.text, func(t *testing.T) {
@@ -214,7 +215,11 @@ func TestMatches(t *testing.T) {
 		prefixLen := rapid.IntRange(0, path.len()-1).Draw(t, "mutation index")
 		switch s := glob[prefixLen].(type) {
 		case IndexSegment:
-			glob[prefixLen] = NewSegment(s.Index() + 1)
+			if s.Index() == math.MaxInt64 {
+				glob[prefixLen] = NewSegment(s.Index() - 1)
+			} else {
+				glob[prefixLen] = NewSegment(s.Index() + 1)
+			}
 		case KeySegment:
 			glob[prefixLen] = NewSegment(s.string + "!")
 		default:

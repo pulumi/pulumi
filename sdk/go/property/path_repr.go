@@ -36,7 +36,7 @@ func (p pathRepr) appendGlobSegment(segment GlobSegment) pathRepr {
 	case KeySegment:
 		return p.appendKey(segment.string)
 	case IndexSegment:
-		return p.appendIndex(segment.uint32)
+		return p.appendIndex(segment.i)
 	case splat:
 		return p.appendSplat()
 	default:
@@ -56,13 +56,13 @@ func (p pathRepr) appendKey(s string) pathRepr {
 	return pathRepr{p.string + string(hdr[:]) + s}
 }
 
-func (p pathRepr) appendIndex(i uint32) pathRepr {
+func (p pathRepr) appendIndex(i uint64) pathRepr {
 	if i < 64 {
 		return pathRepr{p.string + string([]byte{byte(i)})} //nolint:gosec // checked above
 	}
-	var buf [5]byte
+	var buf [9]byte
 	buf[0] = 0xC0 //nolint:gosec // https://github.com/securego/gosec/issues/1495 (fixed in golangci-lint 2.10.0)
-	binary.BigEndian.PutUint32(buf[1:], i)
+	binary.BigEndian.PutUint64(buf[1:], i)
 	return pathRepr{p.string + string(buf[:])}
 }
 
@@ -73,7 +73,7 @@ func pathReprFromSegments[S any](segments []S) (ret pathRepr) {
 		case KeySegment:
 			ret = ret.appendKey(s.string)
 		case IndexSegment:
-			ret = ret.appendIndex(s.uint32)
+			ret = ret.appendIndex(s.i)
 		case splat:
 			ret = ret.appendSplat()
 		default:
@@ -108,7 +108,7 @@ func (p pathRepr) segments(yield func(GlobSegment) bool) {
 		case 0:
 			// Inline index: lower 6 bits hold the value (0-63).
 			s = s[1:]
-			if !yield(IndexSegment{uint32(b & 0x3F)}) {
+			if !yield(IndexSegment{uint64(b & 0x3F)}) {
 				return
 			}
 		case 1:
@@ -131,8 +131,8 @@ func (p pathRepr) segments(yield func(GlobSegment) bool) {
 		case 3:
 			// Large index: 1-byte header + 4-byte uint32.
 			contract.Assertf(len(s) >= 5, "unexpected end of path representation")
-			idx := binary.BigEndian.Uint32([]byte(s[1:5]))
-			s = s[5:]
+			idx := binary.BigEndian.Uint64([]byte(s[1:9]))
+			s = s[9:]
 			if !yield(IndexSegment{idx}) {
 				return
 			}
@@ -150,7 +150,7 @@ func segmentByteLen(s string, offset int) int {
 		hdr := binary.BigEndian.Uint16([]byte(s[offset : offset+2]))
 		return 2 + int(hdr&0x3FFF)
 	case 3:
-		return 5
+		return 9
 	default:
 		contract.Failf("unexpected segment header byte: %x", b)
 		return 0
