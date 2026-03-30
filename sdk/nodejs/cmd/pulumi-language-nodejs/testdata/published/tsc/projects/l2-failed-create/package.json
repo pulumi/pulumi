@@ -1,10 +1,10 @@
 {
 	"name": "l2-failed-create",
 	"devDependencies": {
-		"@types/node": "^18"
+		"@types/node": "^20"
 	},
 	"dependencies": {
-		"typescript": "^4.0.0",
+		"typescript": "^4.7.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
 		"@pulumi/fail_on_create": "ROOT/artifacts/pulumi-fail_on_create-4.0.0.tgz",
 		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-2.0.0.tgz"
