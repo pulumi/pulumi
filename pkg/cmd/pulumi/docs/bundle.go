@@ -363,6 +363,69 @@ func classifyBundleKeys(bundle *CLIDocsBundle, modulePrefix string) classifiedKe
 	}
 }
 
+// BundleNavItems generates navigation items from bundle keys for a given module prefix.
+func BundleNavItems(bundle *CLIDocsBundle, modulePrefix string, pkgName string) []navOption {
+	basePath := fmt.Sprintf("registry/packages/%s/api-docs", pkgName)
+	ck := classifyBundleKeys(bundle, modulePrefix)
+
+	opts := make([]navOption, 0, len(ck.subModules)+len(ck.resources)+len(ck.functions))
+
+	for _, mod := range ck.subModules {
+		modPath := basePath
+		if modulePrefix != "" {
+			modPath += "/" + modulePrefix
+		}
+		modPath += "/" + mod
+		opts = append(opts, navOption{label: "🔗 " + mod + navDrill, path: modPath})
+	}
+	for _, r := range ck.resources {
+		opts = append(opts, navOption{label: "🔗 " + r.title, path: basePath + "/" + r.key})
+	}
+	for _, f := range ck.functions {
+		opts = append(opts, navOption{label: "🔗 " + f.title, path: basePath + "/" + f.key})
+	}
+
+	return opts
+}
+
+// BundleSectionNav returns per-section nav items for drilling into modules, resources, and functions.
+func BundleSectionNav(bundle *CLIDocsBundle, modulePrefix string, pkgName string) map[string][]navOption {
+	basePath := fmt.Sprintf("registry/packages/%s/api-docs", pkgName)
+	ck := classifyBundleKeys(bundle, modulePrefix)
+
+	result := map[string][]navOption{}
+
+	if len(ck.subModules) > 0 {
+		modNav := make([]navOption, 0, len(ck.subModules))
+		for _, mod := range ck.subModules {
+			modPath := basePath
+			if modulePrefix != "" {
+				modPath += "/" + modulePrefix
+			}
+			modPath += "/" + mod
+			modNav = append(modNav, navOption{label: "🔗 " + mod + navDrill, path: modPath})
+		}
+		result[sectionModules] = modNav
+	}
+
+	if len(ck.resources) > 0 {
+		resNav := make([]navOption, 0, len(ck.resources))
+		for _, r := range ck.resources {
+			resNav = append(resNav, navOption{label: "🔗 " + r.title, path: basePath + "/" + r.key})
+		}
+		result[sectionResources] = resNav
+	}
+
+	if len(ck.functions) > 0 {
+		fnNav := make([]navOption, 0, len(ck.functions))
+		for _, f := range ck.functions {
+			fnNav = append(fnNav, navOption{label: "🔗 " + f.title, path: basePath + "/" + f.key})
+		}
+		result[sectionFunctions] = fnNav
+	}
+
+	return result
+}
 
 // extractBundleTitle extracts the title from a "# Title" first line.
 func extractBundleTitle(content string) string {

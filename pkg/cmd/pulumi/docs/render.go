@@ -367,6 +367,13 @@ func pageFooter(baseURL, path string) string {
 	return buf.String()
 }
 
+// browseFooter returns a compact footer for browse mode showing the web URL.
+func browseFooter(baseURL, path string) string {
+	width := getTerminalWidth()
+	rule := strings.Repeat("─", width-len(glamourMargin))
+	return fmt.Sprintf("\n%s%s\n%s🔗 %s\n", glamourMargin, rule, glamourMargin, webURL(baseURL, path))
+}
+
 var noteStartRe = regexp.MustCompile(`^([>|])\s*\*{0,2}(Note|Warning|Tip):\*{0,2}\s*(.*)$`)
 
 func parseNoteLine(trimmed string) (noteType, prefix, body string, ok bool) {

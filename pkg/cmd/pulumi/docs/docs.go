@@ -17,6 +17,7 @@ package docs
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/pkg/browser"
@@ -36,6 +37,8 @@ type docsCmd struct {
 	toc             bool
 	tocJSON         bool
 	jsonOutput      bool
+	fullPage        bool
+	sectionsView    bool
 }
 
 // NewDocsCmd creates the `pulumi docs` command.
@@ -46,11 +49,18 @@ func NewDocsCmd() *cobra.Command {
 		Use:   "docs",
 		Short: "View Pulumi documentation in the terminal",
 		Long: "Read and browse Pulumi documentation in the terminal.\n\n" +
-			"  pulumi docs                    Show help\n" +
+			"  pulumi docs                    Browse interactively\n" +
 			"  pulumi docs read <path>        Read a specific page\n" +
+			"  pulumi docs browse [path]      Browse interactively\n" +
 			"  pulumi docs registry <pkg>     Read a registry package\n" +
 			"  pulumi docs search <query>     Search documentation\n" +
 			"  pulumi docs sitemap            List available pages",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmdutil.Interactive() {
+				return dc.browseLoop("")
+			}
+			return cmd.Help()
+		},
 	}
 
 	cmd.PersistentFlags().StringVar(&dc.baseURL, "base-url", "https://www.pulumi.com",
@@ -65,6 +75,7 @@ func NewDocsCmd() *cobra.Command {
 		"Filter OS-specific content in docs (e.g., macos, linux, windows); choice is remembered")
 
 	cmd.AddCommand(dc.newReadCmd())
+	cmd.AddCommand(dc.newBrowseCmd())
 	cmd.AddCommand(dc.newSearchCmd())
 	cmd.AddCommand(dc.newRegistryCmd())
 	cmd.AddCommand(dc.newSitemapCmd())
@@ -308,6 +319,37 @@ func (dc *docsCmd) showTOC(body string, section *string) error {
 	return nil
 }
 
+func (dc *docsCmd) newBrowseCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "browse [path]",
+		Short: "Browse Pulumi documentation interactively",
+		Long: "Browse docs and registry by following links between pages.\n\n" +
+			"  pulumi docs browse             Browse from last viewed page or root\n" +
+			"  pulumi docs browse <path>      Start browsing at a specific page\n" +
+			"  pulumi docs browse /           Browse from the site map root\n" +
+			"  pulumi docs browse registry/   Browse all registry packages",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			path := ""
+			if len(args) > 0 && args[0] != "/" {
+				path = args[0]
+			} else if len(args) == 0 {
+				prefs, _ := LoadPreferences()
+				path = prefs.LastPage
+			}
+			return dc.browseLoop(path)
+		},
+	}
+	cmd.Flags().BoolVar(&dc.fullPage, "full", false,
+		"Show full page instead of sections view (saved as default when used)")
+	cmd.Flags().BoolVar(&dc.sectionsView, "sections", false,
+		"Show sections view instead of full page (saved as default when used)")
+	cmd.MarkFlagsMutuallyExclusive("full", "sections")
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "path"}},
+	})
+	return cmd
+}
+
 func (dc *docsCmd) newSearchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "search <query>...",
@@ -357,19 +399,22 @@ func (dc *docsCmd) handleRegistryFallback(path string) error {
 	}
 
 	if cmdutil.Interactive() && overviewPath != "" {
+		optBrowseAPI := "Browse API docs"
 		optOverview := "View package overview"
 		optBrowser := "Open in web browser"
-		options := []string{optOverview, optBrowser}
+		options := []string{optBrowseAPI, optOverview, optBrowser}
 
 		fmt.Fprintln(os.Stderr)
 		selected := ui.PromptUser(
 			"What would you like to do?",
 			options,
-			optOverview,
+			optBrowseAPI,
 			cmdutil.GetGlobalColorization(),
 		)
 
 		switch selected {
+		case optBrowseAPI:
+			return dc.browseLoop(overviewPath + "/api-docs")
 		case optOverview:
 			return dc.fetchAndRender(overviewPath)
 		case optBrowser:
