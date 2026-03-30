@@ -31,6 +31,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -54,7 +55,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
@@ -120,12 +120,23 @@ func compileProgram(
 		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
 	}
 	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
-	args := []string{"build", "-o", outfile}
+	args := []string{"build", "-buildvcs=false", "-trimpath", "-o", outfile}
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
+	} else {
+		args = append(args, "-ldflags", "-s -w")
 	}
 	buildCmd := exec.Command(gobin, args...)
 	buildCmd.Dir = programDirectory
+	buildCmd.Env = append(os.Environ(),
+		"CGO_ENABLED=0",
+		// Skip the proxy and sum DB — go straight to source for any needed downloads.
+		// This avoids proxy.golang.org round-trips while still allowing direct fetches
+		// when modules aren't in the local cache.
+		"GOPROXY=direct",
+		"GONOSUMDB=*",
+		"GONOSUMCHECK=*",
+	)
 	buildCmd.Stdout, buildCmd.Stderr = stdout, stderr
 
 	if err := buildCmd.Run(); err != nil {
@@ -283,6 +294,11 @@ type goLanguageHost struct {
 	engineAddress string
 	tracing       string
 	otelEndpoint  string
+	buildCache    sync.Map
+	// packCache caches Pack results keyed by the absolute source directory.
+	// When the same directory is packed again (e.g. core SDK packed for multiple
+	// test configs), the cached artifact path is reused.
+	packCache sync.Map // map[string]string (abs source dir → artifact path)
 }
 
 type goOptions struct {
@@ -1014,6 +1030,10 @@ func runProgram(
 
 // Run is RPC endpoint for LanguageRuntimeServer::Run
 func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	tracer := otel.Tracer("pulumi-language-go")
+	ctx, runSpan := cmdutil.StartSpan(ctx, tracer, "Run")
+	defer runSpan.End()
+
 	if host.engineAddress == "" {
 		return nil, errors.New("when debugging or running explicitly, must call Handshake before Run")
 	}
@@ -1036,7 +1056,6 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 		return nil, fmt.Errorf("failed to prepare environment: %w", err)
 	}
 
-	tracer := otel.Tracer("pulumi-language-go")
 	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, "execGo",
 		trace.WithAttributes(
 			attribute.String("component", "exec.Command"),
@@ -1095,15 +1114,37 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	// user did not specify a binary and we will compile and run the binary on-demand
 	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
 
-	program, err := compileProgram(
-		ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
-	if err != nil {
-		return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
+	// Check the build cache — if the same program directory was compiled before and the
+	// binary still exists on disk, reuse it to avoid redundant compilation (e.g. preview then update).
+	var program string
+	if opts.buildTarget == "" && !req.GetAttachDebugger() {
+		if cached, ok := host.buildCache.Load(req.Info.ProgramDirectory); ok {
+			cachedPath := cached.(string)
+			if _, err := os.Stat(cachedPath); err == nil {
+				logging.V(5).Infof("Reusing cached binary %s for %s", cachedPath, req.Info.ProgramDirectory)
+				program = cachedPath
+			}
+		}
 	}
-	if opts.buildTarget == "" {
-		// If there is no specified buildTarget, delete the temporary program after running it.
+	if program == "" {
+		_, compileSpan := cmdutil.StartSpan(ctx, tracer, "compileProgram")
+		var err error
+		program, err = compileProgram(
+			ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
+		compileSpan.End()
+		if err != nil {
+			return nil, errutil.ErrorWithStderr(err, "error in compiling Go")
+		}
+		if opts.buildTarget == "" && !req.GetAttachDebugger() {
+			host.buildCache.Store(req.Info.ProgramDirectory, program)
+		}
+	}
+	// Only delete the temporary binary if it's NOT being cached for reuse.
+	// When buildTarget is set or debugger is attached, we don't cache, so clean up.
+	if opts.buildTarget != "" || req.GetAttachDebugger() {
 		defer os.Remove(program)
 	}
+	// Otherwise the binary is in buildCache and must survive for subsequent Run calls.
 
 	return runProgram(ctx, engineClient, req, req.Pwd, program, env), nil
 }
@@ -1209,7 +1250,13 @@ func (host *goLanguageHost) InstallDependencies(
 
 	cmd := exec.Command(gobin, "mod", "tidy", "-compat=1.18")
 	cmd.Dir = req.Info.ProgramDirectory
-	cmd.Env = os.Environ()
+	cmd.Env = append(os.Environ(),
+		// Skip sum DB verification to avoid round-trips to sum.golang.org.
+		// Don't set GOPROXY=direct here — go mod tidy needs the proxy to resolve
+		// modules whose source repos may have removed tags (e.g. nhooyr.io/websocket@v1.8.10).
+		"GONOSUMDB=*",
+		"GONOSUMCHECK=*",
+	)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
 	if err := cmd.Run(); err != nil {
@@ -1526,14 +1573,33 @@ func (host *goLanguageHost) GeneratePackage(
 }
 
 func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	tracer := otel.Tracer("pulumi-language-go")
+	ctx, packSpan := cmdutil.StartSpan(ctx, tracer, "Pack/internal")
+	defer packSpan.End()
+
 	// Go is very simple, there's nothing it can do to pack so it just copies the source to the target.
 
+	// Check the pack cache — if we already packed this source directory, reuse it.
+	absSrc, absErr := filepath.Abs(req.PackageDirectory)
+	if absErr == nil {
+		if cached, ok := host.packCache.Load(absSrc); ok {
+			cachedPath := cached.(string)
+			if _, err := os.Stat(cachedPath); err == nil {
+				logging.V(5).Infof("Pack cache hit for %s -> %s", absSrc, cachedPath)
+				return &pulumirpc.PackResponse{ArtifactPath: cachedPath}, nil
+			}
+		}
+	}
+
 	// First read the modfile in the package directory to decide the folder name.
+	_, readModSpan := cmdutil.StartSpan(ctx, tracer, "Pack/readGoMod")
 	data, err := os.ReadFile(filepath.Join(req.PackageDirectory, "go.mod"))
 	if err != nil {
+		readModSpan.End()
 		return nil, fmt.Errorf("read go.mod: %w", err)
 	}
 	mod, err := modfile.Parse("go.mod", data, nil)
+	readModSpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("parse go.mod: %w", err)
 	}
@@ -1542,14 +1608,106 @@ func (host *goLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest
 	folderName := strings.ReplaceAll(mod.Module.Mod.Path, "/", "_")
 	artifactPath := filepath.Join(req.DestinationDirectory, folderName)
 
-	err = fsutil.CopyFile(artifactPath, req.PackageDirectory, nil)
+	_, copySpan := cmdutil.StartSpan(ctx, tracer, "Pack/copyGoModule")
+	err = copyGoModule(artifactPath, req.PackageDirectory)
+	copySpan.End()
 	if err != nil {
 		return nil, fmt.Errorf("copy package: %w", err)
+	}
+
+	// Cache the result for future Pack calls with the same source directory.
+	if absErr == nil {
+		host.packCache.Store(absSrc, artifactPath)
 	}
 
 	return &pulumirpc.PackResponse{
 		ArtifactPath: artifactPath,
 	}, nil
+}
+
+// copyGoModule copies a Go module directory to dst, skipping subdirectories that
+// contain their own go.mod (separate modules) and known non-Go artifact directories
+// like node_modules. This avoids copying hundreds of megabytes of unrelated content
+// when the module root is shared with other language SDKs.
+func copyGoModule(dst, src string) error {
+	var stats copyStats
+	err := copyGoModuleDir(dst, src, true, &stats)
+	logging.V(5).Infof("copyGoModule: copied %d files (%d bytes), visited %d dirs, skipped %d dirs",
+		stats.filesCopied, stats.bytesCopied, stats.dirsVisited, stats.dirsSkipped)
+	return err
+}
+
+type copyStats struct {
+	filesCopied int64
+	bytesCopied int64
+	dirsVisited int64
+	dirsSkipped int64
+}
+
+func copyGoModuleDir(dst, src string, isRoot bool, stats *copyStats) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		// Skip well-known non-Go artifact/dependency directories that can be very large
+		// (e.g. node_modules can be hundreds of MB) and are never part of a Go module.
+		name := info.Name()
+		switch name {
+		case "node_modules", "__pycache__", ".git",
+			".mypy_cache", ".pytest_cache", ".tox",
+			"venv", ".venv":
+			stats.dirsSkipped++
+			return nil
+		}
+
+		// Skip subdirectories that are separate Go modules (contain their own go.mod).
+		// The root directory is the module we're packing, so don't skip it.
+		if !isRoot {
+			if _, err := os.Stat(filepath.Join(src, "go.mod")); err == nil {
+				stats.dirsSkipped++
+				return nil
+			}
+		}
+
+		stats.dirsVisited++
+		files, err := os.ReadDir(src)
+		if err != nil {
+			return fmt.Errorf("read dir: %w", err)
+		}
+		for _, file := range files {
+			if err := copyGoModuleDir(
+				filepath.Join(dst, file.Name()),
+				filepath.Join(src, file.Name()),
+				false,
+				stats,
+			); err != nil {
+				return err
+			}
+		}
+	} else if info.Mode().IsRegular() {
+		// Copy all regular files. Directory-level exclusions (node_modules,
+		// __pycache__, separate go.mod dirs, etc.) handle the large artifacts.
+		srcFile, err := os.Open(src)
+		if err != nil {
+			return fmt.Errorf("open file: %w", err)
+		}
+		dstdir := filepath.Dir(dst)
+		if err = os.MkdirAll(dstdir, 0o700); err != nil {
+			return errors.Join(err, srcFile.Close())
+		}
+		dstFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, info.Mode())
+		if err != nil {
+			return errors.Join(err, srcFile.Close())
+		}
+		n, err := srcFile.WriteTo(dstFile)
+		stats.filesCopied++
+		stats.bytesCopied += n
+		return errors.Join(err, dstFile.Close(), srcFile.Close())
+	}
+
+	return nil
 }
 
 func (host *goLanguageHost) Handshake(

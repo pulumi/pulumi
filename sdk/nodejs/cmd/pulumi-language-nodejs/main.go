@@ -45,6 +45,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -248,6 +249,31 @@ func locateModule(ctx context.Context, mod, programDir, nodeBin string, isPlugin
 	return strings.TrimSpace(string(out)), nil
 }
 
+// locateModuleCached wraps locateModule with a per-host cache keyed on (mod, programDir).
+// This avoids redundant node subprocess spawns when the same module is resolved
+// multiple times (e.g. across preview and update runs for the same program).
+func (host *nodeLanguageHost) locateModuleCached(
+	ctx context.Context, mod, programDir, nodeBin string, isPlugin bool,
+) (string, error) {
+	cacheKey := mod + "\x00" + programDir
+	host.moduleCacheMu.Lock()
+	if cached, ok := host.moduleCache[cacheKey]; ok {
+		host.moduleCacheMu.Unlock()
+		return cached, nil
+	}
+	host.moduleCacheMu.Unlock()
+
+	result, err := locateModule(ctx, mod, programDir, nodeBin, isPlugin)
+	if err != nil {
+		return "", err
+	}
+
+	host.moduleCacheMu.Lock()
+	host.moduleCache[cacheKey] = result
+	host.moduleCacheMu.Unlock()
+	return result, nil
+}
+
 // nodeLanguageHost implements the LanguageRuntimeServer interface
 // for use as an API endpoint.
 type nodeLanguageHost struct {
@@ -260,6 +286,18 @@ type nodeLanguageHost struct {
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
+
+	// moduleCache caches the results of locateModule to avoid redundant node subprocess spawns
+	// across multiple Run calls (e.g. preview and update) for the same program directory.
+	moduleCache   map[string]string
+	moduleCacheMu sync.Mutex
+
+	// packCache caches Pack results keyed by packageDirectory alone. When the same source
+	// is packed to a different destination, the cached artifact is copied rather than
+	// re-running the expensive build+pack pipeline. Packing the core SDK (@pulumi/pulumi)
+	// is especially expensive (~8 seconds) and this cache eliminates redundant work.
+	packCache   map[string]string // packageDirectory → artifact file path
+	packCacheMu sync.Mutex
 }
 
 type nodeOptions struct {
@@ -362,6 +400,8 @@ func newLanguageHost(
 		otelEndpoint:  otelEndpoint,
 		forceTsc:      forceTsc,
 		runtime:       runtime,
+		moduleCache:   make(map[string]string),
+		packCache:     make(map[string]string),
 	}
 }
 
@@ -741,6 +781,10 @@ func getPluginVersion(info packageJSON) (string, error) {
 
 // Run is the RPC endpoint for LanguageRuntimeServer::Run
 func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {
+	tracer := otel.Tracer("pulumi-language-nodejs")
+	ctx, runSpan := cmdutil.StartSpan(ctx, tracer, "Run")
+	defer runSpan.End()
+
 	tracingSpan := opentracing.SpanFromContext(ctx)
 
 	engineClient, closer, err := host.connectToEngine()
@@ -820,7 +864,7 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		req.Info.EntryPoint = "bin"
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, false)
+	runPath, err = host.locateModuleCached(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, false)
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}, nil
 	}
@@ -1175,7 +1219,13 @@ func (host *nodeLanguageHost) InstallDependencies(
 	}
 	otelSpan.SetAttributes(append(setOptionsAttributes(opts), attribute.String("workspaceRoot", workspaceRoot))...)
 
+	ctx, npmInstallSpan := cmdutil.StartSpan(ctx, tracer, "npmInstall",
+		trace.WithAttributes(
+			attribute.String("packageManager", string(opts.packagemanager)),
+			attribute.String("workspaceRoot", workspaceRoot),
+		))
 	_, err = npm.Install(ctx, opts.packagemanager, workspaceRoot, false /*production*/, stdout, stderr)
+	npmInstallSpan.End()
 	if err != nil {
 		return err
 	}
@@ -1187,11 +1237,34 @@ func (host *nodeLanguageHost) InstallDependencies(
 		// program. We probably want to see about making something like this an explicit "pulumi build" step, but for
 		// now shim'ing this in here works well enough for conformance testing. Note that we skip this step when
 		// installing dependencies for plugins, as they may not be written in typescript or have tsc configured.
-		tscCmd := exec.Command("npx", "tsc")
+		//
+		// Use the local tsc binary directly instead of npx to avoid npx's resolution overhead.
+		// Also pass --skipLibCheck to avoid re-checking declaration files from dependencies,
+		// which is a significant time saver.
+		tscBin := filepath.Join(req.Info.ProgramDirectory, "node_modules", ".bin", "tsc")
+		if _, statErr := os.Stat(tscBin); statErr != nil {
+			// Fall back to npx if the local binary doesn't exist
+			tscBin = "npx"
+		}
+		var tscArgs []string
+		if tscBin == "npx" {
+			tscArgs = []string{"tsc", "--skipLibCheck"}
+		} else {
+			tscArgs = []string{"--skipLibCheck"}
+		}
+		_, tscSpan := cmdutil.StartSpan(ctx, tracer, "tsc",
+			trace.WithAttributes(
+				attribute.String("command", tscBin),
+				attribute.StringSlice("args", tscArgs),
+				attribute.String("dir", req.Info.ProgramDirectory),
+			))
+		tscCmd := exec.Command(tscBin, tscArgs...)
 		tscCmd.Dir = req.Info.ProgramDirectory
 		if err := runWithOutput(tscCmd, stdout, stderr); err != nil {
+			tscSpan.End()
 			return fmt.Errorf("failed to run tsc: %w", err)
 		}
+		tscSpan.End()
 	}
 
 	return closer.Close()
@@ -1725,6 +1798,14 @@ func (host *nodeLanguageHost) RunPlugin(
 func (host *nodeLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
+	tracer := otel.Tracer("pulumi-language-nodejs")
+	_, genSpan := cmdutil.StartSpan(ctx, tracer, "GenerateProject",
+		trace.WithAttributes(
+			attribute.String("sourceDirectory", req.SourceDirectory),
+			attribute.String("targetDirectory", req.TargetDirectory),
+		))
+	defer genSpan.End()
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1831,6 +1912,13 @@ func (host *nodeLanguageHost) GenerateProgram(
 func (host *nodeLanguageHost) GeneratePackage(
 	ctx context.Context, req *pulumirpc.GeneratePackageRequest,
 ) (*pulumirpc.GeneratePackageResponse, error) {
+	tracer := otel.Tracer("pulumi-language-nodejs")
+	_, genSpan := cmdutil.StartSpan(ctx, tracer, "GeneratePackage",
+		trace.WithAttributes(
+			attribute.String("directory", req.Directory),
+		))
+	defer genSpan.End()
+
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1895,11 +1983,30 @@ func readPackageJSON(packageJSONPath string) (map[string]any, error) {
 }
 
 func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackRequest) (*pulumirpc.PackResponse, error) {
+	tracer := otel.Tracer("pulumi-language-nodejs")
+	ctx, packSpan := cmdutil.StartSpan(ctx, tracer, "Pack",
+		trace.WithAttributes(
+			attribute.String("packageDirectory", req.PackageDirectory),
+			attribute.String("destinationDirectory", req.DestinationDirectory),
+		))
+	defer packSpan.End()
+
+	// Check the pack cache. We cache by source directory alone so that packing the same
+	// source to a different destination reuses the artifact via a file copy instead of
+	// re-running the expensive build+pack pipeline (~8s for @pulumi/pulumi).
+	if resp, ok := host.tryPackCache(req.PackageDirectory, req.DestinationDirectory); ok {
+		packSpan.SetAttributes(attribute.Bool("cacheHit", true))
+		return resp, nil
+	}
+
 	// Verify npm exists and is set up: npm, user login
 	npm, err := executable.FindExecutable("npm")
 	if err != nil {
 		return nil, fmt.Errorf("find npm: %w", err)
 	}
+
+	// Suppress the "new version of npm available" update notification for all npm commands in Pack.
+	npmEnv := append(os.Environ(), "npm_config_update_notifier=false")
 
 	// Annoyingly the engine will call Pack for the core SDK which is not setup in at all the same way as the
 	// generated sdks, so we have to detect that and do a big branch to pack it totally differently.
@@ -1920,62 +2027,103 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 	}
 
 	if packageJSON["name"] == "@pulumi/pulumi" {
+		packSpan.SetAttributes(attribute.Bool("isCoreSdk", true))
 		// This is pretty much a copy of the makefiles build_package. Short term we should see about changing
 		// the makefile to just build the nodejs plugin first and then simply invoke "pulumi package
 		// pack-sdk". Long term we should try and unify the style of the code sdk with that of generated sdks
 		// so we don't need this special case.
 
-		yarn, err := executable.FindExecutable("yarn")
-		if err != nil {
-			return nil, fmt.Errorf("find yarn: %w", err)
+		binDir := filepath.Join(req.PackageDirectory, "bin")
+
+		// If bin/ already has compiled output (e.g. from a prior `make build`), skip the
+		// expensive yarn install + tsc steps entirely. The core SDK source tree is stable
+		// during conformance testing so the compiled output is always up-to-date.
+		_, binErr := os.Stat(filepath.Join(binDir, "index.js"))
+		alreadyBuilt := binErr == nil
+		packSpan.SetAttributes(attribute.Bool("skipBuild", alreadyBuilt))
+
+		if !alreadyBuilt {
+			yarn, err := executable.FindExecutable("yarn")
+			if err != nil {
+				return nil, fmt.Errorf("find yarn: %w", err)
+			}
+
+			err = writeString("$ yarn install --frozen-lockfile --prefer-offline\n")
+			if err != nil {
+				return nil, fmt.Errorf("write to output: %w", err)
+			}
+			_, yarnInstallSpan := cmdutil.StartSpan(ctx, tracer, "Pack/yarnInstall",
+				trace.WithAttributes(
+					attribute.String("command", yarn),
+					attribute.String("dir", req.PackageDirectory),
+				))
+			yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile", "--prefer-offline")
+			yarnInstallCmd.Dir = req.PackageDirectory
+			if err := runWithOutput(yarnInstallCmd, os.Stdout, os.Stderr); err != nil {
+				yarnInstallSpan.End()
+				return nil, fmt.Errorf("yarn install: %w", err)
+			}
+			yarnInstallSpan.End()
+
+			err = writeString("$ yarn run tsc\n")
+			if err != nil {
+				return nil, fmt.Errorf("write to output: %w", err)
+			}
+			_, yarnTscSpan := cmdutil.StartSpan(ctx, tracer, "Pack/yarnTsc",
+				trace.WithAttributes(
+					attribute.String("command", yarn),
+					attribute.String("dir", req.PackageDirectory),
+				))
+			yarnTscCmd := exec.Command(yarn, "run", "tsc", "--skipLibCheck")
+			yarnTscCmd.Dir = req.PackageDirectory
+			if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
+				yarnTscSpan.End()
+				return nil, fmt.Errorf("yarn run tsc: %w", err)
+			}
+			yarnTscSpan.End()
 		}
 
-		err = writeString("$ yarn install --frozen-lockfile\n")
-		if err != nil {
-			return nil, fmt.Errorf("write to output: %w", err)
-		}
-		yarnInstallCmd := exec.Command(yarn, "install", "--frozen-lockfile")
-		yarnInstallCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnInstallCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn install: %w", err)
-		}
-
-		err = writeString("$ yarn run tsc\n")
-		if err != nil {
-			return nil, fmt.Errorf("write to output: %w", err)
-		}
-		yarnTscCmd := exec.Command(yarn, "run", "tsc")
-		yarnTscCmd.Dir = req.PackageDirectory
-		if err := runWithOutput(yarnTscCmd, os.Stdout, os.Stderr); err != nil {
-			return nil, fmt.Errorf("yarn run tsc: %w", err)
-		}
-
-		// "tsc" doesn't copy in the "proto" and "vendor" directories.
+		// Ensure proto and vendor directories are in bin/ (tsc doesn't copy these,
+		// and they may already be present from a prior build).
+		_, copySpan := cmdutil.StartSpan(ctx, tracer, "Pack/copyAssets")
 		err = fsutil.CopyFile(
-			filepath.Join(req.PackageDirectory, "bin", "proto"),
+			filepath.Join(binDir, "proto"),
 			filepath.Join(req.PackageDirectory, "proto"),
 			nil)
 		if err != nil {
+			copySpan.End()
 			return nil, fmt.Errorf("copy proto: %w", err)
 		}
 		err = fsutil.CopyFile(
-			filepath.Join(req.PackageDirectory, "bin", "vendor"),
+			filepath.Join(binDir, "vendor"),
 			filepath.Join(req.PackageDirectory, "vendor"),
 			nil)
 		if err != nil {
+			copySpan.End()
 			return nil, fmt.Errorf("copy vendor: %w", err)
 		}
+		copySpan.End()
 	} else {
+		packSpan.SetAttributes(attribute.Bool("isCoreSdk", false))
 		// Before we can build the package we need to install it's dependencies.
 		err = writeString("$ npm install\n")
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
-		npmInstallCmd := exec.Command(npm, "install")
+		_, npmInstallSpan := cmdutil.StartSpan(ctx, tracer, "Pack/npmInstall",
+			trace.WithAttributes(
+				attribute.String("command", npm),
+				attribute.String("dir", req.PackageDirectory),
+			))
+		npmInstallCmd := exec.Command(npm, "install",
+			"--no-audit", "--no-fund", "--prefer-offline", "--loglevel=error")
 		npmInstallCmd.Dir = req.PackageDirectory
+		npmInstallCmd.Env = npmEnv
 		if err := runWithOutput(npmInstallCmd, os.Stdout, os.Stderr); err != nil {
+			npmInstallSpan.End()
 			return nil, errutil.ErrorWithStderr(err, "npm install")
 		}
+		npmInstallSpan.End()
 
 		// Pulumi SDKs always define a build command that will run tsc writing to a bin directory.
 		// So we can run that, then edit the package.json in that directory, and then pack it.
@@ -1983,17 +2131,27 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 		if err != nil {
 			return nil, fmt.Errorf("write to output: %w", err)
 		}
+		_, npmBuildSpan := cmdutil.StartSpan(ctx, tracer, "Pack/npmBuild",
+			trace.WithAttributes(
+				attribute.String("command", npm),
+				attribute.String("dir", req.PackageDirectory),
+			))
 		npmBuildCmd := exec.Command(npm, "run", "build")
 		npmBuildCmd.Dir = req.PackageDirectory
+		npmBuildCmd.Env = npmEnv
 		if err := runWithOutput(npmBuildCmd, os.Stdout, os.Stderr); err != nil {
+			npmBuildSpan.End()
 			return nil, errutil.ErrorWithStderr(err, "npm run build")
 		}
+		npmBuildSpan.End()
 
 		// "build" in SDKs isn't setup to copy the package.json to ./bin/
+		_, copyPkgSpan := cmdutil.StartSpan(ctx, tracer, "Pack/copyPackageJSON")
 		err = fsutil.CopyFile(
 			filepath.Join(req.PackageDirectory, "bin", "package.json"),
 			filepath.Join(req.PackageDirectory, "package.json"),
 			nil)
+		copyPkgSpan.End()
 		if err != nil {
 			return nil, fmt.Errorf("copy package.json: %w", err)
 		}
@@ -2003,23 +2161,74 @@ func (host *nodeLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReque
 	if err != nil {
 		return nil, fmt.Errorf("write to output: %w", err)
 	}
+	_, npmPackSpan := cmdutil.StartSpan(ctx, tracer, "Pack/npmPack",
+		trace.WithAttributes(
+			attribute.String("command", npm),
+			attribute.String("dir", req.PackageDirectory),
+		))
 	var stdoutBuffer bytes.Buffer
 	npmPackCmd := exec.Command(npm,
 		"pack",
 		filepath.Join(req.PackageDirectory, "bin"),
-		"--pack-destination", req.DestinationDirectory)
+		"--pack-destination", req.DestinationDirectory,
+		"--loglevel=error")
 	npmPackCmd.Stdout = &stdoutBuffer
 	npmPackCmd.Stderr = struct{ io.Writer }{os.Stderr}
+	npmPackCmd.Env = npmEnv
 	err = npmPackCmd.Run()
 	if err != nil {
+		npmPackSpan.End()
 		return nil, fmt.Errorf("npm pack: %w", err)
 	}
+	npmPackSpan.End()
 
 	artifactName := strings.TrimSpace(stdoutBuffer.String())
 
-	return &pulumirpc.PackResponse{
+	resp := &pulumirpc.PackResponse{
 		ArtifactPath: filepath.Join(req.DestinationDirectory, artifactName),
-	}, nil
+	}
+
+	// Cache the result for future calls with the same source directory.
+	host.packCacheMu.Lock()
+	host.packCache[req.PackageDirectory] = resp.ArtifactPath
+	host.packCacheMu.Unlock()
+
+	return resp, nil
+}
+
+// tryPackCache checks the pack cache for a previously packed artifact from the same source
+// directory. If found and the artifact still exists on disk, it returns the response (copying
+// the artifact to the destination if needed). Returns (nil, false) on cache miss.
+func (host *nodeLanguageHost) tryPackCache(
+	packageDirectory, destinationDirectory string,
+) (*pulumirpc.PackResponse, bool) {
+	host.packCacheMu.Lock()
+	cachedPath, ok := host.packCache[packageDirectory]
+	if !ok {
+		host.packCacheMu.Unlock()
+		return nil, false
+	}
+	host.packCacheMu.Unlock()
+
+	// Verify the cached artifact still exists on disk.
+	if _, err := os.Stat(cachedPath); err != nil {
+		host.packCacheMu.Lock()
+		delete(host.packCache, packageDirectory)
+		host.packCacheMu.Unlock()
+		return nil, false
+	}
+
+	// If the artifact is already in the requested destination, return as-is.
+	if filepath.Dir(cachedPath) == destinationDirectory {
+		return &pulumirpc.PackResponse{ArtifactPath: cachedPath}, true
+	}
+
+	// Copy the artifact to the new destination.
+	destPath := filepath.Join(destinationDirectory, filepath.Base(cachedPath))
+	if err := fsutil.CopyFile(destPath, cachedPath, nil); err != nil {
+		return nil, false
+	}
+	return &pulumirpc.PackResponse{ArtifactPath: destPath}, true
 }
 
 // Nodejs sometimes sets stdout/stderr to non-blocking mode. When a nodejs subprocess is directly

@@ -27,6 +27,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 
 	"golang.org/x/sync/errgroup"
 
@@ -34,11 +35,51 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"go.opentelemetry.io/otel"
 	"gopkg.in/yaml.v3"
 )
+
+// cachedUvVersion caches the result of running `uv --version` so we only
+// shell out once per process. The uv binary doesn't change during a
+// process's lifetime.
+var (
+	cachedUvVersionOnce sync.Once
+	cachedUvVersion     semver.Version
+	cachedUvVersionErr  error
+	cachedUvPath        string
+	cachedUvPathErr     error
+
+	// uvSyncedPaths tracks virtualenv paths that have been synced by
+	// InstallDependencies. This allows Command() to skip the redundant
+	// `uv sync --inexact` when it's called on the same virtualenv shortly
+	// after installation. The map is keyed by the absolute virtualenv path.
+	uvSyncedPaths   = make(map[string]bool)
+	uvSyncedPathsMu sync.Mutex
+)
+
+func getUvVersion() (semver.Version, error) {
+	cachedUvVersionOnce.Do(func() {
+		cachedUvPath, cachedUvPathErr = exec.LookPath("uv")
+		if cachedUvPathErr != nil {
+			cachedUvVersionErr = errors.New("Could not find `uv` executable.\n" +
+				"Install uv and make sure it is in your PATH.")
+			return
+		}
+
+		cmd := exec.Command(cachedUvPath, "--version")
+		versionString, err := cmd.Output()
+		if err != nil {
+			cachedUvVersionErr = fmt.Errorf("failed to get uv version: %w", err)
+			return
+		}
+		cachedUvVersion, cachedUvVersionErr = ParseUvVersion(string(versionString))
+	})
+	return cachedUvVersion, cachedUvVersionErr
+}
 
 type uv struct {
 	// The absolute path to the virtual env.
@@ -47,19 +88,33 @@ type uv struct {
 	root string
 	// The version of uv.
 	version semver.Version
+	// synced tracks whether we have already run `uv sync` for this
+	// toolchain instance so we can skip redundant syncs in Command().
+	// This is safe because within a single language-host RPC call
+	// (e.g. InstallDependencies followed by Run), the project's
+	// dependencies don't change between our own operations.
+	synced bool
+	// needsNoWorkspace is pre-computed at construction time from the uv
+	// version. When true, `uv add` calls must include --no-workspace.
+	needsNoWorkspace bool
 }
 
 var minUvVersion = semver.MustParse("0.4.26")
+
+// Pre-parsed version thresholds used in hot-path comparisons.
+var (
+	uvVersion060 = semver.MustParse("0.6.0")
+	uvVersion080 = semver.MustParse("0.8.0")
+)
 
 var defaultVirtualEnv = ".venv"
 
 var _ Toolchain = &uv{}
 
 func newUv(root, virtualenv string) (*uv, error) {
-	_, err := exec.LookPath("uv")
+	version, err := getUvVersion()
 	if err != nil {
-		return nil, errors.New("Could not find `uv` executable.\n" +
-			"Install uv and make sure it is in your PATH.")
+		return nil, err
 	}
 
 	if virtualenv == "" {
@@ -91,21 +146,13 @@ func newUv(root, virtualenv string) (*uv, error) {
 		virtualenv = filepath.Join(root, virtualenv)
 	}
 
-	cmd := exec.Command("uv", "--version")
-	versionString, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get uv version: %w", err)
-	}
-	version, err := ParseUvVersion(string(versionString))
-	if err != nil {
-		return nil, err
-	}
 	logging.V(9).Infof("Python toolchain: using uv version %s", version)
 
 	u := &uv{
-		virtualenvPath: virtualenv,
-		root:           root,
-		version:        version,
+		virtualenvPath:   virtualenv,
+		root:             root,
+		version:          version,
+		needsNoWorkspace: version.GE(uvVersion080),
 	}
 
 	return u, nil
@@ -114,16 +161,26 @@ func newUv(root, virtualenv string) (*uv, error) {
 func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVersionTools,
 	showOutput bool, infoWriter, errorWriter io.Writer,
 ) error {
+	tracer := otel.Tracer("pulumi-language-python")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "uv/InstallDependencies")
+	defer span.End()
+
 	if useLanguageVersionTools {
+		_, pySpan := cmdutil.StartSpan(ctx, tracer, "uv/InstallDependencies/installPython")
 		if err := installPython(ctx, cwd, showOutput, infoWriter, errorWriter); err != nil {
+			pySpan.End()
 			return err
 		}
+		pySpan.End()
 	}
 
 	// If there's no `uv.lock` or `pyproject.toml` file, we first need to prepare the project.
-	if _, err := searchup(cwd, "uv.lock"); err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, err)
+	// Track whether a lockfile exists so we can reuse this below for --frozen.
+	_, lockErr := searchup(cwd, "uv.lock")
+	hasLockFile := lockErr == nil
+	if !hasLockFile {
+		if !errors.Is(lockErr, os.ErrNotExist) {
+			return fmt.Errorf("error while looking for uv.lock in %s: %w", cwd, lockErr)
 		}
 		// No uv.lock found, look for pyproject.toml.
 		if _, err := searchup(cwd, "pyproject.toml"); err != nil {
@@ -150,20 +207,49 @@ func (u *uv) InstallDependencies(ctx context.Context, cwd string, useLanguageVer
 					projectName = string(pulumiConfig.Name)
 				}
 			}
+			_, prepSpan := cmdutil.StartSpan(ctx, tracer, "uv/InstallDependencies/prepareProject")
 			if err := u.PrepareProject(ctx, projectName, cwd, showOutput, infoWriter, errorWriter); err != nil {
+				prepSpan.End()
 				return fmt.Errorf("error preparing project: %w", err)
 			}
+			prepSpan.End()
 		}
 	}
 
 	// We now have either a uv.lock or at least a pyproject.toml file, and we can use uv
 	// install the dependencies.
-	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "sync")
+	// --no-install-project skips installing the project itself as an editable
+	// package. Pulumi programs aren't real packages, so this saves the overhead
+	// of building/installing the project during sync.
+	syncArgs := []string{"sync", "--no-install-project"}
+	// When a lockfile already exists, use --frozen to skip dependency
+	// resolution and install directly from the lock. This avoids the
+	// resolver entirely and is significantly faster.
+	if hasLockFile {
+		syncArgs = append(syncArgs, "--frozen")
+	}
+	if !showOutput {
+		// Suppress progress output when the caller doesn't need it.
+		syncArgs = append(syncArgs, "--no-progress")
+	}
+	_, syncSpan := cmdutil.StartSpan(ctx, tracer, "uv/InstallDependencies/uvSync")
+	syncCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, syncArgs...)
 	if !showOutput {
 		_, err := syncCmd.Output()
-		return errutil.ErrorWithStderr(err, "error installing dependencies")
+		syncSpan.End()
+		if err != nil {
+			return errutil.ErrorWithStderr(err, "error installing dependencies")
+		}
+		u.markSynced()
+		return nil
 	} else {
-		return syncCmd.Run()
+		if err := syncCmd.Run(); err != nil {
+			syncSpan.End()
+			return err
+		}
+		syncSpan.End()
+		u.markSynced()
+		return nil
 	}
 }
 
@@ -192,7 +278,7 @@ func (u *uv) PrepareProject(
 
 	args := []string{"init", "--bare", "--no-package", "--no-pin-python"}
 	deleteHello := false
-	if u.version.LT(semver.MustParse("0.6.0")) {
+	if u.version.LT(uvVersion060) {
 		// The `--bare` option prevents `uv init` from creating a
 		// `main.py` file, but this is only available in uv 0.6. Prior
 		// to 0.6, uv always creates a `hello.py` file, which we
@@ -270,6 +356,15 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
+	// If we already synced, the venv was created as part of the sync. Skip
+	// the redundant venv creation.
+	if u.isSynced() {
+		return nil
+	}
+	tracer := otel.Tracer("pulumi-language-python")
+	_, span := cmdutil.StartSpan(ctx, tracer, "uv/EnsureVenv")
+	defer span.End()
+
 	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet",
 		"--allow-existing", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {
@@ -286,7 +381,11 @@ func (u *uv) ValidateVenv(ctx context.Context) error {
 	return nil
 }
 
-func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+func (u *uv) ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+	tracer := otel.Tracer("pulumi-language-python")
+	_, span := cmdutil.StartSpan(ctx, tracer, "uv/ListPackages")
+	defer span.End()
+
 	lockDir, err := searchup(u.root, "uv.lock")
 	if err != nil {
 		return nil, fmt.Errorf("could not find uv.lock: %w", err)
@@ -300,7 +399,8 @@ func (u *uv) ListPackages(_ context.Context, transitive bool) ([]plugin.Dependen
 	if err != nil {
 		return nil, fmt.Errorf("could not identify virtual packages in %s: %w", lockFilePath, err)
 	}
-	return listPackagesFromLockFile(lockFilePath, transitive, virtual)
+	// Pass the already-read content to avoid a redundant file read.
+	return listPackagesFromLockFileContent(lockFilePath, content, transitive, virtual)
 }
 
 // uvLockFile is a minimal representation of uv.lock for identifying virtual packages.
@@ -331,6 +431,30 @@ func uvVirtualPackages(content []byte) (map[string]bool, error) {
 	return virtual, nil
 }
 
+// markSynced records that this virtualenv has been synced, both on the
+// instance and globally so that new instances for the same path skip the sync.
+func (u *uv) markSynced() {
+	u.synced = true
+	uvSyncedPathsMu.Lock()
+	uvSyncedPaths[u.virtualenvPath] = true
+	uvSyncedPathsMu.Unlock()
+}
+
+// isSynced returns true if this virtualenv has already been synced, either
+// by this instance or by a previous instance with the same path.
+func (u *uv) isSynced() bool {
+	if u.synced {
+		return true
+	}
+	uvSyncedPathsMu.Lock()
+	synced := uvSyncedPaths[u.virtualenvPath]
+	uvSyncedPathsMu.Unlock()
+	if synced {
+		u.synced = true
+	}
+	return synced
+}
+
 func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	// Note that we do not use `uv run python` here because this results in a
 	// process tree of `python-language-runtime -> uv -> python`. This is
@@ -343,25 +467,54 @@ func (u *uv) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {
 	//
 	// To maintain uv's behaviour that `uv run ...` should keep the venv
 	// up-to-date, we run `uv sync` first, provided there is a `pyproject.toml`.
-	pyprojectTomlDir, err := searchup(u.root, "pyproject.toml")
-	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", u.root, err)
+	// However, if we already ran a sync for this virtualenv (e.g. during
+	// InstallDependencies), we can skip the redundant sync.
+	if !u.isSynced() {
+		// Check for uv.lock first; its presence implies pyproject.toml exists.
+		_, lockErr := searchup(u.root, "uv.lock")
+		hasLock := lockErr == nil
+		hasPyproject := hasLock
+		if !hasLock {
+			if !errors.Is(lockErr, os.ErrNotExist) {
+				return nil, fmt.Errorf("error while looking for uv.lock in %s: %w", u.root, lockErr)
+			}
+			if _, err := searchup(u.root, "pyproject.toml"); err == nil {
+				hasPyproject = true
+			} else if !errors.Is(err, os.ErrNotExist) {
+				return nil, fmt.Errorf("error while looking for pyproject.toml in %s: %w", u.root, err)
+			}
 		}
-	}
-	if pyprojectTomlDir != "" {
-		// uv run does an "inexact" sync, that is it leaves extraneous
-		// dependencies alone and does not remove them.
-		venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, "sync", "--inexact")
-		if _, err := venvCmd.Output(); err != nil {
-			return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
+		if hasPyproject {
+			tracer := otel.Tracer("pulumi-language-python")
+			_, syncSpan := cmdutil.StartSpan(ctx, tracer, "uv/Command/uvSyncInexact")
+			// uv run does an "inexact" sync, that is it leaves extraneous
+			// dependencies alone and does not remove them.
+			syncArgs := []string{"sync", "--inexact", "--no-progress"}
+			// Use --frozen when a lockfile exists to skip resolution.
+			if hasLock {
+				syncArgs = append(syncArgs, "--frozen")
+			}
+			venvCmd := u.uvCommand(ctx, u.root, false, nil, nil, syncArgs...)
+			if _, err := venvCmd.Output(); err != nil {
+				syncSpan.End()
+				return nil, errutil.ErrorWithStderr(err, "error creating virtual environment")
+			}
+			syncSpan.End()
+			u.markSynced()
 		}
 	}
 
 	var cmd *exec.Cmd
 	_, cmdPath := u.pythonExecutable()
 	cmd = exec.CommandContext(ctx, cmdPath, args...)
-	cmd.Env = ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
+	env := ActivateVirtualEnv(cmd.Environ(), u.virtualenvPath)
+	env = append(env,
+		"PYTHONDONTWRITEBYTECODE=1",
+		// Skip scanning user site-packages directory, which is unnecessary
+		// when running inside a virtualenv and saves startup time.
+		"PYTHONNOUSERSITE=1",
+	)
+	cmd.Env = env
 	cmd.Dir = u.root
 	return cmd, nil
 }
@@ -406,7 +559,12 @@ func (u *uv) About(ctx context.Context) (Info, error) {
 func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
 	infoWriter, errorWriter io.Writer, args ...string,
 ) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, "uv", args...)
+	// Use the cached uv path from getUvVersion() to avoid repeated LookPath calls.
+	uvPath := cachedUvPath
+	if uvPath == "" {
+		uvPath = "uv"
+	}
+	cmd := exec.CommandContext(ctx, uvPath, args...)
 	if cwd != "" {
 		cmd.Dir = cwd
 	}
@@ -414,7 +572,17 @@ func (u *uv) uvCommand(ctx context.Context, cwd string, showOutput bool,
 		cmd.Stdout = infoWriter
 		cmd.Stderr = errorWriter
 	}
-	cmd.Env = append(cmd.Environ(), "UV_PROJECT_ENVIRONMENT="+u.virtualenvPath)
+	cmd.Env = append(cmd.Environ(),
+		"UV_PROJECT_ENVIRONMENT="+u.virtualenvPath,
+		"PYTHONDONTWRITEBYTECODE=1",
+		"PYTHONNOUSERSITE=1",
+		// Use hardlinks where possible to avoid copying cached packages
+		// into the virtual environment, significantly speeding up installs.
+		"UV_LINK_MODE=hardlink",
+		// Suppress progress bars globally via env var so every uv
+		// subprocess is quiet without needing --no-progress per call.
+		"UV_NO_PROGRESS=1",
+	)
 	return cmd
 }
 
@@ -431,14 +599,7 @@ func (u *uv) VirtualEnvPath(_ context.Context) (string, error) {
 }
 
 func (u *uv) needsNoWorkspacesFlag(ctx context.Context) (bool, error) {
-	// Starting with version 0.8.0, uv will automatically add packages in subdirectories as workspace members. However
-	// the generated SDK might not have a `pyproject.toml`, which is required for uv workspace members. To add the
-	// generated SDK as a normal dependency, we can run `uv add --no-workspace`, but this flag is only available on
-	// version 0.8.0 and up.
-	if u.version.GE(semver.MustParse("0.8.0")) {
-		return true, nil
-	}
-	return false, nil
+	return u.needsNoWorkspace, nil
 }
 
 func ParseUvVersion(versionString string) (semver.Version, error) {

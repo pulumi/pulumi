@@ -26,6 +26,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
@@ -37,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -338,6 +341,8 @@ func installPlugins(
 	//
 	// In order to get a complete view of the set of plugins that we need for an update or query, we must
 	// consult both sources and merge their results into a list of plugins.
+	tracer := otel.Tracer("pulumi-engine")
+
 	runtime := proj.Runtime.Name()
 	programInfo := plugin.NewProgramInfo(
 		/* rootDirectory */ plugctx.Root,
@@ -345,7 +350,9 @@ func installPlugins(
 		/* entryPoint */ main,
 		/* options */ proj.Runtime.Options(),
 	)
+	_, gpSpan := cmdutil.StartSpan(ctx, tracer, "gather-packages-from-program")
 	languagePackages, err := gatherPackagesFromProgram(plugctx, runtime, programInfo)
+	gpSpan.End()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -368,13 +375,16 @@ func installPlugins(
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
+	_, epSpan := cmdutil.StartSpan(ctx, tracer, "ensure-plugins-are-installed-inner")
 	if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
 		false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
+		epSpan.End()
 		if returnInstallErrors {
 			return nil, nil, err
 		}
 		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 	}
+	epSpan.End()
 
 	if waitNeeded {
 		contract.IgnoreError(manager.Wait())
@@ -452,6 +462,11 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				fmt.Sprintf("validating policy config: %s %s  %s",
 					policyPackName, policyPackVersion, validationError))
 		}
+	}
+
+	// Fast path: skip all policy loading when no policies are configured.
+	if len(deployOpts.RequiredPolicies) == 0 && len(deployOpts.LocalPolicyPacks) == 0 {
+		return nil
 	}
 
 	var wg sync.WaitGroup
@@ -599,6 +614,8 @@ func newUpdateSource(ctx context.Context,
 	client deploy.BackendClient, opts *deploymentOptions, proj *workspace.Project, pwd, main, projectRoot string,
 	target *deploy.Target, plugctx *plugin.Context, resourceHooks *deploy.ResourceHooks, panicErrs chan<- error,
 ) (deploy.Source, error) {
+	tracer := otel.Tracer("pulumi-engine")
+
 	//
 	// Step 1: Install policy packs and plugins.
 	//
@@ -607,8 +624,9 @@ func newUpdateSource(ctx context.Context,
 
 	ensurePoliciesAreInstalled(ctx, plugctx, opts, opts.RequiredPolicies, manager)
 
+	ipCtx, ipSpan := cmdutil.StartSpan(ctx, tracer, "install-plugins")
 	allPlugins, defaultProviderVersions, err := installPlugins(
-		ctx,
+		ipCtx,
 		proj,
 		pwd,
 		main,
@@ -618,13 +636,17 @@ func newUpdateSource(ctx context.Context,
 		false, /*returnInstallErrors*/
 		manager,
 	)
+	ipSpan.End()
 	if err != nil {
 		return nil, err
 	}
 
+	_, mwSpan := cmdutil.StartSpan(ctx, tracer, "install-manager-wait")
 	if err := manager.Wait(); err != nil {
+		mwSpan.End()
 		return nil, err
 	}
+	mwSpan.End()
 
 	//
 	// Step 2: Load policy packs and plugins.
@@ -644,17 +666,24 @@ func newUpdateSource(ctx context.Context,
 		DryRun:           opts.DryRun,
 		Tags:             target.Tags,
 	}
+
+	_, lpSpan := cmdutil.StartSpan(ctx, tracer, "load-policy-plugins")
 	if err := loadPolicyPlugins(plugctx, opts, analyzerOpts); err != nil {
+		lpSpan.End()
 		return nil, err
 	}
+	lpSpan.End()
 
 	// Once we've installed all of the plugins we need, make sure that all analyzers and language plugins are
 	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
 	// need to be loaded here.
 	const kinds = plugin.AnalyzerPlugins | plugin.LanguagePlugins
+	_, elSpan := cmdutil.StartSpan(ctx, tracer, "ensure-plugins-are-loaded")
 	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds); err != nil {
+		elSpan.End()
 		return nil, err
 	}
+	elSpan.End()
 
 	// If we are connecting to an existing client, stash the address of the engine in its arguments.
 	var args []string
@@ -663,7 +692,8 @@ func newUpdateSource(ctx context.Context,
 	}
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
+	_, esSpan := cmdutil.StartSpan(ctx, tracer, "new-eval-source")
+	source := deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
 		Proj:        proj,
 		Pwd:         pwd,
 		Program:     main,
@@ -676,7 +706,9 @@ func newUpdateSource(ctx context.Context,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
-	}, panicErrs), nil
+	}, panicErrs)
+	esSpan.End()
+	return source, nil
 }
 
 func update(

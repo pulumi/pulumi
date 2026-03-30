@@ -19,13 +19,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"slices"
 	"strings"
 	"sync"
 
 	mapset "github.com/deckarep/golang-set/v2"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
@@ -34,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -126,48 +132,17 @@ func (h *testHost) ListAnalyzers() []plugin.Analyzer {
 }
 
 func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
-	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
-	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
-	var key string
-	var provider plugin.Provider
-	if descriptor.Version == nil {
-		key = descriptor.Name
-
-		var version semver.Version
-		for k, p := range h.providers {
-			parts := strings.Split(k, "@")
-			if len(parts) != 2 {
-				return nil, fmt.Errorf("unexpected provider key %s", k)
-			}
-
-			if parts[0] == key {
-				v := semver.MustParse(parts[1])
-				if provider == nil || v.GT(version) {
-					var err error
-					provider, err = p()
-					if err != nil {
-						return nil, fmt.Errorf("initializing provider %s: %w", k, err)
-					}
-					version = v
-				}
-			}
-		}
-	} else {
-		key = fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
-		var err error
-		providerFactory, ok := h.providers[key]
-		if !ok {
-			return nil, fmt.Errorf("unknown provider %s", key)
-		}
-
-		provider, err = providerFactory()
-		if err != nil {
-			return nil, fmt.Errorf("initializing provider %s: %w", key, err)
-		}
+	factory, key, err := h.findProviderFactory(descriptor)
+	if err != nil {
+		return nil, err
+	}
+	if factory == nil {
+		return nil, fmt.Errorf("unknown provider %s", key)
 	}
 
-	if provider == nil {
-		return nil, fmt.Errorf("unknown provider %s", key)
+	provider, err := factory()
+	if err != nil {
+		return nil, fmt.Errorf("initializing provider %s: %w", key, err)
 	}
 
 	grpcProvider, closer, err := wrapProviderWithGrpc(provider)
@@ -179,6 +154,63 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 	h.connections[grpcProvider] = closer
 
 	return grpcProvider, nil
+}
+
+// findProviderFactory finds the best matching provider factory for the given descriptor.
+// It returns the factory, the key, and any error. When version is nil, it picks the latest version.
+// This avoids creating provider instances just to compare versions.
+func (h *testHost) findProviderFactory(
+	descriptor workspace.PluginDescriptor,
+) (func() (plugin.Provider, error), string, error) {
+	if descriptor.Version == nil {
+		var bestKey string
+		var bestVersion semver.Version
+		var found bool
+		for k := range h.providers {
+			parts := strings.Split(k, "@")
+			if len(parts) != 2 {
+				return nil, k, fmt.Errorf("unexpected provider key %s", k)
+			}
+			if parts[0] == descriptor.Name {
+				v := semver.MustParse(parts[1])
+				if !found || v.GT(bestVersion) {
+					bestKey = k
+					bestVersion = v
+					found = true
+				}
+			}
+		}
+		if !found {
+			return nil, descriptor.Name, nil
+		}
+		return h.providers[bestKey], bestKey, nil
+	}
+
+	key := fmt.Sprintf("%s@%s", descriptor.Name, descriptor.Version)
+	factory, ok := h.providers[key]
+	if !ok {
+		return nil, key, nil
+	}
+	return factory, key, nil
+}
+
+// RawProvider returns a provider instance without gRPC wrapping. This is useful for
+// operations that only need to call GetSchema or other metadata methods, avoiding the
+// overhead of starting a gRPC server just for a schema query.
+func (h *testHost) RawProvider(descriptor workspace.PluginDescriptor) (plugin.Provider, error) {
+	factory, key, err := h.findProviderFactory(descriptor)
+	if err != nil {
+		return nil, err
+	}
+	if factory == nil {
+		return nil, fmt.Errorf("unknown provider %s", key)
+	}
+
+	provider, err := factory()
+	if err != nil {
+		return nil, fmt.Errorf("initializing provider %s: %w", key, err)
+	}
+	return provider, nil
 }
 
 // LanguageRuntime returns the language runtime initialized by the test host.
@@ -208,18 +240,15 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plu
 
 	// EnsurePlugins will be called with the result of GetRequiredPlugins, so we can use this to check
 	// that that returned the expected plugins (with expected versions).
+	// We derive the expected set from the provider keys (which are already "name@version")
+	// to avoid creating provider instances just for metadata queries.
 	expected := mapset.NewSet[string]()
-	for name, provider := range h.providers {
-		p, err := provider()
-		if err != nil {
-			return fmt.Errorf("initializing provider %s for ensure plugins: %w", name, err)
+	for key := range h.providers {
+		parts := strings.Split(key, "@")
+		if len(parts) != 2 {
+			return fmt.Errorf("unexpected provider key %s", key)
 		}
-		pkg := p.Pkg()
-		version, err := getProviderVersion(p)
-		if err != nil {
-			return fmt.Errorf("get provider version %s: %w", pkg, err)
-		}
-		expected.Add(fmt.Sprintf("resource-%s@%s", pkg, version))
+		expected.Add(fmt.Sprintf("resource-%s@%s", parts[0], parts[1]))
 	}
 
 	actual := mapset.NewSetWithSize[string](len(plugins))
@@ -244,17 +273,16 @@ func (h *testHost) ResolvePlugin(
 	spec workspace.PluginDescriptor,
 ) (*workspace.PluginInfo, error) {
 	if spec.Kind == apitype.ResourcePlugin {
-		for name, provider := range h.providers {
-			p, err := provider()
-			if err != nil {
-				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
+		// Resolve from the provider keys (which are "name@version") to avoid
+		// creating provider instances just for metadata queries.
+		for key := range h.providers {
+			parts := strings.Split(key, "@")
+			if len(parts) != 2 {
+				return nil, fmt.Errorf("unexpected provider key %s", key)
 			}
-			pkg := p.Pkg()
-			providerVersion, err := getProviderVersion(p)
-			if err != nil {
-				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
-			}
-			if spec.Name == string(pkg) && (spec.Version == nil || spec.Version.EQ(providerVersion)) {
+			name := parts[0]
+			version := semver.MustParse(parts[1])
+			if spec.Name == name && (spec.Version == nil || spec.Version.EQ(version)) {
 				return &workspace.PluginInfo{
 					Name:    spec.Name,
 					Kind:    spec.Kind,
@@ -317,13 +345,15 @@ func (h *testHost) AttachDebugger(plugin.DebugSpec) bool {
 	return false
 }
 
+// grpcWrapper manages the lifecycle of an in-process gRPC server for a provider.
 type grpcWrapper struct {
-	stop chan bool
+	srv *grpc.Server
+	lis *bufconn.Listener
 }
 
 func (w *grpcWrapper) Close() error {
-	go func() { w.stop <- true }()
-	return nil
+	w.srv.GracefulStop()
+	return w.lis.Close()
 }
 
 func newProviderServer(provider plugin.Provider) pulumirpc.ResourceProviderServer {
@@ -333,30 +363,56 @@ func newProviderServer(provider plugin.Provider) pulumirpc.ResourceProviderServe
 	return plugin.NewProviderServer(provider)
 }
 
+const (
+	// bufconn buffer size: must be large enough for gRPC HTTP/2 flow control
+	// to work without deadlocking. The "large" provider returns ~100MB
+	// responses; with a too-small buffer, the writer blocks waiting for the
+	// reader to drain while the reader blocks waiting for a complete HTTP/2
+	// frame, causing a deadlock.
+	bufconnBufSize = 8 * 1024 * 1024 // 8MB
+
+	// maxRPCMessageSize matches the 400MB limit used by rpcutil.ServeWithOptions.
+	maxRPCMessageSize = 1024 * 1024 * 400
+)
+
 func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
-	wrapper := &grpcWrapper{stop: make(chan bool)}
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Cancel: wrapper.stop,
-		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceProviderServer(srv, newProviderServer(provider))
-			return nil
-		},
-		Options: rpcutil.TracingServerInterceptorOptions(nil),
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
-	}
+	tracer := otel.Tracer("pulumi-test-language")
+	_, span := cmdutil.StartSpan(context.Background(), tracer, "wrap-provider-with-grpc",
+		trace.WithAttributes(attribute.String("provider.package", string(provider.Pkg()))))
+	defer span.End()
+
+	lis := bufconn.Listen(bufconnBufSize)
+
+	srv := grpc.NewServer(
+		append(
+			rpcutil.TracingServerInterceptorOptions(nil),
+			grpc.MaxRecvMsgSize(maxRPCMessageSize),
+		)...,
+	)
+	pulumirpc.RegisterResourceProviderServer(srv, newProviderServer(provider))
+
+	go func() {
+		// Serve blocks until the server is stopped. Errors after GracefulStop are benign.
+		if err := srv.Serve(lis); err != nil && !rpcutil.IsBenignCloseErr(err) {
+			contract.Failf("bufconn provider server failed: %v", err)
+		}
+	}()
+
 	conn, err := grpc.NewClient(
-		fmt.Sprintf("127.0.0.1:%v", handle.Port),
+		"passthrough:///bufconn",
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			return lis.DialContext(ctx)
+		}),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
 		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),
 	)
 	if err != nil {
-		contract.IgnoreClose(wrapper)
+		srv.Stop()
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
 	}
+	wrapper := &grpcWrapper{srv: srv, lis: lis}
 	wrapped := plugin.NewProviderWithClient(
 		nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
 	return wrapped, wrapper, nil

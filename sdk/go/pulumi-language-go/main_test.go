@@ -549,3 +549,87 @@ func main() {
 		require.Contains(t, stderr.String(), "main.go:3:1: syntax error")
 	})
 }
+
+func TestCopyGoModule(t *testing.T) {
+	t.Parallel()
+
+	// Set up a source directory that mimics the sdk/ layout:
+	// - go.mod (root module)
+	// - version.go (root Go file)
+	// - go/ (Go SDK source)
+	//   - pulumi/pulumi.go
+	//   - pulumi-language-go/ (separate module, has go.mod)
+	//     - main.go
+	// - nodejs/ (non-Go SDK, contains node_modules)
+	//   - index.ts
+	//   - node_modules/
+	//     - big-package/index.js
+	// - python/ (non-Go SDK)
+	//   - __init__.py
+	//   - __pycache__/
+	//     - cached.pyc
+	src := t.TempDir()
+
+	writeFile := func(relPath, content string) {
+		abs := filepath.Join(src, filepath.FromSlash(relPath))
+		require.NoError(t, os.MkdirAll(filepath.Dir(abs), 0o755))
+		require.NoError(t, os.WriteFile(abs, []byte(content), 0o600))
+	}
+
+	// Root module files
+	writeFile("go.mod", "module example.com/sdk/v3\n")
+	writeFile("go.sum", "# empty\n")
+	writeFile("version.go", "package sdk\n")
+
+	// Go SDK source (should be copied)
+	writeFile("go/pulumi/pulumi.go", "package pulumi\n")
+	writeFile("go/common/util.go", "package common\n")
+
+	// Separate Go module (should be skipped)
+	writeFile("go/pulumi-language-go/go.mod", "module example.com/sdk/go/pulumi-language-go/v3\n")
+	writeFile("go/pulumi-language-go/main.go", "package main\n")
+
+	// Node.js SDK (node_modules should be skipped)
+	writeFile("nodejs/index.ts", "export {}\n")
+	writeFile("nodejs/node_modules/big-package/index.js", "module.exports = {}\n")
+
+	// Python SDK (__pycache__ should be skipped)
+	writeFile("python/__init__.py", "# python\n")
+	writeFile("python/__pycache__/cached.pyc", "bytecode\n")
+
+	// .git directory (should be skipped)
+	writeFile(".git/HEAD", "ref: refs/heads/main\n")
+
+	dst := t.TempDir()
+	require.NoError(t, copyGoModule(filepath.Join(dst, "out"), src))
+
+	out := filepath.Join(dst, "out")
+
+	// Root files should be copied
+	assert.FileExists(t, filepath.Join(out, "go.mod"))
+	assert.FileExists(t, filepath.Join(out, "go.sum"))
+	assert.FileExists(t, filepath.Join(out, "version.go"))
+
+	// Go source should be copied
+	assert.FileExists(t, filepath.Join(out, "go", "pulumi", "pulumi.go"))
+	assert.FileExists(t, filepath.Join(out, "go", "common", "util.go"))
+
+	// Separate Go module should be skipped
+	assert.NoFileExists(t, filepath.Join(out, "go", "pulumi-language-go", "go.mod"))
+	assert.NoFileExists(t, filepath.Join(out, "go", "pulumi-language-go", "main.go"))
+
+	// node_modules should be skipped
+	assert.NoFileExists(t, filepath.Join(out, "nodejs", "node_modules", "big-package", "index.js"))
+
+	// Non-Go files outside excluded dirs should still be copied
+	assert.FileExists(t, filepath.Join(out, "nodejs", "index.ts"))
+
+	// __pycache__ should be skipped
+	assert.NoFileExists(t, filepath.Join(out, "python", "__pycache__", "cached.pyc"))
+
+	// Non-excluded Python files should still be copied
+	assert.FileExists(t, filepath.Join(out, "python", "__init__.py"))
+
+	// .git should be skipped
+	assert.NoFileExists(t, filepath.Join(out, ".git", "HEAD"))
+}

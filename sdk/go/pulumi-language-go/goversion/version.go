@@ -47,6 +47,13 @@ func checkMinimumGoVersion(goVersionOutput string) error {
 	// Handle non-standard toolchains (https://go.dev/doc/toolchain#name)
 	version = strings.Split(version, "-")[0]
 
+	// Strip Go experiment/build metadata suffixes like "-X:nodwarf5" that appear
+	// in development or experimental Go builds. These cause the version parser
+	// to reject otherwise valid versions like "1.26.0-X:nodwarf5".
+	if idx := strings.Index(version, "-"); idx != -1 {
+		version = version[:idx]
+	}
+
 	currVersion, err := goVersion.NewVersion(version)
 	if err != nil {
 		return fmt.Errorf("parsing go version: %w", err)

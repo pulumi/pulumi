@@ -40,9 +40,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // The mode in which the step generator is running.
@@ -360,6 +364,13 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 // If the given resource is a custom resource, the step generator will invoke Diff and Check on the
 // provider associated with that resource. If those fail, an error is returned.
 func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, bool, error) {
+	tracer := otel.Tracer("pulumi-deploy")
+	_, span := cmdutil.StartSpan(context.Background(), tracer, "generate-steps",
+		trace.WithAttributes(
+			attribute.String("resource.type", string(event.Goal().Type)),
+			attribute.String("resource.name", event.Goal().Name)))
+	defer span.End()
+
 	steps, async, err := sg.generateSteps(event)
 	if err != nil {
 		contract.Assertf(len(steps) == 0, "expected no steps if there is an error")
@@ -2101,6 +2112,10 @@ func (sg *stepGenerator) GenerateRefreshes(
 // registered in the new snapshot. It also generates delete steps for any resources that were marked for deletion
 // because of `destroy` mode.
 func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnTargets) ([]Step, []Step, error) {
+	tracer := otel.Tracer("pulumi-deploy")
+	_, span := cmdutil.StartSpan(context.Background(), tracer, "generate-deletes")
+	defer span.End()
+
 	// If -target was provided to either `pulumi update` or `pulumi destroy` then only delete
 	// resources that were specified.
 	var allowedResourcesToDelete map[resource.URN]bool
@@ -2502,6 +2517,10 @@ func (sg *stepGenerator) getDepgraphForScheduling() *graph.DependencyGraph {
 // process deletes in reverse (so we don't delete resources upon which other resources depend), we reverse the list and
 // hand it back to the deployment executor for safe execution.
 func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
+	tracer := otel.Tracer("pulumi-deploy")
+	_, span := cmdutil.StartSpan(context.Background(), tracer, "schedule-deletes")
+	defer span.End()
+
 	var antichains []antichain // the list of parallelizable steps we intend to return.
 
 	dg := sg.getDepgraphForScheduling()           // the current deployment's dependency graph.

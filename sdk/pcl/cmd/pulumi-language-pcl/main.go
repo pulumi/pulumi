@@ -30,6 +30,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -180,6 +181,7 @@ type pclLanguageHost struct {
 	cwd           string
 	engineAddress string
 	tracing       string
+	bindCache     sync.Map
 }
 
 func newLanguageHost(engineAddress, cwd, tracing string) pulumirpc.LanguageRuntimeServer {
@@ -220,11 +222,22 @@ func (host *pclLanguageHost) GetPluginInfo(
 	return &pulumirpc.PluginInfo{Version: version.Version}, nil
 }
 
+type bindCacheEntry struct {
+	program     *pcl.Program
+	diagnostics hcl.Diagnostics
+}
+
 func (host *pclLanguageHost) bindProgramFromDirectory(
 	directory string,
 	loaderTarget string,
 	strict bool,
 ) (*pcl.Program, hcl.Diagnostics, error) {
+	cacheKey := directory
+	if cached, ok := host.bindCache.Load(cacheKey); ok {
+		entry := cached.(*bindCacheEntry)
+		return entry.program, entry.diagnostics, nil
+	}
+
 	client, err := schema.NewLoaderClient(loaderTarget)
 	if err != nil {
 		return nil, nil, err
@@ -239,7 +252,11 @@ func (host *pclLanguageHost) bindProgramFromDirectory(
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}
 
-	return pcl.BindDirectory(directory, loader, options...)
+	program, diags, err := pcl.BindDirectory(directory, loader, options...)
+	if err == nil {
+		host.bindCache.Store(cacheKey, &bindCacheEntry{program: program, diagnostics: diags})
+	}
+	return program, diags, err
 }
 
 func (host *pclLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) (*pulumirpc.RunResponse, error) {

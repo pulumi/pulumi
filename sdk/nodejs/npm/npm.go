@@ -75,13 +75,24 @@ func (node *npmManager) Install(ctx context.Context, dir string, production bool
 	command.Dir = dir
 	command.Stdout = stdout
 	command.Stderr = stderr
+	// Suppress the "new version of npm available" update notification check, which adds latency.
+	// Also disable progress bar since it's not useful when output is piped/captured.
+	command.Env = append(os.Environ(),
+		"npm_config_update_notifier=false",
+		"npm_config_progress=false",
+	)
 	return command.Run()
 }
 
 func (node *npmManager) installCmd(ctx context.Context, production bool) *exec.Cmd {
 	// We pass `--loglevel=error` to prevent `npm` from printing warnings about missing
 	// `description`, `repository`, and `license` fields in the package.json file.
-	args := []string{"install", "--loglevel=error"}
+	args := []string{"install", "--loglevel=error",
+		// Skip printing funding messages.
+		"--no-fund",
+		// Prefer locally cached packages to avoid network round-trips.
+		"--prefer-offline",
+	}
 
 	if production {
 		args = append(args, "--production")
@@ -109,7 +120,7 @@ func (node *npmManager) ListPackages(
 
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {
 	//nolint:gosec // False positive on tained command execution. We aren't accepting input from the user here.
-	command := exec.CommandContext(ctx, node.executable, "pack", "--loglevel=error")
+	command := exec.CommandContext(ctx, node.executable, "pack", "--loglevel=error", "--no-fund")
 	command.Dir = dir
 
 	// We have to read the name of the file from stdout.

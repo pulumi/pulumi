@@ -32,25 +32,51 @@ import (
 
 	codegen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	testingrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
+	// Set up otel tracing if PULUMI_CONFORMANCE_TRACING is set to a file path.
+	if tracingFile := os.Getenv("PULUMI_CONFORMANCE_TRACING"); tracingFile != "" {
+		err := cmdutil.InitOtelReceiver("file://" + tracingFile)
+		require.NoError(t, err, "failed to start otel receiver")
+		t.Logf("otel tracing enabled, writing traces to %s (receiver at %s)", tracingFile, cmdutil.OTelEndpoint())
+		t.Cleanup(func() {
+			cmdutil.CloseOtelTracing()
+		})
+	}
+
+	tracer := otel.Tracer("pulumi-test-python")
+
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
 	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
-	output, err := cmd.CombinedOutput()
-	t.Logf("build output: %s", output)
-	require.NoError(t, err)
+	func() {
+		_, buildSpan := cmdutil.StartSpan(t.Context(), tracer, "build-test-language-binary")
+		defer buildSpan.End()
+		cmd := exec.Command("go", "build", "-C", "../../../../pkg",
+			"-buildvcs=false", "-trimpath", "-ldflags=-s -w", "-o", binary,
+			"./testing/pulumi-test-language")
+		output, err := cmd.CombinedOutput()
+		t.Logf("build output: %s", output)
+		require.NoError(t, err)
+	}()
 
-	cmd = exec.Command(binary)
+	ctx, startSpan := cmdutil.StartSpan(t.Context(), tracer, "start-test-language-host")
+
+	cmd := exec.Command(binary)
+	// Pass the otel endpoint to the test host subprocess so it can forward to providers.
+	if otelEp := cmdutil.OTelEndpoint(); otelEp != "" {
+		cmd.Env = append(os.Environ(), "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+otelEp)
+	}
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()
@@ -86,6 +112,9 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 		rpcutil.GrpcChannelOptions(),
 	)
 	require.NoError(t, err)
+
+	startSpan.End()
+	_ = ctx // ctx from span used only to scope the span
 
 	client := testingrpc.NewLanguageTestClient(conn)
 
@@ -123,6 +152,10 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 	require.NoError(t, err)
 	t.Setenv("PATH", fmt.Sprintf("%s%c%s", dist, os.PathListSeparator, os.Getenv("PATH")))
 
+	// Skip writing .pyc bytecode files — reduces disk I/O during testing
+	// and startup time for short-lived Python subprocesses.
+	t.Setenv("PYTHONDONTWRITEBYTECODE", "1")
+
 	engineAddress, engine := runTestingHost(t)
 
 	tests, err := engine.GetLanguageTests(t.Context(), &testingrpc.GetLanguageTestsRequest{})
@@ -141,7 +174,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					if err != nil {
 						return err
 					}
-					host := newLanguageHost(pythonExec, engineAddress, "", "", config.typechecker, config.toolchain)
+					host := newLanguageHost(pythonExec, engineAddress, "", cmdutil.OTelEndpoint(), config.typechecker, config.toolchain)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},

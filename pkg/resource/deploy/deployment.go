@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	uuid "github.com/gofrs/uuid"
+	"go.opentelemetry.io/otel"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/autonaming"
@@ -35,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -537,7 +539,11 @@ func NewDeployment(
 	contract.Requiref(target != nil, "target", "must not be nil")
 	contract.Requiref(source != nil, "source", "must not be nil")
 
+	tracer := otel.Tracer("pulumi-engine")
+
+	_, mpSpan := cmdutil.StartSpan(ctx.Base(), tracer, "migrate-providers")
 	needsWrite, err := migrateProviders(target, prev, source)
+	mpSpan.End()
 	if err != nil {
 		return nil, err
 	}
@@ -546,13 +552,17 @@ func NewDeployment(
 	//
 	// NOTE: we can and do mutate prev.Resources, olds, and depGraph during execution after performing a refresh. See
 	// deploymentExecutor.refresh for details.
+	_, brmSpan := cmdutil.StartSpan(ctx.Base(), tracer, "build-resource-maps")
 	oldResources, hasRefreshBeforeUpdateResources, olds, allOlds, oldViews, err := buildResourceMaps(prev)
+	brmSpan.End()
 	if err != nil {
 		return nil, err
 	}
 
 	// Build the dependency graph for the old resources.
+	_, dgSpan := cmdutil.StartSpan(ctx.Base(), tracer, "build-dependency-graph")
 	depGraph := graph.NewDependencyGraph(oldResources)
+	dgSpan.End()
 
 	// Create a goal map for the deployment.
 	newGoals := &gsync.Map[resource.URN, *resource.Goal]{}
@@ -594,7 +604,9 @@ func NewDeployment(
 	}
 
 	// Create a new resource status server for this deployment.
+	_, rssSpan := cmdutil.StartSpan(ctx.Base(), tracer, "new-resource-status-server")
 	deployment.resourceStatus, err = newResourceStatusServer(deployment)
+	rssSpan.End()
 	if err != nil {
 		return nil, err
 	}
