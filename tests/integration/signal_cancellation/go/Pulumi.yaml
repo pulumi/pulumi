@@ -1,0 +1,3 @@
+name: signal-cancellation-go
+description: Test that Go programs receive SIGINT on cancellation
+runtime: go
