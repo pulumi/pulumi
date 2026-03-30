@@ -1118,6 +1118,283 @@ func TestParsePluginDownloadURLOverride(t *testing.T) {
 	}
 }
 
+func TestParsePluginHostOverrides(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		input       string
+		expected    map[string]string
+		expectedErr string
+	}{
+		{
+			name:     "empty string returns empty map",
+			input:    "",
+			expected: map[string]string{},
+		},
+		{
+			name:  "single pair",
+			input: "api.github.com=github-api.myproxy.test",
+			expected: map[string]string{
+				"api.github.com": "github-api.myproxy.test",
+			},
+		},
+		{
+			name:  "multiple pairs",
+			input: "api.github.com=github-api.myproxy.test,github.com=github-com.myproxy.test",
+			expected: map[string]string{
+				"api.github.com": "github-api.myproxy.test",
+				"github.com":     "github-com.myproxy.test",
+			},
+		},
+		{
+			name:  "host with port",
+			input: "localhost:8080=proxy.example.com:9090",
+			expected: map[string]string{
+				"localhost:8080": "proxy.example.com:9090",
+			},
+		},
+		{
+			name:        "missing value",
+			input:       "api.github.com=",
+			expectedErr: `expected format to be "host1=proxy1,host2=proxy2"; got "api.github.com="`,
+		},
+		{
+			name:        "missing key",
+			input:       "=myproxy.test",
+			expectedErr: `expected format to be "host1=proxy1,host2=proxy2"; got "=myproxy.test"`,
+		},
+		{
+			name:        "no equals sign",
+			input:       "api.github.com",
+			expectedErr: `expected format to be "host1=proxy1,host2=proxy2"; got "api.github.com"`,
+		},
+		{
+			name:  "three pairs",
+			input: "api.github.com=a.proxy.test,github.com=b.proxy.test,get.pulumi.com=c.proxy.test",
+			expected: map[string]string{
+				"api.github.com": "a.proxy.test",
+				"github.com":     "b.proxy.test",
+				"get.pulumi.com": "c.proxy.test",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := parsePluginHostOverrides(tt.input)
+			if tt.expectedErr != "" {
+				require.EqualError(t, err, tt.expectedErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+// TestPluginHostOverridesBuildRequest verifies that host overrides are applied transparently
+// in buildHTTPRequest for every source type.
+//
+//nolint:paralleltest // mutates pluginHostOverridesParsed
+func TestPluginHostOverridesBuildRequest(t *testing.T) {
+	const (
+		apiProxy = "github-api.myproxy.test"
+		dlProxy  = "github-com.myproxy.test"
+	)
+	expectedBytes := []byte{1, 2, 3}
+	version := semver.MustParse("1.2.3")
+
+	// setOverrides sets pluginHostOverridesParsed for the duration of the sub-test and
+	// restores it afterwards.
+	setOverrides := func(t *testing.T, m map[string]string) {
+		t.Helper()
+		orig := pluginHostOverridesParsed
+		pluginHostOverridesParsed = m
+		t.Cleanup(func() { pluginHostOverridesParsed = orig })
+	}
+
+	t.Run("GitHub API host override redirects GetLatestVersion", func(t *testing.T) {
+		setOverrides(t, map[string]string{"api.github.com": apiProxy})
+
+		spec := PluginDescriptor{Name: "mockdl", Kind: apitype.ResourcePlugin}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t, apiProxy, req.URL.Host)
+			assert.Equal(t,
+				"https://"+apiProxy+"/repos/pulumi/pulumi-mockdl/releases/latest",
+				req.URL.String())
+			return newMockReadCloserString(`{"tag_name":"v1.2.3"}`)
+		}
+		got, err := source.GetLatestVersion(t.Context(), getHTTPResponse)
+		require.NoError(t, err)
+		assert.Equal(t, version, *got)
+	})
+
+	t.Run("GitHub download host override redirects direct archive download", func(t *testing.T) {
+		setOverrides(t, map[string]string{
+			"api.github.com": apiProxy, // needed so GetSource finds latest via proxy
+			"github.com":     dlProxy,
+		})
+
+		spec := PluginDescriptor{
+			Name:    "mockdl",
+			Kind:    apitype.ResourcePlugin,
+			Version: &version,
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t, dlProxy, req.URL.Host)
+			assert.Equal(t,
+				"https://"+dlProxy+"/pulumi/pulumi-mockdl/releases/download/v1.2.3/"+
+					"pulumi-resource-mockdl-v1.2.3-linux-amd64.tar.gz",
+				req.URL.String())
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		b, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(b))
+		assert.Equal(t, expectedBytes, b)
+	})
+
+	t.Run("both GitHub hosts overridden - API fallback path rewrites asset URL", func(t *testing.T) {
+		// Direct download returns 404 → falls back to release API.
+		// The asset URL embedded in the API JSON response references api.github.com; because
+		// buildHTTPRequest rewrites the host, the follow-up download also goes to the proxy.
+		setOverrides(t, map[string]string{
+			"api.github.com": apiProxy,
+			"github.com":     dlProxy,
+		})
+
+		spec := PluginDescriptor{
+			Name:    "mockdl",
+			Kind:    apitype.ResourcePlugin,
+			Version: &version,
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+
+		assetName := "pulumi-resource-mockdl-v1.2.3-linux-amd64.tar.gz"
+		// GitHub API always returns api.github.com-absolute asset URLs.
+		apiAssetURL := "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/99"
+
+		var seen []string
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			seen = append(seen, req.URL.String())
+			switch req.URL.String() {
+			case "https://" + dlProxy + "/pulumi/pulumi-mockdl/releases/download/v1.2.3/" + assetName:
+				return nil, -1, errors.New("404 not found")
+			case "https://" + apiProxy + "/repos/pulumi/pulumi-mockdl/releases/tags/v1.2.3":
+				return newMockReadCloserString(
+					`{"assets":[{"name":"` + assetName + `","url":"` + apiAssetURL + `"}]}`)
+			case "https://" + apiProxy + "/repos/pulumi/pulumi-mockdl/releases/assets/99":
+				// buildHTTPRequest rewrote api.github.com → apiProxy before the request fired.
+				return newMockReadCloser(expectedBytes)
+			default:
+				t.Errorf("unexpected request: %s", req.URL)
+				return nil, -1, errors.New("unexpected request")
+			}
+		}
+		r, l, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		b, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(b))
+		assert.Equal(t, expectedBytes, b)
+
+		require.Len(t, seen, 3)
+		assert.Equal(t, "https://"+dlProxy+"/pulumi/pulumi-mockdl/releases/download/v1.2.3/"+assetName, seen[0])
+		assert.Equal(t, "https://"+apiProxy+"/repos/pulumi/pulumi-mockdl/releases/tags/v1.2.3", seen[1])
+		assert.Equal(t, "https://"+apiProxy+"/repos/pulumi/pulumi-mockdl/releases/assets/99", seen[2])
+	})
+
+	t.Run("get.pulumi.com host override redirects fallback source", func(t *testing.T) {
+		setOverrides(t, map[string]string{
+			"api.github.com": apiProxy,   // make GitHub steps fail visibly
+			"github.com":     dlProxy,    // make GitHub direct download fail
+			"get.pulumi.com": "pulumi-proxy.myproxy.test",
+		})
+
+		spec := PluginDescriptor{
+			Name:    "otherdl", // not in the "pulumi" org fast-path
+			Kind:    apitype.ResourcePlugin,
+			Version: &version,
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			switch req.URL.Host {
+			case dlProxy:
+				return nil, -1, errors.New("404 not found")
+			case apiProxy:
+				return nil, -1, errors.New("404 not found")
+			case "pulumi-proxy.myproxy.test":
+				assert.Equal(t,
+					"https://pulumi-proxy.myproxy.test/releases/plugins/"+
+						"pulumi-resource-otherdl-v1.2.3-linux-amd64.tar.gz",
+					req.URL.String())
+				return newMockReadCloser(expectedBytes)
+			default:
+				t.Errorf("unexpected host: %s", req.URL.Host)
+				return nil, -1, errors.New("unexpected host")
+			}
+		}
+		r, l, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		b, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(b))
+		assert.Equal(t, expectedBytes, b)
+	})
+
+	t.Run("GitLab host override redirects download", func(t *testing.T) {
+		setOverrides(t, map[string]string{"gitlab.com": "gitlab-proxy.myproxy.test"})
+
+		spec := PluginDescriptor{
+			Name:              "mockdl",
+			Kind:              apitype.ResourcePlugin,
+			Version:           &version,
+			PluginDownloadURL: "gitlab://gitlab.com/12345",
+		}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t, "gitlab-proxy.myproxy.test", req.URL.Host)
+			return newMockReadCloser(expectedBytes)
+		}
+		r, l, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
+		require.NoError(t, err)
+		b, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, int(l), len(b))
+		assert.Equal(t, expectedBytes, b)
+	})
+
+	t.Run("no overrides leaves URLs unchanged", func(t *testing.T) {
+		setOverrides(t, map[string]string{})
+
+		spec := PluginDescriptor{Name: "mockdl", Kind: apitype.ResourcePlugin}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t, "api.github.com", req.URL.Host)
+			return newMockReadCloserString(`{"tag_name":"v1.2.3"}`)
+		}
+		_, err = source.GetLatestVersion(t.Context(), getHTTPResponse)
+		require.NoError(t, err)
+	})
+}
+
 func TestPluginDownloadOverrideArray_Get(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

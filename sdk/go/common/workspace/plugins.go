@@ -81,6 +81,15 @@ var pluginDownloadURLOverrides string
 // pluginDownloadURLOverridesParsed is the parsed array from `pluginDownloadURLOverrides`.
 var pluginDownloadURLOverridesParsed pluginDownloadOverrideArray
 
+// pluginHostOverrides is a variable instead of a constant so it can be set using the `-X`
+// ldflag at build time, if necessary. When non-empty, it is parsed into
+// `pluginHostOverridesParsed` in `init()`. The expected format is `host1=proxy1,host2=proxy2`.
+var pluginHostOverrides string
+
+// pluginHostOverridesParsed is the parsed map from `pluginHostOverrides`.
+// Keys and values are plain hostnames (optionally with port), e.g. "api.github.com".
+var pluginHostOverridesParsed map[string]string
+
 // pluginDownloadURLOverride represents a plugin download URL override, parsed from `pluginDownloadURLOverrides`.
 type pluginDownloadURLOverride struct {
 	reg *regexp.Regexp // The regex used to match against the plugin's name.
@@ -126,6 +135,34 @@ func init() {
 	if pluginDownloadURLOverridesParsed, err = parsePluginDownloadURLOverrides(overrides); err != nil {
 		panic(fmt.Errorf("error parsing `pluginDownloadURLOverrides`: %w", err))
 	}
+
+	// Parse host overrides. Environment variable takes precedence over compile-time flags.
+	hostOverrides := pluginHostOverrides
+	if v := env.PluginHostOverrides.Value(); v != "" {
+		hostOverrides = v
+	}
+	if pluginHostOverridesParsed, err = parsePluginHostOverrides(hostOverrides); err != nil {
+		panic(fmt.Errorf("error parsing `pluginHostOverrides`: %w", err))
+	}
+}
+
+// parsePluginHostOverrides parses an overrides string with the expected format `host1=proxy1,host2=proxy2`.
+// Both sides are plain hostnames, optionally including a port (e.g. "api.github.com" or "localhost:8080").
+func parsePluginHostOverrides(overrides string) (map[string]string, error) {
+	result := map[string]string{}
+	if overrides == "" {
+		return result, nil
+	}
+	for _, pair := range strings.Split(overrides, ",") {
+		// Use SplitN so that an "=" inside a value (theoretically impossible for a hostname,
+		// but defensive) does not silently truncate it.
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return nil, fmt.Errorf("expected format to be \"host1=proxy1,host2=proxy2\"; got %q", overrides)
+		}
+		result[parts[0]] = parts[1]
+	}
+	return result, nil
 }
 
 // parsePluginDownloadURLOverrides parses an overrides string with the expected format `regexp1=URL1,regexp2=URL2`.
@@ -1543,6 +1580,15 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 	req, err := http.NewRequestWithContext(ctx, "GET", pluginEndpoint, nil)
 	if err != nil {
 		return nil, err
+	}
+
+	// Apply any host overrides from PULUMI_PLUGIN_HOST_OVERRIDES.  The rewrite happens here,
+	// at the single point where all plugin download requests are constructed, so it is
+	// transparently effective for every source type (GitHub, GitLab, get.pulumi.com, custom
+	// HTTP sources) without requiring any source-specific logic.
+	if to, ok := pluginHostOverridesParsed[req.URL.Host]; ok {
+		logging.V(9).Infof("plugin host override: %s -> %s (full URL: %s)", req.URL.Host, to, req.URL)
+		req.URL.Host = to
 	}
 
 	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
