@@ -1,0 +1,12 @@
+{
+  "resources": [
+    {
+      "name": "res",
+      "type": "alpha:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}
