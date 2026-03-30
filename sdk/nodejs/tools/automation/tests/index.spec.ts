@@ -53,7 +53,7 @@ describe("Command examples", () => {
         const command = api.orgSearch(options);
         assert.strictEqual(
             command,
-            'pulumi org search --org my-org --output json --query type:aws:s3/bucketv2:BucketV2 --query modified:>=2023-09-01',
+            "pulumi org search --org my-org --output json --query type:aws:s3/bucketv2:BucketV2 --query modified:>=2023-09-01",
         );
     });
 
