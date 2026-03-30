@@ -1635,6 +1635,7 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 		original := req.URL.String()
 		req.URL.Scheme = override.scheme
 		req.URL.Host = override.host
+		req.Host = req.URL.Host
 		if override.path != "" {
 			req.URL.Path = override.path + req.URL.Path
 			// Keep RawPath in sync when the original URL had percent-encoded path segments.
