@@ -664,39 +664,38 @@ func (v PropertyValue) String() string {
 // RedactSecrets is similar to String(), but redacts any secrets it encounters in the property value,
 // including secrets nested inside objects and arrays.
 func (v PropertyValue) RedactSecrets() string {
-	if v.IsComputed() {
-		// For computed properties, show the type followed by an empty object string.
-		return fmt.Sprintf("%v{}", v.TypeString())
-	} else if v.IsOutput() {
-		if !v.OutputValue().Known {
-			return MakeComputed(v.OutputValue().Element).RedactSecrets()
-		} else if v.OutputValue().Secret {
-			return "[secret]"
+	return v.redactSecrets().String()
+}
+
+// redactSecrets returns a copy of the property value with all secrets replaced by "[secret]".
+func (v PropertyValue) redactSecrets() PropertyValue {
+	switch {
+	case v.IsSecret():
+		return NewProperty("[secret]")
+	case v.IsOutput():
+		o := v.OutputValue()
+		if o.Secret {
+			return NewProperty("[secret]")
 		}
-		return v.OutputValue().Element.RedactSecrets()
-	} else if v.IsSecret() {
-		return "[secret]"
-	} else if v.IsArray() {
-		elems := make([]string, len(v.ArrayValue()))
+		return NewProperty(Output{
+			Element: o.Element.redactSecrets(),
+			Known:   o.Known,
+		})
+	case v.IsArray():
+		arr := make([]PropertyValue, len(v.ArrayValue()))
 		for i, e := range v.ArrayValue() {
-			elems[i] = e.RedactSecrets()
+			arr[i] = e.redactSecrets()
 		}
-		return fmt.Sprintf("{[%s]}", strings.Join(elems, ", "))
-	} else if v.IsObject() {
-		obj := v.ObjectValue()
-		keys := make([]string, 0, len(obj))
-		for k := range obj {
-			keys = append(keys, string(k))
+		return NewProperty(arr)
+	case v.IsObject():
+		obj := make(PropertyMap, len(v.ObjectValue()))
+		for k, e := range v.ObjectValue() {
+			obj[k] = e.redactSecrets()
 		}
-		sort.Strings(keys)
-		entries := make([]string, 0, len(obj))
-		for _, k := range keys {
-			entries = append(entries, fmt.Sprintf("%s: %s", k, obj[PropertyKey(k)].RedactSecrets()))
-		}
-		return fmt.Sprintf("{map[%s]}", strings.Join(entries, " "))
+		return NewProperty(obj)
+	default:
+		return v
 	}
-	// For all others, just display the underlying property value.
-	return fmt.Sprintf("{%v}", v.V)
 }
 
 // Property is a pair of key and value.

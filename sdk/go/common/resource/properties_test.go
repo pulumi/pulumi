@@ -323,7 +323,7 @@ func TestRedactSecrets(t *testing.T) {
 		{
 			name:     "secret string",
 			prop:     MakeSecret(NewProperty("shh")),
-			expected: "[secret]",
+			expected: "{[secret]}",
 		},
 		{
 			name:     "plain string",
@@ -350,7 +350,7 @@ func TestRedactSecrets(t *testing.T) {
 				Known:   true,
 				Secret:  true,
 			}),
-			expected: "[secret]",
+			expected: "{[secret]}",
 		},
 		{
 			name: "object with nested secret",
@@ -358,7 +358,7 @@ func TestRedactSecrets(t *testing.T) {
 				"plain":  NewProperty("visible"),
 				"secret": MakeSecret(NewProperty("hidden")),
 			}),
-			expected: "{map[plain: {visible} secret: [secret]]}",
+			expected: "{map[plain:{visible} secret:{[secret]}]}",
 		},
 		{
 			name: "array with nested secret",
@@ -366,7 +366,7 @@ func TestRedactSecrets(t *testing.T) {
 				NewProperty("visible"),
 				MakeSecret(NewProperty("hidden")),
 			}),
-			expected: "{[{visible}, [secret]]}",
+			expected: "{[{visible} {[secret]}]}",
 		},
 	}
 	for _, tt := range tests {
