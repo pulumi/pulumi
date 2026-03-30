@@ -1060,7 +1060,12 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
 
-		printComment(w, p.Comment, dblIndent)
+		selfRef := schema.DocRef{}
+		comment, err := mod.genComment(p.Comment, selfRef, false /*filterExamples*/)
+		if err != nil {
+			return "", err
+		}
+		printComment(w, comment, dblIndent)
 		fmt.Fprintf(w, "%sreturn %s\n", dblIndent, configFetch)
 		fmt.Fprintf(w, "\n")
 	}
@@ -1126,7 +1131,12 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 	for _, p := range variables {
 		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
-		printComment(w, p.Comment, "")
+		selfRef := schema.DocRef{}
+		comment, err := mod.genComment(p.Comment, selfRef, false /*filterExamples*/)
+		if err != nil {
+			return "", err
+		}
+		printComment(w, comment, "")
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -1237,13 +1247,18 @@ func awaitableTypeNames(tok string) (baseName, awaitableName string) {
 	return baseName, awaitableName
 }
 
-func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) string {
+func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType, fun *schema.Function) (string, error) {
 	baseName, awaitableName := awaitableTypeNames(obj.Token)
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprint(w, "@pulumi.output_type\n")
 	fmt.Fprintf(w, "class %s:\n", baseName)
-	printComment(w, obj.Comment, "    ")
+	selfRef := schema.DocRefForFunction(fun)
+	comment, err := mod.genComment(obj.Comment, selfRef, false /*filterExamples*/)
+	if err != nil {
+		return "", err
+	}
+	printComment(w, comment, "    ")
 
 	// Now generate an initializer with properties for all inputs.
 	fmt.Fprintf(w, "    def __init__(__self__")
@@ -1269,9 +1284,11 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	// Write out Python property getters for each property.
 	// Note that deprecation messages will be emitted on access to the property, rather than initialization.
 	// This avoids spamming end users with irrelevant deprecation messages.
-	mod.genProperties(w, obj.Properties, false /*setters*/, "", func(prop *schema.Property) string {
+	if err := mod.genProperties(w, obj.Properties, false /*setters*/, "", func(prop *schema.Property) string {
 		return mod.typeString(prop.Type, typeStringOpts{})
-	})
+	}); err != nil {
+		return "", err
+	}
 
 	// Produce an awaitable subclass.
 	fmt.Fprint(w, "\n")
@@ -1298,7 +1315,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 	}
 	fmt.Fprintf(w, ")\n")
 
-	return awaitableName
+	return awaitableName, nil
 }
 
 func resourceName(res *schema.Resource) string {
@@ -1436,7 +1453,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// Emit an __init__ overload that accepts the resource's inputs as function arguments.
 	fmt.Fprintf(w, "    @overload\n")
 	emitInitMethodSignature("__init__")
-	mod.genInitDocstring(w, res, resourceArgsName, false /*argsOverload*/)
+	if err := mod.genInitDocstring(w, res, resourceArgsName, false /*argsOverload*/); err != nil {
+		return "", err
+	}
 	fmt.Fprintf(w, "        ...\n")
 
 	// Emit an __init__ overload that accepts the resource's inputs from the args class.
@@ -1449,7 +1468,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "                 args: %s,\n", resourceArgsName)
 	}
 	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None):\n")
-	mod.genInitDocstring(w, res, resourceArgsName, true /*argsOverload*/)
+	if err := mod.genInitDocstring(w, res, resourceArgsName, true /*argsOverload*/); err != nil {
+		return "", err
+	}
 	fmt.Fprintf(w, "        ...\n")
 
 	// Emit the actual implementation of __init__, which does the appropriate thing based on which
@@ -1622,7 +1643,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			}
 		}
 		fmt.Fprintf(w, ") -> '%s':\n", name)
-		mod.genGetDocstring(w, res)
+		if err := mod.genGetDocstring(w, res); err != nil {
+			return "", err
+		}
 		fmt.Fprintf(w,
 			"        opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))\n")
 		fmt.Fprintf(w, "\n")
@@ -1651,20 +1674,24 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Write out Python property getters for each of the resource's properties.
-	mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
+	if err := mod.genProperties(w, res.Properties, false /*setters*/, "", func(prop *schema.Property) string {
 		ty := mod.typeString(prop.Type, typeStringOpts{})
 		return fmt.Sprintf("pulumi.Output[%s]", ty)
-	})
+	}); err != nil {
+		return "", err
+	}
 
 	// Write out methods.
-	mod.genMethods(w, res)
+	if err := mod.genMethods(w, res); err != nil {
+		return "", err
+	}
 
 	return w.String(), nil
 }
 
 func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property, setters bool, indent string,
 	propType func(prop *schema.Property) string,
-) {
+) error {
 	for _, prop := range properties {
 		pname := PyName(prop.Name)
 		ty := propType(prop)
@@ -1680,7 +1707,12 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 		}
 		fmt.Fprintf(w, "%s    def %s(self) -> %s:\n", indent, pname, ty)
 		if prop.Comment != "" {
-			printComment(w, prop.Comment, indent+"        ")
+			selfRef := schema.DocRef{}
+			comment, err := mod.genComment(prop.Comment, selfRef, false /* allowExample */)
+			if err != nil {
+				return err
+			}
+			printComment(w, comment, indent+"        ")
 		}
 		fmt.Fprintf(w, "%s        return pulumi.get(self, %q)\n\n", indent, pname)
 
@@ -1690,15 +1722,20 @@ func (mod *modContext) genProperties(w io.Writer, properties []*schema.Property,
 			fmt.Fprintf(w, "%s        pulumi.set(self, %q, value)\n\n", indent, pname)
 		}
 	}
+	return nil
 }
 
-func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) string {
+func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) (string, error) {
 	var properties []*schema.Property
 	var comment string
 
 	if obj := returnTypeObject(method.Function); obj != nil {
 		properties = obj.Properties
-		comment = obj.Comment
+		var err error
+		comment, err = mod.genComment(obj.Comment, schema.DocRefForFunction(method.Function), false /*filterExamples*/)
+		if err != nil {
+			return "", err
+		}
 	} else if method.Function.ReturnTypePlain {
 		comment = ""
 		properties = []*schema.Property{
@@ -1738,15 +1775,17 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 	// Write out Python property getters for each property.
 	// Note that deprecation messages will be emitted on access to the property, rather than initialization.
 	// This avoids spamming end users with irrelevant deprecation messages.
-	mod.genProperties(w, properties, false /*setters*/, "    ", func(prop *schema.Property) string {
+	if err := mod.genProperties(w, properties, false /*setters*/, "    ", func(prop *schema.Property) string {
 		return mod.typeString(prop.Type, typeStringOpts{})
-	})
+	}); err != nil {
+		return "", err
+	}
 
-	return name
+	return name, nil
 }
 
-func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
-	genMethod := func(method *schema.Method) {
+func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) error {
+	genMethod := func(method *schema.Method) error {
 		methodName := PyName(method.Name)
 		fun := method.Function
 
@@ -1756,7 +1795,11 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		// If there is a return type, emit it.
 		var retTypeName, retTypeNameQualified, retTypeNameQualifiedOutput, methodRetType string
 		if returnType != nil || fun.ReturnTypePlain {
-			retTypeName = mod.genMethodReturnType(w, method)
+			var err error
+			retTypeName, err = mod.genMethodReturnType(w, method)
+			if err != nil {
+				return err
+			}
 			retTypeNameQualified = fmt.Sprintf("%s.%s", resourceName(res), retTypeName)
 			retTypeNameQualifiedOutput = fmt.Sprintf("pulumi.Output['%s']", retTypeNameQualified)
 			if shouldLiftReturn {
@@ -1822,13 +1865,20 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 
 		// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 		docs := &bytes.Buffer{}
+		methodFunRef := schema.DocRefForFunction(fun)
 		if fun.Comment != "" {
-			fmt.Fprintln(docs, codegen.FilterExamples(fun.Comment, "python"))
+			comment, err := mod.genComment(fun.Comment, methodFunRef, true /*filterExamples*/)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(docs, comment)
 		}
 		if len(args) > 0 {
 			fmt.Fprintln(docs, "")
 			for _, arg := range args {
-				mod.genPropDocstring(docs, PyName(arg.Name), arg, false /*acceptMapping*/)
+				if err := mod.genPropDocstring(docs, PyName(arg.Name), methodFunRef, arg, false /*acceptMapping*/); err != nil {
+					return err
+				}
 			}
 		}
 		printComment(w, docs.String(), "        ")
@@ -1881,11 +1931,15 @@ func (mod *modContext) genMethods(w io.Writer, res *schema.Resource) {
 		}
 
 		fmt.Fprintf(w, "\n")
+		return nil
 	}
 
 	for _, method := range res.Methods {
-		genMethod(method)
+		if err := genMethod(method); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
@@ -1936,7 +1990,12 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	var rets []*schema.Property
 	var originalOutputTypeName string
 	if returnTypeObj != nil {
-		retTypeName, rets = mod.genAwaitableType(w, returnTypeObj), returnTypeObj.Properties
+		var err error
+		retTypeName, err = mod.genAwaitableType(w, returnTypeObj, fun)
+		if err != nil {
+			return "", err
+		}
+		rets = returnTypeObj.Properties
 		originalOutputTypeName, _ = awaitableTypeNames(returnTypeObj.Token)
 		retTypeNameOutput = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
 		fmt.Fprintf(w, "\n\n")
@@ -1965,7 +2024,9 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		}
 
 		mod.genFunDef(w, fnName, returnTypeName, args, !plain /* wrapInput */, plain)
-		mod.genFunDocstring(w, fun)
+		if err := mod.genFunDocstring(w, fun); err != nil {
+			return err
+		}
 		mod.genFunDeprecationMessage(w, fun)
 		// Copy the function arguments into a dictionary.
 		fmt.Fprintf(w, "    __args__ = dict()\n")
@@ -2068,7 +2129,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	return w.String(), nil
 }
 
-func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
+func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) error {
 	var args []*schema.Property
 	if fun.Inputs != nil {
 		args = fun.Inputs.Properties
@@ -2076,18 +2137,26 @@ func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
 
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
+	funRef := schema.DocRefForFunction(fun)
 	if fun.Comment != "" {
-		fmt.Fprintln(docs, codegen.FilterExamples(fun.Comment, "python"))
+		comment, err := mod.genComment(fun.Comment, funRef, true /*filterExamples*/)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(docs, comment)
 	} else {
 		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
 	}
 	if len(args) > 0 {
 		fmt.Fprintln(docs, "")
 		for _, arg := range args {
-			mod.genPropDocstring(docs, PyName(arg.Name), arg, true /*acceptMapping*/)
+			if err := mod.genPropDocstring(docs, PyName(arg.Name), funRef, arg, true /*acceptMapping*/); err != nil {
+				return err
+			}
 		}
 	}
 	printComment(w, docs.String(), "    ")
+	return nil
 }
 
 func (mod *modContext) genFunDeprecationMessage(w io.Writer, fun *schema.Function) {
@@ -2183,7 +2252,12 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	case schema.StringType, schema.IntType, schema.NumberType:
 		fmt.Fprintf(w, "@pulumi.type_token(\"%s\")\n", enum.Token)
 		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
-		printComment(w, enum.Comment, indent)
+		docRef := schema.DocRef{}
+		comment, err := mod.genComment(enum.Comment, docRef, true /*filterExamples*/)
+		if err != nil {
+			return err
+		}
+		printComment(w, comment, indent)
 		for _, e := range enum.Elements {
 			// If the enum doesn't have a name, set the value as the name.
 			if e.Name == "" {
@@ -2203,7 +2277,12 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 				fmt.Fprintf(w, "%v\n", e.Value)
 			}
 			if e.Comment != "" {
-				printComment(w, e.Comment, indent)
+				docRef := schema.DocRef{}
+				comment, err := mod.genComment(e.Comment, docRef, true /*filterExamples*/)
+				if err != nil {
+					return err
+				}
+				printComment(w, comment, indent)
 			}
 		}
 	default:
@@ -2424,13 +2503,18 @@ func minimumPythonVersion(info PackageInfo) (string, error) {
 //
 // This function does the best it can to navigate these constraints and produce a docstring that
 // Sphinx can make sense of.
-func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resourceArgsName string, argOverload bool) {
+func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resourceArgsName string, argOverload bool) error {
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
 
 	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
+	resRef := schema.DocRefForResource(res)
 	if res.Comment != "" {
-		fmt.Fprintln(b, codegen.FilterExamples(res.Comment, "python"))
+		comment, err := mod.genComment(res.Comment, resRef, true /*filterExamples*/)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(b, comment)
 	} else {
 		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
 	}
@@ -2445,15 +2529,73 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resou
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if !argOverload {
 		for _, prop := range res.InputProperties {
-			mod.genPropDocstring(b, InitParamName(prop.Name), prop, true /*acceptMapping*/)
+			if err := mod.genPropDocstring(b, InitParamName(prop.Name), resRef, prop, true /*acceptMapping*/); err != nil {
+				return err
+			}
 		}
 	}
 
 	// printComment handles the prefix and triple quotes.
 	printComment(w, b.String(), "        ")
+	return nil
 }
 
-func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
+func (mod *modContext) genComment(comment string, selfRef schema.DocRef, filterExamples bool) (string, error) {
+	if comment == "" {
+		return "", nil
+	}
+	if filterExamples {
+		comment = codegen.FilterExamples(comment, "python")
+	}
+	comment, err := mod.pkg.InterpretPulumiRefs(comment, func(ref schema.DocRef) (string, bool) {
+		var base string
+		switch ref.Kind {
+		case schema.DocRefKindResource, schema.DocRefKindResourceProperty:
+			base = mod.tokenToResource(ref.ResourceToken())
+		case schema.DocRefKindResourceInputProperty:
+			base = mod.tokenToResource(ref.ResourceToken()) + "Args"
+		case schema.DocRefKindFunction:
+			base = PyName(tokenToName(ref.Function.Token))
+		case schema.DocRefKindFunctionInputProperty:
+			base = title(PyName(tokenToName(ref.Function.Token))) + "Args"
+		case schema.DocRefKindFunctionOutputProperty:
+			base = title(PyName(tokenToName(ref.Function.Token))) + "Result"
+		case schema.DocRefKindType, schema.DocRefKindTypeProperty:
+			base = title(PyName(ref.Type.String()))
+		case schema.DocRefKindUnknown:
+			return "", false
+		}
+
+		if base == "" {
+			return "", false
+		}
+
+		var property string
+		switch ref.Kind {
+		case schema.DocRefKindResource, schema.DocRefKindFunction, schema.DocRefKindType:
+			return base, true
+		case schema.DocRefKindUnknown, schema.DocRefKindResourceProperty, schema.DocRefKindResourceInputProperty, schema.DocRefKindFunctionInputProperty, schema.DocRefKindFunctionOutputProperty, schema.DocRefKindTypeProperty:
+			property = PyName(ref.Property)
+		}
+
+		if property == "" {
+			return "", false
+		}
+
+		if ref.IsWithin(selfRef) {
+			return property, true
+		}
+
+		return fmt.Sprintf("%s.%s", base, property), true
+	})
+	if err != nil {
+		return "", fmt.Errorf("error interpreting Pulumi references in comment %q: %w", comment, err)
+	}
+
+	return comment, nil
+}
+
+func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) error {
 	// "buf" contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
 
@@ -2466,42 +2608,52 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if res.StateInputs != nil {
 		for _, prop := range res.StateInputs.Properties {
-			mod.genPropDocstring(b, InitParamName(prop.Name), prop, true /*acceptMapping*/)
+			if err := mod.genPropDocstring(b, InitParamName(prop.Name), schema.DocRefForResource(res), prop, true /*acceptMapping*/); err != nil {
+				return err
+			}
 		}
 	}
 
 	// printComment handles the prefix and triple quotes.
 	printComment(w, b.String(), "        ")
+	return nil
 }
 
-func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties []*schema.Property) {
+func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties []*schema.Property) error {
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
 
 	// If this type has documentation, write it at the top of the docstring.
 	if comment != "" {
 		fmt.Fprintln(b, comment)
-		fmt.Fprintln(b, "")
 	}
 
 	for _, prop := range properties {
-		mod.genPropDocstring(b, PyName(prop.Name), prop, false /*acceptMapping*/)
+		docRef := schema.DocRef{}
+		if err := mod.genPropDocstring(b, PyName(prop.Name), docRef, prop, false /*acceptMapping*/); err != nil {
+			return err
+		}
 	}
 
 	// printComment handles the prefix and triple quotes.
 	printComment(w, b.String(), "        ")
+	return nil
 }
 
-func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.Property, acceptMapping bool) {
+func (mod *modContext) genPropDocstring(w io.Writer, name string, docRef schema.DocRef, prop *schema.Property, acceptMapping bool) error {
 	if prop.Comment == "" {
-		return
+		return nil
 	}
 
 	ty := mod.typeString(codegen.RequiredType(prop), typeStringOpts{input: true, acceptMapping: acceptMapping})
+	comment, err := mod.genComment(prop.Comment, docRef, false /*filterExamples*/)
+	if err != nil {
+		return err
+	}
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
-	lines := strings.Split(prop.Comment, "\n")
+	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -2514,6 +2666,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 			fmt.Fprintf(w, "       %s\n", docLine)
 		}
 	}
+	return nil
 }
 
 type typeStringOpts struct {
@@ -2757,7 +2910,12 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	fmt.Fprintf(w, "%s\n", decorator)
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
 	if !input && comment != "" {
-		printComment(w, comment, "    ")
+		docRef := schema.DocRef{}
+		classComment, err := mod.genComment(comment, docRef, false /*filterExamples*/)
+		if err != nil {
+			return err
+		}
+		printComment(w, classComment, "    ")
 	}
 
 	// To help users migrate to using the properly snake_cased property getters, emit warnings when camelCase keys are
@@ -2820,7 +2978,14 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
 	}
 	fmt.Fprintf(w, "):\n")
-	mod.genTypeDocstring(w, comment, props)
+	docRef := schema.DocRef{}
+	initComment, err := mod.genComment(comment, docRef, false /*filterExamples*/)
+	if err != nil {
+		return err
+	}
+	if err := mod.genTypeDocstring(w, initComment, props); err != nil {
+		return err
+	}
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
 	}
@@ -2868,9 +3033,11 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	fmt.Fprintf(w, "\n")
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
-	mod.genProperties(w, props, input /*setters*/, "", func(prop *schema.Property) string {
+	if err := mod.genProperties(w, props, input /*setters*/, "", func(prop *schema.Property) string {
 		return mod.typeString(prop.Type, typeStringOpts{input: input})
-	})
+	}); err != nil {
+		return err
+	}
 
 	fmt.Fprintf(w, "\n")
 	return nil
@@ -2896,8 +3063,13 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 
 	indent := "    "
 
+	docRef := schema.DocRef{}
 	if comment != "" {
-		printComment(w, comment, indent)
+		typeComment, err := mod.genComment(comment, docRef, false /*filterExamples*/)
+		if err != nil {
+			return err
+		}
+		printComment(w, typeComment, indent)
 	}
 
 	for _, prop := range props {
@@ -2905,7 +3077,11 @@ func (mod *modContext) genDictType(w io.Writer, name, comment string, properties
 		ty := mod.typeString(prop.Type, typeStringOpts{input: true, forDict: true})
 		fmt.Fprintf(w, "%s%s: %s\n", indent, pname, ty)
 		if prop.Comment != "" {
-			printComment(w, prop.Comment, indent)
+			propComment, err := mod.genComment(prop.Comment, docRef, false /*filterExamples*/)
+			if err != nil {
+				return err
+			}
+			printComment(w, propComment, indent)
 		}
 	}
 

@@ -17,7 +17,10 @@ package codegen
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const codeFence = "```"
@@ -98,13 +101,15 @@ func fakeFunc() {
 
 	example1ShortCode := `{{% example %}}` + "\n" + example1 + "\n" + `{{% /example %}}`
 	example2ShortCode := `{{% example %}}` + "\n" + example2 + "\n" + `{{% /example %}}`
-	description := `{{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
+	description := `Some other {{% ref #/resources/aws:s3:bucket %}} shortcode content.` +
+		` {{% examples %}}` + "\n" + example1ShortCode + "\n" + example2ShortCode + "\n" + `{{% /examples %}}`
 
 	t.Run("EveryExampleHasRelevantCodeSnippet", func(t *testing.T) {
 		t.Parallel()
 
 		strippedDescription := FilterExamples(description, "typescript")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
+		assert.Contains(t, strippedDescription, "Some other {{% ref #/resources/aws:s3:bucket %}} shortcode content.")
 		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
 		assert.Contains(t, strippedDescription, "Example 2", "expected Example 2 section")
 	})
@@ -114,8 +119,111 @@ func fakeFunc() {
 
 		strippedDescription := FilterExamples(description, "go")
 		assert.NotEmpty(t, strippedDescription, "content could not be extracted")
+		assert.Contains(t, strippedDescription, "Some other {{% ref #/resources/aws:s3:bucket %}} shortcode content.")
 		assert.Contains(t, strippedDescription, "Example 1", "expected Example 1 section")
 		assert.NotContains(t, strippedDescription, "Example 2",
 			"unexpected Example 2 section. section should have been excluded")
+	})
+}
+
+// bindTestPackage binds a small package spec suitable for testing InterpretPulumiRefs.
+// It includes a resource test:s3:Bucket (with output property "region") and a resource
+// test:mod:Resource (with output property "myProperty").
+func bindTestPackage(t *testing.T) *schema.Package {
+	t.Helper()
+	spec := schema.PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]schema.ResourceSpec{
+			"test:s3:Bucket": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"region": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+			"test:mod:Resource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"myProperty": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+	}
+	pkg, err := schema.ImportSpec(spec, nil, schema.ValidationOptions{})
+	require.NoError(t, err)
+	return pkg
+}
+
+func TestInterpretPulumiRefs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ResolvesKnownRefs", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "This is a reference to {{% ref #/resources/test:s3:Bucket %}} and one to the " +
+			"{{% ref #/resources/test:s3:Bucket/properties/region %}} property."
+		expected := "This is a reference to s3.Bucket and one to the region property.\n"
+		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+			if ref.Kind == schema.DocRefKindResource {
+				rt := ref.Type.(*schema.ResourceType)
+				tok := tokens.Type(rt.Token)
+				return tok.Module().Name().String() + "." + tok.Name().String(), true
+			}
+			return "", false
+		})
+		require.NoError(t, err)
+		assert.Equal(t, expected, result, "expected resolved references")
+	})
+
+	t.Run("FallsBackWhenNotMapped", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "This is a reference to {{% ref #/resources/test:mod:Resource/properties/myProperty %}}" +
+			" and to {{% ref #/resources/test:mod:Resource %}}."
+		expected := "This is a reference to myProperty and to test:mod:Resource.\n"
+		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+			return "", false
+		})
+		require.NoError(t, err)
+		assert.Equal(t, expected, result, "expected fallback to last segment for unknown references")
+	})
+
+	t.Run("HandlesEmptyDescription", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		result, err := pkg.InterpretPulumiRefs("", func(ref schema.DocRef) (string, bool) {
+			return "ResolvedName", true
+		})
+		require.NoError(t, err)
+		assert.Equal(t, "", result, "expected empty result for empty description")
+	})
+
+	t.Run("HandlesNoRefsInDescription", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "This description has no Pulumi references."
+		expected := "This description has no Pulumi references.\n"
+		result, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+			return "ResolvedName", true
+		})
+		require.NoError(t, err)
+		assert.Equal(t, expected, result, "expected unchanged description when no refs are present")
+	})
+
+	t.Run("ErrorsIfRefIsMalformed", func(t *testing.T) {
+		t.Parallel()
+
+		pkg := bindTestPackage(t)
+		description := "This is a {{% ref bad %}} reference."
+		_, err := pkg.InterpretPulumiRefs(description, func(ref schema.DocRef) (string, bool) {
+			return "ResolvedName", true
+		})
+		require.ErrorContains(t, err, "invalid doc ref: bad")
 	})
 }

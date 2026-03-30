@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen
+  description: Adds support for language agnostic cross references in schemas. Use the form `{{% ref <target> %}}` to reference other schema components in markdown descriptions. Such as `{{% ref #/resources/pkg:index:Res %}}` to reference a resource Res in the current schema.
