@@ -335,7 +335,6 @@ func TestObjectConsExpression(t *testing.T) {
 	scope := env.scope()
 	cases := []exprTestCase{
 		{
-			// TODO probably a bug in the binder. Single value objects should just be maps
 			hcl2Expr: "{foo = 1}",
 			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
 		},
