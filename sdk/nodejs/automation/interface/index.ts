@@ -327,7 +327,6 @@ export class API {
             if (__item != null) {
                 __flags.push("--query", "" + __item);
             }
-
         }
 
         if (options.web) {
