@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/nodejs
+  description: Add "org" commands (get-default, set-default, search, search ai) to the auto-generated interface
