@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -661,16 +662,95 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 }
 
 func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
-	io.Reader, io.Reader, *promise.Promise[int32], error,
+	io.Reader, io.Reader, func(force bool), *promise.Promise[int32], error,
 ) {
 	logging.V(7).Infof("langhost[%v].RunPlugin(%s) executing",
 		h.runtime, info.Info.String())
 
 	minfo, err := info.Info.Marshal()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
+	// Try RunPlugin2 (bidi streaming) first for in-band cancellation support.
+	stdout, stderr, cancel, done, err := h.runPlugin2(ctx, info, minfo)
+	if err != nil {
+		st, ok := status.FromError(err)
+		if ok && st.Code() == codes.Unimplemented {
+			logging.V(7).Infof("langhost[%v].RunPlugin2 not implemented, falling back to RunPlugin", h.runtime)
+			return h.runPlugin1(ctx, info, minfo)
+		}
+		return nil, nil, nil, nil, err
+	}
+	return stdout, stderr, cancel, done, nil
+}
+
+func (h *langhost) runPlugin2(ctx context.Context, info RunPluginInfo, minfo *pulumirpc.ProgramInfo) (
+	io.Reader, io.Reader, func(force bool), *promise.Promise[int32], error,
+) {
+	rctx, kill := context.WithCancel(ctx)
+
+	stream, err := h.client.RunPlugin2(rctx)
+	if err != nil {
+		kill()
+		return nil, nil, nil, nil, err
+	}
+
+	// Send the start request as the first message.
+	err = stream.Send(&pulumirpc.RunPlugin2Request{
+		Request: &pulumirpc.RunPlugin2Request_Start{
+			Start: &pulumirpc.RunPluginRequest{
+				Pwd:            info.WorkingDirectory,
+				Args:           info.Args,
+				Env:            info.Env,
+				Info:           minfo,
+				Kind:           info.Kind,
+				AttachDebugger: info.AttachDebugger,
+				LoaderTarget:   info.LoaderAddress,
+			},
+		},
+	})
+	if err != nil {
+		kill()
+		return nil, nil, nil, nil, err
+	}
+
+	outr, outw := io.Pipe()
+	errr, errw := io.Pipe()
+	cts := &promise.CompletionSource[int32]{}
+
+	go func() {
+		defer kill()
+		recvRunPluginResponses(stream, outw, errw, cts)
+	}()
+
+	// cancelPlugin sends a cancel message on the bidi stream.
+	// Soft cancel (force=false) can be sent once; subsequent soft calls are no-ops.
+	var softOnce sync.Once
+	cancelPlugin := func(force bool) {
+		if force {
+			_ = stream.Send(&pulumirpc.RunPlugin2Request{
+				Request: &pulumirpc.RunPlugin2Request_Cancel{
+					Cancel: &pulumirpc.RunPluginCancelRequest{Force: true},
+				},
+			})
+		} else {
+			softOnce.Do(func() {
+				_ = stream.Send(&pulumirpc.RunPlugin2Request{
+					Request: &pulumirpc.RunPlugin2Request_Cancel{
+						Cancel: &pulumirpc.RunPluginCancelRequest{Force: false},
+					},
+				})
+			})
+		}
+	}
+
+	return outr, errr, cancelPlugin, cts.Promise(), nil
+}
+
+func (h *langhost) runPlugin1(ctx context.Context, info RunPluginInfo, minfo *pulumirpc.ProgramInfo) (
+	io.Reader, io.Reader, func(force bool), *promise.Promise[int32], error,
+) {
 	rctx, kill := context.WithCancel(ctx)
 
 	resp, err := h.client.RunPlugin(rctx, &pulumirpc.RunPluginRequest{
@@ -683,69 +763,76 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 		LoaderTarget:   info.LoaderAddress,
 	})
 	if err != nil {
-		// If there was an error starting the plugin kill the context for this request to ensure any lingering
-		// connection terminates.
 		kill()
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	outr, outw := io.Pipe()
 	errr, errw := io.Pipe()
-
 	cts := &promise.CompletionSource[int32]{}
 
 	go func() {
-		for {
-			logging.V(10).Infoln("Waiting for plugin message")
-			msg, err := resp.Recv()
-			if err != nil {
-				// If there was an error receiving then signal that the plugin has exited.
-				// If err is just EOF then the plugin has exited normally, and we can exitcode 0
-				err1 := outw.Close()
-				err2 := errw.Close()
-				if errors.Is(err, io.EOF) {
-					cts.Fulfill(0)
-				} else {
-					// We need this condition because although `Join` will ignore nil errors it won't return the
-					// original error if it's the only one. That is `Join(err, nil, nil) != err`. Because of that our
-					// later "is this a grpc error" check doesn't work because it sees a `joinError` instead of a
-					// `grpcError`.
-					if err1 != nil || err2 != nil {
-						err = errors.Join(err, err1, err2)
-					}
-					cts.Reject(err)
-				}
-				kill()
-				break
-			}
-
-			logging.V(10).Infoln("Got plugin response: ", msg)
-
-			if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
-				n, err := outw.Write(value.Stdout)
-				contract.AssertNoErrorf(err, "failed to write to stdout pipe: %v", err)
-				contract.Assertf(n == len(value.Stdout), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stdout))
-			} else if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stderr); ok {
-				n, err := errw.Write(value.Stderr)
-				contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
-				contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
-			} else if code, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
-				// If stdout and stderr are empty we've flushed and are returning the exit code
-				err1 := outw.Close()
-				err2 := errw.Close()
-				err = errors.Join(err1, err2)
-				if err != nil {
-					cts.Reject(err)
-				} else {
-					cts.Fulfill(code.Exitcode)
-				}
-				kill()
-				break
-			}
-		}
+		defer kill()
+		recvRunPluginResponses(resp, outw, errw, cts)
 	}()
 
-	return outr, errr, cts.Promise(), nil
+	// For the RunPlugin cancellation is done by killing the gRPC stream context.
+	return outr, errr, func(force bool) { kill() }, cts.Promise(), nil
+}
+
+// recvRunPluginResponses reads responses from a RunPlugin or RunPlugin2 stream, writing stdout/stderr to the pipes and
+// fulfilling the promise with the exit code.
+func recvRunPluginResponses(
+	stream grpc.ServerStreamingClient[pulumirpc.RunPluginResponse],
+	outw, errw *io.PipeWriter,
+	cts *promise.CompletionSource[int32],
+) {
+	for {
+		logging.V(10).Infoln("Waiting for plugin message")
+		msg, err := stream.Recv()
+		if err != nil {
+			// If there was an error receiving then signal that the plugin has exited.
+			// If err is just EOF then the plugin has exited normally, and we can exitcode 0
+			err1 := outw.Close()
+			err2 := errw.Close()
+			if errors.Is(err, io.EOF) {
+				cts.Fulfill(0)
+			} else {
+				// We need this condition because although `Join` will ignore nil errors it won't return the
+				// original error if it's the only one. That is `Join(err, nil, nil) != err`. Because of that our
+				// later "is this a grpc error" check doesn't work because it sees a `joinError` instead of a
+				// `grpcError`.
+				if err1 != nil || err2 != nil {
+					err = errors.Join(err, err1, err2)
+				}
+				cts.Reject(err)
+			}
+			break
+		}
+
+		logging.V(10).Infoln("Got plugin response: ", msg)
+
+		if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
+			n, err := outw.Write(value.Stdout)
+			contract.AssertNoErrorf(err, "failed to write to stdout pipe: %v", err)
+			contract.Assertf(n == len(value.Stdout), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stdout))
+		} else if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stderr); ok {
+			n, err := errw.Write(value.Stderr)
+			contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
+			contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
+		} else if code, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
+			// If stdout and stderr are empty we've flushed and are returning the exit code
+			err1 := outw.Close()
+			err2 := errw.Close()
+			err = errors.Join(err1, err2)
+			if err != nil {
+				cts.Reject(err)
+			} else {
+				cts.Fulfill(code.Exitcode)
+			}
+			break
+		}
+	}
 }
 
 func (h *langhost) GenerateProject(
