@@ -761,7 +761,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		sg.refresh &&
 		goal.Custom &&
 		!sdkproviders.IsProviderType(goal.Type) &&
-		!(sg.deployment.opts.Excludes.IsConstrained() && sg.isExcludedFromUpdate(old)) {
+		(!sg.deployment.opts.Excludes.IsConstrained() || !sg.isExcludedFromUpdate(old)) {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go PanicRecovery(sg.deployment.panicErrs, func() {
