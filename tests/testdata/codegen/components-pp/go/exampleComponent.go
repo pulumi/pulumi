@@ -23,11 +23,11 @@ type ServersArgs struct {
 
 type ExampleComponentArgs struct {
 	Input           pulumi.StringInput
-	CidrBlocks      map[string]pulumi.StringInput
+	CidrBlocks      pulumi.StringMapInput
 	GithubApp       *GithubAppArgs
 	Servers         []*ServersArgs
 	DeploymentZones map[string]*DeploymentZonesArgs
-	IpAddress       []pulumi.IntInput
+	IpAddress       pulumi.IntArrayInput
 }
 
 type ExampleComponent struct {
@@ -49,7 +49,7 @@ func NewExampleComponent(
 	password, err := random.NewRandomPassword(ctx, fmt.Sprintf("%s-password", name), &random.RandomPasswordArgs{
 		Length:          pulumi.Int(16),
 		Special:         pulumi.Bool(true),
-		OverrideSpecial: pulumi.String(args.Input),
+		OverrideSpecial: args.Input,
 	}, pulumi.Parent(&componentResource))
 	if err != nil {
 		return nil, err
