@@ -107,7 +107,6 @@ var expectedFailures = map[string]string{
 	"l2-builtin-object":             "entries/lookup emit TODO stubs",
 	"l1-builtin-to-json":            "Go doesn't support output based toJSON",
 	"l2-resource-config-primitives": "cannot convert secretBool (variable of struct type pulumi.BoolOutput) to type pulumi.Bool, etc", //nolint:lll
-	"l2-resource-config-objects":    "cannot convert plainBooleanMap (variable of type string) to type pulumi.BoolMap",
 	"l2-discriminated-union":        "pulumi#21829: does not compile",
 
 	// pulumi/pulumi#18345
@@ -121,9 +120,6 @@ var expectedFailures = map[string]string{
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
 
 	"l3-rewrite-conversions": "does not compile; missing necessary casts for pulumi inputs",
-
-	"l3-component-config-primitives": "does not compile; missing necessary casts for pulumi inputs",
-	"l3-component-config-objects":    "does not compile; missing necessary casts for pulumi inputs",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

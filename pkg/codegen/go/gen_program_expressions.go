@@ -287,6 +287,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			// When converting a plain traversal to Output<T>, emit an explicit Pulumi input cast
 			// (e.g. pulumi.String(x), pulumi.ToMap(x)) so calls like ctx.Export compile.
 			if isOutput && !isFromOutput {
+				// Inside a component body, config variable traversals are emitted as args.X
+				// (already Input<T>) so no wrapping is needed. Without this check, the union
+				// type element sorting (alphabetical) can cause Output[string] to be chosen
+				// before string by lowerConversion, triggering a spurious pulumi.String() wrap.
+				if g.isComponent {
+					if _, ok := arg.Parts[0].(*pcl.ConfigVariable); ok {
+						g.genScopeTraversalExpression(w, arg, expr.Type())
+						return
+					}
+				}
 				scalarType := to
 				if cns, ok := scalarType.(*model.ConstType); ok {
 					scalarType = cns.Type
@@ -295,7 +305,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				case model.StringType, model.IntType, model.NumberType, model.BoolType, model.DynamicType:
 					if typeName := g.argumentTypeName(to, isOutput); typeName != "" {
 						g.Fgenf(w, "%s(", typeName)
-						g.genScopeTraversalExpression(w, arg, expr.Type())
+						// In Go, number (float64) cannot be passed directly to an int parameter;
+						// an explicit int() cast is required.
+						if to == model.IntType && arg.Type() == model.NumberType {
+							g.Fgenf(w, "int(")
+							g.genScopeTraversalExpression(w, arg, expr.Type())
+							g.Fgenf(w, ")")
+						} else {
+							g.genScopeTraversalExpression(w, arg, expr.Type())
+						}
 						g.Fgenf(w, ")")
 						return
 					}
@@ -317,6 +335,17 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 							g.Fgenf(w, ")")
 							return
 						}
+					}
+				}
+			}
+			// When converting Output[number] → Output[int], emit an ApplyT conversion since
+			// Go requires an explicit int() cast and Float64Output doesn't implement IntInput.
+			if isOutput && isFromOutput {
+				if fromOutput, ok := arg.Type().(*model.OutputType); ok {
+					if to == model.IntType && fromOutput.ElementType == model.NumberType {
+						g.genScopeTraversalExpression(w, arg, arg.Type())
+						g.Fgenf(w, ".ApplyT(func(v float64) int { return int(v) }).(pulumi.IntOutput)")
+						return
 					}
 				}
 			}
