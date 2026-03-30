@@ -262,6 +262,7 @@ func NewUpCmd() *cobra.Command {
 			maps.Copy(m.Environment, metadata)
 		}
 
+		operationStart := time.Now()
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -272,6 +273,16 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 		}, nil /* events */)
+		operationDuration := time.Since(operationStart)
+
+		if jsonDisplay {
+			result := "succeeded"
+			if err != nil {
+				result = "failed"
+			}
+			_ = ui.PrintOperationSummary(result, changes, operationDuration, nil)
+		}
+
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
@@ -507,6 +518,7 @@ func NewUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
+		operationStart := time.Now()
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -517,6 +529,16 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 		}, nil /* events */)
+		operationDuration := time.Since(operationStart)
+
+		if jsonDisplay {
+			result := "succeeded"
+			if err != nil {
+				result = "failed"
+			}
+			_ = ui.PrintOperationSummary(result, changes, operationDuration, nil)
+		}
+
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
