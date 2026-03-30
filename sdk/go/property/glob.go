@@ -174,17 +174,14 @@ func parseIndex(runes []rune) (GlobSegment, []rune, error) {
 		if len(runes) < i || runes[i] != ']' {
 			return nil, nil, fmt.Errorf("unclosed index [%s", string(runes[:i]))
 		}
-		n, err := strconv.Atoi(string(runes[0:i]))
+		n, err := strconv.ParseUint(string(runes[0:i]), 10, 64)
 		if err != nil {
 			return nil, nil, err
 		}
-		if n < 0 {
-			return nil, nil, errors.New("indexes cannot be negative")
+		if n > math.MaxInt64 {
+			return nil, nil, errors.New("indexes cannot exceed 9223372036854775807")
 		}
-		if n > math.MaxUint32 {
-			return nil, nil, fmt.Errorf("indexes cannot exceed %d", math.MaxUint32)
-		}
-		return IndexSegment{uint32(n)}, runes[i+1:], nil //nolint:gosec // checked above
+		return IndexSegment{n}, runes[i+1:], nil
 	case runes[0] == '"':
 		i := 1
 		for ; ; i++ {
@@ -235,7 +232,7 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 				case e.val.IsArray():
 					for j, v := range e.val.AsArray().AsSlice() {
 						expansion = append(expansion, entry{
-							path: e.path.appendIndex(uint32(j)), //nolint:gosec // j is a slice index
+							path: e.path.appendIndex(uint64(j)), //nolint:gosec // j will always be >= 0
 							val:  v,
 						})
 					}
@@ -294,7 +291,7 @@ type splat struct{}
 
 func (splat) GoString() string          { return "property.Splat" }
 func (s KeySegment) GoString() string   { return fmt.Sprintf("property.NewSegment(%q)", s.string) }
-func (i IndexSegment) GoString() string { return fmt.Sprintf("property.NewSegment(%d)", i.uint32) }
+func (i IndexSegment) GoString() string { return fmt.Sprintf("property.NewSegment(%d)", i.i) }
 
 func (splat) globApply(v Value) ([]Value, PathApplyFailure) {
 	switch {

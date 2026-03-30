@@ -162,7 +162,7 @@ func NewSegment[T interface{ string | int }](v T) PathSegment {
 		return KeySegment{v}
 	case int:
 		contract.Assertf(v >= 0, "index must be non-negative, got %d", v)
-		return IndexSegment{uint32(v)} //nolint:gosec // checked above
+		return IndexSegment{uint64(v)} //nolint:gosec // checked above
 	default:
 		panic("impossible")
 	}
@@ -199,17 +199,21 @@ func (k KeySegment) apply(v Value) (Value, PathApplyFailure) {
 // IndexSegment represents an index into an [Array].
 //
 // To create an IndexSegment, use [NewSegment].
-type IndexSegment struct{ uint32 }
+type IndexSegment struct {
+	// i must be constrained into a uint63, since it must be cleanly castable to an [int] ([int64]).
+	i uint64
+}
 
-func (k IndexSegment) Index() int { return int(k.uint32) }
+func (k IndexSegment) Index() int { return int(k.i) } //nolint:gosec // will always fit
 
 func (k IndexSegment) apply(v Value) (Value, PathApplyFailure) {
 	if v.IsArray() {
+		i := int(k.i) //nolint:gosec // will always fit
 		a := v.AsArray()
-		if int(k.uint32) >= a.Len() {
-			return Value{}, pathApplyIndexOutOfBoundsError{found: a, idx: int(k.uint32)}
+		if i >= a.Len() {
+			return Value{}, pathApplyIndexOutOfBoundsError{found: a, idx: i}
 		}
-		return a.Get(int(k.uint32)), nil
+		return a.Get(i), nil
 	}
 	return Value{}, pathApplyIndexExpectedArrayError{found: v}
 }
