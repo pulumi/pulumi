@@ -63,7 +63,7 @@ func main() {
 				map[string]interface{}{
 					"Sid":    "",
 					"Effect": "Allow",
-					"Principal": map[string]string{
+					"Principal": map[string]interface{}{
 						"Service": "ecs-tasks.amazonaws.com",
 					},
 					"Action": "sts:AssumeRole",

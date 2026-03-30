@@ -1206,7 +1206,11 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			}
 			return "pulumi.Map"
 		}
-		if allSameType && elmType != "" {
+		// In plain object contexts (inside schema-plain struct fields), use the
+		// concrete map type so the generated code matches the Go SDK's value types.
+		// Outside plain contexts, keep map[string]interface{} because downstream
+		// code (e.g., ApplyT callbacks) may use type assertions that require interface{}.
+		if g.inPlainObjectField && allSameType && elmType != "" {
 			return "map[string]" + elmType
 		}
 		return "map[string]interface{}"

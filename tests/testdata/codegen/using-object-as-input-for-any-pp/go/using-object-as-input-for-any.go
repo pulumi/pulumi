@@ -15,7 +15,7 @@ func main() {
 					map[string]interface{}{
 						"Effect": "Allow",
 						"Action": "sts:AssumeRole",
-						"Principal": map[string][]string{
+						"Principal": map[string]interface{}{
 							"Service": []string{
 								"cloudformation.amazonaws.com",
 								"gamelift.amazonaws.com",

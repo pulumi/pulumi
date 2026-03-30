@@ -136,7 +136,7 @@ func main() {
 						false,
 						true,
 					},
-					StringMap: map[string]string{
+					StringMap: map[string]interface{}{
 						"my key": "one",
 						"my.key": "two",
 						"my-key": "three",
@@ -153,7 +153,7 @@ func main() {
 					true,
 					false,
 				},
-				StringMap: map[string]string{
+				StringMap: map[string]interface{}{
 					"my key": "one",
 					"my.key": "two",
 					"my-key": "three",

@@ -32,7 +32,7 @@ func main() {
 				pulumi.Int(0),
 				pulumi.Int(1),
 			},
-			CidrBlocks: map[string]string{
+			CidrBlocks: map[string]interface{}{
 				"one": "uno",
 				"two": "dos",
 			},
@@ -41,15 +41,15 @@ func main() {
 				KeyBase64:     "base64 encoded key",
 				WebhookSecret: "very important secret",
 			},
-			Servers: []map[string]string{
-				{
+			Servers: []map[string]interface{}{
+				&ServersArgs{
 					Name: "First",
 				},
-				{
+				&ServersArgs{
 					Name: "Second",
 				},
 			},
-			DeploymentZones: map[string]map[string]string{
+			DeploymentZones: map[string]interface{}{
 				"first": &DeploymentZonesArgs{
 					Zone: "First zone",
 				},
