@@ -162,7 +162,9 @@ func TestSaveCheckpointBucketOps(t *testing.T) {
 			// Create the backend with the existing compression first (to create the file),
 			// then switch to the target compression.
 			existingStore := env.MapStore{}
-			switch tt.existingCompression { //nolint:exhaustive // CompressionNone needs no env vars
+			switch tt.existingCompression {
+			case encoding.CompressionNone:
+				// default, no env vars needed
 			case encoding.CompressionGzip:
 				existingStore[env.DIYBackendGzip.Var().Name()] = "true"
 			case encoding.CompressionZstd:
@@ -189,7 +191,9 @@ func TestSaveCheckpointBucketOps(t *testing.T) {
 			// Now create the backend with the target compression and wrap the
 			// bucket to count operations.
 			targetStore := env.MapStore{}
-			switch tt.compression { //nolint:exhaustive // CompressionNone needs no env vars
+			switch tt.compression {
+			case encoding.CompressionNone:
+				// default, no env vars needed
 			case encoding.CompressionGzip:
 				targetStore[env.DIYBackendGzip.Var().Name()] = "true"
 			case encoding.CompressionZstd:
