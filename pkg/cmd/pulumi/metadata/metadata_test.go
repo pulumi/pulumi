@@ -26,7 +26,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 )
 
@@ -149,23 +148,19 @@ func TestReadingGitRepo(t *testing.T) {
 	}
 
 	// Confirm that data can be inferred from the CI system if unavailable.
-	// Fake running under Travis CI.
+	// Fake running under Travis CI. We also need to unset GITHUB_ACTIONS so that
+	// the GitHub Actions detector doesn't take precedence when running in CI.
 	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
+	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
-	t.Setenv("GITHUB_REF", "branch-from-ci")
 
 	{
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		_, _ = fsutil.WalkUpDirs(t.TempDir(), func(s string) bool {
-			t.Logf("Checking for .git in %s", s)
-			_, err := os.Stat(filepath.Join(s, ".git"))
-			return !os.IsNotExist(err)
-		})
 
-		require.NoError(t, addGitMetadata(t.TempDir(), test))
+		require.NoError(t, addGitMetadata(e.RootPath, test))
 		name, ok := test.Environment[backend.GitHeadName]
 		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
 		assert.Equal(t, "branch-from-ci", name)
