@@ -661,20 +661,39 @@ func (v PropertyValue) String() string {
 	return fmt.Sprintf("{%v}", v.V)
 }
 
-// RedactSecrets is similar to String(), but redacts any secrets it encounters in the property value.
+// RedactSecrets is similar to String(), but redacts any secrets it encounters in the property value,
+// including secrets nested inside objects and arrays.
 func (v PropertyValue) RedactSecrets() string {
 	if v.IsComputed() {
 		// For computed properties, show the type followed by an empty object string.
 		return fmt.Sprintf("%v{}", v.TypeString())
 	} else if v.IsOutput() {
 		if !v.OutputValue().Known {
-			return MakeComputed(v.OutputValue().Element).String()
+			return MakeComputed(v.OutputValue().Element).RedactSecrets()
 		} else if v.OutputValue().Secret {
-			return MakeSecret(v.OutputValue().Element).String()
+			return "[secret]"
 		}
-		return v.OutputValue().Element.String()
+		return v.OutputValue().Element.RedactSecrets()
 	} else if v.IsSecret() {
 		return "[secret]"
+	} else if v.IsArray() {
+		elems := make([]string, len(v.ArrayValue()))
+		for i, e := range v.ArrayValue() {
+			elems[i] = e.RedactSecrets()
+		}
+		return fmt.Sprintf("{[%s]}", strings.Join(elems, ", "))
+	} else if v.IsObject() {
+		obj := v.ObjectValue()
+		keys := make([]string, 0, len(obj))
+		for k := range obj {
+			keys = append(keys, string(k))
+		}
+		sort.Strings(keys)
+		entries := make([]string, 0, len(obj))
+		for _, k := range keys {
+			entries = append(entries, fmt.Sprintf("%s: %s", k, obj[PropertyKey(k)].RedactSecrets()))
+		}
+		return fmt.Sprintf("{map[%s]}", strings.Join(entries, " "))
 	}
 	// For all others, just display the underlying property value.
 	return fmt.Sprintf("{%v}", v.V)
