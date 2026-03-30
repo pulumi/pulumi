@@ -1565,6 +1565,16 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
         return key;
     }
 
+    // When TypeScript compiles `import * as foo from "foo"` with `module: "nodenext"`, it emits
+    // `__importStar(require("foo"))`. This creates a wrapper object with a `default` property that holds the original
+    // module.
+    if (obj != null && typeof obj === "object" && "default" in obj) {
+        const unwrappedKey = modules.get(obj.default);
+        if (unwrappedKey) {
+            return unwrappedKey;
+        }
+    }
+
     // Next, check the Node module require cache, which will store cached values
     // of all non-built-in Node modules loaded by the program so far. _Note_: We
     // don't pre-compute this because the require cache will get populated
