@@ -83,12 +83,22 @@ var pluginDownloadURLOverridesParsed pluginDownloadOverrideArray
 
 // pluginHostOverrides is a variable instead of a constant so it can be set using the `-X`
 // ldflag at build time, if necessary. When non-empty, it is parsed into
-// `pluginHostOverridesParsed` in `init()`. The expected format is `host1=proxy1,host2=proxy2`.
+// `pluginHostOverridesParsed` in `init()`. The expected format is
+// `host1=https://proxy1/base/path,host2=https://proxy2`.
 var pluginHostOverrides string
 
+// hostOverride holds the parsed components of a single entry in pluginHostOverridesParsed.
+type hostOverride struct {
+	scheme string // replacement scheme, e.g. "https"
+	host   string // replacement host, e.g. "testartifactory.my.de"
+	// path is the base path prefix to prepend to every request path, e.g.
+	// "/artifactory/api-github-generic-remote". May be empty. Never has a trailing slash.
+	path string
+}
+
 // pluginHostOverridesParsed is the parsed map from `pluginHostOverrides`.
-// Keys and values are plain hostnames (optionally with port), e.g. "api.github.com".
-var pluginHostOverridesParsed map[string]string
+// Keys are original hostnames (optionally with port), e.g. "api.github.com".
+var pluginHostOverridesParsed map[string]hostOverride
 
 // pluginDownloadURLOverride represents a plugin download URL override, parsed from `pluginDownloadURLOverrides`.
 type pluginDownloadURLOverride struct {
@@ -146,21 +156,51 @@ func init() {
 	}
 }
 
-// parsePluginHostOverrides parses an overrides string with the expected format `host1=proxy1,host2=proxy2`.
-// Both sides are plain hostnames, optionally including a port (e.g. "api.github.com" or "localhost:8080").
-func parsePluginHostOverrides(overrides string) (map[string]string, error) {
-	result := map[string]string{}
+// parsePluginHostOverrides parses an overrides string with the expected format
+// `host1=https://proxy1/base/path,host2=https://proxy2`.
+//
+// The key is the original hostname (optionally with port) as it appears in the request URL.
+// The value is the full base URL of the proxy. If the value has no scheme, "https" is assumed.
+// Any path in the proxy base URL is prepended to the original request path, which allows
+// reverse proxies that expose upstream hosts at a subpath (e.g. Artifactory generic remotes).
+//
+// Examples:
+//
+//	api.github.com=https://artifactory.example.com/artifactory/github-api-remote
+//	github.com=https://artifactory.example.com/artifactory/github-com-remote
+//	api.github.com=github-api.simpleproxy.example.com  (bare host, https assumed)
+func parsePluginHostOverrides(overrides string) (map[string]hostOverride, error) {
+	result := map[string]hostOverride{}
 	if overrides == "" {
 		return result, nil
 	}
 	for _, pair := range strings.Split(overrides, ",") {
-		// Use SplitN so that an "=" inside a value (theoretically impossible for a hostname,
-		// but defensive) does not silently truncate it.
+		// SplitN with n=2 so that "://" and "=" inside the proxy URL are not treated as
+		// delimiters — only the first "=" separates the key from the value.
 		parts := strings.SplitN(pair, "=", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			return nil, fmt.Errorf("expected format to be \"host1=proxy1,host2=proxy2\"; got %q", overrides)
+			return nil, fmt.Errorf(
+				"expected format to be \"host1=https://proxy1/path,host2=https://proxy2\"; got %q",
+				overrides)
 		}
-		result[parts[0]] = parts[1]
+		from := parts[0]
+		rawTo := parts[1]
+		// Accept bare hostnames for convenience; assume https.
+		if !strings.Contains(rawTo, "://") {
+			rawTo = "https://" + rawTo
+		}
+		toURL, err := url.Parse(rawTo)
+		if err != nil {
+			return nil, fmt.Errorf("invalid proxy base URL %q: %w", parts[1], err)
+		}
+		if toURL.Host == "" {
+			return nil, fmt.Errorf("proxy base URL %q has no host", parts[1])
+		}
+		result[from] = hostOverride{
+			scheme: toURL.Scheme,
+			host:   toURL.Host,
+			path:   strings.TrimSuffix(toURL.Path, "/"),
+		}
 	}
 	return result, nil
 }
@@ -1591,9 +1631,18 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 	// (e.g. newDownloadError's private-repo hint for api.github.com 404s) will see the proxy
 	// hostname instead of the original one.  Those hints are best-effort and this is an
 	// acceptable trade-off for the simplicity of a single rewrite point.
-	if to, ok := pluginHostOverridesParsed[req.URL.Host]; ok {
-		logging.V(9).Infof("plugin host override: %s -> %s (full URL: %s)", req.URL.Host, to, req.URL)
-		req.URL.Host = to
+	if override, ok := pluginHostOverridesParsed[req.URL.Host]; ok {
+		original := req.URL.String()
+		req.URL.Scheme = override.scheme
+		req.URL.Host = override.host
+		if override.path != "" {
+			req.URL.Path = override.path + req.URL.Path
+			// Keep RawPath in sync when the original URL had percent-encoded path segments.
+			if req.URL.RawPath != "" {
+				req.URL.RawPath = override.path + req.URL.RawPath
+			}
+		}
+		logging.V(9).Infof("plugin host override: %s -> %s", original, req.URL)
 	}
 
 	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
