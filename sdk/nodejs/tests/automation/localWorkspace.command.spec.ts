@@ -164,4 +164,53 @@ describe("LocalWorkspace - PulumiCommand", () => {
         assert.ok(recordedArgs, "expected cancel to invoke the CLI");
         assert.deepStrictEqual(recordedArgs, ["cancel", "--yes", "--stack", stack.name]);
     });
+
+    it("gets the default org via the automation CLI API", async () => {
+        let recordedArgs: string[] | undefined;
+        const mockCommand = {
+            command: "pulumi",
+            version: semver.parse("3.200.0"),
+            run: async (
+                args: string[],
+                cwd: string,
+                additionalEnv: { [key: string]: string },
+            ): Promise<CommandResult> => {
+                recordedArgs = args;
+                return new CommandResult("my-org\n", "", 0);
+            },
+        };
+
+        const ws = await LocalWorkspace.create(withTestBackend({ pulumiCommand: mockCommand }));
+        const stack = await Stack.create("org-get-test", ws);
+
+        const result = await stack.orgGetDefault();
+
+        assert.ok(recordedArgs, "expected orgGetDefault to invoke the CLI");
+        assert.deepStrictEqual(recordedArgs, ["org", "get-default"]);
+        assert.strictEqual(result, "my-org");
+    });
+
+    it("sets the default org via the automation CLI API", async () => {
+        let recordedArgs: string[] | undefined;
+        const mockCommand = {
+            command: "pulumi",
+            version: semver.parse("3.200.0"),
+            run: async (
+                args: string[],
+                cwd: string,
+                additionalEnv: { [key: string]: string },
+            ): Promise<CommandResult> => {
+                recordedArgs = args;
+                return new CommandResult("", "", 0);
+            },
+        };
+
+        const ws = await LocalWorkspace.create(withTestBackend({ pulumiCommand: mockCommand }));
+        const stack = await Stack.create("org-set-test", ws);
+
+        await stack.orgSetDefault("my-org");
+
+        assert.ok(recordedArgs, "expected orgSetDefault to invoke the CLI");
+        assert.deepStrictEqual(recordedArgs, ["org", "set-default", "--", "my-org"]);
+    });
 });

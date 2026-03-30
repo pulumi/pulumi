@@ -1326,6 +1326,24 @@ Event: ${line}\n${e.toString()}`);
     }
 
     /**
+     * Gets the default organization for the current backend.
+     */
+    async orgGetDefault(): Promise<string> {
+        const result = await this.run((api, base) => api.orgGetDefault({ ...base }));
+        return result.stdout.trim();
+    }
+
+    /**
+     * Sets the default organization for the current backend.
+     *
+     * @param orgName
+     *  The name of the organization to set as the default.
+     */
+    async orgSetDefault(orgName: string): Promise<void> {
+        await this.run((api, base) => api.orgSetDefault({ ...base }, orgName));
+    }
+
+    /**
      * Exports the deployment state of the stack. This can be combined with
      * {@link Stack.importStack} to edit a stack's state (such as recovery from
      * failed deployments).
