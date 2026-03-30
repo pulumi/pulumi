@@ -33,6 +33,10 @@ type Mock struct {
 
 	ListPackagesF func(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 
+	ListPackageVersionsF func(
+		ctx context.Context, source, publisher, name string,
+	) iter.Seq2[apitype.PackageMetadata, error]
+
 	GetTemplateF func(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
@@ -56,6 +60,15 @@ func (m Mock) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.
 		panic("registry.Mock.ListPackagesF not implemented")
 	}
 	return m.ListPackagesF(ctx, name)
+}
+
+func (m Mock) ListPackageVersions(
+	ctx context.Context, source, publisher, name string,
+) iter.Seq2[apitype.PackageMetadata, error] {
+	if m.ListPackageVersionsF == nil {
+		panic("registry.Mock.ListPackageVersionsF not implemented")
+	}
+	return m.ListPackageVersionsF(ctx, source, publisher, name)
 }
 
 func (m Mock) GetTemplate(

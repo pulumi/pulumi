@@ -52,6 +52,12 @@ func (r mockRegistry) ListPackages(ctx context.Context, name *string) iter.Seq2[
 	return r.listPackages(ctx, name)
 }
 
+func (r mockRegistry) ListPackageVersions(
+	_ context.Context, _, _, _ string,
+) iter.Seq2[apitype.PackageMetadata, error] {
+	return func(func(apitype.PackageMetadata, error) bool) {}
+}
+
 func (r mockRegistry) GetTemplate(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.TemplateMetadata, error) {

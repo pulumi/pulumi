@@ -26,9 +26,9 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/schemarender"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -151,16 +151,16 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 		}
 	}
 
-	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
-	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
-	fmt.Fprintf(stdout, bold("Total resources")+" %d\n", len(spec.Resources))
-	fmt.Fprintf(stdout, bold("Total functions")+" %d\n", len(spec.Functions))
-	fmt.Fprintf(stdout, bold("Total modules")+": %d\n", len(modules))
+	fmt.Fprintf(stdout, schemarender.Bold("Name")+": %s\n", spec.Name)
+	fmt.Fprintf(stdout, schemarender.Bold("Version")+": %s\n", spec.Version)
+	fmt.Fprintf(stdout, schemarender.Bold("Description")+": %s\n", schemarender.SummaryFromDescription(spec.Description))
+	fmt.Fprintf(stdout, schemarender.Bold("Total resources")+" %d\n", len(spec.Resources))
+	fmt.Fprintf(stdout, schemarender.Bold("Total functions")+" %d\n", len(spec.Functions))
+	fmt.Fprintf(stdout, schemarender.Bold("Total modules")+": %d\n", len(modules))
 
 	fmt.Fprintln(stdout)
 
-	fmt.Fprintf(stdout, bold("Modules")+": %s\n", strings.Join(maputil.SortedKeys(modules), ", "))
+	fmt.Fprintf(stdout, schemarender.Bold("Modules")+": %s\n", strings.Join(maputil.SortedKeys(modules), ", "))
 
 	fmt.Fprintln(stdout)
 	strArgs := strings.Join(args, " ")
@@ -179,41 +179,15 @@ func showProviderInfo(spec *schema.PackageSpec, args []string, stdout io.Writer)
 	return nil
 }
 
-func summaryFromDescription(description string) string {
-	// The description of a resource is markdown formatted.  We only want to provide a
-	// short summary of the description, so we will only show the first paragraph. Note
-	// that an empty newline denotes the end of the paragraph, but a regular newline might
-	// still be part of the first paragraph, and may be in the middle of a sentence.
-	// Therefore we split the description into lines, and join the first paragraph, replacing
-	// newlines with spaces.
-	var summary strings.Builder
-	for _, line := range strings.Split(description, "\n") {
-		if strings.TrimSpace(line) == "" {
-			break
-		}
-		summary.WriteString(line + " ")
-	}
-	return strings.TrimSpace(summary.String())
-}
-
-func simplifyModuleName(typ string, name string) (string, error) {
-	split := strings.Split(name, ":")
-	if len(split) < 3 {
-		return "", fmt.Errorf("invalid %s name %q", typ, name)
-	}
-	moduleSplit := strings.Split(split[1], "/")
-	return split[0] + ":" + moduleSplit[0] + ":" + split[2], nil
-}
-
 func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Writer) error {
-	fmt.Fprintf(stdout, bold("Name")+": %s\n", spec.Name)
-	fmt.Fprintf(stdout, bold("Module")+": %s\n", moduleName)
-	fmt.Fprintf(stdout, bold("Version")+": %s\n", spec.Version)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(spec.Description))
+	fmt.Fprintf(stdout, schemarender.Bold("Name")+": %s\n", spec.Name)
+	fmt.Fprintf(stdout, schemarender.Bold("Module")+": %s\n", moduleName)
+	fmt.Fprintf(stdout, schemarender.Bold("Version")+": %s\n", spec.Version)
+	fmt.Fprintf(stdout, schemarender.Bold("Description")+": %s\n", schemarender.SummaryFromDescription(spec.Description))
 
 	resources := make(map[string]schema.ResourceSpec)
 	for res, spec := range spec.Resources {
-		simplifiedName, err := simplifyModuleName("resource", res)
+		simplifiedName, err := schemarender.SimplifyModuleName("resource", res)
 		if err != nil {
 			return err
 		}
@@ -229,7 +203,7 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 	}
 	functions := make(map[string]schema.FunctionSpec)
 	for fun, spec := range spec.Functions {
-		simplifiedName, err := simplifyModuleName("function", fun)
+		simplifiedName, err := schemarender.SimplifyModuleName("function", fun)
 		if err != nil {
 			return err
 		}
@@ -248,29 +222,21 @@ func showModuleInfo(spec *schema.PackageSpec, moduleName string, stdout io.Write
 		return fmt.Errorf("module %q not found", moduleName)
 	}
 
-	fmt.Fprintf(stdout, bold("Resources")+": %d\n", len(resources))
+	fmt.Fprintf(stdout, schemarender.Bold("Resources")+": %d\n", len(resources))
 
 	fmt.Fprintln(stdout)
 	for _, name := range maputil.SortedKeys(resources) {
-		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(resources[name].Description))
+		fmt.Fprintf(stdout, " - %s: %s\n", schemarender.Bold(name), schemarender.SummaryFromDescription(resources[name].Description))
 	}
 	fmt.Fprintln(stdout)
 
-	fmt.Fprintf(stdout, bold("Functions")+": %d\n", len(functions))
+	fmt.Fprintf(stdout, schemarender.Bold("Functions")+": %d\n", len(functions))
 
 	fmt.Fprintln(stdout)
 	for _, name := range maputil.SortedKeys(functions) {
-		fmt.Fprintf(stdout, " - %s: %s\n", bold(name), summaryFromDescription(functions[name].Description))
+		fmt.Fprintf(stdout, " - %s: %s\n", schemarender.Bold(name), schemarender.SummaryFromDescription(functions[name].Description))
 	}
 	return nil
-}
-
-func bold(s string) string {
-	return colors.Always.Colorize(colors.Bold + s + colors.Reset)
-}
-
-func underline(s string) string {
-	return colors.Always.Colorize(colors.Underline + s + colors.Reset)
 }
 
 func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string, stdout io.Writer) error {
@@ -283,7 +249,7 @@ func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string,
 		specFunName = fullFunctionName
 		if !ok {
 			for name, f := range spec.Functions {
-				simplifiedName, err := simplifyModuleName("function", name)
+				simplifiedName, err := schemarender.SimplifyModuleName("function", name)
 				if err != nil {
 					return err
 				}
@@ -321,11 +287,11 @@ func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string,
 		}
 	}
 
-	fmt.Fprintf(stdout, bold("Function")+": %s\n", specFunName)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(fun.Description))
+	fmt.Fprintf(stdout, schemarender.Bold("Function")+": %s\n", specFunName)
+	fmt.Fprintf(stdout, schemarender.Bold("Description")+": %s\n", schemarender.SummaryFromDescription(fun.Description))
 
 	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, bold("Inputs")+":")
+	fmt.Fprintln(stdout, schemarender.Bold("Inputs")+":")
 	hasRequired := false
 	for _, name := range maputil.SortedKeys(fun.Inputs.Properties) {
 		prop := fun.Inputs.Properties[name]
@@ -334,13 +300,13 @@ func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string,
 			hasRequired = true
 			requiredStr = "*"
 		}
-		typ, err := getType(spec, prop.TypeSpec)
+		typ, err := schemarender.GetType(spec, prop.TypeSpec)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(requiredStr),
-			summaryFromDescription(prop.Description))
+			schemarender.Bold(name), schemarender.Underline(typ), schemarender.Underline(requiredStr),
+			schemarender.SummaryFromDescription(prop.Description))
 	}
 	if hasRequired {
 		fmt.Fprintf(stdout, "Inputs marked with '*' are required\n")
@@ -356,7 +322,7 @@ func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string,
 	}
 	if returnType != nil {
 		fmt.Fprintln(stdout)
-		fmt.Fprint(stdout, bold("Outputs")+":")
+		fmt.Fprint(stdout, schemarender.Bold("Outputs")+":")
 		if returnType.ObjectTypeSpec != nil {
 			fmt.Fprintln(stdout)
 			obj := returnType.ObjectTypeSpec
@@ -368,23 +334,23 @@ func showFunctionInfo(spec *schema.PackageSpec, moduleName, functionName string,
 					hasPresent = true
 					presentStr = "*"
 				}
-				typ, err := getType(spec, prop.TypeSpec)
+				typ, err := schemarender.GetType(spec, prop.TypeSpec)
 				if err != nil {
 					return err
 				}
 				fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-					bold(name), underline(typ), underline(presentStr),
-					summaryFromDescription(prop.Description))
+					schemarender.Bold(name), schemarender.Underline(typ), schemarender.Underline(presentStr),
+					schemarender.SummaryFromDescription(prop.Description))
 			}
 			if hasPresent {
 				fmt.Fprintf(stdout, "Outputs marked with '*' are always present\n")
 			}
 		} else if returnType.TypeSpec != nil {
-			typ, err := getType(spec, *returnType.TypeSpec)
+			typ, err := schemarender.GetType(spec, *returnType.TypeSpec)
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(stdout, " %s\n", underline(typ))
+			fmt.Fprintf(stdout, " %s\n", schemarender.Underline(typ))
 		}
 	}
 
@@ -401,7 +367,7 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 		specResName = fullResourceName
 		if !ok {
 			for name, r := range spec.Resources {
-				simplifiedName, err := simplifyModuleName("resource", name)
+				simplifiedName, err := schemarender.SimplifyModuleName("resource", name)
 				if err != nil {
 					return err
 				}
@@ -439,11 +405,11 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 		}
 	}
 
-	fmt.Fprintf(stdout, bold("Resource")+": %s\n", specResName)
-	fmt.Fprintf(stdout, bold("Description")+": %s\n", summaryFromDescription(res.Description))
+	fmt.Fprintf(stdout, schemarender.Bold("Resource")+": %s\n", specResName)
+	fmt.Fprintf(stdout, schemarender.Bold("Description")+": %s\n", schemarender.SummaryFromDescription(res.Description))
 
 	fmt.Fprintln(stdout)
-	fmt.Fprintln(stdout, bold("Inputs")+":")
+	fmt.Fprintln(stdout, schemarender.Bold("Inputs")+":")
 	hasRequired := false
 	for _, name := range maputil.SortedKeys(res.InputProperties) {
 		prop := res.InputProperties[name]
@@ -452,13 +418,13 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 			hasRequired = true
 			requiredStr = "*"
 		}
-		typ, err := getType(spec, prop.TypeSpec)
+		typ, err := schemarender.GetType(spec, prop.TypeSpec)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(requiredStr),
-			summaryFromDescription(prop.Description))
+			schemarender.Bold(name), schemarender.Underline(typ), schemarender.Underline(requiredStr),
+			schemarender.SummaryFromDescription(prop.Description))
 	}
 	if hasRequired {
 		fmt.Fprintf(stdout, "Inputs marked with '*' are required\n")
@@ -466,7 +432,7 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 
 	fmt.Fprintln(stdout)
 
-	fmt.Fprintln(stdout, bold("Outputs")+":")
+	fmt.Fprintln(stdout, schemarender.Bold("Outputs")+":")
 	hasPresent := false
 	for _, name := range maputil.SortedKeys(res.Properties) {
 		prop := res.Properties[name]
@@ -475,75 +441,16 @@ func showResourceInfo(spec *schema.PackageSpec, moduleName, resourceName string,
 			hasPresent = true
 			presentStr = "*"
 		}
-		typ, err := getType(spec, prop.TypeSpec)
+		typ, err := schemarender.GetType(spec, prop.TypeSpec)
 		if err != nil {
 			return err
 		}
 		fmt.Fprintf(stdout, " - %s (%s%s): %s\n",
-			bold(name), underline(typ), underline(presentStr),
-			summaryFromDescription(prop.Description))
+			schemarender.Bold(name), schemarender.Underline(typ), schemarender.Underline(presentStr),
+			schemarender.SummaryFromDescription(prop.Description))
 	}
 	if hasPresent {
 		fmt.Fprintf(stdout, "Outputs marked with '*' are always present\n")
 	}
 	return nil
-}
-
-func getType(spec *schema.PackageSpec, prop schema.TypeSpec) (string, error) {
-	typ := prop.Type
-	if typ != "" && typ != "object" && typ != "array" && prop.Ref == "" {
-		return typ, nil
-	}
-	if prop.Type == "array" {
-		if prop.Items == nil {
-			return "[]unknown", nil
-		}
-		typ, err := getType(spec, *prop.Items)
-		if err != nil {
-			return "", err
-		}
-		return "[]" + typ, nil
-	}
-	if prop.Type == "object" {
-		if prop.AdditionalProperties == nil {
-			return "object", nil
-		}
-		typ, err := getType(spec, *prop.AdditionalProperties)
-		if err != nil {
-			return "", err
-		}
-		return "map[string]" + typ, nil
-	}
-	if prop.Ref != "" {
-		if strings.HasPrefix(prop.Ref, "#/types/") {
-			ref := strings.TrimPrefix(prop.Ref, "#/types/")
-			ref = strings.ReplaceAll(ref, "%2F", "/")
-			if typeSpec, ok := spec.Types[ref]; ok {
-				if len(typeSpec.Enum) > 0 {
-					return fmt.Sprintf("enum(%s){%s}",
-						typeSpec.Type, formatEnumValues(typeSpec.Enum)), nil
-				}
-				simplifiedName, err := simplifyModuleName("type", ref)
-				if err != nil {
-					return "", err
-				}
-				split := strings.Split(simplifiedName, ":")
-				return split[2], nil
-			}
-		}
-		return prop.Ref, nil
-	}
-	return "unknown", nil
-}
-
-func formatEnumValues(enum []schema.EnumValueSpec) string {
-	var values []string
-	for _, v := range enum {
-		if v.Name != "" {
-			values = append(values, v.Name)
-		} else if v.Value != nil {
-			values = append(values, fmt.Sprintf("%v", v.Value))
-		}
-	}
-	return strings.Join(values, ", ")
 }

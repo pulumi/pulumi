@@ -2003,6 +2003,37 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 	}
 }
 
+func (pc *Client) ListPackageVersions(
+	ctx context.Context, source, publisher, name string,
+) iter.Seq2[apitype.PackageMetadata, error] {
+	url := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions?limit=499", source, publisher, name)
+
+	var continuationToken *string
+	return func(f func(apitype.PackageMetadata, error) bool) {
+		for {
+			queryURL := url
+			if continuationToken != nil {
+				queryURL += "&continuationToken=" + *continuationToken
+			}
+			var resp apitype.ListPackagesResponse
+			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			if err != nil {
+				f(apitype.PackageMetadata{}, err)
+				return
+			}
+			for _, v := range resp.Packages {
+				if !f(v, nil) {
+					return
+				}
+			}
+			continuationToken = resp.ContinuationToken
+			if continuationToken == nil {
+				return
+			}
+		}
+	}
+}
+
 func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
 	url := "/api/registry/templates?limit=499"
 	if name != nil {

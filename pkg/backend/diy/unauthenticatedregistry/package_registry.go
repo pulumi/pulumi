@@ -56,6 +56,12 @@ func (r registryClient) GetPackage(
 	return meta, err
 }
 
+func (r registryClient) ListPackageVersions(
+	ctx context.Context, source, publisher, name string,
+) iter.Seq2[apitype.PackageMetadata, error] {
+	return r.c.ListPackageVersions(ctx, source, publisher, name)
+}
+
 func (r registryClient) ListTemplates(
 	ctx context.Context, name *string,
 ) iter.Seq2[apitype.TemplateMetadata, error] {

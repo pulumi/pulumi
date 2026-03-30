@@ -61,6 +61,12 @@ func (r *cloudRegistry) GetPackage(
 	return meta, err
 }
 
+func (r *cloudRegistry) ListPackageVersions(
+	ctx ctx.Context, source, publisher, name string,
+) iter.Seq2[apitype.PackageMetadata, error] {
+	return r.cl.ListPackageVersions(ctx, source, publisher, name)
+}
+
 func (r *cloudRegistry) ListTemplates(
 	ctx ctx.Context, name *string,
 ) iter.Seq2[apitype.TemplateMetadata, error] {

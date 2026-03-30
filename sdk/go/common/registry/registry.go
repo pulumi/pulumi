@@ -50,6 +50,13 @@ type Registry interface {
 	// there are no matching packages in the Registry.
 	ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error]
 
+	// Retrieve all versions of a specific package.
+	//
+	// Returns an iterator of PackageMetadata, one per version, sorted newest-first.
+	ListPackageVersions(
+		ctx context.Context, source, publisher, name string,
+	) iter.Seq2[apitype.PackageMetadata, error]
+
 	GetTemplate(
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
@@ -104,6 +111,18 @@ func (r *onDemandRegistry) ListPackages(
 		}
 	}
 	return impl.ListPackages(ctx, name)
+}
+
+func (r *onDemandRegistry) ListPackageVersions(
+	ctx context.Context, source, publisher, name string,
+) iter.Seq2[apitype.PackageMetadata, error] {
+	impl, err := r.factory()
+	if err != nil {
+		return func(consumer func(apitype.PackageMetadata, error) bool) {
+			consumer(apitype.PackageMetadata{}, err)
+		}
+	}
+	return impl.ListPackageVersions(ctx, source, publisher, name)
 }
 
 func (r *onDemandRegistry) GetTemplate(
