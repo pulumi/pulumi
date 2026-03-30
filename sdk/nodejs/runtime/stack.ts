@@ -73,10 +73,16 @@ export class Stack extends ComponentResource<Inputs> {
         // Set the global reference to the stack resource before invoking this init() function
         setStackResource(this);
 
+        const store = getStore();
+        store.currentExportMap = undefined;
+
         let outputs: Inputs | undefined;
         try {
+
             const inputs = await args.init();
-            outputs = await massage(undefined, inputs, []);
+            outputs = massage(undefined, inputs, []);
+
+            store.currentExportMap = await output(outputs).promise(true);
         } finally {
             // We want to expose stack outputs as simple pojo objects (including Resources).  This
             // helps ensure that outputs can point to resources, and that that is stored and
