@@ -9,7 +9,7 @@
         "@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz"
     },
     "devDependencies": {
-        "@types/node": "^18",
+        "@types/node": "^20",
         "typescript": "^4.7.0"
     },
     "pulumi": {
