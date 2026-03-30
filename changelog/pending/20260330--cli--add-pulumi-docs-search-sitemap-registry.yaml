@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi docs search`, `pulumi docs sitemap`, and `pulumi docs registry` subcommands

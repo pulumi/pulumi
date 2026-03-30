@@ -19,9 +19,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -33,6 +35,7 @@ type docsCmd struct {
 	raw             bool
 	toc             bool
 	tocJSON         bool
+	jsonOutput      bool
 }
 
 // NewDocsCmd creates the `pulumi docs` command.
@@ -44,7 +47,10 @@ func NewDocsCmd() *cobra.Command {
 		Short: "View Pulumi documentation in the terminal",
 		Long: "Read and browse Pulumi documentation in the terminal.\n\n" +
 			"  pulumi docs                    Show help\n" +
-			"  pulumi docs read <path>        Read a specific page",
+			"  pulumi docs read <path>        Read a specific page\n" +
+			"  pulumi docs registry <pkg>     Read a registry package\n" +
+			"  pulumi docs search <query>     Search documentation\n" +
+			"  pulumi docs sitemap            List available pages",
 	}
 
 	cmd.PersistentFlags().StringVar(&dc.baseURL, "base-url", "https://www.pulumi.com",
@@ -59,6 +65,9 @@ func NewDocsCmd() *cobra.Command {
 		"Filter OS-specific content in docs (e.g., macos, linux, windows); choice is remembered")
 
 	cmd.AddCommand(dc.newReadCmd())
+	cmd.AddCommand(dc.newSearchCmd())
+	cmd.AddCommand(dc.newRegistryCmd())
+	cmd.AddCommand(dc.newSitemapCmd())
 
 	return cmd
 }
@@ -122,6 +131,11 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 
 	body, title, err := FetchDoc(fetchBase, path)
 	if err != nil {
+		// Graceful fallback for registry pages that aren't available in the terminal
+		var regErr *RegistryNotAvailableError
+		if errors.As(err, &regErr) {
+			return dc.handleRegistryFallback(path)
+		}
 		return err
 	}
 
@@ -165,7 +179,9 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 	prefs, _ := LoadPreferences()
 	if section == "" {
 		prefs.LastPage = path
-		_ = prefs.Save()
+		if err := prefs.Save(); err != nil {
+			logging.V(7).Infof("failed to save docs preferences: %v", err)
+		}
 	}
 
 	// Show navigation footer when viewing a full page
@@ -263,5 +279,85 @@ func (dc *docsCmd) showTOC(body string, section *string) error {
 			break
 		}
 	}
+	return nil
+}
+
+func (dc *docsCmd) newSearchCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "search <query>...",
+		Short: "Search Pulumi documentation",
+		Long:  "Search Pulumi documentation using Algolia and display results.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			query := strings.Join(args, " ")
+			return runSearch(dc, query)
+		},
+	}
+	cmd.Flags().BoolVar(&dc.jsonOutput, "json", false,
+		"Output results as JSON")
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{{Name: "query"}},
+		Required:  1,
+		Variadic:  true,
+	})
+	return cmd
+}
+
+// viewPage fetches and renders a page given its href path (e.g. /docs/iac/concepts/stacks/ or /registry/packages/aws/).
+func (dc *docsCmd) viewPage(href string) error {
+	path := hrefToPath(href)
+	if path == "" {
+		return fmt.Errorf("invalid page path: %s", href)
+	}
+	return dc.fetchAndRender(path)
+}
+
+// handleRegistryFallback provides a graceful fallback when a registry page (typically
+// an API docs page) isn't available as markdown for terminal viewing.
+func (dc *docsCmd) handleRegistryFallback(path string) error {
+	pageWebURL := webURL(dc.registryBaseURL, path)
+
+	// Check if this is an API docs page and extract the package overview path.
+	var overviewPath string
+	trimmed := strings.Trim(path, "/")
+	if idx := strings.Index(trimmed, "/api-docs"); idx >= 0 {
+		overviewPath = trimmed[:idx]
+	}
+
+	fmt.Fprintln(os.Stderr)
+	if overviewPath != "" {
+		fmt.Fprintln(os.Stderr, "Registry API docs are not available for terminal viewing.")
+	} else {
+		fmt.Fprintln(os.Stderr, "This registry page is not available for terminal viewing.")
+	}
+
+	if cmdutil.Interactive() && overviewPath != "" {
+		optOverview := "View package overview"
+		optBrowser := "Open in web browser"
+		options := []string{optOverview, optBrowser}
+
+		fmt.Fprintln(os.Stderr)
+		selected := ui.PromptUser(
+			"What would you like to do?",
+			options,
+			optOverview,
+			cmdutil.GetGlobalColorization(),
+		)
+
+		switch selected {
+		case optOverview:
+			return dc.fetchAndRender(overviewPath)
+		case optBrowser:
+			fmt.Fprintf(os.Stderr, "Opening %s\n\n", pageWebURL)
+			return browser.OpenURL(pageWebURL)
+		}
+		return nil
+	}
+
+	// Non-interactive or no overview available
+	fmt.Fprintf(os.Stderr, "Visit: %s\n", pageWebURL)
+	if overviewPath != "" {
+		fmt.Fprintf(os.Stderr, "Or view the package overview: pulumi docs read %s\n", overviewPath)
+	}
+	fmt.Fprintln(os.Stderr)
 	return nil
 }
