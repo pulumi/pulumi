@@ -156,23 +156,27 @@ var RunProgram = env.Bool("RUN_PROGRAM",
 // will capture any GitHub-hosted plugin and redirect to its corresponding folder under https://foo.com/downloads
 var PluginDownloadURLOverrides = env.String("PLUGIN_DOWNLOAD_URL_OVERRIDES", "")
 
-// PluginHostOverrides transparently rewrites hostnames in all outgoing plugin download
-// requests. The expected format is `host1=proxy1,host2=proxy2`. Both sides are plain
-// hostnames (optionally including a port), not full URLs.
+// PluginHostOverrides transparently rewrites hosts in all outgoing plugin download requests.
+// The expected format is `originalHost1=https://proxy1/base/path,originalHost2=https://proxy2`.
+// The key is the original hostname (with optional port); the value is the full base URL of
+// the proxy. If no scheme is given in the value, https is assumed. Any path in the proxy base
+// URL is prepended to the original request path, preserving the rest of the URL unchanged.
 //
-// For example:
+// For example, to route plugin downloads through Artifactory generic remote repositories:
 //
-//	PULUMI_PLUGIN_HOST_OVERRIDES=api.github.com=github-api.myproxy.example.com,github.com=github-com.myproxy.example.com
+//	PULUMI_PLUGIN_HOST_OVERRIDES=api.github.com=https://artifactory.example.com/artifactory/github-api-remote,github.com=https://artifactory.example.com/artifactory/github-com-remote
 //
-// This rewrites every request whose host is api.github.com to instead target
-// github-api.myproxy.example.com, and every request to github.com to instead target
-// github-com.myproxy.example.com. The scheme, path, and query string are preserved, making
-// it compatible with generic reverse proxies such as Artifactory generic remote repositories.
+// This rewrites a request for
+// https://api.github.com/repos/pulumi/pulumi-aws/releases/latest
+// into
+// https://artifactory.example.com/artifactory/github-api-remote/repos/pulumi/pulumi-aws/releases/latest
+// which is the exact URL an Artifactory generic remote expects.
 //
 // Unlike PULUMI_PLUGIN_DOWNLOAD_URL_OVERRIDES, this applies to all plugin sources
 // (GitHub, GitLab, get.pulumi.com, custom HTTP sources) without any per-source configuration.
 var PluginHostOverrides = env.String("PLUGIN_HOST_OVERRIDES",
-	"Rewrite hostnames in plugin download requests. Format: host1=proxy1,host2=proxy2. "+
+	"Rewrite hosts in plugin download requests. "+
+		"Format: originalHost1=https://proxy1/path,originalHost2=https://proxy2. "+
 		"Applies to all plugin sources regardless of type.")
 
 // By default `pulumi preview --json` emits a "PreviewDigest" JSON object to stdout. Setting this envvar changes

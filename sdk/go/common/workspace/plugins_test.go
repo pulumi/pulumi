@@ -1124,59 +1124,102 @@ func TestParsePluginHostOverrides(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       string
-		expected    map[string]string
+		expected    map[string]hostOverride
 		expectedErr string
 	}{
 		{
 			name:     "empty string returns empty map",
 			input:    "",
-			expected: map[string]string{},
+			expected: map[string]hostOverride{},
 		},
 		{
-			name:  "single pair",
+			name:  "bare hostname assumes https and empty path",
 			input: "api.github.com=github-api.myproxy.test",
-			expected: map[string]string{
-				"api.github.com": "github-api.myproxy.test",
+			expected: map[string]hostOverride{
+				"api.github.com": {scheme: "https", host: "github-api.myproxy.test", path: ""},
 			},
 		},
 		{
-			name:  "multiple pairs",
-			input: "api.github.com=github-api.myproxy.test,github.com=github-com.myproxy.test",
-			expected: map[string]string{
-				"api.github.com": "github-api.myproxy.test",
-				"github.com":     "github-com.myproxy.test",
+			name:  "full URL with subpath (Artifactory generic remote)",
+			input: "api.github.com=https://testartifactory.my.de/artifactory/github-api-remote",
+			expected: map[string]hostOverride{
+				"api.github.com": {
+					scheme: "https",
+					host:   "testartifactory.my.de",
+					path:   "/artifactory/github-api-remote",
+				},
+			},
+		},
+		{
+			name: "full URL with subpath — trailing slash stripped",
+			input: "api.github.com=https://testartifactory.my.de/artifactory/github-api-remote/",
+			expected: map[string]hostOverride{
+				"api.github.com": {
+					scheme: "https",
+					host:   "testartifactory.my.de",
+					path:   "/artifactory/github-api-remote",
+				},
+			},
+		},
+		{
+			name:  "full URL without path",
+			input: "api.github.com=https://simpleproxy.myproxy.test",
+			expected: map[string]hostOverride{
+				"api.github.com": {scheme: "https", host: "simpleproxy.myproxy.test", path: ""},
+			},
+		},
+		{
+			name: "multiple pairs with subpaths",
+			input: "api.github.com=https://artifactory.example.com/artifactory/github-api," +
+				"github.com=https://artifactory.example.com/artifactory/github-com",
+			expected: map[string]hostOverride{
+				"api.github.com": {
+					scheme: "https",
+					host:   "artifactory.example.com",
+					path:   "/artifactory/github-api",
+				},
+				"github.com": {
+					scheme: "https",
+					host:   "artifactory.example.com",
+					path:   "/artifactory/github-com",
+				},
 			},
 		},
 		{
 			name:  "host with port",
-			input: "localhost:8080=proxy.example.com:9090",
-			expected: map[string]string{
-				"localhost:8080": "proxy.example.com:9090",
+			input: "localhost:8080=https://proxy.example.com:9090/base",
+			expected: map[string]hostOverride{
+				"localhost:8080": {scheme: "https", host: "proxy.example.com:9090", path: "/base"},
 			},
 		},
 		{
-			name:        "missing value",
-			input:       "api.github.com=",
-			expectedErr: `expected format to be "host1=proxy1,host2=proxy2"; got "api.github.com="`,
-		},
-		{
-			name:        "missing key",
-			input:       "=myproxy.test",
-			expectedErr: `expected format to be "host1=proxy1,host2=proxy2"; got "=myproxy.test"`,
-		},
-		{
-			name:        "no equals sign",
-			input:       "api.github.com",
-			expectedErr: `expected format to be "host1=proxy1,host2=proxy2"; got "api.github.com"`,
-		},
-		{
-			name:  "three pairs",
-			input: "api.github.com=a.proxy.test,github.com=b.proxy.test,get.pulumi.com=c.proxy.test",
-			expected: map[string]string{
-				"api.github.com": "a.proxy.test",
-				"github.com":     "b.proxy.test",
-				"get.pulumi.com": "c.proxy.test",
+			name: "three pairs covering all default sources",
+			input: "api.github.com=https://a.proxy.test/gh-api," +
+				"github.com=https://a.proxy.test/gh-com," +
+				"get.pulumi.com=https://a.proxy.test/pulumi",
+			expected: map[string]hostOverride{
+				"api.github.com": {scheme: "https", host: "a.proxy.test", path: "/gh-api"},
+				"github.com":     {scheme: "https", host: "a.proxy.test", path: "/gh-com"},
+				"get.pulumi.com": {scheme: "https", host: "a.proxy.test", path: "/pulumi"},
 			},
+		},
+		{
+			name: "missing value",
+			input: "api.github.com=",
+			expectedErr: `expected format to be "host1=https://proxy1/path,host2=https://proxy2"; ` +
+				`got "api.github.com="`,
+		},
+		{
+			name: "missing key",
+			input: "=https://myproxy.test",
+			expectedErr: `expected format to be "host1=https://proxy1/path,host2=https://proxy2"; ` +
+				`got "=https://myproxy.test"`,
+		},
+		{
+			name: "no equals sign",
+			input: "api.github.com",
+			expectedErr: `expected format to be "host1=https://proxy1/path,host2=https://proxy2"; ` +
+				`got "api.github.com"`,
 		},
 	}
 
@@ -1195,37 +1238,41 @@ func TestParsePluginHostOverrides(t *testing.T) {
 }
 
 // TestPluginHostOverridesBuildRequest verifies that host overrides are applied transparently
-// in buildHTTPRequest for every source type.
+// in buildHTTPRequest for every source type, including the Artifactory subpath case.
 //
 //nolint:paralleltest // mutates pluginHostOverridesParsed
 func TestPluginHostOverridesBuildRequest(t *testing.T) {
 	const (
-		apiProxy = "github-api.myproxy.test"
-		dlProxy  = "github-com.myproxy.test"
+		artifactoryHost = "testartifactory.my.de"
+		apiPath         = "/artifactory/github-api-generic-remote"
+		dlPath          = "/artifactory/github-com-generic-remote"
+		pulumiPath      = "/artifactory/pulumi-generic-remote"
 	)
 	expectedBytes := []byte{1, 2, 3}
 	version := semver.MustParse("1.2.3")
 
 	// setOverrides sets pluginHostOverridesParsed for the duration of the sub-test and
-	// restores it afterwards.
-	setOverrides := func(t *testing.T, m map[string]string) {
+	// restores it on cleanup.
+	setOverrides := func(t *testing.T, m map[string]hostOverride) {
 		t.Helper()
 		orig := pluginHostOverridesParsed
 		pluginHostOverridesParsed = m
 		t.Cleanup(func() { pluginHostOverridesParsed = orig })
 	}
 
-	t.Run("GitHub API host override redirects GetLatestVersion", func(t *testing.T) {
-		setOverrides(t, map[string]string{"api.github.com": apiProxy})
+	t.Run("Artifactory subpath - GetLatestVersion prepends path prefix", func(t *testing.T) {
+		setOverrides(t, map[string]hostOverride{
+			"api.github.com": {scheme: "https", host: artifactoryHost, path: apiPath},
+		})
 
 		spec := PluginDescriptor{Name: "mockdl", Kind: apitype.ResourcePlugin}
 		source, err := spec.GetSource()
 		require.NoError(t, err)
 
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			assert.Equal(t, apiProxy, req.URL.Host)
+			assert.Equal(t, artifactoryHost, req.URL.Host)
 			assert.Equal(t,
-				"https://"+apiProxy+"/repos/pulumi/pulumi-mockdl/releases/latest",
+				"https://"+artifactoryHost+apiPath+"/repos/pulumi/pulumi-mockdl/releases/latest",
 				req.URL.String())
 			return newMockReadCloserString(`{"tag_name":"v1.2.3"}`)
 		}
@@ -1234,10 +1281,10 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		assert.Equal(t, version, *got)
 	})
 
-	t.Run("GitHub download host override redirects direct archive download", func(t *testing.T) {
-		setOverrides(t, map[string]string{
-			"api.github.com": apiProxy, // needed so GetSource finds latest via proxy
-			"github.com":     dlProxy,
+	t.Run("Artifactory subpath - direct archive download prepends path prefix", func(t *testing.T) {
+		setOverrides(t, map[string]hostOverride{
+			"api.github.com": {scheme: "https", host: artifactoryHost, path: apiPath},
+			"github.com":     {scheme: "https", host: artifactoryHost, path: dlPath},
 		})
 
 		spec := PluginDescriptor{
@@ -1249,9 +1296,10 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			assert.Equal(t, dlProxy, req.URL.Host)
+			assert.Equal(t, artifactoryHost, req.URL.Host)
 			assert.Equal(t,
-				"https://"+dlProxy+"/pulumi/pulumi-mockdl/releases/download/v1.2.3/"+
+				"https://"+artifactoryHost+dlPath+
+					"/pulumi/pulumi-mockdl/releases/download/v1.2.3/"+
 					"pulumi-resource-mockdl-v1.2.3-linux-amd64.tar.gz",
 				req.URL.String())
 			return newMockReadCloser(expectedBytes)
@@ -1264,13 +1312,13 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		assert.Equal(t, expectedBytes, b)
 	})
 
-	t.Run("both GitHub hosts overridden - API fallback path rewrites asset URL", func(t *testing.T) {
+	t.Run("Artifactory subpath - API fallback rewrites asset URL host+path", func(t *testing.T) {
 		// Direct download returns 404 → falls back to release API.
-		// The asset URL embedded in the API JSON response references api.github.com; because
-		// buildHTTPRequest rewrites the host, the follow-up download also goes to the proxy.
-		setOverrides(t, map[string]string{
-			"api.github.com": apiProxy,
-			"github.com":     dlProxy,
+		// The asset URL in the API JSON references api.github.com; buildHTTPRequest rewrites it
+		// to the Artifactory path before the follow-up download is made.
+		setOverrides(t, map[string]hostOverride{
+			"api.github.com": {scheme: "https", host: artifactoryHost, path: apiPath},
+			"github.com":     {scheme: "https", host: artifactoryHost, path: dlPath},
 		})
 
 		spec := PluginDescriptor{
@@ -1282,20 +1330,22 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		assetName := "pulumi-resource-mockdl-v1.2.3-linux-amd64.tar.gz"
-		// GitHub API always returns api.github.com-absolute asset URLs.
+		// GitHub API always returns api.github.com-absolute asset URLs in its JSON.
 		apiAssetURL := "https://api.github.com/repos/pulumi/pulumi-mockdl/releases/assets/99"
 
 		var seen []string
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
 			seen = append(seen, req.URL.String())
 			switch req.URL.String() {
-			case "https://" + dlProxy + "/pulumi/pulumi-mockdl/releases/download/v1.2.3/" + assetName:
+			case "https://" + artifactoryHost + dlPath +
+				"/pulumi/pulumi-mockdl/releases/download/v1.2.3/" + assetName:
 				return nil, -1, errors.New("404 not found")
-			case "https://" + apiProxy + "/repos/pulumi/pulumi-mockdl/releases/tags/v1.2.3":
+			case "https://" + artifactoryHost + apiPath +
+				"/repos/pulumi/pulumi-mockdl/releases/tags/v1.2.3":
 				return newMockReadCloserString(
 					`{"assets":[{"name":"` + assetName + `","url":"` + apiAssetURL + `"}]}`)
-			case "https://" + apiProxy + "/repos/pulumi/pulumi-mockdl/releases/assets/99":
-				// buildHTTPRequest rewrote api.github.com → apiProxy before the request fired.
+			case "https://" + artifactoryHost + apiPath +
+				"/repos/pulumi/pulumi-mockdl/releases/assets/99":
 				return newMockReadCloser(expectedBytes)
 			default:
 				t.Errorf("unexpected request: %s", req.URL)
@@ -1310,16 +1360,23 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		assert.Equal(t, expectedBytes, b)
 
 		require.Len(t, seen, 3)
-		assert.Equal(t, "https://"+dlProxy+"/pulumi/pulumi-mockdl/releases/download/v1.2.3/"+assetName, seen[0])
-		assert.Equal(t, "https://"+apiProxy+"/repos/pulumi/pulumi-mockdl/releases/tags/v1.2.3", seen[1])
-		assert.Equal(t, "https://"+apiProxy+"/repos/pulumi/pulumi-mockdl/releases/assets/99", seen[2])
+		assert.Equal(t,
+			"https://"+artifactoryHost+dlPath+"/pulumi/pulumi-mockdl/releases/download/v1.2.3/"+assetName,
+			seen[0])
+		assert.Equal(t,
+			"https://"+artifactoryHost+apiPath+"/repos/pulumi/pulumi-mockdl/releases/tags/v1.2.3",
+			seen[1])
+		assert.Equal(t,
+			"https://"+artifactoryHost+apiPath+"/repos/pulumi/pulumi-mockdl/releases/assets/99",
+			seen[2])
 	})
 
-	t.Run("get.pulumi.com host override redirects fallback source", func(t *testing.T) {
-		setOverrides(t, map[string]string{
-			"api.github.com": apiProxy,   // make GitHub steps fail visibly
-			"github.com":     dlProxy,    // make GitHub direct download fail
-			"get.pulumi.com": "pulumi-proxy.myproxy.test",
+	t.Run("Artifactory subpath - get.pulumi.com fallback prepends path prefix", func(t *testing.T) {
+		setOverrides(t, map[string]hostOverride{
+			// Make GitHub attempts fail so fallbackSource reaches get.pulumi.com.
+			"api.github.com": {scheme: "https", host: artifactoryHost, path: apiPath},
+			"github.com":     {scheme: "https", host: artifactoryHost, path: dlPath},
+			"get.pulumi.com": {scheme: "https", host: artifactoryHost, path: pulumiPath},
 		})
 
 		spec := PluginDescriptor{
@@ -1333,21 +1390,12 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			switch req.URL.Host {
-			case dlProxy:
-				return nil, -1, errors.New("404 not found")
-			case apiProxy:
-				return nil, -1, errors.New("404 not found")
-			case "pulumi-proxy.myproxy.test":
-				assert.Equal(t,
-					"https://pulumi-proxy.myproxy.test/releases/plugins/"+
-						"pulumi-resource-otherdl-v1.2.3-linux-amd64.tar.gz",
-					req.URL.String())
+			if req.URL.Host == artifactoryHost && req.URL.Path == pulumiPath+
+				"/releases/plugins/pulumi-resource-otherdl-v1.2.3-linux-amd64.tar.gz" {
 				return newMockReadCloser(expectedBytes)
-			default:
-				t.Errorf("unexpected host: %s", req.URL.Host)
-				return nil, -1, errors.New("unexpected host")
 			}
+			// GitHub attempts return 404 to trigger the fallback.
+			return nil, -1, errors.New("404 not found")
 		}
 		r, l, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
 		require.NoError(t, err)
@@ -1357,8 +1405,10 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		assert.Equal(t, expectedBytes, b)
 	})
 
-	t.Run("GitLab host override redirects download", func(t *testing.T) {
-		setOverrides(t, map[string]string{"gitlab.com": "gitlab-proxy.myproxy.test"})
+	t.Run("Artifactory subpath - GitLab download prepends path prefix", func(t *testing.T) {
+		setOverrides(t, map[string]hostOverride{
+			"gitlab.com": {scheme: "https", host: artifactoryHost, path: "/artifactory/gitlab-remote"},
+		})
 
 		spec := PluginDescriptor{
 			Name:              "mockdl",
@@ -1370,7 +1420,9 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		require.NoError(t, err)
 
 		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
-			assert.Equal(t, "gitlab-proxy.myproxy.test", req.URL.Host)
+			assert.Equal(t, artifactoryHost, req.URL.Host)
+			assert.True(t, strings.HasPrefix(req.URL.Path, "/artifactory/gitlab-remote/"),
+				"expected path to start with Artifactory prefix, got: %s", req.URL.Path)
 			return newMockReadCloser(expectedBytes)
 		}
 		r, l, err := source.Download(t.Context(), version, "linux", "amd64", getHTTPResponse)
@@ -1381,8 +1433,29 @@ func TestPluginHostOverridesBuildRequest(t *testing.T) {
 		assert.Equal(t, expectedBytes, b)
 	})
 
+	t.Run("bare hostname (no path) still works", func(t *testing.T) {
+		setOverrides(t, map[string]hostOverride{
+			"api.github.com": {scheme: "https", host: "simpleproxy.myproxy.test", path: ""},
+		})
+
+		spec := PluginDescriptor{Name: "mockdl", Kind: apitype.ResourcePlugin}
+		source, err := spec.GetSource()
+		require.NoError(t, err)
+
+		getHTTPResponse := func(req *http.Request) (io.ReadCloser, int64, error) {
+			assert.Equal(t, "simpleproxy.myproxy.test", req.URL.Host)
+			assert.Equal(t,
+				"https://simpleproxy.myproxy.test/repos/pulumi/pulumi-mockdl/releases/latest",
+				req.URL.String())
+			return newMockReadCloserString(`{"tag_name":"v1.2.3"}`)
+		}
+		got, err := source.GetLatestVersion(t.Context(), getHTTPResponse)
+		require.NoError(t, err)
+		assert.Equal(t, version, *got)
+	})
+
 	t.Run("no overrides leaves URLs unchanged", func(t *testing.T) {
-		setOverrides(t, map[string]string{})
+		setOverrides(t, map[string]hostOverride{})
 
 		spec := PluginDescriptor{Name: "mockdl", Kind: apitype.ResourcePlugin}
 		source, err := spec.GetSource()
