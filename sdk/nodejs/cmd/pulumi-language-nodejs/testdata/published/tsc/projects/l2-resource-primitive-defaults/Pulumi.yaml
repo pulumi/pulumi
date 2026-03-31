@@ -1,0 +1,5 @@
+name: l2-resource-primitive-defaults
+runtime:
+  name: nodejs
+  options:
+    typescript: false

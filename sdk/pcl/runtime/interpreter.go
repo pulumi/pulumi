@@ -874,6 +874,7 @@ func (i *Interpreter) registerResourceWith(
 	}
 
 	if schemaResource != nil {
+		applySchemaInputDefaults(inputs, schemaResource)
 		for _, input := range schemaResource.InputProperties {
 			if input.Secret {
 				key := resource.PropertyKey(input.Name)
@@ -1489,6 +1490,19 @@ func (i *Interpreter) registerResourceWith(
 	})
 
 	return propertyValueToCty(ctx, i.monitor, result)
+}
+
+func applySchemaInputDefaults(inputs resource.PropertyMap, schemaResource *schema.Resource) {
+	for _, input := range schemaResource.InputProperties {
+		if input.DefaultValue == nil {
+			continue
+		}
+		key := resource.PropertyKey(input.Name)
+		if _, exists := inputs[key]; exists {
+			continue
+		}
+		inputs[key] = resource.NewPropertyValue(input.DefaultValue.Value)
+	}
 }
 
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
