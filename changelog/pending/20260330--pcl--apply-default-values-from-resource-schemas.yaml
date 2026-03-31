@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pcl
+  description: Apply default values from resource schemas
