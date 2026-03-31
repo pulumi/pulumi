@@ -274,6 +274,9 @@ type PolicyPackMetadata struct {
 	// The configuration that is to be passed to the Policy Pack. This
 	// map ties Policies with their configuration.
 	Config map[string]*json.RawMessage `json:"config,omitempty"`
+
+	// References to ESC environments to use for this policy pack.
+	Environments []string `json:"environments,omitempty"`
 }
 
 // ListPolicyPacksResponse is the response to list an organization's
