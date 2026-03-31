@@ -106,6 +106,8 @@ type Options struct {
 	ContinueOnError bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
+	// true if the engine should display secrets in diagnostic messages.
+	ShowSecrets bool
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the

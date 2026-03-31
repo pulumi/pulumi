@@ -661,6 +661,43 @@ func (v PropertyValue) String() string {
 	return fmt.Sprintf("{%v}", v.V)
 }
 
+// RedactSecrets is similar to String(), but redacts any secrets it encounters in the property value,
+// including secrets nested inside objects and arrays.
+func (v PropertyValue) RedactSecrets() string {
+	return v.redactSecrets().String()
+}
+
+// redactSecrets returns a copy of the property value with all secrets replaced by "[secret]".
+func (v PropertyValue) redactSecrets() PropertyValue {
+	switch {
+	case v.IsSecret():
+		return NewProperty("[secret]")
+	case v.IsOutput():
+		o := v.OutputValue()
+		if o.Secret {
+			return NewProperty("[secret]")
+		}
+		return NewProperty(Output{
+			Element: o.Element.redactSecrets(),
+			Known:   o.Known,
+		})
+	case v.IsArray():
+		arr := make([]PropertyValue, len(v.ArrayValue()))
+		for i, e := range v.ArrayValue() {
+			arr[i] = e.redactSecrets()
+		}
+		return NewProperty(arr)
+	case v.IsObject():
+		obj := make(PropertyMap, len(v.ObjectValue()))
+		for k, e := range v.ObjectValue() {
+			obj[k] = e.redactSecrets()
+		}
+		return NewProperty(obj)
+	default:
+		return v
+	}
+}
+
 // Property is a pair of key and value.
 type Property struct {
 	Key   PropertyKey
