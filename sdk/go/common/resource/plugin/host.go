@@ -328,8 +328,9 @@ type PolicyAnalyzerOptions struct {
 	Stack            string
 	Config           map[config.Key]string
 	ConfigSecretKeys []config.Key
-	DryRun           bool
-	Tags             map[string]string // Tags for the current stack.
+	DryRun               bool
+	Tags                 map[string]string // Tags for the current stack.
+	EnvironmentVariables map[string]string // ESC environment variables for this policy pack.
 }
 
 type pluginLoadRequest struct {

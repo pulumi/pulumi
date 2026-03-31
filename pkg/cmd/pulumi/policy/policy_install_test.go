@@ -47,6 +47,7 @@ var _ engine.RequiredPolicy = (*mockRequiredPolicy)(nil)
 func (m *mockRequiredPolicy) Name() string                        { return m.name }
 func (m *mockRequiredPolicy) Version() string                     { return m.version }
 func (m *mockRequiredPolicy) Config() map[string]*json.RawMessage { return m.config }
+func (m *mockRequiredPolicy) EnvironmentVariables() map[string]string { return nil }
 func (m *mockRequiredPolicy) Installed() bool                     { return m.installed }
 func (m *mockRequiredPolicy) LocalPath() (string, error)          { return "/path/to/" + m.name, nil }
 

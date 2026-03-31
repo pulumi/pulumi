@@ -92,6 +92,9 @@ type RequiredPolicy struct {
 	// mapped to their configuration. Each individual configuration must comply with the
 	// JSON schema for each Policy within the Policy Pack.
 	Config map[string]*json.RawMessage `json:"config,omitempty"`
+
+	// Resolved environment variables from ESC environments to inject into the policy pack process.
+	EnvironmentVariables map[string]string `json:"environmentVariables,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.

@@ -59,6 +59,8 @@ type RequiredPolicy interface {
 	Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error
 	// Config returns the PolicyPack's configuration.
 	Config() map[string]*json.RawMessage
+	// EnvironmentVariables returns resolved ESC environment variables for this policy pack.
+	EnvironmentVariables() map[string]string
 }
 
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
@@ -361,7 +363,11 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, analyzerOpts)
+			// Create per-policy options with ESC environment variables.
+			policyOpts := *analyzerOpts
+			policyOpts.EnvironmentVariables = policy.EnvironmentVariables()
+
+			analyzer, err := plugctx.Host.PolicyAnalyzer(tokens.QName(policy.Name()), policyPath, &policyOpts)
 			if err != nil {
 				errs <- err
 				return

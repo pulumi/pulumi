@@ -78,6 +78,10 @@ func (p *testRequiredPolicy) Config() map[string]*json.RawMessage {
 	return p.config
 }
 
+func (p *testRequiredPolicy) EnvironmentVariables() map[string]string {
+	return nil
+}
+
 func NewRequiredPolicy(name, version string, config map[string]*json.RawMessage) RequiredPolicy {
 	return &testRequiredPolicy{
 		name:    name,

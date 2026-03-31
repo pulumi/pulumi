@@ -116,6 +116,9 @@ func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context, content io.ReadClose
 }
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
+func (rp *cloudRequiredPolicy) EnvironmentVariables() map[string]string {
+	return rp.RequiredPolicy.EnvironmentVariables
+}
 
 func newCloudBackendPolicyPackReference(
 	cloudConsoleURL, orgName string, name tokens.QName,

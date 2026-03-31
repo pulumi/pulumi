@@ -977,6 +977,11 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) 
 	maybeAppendEnv("PULUMI_CONFIG", config)
 
 	if opts != nil {
+		// Inject ESC environment variables for this policy pack.
+		for k, v := range opts.EnvironmentVariables {
+			store[k] = v
+		}
+
 		// Set both PULUMI_NODEJS_* and PULUMI_* environment variables for Node.js. The Node.js
 		// SDK currently looks for the PULUMI_NODEJS_* variants only, but we'd like to move to
 		// using the more general PULUMI_* variants for all languages to avoid special casing
