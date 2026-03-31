@@ -3637,11 +3637,14 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 	for _, r := range snap.Resources {
 		switch r.URN.Name() {
 		case "resA":
-			assert.NotContains(t, r.Outputs, resource.PropertyKey("refreshed"), "resA should NOT have been refreshed (not targeted)")
+			assert.NotContains(t, r.Outputs,
+				resource.PropertyKey("refreshed"), "resA should NOT have been refreshed (not targeted)")
 		case "resB":
-			assert.Equal(t, refreshed, r.Outputs["refreshed"], "resB should have been refreshed")
+			assert.Equal(t, refreshed,
+				r.Outputs["refreshed"], "resB should have been refreshed")
 		case "resC":
-			assert.NotContains(t, r.Outputs, resource.PropertyKey("refreshed"), "resC should NOT have been refreshed (not targeted)")
+			assert.NotContains(t, r.Outputs,
+				resource.PropertyKey("refreshed"), "resC should NOT have been refreshed (not targeted)")
 		}
 	}
 }
