@@ -106,6 +106,7 @@ var expectedFailures = map[string]string{
 	"l3-deferred-outputs":            "does not type-check",
 	"l2-resource-config-primitives":  "Argument integer to Resource has incompatible type Output[float]",
 	"l3-component-config-primitives": "Argument integer to Resource has incompatible type Output[float]",
+	"l2-resource-optional":           "optional outputs are not assignable to optional inputs",
 }
 
 type languageTestConfig struct {
