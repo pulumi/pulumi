@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: ci
+  description: Exclude Node.js code generation tools from codecov patch coverage
