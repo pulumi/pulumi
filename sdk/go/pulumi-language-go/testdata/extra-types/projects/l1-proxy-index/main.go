@@ -12,9 +12,9 @@ func main() {
 		cfg.RequireObject("anObject", &anObject)
 		var anyObject interface{}
 		cfg.RequireObject("anyObject", &anyObject)
-		l := pulumi.ToSecret([]float64{
+		l := pulumi.ToSecret([]int{
 			1,
-		}).(pulumi.Float64ArrayOutput)
+		}).(pulumi.IntArrayOutput)
 		m := pulumi.ToSecret(map[string]interface{}{
 			"key": true,
 		}).(pulumi.MapOutput)
@@ -23,9 +23,9 @@ func main() {
 			"property": "value",
 		}).(pulumi.MapOutput)
 		a := pulumi.ToSecret(pulumi.Any(anyObject)).(pulumi.AnyOutput)
-		ctx.Export("l", l.ApplyT(func(l []float64) (float64, error) {
+		ctx.Export("l", l.ApplyT(func(l []int) (int, error) {
 			return l[0], nil
-		}).(pulumi.Float64Output))
+		}).(pulumi.IntOutput))
 		ctx.Export("m", m.ApplyT(func(m map[string]interface{}) (bool, error) {
 			return m["key"].(bool), nil
 		}).(pulumi.BoolOutput))

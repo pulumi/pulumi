@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pcl
+  description: Type integer literals as integers rather than numbers in PCL
