@@ -2911,6 +2911,9 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 
 func TestInstallMultiComponentGitRepo(t *testing.T) {
 	t.Parallel()
+
+	t.Skip("https://github.com/pulumi/pulumi/issues/22407")
+
 	// TODO[pulumi/pulumi#21154]: This test doesn't work on windows due to exceeding
 	// the 255 character limit when installing the plugin.
 	if runtime.GOOS == "windows" {
