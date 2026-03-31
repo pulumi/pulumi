@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -rn 'IntType\\\\|\"\"\"\"int\"\"\"\"' /Users/fraser/projects/pulumi2/pkg/codegen/pcl/binder*.go)",
+      "Bash(grep -n 'func SimplifyInputUnion' /Users/fraser/projects/pulumi2/pkg/codegen/*.go)",
+      "Bash(find /tmp -name resource.go -path *primitive*)",
+      "Bash(find /Users/fraser/projects/pulumi2 -name schema.json -path *primitive*)",
+      "Bash(find /Users/fraser/projects/pulumi2 -name *.json -path *primitive*)",
+      "Bash(grep -r primitive:index:Resource /Users/fraser/projects/pulumi2/pkg/testing --include=*.go -l)",
+      "Read(//Users/fraser/.claude/projects/**)"
+    ],
+    "additionalDirectories": [
+      "/Users/fraser/.claude/projects/-Users-fraser-projects-pulumi2"
+    ]
+  }
+}

@@ -185,73 +185,129 @@ func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*mod
 	return objectTypes
 }
 
-func componentInputElementType(pclType model.Type) string {
-	switch pclType {
-	case model.BoolType:
-		return "pulumi.BoolInput"
-	case model.IntType:
-		return "pulumi.IntInput"
-	case model.NumberType:
-		return "pulumi.Float64Input"
-	case model.StringType:
-		return "pulumi.StringInput"
-	default:
-		switch pclType := pclType.(type) {
-		case *model.ListType, *model.MapType:
-			return componentInputType(pclType)
-		case *model.OutputType:
-			return componentInputElementType(pclType.ElementType)
-		// reduce option(T) to just T
-		// the generated args class assumes all properties are optional by default
-		case *model.UnionType:
-			if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[0] == model.NoneType {
-				return componentInputElementType(pclType.ElementTypes[1])
-			} else if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[1] == model.NoneType {
-				return componentInputElementType(pclType.ElementTypes[0])
+// findResourceSchemaProperty returns the schema input property for a config variable
+// that has a resource input with the same name in the component program. This handles
+// the common pattern where a component config variable is assigned directly to a
+// resource property of the same name, allowing the more specific schema type (e.g.
+// "integer") to override the more general PCL type (e.g. "number").
+func findResourceSchemaProperty(cv *pcl.ConfigVariable, program *pcl.Program) (*schema.Property, *pcl.Resource) {
+	for _, node := range program.Nodes {
+		resource, ok := node.(*pcl.Resource)
+		if !ok || resource.Schema == nil {
+			continue
+		}
+		for _, input := range resource.Inputs {
+			if input.Name != cv.LogicalName() {
+				continue
 			}
-			return "interface{}"
-		default:
-			return "interface{}"
+			for _, p := range resource.Schema.InputProperties {
+				if p.Name == input.Name && p.Type != nil {
+					return p, resource
+				}
+			}
 		}
 	}
+	return nil, nil
 }
 
-func componentInputType(pclType model.Type) string {
-	switch pclType := pclType.(type) {
+// resourceSchemaInputType returns the Go input type for a config variable based on the
+// schema type of the resource property it is directly assigned to in the component program.
+// This handles the case where a PCL config variable uses a more general type (e.g. "number")
+// but is directly assigned to a resource property with a more specific schema type (e.g.
+// "integer"), ensuring the component args struct field uses the correct input interface.
+// Returns ("", false) if no schema-annotated resource property matches.
+func resourceSchemaInputType(cv *pcl.ConfigVariable, program *pcl.Program) (string, bool) {
+	schemaProp, resource := findResourceSchemaProperty(cv, program)
+	if schemaProp == nil {
+		return "", false
+	}
+	pkg := &pkgContext{pkg: resource.Schema.PackageReference}
+	return pkg.inputType(schemaProp.Type), true
+}
+
+// resourceSchemaModelType returns the model type for a config variable based on the schema
+// type of the resource property it is directly assigned to in the component program.
+// Returns (nil, false) if no schema-annotated resource property matches.
+func resourceSchemaModelType(cv *pcl.ConfigVariable, program *pcl.Program) (model.Type, bool) {
+	schemaProp, _ := findResourceSchemaProperty(cv, program)
+	if schemaProp == nil {
+		return nil, false
+	}
+	// Schema input properties are wrapped in InputType; unwrap before comparing.
+	// Map primitive schema types to their model equivalents.
+	switch codegen.UnwrapType(schemaProp.Type) {
+	case schema.BoolType:
+		return model.BoolType, true
+	case schema.IntType:
+		return model.IntType, true
+	case schema.NumberType:
+		return model.NumberType, true
+	case schema.StringType:
+		return model.StringType, true
+	}
+	return nil, false
+}
+
+// modelTypeToSchemaType converts a primitive, array, or map model type to its
+// schema equivalent, enabling use of the same inputType machinery as resource
+// SDK codegen. Returns (nil, false) for model types with no direct schema
+// counterpart (e.g. schema-unannotated object types, non-trivial union types).
+func modelTypeToSchemaType(t model.Type) (schema.Type, bool) {
+	switch t {
+	case model.BoolType:
+		return schema.BoolType, true
+	case model.IntType:
+		return schema.IntType, true
+	case model.NumberType:
+		return schema.NumberType, true
+	case model.StringType:
+		return schema.StringType, true
+	case model.DynamicType:
+		return schema.AnyType, true
+	}
+	switch t := t.(type) {
 	case *model.ListType:
-		// For primitive element types, use the typed pulumi array input interface
-		// so that args can be passed directly to resource fields without conversion.
-		switch pclType.ElementType {
-		case model.BoolType:
-			return "pulumi.BoolArrayInput"
-		case model.IntType:
-			return "pulumi.IntArrayInput"
-		case model.NumberType:
-			return "pulumi.Float64ArrayInput"
-		case model.StringType:
-			return "pulumi.StringArrayInput"
-		default:
-			elementType := componentInputElementType(pclType.ElementType)
-			return "[]" + elementType
+		if elem, ok := modelTypeToSchemaType(t.ElementType); ok {
+			return &schema.ArrayType{ElementType: elem}, true
 		}
 	case *model.MapType:
-		// For primitive element types, use the typed pulumi map input interface.
-		switch pclType.ElementType {
-		case model.BoolType:
-			return "pulumi.BoolMapInput"
-		case model.IntType:
-			return "pulumi.IntMapInput"
-		case model.NumberType:
-			return "pulumi.Float64MapInput"
-		case model.StringType:
-			return "pulumi.StringMapInput"
-		default:
-			elementType := componentInputElementType(pclType.ElementType)
-			return "map[string]" + elementType
+		if elem, ok := modelTypeToSchemaType(t.ElementType); ok {
+			return &schema.MapType{ElementType: elem}, true
 		}
-	default:
-		return componentInputElementType(pclType)
 	}
+	return nil, false
+}
+
+// componentInputType returns the Go input interface type for a PCL model type
+// used as a component argument field. It mirrors the inputType logic used in
+// resource SDK codegen by converting model types to schema types where
+// possible, so that both code paths produce consistent type names.
+func componentInputType(pclType model.Type) string {
+	// Strip output and option wrappers: component Args fields accept any
+	// input (plain or output) so we use the Input interface for the
+	// underlying type. The generated struct treats all fields as optional.
+	switch t := pclType.(type) {
+	case *model.OutputType:
+		return componentInputType(t.ElementType)
+	case *model.UnionType:
+		// option(T) = union(T, None) — reduce to T.
+		if len(t.ElementTypes) == 2 {
+			if t.ElementTypes[0] == model.NoneType {
+				return componentInputType(t.ElementTypes[1])
+			}
+			if t.ElementTypes[1] == model.NoneType {
+				return componentInputType(t.ElementTypes[0])
+			}
+		}
+		return "interface{}"
+	}
+	// Convert to schema type and use the same inputType function as resource
+	// SDK codegen to produce consistent input interface names.
+	if schemaType, ok := modelTypeToSchemaType(pclType); ok {
+		pkg := &pkgContext{pkg: (&schema.Package{Name: "main"}).Reference()}
+		return pkg.inputType(schemaType)
+	}
+	return "interface{}"
 }
 
 func (g *generator) genComponentArgs(w io.Writer, componentName string, component *pcl.Component) {
@@ -285,6 +341,12 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 			g.Fgen(w, g.Indent)
 			fieldName := Title(config.LogicalName())
 			inputType := componentInputType(config.Type())
+			// If the config variable is directly assigned to a schema-typed resource
+			// property, use the schema's input type for a more specific Go type
+			// (e.g. pulumi.IntInput instead of pulumi.Float64Input for "integer" schema type).
+			if schemaInputType, ok := resourceSchemaInputType(config, component.Program); ok {
+				inputType = schemaInputType
+			}
 			switch configType := config.Type().(type) {
 			case *model.ObjectType:
 				// for objects of type T, generate T as is
@@ -1750,7 +1812,15 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 					}
 				}
 
-				destType := model.NewOutputType(config.Type())
+				// Use the schema-derived model type if the config variable is directly
+				// assigned to a resource property with a more specific schema type
+				// (e.g. integer instead of number). This ensures the correct conversion
+				// is generated for the component invocation argument.
+				configModelType := config.Type()
+				if schemaModelType, ok := resourceSchemaModelType(config, r.Program); ok {
+					configModelType = schemaModelType
+				}
+				destType := model.NewOutputType(configModelType)
 				expr := input.Value
 				if !isDeferredOutputCast(input.Value) {
 					expr, temps = g.lowerExpression(input.Value, destType)
