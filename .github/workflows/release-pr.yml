@@ -38,10 +38,6 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           ref: ${{ inputs.ref }}
-      - name: Install changie
-        run: |
-          CHANGIE_VERSION="1.21.0"
-          curl -sSL "https://github.com/miniscruff/changie/releases/download/v${CHANGIE_VERSION}/changie_${CHANGIE_VERSION}_linux_amd64.tar.gz" | tar xz -C /usr/local/bin changie
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
           go-version-file: sdk/go.mod
@@ -55,11 +51,12 @@ jobs:
           set -euo pipefail
           git switch --create "automation/release-v${PULUMI_VERSION}"
 
-          # Batch pending entries and merge into CHANGELOG.md.
-          # changie batch moves pending/ fragments into a versioned file
-          # and changie merge prepends it to CHANGELOG.md.
-          changie batch "${PULUMI_VERSION}"
-          changie merge
+          # Prepend release notes to CHANGELOG.md and clean up pending entries.
+          # We use the pre-rendered release notes rather than changie merge,
+          # because changie merge rebuilds the full file from batched versions
+          # and would lose the existing changelog history.
+          echo -en "# Changelog\n\n${RELEASE_NOTES}\n\n$(tail -n+3 CHANGELOG.md)" > ./CHANGELOG.md
+          rm ./changelog/pending/.changie-*.yaml || true
 
           git config user.name github-actions
           git config user.email github-actions@github.com
