@@ -483,6 +483,7 @@ class Stack:
         suppress_outputs: Optional[bool] = None,
         suppress_progress: Optional[bool] = None,
         import_file: Optional[str] = None,
+        continue_on_error: Optional[bool] = None,
         attach_debugger: Optional[bool] = None,
         refresh: Optional[bool] = None,
         config_file: Optional[str] = None,
@@ -519,6 +520,7 @@ class Stack:
         :param suppress_outputs: Suppress display of stack outputs (in case they contain sensitive values)
         :param suppress_progress: Suppress display of periodic progress dots
         :param import_file: Save any creates seen during the preview into an import file to use with pulumi import
+        :param continue_on_error: Continue to perform the preview operation despite the occurrence of errors
         :param attach_debugger: Run the process under a debugger, and pause until a debugger is attached
         :param refresh: Refresh the state of the stack's resources against the cloud provider before running preview.
         :param config_file: Path to a Pulumi config file to use for this update.
