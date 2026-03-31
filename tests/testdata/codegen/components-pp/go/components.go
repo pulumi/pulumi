@@ -25,7 +25,7 @@ func main() {
 			return err
 		}
 		exampleComponent, err := NewExampleComponent(ctx, "exampleComponent", &ExampleComponentArgs{
-			Input: "doggo",
+			Input: pulumi.String("doggo"),
 			IpAddress: pulumi.IntArray{
 				pulumi.Int(127),
 				pulumi.Int(0),

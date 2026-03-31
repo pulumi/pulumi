@@ -185,48 +185,129 @@ func collectObjectTypedConfigVariables(component *pcl.Component) map[string]*mod
 	return objectTypes
 }
 
-func componentInputElementType(pclType model.Type) string {
-	switch pclType {
-	case model.BoolType:
-		return "pulumi.BoolInput"
-	case model.IntType:
-		return "pulumi.IntInput"
-	case model.NumberType:
-		return "pulumi.Float64Input"
-	case model.StringType:
-		return "pulumi.StringInput"
-	default:
-		switch pclType := pclType.(type) {
-		case *model.ListType, *model.MapType:
-			return componentInputType(pclType)
-		case *model.OutputType:
-			return componentInputElementType(pclType.ElementType)
-		// reduce option(T) to just T
-		// the generated args class assumes all properties are optional by default
-		case *model.UnionType:
-			if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[0] == model.NoneType {
-				return componentInputElementType(pclType.ElementTypes[1])
-			} else if len(pclType.ElementTypes) == 2 && pclType.ElementTypes[1] == model.NoneType {
-				return componentInputElementType(pclType.ElementTypes[0])
+// findResourceSchemaProperty returns the schema input property for a config variable
+// that has a resource input with the same name in the component program. This handles
+// the common pattern where a component config variable is assigned directly to a
+// resource property of the same name, allowing the more specific schema type (e.g.
+// "integer") to override the more general PCL type (e.g. "number").
+func findResourceSchemaProperty(cv *pcl.ConfigVariable, program *pcl.Program) (*schema.Property, *pcl.Resource) {
+	for _, node := range program.Nodes {
+		resource, ok := node.(*pcl.Resource)
+		if !ok || resource.Schema == nil {
+			continue
+		}
+		for _, input := range resource.Inputs {
+			if input.Name != cv.LogicalName() {
+				continue
 			}
-			return "interface{}"
-		default:
-			return "interface{}"
+			for _, p := range resource.Schema.InputProperties {
+				if p.Name == input.Name && p.Type != nil {
+					return p, resource
+				}
+			}
 		}
 	}
+	return nil, nil
 }
 
-func componentInputType(pclType model.Type) string {
-	switch pclType := pclType.(type) {
-	case *model.ListType:
-		elementType := componentInputElementType(pclType.ElementType)
-		return "[]" + elementType
-	case *model.MapType:
-		elementType := componentInputElementType(pclType.ElementType)
-		return "map[string]" + elementType
-	default:
-		return componentInputElementType(pclType)
+// resourceSchemaInputType returns the Go input type for a config variable based on the
+// schema type of the resource property it is directly assigned to in the component program.
+// This handles the case where a PCL config variable uses a more general type (e.g. "number")
+// but is directly assigned to a resource property with a more specific schema type (e.g.
+// "integer"), ensuring the component args struct field uses the correct input interface.
+// Returns ("", false) if no schema-annotated resource property matches.
+func resourceSchemaInputType(cv *pcl.ConfigVariable, program *pcl.Program) (string, bool) {
+	schemaProp, resource := findResourceSchemaProperty(cv, program)
+	if schemaProp == nil {
+		return "", false
 	}
+	pkg := &pkgContext{pkg: resource.Schema.PackageReference}
+	return pkg.inputType(schemaProp.Type), true
+}
+
+// resourceSchemaModelType returns the model type for a config variable based on the schema
+// type of the resource property it is directly assigned to in the component program.
+// Returns (nil, false) if no schema-annotated resource property matches.
+func resourceSchemaModelType(cv *pcl.ConfigVariable, program *pcl.Program) (model.Type, bool) {
+	schemaProp, _ := findResourceSchemaProperty(cv, program)
+	if schemaProp == nil {
+		return nil, false
+	}
+	// Schema input properties are wrapped in InputType; unwrap before comparing.
+	// Map primitive schema types to their model equivalents.
+	switch codegen.UnwrapType(schemaProp.Type) {
+	case schema.BoolType:
+		return model.BoolType, true
+	case schema.IntType:
+		return model.IntType, true
+	case schema.NumberType:
+		return model.NumberType, true
+	case schema.StringType:
+		return model.StringType, true
+	}
+	return nil, false
+}
+
+// modelTypeToSchemaType converts a primitive, array, or map model type to its
+// schema equivalent, enabling use of the same inputType machinery as resource
+// SDK codegen. Returns (nil, false) for model types with no direct schema
+// counterpart (e.g. schema-unannotated object types, non-trivial union types).
+func modelTypeToSchemaType(t model.Type) (schema.Type, bool) {
+	switch t {
+	case model.BoolType:
+		return schema.BoolType, true
+	case model.IntType:
+		return schema.IntType, true
+	case model.NumberType:
+		return schema.NumberType, true
+	case model.StringType:
+		return schema.StringType, true
+	case model.DynamicType:
+		return schema.AnyType, true
+	}
+	switch t := t.(type) {
+	case *model.ListType:
+		if elem, ok := modelTypeToSchemaType(t.ElementType); ok {
+			return &schema.ArrayType{ElementType: elem}, true
+		}
+	case *model.MapType:
+		if elem, ok := modelTypeToSchemaType(t.ElementType); ok {
+			return &schema.MapType{ElementType: elem}, true
+		}
+	}
+	return nil, false
+}
+
+// componentInputType returns the Go input interface type for a PCL model type
+// used as a component argument field. It mirrors the inputType logic used in
+// resource SDK codegen by converting model types to schema types where
+// possible, so that both code paths produce consistent type names.
+func componentInputType(pclType model.Type) string {
+	// Strip output and option wrappers: component Args fields accept any
+	// input (plain or output) so we use the Input interface for the
+	// underlying type. The generated struct treats all fields as optional.
+	switch t := pclType.(type) {
+	case *model.OutputType:
+		return componentInputType(t.ElementType)
+	case *model.UnionType:
+		// option(T) = union(T, None) — reduce to T.
+		if len(t.ElementTypes) == 2 {
+			if t.ElementTypes[0] == model.NoneType {
+				return componentInputType(t.ElementTypes[1])
+			}
+			if t.ElementTypes[1] == model.NoneType {
+				return componentInputType(t.ElementTypes[0])
+			}
+		}
+		return "interface{}"
+	}
+	// Convert to schema type and use the same inputType function as resource
+	// SDK codegen to produce consistent input interface names.
+	if schemaType, ok := modelTypeToSchemaType(pclType); ok {
+		pkg := &pkgContext{pkg: (&schema.Package{Name: "main"}).Reference()}
+		return pkg.inputType(schemaType)
+	}
+	return "interface{}"
 }
 
 func (g *generator) genComponentArgs(w io.Writer, componentName string, component *pcl.Component) {
@@ -260,6 +341,12 @@ func (g *generator) genComponentArgs(w io.Writer, componentName string, componen
 			g.Fgen(w, g.Indent)
 			fieldName := Title(config.LogicalName())
 			inputType := componentInputType(config.Type())
+			// If the config variable is directly assigned to a schema-typed resource
+			// property, use the schema's input type for a more specific Go type
+			// (e.g. pulumi.IntInput instead of pulumi.Float64Input for "integer" schema type).
+			if schemaInputType, ok := resourceSchemaInputType(config, component.Program); ok {
+				inputType = schemaInputType
+			}
 			switch configType := config.Type().(type) {
 			case *model.ObjectType:
 				// for objects of type T, generate T as is
@@ -1700,11 +1787,59 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	for _, input := range componentInputs {
 		for _, config := range configVariables {
 			if config.Name() == input.Name {
-				destType := model.NewOutputType(config.Type())
+				// Plain (non-secret) list/map config variables with primitive element types are
+				// generated by genConfigVariable as typed pulumi arrays/maps (e.g. pulumi.Float64Array)
+				// that already implement the corresponding pulumi input interface. When the input
+				// value is a scope traversal of one of those main-program config variables, forcing an
+				// output conversion would emit pulumi.ToArray/pulumi.ToMap which loses the typed
+				// interface. Only skip for scope traversals (not literals or other expressions).
+				if !config.Secret {
+					resolvedType := model.ResolveOutputs(config.Type())
+					isPrimListMap := false
+					if listType, ok := resolvedType.(*model.ListType); ok && primitiveGoType(listType.ElementType) != "" {
+						isPrimListMap = true
+					}
+					if mapType, ok := resolvedType.(*model.MapType); ok && primitiveGoType(mapType.ElementType) != "" {
+						isPrimListMap = true
+					}
+					if isPrimListMap {
+						if st, ok := input.Value.(*model.ScopeTraversalExpression); ok {
+							if configVar, ok := st.Parts[0].(*pcl.ConfigVariable); ok && !configVar.Secret {
+								_ = configVar
+								break
+							}
+						}
+					}
+				}
+
+				// Use the schema-derived model type if the config variable is directly
+				// assigned to a resource property with a more specific schema type
+				// (e.g. integer instead of number). This ensures the correct conversion
+				// is generated for the component invocation argument.
+				configModelType := config.Type()
+				if schemaModelType, ok := resourceSchemaModelType(config, r.Program); ok {
+					configModelType = schemaModelType
+				}
+				destType := model.NewOutputType(configModelType)
 				expr := input.Value
 				if !isDeferredOutputCast(input.Value) {
 					expr, temps = g.lowerExpression(input.Value, destType)
 					g.genTemps(w, temps)
+					// RewriteConversions skips conversions when Output[T].AssignableFrom(T),
+					// so non-output expressions don't get __convert wrappers. Add one explicitly
+					// so the code generator emits pulumi.Bool/Float64/String/etc. for scalar
+					// values and pulumi.Float64(x+y) for computed expressions. Skip for
+					// ObjectConsExpression and TupleConsExpression since those are rendered
+					// correctly by genObjectConsExpression/genTupleConsExpression without
+					// output-type wrapping (wrapping causes wrong type names, e.g.
+					// pulumi.StringMap instead of &GithubAppArgs).
+					if _, isOutput := expr.Type().(*model.OutputType); !isOutput {
+						_, isObjectCons := expr.(*model.ObjectConsExpression)
+						_, isTupleCons := expr.(*model.TupleConsExpression)
+						if !isObjectCons && !isTupleCons {
+							expr = pcl.NewConvertCall(expr, destType)
+						}
+					}
 				}
 				input.Value = expr
 			}
@@ -2026,6 +2161,87 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	}
 }
 
+// primitiveGoType returns the plain Go type for a primitive PCL model type,
+// or "" if the type is not a supported primitive.
+func primitiveGoType(elemType model.Type) string {
+	switch elemType {
+	case model.BoolType:
+		return "bool"
+	case model.IntType:
+		return "int"
+	case model.NumberType:
+		return "float64"
+	case model.StringType:
+		return "string"
+	default:
+		return ""
+	}
+}
+
+// pulumiToArrayFunc returns the pulumi.ToXxxArray function name for a primitive element type.
+func pulumiToArrayFunc(elemType model.Type) string {
+	switch elemType {
+	case model.BoolType:
+		return "ToBoolArray"
+	case model.IntType:
+		return "ToIntArray"
+	case model.NumberType:
+		return "ToFloat64Array"
+	case model.StringType:
+		return "ToStringArray"
+	default:
+		return ""
+	}
+}
+
+// pulumiToMapFunc returns the pulumi.ToXxxMap function name for a primitive element type.
+func pulumiToMapFunc(elemType model.Type) string {
+	switch elemType {
+	case model.BoolType:
+		return "ToBoolMap"
+	case model.IntType:
+		return "ToIntMap"
+	case model.NumberType:
+		return "ToFloat64Map"
+	case model.StringType:
+		return "ToStringMap"
+	default:
+		return ""
+	}
+}
+
+// pulumiArrayOutputType returns the pulumi typed array output type for a primitive element type.
+func pulumiArrayOutputType(elemType model.Type) string {
+	switch elemType {
+	case model.BoolType:
+		return "pulumi.BoolArrayOutput"
+	case model.IntType:
+		return "pulumi.IntArrayOutput"
+	case model.NumberType:
+		return "pulumi.Float64ArrayOutput"
+	case model.StringType:
+		return "pulumi.StringArrayOutput"
+	default:
+		return ""
+	}
+}
+
+// pulumiMapOutputType returns the pulumi typed map output type for a primitive element type.
+func pulumiMapOutputType(elemType model.Type) string {
+	switch elemType {
+	case model.BoolType:
+		return "pulumi.BoolMapOutput"
+	case model.IntType:
+		return "pulumi.IntMapOutput"
+	case model.NumberType:
+		return "pulumi.Float64MapOutput"
+	case model.StringType:
+		return "pulumi.StringMapOutput"
+	default:
+		return ""
+	}
+}
+
 func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	if !g.configCreated {
 		g.Fprint(w, "cfg := config.New(ctx, \"\")\n")
@@ -2072,6 +2288,59 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	}
 
 	name := makeValidIdentifier(v.Name())
+
+	// Handle list and map config types specially: the standard cfg.Require methods
+	// return strings, but list/map types need proper typed deserialization and
+	// conversion to Pulumi's typed input/output types.
+	if listType, ok := configType.(*model.ListType); ok && v.DefaultValue == nil {
+		if goElemType := primitiveGoType(listType.ElementType); goElemType != "" {
+			if v.Secret {
+				// Secret: RequireSecret returns StringOutput; apply JSON parsing to get typed output.
+				outType := pulumiArrayOutputType(listType.ElementType)
+				g.importer.Import("encoding/json", "json")
+				g.Fgenf(w, "%s := cfg.RequireSecret(\"%s\").ApplyT(func(s string) ([]%s, error) {\n",
+					name, v.LogicalName(), goElemType)
+				g.Fgenf(w, "var vals []%s\n", goElemType)
+				g.Fgenf(w, "if err := json.Unmarshal([]byte(s), &vals); err != nil {\n")
+				g.Fgenf(w, "return nil, err\n")
+				g.Fgenf(w, "}\n")
+				g.Fgenf(w, "return vals, nil\n")
+				g.Fgenf(w, "}).(%s)\n", outType)
+			} else {
+				// Plain: RequireObject deserializes JSON into a Go slice; then convert to pulumi array.
+				toFunc := pulumiToArrayFunc(listType.ElementType)
+				g.Fgenf(w, "var %sData []%s\n", name, goElemType)
+				g.Fgenf(w, "cfg.RequireObject(\"%s\", &%sData)\n", v.LogicalName(), name)
+				g.Fgenf(w, "%s := pulumi.%s(%sData)\n", name, toFunc, name)
+			}
+			return
+		}
+	}
+	if mapType, ok := configType.(*model.MapType); ok && v.DefaultValue == nil {
+		if goElemType := primitiveGoType(mapType.ElementType); goElemType != "" {
+			if v.Secret {
+				// Secret: RequireSecret returns StringOutput; apply JSON parsing to get typed output.
+				outType := pulumiMapOutputType(mapType.ElementType)
+				g.importer.Import("encoding/json", "json")
+				g.Fgenf(w, "%s := cfg.RequireSecret(\"%s\").ApplyT(func(s string) (map[string]%s, error) {\n",
+					name, v.LogicalName(), goElemType)
+				g.Fgenf(w, "var vals map[string]%s\n", goElemType)
+				g.Fgenf(w, "if err := json.Unmarshal([]byte(s), &vals); err != nil {\n")
+				g.Fgenf(w, "return nil, err\n")
+				g.Fgenf(w, "}\n")
+				g.Fgenf(w, "return vals, nil\n")
+				g.Fgenf(w, "}).(%s)\n", outType)
+			} else {
+				// Plain: RequireObject deserializes JSON into a Go map; then convert to pulumi map.
+				toFunc := pulumiToMapFunc(mapType.ElementType)
+				g.Fgenf(w, "var %sData map[string]%s\n", name, goElemType)
+				g.Fgenf(w, "cfg.RequireObject(\"%s\", &%sData)\n", v.LogicalName(), name)
+				g.Fgenf(w, "%s := pulumi.%s(%sData)\n", name, toFunc, name)
+			}
+			return
+		}
+	}
+
 	if v.DefaultValue == nil {
 		if useObjectConfig {
 			goType := g.argumentTypeName(configType, false)
