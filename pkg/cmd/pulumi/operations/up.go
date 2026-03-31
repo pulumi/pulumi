@@ -282,11 +282,7 @@ func NewUpCmd() *cobra.Command {
 		if summary != nil {
 			summary.EndTime = time.Now()
 			summary.ChangeSummary = changes
-			if err == context.Canceled {
-				summary.Canceled = true
-			} else {
-				summary.Err = err
-			}
+			summary.Err = err
 		}
 
 		switch {
@@ -544,11 +540,7 @@ func NewUpCmd() *cobra.Command {
 		if summary != nil {
 			summary.EndTime = time.Now()
 			summary.ChangeSummary = changes
-			if err == context.Canceled {
-				summary.Canceled = true
-			} else {
-				summary.Err = err
-			}
+			summary.Err = err
 		}
 
 		switch {
@@ -621,11 +613,10 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
-			// Normalize/validate output format. We intentionally keep `--json`
+			// Validate output format. We intentionally keep `--json`
 			// backwards compatible (JSONL events only) and only add the final
 			// JSON operation summary footer when `--format json` is requested.
-			formatNormalized := strings.ToLower(strings.TrimSpace(format))
-			switch formatNormalized {
+			switch format {
 			case "", "default", "json":
 				// No-op.
 			default:

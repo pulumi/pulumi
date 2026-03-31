@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -50,11 +49,6 @@ func TestUp_JSONSummaryFooter(t *testing.T) {
 	var upOut bytes.Buffer
 	writer := &scopedWriter{buf: &upOut}
 
-	// Skip on platforms where node tooling is not expected to be available.
-	if runtime.GOOS == "wasip1" {
-		t.Skip("Unsupported platform")
-	}
-
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                    "single_resource",
 		Dependencies:           []string{"@pulumi/pulumi"},
@@ -81,11 +75,9 @@ func TestUp_JSONSummaryFooter(t *testing.T) {
 	})
 
 	// Find the JSON summary object inside the captured `pulumi up --format json` output.
-	// The output is JSONL (one JSON object per line) and we emit the summary as one final JSON object line.
-	lines := strings.Split(upOut.String(), "\n")
-	var found bool
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := strings.TrimSpace(lines[i])
+	// The output is JSONL (one JSON object per line) and we emit the summary as a single final line.
+	for line := range strings.SplitSeq(upOut.String(), "\n") {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
@@ -98,12 +90,11 @@ func TestUp_JSONSummaryFooter(t *testing.T) {
 			require.Equal(t, ui.OperationResultSucceeded, summary.Result)
 			require.NotEmpty(t, summary.ChangeSummary)
 			require.NotZero(t, summary.Duration)
-			found = true
-			break
+			return
 		}
 	}
 
-	require.True(t, found, "expected to find operation summary JSON in pulumi up output")
+	t.Fatal("expected to find operation summary JSON in pulumi up output")
 }
 
 // Ensure our scopedWriter implements io.Writer.
