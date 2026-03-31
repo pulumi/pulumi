@@ -375,6 +375,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "notImplemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "singleOrNone(%v)", expr.Args[0])
+	case "element":
+		g.Fgenf(w, "%v[%v]", expr.Args[0], expr.Args[1])
 	case "castDeferredOutput":
 		outputType := expr.Args[0].Type()
 		typeParameter := deferredOutputCastTypeParameter(outputType)
@@ -452,6 +454,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		optionsBag = buf.String()
 		g.Fgenf(w, "%v)", optionsBag)
+	case "split":
+		g.Fgenf(w, "strings.Split(%v, %v)", expr.Args[1], expr.Args[0])
 	case "join":
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
 	case "length":
