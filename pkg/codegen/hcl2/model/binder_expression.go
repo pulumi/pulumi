@@ -793,6 +793,7 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 				Val:      newVal,
 			}
 			lit.Value = newVal
+			lit.exprType = NewConstType(literalValueType(newVal), newVal)
 			return lit, diagnostics
 		}
 	}

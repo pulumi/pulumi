@@ -11,29 +11,29 @@ func main() {
 			pulumi.String("Hello"),
 			pulumi.String("World"),
 		})
-		ctx.Export("numbers", pulumi.Float64Array{
-			pulumi.Float64(0),
-			pulumi.Float64(1),
-			pulumi.Float64(2),
-			pulumi.Float64(3),
-			pulumi.Float64(4),
-			pulumi.Float64(5),
+		ctx.Export("numbers", pulumi.IntArray{
+			pulumi.Int(0),
+			pulumi.Int(1),
+			pulumi.Int(2),
+			pulumi.Int(3),
+			pulumi.Int(4),
+			pulumi.Int(5),
 		})
 		ctx.Export("nested", pulumi.Array{
-			pulumi.Float64Array{
-				pulumi.Float64(1),
-				pulumi.Float64(2),
-				pulumi.Float64(3),
+			pulumi.IntArray{
+				pulumi.Int(1),
+				pulumi.Int(2),
+				pulumi.Int(3),
 			},
-			pulumi.Float64Array{
-				pulumi.Float64(4),
-				pulumi.Float64(5),
-				pulumi.Float64(6),
+			pulumi.IntArray{
+				pulumi.Int(4),
+				pulumi.Int(5),
+				pulumi.Int(6),
 			},
-			pulumi.Float64Array{
-				pulumi.Float64(7),
-				pulumi.Float64(8),
-				pulumi.Float64(9),
+			pulumi.IntArray{
+				pulumi.Int(7),
+				pulumi.Int(8),
+				pulumi.Int(9),
 			},
 		})
 		ctx.Export("large", pulumi.StringArray{
