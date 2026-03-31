@@ -444,14 +444,17 @@ def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = 
     return builtins.property(fget=getter_fn)
 
 
-def _py_properties(cls: type) -> Iterator[tuple[str, str, builtins.property]]:
+@functools.cache
+def _py_properties(cls: type) -> tuple[tuple[str, str, builtins.property], ...]:
+    result: list[tuple[str, str, builtins.property]] = []
     for base in reversed(cls.__mro__):
         for python_name, v in base.__dict__.items():
             if isinstance(v, builtins.property):
                 prop = cast(builtins.property, v)
                 pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
                 if pulumi_name is not MISSING:
-                    yield (python_name, cast(str, pulumi_name), prop)
+                    result.append((python_name, cast(str, pulumi_name), prop))
+    return tuple(result)
 
 
 def input_type(cls: type[T]) -> type[T]:
@@ -476,7 +479,7 @@ def input_type(cls: type[T]) -> type[T]:
 
     # Now, process the class's properties, replacing properties with empty setters with
     # an actual setter.
-    for python_name, _, prop in _py_properties(cls):
+    for python_name, _, prop in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
         if prop.fset is not None and _utils.is_empty_function(prop.fset):
             setter_fn = create_setter(python_name)
             setter_fn.__name__ = prop.fset.__name__
@@ -517,7 +520,7 @@ def input_type_to_dict(obj: Any) -> dict[str, Any]:
 
     # Build a dictionary of properties to return
     result: dict[str, Any] = {}
-    for _, pulumi_name, prop in _py_properties(cls):
+    for _, pulumi_name, prop in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
         fget = prop.fget
 
         # If the property has a _pulumi_deprecated_callable attribute, use that
@@ -571,7 +574,7 @@ def output_type(cls: type[T]) -> type[T]:
     # provider codegen, will be the translated name from _tables.CAMEL_TO_SNAKE_CASE_TABLE).
     if hasattr(cls, _TRANSLATE_PROPERTY):
         python_to_pulumi_table = None
-        for python_name, pulumi_name, _ in _py_properties(cls):
+        for python_name, pulumi_name, _ in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
             if python_name != pulumi_name:
                 python_to_pulumi_table = python_to_pulumi_table or {}
                 python_to_pulumi_table[python_name] = pulumi_name
@@ -585,7 +588,7 @@ def output_type_from_dict(cls: type[T], output: dict[str, Any]) -> T:
     assert isinstance(output, dict)
     assert is_output_type(cls)
     args = {}
-    for python_name, pulumi_name, _ in _py_properties(cls):
+    for python_name, pulumi_name, _ in _py_properties(cls):  # type: ignore[arg-type] # https://github.com/python/mypy/issues/11470
         args[python_name] = output.get(pulumi_name)
     return cls(**args)  # type: ignore
 
@@ -731,6 +734,7 @@ def _globals_for_cls(cls: type) -> Optional[dict[str, Any]]:
     return globalns
 
 
+@functools.cache
 def _types_from_py_properties(cls: type) -> dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
