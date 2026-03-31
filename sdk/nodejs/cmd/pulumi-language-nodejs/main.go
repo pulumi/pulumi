@@ -257,6 +257,8 @@ type nodeLanguageHost struct {
 	runtime       string
 	tracing       string
 	otelEndpoint  string
+	cancelCtx     context.Context    // Cancelled when we receive the `Cancel` RPC
+	cancelFunc    context.CancelFunc // Cancel the cancelCtx
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
@@ -356,12 +358,15 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 func newLanguageHost(
 	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		otelEndpoint:  otelEndpoint,
 		forceTsc:      forceTsc,
 		runtime:       runtime,
+		cancelCtx:     ctx,
+		cancelFunc:    cancel,
 	}
 }
 
@@ -946,8 +951,17 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	// #nosec G204
-	cmd := exec.CommandContext(ctx, runtimeBin, runtimeArgs...)
+	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
+	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, cmdCancel)
+	cmd := exec.CommandContext(cmdCtx, runtimeBin, runtimeArgs...)
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 
 	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
 
@@ -2227,6 +2241,7 @@ func (host *nodeLanguageHost) Link(
 }
 
 func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	host.cancelFunc()
 	return &emptypb.Empty{}, nil
 }
 

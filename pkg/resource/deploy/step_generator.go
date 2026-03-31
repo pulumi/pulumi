@@ -1818,9 +1818,15 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if goal.ID != "" {
 				replaceDiff := strings.Join(
 					slice.Map(diff.ReplaceKeys, func(k resource.PropertyKey) string {
-						old := old.Inputs[k].String()
-						new := new.Inputs[k].String()
-						return fmt.Sprintf("%s: %s => %s", k, old, new)
+						var oldStr, newStr string
+						if sg.deployment.opts.ShowSecrets {
+							oldStr = old.Inputs[k].String()
+							newStr = new.Inputs[k].String()
+						} else {
+							oldStr = old.Inputs[k].RedactSecrets()
+							newStr = new.Inputs[k].RedactSecrets()
+						}
+						return fmt.Sprintf("%s: %s => %s", k, oldStr, newStr)
 					}),
 					"\n")
 

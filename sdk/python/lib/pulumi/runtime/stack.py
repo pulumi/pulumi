@@ -141,27 +141,30 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
 
         # If the RPCs have successfully completed, now await all remaining outstanding tasks.
         if await_all_outstanding_tasks:
-            while len(SETTINGS.outputs) != 0:
-                await asyncio.sleep(0)
-                if settings.excessive_debug_output:
-                    log.debug(
-                        f"waiting for quiescence; {len(SETTINGS.outputs)} outputs outstanding"
-                    )
+            while True:
                 with SETTINGS.lock:
                     # the task may have been removed from the queue by the time we get to it, so we need to re-check if
                     # its empty.
                     if len(SETTINGS.outputs) == 0:
                         break
-                    task: asyncio.Task = SETTINGS.outputs.popleft()
+                    # Copy the outputs and clear so new outputs added while we wait are picked up on the next iteration.
+                    pending_outputs: list[asyncio.Task] = list(SETTINGS.outputs)
+                    SETTINGS.outputs.clear()
 
-                # check if the task is ready yet, else just add it back to the queue. This is so if a long running task
-                # is added to the queue first, then a short running task that fails is added to the queue we quickly see
-                # that short running failure and exit, not waiting for the long running task to complete.
-                if task.done():
+                # Wait for a task to complete or be cancelled
+                done, not_done = await asyncio.wait(
+                    pending_outputs, return_when=asyncio.FIRST_COMPLETED
+                )
+
+                # Await the completed task so any exception is re-raised here.
+                for task in done:
                     await task
-                else:
+
+                # Put unfinished tasks back for the next iteration.
+                if not_done:
                     with SETTINGS.lock:
-                        SETTINGS.outputs.append(task)
+                        for task in not_done:
+                            SETTINGS.outputs.append(task)
 
             log.debug("All outstanding outputs completed.")
 
