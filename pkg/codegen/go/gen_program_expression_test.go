@@ -223,8 +223,6 @@ func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 
 	notYetImplementedFunctions := []string{
-		"split",
-		"element",
 		"entries",
 		"lookup",
 		"range",
