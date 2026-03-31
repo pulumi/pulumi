@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: engine
-  description: Fix `--exclude` not working for program-based refresh (RefreshV2)
+  description: Fix `--include` and `--exclude` not working for program-based refresh (RefreshV2)
