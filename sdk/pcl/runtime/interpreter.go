@@ -1472,13 +1472,18 @@ func (i *Interpreter) registerResourceWith(
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
 
-	// We need to ensure _all_ resource outputs exist in the output object so any the provider didn't send back we
-	// default to unknown here.
+	// We need to ensure all schema outputs exist in the output object, even if they weren't returned by the engine.
+	// - preview: unknown/computed
+	// - update: explicit null
 	if schemaResource != nil {
 		for _, prop := range schemaResource.Properties {
 			key := resource.PropertyKey(prop.Name)
 			if _, ok := outputs[key]; !ok {
-				outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+				if i.info.DryRun {
+					outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+				} else {
+					outputs[key] = resource.NewNullProperty()
+				}
 			}
 		}
 	}
