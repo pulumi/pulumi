@@ -120,12 +120,26 @@ func TestRewriteConversions(t *testing.T) {
 				"a": model.IntType,
 			}),
 		},
+		{
+			input:  `outString`,
+			output: `__convert(outString)`,
+			to:     model.NewOutputType(model.NumberType),
+		},
+		{
+			input:  `outString`,
+			output: `outString`,
+			to:     model.NewOutputType(model.StringType),
+		},
 	}
 
 	scope := model.NewRootScope(syntax.None)
 	scope.Define("i", &model.Variable{
 		Name:         "i",
 		VariableType: model.StringType,
+	})
+	scope.Define("outString", &model.Variable{
+		Name:         "outString",
+		VariableType: model.NewOutputType(model.StringType),
 	})
 	for _, c := range cases {
 		expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})

@@ -192,9 +192,15 @@ func TestOutputType(t *testing.T) {
 
 	// Test that output(T) is _not_ assignable from output(U), where U is not assignable to T.
 	assert.False(t, NewOutputType(BoolType).AssignableFrom(NewOutputType(IntType)))
+	assert.False(t, NewOutputType(NumberType).AssignableFrom(NewOutputType(StringType)))
 
 	// Test that output(T) is _not_ assignable from promise(U), where U is not assignable to T.
 	assert.False(t, NewOutputType(BoolType).AssignableFrom(NewPromiseType(IntType)))
+	assert.False(t, NewOutputType(NumberType).AssignableFrom(NewPromiseType(StringType)))
+
+	// But output(T) is still convertible from output(U)/promise(U) if U is convertible to T.
+	assert.Equal(t, UnsafeConversion, NewOutputType(NumberType).ConversionFrom(NewOutputType(StringType)))
+	assert.Equal(t, UnsafeConversion, NewOutputType(NumberType).ConversionFrom(NewPromiseType(StringType)))
 
 	// Test that traversing an output(T) returns an output(U), where U is the result of the inner traversal.
 	typ = NewOutputType(NewMapType(StringType))
