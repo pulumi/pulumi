@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs
+  description: Registered resources can now be retrieved from the mock monitor for test assertions
