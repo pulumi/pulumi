@@ -15,7 +15,6 @@
 package operations
 
 import (
-	"context"
 	"testing"
 
 	"github.com/gofrs/uuid"
@@ -24,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,6 +63,14 @@ func makeStateMetadata(
 
 	urn := resource.CreateURN(name, string(typ), "", "project", "stack")
 
+	state := &resource.State{
+		URN:    urn,
+		Type:   typ,
+		Custom: custom,
+		Parent: parent,
+		Inputs: opts.Inputs,
+	}
+
 	return engine.StepEventStateMetadata{
 		URN:      urn,
 		Type:     typ,
@@ -70,6 +78,7 @@ func makeStateMetadata(
 		Provider: provider,
 		Parent:   parent,
 		Inputs:   opts.Inputs,
+		State:    state,
 	}
 }
 
@@ -152,7 +161,7 @@ func TestBuildImportFile_SingleResource(t *testing.T) {
 			t.Parallel()
 
 			events := make(chan engine.Event)
-			importFilePromise := buildImportFile(events)
+			importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 			// Always create a root stack (which shouldn't show in the import file)
 			events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -186,7 +195,7 @@ func TestBuildImportFile_ExistingParent(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -239,7 +248,7 @@ func TestBuildImportFile_NewParent(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -297,7 +306,7 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -354,17 +363,18 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeRootStackMetadata(deploy.OpSame),
 	})
 
-	// Create a provider resource (new in this deployment)
+	// Create a provider resource with specific inputs (e.g. region)
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
 		Inputs: resource.NewPropertyMapFromMap(map[string]any{
 			"version": "1.2.3",
+			"region":  "eu-west-1",
 		}),
 	})
 	providerState.ID = providers.UnknownID
@@ -372,7 +382,7 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 		Metadata: makeMetadata(deploy.OpCreate, providerState),
 	})
 
-	// And then create a resource that has that provider
+	// And then create a resource that uses that provider
 	providerRef, err := providers.NewReference(providerState.URN, providerState.ID)
 	require.NoError(t, err)
 	state := makeStateMetadata(t, "res", "pkg:mod:typ", true, stateOptions{
@@ -385,14 +395,14 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	// Finally, close the events channel to signal that we're done
 	close(events)
 
-	importFile, err := importFilePromise.Result(context.Background())
+	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 
 	// NameTable should include the provider so the resource can reference it
 	require.Len(t, importFile.NameTable, 1)
 	assert.Equal(t, providerState.URN, importFile.NameTable["prov"])
 
-	// Resource should be in the import file with the provider reference (provider itself is not imported)
+	// Resource should be in the import file with the provider reference
 	require.Len(t, importFile.Resources, 1)
 	expected := importSpec{
 		ID:       "<PLACEHOLDER>",
@@ -402,6 +412,12 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 		Version:  "1.2.3",
 	}
 	assert.Equal(t, expected, importFile.Resources[0])
+
+	// ProviderInputs should contain the serialized provider inputs including region
+	require.Contains(t, importFile.ProviderInputs, "prov")
+	provInputs := importFile.ProviderInputs["prov"]
+	assert.Equal(t, "eu-west-1", provInputs["region"])
+	assert.Equal(t, "1.2.3", provInputs["version"])
 }
 
 // TestBuildImportFile_DuplicateNames test that if we try to import resources with the same name we add a
@@ -410,7 +426,7 @@ func TestBuildImportFile_DuplicateNames(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -468,7 +484,7 @@ func TestBuildImportFile_NameConflict(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -542,7 +558,7 @@ func TestBuildImportFile_regress_15002(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: engine.StepEventMetadata{
@@ -568,14 +584,14 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Create the root stack.
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeRootStackMetadata(deploy.OpCreate),
 	})
 
-	// And then create a provider resource
+	// And then create a provider resource with inputs
 	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
 		Inputs: resource.NewPropertyMapFromMap(map[string]any{
 			"version": "1.2.3",
@@ -596,7 +612,8 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 		Metadata: makeMetadata(deploy.OpCreate, state),
 	})
 
-	// Try and write another event to the channel, this will block if we haven't correctly closed the channel.
+	// Try and write another event to the channel, this should not block because we no longer
+	// error when encountering an explicit provider.
 	state = makeStateMetadata(t, "res2", "pkg:mod:typ", true, stateOptions{})
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, state),
@@ -605,7 +622,7 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 	// Finally, close the events channel to signal that we're done
 	close(events)
 
-	importFile, err := importFilePromise.Result(context.Background())
+	importFile, err := importFilePromise.Result(t.Context())
 	require.NoError(t, err)
 
 	// NameTable has the explicit provider; res uses it, res2 uses default (no provider in spec)
@@ -621,7 +638,8 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 		Provider: "prov",
 		Version:  "1.2.3",
 	}, importFile.Resources[0])
-	// res2 has no Provider set (default provider); version may come from default provider if present
 	assert.Equal(t, "res2", importFile.Resources[1].Name)
-	assert.Equal(t, tokens.Type("pkg:mod:typ"), importFile.Resources[1].Type)
+
+	// ProviderInputs should be populated for the explicit provider
+	require.Contains(t, importFile.ProviderInputs, "prov")
 }

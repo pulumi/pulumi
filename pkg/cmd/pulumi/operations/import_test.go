@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -250,7 +251,7 @@ func TestParseImportFile_errors(t *testing.T) {
 
 			require.NotEmpty(t, tt.wantErrs, "invalid test: wantErrs must not be empty")
 
-			_, _, err := parseImportFile(tt.give, tokens.MustParseStackName("stack"), "proj", false)
+			_, _, err := parseImportFile(tt.give, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 			require.Error(t, err)
 			for _, wantErr := range tt.wantErrs {
 				assert.ErrorContains(t, err, wantErr)
@@ -270,7 +271,7 @@ func TestParseImportFileJustLogicalName(t *testing.T) {
 			},
 		},
 	}
-	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
@@ -297,7 +298,7 @@ func TestParseImportFileLogicalName(t *testing.T) {
 			},
 		},
 	}
-	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	require.NoError(t, err)
 	v := semver.MustParse("0.0.0")
 	assert.Equal(t, []deploy.Import{
@@ -331,7 +332,7 @@ func TestParseImportFileSameName(t *testing.T) {
 			},
 		},
 	}
-	_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	assert.ErrorContains(t, err,
 		"resource 'thing' of type 'foo:bar:bar' has an ambiguous URN, set name (or logical name) to be unique")
 }
@@ -358,7 +359,7 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 			},
 		},
 	}
-	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
@@ -410,7 +411,7 @@ func TestParseImportFileAutoURN(t *testing.T) {
 			},
 		},
 	}
-	imports, nt, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, nt, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	require.NoError(t, err)
 
 	// Check the parent URN was auto filled in.

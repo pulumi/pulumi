@@ -16,6 +16,7 @@ package operations
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -42,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -49,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -60,7 +63,10 @@ import (
 )
 
 // buildImportFile takes an event stream from the engine and builds an import file from it for every create.
-func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
+// The encrypter is used to encrypt any secret provider inputs that are serialized into the import file.
+func buildImportFile(
+	ctx context.Context, events <-chan engine.Event, enc sdkconfig.Encrypter,
+) *promise.Promise[importFile] {
 	return promise.Run(func() (importFile, error) {
 		// We may exit the below loop early if we encounter an error, so we need to make sure we drain the events
 		// channel.
@@ -75,6 +81,9 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 		importSet := map[resource.URN]struct{}{}
 		// All providers that we've seen so far, used to build Version and PluginDownloadURL.
 		providerInputs := map[resource.URN]resource.PropertyMap{}
+		// Full (unfiltered) provider inputs from the resource State, used to serialize into the
+		// import file for explicit providers that need creation.
+		providerFullInputs := map[resource.URN]resource.PropertyMap{}
 
 		imports := importFile{
 			NameTable: map[string]resource.URN{},
@@ -144,6 +153,9 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 			// any resources that use it.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
+				if preEvent.Metadata.Res.State != nil {
+					providerFullInputs[urn] = preEvent.Metadata.Res.State.Inputs
+				}
 			}
 
 			// Only interested in creates
@@ -187,14 +199,31 @@ func buildImportFile(events <-chan engine.Event) *promise.Promise[importFile] {
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
-				// We can't import providers yet (we skip them above), but resources that use a new explicit
-				// provider can still be in the import file.
+				// We can't import providers yet (we skip them above), but resources that use a new
+				// explicit provider can still be in the import file. We serialize the provider's full
+				// inputs so the import system can create it with the correct configuration.
 				if !sdkproviders.IsDefaultProvider(ref.URN()) {
 					var has bool
 					provider, has = fullNameTable[ref.URN()]
 					contract.Assertf(has, "expected provider %q to be in full name table", new.Provider)
 
 					imports.NameTable[provider] = ref.URN()
+
+					// If this provider is being created in this deployment, serialize its full inputs
+					// so the import system can recreate it with the correct configuration.
+					if _, inImportSet := importSet[ref.URN()]; inImportSet {
+						if fullInputs, ok := providerFullInputs[ref.URN()]; ok {
+							serialized, serErr := stack.SerializeProperties(ctx, fullInputs, enc, false)
+							if serErr != nil {
+								return importFile{}, fmt.Errorf(
+									"could not serialize provider inputs for %s: %w", ref.URN(), serErr)
+							}
+							if imports.ProviderInputs == nil {
+								imports.ProviderInputs = map[string]map[string]any{}
+							}
+							imports.ProviderInputs[provider] = serialized
+						}
+					}
 				}
 
 				inputs, has := providerInputs[ref.URN()]
@@ -505,7 +534,7 @@ func NewPreviewCmd() *cobra.Command {
 			var events chan engine.Event
 			if importFilePath != "" {
 				events = make(chan engine.Event)
-				importFilePromise = buildImportFile(events)
+				importFilePromise = buildImportFile(ctx, events, sm.Encrypter())
 			}
 
 			start := time.Now()
