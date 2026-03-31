@@ -530,6 +530,12 @@ func (host *pclLanguageHost) RunPlugin(
 	return errors.New("not implemented")
 }
 
+func (host *pclLanguageHost) RunPlugin2(
+	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
+) error {
+	return errors.New("not implemented")
+}
+
 func (host *pclLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
