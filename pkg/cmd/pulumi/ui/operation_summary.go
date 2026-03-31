@@ -15,6 +15,8 @@
 package ui
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -50,14 +52,16 @@ type OperationSummarySink struct {
 	StartTime     time.Time
 	EndTime       time.Time
 	ChangeSummary display.ResourceChanges
-	Err           error
-	Canceled      bool
+	// Err is the error returned by the operation, if any. A context.Canceled
+	// error is interpreted as the operation being canceled by the user rather
+	// than a failure.
+	Err error
 }
 
 // OperationSummary builds an OperationSummaryJSON from the sink.
 func (s *OperationSummarySink) OperationSummary() OperationSummaryJSON {
 	result := OperationResultSucceeded
-	if s.Canceled {
+	if errors.Is(s.Err, context.Canceled) {
 		result = OperationResultCanceled
 	} else if s.Err != nil {
 		result = OperationResultFailed
