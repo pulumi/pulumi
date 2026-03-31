@@ -148,20 +148,22 @@ func TestReadingGitRepo(t *testing.T) {
 	}
 
 	// Confirm that data can be inferred from the CI system if unavailable.
-	// Fake running under Travis CI.
+	// Fake running under Travis CI. We also need to unset GITHUB_ACTIONS so that
+	// the GitHub Actions detector doesn't take precedence when running in CI.
 	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
+	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
-	t.Setenv("GITHUB_REF", "branch-from-ci")
 
 	{
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
+
 		require.NoError(t, addGitMetadata(e.RootPath, test))
-		assert.Contains(t, test.Environment, backend.GitHeadName, "Expected 'git.headName' key, from CI util.")
-		// TODO: https://github.com/pulumi/pulumi/issues/5303
-		// assert.Equal(t, "branch-from-ci", test.Environment[backend.GitHeadName])
+		name, ok := test.Environment[backend.GitHeadName]
+		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
+		assert.Equal(t, "branch-from-ci", name)
 	}
 }
 

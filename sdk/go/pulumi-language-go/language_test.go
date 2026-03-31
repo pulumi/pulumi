@@ -111,8 +111,7 @@ var expectedFailures = map[string]string{
 	"l2-discriminated-union":        "pulumi#21829: does not compile",
 
 	// pulumi/pulumi#18345
-	"l2-plain":                            "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",                     //nolint:lll
-	"l2-map-keys":                         "cannot use &plain.DataArgs{…} (value of type *plain.DataArgs) as plain.DataArgs value in struct literal",                     //nolint:lll
+	"l2-map-keys":                         "NonPlainData.InnerData renders as interface{}{} instead of &plain.InnerDataArgs{}",                                           //nolint:lll
 	"l2-component-program-resource-ref":   "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l2-component-component-resource-ref": "pulumi#18140: cannot use ref.Value (variable of type pulumi.StringOutput) as string value in return statement",               //nolint:lll
 	"l3-range":                            "list(string) and map(string) config values decoded as raw JSON strings by cfg.Require; cannot range over string as list/map", //nolint:lll
@@ -122,6 +121,9 @@ var expectedFailures = map[string]string{
 	"l3-deferred-outputs":                 "does not compile && for expressions are not supported",
 
 	"l3-rewrite-conversions": "does not compile; missing necessary casts for pulumi inputs",
+
+	"l3-component-config-primitives": "does not compile; missing necessary casts for pulumi inputs",
+	"l3-component-config-objects":    "does not compile; missing necessary casts for pulumi inputs",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

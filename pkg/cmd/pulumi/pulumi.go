@@ -194,6 +194,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var memProfileRate int
 	var rootSpan oteltrace.Span
 
+	processStartTime := time.Now()
+
 	updateCheckResult := make(chan *updateCheckResult)
 
 	cleanup := func() {
@@ -311,7 +313,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
 				}
 
-				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
+				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi",
+					oteltrace.WithTimestamp(processStartTime))
 
 				for k, v := range metadata {
 					rootSpan.SetAttributes(attribute.String("cli."+strings.ToLower(k), v))
@@ -321,6 +324,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				sc := rootSpan.SpanContext()
 				cmdutil.SetAppDashTraceParent(sc.TraceID(), sc.SpanID())
 			}
+			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
