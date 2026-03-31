@@ -51,11 +51,15 @@ go_binary(
 
 go_test(
     name = "pulumi-language-python_test",
+    size = "enormous",
+    timeout = "eternal",
     srcs = [
         "language_test.go",
         "main_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(["testdata/**"]) + [
+        "//pkg/testing/pulumi-test-language",
+    ],
     embed = [":pulumi-language-python_lib"],
     deps = [
         "//pkg/codegen/python",

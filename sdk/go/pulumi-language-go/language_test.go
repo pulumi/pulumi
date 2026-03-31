@@ -73,33 +73,37 @@ func getTestdataPath(subpath string) string {
 	return filepath.Join("./testdata", subpath)
 }
 
-func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
-	// We can't just go run the pulumi-test-language package because of
-	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
-	binary := t.TempDir() + "/pulumi-test-language"
-
-	// Find the source directory for pulumi-test-language
-	testLanguageDir := "../../../cmd/pulumi-test-language"
-	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
-		// In Bazel, use the workspace directory
-		testLanguageDir = filepath.Join(wsDir, "cmd", "pulumi-test-language")
-	} else if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
-		// In Bazel without BUILD_WORKSPACE_DIRECTORY, resolve through a testdata file symlink
-		// to find the actual workspace directory
-		testdataFile := filepath.Join(runfilesDir, "_main", "sdk", "go", "pulumi-language-go",
-			"testdata", "sample", "prog", "main.go")
-		if resolved, err := filepath.EvalSymlinks(testdataFile); err == nil {
-			wsDir := filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(filepath.Dir(resolved)))))))
-			testLanguageDir = filepath.Join(wsDir, "cmd", "pulumi-test-language")
+// findTestLanguageBinary returns the path to the pulumi-test-language binary.
+// In Bazel, it looks for the pre-built binary in runfiles.
+// Otherwise, it builds from source.
+func findTestLanguageBinary(t *testing.T) string {
+	t.Helper()
+	// Check for pre-built binary in Bazel runfiles
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		binary := filepath.Join(runfilesDir, "_main",
+			"pkg", "testing", "pulumi-test-language", "pulumi-test-language_", "pulumi-test-language")
+		if _, err := os.Stat(binary); err == nil {
+			t.Logf("using pre-built pulumi-test-language from runfiles: %s", binary)
+			return binary
 		}
 	}
-
+	// Fall back to building from source
+	binary := t.TempDir() + "/pulumi-test-language"
+	testLanguageDir := "../../../cmd/pulumi-test-language"
+	if wsDir := getWorkspaceDir(); wsDir != "" {
+		testLanguageDir = filepath.Join(wsDir, "cmd", "pulumi-test-language")
+	}
 	cmd := exec.Command("go", "build", "-C", testLanguageDir, "-o", binary)
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
 	require.NoError(t, err)
+	return binary
+}
 
-	cmd = exec.Command(binary)
+func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
+	binary := findTestLanguageBinary(t)
+
+	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()

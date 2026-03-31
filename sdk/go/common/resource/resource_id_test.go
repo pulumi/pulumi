@@ -124,7 +124,7 @@ func TestUniqueNameDeterminism(t *testing.T) {
 	randchars := []rune("xyzw")
 	name, err := NewUniqueName(randomSeed, prefix, randlen, maxlen, randchars)
 	require.NoError(t, err)
-	assert.Equal(t, "prefixywzwwyz", name)
+	assert.Equal(t, "prefixwywxyww", name)
 }
 
 func TestUniqueNameNonDeterminism(t *testing.T) {

@@ -16,10 +16,9 @@ bazel_dep(name = "protobuf", version = "33.4")
 # Python SDK support
 bazel_dep(name = "rules_python", version = "1.7.0")
 
-# Node.js/TypeScript SDK support - disabled due to Bazel 9 incompatibility
-# All available Node.js rules (aspect_rules_js, rules_nodejs) have incompatible_use_toolchain_transition
-# which was removed in Bazel 7/8. Will use pre-compiled JS files instead.
-# bazel_dep(name = "rules_nodejs", version = "6.3.1")
+# Node.js/TypeScript SDK support
+bazel_dep(name = "aspect_rules_js", version = "3.0.3")
+bazel_dep(name = "rules_nodejs", version = "6.7.3")
 
 # Initialize rules_go with the correct Go SDK version
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
@@ -90,6 +89,15 @@ go_deps.gazelle_override(
     path = "github.com/cloudflare/circl",
 )
 
+# Disable proto generation for appdash to preserve gogo/protobuf compatibility.
+# Gazelle regenerates proto BUILD targets which breaks the gogo/protobuf wire
+# format used by appdash's CollectPacket.
+go_deps.gazelle_override(
+    build_file_generation = "on",
+    directives = ["gazelle:proto disable"],
+    path = "github.com/pulumi/appdash",
+)
+
 # Override pulumi/esc to regenerate BUILD files with proper labels
 # The esc repo has BUILD files with @// and @io_bazel_rules_go that don't work in bzlmod
 go_deps.gazelle_override(
@@ -129,9 +137,9 @@ pip.parse(
 )
 use_repo(pip, "pip")
 
-# Node.js toolchain - disabled
-# node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
-# node.toolchain(node_version = "20.10.0")
+# Node.js toolchain
+node = use_extension("@rules_nodejs//nodejs:extensions.bzl", "node")
+node.toolchain(node_version = "20.10.0")
 
 # Dependencies populated by bazel mod tidy + additional SDK deps
 use_repo(

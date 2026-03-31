@@ -2032,7 +2032,20 @@ func (x *ScopeTraversalExpression) Evaluate(context *hcl.EvalContext) (cty.Value
 	if len(x.Traversal) == 1 {
 		return rootValue, diagnostics
 	}
-	return x.Traversal[1:].TraverseRel(rootValue)
+
+	// Preserve marks through traversal. HCL's TraverseRel drops cty marks
+	// (e.g. poison marks) when operating on DynamicPseudoType values.
+	// Strip marks before traversal and re-apply them to the result.
+	unmarked, marks := rootValue.Unmark()
+	result, diags := x.Traversal[1:].TraverseRel(unmarked)
+	diagnostics = append(diagnostics, diags...)
+	if diags.HasErrors() {
+		return cty.NilVal, diagnostics
+	}
+	if len(marks) > 0 {
+		result = result.WithMarks(marks)
+	}
+	return result, diagnostics
 }
 
 func (x *ScopeTraversalExpression) HasLeadingTrivia() bool {

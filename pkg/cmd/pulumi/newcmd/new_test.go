@@ -919,7 +919,7 @@ func TestPulumiPromptRuntimeOptions(t *testing.T) {
 		promptRuntimeOptions: runtimeOptionsMock,
 		languageTemplate:     languageTemplateMock,
 		secretsProvider:      "default",
-		templateNameOrURL:    "python",
+		templateNameOrURL:    "typescript",
 	}
 
 	err := runNew(t.Context(), args)
@@ -1215,14 +1215,9 @@ func TestPulumiNewOrgTemplate(t *testing.T) {
 			return backend.MockTarReader{
 				"Pulumi.yaml": {Content: `name: ${PROJECT}
 description: ${DESCRIPTION}
-runtime: yaml
+runtime: nodejs
 template:
   description: Describe 1
-
-resources:
-  # Create an AWS resource (S3 Bucket)
-  my-bucket:
-    type: aws:s3:BucketV2
 `},
 			}, nil
 		},
@@ -1260,7 +1255,7 @@ resources:
 	require.NoError(t, err)
 
 	proj := loadProject(t, tempdir)
-	require.Equal(t, "yaml", proj.Runtime.Name())
+	require.Equal(t, "nodejs", proj.Runtime.Name())
 }
 
 // Assert that actual contains the template rows show in expected.

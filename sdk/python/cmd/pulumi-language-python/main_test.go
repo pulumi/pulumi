@@ -16,7 +16,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,16 +25,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestMain(m *testing.M) {
-	// Skip all tests in Bazel environment - these tests require Python toolchain
-	// which isn't available in Bazel's sandbox
-	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
-		fmt.Println("Skipping pulumi-language-python tests in Bazel environment")
-		os.Exit(0)
-	}
-	os.Exit(m.Run())
-}
 
 func TestParseOptions(t *testing.T) {
 	t.Parallel()
@@ -316,19 +305,24 @@ build-backend = "poetry.core.masonry.api"
 	}
 }
 
-// pulumiWheel searches for the built pulumi wheel in the sdk/python/dist directory
-// and returns its path.
+// pulumiWheel searches for the built pulumi wheel in the sdk/python/build directory
+// and returns its path. Skips the calling test if the wheel is not available.
 func pulumiWheel(t *testing.T) string {
+	t.Helper()
 	dir, err := filepath.Abs(filepath.Join("..", "..", "build"))
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("pulumi wheel directory not accessible: %v", err)
+	}
 	files, err := os.ReadDir(dir)
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("pulumi wheel directory not readable: %v (run 'make build' to build the wheel)", err)
+	}
 	for _, file := range files {
 		if filepath.Ext(file.Name()) == ".whl" {
 			return filepath.Join(dir, file.Name())
 		}
 	}
-	t.Fatalf("could not find wheel in %s", dir)
+	t.Skipf("could not find wheel in %s (run 'make build' to build the wheel)", dir)
 	return ""
 }
 

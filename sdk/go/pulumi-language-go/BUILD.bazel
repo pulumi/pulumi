@@ -3,7 +3,7 @@ load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 go_library(
     name = "pulumi-language-go_lib",
     srcs = ["main.go"],
-    importpath = "github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go",
+    importpath = "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3",
     visibility = ["//visibility:private"],
     deps = [
         "//pkg/codegen/go",
@@ -56,11 +56,14 @@ go_binary(
 
 go_test(
     name = "pulumi-language-go_test",
+    size = "enormous",
+    timeout = "eternal",
     srcs = [
         "language_test.go",
         "main_test.go",
     ],
     data = glob(["testdata/**"]) + [
+        "//pkg/testing/pulumi-test-language",
         "//sdk:go.mod",
         "//sdk:go.sum",
     ],

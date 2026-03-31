@@ -34,6 +34,7 @@ alias(
 go_test(
     name = "npm_test",
     srcs = [
+        "list_packages_test.go",
         "main_test.go",
         "manager_test.go",
         "npm_test.go",
@@ -42,6 +43,7 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":npm"],
     deps = [
+        "//sdk/go/common/resource/plugin",
         "//sdk/go/common/testing",
         "//sdk/go/common/testing/iotest",
         "@com_github_blang_semver//:semver",

@@ -15,17 +15,10 @@
 package python
 
 import (
-	"fmt"
 	"os"
 	"testing"
 )
 
 func TestMain(m *testing.M) {
-	// Skip all tests in Bazel environment - these tests require Python toolchain
-	// for setting up virtual environments which isn't available in Bazel's sandbox
-	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
-		fmt.Println("Skipping python codegen tests in Bazel environment")
-		os.Exit(0)
-	}
 	os.Exit(m.Run())
 }

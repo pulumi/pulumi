@@ -264,7 +264,7 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 	args := newArgs{
 		yes:               true,
 		interactive:       false,
-		templateNameOrURL: "yaml",
+		templateNameOrURL: "typescript",
 		prompt:            ui.PromptForValue,
 		secretsProvider:   "default",
 		stack:             stackName,
@@ -275,7 +275,7 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 	err := runNew(t.Context(), args)
 	require.NoError(t, err)
 	proj := loadProject(t, args.dir)
-	require.Equal(t, "yaml", proj.Runtime.Name())
+	require.Equal(t, "nodejs", proj.Runtime.Name())
 }
 
 // pulumi new --language yaml --yes --non-interactive
@@ -283,6 +283,9 @@ func TestRunNewYesWithTemplate(t *testing.T) {
 //nolint:paralleltest // changes directory for process
 func TestRunNewYesWithAILanguage(t *testing.T) {
 	skipInBazel(t)
+	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
+		t.Skip("Skipping: PULUMI_ACCESS_TOKEN is not set")
+	}
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)
 
@@ -375,7 +378,24 @@ func skipIfShortOrNoPulumiAccessToken(t *testing.T) {
 
 func skipInBazel(t *testing.T) {
 	t.Helper()
-	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
-		t.Skip("Skipping in Bazel environment: requires language plugins")
+	// In Bazel, add language plugin binaries from runfiles to PATH
+	srcDir := os.Getenv("TEST_SRCDIR")
+	if srcDir == "" {
+		return
 	}
+	workspace := os.Getenv("TEST_WORKSPACE")
+	if workspace == "" {
+		workspace = "_main"
+	}
+	runfilesBase := filepath.Join(srcDir, workspace)
+	pluginDirs := []string{
+		filepath.Join(runfilesBase, "pkg", "cmd", "pulumi", "pulumi_"),
+		filepath.Join(runfilesBase, "sdk", "go", "pulumi-language-go", "pulumi-language-go_"),
+		filepath.Join(runfilesBase, "sdk", "nodejs", "cmd", "pulumi-language-nodejs", "pulumi-language-nodejs_"),
+		filepath.Join(runfilesBase, "sdk", "python", "cmd", "pulumi-language-python", "pulumi-language-python_"),
+		filepath.Join(runfilesBase, "sdk", "pcl", "cmd", "pulumi-language-pcl", "pulumi-language-pcl_"),
+	}
+	existingPath := os.Getenv("PATH")
+	newPath := strings.Join(pluginDirs, string(os.PathListSeparator)) + string(os.PathListSeparator) + existingPath
+	t.Setenv("PATH", newPath)
 }

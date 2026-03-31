@@ -18,7 +18,9 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -37,13 +39,23 @@ import (
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
-	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
-	output, err := cmd.CombinedOutput()
-	t.Logf("build output: %s", output)
-	require.NoError(t, err)
+	var binary string
+	// In Bazel, use the pre-built binary from data deps
+	if runfiles := os.Getenv("RUNFILES_DIR"); runfiles != "" {
+		candidate := filepath.Join(runfiles, "_main", "pkg", "testing", "pulumi-test-language", "pulumi-test-language_", "pulumi-test-language")
+		if _, err := os.Stat(candidate); err == nil {
+			binary = candidate
+		}
+	}
+	if binary == "" {
+		binary = t.TempDir() + "/pulumi-test-language"
+		buildCmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
+		output, err := buildCmd.CombinedOutput()
+		t.Logf("build output: %s", output)
+		require.NoError(t, err)
+	}
 
-	cmd = exec.Command(binary)
+	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()

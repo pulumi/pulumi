@@ -448,10 +448,10 @@ func (l *pluginLoader) loadSchemaBytes(
 	}
 
 	if canCache {
-		err = atomic.WriteFile(pluginInfo.SchemaPath, bytes.NewReader(schemaBytes))
-		if err != nil {
-			return nil, nil, fmt.Errorf("Error writing schema from plugin to cache: %w", err)
-		}
+		// Cache write failures are non-fatal — the schema was loaded successfully,
+		// it just won't be cached for next time. This can happen when the plugin
+		// is installed in a read-only location (e.g., nix store, Bazel runfiles).
+		_ = atomic.WriteFile(pluginInfo.SchemaPath, bytes.NewReader(schemaBytes))
 	}
 
 	if pluginVersion == nil {

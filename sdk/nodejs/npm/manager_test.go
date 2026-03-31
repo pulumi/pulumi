@@ -61,6 +61,9 @@ func TestYarnInstall(t *testing.T) {
 
 //nolint:paralleltest // changes working directory
 func TestPnpmInstall(t *testing.T) {
+	if _, err := exec.LookPath("pnpm"); err != nil {
+		t.Skip("requires pnpm toolchain")
+	}
 	t.Run("development", func(t *testing.T) {
 		testInstall(t, "pnpm", false /*production*/)
 	})
@@ -72,6 +75,9 @@ func TestPnpmInstall(t *testing.T) {
 
 //nolint:paralleltest // changes working directory
 func TestBunInstall(t *testing.T) {
+	if _, err := exec.LookPath("bun"); err != nil {
+		t.Skip("requires bun toolchain")
+	}
 	t.Run("development", func(t *testing.T) {
 		testInstall(t, "bun", false /*production*/)
 	})
@@ -87,6 +93,10 @@ func TestBunInstall(t *testing.T) {
 
 func TestResolvePackageManager(t *testing.T) {
 	t.Parallel()
+
+	_, hasPnpm := exec.LookPath("pnpm")
+	_, hasBun := exec.LookPath("bun")
+
 	for _, tt := range []struct {
 		name      string
 		pm        PackageManagerType
@@ -107,6 +117,14 @@ func TestResolvePackageManager(t *testing.T) {
 		{"bun > npm", AutoPackageManager, []string{"bun", "npm"}, "bun"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			needsPnpm := tt.expected == "pnpm" || tt.pm == PnpmPackageManager
+			needsBun := tt.expected == "bun" || tt.pm == BunPackageManager
+			if needsPnpm && hasPnpm != nil {
+				t.Skip("requires pnpm toolchain")
+			}
+			if needsBun && hasBun != nil {
+				t.Skip("requires bun toolchain")
+			}
 			t.Parallel()
 			dir := t.TempDir()
 			for _, lockFile := range tt.lockFiles {
@@ -129,6 +147,9 @@ func TestPack(t *testing.T) {
 
 	for _, pm := range []string{"npm", "yarn", "pnpm", "bun"} {
 		t.Run(pm, func(t *testing.T) {
+			if _, err := exec.LookPath(pm); err != nil {
+				t.Skip("requires " + pm + " toolchain")
+			}
 			t.Parallel()
 			dir := t.TempDir()
 			writeLockFile(t, dir, pm)
@@ -173,6 +194,9 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 		{"bun", "error: package.json must have `name` and `version` fields"},
 	} {
 		t.Run(tt.packageManager, func(t *testing.T) {
+			if _, err := exec.LookPath(tt.packageManager); err != nil {
+				t.Skip("requires " + tt.packageManager + " toolchain")
+			}
 			t.Parallel()
 			dir := t.TempDir()
 			writeLockFile(t, dir, tt.packageManager)
@@ -191,6 +215,9 @@ func TestPackInvalidPackageJSON(t *testing.T) {
 
 //nolint:paralleltest
 func TestBunPackNonExistentPackageJSON(t *testing.T) {
+	if _, err := exec.LookPath("bun"); err != nil {
+		t.Skip("requires bun toolchain")
+	}
 	dir := t.TempDir()
 	stderr := new(bytes.Buffer)
 	errorMessage := "error: No package.json was found for directory"
@@ -211,6 +238,9 @@ func TestManagerVersion(t *testing.T) {
 		BunPackageManager,
 	} {
 		t.Run(string(pmType), func(t *testing.T) {
+			if _, err := exec.LookPath(string(pmType)); err != nil {
+				t.Skip("requires " + string(pmType) + " toolchain")
+			}
 			//nolint:paralleltest // chdir
 			dir := t.TempDir()
 			t.Chdir(dir)

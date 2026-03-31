@@ -41,16 +41,33 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
-	// We can't just go run the pulumi-test-language package because of
-	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
+// findTestLanguageBinary returns the path to the pulumi-test-language binary.
+// In Bazel, it looks for the pre-built binary in runfiles.
+// Otherwise, it builds from source.
+func findTestLanguageBinary(t *testing.T) string {
+	t.Helper()
+	// Check for pre-built binary in Bazel runfiles
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		binary := filepath.Join(runfilesDir, "_main",
+			"pkg", "testing", "pulumi-test-language", "pulumi-test-language_", "pulumi-test-language")
+		if _, err := os.Stat(binary); err == nil {
+			t.Logf("using pre-built pulumi-test-language from runfiles: %s", binary)
+			return binary
+		}
+	}
+	// Fall back to building from source
 	binary := t.TempDir() + "/pulumi-test-language"
 	cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
 	require.NoError(t, err)
+	return binary
+}
 
-	cmd = exec.Command(binary)
+func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
+	binary := findTestLanguageBinary(t)
+
+	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()
@@ -107,6 +124,32 @@ var expectedFailures = map[string]string{
 	"l2-resource-optional": "optional outputs are not assignable to optional inputs",
 }
 
+// getWorkspaceDir returns the workspace root directory, handling both normal and Bazel environments.
+func getWorkspaceDir() string {
+	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
+		return wsDir
+	}
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		// In Bazel, read the MANIFEST to find the workspace root from a testdata file mapping
+		manifest := filepath.Join(runfilesDir, "MANIFEST")
+		data, err := os.ReadFile(manifest)
+		if err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				parts := strings.SplitN(line, " ", 2)
+				if len(parts) == 2 && strings.Contains(parts[0], "sdk/python/cmd/pulumi-language-python/testdata/") {
+					// Extract workspace root from the real path
+					// parts[1] is like /workspace/sdk/python/cmd/pulumi-language-python/testdata/...
+					idx := strings.Index(parts[1], "/sdk/python/cmd/pulumi-language-python/testdata/")
+					if idx >= 0 {
+						return parts[1][:idx]
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
+
 type languageTestConfig struct {
 	name        string
 	snapshotDir string
@@ -117,10 +160,27 @@ type languageTestConfig struct {
 }
 
 func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
+	// Resolve paths that may differ between make and Bazel environments
+	var distDir, pythonExecPath, coreSdkDir, snapshotBase, policyDir, providersDir string
+	if wsDir := getWorkspaceDir(); wsDir != "" {
+		pyDir := filepath.Join(wsDir, "sdk", "python")
+		distDir = filepath.Join(pyDir, "dist")
+		pythonExecPath = filepath.Join(pyDir, "cmd", "pulumi-language-python-exec")
+		coreSdkDir = pyDir
+		snapshotBase = filepath.Join(pyDir, "cmd", "pulumi-language-python", "testdata")
+		policyDir = filepath.Join(snapshotBase, "policies")
+		providersDir = filepath.Join(snapshotBase, "providers")
+	} else {
+		distDir, _ = filepath.Abs(filepath.Join("..", "..", "dist"))
+		pythonExecPath, _ = filepath.Abs("../pulumi-language-python-exec")
+		coreSdkDir = "../.."
+		snapshotBase = "./testdata"
+		policyDir = "testdata/policies"
+		providersDir = "testdata/providers"
+	}
+
 	// Set PATH to include the local dist directory so policy can run.
-	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
-	require.NoError(t, err)
-	t.Setenv("PATH", fmt.Sprintf("%s%c%s", dist, os.PathListSeparator, os.Getenv("PATH")))
+	t.Setenv("PATH", fmt.Sprintf("%s%c%s", distDir, os.PathListSeparator, os.Getenv("PATH")))
 
 	engineAddress, engine := runTestingHost(t)
 
@@ -136,11 +196,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					pythonExec, err := filepath.Abs("../pulumi-language-python-exec")
-					if err != nil {
-						return err
-					}
-					host := newLanguageHost(pythonExec, engineAddress, "", "", config.typechecker, config.toolchain)
+					host := newLanguageHost(pythonExecPath, engineAddress, "", "", config.typechecker, config.toolchain)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
@@ -151,11 +207,11 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 			// Create a temp project dir for the test to run in
 			rootDir := t.TempDir()
 
-			snapshotDir := "./testdata/" + config.snapshotDir
+			snapshotDir := filepath.Join(snapshotBase, config.snapshotDir)
 			if local {
-				snapshotDir += "/local"
+				snapshotDir = filepath.Join(snapshotDir, "local")
 			} else {
-				snapshotDir += "/published"
+				snapshotDir = filepath.Join(snapshotDir, "published")
 			}
 
 			var languageInfo string
@@ -175,9 +231,9 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				TemporaryDirectory:   rootDir,
 				SnapshotDirectory:    snapshotDir,
-				CoreSdkDirectory:     "../..",
+				CoreSdkDirectory:     coreSdkDir,
 				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "testdata/policies",
+				PolicyPackDirectory:  policyDir,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
 						Path:        "requirements\\.txt",
@@ -191,7 +247,7 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 					},
 				},
 				LanguageInfo:       languageInfo,
-				ProvidersDirectory: "testdata/providers",
+				ProvidersDirectory: providersDir,
 			})
 			require.NoError(t, err)
 

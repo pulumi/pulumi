@@ -51,9 +51,14 @@ go_binary(
 
 go_test(
     name = "pulumi-language-pcl_test",
+    size = "large",
+    timeout = "long",
     srcs = [
         "language_test.go",
         "main_dependencies_test.go",
+    ],
+    data = glob(["testdata/**"]) + [
+        "//pkg/testing/pulumi-test-language",
     ],
     embed = [":pulumi-language-pcl_lib"],
     deps = [

@@ -46,6 +46,7 @@ go_library(
 
 go_test(
     name = "python_test",
+    size = "large",
     srcs = [
         "gen_program_quotes_test.go",
         "gen_program_test.go",
@@ -57,6 +58,9 @@ go_test(
     ],
     data = ["//tests/testdata:codegen"],
     embed = [":python"],
+    env = {
+        "PULUMI_TEST_SDK_NO_CHECKS": "true",
+    },
     deps = [
         "//pkg/codegen/hcl2/model",
         "//pkg/codegen/hcl2/syntax",

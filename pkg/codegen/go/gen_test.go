@@ -147,9 +147,10 @@ func inferModuleName(codeDir string) string {
 }
 
 func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
-	// Skip in Bazel environment - SDK isn't available as a complete Go module in runfiles
+	// Skip in Bazel: the SDK source tree is not available as a complete Go module in runfiles
+	// because Bazel filegroups cannot cross package boundaries.
 	if os.Getenv("TEST_SRCDIR") != "" || os.Getenv("BAZEL_TEST") != "" {
-		t.Skip("Skipping Go toolchain checks in Bazel environment")
+		t.Skip("Skipping Go type-check in Bazel: SDK not available as complete module in runfiles")
 	}
 
 	sdk, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
@@ -175,9 +176,10 @@ func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
 }
 
 func testGeneratedPackage(t *testing.T, codeDir string) {
-	// Skip in Bazel environment - SDK isn't available as a complete Go module in runfiles
+	// Skip in Bazel: the SDK source tree is not available as a complete Go module in runfiles
+	// because Bazel filegroups cannot cross package boundaries.
 	if os.Getenv("TEST_SRCDIR") != "" || os.Getenv("BAZEL_TEST") != "" {
-		t.Skip("Skipping Go test execution in Bazel environment")
+		t.Skip("Skipping Go test execution in Bazel: SDK not available as complete module in runfiles")
 	}
 
 	goExe, err := executable.FindExecutable("go")

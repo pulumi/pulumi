@@ -42,6 +42,7 @@ go_library(
 
 go_test(
     name = "nodejs_test",
+    size = "large",
     srcs = [
         "doc_test.go",
         "gen_lazyloads_test.go",
@@ -51,6 +52,9 @@ go_test(
     ],
     data = ["//tests/testdata:codegen"],
     embed = [":nodejs"],
+    env = {
+        "PULUMI_TEST_SDK_NO_CHECKS": "true",
+    },
     deps = [
         "//pkg/codegen/hcl2/model/format",
         "//pkg/codegen/hcl2/syntax",

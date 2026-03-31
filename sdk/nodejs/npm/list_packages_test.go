@@ -15,6 +15,7 @@
 package npm
 
 import (
+	"os/exec"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -80,6 +81,9 @@ func TestListPackages(t *testing.T) {
 	})
 
 	t.Run("pnpm", func(t *testing.T) {
+		if _, err := exec.LookPath("pnpm"); err != nil {
+			t.Skip("requires pnpm toolchain")
+		}
 		t.Parallel()
 		dir := "testdata/list-packages/pnpm"
 		pnpm, err := newPnpm()
@@ -110,6 +114,9 @@ func TestListPackages(t *testing.T) {
 	})
 
 	t.Run("pnpm-v9", func(t *testing.T) {
+		if _, err := exec.LookPath("pnpm"); err != nil {
+			t.Skip("requires pnpm toolchain")
+		}
 		t.Parallel()
 		dir := "testdata/list-packages/pnpm-v9"
 		pnpm, err := newPnpm()
@@ -137,6 +144,9 @@ func TestListPackages(t *testing.T) {
 	})
 
 	t.Run("bun", func(t *testing.T) {
+		if _, err := exec.LookPath("bun"); err != nil {
+			t.Skip("requires bun toolchain")
+		}
 		t.Parallel()
 		dir := "testdata/list-packages/bun"
 		bun, err := newBun()
@@ -165,6 +175,9 @@ func TestListPackages(t *testing.T) {
 }
 
 func TestListPackagesBunLockb(t *testing.T) {
+	if _, err := exec.LookPath("bun"); err != nil {
+		t.Skip("requires bun toolchain")
+	}
 	t.Parallel()
 
 	bun, err := newBun()

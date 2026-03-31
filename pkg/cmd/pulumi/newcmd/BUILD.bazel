@@ -66,6 +66,13 @@ go_test(
         "new_test.go",
         "template_test.go",
     ],
+    data = [
+        "//pkg/cmd/pulumi",
+        "//sdk/go/pulumi-language-go",
+        "//sdk/nodejs/cmd/pulumi-language-nodejs",
+        "//sdk/pcl/cmd/pulumi-language-pcl",
+        "//sdk/python/cmd/pulumi-language-python",
+    ],
     embed = [":newcmd"],
     deps = [
         "//pkg/backend",

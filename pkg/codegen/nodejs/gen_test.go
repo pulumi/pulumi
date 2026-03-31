@@ -72,9 +72,10 @@ func testGeneratePackageBatch(t *testing.T, testCases []*test.SDKTest) {
 
 // Runs unit tests against the generated code.
 func testGeneratedPackage(t *testing.T, pwd string) {
-	// Skip in Bazel environment since npm/yarn aren't available in sandbox
+	// Skip in Bazel: yarn/npm needs writable testdata dirs and SDK packages
+	// which aren't available in the Bazel runfiles tree.
 	if os.Getenv("TEST_SRCDIR") != "" || os.Getenv("BAZEL_TEST") != "" {
-		t.Skip("Skipping Node.js test execution in Bazel environment")
+		t.Skip("Skipping Node.js test execution in Bazel: testdata dirs are read-only in runfiles")
 	}
 
 	// Some tests have do not have mocha as a dependency.

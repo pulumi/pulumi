@@ -15,6 +15,7 @@ load("@gazelle//:def.bzl", "gazelle")
 # gazelle:exclude sdk/go/auto/test/errors/compilation_error
 # gazelle:exclude sdk/python/lib/test/automation/errors/compilation_error
 # gazelle:exclude cmd/pulumi-test-language
+# gazelle:exclude remote-test-infra
 
 # Exclude Python and Node.js SDKs - they use manual BUILD files
 # gazelle:exclude sdk/python

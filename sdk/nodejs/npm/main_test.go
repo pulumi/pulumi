@@ -15,17 +15,10 @@
 package npm
 
 import (
-	"fmt"
 	"os"
 	"testing"
 )
 
 func TestMain(m *testing.M) {
-	// Skip all tests in Bazel environment - these tests require npm/pnpm toolchains
-	// which aren't available in Bazel's sandbox
-	if os.Getenv("BAZEL_TEST") != "" || os.Getenv("TEST_SRCDIR") != "" {
-		fmt.Println("Skipping npm package tests in Bazel environment")
-		os.Exit(0)
-	}
 	os.Exit(m.Run())
 }

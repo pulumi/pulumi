@@ -38,16 +38,33 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
-	// We can't just go run the pulumi-test-language package because of
-	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
+// findTestLanguageBinary returns the path to the pulumi-test-language binary.
+// In Bazel, it looks for the pre-built binary in runfiles.
+// Otherwise, it builds from source.
+func findTestLanguageBinary(t *testing.T) string {
+	t.Helper()
+	// Check for pre-built binary in Bazel runfiles
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		binary := filepath.Join(runfilesDir, "_main",
+			"pkg", "testing", "pulumi-test-language", "pulumi-test-language_", "pulumi-test-language")
+		if _, err := os.Stat(binary); err == nil {
+			t.Logf("using pre-built pulumi-test-language from runfiles: %s", binary)
+			return binary
+		}
+	}
+	// Fall back to building from source
 	binary := t.TempDir() + "/pulumi-test-language"
 	cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
 	output, err := cmd.CombinedOutput()
 	t.Logf("build output: %s", output)
 	require.NoError(t, err)
+	return binary
+}
 
-	cmd = exec.Command(binary)
+func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
+	binary := findTestLanguageBinary(t)
+
+	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()
@@ -102,13 +119,48 @@ var expectedFailures = map[string]string{
 	"l3-deferred-outputs":  "Cannot find name '_arg0_'.",
 }
 
+// getWorkspaceDir returns the workspace root directory, handling both normal and Bazel environments.
+func getWorkspaceDir() string {
+	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
+		return wsDir
+	}
+	if runfilesDir := os.Getenv("RUNFILES_DIR"); runfilesDir != "" {
+		// In Bazel, read the MANIFEST to find the workspace root from a testdata file mapping
+		manifest := filepath.Join(runfilesDir, "MANIFEST")
+		data, err := os.ReadFile(manifest)
+		if err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				parts := strings.SplitN(line, " ", 2)
+				if len(parts) == 2 && strings.Contains(parts[0], "sdk/nodejs/cmd/pulumi-language-nodejs/testdata/") {
+					idx := strings.Index(parts[1], "/sdk/nodejs/cmd/pulumi-language-nodejs/testdata/")
+					if idx >= 0 {
+						return parts[1][:idx]
+					}
+				}
+			}
+		}
+	}
+	return ""
+}
+
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
 // forceTsc controls whether to pre-compile TypeScript before running.
 func testLanguage(t *testing.T, runtime string, forceTsc bool) {
+	// Resolve paths that may differ between make and Bazel environments
+	var distDir, coreSdkDir, testdataBase string
+	if wsDir := getWorkspaceDir(); wsDir != "" {
+		nodeDir := filepath.Join(wsDir, "sdk", "nodejs")
+		distDir = filepath.Join(nodeDir, "dist")
+		coreSdkDir = nodeDir
+		testdataBase = filepath.Join(nodeDir, "cmd", "pulumi-language-nodejs", "testdata")
+	} else {
+		distDir, _ = filepath.Abs(filepath.Join("..", "..", "dist"))
+		coreSdkDir = "../.."
+		testdataBase = "./testdata"
+	}
+
 	// Set PATH to include the local dist directory so policy can run.
-	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
-	require.NoError(t, err)
-	t.Setenv("PATH", fmt.Sprintf("%s%c%s", dist, os.PathListSeparator, os.Getenv("PATH")))
+	t.Setenv("PATH", fmt.Sprintf("%s%c%s", distDir, os.PathListSeparator, os.Getenv("PATH")))
 
 	engineAddress, engine := runTestingHost(t)
 
@@ -145,24 +197,24 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			rootDir, err := filepath.Abs(t.TempDir())
 			require.NoError(t, err)
 
-			providersDir := "testdata/providers"
-			policyPackDir := "testdata/policies"
-			snapshotDir := "./testdata"
+			providersDir := filepath.Join(testdataBase, "providers")
+			policyPackDir := filepath.Join(testdataBase, "policies")
+			snapshotDir := testdataBase
 			if local {
-				snapshotDir += "/local"
+				snapshotDir = filepath.Join(snapshotDir, "local")
 			} else {
-				snapshotDir += "/published"
+				snapshotDir = filepath.Join(snapshotDir, "published")
 			}
 			switch runtime {
 			case "bun":
-				snapshotDir += "/bun"
-				providersDir = "testdata/providers-bun"
-				policyPackDir = "testdata/policies-bun"
+				snapshotDir = filepath.Join(snapshotDir, "bun")
+				providersDir = filepath.Join(testdataBase, "providers-bun")
+				policyPackDir = filepath.Join(testdataBase, "policies-bun")
 			case "nodejs":
 				if forceTsc {
-					snapshotDir += "/tsc"
+					snapshotDir = filepath.Join(snapshotDir, "tsc")
 				} else {
-					snapshotDir += "/tsnode"
+					snapshotDir = filepath.Join(snapshotDir, "tsnode")
 				}
 			}
 
@@ -172,7 +224,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				TemporaryDirectory:   rootDir,
 				SnapshotDirectory:    snapshotDir,
-				CoreSdkDirectory:     "../..",
+				CoreSdkDirectory:     coreSdkDir,
 				CoreSdkVersion:       sdk.Version.String(),
 				PolicyPackDirectory:  policyPackDir,
 				Local:                local,
@@ -264,5 +316,8 @@ func TestLanguageTSNode(t *testing.T) {
 
 //nolint:paralleltest // testLanguage uses t.Setenv
 func TestLanguageBun(t *testing.T) {
+	if _, err := exec.LookPath("bun"); err != nil {
+		t.Skip("requires bun toolchain")
+	}
 	testLanguage(t, "bun", false)
 }
