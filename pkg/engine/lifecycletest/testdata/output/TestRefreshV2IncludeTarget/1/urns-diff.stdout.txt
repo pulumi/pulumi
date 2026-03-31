@@ -1,0 +1,8 @@
+<{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resB: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
+<{%fg 2%}>  + refreshed: <{%reset%}><{%fg 2%}>true<{%reset%}><{%fg 2%}>
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
