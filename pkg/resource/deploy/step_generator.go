@@ -756,12 +756,14 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 	// resource, to call back into GenerateSteps later.
 	//
 	// Only need to do refresh steps here for custom non-provider resources that have an old state.
-	// Skip if the resource is excluded from the operation.
+	// Skip if the resource is excluded from the operation, or if targets are constrained and this
+	// resource is not targeted.
 	if old != nil &&
 		sg.refresh &&
 		goal.Custom &&
 		!sdkproviders.IsProviderType(goal.Type) &&
-		(!sg.deployment.opts.Excludes.IsConstrained() || !sg.isExcludedFromUpdate(old)) {
+		(!sg.deployment.opts.Excludes.IsConstrained() || !sg.isExcludedFromUpdate(old)) &&
+		(!sg.deployment.opts.Targets.IsConstrained() || sg.isTargetedForUpdate(old)) {
 		cts := &promise.CompletionSource[*resource.State]{}
 		// Set up the cts to trigger a continueStepsFromRefresh when it resolves
 		go PanicRecovery(sg.deployment.panicErrs, func() {
