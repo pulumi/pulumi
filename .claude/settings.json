@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(PULUMI_ACCEPT=1 go test -count=1 -run TestRefreshV2IncludeTarget ./engine/lifecycletest/...)"
-    ]
-  }
-}
