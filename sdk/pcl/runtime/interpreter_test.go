@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -144,4 +145,39 @@ resource "dependent_on_output" "test:index:Resource" {
 	if poison != nil {
 		assert.Equal(t, "failing", poison.name)
 	}
+}
+
+func TestApplySchemaInputDefaults(t *testing.T) {
+	t.Parallel()
+
+	schemaResource := &schema.Resource{
+		InputProperties: []*schema.Property{
+			{
+				Name:         "boolean",
+				DefaultValue: &schema.DefaultValue{Value: false},
+			},
+			{
+				Name:         "numberArray",
+				DefaultValue: &schema.DefaultValue{Value: []any{0.0}},
+			},
+			{
+				Name:         "booleanMap",
+				DefaultValue: &schema.DefaultValue{Value: map[string]any{"default": false}},
+			},
+		},
+	}
+
+	inputs := resource.PropertyMap{
+		"boolean": resource.NewProperty(true),
+	}
+
+	applySchemaInputDefaults(inputs, schemaResource)
+
+	assert.Equal(t, resource.NewProperty(true), inputs["boolean"])
+	assert.Equal(t, resource.NewProperty([]resource.PropertyValue{
+		resource.NewProperty(0.0),
+	}), inputs["numberArray"])
+	assert.Equal(t, resource.NewProperty(resource.PropertyMap{
+		"default": resource.NewProperty(false),
+	}), inputs["booleanMap"])
 }

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/go,nodejs,bun,python
+  description: Wire Cancel RPC to language host Run

@@ -1,0 +1,3 @@
+name: signal-cancellation-python
+description: Test that Python programs receive SIGINT on cancellation
+runtime: python
