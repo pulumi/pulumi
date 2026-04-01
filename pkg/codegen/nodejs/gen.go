@@ -50,7 +50,7 @@ const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 	MinimumValidSDKVersion   string = "^3.142.0"
 	MinimumTypescriptVersion string = "^4.7.0"
-	MinimumNodeTypesVersion  string = "^18"
+	MinimumNodeTypesVersion  string = "^20"
 )
 
 type typeDetails struct {
@@ -2620,17 +2620,23 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 
 	fmt.Fprintf(w, `{
     "compilerOptions": {
+        // Output
         "outDir": "bin",
-        "target": "ES2020",
-        "module": "nodenext",
-        "moduleResolution": "nodenext",
         "declaration": true,
+        "declarationMap": true,
         "sourceMap": true,
         "stripInternal": true,
-        "experimentalDecorators": true,
+        // Environment
+        "target": "ES2022",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "moduleDetection": "force",
+        "types": ["node"],
+        // Type Checking
+        "strict": true,
         "noFallthroughCasesInSwitch": true,
-        "forceConsistentCasingInFileNames": true,
-        "strict": true
+        "noImplicitReturns": true,
+        "skipLibCheck": true
     },
     "files": [
 `)
