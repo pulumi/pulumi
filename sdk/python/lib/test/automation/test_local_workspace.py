@@ -1651,9 +1651,7 @@ class TestLocalWorkspace(unittest.TestCase):
         )
 
     def test_new_generate_only(self):
-        template_dir = os.path.join(
-            os.path.dirname(__file__), "data", "new_template"
-        )
+        template_dir = os.path.join(os.path.dirname(__file__), "data", "new_template")
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws = LocalWorkspace(work_dir=tmp_dir)
             result = ws.new(
@@ -1672,9 +1670,7 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertIn("name: test-new-project", contents)
 
     def test_new_generate_only_in_sub_dir(self):
-        template_dir = os.path.join(
-            os.path.dirname(__file__), "data", "new_template"
-        )
+        template_dir = os.path.join(os.path.dirname(__file__), "data", "new_template")
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws = LocalWorkspace(work_dir=tmp_dir)
             sub_dir = os.path.join(tmp_dir, "subproject")
