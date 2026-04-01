@@ -212,7 +212,9 @@ func TestEscValueToConfigMap(t *testing.T) {
 type mockESCClient struct {
 	escclient.Client
 
-	openYAMLEnvironmentF         func(ctx context.Context, org string, yaml []byte, duration time.Duration) (string, []escclient.EnvironmentDiagnostic, error)
+	openYAMLEnvironmentF func(
+		ctx context.Context, org string, yaml []byte, duration time.Duration,
+	) (string, []escclient.EnvironmentDiagnostic, error)
 	getAnonymousOpenEnvironmentF func(ctx context.Context, org, id string) (*esc.Environment, error)
 }
 
@@ -247,7 +249,9 @@ func TestResolveEnvironments(t *testing.T) {
 	t.Run("resolves policyConfig and environmentVariables", func(t *testing.T) {
 		t.Parallel()
 		mock := &mockESCClient{
-			openYAMLEnvironmentF: func(_ context.Context, org string, yaml []byte, _ time.Duration) (string, []escclient.EnvironmentDiagnostic, error) {
+			openYAMLEnvironmentF: func(
+				_ context.Context, org string, yaml []byte, _ time.Duration,
+			) (string, []escclient.EnvironmentDiagnostic, error) {
 				assert.Equal(t, "test-org", org)
 				assert.Contains(t, string(yaml), "prod/policy-config")
 				return "open-id-123", nil, nil
@@ -297,7 +301,9 @@ func TestResolveEnvironments(t *testing.T) {
 	t.Run("OpenYAMLEnvironment error", func(t *testing.T) {
 		t.Parallel()
 		mock := &mockESCClient{
-			openYAMLEnvironmentF: func(context.Context, string, []byte, time.Duration) (string, []escclient.EnvironmentDiagnostic, error) {
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (string, []escclient.EnvironmentDiagnostic, error) {
 				return "", nil, errors.New("connection refused")
 			},
 		}
@@ -320,7 +326,9 @@ func TestResolveEnvironments(t *testing.T) {
 	t.Run("diagnostics returned as error", func(t *testing.T) {
 		t.Parallel()
 		mock := &mockESCClient{
-			openYAMLEnvironmentF: func(context.Context, string, []byte, time.Duration) (string, []escclient.EnvironmentDiagnostic, error) {
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (string, []escclient.EnvironmentDiagnostic, error) {
 				return "", []escclient.EnvironmentDiagnostic{
 					{Summary: "unknown environment 'prod/missing'"},
 				}, nil
@@ -344,7 +352,9 @@ func TestResolveEnvironments(t *testing.T) {
 	t.Run("GetAnonymousOpenEnvironment error", func(t *testing.T) {
 		t.Parallel()
 		mock := &mockESCClient{
-			openYAMLEnvironmentF: func(context.Context, string, []byte, time.Duration) (string, []escclient.EnvironmentDiagnostic, error) {
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (string, []escclient.EnvironmentDiagnostic, error) {
 				return "id", nil, nil
 			},
 			getAnonymousOpenEnvironmentF: func(context.Context, string, string) (*esc.Environment, error) {
@@ -369,7 +379,9 @@ func TestResolveEnvironments(t *testing.T) {
 	t.Run("only policyConfig no envVars", func(t *testing.T) {
 		t.Parallel()
 		mock := &mockESCClient{
-			openYAMLEnvironmentF: func(context.Context, string, []byte, time.Duration) (string, []escclient.EnvironmentDiagnostic, error) {
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (string, []escclient.EnvironmentDiagnostic, error) {
 				return "id", nil, nil
 			},
 			getAnonymousOpenEnvironmentF: func(context.Context, string, string) (*esc.Environment, error) {
@@ -402,7 +414,9 @@ func TestResolveEnvironments(t *testing.T) {
 	t.Run("only envVars no policyConfig", func(t *testing.T) {
 		t.Parallel()
 		mock := &mockESCClient{
-			openYAMLEnvironmentF: func(context.Context, string, []byte, time.Duration) (string, []escclient.EnvironmentDiagnostic, error) {
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (string, []escclient.EnvironmentDiagnostic, error) {
 				return "id", nil, nil
 			},
 			getAnonymousOpenEnvironmentF: func(context.Context, string, string) (*esc.Environment, error) {
