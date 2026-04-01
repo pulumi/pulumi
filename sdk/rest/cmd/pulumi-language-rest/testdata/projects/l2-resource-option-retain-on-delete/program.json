@@ -1,0 +1,34 @@
+{
+  "resources": [
+    {
+      "name": "retainOnDelete",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "retainOnDelete": true
+      }
+    },
+    {
+      "name": "notRetainOnDelete",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "retainOnDelete": false
+      }
+    },
+    {
+      "name": "defaulted",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}

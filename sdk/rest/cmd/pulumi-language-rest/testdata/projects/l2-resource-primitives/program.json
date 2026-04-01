@@ -10,7 +10,7 @@
           "f": false,
           "t": true
         },
-        "float": 3.14,
+        "float": 3.14e+00,
         "integer": 42,
         "numberArray": [
           -1,

@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -52,9 +53,31 @@ type DeclarativeInvoke struct {
 
 // DeclarativeOptions holds resource options.
 type DeclarativeOptions struct {
-	Protect         *bool    `json:"protect,omitempty"`
-	IgnoreChanges   []string `json:"ignoreChanges,omitempty"`
-	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty"`
+	Protect                 *bool    `json:"protect,omitempty"`
+	IgnoreChanges           []string `json:"ignoreChanges,omitempty"`
+	ReplaceOnChanges        []string `json:"replaceOnChanges,omitempty"`
+	DeleteBeforeReplace     *bool    `json:"deleteBeforeReplace,omitempty"`
+	AdditionalSecretOutputs []string `json:"additionalSecretOutputs,omitempty"`
+	RetainOnDelete          *bool    `json:"retainOnDelete,omitempty"`
+	Version                 string   `json:"version,omitempty"`
+	PluginDownloadURL       string   `json:"pluginDownloadURL,omitempty"`
+	ImportID                string   `json:"import,omitempty"`
+	HideDiffs               []string `json:"hideDiffs,omitempty"`
+	ReplaceWith             []string `json:"replaceWith,omitempty"`
+}
+
+// secretMagicKey is the Pulumi secret sentinel key.
+const secretMagicKey = "4dabf18193072939515e22adb298388d"
+
+// secretMagicValue is the corresponding sentinel value.
+const secretMagicValue = "1b47061264138c4ac30d75fd1eb44270"
+
+// wrapSecret wraps a value in the Pulumi secret sentinel object.
+func wrapSecret(v interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		secretMagicKey: secretMagicValue,
+		"value":        v,
+	}
 }
 
 // generateProgram converts a bound PCL program into our JSON declarative format.
@@ -129,28 +152,8 @@ func convertResource(res *pcl.Resource) (DeclarativeResource, hcl.Diagnostics) {
 
 	// Handle resource options.
 	if res.Options != nil {
-		opts := &DeclarativeOptions{}
-		hasOpts := false
-
-		if res.Options.Protect != nil {
-			val := exprToValue(res.Options.Protect)
-			if b, ok := val.(bool); ok {
-				opts.Protect = &b
-				hasOpts = true
-			}
-		}
-		if res.Options.IgnoreChanges != nil {
-			if arr, ok := exprToValue(res.Options.IgnoreChanges).([]interface{}); ok {
-				for _, item := range arr {
-					if s, ok := item.(string); ok {
-						opts.IgnoreChanges = append(opts.IgnoreChanges, s)
-					}
-				}
-				hasOpts = true
-			}
-		}
-
-		if hasOpts {
+		opts := convertResourceOptions(res.Options)
+		if opts != nil {
 			dr.Options = opts
 		}
 	}
@@ -158,28 +161,146 @@ func convertResource(res *pcl.Resource) (DeclarativeResource, hcl.Diagnostics) {
 	return dr, nil
 }
 
+// convertResourceOptions converts PCL resource options to our declarative format.
+func convertResourceOptions(opts *pcl.ResourceOptions) *DeclarativeOptions {
+	d := &DeclarativeOptions{}
+	hasOpts := false
+
+	if opts.Protect != nil {
+		if b, ok := exprToValue(opts.Protect).(bool); ok {
+			d.Protect = &b
+			hasOpts = true
+		}
+	}
+
+	if opts.RetainOnDelete != nil {
+		if b, ok := exprToValue(opts.RetainOnDelete).(bool); ok {
+			d.RetainOnDelete = &b
+			hasOpts = true
+		}
+	}
+
+	if opts.DeleteBeforeReplace != nil {
+		if b, ok := exprToValue(opts.DeleteBeforeReplace).(bool); ok {
+			d.DeleteBeforeReplace = &b
+			hasOpts = true
+		}
+	}
+
+	if opts.IgnoreChanges != nil {
+		d.IgnoreChanges = exprToStringList(opts.IgnoreChanges)
+		hasOpts = true
+	}
+
+	if opts.ReplaceOnChanges != nil {
+		d.ReplaceOnChanges = exprToStringList(opts.ReplaceOnChanges)
+		hasOpts = true
+	}
+
+	if opts.AdditionalSecretOutputs != nil {
+		d.AdditionalSecretOutputs = exprToStringList(opts.AdditionalSecretOutputs)
+		hasOpts = true
+	}
+
+	if opts.HideDiffs != nil {
+		d.HideDiffs = exprToStringList(opts.HideDiffs)
+		hasOpts = true
+	}
+
+	if opts.Version != nil {
+		if s, ok := exprToValue(opts.Version).(string); ok {
+			d.Version = s
+			hasOpts = true
+		}
+	}
+
+	if opts.PluginDownloadURL != nil {
+		if s, ok := exprToValue(opts.PluginDownloadURL).(string); ok {
+			d.PluginDownloadURL = s
+			hasOpts = true
+		}
+	}
+
+	if opts.ImportID != nil {
+		if s, ok := exprToValue(opts.ImportID).(string); ok {
+			d.ImportID = s
+			hasOpts = true
+		}
+	}
+
+	if opts.ReplaceWith != nil {
+		// ReplaceWith is a list of resource references — extract their names as URN references.
+		d.ReplaceWith = exprToResourceRefList(opts.ReplaceWith)
+		hasOpts = true
+	}
+
+	if !hasOpts {
+		return nil
+	}
+	return d
+}
+
+// exprToStringList converts a PCL expression to a list of strings.
+// Used for ignoreChanges, replaceOnChanges, additionalSecretOutputs, etc.
+// These lists contain property names (bare identifiers), not resource references.
+func exprToStringList(expr model.Expression) []string {
+	tuple, ok := expr.(*model.TupleConsExpression)
+	if !ok {
+		return nil
+	}
+	var result []string
+	for _, item := range tuple.Expressions {
+		switch e := item.(type) {
+		case *model.ScopeTraversalExpression:
+			// Bare identifier like "value" — use the root name directly as a property path.
+			var parts []string
+			parts = append(parts, e.RootName)
+			for _, t := range e.Traversal[1:] {
+				if attr, ok := t.(hcl.TraverseAttr); ok {
+					parts = append(parts, attr.Name)
+				}
+			}
+			result = append(result, strings.Join(parts, "."))
+		case *model.LiteralValueExpression:
+			if e.Value.Type().Equals(cty.String) {
+				result = append(result, e.Value.AsString())
+			}
+		default:
+			if s, ok := exprToValue(item).(string); ok {
+				result = append(result, s)
+			}
+		}
+	}
+	return result
+}
+
+// exprToResourceRefList converts a PCL expression to a list of "${name}" references.
+// Used for replaceWith which references other resources.
+func exprToResourceRefList(expr model.Expression) []string {
+	val := exprToValue(expr)
+	arr, ok := val.([]interface{})
+	if !ok {
+		// Single reference.
+		if s, ok := val.(string); ok {
+			return []string{s}
+		}
+		return nil
+	}
+	var result []string
+	for _, item := range arr {
+		if s, ok := item.(string); ok {
+			result = append(result, s)
+		}
+	}
+	return result
+}
+
 // exprToValue converts a PCL expression to a JSON-compatible value.
 // For simple literals it returns the value directly; for references it returns "${name.field}".
 func exprToValue(expr model.Expression) interface{} {
 	switch e := expr.(type) {
 	case *model.LiteralValueExpression:
-		ty := e.Value.Type()
-		switch {
-		case ty.Equals(cty.Bool):
-			return e.Value.True()
-		case ty.Equals(cty.Number):
-			bf := e.Value.AsBigFloat()
-			if bf.IsInt() {
-				i, _ := bf.Int64()
-				return i
-			}
-			f, _ := bf.Float64()
-			return f
-		case ty.Equals(cty.String):
-			return e.Value.AsString()
-		default:
-			return e.Value.GoString()
-		}
+		return ctyToValue(e.Value)
 
 	case *model.TemplateExpression:
 		if len(e.Parts) == 1 {
@@ -223,17 +344,85 @@ func exprToValue(expr model.Expression) interface{} {
 		return arr
 
 	case *model.FunctionCallExpression:
-		if e.Name == pcl.Invoke {
-			// Invoke calls are handled separately.
-			return exprToRef(e)
-		}
-		return exprToRef(e)
+		return convertFunctionCall(e)
 
 	case *model.RelativeTraversalExpression:
 		return exprToRef(e)
 
 	default:
 		return exprToRef(expr)
+	}
+}
+
+// ctyToValue converts a cty.Value to a Go value suitable for JSON serialization.
+func ctyToValue(v cty.Value) interface{} {
+	if !v.IsKnown() {
+		return nil
+	}
+
+	ty := v.Type()
+	switch {
+	case ty.Equals(cty.Bool):
+		return v.True()
+	case ty.Equals(cty.Number):
+		bf := v.AsBigFloat()
+		return bigFloatToValue(bf)
+	case ty.Equals(cty.String):
+		return v.AsString()
+	case ty.IsListType() || ty.IsTupleType() || ty.IsSetType():
+		var result []interface{}
+		for it := v.ElementIterator(); it.Next(); {
+			_, val := it.Element()
+			result = append(result, ctyToValue(val))
+		}
+		return result
+	case ty.IsMapType() || ty.IsObjectType():
+		result := make(map[string]interface{})
+		for it := v.ElementIterator(); it.Next(); {
+			key, val := it.Element()
+			result[key.AsString()] = ctyToValue(val)
+		}
+		return result
+	case ty.Equals(cty.DynamicPseudoType):
+		return nil
+	default:
+		return v.GoString()
+	}
+}
+
+// bigFloatToValue converts a *big.Float to an appropriate Go numeric value.
+// It preserves integer representation when possible and uses json.Number
+// for extreme float values to avoid precision loss.
+func bigFloatToValue(bf *big.Float) interface{} {
+	if bf.IsInt() {
+		i, _ := bf.Int64()
+		return i
+	}
+	// For extreme float values, use the text representation to avoid precision loss.
+	f, accuracy := bf.Float64()
+	if accuracy == big.Exact {
+		return f
+	}
+	// Use the full-precision text form via json.Number.
+	return json.Number(bf.Text('e', -1))
+}
+
+// convertFunctionCall handles PCL function calls like secret(), invoke(), etc.
+func convertFunctionCall(e *model.FunctionCallExpression) interface{} {
+	switch e.Name {
+	case "secret":
+		// secret(value) → wrap in Pulumi's secret sentinel.
+		if len(e.Args) > 0 {
+			return wrapSecret(exprToValue(e.Args[0]))
+		}
+		return exprToRef(e)
+
+	case pcl.Invoke:
+		// invoke("token", {args}) → reference for resolution at runtime.
+		return exprToRef(e)
+
+	default:
+		return exprToRef(e)
 	}
 }
 

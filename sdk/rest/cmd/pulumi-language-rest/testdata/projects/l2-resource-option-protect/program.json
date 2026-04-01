@@ -1,0 +1,34 @@
+{
+  "resources": [
+    {
+      "name": "protected",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "protect": true
+      }
+    },
+    {
+      "name": "unprotected",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "protect": false
+      }
+    },
+    {
+      "name": "defaulted",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}
