@@ -85,7 +85,7 @@ install:: install_package install_plugin
 
 tools_tests::
 	go run -C ../../pkg ./cmd/pulumi generate-cli-spec \
-		--overrides ../../tools/automation/automation-overrides.json \
+		--overrides ../tools/automation/automation-overrides.json \
 		> ../../tools/automation/specification.json
 	cd tools/automation && yarn install && \
 		npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && \
