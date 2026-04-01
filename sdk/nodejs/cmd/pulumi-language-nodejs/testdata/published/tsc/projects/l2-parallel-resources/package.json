@@ -1,10 +1,10 @@
 {
 	"name": "l2-parallel-resources",
 	"devDependencies": {
-		"@types/node": "^18"
+		"@types/node": "^20"
 	},
 	"dependencies": {
-		"typescript": "^4.0.0",
+		"typescript": "^4.7.0",
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
 		"@pulumi/sync": "ROOT/artifacts/pulumi-sync-3.0.0-alpha.1.internal+exp.sha.2143768.tgz"
 	}

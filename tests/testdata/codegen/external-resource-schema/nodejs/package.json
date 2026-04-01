@@ -11,7 +11,7 @@
         "@pulumi/random": "^4.11.2"
     },
     "devDependencies": {
-        "@types/node": "^18",
+        "@types/node": "^20",
         "typescript": "^4.7.0"
     },
     "pulumi": {
