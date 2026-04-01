@@ -42,6 +42,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// ResolvedPolicyEnvironment holds resolved ESC environment data for a policy pack.
+type ResolvedPolicyEnvironment struct {
+	// Config to merge into the policy pack's config (from ESC policyConfig).
+	Config map[string]*json.RawMessage
+	// EnvironmentVariables to inject into the analyzer process.
+	EnvironmentVariables map[string]string
+}
+
 // RequiredPolicy represents a set of policies to apply during an update.
 type RequiredPolicy interface {
 	// Name provides the user-specified name of the PolicyPack.
@@ -62,6 +70,9 @@ type RequiredPolicy interface {
 	Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error
 	// Config returns the PolicyPack's configuration.
 	Config() map[string]*json.RawMessage
+	// ResolveEnvironments opens any referenced ESC environments and returns
+	// resolved config and environment variables. Returns nil, nil if no environments are referenced.
+	ResolveEnvironments(ctx context.Context) (*ResolvedPolicyEnvironment, error)
 }
 
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
@@ -465,6 +476,19 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		go func(policy RequiredPolicy) {
 			defer wg.Done()
 
+			// Resolve ESC environments if present.
+			resolved, err := policy.ResolveEnvironments(plugctx.Base())
+			if err != nil {
+				errs <- fmt.Errorf("resolving ESC environments for %q: %w", policy.Name(), err)
+				return
+			}
+
+			// Create per-policy analyzer options with ESC environment variables.
+			policyOpts := *analyzerOpts
+			if resolved != nil && len(resolved.EnvironmentVariables) > 0 {
+				policyOpts.AdditionalEnv = resolved.EnvironmentVariables
+			}
+
 			policyPath, err := policy.LocalPath()
 			if err != nil {
 				errs <- err
@@ -472,7 +496,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			analyzer, err := loadPolicyAnalyzer(
-				plugctx.Base(), plugctx, tokens.QName(policy.Name()), policyPath, analyzerOpts)
+				plugctx.Base(), plugctx, tokens.QName(policy.Name()), policyPath, &policyOpts)
 			if err != nil {
 				errs <- err
 				return
@@ -484,14 +508,34 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
+			// Merge ESC policyConfig under API config (API config wins on conflict).
+			mergedConfig := policy.Config()
+			if resolved != nil && len(resolved.Config) > 0 {
+				if mergedConfig == nil {
+					mergedConfig = make(map[string]*json.RawMessage)
+				} else {
+					// Copy the map to avoid mutating the original.
+					copied := make(map[string]*json.RawMessage, len(mergedConfig)+len(resolved.Config))
+					for k, v := range mergedConfig {
+						copied[k] = v
+					}
+					mergedConfig = copied
+				}
+				for k, v := range resolved.Config {
+					if _, exists := mergedConfig[k]; !exists {
+						mergedConfig[k] = v
+					}
+				}
+			}
+
 			// Parse the config, reconcile & validate it, and pass it to the policy pack.
 			if !analyzerInfo.SupportsConfig {
-				if len(policy.Config()) > 0 {
+				if len(mergedConfig) > 0 {
 					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
 				}
 				return
 			}
-			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
+			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(mergedConfig)
 			if err != nil {
 				errs <- err
 				return

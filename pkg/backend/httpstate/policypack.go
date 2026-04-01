@@ -25,6 +25,11 @@ import (
 	"strconv"
 	"strings"
 
+	"time"
+
+	"github.com/pulumi/esc"
+	escclient "github.com/pulumi/esc/cmd/esc/cli/client"
+
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -42,17 +47,19 @@ import (
 
 type cloudRequiredPolicy struct {
 	apitype.RequiredPolicy
-	client  *client.Client
-	orgName string
+	client    *client.Client
+	escClient escclient.Client
+	orgName   string
 }
 
 var _ engine.RequiredPolicy = (*cloudRequiredPolicy)(nil)
 
-func newCloudRequiredPolicy(client *client.Client,
+func newCloudRequiredPolicy(client *client.Client, escClient escclient.Client,
 	policy apitype.RequiredPolicy, orgName string,
 ) *cloudRequiredPolicy {
 	return &cloudRequiredPolicy{
 		client:         client,
+		escClient:      escClient,
 		RequiredPolicy: policy,
 		orgName:        orgName,
 	}
@@ -116,6 +123,123 @@ func (rp *cloudRequiredPolicy) Install(ctx *plugin.Context, content io.ReadClose
 }
 
 func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.RequiredPolicy.Config }
+
+// ResolveEnvironments opens any referenced ESC environments and returns resolved
+// config (from policyConfig) and environment variables. Returns nil if no environments are referenced.
+func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine.ResolvedPolicyEnvironment, error) {
+	if len(rp.RequiredPolicy.Environments) == 0 {
+		return nil, nil
+	}
+
+	// Build a synthetic YAML environment that imports all referenced environments.
+	// This reuses the ESC composition model to handle ordering and merging.
+	yaml := buildImportsYAML(rp.RequiredPolicy.Environments)
+
+	id, diags, err := rp.escClient.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour)
+	if err != nil {
+		return nil, fmt.Errorf("opening ESC environments for policy pack %q: %w", rp.RequiredPolicy.Name, err)
+	}
+	if len(diags) != 0 {
+		var diagMsgs strings.Builder
+		for _, d := range diags {
+			fmt.Fprintf(&diagMsgs, "  %s\n", d.Summary)
+		}
+		return nil, fmt.Errorf(
+			"opening ESC environments for policy pack %q:\n%s", rp.RequiredPolicy.Name, diagMsgs.String())
+	}
+
+	env, err := rp.escClient.GetAnonymousOpenEnvironment(ctx, rp.orgName, id)
+	if err != nil {
+		return nil, fmt.Errorf("getting resolved ESC environment for policy pack %q: %w", rp.RequiredPolicy.Name, err)
+	}
+
+	result := &engine.ResolvedPolicyEnvironment{}
+
+	// Extract policyConfig from the resolved environment.
+	if policyConfigVal, ok := env.Properties["policyConfig"]; ok {
+		policyConfig, err := escValueToConfigMap(policyConfigVal)
+		if err != nil {
+			return nil, fmt.Errorf("extracting policyConfig from ESC environment for %q: %w", rp.RequiredPolicy.Name, err)
+		}
+		result.Config = policyConfig
+	}
+
+	// Extract environmentVariables from the resolved environment.
+	if envVarsVal, ok := env.Properties["environmentVariables"]; ok {
+		envVars := escValueToStringMap(envVarsVal)
+		if len(envVars) > 0 {
+			result.EnvironmentVariables = envVars
+		}
+	}
+
+	return result, nil
+}
+
+// buildImportsYAML constructs a synthetic ESC YAML document that imports the given environment refs.
+func buildImportsYAML(envRefs []string) []byte {
+	var buf bytes.Buffer
+	buf.WriteString("imports:\n")
+	for _, ref := range envRefs {
+		fmt.Fprintf(&buf, "  - %s\n", ref)
+	}
+	return buf.Bytes()
+}
+
+// escValueToConfigMap converts an esc.Value representing policyConfig into the
+// map[string]*json.RawMessage format expected by policy pack configuration.
+// The policyConfig is expected to be a map of policy names to config objects.
+func escValueToConfigMap(val esc.Value) (map[string]*json.RawMessage, error) {
+	m, ok := val.Value.(map[string]esc.Value)
+	if !ok {
+		return nil, fmt.Errorf("expected policyConfig to be a map, got %T", val.Value)
+	}
+
+	result := make(map[string]*json.RawMessage, len(m))
+	for k, v := range m {
+		jsonBytes, err := json.Marshal(escValueToInterface(v))
+		if err != nil {
+			return nil, fmt.Errorf("marshaling config for policy %q: %w", k, err)
+		}
+		raw := json.RawMessage(jsonBytes)
+		result[k] = &raw
+	}
+	return result, nil
+}
+
+// escValueToStringMap converts an esc.Value expected to be a map of string keys to string values.
+func escValueToStringMap(val esc.Value) map[string]string {
+	m, ok := val.Value.(map[string]esc.Value)
+	if !ok {
+		return nil
+	}
+	result := make(map[string]string, len(m))
+	for k, v := range m {
+		if s, ok := v.Value.(string); ok {
+			result[k] = s
+		}
+	}
+	return result
+}
+
+// escValueToInterface recursively converts an esc.Value to a plain Go interface{} for JSON serialization.
+func escValueToInterface(val esc.Value) interface{} {
+	switch v := val.Value.(type) {
+	case map[string]esc.Value:
+		m := make(map[string]interface{}, len(v))
+		for k, child := range v {
+			m[k] = escValueToInterface(child)
+		}
+		return m
+	case []esc.Value:
+		s := make([]interface{}, len(v))
+		for i, child := range v {
+			s[i] = escValueToInterface(child)
+		}
+		return s
+	default:
+		return v
+	}
+}
 
 func newCloudBackendPolicyPackReference(
 	cloudConsoleURL, orgName string, name tokens.QName,
