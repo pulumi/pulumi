@@ -78,6 +78,7 @@ go_test(
         "runtime_options_test.go",
         "snapshot_test.go",
     ],
+    data = ["//pkg/testing/pulumi-test-language/tests:testdata"],
     embed = [":pulumi-test-language_lib"],
     deps = [
         "//pkg/codegen/pcl",

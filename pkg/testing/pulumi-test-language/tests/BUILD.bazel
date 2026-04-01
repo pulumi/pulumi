@@ -1,5 +1,11 @@
 load("@rules_go//go:def.bzl", "go_library")
 
+filegroup(
+    name = "testdata",
+    srcs = glob(["testdata/**"]),
+    visibility = ["//pkg/testing/pulumi-test-language:__pkg__"],
+)
+
 go_library(
     name = "tests",
     srcs = [

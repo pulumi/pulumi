@@ -3,6 +3,12 @@
 # Build with optimizations by default
 build --compilation_mode=opt
 
+# Disable race detection by default (can be enabled with --config=race)
+build --@rules_go//go/config:race=false
+
+# Config for enabling race detection
+build:race --@rules_go//go/config:race=true
+
 # Use purego tag to avoid assembly issues in cloudflare/circl
 build --@rules_go//go/config:tags=purego
 
