@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Cache type metadata and class references in Python SDK to reduce CPU overhead during serialization
