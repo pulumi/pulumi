@@ -1,0 +1,3 @@
+name: hello-bash
+runtime: bash
+description: Hello World in Pulumi Bash — no cloud provider required

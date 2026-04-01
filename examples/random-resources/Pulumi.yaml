@@ -1,0 +1,3 @@
+name: random-bash
+runtime: bash
+description: Create random resources using Pulumi Bash with the random provider
