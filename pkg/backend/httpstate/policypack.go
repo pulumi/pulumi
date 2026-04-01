@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
 	"time"
 
 	"github.com/pulumi/esc"
@@ -127,13 +126,13 @@ func (rp *cloudRequiredPolicy) Config() map[string]*json.RawMessage { return rp.
 // ResolveEnvironments opens any referenced ESC environments and returns resolved
 // config (from policyConfig) and environment variables. Returns nil if no environments are referenced.
 func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine.ResolvedPolicyEnvironment, error) {
-	if len(rp.RequiredPolicy.Environments) == 0 {
+	if len(rp.Environments) == 0 {
 		return nil, nil
 	}
 
 	// Build a synthetic YAML environment that imports all referenced environments.
 	// This reuses the ESC composition model to handle ordering and merging.
-	yaml := buildImportsYAML(rp.RequiredPolicy.Environments)
+	yaml := buildImportsYAML(rp.Environments)
 
 	id, diags, err := rp.escClient.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour)
 	if err != nil {
@@ -221,17 +220,17 @@ func escValueToStringMap(val esc.Value) map[string]string {
 	return result
 }
 
-// escValueToInterface recursively converts an esc.Value to a plain Go interface{} for JSON serialization.
-func escValueToInterface(val esc.Value) interface{} {
+// escValueToInterface recursively converts an esc.Value to a plain Go any for JSON serialization.
+func escValueToInterface(val esc.Value) any {
 	switch v := val.Value.(type) {
 	case map[string]esc.Value:
-		m := make(map[string]interface{}, len(v))
+		m := make(map[string]any, len(v))
 		for k, child := range v {
 			m[k] = escValueToInterface(child)
 		}
 		return m
 	case []esc.Value:
-		s := make([]interface{}, len(v))
+		s := make([]any, len(v))
 		for i, child := range v {
 			s[i] = escValueToInterface(child)
 		}
