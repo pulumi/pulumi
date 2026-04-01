@@ -323,10 +323,13 @@ Please ensure these components are properly imported to your package's entry poi
         }
 
         let inputs: Record<string, PropertyDefinition> = {};
-        if (argsSymbol.members) {
+        // Use args.getProperties() instead of argsSymbol.members to include
+        // properties inherited from extended interfaces.
+        const argsProperties = args.getProperties();
+        if (argsProperties.length > 0) {
             inputs = this.analyzeSymbols(
                 { component: componentName, inputOutput: InputOutput.Neither, typeName: argsSymbol.getName() },
-                symbolTableToSymbols(argsSymbol.members),
+                argsProperties,
             );
         }
 
