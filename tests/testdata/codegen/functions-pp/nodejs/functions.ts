@@ -5,7 +5,7 @@ import * as fs from "fs";
 
 function computeFilebase64sha256(path: string): string {
 	const fileData = Buffer.from(fs.readFileSync(path, 'binary'))
-	return crypto.createHash('sha256').update(fileData).digest('hex')
+	return crypto.createHash('sha256').update(fileData).digest('base64')
 }
 
 const encoded = Buffer.from("haha business").toString("base64");
