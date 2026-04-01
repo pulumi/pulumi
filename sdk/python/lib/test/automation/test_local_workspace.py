@@ -14,6 +14,7 @@
 
 import json
 import os
+import tempfile
 import unittest
 from typing import List, Optional
 import asyncio
@@ -1587,7 +1588,7 @@ class TestLocalWorkspace(unittest.TestCase):
 
         # With template.
         ws.new("typescript")
-        self.assertEqual(mock_cmd.args[0], ["new", "--yes", "--", "typescript"])
+        self.assertEqual(mock_cmd.args[0], ["new", "--yes", "typescript"])
 
         # With name and generate-only.
         ws.new(name="my-project", generate_only=True, force=True)
@@ -1618,7 +1619,6 @@ class TestLocalWorkspace(unittest.TestCase):
                 "A test project",
                 "--stack",
                 "dev",
-                "--",
                 "aws-typescript",
             ],
         )
@@ -1646,10 +1646,51 @@ class TestLocalWorkspace(unittest.TestCase):
                 "--offline",
                 "--remote-stack-config",
                 "--template-mode",
-                "--",
                 "yaml",
             ],
         )
+
+    def test_new_generate_only(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws = LocalWorkspace(work_dir=tmp_dir)
+            result = ws.new(
+                "yaml",
+                name="test-new-project",
+                generate_only=True,
+                force=True,
+                offline=True,
+            )
+            self.assertIsNotNone(result)
+
+            # Verify a Pulumi.yaml was created with the correct project name.
+            proj_path = os.path.join(tmp_dir, "Pulumi.yaml")
+            self.assertTrue(os.path.isfile(proj_path))
+            with open(proj_path) as f:
+                contents = f.read()
+            self.assertIn("name: test-new-project", contents)
+
+    def test_new_generate_only_in_sub_dir(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws = LocalWorkspace(work_dir=tmp_dir)
+            sub_dir = os.path.join(tmp_dir, "subproject")
+            result = ws.new(
+                "yaml",
+                name="sub-project",
+                description="A sub-project for testing",
+                dir=sub_dir,
+                generate_only=True,
+                force=True,
+                offline=True,
+            )
+            self.assertIsNotNone(result)
+
+            # Verify the project was created in the subdirectory.
+            proj_path = os.path.join(sub_dir, "Pulumi.yaml")
+            self.assertTrue(os.path.isfile(proj_path))
+            with open(proj_path) as f:
+                contents = f.read()
+            self.assertIn("name: sub-project", contents)
+            self.assertIn("description: A sub-project for testing", contents)
 
     @pytest.mark.timeout(20)  # This test will hang indefinitely if the bug is present
     def test_pytest_raises_does_not_hang(self):

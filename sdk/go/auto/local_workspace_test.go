@@ -3889,7 +3889,7 @@ func TestNewOptions(t *testing.T) {
 		TemplateOrURL: "typescript",
 	})
 	require.NoError(t, err)
-	require.Equal(t, []string{"new", "--yes", "--", "typescript"}, m.capturedArgs)
+	require.Equal(t, []string{"new", "--yes", "typescript"}, m.capturedArgs)
 
 	// With name and generate-only.
 	_, err = workspace.New(ctx, &NewOptions{
@@ -3921,7 +3921,7 @@ func TestNewOptions(t *testing.T) {
 		"--config-path",
 		"--description", "A test project",
 		"--stack", "dev",
-		"--", "aws-typescript",
+		"aws-typescript",
 	}, m.capturedArgs)
 
 	// With all boolean flags.
@@ -3945,6 +3945,62 @@ func TestNewOptions(t *testing.T) {
 		"--offline",
 		"--remote-stack-config",
 		"--template-mode",
-		"--", "yaml",
+		"yaml",
 	}, m.capturedArgs)
+}
+
+func TestNewGenerateOnly(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	tmpDir := t.TempDir()
+
+	ws, err := NewLocalWorkspace(ctx, WorkDir(tmpDir))
+	require.NoError(t, err)
+
+	result, err := ws.New(ctx, &NewOptions{
+		TemplateOrURL: "yaml",
+		Name:          "test-new-project",
+		GenerateOnly:  true,
+		Force:         true,
+		Offline:       true,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, result.StdOut)
+
+	// Verify a Pulumi.yaml was created with the correct project name.
+	projPath := filepath.Join(tmpDir, "Pulumi.yaml")
+	require.FileExists(t, projPath)
+	contents, err := os.ReadFile(projPath)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "name: test-new-project")
+}
+
+func TestNewGenerateOnlyInSubDir(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	tmpDir := t.TempDir()
+
+	ws, err := NewLocalWorkspace(ctx, WorkDir(tmpDir))
+	require.NoError(t, err)
+
+	subDir := filepath.Join(tmpDir, "subproject")
+	result, err := ws.New(ctx, &NewOptions{
+		TemplateOrURL: "yaml",
+		Name:          "sub-project",
+		Description:   "A sub-project for testing",
+		Dir:           subDir,
+		GenerateOnly:  true,
+		Force:         true,
+		Offline:       true,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, result.StdOut)
+
+	// Verify the project was created in the subdirectory.
+	projPath := filepath.Join(subDir, "Pulumi.yaml")
+	require.FileExists(t, projPath)
+	contents, err := os.ReadFile(projPath)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "name: sub-project")
+	require.Contains(t, string(contents), "description: A sub-project for testing")
 }

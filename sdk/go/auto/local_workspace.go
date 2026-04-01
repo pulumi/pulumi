@@ -919,7 +919,7 @@ func (l *LocalWorkspace) New(ctx context.Context, opts *NewOptions) (NewResult, 
 			args = append(args, "--template-mode")
 		}
 		if opts.TemplateOrURL != "" {
-			args = append(args, "--", opts.TemplateOrURL)
+			args = append(args, opts.TemplateOrURL)
 		}
 	}
 	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, args...)

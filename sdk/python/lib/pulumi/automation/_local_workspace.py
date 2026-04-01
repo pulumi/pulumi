@@ -626,7 +626,6 @@ class LocalWorkspace(Workspace):
         if template_mode:
             args.append("--template-mode")
         if template_or_url is not None:
-            args.append("--")
             args.append(template_or_url)
         return self._run_pulumi_cmd_sync(args, on_output=on_output)
 
