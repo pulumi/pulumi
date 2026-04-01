@@ -179,7 +179,7 @@ func parseIndex(runes []rune) (GlobSegment, []rune, error) {
 			return nil, nil, err
 		}
 		if n > math.MaxInt64 {
-			return nil, nil, errors.New("indexes cannot exceed 9223372036854775807")
+			return nil, nil, fmt.Errorf("indexes cannot exceed %d", int64(math.MaxInt64))
 		}
 		return IndexSegment{n}, runes[i+1:], nil
 	case runes[0] == '"':

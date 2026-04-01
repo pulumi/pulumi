@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // [fmt.GoStringer] lets a type define the go syntax needed to define it.
@@ -105,23 +103,12 @@ func (null) GoString() string { return "property.Null" }
 
 func (computed) GoString() string { return "property.Computed" }
 
-func (g Path) String() string { return g.AsGlob().String() }
-
 func (g Path) GoString() string {
 	if g.len() == 0 {
 		return "property.Path{}"
 	}
 
 	return "property.PathFromSegments" + reproGoString(g.pathRepr)
-}
-
-func (g Glob) String() string {
-	if g.len() == 0 {
-		return ""
-	}
-	t, err := g.MarshalText()
-	contract.AssertNoErrorf(err, "A non-empty path should always marshal")
-	return string(t)
 }
 
 func (g Glob) GoString() string {
