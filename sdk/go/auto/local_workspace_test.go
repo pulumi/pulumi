@@ -3584,6 +3584,31 @@ func TestInstallWithUseLanguageVersionTools(t *testing.T) {
 	require.Equal(t, []string{"install", "--use-language-version-tools"}, m.capturedArgs)
 }
 
+func TestOrgGetSetDefault(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	pDir := filepath.Join(".", "test", "testproj")
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir))
+	require.NoError(t, err)
+
+	// Save the current default so we can restore it.
+	original, err := workspace.OrgGetDefault(ctx)
+	require.NoError(t, err)
+
+	// Set a new default and verify.
+	err = workspace.OrgSetDefault(ctx, "definitely-not-pulumi")
+	require.NoError(t, err)
+	result, err := workspace.OrgGetDefault(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "definitely-not-pulumi", result)
+
+	// Restore the original default.
+	err = workspace.OrgSetDefault(ctx, original)
+	require.NoError(t, err)
+}
+
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	ctx := b.Context()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")
