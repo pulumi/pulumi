@@ -445,4 +445,45 @@ func TestResolveEnvironments(t *testing.T) {
 		assert.Nil(t, result.Config)
 		assert.Equal(t, map[string]string{"KEY": "val"}, result.EnvironmentVariables)
 	})
+
+	t.Run("namespaced policyConfig keys pass through", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockESCClient{
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (string, []escclient.EnvironmentDiagnostic, error) {
+				return "id", nil, nil
+			},
+			getAnonymousOpenEnvironmentF: func(context.Context, string, string) (*esc.Environment, error) {
+				return &esc.Environment{
+					Properties: map[string]esc.Value{
+						"policyConfig": {Value: map[string]esc.Value{
+							"my-pack:cost-policy": {Value: map[string]esc.Value{
+								"maxCost": {Value: json.Number("500")},
+							}},
+							"naming-policy": {Value: map[string]esc.Value{
+								"enforcement": {Value: "mandatory"},
+							}},
+						}},
+					},
+				}, nil
+			},
+		}
+
+		rp := &cloudRequiredPolicy{
+			escClient: mock,
+			orgName:   "org",
+			RequiredPolicy: apitype.RequiredPolicy{
+				Name:         "my-pack",
+				Environments: []string{"env"},
+			},
+		}
+
+		result, err := rp.ResolveEnvironments(t.Context())
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		// Raw keys pass through as-is; namespace parsing happens during merge in update.go.
+		assert.Contains(t, result.Config, "my-pack:cost-policy")
+		assert.Contains(t, result.Config, "naming-policy")
+	})
 }

@@ -314,3 +314,27 @@ func (a *mockAnalyzer) GetPluginInfo() (plugin.PluginInfo, error) {
 }
 func (a *mockAnalyzer) Configure(map[string]plugin.AnalyzerPolicyConfig) error { return nil }
 func (a *mockAnalyzer) Cancel(context.Context) error                           { return nil }
+
+func TestParsePolicyConfigKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		key        string
+		wantPack   string
+		wantPolicy string
+	}{
+		{"cost-policy", "", "cost-policy"},
+		{"my-pack:cost-policy", "my-pack", "cost-policy"},
+		{":cost-policy", "", "cost-policy"},
+		{"pack:a:b", "pack", "a:b"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.key, func(t *testing.T) {
+			t.Parallel()
+			gotPack, gotPolicy := parsePolicyConfigKey(tt.key)
+			assert.Equal(t, tt.wantPack, gotPack)
+			assert.Equal(t, tt.wantPolicy, gotPolicy)
+		})
+	}
+}

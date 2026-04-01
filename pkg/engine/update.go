@@ -50,6 +50,16 @@ type ResolvedPolicyEnvironment struct {
 	EnvironmentVariables map[string]string
 }
 
+// parsePolicyConfigKey splits a policyConfig key into an optional pack name
+// prefix and the policy name. Keys may be "policyName" or "packName:policyName".
+// This mirrors pulumiConfig's optional namespace pattern (e.g., "aws:region").
+func parsePolicyConfigKey(key string) (packName, policyName string) {
+	if i := strings.IndexByte(key, ':'); i >= 0 {
+		return key[:i], key[i+1:]
+	}
+	return "", key
+}
+
 // RequiredPolicy represents a set of policies to apply during an update.
 type RequiredPolicy interface {
 	// Name provides the user-specified name of the PolicyPack.
@@ -509,6 +519,8 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			// Merge ESC policyConfig under API config (API config wins on conflict).
+			// Keys may be "policyName" or "packName:policyName".
+			// Namespaced keys only apply to the matching pack.
 			mergedConfig := policy.Config()
 			if resolved != nil && len(resolved.Config) > 0 {
 				if mergedConfig == nil {
@@ -521,9 +533,13 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 					}
 					mergedConfig = copied
 				}
-				for k, v := range resolved.Config {
-					if _, exists := mergedConfig[k]; !exists {
-						mergedConfig[k] = v
+				for rawKey, v := range resolved.Config {
+					packPrefix, policyName := parsePolicyConfigKey(rawKey)
+					if packPrefix != "" && packPrefix != policy.Name() {
+						continue
+					}
+					if _, exists := mergedConfig[policyName]; !exists {
+						mergedConfig[policyName] = v
 					}
 				}
 			}
