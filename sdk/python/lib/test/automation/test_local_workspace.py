@@ -1651,14 +1651,16 @@ class TestLocalWorkspace(unittest.TestCase):
         )
 
     def test_new_generate_only(self):
+        template_dir = os.path.join(
+            os.path.dirname(__file__), "data", "new_template"
+        )
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws = LocalWorkspace(work_dir=tmp_dir)
             result = ws.new(
-                "yaml",
+                template_dir,
                 name="test-new-project",
                 generate_only=True,
                 force=True,
-                offline=True,
             )
             self.assertIsNotNone(result)
 
@@ -1670,17 +1672,19 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertIn("name: test-new-project", contents)
 
     def test_new_generate_only_in_sub_dir(self):
+        template_dir = os.path.join(
+            os.path.dirname(__file__), "data", "new_template"
+        )
         with tempfile.TemporaryDirectory() as tmp_dir:
             ws = LocalWorkspace(work_dir=tmp_dir)
             sub_dir = os.path.join(tmp_dir, "subproject")
             result = ws.new(
-                "yaml",
+                template_dir,
                 name="sub-project",
                 description="A sub-project for testing",
                 dir=sub_dir,
                 generate_only=True,
                 force=True,
-                offline=True,
             )
             self.assertIsNotNone(result)
 

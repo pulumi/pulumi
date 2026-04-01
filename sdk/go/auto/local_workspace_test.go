@@ -3954,15 +3954,17 @@ func TestNewGenerateOnly(t *testing.T) {
 	ctx := t.Context()
 	tmpDir := t.TempDir()
 
+	templateDir, err := filepath.Abs(filepath.Join(".", "test", "new_template"))
+	require.NoError(t, err)
+
 	ws, err := NewLocalWorkspace(ctx, WorkDir(tmpDir))
 	require.NoError(t, err)
 
 	result, err := ws.New(ctx, &NewOptions{
-		TemplateOrURL: "yaml",
+		TemplateOrURL: templateDir,
 		Name:          "test-new-project",
 		GenerateOnly:  true,
 		Force:         true,
-		Offline:       true,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, result.StdOut)
@@ -3980,18 +3982,20 @@ func TestNewGenerateOnlyInSubDir(t *testing.T) {
 	ctx := t.Context()
 	tmpDir := t.TempDir()
 
+	templateDir, err := filepath.Abs(filepath.Join(".", "test", "new_template"))
+	require.NoError(t, err)
+
 	ws, err := NewLocalWorkspace(ctx, WorkDir(tmpDir))
 	require.NoError(t, err)
 
 	subDir := filepath.Join(tmpDir, "subproject")
 	result, err := ws.New(ctx, &NewOptions{
-		TemplateOrURL: "yaml",
+		TemplateOrURL: templateDir,
 		Name:          "sub-project",
 		Description:   "A sub-project for testing",
 		Dir:           subDir,
 		GenerateOnly:  true,
 		Force:         true,
-		Offline:       true,
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, result.StdOut)
