@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -486,5 +487,45 @@ func testSimpleRenderer(
 	} else {
 		err = os.WriteFile(fileName, stdout.Bytes(), 0o600)
 		require.NoError(t, err)
+	}
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/21697
+func TestSystemEventDoesNotDeadlockMessageRenderer(t *testing.T) {
+	t.Parallel()
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+	var stdout bytes.Buffer
+
+	go ShowProgressEvents(
+		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
+		Options{
+			IsInteractive: true,
+			Color:         colors.Raw,
+			Stdout:        &stdout,
+			Stderr:        &bytes.Buffer{},
+			// Use raw=false to get the messageRenderer
+			term:                terminal.NewMockTerminal(&stdout, 80, 24, false /* raw */),
+			DeterministicOutput: true,
+		}, false)
+
+	go func() {
+		// Send a system event: this is what Ctrl+C produces ("^C received; cancelling...").
+		eventChannel <- engine.NewEvent(engine.StdoutEventPayload{
+			Message: "^C received; cancelling.\n",
+			Color:   colors.Always,
+		})
+
+		// Send the cancel event to terminate the display.
+		eventChannel <- engine.NewCancelEvent()
+		close(eventChannel)
+	}()
+
+	select {
+	case <-doneChannel:
+		// Success: display completed without deadlocking.
+	case <-time.After(10 * time.Second):
+		t.Fatal("display deadlocked processing system event with messageRenderer")
 	}
 }
