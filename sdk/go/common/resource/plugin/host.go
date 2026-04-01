@@ -669,23 +669,15 @@ func (host *defaultHost) SignalCancellation() error {
 		cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancelCancel()
 
-		// Cancel all plugins in parallel so that a stuck Cancel RPC on one plugin doesn't block the cancellation of the
-		// rest.
+		// Cancel in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based providers
+		// run inside a language host, so we cancel non-language host plugins first to give them a chance to shut down
+		// cleanly before cancelling the language host that spawned them.
 		var (
 			mu   sync.Mutex
 			errs []error
 		)
+
 		var wg sync.WaitGroup
-		for _, plug := range host.languagePlugins {
-			wg.Go(func() {
-				if err := plug.Plugin.Cancel(); err != nil {
-					mu.Lock()
-					errs = append(errs, fmt.Errorf(
-						"error signaling cancellation to language runtime '%s': %w", plug.Name, err))
-					mu.Unlock()
-				}
-			})
-		}
 		for _, plug := range host.resourcePlugins {
 			wg.Go(func() {
 				if err := plug.Plugin.SignalCancellation(cancelCtx); err != nil {
@@ -707,6 +699,19 @@ func (host *defaultHost) SignalCancellation() error {
 			})
 		}
 		wg.Wait()
+
+		for _, plug := range host.languagePlugins {
+			wg.Go(func() {
+				if err := plug.Plugin.Cancel(); err != nil {
+					mu.Lock()
+					errs = append(errs, fmt.Errorf(
+						"error signaling cancellation to language runtime '%s': %w", plug.Name, err))
+					mu.Unlock()
+				}
+			})
+		}
+		wg.Wait()
+
 		return nil, errors.Join(errs...)
 	})
 	return err
