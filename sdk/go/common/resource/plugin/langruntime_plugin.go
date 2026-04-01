@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -661,16 +662,121 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 }
 
 func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
-	io.Reader, io.Reader, *promise.Promise[int32], error,
+	io.Reader, io.Reader, func(force bool), *promise.Promise[int32], error,
 ) {
 	logging.V(7).Infof("langhost[%v].RunPlugin(%s) executing",
 		h.runtime, info.Info.String())
 
 	minfo, err := info.Info.Marshal()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
+	rctx, kill := context.WithCancel(ctx)
+
+	stream, err := h.client.RunPlugin2(rctx)
+	if err != nil {
+		kill()
+		if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
+			logging.V(7).Infof("langhost[%v].RunPlugin2 not implemented, falling back to RunPlugin", h.runtime)
+			return h.runPluginFallback(ctx, info, minfo)
+		}
+		return nil, nil, nil, nil, err
+	}
+
+	// Send the start request as the first message.
+	err = stream.Send(&pulumirpc.RunPlugin2Request{
+		Request: &pulumirpc.RunPlugin2Request_Start{
+			Start: &pulumirpc.RunPluginRequest{
+				Pwd:            info.WorkingDirectory,
+				Args:           info.Args,
+				Env:            info.Env,
+				Info:           minfo,
+				Kind:           info.Kind,
+				AttachDebugger: info.AttachDebugger,
+				LoaderTarget:   info.LoaderAddress,
+			},
+		},
+	})
+	if err != nil {
+		// For bidi streams `Send` can return `io.EOF` when the server has already closed the stream, because it doesn't
+		// support `RunPlugin2`. The actual gRPC status is available via `Recv` in this case. Depending on the timing
+		// between client and the server, `Send` can also succeed, and have to detect the `Unimplemented` error below in
+		// `recvRunPluginResponses`.
+		if errors.Is(err, io.EOF) {
+			if _, recvErr := stream.Recv(); recvErr != nil {
+				err = recvErr
+			}
+		}
+		kill()
+		if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
+			logging.V(7).Infof("langhost[%v].RunPlugin2 not implemented, falling back to RunPlugin", h.runtime)
+			return h.runPluginFallback(ctx, info, minfo)
+		}
+		return nil, nil, nil, nil, err
+	}
+
+	outr, outw := io.Pipe()
+	errr, errw := io.Pipe()
+	cts := &promise.CompletionSource[int32]{}
+
+	go func() {
+		defer kill()
+		// For bidi streams the stream creation (the call to `client.RunPlugin2` above) can succeed even when the server
+		// doesn't know the method. The unimplemented error then only surfaces on `Recv`. If that happens, fall back to
+		// RunPlugin and bridge its output to the pipes we already returned.
+		recvRunPluginResponses(stream, outw, errw, cts, func() {
+			logging.V(7).Infof("langhost[%v].RunPlugin2 not implemented, falling back to RunPlugin", h.runtime)
+			stdout, stderr, _, done, err := h.runPluginFallback(rctx, info, minfo)
+			if err != nil {
+				outw.CloseWithError(err)
+				errw.CloseWithError(err)
+				cts.Reject(err)
+				return
+			}
+			var wg sync.WaitGroup
+			wg.Add(2)
+			go func() { defer wg.Done(); io.Copy(outw, stdout) }() //nolint:errcheck
+			go func() { defer wg.Done(); io.Copy(errw, stderr) }() //nolint:errcheck
+			exitCode, waitErr := done.Result(rctx)
+			wg.Wait()
+			outw.Close()
+			errw.Close()
+			if waitErr != nil {
+				cts.Reject(waitErr)
+			} else {
+				cts.Fulfill(exitCode)
+			}
+		})
+	}()
+
+	// cancelPlugin sends a cancel message on the bidi stream.
+	// Soft cancel (force=false) can be sent once; subsequent soft calls are no-ops.
+	var softOnce sync.Once
+	cancelPlugin := func(force bool) {
+		if force {
+			_ = stream.Send(&pulumirpc.RunPlugin2Request{
+				Request: &pulumirpc.RunPlugin2Request_Cancel{
+					Cancel: &pulumirpc.RunPluginCancelRequest{Force: true},
+				},
+			})
+		} else {
+			softOnce.Do(func() {
+				_ = stream.Send(&pulumirpc.RunPlugin2Request{
+					Request: &pulumirpc.RunPlugin2Request_Cancel{
+						Cancel: &pulumirpc.RunPluginCancelRequest{Force: false},
+					},
+				})
+			})
+		}
+	}
+
+	return outr, errr, cancelPlugin, cts.Promise(), nil
+}
+
+func (h *langhost) runPluginFallback(ctx context.Context, info RunPluginInfo, minfo *pulumirpc.ProgramInfo) (
+	io.Reader, io.Reader, func(force bool), *promise.Promise[int32], error,
+) {
 	rctx, kill := context.WithCancel(ctx)
 
 	resp, err := h.client.RunPlugin(rctx, &pulumirpc.RunPluginRequest{
@@ -686,7 +792,7 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 		// If there was an error starting the plugin kill the context for this request to ensure any lingering
 		// connection terminates.
 		kill()
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	outr, outw := io.Pipe()
@@ -695,57 +801,69 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 	cts := &promise.CompletionSource[int32]{}
 
 	go func() {
-		for {
-			logging.V(10).Infoln("Waiting for plugin message")
-			msg, err := resp.Recv()
-			if err != nil {
-				// If there was an error receiving then signal that the plugin has exited.
-				// If err is just EOF then the plugin has exited normally, and we can exitcode 0
-				err1 := outw.Close()
-				err2 := errw.Close()
-				if errors.Is(err, io.EOF) {
-					cts.Fulfill(0)
-				} else {
-					// We need this condition because although `Join` will ignore nil errors it won't return the
-					// original error if it's the only one. That is `Join(err, nil, nil) != err`. Because of that our
-					// later "is this a grpc error" check doesn't work because it sees a `joinError` instead of a
-					// `grpcError`.
-					if err1 != nil || err2 != nil {
-						err = errors.Join(err, err1, err2)
-					}
-					cts.Reject(err)
-				}
-				kill()
-				break
-			}
-
-			logging.V(10).Infoln("Got plugin response: ", msg)
-
-			if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
-				n, err := outw.Write(value.Stdout)
-				contract.AssertNoErrorf(err, "failed to write to stdout pipe: %v", err)
-				contract.Assertf(n == len(value.Stdout), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stdout))
-			} else if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stderr); ok {
-				n, err := errw.Write(value.Stderr)
-				contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
-				contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
-			} else if code, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
-				// If stdout and stderr are empty we've flushed and are returning the exit code
-				err1 := outw.Close()
-				err2 := errw.Close()
-				err = errors.Join(err1, err2)
-				if err != nil {
-					cts.Reject(err)
-				} else {
-					cts.Fulfill(code.Exitcode)
-				}
-				kill()
-				break
-			}
-		}
+		defer kill()
+		recvRunPluginResponses(resp, outw, errw, cts, nil)
 	}()
 
-	return outr, errr, cts.Promise(), nil
+	// For RunPlugin cancellation is done by killing the gRPC stream context. There is no soft cancellation.
+	cancel := func(force bool) { kill() }
+	return outr, errr, cancel, cts.Promise(), nil
+}
+
+func recvRunPluginResponses(
+	stream grpc.ServerStreamingClient[pulumirpc.RunPluginResponse],
+	outw, errw *io.PipeWriter,
+	cts *promise.CompletionSource[int32],
+	onUnimplemented func(),
+) {
+	for {
+		logging.V(10).Infoln("Waiting for plugin message")
+		msg, err := stream.Recv()
+		if err != nil {
+			if onUnimplemented != nil {
+				if st, ok := status.FromError(err); ok && st.Code() == codes.Unimplemented {
+					onUnimplemented()
+					return
+				}
+			}
+			err1 := outw.Close()
+			err2 := errw.Close()
+			if errors.Is(err, io.EOF) {
+				cts.Fulfill(0)
+			} else {
+				if err1 != nil || err2 != nil {
+					err = errors.Join(err, err1, err2)
+				}
+				cts.Reject(err)
+			}
+			break
+		}
+		// clear onUnimplemented the first time we manage to recv a message, we can assume the language supports
+		// RunPlugin2.
+		onUnimplemented = nil
+
+		logging.V(10).Infoln("Got plugin response: ", msg)
+
+		if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
+			n, err := outw.Write(value.Stdout)
+			contract.AssertNoErrorf(err, "failed to write to stdout pipe: %v", err)
+			contract.Assertf(n == len(value.Stdout), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stdout))
+		} else if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stderr); ok {
+			n, err := errw.Write(value.Stderr)
+			contract.AssertNoErrorf(err, "failed to write to stderr pipe: %v", err)
+			contract.Assertf(n == len(value.Stderr), "wrote fewer bytes (%d) than expected (%d)", n, len(value.Stderr))
+		} else if code, ok := msg.Output.(*pulumirpc.RunPluginResponse_Exitcode); ok {
+			err1 := outw.Close()
+			err2 := errw.Close()
+			err = errors.Join(err1, err2)
+			if err != nil {
+				cts.Reject(err)
+			} else {
+				cts.Fulfill(code.Exitcode)
+			}
+			break
+		}
+	}
 }
 
 func (h *langhost) GenerateProject(

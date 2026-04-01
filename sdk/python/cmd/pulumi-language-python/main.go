@@ -1505,9 +1505,46 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 }
 
 func (host *pythonLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
+	stream pulumirpc.LanguageRuntime_RunPlugin2Server,
 ) error {
-	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
+	// Receive the first message which must be a start request.
+	msg, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("receiving start request: %w", err)
+	}
+	req := msg.GetStart()
+	if req == nil {
+		return errors.New("first message must be a start request")
+	}
+
+	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
+
+	// softCtx is a child of host.cancelCtx so that global Cancel RPC triggers graceful SIGINT.
+	softCtx, softCancel := context.WithCancel(host.cancelCtx)
+	defer softCancel()
+	// hardCtx is a child of the stream context, so it is cancelled by an explicit force cancel message or stream death.
+	hardCtx, hardCancel := context.WithCancel(stream.Context())
+	defer hardCancel()
+	context.AfterFunc(hardCtx, softCancel)
+
+	// Listen for cancel messages on the bidi stream.
+	go func() {
+		for {
+			msg, err := stream.Recv()
+			if err != nil {
+				return
+			}
+			if cancel := msg.GetCancel(); cancel != nil {
+				if cancel.Force {
+					hardCancel()
+					return
+				}
+				softCancel()
+			}
+		}
+	}()
+
+	return host.runPlugin(softCtx, hardCtx, stream, req)
 }
 
 // RunPlugin runs a Python based plugin.
@@ -1525,8 +1562,16 @@ func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
 	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
-	ctx := server.Context()
 
+	return host.runPlugin(server.Context(), server.Context(), server, req)
+}
+
+func (host *pythonLanguageHost) runPlugin(
+	softCtx context.Context,
+	hardCtx context.Context,
+	sender rpcutil.RunPluginSender,
+	req *pulumirpc.RunPluginRequest,
+) error {
 	engineClient, closer, err := host.connectToEngine()
 	if err != nil {
 		return err
@@ -1559,7 +1604,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	// Pulumi package. A plugin might ship with an old version, in which case we
 	// fallback to the bare directory mode.
 	hasPluginRunModule := true
-	checkModuleCmd, err := tc.Command(ctx, "-c", "import pulumi.run.plugin")
+	checkModuleCmd, err := tc.Command(softCtx, "-c", "import pulumi.run.plugin")
 	if err != nil {
 		return err
 	}
@@ -1572,7 +1617,7 @@ func (host *pythonLanguageHost) RunPlugin(
 	args := []string{}
 	var dbg *debugger
 	if req.GetAttachDebugger() {
-		args, dbg, err = debugCommand(ctx, opts)
+		args, dbg, err = debugCommand(softCtx, opts)
 		if err != nil {
 			return err
 		}
@@ -1596,7 +1641,7 @@ func (host *pythonLanguageHost) RunPlugin(
 
 		args = append(args, pyproject.Project.Name)
 		args = append(args, req.Args...)
-		cmd, err = tc.ModuleCommand(ctx, "pulumi.run.plugin", args...)
+		cmd, err = tc.ModuleCommand(softCtx, "pulumi.run.plugin", args...)
 		if err != nil {
 			return err
 		}
@@ -1616,13 +1661,14 @@ func (host *pythonLanguageHost) RunPlugin(
 			args = append(args, req.Info.ProgramDirectory)
 			args = append(args, req.Args...)
 		}
-		cmd, err = tc.Command(ctx, args...)
+		cmd, err = tc.Command(softCtx, args...)
 		if err != nil {
+			// kill the plugin if we can't start debugging.
 			return err
 		}
 	}
 
-	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(server, false)
+	closer, stdout, stderr, err := rpcutil.MakeRunPluginStreams(sender, false)
 	if err != nil {
 		return err
 	}
@@ -1642,12 +1688,12 @@ func (host *pythonLanguageHost) RunPlugin(
 	// we then need to wait for the _real_ policy pack to start up and shim all it's other request/responses.
 	var policyPackServer *sdk.PolicyProxy
 	if req.Kind == string(apitype.AnalyzerPlugin) {
-		policyPackServer, stdout, err = sdk.NewPolicyProxy(ctx, stdout)
+		policyPackServer, stdout, err = sdk.NewPolicyProxy(softCtx, stdout)
 		if err != nil {
 			return fmt.Errorf("could not start policy pack proxy: %w", err)
 		}
 
-		config, err := policyPackServer.AwaitConfiguration(ctx)
+		config, err := policyPackServer.AwaitConfiguration(softCtx)
 		if err != nil {
 			return fmt.Errorf("could not get stack configuration: %w", err)
 		}
@@ -1674,6 +1720,18 @@ func (host *pythonLanguageHost) RunPlugin(
 
 	cmd.Env = append(cmd.Env, req.Env...)
 	cmd.Stdout, cmd.Stderr = stdout, stderr
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
+	context.AfterFunc(hardCtx, func() {
+		if cmd.Process != nil {
+			cmd.Process.Kill() //nolint:errcheck // best-effort kill
+		}
+	})
 
 	run := func() error {
 		err := cmd.Start()
@@ -1682,10 +1740,10 @@ func (host *pythonLanguageHost) RunPlugin(
 		}
 		if req.GetAttachDebugger() {
 			// create a sub-context to cancel the startDebugging operation when the process exits.
-			ctx, cancel := context.WithCancel(ctx)
-			defer cancel()
+			dbgCtx, dbgCancel := context.WithCancel(softCtx)
+			defer dbgCancel()
 			go func() {
-				err := startDebugging(ctx, engineClient, cmd, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+				err := startDebugging(dbgCtx, engineClient, cmd, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
 				if err != nil {
 					// kill the program if we can't start debugging.
 					logging.Errorf("Unable to start debugging: %v", err)
@@ -1695,7 +1753,7 @@ func (host *pythonLanguageHost) RunPlugin(
 		}
 		// If we've got a proxy policy then tell it to attach now
 		if policyPackServer != nil {
-			err = policyPackServer.Attach(ctx, cmd)
+			err = policyPackServer.Attach(softCtx, cmd)
 			if err != nil {
 				return fmt.Errorf("could not attach policy pack proxy: %w", err)
 			}
@@ -1708,7 +1766,7 @@ func (host *pythonLanguageHost) RunPlugin(
 		var exiterr *exec.ExitError
 		if errors.As(err, &exiterr) {
 			if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-				return server.Send(&pulumirpc.RunPluginResponse{
+				return sender.Send(&pulumirpc.RunPluginResponse{
 					//nolint:gosec // WaitStatus always uses the lower 8 bits for the exit code.
 					Output: &pulumirpc.RunPluginResponse_Exitcode{Exitcode: int32(status.ExitStatus())},
 				})
