@@ -1,0 +1,25 @@
+{
+  "resources": [
+    {
+      "name": "ignoreChanges",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "ignoreChanges": [
+          "value"
+        ]
+      }
+    },
+    {
+      "name": "notIgnoreChanges",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}

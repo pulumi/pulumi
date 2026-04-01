@@ -1,0 +1,23 @@
+{
+  "resources": [
+    {
+      "name": "import",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "import": "fakeID123"
+      }
+    },
+    {
+      "name": "notImport",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    }
+  ]
+}

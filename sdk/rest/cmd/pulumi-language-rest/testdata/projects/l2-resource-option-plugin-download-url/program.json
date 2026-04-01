@@ -1,0 +1,45 @@
+{
+  "resources": [
+    {
+      "name": "withDefaultURL",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    },
+    {
+      "name": "withExplicitDefaultURL",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "pluginDownloadURL": "https://github.com/pulumi/pulumi-simple/releases/v${VERSION}"
+      }
+    },
+    {
+      "name": "withCustomURL1",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      },
+      "options": {
+        "pluginDownloadURL": "https://custom.pulumi.test/provider1"
+      }
+    },
+    {
+      "name": "withCustomURL2",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": false
+      },
+      "options": {
+        "pluginDownloadURL": "https://custom.pulumi.test/provider2"
+      }
+    }
+  ]
+}

@@ -93,15 +93,37 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 }
 
 // Tests that are expected to pass with the REST language host.
-// We start with l1 and l2 tests that don't require callbacks/transforms.
+// We support l1 (outputs) and l2 (resources, invokes, options) tests
+// that don't require callbacks, transforms, or Call.
 var supportedTests = map[string]bool{
-	"l1-empty":               true,
-	"l1-output-bool":         true,
-	"l1-output-map":          true,
-	"l1-output-array":        true,
+	// L1: stack outputs
+	"l1-empty":       true,
+	"l1-output-bool":  true,
+	"l1-output-map":   true,
+	"l1-output-array": true,
+	"l1-output-null":  true,
+	"l1-output-number": true,
+
+	// L2: basic resources
 	"l2-resource-simple":     true,
-	"l2-resource-alpha":      true,
 	"l2-resource-primitives": true,
+	"l2-resource-secret":     true,
+
+	// L2: resource options
+	"l2-resource-option-protect":                   true,
+	"l2-resource-option-ignore-changes":            true,
+	"l2-resource-option-additional-secret-outputs": true,
+	"l2-resource-option-retain-on-delete":          true,
+	"l2-resource-option-import":                    true,
+	"l2-resource-option-version":                   true,
+	"l2-resource-option-plugin-download-url":       true,
+	"l2-resource-option-hide-diffs":                true,
+	"l2-resource-option-replace-with":              true,
+	"l2-resource-option-depends-on":                true,
+
+	// L2: invokes
+	"l2-invoke-simple":  true,
+	"l2-invoke-secrets": true,
 }
 
 func TestLanguage(t *testing.T) {

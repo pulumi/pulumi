@@ -39,12 +39,14 @@ type RegisterResourceRequest struct {
 	Version                 string                 `json:"version,omitempty"`
 	Protect                 *bool                  `json:"protect,omitempty"`
 	ImportID                string                 `json:"importId,omitempty"`
-	DeleteBeforeReplace     bool                   `json:"deleteBeforeReplace,omitempty"`
+	DeleteBeforeReplace     *bool                  `json:"deleteBeforeReplace,omitempty"`
 	IgnoreChanges           []string               `json:"ignoreChanges,omitempty"`
 	AdditionalSecretOutputs []string               `json:"additionalSecretOutputs,omitempty"`
 	ReplaceOnChanges        []string               `json:"replaceOnChanges,omitempty"`
 	RetainOnDelete          *bool                  `json:"retainOnDelete,omitempty"`
 	PluginDownloadURL       string                 `json:"pluginDownloadURL,omitempty"`
+	HideDiffs               []string               `json:"hideDiffs,omitempty"`
+	ReplaceWith             []string               `json:"replaceWith,omitempty"`
 }
 
 // RegisterResourceResponse is returned by POST /sessions/:id/resources.

@@ -103,11 +103,12 @@ func (g *Gateway) handleRegisterResource(w http.ResponseWriter, r *http.Request)
 		Provider:                req.Provider,
 		Version:                 req.Version,
 		ImportId:                req.ImportID,
-		DeleteBeforeReplace:     req.DeleteBeforeReplace,
 		IgnoreChanges:           req.IgnoreChanges,
 		AdditionalSecretOutputs: req.AdditionalSecretOutputs,
 		ReplaceOnChanges:        req.ReplaceOnChanges,
 		PluginDownloadURL:       req.PluginDownloadURL,
+		HideDiffs:               req.HideDiffs,
+		ReplaceWith:             req.ReplaceWith,
 		AcceptSecrets:           true,
 		AcceptResources:         true,
 		SupportsResultReporting: true,
@@ -117,6 +118,9 @@ func (g *Gateway) handleRegisterResource(w http.ResponseWriter, r *http.Request)
 	}
 	if req.RetainOnDelete != nil {
 		grpcReq.RetainOnDelete = req.RetainOnDelete
+	}
+	if req.DeleteBeforeReplace != nil {
+		grpcReq.DeleteBeforeReplace = *req.DeleteBeforeReplace
 	}
 
 	resp, err := sess.Monitor.RegisterResource(r.Context(), grpcReq)

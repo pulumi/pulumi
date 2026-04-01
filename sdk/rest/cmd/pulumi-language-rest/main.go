@@ -688,8 +688,20 @@ func executeProgram(ctx context.Context, baseURL, sessionID string, prog *Declar
 		}
 		if res.Options != nil {
 			reqBody.Protect = res.Options.Protect
+			reqBody.RetainOnDelete = res.Options.RetainOnDelete
+			reqBody.DeleteBeforeReplace = res.Options.DeleteBeforeReplace
 			reqBody.IgnoreChanges = res.Options.IgnoreChanges
 			reqBody.ReplaceOnChanges = res.Options.ReplaceOnChanges
+			reqBody.AdditionalSecretOutputs = res.Options.AdditionalSecretOutputs
+			reqBody.HideDiffs = res.Options.HideDiffs
+			reqBody.Version = res.Options.Version
+			reqBody.PluginDownloadURL = res.Options.PluginDownloadURL
+			reqBody.ImportID = res.Options.ImportID
+			// Resolve replaceWith resource references to URNs.
+			for _, ref := range res.Options.ReplaceWith {
+				resolved := fmt.Sprintf("%v", resolveValue(ref, resourceOutputs))
+				reqBody.ReplaceWith = append(reqBody.ReplaceWith, resolved)
+			}
 		}
 
 		var resp restgateway.RegisterResourceResponse
