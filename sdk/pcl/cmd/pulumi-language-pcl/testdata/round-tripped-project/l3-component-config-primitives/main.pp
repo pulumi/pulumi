@@ -1,5 +1,6 @@
 config "plainBool" "bool" {}
 config "plainNumber" "number" {}
+config "plainInteger" "int" {}
 config "plainString" "string" {}
 
 config "secretBool" "bool" {
@@ -8,20 +9,23 @@ config "secretBool" "bool" {
 config "secretNumber" "number" {
   secret = true
 }
+config "secretInteger" "int" {
+  secret = true
+}
 config "secretString" "string" {
   secret = true
 }
 
 component "plain" "./primitiveComponent" {
   boolean = plainBool
-  float = plainNumber + 0.5
-  integer = plainNumber
+  float = plainNumber
+  integer = plainInteger
   string = plainString
 }
 
 component "secret" "./primitiveComponent" {
   boolean = secretBool
-  float = secretNumber + 0.5
-  integer = secretNumber
+  float = secretNumber
+  integer = secretInteger
   string = secretString
 }

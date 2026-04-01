@@ -1,6 +1,6 @@
 config boolean bool {}
 config float number {}
-config integer number {}
+config integer int {}
 config string string {}
 
 resource "res" "primitive:index:Resource" {

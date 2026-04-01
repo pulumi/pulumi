@@ -10,11 +10,18 @@ func main() {
 		cfg := config.New(ctx, "")
 		aNumber := cfg.RequireFloat64("aNumber")
 		ctx.Export("theNumber", pulumi.Float64(aNumber+1.25))
-		optionalNumber := float64(41)
+		optionalNumber := float64(41.5)
 		if param := cfg.GetFloat64("optionalNumber"); param != 0 {
 			optionalNumber = param
 		}
-		ctx.Export("defaultNumber", pulumi.Float64(optionalNumber+1))
+		ctx.Export("defaultNumber", pulumi.Float64(optionalNumber+1.2))
+		anInt := cfg.RequireInt("anInt")
+		ctx.Export("theInteger", pulumi.Float64(anInt+4))
+		optionalInt := 1
+		if param := cfg.GetInt("optionalInt"); param != 0 {
+			optionalInt = param
+		}
+		ctx.Export("defaultInteger", pulumi.Float64(optionalInt+2))
 		aString := cfg.Require("aString")
 		ctx.Export("theString", pulumi.Sprintf("%v World", aString))
 		optionalString := "defaultStringValue"

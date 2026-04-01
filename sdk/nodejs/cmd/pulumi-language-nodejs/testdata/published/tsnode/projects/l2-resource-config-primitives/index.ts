@@ -4,14 +4,16 @@ import * as primitive from "@pulumi/primitive";
 const config = new pulumi.Config();
 const plainBool = config.requireBoolean("plainBool");
 const plainNumber = config.requireNumber("plainNumber");
+const plainInteger = config.requireNumber("plainInteger");
 const plainString = config.require("plainString");
 const secretBool = config.requireSecretBoolean("secretBool");
 const secretNumber = config.requireSecretNumber("secretNumber");
+const secretInteger = config.requireSecretNumber("secretInteger");
 const secretString = config.requireSecret("secretString");
 const plain = new primitive.Resource("plain", {
     boolean: plainBool,
-    float: plainNumber + 0.5,
-    integer: plainNumber,
+    float: plainNumber,
+    integer: plainInteger,
     string: plainString,
     numberArray: [
         -1,
@@ -25,8 +27,8 @@ const plain = new primitive.Resource("plain", {
 });
 const secret = new primitive.Resource("secret", {
     boolean: secretBool,
-    float: secretNumber.apply(secretNumber => secretNumber + 0.5),
-    integer: secretNumber,
+    float: secretNumber,
+    integer: secretInteger,
     string: secretString,
     numberArray: [
         -2,
