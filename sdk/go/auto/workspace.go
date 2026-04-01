@@ -124,6 +124,10 @@ type Workspace interface {
 	// WhoAmIDetails returns detailed information about the currently
 	// logged-in Pulumi identity.
 	WhoAmIDetails(ctx context.Context) (WhoAmIResult, error)
+	// OrgGetDefault returns the default organization for the current backend.
+	OrgGetDefault(context.Context) (string, error)
+	// OrgSetDefault sets the default organization for the current backend.
+	OrgSetDefault(ctx context.Context, orgName string) error
 	// ChangeStackSecretsProvider edits the secrets provider for the given stack.
 	ChangeStackSecretsProvider(
 		ctx context.Context, stackName, newSecretsProvider string, opts *ChangeSecretsProviderOptions,
