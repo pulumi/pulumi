@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: java
+  description: Update to v1.22.0
