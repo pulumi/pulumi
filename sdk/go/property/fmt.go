@@ -17,6 +17,7 @@ package property
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // [fmt.GoStringer] lets a type define the go syntax needed to define it.
@@ -101,3 +102,33 @@ func (a Map) GoString() string {
 func (null) GoString() string { return "property.Null" }
 
 func (computed) GoString() string { return "property.Computed" }
+
+func (g Path) GoString() string {
+	if g.len() == 0 {
+		return "property.Path{}"
+	}
+
+	return "property.PathFromSegments" + reproGoString(g.pathRepr)
+}
+
+func (g Glob) GoString() string {
+	if g.len() == 0 {
+		return "property.Glob{}"
+	}
+
+	return "property.GlobFromSegments" + reproGoString(g.pathRepr)
+}
+
+func reproGoString(p pathRepr) string {
+	var b strings.Builder
+	b.WriteRune('(')
+	for i, v := range p.enumerate {
+		if i > 0 {
+			b.WriteRune(',')
+			b.WriteRune(' ')
+		}
+		b.WriteString(v.GoString())
+	}
+	b.WriteRune(')')
+	return b.String()
+}
