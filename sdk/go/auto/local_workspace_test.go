@@ -3868,3 +3868,83 @@ func TestStackLifecycleInlineProgramRunProgram(t *testing.T) {
 	_, err = s.Destroy(ctx, optdestroy.RunProgram(true))
 	require.NoError(t, err, "destroy failed")
 }
+
+func TestNewOptions(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	pDir := filepath.Join(".", "test", "install")
+	m := &mockPulumiCommand{
+		version: semver.Version{Major: 3, Minor: 130},
+	}
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(m))
+	require.NoError(t, err)
+
+	// Basic call with no options.
+	_, err = workspace.New(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, []string{"new", "--yes"}, m.capturedArgs)
+
+	// With template.
+	_, err = workspace.New(ctx, &NewOptions{
+		TemplateOrURL: "typescript",
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"new", "--yes", "--", "typescript"}, m.capturedArgs)
+
+	// With name and generate-only.
+	_, err = workspace.New(ctx, &NewOptions{
+		Name:         "my-project",
+		GenerateOnly: true,
+		Force:        true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"new", "--yes",
+		"--force",
+		"--generate-only",
+		"--name", "my-project",
+	}, m.capturedArgs)
+
+	// With config and template.
+	_, err = workspace.New(ctx, &NewOptions{
+		TemplateOrURL: "aws-typescript",
+		Config:        []string{"aws:region=us-east-1", "project:env=dev"},
+		ConfigPath:    true,
+		Description:   "A test project",
+		Stack:         "dev",
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"new", "--yes",
+		"--config", "aws:region=us-east-1",
+		"--config", "project:env=dev",
+		"--config-path",
+		"--description", "A test project",
+		"--stack", "dev",
+		"--", "aws-typescript",
+	}, m.capturedArgs)
+
+	// With all boolean flags.
+	_, err = workspace.New(ctx, &NewOptions{
+		TemplateOrURL:     "yaml",
+		ConfigPath:        true,
+		Force:             true,
+		GenerateOnly:      true,
+		ListTemplates:     true,
+		Offline:           true,
+		RemoteStackConfig: true,
+		TemplateMode:      true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"new", "--yes",
+		"--config-path",
+		"--force",
+		"--generate-only",
+		"--list-templates",
+		"--offline",
+		"--remote-stack-config",
+		"--template-mode",
+		"--", "yaml",
+	}, m.capturedArgs)
+}
