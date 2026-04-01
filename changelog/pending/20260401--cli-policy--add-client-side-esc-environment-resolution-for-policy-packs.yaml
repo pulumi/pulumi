@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/policy
+  description: Resolve ESC environments for policy packs, merging policyConfig and injecting environment variables into the analyzer process
