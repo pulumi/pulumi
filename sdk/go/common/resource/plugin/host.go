@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -665,28 +666,45 @@ func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
 	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		var result error
-		for _, plug := range host.resourcePlugins {
-			if err := plug.Plugin.SignalCancellation(host.ctx.Request()); err != nil {
-				result = multierror.Append(result, fmt.Errorf(
-					"Error signaling cancellation to resource provider '%s': %w", plug.Name, err))
-			}
-		}
+		cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelCancel()
 
-		for _, plug := range host.analyzerPlugins {
-			if err := plug.Plugin.Cancel(host.ctx.Request()); err != nil {
-				result = multierror.Append(result, fmt.Errorf(
-					"Error signaling cancellation to analyzer '%s': %w", plug.Name, err))
-			}
-		}
-
+		// Cancel all plugins in parallel so that a stuck Cancel RPC on one plugin doesn't block the cancellation of the
+		// rest.
+		var (
+			mu   sync.Mutex
+			errs []error
+		)
+		var wg sync.WaitGroup
 		for _, plug := range host.languagePlugins {
-			if err := plug.Plugin.Cancel(); err != nil {
-				result = multierror.Append(result, fmt.Errorf(
-					"Error signaling cancellation to language runtime '%s': %w", plug.Name, err))
-			}
+			wg.Go(func() {
+				if err := plug.Plugin.Cancel(); err != nil {
+					mu.Lock()
+					errs = append(errs, err)
+					mu.Unlock()
+				}
+			})
 		}
-		return nil, result
+		for _, plug := range host.resourcePlugins {
+			wg.Go(func() {
+				if err := plug.Plugin.SignalCancellation(cancelCtx); err != nil {
+					mu.Lock()
+					errs = append(errs, err)
+					mu.Unlock()
+				}
+			})
+		}
+		for _, plug := range host.analyzerPlugins {
+			wg.Go(func() {
+				if err := plug.Plugin.Cancel(cancelCtx); err != nil {
+					mu.Lock()
+					errs = append(errs, err)
+					mu.Unlock()
+				}
+			})
+		}
+		wg.Wait()
+		return nil, errors.Join(errs...)
 	})
 	return err
 }
