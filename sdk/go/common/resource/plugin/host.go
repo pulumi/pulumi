@@ -680,7 +680,8 @@ func (host *defaultHost) SignalCancellation() error {
 			wg.Go(func() {
 				if err := plug.Plugin.Cancel(); err != nil {
 					mu.Lock()
-					errs = append(errs, err)
+					errs = append(errs, fmt.Errorf(
+						"error signaling cancellation to language runtime '%s': %w", plug.Name, err))
 					mu.Unlock()
 				}
 			})
@@ -689,7 +690,8 @@ func (host *defaultHost) SignalCancellation() error {
 			wg.Go(func() {
 				if err := plug.Plugin.SignalCancellation(cancelCtx); err != nil {
 					mu.Lock()
-					errs = append(errs, err)
+					errs = append(errs, fmt.Errorf(
+						"error signaling cancellation to resource provider '%s': %w", plug.Name, err))
 					mu.Unlock()
 				}
 			})
@@ -698,7 +700,8 @@ func (host *defaultHost) SignalCancellation() error {
 			wg.Go(func() {
 				if err := plug.Plugin.Cancel(cancelCtx); err != nil {
 					mu.Lock()
-					errs = append(errs, err)
+					errs = append(errs, fmt.Errorf(
+						"error signaling cancellation to analyzer '%s': %w", plug.Name, err))
 					mu.Unlock()
 				}
 			})
