@@ -16,7 +16,9 @@ package runtime
 
 import (
 	"context"
+	"crypto/sha1" //nolint:gosec // we don't need a strong cryptographic primitive
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -829,6 +831,26 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	sha1Fn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "input",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if len(args) != 1 {
+				return cty.NilVal, errors.New("sha1 requires an input argument")
+			}
+			if args[0].Type() != cty.String {
+				return cty.NilVal, errors.New("sha1 input argument must be a string")
+			}
+			h := sha1.Sum([]byte(args[0].AsString())) //nolint:gosec // we don't need a strong cryptographic primitive
+			return cty.StringVal(hex.EncodeToString(h[:])), nil
+		},
+	})
+
 	toJSONFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -894,5 +916,6 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"toBase64":           toBase64Fn,
 		"fromBase64":         fromBase64Fn,
 		"toJSON":             toJSONFn,
+		"sha1":               sha1Fn,
 	}
 }
