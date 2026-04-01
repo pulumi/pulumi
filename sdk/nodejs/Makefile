@@ -89,6 +89,7 @@ tools_tests::
 		> ../../tools/automation/specification.json
 	cd tools/automation && yarn install && \
 		npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && \
+		yarn build && \
 		yarn test
 
 unit_tests:: $(TEST_ALL_DEPS) tools_tests
