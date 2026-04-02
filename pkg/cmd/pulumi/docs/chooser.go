@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 var (
@@ -74,15 +75,12 @@ func ParseChoosers(markdown string) []ContentBlock {
 	pos := 0
 
 	for pos < len(markdown) {
-		// Find the next chooser open tag
 		loc := chooserOpenRe.FindStringIndex(markdown[pos:])
 		if loc == nil {
-			// No more choosers — rest is plain text
 			blocks = append(blocks, PlainText{Text: markdown[pos:]})
 			break
 		}
 
-		// Everything before this chooser is plain text
 		absStart := pos + loc[0]
 		absEnd := pos + loc[1]
 		if absStart > pos {
@@ -92,10 +90,8 @@ func ParseChoosers(markdown string) []ContentBlock {
 		m := chooserOpenRe.FindStringSubmatch(markdown[absStart:absEnd])
 		chooserType := m[1]
 
-		// Find the matching <!-- /chooser --> from absEnd onward
 		closeLoc := chooserCloseRe.FindStringIndex(markdown[absEnd:])
 		if closeLoc == nil {
-			// Unmatched chooser open — treat the tag as plain text
 			blocks = append(blocks, PlainText{Text: markdown[absStart:absEnd]})
 			pos = absEnd
 			continue
@@ -104,18 +100,14 @@ func ParseChoosers(markdown string) []ContentBlock {
 		chooserBody := markdown[absEnd : absEnd+closeLoc[0]]
 		chooserEnd := absEnd + closeLoc[1]
 
-		// Check for inline chooser: no newlines in the body
 		prefix := ""
 		suffix := ""
 		isInline := !strings.Contains(chooserBody, "\n")
 
 		if isInline {
-			// For inline, capture surrounding text on the same line
-			// Find start of line for prefix
 			lineStart := strings.LastIndex(markdown[pos:absStart], "\n")
 			if lineStart >= 0 {
 				prefix = markdown[pos+lineStart+1 : absStart]
-				// Re-adjust: replace the plain text block to exclude the prefix
 				if len(blocks) > 0 {
 					if pt, ok := blocks[len(blocks)-1].(PlainText); ok {
 						pt.Text = strings.TrimSuffix(pt.Text, prefix)
@@ -123,7 +115,6 @@ func ParseChoosers(markdown string) []ContentBlock {
 					}
 				}
 			}
-			// Find end of line for suffix
 			lineEnd := strings.Index(markdown[chooserEnd:], "\n")
 			if lineEnd >= 0 {
 				suffix = markdown[chooserEnd : chooserEnd+lineEnd]
@@ -134,7 +125,6 @@ func ParseChoosers(markdown string) []ContentBlock {
 			}
 		}
 
-		// Parse options within the chooser body
 		chooser := Chooser{Type: chooserType, Prefix: prefix, Suffix: suffix}
 		parseOptions(chooserBody, &chooser)
 
@@ -162,7 +152,6 @@ func parseOptions(body string, chooser *Chooser) {
 		}
 
 		content := body[contentStart : contentStart+closeLoc[0]]
-		// Trim leading/trailing blank lines
 		content = strings.TrimLeft(content, "\n")
 		content = strings.TrimRight(content, "\n")
 
@@ -180,8 +169,6 @@ func parseOptions(body string, chooser *Chooser) {
 func ResolveChoosers(blocks []ContentBlock, prefs *Preferences, flagLang, flagOS string, interactive bool) string {
 	var result strings.Builder
 
-	// Track selections made during this render so all choosers of the same type
-	// use the same selection.
 	sessionSelections := map[string]string{}
 
 	for _, block := range blocks {
@@ -194,8 +181,6 @@ func ResolveChoosers(blocks []ContentBlock, prefs *Preferences, flagLang, flagOS
 		}
 	}
 
-	// Final cleanup: strip any leftover chooser/option HTML comment tags that
-	// the parser may have missed (e.g. due to nesting or unusual formatting).
 	output := result.String()
 	output = stripLeftoverTags(output)
 	return output
@@ -227,14 +212,12 @@ func FilterCodeBlocksByLanguage(markdown, language string) string {
 
 	lines := strings.Split(markdown, "\n")
 
-	// codeBlock represents a parsed fenced code block.
 	type codeBlock struct {
 		lang      string
 		startLine int // index of the opening ``` line
 		endLine   int // index of the closing ``` line
 	}
 
-	// Parse all code blocks with their positions.
 	var blocks []codeBlock
 	i := 0
 	for i < len(lines) {
@@ -259,7 +242,6 @@ func FilterCodeBlocksByLanguage(markdown, language string) string {
 		return markdown
 	}
 
-	// Group consecutive code blocks separated only by blank lines.
 	type blockGroup struct {
 		blocks []codeBlock
 	}
@@ -268,7 +250,6 @@ func FilterCodeBlocksByLanguage(markdown, language string) string {
 
 	for j := 1; j < len(blocks); j++ {
 		prev := current.blocks[len(current.blocks)-1]
-		// Check if only blank lines exist between previous block's end and this block's start.
 		allBlank := true
 		for k := prev.endLine + 1; k < blocks[j].startLine; k++ {
 			if strings.TrimSpace(lines[k]) != "" {
@@ -285,14 +266,11 @@ func FilterCodeBlocksByLanguage(markdown, language string) string {
 	}
 	groups = append(groups, current)
 
-	// Build a set of line ranges to exclude.
-	// For each group with multiple language blocks, remove all except the matching one.
 	excludeLines := map[int]bool{}
 	for _, g := range groups {
 		if len(g.blocks) < 2 {
 			continue
 		}
-		// Check if this group has different languages (multi-language example).
 		langs := map[string]bool{}
 		for _, b := range g.blocks {
 			langs[b.lang] = true
@@ -301,7 +279,6 @@ func FilterCodeBlocksByLanguage(markdown, language string) string {
 			continue
 		}
 
-		// Find the matching block.
 		matchIdx := -1
 		for idx, b := range g.blocks {
 			if b.lang == language {
@@ -310,20 +287,16 @@ func FilterCodeBlocksByLanguage(markdown, language string) string {
 			}
 		}
 		if matchIdx == -1 {
-			// No match — keep all.
 			continue
 		}
 
-		// Exclude all blocks except the match, including surrounding blank lines.
 		for idx, b := range g.blocks {
 			if idx == matchIdx {
 				continue
 			}
-			// Exclude the block and any blank lines before it (back to previous block or content).
 			start := b.startLine
 			for start > 0 && strings.TrimSpace(lines[start-1]) == "" {
 				start--
-				// Don't eat past the previous block's closing fence.
 				if idx > 0 && start <= g.blocks[idx-1].endLine {
 					start = g.blocks[idx-1].endLine + 1
 					break
@@ -356,10 +329,8 @@ func resolveChooser(
 		return ""
 	}
 
-	// Determine which option to show
 	selection := ""
 
-	// 1. Check flags
 	switch c.Type {
 	case "language":
 		if flagLang != "" {
@@ -371,21 +342,19 @@ func resolveChooser(
 		}
 	}
 
-	// 2. Check session (same type already selected this render)
+	// Reuse the same selection for all choosers of this type within one render.
 	if selection == "" {
 		if s, ok := session[c.Type]; ok {
 			selection = s
 		}
 	}
 
-	// 3. Check stored preferences
 	if selection == "" {
 		if pref := prefs.Get(c.Type); pref != "" {
 			selection = pref
 		}
 	}
 
-	// 4. If interactive and still no selection, prompt
 	if selection == "" && interactive {
 		options := make([]string, len(c.Options))
 		for i, opt := range c.Options {
@@ -403,19 +372,17 @@ func resolveChooser(
 		)
 	}
 
-	// Save selection
 	if selection != "" {
 		session[c.Type] = selection
 		prefs.Set(c.Type, selection)
-		// Best-effort save
-		_ = prefs.Save()
+		if err := prefs.Save(); err != nil {
+			logging.V(7).Infof("failed to save docs preferences: %v", err)
+		}
 	}
 
-	// Build output
 	isInline := c.Prefix != "" || c.Suffix != ""
 
 	if selection != "" {
-		// Find the matching option
 		for _, opt := range c.Options {
 			if opt.Value == selection {
 				if isInline {
@@ -426,7 +393,6 @@ func resolveChooser(
 		}
 	}
 
-	// No selection or no match — show all options
 	var buf strings.Builder
 	if isInline {
 		buf.WriteString(c.Prefix)

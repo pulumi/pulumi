@@ -1,4 +1,4 @@
-// Copyright 2024, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -263,26 +263,7 @@ func TestNumberLinks(t *testing.T) {
 func TestStripExternalLinks(t *testing.T) {
 	t.Parallel()
 
-	t.Run("external links removed", func(t *testing.T) {
-		t.Parallel()
-		md := "See [Google](https://google.com) for more."
-		result := stripExternalLinks(md)
-		assert.Equal(t, "See Google for more.", result)
-	})
-
-	t.Run("internal links preserved", func(t *testing.T) {
-		t.Parallel()
-		md := "See [Stacks](/docs/iac/concepts/stacks) for more."
-		result := stripExternalLinks(md)
-		assert.Equal(t, md, result)
-	})
-
-	t.Run("mixed content", func(t *testing.T) {
-		t.Parallel()
-		md := "See [Stacks](/docs/stacks) and [Google](https://google.com)."
-		result := stripExternalLinks(md)
-		assert.Contains(t, result, "[Stacks](/docs/stacks)")
-		assert.NotContains(t, result, "https://google.com")
-		assert.Contains(t, result, "Google")
-	})
+	md := "See [Stacks](/docs/stacks) and [Google](https://google.com)."
+	result := stripExternalLinks(md)
+	assert.Equal(t, "See [Stacks](/docs/stacks) and Google.", result)
 }

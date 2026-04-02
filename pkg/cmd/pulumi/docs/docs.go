@@ -33,47 +33,41 @@ type docsCmd struct {
 	osFlag          string
 	raw             bool
 	toc             bool
-	jsonOutput      bool
+	tocJSON         bool
 }
 
 // NewDocsCmd creates the `pulumi docs` command.
 func NewDocsCmd() *cobra.Command {
 	dc := &docsCmd{}
 
+	defaultBaseURL := "https://www.pulumi.com"
+	if envURL := os.Getenv("PULUMI_DOCS_BASE_URL"); envURL != "" {
+		defaultBaseURL = envURL
+	}
+	defaultRegistryURL := defaultBaseURL
+	if envURL := os.Getenv("PULUMI_REGISTRY_BASE_URL"); envURL != "" {
+		defaultRegistryURL = envURL
+	}
+
 	cmd := &cobra.Command{
-		Use:   "docs [path[#section]]",
+		Use:   "docs",
 		Short: "View Pulumi documentation in the terminal",
 		Long: "Read and browse Pulumi documentation in the terminal.\n\n" +
 			"  pulumi docs                    Show help\n" +
-			"  pulumi docs <path>             Read a specific page\n" +
 			"  pulumi docs read <path>        Read a specific page",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
-				// Bare path shortcut → read
-				return dc.fetchAndRender(args[0])
-			}
-			return cmd.Help()
-		},
 	}
 
-	dc.baseURL = "https://www.pulumi.com"
-	if envURL := os.Getenv("PULUMI_DOCS_BASE_URL"); envURL != "" {
-		dc.baseURL = envURL
-	}
-	// Registry base URL: check its own env var first, then fall back to the docs base URL.
-	dc.registryBaseURL = dc.baseURL
-	if envURL := os.Getenv("PULUMI_REGISTRY_BASE_URL"); envURL != "" {
-		dc.registryBaseURL = envURL
-	}
+	cmd.PersistentFlags().StringVar(&dc.baseURL, "base-url", defaultBaseURL,
+		"Base URL for Pulumi documentation (env: PULUMI_DOCS_BASE_URL)")
+	cmd.PersistentFlags().StringVar(&dc.registryBaseURL, "registry-base-url", defaultRegistryURL,
+		"Base URL for Pulumi registry (env: PULUMI_REGISTRY_BASE_URL)")
+	cmd.PersistentFlags().MarkHidden("base-url")         //nolint:errcheck
+	cmd.PersistentFlags().MarkHidden("registry-base-url") //nolint:errcheck
 	cmd.PersistentFlags().StringVar(&dc.language, "language", "",
 		"Filter code examples in docs by language (e.g., python, typescript, go); choice is remembered")
 	cmd.PersistentFlags().StringVar(&dc.osFlag, "os", "",
 		"Filter OS-specific content in docs (e.g., macos, linux, windows); choice is remembered")
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "path"}},
-	})
 
-	// Subcommands
 	cmd.AddCommand(dc.newReadCmd())
 
 	return cmd
@@ -89,7 +83,9 @@ func (dc *docsCmd) newReadCmd() *cobra.Command {
 			"  pulumi docs read registry/packages/aws             Read a registry page\n" +
 			"  pulumi docs read --toc                             Show sections on last viewed page",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// --toc with no path: use the last viewed page
+			if dc.tocJSON {
+				dc.toc = true
+			}
 			if dc.toc && len(args) == 0 {
 				prefs, _ := LoadPreferences()
 				if prefs.LastPage == "" {
@@ -107,8 +103,8 @@ func (dc *docsCmd) newReadCmd() *cobra.Command {
 		"Output raw markdown without formatting or chooser resolution")
 	cmd.Flags().BoolVar(&dc.toc, "toc", false,
 		"Show table of contents (list of sections)")
-	cmd.Flags().BoolVar(&dc.jsonOutput, "json", false,
-		"Output as JSON (use with --toc for structured section list)")
+	cmd.Flags().BoolVar(&dc.tocJSON, "toc-json", false,
+		"Output table of contents as JSON")
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "path"}},
 	})
@@ -236,7 +232,7 @@ func (dc *docsCmd) showTOC(body string, section *string) error {
 		return nil
 	}
 
-	if dc.jsonOutput {
+	if dc.tocJSON {
 		type tocEntry struct {
 			Title string `json:"title"`
 			Slug  string `json:"slug"`
