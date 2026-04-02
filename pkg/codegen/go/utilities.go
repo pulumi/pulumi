@@ -28,11 +28,28 @@ import (
 // https://golang.org/ref/spec#Keywords
 func isReservedWord(s string) bool {
 	switch s {
-	case "break", "default", "func", " interface", "select",
+	// Go keywords
+	case "break", "default", "func", "interface", "select",
 		"case", "defer", "go", "map", "struct",
 		"chan", "else", "goto", "package", "switch",
 		"const", "fallthrough", "if", "range", "type",
 		"continue", "for", "import", "return", "var":
+		return true
+
+	// Go predeclared identifiers — shadowing these breaks generated code
+	// when the same name appears as both a variable and a type/builtin.
+	case "any", "bool", "byte", "comparable",
+		"complex64", "complex128",
+		"error",
+		"float32", "float64",
+		"int", "int8", "int16", "int32", "int64",
+		"rune", "string",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+		"true", "false", "iota",
+		"nil",
+		"append", "cap", "clear", "close", "complex",
+		"copy", "delete", "imag", "len", "make",
+		"max", "min", "new", "panic", "print", "println", "real", "recover":
 		return true
 
 	default:
