@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: programgen/dotnet,go,java,nodejs,python,yaml,pcl
+  description: Remove `mimeType` & `readDir` from PCL

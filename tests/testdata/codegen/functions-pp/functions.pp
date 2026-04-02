@@ -20,13 +20,11 @@ plainValue = unsecret(secretValue)
 currentStack = stack()
 currentProject = project()
 workingDirectory = cwd()
-fileMimeType = mimeType("./base64.txt")
 
 # using the filebase64 function
 resource first "aws:s3:BucketObject" {
 	bucket = bucket.id
 	source = stringAsset(filebase64("./base64.txt"))
-	contentType = fileMimeType
 	tags = {
 	    "stack" = currentStack
         "project" = currentProject
