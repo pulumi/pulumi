@@ -393,6 +393,22 @@ class Workspace(ABC):
         """
 
     @abstractmethod
+    def org_get_default(self) -> str:
+        """
+        Returns the default organization for the current backend.
+
+        :returns: str
+        """
+
+    @abstractmethod
+    def org_set_default(self, org_name: str) -> None:
+        """
+        Sets the default organization for the current backend.
+
+        :param str org_name: The name of the organization to set as the default.
+        """
+
+    @abstractmethod
     def stack(self) -> Optional[StackSummary]:
         """
         Returns a summary of the currently selected stack, if any.

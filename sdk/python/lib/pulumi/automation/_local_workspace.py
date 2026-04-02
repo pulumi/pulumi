@@ -436,6 +436,13 @@ class LocalWorkspace(Workspace):
         result = self._run_pulumi_cmd_sync(["whoami"])
         return WhoAmIResult(user=result.stdout.strip())
 
+    def org_get_default(self) -> str:
+        result = self._run_pulumi_cmd_sync(["org", "get-default"])
+        return result.stdout.strip()
+
+    def org_set_default(self, org_name: str) -> None:
+        self._run_pulumi_cmd_sync(["org", "set-default", org_name])
+
     def stack(self) -> Optional[StackSummary]:
         stacks = self.list_stacks()
         for stack in stacks:
