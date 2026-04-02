@@ -46,6 +46,22 @@ func TestBuildImportsYAML(t *testing.T) {
 			envRefs:  []string{"shared/base", "prod/secrets", "prod/config"},
 			expected: "imports:\n  - shared/base\n  - prod/secrets\n  - prod/config\n",
 		},
+		{
+			name:     "environment with version tag",
+			envRefs:  []string{"prod/secrets@v1.2.3"},
+			expected: "imports:\n  - prod/secrets@v1.2.3\n",
+		},
+		{
+			name:     "environment with named tag",
+			envRefs:  []string{"prod/secrets@stable"},
+			expected: "imports:\n  - prod/secrets@stable\n",
+		},
+		{
+			name:    "mixed tagged and untagged environments",
+			envRefs: []string{"shared/base", "prod/secrets@v2", "prod/config@my-tag"},
+			expected: "imports:\n  - shared/base\n" +
+				"  - prod/secrets@v2\n  - prod/config@my-tag\n",
+		},
 	}
 
 	for _, tt := range tests {
@@ -444,6 +460,48 @@ func TestResolveEnvironments(t *testing.T) {
 		require.NotNil(t, result)
 		assert.Nil(t, result.Config)
 		assert.Equal(t, map[string]string{"KEY": "val"}, result.EnvironmentVariables)
+	})
+
+	t.Run("resolves version-pinned environment references", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockESCClient{
+			openYAMLEnvironmentF: func(
+				_ context.Context, org string, yaml []byte, _ time.Duration,
+			) (string, []escclient.EnvironmentDiagnostic, error) {
+				assert.Equal(t, "test-org", org)
+				yamlStr := string(yaml)
+				assert.Contains(t, yamlStr, "prod/policy-config@v2.1.0")
+				assert.Contains(t, yamlStr, "shared/base@stable")
+				return "open-id-456", nil, nil
+			},
+			getAnonymousOpenEnvironmentF: func(_ context.Context, org, id string) (*esc.Environment, error) {
+				assert.Equal(t, "test-org", org)
+				assert.Equal(t, "open-id-456", id)
+				return &esc.Environment{
+					Properties: map[string]esc.Value{
+						"policyConfig": {Value: map[string]esc.Value{
+							"cost-policy": {Value: map[string]esc.Value{
+								"maxMonthlyCost": {Value: json.Number("500")},
+							}},
+						}},
+					},
+				}, nil
+			},
+		}
+
+		rp := &cloudRequiredPolicy{
+			escClient: mock,
+			orgName:   "test-org",
+			RequiredPolicy: apitype.RequiredPolicy{
+				Name:         "test-pack",
+				Environments: []string{"prod/policy-config@v2.1.0", "shared/base@stable"},
+			},
+		}
+
+		result, err := rp.ResolveEnvironments(t.Context())
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		require.Contains(t, result.Config, "cost-policy")
 	})
 
 	t.Run("namespaced policyConfig keys pass through", func(t *testing.T) {
