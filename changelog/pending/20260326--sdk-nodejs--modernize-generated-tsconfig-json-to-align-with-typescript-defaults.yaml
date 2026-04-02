@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdk/nodejs
-  description: Modernize generated tsconfig.json to align with TypeScript defaults
