@@ -94,6 +94,10 @@ type ProjectBackend struct {
 type ProjectOptions struct {
 	// Refresh is the ability to always run a refresh as part of a pulumi update / preview / destroy
 	Refresh string `json:"refresh,omitempty" yaml:"refresh,omitempty"`
+	// SaveOutputDependencies controls whether Output values are serialized with their full dependency
+	// information in the state file. When true, the state file requires a Pulumi CLI that understands
+	// the "outputDependencies" feature; older CLIs will refuse to open the stack.
+	SaveOutputDependencies bool `json:"saveOutputDependencies,omitempty" yaml:"saveOutputDependencies,omitempty"`
 }
 
 type PluginOptions struct {

@@ -62,7 +62,7 @@ func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *Mock
 	require.NoError(t, err)
 
 	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap.SecretsManager, baseSnap, nil), sp
+	return NewSnapshotManager(t.Context(), sp, baseSnap.SecretsManager, baseSnap, nil), sp
 }
 
 func NewResourceWithDeps(urn resource.URN, deps []resource.URN) *resource.State {
@@ -1081,7 +1081,7 @@ func TestSnapshotAutoRepairSucceedsForInvalidSnapshots(t *testing.T) {
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
 	events := make(chan engine.Event, 1)
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
+	sm := NewSnapshotManager(t.Context(), sp, snap.SecretsManager, snap, events)
 
 	err := sm.saveSnapshot()
 
@@ -1106,7 +1106,7 @@ func TestSnapshotAutoRepairErrorIsSurfacedWhenRepairFails(t *testing.T) {
 	snap := NewSnapshot([]*resource.State{rA, rB})
 	sp := &MockStackPersister{}
 	events := make(chan engine.Event, 1)
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, events)
+	sm := NewSnapshotManager(t.Context(), sp, snap.SecretsManager, snap, events)
 
 	err := sm.saveSnapshot()
 
@@ -1128,7 +1128,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshots(t *testing.T
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+	sm := NewSnapshotManager(t.Context(), sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1148,7 +1148,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshots(t *testing.T) 
 	snap.Metadata.IntegrityErrorMetadata = &deploy.SnapshotIntegrityErrorMetadata{}
 
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+	sm := NewSnapshotManager(t.Context(), sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1171,7 +1171,7 @@ func TestSnapshotIntegrityErrorMetadataIsWrittenForInvalidSnapshotsChecksDisable
 	r := NewResource("a", "b")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+	sm := NewSnapshotManager(t.Context(), sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()
@@ -1194,7 +1194,7 @@ func TestSnapshotIntegrityErrorMetadataIsClearedForValidSnapshotsChecksDisabled(
 	r := NewResource("a")
 	snap := NewSnapshot([]*resource.State{r})
 	sp := &MockStackPersister{}
-	sm := NewSnapshotManager(sp, snap.SecretsManager, snap, nil)
+	sm := NewSnapshotManager(t.Context(), sp, snap.SecretsManager, snap, nil)
 
 	// Act.
 	err := sm.saveSnapshot()

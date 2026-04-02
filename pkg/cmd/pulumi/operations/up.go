@@ -236,12 +236,13 @@ func NewUpCmd() *cobra.Command {
 			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan:    env.Experimental.Value() || strict,
-			Experimental:    env.Experimental.Value(),
-			Strict:          strict,
-			ContinueOnError: continueOnError,
-			AttachDebugger:  attachDebugger,
-			Autonamer:       autonamer,
+			GeneratePlan:           env.Experimental.Value() || strict,
+			Experimental:           env.Experimental.Value(),
+			Strict:                 strict,
+			ContinueOnError:        continueOnError,
+			AttachDebugger:         attachDebugger,
+			Autonamer:              autonamer,
+			SaveOutputDependencies: proj.Options != nil && proj.Options.SaveOutputDependencies,
 		}
 
 		if planFilePath != "" {
@@ -490,7 +491,8 @@ func NewUpCmd() *cobra.Command {
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
 
-			AttachDebugger: attachDebugger,
+			AttachDebugger:         attachDebugger,
+			SaveOutputDependencies: proj.Options != nil && proj.Options.SaveOutputDependencies,
 		}
 
 		start := time.Now()

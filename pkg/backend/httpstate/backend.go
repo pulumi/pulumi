@@ -1797,8 +1797,9 @@ func (b *cloudBackend) runEngineAction(
 			}
 		} else {
 			persister := b.newSnapshotPersister(ctx, update, tokenSource)
+			snapCtx := backend.SnapshotContext(ctx, op)
 			snapshotJournaler, err = backend.NewSnapshotJournaler(
-				ctx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
+				snapCtx, journalPersister, op.SecretsManager, backend_secrets.DefaultProvider, u.Target.Snapshot)
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
@@ -1806,7 +1807,7 @@ func (b *cloudBackend) runEngineAction(
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
-			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
+			snapshotManager = backend.NewSnapshotManager(snapCtx, persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
 			combinedManager = &engine.CombinedManager{
 				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
 				CollectErrorsOnly: []bool{false, true},

@@ -77,6 +77,7 @@ type SnapshotManager struct {
 	secretsManager secrets.Manager      // The default secrets manager to use
 	resources      []*resource.State    // The list of resources operated upon by this plan
 	operations     []resource.Operation // The set of operations known to be outstanding in this plan
+	ctx            context.Context      // Context used for serialization (may carry stack.WithSaveOutputDependencies)
 
 	// The set of resources that have been operated upon already by this plan. These resources could also have
 	// been added to `resources` by other operations but need to be filtered out before writing the snapshot.
@@ -761,8 +762,12 @@ func (sm *SnapshotManager) Deployment() (apitype.TypedDeployment, error) {
 		return apitype.TypedDeployment{}, fmt.Errorf("failed to normalize URN references: %w", err)
 	}
 
+	ctx := sm.ctx
+	if ctx == nil {
+		ctx = context.TODO()
+	}
 	deploymentV3, version, features, err := stack.SerializeDeploymentWithMetadata(
-		context.TODO(), snap, false /*showSecrets*/)
+		ctx, snap, false /*showSecrets*/)
 	if err != nil {
 		return apitype.TypedDeployment{}, fmt.Errorf("failed to serialize snapshot: %w", err)
 	}
@@ -939,6 +944,7 @@ func (sm *SnapshotManager) unsafeServiceLoop(mutationRequests chan mutationReque
 // mutate this object and correctness of the SnapshotManager depends on being able to observe this mutation. (This is
 // not ideal...)
 func NewSnapshotManager(
+	ctx context.Context,
 	persister SnapshotPersister,
 	secretsManager secrets.Manager,
 	baseSnap *deploy.Snapshot,
@@ -947,6 +953,7 @@ func NewSnapshotManager(
 	mutationRequests, cancel, done := make(chan mutationRequest), make(chan bool), make(chan error)
 
 	manager := &SnapshotManager{
+		ctx:              ctx,
 		persister:        persister,
 		secretsManager:   secretsManager,
 		baseSnapshot:     baseSnap,
@@ -967,4 +974,14 @@ func NewSnapshotManager(
 	go serviceLoop(mutationRequests, done)
 
 	return manager
+}
+
+// SnapshotContext returns a context enriched with snapshot serialization options derived from the
+// project configuration in op. If the project has SaveOutputDependencies enabled, the context will
+// instruct the serialization layer to preserve Output dependency information in the state file.
+func SnapshotContext(ctx context.Context, op UpdateOperation) context.Context {
+	if op.Proj != nil && op.Proj.Options != nil && op.Proj.Options.SaveOutputDependencies {
+		ctx = stack.WithSaveOutputDependencies(ctx)
+	}
+	return ctx
 }

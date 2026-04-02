@@ -243,6 +243,33 @@
                 }
             },
             "required": ["4dabf18193072939515e22adb298388d", "value"]
+        },
+        {
+            "title": "Output property values",
+            "description": "An output value with optional dependency information. Only present in state files that use the 'outputDependencies' feature (version 4+).",
+            "type": "object",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": {
+                    "description": "Output value signature",
+                    "const": "d0e6a833031e9bbcd3f4e8bde6ca49a4"
+                },
+                "value": {
+                    "description": "The resolved value of the output, if known.",
+                    "$ref": "#property_value"
+                },
+                "secret": {
+                    "description": "Whether the output value is secret.",
+                    "type": "boolean"
+                },
+                "dependencies": {
+                    "description": "The URNs of resources this output depends on.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "required": ["4dabf18193072939515e22adb298388d"]
         }
     ]
 }

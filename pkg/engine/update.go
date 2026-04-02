@@ -271,6 +271,11 @@ type UpdateOptions struct {
 
 	// ShowSecrets is true if the engine should display secrets in the CLI.
 	ShowSecrets bool
+
+	// SaveOutputDependencies controls whether Output values are serialized with their full dependency
+	// information in the state file. Requires the "outputDependencies" state feature; older CLIs will
+	// refuse to open a stack that uses this feature.
+	SaveOutputDependencies bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -676,6 +681,7 @@ func newUpdateSource(ctx context.Context,
 		DisableResourceReferences: opts.DisableResourceReferences,
 		DisableOutputValues:       opts.DisableOutputValues,
 		AttachDebugger:            opts.AttachDebugger,
+		SaveOutputDependencies:    opts.SaveOutputDependencies,
 	}, panicErrs), nil
 }
 
