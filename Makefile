@@ -13,8 +13,8 @@ _ := $(shell mkdir -p bin)
 _ := $(shell cd pkg && go build -o ../bin/helpmakego github.com/iwahbe/helpmakego)
 
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
-# nodejs and python codegen tests are much slower than go/dotnet:
-PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
+# nodejs and python codegen tests are much slower than go:
+PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(go|nodejs|python)')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
 TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
@@ -200,7 +200,7 @@ test_codegen_%: get_schemas
 test_pkg_rest: get_schemas
 	@cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 
-test_pkg:: test_pkg_rest test_codegen_dotnet test_codegen_go test_codegen_nodejs test_codegen_python
+test_pkg:: test_pkg_rest test_codegen_go test_codegen_nodejs test_codegen_python
 
 subset=$(subst test_integration_,,$(word 1,$(subst !, ,$@)))
 test_integration_%:
