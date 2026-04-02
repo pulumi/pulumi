@@ -257,7 +257,6 @@ var functionImports = map[string][]string{
 	"rootDirectory":    {"pulumi"},
 	"filebase64":       {"base64"},
 	"filebase64sha256": {"base64", "hashlib"},
-	"readDir":          {"os"},
 	"toBase64":         {"base64"},
 	"fromBase64":       {"base64"},
 	"toJSON":           {"json"},
@@ -266,7 +265,6 @@ var functionImports = map[string][]string{
 	"project":          {"pulumi"},
 	"organization":     {"pulumi"},
 	"cwd":              {"os"},
-	"mimeType":         {"mimetypes"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
@@ -367,8 +365,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "not_implemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "single_or_none(%v)", expr.Args[0])
-	case "mimeType":
-		g.Fgenf(w, "mimetypes.guess_type(%v)[0]", expr.Args[0])
 	case pcl.Call:
 		self := expr.Args[0]
 		method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
@@ -510,8 +506,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fprint(w, ")")
 	case "readFile":
 		g.Fgenf(w, "(lambda path: open(path).read())(%.v)", expr.Args[0])
-	case "readDir":
-		g.Fgenf(w, "os.listdir(%.v)", expr.Args[0])
 	case "secret":
 		g.Fgenf(w, "pulumi.Output.secret(%v)", expr.Args[0])
 	case "unsecret":

@@ -5,9 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"mime"
 	"os"
-	"path"
 	"strings"
 
 	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws"
@@ -77,12 +75,10 @@ func main() {
 			}
 			return cwd
 		}(os.Getwd())
-		fileMimeType := mime.TypeByExtension(path.Ext("./base64.txt"))
 		// using the filebase64 function
 		_, err = s3.NewBucketObject(ctx, "first", &s3.BucketObjectArgs{
-			Bucket:      bucket.ID(),
-			Source:      pulumi.NewStringAsset(filebase64OrPanic("./base64.txt")),
-			ContentType: pulumi.String(pulumi.String(fileMimeType)),
+			Bucket: bucket.ID(),
+			Source: pulumi.NewStringAsset(filebase64OrPanic("./base64.txt")),
 			Tags: pulumi.StringMap{
 				"stack":   pulumi.String(pulumi.String(currentStack)),
 				"project": pulumi.String(pulumi.String(currentProject)),

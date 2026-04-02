@@ -8,10 +8,6 @@ function computeFilebase64sha256(path: string): string {
 	return crypto.createHash('sha256').update(fileData).digest('hex')
 }
 
-function mimeType(path: string): string {
-    throw new Error("mimeType not implemented, use the mime or mime-types package instead");
-}
-
 const encoded = Buffer.from("haha business").toString("base64");
 const decoded = Buffer.from(encoded, "base64").toString("utf8");
 const joined = [
@@ -30,12 +26,10 @@ const plainValue = pulumi.unsecret(secretValue);
 const currentStack = pulumi.getStack();
 const currentProject = pulumi.getProject();
 const workingDirectory = process.cwd();
-const fileMimeType = mimeType("./base64.txt");
 // using the filebase64 function
 const first = new aws.s3.BucketObject("first", {
     bucket: bucket.id,
     source: new pulumi.asset.StringAsset(fs.readFileSync("./base64.txt", { encoding: "base64" })),
-    contentType: fileMimeType,
     tags: {
         stack: currentStack,
         project: currentProject,

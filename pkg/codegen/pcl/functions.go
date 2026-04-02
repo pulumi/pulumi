@@ -250,13 +250,6 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 					ReturnType: returnType,
 				}, diagnostics
 			})),
-		"mimeType": model.NewFunction(model.StaticFunctionSignature{
-			Parameters: []model.Parameter{{
-				Name: "path",
-				Type: model.StringType,
-			}},
-			ReturnType: model.StringType,
-		}),
 		"range": model.NewFunction(model.StaticFunctionSignature{
 			Parameters: []model.Parameter{
 				{
@@ -269,13 +262,6 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 				},
 			},
 			ReturnType: model.NewListType(model.IntType),
-		}),
-		"readDir": model.NewFunction(model.StaticFunctionSignature{
-			Parameters: []model.Parameter{{
-				Name: "path",
-				Type: model.StringType,
-			}},
-			ReturnType: model.NewListType(model.StringType),
 		}),
 		"readFile": model.NewFunction(model.StaticFunctionSignature{
 			Parameters: []model.Parameter{{
