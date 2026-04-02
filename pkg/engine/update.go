@@ -60,6 +60,34 @@ func parsePolicyConfigKey(key string) (packName, policyName string) {
 	return "", key
 }
 
+// mergePolicyConfig merges ESC-resolved policy config into the base API config.
+// API config (base) wins on conflict. Namespaced keys ("packName:policyName")
+// are only applied when packName matches the given pack name.
+// Returns a new map; neither input is mutated.
+func mergePolicyConfig(
+	base map[string]*json.RawMessage,
+	escConfig map[string]*json.RawMessage,
+	packName string,
+) map[string]*json.RawMessage {
+	if len(escConfig) == 0 {
+		return base
+	}
+	merged := make(map[string]*json.RawMessage, len(base)+len(escConfig))
+	for k, v := range base {
+		merged[k] = v
+	}
+	for rawKey, v := range escConfig {
+		packPrefix, policyName := parsePolicyConfigKey(rawKey)
+		if packPrefix != "" && packPrefix != packName {
+			continue
+		}
+		if _, exists := merged[policyName]; !exists {
+			merged[policyName] = v
+		}
+	}
+	return merged
+}
+
 // RequiredPolicy represents a set of policies to apply during an update.
 type RequiredPolicy interface {
 	// Name provides the user-specified name of the PolicyPack.
@@ -519,30 +547,11 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			// Merge ESC policyConfig under API config (API config wins on conflict).
-			// Keys may be "policyName" or "packName:policyName".
-			// Namespaced keys only apply to the matching pack.
-			mergedConfig := policy.Config()
-			if resolved != nil && len(resolved.Config) > 0 {
-				if mergedConfig == nil {
-					mergedConfig = make(map[string]*json.RawMessage)
-				} else {
-					// Copy the map to avoid mutating the original.
-					copied := make(map[string]*json.RawMessage, len(mergedConfig)+len(resolved.Config))
-					for k, v := range mergedConfig {
-						copied[k] = v
-					}
-					mergedConfig = copied
-				}
-				for rawKey, v := range resolved.Config {
-					packPrefix, policyName := parsePolicyConfigKey(rawKey)
-					if packPrefix != "" && packPrefix != policy.Name() {
-						continue
-					}
-					if _, exists := mergedConfig[policyName]; !exists {
-						mergedConfig[policyName] = v
-					}
-				}
+			var escConfig map[string]*json.RawMessage
+			if resolved != nil {
+				escConfig = resolved.Config
 			}
+			mergedConfig := mergePolicyConfig(policy.Config(), escConfig, policy.Name())
 
 			// Parse the config, reconcile & validate it, and pass it to the policy pack.
 			if !analyzerInfo.SupportsConfig {

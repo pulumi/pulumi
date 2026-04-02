@@ -16,6 +16,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -337,4 +338,76 @@ func TestParsePolicyConfigKey(t *testing.T) {
 			assert.Equal(t, tt.wantPolicy, gotPolicy)
 		})
 	}
+}
+
+func TestMergePolicyConfig(t *testing.T) {
+	t.Parallel()
+
+	raw := func(s string) *json.RawMessage {
+		r := json.RawMessage(s)
+		return &r
+	}
+
+	t.Run("nil base and nil esc returns nil", func(t *testing.T) {
+		t.Parallel()
+		got := mergePolicyConfig(nil, nil, "pack")
+		assert.Nil(t, got)
+	})
+
+	t.Run("non-nil base with nil esc returns base", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]*json.RawMessage{"p": raw(`"a"`)}
+		got := mergePolicyConfig(base, nil, "pack")
+		assert.Equal(t, base, got)
+	})
+
+	t.Run("nil base with esc entries", func(t *testing.T) {
+		t.Parallel()
+		esc := map[string]*json.RawMessage{"p": raw(`"x"`)}
+		got := mergePolicyConfig(nil, esc, "pack")
+		assert.Equal(t, map[string]*json.RawMessage{"p": raw(`"x"`)}, got)
+	})
+
+	t.Run("no conflict merges both", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]*json.RawMessage{"a": raw(`1`)}
+		esc := map[string]*json.RawMessage{"b": raw(`2`)}
+		got := mergePolicyConfig(base, esc, "pack")
+		assert.Equal(t, map[string]*json.RawMessage{
+			"a": raw(`1`),
+			"b": raw(`2`),
+		}, got)
+	})
+
+	t.Run("base wins on conflict", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]*json.RawMessage{"p": raw(`"base"`)}
+		esc := map[string]*json.RawMessage{"p": raw(`"esc"`)}
+		got := mergePolicyConfig(base, esc, "pack")
+		assert.Equal(t, map[string]*json.RawMessage{"p": raw(`"base"`)}, got)
+	})
+
+	t.Run("namespaced key matching pack is included", func(t *testing.T) {
+		t.Parallel()
+		esc := map[string]*json.RawMessage{"my-pack:cost-policy": raw(`true`)}
+		got := mergePolicyConfig(nil, esc, "my-pack")
+		assert.Equal(t, map[string]*json.RawMessage{"cost-policy": raw(`true`)}, got)
+	})
+
+	t.Run("namespaced key not matching pack is excluded", func(t *testing.T) {
+		t.Parallel()
+		esc := map[string]*json.RawMessage{"other-pack:cost-policy": raw(`true`)}
+		got := mergePolicyConfig(nil, esc, "my-pack")
+		assert.Empty(t, got)
+	})
+
+	t.Run("does not mutate original base map", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]*json.RawMessage{"a": raw(`1`)}
+		esc := map[string]*json.RawMessage{"b": raw(`2`)}
+		got := mergePolicyConfig(base, esc, "pack")
+		require.Contains(t, got, "b")
+		_, inBase := base["b"]
+		assert.False(t, inBase, "original base map should not be mutated")
+	})
 }
