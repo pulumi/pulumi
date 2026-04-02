@@ -49,27 +49,47 @@ go_binary(
     },
 )
 
+_TEST_DATA = glob(["testdata/**"]) + [
+    "//pkg/testing/pulumi-test-language",
+]
+
+_TEST_DEPS = [
+    "//sdk/go/common/testing",
+    "//sdk/go/common/util/contract",
+    "//sdk/go/common/util/rpcutil",
+    "//sdk/proto/go",
+    "//sdk/proto/go/testing",
+    "@com_github_stretchr_testify//assert",
+    "@com_github_stretchr_testify//require",
+    "@org_golang_google_grpc//:grpc",
+    "@org_golang_google_grpc//credentials/insecure",
+]
+
+# Conformance tests
 go_test(
-    name = "pulumi-language-pcl_test",
+    name = "conformance_test",
     size = "large",
     timeout = "long",
     srcs = [
         "language_test.go",
         "main_dependencies_test.go",
     ],
-    data = glob(["testdata/**"]) + [
-        "//pkg/testing/pulumi-test-language",
-    ],
+    args = ["-test.run", "TestLanguage"],
+    data = _TEST_DATA,
     embed = [":pulumi-language-pcl_lib"],
-    deps = [
-        "//sdk/go/common/testing",
-        "//sdk/go/common/util/contract",
-        "//sdk/go/common/util/rpcutil",
-        "//sdk/proto/go",
-        "//sdk/proto/go/testing",
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//:grpc",
-        "@org_golang_google_grpc//credentials/insecure",
+    deps = _TEST_DEPS,
+)
+
+# Non-conformance unit tests
+go_test(
+    name = "unit_test",
+    size = "medium",
+    srcs = [
+        "language_test.go",
+        "main_dependencies_test.go",
     ],
+    args = ["-test.run", "^Test[^L]"],
+    data = _TEST_DATA,
+    embed = [":pulumi-language-pcl_lib"],
+    deps = _TEST_DEPS,
 )

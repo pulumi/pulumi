@@ -54,35 +54,78 @@ go_binary(
     },
 )
 
+# Common test attributes shared by all conformance test targets
+_TEST_SRCS = [
+    "language_test.go",
+    "main_test.go",
+]
+
+_TEST_DATA = glob(["testdata/**"]) + [
+    "//pkg/testing/pulumi-test-language",
+    "//sdk:go.mod",
+    "//sdk:go.sum",
+]
+
+_TEST_DEPS = [
+    "//pkg/codegen/go",
+    "//sdk",
+    "//sdk/go/common/resource/plugin",
+    "//sdk/go/common/testing",
+    "//sdk/go/common/testing/iotest",
+    "//sdk/go/common/util/contract",
+    "//sdk/go/common/util/fsutil",
+    "//sdk/go/common/util/rpcutil",
+    "//sdk/proto/go",
+    "//sdk/proto/go/testing",
+    "@com_github_stretchr_testify//assert",
+    "@com_github_stretchr_testify//require",
+    "@org_golang_google_grpc//:grpc",
+    "@org_golang_google_grpc//credentials/insecure",
+    "@org_golang_google_protobuf//types/known/emptypb",
+]
+
+# Split conformance tests by subtest config for parallel execution
 go_test(
-    name = "pulumi-language-go_test",
+    name = "conformance_published_test",
     size = "enormous",
     timeout = "eternal",
-    srcs = [
-        "language_test.go",
-        "main_test.go",
-    ],
-    data = glob(["testdata/**"]) + [
-        "//pkg/testing/pulumi-test-language",
-        "//sdk:go.mod",
-        "//sdk:go.sum",
-    ],
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguage/published"],
+    data = _TEST_DATA,
     embed = [":pulumi-language-go_lib"],
-    deps = [
-        "//pkg/codegen/go",
-        "//sdk",
-        "//sdk/go/common/resource/plugin",
-        "//sdk/go/common/testing",
-        "//sdk/go/common/testing/iotest",
-        "//sdk/go/common/util/contract",
-        "//sdk/go/common/util/fsutil",
-        "//sdk/go/common/util/rpcutil",
-        "//sdk/proto/go",
-        "//sdk/proto/go/testing",
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//:grpc",
-        "@org_golang_google_grpc//credentials/insecure",
-        "@org_golang_google_protobuf//types/known/emptypb",
-    ],
+    deps = _TEST_DEPS,
+)
+
+go_test(
+    name = "conformance_local_test",
+    size = "enormous",
+    timeout = "eternal",
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguage/local"],
+    data = _TEST_DATA,
+    embed = [":pulumi-language-go_lib"],
+    deps = _TEST_DEPS,
+)
+
+go_test(
+    name = "conformance_extra_types_test",
+    size = "enormous",
+    timeout = "eternal",
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguage/extra-types"],
+    data = _TEST_DATA,
+    embed = [":pulumi-language-go_lib"],
+    deps = _TEST_DEPS,
+)
+
+# Non-conformance tests (TestCompileProgram, TestPluginsAndDependencies, etc.)
+go_test(
+    name = "unit_test",
+    size = "large",
+    timeout = "long",
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "^Test[^L]"],
+    data = _TEST_DATA,
+    embed = [":pulumi-language-go_lib"],
+    deps = _TEST_DEPS,
 )

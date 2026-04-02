@@ -47,6 +47,9 @@ test --test_env=GIT_CONFIG_VALUE_0=*
 # Run tests locally without sandboxing to allow access to system tools
 test --strategy=TestRunner=local
 
+# Limit parallel test execution to avoid OOM with large conformance tests
+test --local_test_jobs=HOST_CPUS*0.25
+
 # Keep going after errors to see all issues
 build --keep_going
 test --keep_going

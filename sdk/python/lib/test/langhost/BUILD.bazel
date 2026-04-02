@@ -1,0 +1,59 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# Langhost test utilities
+py_library(
+    name = "langhost_testlib",
+    srcs = [
+        "__init__.py",
+        "util.py",
+    ],
+    data = glob(
+        ["**"],
+        exclude = [
+            "**/*.py",
+            "**/*.pyc",
+            "**/BUILD.bazel",
+        ],
+    ),
+    imports = ["../../.."],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sdk/python/lib/pulumi",
+        "@pip//grpcio",
+        "@pip//protobuf",
+    ],
+)
+
+# Each langhost test directory contains a test file + test data (Pulumi.yaml, __main__.py, etc.)
+# Run all langhost tests as a single pytest invocation for efficiency
+py_test(
+    name = "langhost_tests",
+    srcs = ["//sdk/python/lib/test:run_pytest.py"] + glob(["*/test_*.py"]),
+    args = [
+        "--import-mode=importlib",
+        "-vs",
+        "sdk/python/lib/test/langhost/",
+    ],
+    data = glob(
+        ["**"],
+        exclude = [
+            "**/*.py",
+            "**/*.pyc",
+            "**/BUILD.bazel",
+        ],
+    ),
+    imports = ["../../.."],
+    main = "run_pytest.py",
+    size = "large",
+    timeout = "long",
+    tags = ["manual"],  # Requires proto-generated Python files not yet in Bazel
+    deps = [
+        ":langhost_testlib",
+        "//sdk/python/lib/test:testlib",
+        "//sdk/python/lib/pulumi",
+        "@pip//grpcio",
+        "@pip//protobuf",
+        "@pip//pytest",
+        "@pip//pytest_asyncio",
+    ],
+)

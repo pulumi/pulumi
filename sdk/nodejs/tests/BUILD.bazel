@@ -37,3 +37,21 @@ sh_test(
     size = "medium",
     tags = ["nodejs"],
 )
+
+sh_test(
+    name = "integration_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["integration"],
+    size = "large",
+    timeout = "long",
+    tags = ["nodejs", "manual"],  # Requires complex env setup
+)
+
+sh_test(
+    name = "sxs_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["sxs"],
+    size = "large",
+    timeout = "long",
+    tags = ["nodejs", "manual"],  # Requires multiple TypeScript versions
+)

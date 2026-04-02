@@ -92,9 +92,30 @@ case "$CATEGORY" in
         $MOCHA --timeout 120000 \
             'bin/tests/proto/**/*.spec.js' "$@"
         ;;
+    integration)
+        echo "Running Node.js integration tests..."
+        node 'bin/tests/runtime/closure-integration-tests.js'
+        node 'bin/tests/runtime/install-package-tests.js'
+        ;;
+    sxs)
+        echo "Running Node.js TypeScript version compatibility tests..."
+        cd tests/sxs_ts_test
+        for version in "~3.8.3" "^3" "^4" "^6"; do
+            cp -f "package${version}.json" package.json 2>/dev/null || continue
+            project="tsconfig.json"
+            if [ -f "tsconfig${version}.json" ]; then
+                project="tsconfig${version}.json"
+            fi
+            yarn install --frozen-lockfile 2>&1 || yarn install 2>&1
+            yarn run tsc --version
+            yarn run tsc --project "$project"
+            rm package.json
+            echo "TypeScript ${version} passed"
+        done
+        ;;
     *)
         echo "Unknown test category: $CATEGORY"
-        echo "Valid categories: unit, automation, mocks, proto"
+        echo "Valid categories: unit, automation, mocks, proto, integration, sxs"
         exit 1
         ;;
 esac

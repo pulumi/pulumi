@@ -49,30 +49,61 @@ go_binary(
     },
 )
 
+# Common test attributes shared by all conformance test targets
+_TEST_SRCS = [
+    "language_test.go",
+    "main_test.go",
+]
+
+_TEST_DATA = glob(["testdata/**"]) + [
+    "//pkg/testing/pulumi-test-language",
+]
+
+_TEST_DEPS = [
+    "//pkg/codegen/python",
+    "//sdk",
+    "//sdk/go/common/testing",
+    "//sdk/go/common/util/contract",
+    "//sdk/go/common/util/rpcutil",
+    "//sdk/proto/go",
+    "//sdk/proto/go/testing",
+    "//sdk/python/toolchain",
+    "@com_github_stretchr_testify//assert",
+    "@com_github_stretchr_testify//require",
+    "@org_golang_google_grpc//:grpc",
+    "@org_golang_google_grpc//credentials/insecure",
+]
+
+# Split conformance tests by top-level test function for parallel execution
 go_test(
-    name = "pulumi-language-python_test",
+    name = "conformance_default_test",
     size = "enormous",
     timeout = "eternal",
-    srcs = [
-        "language_test.go",
-        "main_test.go",
-    ],
-    data = glob(["testdata/**"]) + [
-        "//pkg/testing/pulumi-test-language",
-    ],
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguageDefault"],
+    data = _TEST_DATA,
     embed = [":pulumi-language-python_lib"],
-    deps = [
-        "//pkg/codegen/python",
-        "//sdk",
-        "//sdk/go/common/testing",
-        "//sdk/go/common/util/contract",
-        "//sdk/go/common/util/rpcutil",
-        "//sdk/proto/go",
-        "//sdk/proto/go/testing",
-        "//sdk/python/toolchain",
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//:grpc",
-        "@org_golang_google_grpc//credentials/insecure",
-    ],
+    deps = _TEST_DEPS,
+)
+
+go_test(
+    name = "conformance_toml_test",
+    size = "enormous",
+    timeout = "eternal",
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguageTOML"],
+    data = _TEST_DATA,
+    embed = [":pulumi-language-python_lib"],
+    deps = _TEST_DEPS,
+)
+
+go_test(
+    name = "conformance_classes_test",
+    size = "enormous",
+    timeout = "eternal",
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguageClasses"],
+    data = _TEST_DATA,
+    embed = [":pulumi-language-python_lib"],
+    deps = _TEST_DEPS,
 )

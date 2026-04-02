@@ -41,6 +41,7 @@ _TEST_DEPS = [
 _ASYNCIO_COMPAT_TESTS = [
     "test_resource.py",
     "test_stack_reference.py",
+    "test_stack_registers_outputs.py",
 ]
 
 # Use pytest runner to support relative imports (from .helpers, etc.)

@@ -68,30 +68,62 @@ go_binary(
     },
 )
 
+# Common test attributes shared by all conformance test targets
+_TEST_SRCS = [
+    "language_test.go",
+    "main_test.go",
+]
+
+_TEST_DATA = glob(["testdata/**"]) + [
+    "//pkg/testing/pulumi-test-language",
+]
+
+_TEST_DEPS = [
+    "//sdk",
+    "//sdk/go/common/testing",
+    "//sdk/go/common/util/contract",
+    "//sdk/go/common/util/rpcutil",
+    "//sdk/nodejs/npm",
+    "//sdk/proto/go",
+    "//sdk/proto/go/testing",
+    "@com_github_blang_semver//:semver",
+    "@com_github_stretchr_testify//assert",
+    "@com_github_stretchr_testify//require",
+    "@org_golang_google_grpc//:grpc",
+    "@org_golang_google_grpc//credentials/insecure",
+]
+
+# Split conformance tests by top-level test function for parallel execution
 go_test(
-    name = "pulumi-language-nodejs_test",
+    name = "conformance_tsc_test",
     size = "enormous",
     timeout = "eternal",
-    srcs = [
-        "language_test.go",
-        "main_test.go",
-    ],
-    data = glob(["testdata/**"]) + [
-        "//pkg/testing/pulumi-test-language",
-    ],
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguageTSC"],
+    data = _TEST_DATA,
     embed = [":pulumi-language-nodejs_lib"],
-    deps = [
-        "//sdk",
-        "//sdk/go/common/testing",
-        "//sdk/go/common/util/contract",
-        "//sdk/go/common/util/rpcutil",
-        "//sdk/nodejs/npm",
-        "//sdk/proto/go",
-        "//sdk/proto/go/testing",
-        "@com_github_blang_semver//:semver",
-        "@com_github_stretchr_testify//assert",
-        "@com_github_stretchr_testify//require",
-        "@org_golang_google_grpc//:grpc",
-        "@org_golang_google_grpc//credentials/insecure",
-    ],
+    deps = _TEST_DEPS,
+)
+
+go_test(
+    name = "conformance_tsnode_test",
+    size = "enormous",
+    timeout = "eternal",
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguageTSNode"],
+    data = _TEST_DATA,
+    embed = [":pulumi-language-nodejs_lib"],
+    deps = _TEST_DEPS,
+)
+
+go_test(
+    name = "conformance_bun_test",
+    size = "enormous",
+    timeout = "eternal",
+    srcs = _TEST_SRCS,
+    args = ["-test.run", "TestLanguageBun"],
+    data = _TEST_DATA,
+    embed = [":pulumi-language-nodejs_lib"],
+    tags = ["manual"],  # Requires bun toolchain
+    deps = _TEST_DEPS,
 )
