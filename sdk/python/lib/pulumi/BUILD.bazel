@@ -15,5 +15,10 @@ py_library(
         "@pip//semver",
         "@pip//pyyaml",
         "@pip//debugpy",
+        "@pip//packaging",
+        "@pip//opentelemetry_api",
+        "@pip//opentelemetry_sdk",
+        "@pip//opentelemetry_exporter_otlp_proto_grpc",
+        "@pip//opentelemetry_instrumentation_grpc",
     ],
 )

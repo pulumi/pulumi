@@ -1,0 +1,58 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+_EXPERIMENTAL_TEST_DEPS = [
+    "//sdk/python/lib/test:testlib",
+    "//sdk/python/lib/test/provider:provider_testlib",
+    "//sdk/python/lib/pulumi",
+    "@pip//grpcio",
+    "@pip//protobuf",
+    "@pip//pytest",
+    "@pip//pytest_asyncio",
+    "@pip//semver",
+]
+
+# Tests that work under Bazel
+_PASSING_TESTS = [
+    "test_property_value.py",
+    "test_provider.py",
+    "test_schema.py",
+    "test_util.py",
+]
+
+# test_analyzer has module path assertion that doesn't match under Bazel
+_MANUAL_TESTS = [
+    "test_analyzer.py",
+]
+
+[py_test(
+    name = src.removesuffix(".py"),
+    srcs = ["//sdk/python/lib/test:run_pytest.py", src],
+    args = [
+        "--import-mode=importlib",
+        "--rootdir=sdk/python/lib/test/provider/experimental",
+        "-vs",
+        "sdk/python/lib/test/provider/experimental/" + src,
+    ],
+    data = glob(["testdata/**"]),
+    imports = ["../../../.."],
+    main = "run_pytest.py",
+    size = "large",
+    deps = _EXPERIMENTAL_TEST_DEPS,
+) for src in _PASSING_TESTS]
+
+[py_test(
+    name = src.removesuffix(".py"),
+    srcs = ["//sdk/python/lib/test:run_pytest.py", src],
+    args = [
+        "--import-mode=importlib",
+        "--rootdir=sdk/python/lib/test/provider/experimental",
+        "-vs",
+        "sdk/python/lib/test/provider/experimental/" + src,
+    ],
+    data = glob(["testdata/**"]),
+    imports = ["../../../.."],
+    main = "run_pytest.py",
+    size = "large",
+    tags = ["manual"],  # Module path assertion mismatch under Bazel
+    deps = _EXPERIMENTAL_TEST_DEPS,
+) for src in _MANUAL_TESTS]

@@ -20,6 +20,9 @@ bazel_dep(name = "rules_python", version = "1.7.0")
 bazel_dep(name = "aspect_rules_js", version = "3.0.3")
 bazel_dep(name = "rules_nodejs", version = "6.7.3")
 
+# Shell test rules
+bazel_dep(name = "rules_shell", version = "0.4.1")
+
 # Initialize rules_go with the correct Go SDK version
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.download(version = "1.25.8")

@@ -1,0 +1,13 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+py_test(
+    name = "test_config",
+    srcs = ["test_config.py"],
+    imports = ["../../.."],
+    main = "test_config.py",
+    deps = [
+        "//sdk/python/lib/test:testlib",
+        "//sdk/python/lib/pulumi",
+        "@pip//pytest",
+    ],
+)

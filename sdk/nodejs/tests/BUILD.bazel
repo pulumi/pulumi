@@ -1,0 +1,39 @@
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+# Node.js SDK tests
+# These tests use the existing yarn/tsc/mocha toolchain via sh_test wrappers.
+# They run in the source tree since they need node_modules and compiled output.
+
+sh_test(
+    name = "unit_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["unit"],
+    size = "large",
+    timeout = "long",
+    tags = ["nodejs"],
+)
+
+sh_test(
+    name = "automation_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["automation"],
+    size = "enormous",
+    timeout = "eternal",
+    tags = ["nodejs", "manual"],  # Requires PULUMI_ACCESS_TOKEN
+)
+
+sh_test(
+    name = "mock_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["mocks"],
+    size = "medium",
+    tags = ["nodejs"],
+)
+
+sh_test(
+    name = "proto_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["proto"],
+    size = "medium",
+    tags = ["nodejs"],
+)

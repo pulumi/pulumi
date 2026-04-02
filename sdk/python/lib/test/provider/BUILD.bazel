@@ -1,0 +1,31 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+py_library(
+    name = "provider_testlib",
+    srcs = ["__init__.py"],
+    imports = ["../../.."],
+    visibility = ["//sdk/python/lib/test/provider:__subpackages__"],
+    deps = ["//sdk/python/lib/pulumi"],
+)
+
+_PROVIDER_TEST_DEPS = [
+    ":provider_testlib",
+    "//sdk/python/lib/test:testlib",
+    "//sdk/python/lib/pulumi",
+    "@pip//grpcio",
+    "@pip//protobuf",
+    "@pip//pytest",
+    "@pip//pytest_asyncio",
+    "@pip//semver",
+]
+
+# Provider tests - use pytest runner for relative imports
+[py_test(
+    name = src.removesuffix(".py"),
+    srcs = ["//sdk/python/lib/test:run_pytest.py", src],
+    args = ["--import-mode=importlib", "-vs", "sdk/python/lib/test/provider/" + src],
+    imports = ["../../.."],
+    main = "run_pytest.py",
+    size = "large",
+    deps = _PROVIDER_TEST_DEPS,
+) for src in glob(["test_*.py"])]

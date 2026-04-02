@@ -1,0 +1,20 @@
+load("@rules_python//python:defs.bzl", "py_test")
+
+_RUNTIME_TEST_DEPS = [
+    "//sdk/python/lib/test:testlib",
+    "//sdk/python/lib/pulumi",
+    "@pip//grpcio",
+    "@pip//protobuf",
+    "@pip//pytest",
+    "@pip//pytest_asyncio",
+]
+
+# Runtime tests - use pytest runner for relative imports
+[py_test(
+    name = src.removesuffix(".py"),
+    srcs = ["//sdk/python/lib/test:run_pytest.py", src],
+    args = ["--import-mode=importlib", "-vs", "sdk/python/lib/test/runtime/" + src],
+    imports = ["../../.."],
+    main = "run_pytest.py",
+    deps = _RUNTIME_TEST_DEPS,
+) for src in glob(["test_*.py"])]

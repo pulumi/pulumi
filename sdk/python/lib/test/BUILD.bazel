@@ -1,67 +1,69 @@
-load("@rules_python//python:defs.bzl", "py_test", "py_library")
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
 
-# Helper library for tests
+exports_files(
+    ["run_pytest.py"],
+    visibility = ["//sdk/python:__subpackages__"],
+)
+
+# Helper library for tests (conftest, helpers, grpc_stubs, etc.)
 py_library(
     name = "testlib",
     srcs = glob(
-        ["**/*.py"],
-        exclude = ["test_*.py", "**/test_*.py"],
+        ["*.py"],
+        exclude = ["test_*.py", "run_pytest.py"],
     ),
+    data = glob(["data/**"]),
     imports = ["../.."],
     visibility = ["//visibility:public"],
     deps = [
         "//sdk/python/lib/pulumi",
+        "@pip//grpcio",
+        "@pip//protobuf",
         "@pip//pytest",
         "@pip//pytest_asyncio",
         "@pip//pytest_timeout",
+        "@pip//semver",
     ],
 )
 
-# Individual test targets for each major test file in root test directory
-py_test(
-    name = "test_output",
-    srcs = ["test_output.py"],
-    imports = ["../.."],
-    deps = [
-        ":testlib",
-        "//sdk/python/lib/pulumi",
-        "@pip//pytest",
-    ],
-    tags = ["manual"],  # Run manually since may need setup
-)
+# Common deps for all unit tests
+_TEST_DEPS = [
+    ":testlib",
+    "//sdk/python/lib/pulumi",
+    "@pip//grpcio",
+    "@pip//protobuf",
+    "@pip//pytest",
+    "@pip//pytest_asyncio",
+    "@pip//semver",
+]
 
-py_test(
-    name = "test_resource",
-    srcs = ["test_resource.py"],
-    imports = ["../.."],
-    deps = [
-        ":testlib",
-        "//sdk/python/lib/pulumi",
-        "@pip//pytest",
-    ],
-    tags = ["manual"],
-)
+# Tests that have pytest-asyncio compatibility issues with @pulumi.runtime.test
+_ASYNCIO_COMPAT_TESTS = [
+    "test_resource.py",
+    "test_stack_reference.py",
+]
 
-py_test(
-    name = "test_config",
-    srcs = ["test_config.py"],
+# Use pytest runner to support relative imports (from .helpers, etc.)
+[py_test(
+    name = src.removesuffix(".py"),
+    srcs = ["run_pytest.py", src],
+    args = ["--import-mode=importlib", "-o", "asyncio_mode=auto", "-vs", "sdk/python/lib/test/" + src],
     imports = ["../.."],
-    deps = [
-        ":testlib",
-        "//sdk/python/lib/pulumi",
-        "@pip//pytest",
-    ],
-    tags = ["manual"],
-)
+    main = "run_pytest.py",
+    deps = _TEST_DEPS,
+) for src in glob(
+    ["test_*.py"],
+    exclude = _ASYNCIO_COMPAT_TESTS,
+)]
 
-py_test(
-    name = "test_invoke",
-    srcs = ["test_invoke.py"],
+# Tests with @pulumi.runtime.test + @pytest.mark.asyncio compatibility issues.
+# These work in the Makefile flow but have event loop conflicts under Bazel's pytest-asyncio.
+[py_test(
+    name = src.removesuffix(".py"),
+    srcs = ["run_pytest.py", src],
+    args = ["--import-mode=importlib", "-o", "asyncio_mode=auto", "-vs", "sdk/python/lib/test/" + src],
     imports = ["../.."],
-    deps = [
-        ":testlib",
-        "//sdk/python/lib/pulumi",
-        "@pip//pytest",
-    ],
-    tags = ["manual"],
-)
+    main = "run_pytest.py",
+    tags = ["manual"],  # pytest-asyncio compat issue with @pulumi.runtime.test
+    deps = _TEST_DEPS,
+) for src in _ASYNCIO_COMPAT_TESTS]

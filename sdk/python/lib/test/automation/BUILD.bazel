@@ -1,0 +1,73 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+# Shared utilities for automation tests
+py_library(
+    name = "automation_testlib",
+    srcs = [
+        "__init__.py",
+        "test_utils.py",
+    ],
+    imports = ["../../.."],
+    deps = [
+        "//sdk/python/lib/pulumi",
+        "@pip//pytest",
+    ],
+)
+
+_AUTOMATION_TEST_DEPS = [
+    ":automation_testlib",
+    "//sdk/python/lib/test:testlib",
+    "//sdk/python/lib/pulumi",
+    "@pip//grpcio",
+    "@pip//protobuf",
+    "@pip//pytest",
+    "@pip//pytest_asyncio",
+    "@pip//semver",
+]
+
+# Tests that can run without cloud access
+_LOCAL_TESTS = [
+    "test_events.py",
+    "test_fork.py",
+    "test_project_settings.py",
+    "test_remote_workspace.py",
+]
+
+# Tests that need cloud backend or have env-specific issues
+_MANUAL_TESTS = [
+    "test_cmd.py",
+    "test_config_file.py",
+    "test_errors.py",
+    "test_isolation.py",
+    "test_local_workspace.py",
+    "test_stack.py",
+]
+
+# Local automation tests (run by default)
+[py_test(
+    name = src.removesuffix(".py"),
+    srcs = ["//sdk/python/lib/test:run_pytest.py", src],
+    args = ["--import-mode=importlib", "-vs", "sdk/python/lib/test/automation/" + src],
+    data = glob(["data/**", "errors/**"]),
+    env = {"PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK": "true"},
+    imports = ["../../.."],
+    main = "run_pytest.py",
+    size = "large",
+    timeout = "long",
+    deps = _AUTOMATION_TEST_DEPS,
+) for src in _LOCAL_TESTS]
+
+# Manual tests (need PULUMI_ACCESS_TOKEN or have env-specific issues)
+[py_test(
+    name = src.removesuffix(".py"),
+    srcs = ["//sdk/python/lib/test:run_pytest.py", src],
+    args = ["--import-mode=importlib", "-vs", "sdk/python/lib/test/automation/" + src],
+    data = glob(["data/**", "errors/**"]),
+    env = {"PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK": "true"},
+    imports = ["../../.."],
+    main = "run_pytest.py",
+    size = "large",
+    timeout = "long",
+    tags = ["manual"],
+    deps = _AUTOMATION_TEST_DEPS,
+) for src in _MANUAL_TESTS]

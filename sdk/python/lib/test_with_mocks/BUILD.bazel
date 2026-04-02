@@ -1,0 +1,29 @@
+load("@rules_python//python:defs.bzl", "py_library", "py_test")
+
+py_library(
+    name = "mocks_lib",
+    srcs = [
+        "__init__.py",
+        "resources.py",
+    ],
+    imports = [".."],
+    deps = ["//sdk/python/lib/pulumi"],
+)
+
+py_test(
+    name = "test_testing_with_mocks",
+    srcs = [
+        "//sdk/python/lib/test:run_pytest.py",
+        "test_testing_with_mocks.py",
+    ],
+    args = ["--import-mode=importlib", "-vs", "sdk/python/lib/test_with_mocks/test_testing_with_mocks.py"],
+    imports = [".."],
+    main = "run_pytest.py",
+    deps = [
+        ":mocks_lib",
+        "//sdk/python/lib/pulumi",
+        "@pip//grpcio",
+        "@pip//pytest",
+        "@pip//pytest_asyncio",
+    ],
+)
