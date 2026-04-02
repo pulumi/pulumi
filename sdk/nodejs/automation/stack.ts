@@ -1433,7 +1433,13 @@ Event: ${line}\n${e.toString()}`);
         }
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
-        args = [...args, "--stack", this.name, ...additionalArgs];
+        const ddIndex = args.indexOf("--");
+        const flags = ["--stack", this.name, ...additionalArgs];
+        if (ddIndex === -1) {
+            args = [...args, ...flags];
+        } else {
+            args = [...args.slice(0, ddIndex), ...flags, ...args.slice(ddIndex)];
+        }
         const result = await this.workspace.pulumiCommand.run(
             args,
             this.workspace.workDir,
