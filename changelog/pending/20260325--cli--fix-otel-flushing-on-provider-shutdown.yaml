@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix OTEL flushing on provider shutdown

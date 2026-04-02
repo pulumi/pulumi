@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/display
-  description: Add `--urns` flag to display full resource URNs instead of short names in preview, up, destroy, refresh, import, and watch commands

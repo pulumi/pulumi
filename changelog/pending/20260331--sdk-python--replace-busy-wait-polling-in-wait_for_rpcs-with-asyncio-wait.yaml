@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Replace busy-wait polling in wait_for_rpcs with asyncio.wait

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Allow TRACEPARENT to be set for CLI invocations, parenting the pulumi spans under an existing parent span

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: protobuf
-  description: Add RunPlugin2 bidirectional streaming RPC to LanguageRuntime proto

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Fix deadlock in message renderer when cancelling an operation
