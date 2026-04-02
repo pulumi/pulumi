@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ package pcl
 
 import (
 	"context"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -110,6 +111,9 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 		diagnostics = append(diagnostics, diags...)
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
+		diagnostics = append(diagnostics, diags...)
+	case *Hook:
+		diags := b.bindHook(node)
 		diagnostics = append(diagnostics, diags...)
 	case *PulumiBlock:
 		diags := b.bindPulumi(node)
@@ -244,6 +248,85 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.Value))
 		}
 	}
+	node.Definition = block
+	return diagnostics
+}
+
+type hookScope struct {
+	root *model.Scope
+}
+
+func (s *hookScope) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
+	return model.StaticScope(s.root), nil
+}
+
+func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
+	if attr.Name == "command" {
+		scope := s.root.Push(attr)
+
+		properties := map[string]model.Type{
+			"urn":        model.StringType,
+			"id":         model.StringType,
+			"name":       model.StringType,
+			"type":       model.StringType,
+			"newInputs":  model.NewMapType(model.DynamicType),
+			"oldInputs":  model.NewMapType(model.DynamicType),
+			"newOutputs": model.NewMapType(model.DynamicType),
+			"oldOutputs": model.NewMapType(model.DynamicType),
+		}
+
+		scope.Define("args", &model.Variable{
+			Name:         "args",
+			VariableType: model.NewObjectType(properties),
+		})
+		return scope, nil
+	}
+	return s.root, nil
+}
+
+func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
+	// Create a child scope that exposes the resource data to the hook.
+	hookScope := &hookScope{root: b.root}
+	block, diagnostics := model.BindBlock(node.syntax, hookScope, b.tokens, b.options.modelOptions()...)
+
+	if cmd, ok := block.Body.Attribute("command"); ok {
+		node.Command = cmd.Value
+		// Command must be a list. Elements may include dynamic expressions (e.g. inputs.X) but must resolve to strings.
+		listType := model.NewListType(model.StringType)
+		if model.InputType(listType).ConversionFrom(node.Command.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(listType), node.Command))
+		}
+	} else {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  "Missing required attribute",
+			Detail:   "Hook blocks must have a 'command' attribute",
+			Subject:  node.syntax.OpenBraceRange.Ptr(),
+		})
+	}
+
+	if onDryRun, ok := block.Body.Attribute("onDryRun"); ok {
+		node.OnDryRun = onDryRun.Value
+		if model.InputType(model.BoolType).ConversionFrom(node.OnDryRun.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.BoolType), node.OnDryRun))
+		}
+	}
+
+	// Error on any other attribute
+	for _, i := range block.Body.Items {
+		valid := []string{"onDryRun", "command"}
+		switch item := i.(type) {
+		case *model.Attribute:
+			if !slices.Contains(valid, item.Name) {
+				diagnostics = append(diagnostics, model.UnknownObjectProperty(item.Name, item.Syntax.NameRange, valid))
+			}
+		case *model.Block:
+			diagnostics = append(diagnostics, model.UnknownObjectProperty(item.Type, item.Syntax.TypeRange, valid))
+		default:
+			contract.Failf("unrecognized block item type %v", item)
+		}
+	}
+
 	node.Definition = block
 	return diagnostics
 }

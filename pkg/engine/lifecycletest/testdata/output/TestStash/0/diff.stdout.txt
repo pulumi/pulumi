@@ -1,6 +1,4 @@
-<{%fg 2%}>+ pulumi:providers:pulumi: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pulumi::default]
-<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:index:Stash: (create)
+<{%fg 2%}>+ pulumi:index:Stash: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:index:Stash::stash]
 <{%reset%}><{%fg 2%}>    input: <{%reset%}><{%fg 2%}>"first"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>

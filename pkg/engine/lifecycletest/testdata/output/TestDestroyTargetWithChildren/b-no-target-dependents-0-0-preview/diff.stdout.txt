@@ -1,7 +1,4 @@
-<{%reset%}>  pulumi:providers:pkgA: (same)
-<{%reset%}>    [id=1]
-<{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
-<{%reset%}><{%reset%}><{%reset%}>  pkgA:index:Component: (same)
+<{%reset%}>  pkgA:index:Component: (same)
 <{%reset%}>    [id=2]
 <{%reset%}><{%reset%}>    [urn=urn:pulumi:test::test::pkgA:index:Component::A]
 <{%reset%}><{%reset%}><{%reset%}>  pkgA:index:Resource: (same)

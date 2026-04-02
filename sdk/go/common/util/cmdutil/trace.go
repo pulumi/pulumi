@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,6 +70,7 @@ var otelEndpoint string
 var (
 	otelReceiver       *otelreceiver.Receiver
 	otelTracerProvider *sdktrace.TracerProvider
+	appdashBridge      *otelreceiver.AppDashBridge
 )
 
 type localStore struct {
@@ -195,7 +196,9 @@ func CloseTracing() {
 		TracingRootSpan.Finish()
 	}
 
-	contract.IgnoreClose(traceCloser)
+	if traceCloser != nil {
+		contract.IgnoreClose(traceCloser)
+	}
 }
 
 // IsOTelEnabled returns true if OTEL is enabled via environment variable or endpoint is set.
@@ -231,12 +234,33 @@ func InitOtelReceiver(endpoint string) error {
 
 	ep := receiver.Endpoint()
 
+	// Start the AppDash bridge so that legacy OpenTracing plugins can send
+	// spans that get converted to OTLP and forwarded to the same exporter.
+	bridge, err := otelreceiver.StartAppDashBridge(exporter)
+	if err != nil {
+		_ = receiver.Shutdown(context.Background())
+		_ = exporter.Shutdown(context.Background())
+		return fmt.Errorf("failed to start AppDash bridge: %w", err)
+	}
+
 	otelMu.Lock()
 	otelReceiver = receiver
 	otelEndpoint = ep
+	appdashBridge = bridge
 	otelMu.Unlock()
 
+	// Set TracingEndpoint to the AppDash bridge so legacy plugins
+	// (providers that only speak OpenTracing) send their spans through
+	// it.  We intentionally do NOT call InitTracing() here: the CLI
+	// uses OTel for its own spans and does not need an OpenTracing
+	// tracer.  Keeping the global tracer as a no-op avoids duplicate
+	// spans on the engine's gRPC server interceptors while still
+	// letting provider plugins connect via --tracing.  Root provider
+	// spans are grafted onto the OTel trace via SetTraceParent().
+	TracingEndpoint = bridge.Endpoint()
+
 	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", ep, endpoint)
+	logging.V(5).Infof("Started AppDash bridge at %s for legacy OpenTracing plugins", bridge.Endpoint())
 
 	// Set up Otel TracerProvider for CLI's own spans
 	// The CLI sends its spans to the local receiver, which forwards to the configured exporter
@@ -266,10 +290,11 @@ func InitOtelTracing(serviceName, endpoint string) error {
 		return fmt.Errorf("failed to create trace exporter: %w", err)
 	}
 
-	res := resource.NewWithAttributes(
-		"",
-		semconv.ServiceName(serviceName),
+	res, err := resource.Merge(
+		resource.Environment(),
+		resource.NewWithAttributes("", semconv.ServiceName(serviceName)),
 	)
+	contract.AssertNoErrorf(err, "resource.Merge should never fail")
 
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExporter),
@@ -288,6 +313,20 @@ func InitOtelTracing(serviceName, endpoint string) error {
 	return nil
 }
 
+// SetAppDashTraceParent tells the AppDash bridge to remap all incoming
+// AppDash trace IDs to the given OTel trace ID, and to parent root AppDash
+// spans under the given OTel span ID.  This grafts legacy OpenTracing spans
+// onto the CLI's native OTel trace.
+func SetAppDashTraceParent(traceID [16]byte, spanID [8]byte) {
+	otelMu.RLock()
+	b := appdashBridge
+	otelMu.RUnlock()
+
+	if b != nil {
+		b.SetTraceParent(traceID, spanID)
+	}
+}
+
 func CloseOtelTracing() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -297,12 +336,20 @@ func CloseOtelTracing() {
 	otelTracerProvider = nil
 	recv := otelReceiver
 	otelReceiver = nil
+	bridge := appdashBridge
+	appdashBridge = nil
 	otelEndpoint = ""
 	otelMu.Unlock()
 
 	if tp != nil {
 		if err := tp.Shutdown(ctx); err != nil {
 			logging.V(3).Infof("error closing OTel tracer provider: %v", err)
+		}
+	}
+
+	if bridge != nil {
+		if err := bridge.Shutdown(ctx); err != nil {
+			logging.V(3).Infof("error closing AppDash bridge: %v", err)
 		}
 	}
 
@@ -338,6 +385,29 @@ func StartSpan(
 
 	opts = append(opts, trace.WithAttributes(attribute.String("code.stacktrace", stackBuilder.String())))
 	return tracer.Start(ctx, name, opts...)
+}
+
+type processStartTimeKey struct{}
+
+// ContextWithProcessStartTime returns a new context with the given process start time.
+func ContextWithProcessStartTime(ctx context.Context, t time.Time) context.Context {
+	return context.WithValue(ctx, processStartTimeKey{}, t)
+}
+
+// ProcessStartTimeFromContext retrieves the process start time from the context.
+func ProcessStartTimeFromContext(ctx context.Context) (time.Time, bool) {
+	t, ok := ctx.Value(processStartTimeKey{}).(time.Time)
+	return t, ok
+}
+
+func SetStringSpanAttributes(ctx context.Context, attrs map[string]string) {
+	span := trace.SpanFromContext(ctx)
+	if !span.SpanContext().IsValid() {
+		return
+	}
+	for k, v := range attrs {
+		span.SetAttributes(attribute.String(k, v))
+	}
 }
 
 // Starts an AppDash server listening on any available TCP port

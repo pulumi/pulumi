@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package deploytest
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -129,7 +128,7 @@ func TestLanguageRuntime(t *testing.T) {
 		p := &languageRuntime{}
 		t.Run("RunPlugin", func(t *testing.T) {
 			t.Parallel()
-			_, _, _, err := p.RunPlugin(context.Background(), plugin.RunPluginInfo{})
+			_, _, _, err := p.RunPlugin(t.Context(), plugin.RunPluginInfo{})
 			assert.ErrorContains(t, err, "are not currently supported")
 		})
 		t.Run("GenerateProject", func(t *testing.T) {

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,10 @@ package stack
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -73,7 +73,7 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			if stack == "" && !cmdutil.Interactive() {
-				return errors.New("no stack name given, use --stack to specify a stack name")
+				return backenderr.NoStackSelectedError{}
 			}
 
 			if stack != "" {
@@ -85,6 +85,10 @@ func newStackSelectCmd() *cobra.Command {
 
 				s, stackErr := b.GetStack(ctx, stackRef)
 				if stackErr != nil {
+					var notFound backenderr.NotFoundError
+					if errors.As(stackErr, &notFound) {
+						return backenderr.StackNotFoundError{StackName: stackRef.String()}
+					}
 					return stackErr
 				} else if s != nil {
 					return state.SetCurrentStack(ws, stackRef.FullyQualifiedName().String())
@@ -98,7 +102,7 @@ func newStackSelectCmd() *cobra.Command {
 					return state.SetCurrentStack(ws, s.Ref().FullyQualifiedName().String())
 				}
 
-				return fmt.Errorf("no stack named '%s' found", stackRef)
+				return backenderr.StackNotFoundError{StackName: stackRef.String()}
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.

@@ -18,7 +18,6 @@
 package diy
 
 import (
-	"context"
 	"os"
 	"runtime"
 	"testing"
@@ -82,7 +81,7 @@ func TestPostgresBackend(t *testing.T) {
 	renamedStackName := "renamed-stack-" + pgtest.GenerateID()
 	projectName := tokens.PackageName("test-project")
 
-	ctx := context.Background()
+	ctx := t.Context()
 	url := pg.ConnectionStringWithTable(tableName)
 
 	// Test backend creation and basic properties
@@ -265,7 +264,7 @@ func TestPostgresBackend(t *testing.T) {
 		// It's okay if there's no previous deployment
 		assert.Contains(t, err.Error(), "no previous deployment", "Error should be about no previous deployment")
 	} else {
-		require.NotNil(t, latestConfig, "Latest config should not be nil if no error")
+		require.NotNil(t, latestConfig.Config, "Latest config should not be nil if no error")
 	}
 
 	// Test secrets management and configuration
@@ -422,7 +421,7 @@ func TestPostgresBackendMultipleTables(t *testing.T) {
 	// Start a PostgreSQL 17 container for this test using testcontainers
 	pg := pgtest.New(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	desc := "A test project"
 	project := workspace.Project{
 		Name:        "test-project",
@@ -491,7 +490,7 @@ func TestPostgresBackendConcurrency(t *testing.T) {
 	url := pg.ConnectionStringWithTable(tableName)
 
 	// Create multiple backends using the same table to test concurrency
-	ctx := context.Background()
+	ctx := t.Context()
 	desc := "A test project for concurrency testing"
 	project := workspace.Project{
 		Name:        "test-concurrent-project",

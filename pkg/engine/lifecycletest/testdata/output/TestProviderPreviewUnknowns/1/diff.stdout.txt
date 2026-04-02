@@ -13,8 +13,6 @@
 <{%reset%}><{%fg 2%}>    ]<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typB: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typB::resB]
-<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typB: (create)
 <{%fg 2%}>        [urn=urn:pulumi:test::test::pkgA:m:typB$pkgA:m:typB::resB-resB]
 <{%reset%}><{%reset%}><{%fg 2%}>    --outputs:--<{%reset%}>

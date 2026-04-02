@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,7 +129,7 @@ func (p *promptHandlersMock) PromptForValue(
 func TestDSConfigureGit(t *testing.T) {
 	t.Parallel()
 
-	repoDir := setUpGitWorkspace(context.Background(), t)
+	repoDir := setUpGitWorkspace(t.Context(), t)
 	workDir := filepath.Join(repoDir, "goproj")
 
 	t.Run("using the GH app", func(t *testing.T) {

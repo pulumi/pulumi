@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,6 +54,16 @@ type generator struct {
 	quotes                  map[model.Expression]string
 	isComponent             bool
 	deferredOutputVariables []*pcl.DeferredOutputVariable
+
+	// insideApplyLambda is set while generating the body of an __apply callback.
+	insideApplyLambda bool
+	// applyLambdaType holds the destination type for the current resource input.
+	// It is set at the resource input level (outside apply) and read inside
+	// genObjectConsExpression when insideApplyLambda is true, allowing it to
+	// resolve schema type information and generate Args class form instead of
+	// dict literals (which pyright cannot infer as TypedDicts inside lambda
+	// return expressions).
+	applyLambdaType model.Type
 }
 
 func GenerateProgram(program *pcl.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -285,7 +295,7 @@ func (g *generator) genComponentDefinition(w io.Writer, component *pcl.Component
 			}
 
 			if len(outputVars) == 0 {
-				g.Fgenf(w, "%sself.register_outputs()\n", g.Indent)
+				g.Fgenf(w, "%sself.register_outputs({})\n", g.Indent)
 			} else {
 				g.Fgenf(w, "%sself.register_outputs({\n", g.Indent)
 				g.Indented(func() {
@@ -638,6 +648,9 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 }
 
 func tokenToQualifiedName(pkg, module, member string) string {
+	if module == "index" {
+		module = ""
+	}
 	components := strings.Split(strings.ToLower(module), "/")
 	for i, component := range components {
 		components[i] = PyName(component)
@@ -893,6 +906,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 						switch key.AsString() {
 						case "name":
 							g.Fgenf(w, "name=%v", item.Value)
+						case "type":
+							g.Fgenf(w, "type_=%v", item.Value)
 						case "noParent":
 							g.Fgenf(w, "parent=(None if %v else ...)", item.Value)
 						case "parent":
@@ -939,11 +954,14 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 		g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 	}
 
+	inputDestTypes := map[string]model.Type{}
 	if r.Schema != nil {
 		for _, input := range r.Inputs {
 			destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 			g.diagnostics = append(g.diagnostics, diagnostics...)
-			value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
+			dt := destType.(model.Type)
+			inputDestTypes[input.Name] = dt
+			value, valueTemps := g.lowerExpression(input.Value, dt)
 			temps = append(temps, valueTemps...)
 			input.Value = value
 		}
@@ -964,11 +982,19 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				if qualifiedMemberName == stackRefQualifiedName && propertyName == "name" {
 					propertyName = "stack_name"
 				}
+
+				prev := g.applyLambdaType
+				if dt, ok := inputDestTypes[attr.Name]; ok {
+					g.applyLambdaType = dt
+				}
+
 				if len(r.Inputs) == 1 {
 					g.Fgenf(w, ", %s=%.v", propertyName, attr.Value)
 				} else {
 					g.Fgenf(w, ",\n%s%s=%.v", g.Indent, propertyName, attr.Value)
 				}
+
+				g.applyLambdaType = prev
 			}
 			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0)
 		})
@@ -1094,6 +1120,8 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
 				resKey = "value"
+			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in (%.v).items()]:\n", g.Indent, rangeExpr)
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}
@@ -1152,7 +1180,9 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 	}
 
 	for _, input := range componentInputs {
-		value, valueTemps := g.lowerExpression(input.Value, input.Value.Type())
+		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+		g.diagnostics = append(g.diagnostics, diagnostics...)
+		value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
 		temps = append(temps, valueTemps...)
 		input.Value = value
 	}
@@ -1215,6 +1245,8 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
 				resKey = "value"
+			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
+				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in (%.v).items()]:\n", g.Indent, rangeExpr)
 			} else {
 				g.Fgenf(w, "%sfor range in [{\"key\": k, \"value\": v} for [k, v] in enumerate(%.v)]:\n", g.Indent, rangeExpr)
 			}

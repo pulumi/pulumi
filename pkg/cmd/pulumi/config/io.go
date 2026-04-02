@@ -1,4 +1,4 @@
-// Copyright 2024-2025, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,7 +68,8 @@ func GetStackConfigurationOrLatest(
 			if errors.Is(err, workspace.ErrProjectNotFound) {
 				// This error indicates that we're not being run in a project directory.
 				// We should fallback on the backend.
-				return backend.GetLatestConfiguration(ctx, stack)
+				latest, err := backend.GetLatestConfiguration(ctx, stack)
+				return latest.Config, err
 			}
 			return nil, err
 		})

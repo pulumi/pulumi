@@ -14,6 +14,8 @@
             "cmd/pulumi-language-nodejs",
             "tests/mockpackage/lib/",
             "tests/runtime/testdata/closure-tests",
+            "tests/sxs_ts_test/tsconfig*.json",
+            "tools/automation/output/",
             "vendor/"
         ]
     },

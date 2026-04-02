@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ func TestConverterPlugin_State(t *testing.T) {
 		},
 	}
 
-	resp, err := plugin.ConvertState(context.Background(), &ConvertStateRequest{
+	resp, err := plugin.ConvertState(t.Context(), &ConvertStateRequest{
 		Args:         []string{"arg1", "arg2"},
 		MapperTarget: "localhost:1234",
 	})
@@ -135,7 +135,7 @@ func TestConverterPlugin_Program(t *testing.T) {
 		},
 	}
 
-	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
+	resp, err := plugin.ConvertProgram(t.Context(), &ConvertProgramRequest{
 		MapperTarget:    "localhost:1234",
 		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",
@@ -165,7 +165,7 @@ func TestConverterPlugin_Program_EmptyDiagnosticsIsNil(t *testing.T) {
 		},
 	}
 
-	resp, err := plugin.ConvertProgram(context.Background(), &ConvertProgramRequest{
+	resp, err := plugin.ConvertProgram(t.Context(), &ConvertProgramRequest{
 		MapperTarget:    "localhost:1234",
 		LoaderTarget:    "localhost:4321",
 		SourceDirectory: "src",

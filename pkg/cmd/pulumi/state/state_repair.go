@@ -161,7 +161,7 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 	// Sorting the snapshot could fail due to cycles or e.g. unparseable provider references. In those cases, manual
 	// repair is likely the only option, so we'll print a help banner to guide the user through that and invite them
 	// to file a report so that we can learn about how they ended up with such a state.
-	err = snap.Toposort()
+	pruneResults, err := snap.Repair()
 	if err != nil {
 		sink.Errorf(diag.RawMessage("" /*urn*/, cmd.manualRepairError(initialErr, err)))
 
@@ -172,8 +172,6 @@ func (cmd *stateRepairCmd) run(ctx context.Context) error {
 
 	afterSort := snap.Resources
 	reorderings := computeStateRepairReorderings(beforeSort, afterSort)
-
-	pruneResults := snap.Prune()
 
 	// In the case that we complete repairs (sorting, pruning and so on) but the snapshot is still invalid, we'll
 	// produce a banner that helps the user conduct a manual repair but also includes both errors, so that if they

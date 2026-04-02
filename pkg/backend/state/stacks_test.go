@@ -28,7 +28,7 @@ import (
 )
 
 func TestCurrentStack(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Earlier versions of the Pulumi CLI did not always store the current selected stack with the fully qualified
 	// name. For backwards compatibility, ensure that users upgrading to newer versions that do qualify with the org name,

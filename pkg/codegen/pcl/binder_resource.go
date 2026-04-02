@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package pcl
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -445,7 +446,8 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 }
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
-	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" || attr.Name == "replaceOnChanges" {
+	switch attr.Name {
+	case "ignoreChanges", "hideDiffs", "replaceOnChanges", "additionalSecretOutputs":
 		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
@@ -458,8 +460,9 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 			})
 		}
 		return scope, nil
+	default:
+		return s.root, nil
 	}
-	return s.root, nil
 }
 
 func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostics) {
@@ -499,16 +502,16 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.IgnoreChanges = item.Value
 			case "hideDiffs":
-				t = model.NewListType(ResourcePropertyType) // Property paths
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.HideDiffs = item.Value
 			case "replaceOnChanges":
-				t = model.NewListType(ResourcePropertyType) // Property paths
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.ReplaceOnChanges = item.Value
 			case "deleteBeforeReplace":
 				t = model.BoolType
 				resourceOptions.DeleteBeforeReplace = item.Value
 			case "additionalSecretOutputs":
-				t = model.NewListType(model.StringType)
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.AdditionalSecretOutputs = item.Value
 			case "version":
 				t = model.StringType
@@ -534,6 +537,46 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "envVarMappings":
 				t = model.NewMapType(model.StringType)
 				resourceOptions.EnvVarMappings = item.Value
+			case "hooks":
+				// hooks is an object mapping hook type names to lists of named hook references.
+				resourceOptions.Hooks = item.Value
+				const invalidHooksMsg = "hooks option must be an object mapping hook names to lists of hook references"
+				validHookTypes := []string{
+					"beforeCreate", "afterCreate",
+					"beforeUpdate", "afterUpdate",
+					"beforeDelete", "afterDelete",
+				}
+				obj, isObj := item.Value.(*model.ObjectConsExpression)
+				if !isObj {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  invalidHooksMsg,
+						Subject:  item.Value.SyntaxNode().Range().Ptr(),
+					})
+					continue
+				}
+				for _, kv := range obj.Items {
+					key, keyDiags := kv.Key.Evaluate(&hcl.EvalContext{})
+					if keyDiags.HasErrors() || key.Type() != cty.String {
+						continue
+					}
+					hookType := key.AsString()
+					if !slices.Contains(validHookTypes, hookType) {
+						diagnostics = append(diagnostics, &hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  fmt.Sprintf("unknown hook name '%s'", hookType),
+							Subject:  kv.Key.SyntaxNode().Range().Ptr(),
+						})
+					}
+					if _, isList := kv.Value.(*model.TupleConsExpression); !isList {
+						diagnostics = append(diagnostics, &hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  invalidHooksMsg,
+							Subject:  kv.Value.SyntaxNode().Range().Ptr(),
+						})
+					}
+				}
+				continue // skip generic type check; structural validation is done above
 			default:
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				continue

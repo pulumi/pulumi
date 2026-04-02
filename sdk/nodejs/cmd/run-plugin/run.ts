@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,14 +15,15 @@
 // The tsnode import is used for type-checking only. Do not reference it in the emitted code.
 import * as tsnode from "ts-node";
 import * as fs from "fs";
-import * as util from "util";
 import * as minimist from "minimist";
 import * as path from "path";
+import * as semver from "semver";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as settings from "../../runtime/settings";
 import { componentProviderHost, getPulumiComponents } from "../../provider/experimental/provider";
+import { defaultErrorMessage } from "../run/error";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -37,7 +38,7 @@ const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
  * Attempts to provide a detailed error message for module load failure if the
  * module that failed to load is the top-level module.
  * @param program The name of the program given to `run`, i.e. the top level module
- * @param error The error that occured. Must be a module load error.
+ * @param error The error that occurred. Must be a module load error.
  */
 function reportModuleLoadFailure(program: string, error: Error): never {
     throwOrPrintModuleLoadError(program, error);
@@ -172,14 +173,18 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         const skipProject = !fs.existsSync(tsConfigPath);
         const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         const tsn: typeof tsnode = require(tsnodeRequire);
+        const ts = require(typescriptRequire);
+        const tsVersion = semver.parse(ts.version);
+        // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
+        const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
         tsn.register({
             typeCheck: true,
             skipProject: skipProject,
             compiler: typescriptRequire,
             compilerOptions: {
                 target: "ES2020", // TypeScript 3.8 supports this
-                module: "commonjs",
-                moduleResolution: "node",
+                module: useNodeNext ? "nodenext" : "commonjs",
+                moduleResolution: useNodeNext ? "nodenext" : "node",
                 sourceMap: "true",
                 ...compilerOptions,
             },
@@ -210,15 +215,7 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
 
         errorSet.add(err);
 
-        // colorize stack trace if exists
-        const stackMessage = err.stack && util.inspect(err, { colors: true });
-
-        // Default message should be to include the full stack (which includes the message), or
-        // fallback to just the message if we can't get the stack.
-        //
-        // If both the stack and message are empty, then just stringify the err object itself. This
-        // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = stackMessage || err.message || "" + err;
+        const defaultMessage = defaultErrorMessage(err);
 
         // First, log the error.
         if (RunError.isInstance(err)) {

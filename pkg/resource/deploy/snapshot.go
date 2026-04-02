@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -212,6 +212,16 @@ type PruneResult struct {
 	Delete bool
 	// A list of dependencies that were removed as a result of pruning.
 	RemovedDependencies []resource.StateDependency
+}
+
+// Repair attempts to repair this snapshot by sorting resources topologically and pruning dangling dependencies.
+// It returns the set of changes made by pruning, or an error if sorting fails (e.g. due to cycles). If sorting
+// fails the snapshot may be left in a partially sorted state.
+func (snap *Snapshot) Repair() ([]PruneResult, error) {
+	if err := snap.Toposort(); err != nil {
+		return nil, err
+	}
+	return snap.Prune(), nil
 }
 
 // Toposort attempts sorts this snapshot so that it is topologically sorted with respect to dependencies (where a

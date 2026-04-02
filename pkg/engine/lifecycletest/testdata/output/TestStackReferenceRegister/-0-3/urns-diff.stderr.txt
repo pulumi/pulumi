@@ -1,0 +1,2 @@
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>The "pulumi:pulumi:StackReference" resource type is deprecated. Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues.<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>pulumi:pulumi:StackReference resource 'other': property foo value {bar} has a problem: unknown property "foo"<{%reset%}>

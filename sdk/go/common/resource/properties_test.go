@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -303,6 +303,77 @@ func TestString(t *testing.T) {
 			t.Parallel()
 
 			assert.Equal(t, tt.expected, tt.prop.String())
+		})
+	}
+}
+
+func TestRedactSecrets(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		prop     PropertyValue
+		expected string
+	}{
+		{
+			name:     "computed",
+			prop:     MakeComputed(NewProperty("")),
+			expected: "output<string>{}",
+		},
+		{
+			name:     "secret string",
+			prop:     MakeSecret(NewProperty("shh")),
+			expected: "{[secret]}",
+		},
+		{
+			name:     "plain string",
+			prop:     NewProperty("hello"),
+			expected: "{hello}",
+		},
+		{
+			name:     "output unknown",
+			prop:     MakeOutput(NewProperty("")),
+			expected: "output<string>{}",
+		},
+		{
+			name: "output known",
+			prop: NewProperty(Output{
+				Element: NewProperty("hello"),
+				Known:   true,
+			}),
+			expected: "{hello}",
+		},
+		{
+			name: "output secret",
+			prop: NewProperty(Output{
+				Element: NewProperty("shh"),
+				Known:   true,
+				Secret:  true,
+			}),
+			expected: "{[secret]}",
+		},
+		{
+			name: "object with nested secret",
+			prop: NewProperty(PropertyMap{
+				"plain":  NewProperty("visible"),
+				"secret": MakeSecret(NewProperty("hidden")),
+			}),
+			expected: "{map[plain:{visible} secret:{[secret]}]}",
+		},
+		{
+			name: "array with nested secret",
+			prop: NewProperty([]PropertyValue{
+				NewProperty("visible"),
+				MakeSecret(NewProperty("hidden")),
+			}),
+			expected: "{[{visible} {[secret]}]}",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.expected, tt.prop.RedactSecrets())
 		})
 	}
 }

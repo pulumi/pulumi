@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -123,9 +123,9 @@ description: A test for protecting and unprotecting resources
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy after protect")
 	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
+		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	// STEP 2: Unprotect a subset of resources to verify partial unprotect works

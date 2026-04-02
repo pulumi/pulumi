@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package npm
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -43,7 +42,7 @@ func TestNPMInstallCmd(t *testing.T) {
 	pkgManager := &npmManager{
 		executable: "false", // a fake path for testing.
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for _, tc := range cases {
 		name := fmt.Sprintf("production=%v", tc.production)

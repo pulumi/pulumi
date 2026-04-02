@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -98,8 +99,7 @@ func readProjectForUpdate(ws pkgWorkspace.Context, clientAddress string) (*works
 func updateFlagsToOptions(interactive, skipPreview, yes, previewOnly bool) (backend.UpdateOptions, error) {
 	switch {
 	case !interactive && !yes && !skipPreview && !previewOnly:
-		return backend.UpdateOptions{},
-			errors.New("one of --yes, --skip-preview, or --preview-only must be specified in non-interactive mode")
+		return backend.UpdateOptions{}, backenderr.NoConfirmationInNonInteractiveError{}
 	case skipPreview && previewOnly:
 		return backend.UpdateOptions{},
 			errors.New("--skip-preview and --preview-only cannot be used together")

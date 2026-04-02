@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -217,8 +217,8 @@ func generatePackageJSON(
 		"@types/node": "%s"
 	},
 	"dependencies": {
-		"typescript": "^4.0.0",
-		`, projectName, MinimumNodeTypesVersion)
+		"typescript": "%s",
+		`, projectName, MinimumNodeTypesVersion, MinimumTypescriptVersion)
 	}
 
 	// Check if pulumi is a local dependency, else add it as a normal range dependency
@@ -333,17 +333,20 @@ func generateTSConfig(runtimeName string, files map[string][]byte) []byte {
 	} else {
 		tsConfig.WriteString(`{
 	"compilerOptions": {
-		"strict": true,
+		// Output
 		"outDir": "bin",
-		"target": "es2016",
-		"module": "commonjs",
-		"moduleResolution": "node",
 		"sourceMap": true,
-		"experimentalDecorators": true,
-		"pretty": true,
+		// Environment
+		"target": "ES2022",
+		"module": "nodenext",
+		"moduleResolution": "nodenext",
+		"moduleDetection": "force",
+		"types": ["node"],
+		// Type Checking
+		"strict": true,
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitReturns": true,
-		"forceConsistentCasingInFileNames": true
+		"skipLibCheck": true
 	},
 	"files": [
 `)
@@ -944,6 +947,9 @@ func moduleName(module string, pkg schema.PackageReference) string {
 			}
 		}
 	}
+	if module == "index" {
+		return ""
+	}
 	return strings.ToLower(strings.ReplaceAll(module, "/", "."))
 }
 
@@ -1074,6 +1080,8 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema
 							switch key.AsString() {
 							case "name":
 								g.Fgenf(&buffer, "name: %v", item.Value)
+							case "type":
+								g.Fgenf(&buffer, "type: %v", item.Value)
 							case "noParent":
 								g.Fgenf(&buffer, "parent: (%v ? pulumi.rootStackResource : undefined)", item.Value)
 							case "parent":
@@ -1377,7 +1385,9 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 					propertyName = fmt.Sprintf("%q", propertyName)
 				}
 
-				loweredExpression := g.lowerExpression(attr.Value, attr.Value.Type())
+				destType, diagnostics := component.InputType.Traverse(hcl.TraverseAttr{Name: attr.Name})
+				g.diagnostics = append(g.diagnostics, diagnostics...)
+				loweredExpression := g.lowerExpression(attr.Value, destType.(model.Type))
 				g.Fgenf(w, fmtString, propertyName, loweredExpression)
 			}
 		})

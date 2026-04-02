@@ -1,7 +1,7 @@
 (testing)=
 # Testing
 
-The surface are of `pulumi/pulumi` is *large*. A single release of "Pulumi"
+The surface area of `pulumi/pulumi` is *large*. A single release of "Pulumi"
 encapsulates both a version of the deployment engine and CLI, for multiple
 platforms (e.g. Linux, macOS and Windows), and a full set of language SDKs
 (across TypeScript/NodeJS, Python, Go, .Net, Java, YAML, and maybe more by the

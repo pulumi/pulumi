@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 
 /**
  * Tests that dynamic providers can return inputs from read() method.

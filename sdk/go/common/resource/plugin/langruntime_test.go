@@ -152,6 +152,12 @@ func (m *MockLanguageRuntimeClient) Handshake(
 	panic("not implemented")
 }
 
+func (m *MockLanguageRuntimeClient) RunPlugin2(
+	ctx context.Context, opts ...grpc.CallOption,
+) (grpc.BidiStreamingClient[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse], error) {
+	panic("not implemented")
+}
+
 func (m *MockLanguageRuntimeClient) Cancel(
 	ctx context.Context, req *emptypb.Empty, opts ...grpc.CallOption,
 ) (*emptypb.Empty, error) {
@@ -171,7 +177,7 @@ func TestRunPluginPassesCorrectPwd(t *testing.T) {
 		},
 	}
 
-	pCtx, err := NewContext(context.Background(), nil, nil, nil, nil, "", nil, false, nil, nil)
+	pCtx, err := NewContext(t.Context(), nil, nil, nil, nil, "", nil, false, nil, nil)
 	require.NoError(t, err)
 	host := &langhost{
 		ctx:     pCtx,

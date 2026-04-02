@@ -1,0 +1,7 @@
+{
+    "name": "signal-cancellation-nodejs",
+    "main": "index.js",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

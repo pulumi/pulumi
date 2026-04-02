@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,7 +118,7 @@ func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.
-func GetLatestConfiguration(ctx context.Context, s Stack) (config.Map, error) {
+func GetLatestConfiguration(ctx context.Context, s Stack) (LatestConfiguration, error) {
 	return s.Backend().GetLatestConfiguration(ctx, s)
 }
 

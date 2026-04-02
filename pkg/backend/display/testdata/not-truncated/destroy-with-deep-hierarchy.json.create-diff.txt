@@ -1,0 +1,10 @@
+Configuration:
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev]
+- my:component:Grandchild: (delete)
+    [id=mygrandchild-id]
+    [urn=urn:pulumi:dev::myproject::my:component:Grandchild::mygrandchild]
+- my:component:Child: (delete)
+    [urn=urn:pulumi:dev::myproject::my:component:Child::mychild]
+    - my:component:Parent: (delete)
+        [urn=urn:pulumi:dev::myproject::my:component:Parent::myparent]

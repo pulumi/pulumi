@@ -1,0 +1,13 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~array,map,scalar<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~array,map,scalar<{%reset%}><{%reset%}>]
+ <{%bold%}><{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 3%}>~array,map,scalar<{%reset%}><{%reset%}>]
+ <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~array,map,scalar<{%reset%}><{%reset%}>]
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resC <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 3%}>~ 2 to update<{%reset%}>
+    1 unchanged
+

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,6 +57,7 @@ type Options struct {
 	SuppressTimings          bool                // true to suppress displaying timings of resource actions
 	SuppressProgress         bool                // true to suppress displaying progress spinner.
 	ShowSecrets              bool                // true to display secrets in the output.
+	ShowURNs                 bool                // true to display full URNs instead of short resource names.
 	SuppressDiagEventsInDiff bool                // true to suppress displaying diagnostic events in the diff display
 
 	// Neo options

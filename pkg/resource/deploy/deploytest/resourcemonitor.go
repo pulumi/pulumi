@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -628,7 +628,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
 	// marshal outputs
 	outs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
-		KeepUnknowns: true,
+		KeepUnknowns:  true,
+		KeepResources: rm.supportsResourceReferences,
 	})
 	if err != nil {
 		return err

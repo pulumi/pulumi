@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,8 +34,24 @@ func TestRewriteConversions(t *testing.T) {
 		to            model.Type
 	}{
 		{
+			input:  `"1.5" + 2.5`,
+			output: `1.5 + 2.5`,
+		},
+		{
 			input:  `"1" + 2`,
 			output: `1 + 2`,
+		},
+		{
+			input:  `-"1"`,
+			output: `-1`,
+		},
+		{
+			input:  `"1" + 2.5`,
+			output: `__convert(1) + 2.5`,
+		},
+		{
+			input:  `-"1.5"`,
+			output: `-1.5`,
 		},
 		{
 			input:  `{a: "b"}`,
@@ -66,8 +82,8 @@ func TestRewriteConversions(t *testing.T) {
 			}, &schema.ObjectType{})),
 		},
 		{
-			input:  `{a: "1" + 2}`,
-			output: `{a: 1 + 2}`,
+			input:  `{a: "1.5" + 2.5}`,
+			output: `{a: 1.5 + 2.5}`,
 			to: model.NewObjectType(map[string]model.Type{
 				"a": model.NumberType,
 			}),
@@ -104,21 +120,31 @@ func TestRewriteConversions(t *testing.T) {
 			to:     model.StringType,
 		},
 		{
-			input:  `42`,
-			output: `__convert(42)`,
+			input:  `42.5`,
+			output: `__convert(42.5)`,
 			to:     model.IntType,
 		},
 		{
-			input:  `"42"`,
-			output: `__convert(42)`,
+			input:  `"42.5"`,
+			output: `__convert(42.5)`,
 			to:     model.IntType,
 		},
 		{
-			input:  `{a: 42}`,
-			output: `{a: __convert( 42)}`,
+			input:  `{a: 42.5}`,
+			output: `{a: __convert( 42.5)}`,
 			to: model.NewObjectType(map[string]model.Type{
 				"a": model.IntType,
 			}),
+		},
+		{
+			input:  `outString`,
+			output: `__convert(outString)`,
+			to:     model.NewOutputType(model.NumberType),
+		},
+		{
+			input:  `outString`,
+			output: `outString`,
+			to:     model.NewOutputType(model.StringType),
 		},
 	}
 
@@ -126,6 +152,10 @@ func TestRewriteConversions(t *testing.T) {
 	scope.Define("i", &model.Variable{
 		Name:         "i",
 		VariableType: model.StringType,
+	})
+	scope.Define("outString", &model.Variable{
+		Name:         "outString",
+		VariableType: model.NewOutputType(model.StringType),
 	})
 	for _, c := range cases {
 		expr, diags := model.BindExpressionText(c.input, scope, hcl.Pos{})

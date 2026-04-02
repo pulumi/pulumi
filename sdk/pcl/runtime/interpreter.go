@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -65,6 +67,9 @@ type RunInfo struct {
 	LoaderAddress  string
 	DryRun         bool
 	Parallel       int32
+
+	// PackageDescriptors are package blocks keyed by package name.
+	PackageDescriptors map[string]*schema.PackageDescriptor
 }
 
 type Interpreter struct {
@@ -79,10 +84,31 @@ type Interpreter struct {
 	evalLock    sync.Mutex
 	evalContext *hcl.EvalContext
 	stackURN    string
+
+	// namePrefix is prepended to resource and component names when this interpreter is executing
+	// inside a component. For example, if a component named "myComp" contains a resource "res",
+	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
+	namePrefix string
+
+	// packageRefs are package references returned by RegisterPackage keyed by package name.
+	packageRefs map[string]string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
-	return &Interpreter{program: program, info: info}
+	return &Interpreter{
+		program:     program,
+		info:        info,
+		packageRefs: map[string]string{},
+	}
+}
+
+// effectiveName returns the name to use when registering a resource or component with the given
+// logical name, prepending the current namePrefix if one is set.
+func (i *Interpreter) effectiveName(logicalName string) string {
+	if i.namePrefix == "" {
+		return logicalName
+	}
+	return i.namePrefix + "-" + logicalName
 }
 
 func (i *Interpreter) Run(ctx context.Context) error {
@@ -134,6 +160,10 @@ func (i *Interpreter) Run(ctx context.Context) error {
 	}
 
 	if err := i.registerStack(ctx); err != nil {
+		return err
+	}
+
+	if err := i.registerPackages(ctx); err != nil {
 		return err
 	}
 
@@ -192,7 +222,11 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 			// handled before node execution
 			return nil
 		case *pcl.LocalVariable:
-			value, diags := i.evalExpression(node.Definition.Value)
+			value, poison, diags := i.evalExpression(node.Definition.Value)
+			if poison != nil {
+				i.setRawVariable(ctx, node.Name(), makePoisonValue(*poison))
+				return nil
+			}
 			if diags.HasErrors() {
 				return diags
 			}
@@ -208,7 +242,10 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 				return fmt.Errorf("failed to register component %s: %w", node.Name(), err)
 			}
 		case *pcl.OutputVariable:
-			value, diags := i.evalExpression(node.Value)
+			value, poison, diags := i.evalExpression(node.Value)
+			if poison != nil {
+				return nil
+			}
 			if diags.HasErrors() {
 				return diags
 			}
@@ -228,29 +265,24 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 }
 
 func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema.Resource, error) {
-	components := strings.Split(token, ":")
-	contract.Assertf(len(components) == 3, "invalid token format: %s", token)
-	if components[1] == "" {
-		components[1] = "index"
-	}
-	token = fmt.Sprintf("%s:%s:%s", components[0], components[1], components[2])
-	pkgName := components[0]
-	if components[0] == "pulumi" && components[1] == "providers" {
-		pkgName = components[2]
+	pkg, mod, typ, diags := pcl.DecomposeToken(token, hcl.Range{})
+	contract.Assertf(!diags.HasErrors(), "invalid token format for resource token %s", token)
+
+	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
+	pkgName := pkg
+	if pkg == "pulumi" && mod == "providers" {
+		pkgName = typ
 	}
 
-	// Fall back to just the package name and passed in version if we don't have a descriptor.
-	descriptor := &schema.PackageDescriptor{
-		Name: pkgName,
-	}
-	pkg, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+	descriptor := i.lookupPackageDescriptor(pkgName)
+	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil {
 		return nil, fmt.Errorf("load package for token %s: %w", token, err)
 	}
-	if components[0] == "pulumi" && components[1] == "providers" {
-		return pkg.Provider()
+	if pkg == "pulumi" && mod == "providers" {
+		return pkgref.Provider()
 	}
-	resources := pkg.Resources()
+	resources := pkgref.Resources()
 	schemaResource, ok, err := resources.Get(token)
 	if err != nil {
 		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
@@ -262,11 +294,16 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		for iter.Next() {
 			resToken := iter.Token()
 			// Canonicalize the resources token via TokenToModule
-			mod := pkg.TokenToModule(resToken)
-			components := strings.Split(resToken, ":")
-			resToken = fmt.Sprintf("%s:%s:%s", components[0], mod, components[2])
+			mod := pkgref.TokenToModule(resToken)
+			if mod == "" {
+				mod = "index"
+			}
+			pkg, _, typ, diags := pcl.DecomposeToken(resToken, hcl.Range{})
+			contract.Assertf(!diags.HasErrors(), "invalid token format in package %s: %s", pkg, resToken)
+			resToken = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
 			if token == resToken {
 				token = iter.Token()
+				var err error
 				schemaResource, err = iter.Resource()
 				if err != nil {
 					return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
@@ -281,22 +318,111 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 	return schemaResource, nil
 }
 
-func (i *Interpreter) evalExpression(expr model.Expression) (resource.PropertyValue, hcl.Diagnostics) {
+func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
+	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
+		return descriptor
+	}
+	return &schema.PackageDescriptor{Name: pkgName}
+}
+
+func PackageNameFromToken(token string) (string, error) {
+	pkg, mod, name, diags := pcl.DecomposeToken(token, hcl.Range{})
+	if diags.HasErrors() {
+		return "", diags
+	}
+	if pkg == "pulumi" {
+		if mod == "providers" {
+			return name, nil
+		}
+		return "", nil
+	}
+	return pkg, nil
+}
+
+func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
+	pkgName, err := PackageNameFromToken(token)
+	if err != nil {
+		return "", err
+	}
+	return i.packageRefs[pkgName], nil
+}
+
+func (i *Interpreter) registerPackages(ctx context.Context) error {
+	if i.monitor == nil {
+		return nil
+	}
+
+	keys := make([]string, 0, len(i.info.PackageDescriptors))
+	for k := range i.info.PackageDescriptors {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		descriptor := i.info.PackageDescriptors[key]
+		if descriptor == nil {
+			continue
+		}
+		if descriptor.Parameterization == nil {
+			continue
+		}
+
+		request := &pulumirpc.RegisterPackageRequest{
+			Name:        descriptor.Name,
+			DownloadUrl: descriptor.DownloadURL,
+		}
+		if descriptor.Version != nil {
+			request.Version = descriptor.Version.String()
+		}
+		request.Parameterization = &pulumirpc.Parameterization{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version.String(),
+			Value:   descriptor.Parameterization.Value,
+		}
+
+		resp, err := i.monitor.RegisterPackage(ctx, request)
+		if err != nil {
+			return fmt.Errorf("register package %q: %w", key, err)
+		}
+		if resp.GetRef() == "" {
+			return fmt.Errorf("register package %q returned empty reference", key)
+		}
+
+		i.packageRefs[key] = resp.GetRef()
+		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
+	}
+
+	return nil
+}
+
+func (i *Interpreter) evalExpression(expr model.Expression) (resource.PropertyValue, *string, hcl.Diagnostics) {
+	return i.evalExpressionWith(expr, i.evalContext)
+}
+
+// evalExpressionWith evaluates an expression using the given eval context (which may be a child of
+// i.evalContext with additional variables, e.g. range.key/range.value for ranged resources).
+func (i *Interpreter) evalExpressionWith(
+	expr model.Expression, evalCtx *hcl.EvalContext,
+) (resource.PropertyValue, *string, hcl.Diagnostics) {
 	i.evalLock.Lock()
-	value, diags := expr.Evaluate(i.evalContext)
+	value, diags := expr.Evaluate(evalCtx)
 	i.evalLock.Unlock()
 	if diags.HasErrors() {
-		return resource.PropertyValue{}, diags
+		return resource.PropertyValue{}, nil, diags
 	}
 	pv, err := ctyToPropertyValue(value)
 	if err != nil {
+		var poison *poisonError
+		if errors.As(err, &poison) {
+			return resource.PropertyValue{}, &poison.name, nil
+		}
 		diags = append(diags, &hcl.Diagnostic{
 			Severity: hcl.DiagError,
 			Summary:  err.Error(),
 		})
-		return resource.PropertyValue{}, diags
+		return resource.PropertyValue{}, nil, diags
 	}
-	return pv, diags
+	return pv, nil, diags
 }
 
 func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
@@ -310,12 +436,13 @@ func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
 		raw, has := i.info.Config[key]
 		if !has {
 			if cfg.DefaultValue != nil {
-				value, diags := i.evalExpression(cfg.DefaultValue)
+				value, poison, diags := i.evalExpression(cfg.DefaultValue)
+				contract.Assertf(poison == nil, "config variables can't be poisoned")
 				diagnostics = append(diagnostics, diags...)
 				if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
 					value = resource.MakeSecret(value)
 				}
-				if diags.HasErrors() {
+				if !diags.HasErrors() {
 					if err := i.setVariable(ctx, cfg.Name(), value); err != nil {
 						diagnostics = append(diagnostics, &hcl.Diagnostic{
 							Severity: hcl.DiagError,
@@ -365,7 +492,10 @@ func (i *Interpreter) enforceRequiredVersion(ctx context.Context) error {
 		return nil
 	}
 
-	value, diags := i.evalExpression(required)
+	value, poison, diags := i.evalExpression(required)
+	if poison != nil {
+		return fmt.Errorf("could not evaluate requiredVersion because of failure from %s", *poison)
+	}
 	if diags.HasErrors() {
 		return diags
 	}
@@ -507,8 +637,25 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 	switch {
 	case value.IsOutput():
 		output := value.OutputValue()
-		output.Element = collapseResourceReferences(output.Element)
-		return resource.NewProperty(output)
+		newOutput := resource.Output{
+			Dependencies: output.Dependencies,
+			Secret:       output.Secret,
+			Known:        output.Known,
+			Element:      collapseResourceReferences(output.Element),
+		}
+		// If this is an output for a single URN and that URN is now the inner resource reference value then we can
+		// collapse this output into a resource reference directly.
+		if len(newOutput.Dependencies) == 1 &&
+			output.Known &&
+			!output.Element.IsResourceReference() &&
+			newOutput.Element.IsResourceReference() &&
+			newOutput.Element.ResourceReferenceValue().URN == newOutput.Dependencies[0] {
+			if newOutput.Secret {
+				return resource.MakeSecret(newOutput.Element)
+			}
+			return newOutput.Element
+		}
+		return resource.NewProperty(newOutput)
 	case value.IsSecret():
 		secret := value.SecretValue()
 		secret.Element = collapseResourceReferences(secret.Element)
@@ -545,25 +692,189 @@ func collapseResourceReferences(value resource.PropertyValue) resource.PropertyV
 }
 
 func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) error {
-	inputs := resource.PropertyMap{}
-	for _, attr := range res.Inputs {
-		val, diags := i.evalExpression(attr.Value)
-		if diags.HasErrors() {
-			return diags
+	lexicalBaseName := res.Name()
+	logicalBaseName := i.effectiveName(res.LogicalName())
+	if res.Options == nil || res.Options.Range == nil {
+		result, err := i.registerResourceWith(ctx, res, i.evalContext, logicalBaseName)
+		if err != nil {
+			return err
 		}
-		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
+		i.setRawVariable(ctx, lexicalBaseName, result)
+		return nil
 	}
 
+	rangeValue, poison, diags := i.evalExpression(res.Options.Range)
+	if poison != nil {
+		i.setRawVariable(ctx, lexicalBaseName, makePoisonValue(*poison))
+	}
+	if diags.HasErrors() {
+		return diags
+	}
+
+	// Unwrap any output values, but if the range is computed we just have to skip this resource
+	rangeValue, _ = unwrapOutputs(rangeValue)
+	if rangeValue.IsComputed() {
+		return nil
+	}
+
+	if rangeValue.IsBool() {
+		if !rangeValue.BoolValue() {
+			return nil
+		}
+		result, err := i.registerResourceWith(ctx, res, i.evalContext, logicalBaseName)
+		if err != nil {
+			return err
+		}
+		i.setRawVariable(ctx, lexicalBaseName, result)
+		return nil
+	}
+
+	makeRangeCtx := func(key cty.Value, value cty.Value) *hcl.EvalContext {
+		rangeCtx := i.evalContext.NewChild()
+		rangeVars := map[string]cty.Value{"value": value}
+		if key != cty.NilVal {
+			rangeVars["key"] = key
+		}
+		rangeCtx.Variables = map[string]cty.Value{
+			"range": cty.ObjectVal(rangeVars),
+		}
+		return rangeCtx
+	}
+
+	registerMany := func(items []struct {
+		suffix  string
+		evalCtx *hcl.EvalContext
+	},
+	) error {
+		results := make([]cty.Value, 0, len(items))
+		for _, item := range items {
+			name := fmt.Sprintf("%s-%s", logicalBaseName, item.suffix)
+			result, err := i.registerResourceWith(ctx, res, item.evalCtx, name)
+			if err != nil {
+				return err
+			}
+			results = append(results, result)
+		}
+		if len(results) == 0 {
+			i.setRawVariable(ctx, lexicalBaseName, cty.ListValEmpty(cty.DynamicPseudoType))
+			return nil
+		}
+		i.setRawVariable(ctx, lexicalBaseName, cty.ListVal(results))
+		return nil
+	}
+
+	if rangeValue.IsNumber() {
+		count := int(rangeValue.NumberValue())
+		if count < 0 {
+			count = 0
+		}
+		items := make([]struct {
+			suffix  string
+			evalCtx *hcl.EvalContext
+		}, 0, count)
+		for idx := 0; idx < count; idx++ {
+			idxVal := cty.NumberIntVal(int64(idx))
+			items = append(items, struct {
+				suffix  string
+				evalCtx *hcl.EvalContext
+			}{
+				suffix:  strconv.Itoa(idx),
+				evalCtx: makeRangeCtx(cty.NilVal, idxVal),
+			})
+		}
+		return registerMany(items)
+	}
+
+	if rangeValue.IsArray() {
+		values := rangeValue.ArrayValue()
+		items := make([]struct {
+			suffix  string
+			evalCtx *hcl.EvalContext
+		}, 0, len(values))
+		for idx, v := range values {
+			val, err := propertyValueToCty(ctx, i.monitor, v)
+			if err != nil {
+				return err
+			}
+			items = append(items, struct {
+				suffix  string
+				evalCtx *hcl.EvalContext
+			}{
+				suffix:  strconv.Itoa(idx),
+				evalCtx: makeRangeCtx(cty.NumberIntVal(int64(idx)), val),
+			})
+		}
+		return registerMany(items)
+	}
+
+	if rangeValue.IsObject() {
+		values := rangeValue.ObjectValue()
+		keys := make([]string, 0, len(values))
+		for k := range values {
+			keys = append(keys, string(k))
+		}
+		sort.Strings(keys)
+		items := make([]struct {
+			suffix  string
+			evalCtx *hcl.EvalContext
+		}, 0, len(keys))
+		for _, key := range keys {
+			val, err := propertyValueToCty(ctx, i.monitor, values[resource.PropertyKey(key)])
+			if err != nil {
+				return err
+			}
+			items = append(items, struct {
+				suffix  string
+				evalCtx *hcl.EvalContext
+			}{
+				suffix:  key,
+				evalCtx: makeRangeCtx(cty.StringVal(key), val),
+			})
+		}
+		return registerMany(items)
+	}
+
+	return fmt.Errorf("unsupported range type for resource %s", res.Name())
+}
+
+func (i *Interpreter) registerResourceWith(
+	ctx context.Context, res *pcl.Resource, evalCtx *hcl.EvalContext, logicalName string,
+) (cty.Value, error) {
 	schemaResource, err := i.lookupResource(ctx, res.Token)
 	if err != nil {
-		return fmt.Errorf("lookup resource schema for token %s: %w", res.Token, err)
+		return cty.NilVal, fmt.Errorf("lookup resource schema for token %s: %w", res.Token, err)
 	}
 	token := res.Token
 	if schemaResource != nil {
 		token = schemaResource.Token
 	}
 
+	inputs := resource.PropertyMap{}
+	for _, attr := range res.Inputs {
+		targetType := attr.Value.Type()
+		if obj, ok := res.InputType.(*model.ObjectType); ok {
+			if prop, ok := obj.Properties[attr.Name]; ok {
+				targetType = prop
+			}
+		}
+
+		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
+		if diags.HasErrors() {
+			return cty.NilVal, diags
+		}
+
+		val, poison, diags := i.evalExpressionWith(expr, evalCtx)
+		if poison != nil {
+			return makePoisonValue(*poison), nil
+		}
+		if diags.HasErrors() {
+			return cty.NilVal, diags
+		}
+		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
+	}
+
 	if schemaResource != nil {
+		applySchemaInputDefaults(inputs, schemaResource)
 		for _, input := range schemaResource.InputProperties {
 			if input.Secret {
 				key := resource.PropertyKey(input.Name)
@@ -582,7 +893,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
-		return err
+		return cty.NilVal, err
 	}
 	// The rest of this method can send output values
 	marshalOpts.KeepOutputValues = true
@@ -605,26 +916,35 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	}
 
 	request := &pulumirpc.RegisterResourceRequest{
-		Type:                 token,
-		Name:                 res.LogicalName(),
-		Custom:               custom,
-		Remote:               !custom,
-		Object:               obj,
-		PropertyDependencies: propertyDependencies,
-		Dependencies:         dependencies,
-		AcceptSecrets:        true,
-		AcceptResources:      true,
+		Type:                    token,
+		Name:                    logicalName,
+		Custom:                  custom,
+		Remote:                  !custom,
+		Object:                  obj,
+		PropertyDependencies:    propertyDependencies,
+		Dependencies:            dependencies,
+		AcceptSecrets:           true,
+		AcceptResources:         true,
+		SupportsResultReporting: true,
 	}
+	packageRef, err := i.getPackageRefFromToken(token)
+	if err != nil {
+		return cty.NilVal, err
+	}
+	request.PackageRef = packageRef
 
 	if res.Options != nil {
 		if res.Options.AdditionalSecretOutputs != nil {
-			additionalSecretOutputs, diags := i.evalExpression(res.Options.AdditionalSecretOutputs)
+			additionalSecretOutputs, poison, diags := i.evalExpressionWith(res.Options.AdditionalSecretOutputs, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !additionalSecretOutputs.IsNull() && !additionalSecretOutputs.IsComputed() {
 				if !additionalSecretOutputs.IsArray() {
-					return errors.New("additionalSecretOutputs must be an array of strings")
+					return cty.NilVal, errors.New("additionalSecretOutputs must be an array of strings")
 				}
 				var additionalSecretOutputKeys []string
 				for _, v := range additionalSecretOutputs.ArrayValue() {
@@ -632,7 +952,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return errors.New("additionalSecretOutputs must be an array of strings")
+						return cty.NilVal, errors.New("additionalSecretOutputs must be an array of strings")
 					}
 					additionalSecretOutputKeys = append(additionalSecretOutputKeys, v.StringValue())
 				}
@@ -640,13 +960,16 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Aliases != nil {
-			aliases, diags := i.evalExpression(res.Options.Aliases)
+			aliases, poison, diags := i.evalExpressionWith(res.Options.Aliases, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !aliases.IsNull() && !aliases.IsComputed() {
 				if !aliases.IsArray() {
-					return errors.New("aliases must be an array of strings or alias objects")
+					return cty.NilVal, errors.New("aliases must be an array of strings or alias objects")
 				}
 				var aliasOpts []*pulumirpc.Alias
 				// Translate each alias expression (either string or object) into an rpc alias object
@@ -674,17 +997,17 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 
 						err := setString("name", func(name string) { aliasOpt.Name = name })
 						if err != nil {
-							return err
+							return cty.NilVal, err
 						}
 						err = setString("type", func(typ string) { aliasOpt.Type = typ })
 						if err != nil {
-							return err
+							return cty.NilVal, err
 						}
 
 						noParent, ok := obj["noParent"]
 						if ok && !noParent.IsNull() && !noParent.IsComputed() {
 							if !noParent.IsBool() {
-								return errors.New("noParent must be a boolean")
+								return cty.NilVal, errors.New("noParent must be a boolean")
 							}
 							aliasOpt.Parent = &pulumirpc.Alias_Spec_NoParent{
 								NoParent: noParent.BoolValue(),
@@ -695,7 +1018,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						if ok && !parent.IsNull() && !parent.IsComputed() {
 							urn, _, err := unwrapResource(parent)
 							if err != nil {
-								return fmt.Errorf("parent: %w", err)
+								return cty.NilVal, fmt.Errorf("parent: %w", err)
 							}
 							aliasOpt.Parent = &pulumirpc.Alias_Spec_ParentUrn{
 								ParentUrn: urn,
@@ -708,20 +1031,23 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 							},
 						})
 					} else {
-						return errors.New("aliases must be an array of strings or alias objects")
+						return cty.NilVal, errors.New("aliases must be an array of strings or alias objects")
 					}
 				}
 				request.Aliases = aliasOpts
 			}
 		}
 		if res.Options.DependsOn != nil {
-			dependsOn, diags := i.evalExpression(res.Options.DependsOn)
+			dependsOn, poison, diags := i.evalExpressionWith(res.Options.DependsOn, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !dependsOn.IsNull() && !dependsOn.IsComputed() {
 				if !dependsOn.IsArray() {
-					return errors.New("dependsOn must be an array of resource objects")
+					return cty.NilVal, errors.New("dependsOn must be an array of resource objects")
 				}
 				var dependsOnUrns []string
 				for _, v := range dependsOn.ArrayValue() {
@@ -730,7 +1056,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					}
 					urn, _, err := unwrapResource(v)
 					if err != nil {
-						return fmt.Errorf("dependsOn: %w", err)
+						return cty.NilVal, fmt.Errorf("dependsOn: %w", err)
 					}
 					dependsOnUrns = append(dependsOnUrns, urn)
 				}
@@ -738,18 +1064,23 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.EnvVarMappings != nil {
-			envVars, diags := i.evalExpression(res.Options.EnvVarMappings)
+			envVars, poison, diags := i.evalExpressionWith(res.Options.EnvVarMappings, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !envVars.IsNull() && !envVars.IsComputed() {
 				if !envVars.IsObject() {
-					return errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
+					return cty.NilVal, errors.New(
+						"envVarMappings must be an object mapping environment variable names to input property keys")
 				}
 				envVarMappings := map[string]string{}
 				for envVar, propKey := range envVars.ObjectValue() {
 					if propKey.IsNull() || propKey.IsComputed() || !propKey.IsString() {
-						return errors.New("envVarMappings must be an object mapping environment variable names to input property keys")
+						return cty.NilVal, errors.New(
+							"envVarMappings must be an object mapping environment variable names to input property keys")
 					}
 					envVarMappings[string(envVar)] = propKey.StringValue()
 				}
@@ -757,25 +1088,31 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.ImportID != nil {
-			importID, diags := i.evalExpression(res.Options.ImportID)
+			importID, poison, diags := i.evalExpressionWith(res.Options.ImportID, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !importID.IsNull() && !importID.IsComputed() {
 				if !importID.IsString() {
-					return errors.New("import must be a string")
+					return cty.NilVal, errors.New("import must be a string")
 				}
 				request.ImportId = importID.StringValue()
 			}
 		}
 		if res.Options.IgnoreChanges != nil {
-			ignoreChanges, diags := i.evalExpression(res.Options.IgnoreChanges)
+			ignoreChanges, poison, diags := i.evalExpressionWith(res.Options.IgnoreChanges, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !ignoreChanges.IsNull() && !ignoreChanges.IsComputed() {
 				if !ignoreChanges.IsArray() {
-					return errors.New("ignoreChanges must be an array of strings")
+					return cty.NilVal, errors.New("ignoreChanges must be an array of strings")
 				}
 				icopt := []string{}
 				for _, v := range ignoreChanges.ArrayValue() {
@@ -783,7 +1120,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return errors.New("ignoreChanges must be an array of strings")
+						return cty.NilVal, errors.New("ignoreChanges must be an array of strings")
 					}
 					icopt = append(icopt, v.StringValue())
 				}
@@ -791,9 +1128,12 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Protect != nil {
-			protect, diags := i.evalExpression(res.Options.Protect)
+			protect, poison, diags := i.evalExpressionWith(res.Options.Protect, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !protect.IsComputed() {
 				var popt *bool
@@ -801,19 +1141,22 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					b := protect.BoolValue()
 					popt = &b
 				} else if !protect.IsNull() {
-					return errors.New("protect must be a boolean or null")
+					return cty.NilVal, errors.New("protect must be a boolean or null")
 				}
 				request.Protect = popt
 			}
 		}
 		if res.Options.ReplaceWith != nil {
-			replaceWith, diags := i.evalExpression(res.Options.ReplaceWith)
+			replaceWith, poison, diags := i.evalExpressionWith(res.Options.ReplaceWith, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !replaceWith.IsNull() && !replaceWith.IsComputed() {
 				if !replaceWith.IsArray() {
-					return errors.New("replaceWith must be an array of resources")
+					return cty.NilVal, errors.New("replaceWith must be an array of resources")
 				}
 				var rwopt []string
 				for _, v := range replaceWith.ArrayValue() {
@@ -822,7 +1165,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					}
 					urn, _, err := unwrapResource(v)
 					if err != nil {
-						return fmt.Errorf("replaceWith: %w", err)
+						return cty.NilVal, fmt.Errorf("replaceWith: %w", err)
 					}
 					rwopt = append(rwopt, urn)
 				}
@@ -830,13 +1173,16 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.ReplaceOnChanges != nil {
-			replaceOnChanges, diags := i.evalExpression(res.Options.ReplaceOnChanges)
+			replaceOnChanges, poison, diags := i.evalExpressionWith(res.Options.ReplaceOnChanges, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !replaceOnChanges.IsNull() && !replaceOnChanges.IsComputed() {
 				if !replaceOnChanges.IsArray() {
-					return errors.New("replaceOnChanges must be an array of strings")
+					return cty.NilVal, errors.New("replaceOnChanges must be an array of strings")
 				}
 				rocopt := []string{}
 				for _, v := range replaceOnChanges.ArrayValue() {
@@ -844,7 +1190,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return errors.New("replaceOnChanges must be an array of strings")
+						return cty.NilVal, errors.New("replaceOnChanges must be an array of strings")
 					}
 					rocopt = append(rocopt, v.StringValue())
 				}
@@ -852,20 +1198,26 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.ReplacementTrigger != nil {
-			replacement, diags := i.evalExpression(res.Options.ReplacementTrigger)
+			replacement, poison, diags := i.evalExpressionWith(res.Options.ReplacementTrigger, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			request.ReplacementTrigger, err = plugin.MarshalPropertyValue(
 				"replacementTrigger", replacement, marshalOpts)
 			if err != nil {
-				return err
+				return cty.NilVal, err
 			}
 		}
 		if res.Options.RetainOnDelete != nil {
-			retain, diags := i.evalExpression(res.Options.RetainOnDelete)
+			retain, poison, diags := i.evalExpressionWith(res.Options.RetainOnDelete, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !retain.IsNull() && !retain.IsComputed() {
 				var retainOnDelete *bool
@@ -873,31 +1225,37 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					b := retain.BoolValue()
 					retainOnDelete = &b
 				} else {
-					return errors.New("retainOnDelete must be a boolean or null")
+					return cty.NilVal, errors.New("retainOnDelete must be a boolean or null")
 				}
 				request.RetainOnDelete = retainOnDelete
 			}
 		}
 		if res.Options.Version != nil {
-			version, diags := i.evalExpression(res.Options.Version)
+			version, poison, diags := i.evalExpressionWith(res.Options.Version, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !version.IsNull() && !version.IsComputed() {
 				if !version.IsString() {
-					return errors.New("version must be a string")
+					return cty.NilVal, errors.New("version must be a string")
 				}
 				request.Version = version.StringValue()
 			}
 		}
 		if res.Options.CustomTimeouts != nil {
-			timeouts, diags := i.evalExpression(res.Options.CustomTimeouts)
+			timeouts, poison, diags := i.evalExpressionWith(res.Options.CustomTimeouts, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !timeouts.IsNull() && !timeouts.IsComputed() {
 				if !timeouts.IsObject() {
-					return errors.New("customTimeouts must be an object")
+					return cty.NilVal, errors.New("customTimeouts must be an object")
 				}
 				timeoutValues := map[string]string{}
 				for k, v := range timeouts.ObjectValue() {
@@ -905,7 +1263,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return fmt.Errorf("customTimeouts.%s must be a string", k)
+						return cty.NilVal, fmt.Errorf("customTimeouts.%s must be a string", k)
 					}
 					timeoutValues[string(k)] = v.StringValue()
 				}
@@ -917,66 +1275,81 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.DeleteBeforeReplace != nil {
-			dbr, diags := i.evalExpression(res.Options.DeleteBeforeReplace)
+			dbr, poison, diags := i.evalExpressionWith(res.Options.DeleteBeforeReplace, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !dbr.IsNull() && !dbr.IsComputed() {
 				if dbr.IsBool() {
 					request.DeleteBeforeReplace = dbr.BoolValue()
 					request.DeleteBeforeReplaceDefined = true
 				} else if !dbr.IsNull() {
-					return errors.New("deleteBeforeReplace must be a boolean or null")
+					return cty.NilVal, errors.New("deleteBeforeReplace must be a boolean or null")
 				}
 			}
 		}
 		if res.Options.DeletedWith != nil {
-			deletedWith, diags := i.evalExpression(res.Options.DeletedWith)
+			deletedWith, poison, diags := i.evalExpressionWith(res.Options.DeletedWith, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !deletedWith.IsNull() && !deletedWith.IsComputed() {
 				urn, _, err := unwrapResource(deletedWith)
 				if err != nil {
-					return fmt.Errorf("deletedWith: %w", err)
+					return cty.NilVal, fmt.Errorf("deletedWith: %w", err)
 				}
 				request.DeletedWith = urn
 			}
 		}
 		if res.Options.PluginDownloadURL != nil {
-			downloadURL, diags := i.evalExpression(res.Options.PluginDownloadURL)
+			downloadURL, poison, diags := i.evalExpressionWith(res.Options.PluginDownloadURL, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !downloadURL.IsNull() && !downloadURL.IsComputed() {
 				if !downloadURL.IsString() {
-					return errors.New("pluginDownloadURL must be a string")
+					return cty.NilVal, errors.New("pluginDownloadURL must be a string")
 				}
 				request.PluginDownloadURL = downloadURL.StringValue()
 			}
 		}
 		if res.Options.Parent != nil {
-			parent, diags := i.evalExpression(res.Options.Parent)
+			parent, poison, diags := i.evalExpressionWith(res.Options.Parent, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !parent.IsNull() && !parent.IsComputed() {
 				urn, _, err := unwrapResource(parent)
 				if err != nil {
-					return fmt.Errorf("parent: %w", err)
+					return cty.NilVal, fmt.Errorf("parent: %w", err)
 				}
 				request.Parent = urn
 			}
 		}
 		if res.Options.Provider != nil {
-			provider, diags := i.evalExpression(res.Options.Provider)
+			provider, poison, diags := i.evalExpressionWith(res.Options.Provider, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !provider.IsNull() && !provider.IsComputed() {
 				urn, id, err := unwrapResource(provider)
 				if err != nil {
-					return fmt.Errorf("provider: %w", err)
+					return cty.NilVal, fmt.Errorf("provider: %w", err)
 				}
 				var idstr string
 				if id.IsString() {
@@ -988,9 +1361,12 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			}
 		}
 		if res.Options.Providers != nil {
-			providers, diags := i.evalExpression(res.Options.Providers)
+			providers, poison, diags := i.evalExpressionWith(res.Options.Providers, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !providers.IsNull() && !providers.IsComputed() {
 				// Providers is either a list of provider objects or a map of provider name to provider objects. We need
@@ -1000,7 +1376,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					for k, v := range providers.ObjectValue() {
 						urn, id, err := unwrapResource(v)
 						if err != nil {
-							return fmt.Errorf("providers: %w", err)
+							return cty.NilVal, fmt.Errorf("providers: %w", err)
 						}
 						var idstr string
 						if id.IsString() {
@@ -1014,11 +1390,11 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 					for _, v := range providers.ArrayValue() {
 						urn, id, err := unwrapResource(v)
 						if err != nil {
-							return fmt.Errorf("providers: %w", err)
+							return cty.NilVal, fmt.Errorf("providers: %w", err)
 						}
 						typ := resource.URN(urn).Type()
-						components := strings.Split(string(typ), ":")
-						pkg := components[2]
+						_, _, pkg, diags := pcl.DecomposeToken(string(typ), hcl.Range{})
+						contract.Assertf(!diags.HasErrors(), "invalid token format from URN %s: %s", urn, typ)
 
 						var idstr string
 						if id.IsString() {
@@ -1029,19 +1405,23 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						psopt[pkg] = fmt.Sprintf("%s::%s", urn, idstr)
 					}
 				} else {
-					return errors.New("providers must be an array of provider objects or a map of provider name to provider objects")
+					return cty.NilVal, errors.New(
+						"providers must be an array of provider objects or a map of provider name to provider objects")
 				}
 				request.Providers = psopt
 			}
 		}
 		if res.Options.HideDiffs != nil {
-			hideDiffs, diags := i.evalExpression(res.Options.HideDiffs)
+			hideDiffs, poison, diags := i.evalExpressionWith(res.Options.HideDiffs, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
 			if diags.HasErrors() {
-				return diags
+				return cty.NilVal, diags
 			}
 			if !hideDiffs.IsNull() && !hideDiffs.IsComputed() {
 				if !hideDiffs.IsArray() {
-					return errors.New("hideDiffs must be an array of strings")
+					return cty.NilVal, errors.New("hideDiffs must be an array of strings")
 				}
 				hdopt := []string{}
 				for _, v := range hideDiffs.ArrayValue() {
@@ -1049,7 +1429,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 						continue
 					}
 					if !v.IsString() {
-						return errors.New("hideDiffs must be an array of strings")
+						return cty.NilVal, errors.New("hideDiffs must be an array of strings")
 					}
 					hdopt = append(hdopt, v.StringValue())
 				}
@@ -1073,15 +1453,18 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 
 	resp, err := i.monitor.RegisterResource(ctx, request)
 	if err != nil {
-		return err
+		return cty.NilVal, err
 	}
 	if resp.GetResult() != pulumirpc.Result_SUCCESS {
-		return fmt.Errorf("resource registration failed: %s", resp.GetResult())
+		// This resource failed to register but we might be running with --continue-on-error so mark this resource as
+		// poisoned so that any downstream resources that depend on it will also be marked as poisoned and skip
+		// registering while allowing the rest of the graph to continue registering.
+		return makePoisonValue(res.Name()), nil
 	}
 
 	outputs, err := plugin.UnmarshalProperties(resp.Object, marshalOpts)
 	if err != nil {
-		return err
+		return cty.NilVal, err
 	}
 
 	outputs["id"] = resource.NewProperty(resp.GetId())
@@ -1089,13 +1472,18 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
 
-	// We need to ensure _all_ resource outputs exist in the output object so any the provider didn't send back we
-	// default to unknown here.
+	// We need to ensure all schema outputs exist in the output object, even if they weren't returned by the engine.
+	// - preview: unknown/computed
+	// - update: explicit null
 	if schemaResource != nil {
 		for _, prop := range schemaResource.Properties {
 			key := resource.PropertyKey(prop.Name)
 			if _, ok := outputs[key]; !ok {
-				outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+				if i.info.DryRun {
+					outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+				} else {
+					outputs[key] = resource.NewNullProperty()
+				}
 			}
 		}
 	}
@@ -1106,16 +1494,42 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		Known:        true,
 	})
 
-	if err := i.setVariable(ctx, res.Name(), result); err != nil {
-		return err
-	}
-	return nil
+	return propertyValueToCty(ctx, i.monitor, result)
 }
 
-func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) error {
+func applySchemaInputDefaults(inputs resource.PropertyMap, schemaResource *schema.Resource) {
+	for _, input := range schemaResource.InputProperties {
+		if input.DefaultValue == nil {
+			continue
+		}
+		key := resource.PropertyKey(input.Name)
+		if _, exists := inputs[key]; exists {
+			continue
+		}
+		inputs[key] = resource.NewPropertyValue(input.DefaultValue.Value)
+	}
+}
+
+func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
 	inputs := resource.PropertyMap{}
 	for _, attr := range component.Inputs {
-		val, diags := i.evalExpression(attr.Value)
+		targetType := attr.Value.Type()
+		if obj, ok := component.InputType.(*model.ObjectType); ok {
+			if prop, ok := obj.Properties[attr.Name]; ok {
+				targetType = prop
+			}
+		}
+
+		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
+		if diags.HasErrors() {
+			return diags
+		}
+
+		val, poison, diags := i.evalExpression(expr)
+		if poison != nil {
+			i.setRawVariable(ctx, component.Name(), makePoisonValue(*poison))
+			return nil
+		}
 		if diags.HasErrors() {
 			return diags
 		}
@@ -1129,13 +1543,18 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 	}
 	obj, err := plugin.MarshalProperties(inputs, marshalOpts)
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to marshal component inputs",
+			Detail:   err.Error(),
+		}}
 	}
 	marshalOpts.KeepOutputValues = true
 
+	componentName := i.effectiveName(component.LogicalName())
 	request := &pulumirpc.RegisterResourceRequest{
 		Type:            "components:index:" + component.DeclarationName(),
-		Name:            component.LogicalName(),
+		Name:            componentName,
 		Custom:          false,
 		Object:          obj,
 		AcceptSecrets:   true,
@@ -1143,14 +1562,22 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		Parent:          i.stackURN,
 	}
 	if component.Options != nil && component.Options.Parent != nil {
-		parent, diags := i.evalExpression(component.Options.Parent)
+		parent, poison, diags := i.evalExpression(component.Options.Parent)
+		if poison != nil {
+			i.setRawVariable(ctx, component.Name(), makePoisonValue(*poison))
+			return nil
+		}
 		if diags.HasErrors() {
 			return diags
 		}
 		if !parent.IsNull() && !parent.IsComputed() {
 			urn, _, err := unwrapResource(parent)
 			if err != nil {
-				return fmt.Errorf("parent: %w", err)
+				return hcl.Diagnostics{{
+					Severity: hcl.DiagError,
+					Summary:  "Failed to unwrap parent resource",
+					Detail:   err.Error(),
+				}}
 			}
 			request.Parent = urn
 		}
@@ -1158,10 +1585,18 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 
 	resp, err := i.monitor.RegisterResource(ctx, request)
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to register component",
+			Detail:   err.Error(),
+		}}
 	}
 	if resp.GetResult() != pulumirpc.Result_SUCCESS {
-		return fmt.Errorf("component registration failed: %s", resp.GetResult())
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Component registration failed",
+			Detail:   resp.GetResult().String(),
+		}}
 	}
 
 	componentEval := &hcl.EvalContext{}
@@ -1175,17 +1610,27 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		loader:      i.loader,
 		evalContext: componentEval,
 		stackURN:    resp.GetUrn(),
+		namePrefix:  componentName,
+		packageRefs: i.packageRefs,
 	}
 
 	for k, v := range inputs {
 		if err := componentInterpreter.setVariable(ctx, string(k), v); err != nil {
-			return fmt.Errorf("set component input %s: %w", k, err)
+			return hcl.Diagnostics{{
+				Severity: hcl.DiagError,
+				Summary:  fmt.Sprintf("Failed to set component input %s", k),
+				Detail:   err.Error(),
+			}}
 		}
 	}
 
 	componentOutputs, err := componentInterpreter.executeProgramNodes(ctx)
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to execute component program nodes",
+			Detail:   err.Error(),
+		}}
 	}
 	for key, val := range componentOutputs {
 		componentOutputs[key] = collapseResourceReferences(val)
@@ -1193,14 +1638,22 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 
 	outObj, err := plugin.MarshalProperties(componentOutputs, marshalOpts)
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to marshal component outputs",
+			Detail:   err.Error(),
+		}}
 	}
 	_, err = i.monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
 		Urn:     resp.GetUrn(),
 		Outputs: outObj,
 	})
 	if err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to register component outputs",
+			Detail:   err.Error(),
+		}}
 	}
 
 	componentObject := resource.PropertyMap{
@@ -1217,7 +1670,11 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		Known:        true,
 	})
 	if err := i.setVariable(ctx, component.Name(), result); err != nil {
-		return err
+		return hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary:  "Failed to set component output" + component.Name(),
+			Detail:   err.Error(),
+		}}
 	}
 	return nil
 }
@@ -1250,10 +1707,14 @@ func (i *Interpreter) setVariable(ctx context.Context, name string, value resour
 	if err != nil {
 		return err
 	}
-	i.evalLock.Lock()
-	i.evalContext.Variables[name] = ctyValue
-	i.evalLock.Unlock()
+	i.setRawVariable(ctx, name, ctyValue)
 	return nil
+}
+
+func (i *Interpreter) setRawVariable(ctx context.Context, name string, value cty.Value) {
+	i.evalLock.Lock()
+	i.evalContext.Variables[name] = value
+	i.evalLock.Unlock()
 }
 
 func parseConfigPropertyValue(raw string, typ model.Type) (resource.PropertyValue, hcl.Diagnostics) {

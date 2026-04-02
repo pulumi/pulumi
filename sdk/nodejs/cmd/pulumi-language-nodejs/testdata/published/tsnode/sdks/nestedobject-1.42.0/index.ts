@@ -10,10 +10,20 @@ export type Container = import("./container").Container;
 export const Container: typeof import("./container").Container = null as any;
 utilities.lazyLoad(exports, ["Container"], () => require("./container"));
 
+export { MapContainerArgs } from "./mapContainer";
+export type MapContainer = import("./mapContainer").MapContainer;
+export const MapContainer: typeof import("./mapContainer").MapContainer = null as any;
+utilities.lazyLoad(exports, ["MapContainer"], () => require("./mapContainer"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
+export { ReceiverArgs } from "./receiver";
+export type Receiver = import("./receiver").Receiver;
+export const Receiver: typeof import("./receiver").Receiver = null as any;
+utilities.lazyLoad(exports, ["Receiver"], () => require("./receiver"));
 
 export { TargetArgs } from "./target";
 export type Target = import("./target").Target;
@@ -34,6 +44,10 @@ const _module = {
         switch (type) {
             case "nestedobject:index:Container":
                 return new Container(name, <any>undefined, { urn })
+            case "nestedobject:index:MapContainer":
+                return new MapContainer(name, <any>undefined, { urn })
+            case "nestedobject:index:Receiver":
+                return new Receiver(name, <any>undefined, { urn })
             case "nestedobject:index:Target":
                 return new Target(name, <any>undefined, { urn })
             default:

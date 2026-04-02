@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,14 +94,16 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-failed-create-continue-on-error": "not yet supported: continue on error",
-	"l2-component-property-deps":         "unexpected property dependency on custom1 where dependency set should be empty",
-	"l2-parameterized-resource-twice":    "dependency loading reports duplicate package definition for hipackage",
-	"l2-parameterized-invoke":            "dependency loading reports duplicate package definition for subpackage",
-	"l2-parameterized-resource":          "dependency loading reports duplicate package definition for subpackage",
-	"l2-explicit-parameterized-provider": "dependency loading reports duplicate package definition for goodbye",
-	"l3-range-resource-output-traversal": "snapshot contains 4 resources while test expects 5",
-	"l3-range":                           "range not yet supported",
+	"l2-resource-option-ignore-changes": `skip temporarily because
+https://github.com/pulumi/pulumi/pull/22326 is a breaking change in PCL binding, and the only way to get it through CI
+is to not run this test or to run this test against the new code.  However - we don't have a stable SHA for the new code
+until this merges: it's a cyclic dependency in-repo.
+
+To break the cycle - I'm temporarily skipping this test. As soon as https://github.com/pulumi/pulumi/pull/22326 merges,
+I'll update the linked version of pulumi/pulumi in this module & remove the skip.`,
+
+	"l3-deferred-outputs":   "incorrectly detects cycle",
+	"l3-range-parent-scope": "requires go.mod update to pick up the LookupVariable fix from pkg/",
 }
 
 func TestLanguage(t *testing.T) {
@@ -118,6 +120,8 @@ func TestLanguage(t *testing.T) {
 		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(engineAddress, "", "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+			converter := newConverterHost(engineAddress)
+			pulumirpc.RegisterConverterServer(srv, converter)
 			return nil
 		},
 		Cancel: cancel,
@@ -129,10 +133,11 @@ func TestLanguage(t *testing.T) {
 
 	// Prepare to run the tests
 	prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-		LanguagePluginName:   "pcl",
-		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-		TemporaryDirectory:   rootDir,
-		SnapshotDirectory:    "./testdata",
+		LanguagePluginName:    "pcl",
+		LanguagePluginTarget:  fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		TemporaryDirectory:    rootDir,
+		SnapshotDirectory:     "./testdata",
+		ConverterPluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 	})
 	require.NoError(t, err)
 
@@ -155,7 +160,7 @@ func TestLanguage(t *testing.T) {
 			result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 				Token: prepare.Token,
 				Test:  tt,
-			})
+			}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
 
 			require.NoError(t, err)
 			for _, msg := range result.Messages {

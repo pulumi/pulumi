@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -233,6 +233,41 @@ func TestApplyRewriter(t *testing.T) {
 		output := fmt.Sprintf("%v", expr)
 		assert.Equal(t, expectedOutput, output)
 	})
+}
+
+func TestRewriteApplies_TraversalParts(t *testing.T) {
+	t.Parallel()
+
+	resourceType := model.NewObjectType(map[string]model.Type{
+		"stringOutput": model.NewOutputType(model.StringType),
+	})
+	scope := model.NewRootScope(syntax.None)
+	scope.Define("key", &model.Variable{
+		Name:         "key",
+		VariableType: model.StringType,
+	})
+	scope.Define("resources", &model.Variable{
+		Name:         "resources",
+		VariableType: model.NewListType(resourceType),
+	})
+	expr, diags := model.BindExpressionText(
+		`"${resources[key].stringOutput}.example.com"`, scope, hcl.Pos{})
+	require.Empty(t, diags)
+
+	expr, diags = RewriteApplies(expr, nameInfo(0), true)
+	require.Empty(t, diags)
+
+	expr, diags = model.VisitExpression(expr, nil, func(e model.Expression) (model.Expression, hcl.Diagnostics) {
+		if rel, ok := e.(*model.RelativeTraversalExpression); ok {
+			require.Equal(t, len(rel.Traversal)+1, len(rel.Parts),
+				"relative traversals must have len(parts) == len(traversals)+1")
+			require.Equal(t, model.NewOutputType(model.StringType), rel.Type(), "expected output<string>")
+		}
+		return e, nil
+	})
+	require.Empty(t, diags)
+	output := fmt.Sprintf("%v", expr)
+	assert.Equal(t, `__apply(resources[key].stringOutput,eval(stringOutput, "${stringOutput}.example.com"))`, output)
 }
 
 func TestRewriteInvalidTraversal(t *testing.T) {

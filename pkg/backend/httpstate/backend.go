@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,6 +69,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 var ErrUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
@@ -166,7 +169,7 @@ func ValueOrDefaultURL(ws pkgWorkspace.Context, cloudURL string) string {
 	}
 
 	// If none of those led to a cloud URL, simply return the default.
-	return PulumiCloudURL
+	return client.PulumiCloudURL
 }
 
 // Backend extends the base backend interface with specific information about cloud backends.
@@ -259,8 +262,8 @@ func loginWithBrowser(
 	// the nonce and the pulumi access token we created as part of the OAuth flow. If the nonces match, we set the
 	// access token that was passed to us and the redirect to a special welcome page on Pulumi.com
 
-	loginURL := cloudConsoleURL(cloudURL, "cli-login")
-	finalWelcomeURL := cloudConsoleURL(cloudURL, "welcome", "cli")
+	loginURL := client.CloudConsoleURL(cloudURL, "cli-login")
+	finalWelcomeURL := client.CloudConsoleURL(cloudURL, "welcome", "cli")
 
 	if loginURL == "" || finalWelcomeURL == "" {
 		return nil, errors.New("could not determine login url")
@@ -504,7 +507,7 @@ func (m defaultLoginManager) Login(
 
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	var accessToken string
-	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
+	accountLink := client.CloudConsoleURL(cloudURL, "account", "tokens")
 
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
@@ -668,7 +671,7 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 }
 
 func (b *cloudBackend) Name() string {
-	if b.url == PulumiCloudURL {
+	if b.url == client.PulumiCloudURL {
 		return "pulumi.com"
 	}
 
@@ -678,9 +681,9 @@ func (b *cloudBackend) Name() string {
 func (b *cloudBackend) URL() string {
 	user, _, _, err := b.CurrentUser()
 	if err != nil {
-		return cloudConsoleURL(b.url)
+		return client.CloudConsoleURL(b.url)
 	}
-	return cloudConsoleURL(b.url, user)
+	return client.CloudConsoleURL(b.url, user)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
@@ -954,7 +957,7 @@ func validateProjectName(s string) error {
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
 // created, we return the empty string instead (this can happen if the endpoint isn't a recognized pattern).
 func (b *cloudBackend) CloudConsoleURL(paths ...string) string {
-	return cloudConsoleURL(b.CloudURL(), paths...)
+	return client.CloudConsoleURL(b.CloudURL(), paths...)
 }
 
 // serveBrowserLoginServer hosts the server that completes the browser based login flow.
@@ -1641,6 +1644,13 @@ func (b *cloudBackend) apply(
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
+		// than a logical span, but this is a convenient way to record this information.
+		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
+			tracer := otel.Tracer("pulumi-cli")
+			_, span := tracer.Start(ctx, "time-to-first-print", oteltrace.WithTimestamp(startTime))
+			span.End()
+		}
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
@@ -1796,7 +1806,7 @@ func (b *cloudBackend) runEngineAction(
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
-			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
 			combinedManager = &engine.CombinedManager{
 				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
 				CollectErrorsOnly: []bool{false, true},
@@ -1975,20 +1985,20 @@ func (b *cloudBackend) GetHistory(
 
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
-) (config.Map, error) {
+) (backend.LatestConfiguration, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
-		return nil, err
+		return backend.LatestConfiguration{}, err
 	}
 
 	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
 	switch {
 	case err == client.ErrNoPreviousDeployment:
-		return nil, backenderr.ErrNoPreviousDeployment
+		return backend.LatestConfiguration{}, backenderr.ErrNoPreviousDeployment
 	case err != nil:
-		return nil, err
+		return backend.LatestConfiguration{}, err
 	default:
-		return cfg, nil
+		return backend.LatestConfiguration(cfg), nil
 	}
 }
 
@@ -2352,7 +2362,7 @@ func getAccountDetails(
 	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
 		GetPulumiAccountDetails(ctx)
-	if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
+	if errors.Is(err, backenderr.LoginRequiredError{}) {
 		return "", nil, nil, ErrUnauthorized
 	}
 	return username, organizations, tokenInfo, err

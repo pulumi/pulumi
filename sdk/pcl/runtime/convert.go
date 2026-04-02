@@ -40,6 +40,10 @@ type (
 	dependencyMark struct {
 		dependency resource.URN
 	}
+	poisonMark struct {
+		// The name of the resource that caused this value to be poisoned.
+		name string
+	}
 )
 
 var (
@@ -199,6 +203,18 @@ func parseConfigValue(raw string, typ model.Type) (cty.Value, hcl.Diagnostics) {
 	return v, nil
 }
 
+type poisonError struct {
+	name string
+}
+
+func (e *poisonError) Error() string {
+	return "poisoned value from resource " + e.name
+}
+
+func makePoisonValue(name string) cty.Value {
+	return cty.DynamicVal.Mark(poisonMark{name: name})
+}
+
 func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 	var inner func(cty.Value) (resource.PropertyValue, error)
 	inner = func(value cty.Value) (resource.PropertyValue, error) {
@@ -287,6 +303,11 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 		}
 
 		return resource.PropertyValue{}, fmt.Errorf("unsupported value type %s", value.Type().FriendlyName())
+	}
+
+	value, poison := unmark[poisonMark](value)
+	if poison != nil {
+		return resource.PropertyValue{}, &poisonError{name: poison.name}
 	}
 
 	value, secret := unmark[secretMark](value)

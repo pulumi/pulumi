@@ -1,4 +1,4 @@
-// Copyright 2026-2026, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,19 +28,29 @@ import {
     WriterFunction,
 } from "ts-morph";
 
-import type { Argument, Arguments, Command, Flag, Structure } from "./types";
+import type { Argument, Arguments, Command, Flag, PresetValue, Structure } from "./types";
 
 // Known collisions between the Pulumi CLI and the TypeScript keywords or globals.
 const reservedWords: string[] = ["options", "package"];
 
+/**
+ * Strip omit/preset fields from a flag so that override information doesn't
+ * leak from parent to child via inheritance. Each node re-introduces overrides
+ * via its own spec flags.
+ */
+function baseFlag(flag: Flag): Flag {
+    const { omit, preset, ...rest } = flag;
+    return rest;
+}
+
 (function main(): void {
     if (!process.argv[2]) {
-        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts]");
+        throw new Error("Usage: npm start <path-to-specification.json> [path-to-boilerplate.ts] [output-dir]");
     }
 
     const specification: string = path.resolve(process.cwd(), process.argv[2]);
     const boilerplate: string = path.resolve(process.cwd(), process.argv[3] ?? path.join("boilerplate", "testing.ts"));
-    const output: string = path.join(process.cwd(), "output");
+    const output: string = path.resolve(process.cwd(), process.argv[4] ?? "output");
 
     const spec: Structure = JSON.parse(fs.readFileSync(specification, "utf-8")) as Structure;
     fs.mkdirSync(output, { recursive: true });
@@ -65,7 +75,7 @@ const reservedWords: string[] = ["options", "package"];
     }
 
     generateOptionsTypes(spec, source);
-    generateCommands(spec, container, "ReturnType<API['__run']>");
+    generateCommands(spec, container, 'ReturnType<API["__run"]>');
     project.saveSync();
 })();
 
@@ -73,6 +83,7 @@ const reservedWords: string[] = ["options", "package"];
  * Every command and menu may add some flags to the pool of available flags.
  * This means that, as we descend the command tree, we need to collect all the
  * flags that have been defined and add them to an options object.
+ * Flags with omit: true in the spec are excluded from the options type.
  */
 function generateOptionsTypes(
     structure: Structure,
@@ -81,20 +92,31 @@ function generateOptionsTypes(
     inherited: Record<string, Flag> = {},
 ): void {
     const command: string = createCommandName(breadcrumbs);
-    const flags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
+    const allFlags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
+    const visibleFlags = Object.values(allFlags).filter((f) => !f.omit);
 
-    source.addInterface({
-        kind: StructureKind.Interface,
-        name: createOptionsTypeName(breadcrumbs),
-        extends: ["BaseOptions"],
-        docs: ["Options for the `" + command + "` command."],
-        isExported: true,
-        properties: Object.values(flags).map(flagToPropertySignature),
-    });
+    // Only emit options types for structures that will also have a corresponding
+    // command method in the generated API. Non-executable menus (like the root
+    // "pulumi" node) do not produce methods, so we skip generating their
+    // options types to avoid orphaned interfaces such as `PulumiOptions`.
+    const shouldEmitOptions =
+        structure.type === "command" || (structure.type === "menu" && structure.executable === true);
+
+    if (shouldEmitOptions) {
+        source.addInterface({
+            kind: StructureKind.Interface,
+            name: createOptionsTypeName(breadcrumbs),
+            extends: ["BaseOptions"],
+            docs: ["Options for the `" + command + "` command."],
+            isExported: true,
+            properties: visibleFlags.map(flagToPropertySignature),
+        });
+    }
 
     if (structure.type === "menu" && structure.commands) {
+        const childInherited = Object.fromEntries(Object.entries(allFlags).map(([k, v]) => [k, baseFlag(v)]));
         for (const [name, child] of Object.entries(structure.commands)) {
-            generateOptionsTypes(child, source, [...breadcrumbs, name]);
+            generateOptionsTypes(child, source, [...breadcrumbs, name], childInherited);
         }
     }
 }
@@ -108,17 +130,19 @@ function generateCommands(
     container: ClassDeclaration,
     returnType: string,
     breadcrumbs: string[] = [],
+    inherited: Record<string, Flag> = {},
 ): void {
-    if (structure.type === "menu") {
-        if (structure.commands) {
-            for (const [name, child] of Object.entries(structure.commands)) {
-                generateCommands(child, container, returnType, [...breadcrumbs, name]);
-            }
-        }
+    const allFlags: Record<string, Flag> = { ...inherited, ...(structure.flags ?? {}) };
 
-        if (!structure.executable) {
-            return;
+    if (structure.type === "menu" && structure.commands) {
+        const childInherited = Object.fromEntries(Object.entries(allFlags).map(([k, v]) => [k, baseFlag(v)]));
+        for (const [name, child] of Object.entries(structure.commands)) {
+            generateCommands(child, container, returnType, [...breadcrumbs, name], childInherited);
         }
+    }
+
+    if (structure.type === "menu" && !structure.executable) {
+        return;
     }
 
     const parameters: ParameterDeclarationStructure[] = [];
@@ -150,17 +174,60 @@ function generateCommands(
     container.addMethod({
         name: sanitiseValueName(breadcrumbs.join("_")),
         parameters,
-        statements: generateBody(structure, breadcrumbs),
+        statements: generateBody(structure, breadcrumbs, allFlags),
         returnType,
     });
 }
 
+/**
+ * Emit code that pushes a preset flag value onto __flags.
+ * When the flag is not omitted, wrap in a condition so we only add the preset
+ * when the user did not provide the option (options.<optName> == null).
+ */
+function emitPresetFlag(
+    writer: { writeLine: (s: string) => void; indent: (fn: () => void) => void },
+    flag: Flag,
+): void {
+    if (flag.preset === undefined) {
+        return;
+    }
+    const wrapCondition = !flag.omit;
+    const value: PresetValue = flag.preset;
+
+    function emit(): void {
+        if (typeof value === "boolean") {
+            if (value) {
+                writer.writeLine(`__flags.push("--${flag.name}");`);
+            }
+            return;
+        }
+        if (typeof value === "string" || typeof value === "number") {
+            writer.writeLine(`__flags.push("--${flag.name}", "" + ${JSON.stringify(value)});`);
+            return;
+        }
+        if (Array.isArray(value)) {
+            writer.writeLine(`for (const __preset of ${JSON.stringify(value)}) {`);
+            writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}", __preset);`));
+            writer.writeLine("}");
+            return;
+        }
+    }
+
+    if (wrapCondition) {
+        writer.writeLine(`if (options.${sanitiseValueName(flag.name)} == null) {`);
+        writer.indent(emit);
+        writer.writeLine(`}`);
+    } else {
+        emit();
+    }
+}
+
 /** Generate the body of the commands. */
-function generateBody(structure: Structure, breadcrumbs: string[]): WriterFunction {
+function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Record<string, Flag>): WriterFunction {
     return (writer) => {
         writer.writeLine("const __final: string[] = [];");
         for (const breadcrumb of breadcrumbs) {
-            writer.writeLine(`__final.push('${breadcrumb}');`);
+            writer.writeLine(`__final.push("${breadcrumb}");`);
         }
         writer.blankLine();
 
@@ -175,17 +242,17 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
             if (flag.repeatable) {
                 writer.writeLine(`for (const __item of ${name} ?? []) {`);
                 writer.indent(() => option({ ...flag, repeatable: false }, "__item"));
-                writer.writeLine(`}`);
+                writer.writeLine("}");
             } else if (flag.type === "boolean") {
                 writer.writeLine(`if (${name}) {`);
-                writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}');`));
-                writer.writeLine(`}`);
+                writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}");`));
+                writer.writeLine("}");
             } else if (flag.required === true) {
-                writer.writeLine(`__flags.push('--${flag.name}', '' + ${name});`);
+                writer.writeLine(`__flags.push("--${flag.name}", "" + ${name});`);
             } else {
                 writer.writeLine(`if (${name} != null) {`);
-                writer.indent(() => writer.writeLine(`__flags.push('--${flag.name}', '' + ${name});`));
-                writer.writeLine(`}`);
+                writer.indent(() => writer.writeLine(`__flags.push("--${flag.name}", "" + ${name});`));
+                writer.writeLine("}");
             }
 
             writer.blankLine();
@@ -208,20 +275,31 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
             } else if (variadic) {
                 writer.writeLine(`for (const __item of ${name} ?? []) {`);
                 writer.indent(() => argument(specification, false, false, "__item"));
-                writer.writeLine(`}`);
+                writer.writeLine("}");
             } else {
-                writer.writeLine(`__arguments.push('' + ${name});`);
+                writer.writeLine(`__arguments.push("" + ${name});`);
             }
-
-            writer.blankLine();
         }
 
         writer.writeLine("const __flags: string[] = [];");
         writer.blankLine();
 
-        Object.values(structure.flags ?? {}).forEach((flag) => option(flag));
+        // Preset flags (sorted by name for determinism).
+        const presetFlags = Object.values(allFlags)
+            .filter((f) => f.preset !== undefined)
+            .sort((a, b) => a.name.localeCompare(b.name));
+        for (const flag of presetFlags) {
+            emitPresetFlag(writer, flag);
+        }
+        if (presetFlags.length > 0) {
+            writer.blankLine();
+        }
 
-        writer.writeLine("__final.push(... __flags);");
+        // Flags from options (only those not omitted).
+        const optionFlags = Object.values(allFlags).filter((f) => !f.omit);
+        optionFlags.forEach((flag) => option(flag));
+
+        writer.writeLine("__final.push(...__flags);");
         writer.blankLine();
 
         writer.writeLine("const __arguments: string[] = [];");
@@ -241,8 +319,8 @@ function generateBody(structure: Structure, breadcrumbs: string[]): WriterFuncti
         writer.writeLine("if (__arguments.length > 0) {");
 
         writer.indent(() => {
-            writer.writeLine("__final.push('--')");
-            writer.writeLine("__final.push(... __arguments)");
+            writer.writeLine('__final.push("--");');
+            writer.writeLine("__final.push(...__arguments);");
         });
 
         writer.writeLine("}");

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 //
 // If this program runs successfully, then the test passes.
 // Executing this file demonstrates that we're able to successfully install

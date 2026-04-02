@@ -1,0 +1,15 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pulumi:pulumi:Stack::test running 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::a <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::c <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::target <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::b <{%bold%}><{%reset%}><{%reset%}> 
+ <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA$pkgA:m:typA::c <{%bold%}><{%reset%}><{%reset%}> 
+ <{%reset%}>  <{%reset%}> urn:pulumi:test::test::pulumi:pulumi:Stack::test <{%reset%}><{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    6 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

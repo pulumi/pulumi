@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -580,11 +580,19 @@ func TestReplacementTriggerInputConversion(t *testing.T) {
 			description:    "string literals should be wrapped with pulumi.String",
 		},
 		{
-			name: "Number literals",
+			name: "Integer literals",
 			expr: &model.LiteralValueExpression{
 				Value: cty.NumberIntVal(42),
 			},
-			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Float64(42))",
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Int(42))",
+			description:    "integer literals should be wrapped with pulumi.Int",
+		},
+		{
+			name: "Number literals",
+			expr: &model.LiteralValueExpression{
+				Value: cty.NumberFloatVal(42.5),
+			},
+			expectedOutput: "pulumi.ReplacementTrigger(pulumi.Float64(42.5))",
 			description:    "number literals should be wrapped with pulumi.Float64",
 		},
 		{

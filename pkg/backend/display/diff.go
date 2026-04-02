@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -167,6 +167,15 @@ func renderDiffDiagEvent(payload engine.DiagEventPayload, opts Options) string {
 	return opts.Color.Colorize(payload.Prefix + payload.Message)
 }
 
+// resourceText returns the full URN string when ShowURNs is set, or the short
+// resource name otherwise.
+func resourceText(urn resource.URN, opts Options) string {
+	if opts.ShowURNs {
+		return string(urn)
+	}
+	return urn.Name()
+}
+
 func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPayload,
 	prefix string, detailed bool, opts Options,
 ) string {
@@ -177,8 +186,9 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	}
 
 	// Print the individual remediation's name and target resource type/name.
+	resText := resourceText(payload.ResourceURN, opts)
 	remediationLine := fmt.Sprintf("%s[remediate]  %s%s  (%s: %s)",
-		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), payload.ResourceURN.Name())
+		colors.SpecInfo, payload.PolicyName, colors.Reset, payload.ResourceURN.Type(), resText)
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -221,7 +231,7 @@ func renderDiffPolicyViolationEvent(payload engine.PolicyViolationEventPayload,
 	// Print the individual policy's name and target resource type/name.
 	policyLine := fmt.Sprintf("%s[%s]%s  %s%s  (%s: %s)",
 		c, payload.EnforcementLevel, severity, payload.PolicyName, colors.Reset,
-		payload.ResourceURN.Type(), payload.ResourceURN.Name())
+		payload.ResourceURN.Type(), resourceText(payload.ResourceURN, opts))
 
 	// If there is already a prefix string requested, use it, otherwise fall back to a default.
 	if prefix == "" {
@@ -415,8 +425,8 @@ func renderDiff(
 	seen map[resource.URN]engine.StepEventMetadata,
 	opts Options,
 ) {
-	indent := getIndent(metadata, seen)
-	summary := getResourcePropertiesSummary(metadata, indent)
+	indent := getIndent(metadata, seen, opts)
+	summary := getResourcePropertiesSummary(metadata, indent, opts.ShowURNs)
 
 	var details string
 	// An OpSame might have a diff due to metadata changes (e.g. protect) but we should never print a property diff,
@@ -505,7 +515,7 @@ func renderDiffResourceOutputsEvent(
 		// * As with other `--show-sames`-related checks, we always display the root stack.
 		// * If we have been asked to suppress outputs (e.g., because they contain sensitive information), then we will not
 		//   display them.
-		indent := getIndent(payload.Metadata, seen)
+		indent := getIndent(payload.Metadata, seen, opts)
 
 		text := getResourceOutputsPropertiesString(
 			payload.Metadata,
@@ -519,7 +529,7 @@ func renderDiffResourceOutputsEvent(
 		)
 		if refresh && (payload.Metadata.Op != deploy.OpRefresh || text != "" || isRootStack(payload.Metadata)) {
 			// We would not have rendered the summary yet in this case, so do it now.
-			summary := getResourcePropertiesSummary(payload.Metadata, indent)
+			summary := getResourcePropertiesSummary(payload.Metadata, indent, opts.ShowURNs)
 			fprintIgnoreError(out, opts.Color.Colorize(summary))
 		}
 

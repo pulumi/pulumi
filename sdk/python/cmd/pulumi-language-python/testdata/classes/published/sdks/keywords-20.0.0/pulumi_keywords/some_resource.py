@@ -15,11 +15,13 @@ __all__ = ['SomeResourceArgs', 'SomeResource']
 class SomeResourceArgs:
     def __init__(__self__, *,
                  builtins: pulumi.Input[_builtins.str],
+                 lambda_: pulumi.Input[_builtins.str],
                  property: pulumi.Input[_builtins.str]):
         """
         The set of arguments for constructing a SomeResource resource.
         """
         pulumi.set(__self__, "builtins", builtins)
+        pulumi.set(__self__, "lambda_", lambda_)
         pulumi.set(__self__, "property", property)
 
     @_builtins.property
@@ -30,6 +32,15 @@ class SomeResourceArgs:
     @builtins.setter
     def builtins(self, value: pulumi.Input[_builtins.str]):
         pulumi.set(self, "builtins", value)
+
+    @_builtins.property
+    @pulumi.getter(name="lambda")
+    def lambda_(self) -> pulumi.Input[_builtins.str]:
+        return pulumi.get(self, "lambda_")
+
+    @lambda_.setter
+    def lambda_(self, value: pulumi.Input[_builtins.str]):
+        pulumi.set(self, "lambda_", value)
 
     @_builtins.property
     @pulumi.getter
@@ -48,6 +59,7 @@ class SomeResource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  builtins: Optional[pulumi.Input[_builtins.str]] = None,
+                 lambda_: Optional[pulumi.Input[_builtins.str]] = None,
                  property: Optional[pulumi.Input[_builtins.str]] = None,
                  __props__=None):
         """
@@ -81,6 +93,7 @@ class SomeResource(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  builtins: Optional[pulumi.Input[_builtins.str]] = None,
+                 lambda_: Optional[pulumi.Input[_builtins.str]] = None,
                  property: Optional[pulumi.Input[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
@@ -94,6 +107,9 @@ class SomeResource(pulumi.CustomResource):
             if builtins is None and not opts.urn:
                 raise TypeError("Missing required property 'builtins'")
             __props__.__dict__["builtins"] = builtins
+            if lambda_ is None and not opts.urn:
+                raise TypeError("Missing required property 'lambda_'")
+            __props__.__dict__["lambda_"] = lambda_
             if property is None and not opts.urn:
                 raise TypeError("Missing required property 'property'")
             __props__.__dict__["property"] = property
@@ -120,6 +136,7 @@ class SomeResource(pulumi.CustomResource):
         __props__ = SomeResourceArgs.__new__(SomeResourceArgs)
 
         __props__.__dict__["builtins"] = None
+        __props__.__dict__["lambda_"] = None
         __props__.__dict__["property"] = None
         return SomeResource(resource_name, opts=opts, __props__=__props__)
 
@@ -127,6 +144,11 @@ class SomeResource(pulumi.CustomResource):
     @pulumi.getter
     def builtins(self) -> pulumi.Output[_builtins.str]:
         return pulumi.get(self, "builtins")
+
+    @_builtins.property
+    @pulumi.getter(name="lambda")
+    def lambda_(self) -> pulumi.Output[_builtins.str]:
+        return pulumi.get(self, "lambda_")
 
     @_builtins.property
     @pulumi.getter

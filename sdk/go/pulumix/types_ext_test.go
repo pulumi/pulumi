@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package pulumix_test // to avoid import cycles
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -38,7 +37,7 @@ func TestOutput_Untyped(t *testing.T) {
 	t.Parallel()
 
 	o := pulumix.Val(42).Untyped().(pulumi.IntOutput)
-	v, known, secret, _, err := internal.AwaitOutput(context.Background(), o)
+	v, known, secret, _, err := internal.AwaitOutput(t.Context(), o)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -50,7 +49,7 @@ func TestOutput_AsAny(t *testing.T) {
 
 	o := pulumix.Val("foo").AsAny()
 
-	v, known, secret, _, err := internal.AwaitOutput(context.Background(), o)
+	v, known, secret, _, err := internal.AwaitOutput(t.Context(), o)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -64,7 +63,7 @@ func TestOutput_ConvertTyped(t *testing.T) {
 	out, err := pulumix.ConvertTyped[string](stringOut)
 	require.NoError(t, err)
 
-	v, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	v, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", v)
 }
@@ -84,7 +83,7 @@ func TestOutput_MustConvertTyped(t *testing.T) {
 	stringOut := pulumi.String("bar").ToStringOutput()
 	out := pulumix.MustConvertTyped[string](stringOut)
 
-	v, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	v, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.Equal(t, "bar", v)
 }

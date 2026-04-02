@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -268,7 +268,7 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.Stack
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(opts),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -332,7 +332,7 @@ func RenderProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(o),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -391,7 +391,7 @@ func NewCaptureProgressEvents(
 		proj:                  proj,
 		sames:                 make(map[resource.URN]bool),
 		eventUrnToResourceRow: make(map[resource.URN]ResourceRow),
-		suffixColumn:          int(statusColumn),
+		suffixColumn:          suffixColumnIndex(o),
 		suffixesArray:         []string{"", ".", "..", "..."},
 		displayOrderCounter:   1,
 		opStopwatch:           newOpStopwatch(),
@@ -452,6 +452,24 @@ func (r *CaptureProgressEvents) OutputIncludesFailure() bool {
 
 func (display *ProgressDisplay) println(line string) {
 	display.renderer.println(line)
+}
+
+// suffixColumnIndex returns the column index where the progress suffix (ellipsis)
+// should be appended. In URN mode the Name column is dropped, so Status shifts
+// left by one.
+func suffixColumnIndex(opts Options) int {
+	if opts.ShowURNs {
+		return int(urnStatusColumn)
+	}
+	return int(statusColumn)
+}
+
+// resourceHeader formats a resource header for diagnostics/changes sections.
+func (display *ProgressDisplay) resourceHeader(columns []string) string {
+	if display.opts.ShowURNs {
+		return "  " + colors.BrightBlue + columns[urnColumn] + ":" + colors.Reset
+	}
+	return "  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset
 }
 
 type treeNode struct {
@@ -549,7 +567,11 @@ func (display *ProgressDisplay) addIndentations(treeNodes []*treeNode, isRoot bo
 			}
 		}
 
-		node.colorizedColumns[typeColumn] = prefix + node.colorizedColumns[typeColumn]
+		nameCol := typeColumn
+		if display.opts.ShowURNs {
+			nameCol = urnColumn
+		}
+		node.colorizedColumns[nameCol] = prefix + node.colorizedColumns[nameCol]
 		display.addIndentations(node.childNodes, false /*isRoot*/, nestedIndentation)
 	}
 }
@@ -740,8 +762,7 @@ func (display *ProgressDisplay) printResourceDiffs() {
 		}
 
 		columns := row.ColorizedColumns()
-		display.println(
-			"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+		display.println(display.resourceHeader(columns))
 
 		lines := splitIntoDisplayableLines(diff)
 		for _, line := range lines {
@@ -802,8 +823,7 @@ func (display *ProgressDisplay) printDiagnostics() {
 				if !wroteResourceHeader {
 					wroteResourceHeader = true
 					columns := row.ColorizedColumns()
-					display.println(
-						"  " + colors.BrightBlue + columns[typeColumn] + " (" + columns[nameColumn] + "):" + colors.Reset)
+					display.println(display.resourceHeader(columns))
 				}
 
 				for _, line := range lines {
@@ -1105,6 +1125,9 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 	// If there's already a row for this URN, return it.
 	row, has := display.eventUrnToResourceRow[urn]
 	if has {
+		// Even for existing rows, ensure parent placeholder rows exist so the tree
+		// displays correct nesting when child events arrive before parent events.
+		display.ensureParentRow(metadata)
 		return row
 	}
 
@@ -1138,9 +1161,42 @@ func (display *ProgressDisplay) getRowForURN(urn resource.URN, metadata *engine.
 
 	display.eventUrnToResourceRow[urn] = row
 
+	display.ensureParentRow(metadata)
+
 	display.ensureHeaderAndStackRows()
 	display.resourceRows = append(display.resourceRows, row)
 	return row
+}
+
+// ensureParentRow pre-creates a placeholder row for the parent resource if it doesn't
+// exist yet. This ensures the tree displays correct parent-child nesting even when child
+// events arrive before parent events (e.g., during destroy). The placeholder is created
+// with hideRowIfUnnecessary=true and OpSame so it only shows if it has children. When
+// the parent's real event arrives later, getRowForURN finds the existing row and
+// processNormalEvent updates it with real metadata via SetStep.
+func (display *ProgressDisplay) ensureParentRow(metadata *engine.StepEventMetadata) {
+	if metadata == nil || metadata.Res == nil {
+		return
+	}
+	parentURN := metadata.Res.Parent
+	if parentURN == "" || parentURN == display.stackUrn {
+		return
+	}
+	if _, has := display.eventUrnToResourceRow[parentURN]; has {
+		return
+	}
+	parentStep := engine.StepEventMetadata{URN: parentURN, Op: deploy.OpSame}
+	parentRow := &resourceRowData{
+		display:              display,
+		tick:                 display.currentTick,
+		diagInfo:             &DiagInfo{},
+		policyPayloads:       policyPayloads,
+		step:                 parentStep,
+		hideRowIfUnnecessary: true,
+	}
+	display.eventUrnToResourceRow[parentURN] = parentRow
+	display.ensureHeaderAndStackRows()
+	display.resourceRows = append(display.resourceRows, parentRow)
 }
 
 func (display *ProgressDisplay) processNormalEvent(event engine.Event) {
@@ -1329,12 +1385,15 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
 	// called under the write lock.
 	display.eventMutex.Lock()
-	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
 
 	display.systemEventPayloads = append(display.systemEventPayloads, payload)
+
+	// Release the lock before calling the renderer, because it may call back into a method (like generateTreeNodes)
+	// that acquires eventMutex.RLock(), causing a deadlock.
+	display.eventMutex.Unlock()
 
 	display.renderer.systemMessage(payload)
 }

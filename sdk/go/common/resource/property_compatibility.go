@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,6 +64,8 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 		ref := v.AsResourceReference()
 		r = NewProperty(ResourceReference{
 			URN:            ref.URN,
+			Name:           ref.Name,
+			Type:           ref.Type,
 			ID:             ToResourcePropertyValue(ref.ID),
 			PackageVersion: ref.PackageVersion,
 		})
@@ -135,6 +137,8 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 
 		return property.New(property.ResourceReference{
 			URN:            r.URN,
+			Name:           r.Name,
+			Type:           r.Type,
 			ID:             FromResourcePropertyValue(r.ID),
 			PackageVersion: r.PackageVersion,
 		})

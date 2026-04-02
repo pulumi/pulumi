@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -603,6 +604,7 @@ func NewImportCmd() *cobra.Command {
 	var parallel int32
 	var previewOnly bool
 	var showConfig bool
+	var showURNs bool
 	var skipPreview bool
 	var suppressOutputs bool
 	var suppressProgress bool
@@ -829,8 +831,7 @@ func NewImportCmd() *cobra.Command {
 			yes = yes || skipPreview || env.SkipConfirmations.Value()
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes && !previewOnly {
-				return errors.New("--yes or --skip-preview or --preview-only" +
-					" must be passed in to proceed when running in non-interactive mode")
+				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
@@ -846,6 +847,7 @@ func NewImportCmd() *cobra.Command {
 			opts.Display = display.Options{
 				Color:            cmdutil.GetGlobalColorization(),
 				ShowConfig:       showConfig,
+				ShowURNs:         showURNs,
 				SuppressOutputs:  suppressOutputs,
 				SuppressProgress: suppressProgress,
 				IsInteractive:    interactive,
@@ -940,6 +942,7 @@ func NewImportCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
+			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
@@ -1013,7 +1016,7 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			if err == context.Canceled {
-				return errors.New("import cancelled")
+				return backenderr.CancelledError{Operation: "import"}
 			}
 
 			// If we did a conversion import (i.e. from!="") then we'll write the file we've built out to the local
@@ -1092,6 +1095,9 @@ func NewImportCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().BoolVar(
+		&showURNs, "urns", false,
+		"Display full URNs instead of short resource names")
 	cmd.PersistentFlags().BoolVar(
 		&suppressProgress, "suppress-progress", false,
 		"Suppress display of periodic progress dots")

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,8 +49,8 @@ import (
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 	MinimumValidSDKVersion   string = "^3.142.0"
-	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^18"
+	MinimumTypescriptVersion string = "^4.7.0"
+	MinimumNodeTypesVersion  string = "^20"
 )
 
 type typeDetails struct {
@@ -1950,9 +1950,18 @@ func (mod *modContext) isReservedSourceFileName(name string) bool {
 		config, err := mod.pkg.Config()
 		contract.AssertNoErrorf(err, "failed to get config for package %q", mod.pkg.Name())
 		return len(config) > 0
-	default:
-		return false
 	}
+
+	// A source file "foo.ts" conflicts with a child module directory "foo/" because
+	// TypeScript resolves `import "./foo"` to the file rather than the directory.
+	baseName := strings.TrimSuffix(name, ".ts")
+	for _, child := range mod.children {
+		if getChildMod(child.mod) == baseName {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (mod *modContext) gen(fs codegen.Fs) error {
@@ -2611,17 +2620,23 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 
 	fmt.Fprintf(w, `{
     "compilerOptions": {
+        // Output
         "outDir": "bin",
-        "target": "ES2020",
-        "module": "commonjs",
-        "moduleResolution": "node",
         "declaration": true,
+        "declarationMap": true,
         "sourceMap": true,
         "stripInternal": true,
-        "experimentalDecorators": true,
+        // Environment
+        "target": "ES2022",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "moduleDetection": "force",
+        "types": ["node"],
+        // Type Checking
+        "strict": true,
         "noFallthroughCasesInSwitch": true,
-        "forceConsistentCasingInFileNames": true,
-        "strict": true
+        "noImplicitReturns": true,
+        "skipLibCheck": true
     },
     "files": [
 `)

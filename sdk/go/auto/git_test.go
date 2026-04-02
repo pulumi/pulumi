@@ -1,10 +1,10 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,7 +15,6 @@
 package auto
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -126,7 +125,7 @@ func TestGitClone(t *testing.T) {
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			require.NoError(t, err)
 
-			_, err = setupGitRepo(context.Background(), tmp, repo)
+			_, err = setupGitRepo(t.Context(), tmp, repo)
 			require.NoError(t, err)
 
 			r, err := git.PlainOpen(tmp)
@@ -181,7 +180,7 @@ func TestGitClone(t *testing.T) {
 			tmp, err := os.MkdirTemp(tmpDir, "testcase") // i.e., under the tmp dir from earlier
 			require.NoError(t, err)
 
-			_, err = setupGitRepo(context.Background(), tmp, repo)
+			_, err = setupGitRepo(t.Context(), tmp, repo)
 			assert.EqualError(t, err, tc.expectedError)
 		})
 	}

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PULUMI_ACCEPT=1 go test ./... -v -count=1 -run \"TestLanguage/.*/l2-keywords\" -tags all 2>&1)",
+      "Bash(PULUMI_ACCEPT=1 go test ./... -v -count=1 -run \"TestLanguage/l2-keywords$\" -tags all 2>&1 | tail -100)",
+      "Bash(cd /Users/ianwahbe/go/src/github.com/pulumi/pulumi && PULUMI_ACCEPT=1 scripts/run-conformance.sh l2-keywords 2>&1)",
+      "Bash(cd /Users/ianwahbe/go/src/github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python && PULUMI_ACCEPT=1 go test . -v -count=1 -run \"TestLanguageDefault/.*/l2-keywords\" 2>&1 | grep -E \"Error|error|FAIL|Traceback|ModuleNotFoundError|ImportError|assert\" | head -20)"
+    ]
+  }
+}

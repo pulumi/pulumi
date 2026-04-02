@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Engine will use provider references from `__self__` arguments to calls

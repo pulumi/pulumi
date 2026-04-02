@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -141,7 +142,9 @@ func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
 	} else if len(templates) == 1 {
 		template = templates[0]
 	} else if !opts.IsInteractive {
-		return errors.New("a template must be provided when running in non-interactive mode")
+		return backenderr.NonInteractiveInputRequiredError{
+			Detail: "a template must be provided when running in non-interactive mode",
+		}
 	} else {
 		if template, err = choosePolicyPackTemplate(templates, opts); err != nil {
 			return err

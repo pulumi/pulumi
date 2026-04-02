@@ -103,10 +103,22 @@ started, our team has put together the [Pulumi Developer
 Documentation](https://pulumi-developer-docs.readthedocs.io/latest/docs/README.html). This resource provides valuable
 insights into how the system is structured and can be incredibly helpful for both new contributors and maintainers
 alike. We encourage you to explore it and reach out if you have any questions!
-
 ## Getting Help
 
 We're sure there are rough edges and we appreciate you helping out. If you want to talk with other folks in the Pulumi community (including members of the Pulumi team) come hang out in the `#contribute` channel on the [Pulumi Community Slack](https://slack.pulumi.com/).
+
+## AI-Assisted Contributions
+
+If you're using an AI coding assistant to contribute:
+
+1. Read `AGENTS.md` at the repo root for the full command canon and invariants.
+2. Understand the existing code before proposing changes — read relevant files first.
+3. Make minimal, scoped changes. Don't refactor unrelated code or add unnecessary abstractions.
+4. Run `make format && make lint && make test_fast` and fix all failures before submitting.
+5. Include actual test output in your PR description (copy-paste, don't paraphrase).
+6. Don't forget the changelog entry (`make changelog`).
+
+**Note that we expect contributors using AI to remain in the loop.** This means that any content generated with AI (whether code or text) must have been reviewed and edited by a human before submission, and that the human involved retains responsibility for their output. You are expected to be able to explain your changes and how they interact with the system at large.
 
 ## Releasing
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -174,22 +174,26 @@ func GenerateHCL2Definition(
 	}
 
 	var items []model.BodyItem
-	name := sanitizeName(state.URN.Name())
+	name := state.URN.Name()
 	// Check if _this_ urn is in the name table, if so we need to set logicalName and use the mapped name for
 	// the resource block.
 	if mappedName, ok := importState.Names[state.URN]; ok {
-		items = append(items, &model.Attribute{
-			Name: "__logicalName",
-			Value: &model.TemplateExpression{
-				Parts: []model.Expression{
-					&model.LiteralValueExpression{
-						Value: cty.StringVal(state.URN.Name()),
+		if mappedName != name {
+			items = append(items, &model.Attribute{
+				Name: "__logicalName",
+				Value: &model.TemplateExpression{
+					Parts: []model.Expression{
+						&model.LiteralValueExpression{
+							Value: cty.StringVal(state.URN.Name()),
+						},
 					},
 				},
-			},
-		})
-		name = sanitizeName(mappedName)
+			})
+		}
+		name = mappedName
 	}
+
+	contract.Assertf(sanitizeName(name) == name, "names should be sanitized by this point")
 
 	// keep track of a set of added references to avoid adding the same reference to the dependsOn list
 	// when the resource is already implicitly referenced via its properties

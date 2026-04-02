@@ -4,8 +4,6 @@
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkg provA <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkg provA <{%fg 2%}>created<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> my_component resA <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pkg default <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%fg 2%}>+ <{%reset%}> pulumi:providers:pkg default <{%fg 2%}>created<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkg:index:component resB <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%bold%}><{%fg 2%}>+ <{%reset%}> pkg:index:type resC <{%bold%}><{%fg 2%}>creating<{%reset%}> 
  <{%fg 2%}>+ <{%reset%}> pkg:index:type resC <{%fg 2%}>created<{%reset%}> 

@@ -64,7 +64,7 @@ INTEGRATION_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/sdk/v3/nodejs/npm",
     "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python",
     "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs",
-    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go",
+    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3",
     # And the entirety of the 'tests' module
 }
 
@@ -87,7 +87,6 @@ def is_performance_test(pkg: str) -> bool:
 # Keep this in sync with filters defined in .github/workflows/on-pr.yml.
 CODEGEN_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/pkg/v3/codegen/docs",
-    "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet",
     "github.com/pulumi/pulumi/pkg/v3/codegen/go",
     "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs",
     "github.com/pulumi/pulumi/pkg/v3/codegen/python",
@@ -145,8 +144,7 @@ ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 ALL_VERSION_SET = {
     "dotnet": ["8", "9"],
     "go": ["1.25.x", "1.26.x"],
-    # TODO: https://github.com/pulumi/pulumi/issues/21945 revert to Node.js 25.x
-    "nodejs": ["20.x", "22.x", "24.x", "25.6"],
+    "nodejs": ["20.x", "22.x", "24.x", "25.x"],
     # When updating the minimum Python version here, also update `pyproject.toml`, including the
     # `mypy` and `ruff` sections.
     "python": ["3.10.x", "3.11.x", "3.12.x", "3.13.x", "3.14.x"],

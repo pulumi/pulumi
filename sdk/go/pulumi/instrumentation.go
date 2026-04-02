@@ -18,6 +18,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -32,7 +33,7 @@ import (
 var tracerProvider *sdktrace.TracerProvider
 
 // initTracing initializes OpenTelemetry tracing when TRACEPARENT and
-// OTEL_EXPORTER_OTLP_ENDPOINT environment variables are present.
+// PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT environment variables are present.
 // Returns a context with the extracted trace parent.
 func initTracing(ctx context.Context) context.Context {
 	traceparent := os.Getenv("TRACEPARENT")
@@ -40,7 +41,7 @@ func initTracing(ctx context.Context) context.Context {
 		return ctx
 	}
 
-	otlpEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otlpEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
 	if otlpEndpoint == "" {
 		return ctx
 	}
@@ -59,7 +60,12 @@ func initTracing(ctx context.Context) context.Context {
 		return ctx
 	}
 
-	res := resource.NewWithAttributes("", semconv.ServiceName("pulumi-sdk-go"))
+	res, err := resource.Merge(
+		resource.Environment(),
+		resource.NewWithAttributes("", semconv.ServiceName("pulumi-sdk-go")),
+	)
+	contract.AssertNoErrorf(err, "resource.Merge should never fail")
+
 	tracerProvider = sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter),
 		sdktrace.WithResource(res),

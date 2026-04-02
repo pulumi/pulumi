@@ -1,8 +1,6 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%fg 2%}>+ <{%reset%}> pulumi:providers:pulumi default <{%bold%}><{%fg 2%}>creating<{%reset%}> 
- <{%fg 2%}>+ <{%reset%}> pulumi:providers:pulumi default <{%fg 2%}>created<{%reset%}> 
  <{%bold%}><{%fg 2%}>= <{%reset%}> pulumi:index:Stash stash <{%bold%}><{%fg 2%}>importing<{%reset%}> 
  <{%bold%}><{%fg 2%}>= <{%reset%}> pulumi:index:Stash stash <{%bold%}><{%fg 2%}>importing<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>stash can not be imported<{%reset%}>
  <{%fg 2%}>= <{%reset%}> pulumi:index:Stash stash <{%fg 1%}>**importing failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>stash can not be imported<{%reset%}>

@@ -1,0 +1,21 @@
+[project]
+name = "docs"
+version = "0.1.0"
+description = "The Pulumi Developer Docs"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "myst-parser>=3.0.1",
+    "requests>=2.32.5",
+    "sphinx>=7.4.7",
+    "sphinx-autobuild>=2025.8.25",
+    "sphinx-book-theme>=1.2.0",
+    "sphinx-tabs>=3.5.0",
+    "sphinxcontrib-mermaid>=2.0.1",
+    "sphinxcontrib-programoutput>=0.19",
+]
+
+[dependency-groups]
+dev = [
+    "black>=26.3.1",
+]

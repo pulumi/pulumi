@@ -1,4 +1,4 @@
-// Copyright 2024-2025, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,10 +53,11 @@ func HandleConfig(
 	opts display.Options,
 ) error {
 	// Get the existing config. stackConfig will be nil if there wasn't a previous deployment.
-	stackConfig, err := backend.GetLatestConfiguration(ctx, s)
+	latest, err := backend.GetLatestConfiguration(ctx, s)
 	if err != nil && err != backenderr.ErrNoPreviousDeployment {
 		return err
 	}
+	stackConfig := latest.Config
 
 	// Get the existing snapshot.
 	snap, err := s.Snapshot(ctx, secrets.DefaultProvider)

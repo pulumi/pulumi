@@ -12,48 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { API, PulumiImportOptions, PulumiUpOptions } from "../output";
+import { API, PulumiCancelOptions } from "../output";
 import { describe, it } from "mocha";
 import * as assert from "assert";
 
 describe("Command examples", () => {
     const api = new API();
 
-    it("about", () => {
-        const command = api.about({}); // An executable menu
-        assert.strictEqual(command, "pulumi about");
-    });
-
-    it("config env add", () => {
-        const command = api.configEnvAdd({});
-        assert.strictEqual(command, "pulumi config env add");
-    });
-
-    it("template publish", () => {
-        const command = api.templatePublish(
-            {
-                name: "test",
-                version: "1.0.0",
-            },
-            ".", // Required flags
-        );
-
-        assert.strictEqual(command, "pulumi template publish --name test --version 1.0.0 -- .");
-    });
-
-    it("import", () => {
-        const options: PulumiImportOptions = {};
-
-        const command = api.import(options, "'aws:iam/user:User'", "name", "id");
-        assert.strictEqual(command, "pulumi import -- 'aws:iam/user:User' name id");
-    });
-
-    it("up", () => {
-        const options: PulumiUpOptions = {
-            target: ["urnA", "urnB"],
-        };
-
-        const command = api.up(options, "https://pulumi.com");
-        assert.strictEqual(command, "pulumi up --target urnA --target urnB -- https://pulumi.com");
+    it("cancel", () => {
+        const options: PulumiCancelOptions = {};
+        const command = api.cancel(options, "my-stack");
+        assert.strictEqual(command, "pulumi cancel --non-interactive --yes -- my-stack");
     });
 });

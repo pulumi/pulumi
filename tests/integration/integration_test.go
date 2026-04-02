@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -435,9 +435,9 @@ func TestUnprotect(t *testing.T) {
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
 	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
+		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
@@ -462,9 +462,9 @@ func TestUnprotectProtect(t *testing.T) {
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
 	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
+		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
@@ -473,9 +473,9 @@ func TestUnprotectProtect(t *testing.T) {
 	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
 	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 0xffffffff")
+		assert.ErrorContains(t, err, "exit status 1")
 	} else {
-		assert.ErrorContains(t, err, "exit status 255")
+		assert.ErrorContains(t, err, "exit status 1")
 	}
 }
 
@@ -1184,6 +1184,34 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	assert.Contains(t, stdout, "❌ typescript@v0.0.1 (local: mandatory_policy_pack)")
 }
 
+func TestBunMandatoryPolicyPack(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory("single_resource")
+	e.ImportDirectory("policy")
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	stackName, err := resource.NewUniqueHex("bun-mandatory-policy-pack", 8, -1)
+	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
+
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "bun_mandatory_policy_pack"), "bun", "install")
+	require.NoError(t, err)
+
+	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("yarn", "install")
+
+	stdout, _, err := e.GetCommandResults(
+		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack")
+	assert.Error(t, err)
+	assert.Contains(t, stdout, "error: update failed")
+	assert.Contains(t, stdout, "❌ bun@v0.0.1 (local: bun_mandatory_policy_pack)")
+}
+
 func TestMultiplePolicyPacks(t *testing.T) {
 	t.Parallel()
 
@@ -1239,7 +1267,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 		Virtualenv: "venv",
 	})
 	require.NoError(t, err)
-	require.NoError(t, tc.InstallDependencies(context.Background(),
+	require.NoError(t, tc.InstallDependencies(t.Context(),
 		filepath.Join(e.CWD, "python_policy_pack"), false /*useLanguageVersionTools*/, false, /*showOutput */
 		os.Stdout, os.Stderr))
 	sdkDir, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
@@ -1250,7 +1278,7 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 		t.Log("This test requires Python SDK to be built; please `cd sdk/python && make ensure build install`")
 		t.FailNow()
 	}
-	cmd, err := tc.ModuleCommand(context.Background(), "pip", "install", "-e", sdkDir)
+	cmd, err := tc.ModuleCommand(t.Context(), "pip", "install", "-e", sdkDir)
 	require.NoError(t, err)
 	require.NoError(t, cmd.Run())
 
@@ -1631,7 +1659,7 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	e.RunCommandWithRetry("yarn", "install")
 
 	// The bug was causing a hang, ensure the test times out
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
 	defer cancel()
 
 	cmd := e.SetupCommandIn(ctx, e.CWD, "node", "index.js")
@@ -1670,7 +1698,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 
 	// Run pulumi via a wrapper that does not start Pulumi in its own process group.
 	// This simulates the behaviour of the 1password CLI.
-	cmd := e.SetupCommandIn(context.TODO(), filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
+	cmd := e.SetupCommandIn(t.Context(), filepath.Join(e.RootPath, "wrapper"), "go", "run", ".",
 		"pulumi", "-C", programPath, "up", "--skip-preview", "-s", "dev")
 	t.Logf("Running command %s", cmd.String())
 

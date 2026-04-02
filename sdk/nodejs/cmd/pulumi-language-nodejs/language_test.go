@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,7 +98,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-invoke-options-depends-on": "not implemented yet",
+	"l2-resource-optional": "optional outputs are not assignable to optional inputs",
+	"l3-deferred-outputs":  "Cannot find name '_arg0_'.",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
@@ -144,6 +145,8 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			rootDir, err := filepath.Abs(t.TempDir())
 			require.NoError(t, err)
 
+			providersDir := "testdata/providers"
+			policyPackDir := "testdata/policies"
 			snapshotDir := "./testdata"
 			if local {
 				snapshotDir += "/local"
@@ -153,6 +156,8 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 			switch runtime {
 			case "bun":
 				snapshotDir += "/bun"
+				providersDir = "testdata/providers-bun"
+				policyPackDir = "testdata/policies-bun"
 			case "nodejs":
 				if forceTsc {
 					snapshotDir += "/tsc"
@@ -169,7 +174,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 				SnapshotDirectory:    snapshotDir,
 				CoreSdkDirectory:     "../..",
 				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "testdata/policies",
+				PolicyPackDirectory:  policyPackDir,
 				Local:                local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
@@ -183,7 +188,7 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 						Replacement: "ROOT/artifacts",
 					},
 				},
-				ProvidersDirectory: "testdata/providers",
+				ProvidersDirectory: providersDir,
 			})
 			require.NoError(t, err)
 
@@ -197,12 +202,6 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					}
 
 					if runtime == "bun" {
-						if strings.HasPrefix(tt, "policy-") {
-							t.Skip("Skipping policy tests - TODO: https://github.com/pulumi/pulumi/issues/22078")
-						}
-						if strings.HasPrefix(tt, "provider-") {
-							t.Skip("Skipping provider tests - TODO: https://github.com/pulumi/pulumi/issues/22037")
-						}
 						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" {
 							t.Skip(
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ const dynamicImport = (0, eval)("u=>import(u)");
  * Attempts to provide a detailed error message for module load failure if the
  * module that failed to load is the top-level module.
  * @param program The name of the program given to `run`, i.e. the top level module
- * @param error The error that occured. Must be a module load error.
+ * @param error The error that occurred. Must be a module load error.
  */
 async function reportModuleLoadFailure(program: string, error: Error): Promise<void> {
     await throwOrPrintModuleLoadError(program, error);
@@ -391,10 +391,12 @@ export async function run(
             // We're not in ESM mode, or running an older version of ts-node.
             // Let ts-node deal with registration.
             const tsn: typeof tsnode = require(tsnodeRequire);
+            // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
+            const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
             options.compilerOptions = {
                 target: "ES2020", // TypeScript 3.8 supports this
-                module: "commonjs",
-                moduleResolution: "node",
+                module: useNodeNext ? "nodenext" : "commonjs",
+                moduleResolution: useNodeNext ? "nodenext" : "node",
                 sourceMap: "true",
                 ...compilerOptions,
             };

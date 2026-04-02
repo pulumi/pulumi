@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -630,7 +630,7 @@ func TestWithValue(t *testing.T) {
 	val := "val"
 	testCtx := &Context{
 		state: &contextState{},
-		ctx:   context.Background(),
+		ctx:   t.Context(),
 	}
 	newCtx := testCtx.WithValue(key, val)
 

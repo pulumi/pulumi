@@ -34,11 +34,11 @@ func main() {
 		}
 		_, err = simple.NewResource(ctx, "secretReplacementTrigger", &simple.ResourceArgs{
 			Value: pulumi.Bool(true),
-		}, pulumi.ReplacementTrigger(pulumi.Any(interface{}(pulumi.ToSecret([]float64{
+		}, pulumi.ReplacementTrigger(pulumi.Any(interface{}(pulumi.ToSecret([]int{
 			1,
 			2,
 			3,
-		}).(pulumi.Float64ArrayOutput)))))
+		}).(pulumi.IntArrayOutput)))))
 		if err != nil {
 			return err
 		}

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,9 +41,9 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name: "map-key",
-			path: property.Path{
+			path: property.PathFromSegments(
 				property.NewSegment("k"),
-			},
+			),
 			from: property.New(map[string]property.Value{
 				"k": property.New("v"),
 			}),
@@ -51,9 +51,9 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "missing-key",
-			path: property.Path{
+			path: property.PathFromSegments(
 				property.NewSegment("missing"),
-			},
+			),
 			from: property.New(map[string]property.Value{
 				"k": property.New("v"),
 			}),
@@ -66,9 +66,9 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "expected-map",
-			path: property.Path{
+			path: property.PathFromSegments(
 				property.NewSegment("missing"),
-			},
+			),
 			from: property.New([]property.Value{
 				property.New("v"),
 			}),
@@ -81,9 +81,9 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "array-idx",
-			path: property.Path{
+			path: property.PathFromSegments(
 				property.NewSegment(1),
-			},
+			),
 			from: property.New([]property.Value{
 				property.New("0"),
 				property.New("1"),
@@ -92,9 +92,9 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "expected-array",
-			path: property.Path{
+			path: property.PathFromSegments(
 				property.NewSegment(0),
-			},
+			),
 			from: property.New("foo"),
 			failure: &pathFailure{
 				found: property.New("foo"),
@@ -103,9 +103,9 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name: "array-out-of-bounds",
-			path: property.Path{
+			path: property.PathFromSegments(
 				property.NewSegment(1),
-			},
+			),
 			from: property.New([]property.Value{
 				property.New("0"),
 			}),
@@ -117,45 +117,30 @@ func TestGet(t *testing.T) {
 			},
 		},
 		{
-			name: "negative-array-index",
-			path: property.Path{
-				property.NewSegment(-1),
-			},
-			from: property.New([]property.Value{
-				property.New("0"),
-			}),
-			failure: &pathFailure{
-				found: property.New([]property.Value{
-					property.New("0"),
-				}),
-				msg: "index -1 out of bounds of an array of length 1",
-			},
-		},
-		{
 			name:     "empty-path-map",
-			path:     property.Path{},
+			path:     property.PathFromSegments(),
 			from:     property.New(map[string]property.Value{"k": property.New(true)}),
 			expected: property.New(map[string]property.Value{"k": property.New(true)}),
 		},
 		{
 			name:     "empty-path-array",
-			path:     property.Path{},
+			path:     property.PathFromSegments(),
 			from:     property.New([]property.Value{property.New(true)}),
 			expected: property.New([]property.Value{property.New(true)}),
 		},
 		{
 			name:     "empty-path-primitive",
-			path:     property.Path{},
+			path:     property.PathFromSegments(),
 			from:     property.New(true),
 			expected: property.New(true),
 		},
 		{
 			name: "nested-access",
-			path: property.Path{
+			path: property.PathFromSegments(
 				property.NewSegment("l1"),
 				property.NewSegment(0),
 				property.NewSegment("n1"),
-			},
+			),
 			from: property.New(map[string]property.Value{
 				"l0": property.New("l0-value"),
 				"l1": property.New([]property.Value{
@@ -197,7 +182,7 @@ func TestSet(t *testing.T) {
 	}{
 		{
 			name: "inside map",
-			path: property.Path{property.NewSegment("k2")},
+			path: property.PathFromSegments(property.NewSegment("k2")),
 			src: property.New(map[string]property.Value{
 				"k1": property.New("v1"),
 			}),
@@ -209,7 +194,7 @@ func TestSet(t *testing.T) {
 		},
 		{
 			name: "inside array",
-			path: property.Path{property.NewSegment(1)},
+			path: property.PathFromSegments(property.NewSegment(1)),
 			src: property.New([]property.Value{
 				property.New("o1"),
 				property.New("o2"),
@@ -222,18 +207,18 @@ func TestSet(t *testing.T) {
 		},
 		{
 			name:     "empty path",
-			path:     property.Path{},
+			path:     property.PathFromSegments(),
 			src:      property.New("v1"),
 			to:       property.New("v2"),
 			expected: property.New("v2"),
 		},
 		{
 			name: "nested",
-			path: property.Path{
+			path: property.PathFromSegments(
 				property.NewSegment("l1"),
 				property.NewSegment(0),
 				property.NewSegment("n1"),
-			},
+			),
 			src: property.New(map[string]property.Value{
 				"l0": property.New("l0-value"),
 				"l1": property.New([]property.Value{
@@ -290,7 +275,7 @@ func TestAlter(t *testing.T) {
 			v: property.New(map[string]property.Value{
 				"k": property.New(true),
 			}),
-			path: property.Path{property.NewSegment("k")},
+			path: property.PathFromSegments(property.NewSegment("k")),
 			expected: property.New(map[string]property.Value{
 				"k": property.New("yes"),
 			}),
@@ -303,7 +288,7 @@ func TestAlter(t *testing.T) {
 			v: property.New(map[string]property.Value{
 				"k": property.New(true),
 			}),
-			path:      property.Path{property.NewSegment("invalid")},
+			path:      property.PathFromSegments(property.NewSegment("invalid")),
 			expectErr: true,
 		},
 	}

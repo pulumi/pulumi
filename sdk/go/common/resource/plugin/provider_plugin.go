@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -205,7 +205,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		}
 
 		var conn *grpc.ClientConn
-		conn, handshakeRes, err = dialPlugin(port, pkg.String(), prefix,
+		conn, handshakeRes, err = dialPlugin(ctx.Base(), port, pkg.String(), prefix,
 			handshake, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err

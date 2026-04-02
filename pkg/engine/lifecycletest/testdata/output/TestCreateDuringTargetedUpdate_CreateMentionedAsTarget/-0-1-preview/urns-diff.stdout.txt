@@ -1,0 +1,6 @@
+<{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resA: (same)
+<{%reset%}>    [id=3]
+<{%reset%}><{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::resB: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>
+    1 unchanged

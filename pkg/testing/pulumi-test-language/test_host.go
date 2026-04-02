@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,7 +49,8 @@ type testHost struct {
 	runtimeName string
 	providers   map[string]func() (plugin.Provider, error)
 
-	connections map[plugin.Provider]io.Closer
+	connectionsMutex sync.Mutex
+	connections      map[plugin.Provider]io.Closer
 
 	policies []plugin.Analyzer
 
@@ -173,6 +174,8 @@ func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (p
 	if err != nil {
 		return nil, err
 	}
+	h.connectionsMutex.Lock()
+	defer h.connectionsMutex.Unlock()
 	h.connections[grpcProvider] = closer
 
 	return grpcProvider, nil
@@ -283,6 +286,8 @@ func (h *testHost) Close() error {
 	h.closeMutex.Lock()
 	defer h.closeMutex.Unlock()
 	errs := make([]error, 0)
+	h.connectionsMutex.Lock()
+	defer h.connectionsMutex.Unlock()
 	for _, closer := range h.connections {
 		if err := closer.Close(); err != nil {
 			errs = append(errs, err)

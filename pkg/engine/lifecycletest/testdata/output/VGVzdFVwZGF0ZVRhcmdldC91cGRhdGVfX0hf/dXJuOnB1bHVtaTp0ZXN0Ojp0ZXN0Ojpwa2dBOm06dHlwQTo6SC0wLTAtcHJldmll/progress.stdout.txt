@@ -9,7 +9,6 @@
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA D <{%bold%}><{%fg 3%}>updating<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
  <{%fg 3%}>~ <{%reset%}> pulumi:providers:pkgA D <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 1%}>-B<{%reset%}><{%reset%}>]
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA E <{%bold%}><{%reset%}><{%reset%}> 
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA F <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pkgA:m:typA G <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 3%}>~ <{%reset%}> pkgA:m:typA H <{%bold%}><{%fg 3%}>updating<{%reset%}> 

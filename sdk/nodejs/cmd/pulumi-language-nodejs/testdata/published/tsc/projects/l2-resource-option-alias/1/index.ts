@@ -17,3 +17,6 @@ const aliasParent = new simple.Resource("aliasParent", {value: true}, {
     aliases:[{parent: aliasURN}],
     parent: parent,
 });
+const aliasType = new simple.Resource("aliasType", {value: true}, {
+    aliases:[{type: "component:index:Custom"}],
+});

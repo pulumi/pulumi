@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/autonaming"
@@ -263,6 +264,7 @@ func NewPreviewCmd() *cobra.Command {
 	var planFilePath string
 	var importFilePath string
 	var showSecrets bool
+	var showURNs bool
 
 	// Flags for remote operations.
 	remoteArgs := deployment.RemoteArgs{}
@@ -346,6 +348,7 @@ func NewPreviewCmd() *cobra.Command {
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
 				ShowSecrets:            showSecrets,
+				ShowURNs:               showURNs,
 				SuppressOutputs:        suppressOutputs,
 				SuppressProgress:       suppressProgress,
 				TruncateOutput:         !showFullOutput,
@@ -430,6 +433,7 @@ func NewPreviewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
+			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
@@ -539,7 +543,7 @@ func NewPreviewCmd() *cobra.Command {
 			case res != nil:
 				return res
 			case expectNop && changes != nil && engine.HasChanges(changes):
-				return errors.New("error: no changes were expected but changes were proposed")
+				return backenderr.NoChangesExpectedError{Operation: "preview"}
 			default:
 				if planFilePath != "" {
 					encrypter := sm.Encrypter()
@@ -693,6 +697,9 @@ func NewPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReads, "show-reads", false,
 		"Show resources that are being read in, alongside those being managed directly in the stack")
+	cmd.PersistentFlags().BoolVar(
+		&showURNs, "urns", false,
+		"Display full URNs instead of short resource names")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")

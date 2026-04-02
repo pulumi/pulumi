@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -202,7 +202,8 @@ func newDeployment(
 
 	// Create a context for plugins.
 	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
-	pwd, main, plugctx, err := ProjectInfoContext(ctx.Cancel.Base(), projinfo, opts.Host,
+	baseCtx := trace.ContextWithSpan(ctx.Cancel.Base(), info.otelSpan)
+	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
@@ -253,6 +254,7 @@ func newDeployment(
 		GeneratePlan:              opts.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
 		Autonamer:                 opts.Autonamer,
+		ShowSecrets:               opts.ShowSecrets,
 	}
 
 	var depl *deploy.Deployment

@@ -1,4 +1,4 @@
-// Copyright 2023-2025, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -124,7 +124,7 @@ func TestTryWithCorrectArguments(t *testing.T) {
 	assert.True(t, ok, "first node is a local variable variable")
 	variableType := localVariable.Type()
 	num := func(i int) *model.ConstType {
-		return model.NewConstType(model.NumberType, cty.NumberVal(new(big.Float).SetInt64(int64(i)).SetPrec(512)))
+		return model.NewConstType(model.IntType, cty.NumberVal(new(big.Float).SetInt64(int64(i)).SetPrec(512)))
 	}
 	expectedType := model.NewUnionType(num(1), num(2), num(3))
 	assert.True(t, expectedType.Equals(variableType), "the type is a plain union")
@@ -150,7 +150,7 @@ func TestTryWithCorrectOutputArguments(t *testing.T) {
 	assert.True(t, ok, "first node is a local variable variable")
 	variableType := localVariable.Type()
 	num := func(i int) *model.ConstType {
-		return model.NewConstType(model.NumberType, cty.NumberVal(new(big.Float).SetInt64(int64(i)).SetPrec(512)))
+		return model.NewConstType(model.IntType, cty.NumberVal(new(big.Float).SetInt64(int64(i)).SetPrec(512)))
 	}
 	expectedType := model.NewOutputType(model.NewUnionType(num(1), num(2), num(3)))
 	assert.True(t, expectedType.Equals(variableType), "the type is an output union")
@@ -288,7 +288,7 @@ func TestRootDirectoryFailsWithArguments(t *testing.T) {
 
 func TestBindingPulumiResourceTypeName(t *testing.T) {
 	t.Parallel()
-	source := `resource "res" "range:index:Root" { }
+	source := `resource "res" "other:index:Thing" { }
 type = pulumiResourceType(res)
 name = pulumiResourceName(res)`
 	program, diags, err := ParseAndBindProgram(t, source, "program.pp")

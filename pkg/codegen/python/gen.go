@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -358,7 +358,7 @@ func tokenToName(tok string) string {
 	return title(components[2])
 }
 
-// tokenToPackage accepts a *Pulumi token* and returns name of the *Python module* that it
+// tokenToModule accepts a *Pulumi token* and returns name of the *Python module* that it
 // should be generated into.
 //
 // For example, it converts: "pkg:someModule:Resource" to "somemodule".
@@ -372,11 +372,14 @@ func tokenToModule(tok string, pkg schema.PackageReference, moduleNameOverrides 
 	return moduleToPythonModule(canonicalModName, moduleNameOverrides)
 }
 
-// tokenToPackage accepts a *Pulumi module* and returns name of the *Python module* that it
+// moduleToPythonModule accepts a *Pulumi module* and returns name of the *Python module* that it
 // should be generated into.
 //
 // For example, it converts: "someModule" to "somemodule".
 func moduleToPythonModule(canonicalModName string, moduleNameOverrides map[string]string) string {
+	if canonicalModName == "index" {
+		return ""
+	}
 	if override, ok := moduleNameOverrides[canonicalModName]; ok {
 		return override
 	}
@@ -686,6 +689,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		if r.IsProvider {
 			name = "provider"
 		}
+		if mod.conflictsWithChildModule(name) {
+			name = name + "_"
+		}
 		addFile(name+".py", res)
 	}
 
@@ -705,7 +711,11 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		if err != nil {
 			return err
 		}
-		addFile(PyName(tokenToName(f.Token))+".py", fun)
+		fnName := PyName(tokenToName(f.Token))
+		if mod.conflictsWithChildModule(fnName) {
+			fnName = fnName + "_"
+		}
+		addFile(fnName+".py", fun)
 	}
 
 	// Nested types
@@ -759,6 +769,18 @@ func (mod *modContext) isEmpty() bool {
 		}
 	}
 	return true
+}
+
+// conflictsWithChildModule returns true if the given file name (without extension)
+// would conflict with a child module directory name. In Python, a package directory
+// takes precedence over a module file with the same name.
+func (mod *modContext) conflictsWithChildModule(name string) bool {
+	for _, child := range mod.children {
+		if child.unqualifiedImportName() == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (mod *modContext) submodulesExist() bool {
@@ -984,6 +1006,9 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		}
 		if r.Resource != nil && r.Resource.IsProvider {
 			name = "provider"
+		}
+		if mod.conflictsWithChildModule(name) {
+			name = name + "_"
 		}
 
 		if strings.HasSuffix(importPath, ".") {

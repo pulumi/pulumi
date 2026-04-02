@@ -1,4 +1,4 @@
-// Copyright 2020-2026, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -80,7 +80,10 @@ type generator struct {
 	// inGenTupleConExprListArgs indicates that a the generator is processing an args list within a TupleConExpression.
 	inGenTupleConExprListArgs bool
 	isPtrArg                  bool
-	isComponent               bool
+	// inPlainObjectField indicates that the generator is producing a value for a plain (non-input)
+	// struct field, so the object literal should be emitted as a value rather than a pointer.
+	inPlainObjectField bool
+	isComponent        bool
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -852,7 +855,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 
 			g.addPulumiImport(pkg, vPath, mod, name)
 		}
-		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar {
+		if _, isConfigVar := n.(*pcl.ConfigVariable); isConfigVar && !g.isComponent {
 			g.importer.Import("github.com/pulumi/pulumi/sdk/v3/go/pulumi/config", "config")
 		}
 
@@ -1283,6 +1286,8 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 					switch key.AsString() {
 					case "name":
 						g.Fgenf(valBuffer, "Name: pulumi.String(%v), ", item.Value)
+					case "type":
+						g.Fgenf(valBuffer, "Type: pulumi.String(%v), ", item.Value)
 					case "noParent":
 						g.Fgenf(valBuffer, "NoParent: pulumi.Bool(%v), ", item.Value)
 					case "parent":
@@ -1408,7 +1413,20 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if len(r.Inputs) > 0 {
 			g.Fgenf(w, "&%s.%sArgs{\n", modOrAlias, typ)
 			for _, attr := range r.Inputs {
+				// Check if this property is marked as plain in the schema.
+				// Plain required properties generate value-typed struct
+				// fields in the Go SDK, so nested object literals must be
+				// emitted without the & prefix.
+				if r.Schema != nil {
+					for _, prop := range r.Schema.InputProperties {
+						if prop.Name == attr.Name && prop.Plain {
+							g.inPlainObjectField = true
+							break
+						}
+					}
+				}
 				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.inPlainObjectField = false
 			}
 			g.Fprint(w, "}")
 		} else {
@@ -2017,6 +2035,10 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 	configType := model.ResolveOutputs(v.Type())
 
 	getType := ""
+	// useObjectConfig indicates the config value must be deserialized via
+	// RequireObject/GetObject which populate a pointer rather than returning
+	// a value.
+	useObjectConfig := false
 	switch configType {
 	case model.StringType: // Already default
 	case model.NumberType:
@@ -2027,6 +2049,12 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		getType = "Bool"
 	case model.DynamicType:
 		getType = "Object"
+		useObjectConfig = true
+	default:
+		if _, ok := configType.(*model.ObjectType); ok {
+			getType = "Object"
+			useObjectConfig = true
+		}
 	}
 
 	getOrRequire := "Get"
@@ -2045,7 +2073,13 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 	name := makeValidIdentifier(v.Name())
 	if v.DefaultValue == nil {
-		g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
+		if useObjectConfig {
+			goType := g.argumentTypeName(configType, false)
+			g.Fgenf(w, "var %s %s\n", name, goType)
+			g.Fgenf(w, "cfg.%s%s(\"%s\", &%s)\n", getOrRequire, getType, v.LogicalName(), name)
+		} else {
+			g.Fgenf(w, "%s := cfg.%s%s(\"%s\")\n", name, getOrRequire, getType, v.LogicalName())
+		}
 	} else {
 		expr, temps := g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 		g.genTemps(w, temps)

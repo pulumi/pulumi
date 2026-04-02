@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ func TestSearch_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(t.Context(), []string{})
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)
@@ -131,7 +131,7 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), []string{})
+	err := cmd.Run(t.Context(), []string{})
 	require.NoError(t, err)
 
 	assert.Contains(t, buff.String(), name)

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -132,7 +132,8 @@ var Parallel = env.Int("PARALLEL",
 	"Allow P resource operations to run in parallel at once (1 for no parallelism)")
 
 var AccessToken = env.String("ACCESS_TOKEN",
-	"The access token used to authenticate with the Pulumi Service.")
+	"The access token used to authenticate with the Pulumi Service.",
+	env.Secret)
 
 var DisableSecretCache = env.Bool("DISABLE_SECRET_CACHE",
 	"Disable caching encryption operations for unchanged stack secrets.")
@@ -166,6 +167,9 @@ var (
 	DIYBackendNoLegacyWarning = env.Bool("DIY_BACKEND_NO_LEGACY_WARNING",
 		"Disables the warning about legacy stack files mixed with project-scoped stack files.",
 		env.Alternative("SELF_MANAGED_STATE_NO_LEGACY_WARNING"))
+
+	DIYBackendIgnoreDeprecationWarning = env.Bool("DIY_BACKEND_IGNORE_DEPRECATION_WARNING",
+		"Disables the warning about legacy stack mode being deprecated.")
 
 	DIYBackendLegacyLayout = env.Bool("DIY_BACKEND_LEGACY_LAYOUT",
 		"Uses the legacy layout for new buckets, which currently default to project-scoped stacks.",

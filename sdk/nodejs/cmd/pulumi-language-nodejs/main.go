@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -74,6 +75,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/tracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/netutil"
@@ -130,13 +132,19 @@ func main() {
 
 	args := flag.Args()
 	logging.InitLogging(false, 0, false)
-	cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 
-	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	if err := cmdutil.InitOtelTracing("pulumi-language-nodejs", otelEndpoint); err != nil {
-		logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+	// Use OTel when the CLI provides an OTLP endpoint; fall back to
+	// OpenTracing otherwise.  Only one system should be active to avoid
+	// duplicate spans.
+	otelEndpoint := os.Getenv("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
+	if otelEndpoint == "" {
+		cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
+	} else {
+		if err := cmdutil.InitOtelTracing("pulumi-language-nodejs", otelEndpoint); err != nil {
+			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+		}
+		defer cmdutil.CloseOtelTracing()
 	}
-	defer cmdutil.CloseOtelTracing()
 
 	// Optionally pluck out the engine so we can do logging, etc.
 	var engineAddress string
@@ -249,6 +257,8 @@ type nodeLanguageHost struct {
 	runtime       string
 	tracing       string
 	otelEndpoint  string
+	cancelCtx     context.Context    // Cancelled when we receive the `Cancel` RPC
+	cancelFunc    context.CancelFunc // Cancel the cancelCtx
 
 	// used by language conformance tests to force TSC usage
 	forceTsc bool
@@ -348,12 +358,15 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 func newLanguageHost(
 	engineAddress, runtime, tracing, otelEndpoint string, forceTsc bool,
 ) pulumirpc.LanguageRuntimeServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &nodeLanguageHost{
 		engineAddress: engineAddress,
 		tracing:       tracing,
 		otelEndpoint:  otelEndpoint,
 		forceTsc:      forceTsc,
 		runtime:       runtime,
+		cancelCtx:     ctx,
+		cancelFunc:    cancel,
 	}
 }
 
@@ -375,6 +388,43 @@ func (host *nodeLanguageHost) connectToEngine() (pulumirpc.EngineClient, io.Clos
 	// Make a client around that connection.
 	engineClient := pulumirpc.NewEngineClient(conn)
 	return engineClient, conn, nil
+}
+
+// minBunPulumiSDKVersion is the minimum @pulumi/pulumi version required for the bun runtime.
+var minBunPulumiSDKVersion = semver.MustParse("3.226.0")
+
+// checkPulumiSDKVersion verifies that the installed @pulumi/pulumi package meets the minimum version required by the
+// bun runtime.
+func checkPulumiSDKVersion(ctx context.Context, programDirectory string) error {
+	pm, err := npm.ResolvePackageManager(npm.BunPackageManager, programDirectory)
+	if err != nil {
+		return fmt.Errorf("could not resolve package manager: %w", err)
+	}
+
+	packages, err := pm.ListPackages(ctx, programDirectory, true /*transitive*/)
+	if err != nil {
+		logging.V(5).Infof("skipping @pulumi/pulumi version check: %v", err)
+		return nil
+	}
+
+	for _, pkg := range packages {
+		if pkg.Name == "@pulumi/pulumi" {
+			v, err := semver.Parse(pkg.Version)
+			if err != nil {
+				logging.V(5).Infof("skipping @pulumi/pulumi version check: could not parse version %q: %v",
+					pkg.Version, err)
+				continue
+			}
+			if v.LT(minBunPulumiSDKVersion) {
+				return fmt.Errorf("the bun runtime requires @pulumi/pulumi >= %s, but %s is installed; "+
+					"ensure all copies of @pulumi/pulumi are updated to >= %s and re-run `pulumi install`",
+					minBunPulumiSDKVersion, v, minBunPulumiSDKVersion)
+			}
+		}
+	}
+
+	logging.V(5).Info("skipping @pulumi/pulumi version check: package not found in lockfile")
+	return nil
 }
 
 func compatibleVersions(a, b semver.Version) (bool, string) {
@@ -758,6 +808,12 @@ func (host *nodeLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest
 		}, nil
 	}
 
+	if host.runtime == "bun" {
+		if err := checkPulumiSDKVersion(ctx, req.Info.ProgramDirectory); err != nil {
+			return &pulumirpc.RunResponse{Error: err.Error()}, nil
+		}
+	}
+
 	runPath := os.Getenv("PULUMI_LANGUAGE_NODEJS_RUN_PATH")
 	if runPath == "" {
 		runPath = defaultRunPath
@@ -843,18 +899,21 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	if err != nil {
 		return &pulumirpc.RunResponse{Error: err.Error()}
 	}
-	if host.runtime == "bun" {
-		runtimeArgs = append([]string{"run"}, runtimeArgs...)
-	}
 
 	var port int
+	var ready <-chan error // non-nil for bun debug; receives nil (or an error) when inspector is ready
 	if req.GetAttachDebugger() {
-		var debugArgs []string
-		port, debugArgs, err = getDebuggerPortAndFlags()
+		var debugArgs, debugEnv []string
+		port, debugArgs, debugEnv, ready, err = getDebuggerSetup(host.runtime)
 		if err != nil {
 			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
 		runtimeArgs = append(runtimeArgs, debugArgs...)
+		env = append(env, debugEnv...)
+	}
+
+	if host.runtime == "bun" {
+		runtimeArgs = append([]string{"run"}, runtimeArgs...)
 	}
 
 	runtimeArgs = append(runtimeArgs, args...)
@@ -887,13 +946,22 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	}
 
 	if host.otelEndpoint != "" {
-		env = append(env, "OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
+		env = append(env, "PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT="+host.otelEndpoint)
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	// #nosec G204
-	cmd := exec.CommandContext(ctx, runtimeBin, runtimeArgs...)
+	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
+	cmdCtx, cmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, cmdCancel)
+	cmd := exec.CommandContext(cmdCtx, runtimeBin, runtimeArgs...)
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 
 	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
 
@@ -916,7 +984,18 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 			return err
 		}
 		if req.GetAttachDebugger() {
-			err := startDebugging(ctx, engineClient, cmd, port, "Pulumi: Program (Node.js)")
+			if ready != nil {
+				select {
+				case err := <-ready:
+					if err != nil {
+						return err
+					}
+				case <-time.After(10 * time.Second):
+					return errors.New("timed out waiting for bun inspector to be ready")
+				}
+			}
+			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Program (%s)", host.runtime),
+				host.runtime)
 			if err != nil {
 				return err
 			}
@@ -1071,7 +1150,7 @@ func (host *nodeLanguageHost) InstallDependencies(
 
 	tracer := otel.Tracer("pulumi-language-nodejs")
 	ctx, otelSpan := tracer.Start(ctx, "InstallDependencies",
-		trace.WithAttributes(append(programInfoAttributes(req.Info),
+		trace.WithAttributes(append(tracing.ProgramInfoAttributes(req.Info),
 			attribute.Bool("useLanguageVersionTools", req.UseLanguageVersionTools),
 			attribute.Bool("isPlugin", req.IsPlugin),
 		)...),
@@ -1369,16 +1448,43 @@ func (host *nodeLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
-func getDebuggerPortAndFlags() (int, []string, error) {
-	port, err := netutil.FindNextAvailablePort(preferredPort)
+func getDebuggerSetup(runtime string) (
+	port int, flags []string, env []string, ready <-chan error, err error,
+) {
+	port, err = netutil.FindNextAvailablePort(preferredPort)
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to find available port for debugger: %w", err)
+		return 0, nil, nil, nil, fmt.Errorf("failed to find available port for debugger: %w", err)
+	}
+	if runtime == "bun" {
+		// BUN_INSPECT sets the inspector WebSocket address and mode (wait=1 starts execution and waits for the debugger
+		// to attach).
+		// BUN_INSPECT_NOTIFY is a TCP address bun connects to once the inspector is ready.
+		ln, lnErr := net.Listen("tcp", "127.0.0.1:0")
+		if lnErr != nil {
+			return 0, nil, nil, nil, fmt.Errorf("failed to create bun inspect notify listener: %w", lnErr)
+		}
+		notifyPort := ln.Addr().(*net.TCPAddr).Port
+		ch := make(chan error, 1)
+		go func() {
+			conn, connErr := ln.Accept()
+			if connErr != nil {
+				ch <- fmt.Errorf("bun inspect notify listener failed: %w", connErr)
+			} else {
+				contract.IgnoreClose(conn)
+				close(ch)
+			}
+			contract.IgnoreClose(ln)
+		}()
+		return port, nil, []string{
+			fmt.Sprintf("BUN_INSPECT=ws://127.0.0.1:%d?wait=1", port),
+			fmt.Sprintf("BUN_INSPECT_NOTIFY=tcp://127.0.0.1:%d", notifyPort),
+		}, ch, nil
 	}
 	return port, []string{
 		fmt.Sprintf("--inspect-brk=%d", port),
 		// suppress the console output "Debugger listening on..."
 		"--inspect-publish-uid=http",
-	}, nil
+	}, nil, nil, nil
 }
 
 func startDebugging(
@@ -1387,17 +1493,28 @@ func startDebugging(
 	cmd *exec.Cmd,
 	port int,
 	name string,
+	runtime string,
 ) error {
-	cfg := map[string]any{
-		"name":             name,
-		"type":             "node",
-		"request":          "attach",
-		"processId":        cmd.Process.Pid,
-		"continueOnAttach": true,
-		"skipFiles":        []any{"<node_internals>/**"},
-	}
-	if port != preferredPort {
-		cfg["port"] = port
+	var cfg map[string]any
+	if runtime == "bun" {
+		cfg = map[string]any{
+			"name":    name,
+			"type":    "bun",
+			"request": "attach",
+			"url":     fmt.Sprintf("ws://127.0.0.1:%d", port),
+		}
+	} else {
+		cfg = map[string]any{
+			"name":             name,
+			"type":             "node",
+			"request":          "attach",
+			"processId":        cmd.Process.Pid,
+			"continueOnAttach": true,
+			"skipFiles":        []any{"<node_internals>/**"},
+		}
+		if port != preferredPort {
+			cfg["port"] = port
+		}
 	}
 	debugConfig, err := structpb.NewStruct(cfg)
 	if err != nil {
@@ -1415,6 +1532,12 @@ func startDebugging(
 		return fmt.Errorf("unable to start debugging: %w", err)
 	}
 	return nil
+}
+
+func (host *nodeLanguageHost) RunPlugin2(
+	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
+) error {
+	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
 }
 
 func (host *nodeLanguageHost) RunPlugin(
@@ -1436,7 +1559,17 @@ func (host *nodeLanguageHost) RunPlugin(
 	// best effort close, but we try an explicit close and error check at the end as well
 	defer closer.Close()
 
-	nodeBin, err := exec.LookPath("node")
+	if host.runtime == "bun" {
+		if err := checkPulumiSDKVersion(ctx, req.Info.ProgramDirectory); err != nil {
+			return err
+		}
+	}
+
+	runtimeExec := host.runtime
+	if runtimeExec == "nodejs" {
+		runtimeExec = "node"
+	}
+	runtimeBin, err := exec.LookPath(runtimeExec)
 	if err != nil {
 		return err
 	}
@@ -1468,20 +1601,26 @@ func (host *nodeLanguageHost) RunPlugin(
 		}
 	}
 
-	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, nodeBin, true)
+	runPath, err = locateModule(ctx, runPath, req.Info.ProgramDirectory, runtimeBin, true)
 	if err != nil {
 		return err
 	}
 
-	args := []string{}
+	var args []string
 	var port int
+	var ready <-chan error
 	if req.GetAttachDebugger() {
-		var debugArgs []string
-		port, debugArgs, err = getDebuggerPortAndFlags()
+		var debugArgs, debugEnv []string
+		port, debugArgs, debugEnv, ready, err = getDebuggerSetup(host.runtime)
 		if err != nil {
 			return err
 		}
 		args = append(args, debugArgs...)
+		env = append(env, debugEnv...)
+	}
+
+	if host.runtime == "bun" {
+		args = append([]string{"run"}, args...)
 	}
 
 	args = append(args, runPath)
@@ -1537,7 +1676,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	}
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
-	cmd := exec.CommandContext(ctx, nodeBin, args...)
+	cmd := exec.CommandContext(ctx, runtimeBin, args...)
 	// node policy packs used to always run with the working directory set to the policy pack directory, not
 	// the main working directory. We need to continue that for backwards compatibility.
 	if req.Kind == string(apitype.AnalyzerPlugin) {
@@ -1555,7 +1694,17 @@ func (host *nodeLanguageHost) RunPlugin(
 			return err
 		}
 		if req.GetAttachDebugger() {
-			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
+			if ready != nil {
+				select {
+				case err := <-ready:
+					if err != nil {
+						return err
+					}
+				case <-time.After(10 * time.Second):
+					return errors.New("timed out waiting for bun inspector to be ready")
+				}
+			}
+			err := startDebugging(ctx, engineClient, cmd, port, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name), host.runtime)
 			if err != nil {
 				return err
 			}
@@ -2092,6 +2241,7 @@ func (host *nodeLanguageHost) Link(
 }
 
 func (host *nodeLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	host.cancelFunc()
 	return &emptypb.Empty{}, nil
 }
 
@@ -2115,13 +2265,5 @@ func setOptionsAttributes(opts nodeOptions) []attribute.KeyValue {
 		attribute.String("nodeOptions.packageManager", string(opts.packagemanager)),
 		attribute.String("nodeOptions.tsConfigPath", opts.tsconfigpath),
 		attribute.String("nodeOptions.nodeArgs", opts.nodeargs),
-	}
-}
-
-func programInfoAttributes(info *pulumirpc.ProgramInfo) []attribute.KeyValue {
-	return []attribute.KeyValue{
-		attribute.String("programInfo.entryPoint", info.EntryPoint),
-		attribute.String("programInfo.programDirectory", info.ProgramDirectory),
-		attribute.String("programInfo.rootDirectory", info.RootDirectory),
 	}
 }

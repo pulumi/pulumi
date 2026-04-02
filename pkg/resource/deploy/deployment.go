@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -106,6 +106,8 @@ type Options struct {
 	ContinueOnError bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
+	// true if the engine should display secrets in diagnostic messages.
+	ShowSecrets bool
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
