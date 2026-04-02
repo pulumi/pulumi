@@ -124,9 +124,7 @@ var expectedFailures = map[string]string{
 
 	"l3-component-config-primitives": "does not compile; missing necessary casts for pulumi inputs",
 	"l3-component-config-objects":    "does not compile; missing necessary casts for pulumi inputs",
-
-	"l2-resource-optional": "Ternary operator isn't resolving names correctly",
-	"l3-range-ref":         "fails with syntax errors",
+	"l3-range-ref":                   "fails with syntax errors",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

@@ -1253,6 +1253,8 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				return g.argumentTypeName(ut, isInput)
 			case *model.MapType:
 				return g.argumentTypeName(ut, isInput)
+			case *model.ListType:
+				return g.argumentTypeName(ut, isInput)
 			}
 		}
 		return "interface{}"
