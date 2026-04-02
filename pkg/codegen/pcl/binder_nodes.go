@@ -265,14 +265,14 @@ func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scop
 		scope := s.root.Push(attr)
 
 		properties := map[string]model.Type{
-			"urn":         model.StringType,
-			"id":          model.StringType,
-			"name":        model.StringType,
-			"type":        model.StringType,
-			"new_inputs":  model.NewMapType(model.DynamicType),
-			"old_inputs":  model.NewMapType(model.DynamicType),
-			"new_outputs": model.NewMapType(model.DynamicType),
-			"old_outputs": model.NewMapType(model.DynamicType),
+			"urn":        model.StringType,
+			"id":         model.StringType,
+			"name":       model.StringType,
+			"type":       model.StringType,
+			"newInputs":  model.NewMapType(model.DynamicType),
+			"oldInputs":  model.NewMapType(model.DynamicType),
+			"newOutputs": model.NewMapType(model.DynamicType),
+			"oldOutputs": model.NewMapType(model.DynamicType),
 		}
 
 		scope.Define("args", &model.Variable{
