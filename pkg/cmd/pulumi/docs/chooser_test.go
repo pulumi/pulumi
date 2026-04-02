@@ -231,11 +231,26 @@ func TestPreferencesGetSet(t *testing.T) {
 func TestFilterCodeBlocksByLanguage(t *testing.T) {
 	t.Parallel()
 
-	multiLangExample := "## Example Usage\n\n" +
-		"```typescript\nconsole.log('hello');\n```\n\n\n\n" +
-		"```python\nprint('hello')\n```\n\n\n\n" +
-		"```go\nfmt.Println(\"hello\")\n```\n\n" +
-		"## Next Section\n"
+	multiLangExample := `## Example Usage
+
+` + "```typescript" + `
+console.log('hello');
+` + "```" + `
+
+
+
+` + "```python" + `
+print('hello')
+` + "```" + `
+
+
+
+` + "```go" + `
+fmt.Println("hello")
+` + "```" + `
+
+## Next Section
+`
 
 	t.Run("filters to python", func(t *testing.T) {
 		t.Parallel()
@@ -264,7 +279,6 @@ func TestFilterCodeBlocksByLanguage(t *testing.T) {
 	t.Run("keeps all when language not found", func(t *testing.T) {
 		t.Parallel()
 		result := FilterCodeBlocksByLanguage(multiLangExample, "rust")
-		// All blocks kept since none match
 		assert.Contains(t, result, "```typescript")
 		assert.Contains(t, result, "```python")
 		assert.Contains(t, result, "```go")
@@ -274,8 +288,33 @@ func TestFilterCodeBlocksByLanguage(t *testing.T) {
 		t.Parallel()
 		content := "Some text\n\n```bash\necho hello\n```\n\nMore text\n\n```python\nx = 1\n```\n"
 		result := FilterCodeBlocksByLanguage(content, "python")
-		// These are separated by non-blank text, so they're independent
 		assert.Contains(t, result, "```bash")
 		assert.Contains(t, result, "```python")
+	})
+
+	t.Run("empty input", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "", FilterCodeBlocksByLanguage("", "python"))
+	})
+
+	t.Run("no language tag preserved", func(t *testing.T) {
+		t.Parallel()
+		content := "```\nplain code\n```\n"
+		result := FilterCodeBlocksByLanguage(content, "python")
+		assert.Equal(t, content, result)
+	})
+
+	t.Run("single code block not filtered", func(t *testing.T) {
+		t.Parallel()
+		content := "Text\n\n```python\nx = 1\n```\n\nMore text\n"
+		result := FilterCodeBlocksByLanguage(content, "go")
+		assert.Equal(t, content, result)
+	})
+
+	t.Run("unclosed fence does not panic", func(t *testing.T) {
+		t.Parallel()
+		content := "```python\nx = 1\n"
+		result := FilterCodeBlocksByLanguage(content, "python")
+		assert.Equal(t, content, result)
 	})
 }

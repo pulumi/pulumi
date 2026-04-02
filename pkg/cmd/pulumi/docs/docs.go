@@ -17,7 +17,6 @@ package docs
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -40,15 +39,6 @@ type docsCmd struct {
 func NewDocsCmd() *cobra.Command {
 	dc := &docsCmd{}
 
-	defaultBaseURL := "https://www.pulumi.com"
-	if envURL := os.Getenv("PULUMI_DOCS_BASE_URL"); envURL != "" {
-		defaultBaseURL = envURL
-	}
-	defaultRegistryURL := defaultBaseURL
-	if envURL := os.Getenv("PULUMI_REGISTRY_BASE_URL"); envURL != "" {
-		defaultRegistryURL = envURL
-	}
-
 	cmd := &cobra.Command{
 		Use:   "docs",
 		Short: "View Pulumi documentation in the terminal",
@@ -57,10 +47,10 @@ func NewDocsCmd() *cobra.Command {
 			"  pulumi docs read <path>        Read a specific page",
 	}
 
-	cmd.PersistentFlags().StringVar(&dc.baseURL, "base-url", defaultBaseURL,
-		"Base URL for Pulumi documentation (env: PULUMI_DOCS_BASE_URL)")
-	cmd.PersistentFlags().StringVar(&dc.registryBaseURL, "registry-base-url", defaultRegistryURL,
-		"Base URL for Pulumi registry (env: PULUMI_REGISTRY_BASE_URL)")
+	cmd.PersistentFlags().StringVar(&dc.baseURL, "base-url", "https://www.pulumi.com",
+		"Base URL for Pulumi documentation")
+	cmd.PersistentFlags().StringVar(&dc.registryBaseURL, "registry-base-url", "https://www.pulumi.com",
+		"Base URL for Pulumi registry")
 	cmd.PersistentFlags().MarkHidden("base-url")         //nolint:errcheck
 	cmd.PersistentFlags().MarkHidden("registry-base-url") //nolint:errcheck
 	cmd.PersistentFlags().StringVar(&dc.language, "language", "",
@@ -106,7 +96,7 @@ func (dc *docsCmd) newReadCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&dc.tocJSON, "toc-json", false,
 		"Output table of contents as JSON")
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{{Name: "path"}},
+		Arguments: []constrictor.Argument{{Name: "path", Usage: "path[#section]"}},
 	})
 	return cmd
 }
