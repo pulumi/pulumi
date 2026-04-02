@@ -98,8 +98,10 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-optional": "optional outputs are not assignable to optional inputs",
-	"l3-deferred-outputs":  "Cannot find name '_arg0_'.",
+	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
+	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
+	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").

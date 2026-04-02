@@ -104,6 +104,8 @@ I'll update the linked version of pulumi/pulumi in this module & remove the skip
 
 	"l3-deferred-outputs":   "incorrectly detects cycle",
 	"l3-range-parent-scope": "requires go.mod update to pick up the LookupVariable fix from pkg/",
+	//"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators",
 }
 
 func TestLanguage(t *testing.T) {
