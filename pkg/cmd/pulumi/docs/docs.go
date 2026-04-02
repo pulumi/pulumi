@@ -51,7 +51,7 @@ func NewDocsCmd() *cobra.Command {
 		"Base URL for Pulumi documentation")
 	cmd.PersistentFlags().StringVar(&dc.registryBaseURL, "registry-base-url", "https://www.pulumi.com",
 		"Base URL for Pulumi registry")
-	cmd.PersistentFlags().MarkHidden("base-url")         //nolint:errcheck
+	cmd.PersistentFlags().MarkHidden("base-url")          //nolint:errcheck
 	cmd.PersistentFlags().MarkHidden("registry-base-url") //nolint:errcheck
 	cmd.PersistentFlags().StringVar(&dc.language, "language", "",
 		"Filter code examples in docs by language (e.g., python, typescript, go); choice is remembered")
