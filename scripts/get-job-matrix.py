@@ -87,7 +87,6 @@ def is_performance_test(pkg: str) -> bool:
 # Keep this in sync with filters defined in .github/workflows/on-pr.yml.
 CODEGEN_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/pkg/v3/codegen/docs",
-    "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet",
     "github.com/pulumi/pulumi/pkg/v3/codegen/go",
     "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs",
     "github.com/pulumi/pulumi/pkg/v3/codegen/python",
