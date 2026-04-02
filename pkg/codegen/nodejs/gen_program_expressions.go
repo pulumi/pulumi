@@ -334,7 +334,6 @@ var functionImports = map[string][]string{
 	"filebase64":         {"fs"},
 	"filebase64sha256":   {"fs", "crypto"},
 	"readFile":           {"fs"},
-	"readDir":            {"fs"},
 	"sha1":               {"crypto"},
 }
 
@@ -476,8 +475,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "notImplemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "singleOrNone(%v)", expr.Args[0])
-	case "mimeType":
-		g.Fgenf(w, "mimeType(%v)", expr.Args[0])
 	case pcl.Call:
 		self := expr.Args[0]
 		method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
@@ -569,8 +566,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genRange(w, expr, false)
 	case "readFile":
 		g.Fgenf(w, "fs.readFileSync(%v, \"utf8\")", expr.Args[0])
-	case "readDir":
-		g.Fgenf(w, "fs.readdirSync(%v)", expr.Args[0])
 	case "secret":
 		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "unsecret":

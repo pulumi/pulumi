@@ -87,14 +87,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Assets and archives",
 	},
 	{
-		Directory:   "aws-s3-folder",
-		Description: "AWS S3 Folder",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8064]
-		//   TODO[pulumi/pulumi#8065]
-	},
-	{
 		Directory:   "aws-eks",
 		Description: "AWS EKS",
 	},

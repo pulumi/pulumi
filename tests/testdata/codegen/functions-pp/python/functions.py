@@ -1,7 +1,6 @@
 import pulumi
 import base64
 import hashlib
-import mimetypes
 import os
 import pulumi_aws as aws
 
@@ -28,12 +27,10 @@ plain_value = pulumi.Output.unsecret(secret_value)
 current_stack = pulumi.get_stack()
 current_project = pulumi.get_project()
 working_directory = os.getcwd()
-file_mime_type = mimetypes.guess_type("./base64.txt")[0]
 # using the filebase64 function
 first = aws.s3.BucketObject("first",
     bucket=bucket.id,
     source=pulumi.StringAsset((lambda path: base64.b64encode(open(path).read().encode()).decode())("./base64.txt")),
-    content_type=file_mime_type,
     tags={
         "stack": current_stack,
         "project": current_project,

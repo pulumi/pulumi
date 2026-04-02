@@ -480,8 +480,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "base64.StdEncoding.EncodeToString([]byte(%v))", expr.Args[0])
 	case fromBase64Fn:
 		g.Fgenf(w, "base64.StdEncoding.DecodeString(%v)", expr.Args[0])
-	case "mimeType":
-		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
 	case "sha1":
 		g.Fgenf(w, "sha1Hash(%v)", expr.Args[0])
 	case "goOptionalFloat64":
@@ -511,9 +509,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.Call:
 		g.genMethodCall(w, expr)
 	default:
-		// toJSON and readDir are reduced away, shouldn't see them here
-		reducedFunctions := codegen.NewStringSet("toJSON", "readDir")
-		contract.Assertf(!reducedFunctions.Has(expr.Name), "unlowered function %s", expr.Name)
+		// toJSON is reduced away, shouldn't see it here
+		contract.Assertf(expr.Name != "toJSON", "unlowered function %s", expr.Name)
 		// TODO: implement "element", "entries", "lookup", "split" and "range"
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -1435,19 +1432,15 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	expr, convertDiags := pcl.RewriteConversions(expr, typ)
 	expr, tTemps, ternDiags := g.rewriteTernaries(expr, g.ternaryTempSpiller)
 	expr, jTemps, jsonDiags := g.rewriteToJSON(expr)
-	expr, rTemps, readDirDiags := g.rewriteReadDir(expr, g.readDirTempSpiller)
 	expr, oTemps, optDiags := g.rewriteOptionals(expr, g.optionalSpiller)
 	expr, cTemps := g.rewriteInlineCalls(expr)
 
-	bufferSize := len(tTemps) + len(jTemps) + len(rTemps) + len(sTemps) + len(oTemps) + len(cTemps)
+	bufferSize := len(tTemps) + len(jTemps) + len(sTemps) + len(oTemps) + len(cTemps)
 	temps := slice.Prealloc[any](bufferSize)
 	for _, t := range tTemps {
 		temps = append(temps, t)
 	}
 	for _, t := range jTemps {
-		temps = append(temps, t)
-	}
-	for _, t := range rTemps {
 		temps = append(temps, t)
 	}
 	for _, t := range sTemps {
@@ -1462,7 +1455,6 @@ func (g *generator) lowerExpression(expr model.Expression, typ model.Type) (
 	diags = append(diags, convertDiags...)
 	diags = append(diags, ternDiags...)
 	diags = append(diags, jsonDiags...)
-	diags = append(diags, readDirDiags...)
 	diags = append(diags, splatDiags...)
 	diags = append(diags, optDiags...)
 	g.diagnostics = g.diagnostics.Extend(diags)
@@ -1653,8 +1645,6 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 
 var functionPackages = map[string][]string{
 	"join":             {"strings"},
-	"mimeType":         {"mime", "path"},
-	"readDir":          {"os"},
 	"readFile":         {"os"},
 	"filebase64":       {"encoding/base64", "os"},
 	"toBase64":         {"encoding/base64"},
