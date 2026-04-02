@@ -599,19 +599,25 @@ func TestProviderCancellation(t *testing.T) {
 
 func TestLanguageRuntimeCancellation(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO[https://github.com/pulumi/pulumi/issues/20325]: Flaky")
 
 	ctx, cancel := context.WithCancel(t.Context())
 
+	// The program cancels the deployment context then blocks until
+	// the engine acknowledges cancellation via the language runtime's
+	// Cancel method (called from SignalCancellation). Because the
+	// program is blocked, the source iterator stays blocked too, so
+	// the executor's event loop can only exit via ctx.Done() — no
+	// race with the source completion event.
+	shutdownCh := make(chan struct{})
 	gracefulShutdown := false
 	programF := func() plugin.LanguageRuntime {
 		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			time.Sleep(1 * time.Second)
 			cancel()
-
+			<-shutdownCh
 			return nil
 		}, func() {
 			gracefulShutdown = true
+			close(shutdownCh)
 		})
 	}
 
@@ -624,7 +630,7 @@ func TestLanguageRuntimeCancellation(t *testing.T) {
 	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 
 	assert.Error(t, err)
-	assert.Equal(t, err.Error(), "BAIL: canceled")
+	assert.Equal(t, "BAIL: canceled", err.Error())
 	assert.True(t, gracefulShutdown)
 }
 
