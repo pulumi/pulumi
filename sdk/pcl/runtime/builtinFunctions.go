@@ -258,6 +258,13 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
 			argsPV, dependsOn := unwrapOutputs(argsPV)
+			if fun != nil && fun.Inputs != nil && argsPV.IsObject() {
+				convertedArgs, err := convertInvokeInputObject(argsPV.ObjectValue(), fun.Inputs)
+				if err != nil {
+					return cty.NilVal, fmt.Errorf("convert invoke arguments: %w", err)
+				}
+				argsPV = resource.NewObjectProperty(convertedArgs)
+			}
 
 			marshalOpts := plugin.MarshalOptions{
 				KeepUnknowns:  true,

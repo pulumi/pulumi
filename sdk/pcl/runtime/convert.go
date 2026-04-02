@@ -24,6 +24,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
@@ -319,6 +320,166 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 		return resource.MakeSecret(pv), nil
 	}
 	return pv, nil
+}
+
+func convertInvokeInputObject(args resource.PropertyMap, inputType *schema.ObjectType) (resource.PropertyMap, error) {
+	schemaProperties := make(map[string]schema.Type, len(inputType.Properties))
+	for _, prop := range inputType.Properties {
+		schemaProperties[prop.Name] = prop.Type
+	}
+
+	converted := make(resource.PropertyMap, len(args))
+	for key, value := range args {
+		targetType, ok := schemaProperties[string(key)]
+		if !ok {
+			converted[key] = value
+			continue
+		}
+
+		convertedValue, err := convertPropertyValueForSchemaType(value, targetType)
+		if err != nil {
+			return nil, fmt.Errorf("property %q: %w", key, err)
+		}
+		converted[key] = convertedValue
+	}
+
+	return converted, nil
+}
+
+func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType schema.Type) (resource.PropertyValue, error) {
+	loop := true
+	for loop {
+		switch t := targetType.(type) {
+		case *schema.OptionalType:
+			targetType = t.ElementType
+		case *schema.InputType:
+			targetType = t.ElementType
+		default:
+			loop = false
+		}
+	}
+
+	if value.IsSecret() {
+		converted, err := convertPropertyValueForSchemaType(value.SecretValue().Element, targetType)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
+		return resource.MakeSecret(converted), nil
+	}
+
+	if value.IsOutput() {
+		out := value.OutputValue()
+		copied := resource.Output{
+			Element:      out.Element,
+			Known:        out.Known,
+			Secret:       out.Secret,
+			Dependencies: out.Dependencies,
+		}
+
+		if copied.Known {
+			converted, err := convertPropertyValueForSchemaType(copied.Element, targetType)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			}
+			copied.Element = converted
+		}
+		return resource.NewOutputProperty(copied), nil
+	}
+
+	if value.IsComputed() {
+		converted, err := convertPropertyValueForSchemaType(value.Input().Element, targetType)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
+		return resource.MakeComputed(converted), nil
+	}
+
+	switch t := targetType.(type) {
+	case *schema.ArrayType:
+		if !value.IsArray() {
+			return value, nil
+		}
+		arr := value.ArrayValue()
+		converted := make([]resource.PropertyValue, len(arr))
+		for i, elem := range arr {
+			v, err := convertPropertyValueForSchemaType(elem, t.ElementType)
+			if err != nil {
+				return resource.PropertyValue{}, fmt.Errorf("array index %d: %w", i, err)
+			}
+			converted[i] = v
+		}
+		return resource.NewArrayProperty(converted), nil
+	case *schema.MapType:
+		if !value.IsObject() {
+			return value, nil
+		}
+		obj := value.ObjectValue()
+		converted := make(resource.PropertyMap, len(obj))
+		for key, elem := range obj {
+			v, err := convertPropertyValueForSchemaType(elem, t.ElementType)
+			if err != nil {
+				return resource.PropertyValue{}, fmt.Errorf("map key %q: %w", key, err)
+			}
+			converted[key] = v
+		}
+		return resource.NewObjectProperty(converted), nil
+	case *schema.ObjectType:
+		if !value.IsObject() {
+			return value, nil
+		}
+		converted, err := convertInvokeInputObject(value.ObjectValue(), t)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
+		return resource.NewObjectProperty(converted), nil
+	case *schema.UnionType:
+		for _, elementType := range t.ElementTypes {
+			converted, err := convertPropertyValueForSchemaType(value, elementType)
+			if err == nil {
+				return converted, nil
+			}
+		}
+		return value, nil
+	case *schema.ResourceType:
+		return value, nil
+	}
+
+	switch targetType {
+	case schema.BoolType:
+		if value.IsBool() {
+			return value, nil
+		}
+		if value.IsString() {
+			converted, err := strconv.ParseBool(value.StringValue())
+			if err != nil {
+				return value, nil
+			}
+			return resource.NewBoolProperty(converted), nil
+		}
+	case schema.IntType, schema.NumberType:
+		if value.IsNumber() {
+			return value, nil
+		}
+		if value.IsString() {
+			converted, err := strconv.ParseFloat(value.StringValue(), 64)
+			if err != nil {
+				return value, nil
+			}
+			return resource.NewNumberProperty(converted), nil
+		}
+	case schema.StringType:
+		if value.IsString() {
+			return value, nil
+		}
+		if value.IsBool() {
+			return resource.NewStringProperty(strconv.FormatBool(value.BoolValue())), nil
+		}
+		if value.IsNumber() {
+			return resource.NewStringProperty(strconv.FormatFloat(value.NumberValue(), 'f', -1, 64)), nil
+		}
+	}
+
+	return value, nil
 }
 
 func propertyValueToCty(
