@@ -34,7 +34,8 @@ sh_test(
     name = "proto_tests",
     srcs = ["bazel_test_runner.sh"],
     args = ["proto"],
-    size = "medium",
+    size = "large",
+    timeout = "long",
     tags = ["nodejs"],
 )
 

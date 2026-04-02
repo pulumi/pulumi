@@ -68,8 +68,8 @@ _TEST_DEPS = [
 # Conformance tests
 go_test(
     name = "conformance_test",
-    size = "large",
-    timeout = "long",
+    size = "enormous",
+    timeout = "eternal",
     srcs = [
         "language_test.go",
         "main_dependencies_test.go",

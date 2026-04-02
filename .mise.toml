@@ -1,4 +1,5 @@
 [tools]
+bazelisk = "latest"
 github-cli = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = "latest"
 "go:golang.org/x/tools/gopls" = "latest"
@@ -27,3 +28,8 @@ dotnet = "8"
 
 [tool_alias]
 protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
+
+# Create 'bazel' symlink so 'mise exec -- bazel test //...' works
+[hooks.enter]
+shell = "bash"
+script = 'command -v bazelisk >/dev/null 2>&1 && ! command -v bazel >/dev/null 2>&1 && ln -sf "$(command -v bazelisk)" "$(dirname $(command -v bazelisk))/bazel" 2>/dev/null; true'

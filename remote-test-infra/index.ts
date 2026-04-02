@@ -54,7 +54,7 @@ const instance = new aws.ec2.Instance("test-runner", {
     vpcSecurityGroupIds: [securityGroup.id],
     userData: userdata,
     rootBlockDevice: {
-        volumeSize: 100,
+        volumeSize: 200,
         volumeType: "gp3",
     },
     tags: {

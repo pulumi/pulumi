@@ -13,7 +13,7 @@ apt-get update -y
 apt-get install -y git make gcc curl unzip jq rsync build-essential software-properties-common
 
 # ── Go 1.25 ──────────────────────────────────────────────────────────────────
-GO_VERSION="1.25.0"
+GO_VERSION="1.25.8"
 if [ ! -d /usr/local/go ]; then
     curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz
     tar -C /usr/local -xzf /tmp/go.tar.gz
@@ -74,6 +74,19 @@ if ! grep -q 'mise activate' "$TESTRUNNER_BASHRC" 2>/dev/null; then
     echo 'eval "$(/usr/local/bin/mise activate bash)"' >> "$TESTRUNNER_BASHRC"
     chown testrunner:testrunner "$TESTRUNNER_BASHRC"
 fi
+
+# ── Install tools as testrunner ───────────────────────────────────────────────
+su - testrunner -c '
+export PATH="/usr/local/go/bin:$HOME/go/bin:$HOME/.local/bin:$PATH"
+# bazelisk
+go install github.com/bazelbuild/bazelisk@latest
+ln -sf $HOME/go/bin/bazelisk $HOME/go/bin/bazel
+# uv + poetry
+curl -LsSf https://astral.sh/uv/install.sh | sh
+$HOME/.local/bin/uv tool install poetry
+# yarn
+sudo npm install -g yarn
+'
 
 # ── Signal completion ────────────────────────────────────────────────────────
 touch /tmp/userdata-complete
