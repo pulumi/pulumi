@@ -67,21 +67,18 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 		headings := docsrender.GetHeadings(node.body)
 		hasSections := len(headings) > 0 && node.body != ""
 
+		prefs := docsrender.LoadPreferences()
+
 		showFull := dc.fullPage
 		if !showFull && !dc.sectionsView {
-			prefs := docsrender.LoadPreferences()
-			showFull = prefs.BrowseMode == "full"
+			showFull = prefs.BrowseMode == docsrender.BrowseModeFull
 		}
 		useSections := hasSections && !showFull
 
-		if dc.fullPage || dc.sectionsView {
-			prefs := docsrender.LoadPreferences()
-			if dc.fullPage {
-				prefs.BrowseMode = "full"
-			} else {
-				prefs.BrowseMode = "sections"
-			}
-			docsrender.SavePreferences(prefs)
+		if dc.fullPage {
+			prefs.BrowseMode = docsrender.BrowseModeFull
+		} else if dc.sectionsView {
+			prefs.BrowseMode = docsrender.BrowseModeSections
 		}
 
 		var navItems []navOption
@@ -104,13 +101,10 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 				fmt.Print(docsrender.BrowseFooter(dc.baseURLForPath(path), path))
 				navItems = numberedNavLinks(links)
 			}
+			prefs.LastPage = path
 		}
 
-		if node.body != "" {
-			prefs := docsrender.LoadPreferences()
-			prefs.LastPage = path
-			docsrender.SavePreferences(prefs)
-		}
+		docsrender.SavePreferences(prefs)
 
 		if !cmdutil.Interactive() {
 			if node.body == "" && len(node.items) > 0 {
@@ -317,24 +311,29 @@ func (dc *docsCmd) resolveRegistryList() browseNode {
 func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 	node := browseNode{path: path}
 
+	// Parse API docs path and fetch bundle once for reuse below.
+	var pkgName, docKey string
+	var bundle *docsrender.CLIDocsBundle
 	if docsrender.IsAPIDocsPath(path) {
-		pkgName, docKey, ok := docsrender.ParseAPIDocsPath(path)
+		var ok bool
+		pkgName, docKey, ok = docsrender.ParseAPIDocsPath(path)
 		if ok {
-			bundle, bundleErr := docsrender.FetchCLIDocsBundle(dc.registryBaseURL, pkgName)
-			if bundleErr == nil {
-				if docKey != "" {
-					if b, t, found := docsrender.LookupBundleDoc(bundle, docKey); found {
-						node.body = b
-						node.title = t
-					}
-				}
-				if node.body == "" {
-					bundleNav := BundleNavItems(bundle, docKey, pkgName)
-					if len(bundleNav) > 0 {
-						node.items = bundleNav
-						node.bundleTable = docsrender.RenderBundleTable(bundle, docKey)
-					}
-				}
+			bundle, _ = docsrender.FetchCLIDocsBundle(dc.registryBaseURL, pkgName)
+		}
+	}
+
+	if bundle != nil {
+		if docKey != "" {
+			if b, t, found := docsrender.LookupBundleDoc(bundle, docKey); found {
+				node.body = b
+				node.title = t
+			}
+		}
+		if node.body == "" {
+			bundleNav := BundleNavItems(bundle, docKey, pkgName)
+			if len(bundleNav) > 0 {
+				node.items = bundleNav
+				node.bundleTable = docsrender.RenderBundleTable(bundle, docKey)
 			}
 		}
 	}
@@ -344,19 +343,14 @@ func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 		if err == nil {
 			node.body = body
 			node.title = title
-			if docsrender.IsAPIDocsPath(path) {
-				pkgName, docKey, ok := docsrender.ParseAPIDocsPath(path)
-				if ok {
-					if bundle, bundleErr := docsrender.FetchCLIDocsBundle(dc.registryBaseURL, pkgName); bundleErr == nil {
-						intro := docsrender.GetIntro(node.body)
-						node.body = docsrender.BuildAPIDocsPage(bundle, docKey, intro)
-						node.sectionNav = BundleSectionNav(bundle, docKey, pkgName)
-						node.bundleTable = docsrender.RenderBundleTable(bundle, docKey)
-						node.bundle = bundle
-						node.bundlePrefix = docKey
-					}
-				}
-			} else {
+			if bundle != nil {
+				intro := docsrender.GetIntro(node.body)
+				node.body = docsrender.BuildAPIDocsPage(bundle, docKey, intro)
+				node.sectionNav = BundleSectionNav(bundle, docKey, pkgName)
+				node.bundleTable = docsrender.RenderBundleTable(bundle, docKey)
+				node.bundle = bundle
+				node.bundlePrefix = docKey
+			} else if !docsrender.IsAPIDocsPath(path) {
 				node.body = docsrender.FormatPackageDetails(node.body)
 			}
 			node.items = nil

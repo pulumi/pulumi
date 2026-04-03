@@ -25,8 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// --- AST-based operations (take pre-parsed source + tree) ---
-
 // ExtractHeadings returns all headings found in the document in order.
 func ExtractHeadings(source []byte, tree ast.Node) []Heading {
 	var headings []Heading
@@ -101,8 +99,6 @@ func ExtractIntro(source []byte, tree ast.Node) []byte {
 	}
 	return renderNodes(source, nodes)
 }
-
-// --- String convenience wrappers (parse internally) ---
 
 // GetHeadings parses the markdown and returns top-level (H2) headings.
 func GetHeadings(md string) []Heading {

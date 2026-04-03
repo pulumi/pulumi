@@ -36,6 +36,13 @@ const (
 	// ANSI escape codes for terminal formatting.
 	ANSIBold  = "\033[1m"
 	ANSIReset = "\033[0m"
+
+	// Browse mode preferences.
+	BrowseModeFull     = "full"
+	BrowseModeSections = "sections"
+
+	// Special section slug for the introduction.
+	SectionIntroduction = "introduction"
 )
 
 // Heading represents an extracted heading from a markdown document.
@@ -133,7 +140,7 @@ func ContentPrefix(path string) (prefix, trimmedPath string) {
 
 // WebURL builds the full web URL for a content path, using the correct prefix.
 func WebURL(baseURL, path string) string {
-	base := strings.TrimRight(baseURL, "/")
+	base := normalizeBaseURL(baseURL)
 	prefix, trimmed := ContentPrefix(path)
 	if trimmed == "" {
 		return base + prefix

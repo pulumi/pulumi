@@ -20,6 +20,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -31,22 +32,42 @@ var HTTPClient = &http.Client{Timeout: 10 * time.Second}
 // BundleHTTPClient uses a longer timeout for large bundle downloads.
 var BundleHTTPClient = &http.Client{Timeout: 5 * time.Minute}
 
+// redirectClient follows no redirects so we can inspect 301/302 responses.
+var redirectClient = &http.Client{
+	Timeout: 10 * time.Second,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
 // sitemapCache provides session-level caching for sitemap fetches, keyed by URL.
 var sitemapCache sync.Map
 
 var metaRefreshRe = regexp.MustCompile(`(?i)url=([^"'>]+)`)
+
+func normalizeBaseURL(baseURL string) string {
+	return strings.TrimRight(baseURL, "/")
+}
+
+func userAgent() string {
+	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", runtime.GOOS, runtime.GOARCH)
+}
 
 // FetchDoc fetches a markdown doc page from the docs or registry site.
 // Returns the body (with frontmatter stripped) and the title.
 // If the markdown 404s, it tries the HTML page to find redirects or meta refreshes.
 // For registry paths that 404, returns a RegistryNotAvailableError.
 func FetchDoc(baseURL, path string) (body string, title string, err error) {
-	base := strings.TrimRight(baseURL, "/")
+	base := normalizeBaseURL(baseURL)
 	prefix, trimmedPath := ContentPrefix(path)
 	mdURL := fmt.Sprintf("%s%s%s/index.md", base, prefix, trimmedPath)
 
-	//nolint:gosec // URL is constructed from user-provided base URL and path
-	resp, err := HTTPClient.Get(mdURL)
+	req, err := http.NewRequest(http.MethodGet, mdURL, nil) //nolint:gosec // URL from user base URL
+	if err != nil {
+		return "", "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("User-Agent", userAgent())
+	resp, err := HTTPClient.Do(req)
 	if err != nil {
 		return "", "", fmt.Errorf("fetching docs: %w", err)
 	}
@@ -87,15 +108,8 @@ func resolveRedirect(base, path string) (string, error) {
 	prefix, trimmedPath := ContentPrefix(path)
 	htmlURL := fmt.Sprintf("%s%s%s/", base, prefix, trimmedPath)
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
 	//nolint:gosec // URL is constructed from user-provided base URL and path
-	resp, err := client.Get(htmlURL)
+	resp, err := redirectClient.Get(htmlURL)
 	if err != nil {
 		return "", err
 	}
@@ -170,20 +184,20 @@ type sitemapResponse struct {
 
 // FetchSitemap fetches the docs site navigation structure.
 func FetchSitemap(baseURL string) ([]SitemapPage, error) {
-	url := strings.TrimRight(baseURL, "/") + "/docs/cli-sitemap.json"
+	url := normalizeBaseURL(baseURL) + "/docs/cli-sitemap.json"
 	return fetchSitemapJSON(url, "sitemap")
 }
 
 // FetchRegistrySitemap fetches the top-level registry navigation (list of all packages).
 func FetchRegistrySitemap(baseURL string) ([]SitemapPage, error) {
-	url := strings.TrimRight(baseURL, "/") + "/registry/cli-sitemap.json"
+	url := normalizeBaseURL(baseURL) + "/registry/cli-sitemap.json"
 	return fetchSitemapJSON(url, "registry sitemap")
 }
 
 // FetchPackageSitemap fetches the per-package navigation for a registry package.
 func FetchPackageSitemap(baseURL, packageName string) ([]SitemapPage, error) {
 	url := fmt.Sprintf("%s/registry/packages/%s/cli-sitemap.json",
-		strings.TrimRight(baseURL, "/"), packageName)
+		normalizeBaseURL(baseURL), packageName)
 	return fetchSitemapJSON(url, "package sitemap for "+packageName)
 }
 

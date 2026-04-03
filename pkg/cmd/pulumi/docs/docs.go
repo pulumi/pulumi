@@ -239,7 +239,7 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 		}
 	}
 
-	if section == "introduction" {
+	if section == docsrender.SectionIntroduction {
 		body = docsrender.GetIntro(body)
 	} else if section != "" {
 		extracted := docsrender.GetSection(body, section)
@@ -361,7 +361,7 @@ func (dc *docsCmd) showTOC(body string, section *string) error {
 		}
 		var entries []tocEntry
 		if hasIntro {
-			entries = append(entries, tocEntry{Title: "Introduction", Slug: "introduction", Depth: 2})
+			entries = append(entries, tocEntry{Title: "Introduction", Slug: docsrender.SectionIntroduction, Depth: 2})
 		}
 		for _, h := range headings {
 			entries = append(entries, tocEntry{Title: h.Title, Slug: h.Slug, Depth: h.Level})
@@ -397,7 +397,7 @@ func (dc *docsCmd) showTOC(body string, section *string) error {
 		return nil
 	}
 	if selected == "Introduction" {
-		*section = "introduction"
+		*section = docsrender.SectionIntroduction
 		return nil
 	}
 	for _, h := range headings {

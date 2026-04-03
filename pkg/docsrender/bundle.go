@@ -118,7 +118,7 @@ func FetchCLIDocsBundle(baseURL, packageName string) (*CLIDocsBundle, error) {
 
 func fetchBundleHTTP(baseURL, packageName string) (*CLIDocsBundle, error) {
 	url := fmt.Sprintf("%s/registry/packages/%s/api-docs/cli-docs.json",
-		strings.TrimRight(baseURL, "/"), packageName)
+		normalizeBaseURL(baseURL), packageName)
 
 	//nolint:gosec // URL is constructed from user-provided base URL and package name
 	resp, err := BundleHTTPClient.Get(url)

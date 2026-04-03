@@ -261,7 +261,10 @@ func displayLang(lang string) string {
 	return lang
 }
 
-var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+var (
+	ansiRe         = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+	internalLinkRe = regexp.MustCompile(`\[([^\]\n]+)\]\((/(docs|registry)/[^\)\n]+)\)`)
+)
 
 func isVisuallyBlank(line string) bool {
 	return strings.TrimSpace(ansiRe.ReplaceAllString(line, "")) == ""
@@ -367,6 +370,16 @@ func parseNoteLine(trimmed string) (noteType, prefix, body string, ok bool) {
 	return strings.ToLower(m[2]), m[1], m[3], true
 }
 
+func isBlockStart(trimmed string) bool {
+	return strings.HasPrefix(trimmed, "#") ||
+		strings.HasPrefix(trimmed, ">") ||
+		strings.HasPrefix(trimmed, "---") ||
+		strings.HasPrefix(trimmed, "***") ||
+		strings.HasPrefix(trimmed, "___") ||
+		strings.HasPrefix(trimmed, "```") ||
+		strings.HasPrefix(trimmed, "|")
+}
+
 func isParagraphContinuation(line string) bool {
 	if line == "" {
 		return false
@@ -375,16 +388,10 @@ func isParagraphContinuation(line string) bool {
 	if trimmed == "" {
 		return false
 	}
-	if strings.HasPrefix(trimmed, "#") ||
-		strings.HasPrefix(trimmed, ">") ||
+	if isBlockStart(trimmed) ||
 		strings.HasPrefix(trimmed, "- ") ||
 		strings.HasPrefix(trimmed, "* ") ||
-		strings.HasPrefix(trimmed, "+ ") ||
-		strings.HasPrefix(trimmed, "---") ||
-		strings.HasPrefix(trimmed, "***") ||
-		strings.HasPrefix(trimmed, "___") ||
-		strings.HasPrefix(trimmed, "|") ||
-		strings.HasPrefix(trimmed, "```") {
+		strings.HasPrefix(trimmed, "+ ") {
 		return false
 	}
 	for j, ch := range trimmed {
@@ -404,19 +411,11 @@ func isMergeable(prev string) bool {
 	if trimmed == "" {
 		return false
 	}
-	if strings.HasPrefix(trimmed, "#") ||
-		strings.HasPrefix(trimmed, ">") ||
-		strings.HasPrefix(trimmed, "---") ||
-		strings.HasPrefix(trimmed, "***") ||
-		strings.HasPrefix(trimmed, "___") ||
-		strings.HasPrefix(trimmed, "```") ||
-		strings.HasPrefix(trimmed, "|") {
+	if isBlockStart(trimmed) {
 		return false
 	}
 	return !strings.HasSuffix(prev, "  ")
 }
-
-// --- AST-based operations (kept from original) ---
 
 // FilterCodeBlocksByLanguage filters fenced code blocks to keep only those
 // matching lang (or "sh"). Isolated code blocks not adjacent to other code
@@ -524,9 +523,8 @@ func NumberLinks(md string) (annotated string, links []Link) {
 		linkNum[l.URL] = i + 1
 	}
 
-	linkRe := regexp.MustCompile(`\[([^\]\n]+)\]\((/(docs|registry)/[^\)\n]+)\)`)
-	annotated = linkRe.ReplaceAllStringFunc(md, func(match string) string {
-		m := linkRe.FindStringSubmatch(match)
+	annotated = internalLinkRe.ReplaceAllStringFunc(md, func(match string) string {
+		m := internalLinkRe.FindStringSubmatch(match)
 		if m == nil {
 			return match
 		}
