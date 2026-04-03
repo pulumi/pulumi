@@ -15,6 +15,7 @@
 package diy
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -368,7 +369,6 @@ func TestStackTagsJSONFormat(t *testing.T) {
 	ref := createTestStackRef("myproject", "mystack")
 	ref.store = b.store
 
-	// Save tags
 	testTags := map[apitype.StackTagName]string{
 		"env":   "dev",
 		"owner": "team-foo",
@@ -377,12 +377,10 @@ func TestStackTagsJSONFormat(t *testing.T) {
 	err := b.saveStackTags(ctx, ref, testTags)
 	require.NoError(t, err)
 
-	// Read the raw JSON from storage and verify format
 	tagsPath := b.stackTagsPath(ref)
 	rawData, err := b.bucket.ReadAll(ctx, tagsPath)
 	require.NoError(t, err)
 
-	// Verify it's valid JSON with expected structure
 	var tagsFile stackTagsFile
 	err = json.Unmarshal(rawData, &tagsFile)
 	require.NoError(t, err)
@@ -390,10 +388,10 @@ func TestStackTagsJSONFormat(t *testing.T) {
 	assert.Equal(t, stackTagsVersion, tagsFile.Version)
 	assert.Equal(t, testTags, tagsFile.Tags)
 
-	// Verify the JSON is properly formatted (indented)
-	assert.Contains(t, string(rawData), "    ") // Should contain indentation
-	assert.Contains(t, string(rawData), "\"version\"")
-	assert.Contains(t, string(rawData), "\"tags\"")
+	trimmed := bytes.TrimSpace(rawData)
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, trimmed))
+	assert.Equal(t, compact.String(), string(trimmed))
 }
 
 func TestInvalidStackReference(t *testing.T) {
