@@ -893,7 +893,7 @@ func TestUnmarshalOutputNullElement(t *testing.T) {
 	// was not set. When the destination is a pointer type, unmarshalOutput must
 	// preserve the nil zero value rather than allocating a non-nil pointer to
 	// the zero value.
-	knownNull := resource.NewOutputProperty(resource.Output{
+	knownNull := resource.NewProperty(resource.Output{
 		Element: resource.NewNullProperty(),
 		Known:   true,
 	})
@@ -919,8 +919,8 @@ func TestUnmarshalOutputNullElement(t *testing.T) {
 	assert.Nil(t, ip, "expected nil *int for known output with null element")
 
 	// A known output with a non-null element should still allocate the pointer.
-	knownTrue := resource.NewOutputProperty(resource.Output{
-		Element: resource.NewBoolProperty(true),
+	knownTrue := resource.NewProperty(resource.Output{
+		Element: resource.NewProperty(true),
 		Known:   true,
 	})
 
