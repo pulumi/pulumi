@@ -29,8 +29,35 @@ const preferencesFile = "docs-preferences.json"
 type Preferences struct {
 	Language   string `json:"language,omitempty"`
 	OS         string `json:"os,omitempty"`
+	Cloud      string `json:"cloud,omitempty"`
 	LastPage   string `json:"lastPage,omitempty"`
 	BrowseMode string `json:"browseMode,omitempty"`
+}
+
+// Get returns the stored preference for the given chooser type.
+func (p *Preferences) Get(chooserType string) string {
+	switch chooserType {
+	case ChooserLanguage:
+		return p.Language
+	case ChooserOS:
+		return p.OS
+	case ChooserCloud:
+		return p.Cloud
+	default:
+		return ""
+	}
+}
+
+// Set updates the stored preference for the given chooser type.
+func (p *Preferences) Set(chooserType, value string) {
+	switch chooserType {
+	case ChooserLanguage:
+		p.Language = value
+	case ChooserOS:
+		p.OS = value
+	case ChooserCloud:
+		p.Cloud = value
+	}
 }
 
 // preferencesPath returns the path to the preferences file.

@@ -21,23 +21,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRenderMarkdownRaw(t *testing.T) {
+func TestRenderMarkdown(t *testing.T) {
 	t.Parallel()
 
-	content := "# Hello\n\nSome **bold** text."
-	result, err := RenderMarkdown(content, true)
-	require.NoError(t, err)
-	assert.Equal(t, content, result)
-}
-
-func TestRenderMarkdownGlamour(t *testing.T) {
-	t.Parallel()
-
-	content := "# Hello\n\nSome **bold** text."
-	result, err := RenderMarkdown(content, false)
+	body := "Some **bold** text."
+	result, err := RenderMarkdown("Hello", body)
 	require.NoError(t, err)
 	assert.NotEmpty(t, result)
 	assert.Contains(t, result, "Hello")
+}
+
+func TestRenderMarkdownNoTitle(t *testing.T) {
+	t.Parallel()
+
+	body := "# Already has title\n\nSome text."
+	result, err := RenderMarkdown("", body)
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
 }
 
 func TestFilterCodeBlocksByLanguageMultiLang(t *testing.T) {
@@ -101,37 +101,6 @@ More text.
 	assert.Contains(t, result, "key: value")
 }
 
-func TestFilterCodeBlocksNoLanguage(t *testing.T) {
-	t.Parallel()
-
-	source := []byte("```\nplain code\n```\n")
-	tree := ParseMarkdown(source)
-	result := string(FilterCodeBlocksByLanguage(source, tree, "python"))
-
-	assert.Contains(t, result, "plain code")
-}
-
-func TestFilterCodeBlocksEmptyInput(t *testing.T) {
-	t.Parallel()
-
-	source := []byte("")
-	tree := ParseMarkdown(source)
-	result := FilterCodeBlocksByLanguage(source, tree, "python")
-
-	assert.Empty(t, result)
-}
-
-func TestFilterCodeBlocksNoLang(t *testing.T) {
-	t.Parallel()
-
-	source := []byte("# Title\n\nSome text.\n")
-	tree := ParseMarkdown(source)
-	result := string(FilterCodeBlocksByLanguage(source, tree, ""))
-
-	assert.Contains(t, result, "# Title")
-	assert.Contains(t, result, "Some text.")
-}
-
 func TestExtractLinks(t *testing.T) {
 	t.Parallel()
 
@@ -150,12 +119,39 @@ And [Google](https://google.com).
 	}, links)
 }
 
-func TestExtractLinksNoLinks(t *testing.T) {
+func TestExtractInternalLinks(t *testing.T) {
 	t.Parallel()
 
-	source := []byte("Just plain text with no links.\n")
-	tree := ParseMarkdown(source)
-	links := ExtractLinks(source, tree)
+	md := `Check [Stacks](/docs/iac/concepts/stacks) and [Google](https://google.com).`
+	links := ExtractInternalLinks(md)
 
-	assert.Empty(t, links)
+	require.Len(t, links, 1)
+	assert.Equal(t, "/docs/iac/concepts/stacks", links[0].URL)
+}
+
+func TestNumberLinks(t *testing.T) {
+	t.Parallel()
+
+	md := `See [Stacks](/docs/stacks) and [Projects](/docs/projects).`
+	annotated, links := NumberLinks(md)
+
+	require.Len(t, links, 2)
+	assert.Contains(t, annotated, "🔗1")
+	assert.Contains(t, annotated, "🔗2")
+}
+
+func TestWebURL(t *testing.T) {
+	t.Parallel()
+
+	t.Run("docs path", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "https://www.pulumi.com/docs/iac/concepts/stacks/",
+			WebURL("https://www.pulumi.com", "iac/concepts/stacks"))
+	})
+
+	t.Run("registry path", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "https://www.pulumi.com/registry/packages/aws/",
+			WebURL("https://www.pulumi.com", "registry/packages/aws"))
+	})
 }

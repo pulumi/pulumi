@@ -25,6 +25,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// --- AST-based operations (take pre-parsed source + tree) ---
+
 // ExtractHeadings returns all headings found in the document in order.
 func ExtractHeadings(source []byte, tree ast.Node) []Heading {
 	var headings []Heading
@@ -50,7 +52,6 @@ func ExtractHeadings(source []byte, tree ast.Node) []Heading {
 // ExtractSection returns the markdown content for the section identified by slug.
 // A section starts at its heading and extends to the next heading of equal or higher
 // level (lower number), or to the end of the document. Returns nil if not found.
-// Slug matching is case-insensitive.
 func ExtractSection(source []byte, tree ast.Node, slug string) []byte {
 	slug = strings.ToLower(slug)
 
@@ -72,7 +73,6 @@ func ExtractSection(source []byte, tree ast.Node, slug string) []byte {
 		return nil
 	}
 
-	// Collect nodes from the heading until the next same-or-higher-level heading.
 	var nodes []ast.Node
 	for c := startNode; c != nil; c = c.NextSibling() {
 		if c != startNode {
@@ -102,7 +102,120 @@ func ExtractIntro(source []byte, tree ast.Node) []byte {
 	return renderNodes(source, nodes)
 }
 
-// headingPlainText extracts plain text from a heading, stripping inline formatting.
+// --- String convenience wrappers (parse internally) ---
+
+// GetHeadings parses the markdown and returns top-level (H2) headings.
+func GetHeadings(md string) []Heading {
+	source := []byte(md)
+	tree := ParseMarkdown(source)
+	all := ExtractHeadings(source, tree)
+	var h2s []Heading
+	for _, h := range all {
+		if h.Level == 2 {
+			h2s = append(h2s, h)
+		}
+	}
+	return h2s
+}
+
+// GetSection parses the markdown and returns the section content for the given slug.
+func GetSection(md, slug string) string {
+	source := []byte(md)
+	tree := ParseMarkdown(source)
+	section := ExtractSection(source, tree, slug)
+	if section == nil {
+		return ""
+	}
+	return string(section)
+}
+
+// GetIntro returns the content before the first heading.
+// If there is no text before the first heading, includes the first section.
+func GetIntro(md string) string {
+	source := []byte(md)
+	tree := ParseMarkdown(source)
+	intro := ExtractIntro(source, tree)
+	if intro != nil {
+		return string(intro)
+	}
+
+	// No text before first heading — include the first section.
+	headings := ExtractHeadings(source, tree)
+	if len(headings) == 0 {
+		return md
+	}
+	section := ExtractSection(source, tree, headings[0].Slug)
+	if section != nil {
+		return string(section)
+	}
+	return md
+}
+
+// IntroContainsFirstHeading returns true if the document starts with a heading
+// (no text before it), meaning the intro includes the first section.
+func IntroContainsFirstHeading(md string) bool {
+	source := []byte(md)
+	tree := ParseMarkdown(source)
+	return ExtractIntro(source, tree) == nil
+}
+
+// ExtractBundleTitle extracts the title from a "# Title" first line.
+func ExtractBundleTitle(content string) string {
+	if !strings.HasPrefix(content, "# ") {
+		return ""
+	}
+	if idx := strings.Index(content, "\n"); idx >= 0 {
+		return strings.TrimPrefix(content[:idx], "# ")
+	}
+	return strings.TrimPrefix(content, "# ")
+}
+
+// ExtractBundleDescription extracts the first sentence of the description.
+func ExtractBundleDescription(content string) string {
+	body := content
+	if strings.HasPrefix(body, "# ") {
+		if idx := strings.Index(body, "\n"); idx >= 0 {
+			body = body[idx+1:]
+		} else {
+			return ""
+		}
+	}
+	body = strings.TrimLeft(body, "\n")
+
+	if strings.HasPrefix(body, "> **Deprecated:") {
+		if idx := strings.Index(body, "\n"); idx >= 0 {
+			body = strings.TrimLeft(body[idx+1:], "\n")
+		}
+	}
+
+	if body == "" {
+		return ""
+	}
+
+	firstLine := body
+	if idx := strings.Index(body, "\n"); idx >= 0 {
+		firstLine = body[:idx]
+	}
+	firstLine = strings.TrimSpace(firstLine)
+
+	if strings.HasPrefix(firstLine, "#") || strings.HasPrefix(firstLine, "<!--") {
+		return ""
+	}
+
+	if idx := strings.Index(firstLine, ". "); idx >= 0 {
+		firstLine = firstLine[:idx+1]
+	}
+
+	const maxLen = 80
+	if len(firstLine) > maxLen {
+		firstLine = firstLine[:maxLen-3] + "..."
+	}
+
+	return firstLine
+}
+
+// --- Internal helpers ---
+
 func headingPlainText(source []byte, h *ast.Heading) string {
 	var buf bytes.Buffer
 	_ = ast.Walk(h, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -128,11 +241,9 @@ func headingPlainText(source []byte, h *ast.Heading) string {
 	return buf.String()
 }
 
-// renderNodes renders a slice of sibling AST nodes back to markdown.
 func renderNodes(source []byte, nodes []ast.Node) []byte {
 	doc := ast.NewDocument()
 	for _, n := range nodes {
-		// Detach from original parent before appending.
 		if n.Parent() != nil {
 			n.Parent().RemoveChild(n.Parent(), n)
 		}

@@ -15,6 +15,7 @@
 package docsrender
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 
@@ -26,6 +27,15 @@ import (
 const (
 	DefaultDocsBaseURL     = "https://www.pulumi.com"
 	DefaultRegistryBaseURL = "https://www.pulumi.com"
+
+	// Chooser type constants.
+	ChooserLanguage = "language"
+	ChooserOS       = "os"
+	ChooserCloud    = "cloud"
+
+	// ANSI escape codes for terminal formatting.
+	ANSIBold  = "\033[1m"
+	ANSIReset = "\033[0m"
 )
 
 // Heading represents an extracted heading from a markdown document.
@@ -41,13 +51,42 @@ type Link struct {
 	Title string
 }
 
+// SitemapPage represents a page in the docs site navigation.
+type SitemapPage struct {
+	Title     string        `json:"title"`
+	Path      string        `json:"path"`
+	SelfLabel string        `json:"selfLabel,omitempty"`
+	Children  []SitemapPage `json:"children,omitempty"`
+}
+
+// ViewLabel returns the label for viewing this page itself (when it has children).
+func (p SitemapPage) ViewLabel() string {
+	if p.SelfLabel != "" {
+		return p.SelfLabel
+	}
+	return "Introduction"
+}
+
+// RegistryNotAvailableError is returned when a registry page returns 404.
+type RegistryNotAvailableError struct {
+	Path string
+}
+
+func (e *RegistryNotAvailableError) Error() string {
+	return "registry docs not available for: " + e.Path
+}
+
 // ParseMarkdown parses markdown source into a goldmark AST.
 func ParseMarkdown(source []byte) ast.Node {
 	p := goldmark.DefaultParser()
 	return p.Parse(text.NewReader(source))
 }
 
-// slugify converts heading text to a URL-safe slug.
+// Slugify converts heading text to a URL-safe slug.
+func Slugify(title string) string {
+	return slugify(title)
+}
+
 func slugify(title string) string {
 	var b strings.Builder
 	prevHyphen := false
@@ -76,9 +115,28 @@ func IsRegistryPath(path string) bool {
 func IsAPIDocsPath(path string) bool {
 	p := strings.TrimPrefix(path, "/")
 	parts := strings.Split(p, "/")
-	// registry/packages/{pkg}/api-docs/...
-	if len(parts) >= 5 && parts[0] == "registry" && parts[1] == "packages" && parts[3] == "api-docs" {
-		return true
+	// Match both "registry/packages/{pkg}/api-docs" and "registry/packages/{pkg}/api-docs/{key}"
+	return len(parts) >= 4 && parts[0] == "registry" && parts[1] == "packages" && parts[3] == "api-docs"
+}
+
+// ContentPrefix returns the URL path prefix ("/docs/" or "/registry/") for a given path,
+// and the trimmed path with that prefix removed.
+func ContentPrefix(path string) (prefix, trimmedPath string) {
+	trimmedPath = strings.Trim(path, "/")
+	if IsRegistryPath(trimmedPath) {
+		after := strings.TrimPrefix(trimmedPath, "registry")
+		after = strings.TrimPrefix(after, "/")
+		return "/registry/", after
 	}
-	return false
+	return "/docs/", trimmedPath
+}
+
+// WebURL builds the full web URL for a content path, using the correct prefix.
+func WebURL(baseURL, path string) string {
+	base := strings.TrimRight(baseURL, "/")
+	prefix, trimmed := ContentPrefix(path)
+	if trimmed == "" {
+		return base + prefix
+	}
+	return fmt.Sprintf("%s%s%s/", base, prefix, trimmed)
 }
