@@ -324,6 +324,12 @@ func withNonInteractiveArg(args []string) []string {
 	out := slice.Prealloc[string](len(args))
 	seen := false
 	for _, a := range args {
+		if a == "--" && !seen {
+			// Insert --non-interactive before the "--" positional separator so
+			// that it is parsed as a flag rather than a positional argument.
+			out = append(out, "--non-interactive")
+			seen = true
+		}
 		out = append(out, a)
 		if a == "--non-interactive" {
 			seen = true
