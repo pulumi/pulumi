@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pkg/testing
+  description: Re-enable TestComponentProviderSchema tests for Go and Python using the plugin host framework
