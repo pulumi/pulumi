@@ -62,10 +62,12 @@ func parsePolicyConfigKey(key string) (packName, policyName string) {
 	return "", key
 }
 
-// mergePolicyConfig merges ESC-resolved policy config into the base API config.
-// API config (base) wins on conflict. Namespaced keys ("packName:policyName")
-// are only applied when packName matches the given pack name.
-// Returns a new map; neither input is mutated.
+// mergePolicyConfig merges ESC-resolved policy config into the base API config
+// using JSON merge patch semantics (RFC 7386), matching the stack config merge
+// behavior. API config (set by admins via the service) wins on conflict, but
+// ESC properties that don't conflict are preserved. Namespaced keys
+// ("packName:policyName") are only applied when packName matches the given pack
+// name. Returns a new map; neither input is mutated.
 func mergePolicyConfig(
 	base map[string]*json.RawMessage,
 	escConfig map[string]*json.RawMessage,
@@ -83,11 +85,42 @@ func mergePolicyConfig(
 		if packPrefix != "" && packPrefix != packName {
 			continue
 		}
-		if _, exists := merged[policyName]; !exists {
+		existing, exists := merged[policyName]
+		if !exists {
 			merged[policyName] = v
+		} else {
+			// Deep merge: ESC provides defaults, API config wins on conflict.
+			if deepMerged, err := deepMergePolicyJSON(existing, v); err == nil {
+				merged[policyName] = deepMerged
+			}
+			// On error, keep the API config value as-is.
 		}
 	}
 	return merged
+}
+
+// deepMergePolicyJSON deep-merges two JSON policy config blobs using JSON merge
+// patch semantics (RFC 7386). Properties in base (API config) take precedence
+// over override (ESC config). Override-only properties are preserved.
+// If either value is not a JSON object, base wins entirely.
+func deepMergePolicyJSON(base, override *json.RawMessage) (*json.RawMessage, error) {
+	var baseMap, overrideMap map[string]any
+	if err := json.Unmarshal(*base, &baseMap); err != nil {
+		return base, nil
+	}
+	if err := json.Unmarshal(*override, &overrideMap); err != nil {
+		return base, nil
+	}
+	// Start with ESC as defaults, then apply API config on top.
+	for k, v := range baseMap {
+		overrideMap[k] = v
+	}
+	result, err := json.Marshal(overrideMap)
+	if err != nil {
+		return nil, err
+	}
+	raw := json.RawMessage(result)
+	return &raw, nil
 }
 
 // RequiredPolicy represents a set of policies to apply during an update.

@@ -379,12 +379,31 @@ func TestMergePolicyConfig(t *testing.T) {
 		}, got)
 	})
 
-	t.Run("base wins on conflict", func(t *testing.T) {
+	t.Run("base wins on conflict for scalar values", func(t *testing.T) {
 		t.Parallel()
 		base := map[string]*json.RawMessage{"p": raw(`"base"`)}
 		esc := map[string]*json.RawMessage{"p": raw(`"esc"`)}
 		got := mergePolicyConfig(base, esc, "pack")
 		assert.Equal(t, map[string]*json.RawMessage{"p": raw(`"base"`)}, got)
+	})
+
+	t.Run("deep merge objects with API winning on conflict", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]*json.RawMessage{
+			"cost-policy": raw(`{"enforcement":"advisory","maxCost":100}`),
+		}
+		esc := map[string]*json.RawMessage{
+			"cost-policy": raw(`{"enforcement":"mandatory","minCost":10}`),
+		}
+		got := mergePolicyConfig(base, esc, "pack")
+		require.Contains(t, got, "cost-policy")
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(*got["cost-policy"], &m))
+		// API wins on conflict.
+		assert.Equal(t, "advisory", m["enforcement"])
+		assert.Equal(t, float64(100), m["maxCost"])
+		// ESC-only property is preserved.
+		assert.Equal(t, float64(10), m["minCost"])
 	})
 
 	t.Run("namespaced key matching pack is included", func(t *testing.T) {
