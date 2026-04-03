@@ -19,6 +19,8 @@
         "skipLibCheck": true
     },
     "files": [
+        "foo.ts",
+        "fooState.ts",
         "index.ts",
         "mainComponent.ts",
         "mod/component.ts",
