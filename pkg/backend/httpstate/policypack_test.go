@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -452,6 +453,103 @@ func TestResolveEnvironments(t *testing.T) {
 		// Raw keys pass through as-is; namespace parsing happens during merge in update.go.
 		assert.Contains(t, result.Config, "my-pack:cost-policy")
 		assert.Contains(t, result.Config, "naming-policy")
+	})
+
+	t.Run("files exports create temp files and inject paths", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockEnvironmentsBackend{
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return &esc.Environment{
+					Properties: map[string]esc.Value{
+						"files": {Value: map[string]esc.Value{
+							"KUBECONFIG": {Value: "apiVersion: v1\nkind: Config\n"},
+							"TLS_CERT":  {Value: "-----BEGIN CERTIFICATE-----\nMIIB...", Secret: true},
+						}},
+					},
+				}, nil, nil
+			},
+		}
+
+		rp := &cloudRequiredPolicy{
+			envs:    mock,
+			orgName: "org",
+			RequiredPolicy: apitype.RequiredPolicy{
+				Name:         "pack",
+				Environments: []string{"env"},
+			},
+		}
+
+		result, err := rp.ResolveEnvironments(t.Context())
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// File paths should be injected as environment variables.
+		kubePath := result.EnvironmentVariables["KUBECONFIG"]
+		tlsPath := result.EnvironmentVariables["TLS_CERT"]
+		require.NotEmpty(t, kubePath, "KUBECONFIG should have a temp file path")
+		require.NotEmpty(t, tlsPath, "TLS_CERT should have a temp file path")
+
+		// Temp files should exist and contain the expected content.
+		kubeContent, err := os.ReadFile(kubePath)
+		require.NoError(t, err)
+		assert.Equal(t, "apiVersion: v1\nkind: Config\n", string(kubeContent))
+
+		tlsContent, err := os.ReadFile(tlsPath)
+		require.NoError(t, err)
+		assert.Equal(t, "-----BEGIN CERTIFICATE-----\nMIIB...", string(tlsContent))
+
+		// Secret file content should be tracked.
+		assert.Contains(t, result.Secrets, "-----BEGIN CERTIFICATE-----\nMIIB...")
+
+		// Clean up temp files.
+		os.Remove(kubePath)
+		os.Remove(tlsPath)
+	})
+
+	t.Run("files and env vars are merged", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockEnvironmentsBackend{
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return &esc.Environment{
+					Properties: map[string]esc.Value{
+						"environmentVariables": {Value: map[string]esc.Value{
+							"AWS_REGION": {Value: "us-west-2"},
+						}},
+						"files": {Value: map[string]esc.Value{
+							"GOOGLE_CREDENTIALS": {Value: `{"type":"service_account"}`},
+						}},
+					},
+				}, nil, nil
+			},
+		}
+
+		rp := &cloudRequiredPolicy{
+			envs:    mock,
+			orgName: "org",
+			RequiredPolicy: apitype.RequiredPolicy{
+				Name:         "pack",
+				Environments: []string{"env"},
+			},
+		}
+
+		result, err := rp.ResolveEnvironments(t.Context())
+		require.NoError(t, err)
+		require.NotNil(t, result)
+
+		// Both env vars and file paths should be present.
+		assert.Equal(t, "us-west-2", result.EnvironmentVariables["AWS_REGION"])
+		credPath := result.EnvironmentVariables["GOOGLE_CREDENTIALS"]
+		require.NotEmpty(t, credPath)
+
+		content, err := os.ReadFile(credPath)
+		require.NoError(t, err)
+		assert.Equal(t, `{"type":"service_account"}`, string(content))
+
+		os.Remove(credPath)
 	})
 
 	t.Run("secrets are returned from environment", func(t *testing.T) {

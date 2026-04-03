@@ -20,8 +20,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -160,7 +162,7 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 	// Extract environment variables and secrets using the environment's typed
 	// accessors (GetEnvironmentVariables, GetTemporaryFiles). This mirrors the
 	// stack resolution path's use of cli.PrepareEnvironment.
-	envVars, secrets, tempFiles, err := prepareEnvironment(env)
+	envVars, secrets, _, err := prepareEnvironment(env)
 	if err != nil {
 		return nil, fmt.Errorf("preparing ESC environment for policy pack %q: %w", rp.RequiredPolicy.Name, err)
 	}
@@ -168,7 +170,6 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 		result.EnvironmentVariables = envVars
 	}
 	result.Secrets = secrets
-	result.TempFiles = tempFiles
 
 	return result, nil
 }
@@ -187,7 +188,6 @@ func buildImportsYAML(envRefs []string) []byte {
 // projections from a resolved ESC environment. This mirrors cli.PrepareEnvironment
 // from the esc package but avoids the import cycle (cli → httpstate).
 func prepareEnvironment(env *esc.Environment) (envVars map[string]string, secrets, tempFiles []string, err error) {
-	// Extract environment variables.
 	vars := env.GetEnvironmentVariables()
 	files := env.GetTemporaryFiles()
 
@@ -195,8 +195,13 @@ func prepareEnvironment(env *esc.Environment) (envVars map[string]string, secret
 		envVars = make(map[string]string, len(vars)+len(files))
 	}
 
-	for k, v := range vars {
-		s := v.Value.(string)
+	// Sort keys for deterministic output, matching cli.PrepareEnvironment.
+	for _, k := range slices.Sorted(maps.Keys(vars)) {
+		v := vars[k]
+		s, ok := v.Value.(string)
+		if !ok {
+			continue
+		}
 		envVars[k] = s
 		if v.Secret {
 			secrets = append(secrets, s)
@@ -204,26 +209,23 @@ func prepareEnvironment(env *esc.Environment) (envVars map[string]string, secret
 	}
 
 	// Create temporary files and map their paths as environment variables.
-	for k, v := range files {
-		s := v.Value.(string)
+	// Temp files persist for the process lifetime (matching the stack path).
+	for _, k := range slices.Sorted(maps.Keys(files)) {
+		v := files[k]
+		s, ok := v.Value.(string)
+		if !ok {
+			continue
+		}
 		if v.Secret {
 			secrets = append(secrets, s)
 		}
 
 		f, fErr := os.CreateTemp("", "esc-*")
 		if fErr != nil {
-			// Clean up any temp files already created.
-			for _, p := range tempFiles {
-				contract.IgnoreError(os.Remove(p))
-			}
 			return nil, nil, nil, fmt.Errorf("creating temporary file for %q: %w", k, fErr)
 		}
 		if _, fErr = f.Write([]byte(s)); fErr != nil {
 			contract.IgnoreClose(f)
-			contract.IgnoreError(os.Remove(f.Name()))
-			for _, p := range tempFiles {
-				contract.IgnoreError(os.Remove(p))
-			}
 			return nil, nil, nil, fmt.Errorf("writing temporary file for %q: %w", k, fErr)
 		}
 		contract.IgnoreClose(f)

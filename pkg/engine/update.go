@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -51,9 +50,6 @@ type ResolvedPolicyEnvironment struct {
 	EnvironmentVariables map[string]string
 	// Secrets are secret values from the environment that should be filtered from logs.
 	Secrets []string
-	// TempFiles are paths to temporary files created for files exports. Callers
-	// should clean these up when they are no longer needed.
-	TempFiles []string
 }
 
 // parsePolicyConfigKey splits a policyConfig key into an optional pack name
@@ -525,15 +521,6 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			if err != nil {
 				errs <- fmt.Errorf("resolving ESC environments for %q: %w", policy.Name(), err)
 				return
-			}
-
-			// Clean up temporary files created for files exports.
-			if resolved != nil && len(resolved.TempFiles) > 0 {
-				defer func() {
-					for _, f := range resolved.TempFiles {
-						contract.IgnoreError(os.Remove(f))
-					}
-				}()
 			}
 
 			// Create per-policy analyzer options with ESC environment variables.
