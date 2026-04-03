@@ -50,8 +50,9 @@ ignore:
   - "sdk/proto"
   - "sdk/python/lib/pulumi/runtime/proto"
 
-  # Ignore code generator for pulumix/applyn.go.
+  # Ignore code generators.
   - "sdk/go/internal/gen-pux-applyn"
+  - "sdk/nodejs/tools"
 
   # More generally, none of the test data
   # should count against coverage.

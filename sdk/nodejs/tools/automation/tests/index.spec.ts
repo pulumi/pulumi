@@ -22,6 +22,6 @@ describe("Command examples", () => {
     it("cancel", () => {
         const options: PulumiCancelOptions = {};
         const command = api.cancel(options, "my-stack");
-        assert.strictEqual(command, "pulumi cancel --non-interactive --yes -- my-stack");
+        assert.strictEqual(command, "pulumi cancel --yes -- my-stack");
     });
 });
