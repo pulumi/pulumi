@@ -124,7 +124,6 @@ var expectedFailures = map[string]string{
 
 	"l3-component-config-primitives": "does not compile; missing necessary casts for pulumi inputs",
 	"l3-component-config-objects":    "does not compile; missing necessary casts for pulumi inputs",
-
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
