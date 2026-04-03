@@ -44,34 +44,64 @@ func GetTerminalWidth() int {
 	return defaultWidth
 }
 
-// segment represents a piece of the document for rendering.
-type segment struct {
-	markdown  string
-	verbatim  string
-	isCode    bool
-	noteLabel string
-	noteBody  string
+// renderBlock represents a classified AST node group for rendering.
+type renderBlock struct {
+	kind     blockKind
+	nodes    []ast.Node // AST nodes to render
+	lang     string     // language for code blocks
+	noteType string     // "note", "warning", "tip" for note blocks
+}
+
+type blockKind int
+
+const (
+	blockMarkdown blockKind = iota
+	blockCode
+	blockNote
+)
+
+var noteLabels = map[string]string{
+	"note":    "ℹ️  Note",
+	"warning": "⚠️  Warning",
+	"tip":     "💡 Tip",
+}
+
+var noteStartRegex = regexp.MustCompile(`^\*{0,2}(Note|Warning|Tip):\*{0,2}\s*(.*)$`)
+
+var langDisplayNames = map[string]string{
+	"csharp": "C#", "bash": "Bash", "typescript": "TypeScript",
+	"javascript": "JavaScript", "python": "Python", "go": "Go",
+	"yaml": "YAML", "json": "JSON", "java": "Java",
+	"shell": "Shell", "sh": "Shell", "html": "HTML",
+	"css": "CSS", "sql": "SQL", "ts": "TypeScript",
+	"js": "JavaScript", "py": "Python",
+}
+
+func displayLang(lang string) string {
+	if name, ok := langDisplayNames[lang]; ok {
+		return name
+	}
+	return lang
 }
 
 // RenderMarkdown renders the given markdown body for terminal display
-// with note boxes, code block chrome, and glamour formatting.
+// using goldmark AST for structural analysis.
 func RenderMarkdown(title, body string) (string, error) {
 	fullMD := body
 	if title != "" && !strings.HasPrefix(strings.TrimSpace(fullMD), "# ") {
 		fullMD = fmt.Sprintf("# %s\n\n%s", title, fullMD)
 	}
 
+	source := []byte(fullMD)
+	tree := ParseMarkdown(source)
 	width := GetTerminalWidth()
-	segments := buildSegments(fullMD, width)
+	blocks := classifyBlocks(source, tree)
 
 	if !cmdutil.InteractiveTerminal() {
 		var buf strings.Builder
-		for _, seg := range segments {
-			if seg.markdown != "" {
-				buf.WriteString(seg.markdown)
-			} else {
-				buf.WriteString(seg.verbatim)
-			}
+		for _, b := range blocks {
+			buf.Write(renderNodesToMarkdown(source, b.nodes))
+			buf.WriteByte('\n')
 		}
 		return buf.String(), nil
 	}
@@ -85,25 +115,151 @@ func RenderMarkdown(title, body string) (string, error) {
 	}
 
 	var buf strings.Builder
-	for _, seg := range segments {
-		if seg.verbatim != "" {
-			buf.WriteString(seg.verbatim)
-		} else if seg.noteLabel != "" {
-			buf.WriteString(renderNoteBox(seg.noteLabel, seg.noteBody, width))
-		} else if seg.markdown != "" {
-			rendered, renderErr := glamourRenderer.Render(seg.markdown)
+	for _, b := range blocks {
+		switch b.kind {
+		case blockCode:
+			buf.WriteString(pageMargin + boxHeader(displayLang(b.lang), width-len(pageMargin)) + "\n")
+			codeMD := string(renderNodesToMarkdown(source, b.nodes))
+			rendered, renderErr := glamourRenderer.Render(codeMD)
 			if renderErr != nil {
-				buf.WriteString(seg.markdown)
+				buf.WriteString(codeMD)
 			} else {
-				if seg.isCode {
-					rendered = trimCodeBlock(rendered)
-				}
+				buf.WriteString(trimCodeBlock(rendered))
+			}
+			buf.WriteString("\n" + pageMargin + boxFooter(width-len(pageMargin)) + "\n")
+
+		case blockNote:
+			label := noteLabels[b.noteType]
+			noteMD := string(renderNodesToMarkdown(source, b.nodes))
+			// Strip the leading "> **Note:** " markup to get the body text.
+			noteBody := stripNotePrefix(noteMD)
+			buf.WriteString(renderNoteBox(label, noteBody, width))
+
+		case blockMarkdown:
+			md := string(renderNodesToMarkdown(source, b.nodes))
+			rendered, renderErr := glamourRenderer.Render(md)
+			if renderErr != nil {
+				buf.WriteString(md)
+			} else {
 				buf.WriteString(rendered)
 			}
 		}
 	}
 
 	return buf.String(), nil
+}
+
+// classifyBlocks walks top-level AST nodes and groups them into render blocks.
+func classifyBlocks(source []byte, tree ast.Node) []renderBlock {
+	var blocks []renderBlock
+	var mdNodes []ast.Node
+
+	flushMD := func() {
+		if len(mdNodes) > 0 {
+			blocks = append(blocks, renderBlock{kind: blockMarkdown, nodes: mdNodes})
+			mdNodes = nil
+		}
+	}
+
+	for c := tree.FirstChild(); c != nil; c = c.NextSibling() {
+		switch n := c.(type) {
+		case *ast.FencedCodeBlock:
+			flushMD()
+			lang := string(n.Language(source))
+			blocks = append(blocks, renderBlock{kind: blockCode, nodes: []ast.Node{c}, lang: lang})
+
+		case *ast.Blockquote:
+			if noteType := detectNoteType(source, n); noteType != "" {
+				flushMD()
+				blocks = append(blocks, renderBlock{kind: blockNote, nodes: []ast.Node{c}, noteType: noteType})
+			} else {
+				mdNodes = append(mdNodes, c)
+			}
+
+		default:
+			mdNodes = append(mdNodes, c)
+		}
+	}
+
+	flushMD()
+	return blocks
+}
+
+// detectNoteType checks if a blockquote is a note/warning/tip box.
+// Returns the note type ("note", "warning", "tip") or "" if not a note.
+func detectNoteType(source []byte, bq *ast.Blockquote) string {
+	first := bq.FirstChild()
+	if first == nil {
+		return ""
+	}
+	// Get the text of the first paragraph in the blockquote.
+	text := plainText(source, first)
+	m := noteStartRegex.FindStringSubmatch(text)
+	if m == nil {
+		return ""
+	}
+	return strings.ToLower(m[1])
+}
+
+// plainText extracts visible text from an AST node, stripping formatting.
+func plainText(source []byte, node ast.Node) string {
+	var buf bytes.Buffer
+	_ = ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		if t, ok := n.(*ast.Text); ok {
+			buf.Write(t.Segment.Value(source))
+		}
+		return ast.WalkContinue, nil
+	})
+	return buf.String()
+}
+
+// stripNotePrefix removes the "> **Note:** " style prefix from a blockquote's
+// rendered markdown, leaving just the body text.
+func stripNotePrefix(md string) string {
+	lines := strings.Split(md, "\n")
+	var result []string
+	for i, line := range lines {
+		stripped := strings.TrimPrefix(line, "> ")
+		stripped = strings.TrimPrefix(stripped, ">")
+		if i == 0 {
+			// Remove the "**Note:** " or "Note: " prefix from the first line.
+			for _, prefix := range []string{
+				"**Note:** ", "**Warning:** ", "**Tip:** ",
+				"Note: ", "Warning: ", "Tip: ",
+				"*Note:* ", "*Warning:* ", "*Tip:* ",
+			} {
+				if strings.HasPrefix(stripped, prefix) {
+					stripped = strings.TrimPrefix(stripped, prefix)
+					break
+				}
+			}
+		}
+		if strings.TrimSpace(stripped) != "" || i > 0 {
+			result = append(result, stripped)
+		}
+	}
+	return strings.TrimSpace(strings.Join(result, "\n"))
+}
+
+// renderNodesToMarkdown renders a slice of AST nodes back to markdown text.
+func renderNodesToMarkdown(source []byte, nodes []ast.Node) []byte {
+	doc := ast.NewDocument()
+	for _, n := range nodes {
+		if n.Parent() != nil {
+			n.Parent().RemoveChild(n.Parent(), n)
+		}
+		doc.AppendChild(doc, n)
+	}
+
+	md := &markdown.Renderer{}
+	r := renderer.NewRenderer(renderer.WithNodeRenderers(util.Prioritized(md, 100)))
+	var buf bytes.Buffer
+	err := r.Render(&buf, source, doc)
+	contract.AssertNoErrorf(err, "rendering nodes to markdown")
+	return bytes.TrimRight(buf.Bytes(), "\n")
 }
 
 func renderNoteBox(label, body string, width int) string {
@@ -134,140 +290,13 @@ func renderNoteBox(label, body string, width int) string {
 	return buf.String()
 }
 
-func buildSegments(md string, width int) []segment {
-	md = joinSoftWraps(md)
-	lines := strings.Split(md, "\n")
-	var segments []segment
-	var mdBuf strings.Builder
-	inCodeBlock := false
-
-	flushCode := false
-	flushMD := func() {
-		if mdBuf.Len() > 0 {
-			segments = append(segments, segment{markdown: mdBuf.String(), isCode: flushCode})
-			mdBuf.Reset()
-			flushCode = false
-		}
-	}
-
-	i := 0
-	for i < len(lines) {
-		line := lines[i]
-		trimmed := strings.TrimSpace(line)
-
-		if !inCodeBlock {
-			if noteType, prefix, body, ok := parseNoteLine(trimmed); ok {
-				flushMD()
-				label := noteLabels[noteType]
-
-				var parts []string
-				if body != "" {
-					parts = append(parts, body)
-				}
-				i++
-				for i < len(lines) {
-					next := strings.TrimSpace(lines[i])
-					if strings.HasPrefix(next, prefix+" ") || next == prefix {
-						content := strings.TrimPrefix(next, prefix+" ")
-						content = strings.TrimPrefix(content, prefix)
-						content = strings.TrimSpace(content)
-						if content != "" {
-							parts = append(parts, content)
-						}
-						i++
-					} else {
-						break
-					}
-				}
-
-				fullText := strings.Join(parts, " ")
-				segments = append(segments, segment{noteLabel: label, noteBody: fullText})
-				continue
-			}
-		}
-
-		if strings.HasPrefix(trimmed, "```") {
-			if !inCodeBlock {
-				flushMD()
-				lang := strings.TrimPrefix(trimmed, "```")
-				lang = strings.TrimSpace(lang)
-				border := pageMargin + boxHeader(displayLang(lang), width-len(pageMargin)) + "\n"
-				segments = append(segments, segment{verbatim: border})
-				flushCode = true
-				mdBuf.WriteString(line + "\n")
-				inCodeBlock = true
-			} else {
-				mdBuf.WriteString(line + "\n")
-				flushMD()
-				segments = append(segments, segment{verbatim: "\n" + pageMargin + boxFooter(width-len(pageMargin)) + "\n"})
-				inCodeBlock = false
-			}
-			i++
-			continue
-		}
-
-		mdBuf.WriteString(line + "\n")
-		i++
-	}
-
-	flushMD()
-	return segments
-}
-
-func joinSoftWraps(md string) string {
-	lines := strings.Split(md, "\n")
-	var out []string
-	inCodeBlock := false
-
-	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "```") {
-			inCodeBlock = !inCodeBlock
-			out = append(out, line)
-			continue
-		}
-		if inCodeBlock {
-			out = append(out, line)
-			continue
-		}
-		if isParagraphContinuation(line) && len(out) > 0 && isMergeable(out[len(out)-1]) {
-			out[len(out)-1] = out[len(out)-1] + " " + line
-		} else {
-			out = append(out, line)
-		}
-	}
-	return strings.Join(out, "\n")
-}
-
-var noteLabels = map[string]string{
-	"note":    "ℹ️  Note",
-	"warning": "⚠️  Warning",
-	"tip":     "💡 Tip",
-}
-
-var langDisplayNames = map[string]string{
-	"csharp": "C#", "bash": "Bash", "typescript": "TypeScript",
-	"javascript": "JavaScript", "python": "Python", "go": "Go",
-	"yaml": "YAML", "json": "JSON", "java": "Java",
-	"shell": "Shell", "sh": "Shell", "html": "HTML",
-	"css": "CSS", "sql": "SQL", "ts": "TypeScript",
-	"js": "JavaScript", "py": "Python",
-}
-
-func displayLang(lang string) string {
-	if name, ok := langDisplayNames[lang]; ok {
-		return name
-	}
-	return lang
-}
-
 var (
-	ansiRe         = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+	ansiRegex      = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 	internalLinkRe = regexp.MustCompile(`\[([^\]\n]+)\]\((/(docs|registry)/[^\)\n]+)\)`)
 )
 
 func isVisuallyBlank(line string) bool {
-	return strings.TrimSpace(ansiRe.ReplaceAllString(line, "")) == ""
+	return strings.TrimSpace(ansiRegex.ReplaceAllString(line, "")) == ""
 }
 
 func trimCodeBlock(s string) string {
@@ -328,8 +357,7 @@ func BrowseFooter(baseURL, path string) string {
 }
 
 // PrintHeadingWithTable renders a heading through glamour, then prints
-// pre-formatted table lines with the glamour margin. This is used when
-// table content must bypass glamour to preserve columnar formatting.
+// pre-formatted table lines with the page margin.
 func PrintHeadingWithTable(heading, table string) {
 	headingMD := "## " + heading
 	rendered, err := RenderMarkdown("", headingMD)
@@ -358,63 +386,6 @@ func FindSectionBounds(body, heading string) (start, afterHeading, end int) {
 		endIdx = after + nextH
 	}
 	return idx, after, endIdx
-}
-
-var noteStartRe = regexp.MustCompile(`^([>|])\s*\*{0,2}(Note|Warning|Tip):\*{0,2}\s*(.*)$`)
-
-func parseNoteLine(trimmed string) (noteType, prefix, body string, ok bool) {
-	m := noteStartRe.FindStringSubmatch(trimmed)
-	if m == nil {
-		return "", "", "", false
-	}
-	return strings.ToLower(m[2]), m[1], m[3], true
-}
-
-func isBlockStart(trimmed string) bool {
-	return strings.HasPrefix(trimmed, "#") ||
-		strings.HasPrefix(trimmed, ">") ||
-		strings.HasPrefix(trimmed, "---") ||
-		strings.HasPrefix(trimmed, "***") ||
-		strings.HasPrefix(trimmed, "___") ||
-		strings.HasPrefix(trimmed, "```") ||
-		strings.HasPrefix(trimmed, "|")
-}
-
-func isParagraphContinuation(line string) bool {
-	if line == "" {
-		return false
-	}
-	trimmed := strings.TrimSpace(line)
-	if trimmed == "" {
-		return false
-	}
-	if isBlockStart(trimmed) ||
-		strings.HasPrefix(trimmed, "- ") ||
-		strings.HasPrefix(trimmed, "* ") ||
-		strings.HasPrefix(trimmed, "+ ") {
-		return false
-	}
-	for j, ch := range trimmed {
-		if ch >= '0' && ch <= '9' {
-			continue
-		}
-		if ch == '.' && j > 0 && j < len(trimmed)-1 && trimmed[j+1] == ' ' {
-			return false
-		}
-		break
-	}
-	return true
-}
-
-func isMergeable(prev string) bool {
-	trimmed := strings.TrimSpace(prev)
-	if trimmed == "" {
-		return false
-	}
-	if isBlockStart(trimmed) {
-		return false
-	}
-	return !strings.HasSuffix(prev, "  ")
 }
 
 // FilterCodeBlocksByLanguage filters fenced code blocks to keep only those
