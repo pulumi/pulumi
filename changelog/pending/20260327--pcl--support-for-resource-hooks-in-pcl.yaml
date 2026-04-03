@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pcl
+  description: Support for resource hooks in PCL
