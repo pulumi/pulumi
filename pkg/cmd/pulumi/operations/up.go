@@ -731,7 +731,7 @@ func NewUpCmd() *cobra.Command {
 				summary,
 			)
 
-			if formatNormalized == "json" {
+			if format == "json" {
 				if perr := ui.PrintOperationSummaryJSON(summary); perr != nil && err == nil {
 					err = perr
 				}
@@ -821,6 +821,8 @@ func NewUpCmd() *cobra.Command {
 	cmd.Flags().StringVar(
 		&format, "format", "default",
 		"Output format. Supported values are: default, json")
+	// Hide --format while the feature is still being developed.
+	_ = cmd.Flags().MarkHidden("format")
 	cmd.MarkFlagsMutuallyExclusive("json", "format")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
