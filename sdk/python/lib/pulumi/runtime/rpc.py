@@ -982,12 +982,20 @@ def deserialize_resource(
         str(ref_struct["packageVersion"]) if "packageVersion" in ref_struct else ""
     )
 
-    urn_parts = urn_util._parse_urn(urn)
-    urn_name = urn_parts.urn_name
-    typ = urn_parts.typ
-    pkg_name = urn_parts.pkg_name
-    mod_name = urn_parts.mod_name
-    typ_name = urn_parts.typ_name
+    # New engines send type and name as distinct fields.
+    urn_name = str(ref_struct["name"]) if "name" in ref_struct else None
+    typ = str(ref_struct["type"]) if "type" in ref_struct else None
+
+    # Old engines don't and we have to parse the URN.
+    if urn_name is None or typ is None:
+        urn_parts = urn_util._parse_urn(urn)
+        urn_name = urn_parts.urn_name
+        typ = urn_parts.typ
+
+    typ_parts = typ.split(":")
+    pkg_name = typ_parts[0]
+    mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
+    typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
 
     is_provider = pkg_name == "pulumi" and mod_name == "providers"
     if is_provider:

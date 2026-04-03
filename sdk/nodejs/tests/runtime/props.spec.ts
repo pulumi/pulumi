@@ -496,6 +496,33 @@ describe("runtime", () => {
             assert.ok((<CustomResource>deserialized["custom"]).__pulumiCustomResource);
             assert.deepEqual(deserialized["unregistered"], unregisteredID);
         });
+        it("deserializes resource references using explicit name and type", async () => {
+            runtime.setMocks(new TestMocks());
+            state.getStore().supportsResourceReferences = true;
+            runtime.registerResourceModule("test", "index", new TestResourceModule());
+
+            const custom = new TestCustomResource("test");
+            const customURN = await custom.urn.promise();
+            const customID = await custom.id.promise();
+
+            const outputs = {
+                custom: {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    urn: customURN,
+                    id: customID,
+                    name: "name::from::field",
+                    type: "test:index:custom",
+                },
+            };
+
+            const deserialized = runtime.deserializeProperty(outputs);
+            const customRef = <CustomResource>deserialized["custom"];
+
+            assert.ok(customRef.__pulumiCustomResource);
+            assert.strictEqual(customRef.__name, "name::from::field");
+            assert.strictEqual(customRef.__pulumiType, "test:index:custom");
+            assert.strictEqual(await customRef.urn.promise(), customURN);
+        });
     });
 
     describe("resource error handling", () => {
