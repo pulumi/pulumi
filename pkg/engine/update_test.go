@@ -406,6 +406,26 @@ func TestMergePolicyConfig(t *testing.T) {
 		assert.Equal(t, float64(10), m["minCost"])
 	})
 
+	t.Run("deep merge nested objects recursively", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]*json.RawMessage{
+			"cost-policy": raw(`{"rules":{"a":1,"shared":"base"}}`),
+		}
+		esc := map[string]*json.RawMessage{
+			"cost-policy": raw(`{"rules":{"b":2,"shared":"esc"}}`),
+		}
+		got := mergePolicyConfig(base, esc, "pack")
+		require.Contains(t, got, "cost-policy")
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(*got["cost-policy"], &m))
+		rules := m["rules"].(map[string]any)
+		// Both sides' unique keys are present.
+		assert.Equal(t, float64(1), rules["a"])
+		assert.Equal(t, float64(2), rules["b"])
+		// Base (API) wins on conflict.
+		assert.Equal(t, "base", rules["shared"])
+	})
+
 	t.Run("namespaced key matching pack is included", func(t *testing.T) {
 		t.Parallel()
 		esc := map[string]*json.RawMessage{"my-pack:cost-policy": raw(`true`)}

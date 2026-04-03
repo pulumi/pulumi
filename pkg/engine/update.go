@@ -99,9 +99,11 @@ func mergePolicyConfig(
 	return merged
 }
 
-// deepMergePolicyJSON deep-merges two JSON policy config blobs using JSON merge
-// patch semantics (RFC 7386). Properties in base (API config) take precedence
-// over override (ESC config). Override-only properties are preserved.
+// deepMergePolicyJSON recursively merges two JSON policy config blobs.
+// Properties in base (API config) take precedence over override (ESC config).
+// Override-only properties are preserved. When both sides have an object at the
+// same key, the merge recurses. This matches the stack config merge behavior
+// (object.Merge in sdk/go/common/resource/config/object.go).
 // If either value is not a JSON object, base wins entirely.
 func deepMergePolicyJSON(base, override *json.RawMessage) (*json.RawMessage, error) {
 	var baseMap, overrideMap map[string]any
@@ -111,16 +113,32 @@ func deepMergePolicyJSON(base, override *json.RawMessage) (*json.RawMessage, err
 	if err := json.Unmarshal(*override, &overrideMap); err != nil {
 		return base, nil
 	}
-	// Start with ESC as defaults, then apply API config on top.
-	for k, v := range baseMap {
-		overrideMap[k] = v
-	}
+	deepMergeMap(overrideMap, baseMap)
 	result, err := json.Marshal(overrideMap)
 	if err != nil {
 		return nil, err
 	}
 	raw := json.RawMessage(result)
 	return &raw, nil
+}
+
+// deepMergeMap recursively merges src into dst. Values in src take precedence.
+// When both src and dst have a map[string]any at the same key, the merge recurses.
+func deepMergeMap(dst, src map[string]any) {
+	for k, sv := range src {
+		dv, exists := dst[k]
+		if !exists {
+			dst[k] = sv
+			continue
+		}
+		srcMap, srcOk := sv.(map[string]any)
+		dstMap, dstOk := dv.(map[string]any)
+		if srcOk && dstOk {
+			deepMergeMap(dstMap, srcMap)
+		} else {
+			dst[k] = sv
+		}
+	}
 }
 
 // RequiredPolicy represents a set of policies to apply during an update.
