@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/pulumi/esc"
-	escclient "github.com/pulumi/esc/cmd/esc/cli/client"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -46,19 +45,19 @@ import (
 
 type cloudRequiredPolicy struct {
 	apitype.RequiredPolicy
-	client    *client.Client
-	escClient escclient.Client
-	orgName   string
+	client  *client.Client
+	envs    backend.EnvironmentsBackend
+	orgName string
 }
 
 var _ engine.RequiredPolicy = (*cloudRequiredPolicy)(nil)
 
-func newCloudRequiredPolicy(client *client.Client, escClient escclient.Client,
+func newCloudRequiredPolicy(client *client.Client, envs backend.EnvironmentsBackend,
 	policy apitype.RequiredPolicy, orgName string,
 ) *cloudRequiredPolicy {
 	return &cloudRequiredPolicy{
 		client:         client,
-		escClient:      escClient,
+		envs:           envs,
 		RequiredPolicy: policy,
 		orgName:        orgName,
 	}
@@ -134,7 +133,7 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 	// This reuses the ESC composition model to handle ordering and merging.
 	yaml := buildImportsYAML(rp.Environments)
 
-	id, diags, err := rp.escClient.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour)
+	env, diags, err := rp.envs.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour)
 	if err != nil {
 		return nil, fmt.Errorf("opening ESC environments for policy pack %q: %w", rp.RequiredPolicy.Name, err)
 	}
@@ -145,11 +144,6 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 		}
 		return nil, fmt.Errorf(
 			"opening ESC environments for policy pack %q:\n%s", rp.RequiredPolicy.Name, diagMsgs.String())
-	}
-
-	env, err := rp.escClient.GetAnonymousOpenEnvironment(ctx, rp.orgName, id)
-	if err != nil {
-		return nil, fmt.Errorf("getting resolved ESC environment for policy pack %q: %w", rp.RequiredPolicy.Name, err)
 	}
 
 	result := &engine.ResolvedPolicyEnvironment{}
@@ -163,13 +157,18 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 		result.Config = policyConfig
 	}
 
-	// Extract environmentVariables from the resolved environment.
-	if envVarsVal, ok := env.Properties["environmentVariables"]; ok {
-		envVars := escValueToStringMap(envVarsVal)
-		if len(envVars) > 0 {
-			result.EnvironmentVariables = envVars
-		}
+	// Extract environment variables and secrets using the environment's typed
+	// accessors (GetEnvironmentVariables, GetTemporaryFiles). This mirrors the
+	// stack resolution path's use of cli.PrepareEnvironment.
+	envVars, secrets, tempFiles, err := prepareEnvironment(env)
+	if err != nil {
+		return nil, fmt.Errorf("preparing ESC environment for policy pack %q: %w", rp.RequiredPolicy.Name, err)
 	}
+	if len(envVars) > 0 {
+		result.EnvironmentVariables = envVars
+	}
+	result.Secrets = secrets
+	result.TempFiles = tempFiles
 
 	return result, nil
 }
@@ -182,6 +181,58 @@ func buildImportsYAML(envRefs []string) []byte {
 		fmt.Fprintf(&buf, "  - %s\n", ref)
 	}
 	return buf.Bytes()
+}
+
+// prepareEnvironment extracts environment variables, secrets, and temporary file
+// projections from a resolved ESC environment. This mirrors cli.PrepareEnvironment
+// from the esc package but avoids the import cycle (cli → httpstate).
+func prepareEnvironment(env *esc.Environment) (envVars map[string]string, secrets, tempFiles []string, err error) {
+	// Extract environment variables.
+	vars := env.GetEnvironmentVariables()
+	files := env.GetTemporaryFiles()
+
+	if len(vars) > 0 || len(files) > 0 {
+		envVars = make(map[string]string, len(vars)+len(files))
+	}
+
+	for k, v := range vars {
+		s := v.Value.(string)
+		envVars[k] = s
+		if v.Secret {
+			secrets = append(secrets, s)
+		}
+	}
+
+	// Create temporary files and map their paths as environment variables.
+	for k, v := range files {
+		s := v.Value.(string)
+		if v.Secret {
+			secrets = append(secrets, s)
+		}
+
+		f, fErr := os.CreateTemp("", "esc-*")
+		if fErr != nil {
+			// Clean up any temp files already created.
+			for _, p := range tempFiles {
+				contract.IgnoreError(os.Remove(p))
+			}
+			return nil, nil, nil, fmt.Errorf("creating temporary file for %q: %w", k, fErr)
+		}
+		if _, fErr = f.Write([]byte(s)); fErr != nil {
+			contract.IgnoreClose(f)
+			contract.IgnoreError(os.Remove(f.Name()))
+			for _, p := range tempFiles {
+				contract.IgnoreError(os.Remove(p))
+			}
+			return nil, nil, nil, fmt.Errorf("writing temporary file for %q: %w", k, fErr)
+		}
+		contract.IgnoreClose(f)
+
+		tempFiles = append(tempFiles, f.Name())
+		envVars[k] = f.Name()
+	}
+
+	return envVars, secrets, tempFiles, nil
 }
 
 // escValueToConfigMap converts an esc.Value representing policyConfig into the
@@ -203,21 +254,6 @@ func escValueToConfigMap(val esc.Value) (map[string]*json.RawMessage, error) {
 		result[k] = &raw
 	}
 	return result, nil
-}
-
-// escValueToStringMap converts an esc.Value expected to be a map of string keys to string values.
-func escValueToStringMap(val esc.Value) map[string]string {
-	m, ok := val.Value.(map[string]esc.Value)
-	if !ok {
-		return nil
-	}
-	result := make(map[string]string, len(m))
-	for k, v := range m {
-		if s, ok := v.Value.(string); ok {
-			result[k] = s
-		}
-	}
-	return result
 }
 
 // escValueToInterface recursively converts an esc.Value to a plain Go any for JSON serialization.

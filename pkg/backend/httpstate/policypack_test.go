@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/pulumi/esc"
-	escclient "github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,52 +136,6 @@ func TestEscValueToInterface(t *testing.T) {
 	}
 }
 
-func TestEscValueToStringMap(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		input    esc.Value
-		expected map[string]string
-	}{
-		{
-			name:     "non-map returns nil",
-			input:    esc.Value{Value: "not a map"},
-			expected: nil,
-		},
-		{
-			name: "string values extracted",
-			input: esc.Value{Value: map[string]esc.Value{
-				"FOO": {Value: "bar"},
-				"BAZ": {Value: "qux"},
-			}},
-			expected: map[string]string{"FOO": "bar", "BAZ": "qux"},
-		},
-		{
-			name: "non-string values filtered out",
-			input: esc.Value{Value: map[string]esc.Value{
-				"STR":  {Value: "hello"},
-				"BOOL": {Value: true},
-				"NUM":  {Value: json.Number("42")},
-			}},
-			expected: map[string]string{"STR": "hello"},
-		},
-		{
-			name:     "empty map",
-			input:    esc.Value{Value: map[string]esc.Value{}},
-			expected: map[string]string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := escValueToStringMap(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestEscValueToConfigMap(t *testing.T) {
 	t.Parallel()
 
@@ -223,27 +176,29 @@ func TestEscValueToConfigMap(t *testing.T) {
 	})
 }
 
-// mockESCClient implements the subset of escclient.Client used by ResolveEnvironments.
-// We embed the interface to satisfy the full contract and only override the methods we need.
-type mockESCClient struct {
-	escclient.Client
-
+// mockEnvironmentsBackend implements backend.EnvironmentsBackend for testing.
+type mockEnvironmentsBackend struct {
 	openYAMLEnvironmentF func(
 		ctx context.Context, org string, yaml []byte, duration time.Duration,
-	) (string, []escclient.EnvironmentDiagnostic, error)
-	getAnonymousOpenEnvironmentF func(ctx context.Context, org, id string) (*esc.Environment, error)
+	) (*esc.Environment, apitype.EnvironmentDiagnostics, error)
 }
 
-func (m *mockESCClient) OpenYAMLEnvironment(
+func (m *mockEnvironmentsBackend) CreateEnvironment(
+	context.Context, string, string, string, []byte,
+) (apitype.EnvironmentDiagnostics, error) {
+	return nil, nil
+}
+
+func (m *mockEnvironmentsBackend) CheckYAMLEnvironment(
+	context.Context, string, []byte,
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+	return nil, nil, nil
+}
+
+func (m *mockEnvironmentsBackend) OpenYAMLEnvironment(
 	ctx context.Context, org string, yaml []byte, duration time.Duration,
-) (string, []escclient.EnvironmentDiagnostic, error) {
+) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 	return m.openYAMLEnvironmentF(ctx, org, yaml, duration)
-}
-
-func (m *mockESCClient) GetAnonymousOpenEnvironment(
-	ctx context.Context, org, id string,
-) (*esc.Environment, error) {
-	return m.getAnonymousOpenEnvironmentF(ctx, org, id)
 }
 
 func TestResolveEnvironments(t *testing.T) {
@@ -264,17 +219,12 @@ func TestResolveEnvironments(t *testing.T) {
 
 	t.Run("resolves policyConfig and environmentVariables", func(t *testing.T) {
 		t.Parallel()
-		mock := &mockESCClient{
+		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				_ context.Context, org string, yaml []byte, _ time.Duration,
-			) (string, []escclient.EnvironmentDiagnostic, error) {
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				assert.Equal(t, "test-org", org)
 				assert.Contains(t, string(yaml), "prod/policy-config")
-				return "open-id-123", nil, nil
-			},
-			getAnonymousOpenEnvironmentF: func(_ context.Context, org, id string) (*esc.Environment, error) {
-				assert.Equal(t, "test-org", org)
-				assert.Equal(t, "open-id-123", id)
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
 						"policyConfig": {Value: map[string]esc.Value{
@@ -286,13 +236,13 @@ func TestResolveEnvironments(t *testing.T) {
 							"AWS_REGION": {Value: "us-west-2"},
 						}},
 					},
-				}, nil
+				}, nil, nil
 			},
 		}
 
 		rp := &cloudRequiredPolicy{
-			escClient: mock,
-			orgName:   "test-org",
+			envs:    mock,
+			orgName: "test-org",
 			RequiredPolicy: apitype.RequiredPolicy{
 				Name:         "test-pack",
 				Environments: []string{"prod/policy-config"},
@@ -310,23 +260,23 @@ func TestResolveEnvironments(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, float64(1000), configVal["maxMonthlyCost"])
 
-		// Verify environmentVariables were extracted.
-		assert.Equal(t, map[string]string{"AWS_REGION": "us-west-2"}, result.EnvironmentVariables)
+		// Verify environmentVariables were extracted via PrepareEnvironment.
+		assert.Equal(t, "us-west-2", result.EnvironmentVariables["AWS_REGION"])
 	})
 
 	t.Run("OpenYAMLEnvironment error", func(t *testing.T) {
 		t.Parallel()
-		mock := &mockESCClient{
+		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
-			) (string, []escclient.EnvironmentDiagnostic, error) {
-				return "", nil, errors.New("connection refused")
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return nil, nil, errors.New("connection refused")
 			},
 		}
 
 		rp := &cloudRequiredPolicy{
-			escClient: mock,
-			orgName:   "test-org",
+			envs:    mock,
+			orgName: "test-org",
 			RequiredPolicy: apitype.RequiredPolicy{
 				Name:         "test-pack",
 				Environments: []string{"env1"},
@@ -341,19 +291,19 @@ func TestResolveEnvironments(t *testing.T) {
 
 	t.Run("diagnostics returned as error", func(t *testing.T) {
 		t.Parallel()
-		mock := &mockESCClient{
+		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
-			) (string, []escclient.EnvironmentDiagnostic, error) {
-				return "", []escclient.EnvironmentDiagnostic{
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return nil, apitype.EnvironmentDiagnostics{
 					{Summary: "unknown environment 'prod/missing'"},
 				}, nil
 			},
 		}
 
 		rp := &cloudRequiredPolicy{
-			escClient: mock,
-			orgName:   "test-org",
+			envs:    mock,
+			orgName: "test-org",
 			RequiredPolicy: apitype.RequiredPolicy{
 				Name:         "test-pack",
 				Environments: []string{"prod/missing"},
@@ -365,55 +315,25 @@ func TestResolveEnvironments(t *testing.T) {
 		assert.Contains(t, err.Error(), "unknown environment")
 	})
 
-	t.Run("GetAnonymousOpenEnvironment error", func(t *testing.T) {
-		t.Parallel()
-		mock := &mockESCClient{
-			openYAMLEnvironmentF: func(
-				context.Context, string, []byte, time.Duration,
-			) (string, []escclient.EnvironmentDiagnostic, error) {
-				return "id", nil, nil
-			},
-			getAnonymousOpenEnvironmentF: func(context.Context, string, string) (*esc.Environment, error) {
-				return nil, errors.New("not found")
-			},
-		}
-
-		rp := &cloudRequiredPolicy{
-			escClient: mock,
-			orgName:   "test-org",
-			RequiredPolicy: apitype.RequiredPolicy{
-				Name:         "test-pack",
-				Environments: []string{"env1"},
-			},
-		}
-
-		_, err := rp.ResolveEnvironments(t.Context())
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "getting resolved ESC environment")
-	})
-
 	t.Run("only policyConfig no envVars", func(t *testing.T) {
 		t.Parallel()
-		mock := &mockESCClient{
+		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
-			) (string, []escclient.EnvironmentDiagnostic, error) {
-				return "id", nil, nil
-			},
-			getAnonymousOpenEnvironmentF: func(context.Context, string, string) (*esc.Environment, error) {
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
 						"policyConfig": {Value: map[string]esc.Value{
 							"p1": {Value: "simple"},
 						}},
 					},
-				}, nil
+				}, nil, nil
 			},
 		}
 
 		rp := &cloudRequiredPolicy{
-			escClient: mock,
-			orgName:   "org",
+			envs:    mock,
+			orgName: "org",
 			RequiredPolicy: apitype.RequiredPolicy{
 				Name:         "pack",
 				Environments: []string{"env"},
@@ -429,26 +349,23 @@ func TestResolveEnvironments(t *testing.T) {
 
 	t.Run("only envVars no policyConfig", func(t *testing.T) {
 		t.Parallel()
-		mock := &mockESCClient{
+		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
-			) (string, []escclient.EnvironmentDiagnostic, error) {
-				return "id", nil, nil
-			},
-			getAnonymousOpenEnvironmentF: func(context.Context, string, string) (*esc.Environment, error) {
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
 						"environmentVariables": {Value: map[string]esc.Value{
 							"KEY": {Value: "val"},
 						}},
 					},
-				}, nil
+				}, nil, nil
 			},
 		}
 
 		rp := &cloudRequiredPolicy{
-			escClient: mock,
-			orgName:   "org",
+			envs:    mock,
+			orgName: "org",
 			RequiredPolicy: apitype.RequiredPolicy{
 				Name:         "pack",
 				Environments: []string{"env"},
@@ -464,19 +381,14 @@ func TestResolveEnvironments(t *testing.T) {
 
 	t.Run("resolves version-pinned environment references", func(t *testing.T) {
 		t.Parallel()
-		mock := &mockESCClient{
+		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				_ context.Context, org string, yaml []byte, _ time.Duration,
-			) (string, []escclient.EnvironmentDiagnostic, error) {
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				assert.Equal(t, "test-org", org)
 				yamlStr := string(yaml)
 				assert.Contains(t, yamlStr, "prod/policy-config@v2.1.0")
 				assert.Contains(t, yamlStr, "shared/base@stable")
-				return "open-id-456", nil, nil
-			},
-			getAnonymousOpenEnvironmentF: func(_ context.Context, org, id string) (*esc.Environment, error) {
-				assert.Equal(t, "test-org", org)
-				assert.Equal(t, "open-id-456", id)
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
 						"policyConfig": {Value: map[string]esc.Value{
@@ -485,13 +397,13 @@ func TestResolveEnvironments(t *testing.T) {
 							}},
 						}},
 					},
-				}, nil
+				}, nil, nil
 			},
 		}
 
 		rp := &cloudRequiredPolicy{
-			escClient: mock,
-			orgName:   "test-org",
+			envs:    mock,
+			orgName: "test-org",
 			RequiredPolicy: apitype.RequiredPolicy{
 				Name:         "test-pack",
 				Environments: []string{"prod/policy-config@v2.1.0", "shared/base@stable"},
@@ -506,13 +418,10 @@ func TestResolveEnvironments(t *testing.T) {
 
 	t.Run("namespaced policyConfig keys pass through", func(t *testing.T) {
 		t.Parallel()
-		mock := &mockESCClient{
+		mock := &mockEnvironmentsBackend{
 			openYAMLEnvironmentF: func(
 				context.Context, string, []byte, time.Duration,
-			) (string, []escclient.EnvironmentDiagnostic, error) {
-				return "id", nil, nil
-			},
-			getAnonymousOpenEnvironmentF: func(context.Context, string, string) (*esc.Environment, error) {
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
 				return &esc.Environment{
 					Properties: map[string]esc.Value{
 						"policyConfig": {Value: map[string]esc.Value{
@@ -524,13 +433,13 @@ func TestResolveEnvironments(t *testing.T) {
 							}},
 						}},
 					},
-				}, nil
+				}, nil, nil
 			},
 		}
 
 		rp := &cloudRequiredPolicy{
-			escClient: mock,
-			orgName:   "org",
+			envs:    mock,
+			orgName: "org",
 			RequiredPolicy: apitype.RequiredPolicy{
 				Name:         "my-pack",
 				Environments: []string{"env"},
@@ -543,5 +452,42 @@ func TestResolveEnvironments(t *testing.T) {
 		// Raw keys pass through as-is; namespace parsing happens during merge in update.go.
 		assert.Contains(t, result.Config, "my-pack:cost-policy")
 		assert.Contains(t, result.Config, "naming-policy")
+	})
+
+	t.Run("secrets are returned from environment", func(t *testing.T) {
+		t.Parallel()
+		mock := &mockEnvironmentsBackend{
+			openYAMLEnvironmentF: func(
+				context.Context, string, []byte, time.Duration,
+			) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+				return &esc.Environment{
+					Properties: map[string]esc.Value{
+						"environmentVariables": {Value: map[string]esc.Value{
+							"SECRET_KEY": {
+								Value:  "super-secret-value",
+								Secret: true,
+							},
+							"PLAIN_KEY": {Value: "plain-value"},
+						}},
+					},
+				}, nil, nil
+			},
+		}
+
+		rp := &cloudRequiredPolicy{
+			envs:    mock,
+			orgName: "org",
+			RequiredPolicy: apitype.RequiredPolicy{
+				Name:         "pack",
+				Environments: []string{"env"},
+			},
+		}
+
+		result, err := rp.ResolveEnvironments(t.Context())
+		require.NoError(t, err)
+		require.NotNil(t, result)
+		assert.Contains(t, result.EnvironmentVariables, "SECRET_KEY")
+		assert.Contains(t, result.EnvironmentVariables, "PLAIN_KEY")
+		assert.Contains(t, result.Secrets, "super-secret-value")
 	})
 }
