@@ -226,7 +226,6 @@
         {
             "path": ["new"],
             "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {
