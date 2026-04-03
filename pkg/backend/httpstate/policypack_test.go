@@ -465,7 +465,7 @@ func TestResolveEnvironments(t *testing.T) {
 					Properties: map[string]esc.Value{
 						"files": {Value: map[string]esc.Value{
 							"KUBECONFIG": {Value: "apiVersion: v1\nkind: Config\n"},
-							"TLS_CERT":  {Value: "-----BEGIN CERTIFICATE-----\nMIIB...", Secret: true},
+							"TLS_CERT":   {Value: "-----BEGIN CERTIFICATE-----\nMIIB...", Secret: true},
 						}},
 					},
 				}, nil, nil
