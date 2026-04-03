@@ -1,0 +1,55 @@
+# Comment on each PR included in a release with a link to the release.
+name: Comment on release PRs
+on:
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on included PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          # Find the previous release tag to determine the range of commits.
+          PREV_TAG=$(gh api repos/${{ github.repository }}/releases \
+            --jq "[.[] | select(.draft == false and .prerelease == false and .tag_name != \"${RELEASE_TAG}\")] | sort_by(.published_at) | reverse | .[0].tag_name")
+
+          if [ -z "${PREV_TAG}" ]; then
+            echo "No previous release found, skipping."
+            exit 0
+          fi
+
+          echo "Release range: ${PREV_TAG}..${RELEASE_TAG}"
+
+          # List merge commits between the two tags and extract PR numbers.
+          PR_NUMBERS=$(gh api "repos/${{ github.repository }}/compare/${PREV_TAG}...${RELEASE_TAG}" \
+            --paginate --jq '.commits[].commit.message' \
+            | grep -oP '(?<=\(#)\d+(?=\))' | sort -u)
+
+          if [ -z "${PR_NUMBERS}" ]; then
+            echo "No PRs found in range."
+            exit 0
+          fi
+
+          echo "PRs found: ${PR_NUMBERS}"
+
+          for PR in ${PR_NUMBERS}; do
+            # Check the PR exists and is merged before commenting.
+            STATE=$(gh pr view "${PR}" --repo "${{ github.repository }}" --json state --jq '.state' 2>/dev/null || true)
+            if [ "${STATE}" != "MERGED" ]; then
+              echo "Skipping PR #${PR} (state: ${STATE})"
+              continue
+            fi
+
+            echo "Commenting on PR #${PR}"
+            gh pr comment "${PR}" --repo "${{ github.repository }}" \
+              --body ":rocket: This PR was included in [**${RELEASE_TAG}**](${RELEASE_URL})."
+          done
