@@ -1251,7 +1251,8 @@ func (b *diyBackend) apply(
 	var manager *backend.SnapshotManager
 	if kind != apitype.PreviewUpdate && !opts.DryRun {
 		persister := b.newSnapshotPersister(ctx, diyStackRef)
-		manager = backend.NewSnapshotManager(persister, op.SecretsManager, update.Target.Snapshot, nil)
+		snapCtx := backend.SnapshotContext(ctx, op)
+		manager = backend.NewSnapshotManager(snapCtx, persister, op.SecretsManager, update.Target.Snapshot, nil)
 		engineCtx.SnapshotManager = manager
 	}
 

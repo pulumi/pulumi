@@ -496,10 +496,11 @@ func NewPreviewCmd() *cobra.Command {
 					ExcludeDependents:         excludeDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
-					Experimental:   env.Experimental.Value(),
-					AttachDebugger: attachDebugger,
-					Autonamer:      autonamer,
+					GeneratePlan:           env.Experimental.Value() || planFilePath != "",
+					Experimental:           env.Experimental.Value(),
+					AttachDebugger:         attachDebugger,
+					Autonamer:              autonamer,
+					SaveOutputDependencies: proj.Options != nil && proj.Options.SaveOutputDependencies,
 				},
 				Display: displayOpts,
 			}

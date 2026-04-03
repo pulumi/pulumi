@@ -628,8 +628,9 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
 	// marshal outputs
 	outs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepResources: rm.supportsResourceReferences,
+		KeepUnknowns:     true,
+		KeepResources:    rm.supportsResourceReferences,
+		KeepOutputValues: true, // Preserve Output values so the server can decide whether to retain them.
 	})
 	if err != nil {
 		return err

@@ -93,6 +93,8 @@ type EvalSourceOptions struct {
 	DisableOutputValues bool
 	// AttachDebugger is the list of things to debug.  This can be "program", "all", "plugins", or "plugin:<plugin-name>".
 	AttachDebugger []string
+	// true to preserve Output values with dependency info in RegisterResourceOutputs.
+	SaveOutputDependencies bool
 }
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
@@ -3058,7 +3060,11 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 			ComputeAssetHashes: true,
 			KeepSecrets:        true,
 			KeepResources:      true,
-			WorkingDirectory:   rm.workingDirectory,
+			// Preserve Output values with dependency info when the feature is opted in.
+			// This allows the serialization layer to persist dependency information in
+			// state files so that stack references can surface richer details.
+			KeepOutputValues: rm.opts.SaveOutputDependencies,
+			WorkingDirectory: rm.workingDirectory,
 		})
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal output properties: %w", err)

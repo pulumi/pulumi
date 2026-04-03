@@ -159,6 +159,7 @@ func NewWatchCmd() *cobra.Command {
 				DisableResourceReferences: env.DisableResourceReferences.Value(),
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Experimental:              env.Experimental.Value(),
+				SaveOutputDependencies:    proj.Options != nil && proj.Options.SaveOutputDependencies,
 			}
 
 			err = backend.WatchStack(ctx, s, backend.UpdateOperation{

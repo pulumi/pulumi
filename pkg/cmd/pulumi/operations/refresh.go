@@ -313,6 +313,7 @@ func NewRefreshCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 				ExecKind:                  execKind,
 				RefreshProgram:            runProgram,
+				SaveOutputDependencies:    proj.Options != nil && proj.Options.SaveOutputDependencies,
 			}
 
 			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{

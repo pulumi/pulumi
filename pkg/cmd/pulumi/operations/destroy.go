@@ -324,6 +324,7 @@ func NewDestroyCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 				ContinueOnError:           continueOnError,
 				DestroyProgram:            runProgram,
+				SaveOutputDependencies:    proj.Options != nil && proj.Options.SaveOutputDependencies,
 			}
 
 			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
