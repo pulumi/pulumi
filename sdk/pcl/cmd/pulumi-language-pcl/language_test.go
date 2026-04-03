@@ -94,16 +94,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-option-ignore-changes": `skip temporarily because
-https://github.com/pulumi/pulumi/pull/22326 is a breaking change in PCL binding, and the only way to get it through CI
-is to not run this test or to run this test against the new code.  However - we don't have a stable SHA for the new code
-until this merges: it's a cyclic dependency in-repo.
-
-To break the cycle - I'm temporarily skipping this test. As soon as https://github.com/pulumi/pulumi/pull/22326 merges,
-I'll update the linked version of pulumi/pulumi in this module & remove the skip.`,
-
-	"l3-deferred-outputs":   "incorrectly detects cycle",
-	"l3-range-parent-scope": "requires go.mod update to pick up the LookupVariable fix from pkg/",
+	"l3-deferred-outputs": "incorrectly detects cycle",
 }
 
 func TestLanguage(t *testing.T) {
