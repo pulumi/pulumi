@@ -811,6 +811,7 @@ func newResourceMonitor(
 	resmon.constructInfo = plugin.ConstructInfo{
 		Project:          string(src.runinfo.Proj.Name),
 		Stack:            src.runinfo.Target.Name.String(),
+		Organization:     string(src.runinfo.Target.Organization),
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
 		DryRun:           src.opts.DryRun,
