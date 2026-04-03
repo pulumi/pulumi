@@ -389,6 +389,47 @@ func (ctx *observeContext) disambiguateArgName(x model.Expression, bestName stri
 	return ctx.disambiguateName(bestName)
 }
 
+// applyArgsEqual returns true if two apply argument expressions bind to the same entity
+// and access the same traversal path. It uses pointer identity on the bound definition
+// (Parts[0]) rather than lexical name comparison, which is safer when variables in
+// different scopes share the same name. This is used to deduplicate apply arguments so
+// that the same output/promise is not passed multiple times.
+func applyArgsEqual(a, b model.Expression) bool {
+	switch a := a.(type) {
+	case *model.ScopeTraversalExpression:
+		b, ok := b.(*model.ScopeTraversalExpression)
+		if !ok || len(a.Parts) == 0 || len(b.Parts) == 0 || len(a.Traversal) != len(b.Traversal) {
+			return false
+		}
+		// Compare by binding identity: Parts[0] is the bound definition from scope resolution.
+		if a.Parts[0] != b.Parts[0] {
+			return false
+		}
+		// The root traverser is already covered by Parts[0] identity, so compare the
+		// remaining traversal steps to ensure the same field path is accessed.
+		for i := 1; i < len(a.Traversal); i++ {
+			at, bt := a.Traversal[i], b.Traversal[i]
+			switch at := at.(type) {
+			case hcl.TraverseAttr:
+				bt, ok := bt.(hcl.TraverseAttr)
+				if !ok || at.Name != bt.Name {
+					return false
+				}
+			case hcl.TraverseIndex:
+				bt, ok := bt.(hcl.TraverseIndex)
+				if !ok || !at.Key.RawEquals(bt.Key) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
 // rewriteApplyArg replaces a single expression with an apply parameter.
 func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType model.Type, traversal hcl.Traversal,
 	parts []model.Traversable, isRoot bool,
@@ -397,12 +438,24 @@ func (ctx *observeContext) rewriteApplyArg(applyArg model.Expression, paramType 
 		return applyArg
 	}
 
-	callbackParam := &model.Variable{
-		Name:         fmt.Sprintf("<arg%d>", len(ctx.callbackParams)),
-		VariableType: paramType,
+	// Check for an existing identical apply argument to deduplicate.
+	// This avoids generating unnecessary Promise.all / pulumi.all / Output.All
+	// when the same output or promise is referenced multiple times.
+	var callbackParam *model.Variable
+	for i, existing := range ctx.applyArgs {
+		if applyArgsEqual(existing, applyArg) {
+			callbackParam = ctx.callbackParams[i]
+			break
+		}
 	}
 
-	ctx.applyArgs, ctx.callbackParams = append(ctx.applyArgs, applyArg), append(ctx.callbackParams, callbackParam)
+	if callbackParam == nil {
+		callbackParam = &model.Variable{
+			Name:         fmt.Sprintf("<arg%d>", len(ctx.callbackParams)),
+			VariableType: paramType,
+		}
+		ctx.applyArgs, ctx.callbackParams = append(ctx.applyArgs, applyArg), append(ctx.callbackParams, callbackParam)
+	}
 
 	// TODO(pdg): this risks information loss for nested output-typed properties... The `Types` array on traversals
 	// ought to store the original types.
@@ -478,8 +531,6 @@ func (ctx *observeContext) rewriteScopeTraversalExpression(expr *model.ScopeTrav
 	}
 
 	// Otherwise, append the access to the list of apply arguments and return an appropriate call to __applyArg.
-	//
-	// TODO: deduplicate multiple accesses to the same variable and field.
 
 	// Compute the type of the apply and callback arguments.
 	var applyArg *model.ScopeTraversalExpression
