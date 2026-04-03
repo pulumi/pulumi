@@ -38,16 +38,39 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// buildTestLanguageBinary builds the pulumi-test-language binary once and reuses it across all test variants.
+var (
+	testLanguageBinaryOnce sync.Once
+	testLanguageBinaryPath string
+	testLanguageBinaryErr  error
+)
+
+func buildTestLanguageBinary() (string, error) {
+	testLanguageBinaryOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "pulumi-test-language-*")
+		if err != nil {
+			testLanguageBinaryErr = err
+			return
+		}
+		testLanguageBinaryPath = filepath.Join(dir, "pulumi-test-language")
+		cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", testLanguageBinaryPath,
+			"./testing/pulumi-test-language")
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			testLanguageBinaryErr = fmt.Errorf("build pulumi-test-language: %w\n%s", err, output)
+			return
+		}
+	})
+	return testLanguageBinaryPath, testLanguageBinaryErr
+}
+
 func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 	// We can't just go run the pulumi-test-language package because of
 	// https://github.com/golang/go/issues/39172, so we build it to a temp file then run that.
-	binary := t.TempDir() + "/pulumi-test-language"
-	cmd := exec.Command("go", "build", "-C", "../../../../pkg", "-o", binary, "./testing/pulumi-test-language")
-	output, err := cmd.CombinedOutput()
-	t.Logf("build output: %s", output)
-	require.NoError(t, err)
+	binary, err := buildTestLanguageBinary()
+	require.NoError(t, err, "failed to build pulumi-test-language binary")
 
-	cmd = exec.Command(binary)
+	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	stderr, err := cmd.StderrPipe()
@@ -125,7 +148,11 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 				// npm error   stdout: "error TS2688: Cannot find type definition file for 'node'.\n" +
 				// npm error     '  The file is in the program because:\n' +
 				// npm error     "    Entry point of type library 'node' specified in compilerOptions\n",
+				//
+				// Skip early to avoid spawning a language plugin server and calling
+				// PrepareLanguageTests for a variant that will never run any tests.
 				t.Skip("node doesn't currently work with local SDKs")
+				return
 			}
 
 			cancel := make(chan bool)
