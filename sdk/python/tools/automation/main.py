@@ -106,7 +106,7 @@ def _generate_options_types(
 
     # Only emit options types for nodes that produce command methods.
     should_emit = structure.get("type") == "command" or (
-        structure.get("type") == "menu" and structure.get("executable") is True
+        structure.get("type") == "menu" and structure.get("executable")
     )
 
     if should_emit:
