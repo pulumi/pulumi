@@ -83,6 +83,10 @@ generate-nodejs-automation-api:: generate-cli-spec
 test-nodejs-automation-api:: generate-cli-spec
 	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm test
 
+.PHONY: test-python-automation-api
+test-python-automation-api::
+	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python -m unittest tests.test_commands -v
+
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
 bin/pulumi: GO_BUILD_TAGS =
