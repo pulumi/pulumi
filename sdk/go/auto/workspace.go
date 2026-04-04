@@ -166,6 +166,8 @@ type Workspace interface {
 	StackOutputs(context.Context, string) (OutputMap, error)
 	// Install installs the workspace's dependencies.
 	Install(context.Context, *InstallOptions) error
+	// New creates a new Pulumi project from a template.
+	New(context.Context, *NewOptions) (NewResult, error)
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.
@@ -242,4 +244,52 @@ type InstallOptions struct {
 	NoDependencies bool
 	// Reinstall plugins even if they already exist
 	Reinstall bool
+}
+
+// NewOptions are the options that can be passed for the New command.
+type NewOptions struct {
+	// Stdout is the optional writer to use for standard output.
+	Stdout io.Writer
+	// Stderr is the optional writer to use for error output.
+	Stderr io.Writer
+	// TemplateOrURL is the template name or URL to use.
+	TemplateOrURL string
+	// AI is the prompt to use for Pulumi AI.
+	AI string
+	// Config values to save (list of "key=value" strings).
+	Config []string
+	// ConfigPath indicates that config keys contain a path to a property in a map or list to set.
+	ConfigPath bool
+	// Description is the project description.
+	Description string
+	// Dir is the location to place the generated project.
+	Dir string
+	// Force forces content to be generated even if it would change existing files.
+	Force bool
+	// GenerateOnly generates the project only; does not create a stack, save config, or install dependencies.
+	GenerateOnly bool
+	// Language is the language to use for Pulumi AI.
+	Language string
+	// ListTemplates lists locally installed templates and exits.
+	ListTemplates bool
+	// Name is the project name.
+	Name string
+	// Offline uses locally cached templates without making any network requests.
+	Offline bool
+	// RemoteStackConfig stores stack configuration remotely.
+	RemoteStackConfig bool
+	// RuntimeOptions are additional options for the language runtime (list of "key=value" strings).
+	RuntimeOptions []string
+	// SecretsProvider is the type of the provider that should be used to encrypt and decrypt secrets.
+	SecretsProvider string
+	// Stack is the stack name; either an existing stack or stack to create.
+	Stack string
+	// TemplateMode runs in template mode, which will skip prompting for AI or Template functionality.
+	TemplateMode bool
+}
+
+// NewResult is the result of running the New command.
+type NewResult struct {
+	StdOut string
+	StdErr string
 }

@@ -877,6 +877,76 @@ func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) erro
 	return nil
 }
 
+func (l *LocalWorkspace) New(ctx context.Context, opts *NewOptions) (NewResult, error) {
+	var stdoutWriters []io.Writer
+	if opts != nil && opts.Stdout != nil {
+		stdoutWriters = append(stdoutWriters, opts.Stdout)
+	}
+	var stderrWriters []io.Writer
+	if opts != nil && opts.Stderr != nil {
+		stderrWriters = append(stderrWriters, opts.Stderr)
+	}
+	args := []string{"new", "--yes"}
+	if opts != nil {
+		if opts.AI != "" {
+			args = append(args, "--ai", opts.AI)
+		}
+		for _, c := range opts.Config {
+			args = append(args, "--config", c)
+		}
+		if opts.ConfigPath {
+			args = append(args, "--config-path")
+		}
+		if opts.Description != "" {
+			args = append(args, "--description", opts.Description)
+		}
+		if opts.Dir != "" {
+			args = append(args, "--dir", opts.Dir)
+		}
+		if opts.Force {
+			args = append(args, "--force")
+		}
+		if opts.GenerateOnly {
+			args = append(args, "--generate-only")
+		}
+		if opts.Language != "" {
+			args = append(args, "--language", opts.Language)
+		}
+		if opts.ListTemplates {
+			args = append(args, "--list-templates")
+		}
+		if opts.Name != "" {
+			args = append(args, "--name", opts.Name)
+		}
+		if opts.Offline {
+			args = append(args, "--offline")
+		}
+		if opts.RemoteStackConfig {
+			args = append(args, "--remote-stack-config")
+		}
+		for _, r := range opts.RuntimeOptions {
+			args = append(args, "--runtime-options", r)
+		}
+		if opts.SecretsProvider != "" {
+			args = append(args, "--secrets-provider", opts.SecretsProvider)
+		}
+		if opts.Stack != "" {
+			args = append(args, "--stack", opts.Stack)
+		}
+		if opts.TemplateMode {
+			args = append(args, "--template-mode")
+		}
+		if opts.TemplateOrURL != "" {
+			args = append(args, opts.TemplateOrURL)
+		}
+	}
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, args...)
+	if err != nil {
+		return NewResult{}, newAutoError(fmt.Errorf("could not create new project: %w", err), stdout, stderr, errCode)
+	}
+	return NewResult{StdOut: stdout, StdErr: stderr}, nil
+}
+
 func (l *LocalWorkspace) runPulumiInputCmdSync(
 	ctx context.Context,
 	stdin io.Reader,
