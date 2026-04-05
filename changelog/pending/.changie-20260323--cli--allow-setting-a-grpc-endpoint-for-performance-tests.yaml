@@ -1,0 +1,6 @@
+kind: chore
+body: Allow setting a GRPC endpoint for performance tests
+custom:
+  Scope: cli
+  PR: ''
+time: '2026-03-23T00:00:00Z'

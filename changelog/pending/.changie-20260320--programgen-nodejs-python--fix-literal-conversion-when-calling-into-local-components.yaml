@@ -1,0 +1,6 @@
+kind: fix
+body: Fix literal conversion when calling into local components
+custom:
+  Scope: programgen/nodejs,python
+  PR: ''
+time: '2026-03-20T00:00:00Z'
