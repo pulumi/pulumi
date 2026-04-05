@@ -1,0 +1,23 @@
+{
+  "resources": [
+    {
+      "name": "noDependsOn",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": true
+      }
+    },
+    {
+      "name": "withDependsOn",
+      "type": "simple:index:Resource",
+      "custom": true,
+      "properties": {
+        "value": false
+      },
+      "dependencies": [
+        "noDependsOn"
+      ]
+    }
+  ]
+}
