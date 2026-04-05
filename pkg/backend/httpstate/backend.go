@@ -777,7 +777,7 @@ func (b *cloudBackend) GetStackPolicyPacks(
 	}
 
 	return slices.Collect(fxs.Map(resp.RequiredPolicies, func(policy apitype.RequiredPolicy) engine.RequiredPolicy {
-		return newCloudRequiredPolicy(b.client, policy, stackID.Owner)
+		return newCloudRequiredPolicy(b.client, b, policy, stackID.Owner)
 	})), nil
 }
 
@@ -1572,7 +1572,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	//
 	for _, policy := range updateDetails.RequiredPolicies {
 		op.Opts.Engine.RequiredPolicies = append(
-			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy, update.Owner))
+			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, b, policy, update.Owner))
 	}
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any

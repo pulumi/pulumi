@@ -89,6 +89,61 @@ func TestAnalyzerSpawnNoConfig(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestConstructEnvWithAdditionalEnv(t *testing.T) {
+	t.Parallel()
+
+	opts := &PolicyAnalyzerOptions{
+		Organization: "test-org",
+		Project:      "test-project",
+		Stack:        "test-stack",
+		DryRun:       false,
+		AdditionalEnv: map[string]string{
+			"MY_SECRET":  "secret-value",
+			"AWS_REGION": "us-west-2",
+		},
+	}
+
+	result, err := constructEnv(opts, "nodejs")
+	require.NoError(t, err)
+
+	// Verify standard env vars are set.
+	val, found := result.GetStore().Raw("PULUMI_ORGANIZATION")
+	require.True(t, found)
+	require.Equal(t, "test-org", val)
+
+	// Verify AdditionalEnv vars are injected.
+	val, found = result.GetStore().Raw("MY_SECRET")
+	require.True(t, found)
+	require.Equal(t, "secret-value", val)
+
+	val, found = result.GetStore().Raw("AWS_REGION")
+	require.True(t, found)
+	require.Equal(t, "us-west-2", val)
+}
+
+func TestConstructEnvWithoutAdditionalEnv(t *testing.T) {
+	t.Parallel()
+
+	opts := &PolicyAnalyzerOptions{
+		Organization: "test-org",
+		Project:      "test-project",
+		Stack:        "test-stack",
+		DryRun:       true,
+	}
+
+	result, err := constructEnv(opts, "python")
+	require.NoError(t, err)
+
+	// Standard vars should still be set.
+	val, found := result.GetStore().Raw("PULUMI_DRY_RUN")
+	require.True(t, found)
+	require.Equal(t, "true", val)
+
+	// Node.js-specific vars should not be set for python runtime.
+	_, found = result.GetStore().Raw("PULUMI_NODEJS_ORGANIZATION")
+	require.False(t, found)
+}
+
 func TestAnalyzerSpawnViaLanguage(t *testing.T) {
 	d := diagtest.LogSink(t)
 	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)

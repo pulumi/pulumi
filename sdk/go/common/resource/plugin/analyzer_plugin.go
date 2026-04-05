@@ -202,9 +202,17 @@ func NewPolicyAnalyzer(
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	} else {
 		// Else we _did_ get a language plugin so just use RunPlugin to invoke the policy pack.
+		analyzerEnv := env.Global()
+		if opts != nil && len(opts.AdditionalEnv) > 0 {
+			additionalStore := envutil.MapStore{}
+			for k, v := range opts.AdditionalEnv {
+				additionalStore[k] = v
+			}
+			analyzerEnv = envutil.NewEnv(envutil.JoinStore(additionalStore, env.Global().GetStore()))
+		}
 
 		plug, _, err = newPlugin(ctx, ctx.Pwd, policyPackPath, fmt.Sprintf("%v (analyzer)", name),
-			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, env.Global(),
+			apitype.AnalyzerPlugin, []string{host.ServerAddr()}, analyzerEnv,
 			handshake, analyzerPluginDialOptions(ctx, string(name)),
 			host.AttachDebugger(DebugSpec{Type: DebugTypePlugin, Name: string(name)}))
 	}
@@ -985,6 +993,11 @@ func constructEnv(opts *PolicyAnalyzerOptions, runtime string) (env.Env, error) 
 		maybeAppendEnv("PULUMI_PROJECT", opts.Project)
 		maybeAppendEnv("PULUMI_STACK", opts.Stack)
 		maybeAppendEnv("PULUMI_DRY_RUN", strconv.FormatBool(opts.DryRun))
+
+		// Inject per-pack environment variables (e.g., from ESC environments).
+		for k, v := range opts.AdditionalEnv {
+			store[k] = v
+		}
 	}
 
 	return envutil.NewEnv(envutil.JoinStore(store, env.Global().GetStore())), nil
