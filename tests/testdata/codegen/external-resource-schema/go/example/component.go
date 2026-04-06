@@ -9,7 +9,7 @@ import (
 
 	"errors"
 	"external-resource-schema/example/internal"
-	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2"
+	mod1alias "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod1/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/meta/v1"
 	storagev1 "github.com/pulumi/pulumi-kubernetes/sdk/v3/go/kubernetes/storage/v1"
@@ -20,7 +20,7 @@ type Component struct {
 	pulumi.CustomResourceState
 
 	Provider       kubernetes.ProviderOutput       `pulumi:"provider"`
-	SecurityGroup  ec2.SecurityGroupOutput         `pulumi:"securityGroup"`
+	Res            mod1alias.ResOutput             `pulumi:"res"`
 	StorageClasses storagev1.StorageClassMapOutput `pulumi:"storageClasses"`
 }
 
@@ -182,8 +182,8 @@ func (o ComponentOutput) Provider() kubernetes.ProviderOutput {
 	return o.ApplyT(func(v *Component) kubernetes.ProviderOutput { return v.Provider }).(kubernetes.ProviderOutput)
 }
 
-func (o ComponentOutput) SecurityGroup() ec2.SecurityGroupOutput {
-	return o.ApplyT(func(v *Component) ec2.SecurityGroupOutput { return v.SecurityGroup }).(ec2.SecurityGroupOutput)
+func (o ComponentOutput) Res() mod1alias.ResOutput {
+	return o.ApplyT(func(v *Component) mod1alias.ResOutput { return v.Res }).(mod1alias.ResOutput)
 }
 
 func (o ComponentOutput) StorageClasses() storagev1.StorageClassMapOutput {

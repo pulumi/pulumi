@@ -72,8 +72,8 @@
         "provider": {
           "$ref": "/kubernetes/v3.7.0/schema.json#/provider"
         },
-        "securityGroup": {
-          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:ec2%2FsecurityGroup:SecurityGroup"
+        "res": {
+          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1%2Fv1:Res"
         },
         "storageClasses": {
           "type": "object",
@@ -114,7 +114,7 @@
           }
         }
       },
-      "required": ["securityGroup"],
+      "required": ["res"],
       "requiredInputs": [
         "requiredMetadata",
         "requiredMetadataArray",
@@ -144,7 +144,7 @@
     "csharp": {
       "packageReferences": {
         "Pulumi": "3.71",
-        "Pulumi.Aws": "5.4.0",
+        "Pulumi.Goalias": "1.0.0",
         "Pulumi.Kubernetes": "3.7.0",
         "Pulumi.Random": "4.11.2"
       }
@@ -157,7 +157,7 @@
     "nodejs": {
       "dependencies": {
         "@pulumi/random": "^4.11.2",
-        "@pulumi/aws": "^5.4.0",
+        "@pulumi/goalias": "^1.0.0",
         "@pulumi/kubernetes": "^3.7.0"
       }
     },

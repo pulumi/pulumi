@@ -13,7 +13,7 @@ if sys.version_info >= (3, 11):
 else:
     from typing_extensions import NotRequired, TypedDict, TypeAlias
 from . import _utilities
-import pulumi_aws
+import pulumi_goalias
 import pulumi_kubernetes
 
 __all__ = ['ComponentArgs', 'Component']
@@ -166,7 +166,7 @@ class Component(pulumi.CustomResource):
                 raise TypeError("Missing required property 'required_metadata_map'")
             __props__.__dict__["required_metadata_map"] = required_metadata_map
             __props__.__dict__["provider"] = None
-            __props__.__dict__["security_group"] = None
+            __props__.__dict__["res"] = None
             __props__.__dict__["storage_classes"] = None
         super(Component, __self__).__init__(
             'example::Component',
@@ -191,7 +191,7 @@ class Component(pulumi.CustomResource):
         __props__ = ComponentArgs.__new__(ComponentArgs)
 
         __props__.__dict__["provider"] = None
-        __props__.__dict__["security_group"] = None
+        __props__.__dict__["res"] = None
         __props__.__dict__["storage_classes"] = None
         return Component(resource_name, opts=opts, __props__=__props__)
 
@@ -201,9 +201,9 @@ class Component(pulumi.CustomResource):
         return pulumi.get(self, "provider")
 
     @_builtins.property
-    @pulumi.getter(name="securityGroup")
-    def security_group(self) -> pulumi.Output['pulumi_aws.ec2.SecurityGroup']:
-        return pulumi.get(self, "security_group")
+    @pulumi.getter
+    def res(self) -> pulumi.Output['pulumi_goalias.mod1.v1.Res']:
+        return pulumi.get(self, "res")
 
     @_builtins.property
     @pulumi.getter(name="storageClasses")
