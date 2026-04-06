@@ -40,6 +40,18 @@ func init() {
 								"value": resource.NewProperty("hello"),
 							}),
 							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("d"),
+								"value": resource.NewProperty("hello"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("m"),
+								"value": resource.NewProperty("hello"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("t"),
+								"value": resource.NewProperty("hello"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
 								"key":   resource.NewProperty("x"),
 								"value": resource.NewProperty("hello"),
 							}),

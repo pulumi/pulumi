@@ -26,7 +26,7 @@ func init() {
 			{
 				Config: config.Map{
 					config.MustMakeKey("l1-builtin-object", "aMap"): config.NewObjectValue(
-						`{"keyPresent":"value","alpha":"first","zebra":"last"}`),
+						`{"keyPresent":"value","alpha":"a","delta":"d","omega":"o","tango":"t","zebra":"z"}`),
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
@@ -37,15 +37,27 @@ func init() {
 						"entriesOutput": resource.NewProperty([]resource.PropertyValue{
 							resource.NewProperty(resource.PropertyMap{
 								"key":   resource.NewProperty("alpha"),
-								"value": resource.NewProperty("first"),
+								"value": resource.NewProperty("a"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("delta"),
+								"value": resource.NewProperty("d"),
 							}),
 							resource.NewProperty(resource.PropertyMap{
 								"key":   resource.NewProperty("keyPresent"),
 								"value": resource.NewProperty("value"),
 							}),
 							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("omega"),
+								"value": resource.NewProperty("o"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("tango"),
+								"value": resource.NewProperty("t"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
 								"key":   resource.NewProperty("zebra"),
-								"value": resource.NewProperty("last"),
+								"value": resource.NewProperty("z"),
 							}),
 						}),
 						"lookupOutput":        resource.NewProperty("value"),

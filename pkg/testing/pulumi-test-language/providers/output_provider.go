@@ -384,6 +384,9 @@ func (p *OutputProvider) makeOutputs(
 			})
 			properties["outputMap"] = resource.NewProperty(resource.PropertyMap{
 				"a": resource.NewProperty(output),
+				"d": resource.NewProperty(output),
+				"m": resource.NewProperty(output),
+				"t": resource.NewProperty(output),
 				"x": resource.NewProperty(output),
 				"z": resource.NewProperty(output),
 			})
