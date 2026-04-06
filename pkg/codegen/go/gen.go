@@ -5087,44 +5087,131 @@ func GeneratePackage(tool string,
 			}
 		}
 
-		for types, i := pkg.types, 0; len(types) > 0; i++ {
-			// 500 types corresponds to approximately 5M or 40_000 lines of code.
-			const chunkSize = 500
-			chunk := types
-			if len(chunk) > chunkSize {
-				chunk = chunk[:chunkSize]
-			}
-			types = types[len(chunk):]
+		// typeSubPkgThreshold is the number of types above which we generate
+		// types into internal sub-packages to reduce Go compiler memory usage.
+		// When all types are in one package, the compiler must type-check everything
+		// as a single unit. Splitting types into sub-packages allows the compiler
+		// to process each chunk independently.
+		//
+		// Types in Pulumi schemas are ordered so that forward references (type i
+		// referencing type j where j > i) are common, but backward references are
+		// not. This means we can split into sequential chunks where each chunk
+		// only imports earlier chunks, avoiding import cycles.
+		// typeSubPkgThreshold is the number of types above which we generate
+		// types into internal sub-packages to reduce Go compiler memory usage.
+		// When all types are in one package, the compiler must type-check everything
+		// as a single unit. Splitting types into sub-packages allows the compiler
+		// to process each chunk independently.
+		//
+		// Types in Pulumi schemas are ordered so that forward references (type i
+		// referencing type j where j > i) are common, but backward references are
+		// not. This means we can split into sequential chunks where each chunk
+		// only imports later chunks, avoiding import cycles.
+		const typeSubPkgThreshold = 500
+		const typeSubPkgChunkSize = 500
 
-			// To avoid duplicating collection types into every chunk, only pass known to chunk i=0.
-			known := sortedKnownTypes
-			if i != 0 {
-				known = nil
+		if len(pkg.types) <= typeSubPkgThreshold {
+			for types, i := pkg.types, 0; len(types) > 0; i++ {
+				// 500 types corresponds to approximately 5M or 40_000 lines of code.
+				const chunkSize = 500
+				chunk := types
+				if len(chunk) > chunkSize {
+					chunk = chunk[:chunkSize]
+				}
+				types = types[len(chunk):]
+
+				// To avoid duplicating collection types into every chunk, only pass known to chunk i=0.
+				known := sortedKnownTypes
+				if i != 0 {
+					known = nil
+				}
+
+				buffer := &bytes.Buffer{}
+				useGenericVariant := false
+				err := generateTypes(buffer, pkg, chunk, known, useGenericVariant)
+				if err != nil {
+					return nil, err
+				}
+
+				typePath := "pulumiTypes"
+				if i != 0 {
+					typePath = fmt.Sprintf("%s%d", typePath, i)
+				}
+
+				typeFilePath := path.Join(mod, typePath+".go")
+				setFile(typeFilePath, buffer.String())
+
+				genericVariantBuffer := &bytes.Buffer{}
+				useGenericVariant = true
+				err = generateTypes(genericVariantBuffer, pkg, chunk, known, useGenericVariant)
+				if err != nil {
+					return nil, err
+				}
+
+				setGenericVariantFile(typeFilePath, genericVariantBuffer.String())
+			}
+		} else {
+			// Split types into chunks for separate sub-packages.
+			numChunks := (len(pkg.types) + typeSubPkgChunkSize - 1) / typeSubPkgChunkSize
+
+			// Compute sub-package names and import paths for all chunks.
+			chunks := make([]chunkInfo, numChunks)
+			for i := range numChunks {
+				start := i * typeSubPkgChunkSize
+				end := start + typeSubPkgChunkSize
+				if end > len(pkg.types) {
+					end = len(pkg.types)
+				}
+				pkgName := fmt.Sprintf("pulumiTypes%d", i)
+				chunks[i] = chunkInfo{
+					types:      pkg.types[start:end],
+					pkgName:    pkgName,
+					pkgPath:    path.Join(mod, pkg.internalModuleName, pkgName),
+					importPath: path.Join(pkg.importBasePath, pkg.internalModuleName, pkgName),
+				}
 			}
 
-			buffer := &bytes.Buffer{}
-			useGenericVariant := false
-			err := generateTypes(buffer, pkg, chunk, known, useGenericVariant)
+			// Generate each chunk as a sub-package.
+			for i, chunk := range chunks {
+				// Only pass known types (collection types) to chunk 0.
+				known := sortedKnownTypes
+				if i != 0 {
+					known = nil
+				}
+
+				// Types in Pulumi schemas reference types with higher indices (forward refs).
+				// Each chunk needs aliases for types from later chunks (not earlier).
+				laterChunks := chunks[i+1:]
+
+				buffer := &bytes.Buffer{}
+				err := generateTypesSubPackageMulti(buffer, pkg, chunk.types, known, false, chunk.pkgName, laterChunks)
+				if err != nil {
+					return nil, err
+				}
+				setFile(path.Join(chunk.pkgPath, "types.go"), buffer.String())
+
+				genericBuffer := &bytes.Buffer{}
+				err = generateTypesSubPackageMulti(genericBuffer, pkg, chunk.types, known, true, chunk.pkgName, laterChunks)
+				if err != nil {
+					return nil, err
+				}
+				setGenericVariantFile(path.Join(chunk.pkgPath, "types.go"), genericBuffer.String())
+			}
+
+			// Generate alias file(s) in the root package that re-export all types from all chunks.
+			aliasBuffer := &bytes.Buffer{}
+			err := generateTypeAliasesMulti(aliasBuffer, pkg, chunks, sortedKnownTypes, false)
 			if err != nil {
 				return nil, err
 			}
+			setFile(path.Join(mod, "pulumiTypes.go"), aliasBuffer.String())
 
-			typePath := "pulumiTypes"
-			if i != 0 {
-				typePath = fmt.Sprintf("%s%d", typePath, i)
-			}
-
-			typeFilePath := path.Join(mod, typePath+".go")
-			setFile(typeFilePath, buffer.String())
-
-			genericVariantBuffer := &bytes.Buffer{}
-			useGenericVariant = true
-			err = generateTypes(genericVariantBuffer, pkg, chunk, known, useGenericVariant)
+			genericAliasBuffer := &bytes.Buffer{}
+			err = generateTypeAliasesMulti(genericAliasBuffer, pkg, chunks, sortedKnownTypes, true)
 			if err != nil {
 				return nil, err
 			}
-
-			setGenericVariantFile(typeFilePath, genericVariantBuffer.String())
+			setGenericVariantFile(path.Join(mod, "pulumiTypes.go"), genericAliasBuffer.String())
 		}
 
 		// Utilities
@@ -5275,6 +5362,261 @@ func generateTypes(
 	}
 
 	pkg.genTypeRegistrations(w, types, useGenericTypes, typeNames...)
+	return nil
+}
+
+// generateTypesSubPackageMulti generates types into a sub-package that may import
+// other sub-packages for cross-chunk type references. It emits type aliases for
+// all exported types from the referenced chunks so that unqualified cross-chunk references resolve.
+// In Pulumi schemas, types reference types with higher indices (forward refs), so each chunk
+// needs aliases for types from later chunks.
+func generateTypesSubPackageMulti(
+	w io.Writer,
+	pkg *pkgContext,
+	types []*schema.ObjectType,
+	knownTypes []schema.Type,
+	useGenericTypes bool,
+	subPkgName string,
+	referencedChunks []chunkInfo,
+) error {
+	hasOutputs, importsAndAliases := false, map[string]string{}
+	for _, t := range types {
+		pkg.getImports(t, importsAndAliases)
+		hasOutputs = hasOutputs || pkg.detailsForType(t).hasOutputs()
+	}
+
+	collectionTypes := map[string]*nestedTypeInfo{}
+	for _, t := range knownTypes {
+		pkg.collectNestedCollectionTypes(collectionTypes, t)
+	}
+
+	if len(collectionTypes) > 0 {
+		hasOutputs = true
+	}
+
+	goInfo := goPackageInfo(pkg.pkg)
+	var goImports []string
+	if hasOutputs {
+		goImports = []string{"context", "reflect"}
+		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
+		if goInfo.Generics == GenericsSettingSideBySide {
+			importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
+		}
+	}
+
+	if useGenericTypes && hasOutputs {
+		importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumix"] = ""
+	}
+
+	importsAndAliases[path.Join(pkg.importBasePath, pkg.internalModuleName)] = ""
+
+	// Add imports for earlier chunks.
+	for _, ec := range referencedChunks {
+		importsAndAliases[ec.importPath] = ec.pkgName
+	}
+
+	// Write header with sub-package name.
+	fmt.Fprintf(w, "// Code generated by %v DO NOT EDIT.\n", pkg.tool)
+	fmt.Fprintf(w, "// *** WARNING: Do not edit by hand unless you're certain you know what you are doing! ***\n\n")
+	fmt.Fprintf(w, "package %s\n\n", subPkgName)
+
+	// Write imports.
+	var imports []string
+	if len(importsAndAliases) > 0 {
+		for k := range importsAndAliases {
+			imports = append(imports, k)
+		}
+		sort.Strings(imports)
+		for i, k := range imports {
+			if alias := importsAndAliases[k]; alias != "" {
+				imports[i] = fmt.Sprintf(`%s "%s"`, alias, k)
+			}
+		}
+	}
+	if len(goImports) > 0 {
+		if len(imports) > 0 {
+			goImports = append(goImports, "")
+		}
+		imports = append(goImports, imports...)
+	}
+	if len(imports) > 0 {
+		fmt.Fprintf(w, "import (\n")
+		for _, i := range imports {
+			if i == "" {
+				fmt.Fprintf(w, "\n")
+			} else {
+				if strings.Contains(i, " ") {
+					fmt.Fprintf(w, "\t%s\n", i)
+				} else {
+					fmt.Fprintf(w, "\t\"%s\"\n", i)
+				}
+			}
+		}
+		fmt.Fprintf(w, ")\n\n")
+	}
+
+	fmt.Fprintf(w, "var _ = %s.GetEnvOrDefault\n\n", pkg.internalModuleName)
+
+	// Emit type aliases for all exported types from earlier chunks.
+	// This allows unqualified cross-chunk type references to resolve.
+	for _, ec := range referencedChunks {
+		for _, t := range ec.types {
+			typeName := pkg.tokenToType(t.Token)
+			details := pkg.detailsForType(t)
+			// Alias the main type.
+			fmt.Fprintf(w, "type %s = %s.%s\n", typeName, ec.pkgName, typeName)
+			// Alias Input/Args types.
+			fmt.Fprintf(w, "type %sInput = %s.%sInput\n", typeName, ec.pkgName, typeName)
+			fmt.Fprintf(w, "type %sArgs = %s.%sArgs\n", typeName, ec.pkgName, typeName)
+			// Alias Output type.
+			fmt.Fprintf(w, "type %sOutput = %s.%sOutput\n", typeName, ec.pkgName, typeName)
+			// Alias array/map variants if they exist.
+			if details.arrayInput || details.arrayOutput {
+				fmt.Fprintf(w, "type %sArrayInput = %s.%sArrayInput\n", typeName, ec.pkgName, typeName)
+				fmt.Fprintf(w, "type %sArray = %s.%sArray\n", typeName, ec.pkgName, typeName)
+				fmt.Fprintf(w, "type %sArrayOutput = %s.%sArrayOutput\n", typeName, ec.pkgName, typeName)
+			}
+			if details.mapInput || details.mapOutput {
+				fmt.Fprintf(w, "type %sMapInput = %s.%sMapInput\n", typeName, ec.pkgName, typeName)
+				fmt.Fprintf(w, "type %sMap = %s.%sMap\n", typeName, ec.pkgName, typeName)
+				fmt.Fprintf(w, "type %sMapOutput = %s.%sMapOutput\n", typeName, ec.pkgName, typeName)
+			}
+			if details.ptrInput || details.ptrOutput {
+				fmt.Fprintf(w, "type %sPtrInput = %s.%sPtrInput\n", typeName, ec.pkgName, typeName)
+				fmt.Fprintf(w, "type %sPtrOutput = %s.%sPtrOutput\n", typeName, ec.pkgName, typeName)
+			}
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
+	for _, t := range types {
+		if err := pkg.genType(w, t, useGenericTypes); err != nil {
+			return err
+		}
+	}
+
+	typeNames := []string{}
+	if !useGenericTypes {
+		typeNames = pkg.genNestedCollectionTypes(w, collectionTypes)
+	}
+
+	pkg.genTypeRegistrations(w, types, useGenericTypes, typeNames...)
+	return nil
+}
+
+// chunkInfo holds metadata about a type chunk sub-package. Exported for use by generateTypeAliasesMulti.
+type chunkInfo struct {
+	types      []*schema.ObjectType
+	pkgName    string
+	pkgPath    string
+	importPath string
+}
+
+// generateTypeAliasesMulti generates type aliases in the root package that re-export
+// all types from multiple sub-packages. This allows the root package API to remain unchanged.
+func generateTypeAliasesMulti(
+	w io.Writer,
+	pkg *pkgContext,
+	chunks []chunkInfo,
+	knownTypes []schema.Type,
+	useGenericTypes bool,
+) error {
+	importsAndAliases := map[string]string{}
+	for _, chunk := range chunks {
+		importsAndAliases[chunk.importPath] = chunk.pkgName
+	}
+
+	goInfo := goPackageInfo(pkg.pkg)
+
+	pkg.genHeader(w, nil, importsAndAliases, false)
+
+	for _, chunk := range chunks {
+		for _, t := range chunk.types {
+			if t.IsOverlay {
+				continue
+			}
+
+			name := pkg.tokenToType(t.Token)
+			details := pkg.detailsForType(t)
+			spn := chunk.pkgName // sub-package name
+
+			fmt.Fprintf(w, "type %s = %s.%s\n", name, spn, name)
+
+			if !useGenericTypes {
+				if details.input || goInfo.GenerateExtraInputTypes {
+					fmt.Fprintf(w, "type %sInput = %s.%sInput\n", name, spn, name)
+					fmt.Fprintf(w, "type %sArgs = %s.%sArgs\n", name, spn, name)
+				}
+
+				if details.ptrInput {
+					fmt.Fprintf(w, "type %sPtrInput = %s.%sPtrInput\n", name, spn, name)
+					fmt.Fprintf(w, "var %sPtr = %s.%sPtr\n", name, spn, name)
+				}
+
+				if details.arrayInput && !pkg.names.Has(name+"Array") {
+					fmt.Fprintf(w, "type %sArray = %s.%sArray\n", name, spn, name)
+					fmt.Fprintf(w, "type %sArrayInput = %s.%sArrayInput\n", name, spn, name)
+				}
+
+				if details.mapInput && !pkg.names.Has(name+"Map") {
+					fmt.Fprintf(w, "type %sMap = %s.%sMap\n", name, spn, name)
+					fmt.Fprintf(w, "type %sMapInput = %s.%sMapInput\n", name, spn, name)
+				}
+			}
+
+			if details.hasOutputs() {
+				fmt.Fprintf(w, "type %sOutput = %s.%sOutput\n", name, spn, name)
+			}
+			if details.ptrOutput {
+				fmt.Fprintf(w, "type %sPtrOutput = %s.%sPtrOutput\n", name, spn, name)
+			}
+			if details.arrayOutput {
+				fmt.Fprintf(w, "type %sArrayOutput = %s.%sArrayOutput\n", name, spn, name)
+			}
+			if details.mapOutput {
+				fmt.Fprintf(w, "type %sMapOutput = %s.%sMapOutput\n", name, spn, name)
+			}
+
+			fmt.Fprintln(w)
+		}
+	}
+
+	// Aliases for nested collection types (only from chunk 0's known types).
+	collectionTypes := map[string]*nestedTypeInfo{}
+	for _, t := range knownTypes {
+		pkg.collectNestedCollectionTypes(collectionTypes, t)
+	}
+
+	if !useGenericTypes && len(collectionTypes) > 0 {
+		// Collection types are generated in chunk 0.
+		spn := chunks[0].pkgName
+
+		sortedElems := slice.Prealloc[string](len(collectionTypes))
+		for k := range collectionTypes {
+			sortedElems = append(sortedElems, k)
+		}
+		sort.Strings(sortedElems)
+
+		for _, elementTypeName := range sortedElems {
+			info := collectionTypes[elementTypeName]
+			collNames := slice.Prealloc[string](len(info.names))
+			for k := range info.names {
+				collNames = append(collNames, k)
+			}
+			sort.Strings(collNames)
+			for _, n := range collNames {
+				switch {
+				case strings.HasSuffix(n, "Input"):
+					typeName := strings.TrimSuffix(n, "Input")
+					fmt.Fprintf(w, "type %s = %s.%s\n", typeName, spn, typeName)
+					fmt.Fprintf(w, "type %s = %s.%s\n", n, spn, n)
+				case strings.HasSuffix(n, "Output"):
+					fmt.Fprintf(w, "type %s = %s.%s\n", n, spn, n)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
