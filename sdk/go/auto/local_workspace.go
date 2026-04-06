@@ -280,7 +280,7 @@ func (l *LocalWorkspace) SetConfigWithOptions(
 	if val.Secret {
 		secretArg = "--secret"
 	}
-	args = append(args, key, secretArg, "--non-interactive", "--", val.Value)
+	args = append(args, key, secretArg, "--", val.Value)
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
