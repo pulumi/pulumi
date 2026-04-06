@@ -9,8 +9,8 @@ import (
 
 	"errors"
 	"external-go-import-aliases/example/internal"
-	awsec2 "github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2"
-	"github.com/pulumi/pulumi-aws/sdk/v5/go/aws/s3"
+	"git.example.org/thirdparty/sdk/go/pkg/module"
+	othersub "git.example.org/thirdparty/sdk/go/pkg/module/sub"
 	localmod1 "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod1/v1"
 	mod2alias "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod2/v1"
 	mod3alias "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod3/v1"
@@ -20,14 +20,14 @@ import (
 type Component struct {
 	pulumi.CustomResourceState
 
-	ResourceLocalAlias                awsec2.InstanceOutput               `pulumi:"resourceLocalAlias"`
-	ResourceLocalInsteadOfRemoteAlias localmod1.ResOutput                 `pulumi:"resourceLocalInsteadOfRemoteAlias"`
-	ResourceNoAlias                   s3.BucketOutput                     `pulumi:"resourceNoAlias"`
-	ResourceRemoteAlias               mod2alias.ResOutput                 `pulumi:"resourceRemoteAlias"`
-	TypeLocalAlias                    awsec2.InstanceLaunchTemplateOutput `pulumi:"typeLocalAlias"`
-	TypeLocalInsteadOfRemoteAlias     localmod1.ConfigResponseOutput      `pulumi:"typeLocalInsteadOfRemoteAlias"`
-	TypeNoAlias                       s3.BucketWebsiteOutput              `pulumi:"typeNoAlias"`
-	TypeRemoteAlias                   mod2alias.SpecResponseOutput        `pulumi:"typeRemoteAlias"`
+	ResourceLocalAlias                othersub.ObjectOutput          `pulumi:"resourceLocalAlias"`
+	ResourceLocalInsteadOfRemoteAlias localmod1.ResOutput            `pulumi:"resourceLocalInsteadOfRemoteAlias"`
+	ResourceNoAlias                   module.ObjectOutput            `pulumi:"resourceNoAlias"`
+	ResourceRemoteAlias               mod2alias.ResOutput            `pulumi:"resourceRemoteAlias"`
+	TypeLocalAlias                    othersub.ConfigOutput          `pulumi:"typeLocalAlias"`
+	TypeLocalInsteadOfRemoteAlias     localmod1.ConfigResponseOutput `pulumi:"typeLocalInsteadOfRemoteAlias"`
+	TypeNoAlias                       module.ConfigOutput            `pulumi:"typeNoAlias"`
+	TypeRemoteAlias                   mod2alias.SpecResponseOutput   `pulumi:"typeRemoteAlias"`
 }
 
 // NewComponent registers a new resource with the given unique name, arguments, and options.
@@ -94,26 +94,26 @@ func (ComponentState) ElementType() reflect.Type {
 }
 
 type componentArgs struct {
-	ResourceLocalAlias                *awsec2.Instance              `pulumi:"resourceLocalAlias"`
-	ResourceLocalInsteadOfRemoteAlias *localmod1.Res                `pulumi:"resourceLocalInsteadOfRemoteAlias"`
-	ResourceNoAlias                   *s3.Bucket                    `pulumi:"resourceNoAlias"`
-	ResourceRemoteAlias               *mod2alias.Res                `pulumi:"resourceRemoteAlias"`
-	TypeLocalAlias                    awsec2.InstanceLaunchTemplate `pulumi:"typeLocalAlias"`
-	TypeLocalInsteadOfRemoteAlias     localmod1.Config              `pulumi:"typeLocalInsteadOfRemoteAlias"`
-	TypeNoAlias                       s3.BucketWebsite              `pulumi:"typeNoAlias"`
-	TypeRemoteAlias                   mod2alias.Spec                `pulumi:"typeRemoteAlias"`
-	TypeRemoteEnum                    *mod3alias.MyEnum             `pulumi:"typeRemoteEnum"`
+	ResourceLocalAlias                *othersub.Object  `pulumi:"resourceLocalAlias"`
+	ResourceLocalInsteadOfRemoteAlias *localmod1.Res    `pulumi:"resourceLocalInsteadOfRemoteAlias"`
+	ResourceNoAlias                   *module.Object    `pulumi:"resourceNoAlias"`
+	ResourceRemoteAlias               *mod2alias.Res    `pulumi:"resourceRemoteAlias"`
+	TypeLocalAlias                    othersub.Config   `pulumi:"typeLocalAlias"`
+	TypeLocalInsteadOfRemoteAlias     localmod1.Config  `pulumi:"typeLocalInsteadOfRemoteAlias"`
+	TypeNoAlias                       module.Config     `pulumi:"typeNoAlias"`
+	TypeRemoteAlias                   mod2alias.Spec    `pulumi:"typeRemoteAlias"`
+	TypeRemoteEnum                    *mod3alias.MyEnum `pulumi:"typeRemoteEnum"`
 }
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	ResourceLocalAlias                awsec2.InstanceInput
+	ResourceLocalAlias                othersub.ObjectInput
 	ResourceLocalInsteadOfRemoteAlias localmod1.ResInput
-	ResourceNoAlias                   s3.BucketInput
+	ResourceNoAlias                   module.ObjectInput
 	ResourceRemoteAlias               mod2alias.ResInput
-	TypeLocalAlias                    awsec2.InstanceLaunchTemplateInput
+	TypeLocalAlias                    othersub.ConfigInput
 	TypeLocalInsteadOfRemoteAlias     localmod1.ConfigInput
-	TypeNoAlias                       s3.BucketWebsiteInput
+	TypeNoAlias                       module.ConfigInput
 	TypeRemoteAlias                   mod2alias.SpecInput
 	TypeRemoteEnum                    *mod3alias.MyEnumInput
 }
@@ -205,32 +205,32 @@ func (o ComponentOutput) ToComponentOutputWithContext(ctx context.Context) Compo
 	return o
 }
 
-func (o ComponentOutput) ResourceLocalAlias() awsec2.InstanceOutput {
-	return o.ApplyT(func(v *Component) awsec2.InstanceOutput { return v.ResourceLocalAlias }).(awsec2.InstanceOutput)
+func (o ComponentOutput) ResourceLocalAlias() othersub.ObjectOutput {
+	return o.ApplyT(func(v *Component) othersub.ObjectOutput { return v.ResourceLocalAlias }).(othersub.ObjectOutput)
 }
 
 func (o ComponentOutput) ResourceLocalInsteadOfRemoteAlias() localmod1.ResOutput {
 	return o.ApplyT(func(v *Component) localmod1.ResOutput { return v.ResourceLocalInsteadOfRemoteAlias }).(localmod1.ResOutput)
 }
 
-func (o ComponentOutput) ResourceNoAlias() s3.BucketOutput {
-	return o.ApplyT(func(v *Component) s3.BucketOutput { return v.ResourceNoAlias }).(s3.BucketOutput)
+func (o ComponentOutput) ResourceNoAlias() module.ObjectOutput {
+	return o.ApplyT(func(v *Component) module.ObjectOutput { return v.ResourceNoAlias }).(module.ObjectOutput)
 }
 
 func (o ComponentOutput) ResourceRemoteAlias() mod2alias.ResOutput {
 	return o.ApplyT(func(v *Component) mod2alias.ResOutput { return v.ResourceRemoteAlias }).(mod2alias.ResOutput)
 }
 
-func (o ComponentOutput) TypeLocalAlias() awsec2.InstanceLaunchTemplateOutput {
-	return o.ApplyT(func(v *Component) awsec2.InstanceLaunchTemplateOutput { return v.TypeLocalAlias }).(awsec2.InstanceLaunchTemplateOutput)
+func (o ComponentOutput) TypeLocalAlias() othersub.ConfigOutput {
+	return o.ApplyT(func(v *Component) othersub.ConfigOutput { return v.TypeLocalAlias }).(othersub.ConfigOutput)
 }
 
 func (o ComponentOutput) TypeLocalInsteadOfRemoteAlias() localmod1.ConfigResponseOutput {
 	return o.ApplyT(func(v *Component) localmod1.ConfigResponseOutput { return v.TypeLocalInsteadOfRemoteAlias }).(localmod1.ConfigResponseOutput)
 }
 
-func (o ComponentOutput) TypeNoAlias() s3.BucketWebsiteOutput {
-	return o.ApplyT(func(v *Component) s3.BucketWebsiteOutput { return v.TypeNoAlias }).(s3.BucketWebsiteOutput)
+func (o ComponentOutput) TypeNoAlias() module.ConfigOutput {
+	return o.ApplyT(func(v *Component) module.ConfigOutput { return v.TypeNoAlias }).(module.ConfigOutput)
 }
 
 func (o ComponentOutput) TypeRemoteAlias() mod2alias.SpecResponseOutput {

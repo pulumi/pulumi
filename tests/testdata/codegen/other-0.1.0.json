@@ -25,6 +25,24 @@
 			}
 		}
 	},
+	"types": {
+		"other:module:Config": {
+			"type": "object",
+			"properties": {
+				"setting": {
+					"type": "string"
+				}
+			}
+		},
+		"other:module/sub:Config": {
+			"type": "object",
+			"properties": {
+				"setting": {
+					"type": "string"
+				}
+			}
+		}
+	},
 	"language": {
 		"nodejs": {
 			"packageName": "@third-party/pulumi-other"

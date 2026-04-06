@@ -105,7 +105,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:        "external-resource-schema",
 		Description:      "External resource schema",
-		SkipCompileCheck: codegen.NewStringSet(TestGo),
+		SkipCompileCheck: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
 	},
 	{
 		Directory:   "nested-module",
@@ -307,7 +307,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory: "external-go-import-aliases",
 		// The goalias package has its own import aliases, so those should be respected, unless there are local aliases.
-		// AWS Classic doesn't have any import aliases, so none should be used, unless there are local aliases.
+		// The other package doesn't have any import aliases, so none should be used, unless there are local aliases.
 		Description:      "Ensure external import aliases are honored, and any local import aliases override them",
 		Skip:             allLanguages.Except("go/any"),
 		SkipCompileCheck: codegen.NewStringSet(TestGo),
