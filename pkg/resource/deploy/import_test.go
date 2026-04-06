@@ -127,6 +127,92 @@ func TestImporter(t *testing.T) {
 			_, err := i.registerProviders(t.Context())
 			assert.ErrorIs(t, err, expectedErr)
 		})
+		t.Run("explicit provider not in state without inputs is skipped (#15453)", func(t *testing.T) {
+			t.Parallel()
+
+			version := semver.MustParse("1.0.0")
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+
+			// When an explicit provider is not in state and has no ProviderInputs,
+			// registerProviders does not attempt to create it. The provider reference
+			// will be missing from the returned map, which will cause a later assertion
+			// failure when importResources tries to look it up.
+			i := &importer{
+				deployment: &Deployment{
+					goals:  &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{Name: tokens.MustParseStackName("stack-name")},
+					source: &nullSource{},
+					providers: providers.NewRegistry(&plugin.MockHost{
+						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+							t.Fatal("ProviderF should not be called when ProviderInputs is nil")
+							return nil, nil
+						},
+					}, true, nil),
+					imports: []Import{
+						{
+							Type:              "foo:bar:Bar",
+							Name:              "res",
+							ID:                "some-id",
+							Provider:          providerURN,
+							Version:           &version,
+							PluginDownloadURL: "download-url",
+						},
+					},
+				},
+			}
+			refs, err := i.registerProviders(t.Context())
+			require.NoError(t, err)
+			// Provider is NOT in the reference map because it has no ProviderInputs
+			assert.NotContains(t, refs, providerURN)
+		})
+		t.Run("explicit provider with inputs uses ProviderInputs not ambient config", func(t *testing.T) {
+			t.Parallel()
+
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+			expectedErr := errors.New("expected check config error")
+
+			i := &importer{
+				deployment: &Deployment{
+					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
+					source: &nullSource{},
+					providers: providers.NewRegistry(&plugin.MockHost{
+						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+							return &deploytest.Provider{
+								CheckConfigF: func(
+									_ context.Context, req plugin.CheckConfigRequest,
+								) (plugin.CheckConfigResponse, error) {
+									// Verify the provider receives the ProviderInputs (region)
+									// NOT just ambient config from GetPackageConfig.
+									// The registry's FilterProviderConfig strips internal fields
+									// but passes through user config like "region".
+									assert.Equal(t, resource.NewProperty("eu-west-1"),
+										req.News["region"])
+									return plugin.CheckConfigResponse{}, expectedErr
+								},
+							}, nil
+						},
+					}, true, nil),
+					imports: []Import{
+						{
+							Type:     "foo:bar:Bar",
+							Name:     "res",
+							ID:       "some-id",
+							Provider: providerURN,
+							ProviderInputs: resource.PropertyMap{
+								"region": resource.NewProperty("eu-west-1"),
+							},
+						},
+					},
+				},
+			}
+			_, err := i.registerProviders(t.Context())
+			assert.ErrorIs(t, err, expectedErr)
+		})
 	})
 	t.Run("importResources", func(t *testing.T) {
 		t.Parallel()

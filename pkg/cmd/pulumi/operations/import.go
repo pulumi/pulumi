@@ -49,13 +49,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -172,6 +173,10 @@ type importSpec struct {
 type importFile struct {
 	NameTable map[string]resource.URN `json:"nameTable,omitempty"`
 	Resources []importSpec            `json:"resources,omitempty"`
+	// ProviderInputs maps provider names (as used in NameTable and importSpec.Provider) to
+	// their serialized inputs. This allows the import system to create explicit providers
+	// that are not yet in state with the correct configuration. Secrets are encrypted.
+	ProviderInputs map[string]map[string]any `json:"providerInputs,omitempty"`
 }
 
 func readImportFile(p string) (importFile, error) {
@@ -234,7 +239,8 @@ func writeImportFileTo(v importFile, path string) (string, error) {
 }
 
 func parseImportFile(
-	f importFile, stack tokens.StackName, proj tokens.PackageName, protectResources bool,
+	f importFile, stack tokens.StackName, proj tokens.PackageName,
+	protectResources bool, dec sdkconfig.Decrypter,
 ) ([]deploy.Import, importer.NameTable, error) {
 	// First check for uniqueness and ambiguity, takenNames tracks both that a name is used (it's in the map) and if
 	// it's ambiguous (it's true).
@@ -473,6 +479,18 @@ func parseImportFile(
 			} else {
 				imp.Provider = urn
 			}
+
+			// If the import file includes full inputs for this provider, deserialize them
+			// so the import system can create the provider with the correct configuration.
+			if serializedInputs, ok := f.ProviderInputs[spec.Provider]; ok {
+				providerInputs, err := resourcestack.DeserializeProperties(serializedInputs, dec)
+				if err != nil {
+					pusherrf("could not deserialize provider inputs for %v: %w",
+						describeResource(i, spec), err)
+				} else {
+					imp.ProviderInputs = providerInputs
+				}
+			}
 		}
 
 		if spec.Version != "" {
@@ -499,9 +517,9 @@ func getCurrentDeploymentForStack(
 	if err != nil {
 		return nil, err
 	}
-	snap, err := stack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
+	snap, err := resourcestack.DeserializeUntypedDeployment(ctx, deployment, secrets.DefaultProvider)
 	if err != nil {
-		return nil, stack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
+		return nil, resourcestack.FormatDeploymentDeserializationError(err, s.Ref().Name().String())
 	}
 	return snap, err
 }
@@ -890,7 +908,16 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
-			imports, nameTable, err := parseImportFile(importFile, s.Ref().Name(), proj.Name, protectResources)
+			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			if err != nil {
+				return fmt.Errorf("getting stack configuration: %w", err)
+			}
+
+			decrypter := sm.Decrypter()
+			encrypter := sm.Encrypter()
+
+			imports, nameTable, err := parseImportFile(
+				importFile, s.Ref().Name(), proj.Name, protectResources, decrypter)
 			if err != nil {
 				return err
 			}
@@ -933,19 +960,11 @@ func NewImportCmd() *cobra.Command {
 				return files, diagnostics, nil
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
-			if err != nil {
-				return fmt.Errorf("getting stack configuration: %w", err)
-			}
-
 			m, err := metadata.GetUpdateMetadata(message, root, execKind, execAgent, false, cfg, cmd.Flags())
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
 			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
-
-			decrypter := sm.Decrypter()
-			encrypter := sm.Encrypter()
 
 			stackName := s.Ref().Name().String()
 			configErr := workspace.ValidateStackConfigAndApplyProjectConfig(
