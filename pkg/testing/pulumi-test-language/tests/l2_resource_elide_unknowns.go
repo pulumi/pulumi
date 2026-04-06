@@ -84,7 +84,12 @@ func init() {
 						resource.NewProperty("hello"),
 					}), complex.Outputs["outputArray"])
 					assert.Equal(l, resource.NewProperty(resource.PropertyMap{
+						"a": resource.NewProperty("hello"),
+						"d": resource.NewProperty("hello"),
+						"m": resource.NewProperty("hello"),
+						"t": resource.NewProperty("hello"),
 						"x": resource.NewProperty("hello"),
+						"z": resource.NewProperty("hello"),
 					}), complex.Outputs["outputMap"])
 					assert.Equal(l, resource.NewProperty(resource.PropertyMap{
 						"output": resource.NewProperty("hello"),
