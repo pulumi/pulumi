@@ -13,7 +13,7 @@ list_resource = []
 for range in [{"key": k, "value": v} for [k, v] in enumerate(item_list)]:
     list_resource.append(nestedobject.Target(f"listResource-{range['key']}", name=f"{range['key']}:{range['value']}"))
 map_resource = []
-for range in [{"key": k, "value": v} for [k, v] in (item_map).items()]:
+for range in [{"key": k, "value": v} for [k, v] in sorted((item_map).items())]:
     map_resource.append(nestedobject.Target(f"mapResource-{range['key']}", name=f"{range['key']}={range['value']}"))
 bool_resource = None
 if create_bool:

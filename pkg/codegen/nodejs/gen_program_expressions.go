@@ -204,7 +204,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		if !keyUsed {
 			g.Fgenf(w, "Object.values(%.v)", expr.Collection)
 		} else {
-			g.Fgenf(w, "Object.entries(%.v)", expr.Collection)
+			g.Fgenf(w, "Object.entries(%.v).sort()", expr.Collection)
 		}
 	}
 
@@ -395,10 +395,10 @@ func (g *generator) genEntries(w io.Writer, expr *model.FunctionCallExpression) 
 		// Mapping over a list with a tuple receiver accepts (value, index).
 		g.Fgenf(w, "%.20v.map((v, k)", expr.Args[0])
 	case *model.MapType, *model.ObjectType:
-		g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
+		g.Fgenf(w, "Object.entries(%.v).sort().map(([k, v])", expr.Args[0])
 	case *model.OpaqueType:
 		if entriesArgType.Equals(model.DynamicType) {
-			g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
+			g.Fgenf(w, "Object.entries(%.v).sort().map(([k, v])", expr.Args[0])
 		}
 	}
 	g.Fgenf(w, " => ({key: k, value: v}))")

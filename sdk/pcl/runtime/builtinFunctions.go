@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -774,11 +775,17 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, fmt.Errorf("entries argument must be a collection, was %s", args[0].Type().FriendlyName())
 			}
 			obj := args[0]
+			valueMap := obj.AsValueMap()
+			keys := make([]string, 0, len(valueMap))
+			for k := range valueMap {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
 			var entries []cty.Value
-			for k, v := range obj.AsValueMap() {
+			for _, k := range keys {
 				entry := cty.ObjectVal(map[string]cty.Value{
 					"key":   cty.StringVal(k),
-					"value": v,
+					"value": valueMap[k],
 				})
 				entries = append(entries, entry)
 			}
