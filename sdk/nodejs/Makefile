@@ -5,6 +5,8 @@ VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scrip
 LANGHOST_NODE_PKG := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
 LANGHOST_BUN_PKG  := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-bun/v3
 
+_ := $(shell go build -o build/helpmakego github.com/iwahbe/helpmakego)
+
 TEST_FAST_TIMEOUT := 2m
 
 ifeq ($(DEBUG),"true")
@@ -36,7 +38,7 @@ lint_fix:: ensure
 	yarn biome format --write .
 
 build_package:: ensure
-	yarn run tsc
+	yarn run tsc -b
 	mkdir -p bin/tests/automation/data/
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp -R tests/provider/experimental/testdata/ bin/tests/provider/experimental/testdata
@@ -52,8 +54,7 @@ build_package:: ensure
 build_plugin: ../../bin/pulumi-language-nodejs ../../bin/pulumi-language-bun
 	cp ./dist/pulumi-resource-pulumi-nodejs ../../bin
 
-.PHONY: ../../bin/pulumi-language-nodejs
-../../bin/pulumi-language-nodejs:
+../../bin/pulumi-language-nodejs: $(shell build/helpmakego cmd/pulumi-language-nodejs)
 	go build -C cmd/pulumi-language-nodejs \
 	-o ../../$@ \
 		-tags="${GO_BUILD_TAGS}" \
