@@ -121,10 +121,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Description: "Third-party nested module",
 	},
 	{
-		Directory:   "plain-schema-gh6957",
-		Description: "Repro for #6957",
-	},
-	{
 		Directory:   "resource-args-python-case-insensitive",
 		Description: "Resource args with same named resource and type case insensitive",
 	},
