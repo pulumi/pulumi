@@ -458,7 +458,7 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory: "go-parameterized-lifted-single-value-methods",
 		// Issue seen in pulumi/pulumi#20744 and pulumi/pulumi-terraform-bridge#3247
 		Description: "Testing Go parameterized SDK with a provider method with liftSingleValueMethodReturns",
-		Skip:        allLanguages.Except("go/compile"),
+		Skip:        allLanguages.Except("go/any"),
 	},
 }
 
