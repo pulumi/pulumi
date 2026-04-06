@@ -25,6 +25,70 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// ChooserInfo describes a chooser block found in a document.
+type ChooserInfo struct {
+	Type    string   // e.g. "language", "os", "cloud"
+	Options []string // available option values
+}
+
+// ScanChoosers walks the AST to find chooser blocks and returns their types
+// and available options. Duplicate chooser types are deduplicated (first wins).
+// The source must be the original bytes used to parse tree.
+func ScanChoosers(source []byte, tree ast.Node) []ChooserInfo {
+	seen := map[string]bool{}
+	var result []ChooserInfo
+
+	var children []ast.Node
+	for c := tree.FirstChild(); c != nil; c = c.NextSibling() {
+		children = append(children, c)
+	}
+
+	i := 0
+	for i < len(children) {
+		text := htmlBlockText(source, children[i])
+		kind, value, isClose, ok := parseChooserComment(text)
+		if !ok || isClose || kind != "chooser" {
+			i++
+			continue
+		}
+
+		chooserType := value
+		var options []string
+		j := i + 1
+		closed := false
+
+		for j < len(children) {
+			t := htmlBlockText(source, children[j])
+			k, v, ic, ok2 := parseChooserComment(t)
+			if ok2 && k == "option" && !ic {
+				options = append(options, v)
+				j++
+				continue
+			}
+			if ok2 && k == "chooser" && ic {
+				closed = true
+				j++
+				break
+			}
+			j++
+		}
+
+		if !closed {
+			i = j
+			continue
+		}
+
+		if !seen[chooserType] {
+			seen[chooserType] = true
+			result = append(result, ChooserInfo{Type: chooserType, Options: options})
+		}
+
+		i = j
+	}
+
+	return result
+}
+
 // ResolveChoosers resolves chooser blocks in the markdown AST. The selections
 // map chooser type (e.g., "language") to the desired value (e.g., "python").
 // If no selection exists for a chooser type, all options are shown.

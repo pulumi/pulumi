@@ -15,72 +15,15 @@
 package docs
 
 import (
-	"regexp"
-
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/docsrender"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-var (
-	chooserOpenRe  = regexp.MustCompile(`<!--\s*chooser:\s*(\w+)\s*-->`)
-	optionOpenRe   = regexp.MustCompile(`<!--\s*option:\s*(\w+)\s*-->`)
-	chooserCloseRe = regexp.MustCompile(`<!--\s*/chooser\s*-->`)
-)
-
-// chooserInfo describes a chooser found in the document, with its type and available options.
-type chooserInfo struct {
-	chooserType string
-	options     []string
-}
-
-// scanChoosers scans raw markdown text for chooser blocks and returns
-// their types and available option values.
-func scanChoosers(text string) []chooserInfo {
-	seen := map[string]bool{}
-	var result []chooserInfo
-	pos := 0
-
-	for pos < len(text) {
-		loc := chooserOpenRe.FindStringIndex(text[pos:])
-		if loc == nil {
-			break
-		}
-		absStart := pos + loc[0]
-		absEnd := pos + loc[1]
-
-		m := chooserOpenRe.FindStringSubmatch(text[absStart:absEnd])
-		chooserType := m[1]
-
-		closeLoc := chooserCloseRe.FindStringIndex(text[absEnd:])
-		if closeLoc == nil {
-			pos = absEnd
-			continue
-		}
-
-		chooserBody := text[absEnd : absEnd+closeLoc[0]]
-		pos = absEnd + closeLoc[1]
-
-		if seen[chooserType] {
-			continue
-		}
-		seen[chooserType] = true
-
-		optMatches := optionOpenRe.FindAllStringSubmatch(chooserBody, -1)
-		options := make([]string, 0, len(optMatches))
-		for _, optMatch := range optMatches {
-			options = append(options, optMatch[1])
-		}
-		result = append(result, chooserInfo{chooserType: chooserType, options: options})
-	}
-
-	return result
-}
-
 // buildChooserSelections builds a selections map for docsrender.ResolveChoosers.
 // It resolves selections from flags, stored preferences, and interactive prompts.
 func buildChooserSelections(
-	body string, prefs *docsrender.Preferences,
+	choosers []docsrender.ChooserInfo, prefs *docsrender.Preferences,
 	flagLang, flagOS string,
 	session map[string]string,
 ) map[string]string {
@@ -112,26 +55,25 @@ func buildChooserSelections(
 
 	// For interactive mode, prompt for any chooser types still unresolved
 	if cmdutil.Interactive() {
-		choosers := scanChoosers(body)
 		for _, ci := range choosers {
-			if _, ok := selections[ci.chooserType]; ok {
+			if _, ok := selections[ci.Type]; ok {
 				continue
 			}
-			if len(ci.options) == 0 {
+			if len(ci.Options) == 0 {
 				continue
 			}
-			defaultOpt := ci.options[0]
-			if pref := prefs.Get(ci.chooserType); pref != "" {
+			defaultOpt := ci.Options[0]
+			if pref := prefs.Get(ci.Type); pref != "" {
 				defaultOpt = pref
 			}
 			selected := ui.PromptUser(
-				"Select "+ci.chooserType+":",
-				ci.options,
+				"Select "+ci.Type+":",
+				ci.Options,
 				defaultOpt,
 				cmdutil.GetGlobalColorization(),
 			)
 			if selected != "" {
-				selections[ci.chooserType] = selected
+				selections[ci.Type] = selected
 			}
 		}
 	}

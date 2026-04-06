@@ -327,10 +327,11 @@ func (dc *docsCmd) renderWithModulesTable(body, title, modulesTable string) {
 func (dc *docsCmd) renderBody(body, title string) (string, error) {
 	prefs := docsrender.LoadPreferences()
 
-	// Build selections and resolve choosers via goldmark AST.
-	selections := buildChooserSelections(body, prefs, dc.language, dc.osFlag, dc.session)
+	// Parse AST once, scan for choosers, build selections, then resolve.
 	source := []byte(body)
 	tree := docsrender.ParseMarkdown(source)
+	choosers := docsrender.ScanChoosers(source, tree)
+	selections := buildChooserSelections(choosers, prefs, dc.language, dc.osFlag, dc.session)
 	resolved := docsrender.ResolveChoosers(source, tree, selections)
 
 	// Filter code blocks by language via goldmark AST.

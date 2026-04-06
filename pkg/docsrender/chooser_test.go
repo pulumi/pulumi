@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseChooserComment(t *testing.T) {
@@ -51,6 +52,91 @@ func TestParseChooserComment(t *testing.T) {
 			assert.Equal(t, tt.ok, ok)
 		})
 	}
+}
+
+func TestScanChoosers(t *testing.T) {
+	t.Parallel()
+
+	t.Run("single chooser with two options", func(t *testing.T) {
+		t.Parallel()
+		source := []byte("Before.\n\n<!-- chooser: language -->\n\n" +
+			"<!-- option: typescript -->\n\nconsole.log('hi');\n\n<!-- /option -->\n\n" +
+			"<!-- option: python -->\n\nprint('hi')\n\n<!-- /option -->\n\n" +
+			"<!-- /chooser -->\n\nAfter.")
+		tree := ParseMarkdown(source)
+		result := ScanChoosers(source, tree)
+		require.Len(t, result, 1)
+		assert.Equal(t, "language", result[0].Type)
+		assert.Equal(t, []string{"typescript", "python"}, result[0].Options)
+	})
+
+	t.Run("plain text only", func(t *testing.T) {
+		t.Parallel()
+		source := []byte("Just plain text with no choosers.")
+		tree := ParseMarkdown(source)
+		result := ScanChoosers(source, tree)
+		assert.Empty(t, result)
+	})
+
+	t.Run("unmatched chooser open tag", func(t *testing.T) {
+		t.Parallel()
+		source := []byte("Before.\n\n<!-- chooser: language -->\n\nNo closing tag.")
+		tree := ParseMarkdown(source)
+		result := ScanChoosers(source, tree)
+		assert.Empty(t, result)
+	})
+
+	t.Run("multiple choosers", func(t *testing.T) {
+		t.Parallel()
+		source := []byte("<!-- chooser: language -->\n\n<!-- option: go -->\n\n" +
+			"Go code\n\n<!-- /option -->\n\n<!-- /chooser -->\n\nMiddle text.\n\n" +
+			"<!-- chooser: os -->\n\n<!-- option: linux -->\n\n" +
+			"Linux\n\n<!-- /option -->\n\n<!-- /chooser -->")
+		tree := ParseMarkdown(source)
+		result := ScanChoosers(source, tree)
+		require.Len(t, result, 2)
+		assert.Equal(t, "language", result[0].Type)
+		assert.Equal(t, "os", result[1].Type)
+	})
+
+	t.Run("duplicate chooser types deduplicated", func(t *testing.T) {
+		t.Parallel()
+		source := []byte("<!-- chooser: language -->\n\n<!-- option: go -->\n\n" +
+			"Go code\n\n<!-- /option -->\n\n<!-- /chooser -->\n\n" +
+			"<!-- chooser: language -->\n\n<!-- option: python -->\n\n" +
+			"Python code\n\n<!-- /option -->\n\n<!-- /chooser -->")
+		tree := ParseMarkdown(source)
+		result := ScanChoosers(source, tree)
+		require.Len(t, result, 1)
+		assert.Equal(t, "language", result[0].Type)
+		assert.Equal(t, []string{"go"}, result[0].Options)
+	})
+
+	t.Run("chooser with three options", func(t *testing.T) {
+		t.Parallel()
+		source := []byte("<!-- chooser: language -->\n\n" +
+			"<!-- option: typescript -->\n\nTS\n\n<!-- /option -->\n\n" +
+			"<!-- option: python -->\n\nPY\n\n<!-- /option -->\n\n" +
+			"<!-- option: go -->\n\nGO\n\n<!-- /option -->\n\n" +
+			"<!-- /chooser -->")
+		tree := ParseMarkdown(source)
+		result := ScanChoosers(source, tree)
+		require.Len(t, result, 1)
+		assert.Equal(t, []string{"typescript", "python", "go"}, result[0].Options)
+	})
+
+	t.Run("os chooser", func(t *testing.T) {
+		t.Parallel()
+		source := []byte("<!-- chooser: os -->\n\n" +
+			"<!-- option: linux -->\n\napt-get install\n\n<!-- /option -->\n\n" +
+			"<!-- option: macos -->\n\nbrew install\n\n<!-- /option -->\n\n" +
+			"<!-- /chooser -->")
+		tree := ParseMarkdown(source)
+		result := ScanChoosers(source, tree)
+		require.Len(t, result, 1)
+		assert.Equal(t, "os", result[0].Type)
+		assert.Equal(t, []string{"linux", "macos"}, result[0].Options)
+	})
 }
 
 func TestResolveChoosersWithSelection(t *testing.T) {
