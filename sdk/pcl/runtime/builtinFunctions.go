@@ -17,10 +17,13 @@ package runtime
 import (
 	"context"
 	"crypto/sha1" //nolint:gosec // we don't need a strong cryptographic primitive
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -884,6 +887,68 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	resolvePath := func(p string) string {
+		if filepath.IsAbs(p) {
+			return p
+		}
+		return filepath.Join(i.info.WorkingDir, p)
+	}
+
+	readFileFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "path",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			path := resolvePath(args[0].AsString())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("readFile: %w", err)
+			}
+			return cty.StringVal(string(data)), nil
+		},
+	})
+
+	filebase64Fn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "path",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			path := resolvePath(args[0].AsString())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("filebase64: %w", err)
+			}
+			return cty.StringVal(base64.StdEncoding.EncodeToString(data)), nil
+		},
+	})
+
+	filebase64sha256Fn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "path",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			path := resolvePath(args[0].AsString())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("filebase64sha256: %w", err)
+			}
+			hash := sha256.Sum256(data)
+			return cty.StringVal(base64.StdEncoding.EncodeToString(hash[:])), nil
+		},
+	})
+
 	return map[string]function.Function{
 		"cwd":                literalStringFn(i.info.WorkingDir),
 		"rootDirectory":      literalStringFn(i.info.RootDirectory),
@@ -917,5 +982,8 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"fromBase64":         fromBase64Fn,
 		"toJSON":             toJSONFn,
 		"sha1":               sha1Fn,
+		"readFile":           readFileFn,
+		"filebase64":         filebase64Fn,
+		"filebase64sha256":   filebase64sha256Fn,
 	}
 }

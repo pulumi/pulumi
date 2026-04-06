@@ -6,7 +6,7 @@ import pulumi_aws as aws
 
 def computeFilebase64sha256(path):
 	fileData = open(path).read().encode()
-	hashedData = hashlib.sha256(fileData.encode()).digest()
+	hashedData = hashlib.sha256(fileData).digest()
 	return base64.b64encode(hashedData).decode()
 
 encoded = base64.b64encode("haha business".encode()).decode()
