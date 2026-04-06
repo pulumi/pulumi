@@ -81,6 +81,25 @@ var pluginDownloadURLOverrides string
 // pluginDownloadURLOverridesParsed is the parsed array from `pluginDownloadURLOverrides`.
 var pluginDownloadURLOverridesParsed pluginDownloadOverrideArray
 
+// pluginHostOverrides is a variable instead of a constant so it can be set using the `-X`
+// ldflag at build time, if necessary. When non-empty, it is parsed into
+// `pluginHostOverridesParsed` in `init()`. The expected format is
+// `host1=https://proxy1/base/path,host2=https://proxy2`.
+var pluginHostOverrides string
+
+// hostOverride holds the parsed components of a single entry in pluginHostOverridesParsed.
+type hostOverride struct {
+	scheme string // replacement scheme, e.g. "https"
+	host   string // replacement host, e.g. "testartifactory.my.de"
+	// path is the base path prefix to prepend to every request path, e.g.
+	// "/artifactory/api-github-generic-remote". May be empty. Never has a trailing slash.
+	path string
+}
+
+// pluginHostOverridesParsed is the parsed map from `pluginHostOverrides`.
+// Keys are original hostnames (optionally with port), e.g. "api.github.com".
+var pluginHostOverridesParsed map[string]hostOverride
+
 // pluginDownloadURLOverride represents a plugin download URL override, parsed from `pluginDownloadURLOverrides`.
 type pluginDownloadURLOverride struct {
 	reg *regexp.Regexp // The regex used to match against the plugin's name.
@@ -126,6 +145,64 @@ func init() {
 	if pluginDownloadURLOverridesParsed, err = parsePluginDownloadURLOverrides(overrides); err != nil {
 		panic(fmt.Errorf("error parsing `pluginDownloadURLOverrides`: %w", err))
 	}
+
+	// Parse host overrides. Environment variable takes precedence over compile-time flags.
+	hostOverrides := pluginHostOverrides
+	if v := env.PluginHostOverrides.Value(); v != "" {
+		hostOverrides = v
+	}
+	if pluginHostOverridesParsed, err = parsePluginHostOverrides(hostOverrides); err != nil {
+		panic(fmt.Errorf("error parsing `pluginHostOverrides`: %w", err))
+	}
+}
+
+// parsePluginHostOverrides parses an overrides string with the expected format
+// `host1=https://proxy1/base/path,host2=https://proxy2`.
+//
+// The key is the original hostname (optionally with port) as it appears in the request URL.
+// The value is the full base URL of the proxy. If the value has no scheme, "https" is assumed.
+// Any path in the proxy base URL is prepended to the original request path, which allows
+// reverse proxies that expose upstream hosts at a subpath (e.g. Artifactory generic remotes).
+//
+// Examples:
+//
+//	api.github.com=https://artifactory.example.com/artifactory/github-api-remote
+//	github.com=https://artifactory.example.com/artifactory/github-com-remote
+//	api.github.com=github-api.simpleproxy.example.com  (bare host, https assumed)
+func parsePluginHostOverrides(overrides string) (map[string]hostOverride, error) {
+	result := map[string]hostOverride{}
+	if overrides == "" {
+		return result, nil
+	}
+	for _, pair := range strings.Split(overrides, ",") {
+		// SplitN with n=2 so that "://" and "=" inside the proxy URL are not treated as
+		// delimiters — only the first "=" separates the key from the value.
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return nil, fmt.Errorf(
+				"expected format to be \"host1=https://proxy1/path,host2=https://proxy2\"; got %q",
+				overrides)
+		}
+		from := parts[0]
+		rawTo := parts[1]
+		// Accept bare hostnames for convenience; assume https.
+		if !strings.Contains(rawTo, "://") {
+			rawTo = "https://" + rawTo
+		}
+		toURL, err := url.Parse(rawTo)
+		if err != nil {
+			return nil, fmt.Errorf("invalid proxy base URL %q: %w", parts[1], err)
+		}
+		if toURL.Host == "" {
+			return nil, fmt.Errorf("proxy base URL %q has no host", parts[1])
+		}
+		result[from] = hostOverride{
+			scheme: toURL.Scheme,
+			host:   toURL.Host,
+			path:   strings.TrimSuffix(toURL.Path, "/"),
+		}
+	}
+	return result, nil
 }
 
 // parsePluginDownloadURLOverrides parses an overrides string with the expected format `regexp1=URL1,regexp2=URL2`.
@@ -1545,6 +1622,30 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 		return nil, err
 	}
 
+	// Apply any host overrides from PULUMI_PLUGIN_HOST_OVERRIDES.  The rewrite happens here,
+	// at the single point where all plugin download requests are constructed, so it is
+	// transparently effective for every source type (GitHub, GitLab, get.pulumi.com, custom
+	// HTTP sources) without requiring any source-specific logic.
+	//
+	// Note: mutating req.URL.Host means that downstream error helpers which inspect the host
+	// (e.g. newDownloadError's private-repo hint for api.github.com 404s) will see the proxy
+	// hostname instead of the original one.  Those hints are best-effort and this is an
+	// acceptable trade-off for the simplicity of a single rewrite point.
+	if override, ok := pluginHostOverridesParsed[req.URL.Host]; ok {
+		original := req.URL.String()
+		req.URL.Scheme = override.scheme
+		req.URL.Host = override.host
+		req.Host = req.URL.Host
+		if override.path != "" {
+			req.URL.Path = override.path + req.URL.Path
+			// Keep RawPath in sync when the original URL had percent-encoded path segments.
+			if req.URL.RawPath != "" {
+				req.URL.RawPath = override.path + req.URL.RawPath
+			}
+		}
+		logging.V(9).Infof("plugin host override: %s -> %s", original, req.URL)
+	}
+
 	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 	req.Header.Set("User-Agent", userAgent)
 
@@ -1625,6 +1726,9 @@ func newGithubPrivateRepoError(statusCode int, url *url.URL) error {
 }
 
 // Create a new downloadError.
+// Note: when PULUMI_PLUGIN_HOST_OVERRIDES is set the host in url will be the proxy hostname
+// rather than "api.github.com", so the private-repo hint below will not fire for proxied
+// requests. This is a known, accepted limitation of the host-rewrite approach.
 func newDownloadError(statusCode int, url *url.URL, header http.Header) error {
 	if url.Host == "api.github.com" && statusCode == 404 {
 		return newGithubPrivateRepoError(statusCode, url)
