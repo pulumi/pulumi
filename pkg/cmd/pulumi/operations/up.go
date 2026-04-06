@@ -98,6 +98,7 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var format string
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -143,6 +144,7 @@ func NewUpCmd() *cobra.Command {
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 		meta *promise.Promise[map[string]string],
+		summary *ui.OperationSummarySink,
 	) error {
 		s, err := cmdStack.RequireStack(
 			ctx,
@@ -262,6 +264,13 @@ func NewUpCmd() *cobra.Command {
 			maps.Copy(m.Environment, metadata)
 		}
 
+		if summary != nil && summary.StartTime.IsZero() {
+			// Deliberate duplication: the display pipeline already tracks duration for
+			// human-readable output. We separately track timing here so `--format json`
+			// can emit a structured summary without depending on display internals.
+			summary.StartTime = time.Now()
+		}
+
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -272,6 +281,12 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 		}, nil /* events */)
+		if summary != nil {
+			summary.EndTime = time.Now()
+			summary.ChangeSummary = changes
+			summary.Err = err
+		}
+
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
@@ -294,6 +309,7 @@ func NewUpCmd() *cobra.Command {
 		opts backend.UpdateOptions,
 		cmd *cobra.Command,
 		meta *promise.Promise[map[string]string],
+		summary *ui.OperationSummarySink,
 	) error {
 		// Retrieve the template repo.
 		templateSource := cmdTemplates.New(ctx,
@@ -507,6 +523,13 @@ func NewUpCmd() *cobra.Command {
 		// - attempt `destroy` on any update errors.
 		// - show template.Quickstart?
 
+		if summary != nil && summary.StartTime.IsZero() {
+			// Deliberate duplication: the display pipeline already tracks duration for
+			// human-readable output. We separately track timing here so `--format json`
+			// can emit a structured summary without depending on display internals.
+			summary.StartTime = time.Now()
+		}
+
 		changes, err := backend.UpdateStack(ctx, s, backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
@@ -517,6 +540,12 @@ func NewUpCmd() *cobra.Command {
 			SecretsProvider:    secrets.DefaultProvider,
 			Scopes:             backend.CancellationScopes,
 		}, nil /* events */)
+		if summary != nil {
+			summary.EndTime = time.Now()
+			summary.ChangeSummary = changes
+			summary.Err = err
+		}
+
 		switch {
 		case err == context.Canceled:
 			return backenderr.CancelledError{Operation: "update"}
@@ -587,6 +616,16 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
+			// Validate output format. We intentionally keep `--json`
+			// backwards compatible (JSONL events only) and only add the final
+			// JSON operation summary footer when `--format json` is requested.
+			switch format {
+			case "", "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --format value %q (expected %q or %q)", format, "default", "json")
+			}
+
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
 			if err != nil {
 				return err
@@ -629,7 +668,8 @@ func NewUpCmd() *cobra.Command {
 			}
 
 			if remoteArgs.Remote {
-				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client, jsonDisplay, policyPackPaths,
+				err = deployment.ValidateUnsupportedRemoteFlags(expectNop, configArray, path, client,
+					jsonDisplay, policyPackPaths,
 					policyPackConfigPaths, refresh, showConfig, showPolicyRemediations, showReplacementSteps, showSames,
 					showReads, suppressOutputs, secretsProvider, &targets, &excludes, replaces, targetReplaces,
 					targetDependents, planFilePath, cmdStack.ConfigFile, runProgram)
@@ -668,6 +708,8 @@ func NewUpCmd() *cobra.Command {
 			configureNeoOptions(neoEnabled, cmd, &opts.Display, isDIYBackend)
 			configureNeoTaskOption(neoTaskOnFailure, cmd, &opts.Display, isDIYBackend)
 
+			summary := &ui.OperationSummarySink{}
+
 			if len(args) > 0 {
 				return upTemplateNameOrURL(
 					ctx,
@@ -678,10 +720,11 @@ func NewUpCmd() *cobra.Command {
 					opts,
 					cmd,
 					meta,
+					summary,
 				)
 			}
 
-			return upWorkingDirectory(
+			err = upWorkingDirectory(
 				ctx,
 				ssml,
 				ws,
@@ -689,7 +732,16 @@ func NewUpCmd() *cobra.Command {
 				opts,
 				cmd,
 				meta,
+				summary,
 			)
+
+			if format == "json" {
+				if perr := ui.PrintOperationSummaryJSON(summary); perr != nil && err == nil {
+					err = perr
+				}
+			}
+
+			return err
 		},
 	}
 
@@ -770,6 +822,12 @@ func NewUpCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&format, "format", "default",
+		"Output format. Supported values are: default, json")
+	// Hide --format while the feature is still being developed.
+	_ = cmd.Flags().MarkHidden("format")
+	cmd.MarkFlagsMutuallyExclusive("json", "format")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
