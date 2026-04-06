@@ -25,17 +25,27 @@ func init() {
 		Runs: []TestRun{
 			{
 				Config: config.Map{
-					config.MustMakeKey("l1-builtin-object", "aMap"): config.NewObjectValue(`{"keyPresent":"value"}`),
+					config.MustMakeKey("l1-builtin-object", "aMap"): config.NewObjectValue(
+						`{"keyPresent":"value","alpha":"first","zebra":"last"}`),
 				},
 				Assert: func(l *L, res AssertArgs) {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
+					// Entries must be sorted alphabetically by key.
 					assert.Equal(l, resource.PropertyMap{
 						"entriesOutput": resource.NewProperty([]resource.PropertyValue{
 							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("alpha"),
+								"value": resource.NewProperty("first"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
 								"key":   resource.NewProperty("keyPresent"),
 								"value": resource.NewProperty("value"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("zebra"),
+								"value": resource.NewProperty("last"),
 							}),
 						}),
 						"lookupOutput":        resource.NewProperty("value"),
