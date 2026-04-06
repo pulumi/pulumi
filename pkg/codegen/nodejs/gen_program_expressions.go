@@ -204,7 +204,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		if !keyUsed {
 			g.Fgenf(w, "Object.values(%.v)", expr.Collection)
 		} else {
-			g.Fgenf(w, "Object.entries(%.v)", expr.Collection)
+			g.Fgenf(w, "Object.entries(%.v).sort()", expr.Collection)
 		}
 	}
 

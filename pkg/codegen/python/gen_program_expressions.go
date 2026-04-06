@@ -170,7 +170,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	case !keyUsed:
 		g.Fgenf(w, " for %v in %.v", expr.ValueVariable.Name, expr.Collection)
 	case isMapType(expr.Collection.Type()):
-		g.Fgenf(w, " for %v, %v in %.v.items()", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
+		g.Fgenf(w, " for %v, %v in sorted(%.v.items())", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
 	default:
 		g.Fgenf(w, " for %v, %v in enumerate(%.v)", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
 	}
