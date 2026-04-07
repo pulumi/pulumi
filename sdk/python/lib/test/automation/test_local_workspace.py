@@ -191,6 +191,19 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertIsNotNone(result.user)
         self.assertIsNotNone(result.url)
 
+    def test_org_get_set_default_integration(self):
+        ws = LocalWorkspace()
+
+        # Save the current default so we can restore it.
+        original = ws.org_get_default()
+
+        # Set a new default and verify.
+        ws.org_set_default("definitely-not-pulumi")
+        self.assertEqual(ws.org_get_default(), "definitely-not-pulumi")
+
+        # Restore the original default.
+        ws.org_set_default(original)
+
     def test_stack_init(self):
         project_name = "python_test"
         project_settings = ProjectSettings(name=project_name, runtime="python")

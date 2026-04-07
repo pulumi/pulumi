@@ -13,7 +13,7 @@ resource "mapIgnore" "nestedobject:index:MapContainer" {
         env = "prod"
     }
     options {
-        ignoreChanges = [tags["env"]]
+        ignoreChanges = [tags["env"], tags["with.dot"], tags["with escaped \""]]
     }
 }
 

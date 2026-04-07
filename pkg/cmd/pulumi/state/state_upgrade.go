@@ -15,6 +15,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"github.com/spf13/cobra"
 )
@@ -54,11 +56,16 @@ This only has an effect on DIY backends.
 				Stdout: stdout,
 			}
 
+			project, _, err := ws.ReadProject()
+			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+				return err
+			}
+
 			b, err := cmdBackend.CurrentBackend(
 				ctx,
 				ws,
 				lm,
-				nil,
+				project,
 				dopts,
 			)
 			if err != nil {

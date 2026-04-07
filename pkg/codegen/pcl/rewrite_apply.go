@@ -320,7 +320,7 @@ func (ctx *observeContext) bestArgName(x model.Expression) string {
 			return ctx.bestArgName(x.Args[0])
 		case "fileArchive", "remoteArchive", "assetArchive",
 			"fileAsset", "stringAsset", "remoteAsset",
-			"readDir", "readFile":
+			"readFile":
 			return ctx.bestArgName(x.Args[0])
 		case "lookup":
 			return ctx.bestArgName(x.Args[1])

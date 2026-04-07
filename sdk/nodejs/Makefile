@@ -83,7 +83,16 @@ install_plugin:: build
 
 install:: install_package install_plugin
 
-unit_tests:: $(TEST_ALL_DEPS)
+tools_tests::
+	go run -C ../../pkg ./cmd/pulumi generate-cli-spec \
+		--overrides ../tools/automation/automation-overrides.json \
+		> ../../tools/automation/specification.json
+	cd tools/automation && yarn install && \
+		npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && \
+		yarn build && \
+		yarn test
+
+unit_tests:: $(TEST_ALL_DEPS) tools_tests
 	yarn run nyc --no-clean -s mocha --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
 		--exclude 'bin/tests/runtime/closure-integration-tests.js' \

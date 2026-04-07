@@ -158,6 +158,60 @@ func TestVersionWithVerboseEnv(t *testing.T) {
 	require.Equal(t, version, semver.Version{Major: 3, Minor: 98, Patch: 0})
 }
 
+func TestWithNonInteractiveArg(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "prepends when no args",
+			input:    []string{},
+			expected: []string{"--non-interactive"},
+		},
+		{
+			name:     "prepends when no separator",
+			input:    []string{"up", "--stack", "dev"},
+			expected: []string{"--non-interactive", "up", "--stack", "dev"},
+		},
+		{
+			name:     "prepends before -- separator",
+			input:    []string{"config", "set", "key", "--", "value"},
+			expected: []string{"--non-interactive", "config", "set", "key", "--", "value"},
+		},
+		{
+			name:     "does not duplicate when already present",
+			input:    []string{"up", "--non-interactive"},
+			expected: []string{"up", "--non-interactive"},
+		},
+		{
+			name:     "does not duplicate when already present before separator",
+			input:    []string{"config", "set", "--non-interactive", "--", "value"},
+			expected: []string{"config", "set", "--non-interactive", "--", "value"},
+		},
+		{
+			name:     "adds when only present after separator",
+			input:    []string{"cmd", "--", "--non-interactive"},
+			expected: []string{"--non-interactive", "cmd", "--", "--non-interactive"},
+		},
+		{
+			name:     "separator at start",
+			input:    []string{"--", "positional"},
+			expected: []string{"--non-interactive", "--", "positional"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := withNonInteractiveArg(tt.input)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestFixupPath(t *testing.T) {
 	t.Parallel()
 

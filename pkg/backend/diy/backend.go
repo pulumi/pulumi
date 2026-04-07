@@ -397,6 +397,9 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	if err != nil {
 		return fmt.Errorf("read old references: %w", err)
 	}
+	logging.V(7).Infof("State upgrade scan for %q found %d legacy stack file(s)",
+		b.originalURL, len(olds))
+
 	sort.Slice(olds, func(i, j int) bool {
 		return olds[i].Name().String() < olds[j].Name().String()
 	})
@@ -418,6 +421,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 			if err != nil {
 				return fmt.Errorf("guess stack %s project: %w", old.Name(), err)
 			}
+			logging.V(7).Infof("Guessed project %q for stack %s", project, old.Name())
 
 			// No lock necessary;
 			// projects is pre-allocated.

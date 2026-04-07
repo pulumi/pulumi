@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: backend/diy
-  description: Avoid unnecessary S3 bucket HEAD calls to improve performance
