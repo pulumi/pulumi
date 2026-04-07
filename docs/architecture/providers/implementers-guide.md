@@ -490,13 +490,13 @@ value was used for determining the difference. The core change kinds are:
 - `Update`, which denotes an `Object` property or `Array` element that was updated
 - `Delete`, which denotes an `Object` property or `Array` element that was removed
 
-Each of these core kinds is paramaterized on whether or not the change requires
-replacement and whether the old value of the property should was read from the
+Each of these core kinds is parameterized on whether or not the change requires
+replacement and whether the old value of the property should be read from the
 resource's old input `Object` or old state `Object`.
 
 *TODO*: the input/output flag is a bit clumsy, as it is the only part of the system
 that implies some correspondence between input and output `Object` schemas. It was
-chosen over an approach that used old/new values due in order to remove the possibility
+chosen over an approach that used old/new values in order to remove the possibility
 of a provider accidentally revealing a secret value as part of a diff. We should
 reconsider this approach if we can find an easy way to maintain secretness.
 
@@ -534,7 +534,7 @@ creating the resource, in which case the `preview` argument will be `true`.
 (update)=
 #### Update
 
-The `Update` method is responsible for updating a resource in-place in order given its
+The `Update` method is responsible for updating a resource in-place given its
 last recorded state `Object` and current input `Object`. `Update` may be called during
 a [preview](preview) in order to compute a hypothetical state `Object` without actually
 updating the resource, in which case the `preview` argument will be `true`.

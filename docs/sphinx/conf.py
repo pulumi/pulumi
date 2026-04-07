@@ -129,7 +129,7 @@ autosectionlabel_prefix_document = True
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
-# A list of of patterns, relative to the source directory, that match files and
+# A list of patterns, relative to the source directory, that match files and
 # directories to ignore when looking for source files. These patterns also
 # affect html_static_path and html_extra_path.
 exclude_patterns = [
