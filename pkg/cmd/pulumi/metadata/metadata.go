@@ -254,12 +254,16 @@ func detectAIAgent(getEnv func(string) string) string {
 		return agent
 	}
 
-	// Order matters: specific forms should be identified before broad IDE/tool markers.
 	type detector struct {
 		name string
 		envs []string
 	}
-	for _, d := range []detector{
+	// These are sourced from https://github.com/unjs/std-env/blob/main/src/agents.ts and
+	// https://github.com/vercel/vercel/blob/main/packages/detect-agent/src/index.ts, as a reference for common
+	// environment variables set by AI agents and tools.
+	//
+	// Order matters: specific forms should be identified before broad IDE/tool markers.
+	agents := []detector{
 		{name: "cursor", envs: []string{"CURSOR_TRACE_ID"}},
 		{name: "cursor-cli", envs: []string{"CURSOR_AGENT"}},
 		{name: "gemini", envs: []string{"GEMINI_CLI"}},
@@ -272,7 +276,9 @@ func detectAIAgent(getEnv func(string) string) string {
 		{name: "replit", envs: []string{"REPL_ID"}},
 		{name: "github-copilot", envs: []string{"COPILOT_MODEL", "COPILOT_ALLOW_ALL", "COPILOT_GITHUB_TOKEN"}},
 		{name: "goose", envs: []string{"GOOSE_PROVIDER"}},
-	} {
+	}
+
+	for _, d := range agents {
 		for _, envVar := range d.envs {
 			if getEnv(envVar) != "" {
 				return d.name
