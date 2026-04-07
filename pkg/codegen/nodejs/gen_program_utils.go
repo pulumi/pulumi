@@ -29,7 +29,7 @@ func getHelperMethodIfNeeded(function *model.FunctionCallExpression, indent stri
 	case "filebase64sha256":
 		return `function computeFilebase64sha256(path: string): string {
 	const fileData = Buffer.from(fs.readFileSync(path, 'binary'))
-	return crypto.createHash('sha256').update(fileData).digest('hex')
+	return crypto.createHash('sha256').update(fileData).digest('base64')
 }`, true
 	case "notImplemented":
 		return fmt.Sprintf(
