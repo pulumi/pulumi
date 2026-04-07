@@ -37,13 +37,93 @@ const (
 	SectionFunctions = "Functions"
 )
 
+// CLIDocEntry represents a single resource or function in the CLI docs bundle.
+type CLIDocEntry struct {
+	Title              string `json:"title"`
+	Description        string `json:"description"`
+	Content            string `json:"content"`
+	Deprecated         bool   `json:"deprecated,omitempty"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty"`
+}
+
 // CLIDocsBundle represents the bundled CLI docs JSON for a package.
+// Supports both the new structured format (CLIDocEntry objects) and the legacy
+// format (raw markdown strings) for backward compatibility.
 type CLIDocsBundle struct {
-	Version        int               `json:"version"`
-	Package        string            `json:"package"`
-	PackageVersion string            `json:"packageVersion"`
-	Resources      map[string]string `json:"resources"`
-	Functions      map[string]string `json:"functions"`
+	Package        string                 `json:"package"`
+	PackageVersion string                 `json:"packageVersion"`
+	Overview       string                 `json:"overview,omitempty"`
+	Resources      map[string]CLIDocEntry `json:"-"`
+	Functions      map[string]CLIDocEntry `json:"-"`
+}
+
+// cliBundleRaw is used for initial JSON unmarshaling before entries are normalized.
+type cliBundleRaw struct {
+	Package        string                     `json:"package"`
+	PackageVersion string                     `json:"packageVersion"`
+	Overview       string                     `json:"overview,omitempty"`
+	Resources      map[string]json.RawMessage `json:"resources"`
+	Functions      map[string]json.RawMessage `json:"functions"`
+}
+
+// UnmarshalJSON handles both new (CLIDocEntry) and legacy (string) bundle formats.
+func (b *CLIDocsBundle) UnmarshalJSON(data []byte) error {
+	var raw cliBundleRaw
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	b.Package = raw.Package
+	b.PackageVersion = raw.PackageVersion
+	b.Overview = raw.Overview
+	b.Resources = unmarshalEntries(raw.Resources)
+	b.Functions = unmarshalEntries(raw.Functions)
+	return nil
+}
+
+func unmarshalEntries(raw map[string]json.RawMessage) map[string]CLIDocEntry {
+	result := make(map[string]CLIDocEntry, len(raw))
+	for key, data := range raw {
+		var entry CLIDocEntry
+		if err := json.Unmarshal(data, &entry); err == nil && entry.Title != "" {
+			result[key] = entry
+			continue
+		}
+		// Legacy format: raw markdown string.
+		var content string
+		if err := json.Unmarshal(data, &content); err == nil {
+			content = strings.ReplaceAll(content, "\r\n", "\n")
+			content = strings.ReplaceAll(content, "\t", "    ")
+			title, body := extractLegacyTitle(content)
+			result[key] = CLIDocEntry{
+				Title:   title,
+				Content: body,
+			}
+		}
+	}
+	return result
+}
+
+// extractLegacyTitle extracts a "# Title" from the first line of legacy bundle content.
+// MarshalJSON serializes the bundle in the new structured format.
+func (b CLIDocsBundle) MarshalJSON() ([]byte, error) {
+	type alias struct {
+		Package        string                 `json:"package"`
+		PackageVersion string                 `json:"packageVersion"`
+		Overview       string                 `json:"overview,omitempty"`
+		Resources      map[string]CLIDocEntry `json:"resources"`
+		Functions      map[string]CLIDocEntry `json:"functions"`
+	}
+	return json.Marshal(alias(b))
+}
+
+func extractLegacyTitle(content string) (title, body string) {
+	if !strings.HasPrefix(content, "# ") {
+		return "", content
+	}
+	if idx := strings.Index(content, "\n"); idx >= 0 {
+		return content[2:idx], strings.TrimLeft(content[idx+1:], "\n")
+	}
+	return content[2:], ""
 }
 
 type bundleCacheMeta struct {
@@ -255,32 +335,22 @@ func saveBundleToDisk(packageName string, bundle *CLIDocsBundle) error {
 
 // LookupBundleDoc looks up a resource or function by key in the bundle.
 func LookupBundleDoc(bundle *CLIDocsBundle, docKey string) (body string, title string, found bool) {
-	content, ok := bundle.Resources[docKey]
+	entry, ok := bundle.Resources[docKey]
 	if !ok {
-		content, ok = bundle.Functions[docKey]
+		entry, ok = bundle.Functions[docKey]
 	}
 	if !ok {
 		return "", "", false
 	}
 
-	content = strings.ReplaceAll(content, "\r\n", "\n")
-	content = strings.ReplaceAll(content, "\t", "    ")
-
-	title = ExtractBundleTitle(content)
-	if title != "" {
-		if idx := strings.Index(content, "\n"); idx >= 0 {
-			content = strings.TrimLeft(content[idx+1:], "\n")
-		}
-	}
-
-	return content, title, true
+	return entry.Content, entry.Title, true
 }
 
 // ClassifiedEntry represents a single resource or function found during bundle key scanning.
 type ClassifiedEntry struct {
-	Key     string
-	Title   string
-	Content string
+	Key         string
+	Title       string
+	Description string
 }
 
 // ClassifiedKeys is the result of scanning bundle keys for a given module prefix.
@@ -296,8 +366,8 @@ func ClassifyBundleKeys(bundle *CLIDocsBundle, modulePrefix string) ClassifiedKe
 	subModules := make(map[string]bool)
 	var resources, functions []ClassifiedEntry
 
-	classify := func(keys map[string]string, isFunction bool) {
-		for key, content := range keys {
+	classify := func(keys map[string]CLIDocEntry, isFunction bool) {
+		for key, doc := range keys {
 			var rel string
 			if modulePrefix == "" {
 				if strings.Contains(key, "/") {
@@ -316,12 +386,12 @@ func ClassifyBundleKeys(bundle *CLIDocsBundle, modulePrefix string) ClassifiedKe
 				}
 			}
 
-			title := ExtractBundleTitle(content)
+			title := doc.Title
 			if title == "" {
 				title = rel
 			}
 
-			entry := ClassifiedEntry{Key: key, Title: title, Content: content}
+			entry := ClassifiedEntry{Key: key, Title: title, Description: doc.Description}
 			if isFunction {
 				functions = append(functions, entry)
 			} else {
@@ -364,12 +434,12 @@ func RenderBundleTable(bundle *CLIDocsBundle, modulePrefix string) string {
 
 	resources := make([]tableEntry, len(ck.Resources))
 	for i, r := range ck.Resources {
-		resources[i] = tableEntry{name: r.Title, desc: ExtractBundleDescription(r.Content)}
+		resources[i] = tableEntry{name: r.Title, desc: truncateDescription(r.Description)}
 	}
 
 	functions := make([]tableEntry, len(ck.Functions))
 	for i, f := range ck.Functions {
-		functions[i] = tableEntry{name: f.Title, desc: ExtractBundleDescription(f.Content)}
+		functions[i] = tableEntry{name: f.Title, desc: truncateDescription(f.Description)}
 	}
 
 	maxName := 0
@@ -410,8 +480,13 @@ func RenderBundleTable(bundle *CLIDocsBundle, modulePrefix string) string {
 }
 
 // BuildAPIDocsPage constructs a clean API docs overview page from the bundle data.
-// If intro is non-empty, it's prepended as the page description.
+// It uses the bundle's Overview field when available, falling back to the provided
+// intro text for older bundles that lack it.
 func BuildAPIDocsPage(bundle *CLIDocsBundle, modulePrefix, intro string) string {
+	// Prefer the bundle's overview (clean markdown from upstream).
+	if modulePrefix == "" && bundle.Overview != "" {
+		return bundle.Overview
+	}
 	ck := ClassifyBundleKeys(bundle, modulePrefix)
 	var buf strings.Builder
 
@@ -432,9 +507,8 @@ func BuildAPIDocsPage(bundle *CLIDocsBundle, modulePrefix, intro string) string 
 		}
 		buf.WriteString("## " + title + "\n\n")
 		for _, e := range entries {
-			desc := ExtractBundleDescription(e.Content)
-			if desc != "" {
-				fmt.Fprintf(&buf, "- **%s** — %s\n", e.Title, desc)
+			if e.Description != "" {
+				fmt.Fprintf(&buf, "- **%s** — %s\n", e.Title, truncateDescription(e.Description))
 			} else {
 				fmt.Fprintf(&buf, "- %s\n", e.Title)
 			}
@@ -446,6 +520,27 @@ func BuildAPIDocsPage(bundle *CLIDocsBundle, modulePrefix, intro string) string 
 	writeEntrySection(SectionFunctions, ck.Functions)
 
 	return buf.String()
+}
+
+// truncateDescription truncates a description to a single sentence for display.
+func truncateDescription(desc string) string {
+	if desc == "" {
+		return ""
+	}
+	// Take first line only.
+	if idx := strings.Index(desc, "\n"); idx >= 0 {
+		desc = desc[:idx]
+	}
+	desc = strings.TrimSpace(desc)
+	// Truncate at first sentence boundary.
+	if idx := strings.Index(desc, ". "); idx >= 0 {
+		desc = desc[:idx+1]
+	}
+	const maxLen = 80
+	if len(desc) > maxLen {
+		desc = desc[:maxLen-3] + "..."
+	}
+	return desc
 }
 
 // FormatPackageDetails reformats tab-indented Package Details into clean markdown.
@@ -520,7 +615,7 @@ func renderBundleSectionDirect(ck ClassifiedKeys, section string) string {
 		bold := ANSIBold
 		reset := ANSIReset
 		for _, e := range entries {
-			desc := ExtractBundleDescription(e.Content)
+			desc := truncateDescription(e.Description)
 			if desc != "" {
 				// Pad based on visible width, then add ANSI bold
 				pad := maxName - len(e.Title)

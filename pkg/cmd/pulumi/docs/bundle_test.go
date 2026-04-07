@@ -26,17 +26,17 @@ func TestBundleNavItems(t *testing.T) {
 	t.Parallel()
 	bundle := &docsrender.CLIDocsBundle{
 		Package: "aws",
-		Resources: map[string]string{
-			"s3/bucket":                "# Bucket\n\nContent",
-			"s3/bucketPolicy":          "# BucketPolicy\n\nContent",
-			"ec2/instance":             "# Instance\n\nContent",
-			"ec2/vpc":                  "# Vpc\n\nContent",
-			"ec2/transitgateway/route": "# Route\n\nContent",
-			"rootresource":             "# RootResource\n\nContent",
+		Resources: map[string]docsrender.CLIDocEntry{
+			"s3/bucket":                {Title: "Bucket", Description: "S3 bucket", Content: "Content"},
+			"s3/bucketPolicy":          {Title: "BucketPolicy", Description: "S3 bucket policy", Content: "Content"},
+			"ec2/instance":             {Title: "Instance", Description: "EC2 instance", Content: "Content"},
+			"ec2/vpc":                  {Title: "Vpc", Description: "EC2 VPC", Content: "Content"},
+			"ec2/transitgateway/route": {Title: "Route", Description: "TGW route", Content: "Content"},
+			"rootresource":             {Title: "RootResource", Description: "Root resource", Content: "Content"},
 		},
-		Functions: map[string]string{
-			"s3/getBucket": "# getBucket\n\nContent",
-			"rootfunc":     "# rootFunc\n\nContent",
+		Functions: map[string]docsrender.CLIDocEntry{
+			"s3/getBucket": {Title: "getBucket", Description: "Get S3 bucket", Content: "Content"},
+			"rootfunc":     {Title: "rootFunc", Description: "Root function", Content: "Content"},
 		},
 	}
 
@@ -115,12 +115,12 @@ func TestBundleSectionNav(t *testing.T) {
 
 	bundle := &docsrender.CLIDocsBundle{
 		Package: "aws",
-		Resources: map[string]string{
-			"s3/bucket":    "# Bucket\n\nContent",
-			"rootresource": "# RootResource\n\nContent",
+		Resources: map[string]docsrender.CLIDocEntry{
+			"s3/bucket":    {Title: "Bucket", Content: "Content"},
+			"rootresource": {Title: "RootResource", Content: "Content"},
 		},
-		Functions: map[string]string{
-			"rootfunc": "# rootFunc\n\nContent",
+		Functions: map[string]docsrender.CLIDocEntry{
+			"rootfunc": {Title: "rootFunc", Content: "Content"},
 		},
 	}
 

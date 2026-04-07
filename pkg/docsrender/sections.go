@@ -125,8 +125,11 @@ func GetSection(md, slug string) string {
 	return string(section)
 }
 
-// GetIntro returns the content before the first heading.
-// If there is no text before the first heading, includes the first section.
+// GetIntro returns the introductory content of a document — the content that
+// precedes the first navigable (H2) section. If there is text before the first
+// heading, that text is the intro. If the document starts with an H1 heading,
+// the H1 and content up to the first H2 form the intro. If the document starts
+// with an H2, the first H2 section is included as the intro.
 func GetIntro(md string) string {
 	source := []byte(md)
 	tree := ParseMarkdown(source)
@@ -135,79 +138,47 @@ func GetIntro(md string) string {
 		return string(intro)
 	}
 
-	// No text before first heading — include the first section.
-	headings := ExtractHeadings(source, tree)
-	if len(headings) == 0 {
+	// No text before first heading — collect nodes up to the first H2 boundary.
+	var nodes []ast.Node
+	for c := tree.FirstChild(); c != nil; c = c.NextSibling() {
+		if h, ok := c.(*ast.Heading); ok && h.Level <= 2 && len(nodes) > 0 {
+			// We've hit an H2 (or another H1) after already collecting some nodes.
+			// Stop here — this is the start of the first navigable section.
+			break
+		}
+		nodes = append(nodes, c)
+	}
+	if len(nodes) == 0 {
 		return md
 	}
-	section := ExtractSection(source, tree, headings[0].Slug)
-	if section != nil {
-		return string(section)
-	}
-	return md
+	return string(renderNodes(source, nodes))
 }
 
 // IntroContainsFirstHeading returns true if the document starts with a heading
-// (no text before it), meaning the intro includes the first section.
+// and the intro overlaps with the first H2 section. Returns false when the
+// document starts with an H1 that is separate from the H2 sections, or when
+// there is text before the first heading.
 func IntroContainsFirstHeading(md string) bool {
 	source := []byte(md)
 	tree := ParseMarkdown(source)
-	return ExtractIntro(source, tree) == nil
-}
-
-// ExtractBundleTitle extracts the title from a "# Title" first line.
-func ExtractBundleTitle(content string) string {
-	if !strings.HasPrefix(content, "# ") {
-		return ""
+	if ExtractIntro(source, tree) != nil {
+		return false // text before first heading — intro is separate
 	}
-	if idx := strings.Index(content, "\n"); idx >= 0 {
-		return strings.TrimPrefix(content[:idx], "# ")
+	// Document starts with a heading. If it's H1 and there are H2 sections,
+	// the intro (H1 + pre-H2 content) is separate from the navigable sections.
+	first := tree.FirstChild()
+	if first == nil {
+		return false
 	}
-	return strings.TrimPrefix(content, "# ")
-}
-
-// ExtractBundleDescription extracts the first sentence of the description.
-func ExtractBundleDescription(content string) string {
-	body := content
-	if strings.HasPrefix(body, "# ") {
-		if idx := strings.Index(body, "\n"); idx >= 0 {
-			body = body[idx+1:]
-		} else {
-			return ""
+	if h, ok := first.(*ast.Heading); ok && h.Level == 1 {
+		// Check if any H2 exists — if so, the H1 intro is separate.
+		for c := first.NextSibling(); c != nil; c = c.NextSibling() {
+			if h2, ok := c.(*ast.Heading); ok && h2.Level == 2 {
+				return false
+			}
 		}
 	}
-	body = strings.TrimLeft(body, "\n")
-
-	if strings.HasPrefix(body, "> **Deprecated:") {
-		if idx := strings.Index(body, "\n"); idx >= 0 {
-			body = strings.TrimLeft(body[idx+1:], "\n")
-		}
-	}
-
-	if body == "" {
-		return ""
-	}
-
-	firstLine := body
-	if idx := strings.Index(body, "\n"); idx >= 0 {
-		firstLine = body[:idx]
-	}
-	firstLine = strings.TrimSpace(firstLine)
-
-	if strings.HasPrefix(firstLine, "#") || strings.HasPrefix(firstLine, "<!--") {
-		return ""
-	}
-
-	if idx := strings.Index(firstLine, ". "); idx >= 0 {
-		firstLine = firstLine[:idx+1]
-	}
-
-	const maxLen = 80
-	if len(firstLine) > maxLen {
-		firstLine = firstLine[:maxLen-3] + "..."
-	}
-
-	return firstLine
+	return true
 }
 
 // --- Internal helpers ---

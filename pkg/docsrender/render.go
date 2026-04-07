@@ -445,20 +445,22 @@ func BrowseFooter(baseURL, path string) string {
 	return fmt.Sprintf("\n%s%s\n%s🔗 %s\n", pageMargin, termRule(), pageMargin, WebURL(baseURL, path))
 }
 
-// PrintHeadingWithTable renders a heading through glamour, then prints
+// FormatHeadingWithTable renders a heading through glamour and appends
 // pre-formatted table lines with the page margin.
-func PrintHeadingWithTable(heading, table string) {
+func FormatHeadingWithTable(heading, table string) string {
+	var buf strings.Builder
 	headingMD := "## " + heading
 	rendered, err := RenderMarkdown("", headingMD)
 	if err == nil {
-		fmt.Print(rendered)
+		buf.WriteString(rendered)
 	} else {
-		fmt.Printf("\n%s## %s\n\n", pageMargin, heading)
+		fmt.Fprintf(&buf, "\n%s## %s\n\n", pageMargin, heading)
 	}
 	for _, line := range strings.Split(strings.TrimRight(table, "\n"), "\n") {
-		fmt.Println(pageMargin + line)
+		buf.WriteString(pageMargin + line + "\n")
 	}
-	fmt.Println()
+	buf.WriteString("\n")
+	return buf.String()
 }
 
 // FindSectionBounds returns the start index, the index after the heading,

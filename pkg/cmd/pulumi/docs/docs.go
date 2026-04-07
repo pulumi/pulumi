@@ -20,7 +20,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/docsrender"
@@ -69,10 +68,16 @@ func NewDocsCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(&dc.baseURL, "base-url", "https://www.pulumi.com",
 		"Base URL for Pulumi documentation")
-	cmd.PersistentFlags().StringVar(&dc.registryBaseURL, "registry-base-url", "https://www.pulumi.com",
-		"Base URL for Pulumi registry")
+	cmd.PersistentFlags().StringVar(&dc.registryBaseURL, "registry-base-url", "",
+		"Base URL for Pulumi registry (defaults to --base-url)")
 	cmd.PersistentFlags().MarkHidden("base-url")          //nolint:errcheck
 	cmd.PersistentFlags().MarkHidden("registry-base-url") //nolint:errcheck
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if dc.registryBaseURL == "" {
+			dc.registryBaseURL = dc.baseURL
+		}
+		return nil
+	}
 	cmd.PersistentFlags().StringVar(&dc.language, "language", "",
 		"Filter code examples in docs by language (e.g., python, typescript, go); choice is remembered")
 	cmd.PersistentFlags().StringVar(&dc.osFlag, "os", "",
@@ -200,16 +205,25 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 		pkgName, docKey, ok := docsrender.ParseAPIDocsPath(path)
 		if ok {
 			bundle, _ = docsrender.FetchCLIDocsBundle(fetchBase, pkgName)
-			if bundle != nil && docKey != "" {
-				if b, t, found := docsrender.LookupBundleDoc(bundle, docKey); found {
-					body, title = b, t
+			if bundle != nil {
+				if docKey != "" {
+					if b, t, found := docsrender.LookupBundleDoc(bundle, docKey); found {
+						body, title = b, t
+					}
+				} else if bundle.Overview != "" {
+					body = docsrender.BuildAPIDocsPage(bundle, "", "")
+					title = bundle.Package
 				}
 			}
 		}
 	}
 
 	if body == "" {
-		body, title, err = docsrender.FetchDoc(fetchBase, path)
+		var resolvedPath string
+		body, title, resolvedPath, err = docsrender.FetchDoc(fetchBase, path)
+		if resolvedPath != "" {
+			path = resolvedPath
+		}
 	}
 	if err != nil {
 		var regErr *docsrender.RegistryNotAvailableError
@@ -265,10 +279,10 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 			modulesTable := docsrender.RenderBundleSingleSection(bundle, docKey, docsrender.SectionModules)
 			if modulesTable != "" {
 				dc.renderWithModulesTable(body, title, modulesTable)
+				prefs := docsrender.LoadPreferences()
+				prefs.LastPage = path
+				docsrender.SavePreferences(prefs)
 				if section == "" {
-					prefs := docsrender.LoadPreferences()
-					prefs.LastPage = path
-					docsrender.SavePreferences(prefs)
 					fmt.Print(docsrender.PageFooter(fetchBase, path))
 				}
 				return nil
@@ -282,11 +296,11 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 	}
 	fmt.Print(rendered)
 
-	if section == "" {
-		prefs := docsrender.LoadPreferences()
-		prefs.LastPage = path
-		docsrender.SavePreferences(prefs)
+	prefs := docsrender.LoadPreferences()
+	prefs.LastPage = path
+	docsrender.SavePreferences(prefs)
 
+	if section == "" {
 		fmt.Print(docsrender.PageFooter(fetchBase, path))
 	}
 
@@ -312,7 +326,7 @@ func (dc *docsCmd) renderWithModulesTable(body, title, modulesTable string) {
 		}
 	}
 
-	docsrender.PrintHeadingWithTable(docsrender.SectionModules, modulesTable)
+	fmt.Print(docsrender.FormatHeadingWithTable(docsrender.SectionModules, modulesTable))
 
 	if strings.TrimSpace(after) != "" {
 		rendered, err := dc.renderBody(after, "")
@@ -437,8 +451,7 @@ func (dc *docsCmd) handleRegistryFallback(path string) error {
 	if cmdutil.Interactive() && overviewPath != "" {
 		optBrowseAPI := "Browse API docs"
 		optOverview := "View package overview"
-		optBrowser := "Open in web browser"
-		options := []string{optBrowseAPI, optOverview, optBrowser}
+		options := []string{optBrowseAPI, optOverview}
 
 		fmt.Fprintln(os.Stderr)
 		selected := ui.PromptUser(
@@ -453,9 +466,6 @@ func (dc *docsCmd) handleRegistryFallback(path string) error {
 			return dc.browseLoop(overviewPath + "/api-docs")
 		case optOverview:
 			return dc.fetchAndRender(overviewPath)
-		case optBrowser:
-			fmt.Fprintf(os.Stderr, "Opening %s\n\n", pageWebURL)
-			return browser.OpenURL(pageWebURL)
 		}
 		return nil
 	}

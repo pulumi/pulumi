@@ -42,27 +42,29 @@ func TestFetchDoc(t *testing.T) { //nolint:paralleltest // mutates package-level
 	t.Cleanup(func() { HTTPClient = origClient })
 
 	t.Run("docs page found", func(t *testing.T) { //nolint:paralleltest // shares HTTPClient
-		body, title, err := FetchDoc(srv.URL, "iac/concepts/stacks")
+		body, title, resolved, err := FetchDoc(srv.URL, "iac/concepts/stacks")
 		require.NoError(t, err)
 		assert.Equal(t, "Stacks", title)
 		assert.Contains(t, body, "Content here.")
+		assert.Equal(t, "iac/concepts/stacks", resolved)
 	})
 
 	t.Run("registry page found", func(t *testing.T) { //nolint:paralleltest // shares HTTPClient
-		body, title, err := FetchDoc(srv.URL, "registry/packages/aws")
+		body, title, resolved, err := FetchDoc(srv.URL, "registry/packages/aws")
 		require.NoError(t, err)
 		assert.Equal(t, "AWS Provider", title)
 		assert.Contains(t, body, "AWS content.")
+		assert.Equal(t, "registry/packages/aws", resolved)
 	})
 
 	t.Run("docs page not found", func(t *testing.T) { //nolint:paralleltest // shares HTTPClient
-		_, _, err := FetchDoc(srv.URL, "nonexistent/path")
+		_, _, _, err := FetchDoc(srv.URL, "nonexistent/path")
 		assert.Error(t, err)
 	})
 
 	//nolint:paralleltest // shares HTTPClient
 	t.Run("registry not found returns RegistryNotAvailableError", func(t *testing.T) {
-		_, _, err := FetchDoc(srv.URL, "registry/packages/nonexistent")
+		_, _, _, err := FetchDoc(srv.URL, "registry/packages/nonexistent")
 		assert.Error(t, err)
 		var regErr *RegistryNotAvailableError
 		assert.ErrorAs(t, err, &regErr)

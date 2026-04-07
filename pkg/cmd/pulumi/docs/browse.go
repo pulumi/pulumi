@@ -20,7 +20,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/docsrender"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -47,7 +46,6 @@ type browseNode struct {
 	bundle       *docsrender.CLIDocsBundle
 	bundlePrefix string
 	sectionNav   map[string][]navOption
-	pinnedNav    []navOption
 }
 
 type navOption struct {
@@ -115,19 +113,20 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 			return nil
 		}
 
-		navItems = append(navItems, node.items...)
+		// For API docs pages with per-section nav, defer showing bundle items
+		// until the user views a specific section or full page. Otherwise the
+		// intro view is cluttered with every resource/function in the package.
+		if !useSections || node.sectionNav == nil {
+			navItems = append(navItems, node.items...)
+		}
 
 		if node.bundleTable != "" && node.body == "" {
 			fmt.Print(node.bundleTable)
 		}
 
-		if len(navItems) == 0 && len(node.pinnedNav) == 0 && node.body == "" {
+		if len(navItems) == 0 && node.body == "" {
 			pageURL := docsrender.WebURL(dc.baseURLForPath(path), path)
-			if err := browser.OpenURL(pageURL); err != nil {
-				fmt.Fprintf(os.Stderr, "\n  🌐 This page is available on the web:\n     %s\n", pageURL)
-			} else {
-				fmt.Fprintf(os.Stderr, "\n  🌐 Opened in browser: %s\n", pageURL)
-			}
+			fmt.Fprintf(os.Stderr, "\n  This page is not available for terminal viewing.\n\n  🔗 %s\n\n", pageURL)
 			if len(history) > 0 {
 				path = history[len(history)-1]
 				history = history[:len(history)-1]
@@ -138,14 +137,18 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 
 		activeItems := navItems
 		sectionIdx := -1
-		if introIncludesFirstSection {
+		if !useSections {
+			// Full page mode — signal that all sections are visible
+			// so the menu doesn't offer prev/next navigation.
+			sectionIdx = len(headings)
+		} else if introIncludesFirstSection {
 			sectionIdx = 0
 		}
 		navigated := false
 		for !navigated {
 			isRoot := path == ""
 			hasHeadings := len(headings) > 0
-			menuItems := append(activeItems, node.pinnedNav...)
+			menuItems := activeItems
 			menu := buildBrowseMenu(menuItems, isRoot, hasHeadings,
 				len(history) > 0, !introIncludesFirstSection, sectionIdx, headings)
 
@@ -211,6 +214,7 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 					fmt.Print(docsrender.BrowseFooter(dc.baseURLForPath(path), path))
 				}
 				activeItems = numberedNavLinks(links)
+				activeItems = append(activeItems, node.items...)
 				sectionIdx = len(headings)
 
 			default:
@@ -231,11 +235,7 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 					for _, item := range menuItems {
 						if item.label == selected {
 							if item.href != "" {
-								if err := browser.OpenURL(item.href); err != nil {
-									fmt.Fprintf(os.Stderr, "\n  🌐 This page is available on the web:\n     %s\n", item.href)
-								} else {
-									fmt.Fprintf(os.Stderr, "\n  🌐 Opened in browser: %s\n", item.href)
-								}
+								fmt.Fprintf(os.Stderr, "\n  🔗 %s\n\n", item.href)
 								break
 							}
 							history = append(history, path)
@@ -329,6 +329,16 @@ func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 				node.title = t
 			}
 		}
+		if node.body == "" && docKey == "" && bundle.Overview != "" {
+			// Use the bundle's overview directly — no need to fetch index.md.
+			node.body = docsrender.BuildAPIDocsPage(bundle, docKey, "")
+			node.title = bundle.Package
+			node.items = BundleNavItems(bundle, docKey, pkgName)
+			node.sectionNav = BundleSectionNav(bundle, docKey, pkgName)
+			node.bundleTable = docsrender.RenderBundleTable(bundle, docKey)
+			node.bundle = bundle
+			node.bundlePrefix = docKey
+		}
 		if node.body == "" {
 			bundleNav := BundleNavItems(bundle, docKey, pkgName)
 			if len(bundleNav) > 0 {
@@ -339,8 +349,12 @@ func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 	}
 
 	if node.body == "" {
-		body, title, err := docsrender.FetchDoc(dc.registryBaseURL, path)
+		body, title, resolvedPath, err := docsrender.FetchDoc(dc.registryBaseURL, path)
 		if err == nil {
+			if resolvedPath != "" {
+				path = resolvedPath
+				node.path = path
+			}
 			node.body = body
 			node.title = title
 			if bundle != nil {
@@ -353,7 +367,13 @@ func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 			} else if !docsrender.IsAPIDocsPath(path) {
 				node.body = docsrender.FormatPackageDetails(node.body)
 			}
-			node.items = nil
+			// Load sibling nav from sitemap, excluding self-links.
+			trimmedPath := strings.Trim(path, "/")
+			for _, item := range dc.registryNavItems(path) {
+				if strings.Trim(item.path, "/") != trimmedPath {
+					node.items = append(node.items, item)
+				}
+			}
 		} else {
 			var regErr *docsrender.RegistryNotAvailableError
 			if errors.As(err, &regErr) {
@@ -373,13 +393,6 @@ func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 		node.title = pathLastSegment(path)
 	}
 
-	trimmed := strings.Trim(path, "/")
-	parts := strings.Split(trimmed, "/")
-	if len(parts) >= 3 && parts[0] == "registry" && parts[1] == "packages" && !docsrender.IsAPIDocsPath(path) {
-		apiDocsPath := fmt.Sprintf("registry/packages/%s/api-docs", parts[2])
-		node.pinnedNav = append(node.pinnedNav, navOption{label: "📖 API Docs" + navDrill, path: apiDocsPath})
-	}
-
 	return node
 }
 
@@ -391,8 +404,12 @@ func (dc *docsCmd) resolveDocsPage(path string) browseNode {
 
 	node := browseNode{path: path}
 
-	body, title, err := docsrender.FetchDoc(dc.baseURL, path)
+	body, title, resolvedPath, err := docsrender.FetchDoc(dc.baseURL, path)
 	if err == nil {
+		if resolvedPath != "" {
+			path = resolvedPath
+			node.path = path
+		}
 		node.body = body
 		node.title = title
 	}
@@ -523,7 +540,7 @@ func renderSectionByIdx(dc *docsCmd, body string, headings []docsrender.Heading,
 		if nav, ok := node.sectionNav[heading.Title]; ok {
 			sectionTable := docsrender.RenderBundleSingleSection(node.bundle, node.bundlePrefix, heading.Title)
 			if sectionTable != "" {
-				docsrender.PrintHeadingWithTable(heading.Title, sectionTable)
+				fmt.Print(docsrender.FormatHeadingWithTable(heading.Title, sectionTable))
 				*activeItems = nav
 				return
 			}

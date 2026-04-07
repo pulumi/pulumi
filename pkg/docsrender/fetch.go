@@ -54,51 +54,66 @@ func userAgent() string {
 }
 
 // FetchDoc fetches a markdown doc page from the docs or registry site.
-// Returns the body (with frontmatter stripped) and the title.
+// Returns the body (with frontmatter stripped), the title, and the resolved
+// path (which may differ from the requested path if a redirect was followed).
 // If the markdown 404s, it tries the HTML page to find redirects or meta refreshes.
 // For registry paths that 404, returns a RegistryNotAvailableError.
-func FetchDoc(baseURL, path string) (body string, title string, err error) {
+func FetchDoc(baseURL, path string) (body string, title string, resolvedPath string, err error) {
 	base := normalizeBaseURL(baseURL)
 	prefix, trimmedPath := ContentPrefix(path)
 	mdURL := fmt.Sprintf("%s%s%s/index.md", base, prefix, trimmedPath)
 
 	req, err := http.NewRequest(http.MethodGet, mdURL, nil) //nolint:gosec // URL from user base URL
 	if err != nil {
-		return "", "", fmt.Errorf("creating request: %w", err)
+		return "", "", "", fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("User-Agent", userAgent())
 	resp, err := HTTPClient.Do(req)
 	if err != nil {
-		return "", "", fmt.Errorf("fetching docs: %w", err)
+		return "", "", "", fmt.Errorf("fetching docs: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
+		// Check if the client silently followed a redirect to a different content
+		// path (e.g. /docs/guides/index.md → /docs/iac/). If so, re-fetch the
+		// markdown from the redirected path instead of using the HTML we landed on.
+		// Compare URL paths (ignoring scheme/host) to detect content redirects
+		// while allowing benign redirects (HTTP→HTTPS, CDN normalization).
+		// Strip /index.md since we appended it ourselves.
+		finalPath := strings.TrimSuffix(strings.TrimSuffix(resp.Request.URL.Path, "/index.md"), "/")
+		requestedPath := strings.TrimSuffix(strings.TrimSuffix(req.URL.Path, "/index.md"), "/")
+		if finalPath != requestedPath {
+			redirectPath := extractContentPath(finalPath, "")
+			if redirectPath != "" && redirectPath != strings.Trim(path, "/") {
+				return FetchDoc(baseURL, redirectPath)
+			}
+		}
 		data, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return "", "", fmt.Errorf("reading docs response: %w", err)
+			return "", "", "", fmt.Errorf("reading docs response: %w", err)
 		}
 		raw := strings.ReplaceAll(string(data), "\r\n", "\n")
 		raw = strings.ReplaceAll(raw, "\t", "    ")
 		body, title = StripFrontmatter(raw)
-		return body, title, nil
+		return body, title, strings.Trim(path, "/"), nil
 	}
 
 	// CloudFront returns 403 for missing content, so treat it the same as 404.
 	notFound := resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden
 
 	if !notFound {
-		return "", "", fmt.Errorf("unexpected status %d fetching docs page: %s", resp.StatusCode, path)
+		return "", "", "", fmt.Errorf("unexpected status %d fetching docs page: %s", resp.StatusCode, path)
 	}
 
 	if IsRegistryPath(path) {
-		return "", "", &RegistryNotAvailableError{Path: path}
+		return "", "", "", &RegistryNotAvailableError{Path: path}
 	}
 
 	// 404 on .md — try the HTML page to find a redirect
 	redirectPath, err := resolveRedirect(base, path)
 	if err != nil || redirectPath == "" || redirectPath == strings.Trim(path, "/") {
-		return "", "", fmt.Errorf("documentation page not found: %s", path)
+		return "", "", "", fmt.Errorf("documentation page not found: %s", path)
 	}
 
 	return FetchDoc(baseURL, redirectPath)
