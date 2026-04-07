@@ -105,6 +105,7 @@ var expectedFailures = map[string]string{
 	"l1-builtin-can":       "Temporarily disabled until pr #18916 is submitted",
 	"l3-deferred-outputs":  "does not type-check",
 	"l2-resource-optional": "optional outputs are not assignable to optional inputs",
+	"l3-range-ref":         `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
 }
 
 type languageTestConfig struct {

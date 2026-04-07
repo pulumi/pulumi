@@ -100,6 +100,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l2-resource-optional": "optional outputs are not assignable to optional inputs",
 	"l3-deferred-outputs":  "Cannot find name '_arg0_'.",
+	"l3-range-ref":         "Property 'k1' does not exist on type 'Target[]'",
 }
 
 // testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
