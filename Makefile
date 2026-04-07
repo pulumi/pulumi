@@ -83,6 +83,10 @@ generate-nodejs-automation-api:: generate-cli-spec
 test-nodejs-automation-api:: generate-cli-spec
 	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm test
 
+.PHONY: generate-python-automation-api
+generate-python-automation-api:: generate-cli-spec
+	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python main.py ../../../../tools/automation/specification.json boilerplate/standard.py ../../lib/pulumi/automation/interface
+
 .PHONY: test-python-automation-api
 test-python-automation-api::
 	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python -m unittest tests.test_commands -v
