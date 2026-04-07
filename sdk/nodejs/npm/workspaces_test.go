@@ -21,6 +21,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestFindWorkspaceRootEmptyDir(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	_, err := FindWorkspaceRoot(dir)
+	require.ErrorIs(t, err, ErrNotInWorkspace)
+}
+
 func TestFindWorkspaceRoot(t *testing.T) {
 	t.Parallel()
 

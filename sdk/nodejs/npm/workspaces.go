@@ -37,9 +37,13 @@ func FindWorkspaceRoot(startingPath string) (string, error) {
 	if !stat.IsDir() {
 		startingPath = filepath.Dir(startingPath)
 	}
-	// We start at the location of the first package manifest we find.
+	// We start at the location of the first package manifest we find. If there is no manifest
+	// anywhere up the tree, the directory is not part of any project, much less a workspace.
 	manifestPath, err := SearchupPackageManifest(startingPath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", ErrNotInWorkspace
+		}
 		return "", fmt.Errorf("did not find package.json or package.yaml in %s: %w", startingPath, err)
 	}
 	packageJSONDir := filepath.Dir(manifestPath)
