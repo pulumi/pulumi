@@ -111,3 +111,6 @@ GitHub issues and files:
 * <gh-issue:pulumi#1234> will link to issue 1234 in the `pulumi` repository.
 * <gh-file:pulumi#README.md> will link to the `README.md` file in the `pulumi`
   repository.
+* <gh-permalink:pulumi?abc123#pkg/foo.go#L42> will link to line 42 of
+  `pkg/foo.go` at commit `abc123`. Use this instead of `gh-file` when linking
+  to specific line numbers, so the link doesn't drift as the file changes.
