@@ -372,34 +372,19 @@ func TestCrashTolerance(t *testing.T) {
 
 func TestRapidRoundTrip(t *testing.T) {
 	t.Parallel()
+	ctx := t.Context()
 	rapid.Check(t, func(t *rapid.T) {
-		data := rapid.SliceOf(rapid.Byte()).Draw(t, "data")
-		chunkSizes := rapid.SliceOfN(rapid.IntRange(1, len(data)+1), 1, -1).Draw(t, "chunkSizes")
-
-		ctx := context.Background() //nolint:usetesting // rapid.T doesn't have Context()
-		var buf bytes.Buffer
+		var expected, buf bytes.Buffer
 		w, err := NewWriter(ctx, &buf, config.Base64Crypter)
 		require.NoError(t, err)
 		w.chunkSize = rapid.IntRange(1, 1024).Draw(t, "writerChunkSize")
 
-		// Write data in arbitrarily-sized chunks.
-		offset := 0
-		for _, size := range chunkSizes {
-			if offset >= len(data) {
-				break
-			}
-			end := offset + size
-			if end > len(data) {
-				end = len(data)
-			}
-			_, err := w.Write(data[offset:end])
-			require.NoError(t, err)
-			offset = end
-		}
-		if offset < len(data) {
-			_, err := w.Write(data[offset:])
+		for _, data := range rapid.SliceOf(rapid.SliceOf(rapid.Byte())).Draw(t, "writes") {
+			expected.Write(data)
+			_, err := w.Write(data)
 			require.NoError(t, err)
 		}
+
 		require.NoError(t, w.Close())
 
 		r, err := NewReader(ctx, &buf, config.Base64Crypter)
@@ -407,6 +392,6 @@ func TestRapidRoundTrip(t *testing.T) {
 
 		got, err := io.ReadAll(r)
 		require.NoError(t, err)
-		assert.Equal(t, data, got)
+		assert.Equal(t, expected.Bytes(), got)
 	})
 }
