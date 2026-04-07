@@ -80,7 +80,14 @@ myst_url_schemes = {
         "title": "pulumi/{{path}}:{{fragment}}",
         "classes": ["github"],
     },
-    # Usage: <gh-file:repository-under-pulumi-org#issue-or-pr-number>
+    # Usage: <gh-permalink:repository-under-pulumi-org?commit-sha#path/to/file>
+    # Like gh-file, but pinned to a specific commit so line numbers don't drift.
+    "gh-permalink": {
+        "url": "https://github.com/pulumi/{{path}}/blob/{{query}}/{{fragment}}",
+        "title": "pulumi/{{path}}:{{fragment}}",
+        "classes": ["github"],
+    },
+    # Usage: <gh-issue:repository-under-pulumi-org#issue-or-pr-number>
     "gh-issue": {
         "url": "https://github.com/pulumi/{{path}}/issues/{{fragment}}",
         "title": "pulumi/{{path}} #{{fragment}}",
