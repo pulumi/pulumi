@@ -62,22 +62,22 @@ var (
 )
 
 var (
-	sinkMu sync.RWMutex
-	sink   io.Writer
+	sinkMu       sync.RWMutex
+	sink         io.Writer
+	sinkMaxLevel int32 = 10
 )
 
-// SetSink sets a writer that receives a copy of all log messages,
-// regardless of the current verbosity level. This is used by
-// the encrypted logging system to capture full diagnostic output.
+// SetSink sets a writer that receives a copy of all log messages at or
+// below maxLevel. Pass 0 for maxLevel when clearing the sink.
 // The writer must be safe for concurrent use.
-func SetSink(w io.Writer) {
+func SetSink(w io.Writer, maxLevel int32) {
 	sinkMu.Lock()
 	defer sinkMu.Unlock()
 	sink = w
+	sinkMaxLevel = maxLevel
 }
 
-// HasSink returns true if a log sink is currently set.
-func HasSink() bool {
+func hasSink() bool {
 	sinkMu.RLock()
 	defer sinkMu.RUnlock()
 	return sink != nil
@@ -134,10 +134,20 @@ func init() {
 const LevelTrace = slog.LevelDebug - 4
 
 // VerboseLogger logs messages only if verbosity matches the level it was built with.
-// The value is 0 when disabled, or the verbosity level when enabled.
-type VerboseLogger struct{ level int32 }
+type VerboseLogger struct {
+	level int32
+	sink  bool // whether the sink wants this level
+}
 
-func (v VerboseLogger) Enabled() bool { return Verbose >= int(v.level) && v.level > 0 }
+// Enabled returns true if verbose logging is enabled at this level or the sink wants it.
+func (v VerboseLogger) Enabled() bool {
+	return (Verbose >= int(v.level) && v.level > 0) || v.sink
+}
+
+// slogEnabled returns true if the slog handler should be invoked for this level.
+func (v VerboseLogger) slogEnabled() bool {
+	return Verbose >= int(v.level) && v.level > 0
+}
 
 // slogLevel maps the pulumi verbosity level to a slog level:
 //
@@ -156,10 +166,12 @@ func (v VerboseLogger) slogLevel() slog.Level {
 }
 
 func (v VerboseLogger) Info(args ...any) {
-	if v.Enabled() || HasSink() {
+	if v.Enabled() {
 		msg := fmt.Sprint(args...)
-		writeToSink(fmt.Sprintf("I%d", v.level), msg, nil)
-		if v.Enabled() {
+		if v.sink {
+			writeToSink(fmt.Sprintf("I%d", v.level), msg, nil)
+		}
+		if v.slogEnabled() {
 			slogHandler.Log(context.TODO(), v.slogLevel(), msg, "v", int(v.level))
 		}
 	}
@@ -172,16 +184,19 @@ func (v VerboseLogger) Infoln(args ...any) {
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
 func (v VerboseLogger) Infof(format string, args ...any) {
-	if v.Enabled() || HasSink() {
-		writeToSink(fmt.Sprintf("I%d", v.level), format, args)
-		if v.Enabled() {
+	if v.Enabled() {
+		if v.sink {
+			writeToSink(fmt.Sprintf("I%d", v.level), format, args)
+		}
+		if v.slogEnabled() {
 			slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprintf(format, args...), "v", int(v.level))
 		}
 	}
 }
 
+// V builds a logger that logs messages only if verbosity is at least at the provided level.
 func V(level int32) VerboseLogger {
-	return VerboseLogger{level: level}
+	return VerboseLogger{level: level, sink: hasSink() && level <= sinkMaxLevel}
 }
 
 func Errorf(format string, args ...any) {

@@ -1224,7 +1224,7 @@ func (b *diyBackend) apply(
 		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
 
 	if op.SecretsManager != nil {
-		if err := backendlogging.UpgradeCurrentLogger(ctx, stackRef.Name().String(), "", op.SecretsManager); err != nil {
+		if err := backendlogging.UpgradeCurrentLogger(ctx, string(stackRef.FullyQualifiedName()), "", op.SecretsManager); err != nil {
 			logging.V(3).Infof("encrypted log upgrade failed: %v", err)
 		}
 	}

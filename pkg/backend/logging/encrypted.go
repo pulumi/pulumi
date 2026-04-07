@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,21 +34,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-var (
-	currentLoggerMu sync.Mutex
-	currentLogger   *Logger
-)
+var currentLogger *Logger
 
 // UpgradeCurrentLogger upgrades the currently active logger to encrypted mode
 // and renames the log file to include the stack name and update ID.
 func UpgradeCurrentLogger(ctx context.Context, stackName, updateID string, sm secrets.Manager) error {
-	currentLoggerMu.Lock()
-	l := currentLogger
-	currentLoggerMu.Unlock()
-	if l == nil {
+	if currentLogger == nil {
 		return nil
 	}
-	return l.UpgradeToEncrypted(ctx, stackName, updateID, sm)
+	return currentLogger.UpgradeToEncrypted(ctx, stackName, updateID, sm)
 }
 
 // Logger captures glog output to a log file on disk, optionally encrypted.
@@ -76,8 +71,11 @@ func StartLogging(
 		return nil, fmt.Errorf("creating log directory: %w", err)
 	}
 
+	RotateLogs(logsDir)
+
 	ts := time.Now().Format("20060102T150405")
-	name := stackName + "-" + ts
+	safeName := strings.ReplaceAll(stackName, "/", "+")
+	name := safeName + "-" + ts
 	if updateID != "" {
 		name += "-" + updateID
 	}
@@ -102,12 +100,8 @@ func StartLogging(
 		l.encrypted = true
 	}
 
-	logging.SetSink(l)
-
-	currentLoggerMu.Lock()
+	logging.SetSink(l, 10)
 	currentLogger = l
-	currentLoggerMu.Unlock()
-
 	return l, nil
 }
 
@@ -189,13 +183,10 @@ func (l *Logger) Close() error {
 	if l == nil {
 		return nil
 	}
-	logging.SetSink(nil)
-
-	currentLoggerMu.Lock()
+	logging.SetSink(nil, 0)
 	if currentLogger == l {
 		currentLogger = nil
 	}
-	currentLoggerMu.Unlock()
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -219,7 +210,8 @@ func (l *Logger) FilePath() string {
 func (l *Logger) renameLocked(stackName, updateID string) error {
 	dir := filepath.Dir(l.filePath)
 	ts := time.Now().Format("20060102T150405")
-	name := stackName + "-" + ts
+	safeName := strings.ReplaceAll(stackName, "/", "+")
+	name := safeName + "-" + ts
 	if updateID != "" {
 		name += "-" + updateID
 	}

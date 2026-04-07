@@ -1746,7 +1746,7 @@ func (b *cloudBackend) runEngineAction(
 
 	if op.SecretsManager != nil {
 		err := backendlogging.UpgradeCurrentLogger(
-			ctx, stackRef.Name().String(), update.UpdateID, op.SecretsManager)
+			ctx, string(stackRef.FullyQualifiedName()), update.UpdateID, op.SecretsManager)
 		if err != nil {
 			logging.V(3).Infof("encrypted log upgrade failed: %v", err)
 		}
