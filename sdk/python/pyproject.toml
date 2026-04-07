@@ -39,7 +39,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    'mypy==1.17.1',
+    'mypy==1.20.0',
     'pyright==1.1.404',
     'pytest~=8.4.0',
     'pytest-timeout>=2.3.1',
