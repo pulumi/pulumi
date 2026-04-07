@@ -23,6 +23,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -347,17 +348,7 @@ func convertInvokeInputObject(args resource.PropertyMap, inputType *schema.Objec
 }
 
 func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType schema.Type) (resource.PropertyValue, error) {
-	loop := true
-	for loop {
-		switch t := targetType.(type) {
-		case *schema.OptionalType:
-			targetType = t.ElementType
-		case *schema.InputType:
-			targetType = t.ElementType
-		default:
-			loop = false
-		}
-	}
+	targetType = codegen.UnwrapType(targetType)
 
 	if value.IsSecret() {
 		converted, err := convertPropertyValueForSchemaType(value.SecretValue().Element, targetType)
@@ -387,11 +378,7 @@ func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType 
 	}
 
 	if value.IsComputed() {
-		converted, err := convertPropertyValueForSchemaType(value.Input().Element, targetType)
-		if err != nil {
-			return resource.PropertyValue{}, err
-		}
-		return resource.MakeComputed(converted), nil
+		return value, nil
 	}
 
 	switch t := targetType.(type) {
@@ -479,7 +466,7 @@ func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType 
 		}
 	}
 
-	return value, nil
+	return resource.PropertyValue{}, fmt.Errorf("could not convert %v to %s", value, targetType)
 }
 
 func propertyValueToCty(
