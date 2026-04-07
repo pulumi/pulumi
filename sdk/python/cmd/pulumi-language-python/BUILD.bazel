@@ -83,6 +83,7 @@ go_test(
     args = ["-test.run", "TestLanguageDefault"],
     data = _TEST_DATA,
     embed = [":pulumi-language-python_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )
 
@@ -94,6 +95,7 @@ go_test(
     args = ["-test.run", "TestLanguageTOML"],
     data = _TEST_DATA,
     embed = [":pulumi-language-python_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )
 
@@ -105,5 +107,6 @@ go_test(
     args = ["-test.run", "TestLanguageClasses"],
     data = _TEST_DATA,
     embed = [":pulumi-language-python_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )

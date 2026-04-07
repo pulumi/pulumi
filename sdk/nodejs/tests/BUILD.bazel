@@ -4,15 +4,77 @@ load("@rules_shell//shell:sh_test.bzl", "sh_test")
 # These tests use the existing yarn/tsc/mocha toolchain via sh_test wrappers.
 # They run in the source tree since they need node_modules and compiled output.
 
+# Common data dependency for all unit test targets
+_UNIT_DATA = [
+    "//sdk/nodejs/cmd/pulumi-language-nodejs",
+]
+
+# Aggregate unit_tests target kept for backward compatibility with make build.
 sh_test(
     name = "unit_tests",
     srcs = ["bazel_test_runner.sh"],
     args = ["unit"],
-    data = [
-        "//sdk/nodejs/cmd/pulumi-language-nodejs",
-    ],
+    data = _UNIT_DATA,
     size = "large",
     timeout = "long",
+    tags = ["nodejs"],
+)
+
+# Split unit tests into smaller targets for parallel execution
+
+sh_test(
+    name = "unit_root_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["unit_root"],
+    data = _UNIT_DATA,
+    size = "medium",
+    tags = ["nodejs"],
+)
+
+sh_test(
+    name = "unit_runtime_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["unit_runtime"],
+    data = _UNIT_DATA,
+    size = "medium",
+    tags = ["nodejs"],
+)
+
+sh_test(
+    name = "unit_closure_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["unit_closure"],
+    data = _UNIT_DATA,
+    size = "large",
+    timeout = "long",
+    tags = ["nodejs"],
+)
+
+sh_test(
+    name = "unit_langhost_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["unit_langhost"],
+    data = _UNIT_DATA,
+    size = "large",
+    timeout = "long",
+    tags = ["nodejs"],
+)
+
+sh_test(
+    name = "unit_provider_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["unit_provider"],
+    data = _UNIT_DATA,
+    size = "medium",
+    tags = ["nodejs"],
+)
+
+sh_test(
+    name = "unit_cmd_tests",
+    srcs = ["bazel_test_runner.sh"],
+    args = ["unit_cmd"],
+    data = _UNIT_DATA,
+    size = "medium",
     tags = ["nodejs"],
 )
 

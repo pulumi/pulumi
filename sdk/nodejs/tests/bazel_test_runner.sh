@@ -101,6 +101,37 @@ case "$CATEGORY" in
             --exclude 'bin/tests/runtime/closure-integration-tests.js' \
             'bin/tests/**/*.spec.js' "$@"
         ;;
+    unit_root)
+        echo "Running Node.js root unit tests..."
+        $MOCHA --timeout 120000 \
+            'bin/tests/*.spec.js' "$@"
+        ;;
+    unit_runtime)
+        echo "Running Node.js runtime tests (excluding closure and langhost)..."
+        $MOCHA --timeout 120000 \
+            --exclude 'bin/tests/runtime/closure.spec.js' \
+            'bin/tests/runtime/*.spec.js' "$@"
+        ;;
+    unit_closure)
+        echo "Running Node.js closure serialization tests..."
+        $MOCHA --timeout 120000 \
+            'bin/tests/runtime/closure.spec.js' "$@"
+        ;;
+    unit_langhost)
+        echo "Running Node.js langhost tests..."
+        $MOCHA --timeout 120000 \
+            'bin/tests/runtime/langhost/**/*.spec.js' "$@"
+        ;;
+    unit_provider)
+        echo "Running Node.js provider tests..."
+        $MOCHA --timeout 120000 \
+            'bin/tests/provider/**/*.spec.js' "$@"
+        ;;
+    unit_cmd)
+        echo "Running Node.js cmd tests..."
+        $MOCHA --timeout 120000 \
+            'bin/tests/cmd/**/*.spec.js' "$@"
+        ;;
     automation)
         echo "Running Node.js automation tests..."
         $MOCHA --timeout 300000 --parallel \
@@ -138,7 +169,7 @@ case "$CATEGORY" in
         ;;
     *)
         echo "Unknown test category: $CATEGORY"
-        echo "Valid categories: unit, automation, mocks, proto, integration, sxs"
+        echo "Valid categories: unit, unit_root, unit_runtime, unit_closure, unit_langhost, unit_provider, unit_cmd, automation, mocks, proto, integration, sxs"
         exit 1
         ;;
 esac

@@ -102,6 +102,7 @@ go_test(
     args = ["-test.run", "TestLanguageTSC"],
     data = _TEST_DATA,
     embed = [":pulumi-language-nodejs_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )
 
@@ -113,6 +114,7 @@ go_test(
     args = ["-test.run", "TestLanguageTSNode"],
     data = _TEST_DATA,
     embed = [":pulumi-language-nodejs_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )
 
@@ -124,6 +126,7 @@ go_test(
     args = ["-test.run", "TestLanguageBun"],
     data = _TEST_DATA,
     embed = [":pulumi-language-nodejs_lib"],
+    env = {"GOMAXPROCS": "2"},
     tags = ["manual"],  # Requires bun toolchain
     deps = _TEST_DEPS,
 )

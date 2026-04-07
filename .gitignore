@@ -97,3 +97,4 @@ yarn-error.log
 
 # bazel-stuff
 bazel-*
+*.~undo-tree~

@@ -93,6 +93,7 @@ go_test(
     args = ["-test.run", "TestLanguage/published"],
     data = _TEST_DATA,
     embed = [":pulumi-language-go_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )
 
@@ -104,6 +105,7 @@ go_test(
     args = ["-test.run", "TestLanguage/local"],
     data = _TEST_DATA,
     embed = [":pulumi-language-go_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )
 
@@ -115,6 +117,7 @@ go_test(
     args = ["-test.run", "TestLanguage/extra-types"],
     data = _TEST_DATA,
     embed = [":pulumi-language-go_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )
 
@@ -127,5 +130,6 @@ go_test(
     args = ["-test.run", "^Test[^L]"],
     data = _TEST_DATA,
     embed = [":pulumi-language-go_lib"],
+    env = {"GOMAXPROCS": "2"},
     deps = _TEST_DEPS,
 )
