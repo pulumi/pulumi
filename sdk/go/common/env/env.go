@@ -245,6 +245,9 @@ var (
 var DisableJournaling = env.Bool("DISABLE_JOURNALING",
 	"Disable journaling of engine operations to the backend")
 
+var EnableAutomaticLogging = env.Bool("ENABLE_AUTOMATIC_LOGGING",
+	"Enable automatic encrypted logging of engine operations to disk")
+
 var LogRotationMaxAgeDays = env.Int("LOG_ROTATION_MAX_AGE_DAYS",
 	"Maximum age in days for automatic log files before rotation deletes them (default 7)")
 

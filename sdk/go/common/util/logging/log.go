@@ -28,6 +28,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/user"
@@ -59,6 +60,56 @@ var (
 	logFilePath string
 	logFile     *os.File
 )
+
+var (
+	sinkMu sync.RWMutex
+	sink   io.Writer
+)
+
+// SetSink sets a writer that receives a copy of all log messages,
+// regardless of the current verbosity level. This is used by
+// the encrypted logging system to capture full diagnostic output.
+// The writer must be safe for concurrent use.
+func SetSink(w io.Writer) {
+	sinkMu.Lock()
+	defer sinkMu.Unlock()
+	sink = w
+}
+
+// HasSink returns true if a log sink is currently set.
+func HasSink() bool {
+	sinkMu.RLock()
+	defer sinkMu.RUnlock()
+	return sink != nil
+}
+
+// sinkRecord is the JSON structure written to the encrypted log sink.
+// The format string and each argument are stored separately so that
+// consumers can reconstruct the message or inspect individual values.
+type sinkRecord struct {
+	Severity string `json:"severity"`
+	Time     string `json:"time"`
+	Format   string `json:"format"`
+	Args     []any  `json:"args,omitempty"`
+}
+
+func writeToSink(severity, format string, args []any) {
+	sinkMu.RLock()
+	defer sinkMu.RUnlock()
+	if sink != nil {
+		rec := sinkRecord{
+			Severity: severity,
+			Time:     time.Now().Format("15:04:05.000000"),
+			Format:   format,
+			Args:     args,
+		}
+		data, err := json.Marshal(rec)
+		if err == nil {
+			data = append(data, '\n')
+			_, _ = sink.Write(data)
+		}
+	}
+}
 
 func init() {
 	slogHandler = slog.New(discardHandler{})
@@ -105,8 +156,12 @@ func (v VerboseLogger) slogLevel() slog.Level {
 }
 
 func (v VerboseLogger) Info(args ...any) {
-	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v.level))
+	if v.Enabled() || HasSink() {
+		msg := fmt.Sprint(args...)
+		writeToSink(fmt.Sprintf("I%d", v.level), msg, nil)
+		if v.Enabled() {
+			slogHandler.Log(context.TODO(), v.slogLevel(), msg, "v", int(v.level))
+		}
 	}
 }
 
@@ -117,8 +172,11 @@ func (v VerboseLogger) Infoln(args ...any) {
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
 func (v VerboseLogger) Infof(format string, args ...any) {
-	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprintf(format, args...), "v", int(v.level))
+	if v.Enabled() || HasSink() {
+		writeToSink(fmt.Sprintf("I%d", v.level), format, args)
+		if v.Enabled() {
+			slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprintf(format, args...), "v", int(v.level))
+		}
 	}
 }
 
@@ -127,14 +185,17 @@ func V(level int32) VerboseLogger {
 }
 
 func Errorf(format string, args ...any) {
+	writeToSink("E", format, args)
 	slogHandler.Error(fmt.Sprintf(format, args...))
 }
 
 func Infof(format string, args ...any) {
+	writeToSink("I", format, args)
 	slogHandler.Info(fmt.Sprintf(format, args...))
 }
 
 func Warningf(format string, args ...any) {
+	writeToSink("W", format, args)
 	slogHandler.Warn(fmt.Sprintf(format, args...))
 }
 

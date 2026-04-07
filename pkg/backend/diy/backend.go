@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	_ "github.com/pulumi/pulumi/pkg/v3/backend/diy/postgres" // driver for postgres://
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy/unauthenticatedregistry"
+	backendlogging "github.com/pulumi/pulumi/pkg/v3/backend/logging"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
@@ -1221,6 +1222,12 @@ func (b *diyBackend) apply(
 	go display.ShowEvents(
 		strings.ToLower(actionLabel), kind, stackRef.Name(), op.Proj.Name, "",
 		displayEvents, displayDone, op.Opts.Display, opts.DryRun)
+
+	if op.SecretsManager != nil {
+		if err := backendlogging.UpgradeCurrentLogger(ctx, stackRef.Name().String(), "", op.SecretsManager); err != nil {
+			logging.V(3).Infof("encrypted log upgrade failed: %v", err)
+		}
+	}
 
 	// Create a separate event channel for engine events that we'll pipe to both listening streams.
 	engineEvents := make(chan engine.Event)

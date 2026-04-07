@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/diy"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/journal"
+	backendlogging "github.com/pulumi/pulumi/pkg/v3/backend/logging"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
@@ -1742,6 +1743,14 @@ func (b *cloudBackend) runEngineAction(
 		ctx, tokenSource, update,
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
+
+	if op.SecretsManager != nil {
+		err := backendlogging.UpgradeCurrentLogger(
+			ctx, stackRef.Name().String(), update.UpdateID, op.SecretsManager)
+		if err != nil {
+			logging.V(3).Infof("encrypted log upgrade failed: %v", err)
+		}
+	}
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
 	// channels for actual processing. (displayEvents and callerEventsOpt.)
