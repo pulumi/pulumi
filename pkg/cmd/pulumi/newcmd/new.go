@@ -319,6 +319,11 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 	proj.Name = tokens.PackageName(args.name)
 	proj.Description = &args.description
+	// Capture ESC environments declared by the template before clearing the template section.
+	var templateEnvironments []string
+	if proj.Template != nil {
+		templateEnvironments = append(templateEnvironments, proj.Template.Environments...)
+	}
 	proj.Template = nil
 
 	// Set the pulumi:template tag to the template name or URL.
@@ -431,6 +436,17 @@ func runNew(ctx context.Context, args newArgs) error {
 		)
 		if err != nil {
 			return err
+		}
+	}
+
+	// Apply ESC environment imports declared by the template, if any.
+	if !args.generateOnly && s != nil && len(templateEnvironments) > 0 {
+		added, err := applyTemplateEnvironments(ctx, cmdutil.Diag(), proj, s, templateEnvironments)
+		if err != nil {
+			return err
+		}
+		if len(added) > 0 {
+			fmt.Printf("Imported ESC environments: %s\n", strings.Join(added, ", "))
 		}
 	}
 
