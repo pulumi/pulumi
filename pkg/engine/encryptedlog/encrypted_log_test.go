@@ -16,7 +16,6 @@ package encryptedlog
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
@@ -44,6 +43,7 @@ func TestRoundTrip(t *testing.T) {
 	_, err = w.Write([]byte(input))
 	require.NoError(t, err)
 	require.NoError(t, w.Close())
+	assert.NotContains(t, buf.String(), input)
 
 	r, err := NewReader(ctx, &buf, config.Base64Crypter)
 	require.NoError(t, err)
@@ -112,6 +112,7 @@ func TestSingleByteWrites(t *testing.T) {
 		require.NoError(t, err)
 	}
 	require.NoError(t, w.Close())
+	assert.NotContains(t, buf.String(), input)
 
 	r, err := NewReader(ctx, &buf, config.Base64Crypter)
 	require.NoError(t, err)
@@ -138,6 +139,7 @@ func TestMultipleWritesBeforeClose(t *testing.T) {
 	_, err = w.Write([]byte("third chunk"))
 	require.NoError(t, err)
 	require.NoError(t, w.Close())
+	assert.NotContains(t, buf.String(), "first chunk second chunk third chunk")
 
 	r, err := NewReader(ctx, &buf, config.Base64Crypter)
 	require.NoError(t, err)
@@ -266,6 +268,7 @@ func TestConcurrentWrites(t *testing.T) {
 		require.NoError(t, werr)
 	}
 	require.NoError(t, w.Close())
+	assert.NotContains(t, buf.String(), "[0:0]")
 
 	r, err := NewReader(ctx, &buf, config.Base64Crypter)
 	require.NoError(t, err)
@@ -350,23 +353,21 @@ func TestCrashTolerance(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, w.Close())
 
+	// Find the end of the second chunk, then truncate mid-way through the third.
 	data := buf.Bytes()
 	keyLen := int(data[5])<<8 | int(data[6])
 	pos := 4 + 1 + 2 + keyLen
-	var prevPos int
-	for pos < len(data) {
+	for i := 0; i < 2; i++ {
 		chunkPayloadLen := int(binary.BigEndian.Uint32(data[pos : pos+4]))
-		prevPos = pos
 		pos += 4 + chunkPayloadLen
 	}
-	truncated := data[:prevPos]
+	truncated := data[:pos+10]
 
 	r, err := NewReader(ctx, bytes.NewReader(truncated), config.Base64Crypter)
 	require.NoError(t, err)
 
 	got, err := io.ReadAll(r)
-	require.NoError(t, err)
-
+	assert.ErrorContains(t, err, "reading chunk data")
 	assert.Equal(t, "chunk1 data!!!!!chunk2 data!!!!!", string(got))
 }
 
@@ -392,6 +393,6 @@ func TestRapidRoundTrip(t *testing.T) {
 
 		got, err := io.ReadAll(r)
 		require.NoError(t, err)
-		assert.Equal(t, expected.Bytes(), got)
+		assert.Equal(t, expected.String(), string(got))
 	})
 }
