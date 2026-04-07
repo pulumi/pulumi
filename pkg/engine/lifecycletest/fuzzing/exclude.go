@@ -61,6 +61,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeDependenciesOnPendingReplacementRefreshV2,
 		// TODO[pulumi/pulumi#21700]
 		ExcludePendingReplacementRegisteredInUpdate,
+		// TODO[pulumi/pulumi#22479]
+		ExcludeDeletedWithRefreshV2,
 	}
 }
 
@@ -662,6 +664,30 @@ func ExcludeDependenciesOnPendingReplacementRefreshV2(
 			}
 		}
 		if res.DeletedWith != "" && pendingReplacementURNs[res.DeletedWith] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeDeletedWithRefreshV2 excludes snapshots where any resource has a non-empty
+// DeletedWith field during a refreshV2 operation. During refreshV2, persisted refresh
+// steps can complete in non-deterministic order, causing the DeletedWith dependency
+// to appear after the resource that references it in the snapshot, violating a snapshot
+// integrity constraint.
+func ExcludeDeletedWithRefreshV2(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 {
+		return false
+	}
+
+	for _, res := range snap.Resources {
+		if res.DeletedWith != "" {
 			return true
 		}
 	}
