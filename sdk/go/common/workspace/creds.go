@@ -16,19 +16,21 @@ package workspace
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/rogpeppe/go-internal/lockedfile"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/rogpeppe/go-internal/lockedfile"
+	goKeyring "github.com/zalando/go-keyring"
 )
 
 // PulumiCredentialsPathEnvVar is a path to the folder where credentials are stored.
@@ -37,6 +39,8 @@ import (
 //
 //nolint:gosec
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
+
+const pulumiCredentialsKeyringService = "pulumi"
 
 // GetAccount returns an account underneath a given key.
 //
@@ -78,6 +82,10 @@ func DeleteAccount(key string) error {
 }
 
 func DeleteAllAccounts() error {
+	if err := deleteAllKeyringTokens(); err != nil {
+		return err
+	}
+
 	credsFile, err := getCredsFilePath()
 	if err != nil {
 		return err
@@ -213,6 +221,69 @@ func getCredsFilePath() (string, error) {
 
 // GetStoredCredentials returns any credentials stored on the local machine.
 func GetStoredCredentials() (Credentials, error) {
+	rawCreds, err := readCredentialsFile()
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	creds, migrated, err := hydrateCredentials(rawCreds)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	if migrated {
+		if err := writeCredentialsFile(credentialsMetadata(creds)); err != nil {
+			return Credentials{}, err
+		}
+	}
+
+	secrets := slice.Prealloc[string](len(creds.AccessTokens))
+	for _, v := range creds.AccessTokens {
+		secrets = append(secrets, v)
+	}
+
+	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[credential]"))
+
+	return creds, nil
+}
+
+// StoreCredentials updates the stored credentials on the machine, replacing the existing set.  If the credentials
+// are empty, the auth file will be deleted rather than just serializing an empty map.
+func StoreCredentials(creds Credentials) error {
+	existingCreds, err := readCredentialsFile()
+	if err != nil {
+		return err
+	}
+
+	if !hasCredentialMetadata(creds) {
+		if err := deleteAllKeyringTokens(); err != nil {
+			return err
+		}
+		return deleteCredentialsFile()
+	}
+
+	tokens := credentialsTokens(creds)
+	for key, token := range tokens {
+		if err := setKeyringToken(key, token); err != nil {
+			// Fall back to the legacy plaintext file when a secure store is unavailable.
+			return writeCredentialsFile(creds)
+		}
+	}
+
+	existingKeys := credentialKeys(existingCreds)
+	for _, key := range existingKeys {
+		if _, ok := tokens[key]; ok {
+			continue
+		}
+		if err := deleteKeyringToken(key); err != nil {
+			return err
+		}
+	}
+
+	return writeCredentialsFile(credentialsMetadata(creds))
+}
+
+func readCredentialsFile() (Credentials, error) {
 	credsFile, err := getCredsFilePath()
 	if err != nil {
 		return Credentials{}, err
@@ -240,30 +311,17 @@ func GetStoredCredentials() (Credentials, error) {
 			"or delete invalid credentials file: '%s': %w", credsFile, err)
 	}
 
-	secrets := slice.Prealloc[string](len(creds.AccessTokens))
-	for _, v := range creds.AccessTokens {
-		secrets = append(secrets, v)
-	}
-
-	logging.AddGlobalFilter(logging.CreateFilter(secrets, "[credential]"))
-
 	return creds, nil
 }
 
-// StoreCredentials updates the stored credentials on the machine, replacing the existing set.  If the credentials
-// are empty, the auth file will be deleted rather than just serializing an empty map.
-func StoreCredentials(creds Credentials) error {
+func writeCredentialsFile(creds Credentials) error {
 	credsFile, err := getCredsFilePath()
 	if err != nil {
 		return err
 	}
 
-	if len(creds.AccessTokens) == 0 {
-		err = os.Remove(credsFile)
-		if err != nil && !os.IsNotExist(err) {
-			return err
-		}
-		return nil
+	if !hasCredentialMetadata(creds) {
+		return deleteCredentialsFile()
 	}
 
 	raw, err := json.MarshalIndent(creds, "", "    ")
@@ -272,6 +330,172 @@ func StoreCredentials(creds Credentials) error {
 	}
 
 	return lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600)
+}
+
+func deleteCredentialsFile() error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(credsFile)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func hydrateCredentials(rawCreds Credentials) (Credentials, bool, error) {
+	creds := rawCreds
+	if creds.AccessTokens == nil {
+		creds.AccessTokens = map[string]string{}
+	}
+
+	plaintextTokens := credentialsTokens(rawCreds)
+	sawLegacyPlaintext := len(plaintextTokens) > 0
+	allLegacyTokensMigrated := true
+
+	for _, key := range credentialKeys(rawCreds) {
+		token, hasPlaintext := plaintextTokens[key]
+		if hasPlaintext {
+			if err := setKeyringToken(key, token); err != nil {
+				allLegacyTokensMigrated = false
+			}
+		}
+
+		if !hasPlaintext {
+			storedToken, err := getKeyringToken(key)
+			if err == nil {
+				token = storedToken
+			} else if !errors.Is(err, goKeyring.ErrNotFound) {
+				return Credentials{}, false, err
+			}
+		}
+
+		if token == "" {
+			delete(creds.AccessTokens, key)
+			if account, ok := creds.Accounts[key]; ok {
+				account.AccessToken = ""
+				creds.Accounts[key] = account
+			}
+			continue
+		}
+
+		creds.AccessTokens[key] = token
+		if account, ok := creds.Accounts[key]; ok {
+			account.AccessToken = token
+			creds.Accounts[key] = account
+		}
+	}
+
+	return creds, sawLegacyPlaintext && allLegacyTokensMigrated, nil
+}
+
+func credentialsTokens(creds Credentials) map[string]string {
+	tokens := map[string]string{}
+	for key, token := range creds.AccessTokens {
+		if token != "" {
+			tokens[key] = token
+		}
+	}
+	for key, account := range creds.Accounts {
+		if account.AccessToken != "" {
+			tokens[key] = account.AccessToken
+		}
+	}
+	return tokens
+}
+
+func credentialKeys(creds Credentials) []string {
+	keys := map[string]struct{}{}
+	for key := range creds.AccessTokens {
+		keys[key] = struct{}{}
+	}
+	for key := range creds.Accounts {
+		keys[key] = struct{}{}
+	}
+
+	result := make([]string, 0, len(keys))
+	for key := range keys {
+		result = append(result, key)
+	}
+	slices.Sort(result)
+	return result
+}
+
+func credentialsMetadata(creds Credentials) Credentials {
+	metadata := Credentials{
+		Current:      creds.Current,
+		AccessTokens: map[string]string{},
+		Accounts:     map[string]Account{},
+	}
+
+	for key := range credentialsTokens(creds) {
+		metadata.AccessTokens[key] = ""
+	}
+	if len(metadata.AccessTokens) == 0 {
+		metadata.AccessTokens = nil
+	}
+
+	for key, account := range creds.Accounts {
+		account.AccessToken = ""
+		metadata.Accounts[key] = account
+	}
+	if len(metadata.Accounts) == 0 {
+		metadata.Accounts = nil
+	}
+
+	return metadata
+}
+
+func hasCredentialMetadata(creds Credentials) bool {
+	return creds.Current != "" || len(creds.Accounts) > 0 || len(creds.AccessTokens) > 0
+}
+
+func keyringUser(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return fmt.Sprintf("backend-%x", sum)
+}
+
+func getKeyringToken(key string) (string, error) {
+	token, err := goKeyring.Get(pulumiCredentialsKeyringService, keyringUser(key))
+	if err != nil {
+		if errors.Is(err, goKeyring.ErrUnsupportedPlatform) {
+			return "", err
+		}
+		if errors.Is(err, goKeyring.ErrNotFound) {
+			return "", err
+		}
+		return "", fmt.Errorf("reading secure credentials for %q: %w", key, err)
+	}
+	return token, nil
+}
+
+func setKeyringToken(key string, token string) error {
+	err := goKeyring.Set(pulumiCredentialsKeyringService, keyringUser(key), token)
+	if err != nil {
+		if errors.Is(err, goKeyring.ErrUnsupportedPlatform) {
+			return err
+		}
+		return fmt.Errorf("writing secure credentials for %q: %w", key, err)
+	}
+	return nil
+}
+
+func deleteKeyringToken(key string) error {
+	err := goKeyring.Delete(pulumiCredentialsKeyringService, keyringUser(key))
+	if err != nil && !errors.Is(err, goKeyring.ErrNotFound) && !errors.Is(err, goKeyring.ErrUnsupportedPlatform) {
+		return fmt.Errorf("deleting secure credentials for %q: %w", key, err)
+	}
+	return nil
+}
+
+func deleteAllKeyringTokens() error {
+	err := goKeyring.DeleteAll(pulumiCredentialsKeyringService)
+	if err != nil && !errors.Is(err, goKeyring.ErrUnsupportedPlatform) {
+		return fmt.Errorf("deleting secure credentials: %w", err)
+	}
+	return nil
 }
 
 type BackendConfig struct {
