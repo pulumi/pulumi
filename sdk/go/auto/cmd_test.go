@@ -167,19 +167,19 @@ func TestWithNonInteractiveArg(t *testing.T) {
 		expected []string
 	}{
 		{
-			name:     "appends when no args",
+			name:     "prepends when no args",
 			input:    []string{},
 			expected: []string{"--non-interactive"},
 		},
 		{
-			name:     "appends to end when no separator",
+			name:     "prepends when no separator",
 			input:    []string{"up", "--stack", "dev"},
-			expected: []string{"up", "--stack", "dev", "--non-interactive"},
+			expected: []string{"--non-interactive", "up", "--stack", "dev"},
 		},
 		{
-			name:     "inserts before -- separator",
+			name:     "prepends before -- separator",
 			input:    []string{"config", "set", "key", "--", "value"},
-			expected: []string{"config", "set", "key", "--non-interactive", "--", "value"},
+			expected: []string{"--non-interactive", "config", "set", "key", "--", "value"},
 		},
 		{
 			name:     "does not duplicate when already present",
@@ -190,6 +190,11 @@ func TestWithNonInteractiveArg(t *testing.T) {
 			name:     "does not duplicate when already present before separator",
 			input:    []string{"config", "set", "--non-interactive", "--", "value"},
 			expected: []string{"config", "set", "--non-interactive", "--", "value"},
+		},
+		{
+			name:     "adds when only present after separator",
+			input:    []string{"cmd", "--", "--non-interactive"},
+			expected: []string{"--non-interactive", "cmd", "--", "--non-interactive"},
 		},
 		{
 			name:     "separator at start",
