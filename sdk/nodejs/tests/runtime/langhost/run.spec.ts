@@ -1597,11 +1597,11 @@ describe("rpc", () => {
 
                 switch (name) {
                     case "custom":
-                        assert.strictEqual(sourcePosition.line, 2);
+                        assert.strictEqual(sourcePosition.line, 16);
                         assert(sourcePosition.column !== undefined && sourcePosition.column !== 0);
                         break;
                     case "component":
-                        assert.strictEqual(sourcePosition.line, 2);
+                        assert.strictEqual(sourcePosition.line, 17);
                         assert(sourcePosition.column !== undefined && sourcePosition.column !== 0);
                         break;
                     default:
