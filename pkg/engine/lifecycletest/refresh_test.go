@@ -3648,3 +3648,71 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 		}
 	}
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/22481.
+//
+// During refreshV2, resources can end up in a different order than in the original
+// snapshot. When a resource has a DeletedWith field, its target can appear after
+// the referencing resource, violating a snapshot integrity constraint.
+func TestRefreshV2DeletedWithOrdering(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#22481]: Fix the underlying issue and remove the skip.
+	t.Skip("Skipping test due to snapshot integrity error with DeletedWith during refreshV2")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	// Set up the initial snapshot with resA (a component resource).
+	setupSnap := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:   "pkgA:m:t",
+				URN:    "urn:pulumi:test-stack::test-project::pkgA:m:t::resA",
+				Custom: false,
+			},
+		},
+	}
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	// Set up the reproduction providers and program.
+	reproLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		resB, err := monitor.RegisterResource("pkgA:m:t", "resB", true)
+		require.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgA:m:t", "resA", false, deploytest.ResourceOptions{
+			DeletedWith: resB.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:t", "resC", false, deploytest.ResourceOptions{
+			DeletedWith: resA.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            reproHostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}
