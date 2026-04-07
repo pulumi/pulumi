@@ -773,6 +773,11 @@ func TestAnalyzerCancellation(t *testing.T) {
 				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("analyzerA", "", nil)},
 			},
 			HostF: hostF,
+			// The event stream is non-deterministic during cancellation — the resource
+			// create step may or may not complete before cancellation takes effect,
+			// producing a variable number of events. Skip display tests since golden
+			// files cannot capture this non-determinism.
+			SkipDisplayTests: true,
 		},
 	}
 	project, target := p.GetProject(), p.GetTarget(t, nil)
