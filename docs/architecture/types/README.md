@@ -39,7 +39,7 @@ building blocks:
   `K₀`, `K₁`, ..., `Kₙ` and where each `Kᵢ` is associated with a value of type
   `Vᵢ`. Keys may not be duplicated -- that is, no two keys `Kᵢ` and `Kⱼ` may be
   the same.
-* `Union<T₀, T₁, ..., Tₙ>`, which represents a value that can any be of type
+* `Union<T₀, T₁, ..., Tₙ>`, which represents a value that can be any of type
   `T₀`, `T₁`, ..., or `Tₙ`.
 * `Enum<T, V₀, V₁, ..., Vₙ>`, which represents a value of type `T` that can be
   one of the values `V₀`, `V₁`, ..., or `Vₙ`.

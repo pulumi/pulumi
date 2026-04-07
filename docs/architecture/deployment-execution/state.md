@@ -77,7 +77,7 @@ to save on bandwidth costs, we are implementing a journaling approach. Instead o
 sending the full snapshot we can create a journal entry for each step, and replay
 them in sequence on top of the current snapshot, to create a new valid snapshot.
 
-This can be done due to the fact that that the engine and the snapshot manager can
+This can be done due to the fact that the engine and the snapshot manager can
 start with the same base snapshot, on top of which the entries are applied. And
 because the engine never starts a new update before any of the dependents have
 completed, it is always safe to apply all current journal entries in order, to
