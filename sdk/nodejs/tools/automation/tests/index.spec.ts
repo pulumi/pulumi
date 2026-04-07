@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { API, PulumiCancelOptions } from "../output";
+import { API, PulumiCancelOptions, PulumiNewOptions } from "../output";
 import { describe, it } from "mocha";
 import * as assert from "assert";
 
@@ -23,5 +23,37 @@ describe("Command examples", () => {
         const options: PulumiCancelOptions = {};
         const command = api.cancel(options, "my-stack");
         assert.strictEqual(command, "pulumi cancel --yes -- my-stack");
+    });
+
+    it("new with template", () => {
+        const options: PulumiNewOptions = {};
+        const command = api.new(options, "typescript");
+        assert.strictEqual(command, "pulumi new --yes -- typescript");
+    });
+
+    it("new with flags", () => {
+        const options: PulumiNewOptions = {
+            name: "my-project",
+            description: "A test project",
+            stack: "dev",
+            generateOnly: true,
+        };
+        const command = api.new(options, "typescript");
+        assert.strictEqual(
+            command,
+            "pulumi new --yes --description A test project --generate-only --name my-project --stack dev -- typescript",
+        );
+    });
+
+    it("new with config flags", () => {
+        const options: PulumiNewOptions = {
+            config: ["aws:region=us-east-1", "project:env=dev"],
+            configPath: true,
+        };
+        const command = api.new(options, "aws-typescript");
+        assert.strictEqual(
+            command,
+            "pulumi new --yes --config aws:region=us-east-1 --config project:env=dev --config-path -- aws-typescript",
+        );
     });
 });
