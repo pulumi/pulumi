@@ -56,16 +56,39 @@ fi
 
 cd "$SDK_DIR"
 
+# Add Bazel-built binaries to PATH (e.g. pulumi-language-nodejs from runfiles)
+if [ -n "${RUNFILES_DIR:-}" ]; then
+    LANGHOST_BIN="$RUNFILES_DIR/_main/sdk/nodejs/cmd/pulumi-language-nodejs/pulumi-language-nodejs_/pulumi-language-nodejs"
+    if [ -x "$LANGHOST_BIN" ]; then
+        export PATH="$(dirname "$LANGHOST_BIN"):$PATH"
+    fi
+fi
+
 # Ensure dependencies are installed
 if [ ! -d "node_modules" ] || [ ! -f "node_modules/.yarn-integrity" ]; then
     echo "Installing Node.js dependencies..."
     yarn install --frozen-lockfile 2>&1 || yarn install 2>&1
 fi
 
-# Ensure TypeScript is compiled
+# Ensure TypeScript is compiled and build artifacts are in place
 if [ ! -d "bin/tests" ] || [ "$(find tests -name '*.spec.ts' -newer bin/tests -print -quit 2>/dev/null)" ]; then
     echo "Compiling TypeScript..."
     yarn run tsc 2>&1
+fi
+
+# Ensure non-TypeScript build artifacts are copied to bin/
+# (tsc only compiles .ts files; these .js and data files need manual copying)
+if [ -d "proto" ]; then
+    mkdir -p bin/proto
+    cp -Rf proto/. bin/proto/ 2>/dev/null || true
+fi
+if [ -d "tests/provider/experimental/testdata" ]; then
+    mkdir -p bin/tests/provider/experimental/
+    cp -Rf tests/provider/experimental/testdata/ bin/tests/provider/experimental/testdata 2>/dev/null || true
+fi
+if [ -d "tests/runtime/langhost/cases" ]; then
+    mkdir -p bin/tests/runtime/langhost/cases/
+    find tests/runtime/langhost/cases/* -type d -exec cp -Rf {} bin/tests/runtime/langhost/cases/ \; 2>/dev/null || true
 fi
 
 MOCHA="yarn run mocha"

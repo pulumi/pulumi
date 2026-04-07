@@ -8,6 +8,9 @@ sh_test(
     name = "unit_tests",
     srcs = ["bazel_test_runner.sh"],
     args = ["unit"],
+    data = [
+        "//sdk/nodejs/cmd/pulumi-language-nodejs",
+    ],
     size = "large",
     timeout = "long",
     tags = ["nodejs"],

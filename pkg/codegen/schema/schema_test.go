@@ -685,9 +685,13 @@ func TestImportResourceRef(t *testing.T) {
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
 			require.NoError(t, err)
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			loader := NewPluginLoader(utils.NewHost(utils.TestdataPath()))
+			pkg, diags, err := bindSpec(pkgSpec, nil, loader, false, ValidationOptions{
 				AllowDanglingReferences: true,
 			})
+			if err == nil && diags.HasErrors() {
+				err = diags
+			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
 				return

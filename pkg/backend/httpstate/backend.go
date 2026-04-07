@@ -2623,12 +2623,16 @@ func detectCapabilities(
 func doDetectCapabilities(ctx context.Context, d diag.Sink, client *client.Client) apitype.Capabilities {
 	resp, err := client.GetCapabilities(ctx)
 	if err != nil {
-		d.Warningf(diag.Message("" /*urn*/, "failed to get capabilities: %v"), err)
+		if d != nil {
+			d.Warningf(diag.Message("" /*urn*/, "failed to get capabilities: %v"), err)
+		}
 		return apitype.Capabilities{}
 	}
 	caps, err := resp.Parse()
 	if err != nil {
-		d.Warningf(diag.Message("" /*urn*/, "failed to decode capabilities: %v"), err)
+		if d != nil {
+			d.Warningf(diag.Message("" /*urn*/, "failed to decode capabilities: %v"), err)
+		}
 		return apitype.Capabilities{}
 	}
 
@@ -2664,7 +2668,9 @@ func detectUserInfo(
 		logging.V(1).Infof("no username for access token")
 		username, orgs, tokenInfo, err := client.GetPulumiAccountDetails(ctx)
 		if err != nil {
-			d.Warningf(diag.Message("" /*urn*/, "failed to get user account details: %v"), err)
+			if d != nil {
+				d.Warningf(diag.Message("" /*urn*/, "failed to get user account details: %v"), err)
+			}
 			return userInfo{}, err
 		}
 		return userInfo{
