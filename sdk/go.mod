@@ -42,7 +42,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/git-pkgs/manifests v0.4.1
-	github.com/go-git/go-git/v5 v5.16.5
+	github.com/go-git/go-git/v5 v5.17.1
 	github.com/go-test/deep v1.1.1
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
@@ -88,11 +88,11 @@ require (
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fatih/color v1.16.0 // indirect
-	github.com/git-pkgs/packageurl-go v0.2.1 // indirect
-	github.com/git-pkgs/purl v0.1.8 // indirect
-	github.com/git-pkgs/vers v0.2.2 // indirect
+	github.com/git-pkgs/packageurl-go v0.3.1 // indirect
+	github.com/git-pkgs/purl v0.1.10 // indirect
+	github.com/git-pkgs/vers v0.2.4 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-billy/v5 v5.6.2 // indirect
+	github.com/go-git/go-billy/v5 v5.8.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect

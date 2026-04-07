@@ -25,7 +25,7 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 	case "filebase64sha256":
 		return `def computeFilebase64sha256(path):
 	fileData = open(path).read().encode()
-	hashedData = hashlib.sha256(fileData.encode()).digest()
+	hashedData = hashlib.sha256(fileData).digest()
 	return base64.b64encode(hashedData).decode()`, true
 	case "notImplemented":
 		return fmt.Sprintf(`

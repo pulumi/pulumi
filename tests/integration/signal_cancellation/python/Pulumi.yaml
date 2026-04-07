@@ -1,3 +1,6 @@
 name: signal-cancellation-python
 description: Test that Python programs receive SIGINT on cancellation
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv

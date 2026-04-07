@@ -255,7 +255,11 @@ function generateBody(structure: Structure, breadcrumbs: string[], allFlags: Rec
                 writer.writeLine("}");
             }
 
-            writer.blankLine();
+            // Skip trailing blank line for recursive calls (inside a for loop)
+            // to avoid biome formatting violations from empty lines before closing braces.
+            if (!override) {
+                writer.blankLine();
+            }
         }
 
         /**

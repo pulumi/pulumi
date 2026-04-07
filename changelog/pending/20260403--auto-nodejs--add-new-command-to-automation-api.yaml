@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/nodejs
+  description: Add "new" command to the auto-generated interface
