@@ -1,0 +1,8 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::"double quotes": (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::"double quotes": (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::"double quotes"::2]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::"double quotes": (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 3 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

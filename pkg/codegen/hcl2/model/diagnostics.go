@@ -107,7 +107,7 @@ func tupleIndexOutOfRange(tupleLen int, indexRange hcl.Range) *hcl.Diagnostic {
 	return errorf(indexRange, "tuple index must be between 0 and %d", tupleLen)
 }
 
-func unknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {
+func UnknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {
 	slices.Sort(props)
 	return errorf(indexRange, "unknown property '%s' among %v", name, props)
 }

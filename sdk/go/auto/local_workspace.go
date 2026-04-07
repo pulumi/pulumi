@@ -562,6 +562,24 @@ func (l *LocalWorkspace) WhoAmIDetails(ctx context.Context) (WhoAmIResult, error
 	return WhoAmIResult{User: strings.TrimSpace(stdout)}, nil
 }
 
+// OrgGetDefault returns the default organization for the current backend.
+func (l *LocalWorkspace) OrgGetDefault(ctx context.Context) (string, error) {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "org", "get-default")
+	if err != nil {
+		return "", newAutoError(fmt.Errorf("could not get default organization: %w", err), stdout, stderr, errCode)
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
+// OrgSetDefault sets the default organization for the current backend.
+func (l *LocalWorkspace) OrgSetDefault(ctx context.Context, orgName string) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "org", "set-default", orgName)
+	if err != nil {
+		return newAutoError(fmt.Errorf("could not set default organization: %w", err), stdout, stderr, errCode)
+	}
+	return nil
+}
+
 // Stack returns a summary of the currently selected stack, if any.
 func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 	stacks, err := l.ListStacks(ctx)

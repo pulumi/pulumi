@@ -67,6 +67,9 @@ type RunInfo struct {
 	LoaderAddress  string
 	DryRun         bool
 	Parallel       int32
+
+	// PackageDescriptors are package blocks keyed by package name.
+	PackageDescriptors map[string]*schema.PackageDescriptor
 }
 
 type Interpreter struct {
@@ -86,10 +89,17 @@ type Interpreter struct {
 	// inside a component. For example, if a component named "myComp" contains a resource "res",
 	// the resource is registered as "myComp-res". Nested components accumulate the prefix.
 	namePrefix string
+
+	// packageRefs are package references returned by RegisterPackage keyed by package name.
+	packageRefs map[string]string
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
-	return &Interpreter{program: program, info: info}
+	return &Interpreter{
+		program:     program,
+		info:        info,
+		packageRefs: map[string]string{},
+	}
 }
 
 // effectiveName returns the name to use when registering a resource or component with the given
@@ -150,6 +160,10 @@ func (i *Interpreter) Run(ctx context.Context) error {
 	}
 
 	if err := i.registerStack(ctx); err != nil {
+		return err
+	}
+
+	if err := i.registerPackages(ctx); err != nil {
 		return err
 	}
 
@@ -260,10 +274,7 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		pkgName = typ
 	}
 
-	// Fall back to just the package name and passed in version if we don't have a descriptor.
-	descriptor := &schema.PackageDescriptor{
-		Name: pkgName,
-	}
+	descriptor := i.lookupPackageDescriptor(pkgName)
 	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
 	if err != nil {
 		return nil, fmt.Errorf("load package for token %s: %w", token, err)
@@ -305,6 +316,83 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		return nil, fmt.Errorf("get resource from package for token %s", token)
 	}
 	return schemaResource, nil
+}
+
+func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
+	if descriptor, ok := i.info.PackageDescriptors[pkgName]; ok && descriptor != nil {
+		return descriptor
+	}
+	return &schema.PackageDescriptor{Name: pkgName}
+}
+
+func PackageNameFromToken(token string) (string, error) {
+	pkg, mod, name, diags := pcl.DecomposeToken(token, hcl.Range{})
+	if diags.HasErrors() {
+		return "", diags
+	}
+	if pkg == "pulumi" {
+		if mod == "providers" {
+			return name, nil
+		}
+		return "", nil
+	}
+	return pkg, nil
+}
+
+func (i *Interpreter) getPackageRefFromToken(token string) (string, error) {
+	pkgName, err := PackageNameFromToken(token)
+	if err != nil {
+		return "", err
+	}
+	return i.packageRefs[pkgName], nil
+}
+
+func (i *Interpreter) registerPackages(ctx context.Context) error {
+	if i.monitor == nil {
+		return nil
+	}
+
+	keys := make([]string, 0, len(i.info.PackageDescriptors))
+	for k := range i.info.PackageDescriptors {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		descriptor := i.info.PackageDescriptors[key]
+		if descriptor == nil {
+			continue
+		}
+		if descriptor.Parameterization == nil {
+			continue
+		}
+
+		request := &pulumirpc.RegisterPackageRequest{
+			Name:        descriptor.Name,
+			DownloadUrl: descriptor.DownloadURL,
+		}
+		if descriptor.Version != nil {
+			request.Version = descriptor.Version.String()
+		}
+		request.Parameterization = &pulumirpc.Parameterization{
+			Name:    descriptor.Parameterization.Name,
+			Version: descriptor.Parameterization.Version.String(),
+			Value:   descriptor.Parameterization.Value,
+		}
+
+		resp, err := i.monitor.RegisterPackage(ctx, request)
+		if err != nil {
+			return fmt.Errorf("register package %q: %w", key, err)
+		}
+		if resp.GetRef() == "" {
+			return fmt.Errorf("register package %q returned empty reference", key)
+		}
+
+		i.packageRefs[key] = resp.GetRef()
+		i.packageRefs[descriptor.PackageName()] = resp.GetRef()
+	}
+
+	return nil
 }
 
 func (i *Interpreter) evalExpression(expr model.Expression) (resource.PropertyValue, *string, hcl.Diagnostics) {
@@ -786,6 +874,7 @@ func (i *Interpreter) registerResourceWith(
 	}
 
 	if schemaResource != nil {
+		applySchemaInputDefaults(inputs, schemaResource)
 		for _, input := range schemaResource.InputProperties {
 			if input.Secret {
 				key := resource.PropertyKey(input.Name)
@@ -838,6 +927,11 @@ func (i *Interpreter) registerResourceWith(
 		AcceptResources:         true,
 		SupportsResultReporting: true,
 	}
+	packageRef, err := i.getPackageRefFromToken(token)
+	if err != nil {
+		return cty.NilVal, err
+	}
+	request.PackageRef = packageRef
 
 	if res.Options != nil {
 		if res.Options.AdditionalSecretOutputs != nil {
@@ -1378,13 +1472,18 @@ func (i *Interpreter) registerResourceWith(
 	outputs["__name"] = resource.NewProperty(request.Name)
 	outputs["__type"] = resource.NewProperty(request.Type)
 
-	// We need to ensure _all_ resource outputs exist in the output object so any the provider didn't send back we
-	// default to unknown here.
+	// We need to ensure all schema outputs exist in the output object, even if they weren't returned by the engine.
+	// - preview: unknown/computed
+	// - update: explicit null
 	if schemaResource != nil {
 		for _, prop := range schemaResource.Properties {
 			key := resource.PropertyKey(prop.Name)
 			if _, ok := outputs[key]; !ok {
-				outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+				if i.info.DryRun {
+					outputs[key] = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+				} else {
+					outputs[key] = resource.NewNullProperty()
+				}
 			}
 		}
 	}
@@ -1396,6 +1495,19 @@ func (i *Interpreter) registerResourceWith(
 	})
 
 	return propertyValueToCty(ctx, i.monitor, result)
+}
+
+func applySchemaInputDefaults(inputs resource.PropertyMap, schemaResource *schema.Resource) {
+	for _, input := range schemaResource.InputProperties {
+		if input.DefaultValue == nil {
+			continue
+		}
+		key := resource.PropertyKey(input.Name)
+		if _, exists := inputs[key]; exists {
+			continue
+		}
+		inputs[key] = resource.NewPropertyValue(input.DefaultValue.Value)
+	}
 }
 
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
@@ -1499,6 +1611,7 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		evalContext: componentEval,
 		stackURN:    resp.GetUrn(),
 		namePrefix:  componentName,
+		packageRefs: i.packageRefs,
 	}
 
 	for k, v := range inputs {

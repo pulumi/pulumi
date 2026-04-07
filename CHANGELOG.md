@@ -1,5 +1,159 @@
 # Changelog
 
+## 3.229.0 (2026-04-02)
+
+
+### Features
+
+- [auto/python] Add org get-default and set-default commands to Automation API
+
+- [backend/diy] Avoid unnecessary S3 bucket HEAD calls to improve performance
+  [#22373](https://github.com/pulumi/pulumi/pull/22373)
+
+- [cli] Allow TRACEPARENT to be set for CLI invocations, parenting the pulumi spans under an existing parent span
+  [#22369](https://github.com/pulumi/pulumi/pull/22369)
+
+- [cli/display] Add `--urns` flag to display full resource URNs instead of short names in preview, up, destroy, refresh, import, and watch commands
+  [#22007](https://github.com/pulumi/pulumi/pull/22007)
+
+- [pcl] Type integer literals as integers rather than numbers in PCL
+  [#22268](https://github.com/pulumi/pulumi/pull/22268)
+
+- [pcl] Support parameterized providers in PCL
+  [#22251](https://github.com/pulumi/pulumi/pull/22251)
+
+- [protobuf] Add RunPlugin2 bidirectional streaming RPC to LanguageRuntime proto
+  [#22389](https://github.com/pulumi/pulumi/pull/22389)
+
+- [yaml] Update YAML runtime to 1.30.2
+  [#22426](https://github.com/pulumi/pulumi/pull/22426)
+
+- [sdk/go] Add org get-default and set-default commands to Automation API
+
+- [sdk/nodejs] Modernize generated tsconfig.json to align with TypeScript defaults
+  [#22370](https://github.com/pulumi/pulumi/pull/22370)
+
+- [cli/policy] Add a new `policy analyze` command to run a policy pack against existing state
+  [#22250](https://github.com/pulumi/pulumi/pull/22250)
+
+
+### Bug Fixes
+
+- [backend/diy] Remove state lock for refresh --preview-only for diy backend
+  [#22385](https://github.com/pulumi/pulumi/pull/22385)
+
+- [cli] Fix OTEL flushing on provider shutdown
+  [#22358](https://github.com/pulumi/pulumi/pull/22358)
+
+- [cli/display] Fix deadlock in message renderer when cancelling an operation
+  [#22433](https://github.com/pulumi/pulumi/pull/22433)
+
+- [engine] Fix `--include` and `--exclude` not working for program-based refresh (RefreshV2)
+  [#22404](https://github.com/pulumi/pulumi/pull/22404)
+
+- [engine] Parallelize plugin cancellation in SignalCancellation
+  [#22431](https://github.com/pulumi/pulumi/pull/22431)
+
+- [pcl] Fix looking up variables in parent scopes
+  [#22379](https://github.com/pulumi/pulumi/pull/22379)
+
+- [pcl] Apply default values from resource schemas
+  [#22393](https://github.com/pulumi/pulumi/pull/22393)
+
+- [sdk/{bun,go,nodejs,python}] Wire Cancel RPC to language host Run
+  [#22397](https://github.com/pulumi/pulumi/pull/22397)
+
+- [sdk/nodejs] Allow TypeScript 6 as a peer dependency
+  [#22340](https://github.com/pulumi/pulumi/pull/22340)
+
+- [sdk/nodejs] Fix closure serialization for __importStar-wrapped modules
+  [#22388](https://github.com/pulumi/pulumi/pull/22388)
+
+- [sdk/python] Cache type metadata and class references in Python SDK to reduce CPU overhead during serialization
+  [#22422](https://github.com/pulumi/pulumi/pull/22422)
+
+- [sdk/python] Replace busy-wait polling in wait_for_rpcs with asyncio.wait
+  [#22411](https://github.com/pulumi/pulumi/pull/22411)
+
+
+### Miscellaneous
+
+- [cli] Add update metadata to the otel root span
+  [#22357](https://github.com/pulumi/pulumi/pull/22357)
+
+- [java] Update to v1.22.0
+  [#22437](https://github.com/pulumi/pulumi/pull/22437)
+
+- [sdk/nodejs] Use nodenext for moduleResolution and module
+  [#22363](https://github.com/pulumi/pulumi/pull/22363)
+
+## 3.228.0 (2026-03-25)
+
+
+### Features
+
+- [cli] Don't apply the secrets filter to `true` and `false` (case-insensitive)
+  [#22269](https://github.com/pulumi/pulumi/pull/22269)
+
+- [cli] Add grpcs:// support and header authentication to OTLP exporter
+  [#22320](https://github.com/pulumi/pulumi/pull/22320)
+
+- [cli] Read OTEL_RESOURCE_ATTRIBUTES
+  [#22329](https://github.com/pulumi/pulumi/pull/22329)
+
+- [auto/nodejs] Add low-level "cancel" command to the auto-generated interface
+  [#22156](https://github.com/pulumi/pulumi/pull/22156)
+
+- [cli/state] Allow `pulumi state delete` to accept multiple resource URNs and delete them in a dependency-safe order
+
+
+### Bug Fixes
+
+- [cli] Allow relative file paths for --otel-traces
+  [#22300](https://github.com/pulumi/pulumi/pull/22300)
+
+- [cli] Bridge opentracing spans from providers into OTel
+  [#22313](https://github.com/pulumi/pulumi/pull/22313)
+
+- [cli] Correctly end spans for GRPC streams
+  [#22304](https://github.com/pulumi/pulumi/pull/22304)
+
+- [cli/about] Do not include the access token in plain text
+  [#22347](https://github.com/pulumi/pulumi/pull/22347)
+
+- [display] Fix detailed diff indentation so changed resources are not visually nested under unrelated visible resources when unchanged parents are hidden.
+  [#22317](https://github.com/pulumi/pulumi/pull/22317)
+
+- [cli/import] Fix import codegen when generating references to non-standard names
+  [#22319](https://github.com/pulumi/pulumi/pull/22319)
+
+- [engine] Update golang version
+  [#22277](https://github.com/pulumi/pulumi/pull/22277)
+
+- [pcl] Typecheck component inputs in PCL programs
+  [#22292](https://github.com/pulumi/pulumi/pull/22292)
+
+- [programgen/{nodejs,python}] Fix literal conversion when calling into local components
+  [#22306](https://github.com/pulumi/pulumi/pull/22306)
+
+
+### Miscellaneous
+
+- [cli] Add CLI metadata to the root span
+  [#22305](https://github.com/pulumi/pulumi/pull/22305)
+
+- [cli] Add more OTel interceptors for GRPC clients
+  [#22309](https://github.com/pulumi/pulumi/pull/22309)
+
+- [cli] Add spans for plugin installation and add more attributes for dependency installation
+  [#22303](https://github.com/pulumi/pulumi/pull/22303)
+
+- [cli] Allow setting a GRPC endpoint for performance tests
+  [#22330](https://github.com/pulumi/pulumi/pull/22330)
+
+- [backend/diy] Start deprecation of non-project mode for DIY backends
+  [#19625](https://github.com/pulumi/pulumi/pull/19625)
+
 ## 3.227.0 (2026-03-19)
 
 

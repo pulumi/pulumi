@@ -387,6 +387,29 @@ func StartSpan(
 	return tracer.Start(ctx, name, opts...)
 }
 
+type processStartTimeKey struct{}
+
+// ContextWithProcessStartTime returns a new context with the given process start time.
+func ContextWithProcessStartTime(ctx context.Context, t time.Time) context.Context {
+	return context.WithValue(ctx, processStartTimeKey{}, t)
+}
+
+// ProcessStartTimeFromContext retrieves the process start time from the context.
+func ProcessStartTimeFromContext(ctx context.Context) (time.Time, bool) {
+	t, ok := ctx.Value(processStartTimeKey{}).(time.Time)
+	return t, ok
+}
+
+func SetStringSpanAttributes(ctx context.Context, attrs map[string]string) {
+	span := trace.SpanFromContext(ctx)
+	if !span.SpanContext().IsValid() {
+		return
+	}
+	for k, v := range attrs {
+		span.SetAttributes(attribute.String(k, v))
+	}
+}
+
 // Starts an AppDash server listening on any available TCP port
 // locally and sends the spans and annotations to the given collector.
 // Returns a Pulumi-formatted tracing endpoint pointing to this

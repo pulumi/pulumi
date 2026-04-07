@@ -254,6 +254,7 @@ func newDeployment(
 		GeneratePlan:              opts.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
 		Autonamer:                 opts.Autonamer,
+		ShowSecrets:               opts.ShowSecrets,
 	}
 
 	var depl *deploy.Deployment

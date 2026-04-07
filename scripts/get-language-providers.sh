@@ -48,8 +48,8 @@ download_release() {
 
 LANGUAGES=(
   "dotnet v3.102.0"
-  "java v1.21.3"
-  "yaml v1.30.1"
+  "java v1.22.0"
+  "yaml v1.30.2"
 )
 
 for i in "${LANGUAGES[@]}"; do

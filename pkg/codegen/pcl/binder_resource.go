@@ -17,6 +17,7 @@ package pcl
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -536,6 +537,46 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "envVarMappings":
 				t = model.NewMapType(model.StringType)
 				resourceOptions.EnvVarMappings = item.Value
+			case "hooks":
+				// hooks is an object mapping hook type names to lists of named hook references.
+				resourceOptions.Hooks = item.Value
+				const invalidHooksMsg = "hooks option must be an object mapping hook names to lists of hook references"
+				validHookTypes := []string{
+					"beforeCreate", "afterCreate",
+					"beforeUpdate", "afterUpdate",
+					"beforeDelete", "afterDelete",
+				}
+				obj, isObj := item.Value.(*model.ObjectConsExpression)
+				if !isObj {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  invalidHooksMsg,
+						Subject:  item.Value.SyntaxNode().Range().Ptr(),
+					})
+					continue
+				}
+				for _, kv := range obj.Items {
+					key, keyDiags := kv.Key.Evaluate(&hcl.EvalContext{})
+					if keyDiags.HasErrors() || key.Type() != cty.String {
+						continue
+					}
+					hookType := key.AsString()
+					if !slices.Contains(validHookTypes, hookType) {
+						diagnostics = append(diagnostics, &hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  fmt.Sprintf("unknown hook name '%s'", hookType),
+							Subject:  kv.Key.SyntaxNode().Range().Ptr(),
+						})
+					}
+					if _, isList := kv.Value.(*model.TupleConsExpression); !isList {
+						diagnostics = append(diagnostics, &hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  invalidHooksMsg,
+							Subject:  kv.Value.SyntaxNode().Range().Ptr(),
+						})
+					}
+				}
+				continue // skip generic type check; structural validation is done above
 			default:
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				continue

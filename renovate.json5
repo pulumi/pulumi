@@ -39,12 +39,6 @@
       rangeStrategy: "pin"
     },
     {
-      description: "Don't propose updates for packages that are less than 3 days old. Security vulnerabilities bypass this setting.",
-      matchDatasources: ["npm", "pypi", "go"],
-      minimumReleaseAge: "3 days",
-      prCreation: "not-pending"
-    },
-    {
       description: "Don't update requires-python in pyproject.toml files, we want to run against the full range of supported Python versions.",
       matchDatasources: ["python-version"],
       enabled: false

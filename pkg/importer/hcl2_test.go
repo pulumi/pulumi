@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -313,7 +314,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 
 			importState := ImportState{
-				Names:    names,
+				Names:    maps.Clone(names),
 				Snapshot: snapshot,
 			}
 
@@ -522,7 +523,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -694,7 +695,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -781,7 +782,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -851,7 +852,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {

@@ -117,3 +117,49 @@ func TestGoStringMap(t *testing.T) {
 		assert.Equal(t, expt, NewMap(map[string]Value{"k1": New(true), "k2": New(false)}).GoString())
 	})
 }
+
+func TestGoStringPath(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, `property.Path{}`, PathFromSegments().GoString())
+	})
+
+	t.Run("single key", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			`property.PathFromSegments(property.NewSegment("foo"))`,
+			PathFromSegments(NewSegment("foo")).GoString())
+	})
+
+	t.Run("key and index", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			`property.PathFromSegments(property.NewSegment("foo"), property.NewSegment(0))`,
+			PathFromSegments(NewSegment("foo"), NewSegment(0)).GoString())
+	})
+}
+
+func TestGoStringGlob(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, `property.Glob{}`, GlobFromSegments().GoString())
+	})
+
+	t.Run("splat", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			`property.GlobFromSegments(property.Splat)`,
+			GlobFromSegments(Splat).GoString())
+	})
+
+	t.Run("key and splat", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			`property.GlobFromSegments(property.NewSegment("foo"), property.Splat)`,
+			GlobFromSegments(NewSegment("foo"), Splat).GoString())
+	})
+}

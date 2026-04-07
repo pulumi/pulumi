@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: programgen/nodejs,python
-  description: Fix literal conversion when calling into local components

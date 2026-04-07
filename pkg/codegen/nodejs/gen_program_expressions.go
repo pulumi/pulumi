@@ -204,7 +204,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 		if !keyUsed {
 			g.Fgenf(w, "Object.values(%.v)", expr.Collection)
 		} else {
-			g.Fgenf(w, "Object.entries(%.v)", expr.Collection)
+			g.Fgenf(w, "Object.entries(%.v).sort()", expr.Collection)
 		}
 	}
 
@@ -334,7 +334,6 @@ var functionImports = map[string][]string{
 	"filebase64":         {"fs"},
 	"filebase64sha256":   {"fs", "crypto"},
 	"readFile":           {"fs"},
-	"readDir":            {"fs"},
 	"sha1":               {"crypto"},
 }
 
@@ -396,10 +395,10 @@ func (g *generator) genEntries(w io.Writer, expr *model.FunctionCallExpression) 
 		// Mapping over a list with a tuple receiver accepts (value, index).
 		g.Fgenf(w, "%.20v.map((v, k)", expr.Args[0])
 	case *model.MapType, *model.ObjectType:
-		g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
+		g.Fgenf(w, "Object.entries(%.v).sort().map(([k, v])", expr.Args[0])
 	case *model.OpaqueType:
 		if entriesArgType.Equals(model.DynamicType) {
-			g.Fgenf(w, "Object.entries(%.v).map(([k, v])", expr.Args[0])
+			g.Fgenf(w, "Object.entries(%.v).sort().map(([k, v])", expr.Args[0])
 		}
 	}
 	g.Fgenf(w, " => ({key: k, value: v}))")
@@ -476,8 +475,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "notImplemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "singleOrNone(%v)", expr.Args[0])
-	case "mimeType":
-		g.Fgenf(w, "mimeType(%v)", expr.Args[0])
 	case pcl.Call:
 		self := expr.Args[0]
 		method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
@@ -569,8 +566,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genRange(w, expr, false)
 	case "readFile":
 		g.Fgenf(w, "fs.readFileSync(%v, \"utf8\")", expr.Args[0])
-	case "readDir":
-		g.Fgenf(w, "fs.readdirSync(%v)", expr.Args[0])
 	case "secret":
 		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "unsecret":
@@ -755,7 +750,7 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
 		g.Fgen(w, "null")
-	case model.NumberType:
+	case model.NumberType, model.IntType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
 			g.Fgenf(w, "%d", i)

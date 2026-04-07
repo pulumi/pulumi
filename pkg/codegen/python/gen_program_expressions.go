@@ -170,7 +170,7 @@ func (g *generator) GenForExpression(w io.Writer, expr *model.ForExpression) {
 	case !keyUsed:
 		g.Fgenf(w, " for %v in %.v", expr.ValueVariable.Name, expr.Collection)
 	case isMapType(expr.Collection.Type()):
-		g.Fgenf(w, " for %v, %v in %.v.items()", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
+		g.Fgenf(w, " for %v, %v in sorted(%.v.items())", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
 	default:
 		g.Fgenf(w, " for %v, %v in enumerate(%.v)", expr.KeyVariable.Name, expr.ValueVariable.Name, expr.Collection)
 	}
@@ -257,7 +257,6 @@ var functionImports = map[string][]string{
 	"rootDirectory":    {"pulumi"},
 	"filebase64":       {"base64"},
 	"filebase64sha256": {"base64", "hashlib"},
-	"readDir":          {"os"},
 	"toBase64":         {"base64"},
 	"fromBase64":       {"base64"},
 	"toJSON":           {"json"},
@@ -266,7 +265,6 @@ var functionImports = map[string][]string{
 	"project":          {"pulumi"},
 	"organization":     {"pulumi"},
 	"cwd":              {"os"},
-	"mimeType":         {"mimetypes"},
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string {
@@ -345,7 +343,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "element":
 		g.Fgenf(w, "%.16v[%.v]", expr.Args[0], expr.Args[1])
 	case "entries":
-		g.Fgenf(w, `[{"key": k, "value": v} for k, v in %.v.items()]`, expr.Args[0])
+		g.Fgenf(w, `[{"key": k, "value": v} for k, v in sorted(%.v.items())]`, expr.Args[0])
 	case "fileArchive":
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
 	case "remoteArchive":
@@ -367,8 +365,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "not_implemented(%v)", expr.Args[0])
 	case "singleOrNone":
 		g.Fgenf(w, "single_or_none(%v)", expr.Args[0])
-	case "mimeType":
-		g.Fgenf(w, "mimetypes.guess_type(%v)[0]", expr.Args[0])
 	case pcl.Call:
 		self := expr.Args[0]
 		method := expr.Args[1].(*model.TemplateExpression).Parts[0].(*model.LiteralValueExpression).Value.AsString()
@@ -510,8 +506,6 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fprint(w, ")")
 	case "readFile":
 		g.Fgenf(w, "(lambda path: open(path).read())(%.v)", expr.Args[0])
-	case "readDir":
-		g.Fgenf(w, "os.listdir(%.v)", expr.Args[0])
 	case "secret":
 		g.Fgenf(w, "pulumi.Output.secret(%v)", expr.Args[0])
 	case "unsecret":
@@ -679,7 +673,7 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		}
 	case model.NoneType:
 		g.Fgen(w, "None")
-	case model.NumberType:
+	case model.NumberType, model.IntType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {
 			g.Fgenf(w, "%d", i)

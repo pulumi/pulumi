@@ -160,7 +160,7 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 			props = append(props, k)
 		}
 
-		diag := unknownObjectProperty(propertyName, traverser.SourceRange(), props)
+		diag := UnknownObjectProperty(propertyName, traverser.SourceRange(), props)
 		if !t.Strict {
 			diag.Severity = hcl.DiagWarning
 		}

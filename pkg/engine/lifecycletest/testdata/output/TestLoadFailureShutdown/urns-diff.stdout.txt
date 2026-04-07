@@ -1,0 +1,3 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::provA: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 to create<{%reset%}>

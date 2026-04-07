@@ -62,7 +62,6 @@ type generator struct {
 	spills              *spills
 	jsonTempSpiller     *jsonSpiller
 	ternaryTempSpiller  *tempSpiller
-	readDirTempSpiller  *readDirSpiller
 	splatSpiller        *splatSpiller
 	optionalSpiller     *optionalSpiller
 	inlineInvokeSpiller *inlineInvokeSpiller
@@ -80,7 +79,10 @@ type generator struct {
 	// inGenTupleConExprListArgs indicates that a the generator is processing an args list within a TupleConExpression.
 	inGenTupleConExprListArgs bool
 	isPtrArg                  bool
-	isComponent               bool
+	// inPlainObjectField indicates that the generator is producing a value for a plain (non-input)
+	// struct field, so the object literal should be emitted as a value rather than a pointer.
+	inPlainObjectField bool
+	isComponent        bool
 
 	// User-configurable options
 	assignResourcesToVariables bool // Assign resource to a new variable instead of _.
@@ -120,7 +122,6 @@ func newGenerator(program *pcl.Program, opts GenerateProgramOptions) (*generator
 		spills:              &spills{counts: map[string]int{}},
 		jsonTempSpiller:     &jsonSpiller{},
 		ternaryTempSpiller:  &tempSpiller{},
-		readDirTempSpiller:  &readDirSpiller{},
 		splatSpiller:        &splatSpiller{},
 		optionalSpiller:     &optionalSpiller{},
 		inlineInvokeSpiller: &inlineInvokeSpiller{},
@@ -1410,7 +1411,20 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if len(r.Inputs) > 0 {
 			g.Fgenf(w, "&%s.%sArgs{\n", modOrAlias, typ)
 			for _, attr := range r.Inputs {
+				// Check if this property is marked as plain in the schema.
+				// Plain required properties generate value-typed struct
+				// fields in the Go SDK, so nested object literals must be
+				// emitted without the & prefix.
+				if r.Schema != nil {
+					for _, prop := range r.Schema.InputProperties {
+						if prop.Name == attr.Name && prop.Plain {
+							g.inPlainObjectField = true
+							break
+						}
+					}
+				}
 				g.Fgenf(w, "%s: %.v,\n", strings.Title(attr.Name), attr.Value)
+				g.inPlainObjectField = false
 			}
 			g.Fprint(w, "}")
 		} else {
@@ -1861,7 +1875,7 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 	if zeroValueType != "" {
 		for _, t := range temps {
 			switch t.(type) {
-			case *spillTemp, *readDirTemp:
+			case *spillTemp:
 				genZeroValueDecl = true
 			default:
 			}
@@ -1897,24 +1911,6 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 			}
 			g.Fgenf(w, "}\n")
 			g.Fgenf(w, "%s := string(%s)\n", t.Variable.Name, bytesVar)
-			g.isErrAssigned = true
-		case *readDirTemp:
-			tmpSuffix := strings.Split(t.Name, "files")[1]
-			g.Fgenf(w, "%s, err := os.ReadDir(%.v)\n", t.Name, t.Value.Args[0])
-			g.Fgenf(w, "if err != nil {\n")
-			if genZeroValueDecl {
-				g.Fgenf(w, "return _zero, err\n")
-			} else {
-				g.Fgenf(w, "return err\n")
-			}
-			g.Fgenf(w, "}\n")
-			namesVar := "fileNames" + tmpSuffix
-			g.Fgenf(w, "%s := make([]string, len(%s))\n", namesVar, t.Name)
-			iVar := "key" + tmpSuffix
-			valVar := "val" + tmpSuffix
-			g.Fgenf(w, "for %s, %s := range %s {\n", iVar, valVar, t.Name)
-			g.Fgenf(w, "%s[%s] = %s.Name()\n", namesVar, iVar, valVar)
-			g.Fgenf(w, "}\n")
 			g.isErrAssigned = true
 		case *splatTemp:
 			argTyp := g.argumentTypeName(t.Value.Each.Type(), false)
@@ -1983,7 +1979,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 			g.Fgenf(w, "%s %s ", name, assignment)
 			g.genApply(w, expr)
 			g.Fgenf(w, "\n")
-		case "join", "mimeType",
+		case "join",
 			"fileArchive", "remoteArchive", "assetArchive",
 			"fileAsset", "stringAsset", "remoteAsset",
 			"toBase64":
