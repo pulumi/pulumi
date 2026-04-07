@@ -27,8 +27,8 @@ For the DIY file backend Pulumi uses the
 storage implementations, from local files to cloud storage services such as
 AWS S3, Google Cloud Storage, and Azure Blob Storage.
 
-The [PostgreSQL backend](/pkg/backend/diy/postgres/README.md) is an altnerative
-DIY backend that provides a PostgreSQL-based backend imlementation for storing
+The [PostgreSQL backend](/pkg/backend/diy/postgres/README.md) is an alternative
+DIY backend that provides a PostgreSQL-based backend implementation for storing
 the state.
 
 (httpstate)=
