@@ -671,14 +671,15 @@ func ExcludeDependenciesOnPendingReplacementRefreshV2(
 	return false
 }
 
-// ExcludeDeletedWithRefreshV2 excludes snapshots where any resource has a non-empty
-// DeletedWith field during a refreshV2 operation. During refreshV2, resources can end
-// up in a different order than in the original snapshot, causing the DeletedWith target
-// to appear after the resource that references it, violating a snapshot integrity
-// constraint.
+// ExcludeDeletedWithRefreshV2 excludes snapshots where a component resource
+// (non-custom, non-provider) has a non-empty DeletedWith field during a
+// refreshV2 operation. During refreshV2, component resources do not receive
+// refresh steps and can end up reordered relative to their DeletedWith
+// targets, violating a snapshot integrity constraint. Custom resources are
+// not affected since they receive refresh steps that maintain ordering.
 func ExcludeDeletedWithRefreshV2(
 	snap *SnapshotSpec,
-	_ *ProgramSpec,
+	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
@@ -687,7 +688,13 @@ func ExcludeDeletedWithRefreshV2(
 	}
 
 	for _, res := range snap.Resources {
-		if res.DeletedWith != "" {
+		if res.DeletedWith != "" && !res.Custom && !providers.IsProviderType(res.Type) {
+			return true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.DeletedWith != "" && !res.Custom && !providers.IsProviderType(res.Type) {
 			return true
 		}
 	}

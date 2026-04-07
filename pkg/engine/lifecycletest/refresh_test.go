@@ -3654,8 +3654,6 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 // During refreshV2, resources can end up in a different order than in the original
 // snapshot. When a resource has a DeletedWith field, its target can appear after
 // the referencing resource, violating a snapshot integrity constraint.
-//
-// Generated from the fuzz reproduction at rapid seed 15221781194620766669.
 func TestRefreshV2DeletedWithOrdering(t *testing.T) {
 	t.Parallel()
 
