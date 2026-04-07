@@ -54,7 +54,7 @@ e.g. the connection drops while we set up a resource, we have a record of it, an
 the user can manually go through them and either delete the entry if the resource
 has not been created in the provider, or import the resource into the state. At
 the end of each operation, we finalize the entry, and add it to the list of
-resouces, while removing the "pending operation" entry.
+resources, while removing the "pending operation" entry.
 
 Note that the engine is currently free to modify the snapshot in any way, and we'll
 always upload that internal snapshot, since the snapshot manager internally uses

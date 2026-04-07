@@ -17,7 +17,7 @@ resources with the Pulumi engine.
 #### URNs
 
 Each resource registered with the Pulumi engine is logically identified by its
-uniform resource name (URN). A resource's URN is derived from the its type, parent type,
+uniform resource name (URN). A resource's URN is derived from its type, parent type,
 and user-supplied name. Within the scope of a resource-related provider method
 ([`Check`](check), [`Diff`](diff), [`Create`](create), [`Read`](read),
 [`Update`](update), [`Delete`](delete), and [`Construct`](construct)), the type of
@@ -119,7 +119,7 @@ connection to the engine's resource monitor, e.g. within the scope of a call to 
 This implies that resource references may not be resolved within calls to other
 provider methods. Therefore, configuration values, custom resources and provider functions
 should not rely on the ability to resolve resource references, and should instead treat
-resource references  as either their ID (if present) or URN. If the ID is present and
+resource references as either their ID (if present) or URN. If the ID is present and
 empty, it should be treated as an [`Unknown`](unknowns).
 
 (unknowns)=
@@ -257,7 +257,7 @@ provider instance's region), `DiffConfig` should indicate that the provider must
 replaced. Because replacing a provider will require that all of the resources with
 which it is associated are _also_ replaced, replacement semantics should be reserved
 for changes to configuration properties that are guaranteed to make old resources
-unmanagable (e.g. a change to an AWS access key should not require replacement, as the
+unmanageable (e.g. a change to an AWS access key should not require replacement, as the
 set of resources accessible via an access key is easily knowable).
 
 (configure)=
@@ -360,10 +360,7 @@ successful execution of a Pulumi program in the resource's stack, the engine del
 resource by calling the resource's provider's [`Delete`](delete) method with the resource's ID and
 last refreshed state.
 
-The diagram below summarizes the custom resource lifecycle. Detailed descriptions of each
-resource operation follow.
-
-![Custom Resource Lifecycle Diagram](./resource-lifecycle.svg)
+Detailed descriptions of each resource operation follow.
 
 ### Inputs, Checked Inputs, State, Outputs
 

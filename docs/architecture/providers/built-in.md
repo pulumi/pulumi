@@ -8,5 +8,5 @@ injection into deployments as part of the provider registry). It is used to
 manage resources and functionality that are core to the Pulumi programming
 model, such as [stack
 references](https://www.pulumi.com/tutorials/building-with-pulumi/stack-references/)
-and rehydrating [resource references](res-refs). It exposes the `pulumi` package
-and provider instances thus belong to the package `pulumi:providers:pulumi`.
+and rehydrating [resource references](res-refs). It exposes the `pulumi` package,
+and its provider instances belong to the package `pulumi:providers:pulumi`.

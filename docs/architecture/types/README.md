@@ -484,7 +484,7 @@ references most commonly appear in the context of [component
 providers](component-providers), where it is often useful for a component to be
 able to accept references to other resources, or to return references to its
 child components in its outputs. In order to support the rehydration of these
-references into bonafide strongly-typed resources upon deserialization, a
+references into bona fide strongly-typed resources upon deserialization, a
 resource reference contains both a [URN](urns) and, in the case that the
 resource is not a [component](component-resources), an [ID](resource-ids) and
 the version of the [provider](providers) that manages the resource. While in

@@ -11,7 +11,7 @@ presently only supported in NodeJS/TypeScript and Python. They work as follows:
 
 * The SDK defines two types:
   * That of *dynamic providers* -- objects with methods for the lifecycle
-    methods that a gRPC provider would normally offer (CRUD, diff, etc.).
+    operations that a gRPC provider would normally offer (CRUD, diff, etc.).
   * That of *dynamic resources* -- those that are managed by a dynamic provider.
     This type specialises (e.g. by subclassing in NodeJS and Python) the SDK's
     core resource type so that all dynamic resources *have the same Pulumi
