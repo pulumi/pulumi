@@ -1,0 +1,6 @@
+kind: fix
+body: Insert --non-interactive flag before "--" positional separator to avoid misinterpretation as a positional argument
+custom:
+  Scope: auto/go
+  PR: ''
+time: '2026-04-03T00:00:00Z'

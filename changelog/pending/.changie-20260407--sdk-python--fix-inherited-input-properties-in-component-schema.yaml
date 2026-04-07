@@ -1,0 +1,6 @@
+kind: fix
+body: Fix inherited input properties missing from component schema when args class inherits from a base class
+custom:
+  Scope: sdk/python
+  PR: ''
+time: '2026-04-07T00:00:00Z'
