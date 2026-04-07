@@ -27,8 +27,8 @@ For the DIY file backend Pulumi uses the
 storage implementations, from local files to cloud storage services such as
 AWS S3, Google Cloud Storage, and Azure Blob Storage.
 
-The [PostgreSQL backend](/pkg/backend/diy/postgres/README.md) is an altnerative
-DIY backend that provides a PostgreSQL-based backend imlementation for storing
+The [PostgreSQL backend](/pkg/backend/diy/postgres/README.md) is an alternative
+DIY backend that provides a PostgreSQL-based backend implementation for storing
 the state.
 
 (httpstate)=
@@ -110,7 +110,7 @@ sequence IDs. IDs start at 1. These sequence IDs are used for:
   easier to deal with.
 - Removing any journal entries that came up again later. The `DeleteNew` field
   in particular contains the ID of previous journal entries that are no longer
-  relevant as they were superseeded.
+  relevant as they were superseded.
 
 Journal entries associated with Pulumi Operations additionally have an Operation
 ID assigned to them. This is used mainly for correlating begin and end entries,
