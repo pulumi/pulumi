@@ -3648,3 +3648,298 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 		}
 	}
 }
+
+// Regression test for https://github.com/pulumi/pulumi/issues/22481.
+//
+// During refreshV2, resources can end up in a different order than in the original
+// snapshot. When a resource has a DeletedWith field, its target can appear after
+// the referencing resource, violating a snapshot integrity constraint.
+//
+// Generated from the fuzz reproduction at rapid seed 15221781194620766669.
+func TestRefreshV2DeletedWithOrdering(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#22481]: Fix the underlying issue and remove the skip.
+	t.Skip("Skipping test due to snapshot integrity error with DeletedWith during refreshV2")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	// Set up the initial snapshot.
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		prov0 := &resource.State{
+			Type:   "pulumi:providers:pkg-mc13",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkg-mc13::res-bM01",
+			Custom: true,
+			ID:     "id-z946dEJ5D1pq",
+		}
+		s.Resources = append(s.Resources, prov0)
+
+		prov1 := &resource.State{
+			Type:    "pulumi:providers:pkg-mc13",
+			URN:     "urn:pulumi:test-stack::test-project::pulumi:providers:pkg-mc13::res-bM01",
+			Custom:  true,
+			Delete:  true,
+			ID:      "id-z946dEJ5D1pq",
+			Protect: true,
+		}
+		s.Resources = append(s.Resources, prov1)
+
+		provRef1, err := providers.NewReference(prov1.URN, prov1.ID)
+		require.NoError(t, err)
+
+		res2 := &resource.State{
+			Type:     "pkg-mc13:mod-b36W:type-u0QM",
+			URN:      "urn:pulumi:test-stack::test-project::pkg-mc13:mod-b36W:type-u0QM::res-uA70",
+			Custom:   false,
+			Protect:  true,
+			Provider: provRef1.String(),
+			Inputs: resource.PropertyMap{
+				"__id": resource.NewProperty(""),
+			},
+		}
+		s.Resources = append(s.Resources, res2)
+
+		prov3 := &resource.State{
+			Type:           "pulumi:providers:pkg-mc13",
+			URN:            "urn:pulumi:test-stack::test-project::pulumi:providers:pkg-mc13::res-bM01",
+			Custom:         true,
+			Delete:         true,
+			ID:             "id-z946dEJ5D1pq",
+			RetainOnDelete: true,
+		}
+		s.Resources = append(s.Resources, prov3)
+
+		res4 := &resource.State{
+			Type:               "pkg-mc13:mod-btNx:type-gB0E",
+			URN:                "urn:pulumi:test-stack::test-project::pkg-mc13:mod-btNx:type-gB0E::res-v305",
+			Custom:             false,
+			PendingReplacement: true,
+			RetainOnDelete:     true,
+			Provider:           provRef1.String(),
+			DeletedWith:        res2.URN,
+			Inputs: resource.PropertyMap{
+				"__id": resource.NewProperty(""),
+			},
+		}
+		s.Resources = append(s.Resources, res4)
+
+		res5 := &resource.State{
+			Type:     "pkg-mc13:mod-b1C9:type-t0c1",
+			URN:      "urn:pulumi:test-stack::test-project::pkg-mc13:mod-b1C9:type-t0c1::res-a48W",
+			Custom:   true,
+			ID:       "id-aE6myz61i2z6",
+			Protect:  true,
+			Provider: provRef1.String(),
+			Inputs: resource.PropertyMap{
+				"__id": resource.NewProperty("id-aE6myz61i2z6"),
+			},
+		}
+		s.Resources = append(s.Resources, res5)
+
+		_ = res4
+		_ = res5
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	// Set up the reproduction providers and program.
+	createF := func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+		switch req.URN {
+		case "urn:pulumi:test-stack::test-project::pulumi:providers:pkg-jhF2::res-h023",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-dj11:type-zeN6::res-bZjz",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-bsG1:type-bPFz::res-e0M1",
+			"urn:pulumi:test-stack::test-project::pulumi:providers:pkg-mc13::res-bM01",
+			"urn:pulumi:test-stack::test-project::pkg-mc13:mod-b36W:type-u0QM::res-uA70",
+			"urn:pulumi:test-stack::test-project::pkg-mc13:mod-btNx:type-gB0E::res-v305",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-dCc2:type-b4Op::res-az08":
+			return plugin.CreateResponse{
+				Status: resource.StatusUnknown,
+			}, fmt.Errorf("create failure for %s", req.URN)
+		}
+		return plugin.CreateResponse{
+			Properties: req.Properties,
+			Status:     resource.StatusOK,
+		}, nil
+	}
+	deleteF := func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+		switch req.URN {
+		case "urn:pulumi:test-stack::test-project::pulumi:providers:pkg-mc13::res-bM01",
+			"urn:pulumi:test-stack::test-project::pkg-mc13:mod-btNx:type-gB0E::res-v305",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-e061:type-bN0z::res-ro31",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-dj11:type-zeN6::res-bZjz",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-bsG1:type-bPFz::res-e0M1":
+			return plugin.DeleteResponse{
+				Status: resource.StatusUnknown,
+			}, fmt.Errorf("delete failure for %s", req.URN)
+		}
+		return plugin.DeleteResponse{
+			Status: resource.StatusOK,
+		}, nil
+	}
+	diffF := func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResponse, error) {
+		switch req.URN {
+		case "urn:pulumi:test-stack::test-project::pkg-jhF2:mod-dj11:type-zeN6::res-bZjz":
+			return plugin.DiffResponse{
+				Changes:             plugin.DiffSome,
+				ReplaceKeys:         []resource.PropertyKey{"__replace"},
+				DeleteBeforeReplace: false,
+			}, nil
+		case "urn:pulumi:test-stack::test-project::pkg-jhF2:mod-bsG1:type-bPFz::res-e0M1":
+			return plugin.DiffResponse{
+				Changes:             plugin.DiffSome,
+				ReplaceKeys:         []resource.PropertyKey{"__replace"},
+				DeleteBeforeReplace: true,
+			}, nil
+		case "urn:pulumi:test-stack::test-project::pkg-mc13:mod-b36W:type-u0QM::res-uA70":
+			return plugin.DiffResponse{
+				Changes:             plugin.DiffSome,
+				ReplaceKeys:         []resource.PropertyKey{"__replace"},
+				DeleteBeforeReplace: false,
+			}, nil
+		case "urn:pulumi:test-stack::test-project::pkg-mc13:mod-btNx:type-gB0E::res-v305":
+			return plugin.DiffResponse{Changes: plugin.DiffSome}, nil
+		case "urn:pulumi:test-stack::test-project::pkg-jhF2:mod-e061:type-bN0z::res-ro31",
+			"urn:pulumi:test-stack::test-project::pkg-mc13:mod-b1C9:type-t0c1::res-a48W",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-dCc2:type-b4Op::res-az08":
+			return plugin.DiffResponse{}, fmt.Errorf("diff failure for %s", req.URN)
+		case "urn:pulumi:test-stack::test-project::pulumi:providers:pkg-jhF2::res-h023":
+			return plugin.DiffResponse{
+				Changes:             plugin.DiffSome,
+				ReplaceKeys:         []resource.PropertyKey{"__replace"},
+				DeleteBeforeReplace: true,
+			}, nil
+		}
+		return plugin.DiffResponse{}, nil
+	}
+	readF := func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+		switch req.URN {
+		case "urn:pulumi:test-stack::test-project::pkg-jhF2:mod-dCc2:type-b4Op::res-az08",
+			"urn:pulumi:test-stack::test-project::pulumi:providers:pkg-jhF2::res-h023",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-bsG1:type-bPFz::res-e0M1",
+			"urn:pulumi:test-stack::test-project::pkg-mc13:mod-b36W:type-u0QM::res-uA70":
+			return plugin.ReadResponse{}, nil
+		case "urn:pulumi:test-stack::test-project::pkg-mc13:mod-btNx:type-gB0E::res-v305",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-e061:type-bN0z::res-ro31",
+			"urn:pulumi:test-stack::test-project::pkg-mc13:mod-b1C9:type-t0c1::res-a48W":
+			return plugin.ReadResponse{
+				Status: resource.StatusUnknown,
+			}, fmt.Errorf("read failure for %s", req.URN)
+		}
+		return plugin.ReadResponse{
+			ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+			Status:     resource.StatusOK,
+		}, nil
+	}
+	updateF := func(_ context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
+		switch req.URN {
+		case "urn:pulumi:test-stack::test-project::pkg-mc13:mod-b1C9:type-t0c1::res-a48W",
+			"urn:pulumi:test-stack::test-project::pkg-jhF2:mod-dj11:type-zeN6::res-bZjz",
+			"urn:pulumi:test-stack::test-project::pulumi:providers:pkg-mc13::res-bM01":
+			return plugin.UpdateResponse{
+				Status: resource.StatusUnknown,
+			}, fmt.Errorf("update failure for %s", req.URN)
+		}
+		return plugin.UpdateResponse{
+			Properties: req.NewInputs,
+			Status:     resource.StatusOK,
+		}, nil
+	}
+
+	reproLoaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkg-jhF2", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: createF,
+				DeleteF: deleteF,
+				DiffF:   diffF,
+				ReadF:   readF,
+				UpdateF: updateF,
+			}, nil
+		}),
+		deploytest.NewProviderLoader("pkg-mc13", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: createF,
+				DeleteF: deleteF,
+				DiffF:   diffF,
+				ReadF:   readF,
+				UpdateF: updateF,
+			}, nil
+		}),
+	}
+
+	reproProgramF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		prov0, err := monitor.RegisterResource("pulumi:providers:pkg-jhF2", "res-h023", true)
+		require.NoError(t, err)
+
+		provRef0, err := providers.NewReference(prov0.URN, prov0.ID)
+		require.NoError(t, err)
+
+		res1, err := monitor.RegisterResource("pkg-jhF2:mod-dj11:type-zeN6", "res-bZjz", true, deploytest.ResourceOptions{
+			RetainOnDelete: ptr(true),
+			Provider:       provRef0.String(),
+		})
+		require.NoError(t, err)
+
+		res2, err := monitor.RegisterResource("pkg-jhF2:mod-bsG1:type-bPFz", "res-e0M1", false, deploytest.ResourceOptions{
+			Protect:  ptr(true),
+			Provider: provRef0.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkg-mc13", "res-bM01", true)
+		require.NoError(t, err)
+
+		res4, err := monitor.RegisterResource("pkg-mc13:mod-b36W:type-u0QM", "res-uA70", false, deploytest.ResourceOptions{
+			Protect: ptr(true),
+			Dependencies: []resource.URN{
+				res2.URN,
+			},
+			DeletedWith: res1.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkg-mc13:mod-btNx:type-gB0E", "res-v305", false, deploytest.ResourceOptions{
+			RetainOnDelete: ptr(true),
+			DeletedWith:    res4.URN,
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkg-jhF2:mod-e061:type-bN0z", "res-ro31", false, deploytest.ResourceOptions{
+			RetainOnDelete: ptr(true),
+			Provider:       provRef0.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkg-mc13:mod-b1C9:type-t0c1", "res-a48W", true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkg-jhF2:mod-dCc2:type-b4Op", "res-az08", false, deploytest.ResourceOptions{
+			Protect:        ptr(true),
+			RetainOnDelete: ptr(true),
+			Provider:       provRef0.String(),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	reproHostF := deploytest.NewPluginHostF(nil, nil, reproProgramF, reproLoaders...)
+	reproOpts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            reproHostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}

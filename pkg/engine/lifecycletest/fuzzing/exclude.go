@@ -671,11 +671,10 @@ func ExcludeDependenciesOnPendingReplacementRefreshV2(
 	return false
 }
 
-// ExcludeDeletedWithRefreshV2 excludes snapshots where a resource's DeletedWith target
-// is a custom non-provider resource during a refreshV2 operation. During refreshV2,
-// persisted refresh steps are created only for custom non-provider resources and can
-// complete in non-deterministic order, causing the DeletedWith target to appear after
-// the resource that references it in the snapshot, violating a snapshot integrity
+// ExcludeDeletedWithRefreshV2 excludes snapshots where any resource has a non-empty
+// DeletedWith field during a refreshV2 operation. During refreshV2, resources can end
+// up in a different order than in the original snapshot, causing the DeletedWith target
+// to appear after the resource that references it, violating a snapshot integrity
 // constraint.
 func ExcludeDeletedWithRefreshV2(
 	snap *SnapshotSpec,
@@ -687,17 +686,8 @@ func ExcludeDeletedWithRefreshV2(
 		return false
 	}
 
-	// Build a set of URNs for custom non-provider resources, since only these
-	// get concurrent persisted RefreshSteps that can cause ordering issues.
-	customNonProvider := make(map[resource.URN]bool)
 	for _, res := range snap.Resources {
-		if res.Custom && !providers.IsProviderType(res.Type) {
-			customNonProvider[res.URN()] = true
-		}
-	}
-
-	for _, res := range snap.Resources {
-		if res.DeletedWith != "" && customNonProvider[res.DeletedWith] {
+		if res.DeletedWith != "" {
 			return true
 		}
 	}
