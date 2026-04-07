@@ -6,8 +6,10 @@ go_library(
         "array.go",
         "equal.go",
         "fmt.go",
+        "glob.go",
         "map.go",
         "path.go",
+        "path_repr.go",
         "reference.go",
         "type.go",
         "values.go",
@@ -19,6 +21,7 @@ go_library(
         "//sdk/go/common/resource/archive",
         "//sdk/go/common/resource/asset",
         "//sdk/go/common/resource/urn",
+        "//sdk/go/common/util/contract",
     ],
 )
 
@@ -27,7 +30,9 @@ go_test(
     srcs = [
         "array_test.go",
         "fmt_test.go",
+        "glob_test.go",
         "map_test.go",
+        "path_repr_test.go",
         "path_test.go",
         "values_test.go",
     ],
@@ -38,6 +43,7 @@ go_test(
         "//sdk/go/common/resource/urn",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
+        "@net_pgregory_rapid//:rapid",
     ],
 )
 

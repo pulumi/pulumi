@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "deploy",
     srcs = [
+        "analyze_snapshot.go",
         "builtins.go",
         "deployment.go",
         "deployment_executor.go",
@@ -82,6 +83,7 @@ go_library(
 go_test(
     name = "deploy_test",
     srcs = [
+        "analyze_snapshot_test.go",
         "builtins_test.go",
         "deployment_executor_test.go",
         "deployment_test.go",

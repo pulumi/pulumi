@@ -18,6 +18,7 @@ go_library(
         "//sdk/go/common/diag/colors",
         "//sdk/go/common/env",
         "//sdk/go/common/util/cmdutil",
+        "//sdk/go/common/util/logging",
         "//sdk/go/common/workspace",
     ],
 )

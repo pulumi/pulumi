@@ -51,6 +51,7 @@ go_test(
         "//pkg/codegen/hcl2/syntax",
         "//pkg/codegen/pcl",
         "//pkg/codegen/schema",
+        "//sdk/go/common/resource",
         "@com_github_blang_semver//:semver",
         "@com_github_hashicorp_hcl_v2//:hcl",
         "@com_github_stretchr_testify//assert",

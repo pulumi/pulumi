@@ -60,6 +60,8 @@ go_library(
         "@dev_gocloud//blob/s3blob",
         "@dev_gocloud//gcerrors",
         "@in_gopkg_yaml_v3//:yaml_v3",
+        "@io_opentelemetry_go_otel//:otel",
+        "@io_opentelemetry_go_otel_trace//:trace",
     ],
 )
 
@@ -75,6 +77,7 @@ go_test(
         "meta_test.go",
         "pool_test.go",
         "stack_tags_test.go",
+        "state_test.go",
         "store_test.go",
     ],
     embed = [":diy"],

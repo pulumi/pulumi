@@ -1,0 +1,18 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "hcl2",
+    srcs = ["eval.go"],
+    importpath = "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_zclconf_go_cty//cty",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":hcl2",
+    visibility = ["//visibility:public"],
+)

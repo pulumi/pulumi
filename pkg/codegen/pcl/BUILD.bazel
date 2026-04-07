@@ -13,6 +13,7 @@ go_library(
         "config.go",
         "diagnostics.go",
         "functions.go",
+        "hook.go",
         "intrinsics.go",
         "invoke.go",
         "local.go",
@@ -30,6 +31,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/codegen",
+        "//pkg/codegen/hcl2",
         "//pkg/codegen/hcl2/model",
         "//pkg/codegen/hcl2/model/format",
         "//pkg/codegen/hcl2/syntax",
@@ -52,6 +54,7 @@ go_library(
 go_test(
     name = "pcl_test",
     srcs = [
+        "binder_hooks_test.go",
         "binder_resource_test.go",
         "binder_schema_test.go",
         "binder_test.go",
@@ -72,6 +75,7 @@ go_test(
         "//sdk/go/common/util/contract",
         "@com_github_blang_semver//:semver",
         "@com_github_hashicorp_hcl_v2//:hcl",
+        "@com_github_pgavlin_fx_v2//slices",
         "@com_github_spf13_afero//:afero",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",

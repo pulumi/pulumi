@@ -10,7 +10,6 @@ go_library(
         "gen_program_inline_invoke.go",
         "gen_program_json.go",
         "gen_program_optionals.go",
-        "gen_program_read_dir.go",
         "gen_program_splat.go",
         "gen_program_ternaries.go",
         "gen_program_utils.go",
