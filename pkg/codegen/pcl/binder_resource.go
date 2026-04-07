@@ -680,7 +680,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					strictCollectionType := !b.options.skipRangeTypecheck
 					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
 					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
+					keyVariable := &model.Variable{
+						Name:         "__key",
+						VariableType: rangeKey,
+					}
 					iterationExpr := &model.ForExpression{
+						KeyVariable: keyVariable,
 						ValueVariable: &model.Variable{
 							Name:         "_",
 							VariableType: rangeValue,
@@ -688,6 +693,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						Collection:                   expr,
 						Value:                        model.VariableReference(resourceVar),
 						StrictCollectionTypechecking: strictCollectionType,
+					}
+					// When iterating over a map or object, preserve the key so the
+					// resulting collection is a map indexed by string rather than a
+					// list indexed by number.
+					if rangeKey == model.StringType {
+						iterationExpr.Key = model.VariableReference(keyVariable)
 					}
 					diags = iterationExpr.Typecheck(false)
 					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.
