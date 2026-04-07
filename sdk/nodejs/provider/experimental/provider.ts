@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { readFileSync } from "fs";
 import * as path from "path";
 import { Input, Inputs } from "../../output";
 import { ComponentResource, ComponentResourceOptions } from "../../resource";
+import { readPackageManifest } from "../../runtime/manifest";
 import { ConstructResult, Provider } from "../provider";
 import { main } from "../server";
 import { Analyzer, ComponentDefinition } from "./analyzer";
@@ -144,8 +144,7 @@ export class ComponentProvider implements Provider {
         }
 
         const absDir = path.resolve(options.dirname);
-        const packStr = readFileSync(`${absDir}/package.json`, { encoding: "utf-8" });
-        this.packageJSON = JSON.parse(packStr);
+        this.packageJSON = readPackageManifest(absDir).data;
         this.path = absDir;
         this.name = options.name;
         this.version = options.version ?? this.packageJSON.version ?? "0.0.0";
