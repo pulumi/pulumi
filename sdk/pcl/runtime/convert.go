@@ -422,13 +422,30 @@ func convertPropertyValueForSchemaType(
 		}
 		return resource.NewProperty(converted), nil
 	case *schema.UnionType:
+		// Prefer the original value if it already matches the target type, otherwise try to convert to each element
+		// type in turn.
+		var first *resource.PropertyValue
+		var errs []error
 		for _, elementType := range t.ElementTypes {
 			converted, err := convertPropertyValueForSchemaType(value, elementType)
-			if err == nil {
-				return converted, nil
+			if err != nil {
+				errs = append(errs, err)
+			} else {
+				if converted.DeepEquals(value) {
+					return value, nil
+				}
+				if first == nil {
+					first = &converted
+				}
 			}
 		}
-		return value, nil
+		// If we got here we didn't no-op convert in the list above, so just return the first successful conversion if
+		// there was one.
+		if first != nil {
+			return *first, nil
+		}
+		// Else return what errors we saw in trying to convert to each element type, if any.
+		return resource.PropertyValue{}, fmt.Errorf("cannot convert to any type in union: %v", errs)
 	case *schema.ResourceType:
 		return value, nil
 	}
