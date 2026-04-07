@@ -110,7 +110,7 @@ sequence IDs. IDs start at 1. These sequence IDs are used for:
   easier to deal with.
 - Removing any journal entries that came up again later. The `DeleteNew` field
   in particular contains the ID of previous journal entries that are no longer
-  relevant as they were superseeded.
+  relevant as they were superseded.
 
 Journal entries associated with Pulumi Operations additionally have an Operation
 ID assigned to them. This is used mainly for correlating begin and end entries,
