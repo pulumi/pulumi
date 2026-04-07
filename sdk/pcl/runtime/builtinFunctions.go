@@ -267,7 +267,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				if err != nil {
 					return cty.NilVal, fmt.Errorf("convert invoke arguments: %w", err)
 				}
-				argsPV = resource.NewObjectProperty(convertedArgs)
+				argsPV = resource.NewProperty(convertedArgs)
 			}
 
 			marshalOpts := plugin.MarshalOptions{

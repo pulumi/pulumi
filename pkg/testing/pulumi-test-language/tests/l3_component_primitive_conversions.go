@@ -30,6 +30,7 @@ func init() {
 		},
 		Runs: []TestRun{
 			{
+				//nolint:lll
 				Config: config.Map{
 					config.MustMakeKey("l3-component-primitive-conversions", "plainBool"):           config.NewValue("true"),
 					config.MustMakeKey("l3-component-primitive-conversions", "plainNumber"):         config.NewValue("6.5"),
@@ -59,10 +60,12 @@ func init() {
 					assert.Equal(l, "components:index:ConversionComponent", string(secretComponent.Type))
 
 					plainValues := RequireSingleNamedResource(l, snap.Resources, "plainValues-res")
-					assert.Equal(l, plainComponent.URN, plainValues.Parent, "expected plain resource to have plain component as parent")
+					assert.Equal(l, plainComponent.URN, plainValues.Parent,
+						"expected plain resource to have plain component as parent")
 
 					secretValues := RequireSingleNamedResource(l, snap.Resources, "secretValues-res")
-					assert.Equal(l, secretComponent.URN, secretValues.Parent, "expected secret resource to have secret component as parent")
+					assert.Equal(l, secretComponent.URN, secretValues.Parent,
+						"expected secret resource to have secret component as parent")
 
 					expectedPlainValues := resource.NewPropertyMapFromMap(map[string]any{
 						"boolean":     true,

@@ -29,6 +29,7 @@ func init() {
 		},
 		Runs: []TestRun{
 			{
+				//nolint:lll
 				Config: config.Map{
 					config.MustMakeKey("l2-resource-primitive-conversions", "plainBool"):           config.NewValue("true"),
 					config.MustMakeKey("l2-resource-primitive-conversions", "plainNumber"):         config.NewValue("6.5"),

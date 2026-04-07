@@ -347,7 +347,9 @@ func convertInvokeInputObject(args resource.PropertyMap, inputType *schema.Objec
 	return converted, nil
 }
 
-func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType schema.Type) (resource.PropertyValue, error) {
+func convertPropertyValueForSchemaType(
+	value resource.PropertyValue, targetType schema.Type,
+) (resource.PropertyValue, error) {
 	targetType = codegen.UnwrapType(targetType)
 
 	if value.IsSecret() {
@@ -374,7 +376,7 @@ func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType 
 			}
 			copied.Element = converted
 		}
-		return resource.NewOutputProperty(copied), nil
+		return resource.NewProperty(copied), nil
 	}
 
 	if value.IsComputed() {
@@ -395,7 +397,7 @@ func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType 
 			}
 			converted[i] = v
 		}
-		return resource.NewArrayProperty(converted), nil
+		return resource.NewProperty(converted), nil
 	case *schema.MapType:
 		if !value.IsObject() {
 			return value, nil
@@ -409,7 +411,7 @@ func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType 
 			}
 			converted[key] = v
 		}
-		return resource.NewObjectProperty(converted), nil
+		return resource.NewProperty(converted), nil
 	case *schema.ObjectType:
 		if !value.IsObject() {
 			return value, nil
@@ -418,7 +420,7 @@ func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType 
 		if err != nil {
 			return resource.PropertyValue{}, err
 		}
-		return resource.NewObjectProperty(converted), nil
+		return resource.NewProperty(converted), nil
 	case *schema.UnionType:
 		for _, elementType := range t.ElementTypes {
 			converted, err := convertPropertyValueForSchemaType(value, elementType)
@@ -441,7 +443,7 @@ func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType 
 			if err != nil {
 				return value, nil
 			}
-			return resource.NewBoolProperty(converted), nil
+			return resource.NewProperty(converted), nil
 		}
 	case schema.IntType, schema.NumberType:
 		if value.IsNumber() {
@@ -452,21 +454,22 @@ func convertPropertyValueForSchemaType(value resource.PropertyValue, targetType 
 			if err != nil {
 				return value, nil
 			}
-			return resource.NewNumberProperty(converted), nil
+			return resource.NewProperty(converted), nil
 		}
 	case schema.StringType:
 		if value.IsString() {
 			return value, nil
 		}
 		if value.IsBool() {
-			return resource.NewStringProperty(strconv.FormatBool(value.BoolValue())), nil
+			return resource.NewProperty(strconv.FormatBool(value.BoolValue())), nil
 		}
 		if value.IsNumber() {
-			return resource.NewStringProperty(strconv.FormatFloat(value.NumberValue(), 'f', -1, 64)), nil
+			return resource.NewProperty(strconv.FormatFloat(value.NumberValue(), 'f', -1, 64)), nil
 		}
 	}
 
-	return resource.PropertyValue{}, fmt.Errorf("could not convert %v to %s", value, targetType)
+	// If we couldn't convert to the target type, just try and pass the value as is.
+	return value, nil
 }
 
 func propertyValueToCty(
