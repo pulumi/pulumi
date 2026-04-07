@@ -28,11 +28,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
 )
 
 func TestRoundTrip(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	input := "Hello, encrypted world!\nLine two.\n"
 
 	var buf bytes.Buffer
@@ -49,14 +50,13 @@ func TestRoundTrip(t *testing.T) {
 
 	got, err := io.ReadAll(r)
 	require.NoError(t, err)
-	require.NoError(t, r.Close())
 
 	assert.Equal(t, input, string(got))
 }
 
 func TestEmptyLog(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -68,14 +68,13 @@ func TestEmptyLog(t *testing.T) {
 
 	got, err := io.ReadAll(r)
 	require.NoError(t, err)
-	require.NoError(t, r.Close())
 
 	assert.Empty(t, got)
 }
 
 func TestLargeLog(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	input := make([]byte, 2*1024*1024)
 	_, err := rand.Read(input)
@@ -94,14 +93,13 @@ func TestLargeLog(t *testing.T) {
 
 	got, err := io.ReadAll(r)
 	require.NoError(t, err)
-	require.NoError(t, r.Close())
 
 	assert.Equal(t, input, got)
 }
 
 func TestSingleByteWrites(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	input := "one byte at a time"
 
 	var buf bytes.Buffer
@@ -120,14 +118,13 @@ func TestSingleByteWrites(t *testing.T) {
 
 	got, err := io.ReadAll(r)
 	require.NoError(t, err)
-	require.NoError(t, r.Close())
 
 	assert.Equal(t, input, string(got))
 }
 
 func TestMultipleWritesBeforeClose(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -147,14 +144,13 @@ func TestMultipleWritesBeforeClose(t *testing.T) {
 
 	got, err := io.ReadAll(r)
 	require.NoError(t, err)
-	require.NoError(t, r.Close())
 
 	assert.Equal(t, "first chunk second chunk third chunk", string(got))
 }
 
 func TestCorruptMagic(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -172,7 +168,7 @@ func TestCorruptMagic(t *testing.T) {
 
 func TestCorruptVersion(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -190,7 +186,7 @@ func TestCorruptVersion(t *testing.T) {
 
 func TestCorruptChunkCiphertext(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -217,7 +213,7 @@ func TestCorruptChunkCiphertext(t *testing.T) {
 
 func TestTruncatedFile(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -240,7 +236,7 @@ func TestTruncatedFile(t *testing.T) {
 
 func TestConcurrentWrites(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -276,7 +272,6 @@ func TestConcurrentWrites(t *testing.T) {
 
 	got, err := io.ReadAll(r)
 	require.NoError(t, err)
-	require.NoError(t, r.Close())
 
 	output := string(got)
 	for i := range goroutines {
@@ -288,7 +283,7 @@ func TestConcurrentWrites(t *testing.T) {
 
 func TestWriteAfterClose(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -301,7 +296,7 @@ func TestWriteAfterClose(t *testing.T) {
 
 func TestChunkReorderDetected(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -343,7 +338,7 @@ func TestChunkReorderDetected(t *testing.T) {
 
 func TestCrashTolerance(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var buf bytes.Buffer
 	w, err := NewWriter(ctx, &buf, config.Base64Crypter)
@@ -371,7 +366,47 @@ func TestCrashTolerance(t *testing.T) {
 
 	got, err := io.ReadAll(r)
 	require.NoError(t, err)
-	require.NoError(t, r.Close())
 
 	assert.Equal(t, "chunk1 data!!!!!chunk2 data!!!!!", string(got))
+}
+
+func TestRapidRoundTrip(t *testing.T) {
+	t.Parallel()
+	rapid.Check(t, func(t *rapid.T) {
+		data := rapid.SliceOf(rapid.Byte()).Draw(t, "data")
+		chunkSizes := rapid.SliceOfN(rapid.IntRange(1, len(data)+1), 1, -1).Draw(t, "chunkSizes")
+
+		ctx := context.Background() //nolint:usetesting // rapid.T doesn't have Context()
+		var buf bytes.Buffer
+		w, err := NewWriter(ctx, &buf, config.Base64Crypter)
+		require.NoError(t, err)
+		w.chunkSize = rapid.IntRange(1, 1024).Draw(t, "writerChunkSize")
+
+		// Write data in arbitrarily-sized chunks.
+		offset := 0
+		for _, size := range chunkSizes {
+			if offset >= len(data) {
+				break
+			}
+			end := offset + size
+			if end > len(data) {
+				end = len(data)
+			}
+			_, err := w.Write(data[offset:end])
+			require.NoError(t, err)
+			offset = end
+		}
+		if offset < len(data) {
+			_, err := w.Write(data[offset:])
+			require.NoError(t, err)
+		}
+		require.NoError(t, w.Close())
+
+		r, err := NewReader(ctx, &buf, config.Base64Crypter)
+		require.NoError(t, err)
+
+		got, err := io.ReadAll(r)
+		require.NoError(t, err)
+		assert.Equal(t, data, got)
+	})
 }

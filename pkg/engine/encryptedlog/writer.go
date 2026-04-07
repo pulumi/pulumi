@@ -31,11 +31,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
-// EncryptedLogWriter writes AES-256-GCM encrypted log data in the PLOG format.
+// Writer writes AES-256-GCM encrypted log data in the PLOG format.
 // Each chunk is independently gzip-compressed for crash resilience — all
 // completed chunks on disk are decodable even if the process crashes.
 // It is safe for concurrent use.
-type EncryptedLogWriter struct {
+type Writer struct {
 	mu        sync.Mutex
 	w         io.Writer
 	aesgcm    cipher.AEAD
@@ -45,18 +45,18 @@ type EncryptedLogWriter struct {
 	closed    bool
 }
 
-// NewWriter creates an EncryptedLogWriter that encrypts log data to w.
+// NewWriter creates an Writer that encrypts log data to w.
 // A random session key is generated and encrypted with enc for the file header.
 func NewWriter(
 	ctx context.Context, w io.Writer, enc config.Encrypter,
-) (*EncryptedLogWriter, error) {
-	sessionKey := make([]byte, keySize)
-	if _, err := rand.Read(sessionKey); err != nil {
+) (*Writer, error) {
+	var sessionKey [keySize]byte
+	if _, err := rand.Read(sessionKey[:]); err != nil {
 		return nil, fmt.Errorf("encryptedlog: generating session key: %w", err)
 	}
 
 	// Encrypt the base64-encoded session key via the caller's secrets provider.
-	encodedKey := base64.StdEncoding.EncodeToString(sessionKey)
+	encodedKey := base64.StdEncoding.EncodeToString(sessionKey[:])
 	encryptedKey, err := enc.EncryptValue(ctx, encodedKey)
 	if err != nil {
 		return nil, fmt.Errorf("encryptedlog: encrypting session key: %w", err)
@@ -79,7 +79,7 @@ func NewWriter(
 	}
 
 	// Set up AES-256-GCM from the session key.
-	block, err := aes.NewCipher(sessionKey)
+	block, err := aes.NewCipher(sessionKey[:])
 	if err != nil {
 		return nil, fmt.Errorf("encryptedlog: creating cipher: %w", err)
 	}
@@ -88,7 +88,7 @@ func NewWriter(
 		return nil, fmt.Errorf("encryptedlog: creating GCM: %w", err)
 	}
 
-	elw := &EncryptedLogWriter{
+	elw := &Writer{
 		w:         w,
 		aesgcm:    aesgcm,
 		chunkSize: DefaultChunkSize,
@@ -99,7 +99,7 @@ func NewWriter(
 
 // Write buffers plaintext log data, flushing compressed and encrypted chunks
 // to the underlying writer as the buffer fills.
-func (elw *EncryptedLogWriter) Write(p []byte) (int, error) {
+func (elw *Writer) Write(p []byte) (int, error) {
 	elw.mu.Lock()
 	defer elw.mu.Unlock()
 
@@ -119,7 +119,7 @@ func (elw *EncryptedLogWriter) Write(p []byte) (int, error) {
 }
 
 // Close flushes all remaining data.
-func (elw *EncryptedLogWriter) Close() error {
+func (elw *Writer) Close() error {
 	elw.mu.Lock()
 	defer elw.mu.Unlock()
 
@@ -145,7 +145,7 @@ func (elw *EncryptedLogWriter) Close() error {
 }
 
 // flushChunks writes all complete chunk-sized blocks from the buffer.
-func (elw *EncryptedLogWriter) flushChunks() error {
+func (elw *Writer) flushChunks() error {
 	for elw.buf.Len() >= elw.chunkSize {
 		if err := elw.writeChunk(elw.buf.Next(elw.chunkSize)); err != nil {
 			return err
@@ -157,7 +157,7 @@ func (elw *EncryptedLogWriter) flushChunks() error {
 // writeChunk gzip-compresses plaintext, encrypts the compressed data, and writes
 // the chunk (length + nonce + ciphertext) to the output. Each chunk is independently
 // compressed for crash resilience.
-func (elw *EncryptedLogWriter) writeChunk(plaintext []byte) error {
+func (elw *Writer) writeChunk(plaintext []byte) error {
 	// Compress the chunk independently.
 	var compressed bytes.Buffer
 	gz := gzip.NewWriter(&compressed)

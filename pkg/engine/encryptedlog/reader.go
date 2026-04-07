@@ -29,18 +29,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
-// EncryptedLogReader reads and decrypts PLOG encrypted log files,
+// Reader reads and decrypts PLOG encrypted log files,
 // returning the original plaintext log data. It tolerates missing
 // end sentinels for crash resilience — all completed chunks are readable.
-type EncryptedLogReader struct {
+type Reader struct {
 	cd *chunkDecrypter
 }
 
-// NewReader creates an EncryptedLogReader that decrypts log data from r.
+// NewReader creates an Reader that decrypts log data from r.
 // The session key stored in the file header is decrypted with dec.
 func NewReader(
 	ctx context.Context, r io.Reader, dec config.Decrypter,
-) (*EncryptedLogReader, error) {
+) (*Reader, error) {
 	var magic [4]byte
 	if _, err := io.ReadFull(r, magic[:]); err != nil {
 		return nil, fmt.Errorf("encryptedlog: reading magic: %w", err)
@@ -91,17 +91,12 @@ func NewReader(
 		return nil, fmt.Errorf("encryptedlog: creating GCM: %w", err)
 	}
 
-	return &EncryptedLogReader{cd: &chunkDecrypter{r: r, aesgcm: aesgcm}}, nil
+	return &Reader{cd: &chunkDecrypter{r: r, aesgcm: aesgcm}}, nil
 }
 
 // Read reads decrypted, decompressed log data.
-func (elr *EncryptedLogReader) Read(p []byte) (int, error) {
+func (elr *Reader) Read(p []byte) (int, error) {
 	return elr.cd.Read(p)
-}
-
-// Close releases resources held by the reader.
-func (elr *EncryptedLogReader) Close() error {
-	return nil
 }
 
 // chunkDecrypter is an io.Reader that reads encrypted chunks from the
