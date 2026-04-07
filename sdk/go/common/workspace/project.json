@@ -214,6 +214,16 @@
                             }
                         }
                     }
+                },
+                "environments":{
+                    "description":"List of ESC environments (project/name) to import into stacks scaffolded from this template.",
+                    "type":[
+                        "array",
+                        "null"
+                    ],
+                    "items":{
+                        "type":"string"
+                    }
                 }
             },
             "additionalProperties":false
