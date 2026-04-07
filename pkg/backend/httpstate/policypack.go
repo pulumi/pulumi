@@ -294,7 +294,7 @@ func (r *localPolicyEnvironmentResolver) ResolveEnvironments(
 		return nil, nil
 	}
 
-	yaml := buildImportsYAML(environments)
+	yaml := workspace.NewEnvironment(environments).Definition()
 
 	env, diags, err := r.envs.OpenYAMLEnvironment(ctx, r.orgName, yaml, 2*time.Hour)
 	if err != nil {
