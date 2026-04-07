@@ -1,0 +1,6 @@
+kind: fix
+body: Fix inherited input properties missing from component schema when args interface extends another interface
+custom:
+  Scope: sdk/nodejs
+  PR: ''
+time: '2026-04-07T00:00:00Z'
