@@ -28,51 +28,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBuildImportsYAML(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		envRefs  []string
-		expected string
-	}{
-		{
-			name:     "single environment",
-			envRefs:  []string{"prod/secrets"},
-			expected: "imports:\n  - prod/secrets\n",
-		},
-		{
-			name:     "multiple environments",
-			envRefs:  []string{"shared/base", "prod/secrets", "prod/config"},
-			expected: "imports:\n  - shared/base\n  - prod/secrets\n  - prod/config\n",
-		},
-		{
-			name:     "environment with version tag",
-			envRefs:  []string{"prod/secrets@v1.2.3"},
-			expected: "imports:\n  - prod/secrets@v1.2.3\n",
-		},
-		{
-			name:     "environment with named tag",
-			envRefs:  []string{"prod/secrets@stable"},
-			expected: "imports:\n  - prod/secrets@stable\n",
-		},
-		{
-			name:    "mixed tagged and untagged environments",
-			envRefs: []string{"shared/base", "prod/secrets@v2", "prod/config@my-tag"},
-			expected: "imports:\n  - shared/base\n" +
-				"  - prod/secrets@v2\n  - prod/config@my-tag\n",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := buildImportsYAML(tt.envRefs)
-			assert.Equal(t, tt.expected, string(result))
-		})
-	}
-}
-
 func TestEscValueToInterface(t *testing.T) {
 	t.Parallel()
 

@@ -131,9 +131,9 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 		return nil, nil
 	}
 
-	// Build a synthetic YAML environment that imports all referenced environments.
-	// This reuses the ESC composition model to handle ordering and merging.
-	yaml := buildImportsYAML(rp.Environments)
+	// Build a synthetic environment that imports all referenced environments.
+	// This reuses the same path as stack ESC resolution.
+	yaml := workspace.NewEnvironment(rp.Environments).Definition()
 
 	env, diags, err := rp.envs.OpenYAMLEnvironment(ctx, rp.orgName, yaml, 2*time.Hour)
 	if err != nil {
@@ -172,16 +172,6 @@ func (rp *cloudRequiredPolicy) ResolveEnvironments(ctx context.Context) (*engine
 	result.Secrets = secrets
 
 	return result, nil
-}
-
-// buildImportsYAML constructs a synthetic ESC YAML document that imports the given environment refs.
-func buildImportsYAML(envRefs []string) []byte {
-	var buf bytes.Buffer
-	buf.WriteString("imports:\n")
-	for _, ref := range envRefs {
-		fmt.Fprintf(&buf, "  - %s\n", ref)
-	}
-	return buf.Bytes()
 }
 
 // prepareEnvironment extracts environment variables, secrets, and temporary file
