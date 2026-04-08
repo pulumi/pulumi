@@ -1,0 +1,109 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package docsrender
+
+import (
+	"encoding/json"
+	"errors"
+	"os"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+)
+
+const preferencesFile = "docs-preferences.json"
+
+// Preferences stores user preferences for docs rendering.
+type Preferences struct {
+	Language   string `json:"language,omitempty"`
+	OS         string `json:"os,omitempty"`
+	Cloud      string `json:"cloud,omitempty"`
+	LastPage   string `json:"lastPage,omitempty"`
+	BrowseMode string `json:"browseMode,omitempty"`
+}
+
+// Get returns the stored preference for the given chooser type.
+func (p *Preferences) Get(chooserType string) string {
+	switch chooserType {
+	case ChooserLanguage:
+		return p.Language
+	case ChooserOS:
+		return p.OS
+	case ChooserCloud:
+		return p.Cloud
+	default:
+		return ""
+	}
+}
+
+// Set updates the stored preference for the given chooser type.
+func (p *Preferences) Set(chooserType, value string) {
+	switch chooserType {
+	case ChooserLanguage:
+		p.Language = value
+	case ChooserOS:
+		p.OS = value
+	case ChooserCloud:
+		p.Cloud = value
+	}
+}
+
+func preferencesPath() (string, error) {
+	return workspace.GetPulumiPath(preferencesFile)
+}
+
+// LoadPreferences reads preferences from disk, returning defaults on failure.
+func LoadPreferences() *Preferences {
+	path, err := preferencesPath()
+	if err != nil {
+		logging.V(7).Infof("docs preferences: could not resolve path: %v", err)
+		return &Preferences{}
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			logging.V(7).Infof("docs preferences: could not read %s: %v", path, err)
+		}
+		return &Preferences{}
+	}
+
+	var prefs Preferences
+	if err := json.Unmarshal(data, &prefs); err != nil {
+		logging.V(7).Infof("docs preferences: could not parse %s: %v", path, err)
+		return &Preferences{}
+	}
+
+	return &prefs
+}
+
+// SavePreferences persists preferences; errors are logged, not returned.
+func SavePreferences(prefs *Preferences) {
+	path, err := preferencesPath()
+	if err != nil {
+		logging.V(7).Infof("docs preferences: could not resolve path: %v", err)
+		return
+	}
+
+	data, err := json.MarshalIndent(prefs, "", "  ")
+	if err != nil {
+		logging.V(7).Infof("docs preferences: could not marshal: %v", err)
+		return
+	}
+
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		logging.V(7).Infof("docs preferences: could not write %s: %v", path, err)
+	}
+}

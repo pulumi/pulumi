@@ -1,0 +1,233 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package docsrender
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestRenderMarkdown(t *testing.T) {
+	t.Parallel()
+
+	body := "Some **bold** text."
+	result, err := RenderMarkdown("Hello", body)
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+	assert.Contains(t, result, "Hello")
+}
+
+func TestRenderMarkdownNoTitle(t *testing.T) {
+	t.Parallel()
+
+	body := "# Already has title\n\nSome text."
+	result, err := RenderMarkdown("", body)
+	require.NoError(t, err)
+	assert.NotEmpty(t, result)
+}
+
+func TestFilterCodeBlocksByLanguageMultiLang(t *testing.T) {
+	t.Parallel()
+
+	source := []byte(`Some text.
+
+` + "```typescript" + `
+console.log('hello');
+` + "```" + `
+
+` + "```python" + `
+print('hello')
+` + "```" + `
+
+` + "```go" + `
+fmt.Println("hello")
+` + "```" + `
+
+More text.
+`)
+	tree := ParseMarkdown(source)
+	result := string(FilterCodeBlocksByLanguage(source, tree, "python"))
+
+	assert.Contains(t, result, "print('hello')")
+	assert.NotContains(t, result, "console.log")
+	assert.NotContains(t, result, "fmt.Println")
+	assert.Contains(t, result, "Some text.")
+	assert.Contains(t, result, "More text.")
+}
+
+func TestFilterCodeBlocksPreservesShell(t *testing.T) {
+	t.Parallel()
+
+	source := []byte(
+		"```python\nprint('hi')\n```\n\n" +
+			"```sh\ncurl example.com\n```\n\n" +
+			"```typescript\nconsole.log('hi');\n```\n")
+	tree := ParseMarkdown(source)
+	result := string(FilterCodeBlocksByLanguage(source, tree, "python"))
+
+	assert.Contains(t, result, "print('hi')")
+	assert.Contains(t, result, "curl example.com")
+	assert.NotContains(t, result, "console.log")
+}
+
+func TestFilterCodeBlocksPreservesIsolated(t *testing.T) {
+	t.Parallel()
+
+	source := []byte(`Some text.
+
+` + "```yaml" + `
+key: value
+` + "```" + `
+
+More text.
+`)
+	tree := ParseMarkdown(source)
+	result := string(FilterCodeBlocksByLanguage(source, tree, "python"))
+
+	assert.Contains(t, result, "key: value")
+}
+
+func TestExtractLinks(t *testing.T) {
+	t.Parallel()
+
+	source := []byte(`Check [Stacks](/docs/iac/concepts/stacks) and
+[AWS Provider](/registry/packages/aws) for details.
+Also see [Stacks](/docs/iac/concepts/stacks) again.
+And [Google](https://google.com).
+`)
+	tree := ParseMarkdown(source)
+	links := ExtractLinks(source, tree)
+
+	assert.Equal(t, []Link{
+		{URL: "/docs/iac/concepts/stacks", Title: "Stacks"},
+		{URL: "/registry/packages/aws", Title: "AWS Provider"},
+		{URL: "https://google.com", Title: "Google"},
+	}, links)
+}
+
+func TestExtractInternalLinks(t *testing.T) {
+	t.Parallel()
+
+	md := `Check [Stacks](/docs/iac/concepts/stacks) and [Google](https://google.com).`
+	links := ExtractInternalLinks(md)
+
+	require.Len(t, links, 1)
+	assert.Equal(t, "/docs/iac/concepts/stacks", links[0].URL)
+}
+
+func TestNumberLinks(t *testing.T) {
+	t.Parallel()
+
+	md := `See [Stacks](/docs/stacks) and [Projects](/docs/projects).`
+	annotated, links := NumberLinks(md)
+
+	require.Len(t, links, 2)
+	assert.Contains(t, annotated, "🔗1")
+	assert.Contains(t, annotated, "🔗2")
+}
+
+func TestWebURL(t *testing.T) {
+	t.Parallel()
+
+	t.Run("docs path", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "https://www.pulumi.com/docs/iac/concepts/stacks/",
+			WebURL("https://www.pulumi.com", "iac/concepts/stacks"))
+	})
+
+	t.Run("registry path", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "https://www.pulumi.com/registry/packages/aws/",
+			WebURL("https://www.pulumi.com", "registry/packages/aws"))
+	})
+}
+
+func TestPipelineChooserAndFilter(t *testing.T) {
+	t.Parallel()
+
+	input := "# How-To Guides\n\n" +
+		"<!-- chooser: language -->\n" +
+		"<!-- option: typescript -->\n" +
+		"See [TS Guide](/docs/ts-guide).\n\n" +
+		"```typescript\nconsole.log('hello');\n```\n\n" +
+		"<!-- /option -->\n" +
+		"<!-- option: python -->\n" +
+		"See [Python Guide](/docs/python-guide).\n\n" +
+		"```python\nprint('hello')\n```\n\n" +
+		"<!-- /option -->\n" +
+		"<!-- /chooser -->\n\n" +
+		"Some shared content with a [Shared Link](/docs/shared).\n"
+
+	tests := []struct {
+		name         string
+		lang         string
+		wantLinks    []string
+		notWantLinks []string
+		wantCode     string
+		notWantCode  string
+	}{
+		{
+			name:         "python selected",
+			lang:         "python",
+			wantLinks:    []string{"/docs/python-guide", "/docs/shared"},
+			notWantLinks: []string{"/docs/ts-guide"},
+			wantCode:     "print('hello')",
+			notWantCode:  "console.log",
+		},
+		{
+			name:         "typescript selected",
+			lang:         "typescript",
+			wantLinks:    []string{"/docs/ts-guide", "/docs/shared"},
+			notWantLinks: []string{"/docs/python-guide"},
+			wantCode:     "console.log",
+			notWantCode:  "print('hello')",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			source := []byte(input)
+			tree := ParseMarkdown(source)
+
+			selections := map[string]string{"language": tt.lang}
+			resolved := ResolveChoosers(source, tree, selections)
+
+			filtered := FilterCodeBlocksByLanguage(resolved, ParseMarkdown(resolved), tt.lang)
+			result := string(filtered)
+
+			assert.Contains(t, result, tt.wantCode)
+			assert.NotContains(t, result, tt.notWantCode)
+
+			links := ExtractInternalLinks(result)
+			var linkURLs []string
+			for _, l := range links {
+				linkURLs = append(linkURLs, l.URL)
+			}
+			for _, want := range tt.wantLinks {
+				assert.Contains(t, linkURLs, want)
+			}
+			for _, notWant := range tt.notWantLinks {
+				assert.NotContains(t, linkURLs, notWant)
+			}
+
+			// Re-resolution is a no-op: no chooser comments should remain.
+			choosers := ScanChoosers(filtered, ParseMarkdown(filtered))
+			assert.Empty(t, choosers)
+		})
+	}
+}
