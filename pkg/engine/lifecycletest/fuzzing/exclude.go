@@ -17,6 +17,7 @@ package fuzzing
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // ExclusionRule represents a rule that determines if a snapshot should be excluded from fuzzing.
@@ -706,9 +707,10 @@ func ExcludeDeletedWithRefreshV2(
 
 // ExcludeTargetedUpdateRefreshWithChildProvider excludes scenarios where a
 // targeted update with refresh has a provider that is a child of another
-// resource in the snapshot and the program contains aliased resources. During
-// the refresh phase, the child provider's read can fail, causing it to be
-// dropped from the snapshot while aliased resources still reference it.
+// resource in the snapshot and the program contains an aliased resource whose
+// type belongs to the same package as a child provider. During the refresh
+// phase, the child provider's read can fail, causing it to be dropped from the
+// snapshot while the aliased resource still references it.
 func ExcludeTargetedUpdateRefreshWithChildProvider(
 	snap *SnapshotSpec,
 	prog *ProgramSpec,
@@ -725,20 +727,24 @@ func ExcludeTargetedUpdateRefreshWithChildProvider(
 		return false
 	}
 
-	hasChildProvider := false
+	// Collect the package names of all child providers in the snapshot.
+	childProviderPkgs := make(map[tokens.Package]bool)
 	for _, res := range snap.Resources {
 		if providers.IsProviderType(res.Type) && res.Parent != "" {
-			hasChildProvider = true
-			break
+			childProviderPkgs[providers.GetProviderPackage(res.Type)] = true
 		}
 	}
-	if !hasChildProvider {
+	if len(childProviderPkgs) == 0 {
 		return false
 	}
 
+	// Check if any aliased program resource uses a child provider's package.
 	for _, res := range prog.ResourceRegistrations {
 		if len(res.Aliases) > 0 {
-			return true
+			resPkg := res.Type.Module().Package()
+			if childProviderPkgs[resPkg] {
+				return true
+			}
 		}
 	}
 
