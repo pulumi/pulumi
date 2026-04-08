@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package logging provides automatic logging of glog output to disk,
-// encrypted when a secrets manager is available, plain gzip otherwise.
+// Package logging provides automatic logging to disk, encrypted when a secrets manager
+// is available, plain gzip otherwise.
 package logging
 
 import (
@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,10 +46,11 @@ func UpgradeCurrentLogger(ctx context.Context, stackName, updateID string, sm se
 	return currentLogger.UpgradeToEncrypted(ctx, stackName, updateID, sm)
 }
 
-// Logger captures glog output to a log file on disk, optionally encrypted.
+// Logger captures output to a log file on disk, optionally encrypted.
 type Logger struct {
 	mu        sync.Mutex
 	sink      io.WriteCloser // current sink (gzipSink or EncryptedLogWriter)
+	handler   *slog.JSONHandler
 	f         *os.File
 	filePath  string
 	encrypted bool
@@ -100,12 +102,18 @@ func StartLogging(
 		l.encrypted = true
 	}
 
-	logging.SetSink(l, 10)
+	l.handler = slog.NewJSONHandler(l, &slog.HandlerOptions{
+		Level: logging.LevelTrace,
+	})
+
+	logging.SetSinkHandler(l.handler, 10)
 	currentLogger = l
 	return l, nil
 }
 
-// Write implements io.Writer, forwarding to the current sink.
+// Write implements io.Writer, forwarding to the current sink under the mutex.
+// The slog.JSONHandler writes through this method, which ensures it always
+// targets the current sink even after an upgrade from gzip to encrypted.
 func (l *Logger) Write(p []byte) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -183,7 +191,7 @@ func (l *Logger) Close() error {
 	if l == nil {
 		return nil
 	}
-	logging.SetSink(nil, 0)
+	logging.SetSinkHandler(nil, 0)
 	if currentLogger == l {
 		currentLogger = nil
 	}

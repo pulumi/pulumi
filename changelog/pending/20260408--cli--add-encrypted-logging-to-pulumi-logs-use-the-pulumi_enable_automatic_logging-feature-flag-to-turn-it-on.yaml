@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add encrypted logging to ~/.pulumi/logs; use the PULUMI_ENABLE_AUTOMATIC_LOGGING feature flag to turn it on
