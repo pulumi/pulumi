@@ -230,6 +230,7 @@ tidy_fix::
 	./scripts/tidy.sh
 
 renovate: tidy_fix
+	./scripts/renovate-changelog.py
 
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate

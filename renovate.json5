@@ -19,6 +19,20 @@
 
     // GitHub
     "github-actions",
+
+    "custom.regex",
+  ],
+  customManagers: [
+    // Update the language provider versions in `scripts/get-language-providers.sh`.
+    // Each entry in the LANGUAGES array is preceded by a `# renovate:` annotation
+    // that tells this manager which package to track.
+    {
+      customType: "regex",
+      fileMatch: ["^scripts/get-language-providers\\.sh$"],
+      matchStrings: [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s+\"\\S+ (?<currentValue>\\S+)\"",
+      ],
+    },
   ],
   // The preset's ignorePaths has `sdk/**` in it, we don't want that
   // https://github.com/pulumi/renovate-config/blob/main/default.json5#L55
@@ -76,6 +90,19 @@
         "github.com/pulumi/esc",
       ],
       enabled: true
+    },
+    {
+      description: "Auto merge the language runtimes",
+      matchManagers: ["custom.regex"],
+      matchFileNames: ["scripts/get-language-providers.sh"],
+      dependencyDashboardApproval: false,
+      minimumReleaseAge: "0 days",
+      postUpgradeTasks: {
+        // `make renovate` invokes `scripts/renovate-changelog.py`, which
+        // writes a changelog entry for each language version bump.
+        commands: ["make renovate"],
+        executionMode: "branch", // Only run once per PR.
+      },
     },
     {
       description: "Disable updating for tests that trip up renovate",
