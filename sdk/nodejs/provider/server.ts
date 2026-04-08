@@ -69,7 +69,14 @@ class Server implements grpc.UntypedServiceImplementation {
     // Misc. methods
 
     public cancel(call: any, callback: any): void {
-        callback(undefined, new emptyproto.Empty());
+        if (this.provider.cancel) {
+            this.provider.cancel().then(
+                () => callback(undefined, new emptyproto.Empty()),
+                (e: any) => callback(e),
+            );
+        } else {
+            callback(undefined, new emptyproto.Empty());
+        }
     }
 
     public attach(call: any, callback: any): void {
