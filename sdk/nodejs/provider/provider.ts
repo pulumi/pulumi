@@ -317,4 +317,9 @@ export interface Provider {
      *   The embedded value from the sub-package.
      */
     parameterizeValue?: (name: string, version: string, value: string) => Promise<ParameterizeResult>;
+
+    /**
+     * Signals the provider to gracefully shut down and abort any ongoing operations.
+     */
+    cancel?: () => Promise<void>;
 }

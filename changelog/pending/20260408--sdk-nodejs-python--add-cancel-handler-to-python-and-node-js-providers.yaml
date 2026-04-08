@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/nodejs,python
+  description: Add Cancel handler to Python & Node.js providers
