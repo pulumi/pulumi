@@ -308,6 +308,87 @@ func TestAddEscMetadataToEnvironment(t *testing.T) {
 	assert.Equal(t, expected, env[backend.StackEnvironments])
 }
 
+func TestDetectAIAgent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{
+			name: "explicit AI_AGENT wins",
+			env: map[string]string{
+				"AI_AGENT":        "my-agent",
+				"CODEX_THREAD_ID": "thread",
+			},
+			want: "my-agent",
+		},
+		{
+			name: "normalize copilot cli alias",
+			env: map[string]string{
+				"AI_AGENT": "github-copilot-cli",
+			},
+			want: "github-copilot",
+		},
+		{
+			name: "codex",
+			env: map[string]string{
+				"CODEX_THREAD_ID": "thread",
+			},
+			want: "codex",
+		},
+		{
+			name: "cowork beats claude",
+			env: map[string]string{
+				"CLAUDE_CODE_IS_COWORK": "1",
+				"CLAUDE_CODE":           "1",
+			},
+			want: "cowork",
+		},
+		{
+			name: "copilot vars",
+			env: map[string]string{
+				"COPILOT_MODEL": "gpt-5",
+			},
+			want: "github-copilot",
+		},
+		{
+			name: "none",
+			env:  map[string]string{},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			getEnv := func(key string) string {
+				return tt.env[key]
+			}
+			assert.Equal(t, tt.want, detectAIAgent(getEnv))
+		})
+	}
+}
+
+func TestAddExecutionMetadataToEnvironmentDetectsAgent(t *testing.T) {
+	t.Setenv("CODEX_THREAD_ID", "thread")
+	env := map[string]string{}
+	addExecutionMetadataToEnvironment(env, "unknown", "")
+
+	assert.Equal(t, "cli", env[backend.ExecutionKind])
+	assert.Equal(t, "codex", env[backend.ExecutionAgent])
+}
+
+func TestAddExecutionMetadataToEnvironmentUsesExplicitAgent(t *testing.T) {
+	t.Setenv("CODEX_THREAD_ID", "thread")
+	env := map[string]string{}
+	addExecutionMetadataToEnvironment(env, "unknown", "user-provided")
+
+	assert.Equal(t, "user-provided", env[backend.ExecutionAgent])
+}
+
 // Tests that Git metadata can be read from the environment if there is no Git repository present.
 func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 	// Disable CI/CD detection code, since we don't care about those variables for this test and we don't want its
