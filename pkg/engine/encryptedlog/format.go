@@ -35,7 +35,11 @@
 // that each chunk has a unique nonce, which is a requirement for AES-GCM security.
 package encryptedlog
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"fmt"
+	"io"
+)
 
 const (
 	// Magic is the 4-byte file signature for encrypted log files.
@@ -58,6 +62,21 @@ const (
 	// from corrupt or malicious files.
 	maxPayloadLen = DefaultChunkSize + 1024
 )
+
+// WriteHeader writes a PLOG file header to w.
+func WriteHeader(w io.Writer, encryptedKey []byte) error {
+	if len(encryptedKey) > 65535 {
+		return fmt.Errorf("encryptedlog: encrypted key too large (%d bytes)", len(encryptedKey))
+	}
+	header := make([]byte, 0, len(Magic)+1+2+len(encryptedKey))
+	header = append(header, Magic...)
+	header = append(header, Version)
+	//nolint:gosec // bounded by 65535 check above
+	header = binary.BigEndian.AppendUint16(header, uint16(len(encryptedKey)))
+	header = append(header, encryptedKey...)
+	_, err := w.Write(header)
+	return err
+}
 
 // makeNonce builds a 12-byte GCM nonce by zero-padding a uint64 counter.
 func makeNonce(counter uint64) [nonceSize]byte {

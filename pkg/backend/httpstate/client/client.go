@@ -3663,3 +3663,17 @@ func (pc *Client) GetInsightsScanLogs(
 	}
 	return resp, nil
 }
+
+// CreateLogEncryptionSession creates a new log encryption session via the
+// Pulumi Cloud API. The service generates a session key and returns it
+// along with a session ID that can be used to identify the key later.
+func (pc *Client) CreateLogEncryptionSession(
+	ctx context.Context,
+	req apitype.LogEncryptionSessionInitRequest,
+) (*apitype.LogEncryptionSessionInitResponse, error) {
+	var resp apitype.LogEncryptionSessionInitResponse
+	if err := pc.restCall(ctx, http.MethodPost, "/api/log-encryption-session/init", nil, req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
