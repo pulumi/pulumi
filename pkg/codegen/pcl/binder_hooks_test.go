@@ -27,14 +27,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 )
 
-// Test that we can use new_inputs, old_inputs, urn etc in hook functions
+// Test that we can use newInputs, oldInputs, urn etc in hook functions
 func TestHookBinding(t *testing.T) {
 	t.Parallel()
 
 	source := `
 hook "foo" {
-	command = ["test", args.urn, args.id, args.name, args.type, args.new_inputs.first,
-		args.old_inputs.second, args.new_outputs.third, args.old_outputs.forth]
+	command = ["test", args.urn, args.id, args.name, args.type, args.newInputs.first,
+		args.oldInputs.second, args.newOutputs.third, args.oldOutputs.forth]
 }
 `
 

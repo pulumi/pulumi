@@ -217,8 +217,8 @@ func generatePackageJSON(
 		"@types/node": "%s"
 	},
 	"dependencies": {
-		"typescript": "^4.0.0",
-		`, projectName, MinimumNodeTypesVersion)
+		"typescript": "%s",
+		`, projectName, MinimumNodeTypesVersion, MinimumTypescriptVersion)
 	}
 
 	// Check if pulumi is a local dependency, else add it as a normal range dependency
@@ -333,17 +333,20 @@ func generateTSConfig(runtimeName string, files map[string][]byte) []byte {
 	} else {
 		tsConfig.WriteString(`{
 	"compilerOptions": {
-		"strict": true,
+		// Output
 		"outDir": "bin",
-		"target": "es2016",
+		"sourceMap": true,
+		// Environment
+		"target": "ES2022",
 		"module": "nodenext",
 		"moduleResolution": "nodenext",
-		"sourceMap": true,
-		"experimentalDecorators": true,
-		"pretty": true,
+		"moduleDetection": "force",
+		"types": ["node"],
+		// Type Checking
+		"strict": true,
 		"noFallthroughCasesInSwitch": true,
 		"noImplicitReturns": true,
-		"forceConsistentCasingInFileNames": true
+		"skipLibCheck": true
 	},
 	"files": [
 `)

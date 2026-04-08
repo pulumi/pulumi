@@ -242,7 +242,8 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 		Required: 0,
 	})
 
-	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "", "A cloud URL to log in to")
+	cmd.PersistentFlags().StringVarP(&cloudURL, "cloud-url", "c", "",
+		"The URL of the Pulumi Cloud API to log in with (e.g., 'https://api.pulumi.com')")
 	cmd.PersistentFlags().StringVar(&defaultOrg, "default-org", "", "A default org to associate with the login. "+
 		"Please note, currently, only the managed and self-hosted backends support organizations")
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")

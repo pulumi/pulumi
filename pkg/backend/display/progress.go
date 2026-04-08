@@ -1385,12 +1385,15 @@ func (display *ProgressDisplay) handleSystemEvent(payload engine.StdoutEventPayl
 	// We need to take the writer lock here because ensureHeaderAndStackRows expects to be
 	// called under the write lock.
 	display.eventMutex.Lock()
-	defer display.eventMutex.Unlock()
 
 	// Make sure we have a header to display
 	display.ensureHeaderAndStackRows()
 
 	display.systemEventPayloads = append(display.systemEventPayloads, payload)
+
+	// Release the lock before calling the renderer, because it may call back into a method (like generateTreeNodes)
+	// that acquires eventMutex.RLock(), causing a deadlock.
+	display.eventMutex.Unlock()
 
 	display.renderer.systemMessage(payload)
 }

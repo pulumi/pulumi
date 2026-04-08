@@ -226,13 +226,11 @@
         {
             "path": ["new"],
             "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {
             "path": ["org"],
             "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {

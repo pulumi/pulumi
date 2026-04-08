@@ -29,7 +29,7 @@ func getHelperMethodIfNeeded(function *model.FunctionCallExpression, indent stri
 	case "filebase64sha256":
 		return `function computeFilebase64sha256(path: string): string {
 	const fileData = Buffer.from(fs.readFileSync(path, 'binary'))
-	return crypto.createHash('sha256').update(fileData).digest('hex')
+	return crypto.createHash('sha256').update(fileData).digest('base64')
 }`, true
 	case "notImplemented":
 		return fmt.Sprintf(
@@ -44,10 +44,6 @@ func getHelperMethodIfNeeded(function *model.FunctionCallExpression, indent stri
 %s    }
 %s    return elements[0];
 %s}`, indent, indent, indent, indent, indent, indent), true
-	case "mimeType":
-		return fmt.Sprintf(`%sfunction mimeType(path: string): string {
-%s    throw new Error("mimeType not implemented, use the mime or mime-types package instead");
-%s}`, indent, indent, indent), true
 	case "try":
 		_, outputTry := function.Signature.ReturnType.(*model.OutputType)
 		return generateTryFunction(outputTry, indent), true

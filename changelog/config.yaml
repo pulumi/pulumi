@@ -30,3 +30,4 @@ scopes:
   sdkgen: [dotnet, go, java, nodejs, python, yaml, pcl, docs]
   yaml: []
   pcl: []
+  java: []

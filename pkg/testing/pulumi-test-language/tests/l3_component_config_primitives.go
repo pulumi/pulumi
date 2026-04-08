@@ -31,12 +31,14 @@ func init() {
 		Runs: []TestRun{
 			{
 				Config: config.Map{
-					config.MustMakeKey("l3-component-config-primitives", "plainBool"):    config.NewValue("true"),
-					config.MustMakeKey("l3-component-config-primitives", "plainNumber"):  config.NewValue("6"),
-					config.MustMakeKey("l3-component-config-primitives", "plainString"):  config.NewValue("plain"),
-					config.MustMakeKey("l3-component-config-primitives", "secretBool"):   config.NewSecureValue("ZmFsc2U="), // false
-					config.MustMakeKey("l3-component-config-primitives", "secretNumber"): config.NewSecureValue("Nw=="),     // 7
-					config.MustMakeKey("l3-component-config-primitives", "secretString"): config.NewSecureValue("c2VjcmV0"), // secret
+					config.MustMakeKey("l3-component-config-primitives", "plainBool"):     config.NewValue("true"),
+					config.MustMakeKey("l3-component-config-primitives", "plainNumber"):   config.NewValue("6.5"),
+					config.MustMakeKey("l3-component-config-primitives", "plainInteger"):  config.NewValue("2"),
+					config.MustMakeKey("l3-component-config-primitives", "plainString"):   config.NewValue("plain"),
+					config.MustMakeKey("l3-component-config-primitives", "secretBool"):    config.NewSecureValue("ZmFsc2U="), // false
+					config.MustMakeKey("l3-component-config-primitives", "secretNumber"):  config.NewSecureValue("Ny41"),     // 7.5
+					config.MustMakeKey("l3-component-config-primitives", "secretInteger"): config.NewSecureValue("Nw=="),     // 7
+					config.MustMakeKey("l3-component-config-primitives", "secretString"):  config.NewSecureValue("c2VjcmV0"), // secret
 				},
 				Assert: func(l *L, res AssertArgs) {
 					err := res.Err
@@ -64,7 +66,7 @@ func init() {
 					expectedPlain := resource.NewPropertyMapFromMap(map[string]any{
 						"boolean":     true,
 						"float":       6.5,
-						"integer":     6,
+						"integer":     2,
 						"string":      "plain",
 						"numberArray": []any{-1.0, 0.0, 1.0},
 						"booleanMap":  map[string]any{"t": true, "f": false},

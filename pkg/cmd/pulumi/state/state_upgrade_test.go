@@ -19,6 +19,8 @@ import (
 	"context"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -159,6 +161,77 @@ func TestStateUpgradeCommand_Run_upgradeRejected(t *testing.T) {
 	cmd.SetOut(io.Discard)
 	err := cmd.Execute()
 	require.NoError(t, err)
+}
+
+//nolint:paralleltest // uses process-wide working directory via t.Chdir.
+func TestStateUpgradeCommand_Run_respectsProjectBackendURL(t *testing.T) {
+	t.Setenv("PULUMI_BACKEND_URL", "")
+
+	tests := []struct {
+		name       string
+		projectDir string
+		workingDir string
+	}{
+		{
+			name:       "pulumi yaml in current directory",
+			projectDir: "project",
+			workingDir: "project",
+		},
+		{
+			name:       "pulumi yaml in parent directory",
+			projectDir: "project",
+			workingDir: filepath.Join("project", "sub", "dir"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+
+			projDir := filepath.Join(root, tt.projectDir)
+			require.NoError(t, os.MkdirAll(projDir, 0o755))
+
+			wantURL := "s3://test-state-upgrade-backend"
+			projectFile := filepath.Join(projDir, "Pulumi.yaml")
+			projectContents := strings.Join([]string{
+				"name: test-project",
+				"runtime: yaml",
+				"backend:",
+				"  url: " + wantURL,
+				"",
+			}, "\n")
+			require.NoError(t, os.WriteFile(projectFile, []byte(projectContents), 0o600))
+
+			cwd := filepath.Join(root, tt.workingDir)
+			require.NoError(t, os.MkdirAll(cwd, 0o755))
+			t.Chdir(cwd)
+
+			var gotURL string
+			lm := &cmdBackend.MockLoginManager{
+				LoginF: func(
+					_ context.Context,
+					_ pkgWorkspace.Context,
+					_ diag.Sink,
+					url string,
+					_ *workspace.Project,
+					_ bool,
+					_ bool,
+					_ colors.Colorization,
+				) (backend.Backend, error) {
+					gotURL = url
+					return &backend.MockBackend{}, nil
+				},
+			}
+
+			cmd := newStateUpgradeCommand(pkgWorkspace.Instance, lm)
+			cmd.SetOut(io.Discard)
+			cmd.SetArgs([]string{})
+			err := cmd.Execute()
+			require.NoError(t, err)
+
+			assert.Equal(t, wantURL, gotURL)
+		})
+	}
 }
 
 func TestStateUpgradeCommand_Run_unsupportedBackend(t *testing.T) {
