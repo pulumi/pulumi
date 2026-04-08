@@ -78,6 +78,10 @@ func (p *testRequiredPolicy) Config() map[string]*json.RawMessage {
 	return p.config
 }
 
+func (p *testRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
+	return nil, nil
+}
+
 func NewRequiredPolicy(name, version string, config map[string]*json.RawMessage) RequiredPolicy {
 	return &testRequiredPolicy{
 		name:    name,
@@ -1222,6 +1226,10 @@ func (p *failingDownloadRequiredPolicy) Install(_ *plugin.Context, _ io.ReadClos
 	return nil
 }
 
+func (p *failingDownloadRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
+	return nil, nil
+}
+
 // failingInstallRequiredPolicy is a RequiredPolicy that fails during installation, used to test that
 // policy pack installation errors are properly surfaced rather than silently dropped.
 type failingInstallRequiredPolicy struct {
@@ -1242,6 +1250,10 @@ func (p *failingInstallRequiredPolicy) Download(
 
 func (p *failingInstallRequiredPolicy) Install(_ *plugin.Context, _ io.ReadCloser, _, _ io.Writer) error {
 	return errors.New("policy pack install failed")
+}
+
+func (p *failingInstallRequiredPolicy) ResolveEnvironments(_ context.Context) (*ResolvedPolicyEnvironment, error) {
+	return nil, nil
 }
 
 // TestPolicyPackDownloadFailureReturnsError is a regression test verifying that errors from the download

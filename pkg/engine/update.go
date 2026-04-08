@@ -42,6 +42,105 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// ResolvedPolicyEnvironment holds resolved ESC environment data for a policy pack.
+type ResolvedPolicyEnvironment struct {
+	// Config to merge into the policy pack's config (from ESC policyConfig).
+	Config map[string]*json.RawMessage
+	// EnvironmentVariables to inject into the analyzer process.
+	EnvironmentVariables map[string]string
+	// Secrets are secret values from the environment that should be filtered from logs.
+	Secrets []string
+}
+
+// parsePolicyConfigKey splits a policyConfig key into an optional pack name
+// prefix and the policy name. Keys may be "policyName" or "packName:policyName".
+// This mirrors pulumiConfig's optional namespace pattern (e.g., "aws:region").
+func parsePolicyConfigKey(key string) (packName, policyName string) {
+	if i := strings.IndexByte(key, ':'); i >= 0 {
+		return key[:i], key[i+1:]
+	}
+	return "", key
+}
+
+// mergePolicyConfig merges ESC-resolved policy config into the base API config
+// using JSON merge patch semantics (RFC 7386), matching the stack config merge
+// behavior. API config (set by admins via the service) wins on conflict, but
+// ESC properties that don't conflict are preserved. Namespaced keys
+// ("packName:policyName") are only applied when packName matches the given pack
+// name. Returns a new map; neither input is mutated.
+func mergePolicyConfig(
+	base map[string]*json.RawMessage,
+	escConfig map[string]*json.RawMessage,
+	packName string,
+) map[string]*json.RawMessage {
+	if len(escConfig) == 0 {
+		return base
+	}
+	merged := make(map[string]*json.RawMessage, len(base)+len(escConfig))
+	for k, v := range base {
+		merged[k] = v
+	}
+	for rawKey, v := range escConfig {
+		packPrefix, policyName := parsePolicyConfigKey(rawKey)
+		if packPrefix != "" && packPrefix != packName {
+			continue
+		}
+		existing, exists := merged[policyName]
+		if !exists {
+			merged[policyName] = v
+		} else {
+			// Deep merge: ESC provides defaults, API config wins on conflict.
+			if deepMerged, err := deepMergePolicyJSON(existing, v); err == nil {
+				merged[policyName] = deepMerged
+			}
+			// On error, keep the API config value as-is.
+		}
+	}
+	return merged
+}
+
+// deepMergePolicyJSON recursively merges two JSON policy config blobs.
+// Properties in base (API config) take precedence over override (ESC config).
+// Override-only properties are preserved. When both sides have an object at the
+// same key, the merge recurses. This matches the stack config merge behavior
+// (object.Merge in sdk/go/common/resource/config/object.go).
+// If either value is not a JSON object, base wins entirely.
+func deepMergePolicyJSON(base, override *json.RawMessage) (*json.RawMessage, error) {
+	var baseMap, overrideMap map[string]any
+	if err := json.Unmarshal(*base, &baseMap); err != nil {
+		return base, nil
+	}
+	if err := json.Unmarshal(*override, &overrideMap); err != nil {
+		return base, nil
+	}
+	deepMergeMap(overrideMap, baseMap)
+	result, err := json.Marshal(overrideMap)
+	if err != nil {
+		return nil, err
+	}
+	raw := json.RawMessage(result)
+	return &raw, nil
+}
+
+// deepMergeMap recursively merges src into dst. Values in src take precedence.
+// When both src and dst have a map[string]any at the same key, the merge recurses.
+func deepMergeMap(dst, src map[string]any) {
+	for k, sv := range src {
+		dv, exists := dst[k]
+		if !exists {
+			dst[k] = sv
+			continue
+		}
+		srcMap, srcOk := sv.(map[string]any)
+		dstMap, dstOk := dv.(map[string]any)
+		if srcOk && dstOk {
+			deepMergeMap(dstMap, srcMap)
+		} else {
+			dst[k] = sv
+		}
+	}
+}
+
 // RequiredPolicy represents a set of policies to apply during an update.
 type RequiredPolicy interface {
 	// Name provides the user-specified name of the PolicyPack.
@@ -62,6 +161,9 @@ type RequiredPolicy interface {
 	Install(ctx *plugin.Context, content io.ReadCloser, stdout, stderr io.Writer) error
 	// Config returns the PolicyPack's configuration.
 	Config() map[string]*json.RawMessage
+	// ResolveEnvironments opens any referenced ESC environments and returns
+	// resolved config and environment variables. Returns nil, nil if no environments are referenced.
+	ResolveEnvironments(ctx context.Context) (*ResolvedPolicyEnvironment, error)
 }
 
 // LocalPolicyPack represents a set of local Policy Packs to apply during an update.
@@ -465,6 +567,24 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		go func(policy RequiredPolicy) {
 			defer wg.Done()
 
+			// Resolve ESC environments if present.
+			resolved, err := policy.ResolveEnvironments(plugctx.Base())
+			if err != nil {
+				errs <- fmt.Errorf("resolving ESC environments for %q: %w", policy.Name(), err)
+				return
+			}
+
+			// Create per-policy analyzer options with ESC environment variables.
+			policyOpts := *analyzerOpts
+			if resolved != nil {
+				if len(resolved.EnvironmentVariables) > 0 {
+					policyOpts.AdditionalEnv = resolved.EnvironmentVariables
+				}
+				if len(resolved.Secrets) > 0 {
+					logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+				}
+			}
+
 			policyPath, err := policy.LocalPath()
 			if err != nil {
 				errs <- err
@@ -472,7 +592,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			}
 
 			analyzer, err := loadPolicyAnalyzer(
-				plugctx.Base(), plugctx, tokens.QName(policy.Name()), policyPath, analyzerOpts)
+				plugctx.Base(), plugctx, tokens.QName(policy.Name()), policyPath, &policyOpts)
 			if err != nil {
 				errs <- err
 				return
@@ -484,14 +604,21 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
+			// Merge ESC policyConfig under API config (API config wins on conflict).
+			var escConfig map[string]*json.RawMessage
+			if resolved != nil {
+				escConfig = resolved.Config
+			}
+			mergedConfig := mergePolicyConfig(policy.Config(), escConfig, policy.Name())
+
 			// Parse the config, reconcile & validate it, and pass it to the policy pack.
 			if !analyzerInfo.SupportsConfig {
-				if len(policy.Config()) > 0 {
+				if len(mergedConfig) > 0 {
 					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
 				}
 				return
 			}
-			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(policy.Config())
+			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(mergedConfig)
 			if err != nil {
 				errs <- err
 				return

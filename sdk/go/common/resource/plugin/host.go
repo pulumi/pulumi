@@ -331,6 +331,7 @@ type PolicyAnalyzerOptions struct {
 	ConfigSecretKeys []config.Key
 	DryRun           bool
 	Tags             map[string]string // Tags for the current stack.
+	AdditionalEnv    map[string]string // Per-pack environment variables (e.g., from ESC).
 }
 
 type pluginLoadRequest struct {
