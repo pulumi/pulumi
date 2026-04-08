@@ -179,6 +179,7 @@ class ErrorHook:
     def __repr__(self) -> str:
         return f"ErrorHook(name={self.name}, callback={self.callback})"
 
+
 def error_hook(
     name: str,
 ) -> Callable[[ErrorHookFunction], ErrorHook]:
@@ -192,10 +193,12 @@ def error_hook(
         print(f"Error for resource {args.name} of type {args.type}")
         return False
     """
+
     def decorator(func: ErrorHookFunction) -> ErrorHook:
         return ErrorHook(name, func)
 
     return decorator
+
 
 class ResourceHookOptions:
     """Options for registering a resource hook."""
@@ -243,6 +246,7 @@ class ResourceHook:
     def __repr__(self) -> str:
         return f"ResourceHook(name={self.name}, callback={self.callback}, opts={self.opts})"
 
+
 def resource_hook(
     name: str,
     opts: Optional[ResourceHookOptions] = None,
@@ -256,10 +260,12 @@ def resource_hook(
     def my_hook(args: ResourceHookArgs):
         print(f"Before creating resource {args.name} of type {args.type}")
     """
+
     def decorator(func: ResourceHookFunction) -> ResourceHook:
         return ResourceHook(name, func, opts)
 
     return decorator
+
 
 class ResourceHookBinding:
     """
