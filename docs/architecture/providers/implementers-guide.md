@@ -360,7 +360,10 @@ successful execution of a Pulumi program in the resource's stack, the engine del
 resource by calling the resource's provider's [`Delete`](delete) method with the resource's ID and
 last refreshed state.
 
-Detailed descriptions of each resource operation follow.
+The diagram below summarizes the custom resource lifecycle. Detailed descriptions of each
+resource operation follow.
+
+![Custom Resource Lifecycle Diagram](./resource-lifecycle.svg)
 
 ### Inputs, Checked Inputs, State, Outputs
 
