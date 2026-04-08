@@ -8,7 +8,7 @@ for connecting to them to the engine via environmental variables.
 
 ## Languages
 
-Languages work very similary to [Providers](#Providers).
+Languages work very similarly to [providers](#providers-and-languages).
 
 Instead of PULUMI_DEBUG_PROVIDERS environmental variable, you use PULUMI_DEBUG_LANGUAGES like so:
 

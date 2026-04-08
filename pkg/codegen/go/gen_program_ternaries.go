@@ -41,18 +41,33 @@ func (tt *ternaryTemp) SyntaxNode() hclsyntax.Node {
 }
 
 type tempSpiller struct {
-	temps []*ternaryTemp
-	count int
+	temps   []*ternaryTemp
+	count   int
+	fnDepth int
+}
+
+func (ta *tempSpiller) preVisit(x model.Expression) (model.Expression, hcl.Diagnostics) {
+	if _, ok := x.(*model.AnonymousFunctionExpression); ok {
+		ta.fnDepth++
+	}
+	return x, nil
 }
 
 func (ta *tempSpiller) spillExpression(x model.Expression) (model.Expression, hcl.Diagnostics) {
+	if _, ok := x.(*model.AnonymousFunctionExpression); ok {
+		ta.fnDepth--
+		return x, nil
+	}
+
+	// Don't spill ternaries inside anonymous functions; they will be handled
+	// when the function body is lowered in genAnonymousFunctionExpression.
+	if ta.fnDepth > 0 {
+		return x, nil
+	}
+
 	var temp *ternaryTemp
 	switch x := x.(type) {
 	case *model.ConditionalExpression:
-		x.Condition, _ = ta.spillExpression(x.Condition)
-		x.TrueResult, _ = ta.spillExpression(x.TrueResult)
-		x.FalseResult, _ = ta.spillExpression(x.FalseResult)
-
 		temp = &ternaryTemp{
 			Name:  fmt.Sprintf("tmp%d", ta.count),
 			Value: x,
@@ -74,7 +89,7 @@ func (g *generator) rewriteTernaries(
 	spiller *tempSpiller,
 ) (model.Expression, []*ternaryTemp, hcl.Diagnostics) {
 	spiller.temps = nil
-	x, diags := model.VisitExpression(x, nil, spiller.spillExpression)
+	x, diags := model.VisitExpression(x, spiller.preVisit, spiller.spillExpression)
 
 	return x, spiller.temps, diags
 }

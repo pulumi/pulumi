@@ -92,6 +92,9 @@ type RequiredPolicy struct {
 	// mapped to their configuration. Each individual configuration must comply with the
 	// JSON schema for each Policy within the Policy Pack.
 	Config map[string]*json.RawMessage `json:"config,omitempty"`
+
+	// ESC environment references to resolve for this policy pack.
+	Environments []string `json:"environments,omitempty"`
 }
 
 // Policy defines the metadata for an individual Policy within a Policy Pack.
@@ -274,6 +277,9 @@ type PolicyPackMetadata struct {
 	// The configuration that is to be passed to the Policy Pack. This
 	// map ties Policies with their configuration.
 	Config map[string]*json.RawMessage `json:"config,omitempty"`
+
+	// ESC environment references to resolve for this policy pack.
+	Environments []string `json:"environments,omitempty"`
 }
 
 // ListPolicyPacksResponse is the response to list an organization's

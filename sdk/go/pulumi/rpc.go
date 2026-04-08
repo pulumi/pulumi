@@ -800,6 +800,12 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		return false, nil
 	}
 
+	// A known Output whose element is null is effectively null. Return early before
+	// pointer allocation to preserve the nil zero value for pointer destinations.
+	if v.IsOutput() && v.OutputValue().Element.IsNull() {
+		return v.OutputValue().Secret, nil
+	}
+
 	allocatedPointer := false
 	// Allocate storage as necessary.
 	for dest.Kind() == reflect.Ptr {

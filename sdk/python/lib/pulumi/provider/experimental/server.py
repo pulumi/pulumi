@@ -103,6 +103,10 @@ class ProviderServicer(ResourceProviderServicer):
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:
         return proto.PluginInfo(version=self._version)
 
+    async def Cancel(self, request, context):
+        await self._provider.cancel()
+        return empty_pb2.Empty()
+
     def create_grpc_invalid_properties_status(
         self, message: str, errors: Optional[list[InputPropertyErrorDetails]]
     ) -> grpc.Status:

@@ -17,7 +17,7 @@ resources with the Pulumi engine.
 #### URNs
 
 Each resource registered with the Pulumi engine is logically identified by its
-uniform resource name (URN). A resource's URN is derived from the its type, parent type,
+uniform resource name (URN). A resource's URN is derived from its type, parent type,
 and user-supplied name. Within the scope of a resource-related provider method
 ([`Check`](check), [`Diff`](diff), [`Create`](create), [`Read`](read),
 [`Update`](update), [`Delete`](delete), and [`Construct`](construct)), the type of
@@ -119,7 +119,7 @@ connection to the engine's resource monitor, e.g. within the scope of a call to 
 This implies that resource references may not be resolved within calls to other
 provider methods. Therefore, configuration values, custom resources and provider functions
 should not rely on the ability to resolve resource references, and should instead treat
-resource references  as either their ID (if present) or URN. If the ID is present and
+resource references as either their ID (if present) or URN. If the ID is present and
 empty, it should be treated as an [`Unknown`](unknowns).
 
 (unknowns)=
@@ -257,7 +257,7 @@ provider instance's region), `DiffConfig` should indicate that the provider must
 replaced. Because replacing a provider will require that all of the resources with
 which it is associated are _also_ replaced, replacement semantics should be reserved
 for changes to configuration properties that are guaranteed to make old resources
-unmanagable (e.g. a change to an AWS access key should not require replacement, as the
+unmanageable (e.g. a change to an AWS access key should not require replacement, as the
 set of resources accessible via an access key is easily knowable).
 
 (configure)=
@@ -490,13 +490,13 @@ value was used for determining the difference. The core change kinds are:
 - `Update`, which denotes an `Object` property or `Array` element that was updated
 - `Delete`, which denotes an `Object` property or `Array` element that was removed
 
-Each of these core kinds is paramaterized on whether or not the change requires
-replacement and whether the old value of the property should was read from the
+Each of these core kinds is parameterized on whether or not the change requires
+replacement and whether the old value of the property should be read from the
 resource's old input `Object` or old state `Object`.
 
 *TODO*: the input/output flag is a bit clumsy, as it is the only part of the system
 that implies some correspondence between input and output `Object` schemas. It was
-chosen over an approach that used old/new values due in order to remove the possibility
+chosen over an approach that used old/new values in order to remove the possibility
 of a provider accidentally revealing a secret value as part of a diff. We should
 reconsider this approach if we can find an easy way to maintain secretness.
 
@@ -534,7 +534,7 @@ creating the resource, in which case the `preview` argument will be `true`.
 (update)=
 #### Update
 
-The `Update` method is responsible for updating a resource in-place in order given its
+The `Update` method is responsible for updating a resource in-place given its
 last recorded state `Object` and current input `Object`. `Update` may be called during
 a [preview](preview) in order to compute a hypothetical state `Object` without actually
 updating the resource, in which case the `preview` argument will be `true`.

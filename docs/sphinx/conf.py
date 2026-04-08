@@ -99,7 +99,7 @@ myst_url_schemes = {
 # documentation sites. We configure it here so that we can link to the various
 # Pulumi projects that are all hosted under the root Pulumi site.
 intersphinx_mapping = {
-    # Terrafom Bridge developer documentation
+    # Terraform Bridge developer documentation
     # https://github.com/pulumi/pulumi-terraform-bridge
     "tfbridge": (
         "https://pulumi-developer-docs.readthedocs.io/projects/pulumi-terraform-bridge/en/latest/",
@@ -122,14 +122,14 @@ source_suffix = {
 }
 
 # Configuration for the "autosectionlabel" extension, which generates references
-# to section headers automatically (and is thus super user for Markdown files
+# to section headers automatically (and is thus super useful for Markdown files
 # where explicitly writing such references can sometimes be tedious).
 autosectionlabel_prefix_document = True
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
-# A list of of patterns, relative to the source directory, that match files and
+# A list of patterns, relative to the source directory, that match files and
 # directories to ignore when looking for source files. These patterns also
 # affect html_static_path and html_extra_path.
 exclude_patterns = [

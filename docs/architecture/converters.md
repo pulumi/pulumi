@@ -176,11 +176,11 @@ which Pulumi package maps to a given Terraform provider (e.g. Pulumi's `gcp` to
 Terraform's `google`), or how some source resource name must be transformed to
 produce a Pulumi equivalent (e.g. turning Terraform's `aws_s3_bucket` into
 Pulumi's `aws:s3/bucket:Bucket`). Rather than baking this knowledge into each
-converters, plugins are furnished with the addresses of [](codegen.Loader) and
+converter, plugins are furnished with the addresses of [](codegen.Loader) and
 [](codegen.Mapper) gRPC servers that they can use to load schema and map names
 respectively. Since in general this sort of information is provider-specific
 (e.g. the `gcp` provider knows specifically that Terraform resources named
-`gcp_*` can be mapped to Pulumi types of the form `gpc:*/*:*`, etc.), the engine
+`gcp_*` can be mapped to Pulumi types of the form `gcp:*/*:*`, etc.), the engine
 exposes implementations of these services that broker calls to the appropriate
 provider. Specifically, [providers](providers) (through the
 [](pulumirpc.ResourceProvider) interface) offer the following methods:
