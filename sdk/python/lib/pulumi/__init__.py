@@ -105,6 +105,7 @@ from .resource_hooks import (
     ResourceHook,
     ResourceHookBinding,
     ResourceHookOptions,
+    resource_hook,
 )
 
 from .log import (

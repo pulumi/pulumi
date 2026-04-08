@@ -197,7 +197,7 @@ class ResourceHook:
     """ResourceHook is a named hook that can be registered as a resource hook."""
 
     name: str
-    """The unqiue name of the resource hook."""
+    """The unique name of the resource hook."""
     callback: ResourceHookFunction
     """The function that will be called when the resource hook is triggered."""
     opts: Optional[ResourceHookOptions] = None
@@ -226,6 +226,23 @@ class ResourceHook:
     def __repr__(self) -> str:
         return f"ResourceHook(name={self.name}, callback={self.callback}, opts={self.opts})"
 
+def resource_hook(
+    name: str,
+    opts: Optional[ResourceHookOptions] = None,
+) -> Callable[[ResourceHookFunction], ResourceHook]:
+    """
+    Decorator for creating a ResourceHook from a ResourceHookFunction.
+
+    Example usage:
+
+    @resource_hook("before_create")
+    def my_hook(args: ResourceHookArgs):
+        print(f"Before creating resource {args.name} of type {args.type}")
+    """
+    def decorator(func: ResourceHookFunction) -> ResourceHook:
+        return ResourceHook(name, func, opts)
+
+    return decorator
 
 class ResourceHookBinding:
     """
