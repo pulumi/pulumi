@@ -706,12 +706,12 @@ func ExcludeDeletedWithRefreshV2(
 
 // ExcludeTargetedUpdateRefreshWithChildProvider excludes scenarios where a
 // targeted update with refresh has a provider that is a child of another
-// resource in the snapshot. During the refresh phase, the nested provider's
-// reference can become invalid as it gets recreated at the root level with a
-// new ID, while resources still hold the old provider reference.
+// resource in the snapshot and the program contains aliased resources. During
+// the refresh phase, the child provider's read can fail, causing it to be
+// dropped from the snapshot while aliased resources still reference it.
 func ExcludeTargetedUpdateRefreshWithChildProvider(
 	snap *SnapshotSpec,
-	_ *ProgramSpec,
+	prog *ProgramSpec,
 	_ *ProviderSpec,
 	plan *PlanSpec,
 ) bool {
@@ -725,8 +725,19 @@ func ExcludeTargetedUpdateRefreshWithChildProvider(
 		return false
 	}
 
+	hasChildProvider := false
 	for _, res := range snap.Resources {
 		if providers.IsProviderType(res.Type) && res.Parent != "" {
+			hasChildProvider = true
+			break
+		}
+	}
+	if !hasChildProvider {
+		return false
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if len(res.Aliases) > 0 {
 			return true
 		}
 	}
