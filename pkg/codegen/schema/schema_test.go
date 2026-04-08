@@ -1633,11 +1633,13 @@ func TestValidateTypeToken(t *testing.T) {
 			name:  "non-reserved-provider-token-valid",
 			input: "example:other:provider",
 		},
+		/* TODO: This test should be re-enabled once we make modules nested under index an error instead of a warning.
 		{
 			name:        "nested index module",
 			input:       "example:index/nested:typename",
 			expectError: true,
 		},
+		*/
 		{
 			name:  "not really index",
 			input: "example:index_foo/nested:typename",
