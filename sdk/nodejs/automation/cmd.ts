@@ -14,12 +14,12 @@
 
 import execa from "execa";
 import * as fs from "fs";
-import got from "got";
 import * as os from "os";
 import * as path from "path";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import { version as DEFAULT_VERSION } from "../version";
+import { download } from "./download";
 import { minimumVersion } from "./minimumVersion";
 import { createCommandError } from "./errors";
 
@@ -114,8 +114,8 @@ export class PulumiCommand {
     }
 
     private static async installWindows(opts: Required<PulumiCommandOptions>): Promise<void> {
-        const response = await got("https://get.pulumi.com/install.ps1");
-        const script = await writeTempFile(response.body, { extension: ".ps1" });
+        const body = await download("https://get.pulumi.com/install.ps1");
+        const script = await writeTempFile(body, { extension: ".ps1" });
 
         try {
             const command = process.env.SystemRoot
@@ -144,8 +144,8 @@ export class PulumiCommand {
     }
 
     private static async installPosix(opts: Required<PulumiCommandOptions>): Promise<void> {
-        const response = await got("https://get.pulumi.com/install.sh");
-        const script = await writeTempFile(response.body);
+        const body = await download("https://get.pulumi.com/install.sh");
+        const script = await writeTempFile(body);
 
         try {
             const args = [script.path, "--no-edit-path", "--install-root", opts.root, "--version", `${opts.version}`];
