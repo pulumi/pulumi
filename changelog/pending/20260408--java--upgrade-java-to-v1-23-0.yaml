@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: java
+  description: Upgrade java to v1.23.0
