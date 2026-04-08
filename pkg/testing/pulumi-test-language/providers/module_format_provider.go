@@ -388,7 +388,7 @@ func (p *ModuleFormatProvider) Call(
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 	switch req.Tok {
-	case "module-format:index_Resource:Resource/call", "module-format:mod_Resource:Resource/call", "module-format:mod/nested_Resource:Resource/call":
+	case "module-format:index_Resource:Resource/call", "module-format:mod_Resource:Resource/call", "module-format:mod/nested_Resource:Resource/call": //nolint:lll
 		value, ok := req.Args["input"]
 		if !ok {
 			return plugin.CallResponse{
@@ -442,7 +442,7 @@ func (p *ModuleFormatProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	switch req.URN.Type().String() {
-	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource":
+	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -475,7 +475,7 @@ func (p *ModuleFormatProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	switch req.URN.Type().String() {
-	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource":
+	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,
