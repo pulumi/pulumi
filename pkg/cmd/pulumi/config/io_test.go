@@ -356,7 +356,9 @@ func TestOpenStackEnvVersionPinnedLiteral(t *testing.T) {
 	}
 
 	var projectStack workspace.ProjectStack
-	err := yaml.Unmarshal([]byte("environment:\n  imports:\n    - project/env@3\n  values:\n    pulumiConfig:\n      test:string: esc"), &projectStack)
+	stackYAML := "environment:\n  imports:\n    - project/env@3\n" +
+		"  values:\n    pulumiConfig:\n      test:string: esc"
+	err := yaml.Unmarshal([]byte(stackYAML), &projectStack)
 	require.NoError(t, err)
 
 	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack)
