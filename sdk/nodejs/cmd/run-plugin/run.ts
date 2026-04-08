@@ -281,13 +281,13 @@ ${errMsg}`,
                 const absDir = path.resolve(program);
                 const { data: packageJSON, path: packageJSONPath } = readPackageManifest(absDir);
                 if (!packageJSON?.name) {
-                    throw new Error(`${packageJSONPath} is missing a 'name' field.`);
+                    throw new Error(`${path.basename(packageJSONPath)} is missing a 'name' field.`);
                 }
                 const matches = packageJSON.name.match(/(@.*?\/)?(.+)/);
                 const providerName = matches[2].replace(/[^-a-zA-Z0-9_]/g, "-");
                 if (!/^[a-zA-Z]/.test(providerName)) {
                     throw new Error(
-                        `Invalid provider name '${providerName}' in ${packageJSONPath}. ` +
+                        `Invalid provider name '${providerName}' in ${path.basename(packageJSONPath)}. ` +
                             `Provider names must start with a letter.`,
                     );
                 }
