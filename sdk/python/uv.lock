@@ -7,10 +7,6 @@ resolution-markers = [
     "python_full_version < '3.13'",
 ]
 
-[options]
-exclude-newer = "2026-04-05T10:44:56.058081Z"
-exclude-newer-span = "P3D"
-
 [[package]]
 name = "backports-asyncio-runner"
 version = "1.2.0"
@@ -997,7 +993,7 @@ wheels = [
 
 [[package]]
 name = "pulumi"
-version = "3.230.0"
+version = "3.231.0"
 source = { editable = "." }
 dependencies = [
     { name = "debugpy" },
