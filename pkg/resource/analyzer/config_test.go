@@ -225,7 +225,7 @@ func TestParsePolicyPackConfigWithEnvironments(t *testing.T) {
 		wantErr      string
 	}{
 		{
-			name:         "environments and policies",
+			name: "environments and policies",
 			json: `{"environments":["org/secrets","org/config"],` +
 				`"cost-policy":{"enforcementLevel":"mandatory","maxCost":1000}}`,
 			wantEnvs:     []string{"org/secrets", "org/config"},
