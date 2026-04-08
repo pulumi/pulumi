@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -634,4 +635,109 @@ func TestUntargetedComponentResource(t *testing.T) {
 		require.NotContains(t, res.URN, "newComponent",
 			"newComponent should not be in the snapshot because it's not being targeted")
 	}
+}
+
+// TestTargetedUpdateRefreshUnknownChildProvider reproduces a fuzz-found snapshot integrity error
+// where a targeted update with refresh drops a child provider (provider parented under a component
+// resource), leaving dangling provider references in the resulting snapshot.
+func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#22511]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: targeted update with refresh produces unknown provider reference for child providers")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+
+	// Snapshot: component -> child provider (parented under component) -> resource using
+	// child provider. The program reparents the resource via alias. During a targeted
+	// update with refresh, the child provider's read fails, causing it to be dropped from
+	// the snapshot while the resource still references it.
+	snap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		comp := &resource.State{
+			Type:   "pkgA:index:Component",
+			URN:    "urn:pulumi:test-stack::test-project::pkgA:index:Component::comp",
+			Custom: false,
+		}
+		s.Resources = append(s.Resources, comp)
+
+		// Child provider parented under the component.
+		childProv := &resource.State{
+			Type:   "pulumi:providers:pkgB",
+			URN:    "urn:pulumi:test-stack::test-project::pkgA:index:Component$pulumi:providers:pkgB::childProv",
+			Custom: true,
+			ID:     "id-childProv",
+			Parent: comp.URN,
+		}
+		s.Resources = append(s.Resources, childProv)
+
+		childRef, err := providers.NewReference(childProv.URN, childProv.ID)
+		require.NoError(t, err)
+
+		// Resource using child provider, parented under the component.
+		resAURN := "urn:pulumi:test-stack::test-project::" +
+			"pkgA:index:Component$pkgB:index:ResA::resA"
+		resA := &resource.State{
+			Type:     "pkgB:index:ResA",
+			URN:      resource.URN(resAURN),
+			Custom:   false,
+			Provider: childRef.String(),
+			Parent:   comp.URN,
+		}
+		s.Resources = append(s.Resources, resA)
+
+		return s
+	}()
+	require.NoError(t, snap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					// Child provider read fails during refresh.
+					return plugin.ReadResponse{
+						Status: resource.StatusUnknown,
+					}, fmt.Errorf("read failure for %s", req.URN)
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:index:Component", "comp", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pulumi:providers:pkgB", "childProv", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		// resA uses an alias to reparent from under the component to root level.
+		_, err = monitor.RegisterResource("pkgB:index:ResA", "resA", false, deploytest.ResourceOptions{
+			AliasURNs: []resource.URN{
+				"urn:pulumi:test-stack::test-project::pkgA:index:Component$pkgB:index:ResA::resA",
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	targetURN := "urn:pulumi:test-stack::test-project::" +
+		"pkgA:index:Component$pkgB:index:ResA::resA"
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+			Targets: deploy.NewUrnTargets([]string{targetURN}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
 }
