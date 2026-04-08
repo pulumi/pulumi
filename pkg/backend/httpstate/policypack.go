@@ -329,6 +329,7 @@ func (r *localPolicyEnvironmentResolver) ResolveEnvironments(
 
 	return result, nil
 }
+
 func newCloudBackendPolicyPackReference(
 	cloudConsoleURL, orgName string, name tokens.QName,
 ) *cloudBackendPolicyPackReference {

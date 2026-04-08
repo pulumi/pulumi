@@ -226,7 +226,8 @@ func TestParsePolicyPackConfigWithEnvironments(t *testing.T) {
 	}{
 		{
 			name:         "environments and policies",
-			json:         `{"environments":["org/secrets","org/config"],"cost-policy":{"enforcementLevel":"mandatory","maxCost":1000}}`,
+			json: `{"environments":["org/secrets","org/config"],` +
+				`"cost-policy":{"enforcementLevel":"mandatory","maxCost":1000}}`,
 			wantEnvs:     []string{"org/secrets", "org/config"},
 			wantPolicies: 1,
 		},
@@ -278,7 +279,7 @@ func TestParsePolicyPackConfigWithEnvironments(t *testing.T) {
 			if config == nil {
 				assert.Equal(t, 0, tt.wantPolicies)
 			} else {
-				assert.Len(t, config, tt.wantPolicies)
+				require.Len(t, config, tt.wantPolicies)
 			}
 		})
 	}
