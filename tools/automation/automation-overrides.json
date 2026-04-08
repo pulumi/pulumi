@@ -231,7 +231,6 @@
         {
             "path": ["org"],
             "propagate": true,
-            "exclude": true,
             "flags": {}
         },
         {
