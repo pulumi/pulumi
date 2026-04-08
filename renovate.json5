@@ -97,6 +97,12 @@
       matchFileNames: ["scripts/get-language-providers.sh"],
       dependencyDashboardApproval: false,
       minimumReleaseAge: "0 days",
+      postUpgradeTasks: {
+        // `make renovate` invokes `scripts/renovate-changelog.py`, which
+        // writes a changelog entry for each language version bump.
+        commands: ["make renovate"],
+        executionMode: "branch", // Only run once per PR.
+      },
     },
     {
       description: "Disable updating for tests that trip up renovate",
