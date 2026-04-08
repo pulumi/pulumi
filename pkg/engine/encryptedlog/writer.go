@@ -52,7 +52,7 @@ type PreparedKey struct {
 }
 
 // PrepareKey generates a random session key and encrypts it with enc. This is
-// the only part of writer setup that calls into the caller's secrets provider
+// the only part of writer setup that calls into the caller's secrets provider.
 func PrepareKey(ctx context.Context, enc config.Encrypter) (*PreparedKey, error) {
 	var sessionKey [keySize]byte
 	if _, err := rand.Read(sessionKey[:]); err != nil {
@@ -72,20 +72,26 @@ func PrepareKey(ctx context.Context, enc config.Encrypter) (*PreparedKey, error)
 	return &PreparedKey{sessionKey: sessionKey, encryptedKey: encryptedKeyBytes}, nil
 }
 
+// NewWriterFromKey creates a Writer using a previously prepared key.
 func NewWriterFromKey(w io.Writer, key *PreparedKey) (*Writer, error) {
-	// Write the PLOG header: magic + version + key length + key.
-	header := make([]byte, 0, len(Magic)+1+2+len(key.encryptedKey))
-	header = append(header, Magic...)
-	header = append(header, Version)
-	//nolint:gosec // bounded by 65535 check in PrepareKey
-	header = binary.BigEndian.AppendUint16(header, uint16(len(key.encryptedKey)))
-	header = append(header, key.encryptedKey...)
-	if _, err := w.Write(header); err != nil {
+	return NewWriterWithKey(w, key.sessionKey[:], key.encryptedKey)
+}
+
+// NewWriterWithKey creates a Writer that encrypts log data to w using
+// a pre-existing session key. The headerData is written as-is into the
+// PLOG header's key field (e.g. a session ID that the reader can use to
+// look up the actual key).
+func NewWriterWithKey(w io.Writer, sessionKey []byte, headerData []byte) (*Writer, error) {
+	if len(sessionKey) != keySize {
+		return nil, fmt.Errorf("encryptedlog: invalid session key size %d, expected %d", len(sessionKey), keySize)
+	}
+
+	if err := WriteHeader(w, headerData); err != nil {
 		return nil, fmt.Errorf("encryptedlog: writing header: %w", err)
 	}
 
 	// Set up AES-256-GCM from the session key.
-	block, err := aes.NewCipher(key.sessionKey[:])
+	block, err := aes.NewCipher(sessionKey)
 	if err != nil {
 		return nil, fmt.Errorf("encryptedlog: creating cipher: %w", err)
 	}
@@ -94,13 +100,11 @@ func NewWriterFromKey(w io.Writer, key *PreparedKey) (*Writer, error) {
 		return nil, fmt.Errorf("encryptedlog: creating GCM: %w", err)
 	}
 
-	elw := &Writer{
+	return &Writer{
 		w:         w,
 		aesgcm:    aesgcm,
 		chunkSize: DefaultChunkSize,
-	}
-
-	return elw, nil
+	}, nil
 }
 
 // Write buffers plaintext log data, flushing compressed and encrypted chunks
