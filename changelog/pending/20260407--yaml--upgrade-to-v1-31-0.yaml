@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: yaml
+  description: Upgrade to v1.31.0

@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -32,7 +33,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 )
 
@@ -321,18 +321,14 @@ func (p pulumiCommand) Version() semver.Version {
 }
 
 func withNonInteractiveArg(args []string) []string {
-	out := slice.Prealloc[string](len(args))
-	seen := false
-	for _, a := range args {
-		out = append(out, a)
-		if a == "--non-interactive" {
-			seen = true
-		}
+	pulumiArgs := args
+	if i := slices.Index(args, "--"); i >= 0 {
+		pulumiArgs = args[:i]
 	}
-	if !seen {
-		out = append(out, "--non-interactive")
+	if slices.Contains(pulumiArgs, "--non-interactive") {
+		return args
 	}
-	return out
+	return append([]string{"--non-interactive"}, args...)
 }
 
 // fixupPath returns a new copy of `env` where the `PATH` entry contains

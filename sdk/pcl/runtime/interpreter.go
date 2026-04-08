@@ -814,24 +814,25 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			keys = append(keys, string(k))
 		}
 		sort.Strings(keys)
-		items := make([]struct {
-			suffix  string
-			evalCtx *hcl.EvalContext
-		}, 0, len(keys))
+		resultMap := make(map[string]cty.Value, len(keys))
 		for _, key := range keys {
 			val, err := propertyValueToCty(ctx, i.monitor, values[resource.PropertyKey(key)])
 			if err != nil {
 				return err
 			}
-			items = append(items, struct {
-				suffix  string
-				evalCtx *hcl.EvalContext
-			}{
-				suffix:  key,
-				evalCtx: makeRangeCtx(cty.StringVal(key), val),
-			})
+			name := fmt.Sprintf("%s-%s", logicalBaseName, key)
+			result, err := i.registerResourceWith(ctx, res, makeRangeCtx(cty.StringVal(key), val), name)
+			if err != nil {
+				return err
+			}
+			resultMap[key] = result
 		}
-		return registerMany(items)
+		if len(resultMap) == 0 {
+			i.setRawVariable(ctx, lexicalBaseName, cty.EmptyObjectVal)
+		} else {
+			i.setRawVariable(ctx, lexicalBaseName, cty.ObjectVal(resultMap))
+		}
+		return nil
 	}
 
 	return fmt.Errorf("unsupported range type for resource %s", res.Name())

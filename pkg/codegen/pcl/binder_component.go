@@ -264,11 +264,19 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				default:
 					// for any other generic type iterations
 					// we compute the range key and range value types
-					// and the variable type T of the component becomes List<T>
 					strict := !b.options.skipRangeTypecheck
 					rangeKeyType, rangeValueType, _ = model.GetCollectionTypes(typ, rng.Range(), strict)
-					transformComponentType = func(variableType model.Type) model.Type {
-						return model.NewListType(variableType)
+					if rangeKeyType == model.StringType {
+						// When iterating over a map or object, the variable type
+						// becomes Map<T> indexed by string key.
+						transformComponentType = func(variableType model.Type) model.Type {
+							return model.NewMapType(variableType)
+						}
+					} else {
+						// Otherwise the variable type T of the component becomes List<T>
+						transformComponentType = func(variableType model.Type) model.Type {
+							return model.NewListType(variableType)
+						}
 					}
 				}
 			}

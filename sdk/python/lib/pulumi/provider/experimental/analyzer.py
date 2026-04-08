@@ -381,7 +381,14 @@ class Analyzer:
                 }
             )
         """
-        ann = inspect.get_annotations(typ)
+        # Walk the MRO to include annotations from base classes, filtering
+        # out private attributes and Pulumi SDK base classes.
+        ann: dict[str, type] = {}
+        for cls in reversed(typ.__mro__):
+            if cls is object or cls is Resource or cls is ComponentResource:
+                continue
+            ann.update(inspect.get_annotations(cls))
+        ann = {k: v for k, v in ann.items() if not k.startswith("_")}
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
             camel_case(k): self.analyze_property(
