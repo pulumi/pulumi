@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/dotnet
-  description: Upgrade dotnet to v3.102.1

@@ -1,7 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/go
-  description: >-
-    Fix Go program generation for ternary expressions inside apply callbacks,
-    add Go predeclared identifiers to reserved words, handle optional list types
-    in union type codegen, and fix unmarshalOutput for known outputs with null elements.

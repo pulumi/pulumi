@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: auto/go
-  description: Insert --non-interactive flag before "--" positional separator to avoid misinterpretation as a positional argument

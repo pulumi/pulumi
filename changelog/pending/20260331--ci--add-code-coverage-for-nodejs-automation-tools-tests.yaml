@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: ci
-  description: Add code coverage collection for Node.js automation tools tests
