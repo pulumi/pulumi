@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen
+  description: Warn about modules nested under the index module which are not supported
