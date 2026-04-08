@@ -549,3 +549,100 @@ dist/
 		})
 	}
 }
+
+// TestTemplatePublishCmd_PreservesTemplateEnvironments verifies that the
+// template.environments field declared in Pulumi.yaml survives the full
+// publish round-trip: archive create → extract → LoadTemplate. This is the
+// regression test for the ESC-imports-in-templates feature against the
+// registry path. The publish command tar.gz's the directory verbatim and the
+// service stores it as an opaque blob, so the field travels inside Pulumi.yaml
+// rather than as separate service-side metadata.
+//
+//nolint:paralleltest // testutil.MockBackendInstance mutates a global
+func TestTemplatePublishCmd_PreservesTemplateEnvironments(t *testing.T) {
+	templateDir := t.TempDir()
+
+	pulumiYAML := `name: ${PROJECT}
+runtime: yaml
+description: ${DESCRIPTION}
+template:
+  displayName: ESC Imports Demo
+  description: Imports a shared ESC env declared in the template
+  environments:
+    - infra/aws-prod-creds
+    - infra/shared-tags
+resources:
+  bucket:
+    type: aws:s3:BucketV2
+`
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "Pulumi.yaml"), []byte(pulumiYAML), 0o600))
+
+	var capturedArchive []byte
+	mockCloudRegistry := &backend.MockCloudRegistry{
+		PublishTemplateF: func(ctx context.Context, op apitype.TemplatePublishOp) error {
+			b, err := io.ReadAll(op.Archive)
+			require.NoError(t, err)
+			capturedArchive = b
+			return nil
+		},
+	}
+
+	testutil.MockBackendInstance(t, &backend.MockBackend{
+		GetCloudRegistryF: func() (backend.CloudRegistry, error) {
+			return mockCloudRegistry, nil
+		},
+	})
+
+	cmd := &templatePublishCmd{
+		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
+			return "default-org", nil
+		},
+	}
+	require.NoError(t, cmd.Run(t.Context(), &cobra.Command{}, publishTemplateArgs{
+		publisher: "testpublisher",
+		name:      "esc-imports-demo",
+		version:   "1.0.0",
+	}, templateDir))
+
+	require.NotEmpty(t, capturedArchive, "publish should produce a non-empty archive")
+
+	// Extract the captured archive to a fresh temp dir, mirroring what the
+	// CLI does on the consumer side after downloading from the registry.
+	extractDir := t.TempDir()
+	gzr, err := gzip.NewReader(bytes.NewReader(capturedArchive))
+	require.NoError(t, err)
+	defer gzr.Close()
+
+	tarReader := tar.NewReader(gzr)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err)
+		if header.Typeflag != tar.TypeReg {
+			continue
+		}
+		dst := filepath.Join(extractDir, header.Name)
+		require.NoError(t, os.MkdirAll(filepath.Dir(dst), 0o755))
+		f, err := os.Create(dst)
+		require.NoError(t, err)
+		_, err = io.Copy(f, tarReader)
+		require.NoError(t, err)
+		require.NoError(t, f.Close())
+	}
+
+	// Re-parse the extracted Pulumi.yaml using the same loader the consumer-side
+	// `pulumi new` flow uses (`ws.ReadProject()` → `LoadProject()` under the hood).
+	// This is the assertion that proves template.environments survives the
+	// registry round-trip end-to-end. workspace.LoadTemplate() is intentionally
+	// not used here because it flattens to a subset of ProjectTemplate fields
+	// and `pulumi new` itself reads proj.Template.Environments directly.
+	proj, err := workspace.LoadProject(filepath.Join(extractDir, "Pulumi.yaml"))
+	require.NoError(t, err)
+	require.NotNil(t, proj.Template, "Pulumi.yaml's template section should be parsed")
+	assert.Equal(t,
+		[]string{"infra/aws-prod-creds", "infra/shared-tags"},
+		proj.Template.Environments,
+		"template.environments should be preserved through publish + extract + LoadProject")
+}
