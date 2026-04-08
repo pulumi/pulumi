@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"time"
 )
 
 // EventStreamer is the subset of *client.Client we depend on for the SSE event stream and
@@ -84,32 +83,44 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		s.logf("warning: skipping malformed backend event: %v", err)
 		return nil
 	}
-	if head.Type != backendEventCliToolRequest {
+	if head.Type != backendEventAssistantMessage {
 		return nil
 	}
 
-	var req CliToolRequest
-	if err := json.Unmarshal(env.EventBody, &req); err != nil {
-		return fmt.Errorf("decoding cli_tool_request: %w", err)
+	var msg AssistantMessage
+	if err := json.Unmarshal(env.EventBody, &msg); err != nil {
+		return fmt.Errorf("decoding assistantMessage: %w", err)
 	}
-	s.runBatch(ctx, req)
+
+	// Only the cli-marked calls are ours to execute. Cloud-marked calls in the same
+	// message are handled by the agent runtime — touching them would double-execute
+	// the tool. If no calls are cli-marked there is nothing to do and posting an empty
+	// tool_result would confuse the agent (which is not paused waiting for us).
+	cliCalls := make([]ToolCall, 0, len(msg.ToolCalls))
+	for _, call := range msg.ToolCalls {
+		if call.ExecutionMode == toolExecutionModeCLI {
+			cliCalls = append(cliCalls, call)
+		}
+	}
+	if len(cliCalls) == 0 {
+		return nil
+	}
+	s.runBatch(ctx, cliCalls)
 	return nil
 }
 
-func (s *Session) runBatch(ctx context.Context, req CliToolRequest) {
-	for _, call := range req.ToolCalls {
+func (s *Session) runBatch(ctx context.Context, calls []ToolCall) {
+	for _, call := range calls {
 		s.logf("→ %s", call.Name)
 	}
 
-	items := s.Executor.Execute(ctx, req.ToolCalls)
-	result := CliToolResult{
-		Type:        userEventCliToolResult,
-		Timestamp:   time.Now().UTC(),
-		EntityDiff:  EntityDiff{Add: []any{}, Remove: []any{}},
+	items := s.Executor.Execute(ctx, calls)
+	result := ToolResultEvent{
+		Type:        userEventToolResult,
 		ToolResults: items,
 	}
 	if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, result); err != nil {
-		s.logf("error: posting cli_tool_result: %v", err)
+		s.logf("error: posting tool_result: %v", err)
 	}
 }
 

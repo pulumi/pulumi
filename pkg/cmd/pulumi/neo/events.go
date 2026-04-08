@@ -18,27 +18,31 @@
 // All wire types in this file mirror the IDL-generated apitype.* shapes in
 // pulumi/pulumi-service. The JSON tags must match exactly — see:
 //   - pkg/apitype/agent_console_event_*.go (SSE envelope)
-//   - pkg/apitype/agent_backend_event_cli_tool_request_.go (request payload)
-//   - pkg/apitype/agent_user_event_cli_tool_result_.go (result payload)
+//   - pkg/apitype/agent_backend_event_tool_call_.go (assistantMessage tool calls)
+//   - pkg/apitype/agent_user_event_tool_result_.go (generic tool_result reply)
 package neo
 
 import (
 	"encoding/json"
-	"time"
 )
 
 // Discriminator values for the AgentConsoleEvent envelope and the inner backend/user
 // events we care about.
 const (
-	consoleEventAgentResponse  = "agentResponse"
-	consoleEventUserInput      = "userInput"
-	backendEventCliToolRequest = "cli_tool_request"
-	userEventCliToolResult     = "cli_tool_result"
+	consoleEventAgentResponse    = "agentResponse"
+	consoleEventUserInput        = "userInput"
+	backendEventAssistantMessage = "assistantMessage"
+	userEventToolResult          = "tool_result"
+
+	// toolExecutionModeCLI marks an individual tool call inside an AssistantMessage
+	// that the CLI client must execute locally. Cloud-marked or unset calls are
+	// handled by the agent runtime and must not be touched by the CLI.
+	toolExecutionModeCLI = "cli"
 )
 
 // ConsoleEventEnvelope is the SSE-streamed AgentConsoleEvent. The agent-side has two
 // subtypes (agentResponse, userInput); we only act on agentResponse and even then only
-// when the inner eventBody is a cli_tool_request.
+// when the inner eventBody is an assistantMessage with cli-marked tool calls.
 type ConsoleEventEnvelope struct {
 	Type      string          `json:"type"`
 	ID        string          `json:"id,omitempty"`
@@ -51,16 +55,18 @@ type BackendEventHeader struct {
 	Type string `json:"type"`
 }
 
-// CliToolRequest matches apitype.AgentBackendEventCliToolRequest. The agent yields its
-// turn after emitting one of these and resumes once a CliToolResult arrives.
-type CliToolRequest struct {
-	Type      string        `json:"type"` // always "cli_tool_request"
-	Timestamp time.Time     `json:"timestamp"`
-	ToolCalls []CliToolCall `json:"tool_calls"`
+// AssistantMessage is the agent → user backend event that may carry tool_calls. When any
+// tool call has execution_mode == "cli", the message is sent with is_final: true and the
+// agent pauses until the CLI replies with a ToolResultEvent. We do not model the
+// conversational text fields — the CLI only acts on tool_calls.
+type AssistantMessage struct {
+	Type      string     `json:"type"` // always "assistantMessage"
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+	IsFinal   bool       `json:"is_final,omitempty"`
 }
 
-// CliToolCall matches apitype.AgentBackendEventCliToolCall.
-type CliToolCall struct {
+// ToolCall mirrors apitype.AgentBackendEventToolCall.
+type ToolCall struct {
 	// ToolCallID correlates a request call to its result item.
 	ToolCallID string `json:"tool_call_id"`
 	// Name is the full tool name as understood by the agent — "<server>__<method>"
@@ -69,19 +75,20 @@ type CliToolCall struct {
 	// Args is the raw JSON arguments object for the call. Kept as RawMessage so each
 	// handler can decode into its own typed struct.
 	Args json.RawMessage `json:"args"`
+	// ExecutionMode is "cloud", "cli", or "" (treated as cloud). Only "cli" calls are
+	// executed by this client; everything else is handled by the agent runtime.
+	ExecutionMode string `json:"execution_mode,omitempty"`
 }
 
-// CliToolResult matches apitype.AgentUserEventCliToolResult and is posted back to the Neo
-// task via POST /api/preview/agents/{org}/tasks/{taskID}/events.
-type CliToolResult struct {
-	Type        string              `json:"type"` // always "cli_tool_result"
-	Timestamp   time.Time           `json:"timestamp"`
-	EntityDiff  EntityDiff          `json:"entity_diff"`
-	ToolResults []CliToolResultItem `json:"tool_results"`
+// ToolResultEvent is the generic user event the CLI posts to resume an agent turn after
+// executing one or more cli-marked tool calls. It mirrors apitype.AgentUserEventToolResult.
+type ToolResultEvent struct {
+	Type        string           `json:"type"` // always "tool_result"
+	ToolResults []ToolResultItem `json:"tool_results"`
 }
 
-// CliToolResultItem matches apitype.AgentUserEventCliToolResultItem.
-type CliToolResultItem struct {
+// ToolResultItem mirrors apitype.AgentUserEventToolResultItem.
+type ToolResultItem struct {
 	// ToolCallID echoes the request's tool_call_id so the agent can pair them up.
 	ToolCallID string `json:"tool_call_id"`
 	// Name echoes the request's full tool name (the agent strips the server prefix
@@ -91,14 +98,7 @@ type CliToolResultItem struct {
 	// typically return an object describing what they did.
 	Content any `json:"content"`
 	// IsError is true when the tool failed. The agent uses this to decide whether to
-	// retry or report the failure to the user.
+	// retry or report the failure to the user. Failed items must still be sent — omitting
+	// an item leaves the agent waiting forever.
 	IsError bool `json:"is_error,omitempty"`
-}
-
-// EntityDiff matches apitype.AgentEntityDiff. The CLI does not currently extract entities
-// from tool output, so this is always sent empty — the field is required by the IDL
-// marshaler though, so we serialize it as an empty object rather than omitting it.
-type EntityDiff struct {
-	Add    []any `json:"add"`
-	Remove []any `json:"remove"`
 }

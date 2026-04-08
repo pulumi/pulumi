@@ -23,13 +23,13 @@ import (
 
 // ToolHandler executes a single named method on a Neo CLI-local tool. The method is the
 // part of the agent's full tool name after the "<server>__" prefix; args is the raw JSON
-// arguments object. The returned value is JSON-encoded into the CliToolResultItem content.
+// arguments object. The returned value is JSON-encoded into the ToolResultItem content.
 type ToolHandler interface {
 	Invoke(ctx context.Context, method string, args json.RawMessage) (any, error)
 }
 
-// Executor dispatches CliToolCalls to ToolHandlers keyed by server name (the part of the
-// tool name before "__"). Per-call failures become CliToolResultItems with IsError=true
+// Executor dispatches ToolCalls to ToolHandlers keyed by server name (the part of the
+// tool name before "__"). Per-call failures become ToolResultItems with IsError=true
 // rather than aborting the batch — the agent can then either retry or report the failure
 // to the user.
 type Executor struct {
@@ -47,17 +47,17 @@ func (e *Executor) Register(server string, h ToolHandler) {
 }
 
 // Execute runs every call in the batch sequentially and returns the result items to be
-// embedded in a CliToolResult. The caller wraps the items in the envelope and posts them.
-func (e *Executor) Execute(ctx context.Context, calls []CliToolCall) []CliToolResultItem {
-	out := make([]CliToolResultItem, 0, len(calls))
+// embedded in a ToolResultEvent. The caller wraps the items in the envelope and posts them.
+func (e *Executor) Execute(ctx context.Context, calls []ToolCall) []ToolResultItem {
+	out := make([]ToolResultItem, 0, len(calls))
 	for _, call := range calls {
 		out = append(out, e.invoke(ctx, call))
 	}
 	return out
 }
 
-func (e *Executor) invoke(ctx context.Context, call CliToolCall) CliToolResultItem {
-	res := CliToolResultItem{ToolCallID: call.ToolCallID, Name: call.Name}
+func (e *Executor) invoke(ctx context.Context, call ToolCall) ToolResultItem {
+	res := ToolResultItem{ToolCallID: call.ToolCallID, Name: call.Name}
 
 	server, method, ok := strings.Cut(call.Name, "__")
 	if !ok {

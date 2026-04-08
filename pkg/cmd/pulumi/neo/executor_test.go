@@ -46,7 +46,7 @@ func TestExecutor_DispatchesToHandlerBySplittingName(t *testing.T) {
 		result:     map[string]any{"content": "hello"},
 	})
 
-	items := exec.Execute(t.Context(), []CliToolCall{
+	items := exec.Execute(t.Context(), []ToolCall{
 		{ToolCallID: "c1", Name: "filesystem__read", Args: json.RawMessage(`{}`)},
 	})
 
@@ -61,7 +61,7 @@ func TestExecutor_UnknownServerReturnsErrorItem(t *testing.T) {
 	t.Parallel()
 
 	exec := NewExecutor()
-	items := exec.Execute(t.Context(), []CliToolCall{
+	items := exec.Execute(t.Context(), []ToolCall{
 		{ToolCallID: "c1", Name: "vcs__commit"},
 	})
 
@@ -74,7 +74,7 @@ func TestExecutor_NameWithoutSeparatorIsAnError(t *testing.T) {
 	t.Parallel()
 
 	exec := NewExecutor()
-	items := exec.Execute(t.Context(), []CliToolCall{
+	items := exec.Execute(t.Context(), []ToolCall{
 		{ToolCallID: "c1", Name: "bare_name"},
 	})
 
@@ -91,7 +91,7 @@ func TestExecutor_HandlerErrorBecomesErrorItem(t *testing.T) {
 		wantMethod: "shell_execute",
 		err:        errors.New("boom"),
 	})
-	items := exec.Execute(t.Context(), []CliToolCall{
+	items := exec.Execute(t.Context(), []ToolCall{
 		{ToolCallID: "c", Name: "shell__shell_execute"},
 	})
 	require.Len(t, items, 1)
