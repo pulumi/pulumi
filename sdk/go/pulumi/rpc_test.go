@@ -883,6 +883,54 @@ func TestUnmarshalPointer(t *testing.T) {
 	assert.IsType(t, &simpleComponentResource{}, d)
 }
 
+func TestUnmarshalOutputNullElement(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(t.Context(), RunInfo{})
+	require.NoError(t, err)
+
+	// A known output whose element is null represents an optional property that
+	// was not set. When the destination is a pointer type, unmarshalOutput must
+	// preserve the nil zero value rather than allocating a non-nil pointer to
+	// the zero value.
+	knownNull := resource.NewProperty(resource.Output{
+		Element: resource.NewNullProperty(),
+		Known:   true,
+	})
+
+	var bp *bool
+	_, err = unmarshalOutput(ctx, knownNull, reflect.ValueOf(&bp).Elem())
+	require.NoError(t, err)
+	assert.Nil(t, bp, "expected nil *bool for known output with null element")
+
+	var fp *float64
+	_, err = unmarshalOutput(ctx, knownNull, reflect.ValueOf(&fp).Elem())
+	require.NoError(t, err)
+	assert.Nil(t, fp, "expected nil *float64 for known output with null element")
+
+	var sp *string
+	_, err = unmarshalOutput(ctx, knownNull, reflect.ValueOf(&sp).Elem())
+	require.NoError(t, err)
+	assert.Nil(t, sp, "expected nil *string for known output with null element")
+
+	var ip *int
+	_, err = unmarshalOutput(ctx, knownNull, reflect.ValueOf(&ip).Elem())
+	require.NoError(t, err)
+	assert.Nil(t, ip, "expected nil *int for known output with null element")
+
+	// A known output with a non-null element should still allocate the pointer.
+	knownTrue := resource.NewProperty(resource.Output{
+		Element: resource.NewProperty(true),
+		Known:   true,
+	})
+
+	var bp2 *bool
+	_, err = unmarshalOutput(ctx, knownTrue, reflect.ValueOf(&bp2).Elem())
+	require.NoError(t, err)
+	require.NotNil(t, bp2)
+	assert.True(t, *bp2)
+}
+
 func TestDependsOnComponent(t *testing.T) {
 	t.Parallel()
 
