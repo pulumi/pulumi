@@ -245,6 +245,12 @@ var (
 var DisableJournaling = env.Bool("DISABLE_JOURNALING",
 	"Disable journaling of engine operations to the backend")
 
+var LogRotationMaxAgeDays = env.Int("LOG_ROTATION_MAX_AGE_DAYS",
+	"Maximum age in days for automatic log files before rotation deletes them (default 7)")
+
+var LogRotationMaxTotalMB = env.Int("LOG_ROTATION_MAX_TOTAL_MB",
+	"Maximum total size in MB for automatic log files before rotation deletes oldest (default 500)")
+
 var JournalingBatchSize = env.Int("JOURNALING_BATCH_SIZE", "Maximum batch size for journal entries")
 
 var JournalingBatchPeriod = env.Int("JOURNALING_BATCH_PERIOD",
