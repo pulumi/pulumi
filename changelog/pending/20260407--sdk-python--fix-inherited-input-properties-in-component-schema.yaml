@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Fix inherited input properties missing from component schema when args class inherits from a base class

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: pcl
-  description: Allow key indexing into a map of resources created by range

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/state
-  description: Check for Pulumi.yaml projects and `backend` option in `state upgrade`

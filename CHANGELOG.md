@@ -1,5 +1,64 @@
 # Changelog
 
+## 3.230.0 (2026-04-08)
+
+
+### Features
+
+- [cli] Detect AI agents and send in update metadata
+  [#22497](https://github.com/pulumi/pulumi/pull/22497)
+
+- [auto/nodejs] Add "org" commands (get-default, set-default, search, search ai) to the auto-generated interface
+  [#22395](https://github.com/pulumi/pulumi/pull/22395)
+
+- [auto/nodejs] Add "new" command to the auto-generated interface
+  [#22421](https://github.com/pulumi/pulumi/pull/22421)
+
+- [sdk/{nodejs,python}] Add Cancel handler to Python & Node.js providers
+  [#22516](https://github.com/pulumi/pulumi/pull/22516)
+
+- [cli/policy] Add ESC environment resolution for policy packs
+  [#22425](https://github.com/pulumi/pulumi/pull/22425)
+
+
+### Bug Fixes
+
+- [auto/go] Insert --non-interactive flag before "--" positional separator to avoid misinterpretation as a positional argument
+  [#22462](https://github.com/pulumi/pulumi/pull/22462)
+
+- [ci] Add code coverage collection for Node.js automation tools tests
+  [#22412](https://github.com/pulumi/pulumi/pull/22412)
+
+- [pcl] Allow key indexing into a map of resources created by range
+  [#22498](https://github.com/pulumi/pulumi/pull/22498)
+
+- [programgen/go] Fix an issue with formatted index modules not importing correctly
+
+- [cli/state] Check for Pulumi.yaml projects and `backend` option in `state upgrade`
+  [#22483](https://github.com/pulumi/pulumi/pull/22483)
+
+- [sdk/go] Fix Go program generation for ternary expressions inside apply callbacks, add Go predeclared identifiers to reserved words, handle optional list types in union type codegen, and fix unmarshalOutput for known outputs with null elements.
+  [#22460](https://github.com/pulumi/pulumi/pull/22460)
+
+- [sdk/nodejs] Fix inherited input properties missing from component schema when args interface extends another interface
+  [#22446](https://github.com/pulumi/pulumi/pull/22446)
+
+- [sdk/python] Fix inherited input properties missing from component schema when args class inherits from a base class
+  [#22484](https://github.com/pulumi/pulumi/pull/22484)
+
+
+### Miscellaneous
+
+- [java] Upgrade java to v1.23.0
+
+- [sdk/dotnet] Upgrade dotnet to v3.102.1
+
+- [yaml] Upgrade to v1.31.0
+  [#22501](https://github.com/pulumi/pulumi/pull/22501)
+
+- [programgen/{dotnet,go,java,nodejs,pcl,python,yaml}] Remove `mimeType` & `readDir` from PCL
+  [#22449](https://github.com/pulumi/pulumi/pull/22449)
+
 ## 3.229.0 (2026-04-02)
 
 
