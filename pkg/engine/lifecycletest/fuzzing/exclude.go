@@ -711,6 +711,10 @@ func ExcludeDeletedWithRefreshV2(
 // type belongs to the same package as a child provider. During the refresh
 // phase, the child provider's read can fail, causing it to be dropped from the
 // snapshot while the aliased resource still references it.
+//
+// We match on package rather than direct provider reference because the program
+// resource may not explicitly set its Provider field — the engine matches it to
+// the snapshot resource (which uses the child provider) via the alias.
 func ExcludeTargetedUpdateRefreshWithChildProvider(
 	snap *SnapshotSpec,
 	prog *ProgramSpec,
