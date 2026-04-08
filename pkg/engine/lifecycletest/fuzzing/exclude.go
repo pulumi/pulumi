@@ -63,6 +63,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludePendingReplacementRegisteredInUpdate,
 		// TODO[pulumi/pulumi#22481]
 		ExcludeDeletedWithRefreshV2,
+		// TODO[pulumi/pulumi#22511]
+		ExcludeTargetedUpdateRefreshWithChildProvider,
 	}
 }
 
@@ -695,6 +697,36 @@ func ExcludeDeletedWithRefreshV2(
 
 	for _, res := range prog.ResourceRegistrations {
 		if res.DeletedWith != "" && !res.Custom && !providers.IsProviderType(res.Type) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeTargetedUpdateRefreshWithChildProvider excludes scenarios where a
+// targeted update with refresh has a provider that is a child of another
+// resource in the snapshot. During the refresh phase, the nested provider's
+// reference can become invalid as it gets recreated at the root level with a
+// new ID, while resources still hold the old provider reference.
+func ExcludeTargetedUpdateRefreshWithChildProvider(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+	if !plan.Refresh {
+		return false
+	}
+	if len(plan.TargetURNs) == 0 {
+		return false
+	}
+
+	for _, res := range snap.Resources {
+		if providers.IsProviderType(res.Type) && res.Parent != "" {
 			return true
 		}
 	}

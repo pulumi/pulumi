@@ -1,0 +1,2 @@
+<{%fg 1%}>error: <{%reset%}><{%reset%}>pre-step event returned an error: failed to verify snapshot: resource urn:pulumi:test-stack::test-project::pkg-mt06:mod-qaO0:type-qit2$pkg-aL11:mod-dXI1:type-az15::res-q03W refers to unknown provider urn:pulumi:test-stack::test-project::pkg-mt06:mod-qaO0:type-qit2$pulumi:providers:pkg-aL11::res-daE8::id-d5mE0e3du8zy<{%reset%}>
+<{%fg 1%}>error: <{%reset%}><{%reset%}>update failed<{%reset%}>
