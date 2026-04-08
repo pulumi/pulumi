@@ -225,13 +225,13 @@ func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 }
 
 // getPkgOpts gets the package options from an unbound resource node.
-func (b *binder) getPkgOpts(node *Resource) packageOpts {
-	node.VariableType = model.NewObjectType(map[string]model.Type{
+func (b *binder) getPkgOpts(node resourceLike) packageOpts {
+	*node.getVariableType() = model.NewObjectType(map[string]model.Type{
 		"id":  model.NewOutputType(model.StringType),
 		"urn": model.NewOutputType(model.StringType),
 	})
 	var rangeKey, rangeValue model.Type
-	for _, block := range node.syntax.Body.Blocks {
+	for _, block := range node.getSyntax().Body.Blocks {
 		if block.Type == "options" {
 			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
 				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
@@ -245,7 +245,7 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 
 	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
 
-	block, _ := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+	block, _ := model.BindBlock(node.getSyntax(), scopes, b.tokens, b.options.modelOptions()...)
 
 	var options *model.Block
 	for _, item := range block.Body.Items {
@@ -270,7 +270,7 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 				}
 			}
 		}
-		node.Options = resourceOptions
+		*node.getOptions() = resourceOptions
 	}
 
 	return pkgOpts
@@ -281,9 +281,8 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	var pkgOpts packageOpts
 	packageNames := codegen.StringSet{}
 
-	if r, ok := n.(*Resource); ok {
-		token, tokenRange := getResourceToken(r)
-		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+	if r, ok := n.(resourceLike); ok {
+		packageName, mod, name, _ := r.DecomposeToken()
 		if mod == "providers" {
 			packageNames.Add(name)
 		} else {

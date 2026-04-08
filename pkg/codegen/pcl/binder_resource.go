@@ -32,8 +32,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func getResourceToken(node *Resource) (string, hcl.Range) {
-	return node.syntax.Labels[1], node.syntax.LabelRanges[1]
+func getResourceToken(node resourceLike) (string, hcl.Range) {
+	return node.getSyntax().Labels[1], node.getSyntax().LabelRanges[1]
 }
 
 func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnostics {
@@ -267,7 +267,7 @@ func (b *binder) reduceInputUnionTypes(node *Resource, inputProperties []*schema
 }
 
 // bindResourceTypes binds the input and output types for a resource.
-func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diagnostics {
+func (b *binder) bindResourceTypes(ctx context.Context, node resourceLike) hcl.Diagnostics {
 	// Set the input and output types to dynamic by default.
 	node.InputType, node.OutputType = model.DynamicType, model.DynamicType
 
@@ -399,10 +399,10 @@ type ResourceAnnotation struct {
 type resourceScopes struct {
 	root      *model.Scope
 	withRange *model.Scope
-	resource  *Resource
+	resource  resourceLike
 }
 
-func newResourceScopes(root *model.Scope, resource *Resource, rangeKey, rangeValue model.Type) model.Scopes {
+func newResourceScopes(root *model.Scope, resource resourceLike, rangeKey, rangeValue model.Type) model.Scopes {
 	scopes := &resourceScopes{
 		root:      root,
 		withRange: root,
@@ -438,7 +438,7 @@ func (s *resourceScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model
 
 type optionsScopes struct {
 	root     *model.Scope
-	resource *Resource
+	resource resourceLike
 }
 
 func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
@@ -448,7 +448,7 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
 	switch attr.Name {
 	case "ignoreChanges", "hideDiffs", "replaceOnChanges", "additionalSecretOutputs":
-		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
+		obj, ok := model.ResolveOutputs(s.resource.getInput()).(*model.ObjectType)
 		if !ok {
 			return nil, nil
 		}
@@ -605,7 +605,7 @@ func unwrapOptionalType(t model.Type) model.Type {
 }
 
 // bindResourceBody binds the body of a resource.
-func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
+func (b *binder) bindResourceBody(node resourceLike) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
 	// Allow for lenient traversal when we choose to skip resource type-checking.

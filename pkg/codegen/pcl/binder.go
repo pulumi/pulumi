@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -218,9 +219,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	// Load package descriptors from the files
 	descriptorMap, descriptorDiags := ReadAllPackageDescriptors(files)
 	diagnostics = append(diagnostics, descriptorDiags...)
-	for packageName, descriptor := range descriptorMap {
-		b.packageDescriptors[packageName] = descriptor
-	}
+	maps.Copy(b.packageDescriptors, descriptorMap)
 
 	// Sort files in source order, then declare all top-level nodes in each.
 	sort.Slice(files, func(i, j int) bool {
@@ -405,14 +404,19 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 		switch item := item.(type) {
 		case *hclsyntax.Block:
 			switch item.Type {
-			case "resource":
+			case "resource", "read":
 				if len(item.Labels) != 2 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
+					diagnostics = append(diagnostics,
+						labelsErrorf(item, "%s variables must have exactly two labels", item.Type))
 				}
 
-				resource := &Resource{
-					syntax: item,
+				var resource Node
+				if item.Type == "read" {
+					resource = &Read{syntax: item}
+				} else {
+					resource = &Resource{syntax: item}
 				}
+
 				declareDiags := b.declareNode(item.Labels[0], resource)
 				diagnostics = append(diagnostics, declareDiags...)
 

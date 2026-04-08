@@ -1334,3 +1334,56 @@ component myComp "./myComponent" {
 		require.Equal(t, " 42.5\n", fmt.Sprintf("%v", expr))
 	}
 }
+
+func TestBindingRead(t *testing.T) {
+	t.Parallel()
+
+	source := `
+read "res" "pkg:mod:Res" {
+  stateProp = 1
+}
+
+output "outputProperty" {
+  value = res.outputProp
+}`
+
+	pkg, diag, err := schema.BindSpec(schema.PackageSpec{
+		Name: "pkg",
+		Resources: map[string]schema.ResourceSpec{
+			"pkg:mod:Res": {
+				StateInputs: &schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"outputProp": {TypeSpec: schema.TypeSpec{
+							Type: "number",
+						}},
+					},
+				},
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Properties: map[string]schema.PropertySpec{
+						"outputProp": {TypeSpec: schema.TypeSpec{
+							Type: "number",
+						}},
+					},
+				},
+			},
+		},
+	}, nil, schema.ValidationOptions{})
+	require.NoError(t, err)
+	require.Empty(t, diag)
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp",
+		pcl.Loader(schema.NewCachedLoaderWithEntries(nil, map[string]schema.PackageReference{
+			"pkg": pkg.Reference(),
+		})))
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors(), "There are no error diagnostics")
+	require.NotNil(t, program)
+
+	var read *pcl.Read
+	for _, n := range program.Nodes {
+		if r, ok := n.(*pcl.Read); ok && r.Name() == "res" {
+			read = r
+			break
+		}
+	}
+	require.NotNil(t, read, "there is a read named res")
+}

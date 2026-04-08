@@ -28,6 +28,22 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+type resourceLike interface {
+	DecomposeToken() (string, string, string, hcl.Diagnostics)
+
+	getSyntax() *hclsyntax.Block
+	getOptions() **ResourceOptions
+	getVariableType() *model.Type
+	getInput() model.Type
+}
+
+var _ resourceLike = (*Resource)(nil)
+
+func (r *Resource) getOptions() **ResourceOptions { return &r.Options }
+func (r *Resource) getVariableType() *model.Type  { return &r.VariableType }
+func (r *Resource) getSyntax() *hclsyntax.Block   { return r.syntax }
+func (r *Resource) getInput() model.Type          { return r.InputType }
+
 // ResourceOptions represents a resource instantiation's options.
 type ResourceOptions struct {
 	// The definition of the resource options.

@@ -109,6 +109,9 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 	case *Component:
 		diags := b.bindComponent(node)
 		diagnostics = append(diagnostics, diags...)
+	case *Read:
+		diags := b.bindRead(node)
+		diagnostics = append(diagnostics, diags...)
 	case *OutputVariable:
 		diags := b.bindOutputVariable(node)
 		diagnostics = append(diagnostics, diags...)
