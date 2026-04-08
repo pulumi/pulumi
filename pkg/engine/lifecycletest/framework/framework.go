@@ -214,6 +214,7 @@ func (op TestOp) runWithContext(
 	info := NewUpdateInfo(project, target)
 
 	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
+	defer cancelSrc.Terminate()
 	done := make(chan bool)
 	defer close(done)
 	go func() {
