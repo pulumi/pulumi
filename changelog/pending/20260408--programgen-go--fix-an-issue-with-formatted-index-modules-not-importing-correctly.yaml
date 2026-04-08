@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go
+  description: Fix an issue with formatted index modules not importing correctly

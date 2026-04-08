@@ -995,6 +995,13 @@ func (g *generator) resolveModule(token string) string {
 		if resolved := p.TokenToModule(token); resolved != "" {
 			return resolved
 		}
+		// For index-style runtime modules (e.g. "index_Resource", "index_concatWorld"),
+		// TokenToModule intentionally returns empty to indicate the index package.
+		// Normalize these to "index" so import path logic consistently resolves to
+		// the root package instead of treating the raw runtime module as a subpackage.
+		if strings.HasPrefix(mod, IndexToken) {
+			return IndexToken
+		}
 	}
 	return mod
 }

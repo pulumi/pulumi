@@ -111,6 +111,18 @@ func (p *ModuleFormatProvider) GetSchema(
 					"call": "module-format:mod/nested_Resource:Resource/call",
 				},
 			},
+			"module-format:index_Resource:Resource": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: resourceProperties,
+					Required:   resourceRequired,
+				},
+				InputProperties: resourceProperties,
+				RequiredInputs:  resourceRequired,
+				Methods: map[string]string{
+					"call": "module-format:index_Resource:Resource/call",
+				},
+			},
 		},
 		Functions: map[string]schema.FunctionSpec{
 			"module-format:mod_concatWorld:concatWorld": {
@@ -140,6 +152,32 @@ func (p *ModuleFormatProvider) GetSchema(
 				},
 			},
 			"module-format:mod/nested_concatWorld:concatWorld": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"value": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"value"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"result": {
+								TypeSpec: schema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						Required: []string{"result"},
+					},
+				},
+			},
+			"module-format:index_concatWorld:concatWorld": {
 				Inputs: &schema.ObjectTypeSpec{
 					Type: "object",
 					Properties: map[string]schema.PropertySpec{
@@ -229,6 +267,38 @@ func (p *ModuleFormatProvider) GetSchema(
 					},
 				},
 			},
+			"module-format:index_Resource:Resource/call": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"__self__": {
+							TypeSpec: schema.TypeSpec{
+								Type: "ref",
+								Ref:  "#/resources/module-format:mod_Resource:Resource",
+							},
+						},
+						"input": {
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"__self__", "input"},
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]schema.PropertySpec{
+							"output": {
+								TypeSpec: schema.TypeSpec{
+									Type: "number",
+								},
+							},
+						},
+						Required: []string{"output"},
+					},
+				},
+			},
 		},
 	}
 
@@ -270,7 +340,7 @@ func (p *ModuleFormatProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
-	case "module-format:mod_concatWorld:concatWorld", "module-format:mod/nested_concatWorld:concatWorld":
+	case "module-format:index_concatWorld:concatWorld", "module-format:mod_concatWorld:concatWorld", "module-format:mod/nested_concatWorld:concatWorld": //nolint:lll
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{
@@ -318,7 +388,7 @@ func (p *ModuleFormatProvider) Call(
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 	switch req.Tok {
-	case "module-format:mod_Resource:Resource/call", "module-format:mod/nested_Resource:Resource/call":
+	case "module-format:index_Resource:Resource/call", "module-format:mod_Resource:Resource/call", "module-format:mod/nested_Resource:Resource/call": //nolint:lll
 		value, ok := req.Args["input"]
 		if !ok {
 			return plugin.CallResponse{
@@ -372,7 +442,7 @@ func (p *ModuleFormatProvider) Check(
 	_ context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
 	switch req.URN.Type().String() {
-	case "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource":
+	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
 		return plugin.CheckResponse{
 			Failures: makeCheckFailure("", fmt.Sprintf("invalid URN type: %s", req.URN.Type())),
@@ -405,7 +475,7 @@ func (p *ModuleFormatProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
 	switch req.URN.Type().String() {
-	case "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource":
+	case "module-format:index_Resource:Resource", "module-format:mod_Resource:Resource", "module-format:mod/nested_Resource:Resource": //nolint:lll
 	default:
 		return plugin.CreateResponse{
 			Status: resource.StatusUnknown,

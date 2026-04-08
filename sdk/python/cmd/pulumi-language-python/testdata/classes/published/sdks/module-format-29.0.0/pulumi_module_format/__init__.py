@@ -6,7 +6,9 @@ import builtins as _builtins
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .concat_world import *
 from .provider import *
+from .resource import *
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
@@ -18,6 +20,14 @@ else:
 _utilities.register(
     resource_modules="""
 [
+ {
+  "pkg": "module-format",
+  "mod": "index_Resource",
+  "fqn": "pulumi_module_format",
+  "classes": {
+   "module-format:index_Resource:Resource": "Resource"
+  }
+ },
  {
   "pkg": "module-format",
   "mod": "mod/nested_Resource",
