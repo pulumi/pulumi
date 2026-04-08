@@ -579,7 +579,8 @@ func TestBuildImportFile_regress_15002(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/15068
-// Creates an explicit provider and a resource that uses it.
+// Tests that the event channel is drained properly when buildImportFile encounters an error.
+// Uses an invalid provider reference to trigger the error.
 func TestBuildImportFile_regress_15068(t *testing.T) {
 	t.Parallel()
 
@@ -591,55 +592,22 @@ func TestBuildImportFile_regress_15068(t *testing.T) {
 		Metadata: makeRootStackMetadata(deploy.OpCreate),
 	})
 
-	// And then create a provider resource with inputs
-	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
-		Inputs: resource.NewPropertyMapFromMap(map[string]any{
-			"version": "1.2.3",
-		}),
-	})
-	providerState.ID = providers.UnknownID
-	events <- engine.NewEvent(engine.ResourcePreEventPayload{
-		Metadata: makeMetadata(deploy.OpCreate, providerState),
-	})
-
-	// And then create a resource that has that provider
-	providerRef, err := providers.NewReference(providerState.URN, providerState.ID)
-	require.NoError(t, err)
-	state := makeStateMetadata(t, "res", "pkg:mod:typ", true, stateOptions{
-		Provider: &providerRef,
-	})
+	// Create a resource with an invalid (unparseable) provider reference to trigger an error.
+	state := makeStateMetadata(t, "res", "pkg:mod:typ", true, stateOptions{})
+	state.Provider = "not-a-valid-provider-reference"
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, state),
 	})
 
-	// Try and write another event to the channel, this should not block because we no longer
-	// error when encountering an explicit provider.
-	state = makeStateMetadata(t, "res2", "pkg:mod:typ", true, stateOptions{})
+	// Write another event after the error — this must not block (the channel should be drained).
+	state2 := makeStateMetadata(t, "res2", "pkg:mod:typ", true, stateOptions{})
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
-		Metadata: makeMetadata(deploy.OpCreate, state),
+		Metadata: makeMetadata(deploy.OpCreate, state2),
 	})
 
-	// Finally, close the events channel to signal that we're done
+	// Close the events channel to signal that we're done.
 	close(events)
 
-	importFile, err := importFilePromise.Result(t.Context())
-	require.NoError(t, err)
-
-	// NameTable has the explicit provider; res uses it, res2 uses default (no provider in spec)
-	require.Len(t, importFile.NameTable, 1)
-	assert.Equal(t, providerState.URN, importFile.NameTable["prov"])
-
-	// Two resources: res with provider "prov", res2 with default provider (no Provider field)
-	require.Len(t, importFile.Resources, 2)
-	assert.Equal(t, importSpec{
-		ID:       "<PLACEHOLDER>",
-		Type:     "pkg:mod:typ",
-		Name:     "res",
-		Provider: "prov",
-		Version:  "1.2.3",
-	}, importFile.Resources[0])
-	assert.Equal(t, "res2", importFile.Resources[1].Name)
-
-	// ProviderInputs should be populated for the explicit provider
-	require.Contains(t, importFile.ProviderInputs, "prov")
+	_, err := importFilePromise.Result(t.Context())
+	assert.ErrorContains(t, err, "could not parse provider reference")
 }

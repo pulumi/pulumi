@@ -153,9 +153,9 @@ func buildImportFile(
 			// any resources that use it.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				providerInputs[urn] = preEvent.Metadata.Res.Inputs
-				if preEvent.Metadata.Res.State != nil {
-					providerFullInputs[urn] = preEvent.Metadata.Res.State.Inputs
-				}
+				contract.Assertf(preEvent.Metadata.Res.State != nil,
+					"%s: expected State to be non-nil for provider", urn)
+				providerFullInputs[urn] = preEvent.Metadata.Res.State.Inputs
 			}
 
 			// Only interested in creates
@@ -170,7 +170,9 @@ func buildImportFile(
 			// We're importing this URN so track that we've seen it.
 			importSet[urn] = struct{}{}
 
-			// We can't actually import providers yet, just skip them.
+			// Provider resources are not imported with an ID like regular resources. Instead,
+			// their inputs are serialized into the import file's providerInputs section so the
+			// import system can create them with the correct configuration.
 			if sdkproviders.IsProviderType(urn.Type()) {
 				continue
 			}

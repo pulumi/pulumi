@@ -127,26 +127,32 @@ func TestImporter(t *testing.T) {
 			_, err := i.registerProviders(t.Context())
 			assert.ErrorIs(t, err, expectedErr)
 		})
-		t.Run("explicit provider not in state without inputs is skipped (#15453)", func(t *testing.T) {
+		t.Run("explicit provider not in state without inputs still created (#15453)", func(t *testing.T) {
 			t.Parallel()
 
 			version := semver.MustParse("1.0.0")
 			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+			expectedErr := errors.New("expected check config error")
 
-			// When an explicit provider is not in state and has no ProviderInputs,
-			// registerProviders does not attempt to create it. The provider reference
-			// will be missing from the returned map, which will cause a later assertion
-			// failure when importResources tries to look it up.
+			// Some providers (like random) don't need any config. Even without
+			// ProviderInputs, we should still attempt to create the provider.
 			i := &importer{
 				deployment: &Deployment{
-					goals:  &gsync.Map[urn.URN, *resource.Goal]{},
-					ctx:    &plugin.Context{Diag: &deploytest.NoopSink{}},
-					target: &Target{Name: tokens.MustParseStackName("stack-name")},
+					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
 					source: &nullSource{},
 					providers: providers.NewRegistry(&plugin.MockHost{
 						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
-							t.Fatal("ProviderF should not be called when ProviderInputs is nil")
-							return nil, nil
+							return &deploytest.Provider{
+								CheckConfigF: func(
+									_ context.Context, req plugin.CheckConfigRequest,
+								) (plugin.CheckConfigResponse, error) {
+									return plugin.CheckConfigResponse{}, expectedErr
+								},
+							}, nil
 						},
 					}, true, nil),
 					imports: []Import{
@@ -161,10 +167,9 @@ func TestImporter(t *testing.T) {
 					},
 				},
 			}
-			refs, err := i.registerProviders(t.Context())
-			require.NoError(t, err)
-			// Provider is NOT in the reference map because it has no ProviderInputs
-			assert.NotContains(t, refs, providerURN)
+			_, err := i.registerProviders(t.Context())
+			// Provider creation should be attempted even without ProviderInputs
+			assert.ErrorIs(t, err, expectedErr)
 		})
 		t.Run("explicit provider with inputs uses ProviderInputs not ambient config", func(t *testing.T) {
 			t.Parallel()

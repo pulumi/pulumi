@@ -325,11 +325,12 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		defaultProviderRequests = append(defaultProviderRequests, req)
 		defaultProviders[urn] = struct{}{}
 	}
-	// Collect explicit providers that are not in state but have inputs from the import file.
+	// Collect explicit providers that are not in state. Their full inputs may come from the
+	// import file (ProviderInputs), or they may have no config at all (e.g. the random provider).
 	// Deduplicate by URN since multiple resources may reference the same explicit provider.
 	explicitProvidersByURN := map[resource.URN]Import{}
 	for _, imp := range i.deployment.imports {
-		if imp.Provider == "" || imp.ProviderInputs == nil {
+		if imp.Provider == "" {
 			continue
 		}
 		if _, ok := i.deployment.olds[imp.Provider]; ok {
@@ -451,7 +452,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		typ := providerURN.Type()
 
 		// Use the full provider inputs from the import file instead of ambient config.
-		inputs := imp.ProviderInputs.Copy()
+		// Some providers (e.g. random) don't need any config, so ProviderInputs may be nil.
+		var inputs resource.PropertyMap
+		if imp.ProviderInputs != nil {
+			inputs = imp.ProviderInputs.Copy()
+		} else {
+			inputs = resource.PropertyMap{}
+		}
 
 		// Overlay version/URL/checksums from the Import if present and not already in inputs.
 		if imp.Version != nil {
