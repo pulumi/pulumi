@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi docs` command for reading and browsing Pulumi documentation in the terminal
