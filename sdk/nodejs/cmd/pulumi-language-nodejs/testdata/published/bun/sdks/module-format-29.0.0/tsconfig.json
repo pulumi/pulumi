@@ -19,6 +19,7 @@
         "skipLibCheck": true
     },
     "files": [
+        "concatWorld.ts",
         "index.ts",
         "mod/concatWorld.ts",
         "mod/index.ts",
@@ -27,6 +28,7 @@
         "mod/nested/resource.ts",
         "mod/resource.ts",
         "provider.ts",
+        "resource.ts",
         "utilities.ts"
     ]
 }
