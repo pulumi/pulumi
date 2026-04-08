@@ -340,7 +340,7 @@ func (p *ModuleFormatProvider) Invoke(
 	_ context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
 	switch req.Tok {
-	case "module-format:index_concatWorld:concatWorld", "module-format:mod_concatWorld:concatWorld", "module-format:mod/nested_concatWorld:concatWorld":
+	case "module-format:index_concatWorld:concatWorld", "module-format:mod_concatWorld:concatWorld", "module-format:mod/nested_concatWorld:concatWorld": //nolint:lll
 		value, ok := req.Args["value"]
 		if !ok {
 			return plugin.InvokeResponse{
