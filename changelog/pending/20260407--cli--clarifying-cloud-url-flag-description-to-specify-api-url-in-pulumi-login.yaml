@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix --cloud-url flag description to specify API URL in pulumi login
