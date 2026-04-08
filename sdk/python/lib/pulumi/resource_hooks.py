@@ -1,6 +1,6 @@
 import asyncio
 import copy
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, Optional, TypeVar, Union, overload
 from collections.abc import Callable
 from collections.abc import Awaitable, Mapping
 
@@ -154,7 +154,20 @@ ErrorHookFunction = Callable[
 
 
 class ErrorHook:
-    """ErrorHook is a named hook that can be registered as an error hook."""
+    """
+    ErrorHook is a named hook that can be registered as an error hook.
+
+    Can be used directly as a decorator to create an ErrorHook from a function:
+
+        @ErrorHook("on_error")
+        def my_hook(args: ErrorHookArgs):
+            print(f"Error for resource {args.name} of type {args.type}")
+            return False
+
+    Or constructed explicitly with a callback:
+
+        hook = ErrorHook("on_error", my_callback)
+    """
 
     name: str
     """The unique name of the error hook."""
@@ -166,7 +179,33 @@ class ErrorHook:
     the hook has been registered, or reject if any error occurs.
     """
 
-    def __init__(self, name: str, func: ErrorHookFunction):
+    # mypy enforces that __new__ must return a class instance, but Python
+    # explicitly allows it to return any object — and skips __init__ when
+    # the returned object is not an instance of cls. We rely on that here
+    # to return a decorator closure when no callback is provided. Pyright
+    # accepts this; the `type: ignore[misc]` comments below are for mypy.
+    @overload
+    def __new__(  # type: ignore[misc]
+        cls, name: str, func: None = None
+    ) -> Callable[[ErrorHookFunction], "ErrorHook"]: ...
+    @overload
+    def __new__(cls, name: str, func: ErrorHookFunction) -> "ErrorHook": ...
+    def __new__(  # type: ignore[misc]
+        cls, name: str, func: Optional[ErrorHookFunction] = None
+    ) -> Union["ErrorHook", Callable[[ErrorHookFunction], "ErrorHook"]]:
+        if cls is ErrorHook and func is None:
+
+            def decorator(f: ErrorHookFunction) -> "ErrorHook":
+                return cls(name, f)
+
+            return decorator
+        return super().__new__(cls)
+
+    def __init__(self, name: str, func: Optional[ErrorHookFunction] = None):
+        # When used as a decorator, __new__ returns a closure and __init__ is
+        # never called. This branch only runs for the explicit construction
+        # path where func is provided.
+        assert func is not None
         self.__doc__ = getattr(func, "__doc__", None)
         self.__name__ = getattr(func, "__name__", None)
         self.name = name
@@ -178,26 +217,6 @@ class ErrorHook:
 
     def __repr__(self) -> str:
         return f"ErrorHook(name={self.name}, callback={self.callback})"
-
-
-def error_hook(
-    name: str,
-) -> Callable[[ErrorHookFunction], ErrorHook]:
-    """
-    Decorator for creating an ErrorHook from an ErrorHookFunction.
-
-    Example usage:
-
-    @error_hook("on_error")
-    def my_hook(args: ErrorHookArgs):
-        print(f"Error for resource {args.name} of type {args.type}")
-        return False
-    """
-
-    def decorator(func: ErrorHookFunction) -> ErrorHook:
-        return ErrorHook(name, func)
-
-    return decorator
 
 
 class ResourceHookOptions:
@@ -214,7 +233,23 @@ class ResourceHookOptions:
 
 
 class ResourceHook:
-    """ResourceHook is a named hook that can be registered as a resource hook."""
+    """
+    ResourceHook is a named hook that can be registered as a resource hook.
+
+    Can be used directly as a decorator to create a ResourceHook from a function:
+
+        @ResourceHook("before_create")
+        def my_hook(args: ResourceHookArgs):
+            print(f"Before creating resource {args.name} of type {args.type}")
+
+        @ResourceHook("before_create", ResourceHookOptions(on_dry_run=True))
+        async def my_hook(args: ResourceHookArgs):
+            ...
+
+    Or constructed explicitly with a callback:
+
+        hook = ResourceHook("before_create", my_callback)
+    """
 
     name: str
     """The unique name of the resource hook."""
@@ -227,12 +262,67 @@ class ResourceHook:
     the hook has been registered, or reject if any error occurs.
     """
 
-    def __init__(
-        self,
+    # mypy enforces that __new__ must return a class instance, but Python
+    # explicitly allows it to return any object — and skips __init__ when
+    # the returned object is not an instance of cls. We rely on that here
+    # to return a decorator closure when no callback is provided. Pyright
+    # accepts this; the `type: ignore[misc]` comments below are for mypy.
+    @overload
+    def __new__(  # type: ignore[misc]
+        cls,
+        name: str,
+        func: None = None,
+        opts: Optional[ResourceHookOptions] = None,
+    ) -> Callable[[ResourceHookFunction], "ResourceHook"]: ...
+    @overload
+    def __new__(  # type: ignore[misc]
+        cls,
+        name: str,
+        opts: ResourceHookOptions,
+        /,
+    ) -> Callable[[ResourceHookFunction], "ResourceHook"]: ...
+    @overload
+    def __new__(
+        cls,
         name: str,
         func: ResourceHookFunction,
         opts: Optional[ResourceHookOptions] = None,
+    ) -> "ResourceHook": ...
+    def __new__(  # type: ignore[misc]
+        cls,
+        name: str,
+        func: Optional[Union[ResourceHookFunction, ResourceHookOptions]] = None,
+        opts: Optional[ResourceHookOptions] = None,
+    ) -> Union["ResourceHook", Callable[[ResourceHookFunction], "ResourceHook"]]:
+        # The second positional argument can be either the hook function (for
+        # explicit construction) or a ResourceHookOptions instance (for the
+        # decorator form, e.g. `@ResourceHook("name", ResourceHookOptions(...))`).
+        if isinstance(func, ResourceHookOptions):
+            if opts is not None:
+                raise TypeError(
+                    "ResourceHook() got multiple values for argument 'opts'"
+                )
+            opts = func
+            func = None
+
+        if cls is ResourceHook and func is None:
+
+            def decorator(f: ResourceHookFunction) -> "ResourceHook":
+                return cls(name, f, opts)
+
+            return decorator
+        return super().__new__(cls)
+
+    def __init__(
+        self,
+        name: str,
+        func: Optional[ResourceHookFunction] = None,
+        opts: Optional[ResourceHookOptions] = None,
     ):
+        # When used as a decorator, __new__ returns a closure and __init__ is
+        # never called. This branch only runs for the explicit construction
+        # path where func is provided.
+        assert func is not None and not isinstance(func, ResourceHookOptions)
         self.__doc__ = func.__doc__
         self.__name__ = func.__name__
         self.name = name
@@ -245,26 +335,6 @@ class ResourceHook:
 
     def __repr__(self) -> str:
         return f"ResourceHook(name={self.name}, callback={self.callback}, opts={self.opts})"
-
-
-def resource_hook(
-    name: str,
-    opts: Optional[ResourceHookOptions] = None,
-) -> Callable[[ResourceHookFunction], ResourceHook]:
-    """
-    Decorator for creating a ResourceHook from a ResourceHookFunction.
-
-    Example usage:
-
-    @resource_hook("before_create")
-    def my_hook(args: ResourceHookArgs):
-        print(f"Before creating resource {args.name} of type {args.type}")
-    """
-
-    def decorator(func: ResourceHookFunction) -> ResourceHook:
-        return ResourceHook(name, func, opts)
-
-    return decorator
 
 
 class ResourceHookBinding:

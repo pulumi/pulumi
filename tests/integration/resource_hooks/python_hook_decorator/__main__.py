@@ -5,7 +5,7 @@ from random_ import Random
 import pulumi.runtime
 from pulumi import (
     log,
-    resource_hook,
+    ResourceHook,
     ResourceHookOptions,
     ResourceHookArgs,
     ResourceHookBinding,
@@ -13,7 +13,7 @@ from pulumi import (
 )
 
 
-@resource_hook("after_create")
+@ResourceHook("after_create")
 def after_create(args: ResourceHookArgs) -> None:
     log.info(f"after_create was called with length = {args.new_inputs.get('length')}")
     assert args.name == "res", f"Expected name 'res', got {args.name}"
@@ -21,7 +21,7 @@ def after_create(args: ResourceHookArgs) -> None:
         f"Expected type 'testprovider:index:Random', got {args.type}"
     )
 
-@resource_hook("before_create", ResourceHookOptions(on_dry_run=True))
+@ResourceHook("before_create", ResourceHookOptions(on_dry_run=True))
 async def test_hook(args: ResourceHookArgs):
     log.info(f"hook called {pulumi.runtime.is_dry_run()}")
 
