@@ -84,8 +84,7 @@ func displayLang(lang string) string {
 	return lang
 }
 
-// RenderMarkdown renders the given markdown body for terminal display
-// using goldmark AST for structural analysis.
+// RenderMarkdown renders markdown for terminal display.
 func RenderMarkdown(title, body string) (string, error) {
 	fullMD := body
 	if title != "" && !strings.HasPrefix(strings.TrimSpace(fullMD), "# ") {
@@ -183,56 +182,46 @@ func classifyBlocks(source []byte, tree ast.Node) []renderBlock {
 	return blocks
 }
 
-// detectNoteType checks if a blockquote is a note/warning/tip box by walking
-// the AST. Returns the note type ("note", "warning", "tip") or "" if not a note.
 func detectNoteType(source []byte, bq *ast.Blockquote) string {
 	first := bq.FirstChild()
 	if first == nil {
 		return ""
 	}
 
-	// The first child should be a paragraph. Look at its inline children.
 	child := first.FirstChild()
 	if child == nil {
 		return ""
 	}
 
-	// The note keyword may be wrapped in emphasis (**Note:** or *Note:*) or plain (Note:).
 	var keyword string
 	switch n := child.(type) {
 	case *ast.Emphasis:
-		// Check text inside emphasis node for "Note:", "Warning:", "Tip:"
 		keyword = extractNoteKeyword(source, n)
 	case *ast.Text:
-		// Check plain text for "Note:", "Warning:", "Tip:"
 		keyword = extractNoteKeywordFromText(string(n.Segment.Value(source)))
 	}
 
 	return keyword
 }
 
-// extractNoteKeyword checks if an emphasis node contains a note keyword like "Note:".
 func extractNoteKeyword(source []byte, em *ast.Emphasis) string {
 	text := plainText(source, em)
 	return extractNoteKeywordFromText(text)
 }
 
-// extractNoteKeywordFromText checks if text starts with "Note:", "Warning:", or "Tip:".
 func extractNoteKeywordFromText(text string) string {
 	text = strings.TrimSpace(text)
-	// Look for "Keyword:" at the start
-	idx := strings.Index(text, ":")
-	if idx < 0 {
+	word, _, ok := strings.Cut(text, ":")
+	if !ok {
 		return ""
 	}
-	word := strings.ToLower(text[:idx])
+	word = strings.ToLower(word)
 	if noteKeywords[word] {
 		return word
 	}
 	return ""
 }
 
-// plainText extracts visible text from an AST node, stripping formatting.
 func plainText(source []byte, node ast.Node) string {
 	var buf bytes.Buffer
 	_ = ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
@@ -247,16 +236,13 @@ func plainText(source []byte, node ast.Node) string {
 	return buf.String()
 }
 
-// extractNoteBody extracts the body content from a blockquote note by walking
-// the AST and removing the leading note label (e.g. "**Note:** ") from the
-// first paragraph, then rendering the remaining content as markdown.
+// extractNoteBody returns the note body with the leading label stripped.
 func extractNoteBody(source []byte, bqNode ast.Node) string {
 	bq, ok := bqNode.(*ast.Blockquote)
 	if !ok {
 		return string(renderNodesToMarkdown(source, []ast.Node{bqNode}))
 	}
 
-	// Extract the blockquote's children into a new document (without the > wrapper).
 	doc := ast.NewDocument()
 	var children []ast.Node
 	for c := bq.FirstChild(); c != nil; c = c.NextSibling() {
@@ -267,7 +253,6 @@ func extractNoteBody(source []byte, bqNode ast.Node) string {
 		doc.AppendChild(doc, c)
 	}
 
-	// Remove the note label from the first paragraph's inline children.
 	first := doc.FirstChild()
 	if first != nil {
 		removeNoteLabel(source, first)
@@ -281,8 +266,6 @@ func extractNoteBody(source []byte, bqNode ast.Node) string {
 	return strings.TrimSpace(buf.String())
 }
 
-// removeNoteLabel removes the leading note label nodes (e.g. "**Note:** " or
-// "Note: ") from a paragraph node's inline children.
 func removeNoteLabel(source []byte, para ast.Node) {
 	child := para.FirstChild()
 	if child == nil {
@@ -291,23 +274,19 @@ func removeNoteLabel(source []byte, para ast.Node) {
 
 	switch n := child.(type) {
 	case *ast.Emphasis:
-		// **Note:** or *Note:* — remove the emphasis node and any following space text.
 		text := plainText(source, n)
 		if extractNoteKeywordFromText(text) != "" {
 			para.RemoveChild(para, n)
 			trimLeadingSpace(source, para)
 		}
 	case *ast.Text:
-		// "Note: some text" — trim the "Note: " prefix from the text segment.
 		seg := n.Segment
 		text := string(seg.Value(source))
 		kw := extractNoteKeywordFromText(text)
 		if kw != "" {
-			// Skip past "Keyword: " (keyword + colon + optional space)
-			prefix := text[:len(kw)+1] // "Note:"
+			prefix := text[:len(kw)+1]
 			rest := strings.TrimPrefix(text[len(prefix):], " ")
 			if rest != "" {
-				// Adjust the segment to skip the prefix.
 				advance := len(text) - len(rest)
 				n.Segment = n.Segment.WithStart(n.Segment.Start + advance)
 			} else {
@@ -318,7 +297,6 @@ func removeNoteLabel(source []byte, para ast.Node) {
 	}
 }
 
-// trimLeadingSpace removes leading whitespace from the first remaining text child.
 func trimLeadingSpace(source []byte, para ast.Node) {
 	next := para.FirstChild()
 	if next == nil {
@@ -336,7 +314,6 @@ func trimLeadingSpace(source []byte, para ast.Node) {
 	}
 }
 
-// renderNodesToMarkdown renders a slice of AST nodes back to markdown text.
 func renderNodesToMarkdown(source []byte, nodes []ast.Node) []byte {
 	doc := ast.NewDocument()
 	for _, n := range nodes {
@@ -374,7 +351,7 @@ func renderNoteBox(label, body string, width int) string {
 
 	rendered = strings.TrimSpace(rendered)
 	buf.WriteString(pageMargin + "│\n")
-	for _, line := range strings.Split(rendered, "\n") {
+	for line := range strings.SplitSeq(rendered, "\n") {
 		buf.WriteString(pageMargin + "│ " + line + "\n")
 	}
 	buf.WriteString(pageMargin + "│\n")
@@ -443,24 +420,6 @@ func PageFooter(baseURL, path string) string {
 // BrowseFooter returns a compact footer for browse mode showing the web URL.
 func BrowseFooter(baseURL, path string) string {
 	return fmt.Sprintf("\n%s%s\n%s🔗 %s\n", pageMargin, termRule(), pageMargin, WebURL(baseURL, path))
-}
-
-// FormatHeadingWithTable renders a heading through glamour and appends
-// pre-formatted table lines with the page margin.
-func FormatHeadingWithTable(heading, table string) string {
-	var buf strings.Builder
-	headingMD := "## " + heading
-	rendered, err := RenderMarkdown("", headingMD)
-	if err == nil {
-		buf.WriteString(rendered)
-	} else {
-		fmt.Fprintf(&buf, "\n%s## %s\n\n", pageMargin, heading)
-	}
-	for _, line := range strings.Split(strings.TrimRight(table, "\n"), "\n") {
-		buf.WriteString(pageMargin + line + "\n")
-	}
-	buf.WriteString("\n")
-	return buf.String()
 }
 
 // FindSectionBounds returns the start index, the index after the heading,
@@ -578,7 +537,6 @@ func NumberLinks(md string) (annotated string, links []Link) {
 	source := []byte(md)
 	tree := ParseMarkdown(source)
 
-	// First pass: collect internal links and assign numbers.
 	seen := map[string]bool{}
 	linkNum := map[string]int{}
 	n := 0
@@ -609,7 +567,6 @@ func NumberLinks(md string) (annotated string, links []Link) {
 		return md, nil
 	}
 
-	// Second pass: prepend 🔗N to each internal link's text.
 	_ = ast.Walk(tree, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
@@ -622,8 +579,7 @@ func NumberLinks(md string) (annotated string, links []Link) {
 		if !ok {
 			return ast.WalkSkipChildren, nil
 		}
-		// Prepend a text node with the numbered reference before existing children.
-		prefix := ast.NewString([]byte(fmt.Sprintf("🔗%d ", num)))
+		prefix := ast.NewString(fmt.Appendf(nil, "🔗%d ", num))
 		prefix.SetRaw(true)
 		first := link.FirstChild()
 		if first != nil {

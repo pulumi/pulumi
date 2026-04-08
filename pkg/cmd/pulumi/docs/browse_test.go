@@ -244,7 +244,7 @@ func TestBuildBrowseMenu(t *testing.T) {
 
 	t.Run("root has no Up", func(t *testing.T) {
 		t.Parallel()
-		menu := buildBrowseMenu(nil, true, false, false, true, -1, nil)
+		menu := buildBrowseMenu(browseMenuContext{isRoot: true, hasIntro: true, sectionIdx: -1})
 		assert.NotContains(t, menu, navUp)
 		assert.Contains(t, menu, navDone)
 		assert.NotContains(t, menu, navHome)
@@ -252,26 +252,26 @@ func TestBuildBrowseMenu(t *testing.T) {
 
 	t.Run("non-root has Up and Home", func(t *testing.T) {
 		t.Parallel()
-		menu := buildBrowseMenu(nil, false, false, false, true, -1, nil)
+		menu := buildBrowseMenu(browseMenuContext{hasIntro: true, sectionIdx: -1})
 		assert.Contains(t, menu, navUp)
 		assert.Contains(t, menu, navHome)
 	})
 
 	t.Run("with sections shows Sections option", func(t *testing.T) {
 		t.Parallel()
-		menu := buildBrowseMenu(nil, false, true, false, true, -1, headings)
+		menu := buildBrowseMenu(browseMenuContext{hasHeadings: true, hasIntro: true, sectionIdx: -1, headings: headings})
 		assert.Contains(t, menu, navSections)
 	})
 
 	t.Run("with history shows Back", func(t *testing.T) {
 		t.Parallel()
-		menu := buildBrowseMenu(nil, false, false, true, true, -1, nil)
+		menu := buildBrowseMenu(browseMenuContext{hasHistory: true, hasIntro: true, sectionIdx: -1})
 		assert.Contains(t, menu, navBack)
 	})
 
 	t.Run("section view shows prev/next", func(t *testing.T) {
 		t.Parallel()
-		menu := buildBrowseMenu(nil, false, true, false, true, 0, headings)
+		menu := buildBrowseMenu(browseMenuContext{hasHeadings: true, hasIntro: true, sectionIdx: 0, headings: headings})
 		// At section 0, should have next but not prev (intro is the prev when hasIntro)
 		found := false
 		for _, item := range menu {
@@ -285,7 +285,7 @@ func TestBuildBrowseMenu(t *testing.T) {
 	t.Run("nav items included", func(t *testing.T) {
 		t.Parallel()
 		items := []navOption{{label: "My Link", path: "some/path"}}
-		menu := buildBrowseMenu(items, true, false, false, true, -1, nil)
+		menu := buildBrowseMenu(browseMenuContext{items: items, isRoot: true, hasIntro: true, sectionIdx: -1})
 		assert.Contains(t, menu, "My Link")
 	})
 }

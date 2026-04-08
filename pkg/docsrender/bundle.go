@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pgavlin/goldmark/ast"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -46,9 +47,7 @@ type CLIDocEntry struct {
 	DeprecationMessage string `json:"deprecationMessage,omitempty"`
 }
 
-// CLIDocsBundle represents the bundled CLI docs JSON for a package.
-// Supports both the new structured format (CLIDocEntry objects) and the legacy
-// format (raw markdown strings) for backward compatibility.
+// CLIDocsBundle is the bundled CLI docs JSON for a package.
 type CLIDocsBundle struct {
 	Package        string                 `json:"package"`
 	PackageVersion string                 `json:"packageVersion"`
@@ -88,11 +87,9 @@ func unmarshalEntries(raw map[string]json.RawMessage) map[string]CLIDocEntry {
 			result[key] = entry
 			continue
 		}
-		// Legacy format: raw markdown string.
 		var content string
 		if err := json.Unmarshal(data, &content); err == nil {
-			content = strings.ReplaceAll(content, "\r\n", "\n")
-			content = strings.ReplaceAll(content, "\t", "    ")
+			content = normalizeWhitespace(content)
 			title, body := extractLegacyTitle(content)
 			result[key] = CLIDocEntry{
 				Title:   title,
@@ -103,7 +100,6 @@ func unmarshalEntries(raw map[string]json.RawMessage) map[string]CLIDocEntry {
 	return result
 }
 
-// extractLegacyTitle extracts a "# Title" from the first line of legacy bundle content.
 // MarshalJSON serializes the bundle in the new structured format.
 func (b CLIDocsBundle) MarshalJSON() ([]byte, error) {
 	type alias struct {
@@ -147,7 +143,6 @@ const (
 
 var bundleMemCache sync.Map
 
-// ParseAPIDocsPath extracts the package name and doc key from an API docs path.
 func ParseAPIDocsPath(path string) (packageName, docKey string, ok bool) {
 	trimmed := strings.Trim(path, "/")
 	const prefix = "registry/packages/"
@@ -170,15 +165,14 @@ func ParseAPIDocsPath(path string) (packageName, docKey string, ok bool) {
 	return "", "", false
 }
 
-// FetchCLIDocsBundle fetches the CLI docs bundle for a package, using in-memory
-// and disk caches to avoid redundant HTTP requests.
+// FetchCLIDocsBundle fetches and caches the CLI docs bundle for a package.
 func FetchCLIDocsBundle(baseURL, packageName string) (*CLIDocsBundle, error) {
 	if cached, ok := bundleMemCache.Load(packageName); ok {
 		return cached.(*CLIDocsBundle), nil
 	}
 
 	bundle, err := loadBundleFromDisk(packageName)
-	if err == nil && bundle != nil {
+	if err == nil {
 		bundleMemCache.Store(packageName, bundle)
 		return bundle, nil
 	}
@@ -419,73 +413,66 @@ func ClassifyBundleKeys(bundle *CLIDocsBundle, modulePrefix string) ClassifiedKe
 	}
 }
 
-// RenderBundleTable renders a formatted table of modules, resources, and/or functions.
-func RenderBundleTable(bundle *CLIDocsBundle, modulePrefix string) string {
-	ck := ClassifyBundleKeys(bundle, modulePrefix)
-
-	if len(ck.SubModules) == 0 && len(ck.Resources) == 0 && len(ck.Functions) == 0 {
-		return ""
-	}
-
-	modules := make([]tableEntry, len(ck.SubModules))
-	for i, mod := range ck.SubModules {
-		modules[i] = tableEntry{name: mod}
-	}
-
-	resources := make([]tableEntry, len(ck.Resources))
-	for i, r := range ck.Resources {
-		resources[i] = tableEntry{name: r.Title, desc: truncateDescription(r.Description)}
-	}
-
-	functions := make([]tableEntry, len(ck.Functions))
-	for i, f := range ck.Functions {
-		functions[i] = tableEntry{name: f.Title, desc: truncateDescription(f.Description)}
-	}
-
-	maxName := 0
-	for _, list := range [][]tableEntry{resources, functions} {
-		for _, e := range list {
-			if len(e.name) > maxName {
-				maxName = len(e.name)
-			}
-		}
-	}
-
-	var buf strings.Builder
-
-	if len(modules) > 0 {
-		fmt.Fprintf(&buf, "\n  %s\n", SectionModules)
-		renderColumns(&buf, modules)
-	}
-
-	renderDescSection := func(label string, entries []tableEntry) {
-		if len(entries) == 0 {
-			return
-		}
-		fmt.Fprintf(&buf, "\n  %s\n\n", label)
-		for _, e := range entries {
-			if e.desc != "" {
-				fmt.Fprintf(&buf, "%-*s  %s\n", maxName, e.name, e.desc)
-			} else {
-				fmt.Fprintf(&buf, "%s\n", e.name)
-			}
-		}
-	}
-
-	renderDescSection(SectionResources, resources)
-	renderDescSection(SectionFunctions, functions)
-	buf.WriteString("\n")
-
-	return buf.String()
+// APIDocsBasePath returns the base URL path for a package's API docs.
+func APIDocsBasePath(pkgName string) string {
+	return "/registry/packages/" + pkgName + "/api-docs"
 }
 
-// BuildAPIDocsPage constructs a clean API docs overview page from the bundle data.
-// It uses the bundle's Overview field when available, falling back to the provided
-// intro text for older bundles that lack it.
+// APIDocsModulePath returns the URL path for a submodule under a package's API docs,
+// honoring the optional parent modulePrefix.
+func APIDocsModulePath(pkgName, modulePrefix, mod string) string {
+	p := APIDocsBasePath(pkgName)
+	if modulePrefix != "" {
+		p += "/" + modulePrefix
+	}
+	return p + "/" + mod
+}
+
+// APIDocsEntryPath returns the URL path for a resource or function under a package's API docs.
+func APIDocsEntryPath(pkgName, key string) string {
+	return APIDocsBasePath(pkgName) + "/" + key
+}
+
+// absolutizeBundleLinks rewrites relative link destinations in a bundle's overview
+// markdown so they resolve under /registry/packages/<pkg>/api-docs/. Links that already
+// have a scheme, are rooted (start with "/"), or are anchors (start with "#") are left
+// alone. This lets NumberLinks recognize bundle-authored entries as registry links.
+func absolutizeBundleLinks(md, pkgName string) string {
+	if md == "" || pkgName == "" {
+		return md
+	}
+	source := []byte(md)
+	tree := ParseMarkdown(source)
+	basePath := APIDocsBasePath(pkgName) + "/"
+
+	rewrote := false
+	_ = ast.Walk(tree, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		link, ok := node.(*ast.Link)
+		if !ok {
+			return ast.WalkContinue, nil
+		}
+		dest := string(link.Destination)
+		if dest == "" || strings.Contains(dest, "://") || strings.HasPrefix(dest, "/") || strings.HasPrefix(dest, "#") {
+			return ast.WalkSkipChildren, nil
+		}
+		link.Destination = []byte(basePath + dest)
+		rewrote = true
+		return ast.WalkSkipChildren, nil
+	})
+
+	if !rewrote {
+		return md
+	}
+	return string(renderTree(source, tree))
+}
+
+// BuildAPIDocsPage constructs an API docs overview page from the bundle data.
 func BuildAPIDocsPage(bundle *CLIDocsBundle, modulePrefix, intro string) string {
-	// Prefer the bundle's overview (clean markdown from upstream).
 	if modulePrefix == "" && bundle.Overview != "" {
-		return bundle.Overview
+		return absolutizeBundleLinks(bundle.Overview, bundle.Package)
 	}
 	ck := ClassifyBundleKeys(bundle, modulePrefix)
 	var buf strings.Builder
@@ -497,7 +484,11 @@ func BuildAPIDocsPage(bundle *CLIDocsBundle, modulePrefix, intro string) string 
 
 	if len(ck.SubModules) > 0 {
 		buf.WriteString("## " + SectionModules + "\n\n")
-		buf.WriteString(strings.Join(ck.SubModules, ", "))
+		links := make([]string, 0, len(ck.SubModules))
+		for _, mod := range ck.SubModules {
+			links = append(links, fmt.Sprintf("[%s](%s)", mod, APIDocsModulePath(bundle.Package, modulePrefix, mod)))
+		}
+		buf.WriteString(strings.Join(links, ", "))
 		buf.WriteString("\n\n")
 	}
 
@@ -507,10 +498,11 @@ func BuildAPIDocsPage(bundle *CLIDocsBundle, modulePrefix, intro string) string 
 		}
 		buf.WriteString("## " + title + "\n\n")
 		for _, e := range entries {
+			link := fmt.Sprintf("[**%s**](%s)", e.Title, APIDocsEntryPath(bundle.Package, e.Key))
 			if e.Description != "" {
-				fmt.Fprintf(&buf, "- **%s** — %s\n", e.Title, truncateDescription(e.Description))
+				fmt.Fprintf(&buf, "- %s — %s\n", link, truncateDescription(e.Description))
 			} else {
-				fmt.Fprintf(&buf, "- %s\n", e.Title)
+				fmt.Fprintf(&buf, "- %s\n", link)
 			}
 		}
 		buf.WriteString("\n")
@@ -527,12 +519,10 @@ func truncateDescription(desc string) string {
 	if desc == "" {
 		return ""
 	}
-	// Take first line only.
 	if idx := strings.Index(desc, "\n"); idx >= 0 {
 		desc = desc[:idx]
 	}
 	desc = strings.TrimSpace(desc)
-	// Truncate at first sentence boundary.
 	if idx := strings.Index(desc, ". "); idx >= 0 {
 		desc = desc[:idx+1]
 	}
@@ -570,142 +560,3 @@ func FormatPackageDetails(body string) string {
 	return body[:afterHeading] + "\n\n" + formatted.String() + body[endIdx:]
 }
 
-// RenderBundleSingleSection renders a single section (Modules, Resources, or Functions)
-// as plain text suitable for direct terminal output.
-func RenderBundleSingleSection(bundle *CLIDocsBundle, modulePrefix, section string) string {
-	ck := ClassifyBundleKeys(bundle, modulePrefix)
-	return renderBundleSectionDirect(ck, section)
-}
-
-// renderBundleSectionDirect renders a single section as plain text for direct output.
-func renderBundleSectionDirect(ck ClassifiedKeys, section string) string {
-	var buf strings.Builder
-
-	switch section {
-	case SectionModules:
-		if len(ck.SubModules) == 0 {
-			return ""
-		}
-		bold := ANSIBold
-		reset := ANSIReset
-		modules := make([]tableEntry, len(ck.SubModules))
-		for i, mod := range ck.SubModules {
-			modules[i] = tableEntry{name: bold + mod + reset, width: len(mod)}
-		}
-		renderColumns(&buf, modules)
-
-	case SectionResources, SectionFunctions:
-		var entries []ClassifiedEntry
-		if section == SectionResources {
-			entries = ck.Resources
-		} else {
-			entries = ck.Functions
-		}
-		if len(entries) == 0 {
-			return ""
-		}
-
-		maxName := 0
-		for _, e := range entries {
-			if len(e.Title) > maxName {
-				maxName = len(e.Title)
-			}
-		}
-
-		bold := ANSIBold
-		reset := ANSIReset
-		for _, e := range entries {
-			desc := truncateDescription(e.Description)
-			if desc != "" {
-				// Pad based on visible width, then add ANSI bold
-				pad := maxName - len(e.Title)
-				buf.WriteString(bold + e.Title + reset + strings.Repeat(" ", pad) + "  " + desc + "\n")
-			} else {
-				buf.WriteString(bold + e.Title + reset + "\n")
-			}
-		}
-	}
-
-	return buf.String()
-}
-
-type tableEntry struct {
-	name  string // display string (may contain ANSI codes)
-	width int    // visible width (0 means use len(name))
-	desc  string
-}
-
-func (e tableEntry) visibleWidth() int {
-	if e.width > 0 {
-		return e.width
-	}
-	return len(e.name)
-}
-
-func renderColumns(buf *strings.Builder, entries []tableEntry) {
-	if len(entries) == 0 {
-		return
-	}
-
-	availWidth := GetTerminalWidth() - 8
-	const gap = 2
-
-	bestCols := 1
-	for tryC := 2; tryC <= len(entries); tryC++ {
-		rows := (len(entries) + tryC - 1) / tryC
-		totalWidth := 0
-		fits := true
-		for c := range tryC {
-			colMax := 0
-			for r := range rows {
-				idx := c*rows + r
-				if idx < len(entries) && entries[idx].visibleWidth() > colMax {
-					colMax = entries[idx].visibleWidth()
-				}
-			}
-			if c < tryC-1 {
-				totalWidth += colMax + gap
-			} else {
-				totalWidth += colMax
-			}
-			if totalWidth > availWidth {
-				fits = false
-				break
-			}
-		}
-		if fits {
-			bestCols = tryC
-		} else {
-			break
-		}
-	}
-
-	rows := (len(entries) + bestCols - 1) / bestCols
-
-	colWidths := make([]int, bestCols)
-	for c := range bestCols {
-		for r := range rows {
-			idx := c*rows + r
-			if idx < len(entries) && entries[idx].visibleWidth() > colWidths[c] {
-				colWidths[c] = entries[idx].visibleWidth()
-			}
-		}
-	}
-
-	for r := range rows {
-		for c := range bestCols {
-			idx := c*rows + r
-			if idx >= len(entries) {
-				break
-			}
-			e := entries[idx]
-			if c < bestCols-1 {
-				pad := colWidths[c] + gap - e.visibleWidth()
-				buf.WriteString(e.name + strings.Repeat(" ", pad))
-			} else {
-				buf.WriteString(e.name)
-			}
-		}
-		buf.WriteString("\n")
-	}
-}

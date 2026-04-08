@@ -31,9 +31,7 @@ type ChooserInfo struct {
 	Options []string // available option values
 }
 
-// ScanChoosers walks the AST to find chooser blocks and returns their types
-// and available options. Duplicate chooser types are deduplicated (first wins).
-// The source must be the original bytes used to parse tree.
+// ScanChoosers finds chooser blocks in the AST and returns their types and options.
 func ScanChoosers(source []byte, tree ast.Node) []ChooserInfo {
 	seen := map[string]bool{}
 	var result []ChooserInfo
@@ -107,7 +105,6 @@ func ResolveChoosers(source []byte, tree ast.Node, selections map[string]string)
 // resolveChooserBlocks walks the AST looking for sequences of HTMLBlock nodes
 // that form chooser/option/close patterns, then resolves them in place.
 func resolveChooserBlocks(source []byte, tree ast.Node, selections map[string]string) {
-	// Collect top-level children into a slice for safe iteration during mutation.
 	var children []ast.Node
 	for c := tree.FirstChild(); c != nil; c = c.NextSibling() {
 		children = append(children, c)
@@ -126,7 +123,6 @@ func resolveChooserBlocks(source []byte, tree ast.Node, selections map[string]st
 		chooserType := value
 		selected := selections[chooserType]
 
-		// Scan forward to find options and the closing tag.
 		type option struct {
 			value string
 			nodes []ast.Node
@@ -162,24 +158,20 @@ func resolveChooserBlocks(source []byte, tree ast.Node, selections map[string]st
 		}
 
 		if !closed {
-			// Unclosed chooser — leave as-is.
 			i = j
 			continue
 		}
 
-		// Remove the chooser open tag, all content, and close tag.
 		for k := i; k < j; k++ {
 			tree.RemoveChild(tree, children[k])
 		}
 
-		// Find the insertion point (the node after the removed range, or nil for end).
 		var insertBefore ast.Node
 		if j < len(children) {
 			insertBefore = children[j]
 		}
 
 		if selected != "" {
-			// Insert only the selected option's content.
 			for _, opt := range options {
 				if strings.EqualFold(opt.value, selected) {
 					for _, n := range opt.nodes {
@@ -189,7 +181,6 @@ func resolveChooserBlocks(source []byte, tree ast.Node, selections map[string]st
 				}
 			}
 		} else {
-			// No selection: show all options with labels.
 			for _, opt := range options {
 				for _, n := range opt.nodes {
 					tree.InsertBefore(tree, insertBefore, n)
@@ -201,7 +192,6 @@ func resolveChooserBlocks(source []byte, tree ast.Node, selections map[string]st
 	}
 }
 
-// htmlBlockText extracts the text content from an HTMLBlock node.
 func htmlBlockText(source []byte, node ast.Node) string {
 	hb, ok := node.(*ast.HTMLBlock)
 	if !ok {
@@ -232,7 +222,6 @@ func parseChooserComment(text string) (kind, value string, isClose, ok bool) {
 	}
 	inner := strings.TrimSpace(text[4 : len(text)-3])
 
-	// Check for close tags: /chooser or /option.
 	if strings.HasPrefix(inner, "/") {
 		tag := strings.TrimSpace(inner[1:])
 		switch tag {
@@ -245,7 +234,6 @@ func parseChooserComment(text string) (kind, value string, isClose, ok bool) {
 		}
 	}
 
-	// Check for open tags: "chooser: TYPE" or "option: VALUE".
 	parts := strings.SplitN(inner, ":", 2)
 	if len(parts) != 2 {
 		return "", "", false, false

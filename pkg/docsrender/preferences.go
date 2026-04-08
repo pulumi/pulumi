@@ -60,13 +60,11 @@ func (p *Preferences) Set(chooserType, value string) {
 	}
 }
 
-// preferencesPath returns the path to the preferences file.
 func preferencesPath() (string, error) {
 	return workspace.GetPulumiPath(preferencesFile)
 }
 
-// LoadPreferences reads preferences from disk. Returns empty preferences
-// if the file is missing or malformed.
+// LoadPreferences reads preferences from disk, returning defaults on failure.
 func LoadPreferences() *Preferences {
 	path, err := preferencesPath()
 	if err != nil {
@@ -91,8 +89,7 @@ func LoadPreferences() *Preferences {
 	return &prefs
 }
 
-// SavePreferences writes preferences to disk. Errors are logged at V(7)
-// and not returned; a failed save must never abort a render.
+// SavePreferences persists preferences; errors are logged, not returned.
 func SavePreferences(prefs *Preferences) {
 	path, err := preferencesPath()
 	if err != nil {

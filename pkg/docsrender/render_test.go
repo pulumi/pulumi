@@ -155,3 +155,79 @@ func TestWebURL(t *testing.T) {
 			WebURL("https://www.pulumi.com", "registry/packages/aws"))
 	})
 }
+
+func TestPipelineChooserAndFilter(t *testing.T) {
+	t.Parallel()
+
+	input := "# How-To Guides\n\n" +
+		"<!-- chooser: language -->\n" +
+		"<!-- option: typescript -->\n" +
+		"See [TS Guide](/docs/ts-guide).\n\n" +
+		"```typescript\nconsole.log('hello');\n```\n\n" +
+		"<!-- /option -->\n" +
+		"<!-- option: python -->\n" +
+		"See [Python Guide](/docs/python-guide).\n\n" +
+		"```python\nprint('hello')\n```\n\n" +
+		"<!-- /option -->\n" +
+		"<!-- /chooser -->\n\n" +
+		"Some shared content with a [Shared Link](/docs/shared).\n"
+
+	tests := []struct {
+		name         string
+		lang         string
+		wantLinks    []string
+		notWantLinks []string
+		wantCode     string
+		notWantCode  string
+	}{
+		{
+			name:         "python selected",
+			lang:         "python",
+			wantLinks:    []string{"/docs/python-guide", "/docs/shared"},
+			notWantLinks: []string{"/docs/ts-guide"},
+			wantCode:     "print('hello')",
+			notWantCode:  "console.log",
+		},
+		{
+			name:         "typescript selected",
+			lang:         "typescript",
+			wantLinks:    []string{"/docs/ts-guide", "/docs/shared"},
+			notWantLinks: []string{"/docs/python-guide"},
+			wantCode:     "console.log",
+			notWantCode:  "print('hello')",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			source := []byte(input)
+			tree := ParseMarkdown(source)
+
+			selections := map[string]string{"language": tt.lang}
+			resolved := ResolveChoosers(source, tree, selections)
+
+			filtered := FilterCodeBlocksByLanguage(resolved, ParseMarkdown(resolved), tt.lang)
+			result := string(filtered)
+
+			assert.Contains(t, result, tt.wantCode)
+			assert.NotContains(t, result, tt.notWantCode)
+
+			links := ExtractInternalLinks(result)
+			var linkURLs []string
+			for _, l := range links {
+				linkURLs = append(linkURLs, l.URL)
+			}
+			for _, want := range tt.wantLinks {
+				assert.Contains(t, linkURLs, want)
+			}
+			for _, notWant := range tt.notWantLinks {
+				assert.NotContains(t, linkURLs, notWant)
+			}
+
+			// Re-resolution is a no-op: no chooser comments should remain.
+			choosers := ScanChoosers(filtered, ParseMarkdown(filtered))
+			assert.Empty(t, choosers)
+		})
+	}
+}

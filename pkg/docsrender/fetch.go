@@ -49,6 +49,12 @@ func normalizeBaseURL(baseURL string) string {
 	return strings.TrimRight(baseURL, "/")
 }
 
+// normalizeWhitespace converts CRLF to LF and tabs to 4 spaces.
+func normalizeWhitespace(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	return strings.ReplaceAll(s, "\t", "    ")
+}
+
 func userAgent() string {
 	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", runtime.GOOS, runtime.GOARCH)
 }
@@ -75,12 +81,7 @@ func FetchDoc(baseURL, path string) (body string, title string, resolvedPath str
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		// Check if the client silently followed a redirect to a different content
-		// path (e.g. /docs/guides/index.md → /docs/iac/). If so, re-fetch the
-		// markdown from the redirected path instead of using the HTML we landed on.
-		// Compare URL paths (ignoring scheme/host) to detect content redirects
-		// while allowing benign redirects (HTTP→HTTPS, CDN normalization).
-		// Strip /index.md since we appended it ourselves.
+		// Detect content redirects (path changed) vs benign redirects (scheme/CDN).
 		finalPath := strings.TrimSuffix(strings.TrimSuffix(resp.Request.URL.Path, "/index.md"), "/")
 		requestedPath := strings.TrimSuffix(strings.TrimSuffix(req.URL.Path, "/index.md"), "/")
 		if finalPath != requestedPath {
@@ -93,9 +94,7 @@ func FetchDoc(baseURL, path string) (body string, title string, resolvedPath str
 		if err != nil {
 			return "", "", "", fmt.Errorf("reading docs response: %w", err)
 		}
-		raw := strings.ReplaceAll(string(data), "\r\n", "\n")
-		raw = strings.ReplaceAll(raw, "\t", "    ")
-		body, title = StripFrontmatter(raw)
+		body, title = StripFrontmatter(normalizeWhitespace(string(data)))
 		return body, title, strings.Trim(path, "/"), nil
 	}
 
@@ -173,18 +172,15 @@ func StripFrontmatter(raw string) (body string, title string) {
 	}
 
 	rest := raw[3:]
-	idx := strings.Index(rest, "\n---")
-	if idx < 0 {
+	frontmatter, after, ok := strings.Cut(rest, "\n---")
+	if !ok {
 		return raw, ""
 	}
+	body = strings.TrimLeft(after, "\n")
 
-	frontmatter := rest[:idx]
-	body = strings.TrimLeft(rest[idx+4:], "\n")
-
-	for _, line := range strings.Split(frontmatter, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "title:") {
-			title = strings.TrimSpace(strings.TrimPrefix(line, "title:"))
+	for line := range strings.SplitSeq(frontmatter, "\n") {
+		if after, ok := strings.CutPrefix(strings.TrimSpace(line), "title:"); ok {
+			title = strings.TrimSpace(after)
 			title = strings.Trim(title, "\"'")
 			break
 		}

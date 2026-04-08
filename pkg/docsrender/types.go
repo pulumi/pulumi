@@ -28,20 +28,16 @@ const (
 	DefaultDocsBaseURL     = "https://www.pulumi.com"
 	DefaultRegistryBaseURL = "https://www.pulumi.com"
 
-	// Chooser type constants.
 	ChooserLanguage = "language"
 	ChooserOS       = "os"
 	ChooserCloud    = "cloud"
 
-	// ANSI escape codes for terminal formatting.
 	ANSIBold  = "\033[1m"
 	ANSIReset = "\033[0m"
 
-	// Browse mode preferences.
 	BrowseModeFull     = "full"
 	BrowseModeSections = "sections"
 
-	// Special section slug for the introduction.
 	SectionIntroduction = "introduction"
 )
 

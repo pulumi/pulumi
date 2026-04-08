@@ -20,8 +20,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// buildChooserSelections builds a selections map for docsrender.ResolveChoosers.
-// It resolves selections from flags, stored preferences, and interactive prompts.
+// buildChooserSelections resolves chooser selections from flags, preferences, and prompts.
 func buildChooserSelections(
 	choosers []docsrender.ChooserInfo, prefs *docsrender.Preferences,
 	flagLang, flagOS string,
@@ -29,7 +28,6 @@ func buildChooserSelections(
 ) map[string]string {
 	selections := map[string]string{}
 
-	// Apply flag overrides
 	if flagLang != "" {
 		selections[docsrender.ChooserLanguage] = flagLang
 	}
@@ -37,14 +35,12 @@ func buildChooserSelections(
 		selections[docsrender.ChooserOS] = flagOS
 	}
 
-	// Apply session selections (reuse prior interactive choices)
 	for k, v := range session {
 		if _, ok := selections[k]; !ok {
 			selections[k] = v
 		}
 	}
 
-	// Apply stored preferences for types not yet resolved
 	for _, t := range []string{docsrender.ChooserLanguage, docsrender.ChooserOS, docsrender.ChooserCloud} {
 		if _, ok := selections[t]; !ok {
 			if v := prefs.Get(t); v != "" {
@@ -53,7 +49,6 @@ func buildChooserSelections(
 		}
 	}
 
-	// For interactive mode, prompt for any chooser types still unresolved
 	if cmdutil.Interactive() {
 		for _, ci := range choosers {
 			if _, ok := selections[ci.Type]; ok {
@@ -78,7 +73,6 @@ func buildChooserSelections(
 		}
 	}
 
-	// Persist selections
 	for k, v := range selections {
 		session[k] = v
 		prefs.Set(k, v)

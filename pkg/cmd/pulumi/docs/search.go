@@ -24,10 +24,13 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
+
+var searchHTTPClient = &http.Client{Timeout: 10 * time.Second}
 
 type cliConfig struct {
 	Algolia algoliaConfig `json:"algolia"`
@@ -78,7 +81,7 @@ func fetchCLIConfig(baseURL string) (*cliConfig, error) {
 	configURL := strings.TrimRight(baseURL, "/") + "/docs/cli-config.json"
 
 	//nolint:gosec // URL is constructed from user-provided base URL
-	resp, err := http.Get(configURL)
+	resp, err := searchHTTPClient.Get(configURL)
 	if err != nil {
 		return nil, fmt.Errorf("fetching CLI config: %w", err)
 	}
@@ -146,7 +149,7 @@ func searchDocs(query, appID, apiKey, indexName string) ([]algoliaHit, error) {
 	req.Header.Set("X-Algolia-API-Key", apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := searchHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("executing search: %w", err)
 	}

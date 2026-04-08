@@ -138,12 +138,9 @@ func GetIntro(md string) string {
 		return string(intro)
 	}
 
-	// No text before first heading — collect nodes up to the first H2 boundary.
 	var nodes []ast.Node
 	for c := tree.FirstChild(); c != nil; c = c.NextSibling() {
 		if h, ok := c.(*ast.Heading); ok && h.Level <= 2 && len(nodes) > 0 {
-			// We've hit an H2 (or another H1) after already collecting some nodes.
-			// Stop here — this is the start of the first navigable section.
 			break
 		}
 		nodes = append(nodes, c)
@@ -162,16 +159,13 @@ func IntroContainsFirstHeading(md string) bool {
 	source := []byte(md)
 	tree := ParseMarkdown(source)
 	if ExtractIntro(source, tree) != nil {
-		return false // text before first heading — intro is separate
+		return false
 	}
-	// Document starts with a heading. If it's H1 and there are H2 sections,
-	// the intro (H1 + pre-H2 content) is separate from the navigable sections.
 	first := tree.FirstChild()
 	if first == nil {
 		return false
 	}
 	if h, ok := first.(*ast.Heading); ok && h.Level == 1 {
-		// Check if any H2 exists — if so, the H1 intro is separate.
 		for c := first.NextSibling(); c != nil; c = c.NextSibling() {
 			if h2, ok := c.(*ast.Heading); ok && h2.Level == 2 {
 				return false
@@ -180,8 +174,6 @@ func IntroContainsFirstHeading(md string) bool {
 	}
 	return true
 }
-
-// --- Internal helpers ---
 
 func headingPlainText(source []byte, h *ast.Heading) string {
 	var buf bytes.Buffer

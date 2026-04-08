@@ -64,8 +64,8 @@ func (dc *docsCmd) runSitemap(scope string) error {
 }
 
 func (dc *docsCmd) fetchSitemapForScope(scope string) ([]docsrender.SitemapPage, error) {
-	if strings.HasPrefix(scope, "registry/packages/") {
-		parts := strings.SplitN(strings.TrimPrefix(scope, "registry/packages/"), "/", 2)
+	if after, ok := strings.CutPrefix(scope, "registry/packages/"); ok {
+		parts := strings.SplitN(after, "/", 2)
 		pkg := parts[0]
 		if pkg == "" {
 			return nil, errors.New("missing package name — use: pulumi docs sitemap registry/packages/<pkg>")

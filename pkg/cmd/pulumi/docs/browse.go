@@ -38,14 +38,10 @@ const (
 )
 
 type browseNode struct {
-	path         string
-	title        string
-	body         string
-	items        []navOption
-	bundleTable  string
-	bundle       *docsrender.CLIDocsBundle
-	bundlePrefix string
-	sectionNav   map[string][]navOption
+	path  string
+	title string
+	body  string
+	items []navOption
 }
 
 type navOption struct {
@@ -61,6 +57,12 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 	for {
 		node := dc.resolveNode(path)
 		path = node.path
+
+		// Resolve choosers early so that headings and links extracted below
+		// only reflect the selected language/OS/cloud option.
+		if node.body != "" {
+			node.body = dc.resolveContent(node.body)
+		}
 
 		headings := docsrender.GetHeadings(node.body)
 		hasSections := len(headings) > 0 && node.body != ""
@@ -113,16 +115,7 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 			return nil
 		}
 
-		// For API docs pages with per-section nav, defer showing bundle items
-		// until the user views a specific section or full page. Otherwise the
-		// intro view is cluttered with every resource/function in the package.
-		if !useSections || node.sectionNav == nil {
-			navItems = append(navItems, node.items...)
-		}
-
-		if node.bundleTable != "" && node.body == "" {
-			fmt.Print(node.bundleTable)
-		}
+		navItems = append(navItems, node.items...)
 
 		if len(navItems) == 0 && node.body == "" {
 			pageURL := docsrender.WebURL(dc.baseURLForPath(path), path)
@@ -149,8 +142,15 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 			isRoot := path == ""
 			hasHeadings := len(headings) > 0
 			menuItems := activeItems
-			menu := buildBrowseMenu(menuItems, isRoot, hasHeadings,
-				len(history) > 0, !introIncludesFirstSection, sectionIdx, headings)
+			menu := buildBrowseMenu(browseMenuContext{
+				items:       menuItems,
+				isRoot:      isRoot,
+				hasHeadings: hasHeadings,
+				hasHistory:  len(history) > 0,
+				hasIntro:    !introIncludesFirstSection,
+				sectionIdx:  sectionIdx,
+				headings:    headings,
+			})
 
 			promptTitle := node.title
 			if promptTitle == "" {
@@ -202,7 +202,7 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 					}
 					sectionIdx = -1
 				} else if idx >= 0 {
-					renderSectionByIdx(dc, node.body, headings, idx, &activeItems, &node)
+					activeItems = renderSectionByIdx(dc, node.body, headings, idx)
 					sectionIdx = idx
 				}
 
@@ -226,11 +226,11 @@ func (dc *docsCmd) browseLoop(startPath string) error {
 							activeItems = introNav
 						}
 					} else {
-						renderSectionByIdx(dc, node.body, headings, sectionIdx, &activeItems, &node)
+						activeItems = renderSectionByIdx(dc, node.body, headings, sectionIdx)
 					}
 				} else if strings.HasPrefix(selected, navNext) && sectionIdx+1 < len(headings) {
 					sectionIdx++
-					renderSectionByIdx(dc, node.body, headings, sectionIdx, &activeItems, &node)
+					activeItems = renderSectionByIdx(dc, node.body, headings, sectionIdx)
 				} else {
 					for _, item := range menuItems {
 						if item.label == selected {
@@ -285,33 +285,26 @@ func (dc *docsCmd) resolveRoot() browseNode {
 }
 
 func (dc *docsCmd) resolveDocsSitemap() browseNode {
-	pages, err := docsrender.FetchSitemap(dc.baseURL)
-	if err != nil {
-		return browseNode{path: "docs", title: "Docs"}
-	}
-	return browseNode{
-		path:  "docs",
-		title: "Docs",
-		items: sitemapToNavOptions(pages, dc.baseURL),
-	}
+	return dc.resolveSitemap("docs", "Docs", dc.baseURL, docsrender.FetchSitemap)
 }
 
 func (dc *docsCmd) resolveRegistryList() browseNode {
-	pages, err := docsrender.FetchRegistrySitemap(dc.registryBaseURL)
+	return dc.resolveSitemap("registry", "Registry", dc.registryBaseURL, docsrender.FetchRegistrySitemap)
+}
+
+func (dc *docsCmd) resolveSitemap(
+	path, title, baseURL string, fetch func(string) ([]docsrender.SitemapPage, error),
+) browseNode {
+	pages, err := fetch(baseURL)
 	if err != nil {
-		return browseNode{path: "registry", title: "Registry"}
+		return browseNode{path: path, title: title}
 	}
-	return browseNode{
-		path:  "registry",
-		title: "Registry",
-		items: sitemapToNavOptions(pages, dc.registryBaseURL),
-	}
+	return browseNode{path: path, title: title, items: sitemapToNavOptions(pages, baseURL)}
 }
 
 func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 	node := browseNode{path: path}
 
-	// Parse API docs path and fetch bundle once for reuse below.
 	var pkgName, docKey string
 	var bundle *docsrender.CLIDocsBundle
 	if docsrender.IsAPIDocsPath(path) {
@@ -330,21 +323,8 @@ func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 			}
 		}
 		if node.body == "" && docKey == "" && bundle.Overview != "" {
-			// Use the bundle's overview directly — no need to fetch index.md.
 			node.body = docsrender.BuildAPIDocsPage(bundle, docKey, "")
 			node.title = bundle.Package
-			node.items = BundleNavItems(bundle, docKey, pkgName)
-			node.sectionNav = BundleSectionNav(bundle, docKey, pkgName)
-			node.bundleTable = docsrender.RenderBundleTable(bundle, docKey)
-			node.bundle = bundle
-			node.bundlePrefix = docKey
-		}
-		if node.body == "" {
-			bundleNav := BundleNavItems(bundle, docKey, pkgName)
-			if len(bundleNav) > 0 {
-				node.items = bundleNav
-				node.bundleTable = docsrender.RenderBundleTable(bundle, docKey)
-			}
 		}
 	}
 
@@ -360,19 +340,21 @@ func (dc *docsCmd) resolveRegistryPage(path string) browseNode {
 			if bundle != nil {
 				intro := docsrender.GetIntro(node.body)
 				node.body = docsrender.BuildAPIDocsPage(bundle, docKey, intro)
-				node.sectionNav = BundleSectionNav(bundle, docKey, pkgName)
-				node.bundleTable = docsrender.RenderBundleTable(bundle, docKey)
-				node.bundle = bundle
-				node.bundlePrefix = docKey
 			} else if !docsrender.IsAPIDocsPath(path) {
 				node.body = docsrender.FormatPackageDetails(node.body)
 			}
-			// Load sibling nav from sitemap, excluding self-links.
 			trimmedPath := strings.Trim(path, "/")
 			for _, item := range dc.registryNavItems(path) {
 				if strings.Trim(item.path, "/") != trimmedPath {
 					node.items = append(node.items, item)
 				}
+			}
+		} else if bundle != nil {
+			// FetchDoc failed but we have a bundle: synthesize a page from it so
+			// the user still gets numbered links to drill into resources/functions.
+			node.body = docsrender.BuildAPIDocsPage(bundle, docKey, "")
+			if node.title == "" {
+				node.title = pathLastSegment(path)
 			}
 		} else {
 			var regErr *docsrender.RegistryNotAvailableError
@@ -417,7 +399,13 @@ func (dc *docsCmd) resolveDocsPage(path string) browseNode {
 	node.items = dc.docsSitemapNavItems(path)
 
 	if len(node.items) > 0 && node.body != "" && !forceContent {
-		viewLabel := dc.docsPageViewLabel(path)
+		viewLabel := "Introduction"
+		pages, err := docsrender.FetchSitemap(dc.baseURL)
+		if err == nil {
+			if p := findPage(pages, "/docs/"+strings.Trim(path, "/")+"/"); p != nil {
+				viewLabel = p.ViewLabel()
+			}
+		}
 		selfItem := navOption{label: viewLabel, path: path + "/__view"}
 		node.items = append([]navOption{selfItem}, node.items...)
 		node.body = ""
@@ -430,46 +418,53 @@ func (dc *docsCmd) resolveDocsPage(path string) browseNode {
 	return node
 }
 
-func buildBrowseMenu(
-	items []navOption, isRoot, hasHeadings, hasHistory, hasIntro bool,
-	sectionIdx int, headings []docsrender.Heading,
-) []string {
+type browseMenuContext struct {
+	items       []navOption
+	isRoot      bool
+	hasHeadings bool
+	hasHistory  bool
+	hasIntro    bool
+	sectionIdx  int
+	headings    []docsrender.Heading
+}
+
+func buildBrowseMenu(ctx browseMenuContext) []string {
 	var menu []string
 
-	if !isRoot {
+	if !ctx.isRoot {
 		menu = append(menu, navUp)
 	}
-	if hasHeadings {
+	if ctx.hasHeadings {
 		menu = append(menu, navSections)
 	}
-	inSectionView := sectionIdx >= 0 && sectionIdx < len(headings)
+	inSectionView := ctx.sectionIdx >= 0 && ctx.sectionIdx < len(ctx.headings)
 	minIdx := 0
-	if hasIntro {
+	if ctx.hasIntro {
 		minIdx = -1
 	}
-	if sectionIdx > minIdx && (inSectionView || sectionIdx == -1) {
+	if ctx.sectionIdx > minIdx && (inSectionView || ctx.sectionIdx == -1) {
 		prevLabel := "Introduction"
-		if sectionIdx > 0 {
-			prevLabel = headings[sectionIdx-1].Title
+		if ctx.sectionIdx > 0 {
+			prevLabel = ctx.headings[ctx.sectionIdx-1].Title
 		}
 		menu = append(menu, navPrev+" — "+prevLabel)
 	}
-	if inSectionView || sectionIdx == -1 {
-		nextIdx := sectionIdx + 1
-		if nextIdx < len(headings) {
-			menu = append(menu, navNext+" — "+headings[nextIdx].Title)
+	if inSectionView || ctx.sectionIdx == -1 {
+		nextIdx := ctx.sectionIdx + 1
+		if nextIdx < len(ctx.headings) {
+			menu = append(menu, navNext+" — "+ctx.headings[nextIdx].Title)
 		}
 	}
-	for _, item := range items {
+	for _, item := range ctx.items {
 		menu = append(menu, item.label)
 	}
-	if hasHeadings && sectionIdx < len(headings) {
+	if ctx.hasHeadings && ctx.sectionIdx < len(ctx.headings) {
 		menu = append(menu, navFullPage)
 	}
-	if hasHistory {
+	if ctx.hasHistory {
 		menu = append(menu, navBack)
 	}
-	if !isRoot {
+	if !ctx.isRoot {
 		menu = append(menu, navHome)
 	}
 	menu = append(menu, navDone)
@@ -528,41 +523,18 @@ func renderIntro(dc *docsCmd, body, title, path string) ([]navOption, error) {
 	return numberedNavLinks(links), nil
 }
 
-func renderSectionByIdx(dc *docsCmd, body string, headings []docsrender.Heading, idx int,
-	activeItems *[]navOption, node *browseNode,
-) {
+func renderSectionByIdx(dc *docsCmd, body string, headings []docsrender.Heading, idx int) []navOption {
 	heading := headings[idx]
-
-	// For the Modules section, render the column table directly instead of
-	// going through glamour (which can't preserve columnar whitespace).
-	// Resources and Functions use bullet lists that glamour handles fine.
-	if node.sectionNav != nil && node.bundle != nil && heading.Title == docsrender.SectionModules {
-		if nav, ok := node.sectionNav[heading.Title]; ok {
-			sectionTable := docsrender.RenderBundleSingleSection(node.bundle, node.bundlePrefix, heading.Title)
-			if sectionTable != "" {
-				fmt.Print(docsrender.FormatHeadingWithTable(heading.Title, sectionTable))
-				*activeItems = nav
-				return
-			}
-		}
-	}
 
 	section := docsrender.GetSection(body, heading.Slug)
 	if section == "" {
-		return
+		return nil
 	}
 	numbered, sectionLinks := docsrender.NumberLinks(section)
-	rendered, err := dc.renderBody(numbered, "")
-	if err == nil {
+	if rendered, err := dc.renderBody(numbered, ""); err == nil {
 		fmt.Print(rendered)
 	}
-	*activeItems = numberedNavLinks(sectionLinks)
-
-	if node.sectionNav != nil {
-		if nav, ok := node.sectionNav[headings[idx].Title]; ok {
-			*activeItems = append(*activeItems, nav...)
-		}
-	}
+	return numberedNavLinks(sectionLinks)
 }
 
 func parentPath(path string) string {
@@ -665,18 +637,6 @@ func (dc *docsCmd) registryNavItems(path string) []navOption {
 	return nil
 }
 
-func (dc *docsCmd) docsPageViewLabel(path string) string {
-	pages, err := docsrender.FetchSitemap(dc.baseURL)
-	if err != nil {
-		return "Introduction"
-	}
-	target := "/docs/" + strings.Trim(path, "/") + "/"
-	if p := findPage(pages, target); p != nil {
-		return p.ViewLabel()
-	}
-	return "Introduction"
-}
-
 func findPage(pages []docsrender.SitemapPage, targetPath string) *docsrender.SitemapPage {
 	for i := range pages {
 		if pages[i].Path == targetPath {
@@ -706,55 +666,3 @@ func collectDescendants(pages []docsrender.SitemapPage, prefix string, result *[
 	}
 }
 
-// bundleModuleNav builds nav options for sub-modules.
-func bundleModuleNav(ck docsrender.ClassifiedKeys, basePath, modulePrefix string) []navOption {
-	opts := make([]navOption, 0, len(ck.SubModules))
-	for _, mod := range ck.SubModules {
-		modPath := basePath
-		if modulePrefix != "" {
-			modPath += "/" + modulePrefix
-		}
-		modPath += "/" + mod
-		opts = append(opts, navOption{label: "🔗 " + mod + navDrill, path: modPath})
-	}
-	return opts
-}
-
-// bundleEntryNav builds nav options for a slice of classified entries.
-func bundleEntryNav(entries []docsrender.ClassifiedEntry, basePath string) []navOption {
-	opts := make([]navOption, 0, len(entries))
-	for _, e := range entries {
-		opts = append(opts, navOption{label: "🔗 " + e.Title, path: basePath + "/" + e.Key})
-	}
-	return opts
-}
-
-// BundleNavItems generates a flat list of navigation items from bundle keys.
-func BundleNavItems(bundle *docsrender.CLIDocsBundle, modulePrefix string, pkgName string) []navOption {
-	basePath := fmt.Sprintf("registry/packages/%s/api-docs", pkgName)
-	ck := docsrender.ClassifyBundleKeys(bundle, modulePrefix)
-
-	opts := make([]navOption, 0, len(ck.SubModules)+len(ck.Resources)+len(ck.Functions))
-	opts = append(opts, bundleModuleNav(ck, basePath, modulePrefix)...)
-	opts = append(opts, bundleEntryNav(ck.Resources, basePath)...)
-	opts = append(opts, bundleEntryNav(ck.Functions, basePath)...)
-	return opts
-}
-
-// BundleSectionNav returns per-section nav items for drilling into modules, resources, and functions.
-func BundleSectionNav(bundle *docsrender.CLIDocsBundle, modulePrefix string, pkgName string) map[string][]navOption {
-	basePath := fmt.Sprintf("registry/packages/%s/api-docs", pkgName)
-	ck := docsrender.ClassifyBundleKeys(bundle, modulePrefix)
-
-	result := map[string][]navOption{}
-	if len(ck.SubModules) > 0 {
-		result[docsrender.SectionModules] = bundleModuleNav(ck, basePath, modulePrefix)
-	}
-	if len(ck.Resources) > 0 {
-		result[docsrender.SectionResources] = bundleEntryNav(ck.Resources, basePath)
-	}
-	if len(ck.Functions) > 0 {
-		result[docsrender.SectionFunctions] = bundleEntryNav(ck.Functions, basePath)
-	}
-	return result
-}

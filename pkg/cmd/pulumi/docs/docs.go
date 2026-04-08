@@ -188,7 +188,7 @@ func (dc *docsCmd) baseURLForPath(path string) string {
 	return dc.baseURL
 }
 
-// fetchAndRender is the main pipeline: fetch → parse → resolve choosers → render → print.
+// fetchAndRender fetches a page, resolves choosers, and prints the rendered output.
 func (dc *docsCmd) fetchAndRender(path string) error {
 	section := ""
 	if idx := strings.Index(path, "#"); idx >= 0 {
@@ -200,23 +200,7 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 
 	var body, title string
 	var err error
-	var bundle *docsrender.CLIDocsBundle
-	if docsrender.IsAPIDocsPath(path) {
-		pkgName, docKey, ok := docsrender.ParseAPIDocsPath(path)
-		if ok {
-			bundle, _ = docsrender.FetchCLIDocsBundle(fetchBase, pkgName)
-			if bundle != nil {
-				if docKey != "" {
-					if b, t, found := docsrender.LookupBundleDoc(bundle, docKey); found {
-						body, title = b, t
-					}
-				} else if bundle.Overview != "" {
-					body = docsrender.BuildAPIDocsPage(bundle, "", "")
-					title = bundle.Package
-				}
-			}
-		}
-	}
+	bundle := dc.tryBundleLookup(fetchBase, path, &body, &title)
 
 	if body == "" {
 		var resolvedPath string
@@ -233,8 +217,6 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 		return err
 	}
 
-	// For API docs pages with a bundle, build the page from bundle data
-	// instead of using the raw index.md (which has poorly formatted content).
 	if bundle != nil {
 		if _, docKey, ok := docsrender.ParseAPIDocsPath(path); ok {
 			intro := docsrender.GetIntro(body)
@@ -272,24 +254,6 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 		return nil
 	}
 
-	// For API docs pages with a bundle and a Modules section, render the
-	// module list as a column table instead of going through glamour.
-	if bundle != nil && strings.Contains(body, "## "+docsrender.SectionModules) {
-		if _, docKey, ok := docsrender.ParseAPIDocsPath(path); ok {
-			modulesTable := docsrender.RenderBundleSingleSection(bundle, docKey, docsrender.SectionModules)
-			if modulesTable != "" {
-				dc.renderWithModulesTable(body, title, modulesTable)
-				prefs := docsrender.LoadPreferences()
-				prefs.LastPage = path
-				docsrender.SavePreferences(prefs)
-				if section == "" {
-					fmt.Print(docsrender.PageFooter(fetchBase, path))
-				}
-				return nil
-			}
-		}
-	}
-
 	rendered, err := dc.renderBody(body, title)
 	if err != nil {
 		return err
@@ -307,56 +271,28 @@ func (dc *docsCmd) fetchAndRender(path string) error {
 	return nil
 }
 
-// renderWithModulesTable splits the body at the Modules heading, renders the
-// parts before and after through glamour, and prints the modules column table directly.
-func (dc *docsCmd) renderWithModulesTable(body, title, modulesTable string) {
-	heading := "## " + docsrender.SectionModules
-	start, _, endIdx := docsrender.FindSectionBounds(body, heading)
-	if start < 0 {
-		return
-	}
-
-	before := body[:start]
-	after := body[endIdx:]
-
-	if strings.TrimSpace(before) != "" {
-		rendered, err := dc.renderBody(before, title)
-		if err == nil {
-			fmt.Print(rendered)
-		}
-	}
-
-	fmt.Print(docsrender.FormatHeadingWithTable(docsrender.SectionModules, modulesTable))
-
-	if strings.TrimSpace(after) != "" {
-		rendered, err := dc.renderBody(after, "")
-		if err == nil {
-			fmt.Print(rendered)
-		}
-	}
-}
-
-// renderBody processes markdown through the chooser and rendering pipeline
-// using the docsrender library for AST-based chooser resolution and code block filtering.
-func (dc *docsCmd) renderBody(body, title string) (string, error) {
+// resolveContent applies chooser resolution and language filtering without
+// terminal rendering. Use this to get the resolved markdown before extracting
+// links or headings so that only the selected chooser option's content is visible.
+func (dc *docsCmd) resolveContent(body string) string {
 	prefs := docsrender.LoadPreferences()
 
-	// Parse AST once, scan for choosers, build selections, then resolve.
 	source := []byte(body)
 	tree := docsrender.ParseMarkdown(source)
 	choosers := docsrender.ScanChoosers(source, tree)
 	selections := buildChooserSelections(choosers, prefs, dc.language, dc.osFlag, dc.session)
 	resolved := docsrender.ResolveChoosers(source, tree, selections)
 
-	// Filter code blocks by language via goldmark AST.
 	lang := dc.language
 	if lang == "" {
 		lang = prefs.Language
 	}
-	tree2 := docsrender.ParseMarkdown(resolved)
-	filtered := docsrender.FilterCodeBlocksByLanguage(resolved, tree2, lang)
+	filtered := docsrender.FilterCodeBlocksByLanguage(resolved, docsrender.ParseMarkdown(resolved), lang)
+	return string(filtered)
+}
 
-	return docsrender.RenderMarkdown(title, string(filtered))
+func (dc *docsCmd) renderBody(body, title string) (string, error) {
+	return docsrender.RenderMarkdown(title, dc.resolveContent(body))
 }
 
 func (dc *docsCmd) showTOC(body string, section *string) error {
@@ -476,4 +412,27 @@ func (dc *docsCmd) handleRegistryFallback(path string) error {
 	}
 	fmt.Fprintln(os.Stderr)
 	return nil
+}
+
+func (dc *docsCmd) tryBundleLookup(fetchBase, path string, body, title *string) *docsrender.CLIDocsBundle {
+	if !docsrender.IsAPIDocsPath(path) {
+		return nil
+	}
+	pkgName, docKey, ok := docsrender.ParseAPIDocsPath(path)
+	if !ok {
+		return nil
+	}
+	bundle, _ := docsrender.FetchCLIDocsBundle(fetchBase, pkgName)
+	if bundle == nil {
+		return nil
+	}
+	if docKey != "" {
+		if b, t, found := docsrender.LookupBundleDoc(bundle, docKey); found {
+			*body, *title = b, t
+		}
+	} else if bundle.Overview != "" {
+		*body = docsrender.BuildAPIDocsPage(bundle, "", "")
+		*title = bundle.Package
+	}
+	return bundle
 }
