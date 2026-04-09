@@ -1116,10 +1116,7 @@ func (g *generator) genResourceOptions(
 		}
 		// Add hooks binding if present.
 		if hasHooks {
-			hookTypes := make([]string, 0, len(hookVars))
-			for ht := range hookVars {
-				hookTypes = append(hookTypes, ht)
-			}
+			hookTypes := slices.Collect(maps.Keys(hookVars))
 			sort.Strings(hookTypes)
 			g.Fprintf(&buffer, "%shooks: {\n", g.Indent)
 			g.Indented(func() {

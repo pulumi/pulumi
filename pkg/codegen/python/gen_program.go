@@ -956,10 +956,7 @@ func (g *generator) genResourceOptions(
 				g.Fprintf(w, ",\n%s", g.Indent)
 			}
 			g.Fprintf(w, "hooks=pulumi.ResourceHookBinding(")
-			hookTypes := make([]string, 0, len(hookVars))
-			for ht := range hookVars {
-				hookTypes = append(hookTypes, ht)
-			}
+			hookTypes := slices.Collect(maps.Keys(hookVars))
 			sort.Strings(hookTypes)
 			for j, hookType := range hookTypes {
 				if j > 0 {
