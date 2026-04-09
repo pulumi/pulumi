@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -124,6 +125,90 @@ func Infof(format string, args ...any) {
 func Warningf(format string, args ...any) {
 	msg := FilterString(fmt.Sprintf(format, args...))
 	slogHandler.Warn(msg)
+}
+
+// --- Structured logging API ---
+//
+// These accept context and slog-style key-value args:
+//
+//	logging.Info(ctx, "doing thing", "urn", urn, "count", n)
+//	logging.Error(ctx, "failed", "err", err, slog.String("op", "create"))
+
+func Info(ctx context.Context, msg string, args ...any) {
+	if Verbose >= 7 {
+		slogHandler.Log(ctx, slog.LevelInfo, FilterString(msg), filterArgs(args)...)
+	}
+}
+
+func Warn(ctx context.Context, msg string, args ...any) {
+	if Verbose >= 7 {
+		slogHandler.Log(ctx, slog.LevelWarn, FilterString(msg), filterArgs(args)...)
+	}
+}
+
+func Error(ctx context.Context, msg string, args ...any) {
+	slogHandler.Log(ctx, slog.LevelError, FilterString(msg), filterArgs(args)...)
+}
+
+func Debug(ctx context.Context, msg string, args ...any) {
+	if Verbose >= 10 {
+		slogHandler.Log(ctx, slog.LevelDebug, FilterString(msg), filterArgs(args)...)
+	}
+}
+
+func Trace(ctx context.Context, msg string, args ...any) {
+	if Verbose >= 11 {
+		slogHandler.Log(ctx, LevelTrace, FilterString(msg), filterArgs(args)...)
+	}
+}
+
+// Logger returns the underlying *slog.Logger for advanced use cases
+// (e.g. passing to libraries that accept a *slog.Logger, or creating
+// sub-loggers with With()).
+func Logger() *slog.Logger {
+	return slogHandler
+}
+
+// filterArgs applies secret filtering to string values in slog key-value args.
+func filterArgs(args []any) []any {
+	for i, a := range args {
+		switch v := a.(type) {
+		case string:
+			args[i] = FilterString(v)
+		case slog.Attr:
+			args[i] = filterAttr(v)
+		}
+	}
+	return args
+}
+
+func filterAttr(a slog.Attr) slog.Attr {
+	if a.Value.Kind() == slog.KindString {
+		a.Value = slog.StringValue(FilterString(a.Value.String()))
+	}
+	return a
+}
+
+// ParseVerbosity converts a verbosity string to an integer level.
+// Accepts numeric values ("3", "9") or named levels ("info", "debug", "trace").
+func ParseVerbosity(s string) (int, error) {
+	if s == "" {
+		return 0, nil
+	}
+	switch strings.ToLower(s) {
+	case "info":
+		return 7, nil
+	case "debug":
+		return 10, nil
+	case "trace":
+		return 11, nil
+	default:
+		n, err := strconv.Atoi(s)
+		if err != nil {
+			return 0, fmt.Errorf("invalid verbosity %q: use a number or one of info, debug, trace", s)
+		}
+		return n, nil
+	}
 }
 
 func InitLogging(logToStderr bool, verbose int, logFlow bool) {
