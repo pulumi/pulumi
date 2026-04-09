@@ -77,6 +77,7 @@
         "automation/index.ts",
         "automation/cmd.ts",
         "automation/config.ts",
+        "automation/download.ts",
         "automation/localWorkspace.ts",
         "automation/minimumVersion.ts",
         "automation/projectSettings.ts",
