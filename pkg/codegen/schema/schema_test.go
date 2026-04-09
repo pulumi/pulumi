@@ -1567,6 +1567,7 @@ func TestValidateTypeToken(t *testing.T) {
 		input         string
 		expectError   bool
 		allowedExtras map[string][]string
+		moduleFormat  string
 	}{
 		{
 			name:  "valid",
@@ -1632,21 +1633,40 @@ func TestValidateTypeToken(t *testing.T) {
 			name:  "non-reserved-provider-token-valid",
 			input: "example:other:provider",
 		},
+		/* TODO: This test should be re-enabled once we make modules nested under index an error instead of a warning.
+		{
+			name:        "nested index module",
+			input:       "example:index/nested:typename",
+			expectError: true,
+		},
+		*/
+		{
+			name:  "not really index",
+			input: "example:index_foo/nested:typename",
+		},
+		{
+			name:         "module format strips off nested part",
+			input:        "example:index/Nested:typename",
+			moduleFormat: "(.*)(?:/[^/]*)",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
 			spec := &PackageSpec{Name: "example"}
+			if c.moduleFormat != "" {
+				spec.Meta = &MetadataSpec{ModuleFormat: c.moduleFormat}
+			}
 			allowed := map[string][]string{"example": nil}
 			for pkg, mods := range c.allowedExtras {
 				allowed[pkg] = mods
 			}
 			errors := spec.validateTypeToken(allowed, "type", c.input)
 			if c.expectError {
-				assert.True(t, errors.HasErrors())
+				assert.True(t, errors.HasErrors(), "expected an error but got none")
 			} else {
-				assert.False(t, errors.HasErrors())
+				assert.False(t, errors.HasErrors(), "unexpected error: %v", errors)
 			}
 		})
 	}
