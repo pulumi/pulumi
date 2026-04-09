@@ -14,24 +14,24 @@
 
 package logging
 
-// Wrapper around the glog API that allows us to intercept all logging calls and manipulate them as
+// Wrapper around slog that allows us to intercept all logging calls and manipulate them as
 // necessary.  This is primarily used so we can make a best effort approach to filtering out secrets
 // from any logs we emit before they get written to log-files/stderr.
 //
-// Code in pulumi should use this package instead of directly importing glog itself.  If any glog
+// Code in pulumi should use this package instead of directly importing slog itself.  If any slog
 // methods are needed that are not exported from this, they can be added, with the caveat that they
 // should be updated to properly filter as well before forwarding things along.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
-	"strconv"
+	"log/slog"
+	"os"
 	"strings"
 	"sync"
 
-	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -50,108 +50,107 @@ var (
 	filters []Filter
 )
 
-// VerboseLogger logs messages only if verbosity matches the level it was built with.
-//
-// It may be used as a boolean to check if it's enabled.
-//
-//	if log := logging.V(lvl); log {
-//		log.Infoln(expensiveComputation())
-//	}
-type VerboseLogger glog.Verbose
+var (
+	slogHandler *slog.Logger
+	logFilePath string
+)
 
-// Info is equivalent to the global Info function, guarded by the value of v.
-// See the documentation of V for usage.
+func init() {
+	slogHandler = slog.New(discardHandler{})
+}
+
+const LevelTrace = slog.LevelDebug - 4
+
+// VerboseLogger logs messages only if verbosity matches the level it was built with.
+// The value is 0 when disabled, or the verbosity level when enabled.
+type VerboseLogger int32
+
+func (v VerboseLogger) Enabled() bool { return v > 0 }
+
+// slogLevel maps the pulumi verbosity level to a slog level:
+//
+//	V(1)–V(6)  → Info
+//	V(7)–V(9)  → Info
+//	V(10)      → Debug
+//	V(11)+     → Trace
+func (v VerboseLogger) slogLevel() slog.Level {
+	switch {
+	case v >= 11:
+		return LevelTrace
+	case v >= 10:
+		return slog.LevelDebug
+	default:
+		return slog.LevelInfo
+	}
+}
+
 func (v VerboseLogger) Info(args ...any) {
-	if v {
-		glog.Verbose(v).InfoDepth(1, FilterString(fmt.Sprint(args...)))
+	if v.Enabled() {
+		msg := FilterString(fmt.Sprint(args...))
+		slogHandler.Log(context.TODO(), v.slogLevel(), msg, "v", int(v))
 	}
 }
 
 // Infoln is equivalent to the global Infoln function, guarded by the value of v.
-// See the documentation of V for usage.
 func (v VerboseLogger) Infoln(args ...any) {
-	if v {
-		glog.Verbose(v).Infoln(FilterString(fmt.Sprint(args...)))
+	if v.Enabled() {
+		msg := FilterString(fmt.Sprint(args...))
+		slogHandler.Log(context.TODO(), v.slogLevel(), msg, "v", int(v))
 	}
 }
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
-// See the documentation of V for usage.
 func (v VerboseLogger) Infof(format string, args ...any) {
-	if v {
-		glog.Verbose(v).InfoDepthf(1, "%s", FilterString(fmt.Sprintf(format, args...)))
+	if v.Enabled() {
+		msg := FilterString(fmt.Sprintf(format, args...))
+		slogHandler.Log(context.TODO(), v.slogLevel(), msg, "v", int(v))
 	}
 }
 
-// V builds a logger that logs messages only if verbosity is at least at the provided level.
-func V(level glog.Level) VerboseLogger {
-	return VerboseLogger(glog.V(level))
+func V(level int32) VerboseLogger {
+	return VerboseLogger(level)
 }
 
 func Errorf(format string, args ...any) {
-	glog.ErrorDepthf(1, "%s", FilterString(fmt.Sprintf(format, args...)))
+	msg := FilterString(fmt.Sprintf(format, args...))
+	slogHandler.Error(msg)
 }
 
 func Infof(format string, args ...any) {
-	glog.InfoDepthf(1, "%s", FilterString(fmt.Sprintf(format, args...)))
+	msg := FilterString(fmt.Sprintf(format, args...))
+	slogHandler.Info(msg)
 }
 
 func Warningf(format string, args ...any) {
-	glog.WarningDepthf(1, "%s", FilterString(fmt.Sprintf(format, args...)))
+	msg := FilterString(fmt.Sprintf(format, args...))
+	slogHandler.Warn(msg)
 }
 
-func Flush() {
-	glog.Flush()
-}
-
-func maybeSetFlag(name, value string) {
-	if f := flag.Lookup(name); f != nil {
-		err := f.Value.Set(value)
-		assertNoError(err)
-	}
-}
-
-// InitLogging ensures the logging library has been initialized with the given settings.
 func InitLogging(logToStderr bool, verbose int, logFlow bool) {
-	// Remember the settings in case someone inquires.
 	LogToStderr = logToStderr
 	Verbose = verbose
 	LogFlow = logFlow
 
-	// glog uses golang's built in flags package to set configuration values, which is incompatible with how
-	// we use cobra. In order to accommodate this, we call flag.CommandLine.Parse() with an empty array and
-	// explicitly set the flags we care about here.
-	if !flag.Parsed() {
-		err := flag.CommandLine.Parse([]string{})
-		assertNoError(err)
-	}
 	if logToStderr {
-		maybeSetFlag("logtostderr", "true")
-	}
-	if verbose > 0 {
-		maybeSetFlag("v", strconv.Itoa(verbose))
+		slogHandler = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+			Level: LevelTrace,
+		}))
+	} else if verbose > 0 {
+		f, err := os.CreateTemp("", "pulumi-*.log")
+		if err == nil {
+			logFilePath = f.Name()
+			slogHandler = slog.New(slog.NewJSONHandler(f, &slog.HandlerOptions{
+				Level: LevelTrace,
+			}))
+		}
 	}
 }
 
 func GetLogfilePath() (string, error) {
-	logFiles, err := glog.Names("INFO")
-	if err != nil {
-		return "", err
+	if logFilePath != "" {
+		return logFilePath, nil
 	}
-	if len(logFiles) == 0 {
-		return "", errors.New("no log files found")
-	}
-	return logFiles[0], nil
-}
-
-func assertNoError(err error) {
-	if err != nil {
-		failfast(err.Error())
-	}
-}
-
-func failfast(msg string) {
-	panic(fmt.Sprintf("fatal: %v", msg))
+	return "", errors.New("no log files found")
 }
 
 type nopFilter struct{}
@@ -215,3 +214,10 @@ func FilterString(msg string) string {
 
 	return msg
 }
+
+type discardHandler struct{}
+
+func (discardHandler) Enabled(context.Context, slog.Level) bool  { return false }
+func (discardHandler) Handle(context.Context, slog.Record) error { return nil }
+func (d discardHandler) WithAttrs([]slog.Attr) slog.Handler      { return d }
+func (d discardHandler) WithGroup(string) slog.Handler           { return d }

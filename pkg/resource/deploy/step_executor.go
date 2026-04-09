@@ -629,7 +629,7 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 
 // log is a simple logging helper for the step executor.
 func (se *stepExecutor) log(workerID int, msg string, args ...any) {
-	if logging.V(stepExecutorLogLevel) {
+	if logging.V(stepExecutorLogLevel).Enabled() {
 		message := fmt.Sprintf(msg, args...)
 		logging.V(stepExecutorLogLevel).Infof("StepExecutor worker(%d): %s", workerID, message)
 	}

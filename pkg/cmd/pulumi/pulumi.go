@@ -200,7 +200,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	updateCheckResult := make(chan *updateCheckResult)
 
 	cleanup := func() {
-		logging.Flush()
 		cmdutil.CloseTracing()
 
 		if rootSpan != nil {
@@ -212,7 +211,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			logFile, err := logging.GetLogfilePath()
 			if err != nil {
 				logging.Warningf("could not find the log file: %s", err)
-				logging.Flush()
 			} else {
 				fmt.Fprintf(os.Stderr, "The log file for this run is at %s\n", logFile)
 			}
