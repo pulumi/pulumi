@@ -101,11 +101,13 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try":       "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can":       "Temporarily disabled until pr #18916 is submitted",
-	"l3-deferred-outputs":  "does not type-check",
-	"l2-resource-optional": "optional outputs are not assignable to optional inputs",
-	"l3-range-ref":         `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
+	"l1-builtin-try":                     "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
+	"l3-deferred-outputs":                "does not type-check",
+	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
+	"l3-range-ref":                       `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
+	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 }
 
 type languageTestConfig struct {

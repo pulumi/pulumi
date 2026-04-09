@@ -20,6 +20,7 @@
     },
     "files": [
         "index.ts",
+        "invoke.ts",
         "provider.ts",
         "resource.ts",
         "utilities.ts"

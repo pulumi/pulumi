@@ -850,6 +850,13 @@ func (i *Interpreter) registerResourceWith(
 		token = schemaResource.Token
 	}
 
+	inputPropertyTypes := map[string]schema.Type{}
+	if schemaResource != nil {
+		for _, property := range schemaResource.InputProperties {
+			inputPropertyTypes[property.Name] = property.Type
+		}
+	}
+
 	inputs := resource.PropertyMap{}
 	for _, attr := range res.Inputs {
 		targetType := attr.Value.Type()
@@ -871,7 +878,15 @@ func (i *Interpreter) registerResourceWith(
 		if diags.HasErrors() {
 			return cty.NilVal, diags
 		}
-		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
+		propertyValue := collapseResourceReferences(val)
+		if inputPropertyType, ok := inputPropertyTypes[attr.Name]; ok {
+			converted, err := convertPropertyValueForSchemaType(propertyValue, inputPropertyType)
+			if err != nil {
+				return cty.NilVal, err
+			}
+			propertyValue = converted
+		}
+		inputs[resource.PropertyKey(attr.Name)] = propertyValue
 	}
 
 	if schemaResource != nil {
