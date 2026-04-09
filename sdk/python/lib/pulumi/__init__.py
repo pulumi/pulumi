@@ -105,6 +105,8 @@ from .resource_hooks import (
     ResourceHook,
     ResourceHookBinding,
     ResourceHookOptions,
+    resource_hook,
+    error_hook,
 )
 
 from .log import (
@@ -204,6 +206,8 @@ __all__ = [
     "ResourceHook",
     "ResourceHookBinding",
     "ResourceHookOptions",
+    "resource_hook",
+    "error_hook",
     # log
     "debug",
     "info",
