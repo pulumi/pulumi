@@ -559,4 +559,3 @@ func FormatPackageDetails(body string) string {
 	}
 	return body[:afterHeading] + "\n\n" + formatted.String() + body[endIdx:]
 }
-

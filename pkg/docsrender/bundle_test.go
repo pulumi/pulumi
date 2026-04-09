@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAPIDocsPaths(t *testing.T) {
@@ -82,6 +83,6 @@ func TestAbsolutizeBundleLinks(t *testing.T) {
 		md := "- [Bucket](bucket/)\n- [Policy](bucketpolicy/)\n"
 		rewritten := absolutizeBundleLinks(md, "aws")
 		_, links := NumberLinks(rewritten)
-		assert.Len(t, links, 2)
+		require.Len(t, links, 2)
 	})
 }
