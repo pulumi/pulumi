@@ -222,8 +222,8 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 
 	// No packagemanager specified, try to determine the best one to use.
 
-	// If the project only has package.yaml, pnpm is the only option. Don't fall through to the other package managers
-	// since they would fail with a confusing ENOENT.
+	// If the nearest manifest is a package.yaml, pnpm is the only option. Don't fall through to the other package
+	// managers since they would fail with a confusing ENOENT.
 	if requiresPnpm {
 		pnpm, err := newPnpm()
 		if err != nil {
