@@ -291,6 +291,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if cns, ok := fromType.(*model.ConstType); ok {
 			fromType = cns.Type
 		}
+		// If fromType is optional (union(T, None)), unwrap to T. LowerConversion already selects a specific element
+		// type from the target union (stripping optionality from to), so we symmetrically unwrap fromType to avoid
+		// false type mismatches (e.g., treating Optional[bool] as needing string-to-bool conversion).
+		if union, ok := fromType.(*model.UnionType); ok && len(union.ElementTypes) == 2 {
+			if union.ElementTypes[0] == model.NoneType {
+				fromType = union.ElementTypes[1]
+			} else if union.ElementTypes[1] == model.NoneType {
+				fromType = union.ElementTypes[0]
+			}
+		}
 
 		genMaybeOutputConversion := func(conversionExpr func(string)) {
 			if isFromPromise {

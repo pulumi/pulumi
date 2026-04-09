@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdkgen/nodejs,python
+  description: Generate optional input types that accept undefined/None values
