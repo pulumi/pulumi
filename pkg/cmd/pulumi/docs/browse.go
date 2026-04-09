@@ -665,4 +665,3 @@ func collectDescendants(pages []docsrender.SitemapPage, prefix string, result *[
 		}
 	}
 }
-
