@@ -20,12 +20,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -474,34 +471,10 @@ func waitPidDead(pid int, timeout time.Duration) error {
 			if err == nil && proc == nil {
 				return nil
 			}
-			// On Linux, a zombie process (state 'Z') is effectively dead
-			// but still has an entry in the process table until its parent
-			// reaps it. In containers where PID 1 doesn't reap orphaned
-			// zombies, this can persist indefinitely.
 			if err == nil && proc != nil && isZombie(pid) {
 				return nil
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
-}
-
-// isZombie checks if a process is in zombie state on Linux
-// by reading /proc/[pid]/stat. Returns false on non-Linux systems
-// or if the state cannot be determined.
-func isZombie(pid int) bool {
-	data, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
-	if err != nil {
-		return false
-	}
-	// Format: pid (comm) state ...
-	// Find the closing ')' to skip the comm field (which may contain spaces).
-	s := string(data)
-	idx := strings.LastIndex(s, ")")
-	if idx < 0 || idx+2 >= len(s) {
-		return false
-	}
-	// The state is the first non-space character after ") ".
-	state := strings.TrimSpace(s[idx+1:])
-	return len(state) > 0 && state[0] == 'Z'
 }
