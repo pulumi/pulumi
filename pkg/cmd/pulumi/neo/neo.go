@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -164,7 +165,7 @@ func resolveTaskTarget(
 	if orgFlag != "" {
 		org = orgFlag
 	} else {
-		org, err = be.GetDefaultOrg(ctx)
+		org, err = pkgBackend.GetDefaultOrg(ctx, be, project)
 		if err != nil {
 			return "", "", "", fmt.Errorf("determining default organization: %w", err)
 		}
