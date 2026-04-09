@@ -1413,10 +1413,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 				}
 			}
 			if len(hookVars) > 0 {
-				hookTypes := make([]string, 0, len(hookVars))
-				for ht := range hookVars {
-					hookTypes = append(hookTypes, ht)
-				}
+				hookTypes := slices.Collect(maps.Keys(hookVars))
 				sort.Strings(hookTypes)
 				g.Fgenf(w, ", pulumi.ResourceHooks(&pulumi.ResourceHookBinding{")
 				for _, hookType := range hookTypes {
