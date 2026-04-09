@@ -1023,7 +1023,7 @@ func (g *generator) genScopeTraversalExpression(
 			contract.Failf("unexpected traversal on range expression: %s", part)
 		}
 	} else {
-		g.Fgen(w, makeValidIdentifier(rootName))
+		g.Fgen(w, g.nodeName(rootName))
 		isRootResource := false
 		g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts, isRootResource, false)
 	}

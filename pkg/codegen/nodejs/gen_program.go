@@ -54,6 +54,10 @@ type generator struct {
 	asyncMain               bool
 	configCreated           bool
 	isComponent             bool
+	declaredNodeIdentifiers map[string]bool
+	nodeIdentifiers         map[string]string
+	packageImportAliases    map[string]string
+	importIdentifiers       codegen.StringSet
 	deferredOutputVariables []*pcl.DeferredOutputVariable
 }
 
@@ -92,11 +96,6 @@ func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[
 		}
 	}
 
-	var index bytes.Buffer
-	err = g.genPreamble(&index, program)
-	if err != nil {
-		return nil, nil, err
-	}
 	// used to track declared variables in the main program
 	// since outputs have identifiers which can conflict with other program nodes' identifiers
 	// we switch the entry point to async which allows for declaring arbitrary output names
@@ -128,6 +127,14 @@ func GenerateProgramWithOptions(program *pcl.Program, opts ProgramOptions) (map[
 			}
 		}
 	}
+	g.declaredNodeIdentifiers = declaredNodeIdentifiers
+
+	var index bytes.Buffer
+	err = g.genPreamble(&index, program)
+	if err != nil {
+		return nil, nil, err
+	}
+	g.assignRootNodeIdentifiers(program, g.importIdentifiers)
 
 	indenter := func(f func()) { f() }
 	if g.asyncMain {
@@ -479,11 +486,63 @@ func (g *generator) genComment(w io.Writer, comment syntax.Comment) {
 type programImports struct {
 	importStatements      []string
 	preambleHelperMethods codegen.StringSet
+	importAliases         codegen.StringSet
+}
+
+func makeUniqueName(base string, used codegen.StringSet) string {
+	name := makeValidIdentifier(base)
+	if !used.Has(name) {
+		used.Add(name)
+		return name
+	}
+
+	for i := 2; ; i++ {
+		candidate := fmt.Sprintf("%s%d", name, i)
+		if !used.Has(candidate) {
+			used.Add(candidate)
+			return candidate
+		}
+	}
+}
+
+func (g *generator) assignRootNodeIdentifiers(program *pcl.Program, reserved codegen.StringSet) {
+	g.nodeIdentifiers = map[string]string{}
+	used := codegen.NewStringSet()
+	for name := range reserved {
+		used.Add(name)
+	}
+
+	for _, node := range program.Nodes {
+		var name string
+		switch n := node.(type) {
+		case *pcl.Resource:
+			name = n.Name()
+		case *pcl.ConfigVariable:
+			name = n.Name()
+		case *pcl.LocalVariable:
+			name = n.Name()
+		case *pcl.Component:
+			name = n.Name()
+		case *pcl.Hook:
+			name = n.Name()
+		default:
+			continue
+		}
+		g.nodeIdentifiers[name] = makeUniqueName(name, used)
+	}
+}
+
+func (g *generator) nodeName(name string) string {
+	if identifier, ok := g.nodeIdentifiers[name]; ok {
+		return identifier
+	}
+	return makeValidIdentifier(name)
 }
 
 func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	importSet := codegen.NewStringSet("@pulumi/pulumi")
 	preambleHelperMethods := codegen.NewStringSet()
+	usedAliases := codegen.NewStringSet("pulumi")
 
 	// This map tracks the package tokens by the associated import.
 	//
@@ -491,6 +550,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	//
 	// npmToPuPkgName["@pulumiverse/scaleway"] = "scaleway"
 	npmToPuPkgName := make(map[string]string)
+	packageAliases := make(map[string]string)
 
 	var componentImports []string
 	seenComponentImports := map[string]bool{}
@@ -522,8 +582,8 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 			if info, ok := def.Language["nodejs"].(NodePackageInfo); ok && info.PackageName != "" {
 				pkgName = info.PackageName
 			}
-			npmToPuPkgName[pkgName] = pkg
 		}
+		npmToPuPkgName[pkgName] = pkg
 		importSet.Add(pkgName)
 	}
 
@@ -591,8 +651,21 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		} else {
 			as = makeValidIdentifier(path.Base(pkg))
 		}
+		for i := 2; usedAliases.Has(as); i++ {
+			as = fmt.Sprintf("%s%d", makeValidIdentifier(path.Base(pkg)), i)
+		}
+		usedAliases.Add(as)
+		if puPkg, ok := npmToPuPkgName[pkg]; ok {
+			packageAliases[puPkg] = as
+		}
 		imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 	}
+	g.packageImportAliases = packageAliases
+	importIdentifiers := codegen.NewStringSet()
+	for alias := range usedAliases {
+		importIdentifiers.Add(alias)
+	}
+	g.importIdentifiers = importIdentifiers
 
 	imports = append(imports, componentImports...)
 	sort.Strings(imports)
@@ -600,7 +673,15 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	return programImports{
 		importStatements:      imports,
 		preambleHelperMethods: preambleHelperMethods,
+		importAliases:         importIdentifiers,
 	}
+}
+
+func (g *generator) packageAlias(pkg string) string {
+	if alias, ok := g.packageImportAliases[pkg]; ok {
+		return alias
+	}
+	return makeValidIdentifier(pkg)
 }
 
 func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
@@ -608,6 +689,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program) error {
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
 	programImports := g.collectProgramImports(program)
+	g.importIdentifiers = programImports.importAliases
 
 	// Now sort the imports and emit them.
 	for _, i := range programImports.importStatements {
@@ -692,6 +774,8 @@ func (g *generator) genComponentResourceDefinition(w io.Writer, componentName st
 	g.Fprintln(w, `import * as pulumi from "@pulumi/pulumi";`)
 
 	programImports := g.collectProgramImports(component.Program)
+	g.importIdentifiers = programImports.importAliases
+	g.assignRootNodeIdentifiers(component.Program, g.importIdentifiers)
 
 	// Now sort the imports and emit them.
 	for _, i := range programImports.importStatements {
@@ -944,7 +1028,7 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 		module = moduleName(module, r.Schema.PackageReference)
 	}
 
-	return makeValidIdentifier(pkg), module, title(member), diagnostics
+	return pkg, module, title(member), diagnostics
 }
 
 func moduleName(module string, pkg schema.PackageReference) string {
@@ -1135,7 +1219,7 @@ func (g *generator) genResourceOptions(
 
 // genHookNode generates a new pulumi.ResourceHook declaration for a named hook block.
 func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
-	varName := makeValidIdentifier(h.Name())
+	varName := g.nodeName(h.Name())
 	hookName := h.LogicalName()
 
 	var cmdExprs []model.Expression
@@ -1182,7 +1266,7 @@ func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
 		for _, cmdListExpr := range cmdLists.Expressions {
 			// Hooks must be references to named hook blocks.
 			if trav, ok := cmdListExpr.(*model.ScopeTraversalExpression); ok {
-				hookVars[hookType] = append(hookVars[hookType], makeValidIdentifier(trav.RootName))
+				hookVars[hookType] = append(hookVars[hookType], g.nodeName(trav.RootName))
 			}
 		}
 	}
@@ -1198,7 +1282,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 		module = "." + module
 	}
 
-	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
+	qualifiedMemberName := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, memberName)
 
 	var hookVars map[string][]string
 	if r.Options != nil && r.Options.Hooks != nil {
@@ -1208,7 +1292,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 	optionsBag := g.genResourceOptions(r.Options, r.Schema, hookVars)
 
 	name := r.LogicalName()
-	variableName := makeValidIdentifier(r.Name())
+	variableName := g.nodeName(r.Name())
 
 	if needsDefinition {
 		g.genTrivia(w, r.Definition.Tokens.GetType(""))
@@ -1415,7 +1499,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	optionsBag := g.genResourceOptions(component.Options, nil, nil)
 
 	name := component.LogicalName()
-	variableName := makeValidIdentifier(component.Name())
+	variableName := g.nodeName(component.Name())
 
 	g.genTrivia(w, component.Definition.Tokens.GetType(""))
 	for _, l := range component.Definition.Tokens.GetLabels(nil) {
@@ -1632,7 +1716,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 		}
 	}
 
-	name := makeValidIdentifier(v.Name())
+	name := g.nodeName(v.Name())
 	g.Fgenf(w, "%[1]sconst %[2]s = config.%[3]s%[4]s%[5]s(\"%[6]s\")",
 		g.Indent, name, getOrRequire, getType, typeParam, v.LogicalName())
 	if v.DefaultValue != nil && !model.IsOptionalType(v.Type()) {
@@ -1647,7 +1731,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *pcl.ConfigVariable) {
 
 func (g *generator) genLocalVariable(w io.Writer, v *pcl.LocalVariable) {
 	g.genTrivia(w, v.Definition.Tokens.Name)
-	vName := makeValidIdentifier(v.Name())
+	vName := g.nodeName(v.Name())
 	vValue := g.lowerExpression(v.Definition.Value, v.Type())
 	g.Fgenf(w, "%sconst %s = %.3v;\n", g.Indent, vName, vValue)
 }
@@ -1661,7 +1745,7 @@ func (g *generator) genOutputVariable(w io.Writer, v *pcl.OutputVariable) {
 
 	// TODO(pdg): trivia
 	g.Fgenf(w, "%sexport const %s = %.3v;\n", g.Indent,
-		makeValidIdentifier(v.Name()), g.lowerExpression(v.Value, v.Type()))
+		g.nodeName(v.Name()), g.lowerExpression(v.Value, v.Type()))
 }
 
 func (g *generator) genPulumi(w io.Writer, v *pcl.PulumiBlock) {

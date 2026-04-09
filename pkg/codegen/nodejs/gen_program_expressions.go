@@ -67,7 +67,7 @@ func (g *generator) RewriteVariableRenames(expr model.Expression, typ model.Type
 			return expr, nil
 		}
 
-		traversal.RootName = makeValidIdentifier(traversal.RootName)
+		traversal.RootName = g.nodeName(traversal.RootName)
 
 		return expr, nil
 	}
@@ -550,7 +550,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			module = "." + module
 		}
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
-		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
+		name := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, fn)
 		if isOut {
 			name = name + "Output"
 		}
@@ -911,7 +911,7 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
-	rootName := makeValidIdentifier(expr.RootName)
+	rootName := g.nodeName(expr.RootName)
 	if g.isComponent {
 		if expr.RootName == "this" {
 			// special case for parent: this
