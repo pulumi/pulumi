@@ -409,14 +409,36 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
-		output, isOutput := to.(*model.OutputType)
-		if isOutput {
+		if output, ok := to.(*model.OutputType); ok {
 			to = output.ElementType
+		}
+		if cns, ok := to.(*model.ConstType); ok {
+			to = cns.Type
+		}
+		fromType := from.Type()
+		isFromOutput := isOutputType(fromType)
+		if output, ok := fromType.(*model.OutputType); ok {
+			fromType = output.ElementType
+		}
+		if cns, ok := fromType.(*model.ConstType); ok {
+			fromType = cns.Type
+		}
+
+		genMaybeOutputConversion := func(conversionExpr func(string)) {
+			if isFromOutput {
+				g.Fgenf(w, "%.v.apply(x =>", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			var t bytes.Buffer
+			g.Fgenf(&t, "%.v", from)
+			conversionExpr(t.String())
 		}
 		switch to := to.(type) {
 		case *model.EnumType:
 			if enum, err := enumName(to); err == nil {
-				if isOutput {
+				if isFromOutput {
 					g.Fgenf(w, "%.v.apply((x) => %s[x])", from, enum)
 				} else {
 					diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
@@ -434,7 +456,29 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				g.Fgenf(w, "%v", from)
 			}
 		default:
-			g.Fgenf(w, "%v", from)
+			switch {
+			case model.BoolType.AssignableFrom(to) && !model.BoolType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, `%s === "true"`, v)
+				})
+			case model.StringType.AssignableFrom(to) && !model.StringType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "String(%s)", v)
+				})
+			// ints and numbers are treated interchangeably in JavaScript, so if we are casting to int but
+			// already have int _or_ number that's fine. Same for casting to number.
+			case model.NumberType.AssignableFrom(to) &&
+				!model.NumberType.AssignableFrom(fromType) &&
+				!model.IntType.AssignableFrom(fromType),
+				model.IntType.AssignableFrom(to) &&
+					!model.NumberType.AssignableFrom(fromType) &&
+					!model.IntType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "Number(%s)", v)
+				})
+			default:
+				g.Fgenf(w, "%v", from)
+			}
 		}
 	case pcl.IntrinsicApply:
 		g.genApply(w, expr)

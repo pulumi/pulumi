@@ -9,7 +9,7 @@ export const theMap = {
 const anObject = config.requireObject<{prop?: Array<boolean>}>("anObject");
 export const theObject = anObject.prop?.[0];
 const anyObject = config.requireObject<any>("anyObject");
-export const theThing = anyObject.a + anyObject.b;
+export const theThing = Number(anyObject.a) + Number(anyObject.b);
 const optionalUntypedObject = config.getObject<any>("optionalUntypedObject") || {
     key: "value",
 };
