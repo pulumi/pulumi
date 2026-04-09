@@ -4,9 +4,10 @@ go 1.25.8
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.24.0
-	github.com/pulumi/pulumi/pkg/v3 v3.228.1-0.20260330134725-4ce8adb33ee7
-	github.com/pulumi/pulumi/sdk/v3 v3.228.1-0.20260330134725-4ce8adb33ee7
+	github.com/pulumi/pulumi/pkg/v3 v3.228.1-0.20260402092325-40fd96368b6b
+	github.com/pulumi/pulumi/sdk/v3 v3.228.1-0.20260402092325-40fd96368b6b
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.16.3
@@ -50,7 +51,6 @@ require (
 	github.com/golang/glog v1.2.5 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0 // indirect
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

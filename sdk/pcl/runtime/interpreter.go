@@ -18,11 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/customdecode"
 	"github.com/zclconf/go-cty/cty"
@@ -30,7 +32,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -92,6 +96,11 @@ type Interpreter struct {
 
 	// packageRefs are package references returned by RegisterPackage keyed by package name.
 	packageRefs map[string]string
+
+	// callbacks is the server that handles resource hook callbacks.
+	callbacks     *pclCallbackServer
+	callbacksOnce sync.Once
+	callbacksErr  error
 }
 
 func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
@@ -100,6 +109,227 @@ func NewInterpreter(program *pcl.Program, info RunInfo) *Interpreter {
 		info:        info,
 		packageRefs: map[string]string{},
 	}
+}
+
+// pclCallbackServer is a gRPC server that handles resource hook callbacks for the PCL runtime.
+type pclCallbackServer struct {
+	pulumirpc.UnimplementedCallbacksServer
+
+	stop          chan bool
+	handle        rpcutil.ServeHandle
+	functions     map[string]func(context.Context, []byte) (proto.Message, error)
+	functionsLock sync.RWMutex
+}
+
+func newPCLCallbackServer() (*pclCallbackServer, error) {
+	s := &pclCallbackServer{
+		functions: map[string]func(context.Context, []byte) (proto.Message, error){},
+		stop:      make(chan bool),
+	}
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Cancel: s.stop,
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterCallbacksServer(srv, s)
+			return nil
+		},
+		Options: rpcutil.TracingServerInterceptorOptions(nil),
+	})
+	if err != nil {
+		return nil, err
+	}
+	s.handle = handle
+	return s, nil
+}
+
+func (s *pclCallbackServer) RegisterCallback(
+	fn func(context.Context, []byte) (proto.Message, error),
+) (*pulumirpc.Callback, error) {
+	uuid, err := uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+	uuidString := uuid.String()
+	s.functionsLock.Lock()
+	defer s.functionsLock.Unlock()
+	s.functions[uuidString] = fn
+	return &pulumirpc.Callback{
+		Token:  uuidString,
+		Target: "127.0.0.1:" + strconv.Itoa(s.handle.Port),
+	}, nil
+}
+
+func (s *pclCallbackServer) Invoke(
+	ctx context.Context, req *pulumirpc.CallbackInvokeRequest,
+) (*pulumirpc.CallbackInvokeResponse, error) {
+	s.functionsLock.RLock()
+	fn, ok := s.functions[req.Token]
+	s.functionsLock.RUnlock()
+	if !ok {
+		return nil, errors.New("callback not found: " + req.Token)
+	}
+	resp, err := fn(ctx, req.Request)
+	if err != nil {
+		return nil, err
+	}
+	b, err := proto.Marshal(resp)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling callback response: %w", err)
+	}
+	return &pulumirpc.CallbackInvokeResponse{Response: b}, nil
+}
+
+func (i *Interpreter) getCallbackServer() (*pclCallbackServer, error) {
+	i.callbacksOnce.Do(func() {
+		s, err := newPCLCallbackServer()
+		i.callbacks = s
+		i.callbacksErr = err
+	})
+	return i.callbacks, i.callbacksErr
+}
+
+// registerHookNode registers a named hook block with the engine, then stores the hook's
+// registered name as a string variable so it can be referenced in resource hooks options.
+// The command expression is evaluated lazily at invocation time so that `args.X` references
+// can be resolved against the resource's actual args.
+func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
+	if h.Command == nil {
+		return fmt.Errorf("hook %s: missing command", h.Name())
+	}
+
+	onDryRun := false
+	if h.OnDryRun != nil {
+		odrVal, _, diags := i.evalExpression(h.OnDryRun)
+		if diags.HasErrors() {
+			return diags
+		}
+		if odrVal.IsBool() {
+			onDryRun = odrVal.BoolValue()
+		} else {
+			return fmt.Errorf("hook %s: onDryRun must be a boolean", h.Name())
+		}
+	}
+
+	hookName := i.effectiveName(h.LogicalName())
+	cmdExpr := h.Command
+
+	srv, err := i.getCallbackServer()
+	if err != nil {
+		return fmt.Errorf("creating callback server: %w", err)
+	}
+
+	workingDir := i.info.WorkingDir
+	cb, err := srv.RegisterCallback(func(ctx context.Context, reqBytes []byte) (proto.Message, error) {
+		var req pulumirpc.ResourceHookRequest
+		if len(reqBytes) > 0 {
+			if err := proto.Unmarshal(reqBytes, &req); err != nil {
+				return &pulumirpc.ResourceHookResponse{
+					Error: fmt.Sprintf("hook %s: failed to unmarshal request: %v", hookName, err),
+				}, nil
+			}
+		}
+
+		// Build a child eval context with `args` populated from the hook request.
+		i.evalLock.Lock()
+		evalCtx := i.evalContext.NewChild()
+		i.evalLock.Unlock()
+
+		unmarshal := func(s *structpb.Struct) (cty.Value, error) {
+			if s == nil {
+				return cty.EmptyObjectVal, nil
+			}
+			mopts := plugin.MarshalOptions{
+				KeepSecrets: true,
+			}
+			props, err := plugin.UnmarshalProperties(s, mopts)
+			if err != nil {
+				return cty.EmptyObjectVal, err
+			}
+			val, err := propertyValueToCty(ctx, i.monitor, resource.NewProperty(props))
+			if err != nil {
+				return cty.EmptyObjectVal, err
+			}
+			return val, nil
+		}
+
+		args := map[string]cty.Value{
+			"urn":  cty.StringVal(req.GetUrn()),
+			"id":   cty.StringVal(req.GetId()),
+			"name": cty.StringVal(req.GetName()),
+			"type": cty.StringVal(req.GetType()),
+		}
+
+		for key, val := range map[string]*structpb.Struct{
+			"newInputs":  req.GetNewInputs(),
+			"oldInputs":  req.GetOldInputs(),
+			"newOutputs": req.GetNewOutputs(),
+			"oldOutputs": req.GetOldOutputs(),
+		} {
+			args[key], err = unmarshal(val)
+			if err != nil {
+				return &pulumirpc.ResourceHookResponse{
+					Error: fmt.Sprintf("hook %s: failed to unmarshal %s: %v", hookName, key, err),
+				}, nil
+			}
+		}
+
+		evalCtx.Variables = map[string]cty.Value{
+			"args": cty.ObjectVal(args),
+		}
+
+		// Evaluate the command expression with the args context.
+		cmdVal, _, evalDiags := i.evalExpressionWith(cmdExpr, evalCtx)
+		if evalDiags.HasErrors() {
+			return &pulumirpc.ResourceHookResponse{
+				Error: fmt.Sprintf("hook %s: evaluating command: %v", hookName, evalDiags),
+			}, nil
+		}
+		if !cmdVal.IsArray() {
+			return &pulumirpc.ResourceHookResponse{
+				Error: fmt.Sprintf("hook %s: command must be a list of strings", hookName),
+			}, nil
+		}
+		var cmdArgs []string
+		for _, arg := range cmdVal.ArrayValue() {
+			arg, _ = unwrapOutputs(arg)
+			if !arg.IsString() {
+				return &pulumirpc.ResourceHookResponse{
+					Error: fmt.Sprintf("hook %s: command elements must be strings was %v", hookName, arg),
+				}, nil
+			}
+			cmdArgs = append(cmdArgs, arg.StringValue())
+		}
+		if len(cmdArgs) == 0 {
+			return &pulumirpc.ResourceHookResponse{
+				Error: fmt.Sprintf("hook %s: command must not be empty", hookName),
+			}, nil
+		}
+
+		//nolint:gosec // G204: command is provided by user PCL program
+		cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+		cmd.Dir = workingDir
+		if out, runErr := cmd.CombinedOutput(); runErr != nil {
+			return &pulumirpc.ResourceHookResponse{
+				Error: fmt.Sprintf("hook command %v failed: %s\n%s", cmdArgs, runErr, out),
+			}, nil
+		}
+		return &pulumirpc.ResourceHookResponse{}, nil
+	})
+	if err != nil {
+		return fmt.Errorf("allocating resource hook callback %s: %w", hookName, err)
+	}
+
+	_, err = i.monitor.RegisterResourceHook(ctx, &pulumirpc.RegisterResourceHookRequest{
+		Name:     hookName,
+		Callback: cb,
+		OnDryRun: onDryRun,
+	})
+	if err != nil {
+		return fmt.Errorf("registering resource hook %s: %w", hookName, err)
+	}
+
+	// Store the hook's registered name as a string so it can be referenced in hooks options.
+	i.setRawVariable(ctx, h.Name(), cty.StringVal(hookName))
+	return nil
 }
 
 // effectiveName returns the name to use when registering a resource or component with the given
@@ -176,6 +406,11 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		return err
 	}
 
+	// Stop the callback server if it was started
+	if i.callbacks != nil {
+		close(i.callbacks.stop)
+	}
+
 	if i.monitor != nil {
 		_, err := i.monitor.SignalAndWaitForShutdown(ctx, &emptypb.Empty{})
 		if err != nil {
@@ -221,6 +456,10 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 		case *pcl.PulumiBlock:
 			// handled before node execution
 			return nil
+		case *pcl.Hook:
+			if err := i.registerHookNode(ctx, node); err != nil {
+				return fmt.Errorf("failed to register hook %s: %w", node.Name(), err)
+			}
 		case *pcl.LocalVariable:
 			value, poison, diags := i.evalExpression(node.Definition.Value)
 			if poison != nil {
@@ -578,9 +817,13 @@ func getAllDependencies(value resource.PropertyValue) []string {
 func unwrapOutputs(value resource.PropertyValue) (resource.PropertyValue, []resource.URN) {
 	if value.IsOutput() {
 		o := value.OutputValue()
-		val, deps := unwrapOutputs(o.Element)
+		elem := o.Element
+		val, deps := unwrapOutputs(elem)
 		if o.Secret {
 			val = resource.MakeSecret(val)
+		}
+		if !o.Known {
+			val = resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
 		}
 		return val, append(o.Dependencies, deps...)
 	}
@@ -1450,6 +1693,62 @@ func (i *Interpreter) registerResourceWith(
 					hdopt = append(hdopt, v.StringValue())
 				}
 				request.HideDiffs = hdopt
+			}
+		}
+
+		// Process hooks - register command hooks and build the hooks binding
+		if res.Options.Hooks != nil {
+			hooksVal, poison, diags := i.evalExpressionWith(res.Options.Hooks, evalCtx)
+			if poison != nil {
+				return makePoisonValue(*poison), nil
+			}
+			if diags.HasErrors() {
+				return cty.NilVal, diags
+			}
+			if !hooksVal.IsNull() && !hooksVal.IsComputed() {
+				if !hooksVal.IsObject() {
+					return cty.NilVal, errors.New("hooks must be an object mapping hook types to command lists")
+				}
+				binding := &pulumirpc.RegisterResourceRequest_ResourceHooksBinding{}
+				for hookType, commandLists := range hooksVal.ObjectValue() {
+					if commandLists.IsNull() || commandLists.IsComputed() {
+						continue
+					}
+					if !commandLists.IsArray() {
+						return cty.NilVal, fmt.Errorf("hooks.%s must be an array of hooks", hookType)
+					}
+					var hookNames []string
+					for idx, hookVal := range commandLists.ArrayValue() {
+						if hookVal.IsNull() || hookVal.IsComputed() {
+							continue
+						}
+						if !hookVal.IsString() {
+							return cty.NilVal, fmt.Errorf("hooks.%s[%d] must be a reference to a named hook block", hookType, idx)
+						}
+						hookNames = append(hookNames, hookVal.StringValue())
+					}
+					switch hookType {
+					case "beforeCreate":
+						binding.BeforeCreate = append(binding.BeforeCreate, hookNames...)
+					case "afterCreate":
+						binding.AfterCreate = append(binding.AfterCreate, hookNames...)
+					case "beforeUpdate":
+						binding.BeforeUpdate = append(binding.BeforeUpdate, hookNames...)
+					case "afterUpdate":
+						binding.AfterUpdate = append(binding.AfterUpdate, hookNames...)
+					case "beforeDelete":
+						binding.BeforeDelete = append(binding.BeforeDelete, hookNames...)
+					case "afterDelete":
+						binding.AfterDelete = append(binding.AfterDelete, hookNames...)
+					default:
+						return cty.NilVal, fmt.Errorf("invalid hook type: %s", hookType)
+					}
+				}
+				if len(binding.BeforeCreate)+len(binding.AfterCreate)+
+					len(binding.BeforeUpdate)+len(binding.AfterUpdate)+
+					len(binding.BeforeDelete)+len(binding.AfterDelete) > 0 {
+					request.Hooks = binding
+				}
 			}
 		}
 	}

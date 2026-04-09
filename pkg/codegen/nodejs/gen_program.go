@@ -571,6 +571,14 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
 	}
 
+	// Add child_process import if the program contains hook blocks.
+	for _, n := range program.Nodes {
+		switch n.(type) {
+		case *pcl.Hook:
+			importSet.Add("child_process")
+		}
+	}
+
 	sortedValues := importSet.SortedValues()
 	imports := slice.Prealloc[string](len(sortedValues))
 	for _, pkg := range sortedValues {
@@ -908,6 +916,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genComponent(w, n)
 	case *pcl.PulumiBlock:
 		g.genPulumi(w, n)
+	case *pcl.Hook:
+		g.genHookNode(w, n)
 	}
 }
 
@@ -969,9 +979,15 @@ func (g *generator) makeResourceName(baseName, count string) string {
 	return fmt.Sprintf("`%s-${%s}`", baseName, count)
 }
 
-func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema.Resource) string {
+func (g *generator) genResourceOptions(
+	opts *pcl.ResourceOptions, schema *schema.Resource,
+	hookVars map[string][]string,
+) string {
 	if opts == nil {
-		return ""
+		if len(hookVars) == 0 {
+			return ""
+		}
+		opts = &pcl.ResourceOptions{}
 	}
 
 	// Turn the resource options into an ObjectConsExpression and generate it.
@@ -1045,7 +1061,8 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema
 		appendOption("envVarMappings", opts.EnvVarMappings)
 	}
 
-	if object == nil {
+	hasHooks := len(hookVars) > 0
+	if object == nil && !hasHooks {
 		return ""
 	}
 
@@ -1097,10 +1114,79 @@ func (g *generator) genResourceOptions(opts *pcl.ResourceOptions, schema *schema
 			}
 			g.Fprint(&buffer, ",\n")
 		}
+		// Add hooks binding if present.
+		if hasHooks {
+			hookTypes := slices.Collect(maps.Keys(hookVars))
+			sort.Strings(hookTypes)
+			g.Fprintf(&buffer, "%shooks: {\n", g.Indent)
+			g.Indented(func() {
+				for _, hookType := range hookTypes {
+					vars := hookVars[hookType]
+					g.Fprintf(&buffer, "%s%s: [%s],\n", g.Indent, hookType, strings.Join(vars, ", "))
+				}
+			})
+			g.Fprintf(&buffer, "%s},\n", g.Indent)
+		}
 	})
 	g.Fprintf(&buffer, "%s}", g.Indent)
 
 	return buffer.String()
+}
+
+// genHookNode generates a new pulumi.ResourceHook declaration for a named hook block.
+func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
+	varName := makeValidIdentifier(h.Name())
+	hookName := h.LogicalName()
+
+	var cmdExprs []model.Expression
+	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
+		cmdExprs = tuple.Expressions
+	}
+
+	g.Fgenf(w, "%sconst %s = new pulumi.ResourceHook(%q, (args) => {\n",
+		g.Indent, varName, hookName)
+	g.Indented(func() {
+		if len(cmdExprs) > 0 {
+			g.Fgenf(w, "%schild_process.execFileSync(%v, [", g.Indent, cmdExprs[0])
+			for j, arg := range cmdExprs[1:] {
+				if j > 0 {
+					g.Fgenf(w, ", ")
+				}
+				g.Fgenf(w, "%v", arg)
+			}
+			g.Fgenf(w, "]);\n")
+		}
+	})
+	if h.OnDryRun != nil {
+		g.Fgenf(w, "%s}, {onDryRun: %v});\n", g.Indent, h.OnDryRun)
+	} else {
+		g.Fgenf(w, "%s});\n", g.Indent)
+	}
+}
+
+// genHookDeclarations collects per-resource hook bindings keyed by hook type.
+func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
+	hookVars := make(map[string][]string)
+	obj, ok := r.Options.Hooks.(*model.ObjectConsExpression)
+	if !ok {
+		return hookVars
+	}
+	for _, item := range obj.Items {
+		key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+		contract.Assertf(len(diags) == 0, "Expected no diagnostics evaluating hook type key, got %d", len(diags))
+		hookType := key.AsString()
+		cmdLists, ok := item.Value.(*model.TupleConsExpression)
+		if !ok {
+			continue
+		}
+		for _, cmdListExpr := range cmdLists.Expressions {
+			// Hooks must be references to named hook blocks.
+			if trav, ok := cmdListExpr.(*model.ScopeTraversalExpression); ok {
+				hookVars[hookType] = append(hookVars[hookType], makeValidIdentifier(trav.RootName))
+			}
+		}
+	}
+	return hookVars
 }
 
 // genResourceDeclaration handles the generation of instantiations of resources.
@@ -1114,7 +1200,12 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 	qualifiedMemberName := fmt.Sprintf("%s%s.%s", pkg, module, memberName)
 
-	optionsBag := g.genResourceOptions(r.Options, r.Schema)
+	var hookVars map[string][]string
+	if r.Options != nil && r.Options.Hooks != nil {
+		hookVars = g.genHookDeclarations(r)
+	}
+
+	optionsBag := g.genResourceOptions(r.Options, r.Schema, hookVars)
 
 	name := r.LogicalName()
 	variableName := makeValidIdentifier(r.Name())
@@ -1321,7 +1412,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 	componentName := component.DeclarationName()
 
-	optionsBag := g.genResourceOptions(component.Options, nil)
+	optionsBag := g.genResourceOptions(component.Options, nil, nil)
 
 	name := component.LogicalName()
 	variableName := makeValidIdentifier(component.Name())

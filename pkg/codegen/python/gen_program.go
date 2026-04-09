@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -534,6 +535,14 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		Pkg string
 	}
 	importSet := map[string]Import{}
+	// Add subprocess import if the program contains hook blocks.
+	for _, n := range program.Nodes {
+		switch n.(type) {
+		case *pcl.Hook:
+			importSet["subprocess"] = Import{ImportAs: false}
+		}
+	}
+
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pcl.FixupPulumiPackageTokens(r)
@@ -644,6 +653,8 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genComponent(w, n)
 	case *pcl.PulumiBlock:
 		g.genPulumi(w, n)
+	case *pcl.Hook:
+		g.genHookNode(w, n)
 	}
 }
 
@@ -863,8 +874,11 @@ func (g *generator) lowerResourceOptions(
 	return block, temps
 }
 
-func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInputs bool) {
-	if block == nil {
+func (g *generator) genResourceOptions(
+	w io.Writer, block *model.Block, hasInputs bool, hookVars map[string][]string,
+) {
+	hasHooks := len(hookVars) > 0
+	if block == nil && !hasHooks {
 		return
 	}
 
@@ -874,74 +888,192 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 	}
 	g.Fprintf(w, ",%sopts = pulumi.ResourceOptions(", prefix)
 	g.Indented(func() {
-		for i, item := range block.Body.Items {
-			if i > 0 {
-				g.Fprintf(w, ",\n%s", g.Indent)
-			}
-			attr := item.(*model.Attribute)
+		itemCount := 0
+		if block != nil {
+			for i, item := range block.Body.Items {
+				if i > 0 {
+					g.Fprintf(w, ",\n%s", g.Indent)
+				}
+				attr := item.(*model.Attribute)
 
-			if attr.Name == "aliases" {
-				// aliases might be a list of strings or Alias objects
-				g.Fprintf(w, "aliases=[")
-				for i, expr := range attr.Value.(*model.TupleConsExpression).Expressions {
-					if i > 0 {
-						g.Fprintf(w, ", ")
+				if attr.Name == "aliases" {
+					// aliases might be a list of strings or Alias objects
+					g.Fprintf(w, "aliases=[")
+					for i, expr := range attr.Value.(*model.TupleConsExpression).Expressions {
+						if i > 0 {
+							g.Fprintf(w, ", ")
+						}
+						// If the expression is a string literal, we can inline it directly.
+						if expr.Type().Equals(model.StringType) {
+							g.Fprintf(w, "%v", expr)
+							continue
+						}
+						// Otherwise pull off the fields dynamically.
+						obj := expr.(*model.ObjectConsExpression)
+						g.Fprintf(w, "pulumi.Alias(")
+						for j, item := range obj.Items {
+							if j > 0 {
+								g.Fprintf(w, ", ")
+							}
+							// We need a literal key here.
+							key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+							contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
+
+							switch key.AsString() {
+							case "name":
+								g.Fgenf(w, "name=%v", item.Value)
+							case "type":
+								g.Fgenf(w, "type_=%v", item.Value)
+							case "noParent":
+								g.Fgenf(w, "parent=(None if %v else ...)", item.Value)
+							case "parent":
+								g.Fgenf(w, "parent=%v", item.Value)
+							}
+						}
+						g.Fprintf(w, ")")
 					}
-					// If the expression is a string literal, we can inline it directly.
-					if expr.Type().Equals(model.StringType) {
-						g.Fprintf(w, "%v", expr)
-						continue
-					}
-					// Otherwise pull off the fields dynamically.
-					obj := expr.(*model.ObjectConsExpression)
-					g.Fprintf(w, "pulumi.Alias(")
+					g.Fprintf(w, "]")
+				} else if attr.Name == "custom_timeouts" {
+					obj := attr.Value.(*model.ObjectConsExpression)
+					g.Fprintf(w, "custom_timeouts=pulumi.CustomTimeouts(")
 					for j, item := range obj.Items {
 						if j > 0 {
 							g.Fprintf(w, ", ")
 						}
-						// We need a literal key here.
 						key, diags := item.Key.Evaluate(&hcl.EvalContext{})
 						contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
 
-						switch key.AsString() {
-						case "name":
-							g.Fgenf(w, "name=%v", item.Value)
-						case "type":
-							g.Fgenf(w, "type_=%v", item.Value)
-						case "noParent":
-							g.Fgenf(w, "parent=(None if %v else ...)", item.Value)
-						case "parent":
-							g.Fgenf(w, "parent=%v", item.Value)
-						}
+						g.Fgenf(w, "%s=%v", key.AsString(), item.Value)
 					}
 					g.Fprintf(w, ")")
+				} else {
+					g.Fgenf(w, "%s=%v", attr.Name, attr.Value)
 				}
-				g.Fprintf(w, "]")
-			} else if attr.Name == "custom_timeouts" {
-				obj := attr.Value.(*model.ObjectConsExpression)
-				g.Fprintf(w, "custom_timeouts=pulumi.CustomTimeouts(")
-				for j, item := range obj.Items {
-					if j > 0 {
-						g.Fprintf(w, ", ")
-					}
-					key, diags := item.Key.Evaluate(&hcl.EvalContext{})
-					contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
-
-					g.Fgenf(w, "%s=%v", key.AsString(), item.Value)
-				}
-				g.Fprintf(w, ")")
-			} else {
-				g.Fgenf(w, "%s=%v", attr.Name, attr.Value)
+				itemCount++
 			}
+		}
+		if hasHooks {
+			if itemCount > 0 {
+				g.Fprintf(w, ",\n%s", g.Indent)
+			}
+			g.Fprintf(w, "hooks=pulumi.ResourceHookBinding(")
+			hookTypes := slices.Collect(maps.Keys(hookVars))
+			sort.Strings(hookTypes)
+			for j, hookType := range hookTypes {
+				if j > 0 {
+					g.Fprintf(w, ", ")
+				}
+				pyField := PyName(hookType)
+				vars := hookVars[hookType]
+				g.Fprintf(w, "%s=[%s]", pyField, strings.Join(vars, ", "))
+			}
+			g.Fprintf(w, ")")
 		}
 	})
 	g.Fprint(w, ")")
+}
+
+// genPyStringArg writes a command argument expression as a Python string literal or expression.
+func (g *generator) genPyStringArg(w io.Writer, arg model.Expression) {
+	switch a := arg.(type) {
+	case *model.LiteralValueExpression:
+		if model.StringType.AssignableFrom(a.Type()) {
+			g.Fgenf(w, "%q", a.Value.AsString())
+		} else {
+			g.Fgenf(w, "%v", a)
+		}
+	case *model.TemplateExpression:
+		if len(a.Parts) == 1 {
+			if lit, ok := a.Parts[0].(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
+				g.Fgenf(w, "%q", lit.Value.AsString())
+				return
+			}
+		}
+		// Multi-part template: emit as a Python f-string.
+		g.Fgen(w, `f"`)
+		for _, part := range a.Parts {
+			if lit, ok := part.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
+				s := strings.ReplaceAll(lit.Value.AsString(), "{", "{{")
+				s = strings.ReplaceAll(s, "}", "}}")
+				g.Fgen(w, s)
+			} else {
+				g.Fgenf(w, "{%v}", part)
+			}
+		}
+		g.Fgen(w, `"`)
+	default:
+		g.Fgenf(w, "%v", arg)
+	}
+}
+
+// genHookNode generates a ResourceHook declaration for a named hook block.
+func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
+	pyName := PyName(h.Name())
+	fnName := "_" + pyName
+	hookName := h.LogicalName()
+
+	var cmdExprs []model.Expression
+	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
+		cmdExprs = tuple.Expressions
+	}
+
+	g.Fgenf(w, "%sdef %s(args):\n", g.Indent, fnName)
+	g.Indented(func() {
+		g.Fgenf(w, "%ssubprocess.run([", g.Indent)
+		for i, arg := range cmdExprs {
+			if i > 0 {
+				g.Fgenf(w, ", ")
+			}
+			g.genPyStringArg(w, arg)
+		}
+		g.Fgenf(w, "])\n")
+	})
+
+	if h.OnDryRun != nil {
+		g.Fgenf(w, "%s%s = pulumi.ResourceHook(%q, %s,"+
+			" opts=pulumi.ResourceHookOptions(on_dry_run=", g.Indent, pyName, hookName, fnName)
+		g.Fgenf(w, "%v", h.OnDryRun)
+		g.Fgenf(w, "))\n")
+	} else {
+		g.Fgenf(w, "%s%s = pulumi.ResourceHook(%q, %s)\n", g.Indent, pyName, hookName, fnName)
+	}
+}
+
+// genHookDeclarations collects per-resource hook bindings keyed by hook type.
+func (g *generator) genHookDeclarations(r *pcl.Resource) map[string][]string {
+	hookVars := make(map[string][]string)
+	obj, ok := r.Options.Hooks.(*model.ObjectConsExpression)
+	if !ok {
+		return hookVars
+	}
+	for _, item := range obj.Items {
+		key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+		contract.Assertf(len(diags) == 0, "Expected no diagnostics evaluating hook type key, got %d", len(diags))
+		hookType := key.AsString()
+		cmdLists, ok := item.Value.(*model.TupleConsExpression)
+		if !ok {
+			continue
+		}
+		for _, cmdListExpr := range cmdLists.Expressions {
+			// Hooks must be references to named hook blocks.
+			if trav, ok := cmdListExpr.(*model.ScopeTraversalExpression); ok {
+				hookVars[hookType] = append(hookVars[hookType], PyName(trav.RootName))
+			}
+		}
+	}
+	return hookVars
 }
 
 // genResourceDeclaration handles the generation of instantiations resources.
 func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDefinition bool) {
 	qualifiedMemberName, diagnostics := resourceTypeName(r)
 	g.diagnostics = append(g.diagnostics, diagnostics...)
+
+	var hookVars map[string][]string
+	if r.Options != nil && r.Options.Hooks != nil {
+		hookVars = g.genHookDeclarations(r)
+	}
+
 	optionsBag, temps := g.lowerResourceOptions(r.Options, r.Schema)
 	name := r.LogicalName()
 	nameVar := PyName(r.Name())
@@ -996,7 +1128,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 				g.applyLambdaType = prev
 			}
-			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0)
+			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0, hookVars)
 		})
 		g.Fprint(w, ")")
 	}
@@ -1219,7 +1351,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 					}
 				}
 			}
-			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0)
+			g.genResourceOptions(w, optionsBag, len(r.Inputs) != 0, nil)
 		})
 
 		if hasInputVariables {

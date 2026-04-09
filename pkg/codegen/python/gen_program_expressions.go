@@ -813,6 +813,29 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 }
 
 func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTraversalExpression) {
+	// Hook command expressions may reference `args.X` to access resource data at call time.
+	if isHookArgsTraversal(expr) && len(expr.Traversal) >= 2 {
+		if attr, ok := expr.Traversal[1].(hcl.TraverseAttr); ok {
+			switch attr.Name {
+			case "urn", "id", "name", "type":
+				g.Fgenf(w, "args.%s", attr.Name)
+				return
+			}
+			mapFields := map[string]string{
+				"newInputs":  "new_inputs",
+				"oldInputs":  "old_inputs",
+				"newOutputs": "new_outputs",
+				"oldOutputs": "old_outputs",
+			}
+			if pyField, ok := mapFields[attr.Name]; ok && len(expr.Traversal) >= 3 {
+				if subAttr, ok := expr.Traversal[2].(hcl.TraverseAttr); ok {
+					g.Fgenf(w, `str(args.%s["%s"])`, pyField, subAttr.Name)
+					return
+				}
+			}
+		}
+	}
+
 	rootName := PyName(expr.RootName)
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
@@ -833,6 +856,29 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 
 	g.Fgen(w, rootName)
 	g.genRelativeTraversal(w, expr.Traversal.SimpleSplit().Rel, expr.Parts)
+}
+
+func isHookArgsTraversal(expr *model.ScopeTraversalExpression) bool {
+	if expr.RootName != "args" || len(expr.Parts) == 0 {
+		return false
+	}
+	rootVar, ok := expr.Parts[0].(*model.Variable)
+	if !ok {
+		return false
+	}
+	objType, ok := model.ResolveOutputs(rootVar.VariableType).(*model.ObjectType)
+	if !ok {
+		return false
+	}
+	for _, prop := range []string{
+		"urn", "id", "name", "type",
+		"newInputs", "oldInputs", "newOutputs", "oldOutputs",
+	} {
+		if _, ok := objType.Properties[prop]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression) {

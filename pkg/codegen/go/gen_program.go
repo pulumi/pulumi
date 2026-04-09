@@ -20,9 +20,11 @@ import (
 	gofmt "go/format"
 	"go/token"
 	"io"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -928,6 +930,14 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 		contract.Assertf(len(diags) == 0, "Expected no diagnostics, got %d", len(diags))
 	}
 
+	// Add os/exec import if the program contains hook blocks.
+	for _, n := range program.Nodes {
+		switch n.(type) {
+		case *pcl.Hook:
+			g.importer.Import("os/exec", "exec")
+		}
+	}
+
 	return helpers
 }
 
@@ -1127,7 +1137,50 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 		g.genLocalVariable(w, n)
 	case *pcl.PulumiBlock:
 		g.genPulumi(w, n)
+	case *pcl.Hook:
+		g.genHookNode(w, n)
 	}
+}
+
+// genHookNode generates a ctx.RegisterResourceHook call for a named hook block.
+func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
+	varName := makeValidIdentifier(h.Name())
+	hookName := h.LogicalName()
+
+	// Extract the command expressions from the Command tuple.
+	var cmdExprs []model.Expression
+	if tuple, ok := h.Command.(*model.TupleConsExpression); ok {
+		cmdExprs = tuple.Expressions
+	}
+
+	g.Fgenf(w, "%s%s, err := ctx.RegisterResourceHook(%q, func(args *pulumi.ResourceHookArgs) error {\n",
+		g.Indent, varName, hookName)
+	g.Indented(func() {
+		if len(cmdExprs) > 0 {
+			g.Fgenf(w, "%sreturn exec.Command(%v", g.Indent, cmdExprs[0])
+			for _, arg := range cmdExprs[1:] {
+				g.Fgenf(w, ", %v", arg)
+			}
+			g.Fgenf(w, ").Run()\n")
+		} else {
+			g.Fgenf(w, "%sreturn nil\n", g.Indent)
+		}
+	})
+	if h.OnDryRun != nil {
+		g.Fgenf(w, "%s}, &pulumi.ResourceHookOptions{OnDryRun: %v})\n", g.Indent, h.OnDryRun)
+	} else {
+		g.Fgenf(w, "%s}, nil)\n", g.Indent)
+	}
+	g.Fgenf(w, "%sif err != nil {\n", g.Indent)
+	g.Indented(func() {
+		if g.isComponent {
+			g.Fgenf(w, "%sreturn nil, err\n", g.Indent)
+		} else {
+			g.Fgenf(w, "%sreturn err\n", g.Indent)
+		}
+	})
+	g.Fgenf(w, "%s}\n", g.Indent)
+	g.isErrAssigned = true
 }
 
 var resourceType = model.NewOpaqueType("pulumi.Resource")
@@ -1253,6 +1306,9 @@ func (g *generator) lowerResourceOptions(opts *pcl.ResourceOptions, schema *sche
 	if opts.EnvVarMappings != nil {
 		appendOption("EnvVarMappings", opts.EnvVarMappings, model.NewMapType(model.StringType))
 	}
+	if opts.Hooks != nil {
+		appendOption("Hooks", opts.Hooks, opts.Hooks.Type())
+	}
 
 	return block, temps
 }
@@ -1344,6 +1400,38 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 				g.Fgenf(valBuffer, "%v: %v", item.Key, item.Value)
 			}
 			g.Fgenf(valBuffer, "}")
+		case "Hooks":
+			hookVars := make(map[string][]string)
+			obj, ok := attr.Value.(*model.ObjectConsExpression)
+			if !ok {
+				continue
+			}
+			for _, item := range obj.Items {
+				key, diags := item.Key.Evaluate(&hcl.EvalContext{})
+				contract.Assertf(len(diags) == 0, "Expected no diagnostics evaluating hook type key, got %d", len(diags))
+				hookType := key.AsString()
+				hookList, ok := item.Value.(*model.TupleConsExpression)
+				if !ok {
+					continue
+				}
+				for _, hookExpr := range hookList.Expressions {
+					// Hooks must be references to named hook blocks.
+					if trav, ok := hookExpr.(*model.ScopeTraversalExpression); ok {
+						hookVars[hookType] = append(hookVars[hookType], makeValidIdentifier(trav.RootName))
+					}
+				}
+			}
+			if len(hookVars) > 0 {
+				hookTypes := slices.Collect(maps.Keys(hookVars))
+				sort.Strings(hookTypes)
+				g.Fgenf(w, ", pulumi.ResourceHooks(&pulumi.ResourceHookBinding{")
+				for _, hookType := range hookTypes {
+					vars := hookVars[hookType]
+					g.Fgenf(w, "%s: []*pulumi.ResourceHook{%s}, ", Title(hookType), strings.Join(vars, ", "))
+				}
+				g.Fgenf(w, "})")
+			}
+			continue
 		default:
 			g.Fgenf(valBuffer, "%v", attr.Value)
 		}
