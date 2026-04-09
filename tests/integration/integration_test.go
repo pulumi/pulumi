@@ -232,8 +232,8 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	e.CWD = os.TempDir()
@@ -394,8 +394,8 @@ func TestExcludeProtected(t *testing.T) {
 
 	e.RunCommand("pulumi", "stack", "init", "dev")
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 
@@ -963,8 +963,8 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 		e.RunCommand("pulumi", "stack", "init", stackName)
 	}
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
 	newProjectName := "new_emptyjs"
@@ -1135,8 +1135,8 @@ func TestAdvisoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "advisory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "advisory_policy_pack")
@@ -1162,8 +1162,8 @@ func TestMandatoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "mandatory_policy_pack")
@@ -1190,8 +1190,8 @@ func TestBunMandatoryPolicyPack(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "bun_mandatory_policy_pack"), "bun", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 
 	stdout, _, err := e.GetCommandResults(
 		"pulumi", "up", "--skip-preview", "--yes", "--policy-pack", "bun_mandatory_policy_pack")
@@ -1220,8 +1220,8 @@ func TestMultiplePolicyPacks(t *testing.T) {
 	_, _, err = e.GetCommandResultsIn(filepath.Join(e.CWD, "mandatory_policy_pack"), "npm", "install")
 	require.NoError(t, err)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 
 	stdout, _, err := e.GetCommandResults("pulumi", "up", "--skip-preview", "--yes",
 		"--policy-pack", "advisory_policy_pack",
@@ -1245,8 +1245,8 @@ func TestPolicyPluginExtraArguments(t *testing.T) {
 	stackName, err := resource.NewUniqueHex("policy-plugin-extra-args", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 	require.NoError(t, err)
 	// Create a venv for the policy package and install the current python SDK into it
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
@@ -1643,7 +1643,7 @@ func TestAutomationAPIErrorInResource(t *testing.T) {
 	e.ImportDirectory(filepath.Join("automation", "error"))
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
 
 	// The bug was causing a hang, ensure the test times out
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Minute)
@@ -1679,7 +1679,7 @@ func TestRunningViaCLIWrapper(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "init", "dev")
 	e.RunCommand("pulumi", "stack", "select", "-s", "dev")
 	e.RunCommand("pulumi", "install")
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(e.T))
 	e.RunCommand("pulumi", "package", "add", providerPath)
 	e.CWD = e.RootPath
 

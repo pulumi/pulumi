@@ -1,0 +1,6 @@
+{
+    "name": "retype_component",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

@@ -4,10 +4,8 @@
     "devDependencies": {
         "typescript": "3.9.10"
     },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
-    },
     "dependencies": {
-        "@types/node": "8.10.66"
+        "@types/node": "8.10.66",
+        "@pulumi/pulumi": "*"
     }
 }

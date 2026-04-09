@@ -1,0 +1,6 @@
+{
+    "name": "read_relinquish",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

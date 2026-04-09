@@ -1,0 +1,6 @@
+{
+    "name": "read_replace",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

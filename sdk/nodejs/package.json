@@ -73,7 +73,10 @@
             "optional": true
         }
     },
-    "packageManager": "yarn@1.22.22",
+    "packageManager": "pnpm@10.33.0",
+    "pnpm": {
+        "onlyBuiltDependencies": ["@biomejs/biome", "esbuild", "protobufjs"]
+    },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
     },

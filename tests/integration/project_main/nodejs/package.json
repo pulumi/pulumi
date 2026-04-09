@@ -1,0 +1,6 @@
+{
+    "name": "nodejs",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

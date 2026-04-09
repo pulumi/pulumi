@@ -194,10 +194,10 @@ async function runTest(
 
     let logs = "";
 
-    // Get the corepack executable from the yarn bin directory, which allows us
+    // Get the corepack executable from the pnpm bin directory, which allows us
     // to use the version of corepack that's installed as part of our dev
     // dependencies. This avoids having to install corepack globally or in CI.
-    const { stdout: bin } = await execa("yarn", ["bin"], {});
+    const { stdout: bin } = await execa("pnpm", ["bin"], {});
     const corepack = path.join(bin.trim(), "corepack");
 
     // Install the package manager to test.

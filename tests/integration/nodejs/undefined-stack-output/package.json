@@ -1,0 +1,6 @@
+{
+    "name": "undefined-stack-output",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

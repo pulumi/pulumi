@@ -1,0 +1,6 @@
+{
+    "name": "retype_parents",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

@@ -1,0 +1,6 @@
+{
+    "name": "dependency_steps",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

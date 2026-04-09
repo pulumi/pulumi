@@ -147,7 +147,7 @@ func TestProjectMainNodejs(t *testing.T) {
 			return
 		}
 
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
 		e.RunCommand("pulumi", "preview")
@@ -162,7 +162,7 @@ func TestProjectMainNodejs(t *testing.T) {
 		e.ImportDirectory("project_main_parent")
 
 		// yarn link first
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+		e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 		// then virtually change directory to the location of the nested Pulumi.yaml
 		e.CWD = filepath.Join(e.RootPath, "foo", "bar")
 
@@ -200,7 +200,7 @@ func TestRemoveWithResourcesBlocked(t *testing.T) {
 
 	e.ImportDirectory("single_resource")
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	_, stderr := e.RunCommandExpectError("pulumi", "stack", "rm", "--yes")
 	assert.Contains(t, stderr, "--force")
@@ -329,7 +329,7 @@ func TestStackOutputsJSON(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(filepath.Join("stack_outputs", "nodejs"))
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "stack-outs")
 	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
@@ -1316,7 +1316,7 @@ func TestESMTSX(t *testing.T) {
 	// ts-node, which does not provide ts-node/esm.
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
 	e.RunCommand("yarn", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1354,7 +1354,7 @@ func TestESMTSAuto(t *testing.T) {
 	// ts-node, which does not provide ts-node/esm.
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
 	e.RunCommand("yarn", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1392,7 +1392,7 @@ func TestESMTSAutoTypeCheck(t *testing.T) {
 	// ts-node, which does not provide ts-node/esm.
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
 	e.RunCommand("yarn", "add", coreSDK)
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1820,7 +1820,7 @@ func TestTranspileOnly(t *testing.T) {
 			// the `noCheck` option.
 			coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 			require.NoError(t, err)
-			e.RunCommandWithRetry("yarn", "install")
+			e.RunCommandWithRetry("pnpm", "install")
 			e.RunCommand("yarn", "add", coreSDK)
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "stack", "init", stackName)
@@ -1878,6 +1878,7 @@ func TestCodePathsWorkspaceTSC(t *testing.T) {
 		Quick:           true,
 		RunBuild:        true,
 		RelativeWorkDir: "infra",
+		PackageManager:  integration.PackageManagerYarn,
 	})
 }
 
@@ -1902,8 +1903,8 @@ func TestNoNegativeTimingsOnRefresh(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "negative-timings")
 	e.RunCommand("pulumi", "stack", "select", "negative-timings")
@@ -1928,8 +1929,8 @@ func TestAboutNodeJS(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory(dir)
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
 	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
@@ -1940,7 +1941,7 @@ func TestAboutNodeJS(t *testing.T) {
 		"Did not contain expected output. stderr: \n%q", stderr)
 	// Assert we parsed the language plugin, we don't assert against the minor version number
 	assert.Regexp(t, regexp.MustCompile(`language\W+nodejs\W+3\.`), stdout)
-	assert.Contains(t, stdout, "packagemanager='yarn'")
+	assert.Contains(t, stdout, "packagemanager='pnpm'")
 	assert.Regexp(t, regexp.MustCompile(`packagemanagerVersion='\d+\.\d+.\d+'`), stdout)
 }
 
@@ -1981,8 +1982,8 @@ func TestTSConfigOption(t *testing.T) {
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("tsconfig")
 
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "select", "tsconfg", "--create")
 	e.RunCommand("pulumi", "preview")
@@ -2734,7 +2735,7 @@ func TestNodejsSourcemapTest(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 	e.ImportDirectory("nodejs/sourcemap-in-test")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
 	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
 	require.NoError(t, err)
 	e.RunCommand("yarn", "add", coreSDK)
@@ -3271,7 +3272,7 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 	stderr := &bytes.Buffer{}
 	err = pm.Install(t.Context(), dir, false /* production*/, stdout, stderr)
 	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
-	cmd := exec.Command("yarn", "link", "@pulumi/pulumi")
+	cmd := exec.Command("pnpm", "link", integration.FindNodeSDKBinPath(t)) //nolint:gosec // test code
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)

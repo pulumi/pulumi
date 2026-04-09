@@ -1,0 +1,6 @@
+{
+    "name": "duplicate_urns",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

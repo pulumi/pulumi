@@ -1,7 +1,7 @@
 {
-  "name": "resource-hook",
-  "license": "Apache-2.0",
-  "peerDependencies": {
-    "@pulumi/pulumi": "latest"
-  }
+    "name": "resource-hook",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
 }

@@ -10,10 +10,10 @@ Using npm:
 $ npm install --save @pulumi/pulumi
 ```
 
-Using yarn:
+Using pnpm:
 
 ```bash
-$ yarn add @pulumi/pulumi
+$ pnpm add @pulumi/pulumi
 ```
 
 This SDK is meant for use with the Pulumi CLI.  Visit
@@ -26,8 +26,9 @@ For anybody who wants to build from source, here is how you do it.
 ### Prerequisites
 
 This SDK uses Node.js and we support any of the
-[Current, Active and Maintenance LTS versions](https://nodejs.org/en/about/releases/). We support both
-[NPM](https://npmjs.org) and [Yarn](https://yarnpkg.com/lang/en/docs/install/) for package management.
+[Current, Active and Maintenance LTS versions](https://nodejs.org/en/about/releases/). We support
+[NPM](https://npmjs.org), [pnpm](https://pnpm.io/), [Yarn](https://yarnpkg.com/lang/en/docs/install/),
+and [Bun](https://bun.sh/) for package management in user programs.
 
 At the moment, we only support building on macOS and Linux, where standard GNU tools like `make` are available.
 

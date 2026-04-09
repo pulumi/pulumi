@@ -1,8 +1,8 @@
 {
     "name": "testdata",
     "version": "1.0.0",
-    "description": "testadata is a Node.js package so we can `yarn link` @pulumi/pulumi into it.",
-    "peerDependencies": {
+    "description": "testadata is a Node.js package so we can `pnpm link` @pulumi/pulumi into it.",
+    "dependencies": {
         "@pulumi/pulumi": "*"
     }
 }

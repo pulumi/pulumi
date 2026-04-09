@@ -5,7 +5,7 @@
         "typescript": "3.9.10",
         "@types/node": "ts3.8"
     },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
+    "dependencies": {
+        "@pulumi/pulumi": "*"
     }
 }

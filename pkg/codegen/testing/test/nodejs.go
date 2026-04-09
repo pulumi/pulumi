@@ -106,9 +106,10 @@ func typeCheckNodeJS(t *testing.T, path string, _ codegen.StringSet, linkLocal b
 }
 
 func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
-	RunCommandWithRetries(t, "npm_install", pwd, 3, "npm", "install")
+	RunCommand(t, "pnpm_install", pwd, "pnpm", "install")
 	if linkLocal {
-		RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
+		sdkPath := integration.FindNodeSDKBinPath(t)
+		RunCommand(t, "pnpm_link", pwd, "pnpm", "link", sdkPath)
 	}
 	tscOptions := &integration.ProgramTestOptions{
 		// Avoid Out of Memory error on CI:

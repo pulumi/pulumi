@@ -80,8 +80,8 @@ func TestHistoryCommand(t *testing.T) {
 		e.ImportDirectory("../integration/stack_outputs")
 		e.RunCommand("pulumi", "stack", "init", "stack-without-updates")
 		e.RunCommand("pulumi", "stack", "init", "history-test")
-		e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-		e.RunCommandWithRetry("yarn", "install")
+		e.RunCommandWithRetry("pnpm", "install")
+		e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 		// Update the history-test stack.
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview", "-m", "this is an updated stack")
 		// Confirm we see the update message in thie history output.

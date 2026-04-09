@@ -14,4 +14,4 @@ All commands run from `sdk/nodejs/`. Prefix with `mise exec --` if mise is not a
 ## If you change...
 
 - TypeScript files → `mise exec -- make lint && mise exec -- make test_fast`
-- You must run `mise exec -- make install` to make the SDK available via `yarn link` before running integration tests.
+- You must run `mise exec -- make install` to make the SDK available via `pnpm link` before running integration tests.

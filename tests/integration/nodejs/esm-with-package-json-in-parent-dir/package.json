@@ -3,7 +3,7 @@
     "main": "myprogram/main.js",
     "type": "module",
     "license": "Apache-2.0",
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
+    "dependencies": {
+        "@pulumi/pulumi": "*"
     }
 }

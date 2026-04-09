@@ -3,10 +3,8 @@
     "license": "Apache-2.0",
     "dependencies": {
         "ts-node": "10.9.2",
-        "typescript": "5.9.3"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
+        "typescript": "5.9.3",
+        "@pulumi/pulumi": "*"
     },
     "type": "module",
     "exports": {

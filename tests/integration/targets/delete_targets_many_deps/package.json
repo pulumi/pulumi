@@ -1,0 +1,6 @@
+{
+    "name": "delete_targets_many_deps",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

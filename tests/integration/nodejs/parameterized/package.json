@@ -7,9 +7,7 @@
         "ts-node": "10.9.2"
     },
     "dependencies": {
-        "@pulumi/pkg": "file:./sdk/nodejs"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
+        "@pulumi/pkg": "file:./sdk/nodejs",
+        "@pulumi/pulumi": "*"
     }
 }

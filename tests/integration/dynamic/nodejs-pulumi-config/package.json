@@ -1,11 +1,11 @@
 {
-  "name": "nodejs-resource-type-name",
-  "license": "Apache-2.0",
-  "devDependencies": {
-    "typescript": "4.9.5",
-    "@types/node": "14.18.63"
-  },
-  "peerDependencies": {
-    "@pulumi/pulumi": "latest"
-  }
+    "name": "nodejs-resource-type-name",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "typescript": "4.9.5",
+        "@types/node": "14.18.63"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
 }

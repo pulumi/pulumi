@@ -1,0 +1,6 @@
+{
+    "name": "regression-12301",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

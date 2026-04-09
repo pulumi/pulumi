@@ -1,0 +1,6 @@
+{
+    "name": "adopt_into_component",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

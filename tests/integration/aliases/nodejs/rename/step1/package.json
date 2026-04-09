@@ -1,0 +1,6 @@
+{
+    "name": "rename",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

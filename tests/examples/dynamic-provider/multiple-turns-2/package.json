@@ -8,9 +8,7 @@
     },
     "dependencies": {
         "assert": "1.5.1",
-        "sleep-promise": "2.0.0"
-    },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
+        "sleep-promise": "2.0.0",
+        "@pulumi/pulumi": "*"
     }
 }

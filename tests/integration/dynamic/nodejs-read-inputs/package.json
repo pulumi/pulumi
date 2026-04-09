@@ -3,7 +3,7 @@
     "devDependencies": {
         "@types/node": "^18"
     },
-    "peerDependencies": {
-        "@pulumi/pulumi": "^3.113.0"
+    "dependencies": {
+        "@pulumi/pulumi": "*"
     }
 }

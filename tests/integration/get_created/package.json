@@ -1,0 +1,6 @@
+{
+    "name": "get_created",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

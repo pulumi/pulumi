@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -44,7 +45,7 @@ func TestUntargetedCreateDuringTargetedUpdate(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 
 	e.ImportDirectory("untargeted_create")
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 	e.RunCommand("pulumi", "stack", "init", stackName)
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 	urn, _ := e.RunCommand("pulumi", "stack", "output", "urn")
@@ -78,8 +79,8 @@ func TestDeleteManyTargets(t *testing.T) {
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
 	e.ImportDirectory(projName)
 	e.RunCommand("pulumi", "stack", "init", stackName)
-	e.RunCommandWithRetry("yarn", "link", "@pulumi/pulumi")
-	e.RunCommandWithRetry("yarn", "install")
+	e.RunCommandWithRetry("pnpm", "install")
+	e.RunCommandWithRetry("pnpm", "link", integration.FindNodeSDKBinPath(t))
 	e.RunCommand("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 
 	// Create a handy mkURN func to create URNs for dynamic resources in this project/stack.

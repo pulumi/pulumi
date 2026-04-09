@@ -5,7 +5,7 @@
 /custom_node/
 /runtime/native/node_dev/
 .nyc_output/
-!yarn.lock
+!pnpm-lock.yaml
 !vendor
 !dist/pulumi-analyzer-policy
 !dist/pulumi-analyzer-policy.cmd

@@ -77,11 +77,11 @@ generate-cli-spec::
 
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
+	cd sdk/nodejs/tools/automation && pnpm install --frozen-lockfile && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
 
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm test
+	cd sdk/nodejs/tools/automation && pnpm install --frozen-lockfile && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm test
 
 .PHONY: generate-python-automation-api
 generate-python-automation-api:: generate-cli-spec
@@ -159,14 +159,14 @@ lint_pulumi_json::
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && pnpm exec biome format ../../pkg/codegen/schema/pulumi.json
 
 lint_pulumi_json_fix::
 	# We only want to run `make ensure` in sdk/nodejs to install biome.  We can't depend
         # on the `ensure` target here because that installs extra dependencies, that we don't
 	# need here, and don't necessarily have installed in CI.
 	cd sdk/nodejs && make ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && pnpm exec biome format --write ../../pkg/codegen/schema/pulumi.json
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
@@ -208,7 +208,7 @@ lint_actions:
 	  -format '{{range $$err := .}}### Error at line {{$$err.Line}}, col {{$$err.Column}} of `{{$$err.Filepath}}`\n\n{{$$err.Message}}\n\n```\n{{$$err.Snippet}}\n```\n\n{{end}}'
 
 format:: ensure
-	cd sdk/nodejs && yarn biome format --write ../../pkg/codegen/schema/pulumi.json
+	cd sdk/nodejs && pnpm exec biome format --write ../../pkg/codegen/schema/pulumi.json
 
 test_fast:: build get_schemas
 	@cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS} ${PKG_CODEGEN_NODE}
@@ -244,10 +244,10 @@ test_pkg:: test_pkg_rest test_codegen_go test_codegen_nodejs test_codegen_python
 
 subset=$(subst test_integration_,,$(word 1,$(subst !, ,$@)))
 test_integration_%:
-	@cd tests && PULUMI_INTEGRATION_TESTS=$(subset) $(GO_TEST) $(INTEGRATION_PKG)
+	@cd tests && PULUMI_TEST_USE_PNPM=true PULUMI_INTEGRATION_TESTS=$(subset) $(GO_TEST) $(INTEGRATION_PKG)
 
 test_integration_subpkgs:
-	@cd tests && $(GO_TEST) $(TESTS_PKGS)
+	@cd tests && PULUMI_TEST_USE_PNPM=true $(GO_TEST) $(TESTS_PKGS)
 
 test_integration:: $(SDKS:%=test_integration_%) test_integration_rest test_integration_subpkgs
 

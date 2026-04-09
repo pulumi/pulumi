@@ -1,0 +1,6 @@
+{
+    "name": "untargeted_create",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

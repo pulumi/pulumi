@@ -3,7 +3,7 @@
     "devDependencies": {
         "@types/node": "10.17.60"
     },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
+    "dependencies": {
+        "@pulumi/pulumi": "*"
     }
 }

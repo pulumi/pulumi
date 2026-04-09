@@ -1,0 +1,6 @@
+{
+    "name": "read_dbr",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

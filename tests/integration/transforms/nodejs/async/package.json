@@ -1,6 +1,6 @@
 {
-  "name": "transforms",
-  "peerDependencies": {
-    "@pulumi/pulumi": "latest"
-  }
+    "name": "transforms",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
 }

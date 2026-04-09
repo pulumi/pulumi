@@ -1,0 +1,6 @@
+{
+    "name": "simple",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

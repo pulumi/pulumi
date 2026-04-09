@@ -9,7 +9,7 @@
         "typescript": "3.9.10",
         "@types/node": "11.15.54"
     },
-    "peerDependencies": {
-        "@pulumi/pulumi": "latest"
+    "dependencies": {
+        "@pulumi/pulumi": "*"
     }
 }

@@ -17,32 +17,31 @@ TEST_ALL_DEPS ?= build
 
 include ../../build/common.mk
 
-export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
-
-ensure:: .make/ensure/yarn .make/ensure/node .make/ensure/phony
+ensure:: .make/ensure/pnpm .make/ensure/node .make/ensure/phony
 .make/ensure/phony: package.json
-	../../scripts/retry yarn install --frozen-lockfile
+	../../scripts/retry pnpm install --frozen-lockfile
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 format:: ensure
-	yarn biome format --write .
+	pnpm exec biome format --write .
 
 lint:: ensure
-	yarn run eslint -c .eslintrc.js --ext .ts .
-	yarn biome ci .
+	pnpm exec eslint -c .eslintrc.js --ext .ts .
+	pnpm exec biome ci .
 
 lint_fix:: ensure
-	yarn run eslint -c .eslintrc.js --ext .ts --fix .
-	yarn biome format --write .
+	pnpm exec eslint -c .eslintrc.js --ext .ts --fix .
+	pnpm exec biome format --write .
 
 build_package:: ensure
-	yarn run tsc
+	pnpm exec tsc
 	mkdir -p bin/tests/automation/data/
 	cp -R tests/automation/data/. bin/tests/automation/data/
 	cp -R tests/provider/experimental/testdata/ bin/tests/provider/experimental/testdata
 	cp .npmignore README.md ../../LICENSE ./dist/* bin/
 	cp -R ./vendor/ ./bin/vendor/
 	node ../../scripts/reversion.js bin/package.json ${VERSION}
+	node -e 'var p=JSON.parse(require("fs").readFileSync("bin/package.json","utf8"));delete p.packageManager;delete p.pnpm;require("fs").writeFileSync("bin/package.json",JSON.stringify(p,null,4)+"\n")'
 	node ../../scripts/reversion.js bin/version.js ${VERSION}
 	mkdir -p bin/proto
 	cp -R proto/. bin/proto/
@@ -87,20 +86,20 @@ tools_tests::
 	go run -C ../../pkg ./cmd/pulumi generate-cli-spec \
 		--overrides ../tools/automation/automation-overrides.json \
 		> ../../tools/automation/specification.json
-	cd tools/automation && yarn install && \
-		npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && \
-		yarn build && \
-		yarn test
+	cd tools/automation && pnpm install --frozen-lockfile && \
+		pnpm start ../../../../tools/automation/specification.json boilerplate/testing.ts && \
+		pnpm build && \
+		pnpm test
 
 unit_tests:: $(TEST_ALL_DEPS) tools_tests
-	yarn run nyc --no-clean -s mocha --timeout 120000 \
+	pnpm exec nyc --no-clean -s mocha --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
 		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
 		'bin/tests/**/*.spec.js'
-	yarn run nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
+	pnpm exec nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc --no-clean -s mocha --timeout 450000 --parallel 'bin/tests/automation/**/*.spec.js'
+	pnpm exec nyc --no-clean -s mocha --timeout 300000 --parallel 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
@@ -113,10 +112,10 @@ sxs_test_%:
 	@cd tests/sxs_ts_test && ( \
 		cp -f package$(version).json package.json && \
 		if [ -f tsconfig$(version).json ]; then project=tsconfig$(version).json; else project=tsconfig.json; fi && \
-		yarn install && \
-		yarn run tsc --version && \
-		yarn run tsc --project $$project && \
-		rm package.json && \
+		pnpm install --no-frozen-lockfile && \
+		pnpm exec tsc --version && \
+		pnpm exec tsc --project $$project && \
+		rm -f package.json pnpm-lock.yaml && \
 		echo "✅ TypeScript $(version) passed" \
 	) || ( \
 		echo "🚫 TypeScript $(version) failed"; \
@@ -127,7 +126,7 @@ sxs_tests:: $(TSC_SUPPORTED_VERSIONS:%=sxs_test_%)
 
 test_fast:: sxs_tests unit_tests
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+	if [ -e .nyc_output ]; then pnpm exec nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
 	@cd cmd/pulumi-language-nodejs && $(GO_TEST_FAST) $(shell go list ./... | grep -v /vendor/ | grep -v templates)
 	$(GO_TEST_FAST) $(shell go list ./...)
@@ -138,7 +137,7 @@ test_go:: $(TEST_ALL_DEPS)
 
 test_all:: sxs_tests unit_tests test_auto test_go test_integration
 ifneq ($(PULUMI_TEST_COVERAGE_PATH),)
-	if [ -e .nyc_output ]; then yarn run nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
+	if [ -e .nyc_output ]; then pnpm exec nyc report -r cobertura --report-dir $(PULUMI_TEST_COVERAGE_PATH); fi
 endif
 
 PULUMI_TEST_ORG ?= $(shell pulumi whoami --json | jq ".organizations[0]")
@@ -150,7 +149,7 @@ TEST_GREP ?= .*
 #
 # $ make test_watch TEST_GREP="lists tag values"
 test_watch::
-	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 450000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
+	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) pnpm exec mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::

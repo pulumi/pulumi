@@ -1,0 +1,6 @@
+{
+    "name": "import_acquire",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

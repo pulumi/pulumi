@@ -1,0 +1,6 @@
+{
+    "name": "explicit_provider",
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
+}

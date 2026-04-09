@@ -1,4 +1,6 @@
 {
     "name": "nodejs-debugger",
-    "peerDependencies": { "@pulumi/pulumi": "latest" }
+    "dependencies": {
+        "@pulumi/pulumi": "*"
+    }
 }

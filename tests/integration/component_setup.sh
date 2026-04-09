@@ -8,6 +8,12 @@ set -euo pipefail
 DONEFILE=".done"
 EXPECTED_HASH="$(git rev-parse HEAD:./)"
 
+# use_pnpm mirrors usePnpmEnv in pkg/testing/integration/program.go: prepare Node.js
+# test components with pnpm instead of yarn when PULUMI_TEST_USE_PNPM opts in.
+use_pnpm() {
+  [ -n "${PULUMI_TEST_USE_PNPM:-}" ] && [ "${PULUMI_TEST_USE_PNPM}" != "0" ] && [ "${PULUMI_TEST_USE_PNPM}" != "false" ]
+}
+
 BUILD=false
 if [ -f "${DONEFILE}" ] && [ "$(head "${DONEFILE}")" = "${EXPECTED_HASH}" ]; then
   echo "Setup marked complete"
@@ -33,9 +39,15 @@ setup_nodejs() (
   set -euo pipefail
   if [ -d "testcomponent" ]; then
     cd testcomponent
-    yarn link @pulumi/pulumi
-    yarn install
-    yarn run tsc
+    if use_pnpm; then
+      pnpm install
+      pnpm link "$(git rev-parse --show-toplevel)/sdk/nodejs/bin"
+      pnpm exec tsc
+    else
+      yarn link @pulumi/pulumi
+      yarn install
+      yarn run tsc
+    fi
   fi
 )
 
