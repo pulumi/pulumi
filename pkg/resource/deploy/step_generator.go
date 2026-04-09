@@ -351,7 +351,7 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		}, nil
 	}
 
-	if bool(logging.V(7)) && old != nil && old.ID == event.ID() {
+	if logging.V(7).Enabled() && old != nil && old.ID == event.ID() {
 		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
 	}
 
@@ -1863,7 +1863,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				new.Inputs = inputs
 			}
 
-			if logging.V(7) {
+			if logging.V(7).Enabled() {
 				logging.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v replaceKeys=%v)",
 					urn, old.Inputs, new.Inputs, diff.ReplaceKeys)
 			}
@@ -2002,7 +2002,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 
 		// If we fell through, it's an update.
 		sg.updates[urn] = true
-		if logging.V(7) {
+		if logging.V(7).Enabled() {
 			logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v)", urn, old.Inputs, new.Inputs)
 		}
 		oldViews := sg.deployment.GetOldViews(old.URN)
@@ -2433,7 +2433,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		}
 	}
 
-	if logging.V(7) {
+	if logging.V(7).Enabled() {
 		keys := []resource.URN{}
 		for k := range resourcesToDelete {
 			keys = append(keys, k)
@@ -2471,7 +2471,7 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 		resourcesToKeep[exclude] = true
 	}
 
-	if logging.V(7) {
+	if logging.V(7).Enabled() {
 		keys := []resource.URN{}
 		for k := range resourcesToKeep {
 			keys = append(keys, k)

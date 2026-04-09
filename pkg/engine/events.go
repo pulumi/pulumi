@@ -915,7 +915,7 @@ func trySendEvent(ch chan<- Event, ev Event) (sent bool) {
 	defer func() {
 		if recover() != nil {
 			sent = false
-			if logging.V(9) {
+			if logging.V(9).Enabled() {
 				logging.V(9).Infof(
 					"Ignoring %v send on a closed channel %p",
 					ev.Type, ch)
@@ -934,7 +934,7 @@ func tryCloseEventChan(ch chan<- Event) (closed bool) {
 	defer func() {
 		if recover() != nil {
 			closed = false
-			if logging.V(9) {
+			if logging.V(9).Enabled() {
 				logging.V(9).Infof(
 					"Ignoring close of a closed event channel %p",
 					ch)

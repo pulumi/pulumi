@@ -337,7 +337,7 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	logging.V(apiRequestLogLevel).Infof("Making Pulumi API call: %s", url)
-	if logging.V(apiRequestDetailLogLevel) {
+	if logging.V(apiRequestDetailLogLevel).Enabled() {
 		logging.V(apiRequestDetailLogLevel).Infof(
 			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
@@ -528,7 +528,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	if err != nil {
 		return fmt.Errorf("reading response from API: %w", err)
 	}
-	if logging.V(apiRequestDetailLogLevel) {
+	if logging.V(apiRequestDetailLogLevel).Enabled() {
 		logging.V(apiRequestDetailLogLevel).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
 	}
 

@@ -918,7 +918,7 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 
 	runtimeArgs = append(runtimeArgs, args...)
 
-	if logging.V(5) {
+	if logging.V(5).Enabled() {
 		commandStr := strings.Join(runtimeArgs, " ")
 		logging.V(5).Infoln("Language host launching process: ", runtimeBin, commandStr)
 	}

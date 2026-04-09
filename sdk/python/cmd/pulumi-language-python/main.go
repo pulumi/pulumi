@@ -1023,7 +1023,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
-	if logging.V(5) {
+	if logging.V(5).Enabled() {
 		commandStr := strings.Join(args, " ")
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
