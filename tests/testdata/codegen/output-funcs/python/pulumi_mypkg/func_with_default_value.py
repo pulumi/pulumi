@@ -57,8 +57,8 @@ def func_with_default_value(a: Optional[_builtins.str] = None,
 
     return AwaitableFuncWithDefaultValueResult(
         r=pulumi.get(__ret__, 'r'))
-def func_with_default_value_output(a: Optional[pulumi.Input[_builtins.str]] = None,
-                                   b: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
+def func_with_default_value_output(a: pulumi.Input[Optional[_builtins.str]] = None,
+                                   b: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                                    opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FuncWithDefaultValueResult]:
     """
     Check codegen of functions with default values.

@@ -45,8 +45,8 @@ export class ModuleTest extends pulumi.CustomResource {
         let resourceInputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            resourceInputs["mod1"] = args ? (args.mod1 ? pulumi.output(args.mod1).apply(inputs.mod1.typArgsProvideDefaults) : undefined) : undefined;
-            resourceInputs["val"] = args ? (args.val ? pulumi.output(args.val).apply(inputs.typArgsProvideDefaults) : undefined) : undefined;
+            resourceInputs["mod1"] = args ? pulumi.output(args.mod1).apply(v => v === undefined ? undefined : inputs.mod1.typArgsProvideDefaults(v)) : undefined;
+            resourceInputs["val"] = args ? pulumi.output(args.val).apply(v => v === undefined ? undefined : inputs.typArgsProvideDefaults(v)) : undefined;
         } else {
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
@@ -58,6 +58,6 @@ export class ModuleTest extends pulumi.CustomResource {
  * The set of arguments for constructing a ModuleTest resource.
  */
 export interface ModuleTestArgs {
-    mod1?: pulumi.Input<inputs.mod1.TypArgs>;
-    val?: pulumi.Input<inputs.TypArgs>;
+    mod1?: pulumi.Input<inputs.mod1.TypArgs | undefined>;
+    val?: pulumi.Input<inputs.TypArgs | undefined>;
 }

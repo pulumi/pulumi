@@ -42,7 +42,7 @@ class User(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 shared: Optional[pulumi.Input[Union['SharedArgs', 'SharedArgsDict']]] = None,
+                 shared: pulumi.Input[Optional[Union['SharedArgs', 'SharedArgsDict']]] = None,
                  __props__=None):
         """
         Create a User resource with the given unique name, props, and options.
@@ -74,7 +74,7 @@ class User(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 shared: Optional[pulumi.Input[Union['SharedArgs', 'SharedArgsDict']]] = None,
+                 shared: pulumi.Input[Optional[Union['SharedArgs', 'SharedArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

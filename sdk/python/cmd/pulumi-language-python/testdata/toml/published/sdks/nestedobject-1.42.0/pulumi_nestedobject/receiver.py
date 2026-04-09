@@ -43,7 +43,7 @@ class Receiver(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 details: Optional[pulumi.Input[Sequence[pulumi.Input[Union['DetailArgs', 'DetailArgsDict']]]]] = None,
+                 details: pulumi.Input[Optional[Sequence[pulumi.Input[Union['DetailArgs', 'DetailArgsDict']]]]] = None,
                  __props__=None):
         """
         Create a Receiver resource with the given unique name, props, and options.
@@ -75,7 +75,7 @@ class Receiver(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 details: Optional[pulumi.Input[Sequence[pulumi.Input[Union['DetailArgs', 'DetailArgsDict']]]]] = None,
+                 details: pulumi.Input[Optional[Sequence[pulumi.Input[Union['DetailArgs', 'DetailArgsDict']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

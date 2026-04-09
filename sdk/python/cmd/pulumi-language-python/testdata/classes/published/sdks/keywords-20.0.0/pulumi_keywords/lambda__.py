@@ -58,9 +58,9 @@ class Lambda(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 builtins: Optional[pulumi.Input[_builtins.str]] = None,
-                 lambda_: Optional[pulumi.Input[_builtins.str]] = None,
-                 property: Optional[pulumi.Input[_builtins.str]] = None,
+                 builtins: pulumi.Input[Optional[_builtins.str]] = None,
+                 lambda_: pulumi.Input[Optional[_builtins.str]] = None,
+                 property: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a Lambda resource with the given unique name, props, and options.
@@ -92,9 +92,9 @@ class Lambda(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 builtins: Optional[pulumi.Input[_builtins.str]] = None,
-                 lambda_: Optional[pulumi.Input[_builtins.str]] = None,
-                 property: Optional[pulumi.Input[_builtins.str]] = None,
+                 builtins: pulumi.Input[Optional[_builtins.str]] = None,
+                 lambda_: pulumi.Input[Optional[_builtins.str]] = None,
+                 property: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -54,8 +54,8 @@ class Some_resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 nested: Optional[pulumi.Input[Union['Nested_inputArgs', 'Nested_inputArgsDict']]] = None,
-                 the_input: Optional[pulumi.Input[_builtins.bool]] = None,
+                 nested: pulumi.Input[Optional[Union['Nested_inputArgs', 'Nested_inputArgsDict']]] = None,
+                 the_input: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
         Create a Some_resource resource with the given unique name, props, and options.
@@ -87,8 +87,8 @@ class Some_resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 nested: Optional[pulumi.Input[Union['Nested_inputArgs', 'Nested_inputArgsDict']]] = None,
-                 the_input: Optional[pulumi.Input[_builtins.bool]] = None,
+                 nested: pulumi.Input[Optional[Union['Nested_inputArgs', 'Nested_inputArgsDict']]] = None,
+                 the_input: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -24,9 +24,9 @@ class ComponentArgs:
                  required_metadata: pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs'],
                  required_metadata_array: pulumi.Input[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]],
                  required_metadata_map: pulumi.Input[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]],
-                 metadata: Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']] = None,
-                 metadata_array: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]] = None,
-                 metadata_map: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]] = None):
+                 metadata: pulumi.Input[Optional['pulumi_kubernetes.meta.v1.ObjectMetaArgs']] = None,
+                 metadata_array: pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]] = None,
+                 metadata_map: pulumi.Input[Optional[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]] = None):
         """
         The set of arguments for constructing a Component resource.
         """
@@ -69,29 +69,29 @@ class ComponentArgs:
 
     @_builtins.property
     @pulumi.getter
-    def metadata(self) -> Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]:
+    def metadata(self) -> pulumi.Input[Optional['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]:
         return pulumi.get(self, "metadata")
 
     @metadata.setter
-    def metadata(self, value: Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]):
+    def metadata(self, value: pulumi.Input[Optional['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]):
         pulumi.set(self, "metadata", value)
 
     @_builtins.property
     @pulumi.getter(name="metadataArray")
-    def metadata_array(self) -> Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]:
+    def metadata_array(self) -> pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]:
         return pulumi.get(self, "metadata_array")
 
     @metadata_array.setter
-    def metadata_array(self, value: Optional[pulumi.Input[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]):
+    def metadata_array(self, value: pulumi.Input[Optional[Sequence[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]):
         pulumi.set(self, "metadata_array", value)
 
     @_builtins.property
     @pulumi.getter(name="metadataMap")
-    def metadata_map(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]:
+    def metadata_map(self) -> pulumi.Input[Optional[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]:
         return pulumi.get(self, "metadata_map")
 
     @metadata_map.setter
-    def metadata_map(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]):
+    def metadata_map(self, value: pulumi.Input[Optional[Mapping[str, pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]):
         pulumi.set(self, "metadata_map", value)
 
 
@@ -101,12 +101,12 @@ class Component(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
-                 metadata_array: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
-                 metadata_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
-                 required_metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
-                 required_metadata_array: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
-                 required_metadata_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
+                 metadata: pulumi.Input[Optional[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
+                 metadata_array: pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
+                 metadata_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
+                 required_metadata: pulumi.Input[Optional[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
+                 required_metadata_array: pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
+                 required_metadata_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
                  __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
@@ -138,12 +138,12 @@ class Component(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
-                 metadata_array: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
-                 metadata_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
-                 required_metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
-                 required_metadata_array: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
-                 required_metadata_map: Optional[pulumi.Input[Mapping[str, pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
+                 metadata: pulumi.Input[Optional[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
+                 metadata_array: pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
+                 metadata_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
+                 required_metadata: pulumi.Input[Optional[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
+                 required_metadata_array: pulumi.Input[Optional[Sequence[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
+                 required_metadata_map: pulumi.Input[Optional[Mapping[str, pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

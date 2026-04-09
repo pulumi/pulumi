@@ -21,8 +21,8 @@ __all__ = ['Example_resourceArgs', 'Example_resource']
 @pulumi.input_type
 class Example_resourceArgs:
     def __init__(__self__, *,
-                 map_enum: Optional[pulumi.Input[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]] = None,
-                 request__http: Optional[pulumi.Input['_http_module.RequestArgs']] = None):
+                 map_enum: pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]] = None,
+                 request__http: pulumi.Input[Optional['_http_module.RequestArgs']] = None):
         """
         The set of arguments for constructing a Example_resource resource.
         """
@@ -33,20 +33,20 @@ class Example_resourceArgs:
 
     @_builtins.property
     @pulumi.getter
-    def map_enum(self) -> Optional[pulumi.Input[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]]:
+    def map_enum(self) -> pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]]:
         return pulumi.get(self, "map_enum")
 
     @map_enum.setter
-    def map_enum(self, value: Optional[pulumi.Input[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]]):
+    def map_enum(self, value: pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]]):
         pulumi.set(self, "map_enum", value)
 
     @_builtins.property
     @pulumi.getter(name="request_HTTP")
-    def request__http(self) -> Optional[pulumi.Input['_http_module.RequestArgs']]:
+    def request__http(self) -> pulumi.Input[Optional['_http_module.RequestArgs']]:
         return pulumi.get(self, "request__http")
 
     @request__http.setter
-    def request__http(self, value: Optional[pulumi.Input['_http_module.RequestArgs']]):
+    def request__http(self, value: pulumi.Input[Optional['_http_module.RequestArgs']]):
         pulumi.set(self, "request__http", value)
 
 
@@ -56,8 +56,8 @@ class Example_resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 map_enum: Optional[pulumi.Input[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]] = None,
-                 request__http: Optional[pulumi.Input[Union['_http_module.RequestArgs', '_http_module.RequestArgsDict']]] = None,
+                 map_enum: pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]] = None,
+                 request__http: pulumi.Input[Optional[Union['_http_module.RequestArgs', '_http_module.RequestArgsDict']]] = None,
                  __props__=None):
         """
         Create a Example_resource resource with the given unique name, props, and options.
@@ -89,8 +89,8 @@ class Example_resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 map_enum: Optional[pulumi.Input[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]] = None,
-                 request__http: Optional[pulumi.Input[Union['_http_module.RequestArgs', '_http_module.RequestArgsDict']]] = None,
+                 map_enum: pulumi.Input[Optional[Sequence[pulumi.Input[Mapping[str, pulumi.Input['Enum_XYZ']]]]]] = None,
+                 request__http: pulumi.Input[Optional[Union['_http_module.RequestArgs', '_http_module.RequestArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

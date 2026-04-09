@@ -62,8 +62,8 @@ def secret_invoke(secret_response: Optional[_builtins.bool] = None,
     return AwaitableSecretInvokeResult(
         response=pulumi.get(__ret__, 'response'),
         secret=pulumi.get(__ret__, 'secret'))
-def secret_invoke_output(secret_response: Optional[pulumi.Input[_builtins.bool]] = None,
-                         value: Optional[pulumi.Input[_builtins.str]] = None,
+def secret_invoke_output(secret_response: pulumi.Input[Optional[_builtins.bool]] = None,
+                         value: pulumi.Input[Optional[_builtins.str]] = None,
                          opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[SecretInvokeResult]:
     """
     Use this data source to access information about an existing resource.

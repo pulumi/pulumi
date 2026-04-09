@@ -42,7 +42,7 @@ class Container(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 inputs: Optional[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]] = None,
+                 inputs: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]] = None,
                  __props__=None):
         """
         Create a Container resource with the given unique name, props, and options.
@@ -74,7 +74,7 @@ class Container(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 inputs: Optional[pulumi.Input[Sequence[pulumi.Input[_builtins.str]]]] = None,
+                 inputs: pulumi.Input[Optional[Sequence[pulumi.Input[_builtins.str]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
