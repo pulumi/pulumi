@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -2656,4 +2657,19 @@ func TestBindParameterizedExternals(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
+}
+
+func TestTokenToModuleIndexPrefix(t *testing.T) {
+	t.Parallel()
+
+	defaultPkg := &Package{}
+	assert.Equal(t, "", defaultPkg.TokenToModule("test:index:Resource"))
+	assert.Equal(t, "indexMine", defaultPkg.TokenToModule("test:indexMine:Resource"))
+	assert.Equal(t, "indexMine/nested", defaultPkg.TokenToModule("test:indexMine/nested:Resource"))
+
+	formattedPkg := &Package{
+		moduleFormat: regexp.MustCompile("(.*)(?:/[^/]*)"),
+	}
+	assert.Equal(t, "", formattedPkg.TokenToModule("test:index/getResource:getResource"))
+	assert.Equal(t, "indexMine", formattedPkg.TokenToModule("test:indexMine/getResource:getResource"))
 }
