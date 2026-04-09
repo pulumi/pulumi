@@ -77,7 +77,7 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n" +
 			"Valid target languages: typescript, python, csharp, go, java, yaml\n" +
 			"\n" +
-			"Example command usage:" +
+			"Example command usage:\n" +
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n" +
 			"\n\n" +
