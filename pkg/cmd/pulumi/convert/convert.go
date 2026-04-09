@@ -75,7 +75,7 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 			"\n" +
 			"Valid source languages: yaml, terraform, bicep, arm, kubernetes\n" +
 			"\n" +
-			"Valid target languages: typescript, python, csharp, go, java, yaml" +
+			"Valid target languages: typescript, python, csharp, go, java, yaml\n" +
 			"\n" +
 			"Example command usage:" +
 			"\n" +
