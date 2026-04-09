@@ -189,7 +189,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var tracingHeaderFlag string
 	var otelTracesFlag string
 	var profiling string
-	var verbose int
+	var verboseFlag string
 	var color string
 	var memProfileRate int
 	var rootSpan oteltrace.Span
@@ -274,6 +274,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}
 			}
 
+			verbose, err := logging.ParseVerbosity(verboseFlag)
+			if err != nil {
+				return err
+			}
 			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
@@ -408,8 +412,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
 		"Enable more precise (and expensive) memory allocation profiles by setting runtime.MemProfileRate")
-	cmd.PersistentFlags().IntVarP(&verbose, "verbose", "v", 0,
-		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
+	cmd.PersistentFlags().StringVarP(&verboseFlag, "verbose", "v", "",
+		"Enable verbose logging (e.g., v=3, v=info, v=debug, v=trace)")
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
 
