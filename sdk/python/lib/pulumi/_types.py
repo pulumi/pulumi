@@ -975,6 +975,8 @@ def unwrap_type(val: type) -> type:
         elif len(args) == 4:
             if isInput(args) and args[3] is type(None):  # Optional[Input[T]]
                 return args[0]
+            if args[1] is type(None) and isInput(args, 2):  # Input[Optional[T]]
+                return args[0]
             if isInputType(args) and isInput(args, 2):  # Input[InputType[T]]
                 return args[0]
         elif len(args) == 5:
