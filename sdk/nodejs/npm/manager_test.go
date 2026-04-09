@@ -164,6 +164,64 @@ func TestResolvePackageManager(t *testing.T) {
 	}
 }
 
+func TestResolvePackageManager_SearchesUp(t *testing.T) {
+	t.Parallel()
+
+	t.Run("finds package.yaml in parent dir", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "package.yaml"), "name: test\nversion: 1.0.0\n")
+		sub := filepath.Join(root, "project")
+		require.NoError(t, os.MkdirAll(sub, 0o755))
+
+		pm, err := ResolvePackageManager(AutoPackageManager, sub)
+		require.NoError(t, err)
+		require.Equal(t, "pnpm", pm.Name())
+	})
+
+	t.Run("nearest package.json wins over package.yaml further up", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "package.yaml"), "name: root\nversion: 1.0.0\n")
+		sub := filepath.Join(root, "subdir")
+		require.NoError(t, os.MkdirAll(sub, 0o755))
+		writeFile(t, filepath.Join(sub, "package.json"), `{"name":"subdir","version":"1.0.0"}`)
+		project := filepath.Join(sub, "project")
+		require.NoError(t, os.MkdirAll(project, 0o755))
+
+		pm, err := ResolvePackageManager(AutoPackageManager, project)
+		require.NoError(t, err)
+		require.Equal(t, "npm", pm.Name())
+	})
+
+	t.Run("nearest package.yaml wins over package.json further up", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "package.json"), `{"name":"root","version":"1.0.0"}`)
+		sub := filepath.Join(root, "subdir")
+		require.NoError(t, os.MkdirAll(sub, 0o755))
+		writeFile(t, filepath.Join(sub, "package.yaml"), "name: subdir\nversion: 1.0.0\n")
+		project := filepath.Join(sub, "project")
+		require.NoError(t, os.MkdirAll(project, 0o755))
+
+		pm, err := ResolvePackageManager(AutoPackageManager, project)
+		require.NoError(t, err)
+		require.Equal(t, "pnpm", pm.Name())
+	})
+
+	t.Run("explicit npm rejected when nearest manifest is package.yaml in parent", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "package.yaml"), "name: test\nversion: 1.0.0\n")
+		project := filepath.Join(root, "project")
+		require.NoError(t, os.MkdirAll(project, 0o755))
+
+		_, err := ResolvePackageManager(NpmPackageManager, project)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "package.yaml")
+	})
+}
+
 func TestFilterDirectDependencies_PackageYAML(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

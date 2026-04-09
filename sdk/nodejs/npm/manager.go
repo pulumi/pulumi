@@ -115,8 +115,8 @@ func filterDirectDependencies(dir string, deps []plugin.DependencyInfo) ([]plugi
 	}
 
 	var pkg struct {
-		Dependencies    map[string]string `json:"dependencies"`
-		DevDependencies map[string]string `json:"devDependencies"`
+		Dependencies    map[string]string `json:"dependencies" yaml:"dependencies"`
+		DevDependencies map[string]string `json:"devDependencies" yaml:"devDependencies"`
 	}
 	if err := unmarshalManifestBytes(manifestPath, content, &pkg); err != nil {
 		return nil, fmt.Errorf("could not parse %s: %w", manifestPath, err)
@@ -192,13 +192,12 @@ func Install(ctx context.Context, packagemanager PackageManagerType, dir string,
 // versions of bun) then bun is used. Otherwise npm is used. The argument pwd is the directory
 // we're checking for the presence of a lockfile.
 func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (PackageManager, error) {
-	_, errJSON := os.Stat(filepath.Join(pwd, "package.json"))
-	_, errYAML := os.Stat(filepath.Join(pwd, "package.yaml"))
-	yamlOnly := errYAML == nil && errJSON != nil
+	manifestPath, _ := SearchupPackageManifest(pwd)
+	requiresPnpm := manifestPath != "" && filepath.Base(manifestPath) == "package.yaml"
 
 	// If a package manager is explicitly specified, use it.
 	if packagemanager != "" && packagemanager != AutoPackageManager {
-		if yamlOnly && packagemanager != PnpmPackageManager {
+		if requiresPnpm && packagemanager != PnpmPackageManager {
 			return nil, fmt.Errorf(
 				"the project's manifest is package.yaml, which is only supported by pnpm, "+
 					"but the runtime package manager is set to %q. "+
@@ -225,7 +224,7 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 
 	// If the project only has package.yaml, pnpm is the only option. Don't fall through to the other package managers
 	// since they would fail with a confusing ENOENT.
-	if yamlOnly {
+	if requiresPnpm {
 		pnpm, err := newPnpm()
 		if err != nil {
 			return nil, fmt.Errorf("the project's manifest is package.yaml, which requires pnpm, "+

@@ -15,13 +15,12 @@
 package npm
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 )
 
 // PackageManifestNames are the filenames recognized as Node.js package manifests, in priority order. pnpm allows
@@ -52,22 +51,11 @@ func ReadPackageManifest(dir string) (map[string]any, string, error) {
 }
 
 func unmarshalManifestBytes(name string, content []byte, target any) error {
-	switch filepath.Ext(name) {
-	case ".json":
-		return json.Unmarshal(content, target)
-	case ".yaml", ".yml":
-		var raw any
-		if err := yaml.Unmarshal(content, &raw); err != nil {
-			return err
-		}
-		j, err := json.Marshal(raw)
-		if err != nil {
-			return err
-		}
-		return json.Unmarshal(j, target)
-	default:
-		return fmt.Errorf("unsupported package manifest extension: %s", name)
+	m, _ := encoding.Detect(name)
+	if m == nil {
+		return fmt.Errorf("unsupported package manifest extension: %s", filepath.Ext(name))
 	}
+	return m.Unmarshal(content, target)
 }
 
 func findManifestInDir(dir string) (string, error) {
