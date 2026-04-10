@@ -601,6 +601,8 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertFalse(arr.secret)
         self.assertEqual(arr.value, '["one","two","three"]')
 
+        stack.workspace.remove_stack(stack_name)
+
     def test_tag_methods(self):
         if os.getenv("PULUMI_ACCESS_TOKEN") is None:
             self.skipTest(

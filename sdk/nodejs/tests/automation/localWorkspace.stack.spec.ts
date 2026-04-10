@@ -387,7 +387,7 @@ describe("LocalWorkspace - Stack", () => {
                 LocalWorkspace.createStack({ stackName, projectName, program }, withTestBackend({}, "inline_node")),
             ),
         );
-        await stacks.map((stack) => stack.workspace.removeStack(stack.name));
+        await Promise.all(stacks.map((stack) => stack.workspace.removeStack(stack.name)));
     });
 
     it(`imports and exports stacks`, async () => {

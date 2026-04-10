@@ -520,7 +520,7 @@ describe("LocalWorkspace", () => {
 
         await assert.rejects(stack.up(), /input rejected/);
 
-        await stack.destroy();
+        await stack.destroy({ remove: true });
     });
     it(`refreshes with refresh option`, async () => {
         // We create a simple program, and scan the output for an indication
@@ -547,7 +547,7 @@ describe("LocalWorkspace", () => {
         const upRes = await stack.up({ userAgent, refresh });
         assert.match(upRes.stdout, /refreshing/);
 
-        const destroyRes = await stack.destroy({ userAgent, refresh });
+        const destroyRes = await stack.destroy({ userAgent, refresh, remove: true });
         assert.match(destroyRes.stdout, /refreshing/);
     });
     it(`operations accept configFile option`, async () => {
@@ -1058,5 +1058,6 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(true, beforeDeleteCalled);
         state = await stack.exportStack();
         assert.strictEqual(state.deployment.resources, undefined);
+        await stack.workspace.removeStack(stackName);
     });
 });
