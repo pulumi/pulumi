@@ -999,5 +999,43 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"readFile":           readFileFn,
 		"filebase64":         filebase64Fn,
 		"filebase64sha256":   filebase64sha256Fn,
+		"max": function.New(&function.Spec{
+			VarParam: &function.Parameter{
+				Name: "numbers",
+				Type: cty.Number,
+			},
+			Type: function.StaticReturnType(cty.Number),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				if len(args) == 0 {
+					return cty.NilVal, errors.New("max requires at least one argument")
+				}
+				result := args[0]
+				for _, arg := range args[1:] {
+					if arg.GreaterThan(result).True() {
+						result = arg
+					}
+				}
+				return result, nil
+			},
+		}),
+		"min": function.New(&function.Spec{
+			VarParam: &function.Parameter{
+				Name: "numbers",
+				Type: cty.Number,
+			},
+			Type: function.StaticReturnType(cty.Number),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				if len(args) == 0 {
+					return cty.NilVal, errors.New("min requires at least one argument")
+				}
+				result := args[0]
+				for _, arg := range args[1:] {
+					if arg.LessThan(result).True() {
+						result = arg
+					}
+				}
+				return result, nil
+			},
+		}),
 	}
 }
