@@ -3716,3 +3716,117 @@ func TestRefreshV2DeletedWithOrdering(t *testing.T) {
 		RunStep(project, p.GetTarget(t, setupSnap), reproOpts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+// TestComponentPropertyDependencyOrderingRefreshV2 reproduces a snapshot integrity error
+// where a component resource's property dependency ends up after it in the snapshot during
+// refreshV2. Component resources do not receive refresh steps, so they can be reordered
+// relative to their property dependencies.
+func TestComponentPropertyDependencyOrderingRefreshV2(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#22578]: Fix the underlying engine issue and re-enable this test.
+	t.Skip("Skipping test due to snapshot integrity bug in RefreshV2 with component property dependencies")
+
+	p := &lt.TestPlan{
+		Project: "test-project",
+		Stack:   "test-stack",
+	}
+	project := p.GetProject()
+
+	// Initial snapshot: provA, provB, resA (component using provB).
+	setupSnap := func() *deploy.Snapshot {
+		s := &deploy.Snapshot{}
+
+		provA := &resource.State{
+			Type:   "pulumi:providers:pkgA",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
+			Custom: true,
+			ID:     "id-provA",
+		}
+		s.Resources = append(s.Resources, provA)
+
+		provB := &resource.State{
+			Type:   "pulumi:providers:pkgB",
+			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgB::provB",
+			Custom: true,
+			ID:     "id-provB",
+		}
+		s.Resources = append(s.Resources, provB)
+
+		provRefB, err := providers.NewReference(provB.URN, provB.ID)
+		require.NoError(t, err)
+
+		resA := &resource.State{
+			Type:     "pkgB:mod:typ",
+			URN:      "urn:pulumi:test-stack::test-project::pkgB:mod:typ::resA",
+			Custom:   false,
+			Provider: provRefB.String(),
+		}
+		s.Resources = append(s.Resources, resA)
+
+		return s
+	}()
+	require.NoError(t, setupSnap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+					return plugin.ReadResponse{
+						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	// Program registers: provA, provB, resA (component), resB (component with
+	// property dep on resA). The property dependency between two components triggers
+	// the reordering bug during refreshV2.
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		provA, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRefA, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		provB, err := monitor.RegisterResource("pulumi:providers:pkgB", "provB", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		provRefB, err := providers.NewReference(provB.URN, provB.ID)
+		require.NoError(t, err)
+
+		resA, err := monitor.RegisterResource("pkgB:mod:typ", "resA", false, deploytest.ResourceOptions{
+			Provider: provRefB.String(),
+		})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:mod:typ", "resB", false, deploytest.ResourceOptions{
+			Provider: provRefA.String(),
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"prop": {resA.URN},
+			},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:     t,
+		HostF: hostF,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh:        true,
+			RefreshProgram: true,
+		},
+	}
+
+	_, err := lt.TestOp(engine.RefreshV2).
+		RunStep(project, p.GetTarget(t, setupSnap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}

@@ -66,6 +66,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeDeletedWithRefreshV2,
 		// TODO[pulumi/pulumi#22511]
 		ExcludeTargetedUpdateRefreshWithChildProvider,
+		// TODO[pulumi/pulumi#22578]
+		ExcludeComponentPropertyDepsRefreshV2,
 	}
 }
 
@@ -748,6 +750,64 @@ func ExcludeTargetedUpdateRefreshWithChildProvider(
 			resPkg := res.Type.Module().Package()
 			if childProviderPkgs[resPkg] {
 				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// ExcludeComponentPropertyDepsRefreshV2 excludes snapshots where a component
+// resource (non-custom, non-provider) has property dependencies that reference
+// another component resource during a refreshV2 operation. During refreshV2,
+// component resources do not receive refresh steps and can end up reordered
+// relative to their property dependencies, violating snapshot integrity.
+func ExcludeComponentPropertyDepsRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 {
+		return false
+	}
+
+	// Collect URNs of all component resources (non-custom, non-provider) in both
+	// the snapshot and the program.
+	components := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if !res.Custom && !providers.IsProviderType(res.Type) {
+			components[res.URN()] = true
+		}
+	}
+	for _, res := range prog.ResourceRegistrations {
+		if !res.Custom && !providers.IsProviderType(res.Type) {
+			components[res.URN()] = true
+		}
+	}
+
+	// Check if any component has a property dependency on another component.
+	for _, res := range snap.Resources {
+		if !components[res.URN()] {
+			continue
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if components[dep] {
+					return true
+				}
+			}
+		}
+	}
+	for _, res := range prog.ResourceRegistrations {
+		if !components[res.URN()] {
+			continue
+		}
+		for _, deps := range res.PropertyDependencies {
+			for _, dep := range deps {
+				if components[dep] {
+					return true
+				}
 			}
 		}
 	}
