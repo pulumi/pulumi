@@ -73,6 +73,24 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 		result:     map[string]any{"content": "hi"},
 	})
 
+	// Lock down the inbound wire shape: the discriminator must be the snake_case
+	// "assistant_message" the service emits, and each tool call's identifier must
+	// serialize under "id" (not "tool_call_id"). Both have drifted before and
+	// silently broke the loop — assert here so it can't drift again.
+	inbound, err := json.Marshal(AssistantMessage{
+		Type:      backendEventAssistantMessage,
+		ToolCalls: []ToolCall{{ToolCallID: "c1", Name: "filesystem__read"}},
+	})
+	require.NoError(t, err)
+	var inboundMap map[string]any
+	require.NoError(t, json.Unmarshal(inbound, &inboundMap))
+	assert.Equal(t, "assistant_message", inboundMap["type"])
+	calls, _ := inboundMap["tool_calls"].([]any)
+	require.Len(t, calls, 1)
+	call, _ := calls[0].(map[string]any)
+	assert.Equal(t, "c1", call["id"])
+	assert.NotContains(t, call, "tool_call_id")
+
 	// Mixed-mode assistantMessage: one cli call (must be executed), one cloud call
 	// (must be ignored — the agent runtime handles it).
 	streamer.events <- mustAgentResponseEnvelope(t, AssistantMessage{

@@ -1797,16 +1797,22 @@ func (pc *Client) StreamNeoTaskEvents(
 	return events, errs, nil
 }
 
-// PostNeoTaskUserEvent posts an AgentUserEvent to a Neo task via the existing CreateEvent
+// PostNeoTaskUserEvent posts an AgentUserEvent to a Neo task via the RespondToTask
 // endpoint. The body must be a marshalable value matching one of the AgentUserEvent
-// subtypes from pulumi-service's IDL (e.g. cli_tool_result). The caller is responsible for
-// setting the discriminator `type` field and any required envelope fields like timestamp
-// and entity_diff.
+// subtypes from pulumi-service's IDL (e.g. tool_result). The caller is responsible for
+// setting the discriminator `type` field; the body is wrapped in the
+// AgentRespondToTaskRequest envelope ({"event": <body>}) before being sent.
+//
+// Note: this is NOT the /events sub-resource — that one is reserved for the agent
+// runtime posting AgentBackendEvents with an agent task token. User events go to the
+// task root with a user PAT.
 func (pc *Client) PostNeoTaskUserEvent(
 	ctx context.Context, orgName, taskID string, body any,
 ) error {
-	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events", orgName, taskID)
-	return pc.restCall(ctx, http.MethodPost, path, nil, body, nil)
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, struct {
+		Event any `json:"event"`
+	}{Event: body}, nil)
 }
 
 func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {

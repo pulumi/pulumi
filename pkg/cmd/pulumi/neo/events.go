@@ -31,7 +31,7 @@ import (
 const (
 	consoleEventAgentResponse    = "agentResponse"
 	consoleEventUserInput        = "userInput"
-	backendEventAssistantMessage = "assistantMessage"
+	backendEventAssistantMessage = "assistant_message"
 	userEventToolResult          = "tool_result"
 
 	// toolExecutionModeCLI marks an individual tool call inside an AssistantMessage
@@ -67,8 +67,10 @@ type AssistantMessage struct {
 
 // ToolCall mirrors apitype.AgentBackendEventToolCall.
 type ToolCall struct {
-	// ToolCallID correlates a request call to its result item.
-	ToolCallID string `json:"tool_call_id"`
+	// ToolCallID correlates a request call to its result item. The wire field is
+	// "id" because the service reuses AgentBackendEventToolCall here; only the
+	// outbound AgentUserEventToolResultItem uses the longer "tool_call_id" key.
+	ToolCallID string `json:"id"`
 	// Name is the full tool name as understood by the agent — "<server>__<method>"
 	// (e.g. "filesystem__read"). The CLI dispatches by splitting on "__".
 	Name string `json:"name"`
