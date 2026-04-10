@@ -148,8 +148,11 @@ func deepMergeMap(dst, src map[string]any) {
 	}
 }
 
-// mergeAnalyzerConfig merges two AnalyzerPolicyConfig maps. Values in overlay
-// override values in base.
+// mergeAnalyzerConfig merges two AnalyzerPolicyConfig maps. When both base and
+// overlay define the same policy key, the struct fields are deep-merged:
+// overlay's EnforcementLevel wins if set, and Properties maps are recursively
+// merged via deepMergeMap (overlay wins on conflict). This matches the deep
+// merge behavior of the cloud path's mergePolicyConfig/deepMergePolicyJSON.
 func mergeAnalyzerConfig(
 	base, overlay map[string]plugin.AnalyzerPolicyConfig,
 ) map[string]plugin.AnalyzerPolicyConfig {
@@ -160,8 +163,27 @@ func mergeAnalyzerConfig(
 	for k, v := range base {
 		result[k] = v
 	}
-	for k, v := range overlay {
-		result[k] = v
+	for k, ov := range overlay {
+		bv, exists := result[k]
+		if !exists {
+			result[k] = ov
+			continue
+		}
+		// Overlay enforcement level wins if set.
+		if ov.EnforcementLevel != "" {
+			bv.EnforcementLevel = ov.EnforcementLevel
+		}
+		// Deep merge properties: overlay wins on conflict.
+		// Clone base properties first to avoid mutating the original map.
+		if len(ov.Properties) > 0 {
+			merged := make(map[string]any, len(bv.Properties)+len(ov.Properties))
+			for pk, pv := range bv.Properties {
+				merged[pk] = pv
+			}
+			deepMergeMap(merged, ov.Properties)
+			bv.Properties = merged
+		}
+		result[k] = bv
 	}
 	return result
 }

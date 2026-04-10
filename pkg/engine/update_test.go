@@ -450,3 +450,138 @@ func TestMergePolicyConfig(t *testing.T) {
 		assert.False(t, inBase, "original base map should not be mutated")
 	})
 }
+
+func TestMergeAnalyzerConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil overlay returns base", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {EnforcementLevel: "mandatory"},
+		}
+		got := mergeAnalyzerConfig(base, nil)
+		assert.Equal(t, base, got)
+	})
+
+	t.Run("nil base returns overlay", func(t *testing.T) {
+		t.Parallel()
+		overlay := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {EnforcementLevel: "advisory"},
+		}
+		got := mergeAnalyzerConfig(nil, overlay)
+		assert.Equal(t, overlay, got)
+	})
+
+	t.Run("disjoint keys are combined", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]plugin.AnalyzerPolicyConfig{
+			"a": {EnforcementLevel: "mandatory"},
+		}
+		overlay := map[string]plugin.AnalyzerPolicyConfig{
+			"b": {EnforcementLevel: "advisory"},
+		}
+		got := mergeAnalyzerConfig(base, overlay)
+		require.Len(t, got, 2)
+		assert.Equal(t, apitype.EnforcementLevel("mandatory"), got["a"].EnforcementLevel)
+		assert.Equal(t, apitype.EnforcementLevel("advisory"), got["b"].EnforcementLevel)
+	})
+
+	t.Run("overlay enforcement level overrides base", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {EnforcementLevel: "mandatory", Properties: map[string]any{"a": 1}},
+		}
+		overlay := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {EnforcementLevel: "advisory"},
+		}
+		got := mergeAnalyzerConfig(base, overlay)
+		assert.Equal(t, apitype.EnforcementLevel("advisory"), got["p"].EnforcementLevel)
+		// Base properties preserved.
+		assert.Equal(t, map[string]any{"a": 1}, got["p"].Properties)
+	})
+
+	t.Run("empty overlay enforcement level preserves base", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {EnforcementLevel: "mandatory"},
+		}
+		overlay := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {Properties: map[string]any{"x": 1}},
+		}
+		got := mergeAnalyzerConfig(base, overlay)
+		assert.Equal(t, apitype.EnforcementLevel("mandatory"), got["p"].EnforcementLevel)
+		assert.Equal(t, map[string]any{"x": 1}, got["p"].Properties)
+	})
+
+	t.Run("properties are deep merged", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {
+				EnforcementLevel: "mandatory",
+				Properties:       map[string]any{"maxCost": 100, "shared": "base"},
+			},
+		}
+		overlay := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {
+				Properties: map[string]any{"minCost": 10, "shared": "overlay"},
+			},
+		}
+		got := mergeAnalyzerConfig(base, overlay)
+		require.Contains(t, got, "p")
+		props := got["p"].Properties
+		assert.Equal(t, 100, props["maxCost"], "base-only property preserved")
+		assert.Equal(t, 10, props["minCost"], "overlay-only property added")
+		assert.Equal(t, "overlay", props["shared"], "overlay wins on conflict")
+	})
+
+	t.Run("nested map properties are deep merged", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {
+				Properties: map[string]any{
+					"rules": map[string]any{"a": 1, "shared": "base"},
+				},
+			},
+		}
+		overlay := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {
+				Properties: map[string]any{
+					"rules": map[string]any{"b": 2, "shared": "overlay"},
+				},
+			},
+		}
+		got := mergeAnalyzerConfig(base, overlay)
+		rules, ok := got["p"].Properties["rules"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, 1, rules["a"], "base-only nested property preserved")
+		assert.Equal(t, 2, rules["b"], "overlay-only nested property added")
+		assert.Equal(t, "overlay", rules["shared"], "overlay wins on nested conflict")
+	})
+
+	t.Run("overlay into nil base properties", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {EnforcementLevel: "mandatory"},
+		}
+		overlay := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {Properties: map[string]any{"x": 1}},
+		}
+		got := mergeAnalyzerConfig(base, overlay)
+		assert.Equal(t, map[string]any{"x": 1}, got["p"].Properties)
+	})
+
+	t.Run("does not mutate base", func(t *testing.T) {
+		t.Parallel()
+		base := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {EnforcementLevel: "mandatory", Properties: map[string]any{"a": 1}},
+		}
+		overlay := map[string]plugin.AnalyzerPolicyConfig{
+			"p": {EnforcementLevel: "advisory", Properties: map[string]any{"b": 2}},
+		}
+		mergeAnalyzerConfig(base, overlay)
+		// Base should be unchanged.
+		assert.Equal(t, apitype.EnforcementLevel("mandatory"), base["p"].EnforcementLevel)
+		_, hasB := base["p"].Properties["b"]
+		assert.False(t, hasB, "base properties should not be mutated")
+	})
+}
