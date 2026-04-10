@@ -1749,7 +1749,8 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, options *pulumirpc.ResourceOptions,
+		newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
@@ -1794,6 +1795,7 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			OldInputs:  mOldInputs,
 			NewOutputs: mNewOutputs,
 			OldOutputs: mOldOutputs,
+			Options:    options,
 		})
 		if err != nil {
 			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
@@ -1845,7 +1847,8 @@ func (rm *resmon) wrapErrorHookCallback(
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, options *pulumirpc.ResourceOptions,
+		newInputs, oldInputs, oldOutputs resource.PropertyMap,
 		failedOperation string, errorMessages []string,
 	) (bool, error) {
 		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
@@ -1885,6 +1888,7 @@ func (rm *resmon) wrapErrorHookCallback(
 			OldOutputs:      mOldOutputs,
 			FailedOperation: failedOperation,
 			Errors:          errorMessages,
+			Options:         options,
 		})
 		if err != nil {
 			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)

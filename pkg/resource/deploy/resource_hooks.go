@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // ResourceHookFunction is the shape of a resource hook.
@@ -33,6 +34,7 @@ type ResourceHookFunction func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
+	options *pulumirpc.ResourceOptions,
 	newInputs resource.PropertyMap,
 	oldInputs resource.PropertyMap,
 	newOutputs resource.PropertyMap,
@@ -48,6 +50,7 @@ type ErrorHookFunction func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
+	options *pulumirpc.ResourceOptions,
 	newInputs resource.PropertyMap,
 	oldInputs resource.PropertyMap,
 	oldOutputs resource.PropertyMap,

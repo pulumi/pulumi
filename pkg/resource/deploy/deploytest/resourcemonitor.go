@@ -180,6 +180,7 @@ type ResourceHookFunc func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
+	options *pulumirpc.ResourceOptions,
 	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error
 
@@ -282,6 +283,7 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 			resource.ID(req.Id),
 			req.Name,
 			tokens.Type(req.Type),
+			req.Options,
 			newInputs,
 			oldInputs,
 			newOutputs,
