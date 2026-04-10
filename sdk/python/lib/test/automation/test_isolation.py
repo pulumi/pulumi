@@ -115,6 +115,9 @@ async def test_parallel_updates():
         }
     )
 
+    for stack in stacks:
+        stack.workspace.remove_stack(stack.name)
+
 
 @pytest.mark.skipif(
     sys.platform == "win32", reason="TODO[pulumi/pulumi#8716] fails on Windows"
