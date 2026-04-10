@@ -29,7 +29,7 @@ type fakeStreamer struct {
 	errs   chan error
 
 	mu     sync.Mutex
-	posted []ToolResultEvent
+	posted []any
 }
 
 func newFakeStreamer() *fakeStreamer {
@@ -46,7 +46,7 @@ func (f *fakeStreamer) StreamNeoTaskEvents(_ context.Context, _, _ string) (<-ch
 func (f *fakeStreamer) PostNeoTaskUserEvent(_ context.Context, _, _ string, body any) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.posted = append(f.posted, body.(ToolResultEvent))
+	f.posted = append(f.posted, body)
 	return nil
 }
 
@@ -118,15 +118,38 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 
 	streamer.mu.Lock()
 	defer streamer.mu.Unlock()
-	require.Len(t, streamer.posted, 1)
-	got := streamer.posted[0]
+
+	// Expect: 1 exec_tool_call (for the cli call) + 1 tool_result.
+	require.Len(t, streamer.posted, 2)
+
+	// First event: exec_tool_call notification.
+	execEvt, ok := streamer.posted[0].(ExecToolCallEvent)
+	require.True(t, ok, "first posted event should be ExecToolCallEvent")
+	assert.Equal(t, userEventExecToolCall, execEvt.Type)
+	assert.Equal(t, "c1", execEvt.ToolCallID)
+	assert.Equal(t, "filesystem__read", execEvt.Name)
+
+	// Verify exec_tool_call wire shape: no args, no timestamp.
+	raw, err := json.Marshal(execEvt)
+	require.NoError(t, err)
+	var execMap map[string]any
+	require.NoError(t, json.Unmarshal(raw, &execMap))
+	assert.Equal(t, "exec_tool_call", execMap["type"])
+	assert.Contains(t, execMap, "tool_call_id")
+	assert.Contains(t, execMap, "name")
+	assert.NotContains(t, execMap, "args")
+	assert.NotContains(t, execMap, "timestamp")
+
+	// Second event: tool_result with the cli call's output.
+	got, ok := streamer.posted[1].(ToolResultEvent)
+	require.True(t, ok, "second posted event should be ToolResultEvent")
 	assert.Equal(t, userEventToolResult, got.Type)
 	require.Len(t, got.ToolResults, 1, "only the cli-marked call should be in the result")
 	assert.Equal(t, "c1", got.ToolResults[0].ToolCallID)
 	assert.False(t, got.ToolResults[0].IsError)
 
-	// Verify the wire shape posted to the backend matches the new generic contract.
-	raw, err := json.Marshal(got)
+	// Verify tool_result wire shape.
+	raw, err = json.Marshal(got)
 	require.NoError(t, err)
 	var asMap map[string]any
 	require.NoError(t, json.Unmarshal(raw, &asMap))
@@ -157,6 +180,57 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 	streamer.mu.Lock()
 	defer streamer.mu.Unlock()
 	assert.Empty(t, streamer.posted)
+}
+
+func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	exec := NewExecutor()
+	exec.Register("filesystem", &fakeHandler{
+		wantMethod: "read",
+		result:     map[string]any{"content": "hello"},
+	})
+	exec.Register("shell", &fakeHandler{
+		wantMethod: "run",
+		result:     map[string]any{"exit_code": 0},
+	})
+
+	streamer.events <- mustAgentResponseEnvelope(t, AssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []ToolCall{
+			{ToolCallID: "c1", Name: "filesystem__read", Args: json.RawMessage(`{}`), ExecutionMode: "cli"},
+			{ToolCallID: "c2", Name: "shell__run", Args: json.RawMessage(`{}`), ExecutionMode: "cli"},
+		},
+	})
+	close(streamer.events)
+
+	s := &Session{Client: streamer, Executor: exec, OrgName: "org", TaskID: "task"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+
+	// Expect: exec_tool_call(c1), exec_tool_call(c2), tool_result([c1, c2]).
+	require.Len(t, streamer.posted, 3)
+
+	exec1, ok := streamer.posted[0].(ExecToolCallEvent)
+	require.True(t, ok, "posted[0] should be ExecToolCallEvent")
+	assert.Equal(t, "c1", exec1.ToolCallID)
+	assert.Equal(t, "filesystem__read", exec1.Name)
+
+	exec2, ok := streamer.posted[1].(ExecToolCallEvent)
+	require.True(t, ok, "posted[1] should be ExecToolCallEvent")
+	assert.Equal(t, "c2", exec2.ToolCallID)
+	assert.Equal(t, "shell__run", exec2.Name)
+
+	result, ok := streamer.posted[2].(ToolResultEvent)
+	require.True(t, ok, "posted[2] should be ToolResultEvent")
+	assert.Equal(t, userEventToolResult, result.Type)
+	require.Len(t, result.ToolResults, 2)
+	assert.Equal(t, "c1", result.ToolResults[0].ToolCallID)
+	assert.Equal(t, "c2", result.ToolResults[1].ToolCallID)
 }
 
 func TestSession_IgnoresUserInputAndUnknownBackendEvents(t *testing.T) {

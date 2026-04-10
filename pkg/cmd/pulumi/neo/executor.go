@@ -56,6 +56,13 @@ func (e *Executor) Execute(ctx context.Context, calls []ToolCall) []ToolResultIt
 	return out
 }
 
+// InvokeOne executes a single tool call and returns its result item. This is
+// used by Session.runBatch to interleave exec_tool_call notifications between
+// individual tool invocations.
+func (e *Executor) InvokeOne(ctx context.Context, call ToolCall) ToolResultItem {
+	return e.invoke(ctx, call)
+}
+
 func (e *Executor) invoke(ctx context.Context, call ToolCall) ToolResultItem {
 	res := ToolResultItem{ToolCallID: call.ToolCallID, Name: call.Name}
 

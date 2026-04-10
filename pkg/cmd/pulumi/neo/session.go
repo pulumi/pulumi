@@ -110,11 +110,23 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 }
 
 func (s *Session) runBatch(ctx context.Context, calls []ToolCall) {
+	items := make([]ToolResultItem, 0, len(calls))
 	for _, call := range calls {
 		s.logf("→ %s", call.Name)
+
+		// Best-effort notification so the UI shows the tool as "running".
+		execEvt := ExecToolCallEvent{
+			Type:       userEventExecToolCall,
+			ToolCallID: call.ToolCallID,
+			Name:       call.Name,
+		}
+		if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, execEvt); err != nil {
+			s.logf("warning: posting exec_tool_call: %v", err)
+		}
+
+		items = append(items, s.Executor.InvokeOne(ctx, call))
 	}
 
-	items := s.Executor.Execute(ctx, calls)
 	result := ToolResultEvent{
 		Type:        userEventToolResult,
 		ToolResults: items,

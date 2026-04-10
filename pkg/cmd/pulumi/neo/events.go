@@ -33,6 +33,7 @@ const (
 	consoleEventUserInput        = "userInput"
 	backendEventAssistantMessage = "assistant_message"
 	userEventToolResult          = "tool_result"
+	userEventExecToolCall        = "exec_tool_call"
 
 	// toolExecutionModeCLI marks an individual tool call inside an AssistantMessage
 	// that the CLI client must execute locally. Cloud-marked or unset calls are
@@ -87,6 +88,15 @@ type ToolCall struct {
 type ToolResultEvent struct {
 	Type        string           `json:"type"` // always "tool_result"
 	ToolResults []ToolResultItem `json:"tool_results"`
+}
+
+// ExecToolCallEvent is the user event the CLI posts just before executing a
+// cli-marked tool call, so the service can emit a backend event that lights
+// up the "running" state in the UI.
+type ExecToolCallEvent struct {
+	Type       string `json:"type"`         // always "exec_tool_call"
+	ToolCallID string `json:"tool_call_id"` // from the inbound ToolCall.ToolCallID
+	Name       string `json:"name"`         // full tool name, e.g. "filesystem__read"
 }
 
 // ToolResultItem mirrors apitype.AgentUserEventToolResultItem.
