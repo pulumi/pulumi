@@ -271,7 +271,8 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	if module == "index" {
 		module = ""
 	}
-	return pkg, strings.ReplaceAll(module, "/", "."), member, diagnostics
+	module = strings.ToLower(strings.ReplaceAll(module, "/", "."))
+	return pkg, module, member, diagnostics
 }
 
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {

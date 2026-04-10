@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs,python
+  description: Fix imports of camelCase modules

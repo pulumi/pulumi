@@ -244,6 +244,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 	if module == "index" {
 		module = ""
 	}
+	module = moduleToPythonModule(module, nil)
 	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
 }
 
