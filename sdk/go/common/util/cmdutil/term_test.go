@@ -471,6 +471,9 @@ func waitPidDead(pid int, timeout time.Duration) error {
 			if err == nil && proc == nil {
 				return nil
 			}
+			if err == nil && proc != nil && isZombie(pid) {
+				return nil
+			}
 			time.Sleep(10 * time.Millisecond)
 		}
 	}
