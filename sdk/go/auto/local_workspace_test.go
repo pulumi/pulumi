@@ -987,6 +987,13 @@ func TestStackLifecycleInlineProgramRemoveWithoutDestroy(t *testing.T) {
 		t.FailNow()
 	}
 
+	defer func() {
+		_, err = s.Destroy(ctx)
+		require.NoError(t, err, "failed to destroy stack. Resources have leaked.")
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
 	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
 	require.NoError(t, err, "up failed")
 
@@ -1412,6 +1419,11 @@ func TestConfigFlagLike(t *testing.T) {
 		t.FailNow()
 	}
 
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
 	err = s.SetConfig(ctx, "key", ConfigValue{"-value", false})
 	if err != nil {
 		t.Error(err)
@@ -1428,9 +1440,6 @@ func TestConfigFlagLike(t *testing.T) {
 	assert.Equalf(t, "-value", cm["testproj:secret-key"].Value, "wrong secret-key")
 	assert.Equalf(t, false, cm["testproj:key"].Secret, "key should not be secret")
 	assert.Equalf(t, true, cm["testproj:secret-key"].Secret, "secret-key should be secret")
-
-	err = s.Workspace().RemoveStack(ctx, stackName)
-	require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 func TestGetAllConfigCorrectArgs(t *testing.T) {
@@ -2375,6 +2384,11 @@ func TestTagFunctions(t *testing.T) {
 	}
 	ws := s.Workspace()
 
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
 	// -- lists tag values --
 	tags, err := ws.ListTags(ctx, stackName)
 	if err != nil {
@@ -2406,9 +2420,6 @@ func TestTagFunctions(t *testing.T) {
 	}
 	tags, _ = ws.ListTags(ctx, stackName)
 	assert.NotContains(t, tags, "foo", "failed to remove tag")
-
-	err = s.Workspace().RemoveStack(ctx, stackName)
-	require.NoError(t, err, "failed to remove stack. Resources have leaked.")
 }
 
 //nolint:paralleltest // mutates environment variables
@@ -2545,6 +2556,10 @@ func TestStackImportResources(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	randomPluginVersion := "4.16.3"
 	err = stack.Workspace().InstallPlugin(ctx, "random", randomPluginVersion)
@@ -3327,6 +3342,11 @@ func TestWhoAmIDetailed(t *testing.T) {
 		t.FailNow()
 	}
 
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
 	whoAmIDetailedInfo, err := s.Workspace().WhoAmIDetails(ctx)
 	if err != nil {
 		t.Errorf("failed to get WhoAmIDetailedInfo, err: %v", err)
@@ -3334,18 +3354,6 @@ func TestWhoAmIDetailed(t *testing.T) {
 	}
 	require.NotNil(t, whoAmIDetailedInfo.User, "failed to get WhoAmIDetailedInfo user")
 	require.NotNil(t, whoAmIDetailedInfo.URL, "failed to get WhoAmIDetailedInfo url")
-
-	// cleanup
-	_, err = s.Destroy(ctx)
-	if err != nil {
-		t.Errorf("destroy failed during cleanup, err: %v", err)
-		t.FailNow()
-	}
-	err = s.Workspace().RemoveStack(ctx, s.Name())
-	if err != nil {
-		t.Errorf("failed to remove stack during cleanup. Resources have leaked, err: %v", err)
-		t.FailNow()
-	}
 }
 
 func TestListStacks(t *testing.T) {
@@ -3883,6 +3891,11 @@ func TestStackLifecycleInlineProgramRunProgram(t *testing.T) {
 		t.Errorf("failed to initialize stack, err: %v", err)
 		t.FailNow()
 	}
+
+	defer func() {
+		err = s.Workspace().RemoveStack(ctx, s.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	_, err = s.Up(ctx, optup.UserAgent(agent), optup.Refresh())
 	require.NoError(t, err, "up failed")
