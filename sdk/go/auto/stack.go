@@ -1115,6 +1115,9 @@ func destroyOptsToCmd(destroyOpts *optdestroy.Options, s *Stack) ([]string, io.C
 			args = append(args, "--run-program=false")
 		}
 	}
+	if destroyOpts.Diff {
+		args = append(args, "--diff")
+	}
 
 	kind := constant.ExecKindAutoLocal
 	var closer io.Closer
