@@ -320,12 +320,14 @@ func TestRefreshOptsDiff(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
 	pDir := t.TempDir()
 	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
 	require.NoError(t, err)
 
-	stack, err := NewStackLocalSource(ctx, ptesting.RandomStackName(), pDir)
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
 	defer func() {
