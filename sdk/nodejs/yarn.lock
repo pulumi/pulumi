@@ -2172,11 +2172,6 @@ find-cache-dir@^3.2.0:
     make-dir "^3.0.2"
     pkg-dir "^4.1.0"
 
-find-up-simple@^1.0.0:
-  version "1.0.1"
-  resolved "https://registry.npmjs.org/find-up-simple/-/find-up-simple-1.0.1.tgz#18fb90ad49e45252c4d7fca56baade04fa3fca1e"
-  integrity sha512-afd4O7zpqHeRyg4PfDQsXmlDe2PfdHtJt6Akt8jOWaApLOZk5JXs6VMR29lz03pRe9mpykrRCYIYxaJYcfpncQ==
-
 find-up@^4.0.0, find-up@^4.1.0:
   version "4.1.0"
   resolved "https://registry.npmjs.org/find-up/-/find-up-4.1.0.tgz"
@@ -3501,13 +3496,6 @@ p-try@^2.0.0:
   version "2.2.0"
   resolved "https://registry.npmjs.org/p-try/-/p-try-2.2.0.tgz"
   integrity sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ==
-
-package-directory@^8.1.0:
-  version "8.1.0"
-  resolved "https://registry.npmjs.org/package-directory/-/package-directory-8.1.0.tgz#75737f33380df04490de8cacb47d682116661401"
-  integrity sha512-qHKRW0pw3lYdZMQVkjDBqh8HlamH/LCww2PH7OWEp4Qrt3SFeYMNpnJrQzlSnGrDD5zGR51XqBh7FnNCdVNEHA==
-  dependencies:
-    find-up-simple "^1.0.0"
 
 package-hash@^4.0.0:
   version "4.0.0"
