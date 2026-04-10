@@ -10,7 +10,7 @@ const subnets = vpc.then(vpc => aws.ec2.getSubnetIds({
 }));
 // Create a security group that permits HTTP ingress and unrestricted egress.
 const webSecurityGroup = new aws.ec2.SecurityGroup("webSecurityGroup", {
-    vpcId: vpc.then(vpc => vpc.id),
+    vpcId: String(vpc.then(vpc => vpc.id)),
     egress: [{
         protocol: "-1",
         fromPort: 0,
@@ -51,7 +51,7 @@ const webTargetGroup = new aws.elasticloadbalancingv2.TargetGroup("webTargetGrou
     port: 80,
     protocol: "HTTP",
     targetType: "ip",
-    vpcId: vpc.then(vpc => vpc.id),
+    vpcId: String(vpc.then(vpc => vpc.id)),
 });
 const webListener = new aws.elasticloadbalancingv2.Listener("webListener", {
     loadBalancerArn: webLoadBalancer.arn,
