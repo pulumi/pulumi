@@ -1268,21 +1268,37 @@ func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCl
 	return resp.Body, resp.ContentLength, nil
 }
 
-// GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
-func (pc *Client) GetUpdateEvents(ctx context.Context, update UpdateIdentifier,
-	continuationToken *string,
-) (apitype.UpdateResults, error) {
-	path := getUpdatePath(update)
-	if continuationToken != nil {
-		path += "?continuationToken=" + *continuationToken
-	}
+// GetUpdateEvents returns update results for an update.
+func (pc *Client) GetUpdateEvents(
+	ctx context.Context, update UpdateIdentifier,
+) iter.Seq2[apitype.UpdateResults, error] {
+	url := getUpdatePath(update)
+	var continuationToken *string
 
-	var results apitype.UpdateResults
-	if err := pc.restCall(ctx, "GET", path, nil, nil, &results); err != nil {
-		return apitype.UpdateResults{}, err
-	}
+	return func(f func(apitype.UpdateResults, error) bool) {
+		for {
+			queryURL := url
+			if continuationToken != nil {
+				queryURL += "?continuationToken=" + *continuationToken
+			}
 
-	return results, nil
+			var results apitype.UpdateResults
+			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &results)
+			if err != nil {
+				f(apitype.UpdateResults{}, err)
+				return
+			}
+
+			if !f(results, nil) {
+				return
+			}
+
+			continuationToken = results.ContinuationToken
+			if continuationToken == nil {
+				return
+			}
+		}
+	}
 }
 
 // RenewUpdateLease renews the indicated update lease for the given duration.
@@ -1405,20 +1421,40 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 }
 
 // GetUpdateEngineEvents returns the engine events for an update.
-func (pc *Client) GetUpdateEngineEvents(ctx context.Context, update UpdateIdentifier,
-	continuationToken *string,
-) (apitype.GetUpdateEventsResponse, error) {
-	path := getUpdatePath(update, "events")
-	if continuationToken != nil {
-		path += "?continuationToken=" + *continuationToken
-	}
+func (pc *Client) GetUpdateEngineEvents(
+	ctx context.Context, update UpdateIdentifier,
+) iter.Seq2[apitype.EngineEvent, error] {
+	url := getUpdatePath(update, "events")
+	var continuationToken *string
 
-	var resp apitype.GetUpdateEventsResponse
-	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
-		return apitype.GetUpdateEventsResponse{}, err
-	}
+	return func(f func(apitype.EngineEvent, error) bool) {
+		for {
+			queryURL := url
+			if continuationToken != nil {
+				queryURL += "?continuationToken=" + *continuationToken
+			}
 
-	return resp, nil
+			var resp apitype.GetUpdateEventsResponse
+			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			if err != nil {
+				f(apitype.EngineEvent{}, err)
+				return
+			}
+
+			for _, event := range resp.Events {
+				if !f(event, nil) {
+					return
+				}
+			}
+
+			continuationToken = resp.ContinuationToken
+			if continuationToken == nil {
+				return
+			}
+
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
 }
 
 // RecordEngineEvents posts a batch of engine events to the Pulumi service.

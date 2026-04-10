@@ -741,6 +741,175 @@ func TestListPackages(t *testing.T) {
 	})
 }
 
+func TestGetUpdateEngineEvents(t *testing.T) {
+	t.Parallel()
+
+	newUpdate := func() UpdateIdentifier {
+		return UpdateIdentifier{
+			StackIdentifier: StackIdentifier{
+				Owner:   "test-org",
+				Project: "test-project",
+				Stack:   tokens.MustParseStackName("test-stack"),
+			},
+			UpdateKind: apitype.UpdateUpdate,
+			UpdateID:   "test-update",
+		}
+	}
+
+	t.Run("with-continuation-token", func(t *testing.T) {
+		t.Parallel()
+
+		firstPageEvents := []apitype.EngineEvent{{Sequence: 1}}
+		secondPageEvents := []apitype.EngineEvent{{Sequence: 2}}
+
+		requestCount := 0
+		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Equal(t, "GET", req.Method)
+
+			var responseData []byte
+			var err error
+
+			switch requestCount {
+			case 0:
+				assert.Equal(t,
+					"/api/stacks/test-org/test-project/test-stack/update/test-update/events",
+					req.URL.String())
+				responseData, err = json.Marshal(apitype.GetUpdateEventsResponse{
+					Events:            firstPageEvents,
+					ContinuationToken: ptr("next-page-token-1"),
+				})
+				require.NoError(t, err)
+			case 1:
+				assert.Equal(t,
+					"/api/stacks/test-org/test-project/test-stack/update/test-update/events?continuationToken=next-page-token-1",
+					req.URL.String())
+				responseData, err = json.Marshal(apitype.GetUpdateEventsResponse{
+					Events: secondPageEvents,
+				})
+				require.NoError(t, err)
+			}
+
+			requestCount++
+			return string(responseData)
+		})
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		events := []apitype.EngineEvent{} //nolint:prealloc // capacity unknown ahead of time
+		for event, err := range mockClient.GetUpdateEngineEvents(t.Context(), newUpdate()) {
+			require.NoError(t, err)
+			events = append(events, event)
+		}
+
+		assert.Equal(t, append(firstPageEvents, secondPageEvents...), events)
+		assert.Equal(t, 2, requestCount)
+	})
+
+	t.Run("propagates-errors", func(t *testing.T) {
+		t.Parallel()
+
+		mockServer := newMockServer(http.StatusInternalServerError, "boom")
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		var actualErr error
+		eventCount := 0
+		for event, err := range mockClient.GetUpdateEngineEvents(t.Context(), newUpdate()) {
+			assert.Equal(t, apitype.EngineEvent{}, event)
+			actualErr = err
+			eventCount++
+		}
+
+		require.Error(t, actualErr)
+		assert.Equal(t, 1, eventCount)
+	})
+}
+
+func TestGetUpdateEvents(t *testing.T) {
+	t.Parallel()
+
+	newUpdate := func() UpdateIdentifier {
+		return UpdateIdentifier{
+			StackIdentifier: StackIdentifier{
+				Owner:   "test-org",
+				Project: "test-project",
+				Stack:   tokens.MustParseStackName("test-stack"),
+			},
+			UpdateKind: apitype.UpdateUpdate,
+			UpdateID:   "test-update",
+		}
+	}
+
+	t.Run("with-continuation-token", func(t *testing.T) {
+		t.Parallel()
+
+		requestCount := 0
+		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+			assert.Equal(t, "GET", req.Method)
+
+			var responseData []byte
+			var err error
+
+			switch requestCount {
+			case 0:
+				assert.Equal(t,
+					"/api/stacks/test-org/test-project/test-stack/update/test-update",
+					req.URL.String())
+				responseData, err = json.Marshal(apitype.UpdateResults{
+					Status:            apitype.StatusRunning,
+					ContinuationToken: ptr("next-page-token-1"),
+				})
+				require.NoError(t, err)
+			case 1:
+				assert.Equal(t,
+					"/api/stacks/test-org/test-project/test-stack/update/test-update?continuationToken=next-page-token-1",
+					req.URL.String())
+				responseData, err = json.Marshal(apitype.UpdateResults{
+					Status: apitype.StatusSucceeded,
+				})
+				require.NoError(t, err)
+			}
+
+			requestCount++
+			return string(responseData)
+		})
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		var statuses []apitype.UpdateStatus //nolint:prealloc // capacity unknown ahead of time
+		for results, err := range mockClient.GetUpdateEvents(t.Context(), newUpdate()) {
+			require.NoError(t, err)
+			statuses = append(statuses, results.Status)
+		}
+
+		assert.Equal(t, []apitype.UpdateStatus{apitype.StatusRunning, apitype.StatusSucceeded}, statuses)
+		assert.Equal(t, 2, requestCount)
+	})
+
+	t.Run("propagates-errors", func(t *testing.T) {
+		t.Parallel()
+
+		mockServer := newMockServer(http.StatusInternalServerError, "boom")
+		defer mockServer.Close()
+
+		mockClient := newMockClient(mockServer)
+
+		var actualErr error
+		resultCount := 0
+		for results, err := range mockClient.GetUpdateEvents(t.Context(), newUpdate()) {
+			assert.Equal(t, apitype.UpdateResults{}, results)
+			actualErr = err
+			resultCount++
+		}
+
+		require.Error(t, actualErr)
+		assert.Equal(t, 1, resultCount)
+	})
+}
+
 func ptr[T any](v T) *T { return &v }
 
 func TestCallCopilot(t *testing.T) {
