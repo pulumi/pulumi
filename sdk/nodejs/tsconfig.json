@@ -95,6 +95,7 @@
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
         "tests/options.spec.ts",
+        "tests/asset.spec.ts",
         "tests/output.spec.ts",
         "tests/resource.spec.ts",
         "tests/stackReference.spec.ts",
