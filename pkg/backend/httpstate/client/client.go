@@ -1671,19 +1671,7 @@ func (pc *Client) CreateNeoTask(
 	projectName string,
 	toolExecutionMode string,
 ) (*NeoTaskResponse, error) {
-	return pc.createNeoTask(ctx, orgName, content, stackName, projectName, toolExecutionMode, NeoRequestTimeout)
-}
-
-func (pc *Client) createNeoTask(
-	ctx context.Context,
-	orgName string,
-	content string,
-	stackName string,
-	projectName string,
-	toolExecutionMode string,
-	timeout time.Duration,
-) (*NeoTaskResponse, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
 
 	request := NeoTaskRequest{

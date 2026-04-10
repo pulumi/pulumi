@@ -16,6 +16,8 @@ package tools
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -64,18 +66,31 @@ func TestShell_ExecuteCapturesNonZeroExit(t *testing.T) {
 	assert.Equal(t, 3, res.(map[string]any)["exit_code"])
 }
 
-func TestShell_ExecuteHonorsCwdArg(t *testing.T) {
+func TestShell_ExecuteHonorsCwdSubdirectory(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("uses /bin/sh semantics")
 	}
 	t.Parallel()
 
-	dir := t.TempDir()
-	sh := NewShell(t.TempDir())
+	root := t.TempDir()
+	sub := filepath.Join(root, "child")
+	require.NoError(t, os.Mkdir(sub, 0o755))
+
+	sh := NewShell(root)
 	res, err := sh.Invoke(t.Context(), "shell_execute",
-		json.RawMessage(`{"command":"pwd","cwd":"`+dir+`"}`))
+		json.RawMessage(`{"command":"pwd","cwd":"`+sub+`"}`))
 	require.NoError(t, err)
-	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), dir))
+	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), sub))
+}
+
+func TestShell_ExecuteRejectsCwdOutsideRoot(t *testing.T) {
+	t.Parallel()
+
+	sh := NewShell(t.TempDir())
+	_, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"echo hi","cwd":"/tmp"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the working directory")
 }
 
 func TestShell_ExecuteRejectsEmptyCommand(t *testing.T) {

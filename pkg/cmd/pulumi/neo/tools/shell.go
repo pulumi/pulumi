@@ -16,19 +16,21 @@ package tools
 
 import (
 	"bytes"
-	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
 // Shell is the local handler for the Neo `shell` tool. The cloud agent exposes a single
 // method named `shell_execute` (see pulumi-service:cmd/agents/src/agents_py/mcp/shell_mcp.py)
-// with arguments `{command: string, cwd?: string}`.
+// with arguments `{command: string, cwd?: string}`. If cwd is supplied it must resolve to a
+// subdirectory of Cwd; otherwise the request is rejected.
 type Shell struct {
 	Cwd            string
 	DefaultTimeout time.Duration
@@ -54,10 +56,30 @@ func (s *Shell) Invoke(ctx context.Context, method string, args json.RawMessage)
 	if p.Command == "" {
 		return nil, errors.New("shell_execute requires a non-empty command")
 	}
-	return s.run(ctx, p.Command, p.Cwd)
+	dir, err := s.resolveDir(p.Cwd)
+	if err != nil {
+		return nil, err
+	}
+	return s.run(ctx, p.Command, dir)
 }
 
-func (s *Shell) run(ctx context.Context, command, cwd string) (any, error) {
+// resolveDir validates that dir is under s.Cwd. An empty dir defaults to s.Cwd.
+func (s *Shell) resolveDir(dir string) (string, error) {
+	if dir == "" {
+		return s.Cwd, nil
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("resolving cwd %q: %w", dir, err)
+	}
+	rel, err := filepath.Rel(s.Cwd, abs)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("cwd %q is outside the working directory %q", dir, s.Cwd)
+	}
+	return abs, nil
+}
+
+func (s *Shell) run(ctx context.Context, command string, dir string) (any, error) {
 	runCtx, cancel := context.WithTimeout(ctx, s.DefaultTimeout)
 	defer cancel()
 
@@ -67,7 +89,7 @@ func (s *Shell) run(ctx context.Context, command, cwd string) (any, error) {
 	} else {
 		cmd = exec.CommandContext(runCtx, "sh", "-c", command)
 	}
-	cmd.Dir = cmp.Or(cwd, s.Cwd)
+	cmd.Dir = dir
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

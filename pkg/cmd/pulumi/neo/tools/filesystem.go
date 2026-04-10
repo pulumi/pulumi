@@ -159,43 +159,35 @@ func (f *Filesystem) write(p, content string) (any, error) {
 }
 
 // directoryTree returns a flat listing of the directory at p, optionally bounded by depth.
-// Depth 0 (or unset) means the immediate children only — this is a deliberate
-// simplification of the upstream tool's recursive walk for the first slice.
+// Depth 0 (or unset) defaults to 1 (immediate children only).
 func (f *Filesystem) directoryTree(p string, depth int) (any, error) {
 	abs, err := f.resolve(p)
 	if err != nil {
 		return nil, err
 	}
+	if depth <= 0 {
+		depth = 1
+	}
 	var entries []map[string]any
-	if depth <= 1 {
-		es, err := os.ReadDir(abs)
-		if err != nil {
-			return nil, err
+	err = filepath.Walk(abs, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
-		for _, e := range es {
-			entries = append(entries, map[string]any{"name": e.Name(), "is_dir": e.IsDir()})
-		}
-	} else {
-		err = filepath.Walk(abs, func(path string, info os.FileInfo, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			rel, _ := filepath.Rel(abs, path)
-			if rel == "." {
-				return nil
-			}
-			if depth > 0 && strings.Count(rel, string(filepath.Separator))+1 > depth {
-				if info.IsDir() {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			entries = append(entries, map[string]any{"name": rel, "is_dir": info.IsDir()})
+		rel, _ := filepath.Rel(abs, path)
+		if rel == "." {
 			return nil
-		})
-		if err != nil {
-			return nil, err
 		}
+		if strings.Count(rel, string(filepath.Separator))+1 > depth {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		entries = append(entries, map[string]any{"name": rel, "is_dir": info.IsDir()})
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i]["name"].(string) < entries[j]["name"].(string)

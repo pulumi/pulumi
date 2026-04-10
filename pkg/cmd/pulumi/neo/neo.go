@@ -62,11 +62,11 @@ func NewNeoCmd() *cobra.Command {
 		},
 	}
 
-	cmd.PersistentFlags().StringVarP(&stackName, "stack", "s", "",
+	cmd.Flags().StringVarP(&stackName, "stack", "s", "",
 		"The name of the stack to attach to the Neo task")
-	cmd.PersistentFlags().StringVar(&orgFlag, "org", "",
+	cmd.Flags().StringVar(&orgFlag, "org", "",
 		"The organization that owns the Neo task (defaults to the user's default org)")
-	cmd.PersistentFlags().StringVar(&cwdFlag, "cwd", "",
+	cmd.Flags().StringVar(&cwdFlag, "cwd", "",
 		"Working directory for local tool execution (defaults to the current directory)")
 
 	return cmd
@@ -121,16 +121,15 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	if err != nil {
 		return err
 	}
-	exec := NewExecutor()
-	exec.Register("filesystem", fs)
-	exec.Register("shell", tools.NewShell(cwdFlag))
-
 	session := &Session{
-		Client:   pc,
-		Executor: exec,
-		OrgName:  orgName,
-		TaskID:   resp.TaskID,
-		Log:      os.Stderr,
+		Client: pc,
+		Handlers: map[string]ToolHandler{
+			"filesystem": fs,
+			"shell":      tools.NewShell(cwdFlag),
+		},
+		OrgName: orgName,
+		TaskID:  resp.TaskID,
+		Log:     os.Stderr,
 	}
 	return session.Run(ctx)
 }
@@ -150,14 +149,14 @@ func resolveTaskTarget(
 	}
 
 	if stackName != "" {
-		ref, refErr := be.ParseStackReference(stackName)
-		if refErr != nil {
-			return "", "", "", refErr
+		ref, err := be.ParseStackReference(stackName)
+		if err != nil {
+			return "", "", "", err
 		}
 		stack = ref.Name().String()
 	} else {
-		s, sErr := state.CurrentStack(ctx, ws, be)
-		if sErr == nil && s != nil {
+		s, err := state.CurrentStack(ctx, ws, be)
+		if err == nil && s != nil {
 			stack = s.Ref().Name().String()
 		}
 	}

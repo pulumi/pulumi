@@ -19,7 +19,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
+
+// ToolHandler executes a single named method on a Neo CLI-local tool. The method is the
+// part of the agent's full tool name after the "<server>__" prefix; args is the raw JSON
+// arguments object. The returned value is JSON-encoded into the ToolResultItem content.
+type ToolHandler interface {
+	Invoke(ctx context.Context, method string, args json.RawMessage) (any, error)
+}
 
 // EventStreamer is the subset of *client.Client we depend on for the SSE event stream and
 // for posting CLI tool result user events back to the Neo task. It is an interface so the
@@ -29,11 +37,11 @@ type EventStreamer interface {
 	PostNeoTaskUserEvent(ctx context.Context, orgName, taskID string, body any) error
 }
 
-// Session glues the SSE event stream, the local Executor, and the Pulumi Cloud client
+// Session glues the SSE event stream, the local tool handlers, and the Pulumi Cloud client
 // together.
 type Session struct {
 	Client   EventStreamer
-	Executor *Executor
+	Handlers map[string]ToolHandler
 	OrgName  string
 	TaskID   string
 	// Log receives single-line status messages so the caller can render them however it
@@ -124,7 +132,7 @@ func (s *Session) runBatch(ctx context.Context, calls []ToolCall) {
 			s.logf("warning: posting exec_tool_call: %v", err)
 		}
 
-		items = append(items, s.Executor.InvokeOne(ctx, call))
+		items = append(items, s.invokeToolCall(ctx, call))
 	}
 
 	result := ToolResultEvent{
@@ -134,6 +142,34 @@ func (s *Session) runBatch(ctx context.Context, calls []ToolCall) {
 	if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, result); err != nil {
 		s.logf("error: posting tool_result: %v", err)
 	}
+}
+
+// invokeToolCall dispatches a single ToolCall to the appropriate handler by splitting the
+// tool name on "__" into server and method. Errors are returned as ToolResultItems with
+// IsError=true rather than propagated, so the agent can retry or report.
+func (s *Session) invokeToolCall(ctx context.Context, call ToolCall) ToolResultItem {
+	res := ToolResultItem{ToolCallID: call.ToolCallID, Name: call.Name}
+
+	server, method, ok := strings.Cut(call.Name, "__")
+	if !ok {
+		res.IsError = true
+		res.Content = map[string]string{"error": fmt.Sprintf("tool name %q is missing the server prefix", call.Name)}
+		return res
+	}
+	handler, ok := s.Handlers[server]
+	if !ok {
+		res.IsError = true
+		res.Content = map[string]string{"error": fmt.Sprintf("tool %q is not available in CLI mode", server)}
+		return res
+	}
+	value, err := handler.Invoke(ctx, method, call.Args)
+	if err != nil {
+		res.IsError = true
+		res.Content = map[string]string{"error": err.Error()}
+		return res
+	}
+	res.Content = value
+	return res
 }
 
 func (s *Session) logf(format string, args ...any) {

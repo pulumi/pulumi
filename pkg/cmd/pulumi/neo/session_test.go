@@ -17,12 +17,26 @@ package neo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeHandler struct {
+	wantMethod string
+	result     any
+	err        error
+}
+
+func (f *fakeHandler) Invoke(_ context.Context, method string, _ json.RawMessage) (any, error) {
+	if method != f.wantMethod {
+		return nil, errors.New("unexpected method " + method)
+	}
+	return f.result, f.err
+}
 
 type fakeStreamer struct {
 	events chan []byte
@@ -67,11 +81,9 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 	t.Parallel()
 
 	streamer := newFakeStreamer()
-	exec := NewExecutor()
-	exec.Register("filesystem", &fakeHandler{
-		wantMethod: "read",
-		result:     map[string]any{"content": "hi"},
-	})
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "hi"}},
+	}
 
 	// Lock down the inbound wire shape: the discriminator must be the snake_case
 	// "assistant_message" the service emits, and each tool call's identifier must
@@ -113,7 +125,7 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 	})
 	close(streamer.events)
 
-	s := &Session{Client: streamer, Executor: exec, OrgName: "org", TaskID: "task"}
+	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
 	require.NoError(t, s.Run(t.Context()))
 
 	streamer.mu.Lock()
@@ -174,7 +186,7 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 	})
 	close(streamer.events)
 
-	s := &Session{Client: streamer, Executor: NewExecutor(), OrgName: "o", TaskID: "t"}
+	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
 	require.NoError(t, s.Run(t.Context()))
 
 	streamer.mu.Lock()
@@ -186,15 +198,10 @@ func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing
 	t.Parallel()
 
 	streamer := newFakeStreamer()
-	exec := NewExecutor()
-	exec.Register("filesystem", &fakeHandler{
-		wantMethod: "read",
-		result:     map[string]any{"content": "hello"},
-	})
-	exec.Register("shell", &fakeHandler{
-		wantMethod: "run",
-		result:     map[string]any{"exit_code": 0},
-	})
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "hello"}},
+		"shell":      &fakeHandler{wantMethod: "run", result: map[string]any{"exit_code": 0}},
+	}
 
 	streamer.events <- mustAgentResponseEnvelope(t, AssistantMessage{
 		Type:    backendEventAssistantMessage,
@@ -206,7 +213,7 @@ func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing
 	})
 	close(streamer.events)
 
-	s := &Session{Client: streamer, Executor: exec, OrgName: "org", TaskID: "task"}
+	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
 	require.NoError(t, s.Run(t.Context()))
 
 	streamer.mu.Lock()
@@ -239,7 +246,7 @@ func TestSession_IgnoresUserInputAndUnknownBackendEvents(t *testing.T) {
 	streamer := newFakeStreamer()
 
 	// userInput envelope — should be ignored.
-	userInput, err := json.Marshal(ConsoleEventEnvelope{Type: consoleEventUserInput, ID: "u1"})
+	userInput, err := json.Marshal(ConsoleEventEnvelope{Type: "userInput", ID: "u1"})
 	require.NoError(t, err)
 	streamer.events <- userInput
 
@@ -250,10 +257,62 @@ func TestSession_IgnoresUserInputAndUnknownBackendEvents(t *testing.T) {
 	})
 	close(streamer.events)
 
-	s := &Session{Client: streamer, Executor: NewExecutor(), OrgName: "o", TaskID: "t"}
+	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
 	require.NoError(t, s.Run(t.Context()))
 
 	streamer.mu.Lock()
 	defer streamer.mu.Unlock()
 	assert.Empty(t, streamer.posted)
+}
+
+func TestSession_InvokeToolCallDispatchesBySplittingName(t *testing.T) {
+	t.Parallel()
+
+	s := &Session{
+		Handlers: map[string]ToolHandler{
+			"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "hello"}},
+		},
+	}
+	item := s.invokeToolCall(t.Context(), ToolCall{
+		ToolCallID: "c1", Name: "filesystem__read", Args: json.RawMessage(`{}`),
+	})
+
+	assert.Equal(t, "c1", item.ToolCallID)
+	assert.Equal(t, "filesystem__read", item.Name)
+	assert.False(t, item.IsError)
+	assert.Equal(t, map[string]any{"content": "hello"}, item.Content)
+}
+
+func TestSession_InvokeToolCallUnknownServer(t *testing.T) {
+	t.Parallel()
+
+	s := &Session{Handlers: map[string]ToolHandler{}}
+	item := s.invokeToolCall(t.Context(), ToolCall{ToolCallID: "c1", Name: "vcs__commit"})
+
+	assert.True(t, item.IsError)
+	assert.Contains(t, item.Content.(map[string]string)["error"], `tool "vcs" is not available`)
+}
+
+func TestSession_InvokeToolCallNameWithoutSeparator(t *testing.T) {
+	t.Parallel()
+
+	s := &Session{Handlers: map[string]ToolHandler{}}
+	item := s.invokeToolCall(t.Context(), ToolCall{ToolCallID: "c1", Name: "bare_name"})
+
+	assert.True(t, item.IsError)
+	assert.Contains(t, item.Content.(map[string]string)["error"], "missing the server prefix")
+}
+
+func TestSession_InvokeToolCallHandlerError(t *testing.T) {
+	t.Parallel()
+
+	s := &Session{
+		Handlers: map[string]ToolHandler{
+			"shell": &fakeHandler{wantMethod: "shell_execute", err: errors.New("boom")},
+		},
+	}
+	item := s.invokeToolCall(t.Context(), ToolCall{ToolCallID: "c", Name: "shell__shell_execute"})
+
+	assert.True(t, item.IsError)
+	assert.Equal(t, "boom", item.Content.(map[string]string)["error"])
 }

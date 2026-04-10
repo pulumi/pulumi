@@ -30,7 +30,6 @@ import (
 // events we care about.
 const (
 	consoleEventAgentResponse    = "agentResponse"
-	consoleEventUserInput        = "userInput"
 	backendEventAssistantMessage = "assistant_message"
 	userEventToolResult          = "tool_result"
 	userEventExecToolCall        = "exec_tool_call"
