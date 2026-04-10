@@ -16,6 +16,7 @@ package engine
 
 import (
 	"bytes"
+	"log/slog"
 	"time"
 
 	codeasset "github.com/pulumi/pulumi/pkg/v3/asset"
@@ -915,11 +916,7 @@ func trySendEvent(ch chan<- Event, ev Event) (sent bool) {
 	defer func() {
 		if recover() != nil {
 			sent = false
-			if logging.V(9) {
-				logging.V(9).Infof(
-					"Ignoring %v send on a closed channel %p",
-					ev.Type, ch)
-			}
+			slog.Info("Ignoring send on a closed channel", "type", ev.Type, "channel", ch)
 		}
 	}()
 	ch <- ev
@@ -934,11 +931,7 @@ func tryCloseEventChan(ch chan<- Event) (closed bool) {
 	defer func() {
 		if recover() != nil {
 			closed = false
-			if logging.V(9) {
-				logging.V(9).Infof(
-					"Ignoring close of a closed event channel %p",
-					ch)
-			}
+			slog.Info("Ignoring close of a closed event channel", "channel", ch)
 		}
 	}()
 	close(ch)

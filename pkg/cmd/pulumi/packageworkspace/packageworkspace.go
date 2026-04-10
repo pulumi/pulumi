@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -41,7 +42,6 @@ import (
 	diagutils "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -168,13 +168,13 @@ func (w Workspace) DownloadPlugin(
 			"Will retry in %v [%d/%d]", err, delay, attempt, limit)
 	}
 
-	logging.V(1).Infof("downloading provider %s", pluginSpec.Name)
+	slog.Info("downloading provider", "name", pluginSpec.Name)
 	downloadedFile, err := workspace.DownloadToFile(ctx, pluginSpec, wrapper, retry)
 	if err != nil {
 		return "", nil, err
 	}
 
-	logging.V(1).Infof("unpacking provider %s", pluginSpec.Name)
+	slog.Info("unpacking provider", "name", pluginSpec.Name)
 	cleanup, err := pluginstorage.UnpackContents(
 		ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), true, /* reinstall */
 	)

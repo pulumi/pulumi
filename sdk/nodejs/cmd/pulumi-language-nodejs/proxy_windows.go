@@ -19,13 +19,12 @@ package main
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"time"
 
 	winio "github.com/Microsoft/go-winio"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Windows specific pipe implementation. Slightly complex as it sits on top of a pair of named pipes
@@ -41,13 +40,13 @@ func createPipes() (pipes, error) {
 	resPipeName := dir + `\invoke_res`
 	reqListener, err := winio.ListenPipe(reqPipeName, nil)
 	if err != nil {
-		logging.V(10).Infof("createPipes: Received error trying to create request pipe %s: %s\n", reqPipeName, err)
+		slog.Debug("createPipes: error creating request pipe", "pipe", reqPipeName, "err", err)
 		return nil, err
 	}
 
 	resListener, err := winio.ListenPipe(resPipeName, nil)
 	if err != nil {
-		logging.V(10).Infof("createPipes: Received error trying to create response pipe %s: %s\n", resPipeName, err)
+		slog.Debug("createPipes: error creating response pipe", "pipe", resPipeName, "err", err)
 		return nil, err
 	}
 	return &windowsPipes{

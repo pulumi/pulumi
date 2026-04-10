@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -144,43 +145,33 @@ func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...any) strin
 
 func (d *defaultSink) Debugf(diag *Diag, args ...any) {
 	// For debug messages, write both to the glogger and a stream, if there is one.
-	logging.V(3).Infof(diag.Message, args...)
+	slog.Info(fmt.Sprintf(diag.Message, args...))
 	msg := d.createMessage(Debug, diag, args...)
-	if logging.V(9) {
-		logging.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
-	}
+	slog.Info("defaultSink::Debug", "msg", msg[:len(msg)-1])
 	d.print(Debug, msg)
 }
 
 func (d *defaultSink) Infof(diag *Diag, args ...any) {
 	msg := d.createMessage(Info, diag, args...)
-	if logging.V(5) {
-		logging.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
-	}
+	slog.Info("defaultSink::Info", "msg", msg[:len(msg)-1])
 	d.print(Info, msg)
 }
 
 func (d *defaultSink) Infoerrf(diag *Diag, args ...any) {
 	msg := d.createMessage(Info /* not Infoerr, just "info: "*/, diag, args...)
-	if logging.V(5) {
-		logging.V(5).Infof("defaultSink::Infoerr(%v)", msg[:len(msg)-1])
-	}
+	slog.Info("defaultSink::Infoerr", "msg", msg[:len(msg)-1])
 	d.print(Infoerr, msg)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...any) {
 	msg := d.createMessage(Error, diag, args...)
-	if logging.V(5) {
-		logging.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
-	}
+	slog.Info("defaultSink::Error", "msg", msg[:len(msg)-1])
 	d.print(Error, msg)
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...any) {
 	msg := d.createMessage(Warning, diag, args...)
-	if logging.V(5) {
-		logging.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
-	}
+	slog.Info("defaultSink::Warning", "msg", msg[:len(msg)-1])
 	d.print(Warning, msg)
 }
 

@@ -17,6 +17,7 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"regexp"
 	"strings"
@@ -36,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
@@ -743,7 +743,7 @@ func (d *Deployment) RunHooks(
 		if d.opts != nil && d.opts.DryRun && !hook.OnDryRun {
 			continue
 		}
-		logging.V(9).Infof("calling hook %q for urn %s", hookName, urn)
+		slog.Info("calling hook", "hookName", hookName, "urn", urn)
 		err = hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,
@@ -781,7 +781,7 @@ func (d *Deployment) RunErrorHooks(
 		if err != nil {
 			return false, fmt.Errorf("error hook %q was not registered", hookName)
 		}
-		logging.V(9).Infof("calling error hook %q for urn %s", hookName, urn)
+		slog.Info("calling error hook", "hookName", hookName, "urn", urn)
 		retry, err := hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,

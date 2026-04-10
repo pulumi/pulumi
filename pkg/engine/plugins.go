@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"slices"
 	"time"
@@ -41,13 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-)
-
-const (
-	preparePluginLog        = 7
-	preparePluginVerboseLog = 8
 )
 
 // A PluginManager handles plugin installation.
@@ -327,7 +322,7 @@ func GetRequiredPlugins(
 // gatherPackagesFromProgram inspects the given program and returns the set of packages that the program requires to
 // function. If the language host does not support this operation, the empty set is returned.
 func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plugin.ProgramInfo) (PackageSet, error) {
-	logging.V(preparePluginLog).Infof("gatherPackagesFromProgram(): gathering plugins from language host")
+	slog.Info("gatherPackagesFromProgram: gathering plugins from language host")
 
 	lang, err := plugctx.Host.LanguageRuntime(runtime)
 	if lang == nil || err != nil {
@@ -341,9 +336,9 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 
 	set := NewPackageSet()
 	for _, pkg := range pkgs {
-		logging.V(preparePluginLog).Infof(
-			"gatherPackagesFromProgram(): package %s (%s) is required by language host",
-			pkg.String(), pkg.PluginDownloadURL)
+		slog.Info(
+			"gatherPackagesFromProgram: package is required by language host",
+			"package", pkg.String(), "pluginDownloadURL", pkg.PluginDownloadURL)
 		set.Add(pkg)
 	}
 	return set, nil
@@ -353,17 +348,17 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 // required to operate on the snapshot. The set of packages is derived from first-class providers saved in the snapshot
 // and the plugins specified in the deployment manifest.
 func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) (PackageSet, error) {
-	logging.V(preparePluginLog).Infof("gatherPackagesFromSnapshot(): gathering plugins from snapshot")
+	slog.Info("gatherPackagesFromSnapshot: gathering plugins from snapshot")
 	set := NewPackageSet()
 	if target == nil || target.Snapshot == nil {
-		logging.V(preparePluginLog).Infof("gatherPackagesFromSnapshot(): no snapshot available, skipping")
+		slog.Info("gatherPackagesFromSnapshot: no snapshot available, skipping")
 		return set, nil
 	}
 	for _, res := range target.Snapshot.Resources {
 		urn := res.URN
 		if !sdkproviders.IsProviderType(urn.Type()) {
-			logging.V(preparePluginVerboseLog).Infof(
-				"gatherPackagesFromSnapshot(): skipping %q, not a provider", urn)
+			slog.Info(
+				"gatherPackagesFromSnapshot: skipping, not a provider", "urn", urn)
 			continue
 		}
 		pkg := sdkproviders.GetProviderPackage(urn.Type())
@@ -397,8 +392,9 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 			}
 		}
 
-		logging.V(preparePluginLog).Infof(
-			"gatherPackagesFromSnapshot(): package %s %s is required by first-class provider %q", name, version, urn)
+		slog.Info(
+			"gatherPackagesFromSnapshot: package is required by first-class provider",
+			"name", name, "version", version, "urn", urn)
 		set.Add(workspace.PackageDescriptor{
 			PluginDescriptor: workspace.PluginDescriptor{
 				Name:              name.String(),
@@ -447,17 +443,18 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 		pluginManager = defaultPluginManager{pluginstorage.Instance}
 	}
 
-	logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): beginning")
+	slog.Info("ensurePluginsAreInstalled: beginning")
 	for _, plug := range plugins.Values() {
 		if plug.Name == "pulumi" && plug.Kind == apitype.ResourcePlugin {
-			logging.V(preparePluginLog).Infof("ensurePluginsAreInstalled(): pulumi is a builtin plugin")
+			slog.Info("ensurePluginsAreInstalled: pulumi is a builtin plugin")
 			continue
 		}
 
 		path, err := pluginManager.GetPluginPath(ctx, d, plug, projectPlugins)
 		if err == nil && path != "" {
-			logging.V(preparePluginLog).Infof(
-				"ensurePluginsAreInstalled(): plugin %s %s already installed", plug.Name, plug.Version)
+			slog.Info(
+				"ensurePluginsAreInstalled: plugin already installed",
+				"name", plug.Name, "version", plug.Version)
 
 			if !reinstall {
 				continue
@@ -469,12 +466,12 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 			label := fmt.Sprintf("%s plugin %s", plug.Kind, plug)
 			if plug.Version != nil {
 				if pluginManager.HasPlugin(ctx, plug) {
-					logging.V(1).Infof("%s skipping install (existing == match)", label)
+					slog.Info("skipping install (existing == match)", "label", label)
 					continue
 				}
 			} else {
 				if has, _, _ := pluginManager.HasPluginGTE(ctx, plug); has {
-					logging.V(1).Infof("%s skipping install (existing >= match)", label)
+					slog.Info("skipping install (existing >= match)", "label", label)
 					continue
 				}
 			}
@@ -501,13 +498,14 @@ func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 
 		// Launch an install task asynchronously and add it to the current error group.
 		manager.InstallPlugin(func() error {
-			logging.V(preparePluginLog).Infof(
-				"EnsurePluginsAreInstalled(): plugin %s %s not installed, doing install", info.Name, info.Version)
+			slog.Info(
+				"EnsurePluginsAreInstalled: plugin not installed, doing install",
+				"name", info.Name, "version", info.Version)
 			return installPlugin(ctx, opts, pluginManager, info)
 		})
 	}
 
-	logging.V(preparePluginLog).Infof("EnsurePluginsAreInstalled(): completed")
+	slog.Info("EnsurePluginsAreInstalled: completed")
 	return nil
 }
 
@@ -536,12 +534,13 @@ func installPlugin(
 		trace.WithAttributes(attrs...))
 	defer span.End()
 
-	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
+	slog.Info("installPlugin: beginning install", "name", plugin.Name, "version", plugin.Version)
 
 	// If we don't have a version yet try and call GetLatestVersion to fill it in
 	if plugin.Version == nil {
-		logging.V(preparePluginVerboseLog).Infof(
-			"installPlugin(%s): version not specified, trying to lookup latest version", plugin.Name)
+		slog.Info(
+			"installPlugin: version not specified, trying to lookup latest version",
+			"name", plugin.Name)
 
 		version, err := pluginManager.GetLatestVersion(ctx, plugin)
 		if err != nil {
@@ -550,8 +549,9 @@ func installPlugin(
 		plugin.Version = version
 	}
 
-	logging.V(preparePluginVerboseLog).Infof(
-		"installPlugin(%s, %s): initiating download", plugin.Name, plugin.Version)
+	slog.Info(
+		"installPlugin: initiating download",
+		"name", plugin.Name, "version", plugin.Version)
 
 	pluginID := fmt.Sprintf("%s-%s", plugin.Name, plugin.Version)
 	downloadMessage := "Downloading plugin " + pluginID
@@ -586,8 +586,9 @@ func installPlugin(
 		}
 	}
 	retry := func(err error, attempt int, limit int, delay time.Duration) {
-		logging.V(preparePluginVerboseLog).Infof(
-			"Error downloading plugin: %s\nWill retry in %v [%d/%d]", err, delay, attempt, limit)
+		slog.Info(
+			"Error downloading plugin, will retry",
+			"err", err, "delay", delay, "attempt", attempt, "limit", limit)
 	}
 
 	tarball, size, err := pluginManager.DownloadPlugin(ctx, plugin, withDownloadProgress, retry)
@@ -596,8 +597,9 @@ func installPlugin(
 	}
 	defer contract.IgnoreClose(tarball)
 
-	logging.V(preparePluginVerboseLog).Infof(
-		"installPlugin(%s, %s): extracting tarball to installation directory", plugin.Name, plugin.Version)
+	slog.Info(
+		"installPlugin: extracting tarball to installation directory",
+		"name", plugin.Name, "version", plugin.Version)
 
 	// In a similar manner to downloads, we'll use a progress bar to show install
 	// progress by wrapping the download stream with a progress reporting
@@ -634,7 +636,7 @@ func installPlugin(
 			plugin.Kind, plugin.Name, plugin.Version, err)
 	}
 
-	logging.V(7).Infof("installPlugin(%s, %s): installation complete", plugin.Name, plugin.Version)
+	slog.Info("installPlugin: installation complete", "name", plugin.Name, "version", plugin.Version)
 	return nil
 }
 
@@ -674,8 +676,8 @@ func computeDefaultProviderPackages(
 
 	sourceSet := languagePackages
 	if !languageReportedProviderPlugins {
-		logging.V(preparePluginLog).Infoln(
-			"computeDefaultProviderPlugins(): language host reported empty set of provider plugins, using all plugins")
+		slog.Info(
+			"computeDefaultProviderPlugins: language host reported empty set of provider plugins, using all plugins")
 		sourceSet = allPackages
 	}
 
@@ -693,11 +695,11 @@ func computeDefaultProviderPackages(
 	sourcePackages := sourceSet.Values()
 	slices.SortFunc(sourcePackages, workspace.SortPackageDescriptors)
 	for _, p := range sourcePackages {
-		logging.V(preparePluginLog).Infof("computeDefaultProviderPlugins(): considering %s", p)
+		slog.Info("computeDefaultProviderPlugins: considering", "plugin", p)
 		if p.Kind != apitype.ResourcePlugin {
 			// Default providers are only relevant for resource plugins.
-			logging.V(preparePluginVerboseLog).Infof(
-				"computeDefaultProviderPlugins(): skipping %s, not a resource provider", p)
+			slog.Info(
+				"computeDefaultProviderPlugins: skipping, not a resource provider", "plugin", p)
 			continue
 		}
 
@@ -705,18 +707,18 @@ func computeDefaultProviderPackages(
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
 			if seenPlugin.Version == nil {
-				logging.V(preparePluginLog).Infof(
-					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
-					p, p.Name)
+				slog.Info(
+					"computeDefaultProviderPlugins: plugin selected for package (override, previous was nil)",
+					"plugin", p, "package", p.Name)
 				defaultProviderPlugins[name] = p
 				continue
 			}
 
 			contract.Assertf(p.Version != nil, "p.Version should not be nil if sorting is correct!")
 			if p.Version != nil && p.Version.GTE(*seenPlugin.Version) {
-				logging.V(preparePluginLog).Infof(
-					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, newer than previous %s)",
-					p, p.Name, seenPlugin.Version)
+				slog.Info(
+					"computeDefaultProviderPlugins: plugin selected for package (override, newer than previous)",
+					"plugin", p, "package", p.Name, "previousVersion", seenPlugin.Version)
 				defaultProviderPlugins[name] = p
 				continue
 			}
@@ -726,16 +728,15 @@ func computeDefaultProviderPackages(
 				seenPlugin.Name, seenPlugin.Version.String())
 		}
 
-		logging.V(preparePluginLog).Infof(
-			"computeDefaultProviderPlugins(): plugin %s selected for package %s (first seen)", p, p.Name)
+		slog.Info(
+			"computeDefaultProviderPlugins: plugin selected for package (first seen)",
+			"plugin", p, "package", p.Name)
 		defaultProviderPlugins[name] = p
 	}
 
-	if logging.V(preparePluginLog) {
-		logging.V(preparePluginLog).Infoln("computeDefaultProviderPlugins(): summary of default plugins:")
-		for pkg, info := range defaultProviderPlugins {
-			logging.V(preparePluginLog).Infof("  %-15s = %s", pkg, info.Version)
-		}
+	slog.Info("computeDefaultProviderPlugins: summary of default plugins")
+	for pkg, info := range defaultProviderPlugins {
+		slog.Info("computeDefaultProviderPlugins: default plugin", "package", pkg, "version", info.Version)
 	}
 
 	defaultProviderInfo := make(map[tokens.Package]workspace.PackageDescriptor)

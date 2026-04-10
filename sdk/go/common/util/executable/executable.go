@@ -17,13 +17,12 @@ package executable
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const unableToFindProgramTemplate = "unable to find program: %s"
@@ -72,7 +71,7 @@ func findExecutableWithSuffix(program, suffix string) (string, error) {
 		return "", err
 	}
 	if err == nil && !fileInfo.Mode().IsDir() {
-		logging.V(5).Infof("program %s found in CWD", program)
+		slog.Info("program found in CWD", "program", program)
 		return cwdProgram, nil
 	}
 
@@ -91,7 +90,7 @@ func findExecutableWithSuffix(program, suffix string) (string, error) {
 			}
 
 			if fileInfo != nil && !fileInfo.Mode().IsDir() {
-				logging.V(5).Infof("program %s found in %s/bin", program, pp)
+				slog.Info("program found in GOPATH/bin", "program", program, "gopath", pp)
 				return goPathProgram, nil
 			}
 		}
@@ -99,7 +98,7 @@ func findExecutableWithSuffix(program, suffix string) (string, error) {
 
 	// look in the $PATH somewhere
 	if fullPath, err := exec.LookPath(program); err == nil {
-		logging.V(5).Infof("program %s found in $PATH", program)
+		slog.Info("program found in $PATH", "program", program)
 		return fullPath, nil
 	}
 

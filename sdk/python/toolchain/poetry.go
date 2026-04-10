@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"os"
 	"os/exec"
@@ -39,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gopkg.in/yaml.v3"
 )
 
@@ -70,7 +70,7 @@ func newPoetry(directory string) (*poetry, error) {
 	if err != nil {
 		return nil, err
 	}
-	logging.V(9).Infof("Python toolchain: using poetry at %s in %s", poetryPath, directory)
+	slog.Info("Python toolchain: using poetry", "poetryPath", poetryPath, "directory", directory)
 	return &poetry{
 		poetryExecutable: poetryPath,
 		directory:        directory,
@@ -104,7 +104,7 @@ func validateVersion(versionOut string) (semver.Version, error) {
 		return semver.Version{}, fmt.Errorf("poetry version %s is less than the minimum required version %s",
 			version, minPoetryVersion)
 	}
-	logging.V(9).Infof("Python toolchain: using poetry version %s", sem)
+	slog.Info("Python toolchain: using poetry version", "version", sem)
 	return sem, nil
 }
 
@@ -237,7 +237,7 @@ func (p *poetry) PrepareProject(
 }
 
 func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) error {
-	logging.V(9).Infof("poetry linking %s", packages)
+	slog.Info("poetry linking", "packages", packages)
 	paths := slices.Collect(maps.Values(packages))
 	args := slice.Prealloc[string](2 + len(paths))
 	args = append(args, "add", "--lock") // Add package to lockfile only
@@ -289,7 +289,7 @@ func (p *poetry) About(ctx context.Context) (Info, error) {
 	g.Go(func() error {
 		version, err := getPythonVersion(ctx, p.Command)
 		if err != nil {
-			logging.V(9).Infof("getPythonVersion: %v", err)
+			slog.Info("getPythonVersion", "err", err)
 		} else {
 			pythonVersion = version
 		}

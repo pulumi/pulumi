@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"log/slog"
 	"maps"
 	"reflect"
 	"slices"
@@ -26,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // MarshalOptions controls the marshaling of RPC structures.
@@ -82,11 +82,11 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
-		logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
+		slog.Info("Marshaling property for RPC", "label", opts.Label, "key", key, "value", v)
 		if opts.SkipNulls && v.IsNull() {
-			logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
+			slog.Info("Skipping null property for RPC (as requested)", "label", opts.Label, "key", key)
 		} else if opts.SkipInternalKeys && resource.IsInternalPropertyKey(key) {
-			logging.V(9).Infof("Skipping internal property for RPC[%s]: %s (as requested)", opts.Label, key)
+			slog.Info("Skipping internal property for RPC (as requested)", "label", opts.Label, "key", key)
 		} else {
 			m, err := MarshalPropertyValue(key, v, opts)
 			if err != nil {
@@ -198,7 +198,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 		return MarshalPropertyValue(key, output, opts)
 	} else if v.IsSecret() {
 		if !opts.KeepSecrets {
-			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
+			slog.Info("marshalling secret value as raw value as opts.KeepSecrets is false")
 			return MarshalPropertyValue(key, v.SecretValue().Element, opts)
 		}
 		if opts.KeepOutputValues && opts.UpgradeToOutputValues {
@@ -221,7 +221,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			if !ref.ID.IsNull() {
 				return MarshalPropertyValue(key, ref.ID, opts)
 			}
-			logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
+			slog.Info("marshalling resource value as raw URN or ID as opts.KeepResources is false")
 			return MarshalString(val, opts), nil
 		}
 		m := resource.PropertyMap{
@@ -304,11 +304,11 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 		if err != nil {
 			return nil, err
 		} else if v != nil {
-			logging.V(9).Infof("Unmarshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
+			slog.Info("Unmarshaling property for RPC", "label", opts.Label, "key", key, "value", v)
 			if opts.SkipNulls && v.IsNull() {
-				logging.V(9).Infof("Skipping unmarshaling for RPC[%s]: %s is null", opts.Label, key)
+				slog.Info("Skipping unmarshaling for RPC: key is null", "label", opts.Label, "key", key)
 			} else if opts.SkipInternalKeys && resource.IsInternalPropertyKey(pk) {
-				logging.V(9).Infof("Skipping unmarshaling for RPC[%s]: %s is internal", opts.Label, key)
+				slog.Info("Skipping unmarshaling for RPC: key is internal", "label", opts.Label, "key", key)
 			} else {
 				result[pk] = *v
 			}
@@ -619,7 +619,7 @@ func unmarshalUnknownPropertyValue(s string, opts MarshalOptions) (resource.Prop
 
 func unmarshalSecretPropertyValue(v resource.PropertyValue, opts MarshalOptions) *resource.PropertyValue {
 	if !opts.KeepSecrets {
-		logging.V(5).Infof("unmarshalling secret as raw value, as opts.KeepSecrets is false")
+		slog.Info("unmarshalling secret as raw value, as opts.KeepSecrets is false")
 		return &v
 	}
 	var s resource.PropertyValue

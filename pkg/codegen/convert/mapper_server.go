@@ -16,11 +16,11 @@ package convert
 
 import (
 	"context"
+	"log/slog"
 
 	"google.golang.org/grpc"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
@@ -39,7 +39,7 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 	req *codegenrpc.GetMappingRequest,
 ) (*codegenrpc.GetMappingResponse, error) {
 	label := "GetMapping"
-	logging.V(7).Infof("%s executing: provider=%s, pulumi=%s", label, req.Provider, req.PulumiProvider)
+	slog.Info("executing", "label", label, "provider", req.Provider, "pulumi", req.PulumiProvider)
 
 	var hint *MapperPackageHint
 	if len(req.PulumiProvider) > 0 {
@@ -61,11 +61,11 @@ func (m *mapperServer) GetMapping(ctx context.Context,
 
 	data, err := m.mapper.GetMapping(ctx, req.Provider, hint)
 	if err != nil {
-		logging.V(7).Infof("%s failed: %v", label, err)
+		slog.Info("failed", "label", label, "err", err)
 		return nil, err
 	}
 
-	logging.V(7).Infof("%s success: data=#%d", label, len(data))
+	slog.Info("success", "label", label, "dataLen", len(data))
 	return &codegenrpc.GetMappingResponse{
 		Data: data,
 	}, nil

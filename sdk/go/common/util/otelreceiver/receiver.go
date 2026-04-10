@@ -17,6 +17,7 @@ package otelreceiver
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 
 	"google.golang.org/grpc"
@@ -24,8 +25,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Receiver is an OTLP gRPC receiver that can receive traces, metrics, and logs
@@ -71,11 +70,11 @@ func Start(exporter SpanExporter) (*Receiver, error) {
 	go func() {
 		defer close(r.done)
 		if err := r.server.Serve(listener); err != nil && err != grpc.ErrServerStopped {
-			logging.V(3).Infof("OTLP receiver server error: %v", err)
+			slog.Info("OTLP receiver server error", "err", err)
 		}
 	}()
 
-	logging.V(5).Infof("OTLP receiver started on port %d", port)
+	slog.Info("OTLP receiver started", "port", port)
 
 	return r, nil
 }
@@ -94,16 +93,16 @@ func (r *Receiver) Shutdown(ctx context.Context) error {
 	var serverErr error
 	select {
 	case <-stopped:
-		logging.V(5).Infof("OTLP receiver stopped gracefully")
+		slog.Info("OTLP receiver stopped gracefully")
 	case <-ctx.Done():
 		r.server.Stop()
-		logging.V(5).Infof("OTLP receiver force stopped")
+		slog.Info("OTLP receiver force stopped")
 		serverErr = ctx.Err()
 	}
 
 	if r.exporter != nil {
 		if err := r.exporter.Shutdown(ctx); err != nil {
-			logging.V(5).Infof("OTLP receiver: failed to shutdown exporter: %v", err)
+			slog.Info("OTLP receiver: failed to shutdown exporter", "err", err)
 			if serverErr == nil {
 				serverErr = err
 			}
@@ -121,10 +120,10 @@ func (s *traceService) Export(
 		return nil, status.Error(codes.InvalidArgument, "nil request")
 	}
 
-	logging.V(10).Infof("OTLP receiver: received %d resource spans", len(req.ResourceSpans))
+	slog.Debug("OTLP receiver: received resource spans", "count", len(req.ResourceSpans))
 
 	if err := s.r.exporter.ExportSpans(ctx, req.ResourceSpans); err != nil {
-		logging.V(5).Infof("OTLP receiver: failed to export spans: %v", err)
+		slog.Info("OTLP receiver: failed to export spans", "err", err)
 	}
 	return &coltracepb.ExportTraceServiceResponse{}, nil
 }

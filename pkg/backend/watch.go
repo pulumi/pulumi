@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path"
@@ -36,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Watch watches the project's working directory for changes and automatically updates the active
@@ -60,7 +60,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 				StartTime: &startTime,
 			})
 			if err != nil {
-				logging.V(5).Infof("failed to get logs: %v", err.Error())
+				slog.Info("failed to get logs", "err", err.Error())
 			}
 
 			for _, logEntry := range logs {
@@ -124,7 +124,7 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
 
 		// Now summarize the outcome.
 		if err != nil {
-			logging.V(5).Infof("watch update failed: %v", err)
+			slog.Info("watch update failed", "err", err)
 			if err == context.Canceled {
 				return err
 			}

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -173,7 +174,8 @@ func sendBatch(
 		return err
 	}
 
-	logging.V(11).Infof("encountered a 413 sending a batch of %v journal entries; splitting batch", len(batch))
+	slog.Log(context.TODO(), logging.LevelTrace,
+		"encountered a 413 sending a batch of journal entries; splitting batch", "batchLen", len(batch))
 	if err = sendBatch(ctx, client, update, tokenSource, batch[:len(batch)/2]); err != nil {
 		return err
 	}
@@ -227,7 +229,8 @@ func sendBatches(
 		defer close(flushDone)
 		for req := range flushCh {
 			if len(req.batch) != 0 {
-				logging.V(11).Infof("flushing journal entries: len=%v, cap=%v", len(req.batch), cap(req.batch))
+				slog.Log(context.TODO(), logging.LevelTrace,
+					"flushing journal entries", "len", len(req.batch), "cap", cap(req.batch))
 
 				err := sender(req.batch)
 				for _, r := range req.results {

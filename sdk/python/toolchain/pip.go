@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
@@ -55,7 +55,7 @@ var _ Toolchain = &pip{}
 
 func newPip(root, virtualenv string) (*pip, error) {
 	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
-	logging.V(9).Infof("Python toolchain: using pip at %s", virtualenvPath)
+	slog.Info("Python toolchain: using pip", "virtualenvPath", virtualenvPath)
 	return &pip{virtualenvPath, virtualenv, root}, nil
 }
 
@@ -73,7 +73,7 @@ func (p *pip) InstallDependencies(ctx context.Context, cwd string, useLanguageVe
 }
 
 func (p *pip) LinkPackages(ctx context.Context, packages map[string]string) error {
-	logging.V(9).Infof("pip linking %s", packages)
+	slog.Info("pip linking", "packages", packages)
 	fPath := filepath.Join(p.root, "requirements.txt")
 	fBytes, err := os.ReadFile(fPath)
 	if err != nil {
@@ -207,7 +207,7 @@ func (p *pip) About(ctx context.Context) (Info, error) {
 	g.Go(func() error {
 		version, err := getPythonVersion(ctx, p.Command)
 		if err != nil {
-			logging.V(9).Infof("getPythonVersion: %v", err)
+			slog.Info("getPythonVersion", "err", err)
 		} else {
 			pythonVersion = version
 		}

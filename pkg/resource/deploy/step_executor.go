@@ -18,13 +18,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -416,7 +416,7 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 func (se *stepExecutor) cancelDueToError(err error, step Step) {
 	set := se.sawError.Reject(err)
 	if !set {
-		logging.V(10).Infof("StepExecutor already recorded an error then saw: %v", err)
+		slog.Debug("StepExecutor already recorded an error then saw", "err", err)
 	}
 
 	continueOnError := se.deployment.opts.ContinueOnError
@@ -625,9 +625,9 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 
 // log is a simple logging helper for the step executor.
 func (se *stepExecutor) log(workerID int, msg string, args ...any) {
-	if logging.V(stepExecutorLogLevel) {
+	if slog.Default().Enabled(context.TODO(), slog.LevelInfo) {
 		message := fmt.Sprintf(msg, args...)
-		logging.V(stepExecutorLogLevel).Infof("StepExecutor worker(%d): %s", workerID, message)
+		slog.Info("StepExecutor worker", "workerID", workerID, "msg", message)
 	}
 }
 

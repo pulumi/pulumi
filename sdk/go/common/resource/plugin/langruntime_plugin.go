@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -39,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -223,8 +223,7 @@ func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.Lan
 
 // GetRequiredPackages computes the complete set of anticipated plugins required by a program.
 func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDescriptor, error) {
-	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) executing",
-		h.runtime, info)
+	slog.Info("langhost.GetRequiredPackages executing", "runtime", h.runtime, "info", info)
 
 	minfo, err := info.Marshal()
 	if err != nil {
@@ -236,8 +235,7 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) failed: err=%v",
-			h.runtime, info, rpcError)
+		slog.Info("langhost.GetRequiredPackages failed", "runtime", h.runtime, "info", info, "err", rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPackages
 		// method.  In such cases, fallback to using GetRequiredPlugins and don't report any parameterized packages.
@@ -299,15 +297,13 @@ func (h *langhost) GetRequiredPackages(info ProgramInfo) ([]workspace.PackageDes
 		})
 	}
 
-	logging.V(7).Infof("langhost[%v].GetRequiredPackages(%s) success: #versions=%d",
-		h.runtime, info, len(results))
+	slog.Info("langhost.GetRequiredPackages success", "runtime", h.runtime, "info", info, "versions", len(results))
 	return results, nil
 }
 
 // getRequiredPlugins computes the complete set of anticipated plugins required by a program.
 func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginDescriptor, error) {
-	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(%s) executing",
-		h.runtime, info)
+	slog.Info("langhost.GetRequiredPlugins executing", "runtime", h.runtime, "info", info)
 
 	minfo, err := info.Marshal()
 	if err != nil {
@@ -324,8 +320,7 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginDescr
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].GetRequiredPlugins(%s) failed: err=%v",
-			h.runtime, info, rpcError)
+		slog.Info("langhost.GetRequiredPlugins failed", "runtime", h.runtime, "info", info, "err", rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the GetRequiredPlugins
 		// method.  In such cases, we will silently error (with the above log left behind).
@@ -358,8 +353,7 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginDescr
 		})
 	}
 
-	logging.V(7).Infof("langhost[%v].GetRequiredPlugins(%s) success: #versions=%d",
-		h.runtime, info, len(results))
+	slog.Info("langhost.GetRequiredPlugins success", "runtime", h.runtime, "info", info, "versions", len(results))
 	return results, nil
 }
 
@@ -368,8 +362,15 @@ func (h *langhost) getRequiredPlugins(info ProgramInfo) ([]workspace.PluginDescr
 // resource deployments are actually available.  If it is false, on the other hand, a real
 // deployment is occurring and it may safely depend on these.
 func (h *langhost) Run(info RunInfo) (string, bool, error) {
-	logging.V(7).Infof("langhost[%v].Run(pwd=%v,%s,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
-		h.runtime, info.Pwd, info.Info, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
+	slog.Info("langhost.Run executing",
+		"runtime", h.runtime,
+		"pwd", info.Pwd,
+		"info", info.Info,
+		"args", len(info.Args),
+		"project", info.Project,
+		"stack", info.Stack,
+		"config", len(info.Config),
+		"dryrun", info.DryRun)
 	config := make(map[string]string, len(info.Config))
 	for k, v := range info.Config {
 		config[k.String()] = v
@@ -403,26 +404,35 @@ func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].Run(pwd=%v,%s,...,dryrun=%v) failed: err=%v",
-			h.runtime, info.Pwd, info.Info, info.DryRun, rpcError)
+		slog.Info("langhost.Run failed",
+			"runtime", h.runtime,
+			"pwd", info.Pwd,
+			"info", info.Info,
+			"dryrun", info.DryRun,
+			"err", rpcError)
 		return "", false, rpcError
 	}
 
 	progerr := resp.GetError()
 	bail := resp.GetBail()
-	logging.V(7).Infof("langhost[%v].Run(pwd=%v,%s,...,dryrun=%v) success: progerr=%v, bail=%v",
-		h.runtime, info.Pwd, info.Info, info.DryRun, progerr, bail)
+	slog.Info("langhost.Run success",
+		"runtime", h.runtime,
+		"pwd", info.Pwd,
+		"info", info.Info,
+		"dryrun", info.DryRun,
+		"progerr", progerr,
+		"bail", bail)
 	return progerr, bail, nil
 }
 
 // GetPluginInfo returns this plugin's information.
 func (h *langhost) GetPluginInfo() (PluginInfo, error) {
-	logging.V(7).Infof("langhost[%v].GetPluginInfo() executing", h.runtime)
+	slog.Info("langhost.GetPluginInfo executing", "runtime", h.runtime)
 
 	resp, err := h.client.GetPluginInfo(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].GetPluginInfo() failed: err=%v", h.runtime, rpcError)
+		slog.Info("langhost.GetPluginInfo failed", "runtime", h.runtime, "err", rpcError)
 		return PluginInfo{}, rpcError
 	}
 	vers := resp.Version
@@ -454,8 +464,7 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 	<-chan error,
 	error,
 ) {
-	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) executing",
-		h.runtime, request)
+	slog.Info("langhost.InstallDependencies executing", "runtime", h.runtime, "request", request)
 
 	minfo, err := request.Info.Marshal()
 	if err != nil {
@@ -471,8 +480,7 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].InstallDependencies(%s) failed: err=%v",
-			h.runtime, request, rpcError)
+		slog.Info("langhost.InstallDependencies failed", "runtime", h.runtime, "request", request, "err", rpcError)
 
 		// It's possible this is just an older language host, prior to the emergence of the InstallDependencies
 		// method.  In such cases, we will silently error (with the above log left behind).
@@ -491,10 +499,8 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 		defer close(done)
 
 		for {
-			logging.V(10).Infof(
-				"langhost[%v].InstallDependencies(%s) waiting for dependency installation messages",
-				h.runtime, request,
-			)
+			slog.Debug("langhost.InstallDependencies waiting for dependency installation messages",
+				"runtime", h.runtime, "request", request)
 
 			msg, err := resp.Recv()
 			if err != nil {
@@ -507,9 +513,8 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 				}
 
 				rpcError := rpcerror.Convert(err)
-				logging.V(7).Infof("langhost[%v].InstallDependencies(%s) failed: %v",
-					h.runtime, request, rpcError,
-				)
+				slog.Info("langhost.InstallDependencies failed",
+					"runtime", h.runtime, "request", request, "err", rpcError)
 
 				contract.IgnoreError(outw.CloseWithError(rpcError))
 				contract.IgnoreError(errw.CloseWithError(rpcError))
@@ -518,10 +523,8 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 				break
 			}
 
-			logging.V(10).Infof(
-				"langhost[%v].InstallDependencies(%s) got dependency installation response: %v",
-				h.runtime, request, msg,
-			)
+			slog.Debug("langhost.InstallDependencies got dependency installation response",
+				"runtime", h.runtime, "request", request, "msg", msg)
 
 			stdoutLen := len(msg.Stdout)
 			if stdoutLen > 0 {
@@ -539,12 +542,12 @@ func (h *langhost) InstallDependencies(request InstallDependenciesRequest) (
 		}
 	}()
 
-	logging.V(7).Infof("langhost[%v].InstallDependencies(%s) success", h.runtime, request)
+	slog.Info("langhost.InstallDependencies success", "runtime", h.runtime, "request", request)
 	return outr, errr, done, nil
 }
 
 func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPrompt, error) {
-	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() executing", h.runtime)
+	slog.Info("langhost.RuntimeOptionsPrompts executing", "runtime", h.runtime)
 
 	minfo, err := info.Marshal()
 	if err != nil {
@@ -556,11 +559,11 @@ func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPromp
 	})
 	if err != nil {
 		if status.Code(err) == codes.Unimplemented {
-			logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() not implemented, returning no prompts", h.runtime)
+			slog.Info("langhost.RuntimeOptionsPrompts not implemented, returning no prompts", "runtime", h.runtime)
 			return []RuntimeOptionPrompt{}, nil
 		}
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() failed: err=%v", h.runtime, rpcError)
+		slog.Info("langhost.RuntimeOptionsPrompts failed", "runtime", h.runtime, "err", rpcError)
 		return []RuntimeOptionPrompt{}, rpcError
 	}
 
@@ -573,12 +576,12 @@ func (h *langhost) RuntimeOptionsPrompts(info ProgramInfo) ([]RuntimeOptionPromp
 		prompts = append(prompts, newPrompt)
 	}
 
-	logging.V(7).Infof("langhost[%v].RuntimeOptionsPrompts() success", h.runtime)
+	slog.Info("langhost.RuntimeOptionsPrompts success", "runtime", h.runtime)
 	return prompts, nil
 }
 
 func (h *langhost) Template(info ProgramInfo, projectName tokens.PackageName) error {
-	logging.V(7).Infof("langhost[%v].Template() executing", h.runtime)
+	slog.Info("langhost.Template executing", "runtime", h.runtime)
 
 	minfo, err := info.Marshal()
 	if err != nil {
@@ -591,20 +594,20 @@ func (h *langhost) Template(info ProgramInfo, projectName tokens.PackageName) er
 	})
 	if err != nil {
 		if status.Code(err) == codes.Unimplemented {
-			logging.V(7).Infof("langhost[%v].Template() not implemented", h.runtime)
+			slog.Info("langhost.Template not implemented", "runtime", h.runtime)
 			return nil
 		}
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].Template() failed: err=%v", h.runtime, rpcError)
+		slog.Info("langhost.Template failed", "runtime", h.runtime, "err", rpcError)
 		return rpcError
 	}
 
-	logging.V(7).Infof("langhost[%v].Template() success", h.runtime)
+	slog.Info("langhost.Template success", "runtime", h.runtime)
 	return nil
 }
 
 func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
-	logging.V(7).Infof("langhost[%v].About() executing", h.runtime)
+	slog.Info("langhost.About executing", "runtime", h.runtime)
 	minfo, err := info.Marshal()
 	if err != nil {
 		return AboutInfo{}, err
@@ -614,7 +617,7 @@ func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].About() failed: err=%v", h.runtime, rpcError)
+		slog.Info("langhost.About failed", "runtime", h.runtime, "err", rpcError)
 
 		return AboutInfo{}, rpcError
 	}
@@ -625,25 +628,25 @@ func (h *langhost) About(info ProgramInfo) (AboutInfo, error) {
 		Metadata:   resp.Metadata,
 	}
 
-	logging.V(7).Infof("langhost[%v].About() success", h.runtime)
+	slog.Info("langhost.About success", "runtime", h.runtime)
 	return result, nil
 }
 
 func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependencies bool) ([]DependencyInfo, error) {
-	prefix := fmt.Sprintf("langhost[%v].GetProgramDependencies(%s)", h.runtime, info.String())
 	minfo, err := info.Marshal()
 	if err != nil {
 		return nil, err
 	}
 
-	logging.V(7).Infof("%s executing", prefix)
+	slog.Info("langhost.GetProgramDependencies executing", "runtime", h.runtime, "info", info.String())
 	resp, err := h.client.GetProgramDependencies(h.ctx.Request(), &pulumirpc.GetProgramDependenciesRequest{
 		TransitiveDependencies: transitiveDependencies,
 		Info:                   minfo,
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", prefix, rpcError)
+		slog.Info("langhost.GetProgramDependencies failed",
+			"runtime", h.runtime, "info", info.String(), "err", rpcError)
 
 		return nil, rpcError
 	}
@@ -656,15 +659,15 @@ func (h *langhost) GetProgramDependencies(info ProgramInfo, transitiveDependenci
 		})
 	}
 
-	logging.V(7).Infof("%s success: #versions=%d", prefix, len(results))
+	slog.Info("langhost.GetProgramDependencies success",
+		"runtime", h.runtime, "info", info.String(), "versions", len(results))
 	return results, nil
 }
 
 func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 	io.Reader, io.Reader, *promise.Promise[int32], error,
 ) {
-	logging.V(7).Infof("langhost[%v].RunPlugin(%s) executing",
-		h.runtime, info.Info.String())
+	slog.Info("langhost.RunPlugin executing", "runtime", h.runtime, "info", info.Info.String())
 
 	minfo, err := info.Info.Marshal()
 	if err != nil {
@@ -696,7 +699,7 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 
 	go func() {
 		for {
-			logging.V(10).Infoln("Waiting for plugin message")
+			slog.Debug("waiting for plugin message")
 			msg, err := resp.Recv()
 			if err != nil {
 				// If there was an error receiving then signal that the plugin has exited.
@@ -719,7 +722,7 @@ func (h *langhost) RunPlugin(ctx context.Context, info RunPluginInfo) (
 				break
 			}
 
-			logging.V(10).Infoln("Got plugin response: ", msg)
+			slog.Debug("got plugin response", "msg", msg)
 
 			if value, ok := msg.Output.(*pulumirpc.RunPluginResponse_Stdout); ok {
 				n, err := outw.Write(value.Stdout)
@@ -752,7 +755,7 @@ func (h *langhost) GenerateProject(
 	sourceDirectory, targetDirectory, project string, strict bool,
 	loaderTarget string, localDependencies map[string]string,
 ) (hcl.Diagnostics, error) {
-	logging.V(7).Infof("langhost[%v].GenerateProject() executing", h.runtime)
+	slog.Info("langhost.GenerateProject executing", "runtime", h.runtime)
 	resp, err := h.client.GenerateProject(h.ctx.Request(), &pulumirpc.GenerateProjectRequest{
 		SourceDirectory:   sourceDirectory,
 		TargetDirectory:   targetDirectory,
@@ -763,7 +766,7 @@ func (h *langhost) GenerateProject(
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].GenerateProject() failed: err=%v", h.runtime, rpcError)
+		slog.Info("langhost.GenerateProject failed", "runtime", h.runtime, "err", rpcError)
 		return nil, rpcError
 	}
 
@@ -773,7 +776,7 @@ func (h *langhost) GenerateProject(
 		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
 	}
 
-	logging.V(7).Infof("langhost[%v].GenerateProject() success", h.runtime)
+	slog.Info("langhost.GenerateProject success", "runtime", h.runtime)
 	return diags, nil
 }
 
@@ -782,7 +785,7 @@ func (h *langhost) GeneratePackage(
 	loaderTarget string, localDependencies map[string]string,
 	local bool,
 ) (hcl.Diagnostics, error) {
-	logging.V(7).Infof("langhost[%v].GeneratePackage() executing", h.runtime)
+	slog.Info("langhost.GeneratePackage executing", "runtime", h.runtime)
 	resp, err := h.client.GeneratePackage(h.ctx.Request(), &pulumirpc.GeneratePackageRequest{
 		Directory:         directory,
 		Schema:            schema,
@@ -793,11 +796,11 @@ func (h *langhost) GeneratePackage(
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].GeneratePackage() failed: err=%v", h.runtime, rpcError)
+		slog.Info("langhost.GeneratePackage failed", "runtime", h.runtime, "err", rpcError)
 		return nil, rpcError
 	}
 
-	logging.V(7).Infof("langhost[%v].GeneratePackage() success", h.runtime)
+	slog.Info("langhost.GeneratePackage success", "runtime", h.runtime)
 
 	// Translate the rpc diagnostics into hcl.Diagnostics.
 	var diags hcl.Diagnostics
@@ -810,7 +813,7 @@ func (h *langhost) GeneratePackage(
 
 func (h *langhost) GenerateProgram(program map[string]string, loaderTarget string, strict bool,
 ) (map[string][]byte, hcl.Diagnostics, error) {
-	logging.V(7).Infof("langhost[%v].GenerateProgram() executing", h.runtime)
+	slog.Info("langhost.GenerateProgram executing", "runtime", h.runtime)
 	resp, err := h.client.GenerateProgram(h.ctx.Request(), &pulumirpc.GenerateProgramRequest{
 		Source:       program,
 		LoaderTarget: loaderTarget,
@@ -818,7 +821,7 @@ func (h *langhost) GenerateProgram(program map[string]string, loaderTarget strin
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("langhost[%v].GenerateProgram() failed: err=%v", h.runtime, rpcError)
+		slog.Info("langhost.GenerateProgram failed", "runtime", h.runtime, "err", rpcError)
 		return nil, nil, rpcError
 	}
 
@@ -828,15 +831,17 @@ func (h *langhost) GenerateProgram(program map[string]string, loaderTarget strin
 		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
 	}
 
-	logging.V(7).Infof("langhost[%v].GenerateProgram() success", h.runtime)
+	slog.Info("langhost.GenerateProgram success", "runtime", h.runtime)
 	return resp.Source, diags, nil
 }
 
 func (h *langhost) Pack(
 	packageDirectory string, destinationDirectory string,
 ) (string, error) {
-	label := fmt.Sprintf("langhost[%v].Pack(%s, %s)", h.runtime, packageDirectory, destinationDirectory)
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("langhost.Pack executing",
+		"runtime", h.runtime,
+		"packageDirectory", packageDirectory,
+		"destinationDirectory", destinationDirectory)
 
 	// Always send absolute paths to the plugin, as it may be running in a different working directory.
 	packageDirectory, err := filepath.Abs(packageDirectory)
@@ -854,11 +859,19 @@ func (h *langhost) Pack(
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		slog.Info("langhost.Pack failed",
+			"runtime", h.runtime,
+			"packageDirectory", packageDirectory,
+			"destinationDirectory", destinationDirectory,
+			"err", rpcError)
 		return "", rpcError
 	}
 
-	logging.V(7).Infof("%s success: artifactPath=%s", label, req.ArtifactPath)
+	slog.Info("langhost.Pack success",
+		"runtime", h.runtime,
+		"packageDirectory", packageDirectory,
+		"destinationDirectory", destinationDirectory,
+		"artifactPath", req.ArtifactPath)
 	return req.ArtifactPath, nil
 }
 
@@ -880,21 +893,20 @@ func languageHandshake(
 		if ok && status.Code() == codes.Unimplemented {
 			// If the language host doesn't implement Handshake, that's fine -- we'll
 			// fall back to existing behaviour.
-			logging.V(7).Infof("Handshake: not supported by '%v'", bin)
+			slog.Info("Handshake not supported", "bin", bin)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to handshake with '%v': %w", bin, err)
 	}
 
-	logging.V(7).Infof("Handshake: success [%v]", bin)
+	slog.Info("Handshake success", "bin", bin)
 	return &pulumirpc.LanguageHandshakeResponse{}, nil
 }
 
 func (h *langhost) Link(
 	info ProgramInfo, deps []workspace.LinkablePackageDescriptor, loaderTarget string,
 ) (string, error) {
-	label := fmt.Sprintf("langhost[%v].Link(%v, %v)", h.runtime, info, deps)
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("langhost.Link executing", "runtime", h.runtime, "info", info, "deps", deps)
 
 	minfo, err := info.Marshal()
 	if err != nil {
@@ -936,29 +948,28 @@ func (h *langhost) Link(
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		slog.Info("langhost.Link failed", "runtime", h.runtime, "info", info, "deps", deps, "err", rpcError)
 		return "", rpcError
 	}
 
-	logging.V(7).Infof("%s success", label)
+	slog.Info("langhost.Link success", "runtime", h.runtime, "info", info, "deps", deps)
 	return res.ImportInstructions, nil
 }
 
 func (h *langhost) Cancel() error {
-	label := fmt.Sprintf("langhost[%v].Cancel()", h.runtime)
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("langhost.Cancel executing", "runtime", h.runtime)
 
 	_, err := h.client.Cancel(h.ctx.Request(), &emptypb.Empty{})
 	if err != nil {
 		status, ok := status.FromError(err)
 		if ok && status.Code() == codes.Unimplemented {
-			logging.V(7).Infof("%s not implemented by language runtime, skipping", label)
+			slog.Info("langhost.Cancel not implemented by language runtime, skipping", "runtime", h.runtime)
 			return nil
 		}
 
 		return fmt.Errorf("failed to cancel language runtime: %w", err)
 	}
 
-	logging.V(7).Infof("%s success", label)
+	slog.Info("langhost.Cancel success", "runtime", h.runtime)
 	return nil
 }

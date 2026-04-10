@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -31,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	diagutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -90,7 +90,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 			"Will retry in %v [%d/%d]", err, delay, attempt, limit))
 	}
 
-	logging.V(1).Infof("Automatically downloading provider %s", pluginSpec.Name)
+	slog.Info("automatically downloading provider", "name", pluginSpec.Name)
 	downloadedFile, err := workspace.DownloadToFile(ctx, pluginSpec, wrapper, retry)
 	if err != nil {
 		return nil, &InstallPluginError{
@@ -99,7 +99,7 @@ func InstallPlugin(ctx context.Context, pluginSpec workspace.PluginDescriptor,
 		}
 	}
 
-	logging.V(1).Infof("Automatically installing provider %s", pluginSpec.Name)
+	slog.Info("automatically installing provider", "name", pluginSpec.Name)
 	err = InstallPluginContent(ctx, pluginSpec, pluginstorage.TarPlugin(downloadedFile), false, newLoader)
 	if err != nil {
 		return nil, &InstallPluginError{

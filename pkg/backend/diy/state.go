@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"path"
 	"path/filepath"
 	"strings"
@@ -42,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // DisableIntegrityChecking can be set to true to disable checkpoint state integrity verification.  This is not
@@ -281,7 +281,7 @@ func (b *diyBackend) saveCheckpoint(
 				// And now write out the new snapshot file, overwriting that location.
 				err := b.bucket.WriteAll(ctx, file, byts, nil)
 				if err != nil {
-					logging.V(7).Infof("Error while writing snapshot to: %s (attempt=%d, error=%s)", file, try, err)
+					slog.Info("error while writing snapshot", "file", file, "attempt", try, "err", err)
 					if try > 10 {
 						return false, nil, fmt.Errorf("An IO error occurred while writing the new snapshot file: %w", err)
 					}
@@ -295,7 +295,7 @@ func (b *diyBackend) saveCheckpoint(
 		}
 	}
 
-	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", ref.FullyQualifiedName(), file, backupFile)
+	slog.Info("saved stack checkpoint", "stack", ref.FullyQualifiedName(), "file", file, "backup", backupFile)
 
 	// And if we are retaining historical checkpoint information, write it out again
 	if b.Env.GetBool(env.DIYBackendRetainCheckpoints) {
@@ -366,7 +366,7 @@ func (b *diyBackend) removeStack(ctx context.Context, ref *diyBackendReference, 
 	// Also remove the tags file if it exists
 	if err := b.deleteStackTags(ctx, ref); err != nil {
 		// Log the error but don't fail the removal for this
-		logging.V(5).Infof("error deleting stack tags: %v", err)
+		slog.Info("error deleting stack tags", "err", err)
 	}
 
 	historyDir := ref.HistoryDir()
@@ -398,20 +398,20 @@ func removeTargetAndBackup(ctx context.Context, bucket Bucket, file string) erro
 func backupTarget(ctx context.Context, bucket Bucket, file string, keepOriginal bool) string {
 	contract.Requiref(file != "", "file", "must not be empty")
 	if exists, err := bucket.Exists(ctx, file); !exists && err == nil {
-		logging.V(5).Infof("file %s does not exist, skipping backup", file)
+		slog.Info("file does not exist, skipping backup", "file", file)
 		return ""
 	}
 	bck := file + ".bak"
 
 	err := bucket.Copy(ctx, bck, file, nil)
 	if err != nil {
-		logging.V(5).Infof("error copying %s to %s: %s", file, bck, err)
+		slog.Info("error copying file", "src", file, "dst", bck, "err", err)
 	}
 
 	if !keepOriginal {
 		err = bucket.Delete(ctx, file)
 		if err != nil {
-			logging.V(5).Infof("error deleting source object after rename: %v (%v) skipping", file, err)
+			slog.Info("error deleting source object after rename, skipping", "file", file, "err", err)
 		}
 	}
 

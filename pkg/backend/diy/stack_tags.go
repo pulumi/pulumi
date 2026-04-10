@@ -18,12 +18,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // stackTagsFile represents the structure of the stack tags file.
@@ -49,14 +49,14 @@ func (b *diyBackend) loadStackTags(
 	contract.Requiref(ref != nil, "ref", "ref cannot be nil")
 
 	tagsPath := b.stackTagsPath(ref)
-	logging.V(9).Infof("Loading stack tags from %s", tagsPath)
+	slog.Info("Loading stack tags", "tagsPath", tagsPath)
 
 	// Try to read the tags file
 	tagsBytes, err := b.bucket.ReadAll(ctx, tagsPath)
 	if err != nil {
 		// If the file doesn't exist, return empty tags (backward compatibility)
 		if gcerrors.Code(err) == gcerrors.NotFound {
-			logging.V(9).Infof("No tags file found for stack %s, returning empty tags", ref.String())
+			slog.Info("No tags file found for stack, returning empty tags", "stack", ref.String())
 			return make(map[apitype.StackTagName]string), nil
 		}
 		return nil, fmt.Errorf("failed to read stack tags file: %w", err)
@@ -77,7 +77,7 @@ func (b *diyBackend) loadStackTags(
 		tagsFile.Tags = make(map[apitype.StackTagName]string)
 	}
 
-	logging.V(9).Infof("Loaded %d tags for stack %s", len(tagsFile.Tags), ref.String())
+	slog.Info("Loaded tags for stack", "count", len(tagsFile.Tags), "stack", ref.String())
 	return tagsFile.Tags, nil
 }
 
@@ -91,12 +91,12 @@ func (b *diyBackend) saveStackTags(
 
 	// Don't write a tags file if there are no tags
 	if len(tags) == 0 {
-		logging.V(9).Infof("No tags to save for stack %s, skipping write", ref.String())
+		slog.Info("No tags to save for stack, skipping write", "stack", ref.String())
 		return nil
 	}
 
 	tagsPath := b.stackTagsPath(ref)
-	logging.V(9).Infof("Saving %d stack tags to %s", len(tags), tagsPath)
+	slog.Info("Saving stack tags", "count", len(tags), "tagsPath", tagsPath)
 
 	// Create the tags file structure
 	tagsFile := stackTagsFile{
@@ -115,7 +115,7 @@ func (b *diyBackend) saveStackTags(
 		return fmt.Errorf("failed to write stack tags: %w", err)
 	}
 
-	logging.V(9).Infof("Successfully saved stack tags for stack %s", ref.String())
+	slog.Info("Successfully saved stack tags for stack", "stack", ref.String())
 	return nil
 }
 
@@ -125,14 +125,14 @@ func (b *diyBackend) deleteStackTags(ctx context.Context, ref *diyBackendReferen
 	contract.Requiref(ref != nil, "ref", "ref cannot be nil")
 
 	tagsPath := b.stackTagsPath(ref)
-	logging.V(9).Infof("Deleting stack tags file %s", tagsPath)
+	slog.Info("Deleting stack tags file", "tagsPath", tagsPath)
 
 	err := b.bucket.Delete(ctx, tagsPath)
 	if err != nil && gcerrors.Code(err) != gcerrors.NotFound {
 		return fmt.Errorf("failed to delete stack tags file: %w", err)
 	}
 
-	logging.V(9).Infof("Successfully deleted stack tags for stack %s", ref.String())
+	slog.Info("Successfully deleted stack tags for stack", "stack", ref.String())
 	return nil
 }
 

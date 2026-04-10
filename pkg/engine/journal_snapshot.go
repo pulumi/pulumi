@@ -15,6 +15,7 @@
 package engine
 
 import (
+	"log/slog"
 	"reflect"
 	"slices"
 	"sync"
@@ -24,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 )
 
@@ -253,7 +253,7 @@ func (sm *JournalSnapshotManager) findResourceInNewOrOld(toFind *resource.State)
 // intent to mutate before the mutation occurs.
 func (sm *JournalSnapshotManager) BeginMutation(step deploy.Step) (SnapshotMutation, error) {
 	contract.Requiref(step != nil, "step", "cannot be nil")
-	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
+	slog.Info("SnapshotManager: Beginning mutation for step", "op", step.Op(), "urn", step.URN())
 
 	operationID := sm.operationIDCounter.Add(1)
 
@@ -365,32 +365,32 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
 	if old.URN != new.URN {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of URN")
+		slog.Info("SnapshotManager: mustWrite() true because of URN")
 		return true
 	}
 
 	// If the type of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
 	if old.Type != new.Type {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Type")
+		slog.Info("SnapshotManager: mustWrite() true because of Type")
 		return true
 	}
 
 	// If the kind of this resource has changed, we must write the checkpoint.
 	if old.Custom != new.Custom {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Custom")
+		slog.Info("SnapshotManager: mustWrite() true because of Custom")
 		return true
 	}
 
 	// We need to persist the changes if CustomTimeouts have changed
 	if old.CustomTimeouts != new.CustomTimeouts {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of CustomTimeouts")
+		slog.Info("SnapshotManager: mustWrite() true because of CustomTimeouts")
 		return true
 	}
 
 	// We need to persist the changes if RetainOnDelete has changed
 	if old.RetainOnDelete != new.RetainOnDelete {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of RetainOnDelete")
+		slog.Info("SnapshotManager: mustWrite() true because of RetainOnDelete")
 		return true
 	}
 
@@ -400,37 +400,37 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving
 	// aliased providers or upgrades to default providers.
 	if old.Provider != new.Provider {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Provider")
+		slog.Info("SnapshotManager: mustWrite() true because of Provider")
 		return true
 	}
 
 	// If this resource's parent has changed, we must write the checkpoint.
 	if old.Parent != new.Parent {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Parent")
+		slog.Info("SnapshotManager: mustWrite() true because of Parent")
 		return true
 	}
 
 	// If the DeletedWith attribute of this resource has changed, we must write the checkpoint.
 	if old.DeletedWith != new.DeletedWith {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of DeletedWith")
+		slog.Info("SnapshotManager: mustWrite() true because of DeletedWith")
 		return true
 	}
 
 	// If the ReplaceWith attribute of this resource has changed, we must write the checkpoint.
 	if len(old.ReplaceWith) != len(new.ReplaceWith) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+		slog.Info("SnapshotManager: mustWrite() true because of ReplaceWith")
 		return true
 	}
 	for i, replaceWith := range old.ReplaceWith {
 		if replaceWith != new.ReplaceWith[i] {
-			logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+			slog.Info("SnapshotManager: mustWrite() true because of ReplaceWith")
 			return true
 		}
 	}
 
 	// If the protection attribute of this resource has changed, we must write the checkpoint.
 	if old.Protect != new.Protect {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Protect")
+		slog.Info("SnapshotManager: mustWrite() true because of Protect")
 		return true
 	}
 
@@ -438,11 +438,11 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// for the inputs of a "same" resource to have changed even if the contents of the input bags are different if the
 	// resource's provider deems the physical change to be semantically irrelevant.
 	if !old.Inputs.DeepEquals(new.Inputs) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Inputs")
+		slog.Info("SnapshotManager: mustWrite() true because of Inputs")
 		return true
 	}
 	if !old.Outputs.DeepEquals(new.Outputs) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Outputs")
+		slog.Info("SnapshotManager: mustWrite() true because of Outputs")
 		return true
 	}
 
@@ -459,31 +459,31 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		oldDeps := sortDeps(old.Dependencies)
 		newDeps := sortDeps(new.Dependencies)
 		if !reflect.DeepEqual(oldDeps, newDeps) {
-			logging.V(9).Infof("SnapshotManager: mustWrite() true because of Dependencies")
+			slog.Info("SnapshotManager: mustWrite() true because of Dependencies")
 			return true
 		}
 	}
 
 	if len(old.PropertyDependencies) != len(new.PropertyDependencies) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
+		slog.Info("SnapshotManager: mustWrite() true because of PropertyDependencies")
 		return true
 	}
 
 	for key, oldDeps := range old.PropertyDependencies {
 		newDeps, ok := new.PropertyDependencies[key]
 		if !ok {
-			logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
+			slog.Info("SnapshotManager: mustWrite() true because of PropertyDependencies")
 			return true
 		}
 		if (len(oldDeps) > 0 || len(newDeps) > 0) &&
 			!reflect.DeepEqual(oldDeps, newDeps) {
-			logging.V(9).Infof("SnapshotManager: mustWrite() true because of PropertyDependencies")
+			slog.Info("SnapshotManager: mustWrite() true because of PropertyDependencies")
 			return true
 		}
 	}
 
 	if !reflect.DeepEqual(old.ResourceHooks, new.ResourceHooks) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ResourceHooks")
+		slog.Info("SnapshotManager: mustWrite() true because of ResourceHooks")
 		return true
 	}
 
@@ -492,12 +492,12 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// for performance we elide those as well. This prevents _every_ resource needing a snapshot write when
 	// making large source code changes.
 
-	logging.V(9).Infof("SnapshotManager: mustWrite() false")
+	slog.Info("SnapshotManager: mustWrite() false")
 	return false
 }
 
 func (sm *JournalSnapshotManager) doSame(step deploy.Step, operationID int64) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doSame(%s)", step.URN())
+	slog.Info("SnapshotManager.doSame", "urn", step.URN())
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.ElideWrite = true
 	err := sm.addJournalEntry(journalEntry)
@@ -510,7 +510,7 @@ func (sm *JournalSnapshotManager) doSame(step deploy.Step, operationID int64) (S
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpSame, "step.Op()", "must be %q, got %q", deploy.OpSame, step.Op())
-	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: sameSnapshotMutation.End", "successful", successful)
 
 	kind := JournalEntrySuccess
 	if !successful {
@@ -535,7 +535,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 }
 
 func (sm *JournalSnapshotManager) doCreate(step deploy.Step, operationID int64) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
+	slog.Info("SnapshotManager.doCreate", "urn", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeCreating)
 
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
@@ -555,7 +555,7 @@ type createSnapshotMutation struct {
 
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
-	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: createSnapshotMutation.End", "successful", successful)
 	kind := JournalEntrySuccess
 	if !successful {
 		kind = JournalEntryFailure
@@ -578,7 +578,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 }
 
 func (sm *JournalSnapshotManager) doUpdate(step deploy.Step, operationID int64) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
+	slog.Info("SnapshotManager.doUpdate", "urn", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeUpdating)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
@@ -597,7 +597,7 @@ type updateSnapshotMutation struct {
 
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
-	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: updateSnapshotMutation.End", "successful", successful)
 	kind := JournalEntrySuccess
 	if !successful {
 		kind = JournalEntryFailure
@@ -612,7 +612,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 }
 
 func (sm *JournalSnapshotManager) doDelete(step deploy.Step, operationID int64) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
+	slog.Info("SnapshotManager.doDelete", "urn", step.URN())
 	op := resource.NewOperation(step.Old(), resource.OperationTypeDeleting)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
@@ -631,7 +631,7 @@ type deleteSnapshotMutation struct {
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
-	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: deleteSnapshotMutation.End", "successful", successful)
 	kind := JournalEntrySuccess
 	if !successful {
 		kind = JournalEntryFailure
@@ -656,7 +656,7 @@ func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error 
 }
 
 func (sm *JournalSnapshotManager) doReplace(step deploy.Step, operationID int64) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doReplace(%s)", step.URN())
+	slog.Info("SnapshotManager.doReplace", "urn", step.URN())
 	return &replaceSnapshotMutation{sm, operationID}, nil
 }
 
@@ -666,12 +666,12 @@ type replaceSnapshotMutation struct {
 }
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
-	logging.V(9).Infof("SnapshotManager: replaceSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: replaceSnapshotMutation.End", "successful", successful)
 	return nil
 }
 
 func (sm *JournalSnapshotManager) doRead(step deploy.Step, operationID int64) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
+	slog.Info("SnapshotManager.doRead", "urn", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeReading)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op
@@ -689,7 +689,7 @@ type readSnapshotMutation struct {
 
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
-	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: readSnapshotMutation.End", "successful", successful)
 	kind := JournalEntrySuccess
 	if !successful {
 		kind = JournalEntryFailure
@@ -704,7 +704,7 @@ func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 }
 
 func (sm *JournalSnapshotManager) doRefresh(step deploy.Step, operationID int64) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doRefresh(%s)", step.URN())
+	slog.Info("SnapshotManager.doRefresh", "urn", step.URN())
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 
 	err := sm.addJournalEntry(journalEntry)
@@ -722,7 +722,7 @@ type refreshSnapshotMutation struct {
 func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpRefresh, "step.Op", "must be %q, got %q", deploy.OpRefresh, step.Op())
-	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: refreshSnapshotMutation.End", "successful", successful)
 	kind := JournalEntryRefreshSuccess
 	if !successful {
 		kind = JournalEntryFailure
@@ -757,7 +757,7 @@ func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error
 func (sm *JournalSnapshotManager) doRemovePendingReplace(
 	step deploy.Step, operationID int64,
 ) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doRemovePendingReplace(%s)", step.URN())
+	slog.Info("SnapshotManager.doRemovePendingReplace", "urn", step.URN())
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	err := sm.addJournalEntry(journalEntry)
 	if err != nil {
@@ -783,7 +783,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 }
 
 func (sm *JournalSnapshotManager) doImport(step deploy.Step, operationID int64) (SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
+	slog.Info("SnapshotManager.doImport", "urn", step.URN())
 	op := resource.NewOperation(step.New(), resource.OperationTypeImporting)
 	journalEntry := sm.newJournalEntry(JournalEntryBegin, operationID)
 	journalEntry.Operation = &op

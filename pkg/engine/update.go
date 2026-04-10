@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -407,8 +408,8 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (
 	}
 	defer emitter.Close()
 
-	logging.V(7).Infof("*** Starting Update(preview=%v) ***", dryRun)
-	defer logging.V(7).Infof("*** Update(preview=%v) complete ***", dryRun)
+	slog.Info("*** Starting Update ***", "preview", dryRun)
+	defer slog.Info("*** Update complete ***", "preview", dryRun)
 
 	// We skip the target check here because the targeted resource may not exist yet.
 
@@ -475,7 +476,7 @@ func installPlugins(
 		if returnInstallErrors {
 			return nil, nil, err
 		}
-		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
+		slog.Info("newUpdateSource(): failed to install missing plugins", "err", err)
 	}
 
 	if waitNeeded {
@@ -614,7 +615,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 			// Parse the config, reconcile & validate it, and pass it to the policy pack.
 			if !analyzerInfo.SupportsConfig {
 				if len(mergedConfig) > 0 {
-					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
+					slog.Info("policy pack does not support config; skipping configure", "name", analyzerInfo.Name)
 				}
 				return
 			}
@@ -998,9 +999,9 @@ func (acts *updateActions) OnResourceStepPost(
 	// This is a little kludgy given that these resources are global state. However, given the way that we have
 	// implemented the snapshot manager and engine today, it's the easiest way to accomplish what we are trying to do.
 	if status == resource.StatusPartialFailure && step.Op() == deploy.OpUpdate {
-		logging.V(7).Infof(
-			"OnResourceStepPost(%s): Step is partially-failed update, saving old inputs instead of new inputs",
-			step.URN())
+		slog.Info(
+			"OnResourceStepPost: Step is partially-failed update, saving old inputs instead of new inputs",
+			"urn", step.URN())
 		new := step.New()
 		old := step.Old()
 		contract.Assertf(new != nil, "new state should not be nil for partially-failed update")

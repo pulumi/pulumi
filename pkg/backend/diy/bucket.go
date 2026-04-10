@@ -18,12 +18,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
 )
 
@@ -134,7 +134,7 @@ func removeAllByPrefix(ctx context.Context, bucket Bucket, dir string) error {
 	for _, file := range files {
 		err = bucket.Delete(ctx, file.Key)
 		if err != nil {
-			logging.V(5).Infof("error deleting object: %v (%v) skipping", file.Key, err)
+			slog.Info("error deleting object, skipping", "key", file.Key, "err", err)
 		}
 	}
 

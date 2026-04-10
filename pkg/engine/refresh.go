@@ -17,6 +17,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -24,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -53,8 +53,8 @@ func Refresh(
 	// Force opts.Refresh to true.
 	opts.Refresh = true
 
-	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
-	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
+	slog.Info("*** Starting Refresh ***", "preview", dryRun)
+	defer slog.Info("*** Refresh complete ***", "preview", dryRun)
 
 	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err
@@ -120,7 +120,7 @@ func newRefreshSource(
 	// Like Update, if we're missing plugins, attempt to download the missing plugins.
 	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, snapshotPackages.ToPluginSet().Deduplicate(),
 		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
-		logging.V(7).Infof("newRefreshSource(): failed to install missing plugins: %v", err)
+		slog.Info("newRefreshSource(): failed to install missing plugins", "err", err)
 	}
 
 	// Just return an error source. Refresh doesn't use its source.
@@ -156,8 +156,8 @@ func RefreshV2(
 	opts.Refresh = true
 	opts.RefreshProgram = true
 
-	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
-	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
+	slog.Info("*** Starting Refresh ***", "preview", dryRun)
+	defer slog.Info("*** Refresh complete ***", "preview", dryRun)
 
 	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err

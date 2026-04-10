@@ -16,10 +16,10 @@ package deploy
 
 import (
 	"fmt"
+	"log/slog"
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // PanicRecovery wraps a goroutine function with panic recovery logic.
@@ -31,7 +31,7 @@ func PanicRecovery(panicErrs chan<- error, fn func()) {
 			if r := recover(); r != nil {
 				stack := debug.Stack()
 				err := fmt.Errorf("panic in goroutine: %v\nStack trace:\n%s", r, string(stack))
-				logging.V(3).Infof("Recovered from panic: %v", err)
+				slog.Info("Recovered from panic", "err", err)
 
 				select {
 				case panicErrs <- err:

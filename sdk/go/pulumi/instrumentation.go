@@ -16,10 +16,10 @@ package pulumi
 
 import (
 	"context"
+	"log/slog"
 	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
@@ -50,13 +50,13 @@ func initTracing(ctx context.Context) context.Context {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		logging.V(3).Infof("pulumi-sdk-go: failed to create gRPC connection for tracing: %v", err)
+		slog.Info("pulumi-sdk-go: failed to create gRPC connection for tracing", "err", err)
 		return ctx
 	}
 
 	exporter, err := otlptracegrpc.New(context.Background(), otlptracegrpc.WithGRPCConn(conn))
 	if err != nil {
-		logging.V(3).Infof("pulumi-sdk-go: failed to create OTLP exporter: %v", err)
+		slog.Info("pulumi-sdk-go: failed to create OTLP exporter", "err", err)
 		return ctx
 	}
 
@@ -81,7 +81,7 @@ func initTracing(ctx context.Context) context.Context {
 func shutdownTracing() {
 	if tracerProvider != nil {
 		if err := tracerProvider.Shutdown(context.Background()); err != nil {
-			logging.V(3).Infof("pulumi-sdk-go: failed to shutdown tracer provider: %v", err)
+			slog.Info("pulumi-sdk-go: failed to shutdown tracer provider", "err", err)
 		}
 	}
 }

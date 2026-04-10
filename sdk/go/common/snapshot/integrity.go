@@ -17,12 +17,12 @@ package snapshot
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"runtime/debug"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 func VerifyIntegrity(snap *apitype.DeploymentV3) error {
@@ -92,7 +92,7 @@ func VerifyIntegrity(snap *apitype.DeploymentV3) error {
 			}
 
 			if urn.QualifiedType() != expectedType {
-				logging.Warningf("child resource %s has parent %s but its URN doesn't match", urn, res.Parent)
+				slog.Warn("child resource has parent but its URN doesn't match", "urn", urn, "parent", res.Parent)
 				// TODO: Change this to an error once we're sure users won't hit this in the wild.
 				// return fmt.Errorf("child resource %s has parent %s but its URN doesn't match", urn, dep.URN)
 			}

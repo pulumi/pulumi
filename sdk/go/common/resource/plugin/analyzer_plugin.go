@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -39,7 +40,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -132,13 +132,13 @@ func NewPolicyAnalyzer(
 			status, ok := status.FromError(err)
 			if ok && status.Code() == codes.Unimplemented {
 				// If the provider doesn't implement Handshake, that's fine -- we'll fall back to existing behavior.
-				logging.V(7).Infof("Handshake: not supported by '%v'", bin)
+				slog.Info("Handshake: not supported", "bin", bin)
 				return nil, nil
 			}
 			return nil, fmt.Errorf("failed to handshake with '%v': %w", bin, err)
 		}
 
-		logging.V(7).Infof("Handshake: success [%v]", bin)
+		slog.Info("Handshake: success", "bin", bin)
 		return res, nil
 	}
 
@@ -261,14 +261,14 @@ func NewPolicyAnalyzer(
 			if ok && status.Code() == codes.Unimplemented {
 				// If the analyzer doesn't implement StackConfigure, that's fine -- we'll fall back to existing
 				// behavior.
-				logging.V(7).Infof("StackConfigure: not supported by '%v'", name)
+				slog.Info("StackConfigure: not supported", "name", name)
 			} else {
-				logging.V(7).Infof("StackConfigure: failed: err=%v", status)
+				slog.Info("StackConfigure: failed", "err", status)
 				return nil, rpcerror.Convert(err)
 			}
 		}
 
-		logging.V(7).Infof("StackConfigure: success [%v]", name)
+		slog.Info("StackConfigure: success", "name", name)
 	}
 
 	var description string
@@ -313,7 +313,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Analyze(%s)", a.label(), t)
-	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	slog.Info("Analyze executing", "label", label, "numProps", len(props))
 	mprops, err := MarshalProperties(props,
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
 	if err != nil {
@@ -335,12 +335,12 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		slog.Info("Analyze failed", "label", label, "err", rpcError)
 		return AnalyzeResponse{}, rpcError
 	}
 
 	failures := resp.GetDiagnostics()
-	logging.V(7).Infof("%s success: failures=#%d", label, len(failures))
+	slog.Info("Analyze success", "label", label, "numFailures", len(failures))
 
 	diags, err := a.convertDiagnostics(failures)
 	if err != nil {
@@ -354,7 +354,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 
 // AnalyzeStack analyzes all resources in a stack at the end of the update operation.
 func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeResponse, error) {
-	logging.V(7).Infof("%s.AnalyzeStack(#resources=%d) executing", a.label(), len(resources))
+	slog.Info("AnalyzeStack executing", "analyzer", a.label(), "numResources", len(resources))
 
 	protoResources := make([]*pulumirpc.AnalyzerResource, len(resources))
 	for idx, resource := range resources {
@@ -407,16 +407,16 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeRespo
 		// AnalyzerService to support the AnalyzeStack method. Ignore the error as it
 		// just means the analyzer isn't capable of this specific type of check.
 		if rpcError.Code() == codes.Unimplemented {
-			logging.V(7).Infof("%s.AnalyzeStack(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
+			slog.Info("AnalyzeStack is unimplemented, skipping", "analyzer", a.label(), "err", rpcError)
 			return AnalyzeResponse{}, nil
 		}
 
-		logging.V(7).Infof("%s.AnalyzeStack(...) failed: err=%v", a.label(), rpcError)
+		slog.Info("AnalyzeStack failed", "analyzer", a.label(), "err", rpcError)
 		return AnalyzeResponse{}, rpcError
 	}
 
 	failures := resp.GetDiagnostics()
-	logging.V(7).Infof("%s.AnalyzeStack(...) success: failures=#%d", a.label(), len(failures))
+	slog.Info("AnalyzeStack success", "analyzer", a.label(), "numFailures", len(failures))
 
 	diags, err := a.convertDiagnostics(failures)
 	if err != nil {
@@ -433,7 +433,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
 	urn, t, name, props := r.URN, r.Type, r.Name, r.Properties
 
 	label := fmt.Sprintf("%s.Remediate(%s)", a.label(), t)
-	logging.V(7).Infof("%s executing (#props=%d)", label, len(props))
+	slog.Info("Remediate executing", "label", label, "numProps", len(props))
 	mprops, err := MarshalProperties(props,
 		MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: false})
 	if err != nil {
@@ -458,11 +458,11 @@ func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
 
 		// Handle the case where we the policy pack doesn't implement a recent enough to implement Transform.
 		if rpcError.Code() == codes.Unimplemented {
-			logging.V(7).Infof("%s.Transform(...) is unimplemented, skipping: err=%v", a.label(), rpcError)
+			slog.Info("Transform is unimplemented, skipping", "analyzer", a.label(), "err", rpcError)
 			return RemediateResponse{}, nil
 		}
 
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		slog.Info("Remediate failed", "label", label, "err", rpcError)
 		return RemediateResponse{}, rpcError
 	}
 
@@ -491,7 +491,7 @@ func (a *analyzer) Remediate(r AnalyzerResource) (RemediateResponse, error) {
 		}
 	}
 
-	logging.V(7).Infof("%s success: #remediations=%d", label, len(results))
+	slog.Info("Remediate success", "label", label, "numRemediations", len(results))
 	return RemediateResponse{
 		Remediations:  results,
 		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
@@ -506,11 +506,11 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	}
 
 	label := a.label() + ".GetAnalyzerInfo()"
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("GetAnalyzerInfo executing", "label", label)
 	resp, err := a.client.GetAnalyzerInfo(a.requestContext(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
+		slog.Info("GetAnalyzerInfo failed", "analyzer", a.label(), "err", rpcError)
 		return AnalyzerInfo{}, rpcError
 	}
 
@@ -567,7 +567,7 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 	version := resp.GetVersion()
 	if a.version != "" {
 		version = a.version
-		logging.V(7).Infof("Using version %q from PulumiPolicy.yaml", version)
+		slog.Info("Using version from PulumiPolicy.yaml", "version", version)
 	}
 
 	// The description from the gRPC call is preferred, but if it's not set, fall back to the
@@ -598,11 +598,11 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 // GetPluginInfo returns this plugin's information.
 func (a *analyzer) GetPluginInfo() (PluginInfo, error) {
 	label := a.label() + ".GetPluginInfo()"
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("GetPluginInfo executing", "label", label)
 	resp, err := a.client.GetPluginInfo(a.requestContext(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", a.label(), rpcError)
+		slog.Info("GetPluginInfo failed", "analyzer", a.label(), "err", rpcError)
 		return PluginInfo{}, rpcError
 	}
 
@@ -622,10 +622,10 @@ func (a *analyzer) GetPluginInfo() (PluginInfo, error) {
 
 func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error {
 	label := a.label() + ".Configure(...)"
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("Configure executing", "label", label)
 
 	if len(policyConfig) == 0 {
-		logging.V(7).Infof("%s returning early, no config specified", label)
+		slog.Info("Configure returning early, no config specified", "label", label)
 		return nil
 	}
 
@@ -652,7 +652,7 @@ func (a *analyzer) Configure(policyConfig map[string]AnalyzerPolicyConfig) error
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError)
+		slog.Info("Configure failed", "label", label, "err", rpcError)
 		return rpcError
 	}
 
@@ -679,12 +679,12 @@ func (a *analyzer) Close() error {
 // Cancel signals the analyzer to gracefully shut down and abort any ongoing analysis operations.
 func (a *analyzer) Cancel(ctx context.Context) error {
 	label := a.label() + ".Cancel()"
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("Cancel executing", "label", label)
 
 	_, err := a.client.Cancel(ctx, &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(8).Infof("%s failed: err=%v", label, rpcError)
+		slog.Info("Cancel failed", "label", label, "err", rpcError)
 		if rpcError.Code() == codes.Unimplemented {
 			return nil
 		}
@@ -701,7 +701,7 @@ func (a *analyzer) getPolicySeverity(policyName string) apitype.PolicySeverity {
 		// Get the info to populate the map. This will return a cached value if we've already called it.
 		info, err := a.GetAnalyzerInfo()
 		if err != nil {
-			logging.V(7).Infof("%s.getPolicySeverity(%q): failed to get analyzer info: %v", a.label(), policyName, err)
+			slog.Info("getPolicySeverity: failed to get analyzer info", "analyzer", a.label(), "policyName", policyName, "err", err)
 			return apitype.PolicySeverityUnspecified
 		}
 

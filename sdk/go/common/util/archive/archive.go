@@ -22,13 +22,13 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // TGZ adds the contents of the provided directory to an in-memory .tar.gz/.tgz and returns the bytes.
@@ -56,7 +56,7 @@ func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, erro
 		return nil, err
 	}
 
-	logging.V(5).Infof("project archive is %v bytes", buffer.Len())
+	slog.Info("project archive created", "bytes", buffer.Len())
 
 	return buffer.Bytes(), nil
 }
@@ -143,7 +143,7 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 
 	// If there is an ignorefile, process it before looking at any child paths.
 	if stat, err := os.Stat(ignoreFilePath); err == nil && !stat.IsDir() {
-		logging.V(9).Infof("processing ignore file in %v", dir)
+		slog.Info("processing ignore file", "dir", dir)
 
 		ignore, err := newGitIgnoreIgnorer(ignoreFilePath)
 		if err != nil {
@@ -161,7 +161,7 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 			// If there is an ignorefile, process it before looking at any child paths.
 			ignoreFilePath := filepath.Join(parent, gitIgnoreFile)
 			if stat, err := os.Stat(ignoreFilePath); err == nil && !stat.IsDir() {
-				logging.V(9).Infof("processing ignore file in %v", dir)
+				slog.Info("processing ignore file", "dir", dir)
 
 				ignore, err := newGitIgnoreIgnorer(ignoreFilePath)
 				if err != nil {
@@ -196,7 +196,7 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 		fullName := filepath.Join(dir, info.Name())
 
 		if !info.IsDir() && ignores.IsIgnored(fullName) {
-			logging.V(9).Infof("skip archiving of %v due to ignore file", fullName)
+			slog.Info("skip archiving due to ignore file", "path", fullName)
 			continue
 		}
 
@@ -214,7 +214,7 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 				return err
 			}
 		} else if info.Mode().IsRegular() {
-			logging.V(9).Infof("adding %v to archive", fullName)
+			slog.Info("adding to archive", "path", fullName)
 
 			header, err := tar.FileInfoHeader(info, info.Name())
 			if err != nil {
@@ -249,7 +249,7 @@ func addDirectoryToTar(writer *tar.Writer, root, dir, prefixPathInsideTar string
 				return fmt.Errorf("failed to copy all bytes from %v to tar file", fullName)
 			}
 		} else {
-			logging.V(9).Infof("ignoring special file %v with mode %v", fullName, info.Mode())
+			slog.Info("ignoring special file", "path", fullName, "mode", info.Mode())
 		}
 	}
 

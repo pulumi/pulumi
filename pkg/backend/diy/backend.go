@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"os/user"
@@ -64,7 +65,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
 	"go.opentelemetry.io/otel"
@@ -397,8 +397,8 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	if err != nil {
 		return fmt.Errorf("read old references: %w", err)
 	}
-	logging.V(7).Infof("State upgrade scan for %q found %d legacy stack file(s)",
-		b.originalURL, len(olds))
+	slog.Info("State upgrade scan found legacy stack files",
+		"url", b.originalURL, "count", len(olds))
 
 	sort.Slice(olds, func(i, j int) bool {
 		return olds[i].Name().String() < olds[j].Name().String()
@@ -421,7 +421,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 			if err != nil {
 				return fmt.Errorf("guess stack %s project: %w", old.Name(), err)
 			}
-			logging.V(7).Infof("Guessed project %q for stack %s", project, old.Name())
+			slog.Info("Guessed project for stack", "project", project, "stack", old.Name())
 
 			// No lock necessary;
 			// projects is pre-allocated.
@@ -834,7 +834,7 @@ func (b *diyBackend) ListStacks(
 			tags, err := b.loadStackTags(ctx, stackRef)
 			if err != nil {
 				// Skip stacks where we can't load tags, but log the error
-				logging.V(7).Infof("Failed to load tags for stack %s: %v", stackRef.String(), err)
+				slog.Info("Failed to load tags for stack", "stack", stackRef.String(), "err", err)
 				continue
 			}
 

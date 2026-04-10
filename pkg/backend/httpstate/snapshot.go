@@ -18,11 +18,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // cloudSnapshotPersister persists snapshots to the Pulumi service.
@@ -73,11 +73,8 @@ func (persister *cloudSnapshotPersister) Save(deployment apitype.TypedDeployment
 			return err
 		}
 		if err := persister.saveDiff(ctx, diff, version, persister.tokenSource); err != nil {
-			if logging.V(3) {
-				logging.V(3).Infof("ignoring error saving checkpoint "+
-					"with PatchUpdateCheckpointDelta, falling back to "+
-					"PatchUpdateCheckpoint: %v", err)
-			}
+			slog.Info("ignoring error saving checkpoint with PatchUpdateCheckpointDelta, falling back to PatchUpdateCheckpoint",
+				"err", err)
 			if err := persister.saveFullVerbatim(
 				ctx, differ, marshaledDeployment.raw, version, persister.tokenSource); err != nil {
 				return err

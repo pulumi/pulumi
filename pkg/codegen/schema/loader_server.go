@@ -17,12 +17,12 @@ package schema
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"google.golang.org/grpc"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 	"github.com/segmentio/encoding/json"
 )
@@ -45,13 +45,13 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 	req *codegenrpc.GetSchemaRequest,
 ) (*codegenrpc.GetSchemaResponse, error) {
 	label := "GetSchema"
-	logging.V(7).Infof("%s executing: package=%s, version=%s", label, req.Package, req.Version)
+	slog.Info("loader executing", "label", label, "package", req.Package, "version", req.Version)
 
 	var version *semver.Version
 	if req.Version != "" {
 		v, err := semver.ParseTolerant(req.Version)
 		if err != nil {
-			logging.V(7).Infof("%s failed: %v", label, err)
+			slog.Info("loader failed", "label", label, "err", err)
 			return nil, fmt.Errorf("%s not a valid semver: %w", req.Version, err)
 		}
 		version = &v
@@ -70,7 +70,7 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 
 		v, err := semver.ParseTolerant(req.Parameterization.Version)
 		if err != nil {
-			logging.V(7).Infof("%s failed: %v", label, err)
+			slog.Info("loader failed", "label", label, "err", err)
 			return nil, fmt.Errorf("%s not a valid semver: %w", req.Version, err)
 		}
 		descriptor.Parameterization.Version = v
@@ -78,24 +78,24 @@ func (m *loaderServer) GetSchema(ctx context.Context,
 
 	pkg, err := m.loader.LoadPackageV2(ctx, descriptor)
 	if err != nil {
-		logging.V(7).Infof("%s failed: %v", label, err)
+		slog.Info("loader failed", "label", label, "err", err)
 		return nil, err
 	}
 
 	// Marshal the package into a JSON string.
 	spec, err := pkg.MarshalSpec()
 	if err != nil {
-		logging.V(7).Infof("%s failed: %v", label, err)
+		slog.Info("loader failed", "label", label, "err", err)
 		return nil, err
 	}
 
 	data, err := json.Marshal(spec)
 	if err != nil {
-		logging.V(7).Infof("%s failed: %v", label, err)
+		slog.Info("loader failed", "label", label, "err", err)
 		return nil, err
 	}
 
-	logging.V(7).Infof("%s success: data=#%d", label, len(data))
+	slog.Info("loader success", "label", label, "dataLen", len(data))
 	return &codegenrpc.GetSchemaResponse{
 		Schema: data,
 	}, nil

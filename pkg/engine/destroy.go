@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -26,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -53,8 +53,8 @@ func Destroy(
 	}
 	defer emitter.Close()
 
-	logging.V(7).Infof("*** Starting Destroy(preview=%v) ***", dryRun)
-	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
+	slog.Info("*** Starting Destroy ***", "preview", dryRun)
+	defer slog.Info("*** Destroy complete ***", "preview", dryRun)
 
 	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err
@@ -152,7 +152,7 @@ func newDestroySource(
 
 	if err := EnsurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins,
 		plugctx.Host.GetProjectPlugins(), false /*reinstall*/, false /*explicitInstall*/); err != nil {
-		logging.V(7).Infof("newDestroySource(): failed to install missing plugins: %v", err)
+		slog.Info("newDestroySource(): failed to install missing plugins", "err", err)
 	}
 
 	// We don't need the language plugin, since destroy doesn't run code, so we will leave that out.
@@ -193,8 +193,8 @@ func DestroyV2(
 	// Force opt.DestroyProgram to true
 	opts.DestroyProgram = true
 
-	logging.V(7).Infof("*** Starting Destroy(preview=%v) ***", dryRun)
-	defer logging.V(7).Infof("*** Destroy(preview=%v) complete ***", dryRun)
+	slog.Info("*** Starting Destroy ***", "preview", dryRun)
+	defer slog.Info("*** Destroy complete ***", "preview", dryRun)
 
 	if err := checkTargets(opts.Targets, opts.Excludes, u.Target.Snapshot); err != nil {
 		return nil, nil, err

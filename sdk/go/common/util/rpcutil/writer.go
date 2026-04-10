@@ -15,8 +15,10 @@
 package rpcutil
 
 import (
+	"context"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"syscall"
 
@@ -87,10 +89,10 @@ func makeStreams(
 	stdout := &pipeWriter{send: sendStdout}
 
 	if isTerminal {
-		logging.V(11).Infoln("Opening pseudo terminal")
+		slog.Log(context.TODO(), logging.LevelTrace, "Opening pseudo terminal")
 		pt, tt, err := openPty()
 		if err == errUnsupported {
-			logging.V(11).Infoln("Pseudo terminal not supported")
+			slog.Log(context.TODO(), logging.LevelTrace, "Pseudo terminal not supported")
 			// Fall through, just return plain stdout/err pipes
 		} else if err != nil {
 			// Fall through, just return plain stdout/err pipes but warn that we tried and failed to make a

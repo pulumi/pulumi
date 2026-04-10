@@ -16,6 +16,7 @@ package cmdutil
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -101,7 +102,7 @@ func DisplayErrorMessage(err error) {
 		msg = DetailedError(err)
 	} else {
 		msg = errorMessage(err)
-		logging.V(3).Info(DetailedError(err))
+		slog.Info(DetailedError(err))
 	}
 
 	Diag().Errorf(diag.Message("", "%s"), msg)

@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
@@ -27,7 +28,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -112,7 +112,7 @@ func (c *converter) Close() error {
 
 func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) (*ConvertStateResponse, error) {
 	label := c.label() + ".ConvertState"
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("executing", "label", label)
 
 	resp, err := c.clientRaw.ConvertState(ctx, &pulumirpc.ConvertStateRequest{
 		MapperTarget: req.MapperTarget,
@@ -120,7 +120,8 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(8).Infof("%s converter received rpc error `%s`: `%s`", label, rpcError.Code(), rpcError.Message())
+		slog.Info("converter received rpc error",
+			"label", label, "code", rpcError.Code(), "msg", rpcError.Message())
 		return nil, err
 	}
 
@@ -144,7 +145,7 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
 	}
 
-	logging.V(7).Infof("%s success", label)
+	slog.Info("success", "label", label)
 	return &ConvertStateResponse{
 		Resources:   resources,
 		Diagnostics: diags,
@@ -153,7 +154,7 @@ func (c *converter) ConvertState(ctx context.Context, req *ConvertStateRequest) 
 
 func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramRequest) (*ConvertProgramResponse, error) {
 	label := c.label() + ".ConvertProgram"
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("executing", "label", label)
 
 	resp, err := c.clientRaw.ConvertProgram(ctx, &pulumirpc.ConvertProgramRequest{
 		SourceDirectory:           req.SourceDirectory,
@@ -165,7 +166,8 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(8).Infof("%s converter received rpc error `%s`: `%s`", label, rpcError.Code(), rpcError.Message())
+		slog.Info("converter received rpc error",
+			"label", label, "code", rpcError.Code(), "msg", rpcError.Message())
 		return nil, err
 	}
 
@@ -175,7 +177,7 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
 	}
 
-	logging.V(7).Infof("%s success", label)
+	slog.Info("success", "label", label)
 	return &ConvertProgramResponse{
 		Diagnostics: diags,
 	}, nil

@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -94,7 +95,7 @@ func compileProgram(
 		Message:   "Compiling the program ...",
 		Ephemeral: true,
 	}); err != nil {
-		logging.V(6).Infof("Failed to log message: %v", err)
+		slog.Info("Failed to log message", "err", err)
 	}
 
 	goFileSearchPattern := filepath.Join(programDirectory, "*.go")
@@ -119,7 +120,7 @@ func compileProgram(
 	if err != nil {
 		return "", fmt.Errorf("unable to find 'go' executable: %w", err)
 	}
-	logging.V(5).Infof("Attempting to build go program in %s with: %s build -o %s", programDirectory, gobin, outfile)
+	slog.Info("Attempting to build go program", "programDirectory", programDirectory, "gobin", gobin, "outfile", outfile)
 	args := []string{"build", "-o", outfile}
 	if withDebugFlags {
 		args = append(args, "-gcflags", "all=-N -l")
@@ -145,7 +146,7 @@ func compileProgram(
 		Message:   "Finished compiling",
 		Ephemeral: true,
 	}); err != nil {
-		logging.V(6).Infof("Failed to log message: %v", err)
+		slog.Info("Failed to log message", "err", err)
 	}
 
 	return outfile, nil
@@ -201,7 +202,7 @@ func main() {
 		cmdutil.InitTracing("pulumi-language-go", "pulumi-language-go", p.tracing)
 	} else {
 		if err := cmdutil.InitOtelTracing("pulumi-language-go", otelEndpoint); err != nil {
-			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+			slog.Info("failed to initialize OTel tracing", "err", err)
 		}
 		defer cmdutil.CloseOtelTracing()
 	}
@@ -774,7 +775,7 @@ func (host *goLanguageHost) loadGomod(gobin, programDir string) (modDir string, 
 func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
 	req *pulumirpc.GetRequiredPackagesRequest,
 ) (*pulumirpc.GetRequiredPackagesResponse, error) {
-	logging.V(5).Infof("GetRequiredPackages: Determining pulumi packages")
+	slog.Info("GetRequiredPackages: Determining pulumi packages")
 
 	gobin, err := executable.FindExecutable("go")
 	if err != nil {
@@ -788,7 +789,7 @@ func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
 	moduleDir, gomod, err := host.loadGomod(gobin, req.Info.ProgramDirectory)
 	if err != nil {
 		// Don't fail if not using Go modules.
-		logging.V(5).Infof("GetRequiredPackages: Error reading go.mod: %v", err)
+		slog.Info("GetRequiredPackages: Error reading go.mod", "err", err)
 		return &pulumirpc.GetRequiredPackagesResponse{}, nil
 	}
 
@@ -799,7 +800,7 @@ func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
 
 	modInfos, err := findModuleSources(ctx, gobin, moduleDir, modulePaths)
 	if err != nil {
-		logging.V(5).Infof("GetRequiredPackages: Error finding module sources: %v", err)
+		slog.Info("GetRequiredPackages: Error finding module sources", "err", err)
 		return &pulumirpc.GetRequiredPackagesResponse{}, nil
 	}
 
@@ -807,16 +808,15 @@ func (host *goLanguageHost) GetRequiredPackages(ctx context.Context,
 	for _, m := range modInfos {
 		pkg, err := m.getPackage(moduleDir)
 		if err != nil {
-			logging.V(5).Infof(
-				"GetRequiredPackages: Ignoring dependency: %s, version: %s, error: %s",
-				m.Path,
-				m.Version,
-				err,
+			slog.Info("GetRequiredPackages: Ignoring dependency",
+				"path", m.Path,
+				"version", m.Version,
+				"err", err,
 			)
 			continue
 		}
 
-		logging.V(5).Infof("GetRequiredPackages: Found package name: %s, version: %s", pkg.Name, pkg.Version)
+		slog.Info("GetRequiredPackages: Found package", "name", pkg.Name, "version", pkg.Version)
 		packages = append(packages, pkg)
 	}
 
@@ -980,7 +980,7 @@ func runProgram(
 			err := startDebugging(ctx, engineClient, dbg, "Pulumi: Program (Go)")
 			if err != nil {
 				// kill the program if we can't start debugging.
-				logging.Errorf("Unable to start debugging: %v", err)
+				slog.Error("Unable to start debugging", "err", err)
 				contract.IgnoreError(cmd.Process.Kill())
 			}
 		}()
@@ -1109,7 +1109,7 @@ func (host *goLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest) 
 	}
 
 	// user did not specify a binary and we will compile and run the binary on-demand
-	logging.V(5).Infof("No prebuilt executable specified, attempting invocation via compilation")
+	slog.Info("No prebuilt executable specified, attempting invocation via compilation")
 
 	program, err := compileProgram(
 		ctx, engineClient, req.Info.ProgramDirectory, opts.buildTarget, req.GetAttachDebugger(), os.Stdout, os.Stderr)
@@ -1326,7 +1326,7 @@ func (host *goLanguageHost) RunPlugin2(
 func (host *goLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run go plugin in %s", req.Info.ProgramDirectory)
+	slog.Info("Attempting to run go plugin", "programDirectory", req.Info.ProgramDirectory)
 
 	if host.engineAddress == "" {
 		return errors.New("when debugging or running explicitly, must call Handshake before RunPlugin")
@@ -1367,7 +1367,7 @@ func (host *goLanguageHost) RunPlugin(
 			err := startDebugging(ctx, engineClient, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
 			if err != nil {
 				// kill the plugin if we can't start debugging.
-				logging.Errorf("Unable to start debugging: %v", err)
+				slog.Error("Unable to start debugging", "err", err)
 				contract.IgnoreError(cmd.Process.Kill())
 			}
 		}()
@@ -1601,7 +1601,7 @@ func (host *goLanguageHost) Handshake(
 func (host *goLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	slog.Info("Linking", "packages", req.Packages, "rootDirectory", req.Info.RootDirectory)
 	loader, err := schema.NewLoaderClient(req.LoaderTarget)
 	if err != nil {
 		return nil, err
@@ -1626,7 +1626,7 @@ func (host *goLanguageHost) Link(
 		var version *semver.Version
 		v, err := semver.New(dep.Package.Version)
 		if err != nil {
-			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+			slog.Info("Invalid version for package", "version", dep.Package.Version, "package", dep.Package.Name)
 		} else {
 			version = v
 		}
@@ -1639,7 +1639,7 @@ func (host *goLanguageHost) Link(
 			if dep.Package.Parameterization.Version != "" {
 				v, err := semver.New(dep.Package.Parameterization.Version)
 				if err != nil {
-					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+					slog.Info("Invalid version for package", "version", dep.Package.Version, "package", dep.Package.Name)
 				} else {
 					param.Version = *v
 				}

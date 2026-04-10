@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -35,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/grpc"
@@ -183,7 +183,7 @@ func startEventLogger(
 		addr := strings.TrimPrefix(opts.EventLogPath, "tcp://")
 		conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			logging.V(7).Infof("could not connect to event log server: %v", err)
+			slog.Info("could not connect to event log server", "err", err)
 			return events, done
 		}
 
@@ -195,7 +195,7 @@ func startEventLogger(
 
 			stream, err := client.StreamEvents(context.TODO())
 			if err != nil {
-				logging.V(7).Infof("failed to start event stream: %v", err)
+				slog.Info("failed to start event stream", "err", err)
 				<-outDone
 				return
 			}
@@ -206,13 +206,13 @@ func startEventLogger(
 				encoder.SetEscapeHTML(false)
 				err := logJSONEvent(encoder, e, opts)
 				if err != nil {
-					logging.V(7).Infof("failed to convert event: %v", err)
+					slog.Info("failed to convert event", "err", err)
 				} else {
 					err = stream.Send(&pulumirpc.EventRequest{
 						Event: buf.String(),
 					})
 					if err != nil {
-						logging.V(7).Infof("failed to send event: %v", err)
+						slog.Info("failed to send event", "err", err)
 					}
 				}
 
@@ -225,7 +225,7 @@ func startEventLogger(
 
 			_, err = stream.CloseAndRecv()
 			if err != nil {
-				logging.V(7).Infof("failed to close event stream: %v", err)
+				slog.Info("failed to close event stream", "err", err)
 			}
 
 			<-outDone
@@ -239,7 +239,7 @@ func startEventLogger(
 	// https://github.com/pulumi/pulumi/issues/6768
 	logFile, err := os.OpenFile(opts.EventLogPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC|os.O_APPEND, 0o666)
 	if err != nil {
-		logging.V(7).Infof("could not create event log: %v", err)
+		slog.Info("could not create event log", "err", err)
 		return events, done
 	}
 
@@ -252,7 +252,7 @@ func startEventLogger(
 		encoder.SetEscapeHTML(false)
 		for e := range events {
 			if err = logJSONEvent(encoder, e, opts); err != nil {
-				logging.V(7).Infof("failed to log event: %v", err)
+				slog.Info("failed to log event", "err", err)
 			}
 
 			outEvents <- e

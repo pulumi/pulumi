@@ -19,6 +19,7 @@ import (
 	cryptorand "crypto/rand"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync"
@@ -41,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -342,8 +342,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 	// This operation is tentatively called "relinquish" - it semantically represents the
 	// release of a resource from the management of Pulumi.
 	if old != nil && !old.External && old.ID != event.ID() {
-		logging.V(7).Infof(
-			"stepGenerator.GenerateReadSteps(...): replacing existing resource %s, ids don't match", urn)
+		slog.Info(
+			"stepGenerator.GenerateReadSteps: replacing existing resource, ids don't match", "urn", urn)
 		sg.replaces[urn] = true
 		return []Step{
 			NewReadReplacementStep(sg.deployment, event, old, newState),
@@ -351,8 +351,8 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, err
 		}, nil
 	}
 
-	if bool(logging.V(7)) && old != nil && old.ID == event.ID() {
-		logging.V(7).Infof("stepGenerator.GenerateReadSteps(...): recognized relinquish of resource %s", urn)
+	if old != nil && old.ID == event.ID() {
+		slog.Info("stepGenerator.GenerateReadSteps: recognized relinquish of resource", "urn", urn)
 	}
 
 	// If we're in destroy mode we need to ensure this state is deleted later.
@@ -394,7 +394,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, boo
 func (sg *stepGenerator) validateSteps(steps []Step) ([]Step, error) {
 	// Check each proposed step against the relevant resource plan, if any
 	for _, s := range steps {
-		logging.V(5).Infof("Checking step %s for %s", s.Op(), s.URN())
+		slog.Info("Checking step", "op", s.Op(), "urn", s.URN())
 
 		if sg.deployment.plan != nil {
 			if resourcePlan, ok := sg.deployment.plan.ResourcePlans[s.URN()]; ok {
@@ -618,7 +618,7 @@ func (sg *stepGenerator) getOldResource(
 	// Generate the aliases for this resource.
 	aliases := sg.generateAliases(name, typ, parent, resAliases)
 	// Log the aliases we're going to use to help with debugging aliasing issues.
-	logging.V(7).Infof("Generated aliases for %s: %v", urn, aliases)
+	slog.Info("Generated aliases", "urn", urn, "aliases", aliases)
 
 	if previousAliasURN, alreadyAliased := sg.aliased[urn]; alreadyAliased {
 		// This resource is claiming to be X but we've already seen another resource claim that via aliases
@@ -662,7 +662,7 @@ func (sg *stepGenerator) getOldResource(
 				sg.aliases[urn] = urnOrAlias
 
 				// Log the alias we matched to help with debugging aliasing issues.
-				logging.V(7).Infof("Matched alias %v resolving to %v for resource %v", urnOrAlias, old.URN, urn)
+				slog.Info("Matched alias", "alias", urnOrAlias, "resolvesTo", old.URN, "urn", urn)
 			}
 			break
 		}
@@ -1362,7 +1362,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	//  already existed.
 	contract.Assertf(!recreating || old != nil, "cannot recreate a resource that doesn't exist")
 	if recreating {
-		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
+		slog.Info("Planner decided to re-create replaced resource deleted due to dependent DBR", "urn", urn)
 
 		// Unmark this resource as deleted, we now know it's being replaced instead.
 		delete(sg.deletes, urn)
@@ -1383,7 +1383,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	//  to take its place. Since this is technically a replacement operation, we pend deletion of
 	//  read until the end of the deployment.
 	if wasExternal {
-		logging.V(7).Infof("Planner recognized '%s' as old external resource, creating instead", urn)
+		slog.Info("Planner recognized old external resource, creating instead", "urn", urn)
 		sg.creates[urn] = true
 		return []Step{
 			NewCreateReplacementStep(sg.deployment, event, old, new, nil, nil, nil, true),
@@ -1422,8 +1422,8 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		// If the user requested only specific resources to update, and this resource was not in
 		// that set, then we should emit a SameStep for it.
 		if !isTargeted {
-			logging.V(7).Infof(
-				"Planner decided not to update '%v' due to not being in target group (same) (inputs=%v)", urn, new.Inputs)
+			slog.Info(
+				"Planner decided not to update due to not being in target group (same)", "urn", urn, "inputs", new.Inputs)
 			// We need to check that we have the provider for this resource.
 			if old.Provider != "" {
 				ref, err := sdkproviders.ParseReference(old.Provider)
@@ -1625,7 +1625,8 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 	}
 
 	sg.creates[urn] = true
-	logging.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.Inputs)
+	slog.Info("Planner decided to create",
+		"urn", urn, "inputs", new.Inputs)
 	return []Step{NewCreateStep(sg.deployment, event, new)}, false, nil
 }
 
@@ -1694,7 +1695,7 @@ func (sg *stepGenerator) ContinueStepsFromDiff(event ContinueResourceDiffEvent) 
 	// needs to be re-created.
 	urn := event.URN()
 	if sg.deletes[urn] {
-		logging.V(7).Infof("Planner decided to re-create replaced resource '%v' deleted due to dependent DBR", urn)
+		slog.Info("Planner decided to re-create replaced resource deleted due to dependent DBR", "urn", urn)
 
 		// Unmark this resource as deleted, we now know it's being replaced instead.
 		delete(sg.deletes, urn)
@@ -1737,7 +1738,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 		if len(updateSteps) == 0 {
 			// Diff didn't produce any steps for this resource.  Fall through and indicate that it
 			// is same/unchanged.
-			logging.V(7).Infof("Planner decided not to update '%v' after diff (same) (inputs=%v)", urn, new.Inputs)
+			slog.Info("Planner decided not to update after diff (same)",
+				"urn", urn, "inputs", new.Inputs)
 
 			// No need to update anything, the properties didn't change.
 
@@ -1863,10 +1865,9 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				new.Inputs = inputs
 			}
 
-			if logging.V(7) {
-				logging.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v replaceKeys=%v)",
-					urn, old.Inputs, new.Inputs, diff.ReplaceKeys)
-			}
+			slog.Info("Planner decided to replace",
+				"urn", urn, "oldInputs", old.Inputs, "inputs", new.Inputs,
+				"replaceKeys", diff.ReplaceKeys)
 
 			// We have two approaches to performing replacements:
 			//
@@ -1886,7 +1887,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				deleteBeforeReplace = *goal.DeleteBeforeReplace
 			}
 			if deleteBeforeReplace {
-				logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
+				slog.Info("Planner decided to delete-before-replacement for resource", "urn", urn)
 				contract.Assertf(sg.deployment.depGraph != nil,
 					"dependency graph must be available for delete-before-replace")
 
@@ -1940,8 +1941,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 
 					sg.dependentReplaceKeys[dependentResource.URN] = toReplace[i].keys
 
-					logging.V(7).Infof("Planner decided to delete '%v' due to dependence on condemned resource '%v'",
-						dependentResource.URN, urn)
+					slog.Info("Planner decided to delete due to dependence on condemned resource",
+						"urn", dependentResource.URN, "condemnedUrn", urn)
 
 					// This resource might already be pending-delete
 					if dependentResource.Delete {
@@ -2002,9 +2003,8 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 
 		// If we fell through, it's an update.
 		sg.updates[urn] = true
-		if logging.V(7) {
-			logging.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v)", urn, old.Inputs, new.Inputs)
-		}
+		slog.Info("Planner decided to update",
+			"urn", urn, "oldInputs", old.Inputs, "inputs", new.Inputs)
 		oldViews := sg.deployment.GetOldViews(old.URN)
 		return []Step{
 			NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
@@ -2097,7 +2097,7 @@ func (sg *stepGenerator) GenerateRefreshes(
 				}
 
 				if add {
-					logging.V(7).Infof("Planner decided to refresh '%v'", res.URN)
+					slog.Info("Planner decided to refresh", "urn", res.URN)
 					oldViews := sg.deployment.GetOldViews(res.URN)
 					step := NewRefreshStep(sg.deployment, nil, res, oldViews, nil)
 					sg.refreshes[res.URN] = true
@@ -2187,22 +2187,22 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 					// whenever we see multiple deletes for the same URN.
 					// contract.Assert(!sg.deletes[res.URN])
 					if sg.pendingDeletes[res] {
-						logging.V(7).Infof(
-							"Planner ignoring pending-delete resource (%v, %v) that was already deleted", res.URN, res.ID)
+						slog.Info(
+							"Planner ignoring pending-delete resource that was already deleted", "urn", res.URN, "id", res.ID)
 						continue
 					}
 
 					if sg.deletes[res.URN] {
-						logging.V(7).Infof(
-							"Planner is deleting pending-delete urn '%v' that has already been deleted", res.URN)
+						slog.Info(
+							"Planner is deleting pending-delete urn that has already been deleted", "urn", res.URN)
 					}
 
-					logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
+					slog.Info("Planner decided to delete due to replacement", "urn", res.URN)
 					sg.deletes[res.URN] = true
 					oldViews := sg.deployment.GetOldViews(res.URN)
 					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
 				} else if !sg.isOperatedOn(res.URN) {
-					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
+					slog.Info("Planner decided to delete", "urn", res.URN)
 					sg.deletes[res.URN] = true
 					if !res.PendingReplacement {
 						oldViews := sg.deployment.GetOldViews(res.URN)
@@ -2395,7 +2395,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	// DAG dependencies, as well as children (transitively).
 	targets := sg.getTargetDependents(targetsOpt)
 
-	logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
+	slog.Info("Planner was asked to only delete/update", "targets", targetsOpt)
 	resourcesToDelete := make(map[resource.URN]bool)
 
 	// Now actually use all the requested targets to figure out the exact set to delete.
@@ -2427,19 +2427,19 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 			deps = append(deps, replacedWith...)
 
 			for _, dep := range deps {
-				logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
+				slog.Info("GenerateDeletes: adding dependent", "urn", dep.res.URN)
 				resourcesToDelete[dep.res.URN] = true
 			}
 		}
 	}
 
-	if logging.V(7) {
+	if slog.Default().Enabled(context.TODO(), slog.LevelInfo) {
 		keys := []resource.URN{}
 		for k := range resourcesToDelete {
 			keys = append(keys, k)
 		}
 
-		logging.V(7).Infof("Planner will delete all of '%v'", keys)
+		slog.Info("Planner will delete all of", "keys", keys)
 	}
 
 	return resourcesToDelete, nil
@@ -2459,7 +2459,7 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 	// DAG dependencies, as well as children (transitively).
 	excludes := sg.getExcludeDependencies(excludesOpt)
 
-	logging.V(7).Infof("Planner was asked not to delete/update '%v'", excludesOpt)
+	slog.Info("Planner was asked not to delete/update", "excludes", excludesOpt)
 	resourcesToKeep := make(map[resource.URN]bool)
 
 	for exclude := range excludes {
@@ -2471,13 +2471,13 @@ func (sg *stepGenerator) determineForbiddenResourcesToDeleteFromExcludes(
 		resourcesToKeep[exclude] = true
 	}
 
-	if logging.V(7) {
+	if slog.Default().Enabled(context.TODO(), slog.LevelInfo) {
 		keys := []resource.URN{}
 		for k := range resourcesToKeep {
 			keys = append(keys, k)
 		}
 
-		logging.V(7).Infof("Planner will ignore '%v'", keys)
+		slog.Info("Planner will ignore", "keys", keys)
 	}
 
 	return resourcesToKeep, nil
@@ -2526,7 +2526,7 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 	condemned := mapset.NewSet[*resource.State]() // the set of condemned resources.
 	stepMap := make(map[*resource.State]Step)     // a map from resource states to the steps that delete them.
 
-	logging.V(7).Infof("Planner trusts dependency graph, scheduling deletions in parallel")
+	slog.Info("Planner trusts dependency graph, scheduling deletions in parallel")
 
 	// For every step we've been given, record it as condemned and save the step that will be used to delete it. We'll
 	// iteratively place these steps into antichains as we remove elements from the condemned set.
@@ -2537,13 +2537,13 @@ func (sg *stepGenerator) ScheduleDeletes(deleteSteps []Step) []antichain {
 
 	for !condemned.IsEmpty() {
 		var steps antichain
-		logging.V(7).Infof("Planner beginning schedule of new deletion antichain")
+		slog.Info("Planner beginning schedule of new deletion antichain")
 		for res := range condemned.Iter() {
 			// Does res have any outgoing edges to resources that haven't already been removed from the graph?
 			condemnedDependencies := dg.DependenciesOf(res).Intersect(condemned)
 			if condemnedDependencies.IsEmpty() {
 				// If not, it's safe to delete res at this stage.
-				logging.V(7).Infof("Planner scheduling deletion of '%v'", res.URN)
+				slog.Info("Planner scheduling deletion", "urn", res.URN)
 				steps = append(steps, stepMap[res])
 			}
 
@@ -2587,8 +2587,8 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 		return false, nil
 	}
 
-	logging.V(stepExecutorLogLevel).Infof("sg.diffProvider(%s, ...): observed provider diff", urn)
-	logging.V(stepExecutorLogLevel).Infof("sg.diffProvider(%s, ...): %v => %v", urn, old.Provider, new.Provider)
+	slog.Info("sg.diffProvider: observed provider diff",
+		"urn", urn, "oldProvider", old.Provider, "newProvider", new.Provider)
 
 	// If we're changing from a component resource to a non-component resource, there is no old provider to
 	// diff against and trigger a delete but we need to Create the new custom resource. If we're changing from
@@ -2607,8 +2607,8 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 	}
 
 	if alias, ok := sg.aliased[oldRef.URN()]; ok && alias == newRef.URN() {
-		logging.V(stepExecutorLogLevel).Infof(
-			"sg.diffProvider(%s, ...): observed an aliased provider from %q to %q", urn, oldRef.URN(), newRef.URN())
+		slog.Info(
+			"sg.diffProvider: observed an aliased provider", "urn", urn, "oldProvider", oldRef.URN(), "newProvider", newRef.URN())
 		return false, nil
 	}
 
@@ -2640,14 +2640,14 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 
 	// If there is a replacement diff, we must also replace this resource.
 	if diff.Replace() {
-		logging.V(stepExecutorLogLevel).Infof(
-			"sg.diffProvider(%s, ...): new provider's DiffConfig reported replacement", urn)
+		slog.Info(
+			"sg.diffProvider: new provider's DiffConfig reported replacement", "urn", urn)
 		return true, nil
 	}
 
 	// Otherwise, it's safe to allow this new provider to replace our old one.
-	logging.V(stepExecutorLogLevel).Infof(
-		"sg.diffProvider(%s, ...): both providers are default, proceeding with resource diff", urn)
+	slog.Info(
+		"sg.diffProvider: both providers are default, proceeding with resource diff", "urn", urn)
 	return false, nil
 }
 
@@ -2668,10 +2668,10 @@ func (sg *stepGenerator) diff(
 	if new.ReplaceWith != nil {
 		for _, replaceWithURN := range new.ReplaceWith {
 			if sg.replaces[replaceWithURN] {
-				logging.V(7).Infof(
-					"Resource %v marked for replacement because %v (in its ReplaceWith list) is being replaced",
-					urn,
-					replaceWithURN,
+				slog.Info(
+					"Resource marked for replacement because resource in ReplaceWith list is being replaced",
+					"urn", urn,
+					"replaceWith", replaceWithURN,
 				)
 				return plugin.DiffResult{Changes: plugin.DiffSome, ReplaceKeys: []resource.PropertyKey{"replaceWith"}}, nil, nil
 			}

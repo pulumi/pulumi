@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -30,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // yarnClassic is an implementation of PackageManager that uses Yarn Classic,
@@ -85,15 +85,15 @@ func (yarn *yarnClassic) Install(ctx context.Context, dir string, production boo
 		err = yarn.runCmd(command, stderr)
 
 		if err == nil {
-			logging.V(5).Infof("yarn install succeeded on attempt %d", attempt)
+			slog.Info("yarn install succeeded", "attempt", attempt)
 			return nil
 		}
 
 		// Don't sleep after the last attempt
 		if attempt < maxRetries-1 {
 			delay := time.Second * time.Duration(2^(attempt)) // Exponential backoff: 1s, 2s, 4s
-			logging.V(5).Infof("yarn install failed (attempt %d/%d), retrying in %v: %v",
-				attempt+1, maxRetries, delay, err)
+			slog.Info("yarn install failed, retrying",
+				"attempt", attempt+1, "maxRetries", maxRetries, "delay", delay, "err", err)
 
 			select {
 			case <-time.After(delay):

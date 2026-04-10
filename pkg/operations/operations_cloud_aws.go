@@ -16,13 +16,13 @@ package operations
 
 import (
 	"encoding/json"
+	"log/slog"
 	"regexp"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
@@ -59,7 +59,7 @@ const (
 
 func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
-	logging.V(6).Infof("GetLogs[%v]", state.URN)
+	slog.Info("GetLogs", "urn", state.URN)
 	//exhaustive:ignore
 	switch state.Type {
 	case cloudFunctionType:
@@ -69,7 +69,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		name := state.URN.Name()
 		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
-			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
+			slog.Info("Child resource not found", "type", awsLambdaFunctionTypeName, "name", name)
 			return nil, nil
 		}
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
@@ -84,7 +84,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 				logs = append(logs, *extractedLog)
 			}
 		}
-		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
+		slog.Info("GetLogs return", "urn", state.URN, "numLogs", len(logs))
 		return &logs, nil
 	case cloudLogCollectorType:
 		// A LogCollector has an aws:serverless:Function which is wired up to receive logs from all other compute in the
@@ -98,7 +98,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		name := state.URN.Name()
 		serverlessFunction, ok := ops.component.GetChild(awsLambdaFunctionTypeName, name)
 		if !ok {
-			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLambdaFunctionTypeName, name)
+			slog.Info("Child resource not found", "type", awsLambdaFunctionTypeName, "name", name)
 			return nil, nil
 		}
 		rawLogs, err := serverlessFunction.OperationsProvider(ops.config).GetLogs(query)
@@ -124,8 +124,8 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 					match = oldFunctionNameFromLogGroupNameRegExp.FindStringSubmatch(logMessage.LogGroup)
 				}
 				if len(match) != 2 {
-					logging.V(5).Infof("Skipping invalid log name found in log collector %s. "+
-						"Possibly mismatched versions of pulumi and pulumi-cloud.", state.URN)
+					slog.Info("Skipping invalid log name found in log collector. "+
+						"Possibly mismatched versions of pulumi and pulumi-cloud.", "urn", state.URN)
 					continue
 				}
 				logName := match[1]
@@ -137,7 +137,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 				}
 			}
 		}
-		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
+		slog.Info("GetLogs return", "urn", state.URN, "numLogs", len(logs))
 		return &logs, nil
 	case cloudServiceType, cloudTaskType:
 		// Both Services and Tasks track a log group, which we can directly query for logs.  These logs are only
@@ -146,7 +146,7 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		name := urn.Name()
 		logGroup, ok := ops.component.GetChild(awsLogGroupTypeName, name)
 		if !ok {
-			logging.V(6).Infof("Child resource (type %v, name %v) not found", awsLogGroupTypeName, name)
+			slog.Info("Child resource not found", "type", awsLogGroupTypeName, "name", name)
 			return nil, nil
 		}
 		rawLogs, err := logGroup.OperationsProvider(ops.config).GetLogs(query)
@@ -162,11 +162,11 @@ func (ops *cloudOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 				Timestamp: rawLog.Timestamp,
 			})
 		}
-		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
+		slog.Info("GetLogs return", "urn", state.URN, "numLogs", len(logs))
 		return &logs, nil
 	default:
 		// Else this resource kind does not produce any logs.
-		logging.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
+		slog.Info("GetLogs does not produce logs", "urn", state.URN)
 		return nil, nil
 	}
 }
@@ -219,7 +219,7 @@ func extractLambdaLogMessage(message string, id string) *LogEntry {
 	if len(innerMatches) > 0 {
 		contract.Assertf(len(innerMatches[0]) >= 3, "expected log regexp to always produce at least two capture groups")
 		timestamp, err := time.Parse(time.RFC3339Nano, innerMatches[0][1])
-		logging.V(9).Infof("Matched Lambda log message as [%v]:'%s' from: %s", timestamp, innerMatches[0][2], message)
+		slog.Info("Matched Lambda log message", "timestamp", timestamp, "extracted", innerMatches[0][2], "message", message)
 		contract.Assertf(err == nil, "expected to be able to parse timestamp")
 		return &LogEntry{
 			ID:        id,
@@ -227,6 +227,6 @@ func extractLambdaLogMessage(message string, id string) *LogEntry {
 			Timestamp: timestamp.UnixNano() / 1000000, // milliseconds
 		}
 	}
-	logging.V(9).Infof("Could not match Lambda log message: %s", message)
+	slog.Info("Could not match Lambda log message", "message", message)
 	return nil
 }

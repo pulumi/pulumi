@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"reflect"
 	"slices"
@@ -35,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
 
@@ -148,7 +148,7 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 	return sm.mutate(func() bool {
 		old, new := step.Old(), step.New()
 		if old != nil && new != nil && old.Outputs.DeepEquals(new.Outputs) {
-			logging.V(9).Infof("SnapshotManager: eliding RegisterResourceOutputs due to equal outputs")
+			slog.Info("SnapshotManager: eliding RegisterResourceOutputs due to equal outputs")
 			return false
 		}
 
@@ -161,7 +161,7 @@ func (sm *SnapshotManager) RegisterResourceOutputs(step deploy.Step) error {
 // intent to mutate before the mutation occurs.
 func (sm *SnapshotManager) BeginMutation(step deploy.Step) (engine.SnapshotMutation, error) {
 	contract.Requiref(step != nil, "step", "cannot be nil")
-	logging.V(9).Infof("SnapshotManager: Beginning mutation for step `%s` on resource `%s`", step.Op(), step.URN())
+	slog.Info("SnapshotManager: Beginning mutation for step", "op", step.Op(), "urn", step.URN())
 
 	switch step.Op() {
 	case deploy.OpSame:
@@ -236,32 +236,32 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
 	if old.URN != new.URN {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of URN")
+		slog.Info("SnapshotManager: mustWrite() true because of URN")
 		return true
 	}
 
 	// If the type of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
 	if old.Type != new.Type {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Type")
+		slog.Info("SnapshotManager: mustWrite() true because of Type")
 		return true
 	}
 
 	// If the kind of this resource has changed, we must write the checkpoint.
 	if old.Custom != new.Custom {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Custom")
+		slog.Info("SnapshotManager: mustWrite() true because of Custom")
 		return true
 	}
 
 	// We need to persist the changes if CustomTimes have changed
 	if old.CustomTimeouts != new.CustomTimeouts {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of CustomTimeouts")
+		slog.Info("SnapshotManager: mustWrite() true because of CustomTimeouts")
 		return true
 	}
 
 	// We need to persist the changes if CustomTimes have changed
 	if old.RetainOnDelete != new.RetainOnDelete {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of RetainOnDelete")
+		slog.Info("SnapshotManager: mustWrite() true because of RetainOnDelete")
 		return true
 	}
 
@@ -271,38 +271,38 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving
 	// aliased providers or upgrades to default providers.
 	if old.Provider != new.Provider {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Provider")
+		slog.Info("SnapshotManager: mustWrite() true because of Provider")
 		return true
 	}
 
 	// If this resource's parent has changed, we must write the checkpoint.
 	if old.Parent != new.Parent {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Parent")
+		slog.Info("SnapshotManager: mustWrite() true because of Parent")
 		return true
 	}
 
 	// If the DeletedWith attribute of this resource has changed, we must write the checkpoint.
 	if old.DeletedWith != new.DeletedWith {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of DeletedWith")
+		slog.Info("SnapshotManager: mustWrite() true because of DeletedWith")
 		return true
 	}
 
 	// If the ReplaceWith attribute of this resource has changed, we must write the checkpoint.
 	if len(old.ReplaceWith) != len(new.ReplaceWith) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+		slog.Info("SnapshotManager: mustWrite() true because of ReplaceWith")
 		return true
 	}
 
 	for i, replaceWith := range old.ReplaceWith {
 		if replaceWith != new.ReplaceWith[i] {
-			logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplaceWith")
+			slog.Info("SnapshotManager: mustWrite() true because of ReplaceWith")
 			return true
 		}
 	}
 
 	// If the protection attribute of this resource has changed, we must write the checkpoint.
 	if old.Protect != new.Protect {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Protect")
+		slog.Info("SnapshotManager: mustWrite() true because of Protect")
 		return true
 	}
 
@@ -310,11 +310,11 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// for the inputs of a "same" resource to have changed even if the contents of the input bags are different if the
 	// resource's provider deems the physical change to be semantically irrelevant.
 	if !old.Inputs.DeepEquals(new.Inputs) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Inputs")
+		slog.Info("SnapshotManager: mustWrite() true because of Inputs")
 		return true
 	}
 	if !old.Outputs.DeepEquals(new.Outputs) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Outputs")
+		slog.Info("SnapshotManager: mustWrite() true because of Outputs")
 		return true
 	}
 
@@ -331,18 +331,18 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 		oldDeps := sortDeps(old.Dependencies)
 		newDeps := sortDeps(new.Dependencies)
 		if !reflect.DeepEqual(oldDeps, newDeps) {
-			logging.V(9).Infof("SnapshotManager: mustWrite() true because of Dependencies")
+			slog.Info("SnapshotManager: mustWrite() true because of Dependencies")
 			return true
 		}
 	}
 
 	if !reflect.DeepEqual(old.ResourceHooks, new.ResourceHooks) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ResourceHooks")
+		slog.Info("SnapshotManager: mustWrite() true because of ResourceHooks")
 		return true
 	}
 
 	if !old.ReplacementTrigger.DeepEquals(new.ReplacementTrigger) {
-		logging.V(9).Infof("SnapshotManager: mustWrite() true because of ReplacementTrigger")
+		slog.Info("SnapshotManager: mustWrite() true because of ReplacementTrigger")
 		return true
 	}
 
@@ -351,14 +351,14 @@ func (ssm *sameSnapshotMutation) mustWrite(step deploy.Step) bool {
 	// for performance we elide those as well. This prevents _every_ resource needing a snapshot write when
 	// making large source code changes.
 
-	logging.V(9).Infof("SnapshotManager: mustWrite() false")
+	slog.Info("SnapshotManager: mustWrite() false")
 	return false
 }
 
 func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpSame, "step.Op()", "must be %q, got %q", deploy.OpSame, step.Op())
-	logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: sameSnapshotMutation.End", "successful", successful)
 	return ssm.manager.mutate(func() bool {
 		sameStep, isSameStep := step.(*deploy.SameStep)
 
@@ -382,18 +382,18 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 			// As such, we diff all of the non-input properties of the resource here and write the snapshot if we find any
 			// changes.
 			if !ssm.mustWrite(step) {
-				logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() eliding write")
+				slog.Info("SnapshotManager: sameSnapshotMutation.End() eliding write")
 				return false
 			}
 		}
 
-		logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() not eliding write")
+		slog.Info("SnapshotManager: sameSnapshotMutation.End() not eliding write")
 		return true
 	})
 }
 
 func (sm *SnapshotManager) doCreate(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doCreate(%s)", step.URN())
+	slog.Info("SnapshotManager.doCreate", "urn", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeCreating)
 		return true
@@ -411,7 +411,7 @@ type createSnapshotMutation struct {
 
 func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
-	logging.V(9).Infof("SnapshotManager: createSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: createSnapshotMutation.End", "successful", successful)
 	return csm.manager.mutate(func() bool {
 		csm.manager.markOperationComplete(step.New())
 		if successful {
@@ -437,7 +437,7 @@ func (csm *createSnapshotMutation) End(step deploy.Step, successful bool) error 
 }
 
 func (sm *SnapshotManager) doUpdate(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doUpdate(%s)", step.URN())
+	slog.Info("SnapshotManager.doUpdate", "urn", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeUpdating)
 		return true
@@ -455,7 +455,7 @@ type updateSnapshotMutation struct {
 
 func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
-	logging.V(9).Infof("SnapshotManager: updateSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: updateSnapshotMutation.End", "successful", successful)
 	return usm.manager.mutate(func() bool {
 		usm.manager.markOperationComplete(step.New())
 		if successful {
@@ -467,7 +467,7 @@ func (usm *updateSnapshotMutation) End(step deploy.Step, successful bool) error 
 }
 
 func (sm *SnapshotManager) doDelete(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doDelete(%s)", step.URN())
+	slog.Info("SnapshotManager.doDelete", "urn", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.Old(), resource.OperationTypeDeleting)
 		return true
@@ -485,7 +485,7 @@ type deleteSnapshotMutation struct {
 
 func (dsm *deleteSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
-	logging.V(9).Infof("SnapshotManager: deleteSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: deleteSnapshotMutation.End", "successful", successful)
 	return dsm.manager.mutate(func() bool {
 		dsm.manager.markOperationComplete(step.Old())
 		if successful {
@@ -509,12 +509,12 @@ type replaceSnapshotMutation struct {
 }
 
 func (rsm *replaceSnapshotMutation) End(step deploy.Step, successful bool) error {
-	logging.V(9).Infof("SnapshotManager: replaceSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: replaceSnapshotMutation.End", "successful", successful)
 	return nil
 }
 
 func (sm *SnapshotManager) doRead(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doRead(%s)", step.URN())
+	slog.Info("SnapshotManager.doRead", "urn", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeReading)
 		return true
@@ -532,7 +532,7 @@ type readSnapshotMutation struct {
 
 func (rsm *readSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
-	logging.V(9).Infof("SnapshotManager: readSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: readSnapshotMutation.End", "successful", successful)
 	return rsm.manager.mutate(func() bool {
 		rsm.manager.markOperationComplete(step.New())
 		if successful {
@@ -553,7 +553,7 @@ type refreshSnapshotMutation struct {
 func (rsm *refreshSnapshotMutation) End(step deploy.Step, successful bool) error {
 	contract.Requiref(step != nil, "step", "must not be nil")
 	contract.Requiref(step.Op() == deploy.OpRefresh, "step.Op", "must be %q, got %q", deploy.OpRefresh, step.Op())
-	logging.V(9).Infof("SnapshotManager: refreshSnapshotMutation.End(..., %v)", successful)
+	slog.Info("SnapshotManager: refreshSnapshotMutation.End", "successful", successful)
 	return rsm.manager.mutate(func() bool {
 		// We normally elide refreshes. The expectation is that all of these run before any actual mutations and that
 		// some other component will rewrite the base snapshot in-memory, so there's no action the snapshot
@@ -595,7 +595,7 @@ func (rsm *removePendingReplaceSnapshotMutation) End(step deploy.Step, successfu
 }
 
 func (sm *SnapshotManager) doImport(step deploy.Step) (engine.SnapshotMutation, error) {
-	logging.V(9).Infof("SnapshotManager.doImport(%s)", step.URN())
+	slog.Info("SnapshotManager.doImport", "urn", step.URN())
 	err := sm.mutate(func() bool {
 		sm.markOperationPending(step.New(), resource.OperationTypeImporting)
 		return true
@@ -630,7 +630,7 @@ func (ism *importSnapshotMutation) End(step deploy.Step, successful bool) error 
 func (sm *SnapshotManager) markDone(state *resource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.dones[state] = true
-	logging.V(9).Infof("Marked old state snapshot as done: %v", state.URN)
+	slog.Info("Marked old state snapshot as done", "urn", state.URN)
 }
 
 // markNew marks a resource as existing in the new snapshot. This occurs on
@@ -639,21 +639,21 @@ func (sm *SnapshotManager) markDone(state *resource.State) {
 func (sm *SnapshotManager) markNew(state *resource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.resources = append(sm.resources, state)
-	logging.V(9).Infof("Appended new state snapshot to be written: %v", state.URN)
+	slog.Info("Appended new state snapshot to be written", "urn", state.URN)
 }
 
 // markOperationPending marks a resource as undergoing an operation that will now be considered pending.
 func (sm *SnapshotManager) markOperationPending(state *resource.State, op resource.OperationType) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.operations = append(sm.operations, resource.NewOperation(state, op))
-	logging.V(9).Infof("SnapshotManager.markPendingOperation(%s, %s)", state.URN, string(op))
+	slog.Info("SnapshotManager.markPendingOperation", "urn", state.URN, "op", string(op))
 }
 
 // markOperationComplete marks a resource as having completed the operation that it previously was performing.
 func (sm *SnapshotManager) markOperationComplete(state *resource.State) {
 	contract.Requiref(state != nil, "state", "must not be nil")
 	sm.completeOps[state] = true
-	logging.V(9).Infof("SnapshotManager.markOperationComplete(%s)", state.URN)
+	slog.Info("SnapshotManager.markOperationComplete", "urn", state.URN)
 }
 
 // snap produces a new Snapshot given the base snapshot and a list of resources that the current
@@ -808,17 +808,17 @@ func (sm *SnapshotManager) saveSnapshot() error {
 
 		repairedDeployment, repairErr := sm.repairAndSerialize()
 		if repairErr != nil {
-			logging.V(3).Infof("SnapshotManager: failed to repair snapshot: %v", repairErr)
+			slog.Info("SnapshotManager: failed to repair snapshot", "err", repairErr)
 			autoRepairErr = repairErr
 		} else if verifyErr := snapshot.VerifyIntegrity(repairedDeployment.Deployment); verifyErr != nil {
-			logging.V(3).Infof("SnapshotManager: repaired snapshot still invalid: %v", verifyErr)
+			slog.Info("SnapshotManager: repaired snapshot still invalid", "err", verifyErr)
 			autoRepairErr = verifyErr
 		} else {
 			repairedDeployment.Deployment.Metadata.IntegrityErrorMetadata = nil
 			if err := sm.persister.Save(repairedDeployment); err != nil {
 				return fmt.Errorf("failed to save snapshot: %w", err)
 			}
-			logging.V(3).Infof("SnapshotManager: auto-repaired snapshot integrity error: %v", integrityError)
+			slog.Info("SnapshotManager: auto-repaired snapshot integrity error", "err", integrityError)
 			return nil
 		}
 	}
@@ -910,7 +910,7 @@ serviceLoop:
 	// If we still have elided writes once the channel has closed, flush the snapshot.
 	var err error
 	if hasElidedWrites {
-		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
+		slog.Info("SnapshotManager: flushing elided writes")
 		err = sm.saveSnapshot()
 	}
 	done <- err

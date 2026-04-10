@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"math"
 	"os"
@@ -41,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v3"
 )
@@ -1397,7 +1397,7 @@ func (proj *Project) AddConfigStackTags(tags map[string]string) {
 
 	tagMap, ok := configTags.Value.(map[string]string)
 	if !ok {
-		logging.Warningf("overwriting non-object `%s` project config", "pulumi:tags")
+		slog.Warn("overwriting non-object project config", "key", "pulumi:tags")
 		tagMap = map[string]string{}
 	}
 	for k, v := range tags {

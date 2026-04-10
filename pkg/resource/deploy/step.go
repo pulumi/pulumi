@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -31,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // StepCompleteFunc is the type of functions returned from Step.Apply. These
@@ -1517,8 +1517,8 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 	}
 
-	logging.V(10).Infof("Refreshed resource ID: %q, Inputs: #%d, Outputs: #%d",
-		refreshed.ID, len(refreshed.Inputs), len(refreshed.Outputs))
+	slog.Debug("refreshed resource",
+		"id", refreshed.ID, "inputs", len(refreshed.Inputs), "outputs", len(refreshed.Outputs))
 
 	// If the ID is blank treat this as a delete, and leave outputs blank.
 	var outputs resource.PropertyMap
@@ -1539,7 +1539,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		// it will have changed already in the outputs, but we need to persist this change
 		// at a state level because the Id
 		if refreshed.ID != resourceID {
-			logging.V(7).Infof("Refreshing ID; oldId=%s, newId=%s", resourceID, refreshed.ID)
+			slog.Info("refreshing ID", "oldId", resourceID, "newId", refreshed.ID)
 			resourceID = refreshed.ID
 		}
 
@@ -1584,9 +1584,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		}
 
 		if s.old.External {
-			logging.V(7).Infof("External resource %s; diffing outputs only", s.URN())
+			slog.Info("external resource; diffing outputs only", "urn", s.URN())
 		} else if s.deployment.opts.UseLegacyRefreshDiff {
-			logging.V(7).Infof("Refresh diffing disabled; diffing outputs only (%s)", s.URN())
+			slog.Info("refresh diffing disabled; diffing outputs only", "urn", s.URN())
 		} else {
 			// To compute refresh diffs against the desired state, we compute the diff
 			// that a user would see if they immediately ran an `up` operation on a
@@ -1620,7 +1620,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			}
 
 			s.diff = diff.Invert()
-			logging.V(7).Infof("Refresh diff for %s: %v", s.URN(), s.diff)
+			slog.Info("refresh diff", "urn", s.URN(), "diff", s.diff)
 		}
 	} else {
 		s.isDeleted = true
@@ -1926,10 +1926,11 @@ func (s *ImportStep) Apply() (_ resource.Status, _ StepCompleteFunc, err error) 
 		}
 
 		if len(inputProperties) == 0 {
-			logging.V(9).Infof("Importing %v with all properties", s.URN())
+			slog.Info("importing with all properties", "urn", s.URN())
 			s.new.Inputs = s.old.Inputs.Copy()
 		} else {
-			logging.V(9).Infof("Importing %v with supplied properties: %v", s.URN(), inputProperties)
+			slog.Debug("Importing with supplied properties",
+				"urn", s.URN(), "properties", inputProperties)
 			for _, p := range inputProperties {
 				k := resource.PropertyKey(p)
 				if value, has := s.old.Inputs[k]; has {
