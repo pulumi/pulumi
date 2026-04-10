@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Support Input[Optional[T]] in Python runtime type unwrapping
