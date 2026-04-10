@@ -25,7 +25,7 @@ class InvokeResult:
         if boolean_map and not isinstance(boolean_map, dict):
             raise TypeError("Expected argument 'boolean_map' to be a dict")
         pulumi.set(__self__, "boolean_map", boolean_map)
-        if float and not isinstance(float, float):
+        if float and not isinstance(float, _builtins.float):
             raise TypeError("Expected argument 'float' to be a float")
         pulumi.set(__self__, "float", float)
         if integer and not isinstance(integer, int):
