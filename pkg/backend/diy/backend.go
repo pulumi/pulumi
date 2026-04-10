@@ -1096,12 +1096,6 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(ctx, stack.Ref())
-
 	op.Imports = imports
 
 	if op.Opts.PreviewOnly {
@@ -1116,6 +1110,12 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 			ctx, apitype.ResourceImportUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil, nil)
 }
@@ -1148,12 +1148,6 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(ctx, stack.Ref())
-
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
@@ -1166,6 +1160,12 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
 }
