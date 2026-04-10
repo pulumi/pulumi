@@ -22,7 +22,7 @@ server = aws.ec2.Instance("server",
     },
     instance_type=aws.ec2.InstanceType.T2_MICRO,
     security_groups=[security_group.name],
-    ami=ami.id,
+    ami=str(ami.id),
     user_data="""#!/bin/bash
 echo "Hello, World!" > index.html
 nohup python -m SimpleHTTPServer 80 &

@@ -1,7 +1,7 @@
 import pulumi
 import pulumi_output as output
 
-res = output.ComplexResource("res", value=1)
+res = output.ComplexResource("res", value=float(1))
 pulumi.export("entriesOutput", res.output_map.apply(lambda output_map: [{"key": k, "value": v} for k, v in sorted(output_map.items())]))
 pulumi.export("lookupOutput", res.output_map.apply(lambda output_map: output_map.get("x", "default")))
 pulumi.export("lookupOutputDefault", res.output_map.apply(lambda output_map: output_map.get("y", "default")))

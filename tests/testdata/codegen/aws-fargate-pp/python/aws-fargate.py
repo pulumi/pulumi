@@ -7,7 +7,7 @@ vpc = aws.ec2.get_vpc(default=True)
 subnets = aws.ec2.get_subnet_ids(vpc_id=vpc.id)
 # Create a security group that permits HTTP ingress and unrestricted egress.
 web_security_group = aws.ec2.SecurityGroup("webSecurityGroup",
-    vpc_id=vpc.id,
+    vpc_id=str(vpc.id),
     egress=[{
         "protocol": "-1",
         "from_port": 0,
@@ -45,7 +45,7 @@ web_target_group = aws.elasticloadbalancingv2.TargetGroup("webTargetGroup",
     port=80,
     protocol="HTTP",
     target_type="ip",
-    vpc_id=vpc.id)
+    vpc_id=str(vpc.id))
 web_listener = aws.elasticloadbalancingv2.Listener("webListener",
     load_balancer_arn=web_load_balancer.arn,
     port=80,
