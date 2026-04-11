@@ -9353,7 +9353,6 @@ newInputs: (f = msg.getNewInputs()) && google_protobuf_struct_pb.Struct.toObject
 oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 newOutputs: (f = msg.getNewOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-options: (f = msg.getOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f),
 oldOptions: (f = msg.getOldOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f),
 newOptions: (f = msg.getNewOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f)
   };
@@ -9431,14 +9430,9 @@ proto.pulumirpc.ResourceHookRequest.deserializeBinaryFromReader = function(msg, 
     case 9:
       var value = new proto.pulumirpc.ResourceOptions;
       reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
-      msg.setOptions(value);
-      break;
-    case 10:
-      var value = new proto.pulumirpc.ResourceOptions;
-      reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
       msg.setOldOptions(value);
       break;
-    case 11:
+    case 10:
       var value = new proto.pulumirpc.ResourceOptions;
       reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
       msg.setNewOptions(value);
@@ -9532,7 +9526,7 @@ proto.pulumirpc.ResourceHookRequest.serializeBinaryToWriter = function(message, 
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
   }
-  f = message.getOptions();
+  f = message.getOldOptions();
   if (f != null) {
     writer.writeMessage(
       9,
@@ -9540,18 +9534,10 @@ proto.pulumirpc.ResourceHookRequest.serializeBinaryToWriter = function(message, 
       proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
     );
   }
-  f = message.getOldOptions();
-  if (f != null) {
-    writer.writeMessage(
-      10,
-      f,
-      proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
-    );
-  }
   f = message.getNewOptions();
   if (f != null) {
     writer.writeMessage(
-      11,
+      10,
       f,
       proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
     );
@@ -9780,10 +9766,10 @@ proto.pulumirpc.ResourceHookRequest.prototype.hasOldOutputs = function() {
 
 
 /**
- * optional ResourceOptions options = 9;
+ * optional ResourceOptions old_options = 9;
  * @return {?proto.pulumirpc.ResourceOptions}
  */
-proto.pulumirpc.ResourceHookRequest.prototype.getOptions = function() {
+proto.pulumirpc.ResourceHookRequest.prototype.getOldOptions = function() {
   return /** @type{?proto.pulumirpc.ResourceOptions} */ (
     jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceOptions, 9));
 };
@@ -9793,45 +9779,8 @@ proto.pulumirpc.ResourceHookRequest.prototype.getOptions = function() {
  * @param {?proto.pulumirpc.ResourceOptions|undefined} value
  * @return {!proto.pulumirpc.ResourceHookRequest} returns this
 */
-proto.pulumirpc.ResourceHookRequest.prototype.setOptions = function(value) {
-  return jspb.Message.setWrapperField(this, 9, value);
-};
-
-
-/**
- * Clears the message field making it undefined.
- * @return {!proto.pulumirpc.ResourceHookRequest} returns this
- */
-proto.pulumirpc.ResourceHookRequest.prototype.clearOptions = function() {
-  return this.setOptions(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {boolean}
- */
-proto.pulumirpc.ResourceHookRequest.prototype.hasOptions = function() {
-  return jspb.Message.getField(this, 9) != null;
-};
-
-
-/**
- * optional ResourceOptions old_options = 10;
- * @return {?proto.pulumirpc.ResourceOptions}
- */
-proto.pulumirpc.ResourceHookRequest.prototype.getOldOptions = function() {
-  return /** @type{?proto.pulumirpc.ResourceOptions} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceOptions, 10));
-};
-
-
-/**
- * @param {?proto.pulumirpc.ResourceOptions|undefined} value
- * @return {!proto.pulumirpc.ResourceHookRequest} returns this
-*/
 proto.pulumirpc.ResourceHookRequest.prototype.setOldOptions = function(value) {
-  return jspb.Message.setWrapperField(this, 10, value);
+  return jspb.Message.setWrapperField(this, 9, value);
 };
 
 
@@ -9849,17 +9798,17 @@ proto.pulumirpc.ResourceHookRequest.prototype.clearOldOptions = function() {
  * @return {boolean}
  */
 proto.pulumirpc.ResourceHookRequest.prototype.hasOldOptions = function() {
-  return jspb.Message.getField(this, 10) != null;
+  return jspb.Message.getField(this, 9) != null;
 };
 
 
 /**
- * optional ResourceOptions new_options = 11;
+ * optional ResourceOptions new_options = 10;
  * @return {?proto.pulumirpc.ResourceOptions}
  */
 proto.pulumirpc.ResourceHookRequest.prototype.getNewOptions = function() {
   return /** @type{?proto.pulumirpc.ResourceOptions} */ (
-    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceOptions, 11));
+    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceOptions, 10));
 };
 
 
@@ -9868,7 +9817,7 @@ proto.pulumirpc.ResourceHookRequest.prototype.getNewOptions = function() {
  * @return {!proto.pulumirpc.ResourceHookRequest} returns this
 */
 proto.pulumirpc.ResourceHookRequest.prototype.setNewOptions = function(value) {
-  return jspb.Message.setWrapperField(this, 11, value);
+  return jspb.Message.setWrapperField(this, 10, value);
 };
 
 
@@ -9886,7 +9835,7 @@ proto.pulumirpc.ResourceHookRequest.prototype.clearNewOptions = function() {
  * @return {boolean}
  */
 proto.pulumirpc.ResourceHookRequest.prototype.hasNewOptions = function() {
-  return jspb.Message.getField(this, 11) != null;
+  return jspb.Message.getField(this, 10) != null;
 };
 
 

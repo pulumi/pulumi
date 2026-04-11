@@ -1797,7 +1797,6 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			OldOutputs: mOldOutputs,
 			OldOptions: oldOptions,
 			NewOptions: newOptions,
-			Options:    newOptions, // Backward-compatible fallback for older SDKs that only read `options`.
 		})
 		if err != nil {
 			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)

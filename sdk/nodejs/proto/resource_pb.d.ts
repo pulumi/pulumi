@@ -1114,11 +1114,6 @@ export class ResourceHookRequest extends jspb.Message {
     getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
 
-    hasOptions(): boolean;
-    clearOptions(): void;
-    getOptions(): ResourceOptions | undefined;
-    setOptions(value?: ResourceOptions): ResourceHookRequest;
-
     hasOldOptions(): boolean;
     clearOldOptions(): void;
     getOldOptions(): ResourceOptions | undefined;
@@ -1149,7 +1144,6 @@ export namespace ResourceHookRequest {
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
-        options?: ResourceOptions.AsObject,
         oldOptions?: ResourceOptions.AsObject,
         newOptions?: ResourceOptions.AsObject,
     }

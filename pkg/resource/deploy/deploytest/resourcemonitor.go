@@ -280,10 +280,6 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 		}
 		oldOptions := req.OldOptions
 		newOptions := req.NewOptions
-		if oldOptions == nil && newOptions == nil && req.Options != nil {
-			// Compatibility with requests that only populated `options`.
-			newOptions = req.Options
-		}
 		err = f(
 			context.Background(),
 			resource.URN(req.Urn),
