@@ -757,11 +757,15 @@ func ExcludeTargetedUpdateRefreshWithChildProvider(
 	return false
 }
 
-// ExcludeComponentPropertyDepsRefreshV2 excludes snapshots where a component
-// resource (non-custom, non-provider) has property dependencies that reference
-// another component resource during a refreshV2 operation. During refreshV2,
+// ExcludeComponentPropertyDepsRefreshV2 excludes scenarios where the program
+// registers a new component resource (one not present in the snapshot) that has
+// property dependencies on a component that IS in the snapshot. During refreshV2,
 // component resources do not receive refresh steps and can end up reordered
 // relative to their property dependencies, violating snapshot integrity.
+//
+// This is narrower than excluding all component-to-component property deps: if
+// both components already exist in the snapshot, their relative order is preserved
+// since neither gets a refresh step.
 func ExcludeComponentPropertyDepsRefreshV2(
 	snap *SnapshotSpec,
 	prog *ProgramSpec,
@@ -772,40 +776,27 @@ func ExcludeComponentPropertyDepsRefreshV2(
 		return false
 	}
 
-	// Collect URNs of all component resources (non-custom, non-provider) in both
-	// the snapshot and the program.
-	components := make(map[resource.URN]bool)
+	// Collect component URNs present in the snapshot.
+	snapComponents := make(map[resource.URN]bool)
 	for _, res := range snap.Resources {
 		if !res.Custom && !providers.IsProviderType(res.Type) {
-			components[res.URN()] = true
-		}
-	}
-	for _, res := range prog.ResourceRegistrations {
-		if !res.Custom && !providers.IsProviderType(res.Type) {
-			components[res.URN()] = true
+			snapComponents[res.URN()] = true
 		}
 	}
 
-	// Check if any component has a property dependency on another component.
-	for _, res := range snap.Resources {
-		if !components[res.URN()] {
-			continue
-		}
-		for _, deps := range res.PropertyDependencies {
-			for _, dep := range deps {
-				if components[dep] {
-					return true
-				}
-			}
-		}
-	}
+	// Check if any program-registered component that is NOT in the snapshot has a
+	// property dependency on a component that IS in the snapshot.
 	for _, res := range prog.ResourceRegistrations {
-		if !components[res.URN()] {
+		if res.Custom || providers.IsProviderType(res.Type) {
+			continue
+		}
+		if snapComponents[res.URN()] {
+			// Existing component — its position is preserved.
 			continue
 		}
 		for _, deps := range res.PropertyDependencies {
 			for _, dep := range deps {
-				if components[dep] {
+				if snapComponents[dep] {
 					return true
 				}
 			}

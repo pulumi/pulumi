@@ -3718,9 +3718,10 @@ func TestRefreshV2DeletedWithOrdering(t *testing.T) {
 }
 
 // TestComponentPropertyDependencyOrderingRefreshV2 reproduces a snapshot integrity error
-// where a component resource's property dependency ends up after it in the snapshot during
-// refreshV2. Component resources do not receive refresh steps, so they can be reordered
-// relative to their property dependencies.
+// where a new component resource's property dependency on an existing component ends up
+// after it in the snapshot during refreshV2. Component resources do not receive refresh
+// steps, so when a new component is created that depends on an existing component, the
+// existing component can appear after it in the resulting snapshot.
 func TestComponentPropertyDependencyOrderingRefreshV2(t *testing.T) {
 	t.Parallel()
 
@@ -3733,17 +3734,9 @@ func TestComponentPropertyDependencyOrderingRefreshV2(t *testing.T) {
 	}
 	project := p.GetProject()
 
-	// Initial snapshot: provA, provB, resA (component using provB).
+	// Snapshot: provB and resA (component using provB).
 	setupSnap := func() *deploy.Snapshot {
 		s := &deploy.Snapshot{}
-
-		provA := &resource.State{
-			Type:   "pulumi:providers:pkgA",
-			URN:    "urn:pulumi:test-stack::test-project::pulumi:providers:pkgA::provA",
-			Custom: true,
-			ID:     "id-provA",
-		}
-		s.Resources = append(s.Resources, provA)
 
 		provB := &resource.State{
 			Type:   "pulumi:providers:pkgB",
@@ -3772,26 +3765,22 @@ func TestComponentPropertyDependencyOrderingRefreshV2(t *testing.T) {
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{}, nil
 		}),
-		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
-			return &deploytest.Provider{
-				ReadF: func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
-					return plugin.ReadResponse{
-						ReadResult: plugin.ReadResult{Outputs: resource.PropertyMap{}},
-						Status:     resource.StatusOK,
-					}, nil
-				},
-			}, nil
-		}),
 	}
 
-	// Program registers: provA, provB, resA (component), resB (component with
-	// property dep on resA). The property dependency between two components triggers
-	// the reordering bug during refreshV2.
+	// Program: provA (new), resX (new custom resource), provB (existing), resA
+	// (existing component with property dep on resX), resB (new component with
+	// property dep on resA). During refreshV2, resB gets created before resA's
+	// position is finalized, violating the ordering constraint.
 	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 		provA, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{})
 		require.NoError(t, err)
 
 		provRefA, err := providers.NewReference(provA.URN, provA.ID)
+		require.NoError(t, err)
+
+		resX, err := monitor.RegisterResource("pkgA:mod:typ", "resX", true, deploytest.ResourceOptions{
+			Provider: provRefA.String(),
+		})
 		require.NoError(t, err)
 
 		provB, err := monitor.RegisterResource("pulumi:providers:pkgB", "provB", true, deploytest.ResourceOptions{})
@@ -3802,10 +3791,13 @@ func TestComponentPropertyDependencyOrderingRefreshV2(t *testing.T) {
 
 		resA, err := monitor.RegisterResource("pkgB:mod:typ", "resA", false, deploytest.ResourceOptions{
 			Provider: provRefB.String(),
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"prop": {resX.URN},
+			},
 		})
 		require.NoError(t, err)
 
-		_, err = monitor.RegisterResource("pkgA:mod:typ", "resB", false, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:mod:typ2", "resB", false, deploytest.ResourceOptions{
 			Provider: provRefA.String(),
 			PropertyDeps: map[resource.PropertyKey][]resource.URN{
 				"prop": {resA.URN},
@@ -3818,12 +3810,9 @@ func TestComponentPropertyDependencyOrderingRefreshV2(t *testing.T) {
 
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 	opts := lt.TestUpdateOptions{
-		T:     t,
-		HostF: hostF,
-		UpdateOptions: engine.UpdateOptions{
-			Refresh:        true,
-			RefreshProgram: true,
-		},
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
 	}
 
 	_, err := lt.TestOp(engine.RefreshV2).
