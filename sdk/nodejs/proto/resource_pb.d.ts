@@ -1119,6 +1119,16 @@ export class ResourceHookRequest extends jspb.Message {
     getOptions(): ResourceOptions | undefined;
     setOptions(value?: ResourceOptions): ResourceHookRequest;
 
+    hasOldOptions(): boolean;
+    clearOldOptions(): void;
+    getOldOptions(): ResourceOptions | undefined;
+    setOldOptions(value?: ResourceOptions): ResourceHookRequest;
+
+    hasNewOptions(): boolean;
+    clearNewOptions(): void;
+    getNewOptions(): ResourceOptions | undefined;
+    setNewOptions(value?: ResourceOptions): ResourceHookRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceHookRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ResourceHookRequest): ResourceHookRequest.AsObject;
@@ -1140,6 +1150,8 @@ export namespace ResourceHookRequest {
         newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         options?: ResourceOptions.AsObject,
+        oldOptions?: ResourceOptions.AsObject,
+        newOptions?: ResourceOptions.AsObject,
     }
 }
 
@@ -1199,6 +1211,16 @@ export class ErrorHookRequest extends jspb.Message {
     getOptions(): ResourceOptions | undefined;
     setOptions(value?: ResourceOptions): ErrorHookRequest;
 
+    hasOldOptions(): boolean;
+    clearOldOptions(): void;
+    getOldOptions(): ResourceOptions | undefined;
+    setOldOptions(value?: ResourceOptions): ErrorHookRequest;
+
+    hasNewOptions(): boolean;
+    clearNewOptions(): void;
+    getNewOptions(): ResourceOptions | undefined;
+    setNewOptions(value?: ResourceOptions): ErrorHookRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ErrorHookRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ErrorHookRequest): ErrorHookRequest.AsObject;
@@ -1221,6 +1243,8 @@ export namespace ErrorHookRequest {
         failedOperation: string,
         errorsList: Array<string>,
         options?: ResourceOptions.AsObject,
+        oldOptions?: ResourceOptions.AsObject,
+        newOptions?: ResourceOptions.AsObject,
     }
 }
 

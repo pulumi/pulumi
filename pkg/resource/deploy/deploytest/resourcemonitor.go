@@ -180,7 +180,8 @@ type ResourceHookFunc func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
-	options *pulumirpc.ResourceOptions,
+	oldOptions *pulumirpc.ResourceOptions,
+	newOptions *pulumirpc.ResourceOptions,
 	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error
 
@@ -277,13 +278,20 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
+		oldOptions := req.OldOptions
+		newOptions := req.NewOptions
+		if oldOptions == nil && newOptions == nil && req.Options != nil {
+			// Compatibility with requests that only populated `options`.
+			newOptions = req.Options
+		}
 		err = f(
 			context.Background(),
 			resource.URN(req.Urn),
 			resource.ID(req.Id),
 			req.Name,
 			tokens.Type(req.Type),
-			req.Options,
+			oldOptions,
+			newOptions,
 			newInputs,
 			oldInputs,
 			newOutputs,
@@ -368,7 +376,6 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 				return nil, fmt.Errorf("invalid failed operation: %q", req.FailedOperation)
 			}
 		}
-
 		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
 			newInputs, oldInputs, oldOutputs, failedOperation, req.Errors)
 		if err != nil {

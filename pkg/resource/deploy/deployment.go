@@ -734,7 +734,7 @@ func (d *Deployment) Close() error {
 // error will only generate a warning. Otherwise, it will cause an error return.
 func (d *Deployment) RunHooks(
 	hooks []string, hookType resource.HookType, id resource.ID, urn resource.URN,
-	name string, typ tokens.Type, options *pulumirpc.ResourceOptions,
+	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
 	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error {
 	for _, hookName := range hooks {
@@ -749,7 +749,8 @@ func (d *Deployment) RunHooks(
 		err = hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,
-			options,
+			oldOptions,
+			newOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs,
 		)
 		if err != nil {
@@ -774,7 +775,7 @@ func (d *Deployment) RunHooks(
 // RunErrorHooks runs all error hooks on the given state. A hook that returns an error will cause an error return.
 func (d *Deployment) RunErrorHooks(
 	hooks []string, id resource.ID, urn resource.URN,
-	name string, typ tokens.Type, options *pulumirpc.ResourceOptions,
+	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
 	newInputs, oldInputs, oldOutputs resource.PropertyMap,
 	failedOperation string, errors []string,
 ) (bool, error) {
@@ -789,7 +790,8 @@ func (d *Deployment) RunErrorHooks(
 		retry, err := hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,
-			options,
+			oldOptions,
+			newOptions,
 			newInputs, oldInputs, oldOutputs,
 			failedOperation,
 			errors,

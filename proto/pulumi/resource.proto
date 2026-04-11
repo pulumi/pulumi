@@ -357,7 +357,9 @@ message ResourceHookRequest {
     google.protobuf.Struct old_inputs = 6; // the optional checked old inputs of the resource.
     google.protobuf.Struct new_outputs = 7; // the optional new outputs of the resource.
     google.protobuf.Struct old_outputs = 8; // the optional old outputs of the resource.
-    ResourceOptions options = 9; // optional resource options for the resource. Old engines may not set this.
+    ResourceOptions options = 9; // Deprecated fallback for old/new_options. Old engines may only set this.
+    ResourceOptions old_options = 10; // optional old resource options for the resource. Old engines may not set this.
+    ResourceOptions new_options = 11; // optional new resource options for the resource. Old engines may not set this.
 }
 
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
@@ -376,7 +378,9 @@ message ErrorHookRequest {
     google.protobuf.Struct old_outputs = 7; // the optional old outputs of the resource.
     string failed_operation = 8; // the operation that failed (create, read, update, or delete).
     repeated string errors = 9; // the errors that have been seen so far (newest-first).
-    ResourceOptions options = 10; // optional resource options for the resource. Old engines may not set this.
+    ResourceOptions options = 10; // Deprecated fallback for old/new_options. Old engines may only set this.
+    ResourceOptions old_options = 11; // optional old resource options for the resource. Old engines may not set this.
+    ResourceOptions new_options = 12; // optional new resource options for the resource. Old engines may not set this.
 }
 
 // ErrorHookResponse is the response object for error hook callbacks in CallbackInvokeResponse.

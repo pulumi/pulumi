@@ -57,6 +57,7 @@ func TestResourceHookDryRun(t *testing.T) {
 		// Create hook that runs on a dry run (and non-dry run)
 		funTrue := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
@@ -74,6 +75,7 @@ func TestResourceHookDryRun(t *testing.T) {
 
 		// Create hook that does not run on a dry run
 		funFalse := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
 			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
@@ -158,6 +160,7 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
@@ -230,24 +233,26 @@ func TestResourceHooks_OptionsAreSent(t *testing.T) {
 		hook, err := deploytest.NewHook(
 			monitor, callbacks, "myHook",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string, typ tokens.Type,
-				options *pulumirpc.ResourceOptions,
+				oldOptions *pulumirpc.ResourceOptions,
+				newOptions *pulumirpc.ResourceOptions,
 				newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 			) error {
 				hookCalled = true
 				require.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:parent$pkgA:m:typA::resA"), urn)
 
-				require.NotNil(t, options)
-				require.Equal(t, string(parent.URN), options.Parent)
-				require.NotNil(t, options.Protect)
-				require.True(t, options.GetProtect())
-				require.NotNil(t, options.RetainOnDelete)
-				require.True(t, options.GetRetainOnDelete())
-				require.ElementsMatch(t, []string{string(parent.URN)}, options.DependsOn)
-				require.Equal(t, []string{"a"}, options.IgnoreChanges)
-				require.Equal(t, []string{"b"}, options.ReplaceOnChanges)
-				require.Equal(t, []string{"secret"}, options.AdditionalSecretOutputs)
-				require.NotNil(t, options.Hooks)
-				require.Equal(t, []string{"myHook"}, options.Hooks.BeforeCreate)
+				require.Nil(t, oldOptions)
+				require.NotNil(t, newOptions)
+				require.Equal(t, string(parent.URN), newOptions.Parent)
+				require.NotNil(t, newOptions.Protect)
+				require.True(t, newOptions.GetProtect())
+				require.NotNil(t, newOptions.RetainOnDelete)
+				require.True(t, newOptions.GetRetainOnDelete())
+				require.ElementsMatch(t, []string{string(parent.URN)}, newOptions.DependsOn)
+				require.Equal(t, []string{"a"}, newOptions.IgnoreChanges)
+				require.Equal(t, []string{"b"}, newOptions.ReplaceOnChanges)
+				require.Equal(t, []string{"secret"}, newOptions.AdditionalSecretOutputs)
+				require.NotNil(t, newOptions.Hooks)
+				require.Equal(t, []string{"myHook"}, newOptions.Hooks.BeforeCreate)
 				return nil
 			},
 			true,
@@ -286,6 +291,79 @@ func TestResourceHooks_OptionsAreSent(t *testing.T) {
 	require.Len(t, snap.Resources, 3)
 }
 
+func TestResourceHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
+	t.Parallel()
+
+	isUpdate := false
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		hook, err := deploytest.NewHook(
+			monitor, callbacks, "myHook",
+			func(_ context.Context, urn resource.URN, _ resource.ID, _ string, _ tokens.Type,
+				oldOptions *pulumirpc.ResourceOptions,
+				newOptions *pulumirpc.ResourceOptions,
+				_, _, _, _ resource.PropertyMap,
+			) error {
+				hookCalled = true
+				require.Equal(t, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"), urn)
+				require.NotNil(t, oldOptions)
+				require.NotNil(t, newOptions)
+				require.NotNil(t, oldOptions.Protect)
+				require.NotNil(t, newOptions.Protect)
+				require.True(t, oldOptions.GetProtect())
+				require.False(t, newOptions.GetProtect())
+				require.Equal(t, []string{"old"}, oldOptions.IgnoreChanges)
+				require.Equal(t, []string{"new"}, newOptions.IgnoreChanges)
+				return nil
+			},
+			true,
+		)
+		require.NoError(t, err)
+
+		protect := !isUpdate
+		ignore := []string{"old"}
+		if isUpdate {
+			ignore = []string{"new"}
+		}
+		inputs := resource.NewPropertyMapFromMap(map[string]any{"v": "a"})
+		if isUpdate {
+			inputs = resource.NewPropertyMapFromMap(map[string]any{"v": "b"})
+		}
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Protect:       &protect,
+			Inputs:        inputs,
+			IgnoreChanges: ignore,
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				BeforeUpdate: []*deploytest.ResourceHook{hook},
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.False(t, hookCalled)
+
+	isUpdate = true
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.True(t, hookCalled)
+}
+
 // Before hooks that return an error cause the step to fail.
 func TestResourceHookBeforeCreateError(t *testing.T) {
 	t.Parallel()
@@ -304,6 +382,7 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
 			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
@@ -392,6 +471,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
 			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
@@ -504,6 +584,7 @@ func TestResourceHookComponentAfterDelete(t *testing.T) {
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
@@ -594,6 +675,7 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
 			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
@@ -709,6 +791,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		// to not be called during the update.
 		shouldNotBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			require.Fail(t, "Hook should not be called")
@@ -718,6 +801,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 		require.NoError(t, err)
 
 		shouldBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
 			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
@@ -837,6 +921,7 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 
 		hookFun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
@@ -920,6 +1005,7 @@ func TestResourceHookDeleteCalledOnDestroyRunProgram(t *testing.T) {
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			hookCalled = true
@@ -984,6 +1070,7 @@ func TestResourceHookDeleteErrorWhenNoRunProgram(t *testing.T) {
 		defer func() { require.NoError(t, callbacks.Close()) }()
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
 			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
@@ -1087,6 +1174,7 @@ func TestResourceHookComponent(t *testing.T) {
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
 			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {
 			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typB::resA"))
@@ -1147,6 +1235,7 @@ func TestResourceHookTransform(t *testing.T) {
 		require.NoError(t, err)
 
 		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
 			_ *pulumirpc.ResourceOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 		) error {

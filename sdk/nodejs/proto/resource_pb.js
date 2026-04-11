@@ -9353,7 +9353,9 @@ newInputs: (f = msg.getNewInputs()) && google_protobuf_struct_pb.Struct.toObject
 oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 newOutputs: (f = msg.getNewOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-options: (f = msg.getOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f)
+options: (f = msg.getOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f),
+oldOptions: (f = msg.getOldOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f),
+newOptions: (f = msg.getNewOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -9430,6 +9432,16 @@ proto.pulumirpc.ResourceHookRequest.deserializeBinaryFromReader = function(msg, 
       var value = new proto.pulumirpc.ResourceOptions;
       reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
       msg.setOptions(value);
+      break;
+    case 10:
+      var value = new proto.pulumirpc.ResourceOptions;
+      reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
+      msg.setOldOptions(value);
+      break;
+    case 11:
+      var value = new proto.pulumirpc.ResourceOptions;
+      reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
+      msg.setNewOptions(value);
       break;
     default:
       reader.skipField();
@@ -9524,6 +9536,22 @@ proto.pulumirpc.ResourceHookRequest.serializeBinaryToWriter = function(message, 
   if (f != null) {
     writer.writeMessage(
       9,
+      f,
+      proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
+    );
+  }
+  f = message.getOldOptions();
+  if (f != null) {
+    writer.writeMessage(
+      10,
+      f,
+      proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
+    );
+  }
+  f = message.getNewOptions();
+  if (f != null) {
+    writer.writeMessage(
+      11,
       f,
       proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
     );
@@ -9788,6 +9816,80 @@ proto.pulumirpc.ResourceHookRequest.prototype.hasOptions = function() {
 };
 
 
+/**
+ * optional ResourceOptions old_options = 10;
+ * @return {?proto.pulumirpc.ResourceOptions}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.getOldOptions = function() {
+  return /** @type{?proto.pulumirpc.ResourceOptions} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceOptions, 10));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.ResourceOptions|undefined} value
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+*/
+proto.pulumirpc.ResourceHookRequest.prototype.setOldOptions = function(value) {
+  return jspb.Message.setWrapperField(this, 10, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.clearOldOptions = function() {
+  return this.setOldOptions(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.hasOldOptions = function() {
+  return jspb.Message.getField(this, 10) != null;
+};
+
+
+/**
+ * optional ResourceOptions new_options = 11;
+ * @return {?proto.pulumirpc.ResourceOptions}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.getNewOptions = function() {
+  return /** @type{?proto.pulumirpc.ResourceOptions} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceOptions, 11));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.ResourceOptions|undefined} value
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+*/
+proto.pulumirpc.ResourceHookRequest.prototype.setNewOptions = function(value) {
+  return jspb.Message.setWrapperField(this, 11, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ResourceHookRequest} returns this
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.clearNewOptions = function() {
+  return this.setNewOptions(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ResourceHookRequest.prototype.hasNewOptions = function() {
+  return jspb.Message.getField(this, 11) != null;
+};
+
+
 
 
 
@@ -9966,7 +10068,9 @@ oldInputs: (f = msg.getOldInputs()) && google_protobuf_struct_pb.Struct.toObject
 oldOutputs: (f = msg.getOldOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 failedOperation: jspb.Message.getFieldWithDefault(msg, 8, ""),
 errorsList: (f = jspb.Message.getRepeatedField(msg, 9)) == null ? undefined : f,
-options: (f = msg.getOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f)
+options: (f = msg.getOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f),
+oldOptions: (f = msg.getOldOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f),
+newOptions: (f = msg.getNewOptions()) && proto.pulumirpc.ResourceOptions.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -10046,6 +10150,16 @@ proto.pulumirpc.ErrorHookRequest.deserializeBinaryFromReader = function(msg, rea
       var value = new proto.pulumirpc.ResourceOptions;
       reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
       msg.setOptions(value);
+      break;
+    case 11:
+      var value = new proto.pulumirpc.ResourceOptions;
+      reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
+      msg.setOldOptions(value);
+      break;
+    case 12:
+      var value = new proto.pulumirpc.ResourceOptions;
+      reader.readMessage(value,proto.pulumirpc.ResourceOptions.deserializeBinaryFromReader);
+      msg.setNewOptions(value);
       break;
     default:
       reader.skipField();
@@ -10146,6 +10260,22 @@ proto.pulumirpc.ErrorHookRequest.serializeBinaryToWriter = function(message, wri
   if (f != null) {
     writer.writeMessage(
       10,
+      f,
+      proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
+    );
+  }
+  f = message.getOldOptions();
+  if (f != null) {
+    writer.writeMessage(
+      11,
+      f,
+      proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
+    );
+  }
+  f = message.getNewOptions();
+  if (f != null) {
+    writer.writeMessage(
+      12,
       f,
       proto.pulumirpc.ResourceOptions.serializeBinaryToWriter
     );
@@ -10425,6 +10555,80 @@ proto.pulumirpc.ErrorHookRequest.prototype.clearOptions = function() {
  */
 proto.pulumirpc.ErrorHookRequest.prototype.hasOptions = function() {
   return jspb.Message.getField(this, 10) != null;
+};
+
+
+/**
+ * optional ResourceOptions old_options = 11;
+ * @return {?proto.pulumirpc.ResourceOptions}
+ */
+proto.pulumirpc.ErrorHookRequest.prototype.getOldOptions = function() {
+  return /** @type{?proto.pulumirpc.ResourceOptions} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceOptions, 11));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.ResourceOptions|undefined} value
+ * @return {!proto.pulumirpc.ErrorHookRequest} returns this
+*/
+proto.pulumirpc.ErrorHookRequest.prototype.setOldOptions = function(value) {
+  return jspb.Message.setWrapperField(this, 11, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ErrorHookRequest} returns this
+ */
+proto.pulumirpc.ErrorHookRequest.prototype.clearOldOptions = function() {
+  return this.setOldOptions(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ErrorHookRequest.prototype.hasOldOptions = function() {
+  return jspb.Message.getField(this, 11) != null;
+};
+
+
+/**
+ * optional ResourceOptions new_options = 12;
+ * @return {?proto.pulumirpc.ResourceOptions}
+ */
+proto.pulumirpc.ErrorHookRequest.prototype.getNewOptions = function() {
+  return /** @type{?proto.pulumirpc.ResourceOptions} */ (
+    jspb.Message.getWrapperField(this, proto.pulumirpc.ResourceOptions, 12));
+};
+
+
+/**
+ * @param {?proto.pulumirpc.ResourceOptions|undefined} value
+ * @return {!proto.pulumirpc.ErrorHookRequest} returns this
+*/
+proto.pulumirpc.ErrorHookRequest.prototype.setNewOptions = function(value) {
+  return jspb.Message.setWrapperField(this, 12, value);
+};
+
+
+/**
+ * Clears the message field making it undefined.
+ * @return {!proto.pulumirpc.ErrorHookRequest} returns this
+ */
+proto.pulumirpc.ErrorHookRequest.prototype.clearNewOptions = function() {
+  return this.setNewOptions(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.pulumirpc.ErrorHookRequest.prototype.hasNewOptions = function() {
+  return jspb.Message.getField(this, 12) != null;
 };
 
 
