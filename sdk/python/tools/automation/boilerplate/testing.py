@@ -15,6 +15,10 @@
 from typing import List
 
 
+class BaseOptions:
+    pass
+
+
 class API:
     def _run(self, options: object, args: List[str]) -> str:
         return "pulumi " + " ".join(args)
