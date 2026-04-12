@@ -87,6 +87,7 @@ var testProviders = func() map[string]testProvider {
 		"testprovider:index:FailsOnCreate":     &failsOnCreateProvider{},
 		"testprovider:index:FlakyCreate":       &flakyCreateProvider{},
 		"testprovider:index:Named":             &namedProvider{},
+		"testprovider:index:Updatable":         &updatableProvider{},
 	}
 	return testProviders
 }()

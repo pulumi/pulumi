@@ -49,6 +49,7 @@ type Options struct {
 	IsInteractive            bool                // true if we should display things interactively.
 	Type                     Type                // type of display (rich diff, progress, or query).
 	JSONDisplay              bool                // true if we should emit the entire diff as JSON.
+	ChangesOnly              bool                // true to filter JSON output down to only changed properties.
 	EventLogPath             string              // the path to the file to use for logging events, if any.
 	Debug                    bool                // true to enable debug output.
 	Stdin                    io.Reader           // the reader to use for stdin. Defaults to os.Stdin if unset.

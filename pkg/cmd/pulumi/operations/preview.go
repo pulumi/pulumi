@@ -270,6 +270,7 @@ func NewPreviewCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var changesOnly bool
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -318,6 +319,10 @@ func NewPreviewCmd() *cobra.Command {
 			ctx := cmd.Context()
 			ws := pkgWorkspace.Instance
 
+			if changesOnly && !jsonDisplay {
+				return errors.New("--changes-only can only be used with --json")
+			}
+
 			proj, root, err := readProjectForUpdate(ws, client)
 			if err != nil {
 				return err
@@ -353,6 +358,7 @@ func NewPreviewCmd() *cobra.Command {
 				IsInteractive:          cmdutil.Interactive(),
 				Type:                   displayType,
 				JSONDisplay:            jsonDisplay,
+				ChangesOnly:            changesOnly,
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
 			}
@@ -667,6 +673,9 @@ func NewPreviewCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the preview diffs, operations, and overall output as JSON."+
 			" Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead.")
+	cmd.Flags().BoolVar(
+		&changesOnly, "changes-only", false,
+		"Only include changed resources and changed properties in the output. Requires --json.")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")

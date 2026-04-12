@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add a `--changes-only` flag to `pulumi preview` that, when combined with `--json`, restricts the output to only changed resources and only the properties that actually changed, producing a minimal summary suitable for bulk processing.

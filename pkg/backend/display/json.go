@@ -69,19 +69,44 @@ func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyM
 	return new
 }
 
-// stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
-// on the supplied options, in addition to massaging secret fields.
-func stateForJSONOutput(s *resource.State, opts Options) *resource.State {
+// filteredStateForJSONOutput prepares some resource's state for JSON output. When opts.ChangesOnly is set, the
+// resulting state's Inputs are filtered down to only those top-level keys that changed (for update/replace
+// operations) and Outputs are dropped entirely, so that the JSON output is a minimal summary of the actual
+// change. For creates and deletes all Inputs are kept because every property is, by definition, new or gone.
+func filteredStateForJSONOutput(
+	s *resource.State, changedKeys []resource.PropertyKey, op display.StepOp, opts Options,
+) *resource.State {
 	var inputs resource.PropertyMap
 	var outputs resource.PropertyMap
-	if !isRootURN(s.URN) || !opts.SuppressOutputs {
-		// For now, replace any secret properties as the string [secret] and then serialize what we have.
-		inputs = MassageSecrets(s.Inputs, false)
-		outputs = MassageSecrets(s.Outputs, false)
-	} else {
+	switch {
+	case isRootURN(s.URN) && opts.SuppressOutputs:
 		// If we're suppressing outputs, don't show the root stack properties.
 		inputs = resource.PropertyMap{}
 		outputs = resource.PropertyMap{}
+	case opts.ChangesOnly:
+		// In changes-only mode, we drop Outputs entirely and — for update/replace operations — restrict
+		// Inputs to only the top-level keys that the engine reported as changed.
+		outputs = resource.PropertyMap{}
+		switch op {
+		case deploy.OpUpdate, deploy.OpReplace:
+			keep := make(map[resource.PropertyKey]bool, len(changedKeys))
+			for _, k := range changedKeys {
+				keep[k] = true
+			}
+			filtered := make(resource.PropertyMap, len(keep))
+			for k, v := range s.Inputs {
+				if keep[k] {
+					filtered[k] = v
+				}
+			}
+			inputs = MassageSecrets(filtered, false)
+		default:
+			inputs = MassageSecrets(s.Inputs, false)
+		}
+	default:
+		// For now, replace any secret properties as the string [secret] and then serialize what we have.
+		inputs = MassageSecrets(s.Inputs, false)
+		outputs = MassageSecrets(s.Outputs, false)
 	}
 	return resource.NewState{
 		Type:                    s.Type,
@@ -278,7 +303,7 @@ func getPreviewMetadataStep(
 
 	ctx := context.TODO()
 	if m.Old != nil {
-		oldState := stateForJSONOutput(m.Old.State, opts)
+		oldState := filteredStateForJSONOutput(m.Old.State, m.Diffs, m.Op, opts)
 		res, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.OldState = &res
@@ -287,7 +312,7 @@ func getPreviewMetadataStep(
 		}
 	}
 	if m.New != nil {
-		newState := stateForJSONOutput(m.New.State, opts)
+		newState := filteredStateForJSONOutput(m.New.State, m.Diffs, m.Op, opts)
 		res, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.NewState = &res
