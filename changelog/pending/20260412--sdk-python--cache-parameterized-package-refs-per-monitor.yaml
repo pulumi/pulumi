@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Cache parameterized package references per monitor in generated Python SDKs

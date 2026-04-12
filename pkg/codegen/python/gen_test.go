@@ -26,6 +26,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -106,6 +107,39 @@ func TestGeneratePackage(t *testing.T) {
 		},
 		TestCases: test.PulumiPulumiSDKTests,
 	})
+}
+
+func TestGeneratePackageCachesPackageRefPerMonitor(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+	baseVersion := semver.MustParse("1.1.0")
+	pkg := &schema.Package{
+		Name:    "parameterized",
+		Version: &version,
+		Parameterization: &schema.Parameterization{
+			BaseProvider: schema.BaseProvider{
+				Name:    "terraform-provider",
+				Version: baseVersion,
+			},
+			Parameter: []byte("example"),
+		},
+	}
+	mod := &modContext{
+		pkg:  pkg.Reference(),
+		tool: "test",
+	}
+
+	utilities, err := mod.genUtilitiesFile()
+	require.NoError(t, err)
+
+	text := string(utilities)
+	assert.Contains(t, text, "_package_refs = {}")
+	assert.Contains(t, text, "monitor = pulumi.runtime.settings.get_monitor()")
+	assert.Contains(t, text, "_package_ref = _package_refs.get(monitor, ...)")
+	assert.Contains(t, text, "_package_refs[monitor] = _package_ref")
+	assert.NotContains(t, text, "_package_ref = ...")
+	assert.NotContains(t, text, "global _package_ref")
 }
 
 func absTestsPath() (string, error) {
