@@ -69,11 +69,12 @@ func MassageSecrets(m resource.PropertyMap, showSecrets bool) resource.PropertyM
 	return new
 }
 
-// filteredStateForJSONOutput prepares some resource's state for JSON output. When opts.ChangesOnly is set, the
-// resulting state's Inputs are filtered down to only those top-level keys that changed (for update/replace
-// operations) and Outputs are dropped entirely, so that the JSON output is a minimal summary of the actual
-// change. For creates and deletes all Inputs are kept because every property is, by definition, new or gone.
-func filteredStateForJSONOutput(
+// stateForJSONOutput prepares some resource's state for JSON output. This includes filtering the output based
+// on the supplied options, in addition to massaging secret fields. When opts.ChangesOnly is set, the resulting
+// state's Inputs are filtered down to only those top-level keys that changed (for update/replace operations)
+// and Outputs are dropped entirely, so that the JSON output is a minimal summary of the actual change. For
+// creates and deletes all Inputs are kept because every property is, by definition, new or gone.
+func stateForJSONOutput(
 	s *resource.State, changedKeys []resource.PropertyKey, op display.StepOp, opts Options,
 ) *resource.State {
 	var inputs resource.PropertyMap
@@ -303,7 +304,7 @@ func getPreviewMetadataStep(
 
 	ctx := context.TODO()
 	if m.Old != nil {
-		oldState := filteredStateForJSONOutput(m.Old.State, m.Diffs, m.Op, opts)
+		oldState := stateForJSONOutput(m.Old.State, m.Diffs, m.Op, opts)
 		res, err := stack.SerializeResource(ctx, oldState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.OldState = &res
@@ -312,7 +313,7 @@ func getPreviewMetadataStep(
 		}
 	}
 	if m.New != nil {
-		newState := filteredStateForJSONOutput(m.New.State, m.Diffs, m.Op, opts)
+		newState := stateForJSONOutput(m.New.State, m.Diffs, m.Op, opts)
 		res, err := stack.SerializeResource(ctx, newState, config.NewPanicCrypter(), false /* showSecrets */)
 		if err == nil {
 			step.NewState = &res
