@@ -1372,6 +1372,10 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
+		if alreadyExistsErr, ok := resourceError.(*AlreadyExistsError); ok {
+			alreadyExistsErr.ResourceType = req.URN.Type()
+			alreadyExistsErr.ResourceName = string(req.URN.Name())
+		}
 		logging.V(7).Infof("%s failed: %v", label, resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
@@ -2353,27 +2357,11 @@ func parseError(err error) (
 			break
 		}
 	}
+	if resourceErr == responseErr && responseErr.Code() == codes.AlreadyExists {
+		resourceErr = &AlreadyExistsError{Cause: responseErr.Message()}
+	}
 
 	return resourceStatus, id, liveObject, liveInputs, refreshBeforeUpdate, resourceErr
-}
-
-// InitError represents a failure to initialize a resource, i.e., the resource has been successfully
-// created, but it has failed to initialize.
-type InitError struct {
-	Reasons []string
-}
-
-var _ error = (*InitError)(nil)
-
-func (ie *InitError) Error() string {
-	var err error
-	for _, reason := range ie.Reasons {
-		err = multierror.Append(err, errors.New(reason))
-	}
-	if err == nil {
-		return "resource init failed"
-	}
-	return err.Error()
 }
 
 func decorateSpanWithType(span opentracing.Span, urn string) {
