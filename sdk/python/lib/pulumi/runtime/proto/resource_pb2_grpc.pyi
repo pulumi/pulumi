@@ -40,8 +40,8 @@ class ResourceMonitorStub:
 
     def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
     GetDeploymentInfo: grpc.UnaryUnaryMultiCallable[
-        pulumi.resource_pb2.GetDeploymentInfoRequest,
-        pulumi.resource_pb2.GetDeploymentInfoResponse,
+        google.protobuf.empty_pb2.Empty,
+        pulumi.resource_pb2.DeploymentInfo,
     ]
     """GetDeploymentInfo returns the execution context associated with this monitor instance.
 
@@ -137,8 +137,8 @@ class ResourceMonitorAsyncStub:
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
 
     GetDeploymentInfo: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.resource_pb2.GetDeploymentInfoRequest,
-        pulumi.resource_pb2.GetDeploymentInfoResponse,
+        google.protobuf.empty_pb2.Empty,
+        pulumi.resource_pb2.DeploymentInfo,
     ]
     """GetDeploymentInfo returns the execution context associated with this monitor instance.
 
@@ -236,9 +236,9 @@ class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     
     def GetDeploymentInfo(
         self,
-        request: pulumi.resource_pb2.GetDeploymentInfoRequest,
+        request: google.protobuf.empty_pb2.Empty,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.resource_pb2.GetDeploymentInfoResponse, collections.abc.Awaitable[pulumi.resource_pb2.GetDeploymentInfoResponse]]:
+    ) -> typing.Union[pulumi.resource_pb2.DeploymentInfo, collections.abc.Awaitable[pulumi.resource_pb2.DeploymentInfo]]:
         """GetDeploymentInfo returns the execution context associated with this monitor instance.
 
         This is an additive API intended to reduce duplicated state passed through

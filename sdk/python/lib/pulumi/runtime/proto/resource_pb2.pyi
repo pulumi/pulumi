@@ -59,7 +59,7 @@ class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitor
     """ResourceMonitorFeature is a strongly typed monitor capability identifier.
 
     The string IDs used by SupportsFeature are preserved for compatibility; new
-    clients should prefer these enum values from GetDeploymentInfoResponse.
+    clients should prefer these enum values from DeploymentInfo.
     """
 
 RESOURCE_MONITOR_FEATURE_SECRETS: ResourceMonitorFeature.ValueType  # 0
@@ -94,20 +94,8 @@ SKIP: Result.ValueType  # 2
 global___Result = Result
 
 @typing.final
-class GetDeploymentInfoRequest(google.protobuf.message.Message):
-    """GetDeploymentInfoRequest requests monitor execution state."""
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    def __init__(
-        self,
-    ) -> None: ...
-
-global___GetDeploymentInfoRequest = GetDeploymentInfoRequest
-
-@typing.final
-class GetDeploymentInfoResponse(google.protobuf.message.Message):
-    """GetDeploymentInfoResponse returns monitor execution state currently sent to programs
+class DeploymentInfo(google.protobuf.message.Message):
+    """DeploymentInfo returns monitor execution state currently sent to programs
     and/or providers through other channels.
     """
 
@@ -173,7 +161,7 @@ class GetDeploymentInfoResponse(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "organization", b"organization", "parallel", b"parallel", "project", b"project", "stack", b"stack", "supportedFeatures", b"supportedFeatures"]) -> None: ...
 
-global___GetDeploymentInfoResponse = GetDeploymentInfoResponse
+global___DeploymentInfo = DeploymentInfo
 
 @typing.final
 class SupportsFeatureRequest(google.protobuf.message.Message):

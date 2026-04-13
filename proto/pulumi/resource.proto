@@ -36,7 +36,7 @@ service ResourceMonitor {
     // Backward compatibility:
     // - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
     // - Clients should fall back to existing request fields/env vars/SupportsFeature.
-    rpc GetDeploymentInfo(GetDeploymentInfoRequest) returns (GetDeploymentInfoResponse) {}
+    rpc GetDeploymentInfo(google.protobuf.Empty) returns (DeploymentInfo) {}
 
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
@@ -72,13 +72,10 @@ service ResourceMonitor {
     rpc SignalAndWaitForShutdown(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
-// GetDeploymentInfoRequest requests monitor execution state.
-message GetDeploymentInfoRequest {}
-
 // ResourceMonitorFeature is a strongly typed monitor capability identifier.
 //
 // The string IDs used by SupportsFeature are preserved for compatibility; new
-// clients should prefer these enum values from GetDeploymentInfoResponse.
+// clients should prefer these enum values from DeploymentInfo.
 enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_SECRETS = 0;
     RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES = 1;
@@ -94,9 +91,9 @@ enum ResourceMonitorFeature {
     RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11;
 }
 
-// GetDeploymentInfoResponse returns monitor execution state currently sent to programs
+// DeploymentInfo returns monitor execution state currently sent to programs
 // and/or providers through other channels.
-message GetDeploymentInfoResponse {
+message DeploymentInfo {
     // The project name.
     string project = 1;
 

@@ -64,7 +64,7 @@ type ResourceMonitorClient interface {
 	// Backward compatibility:
 	// - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
 	// - Clients should fall back to existing request fields/env vars/SupportsFeature.
-	GetDeploymentInfo(ctx context.Context, in *GetDeploymentInfoRequest, opts ...grpc.CallOption) (*GetDeploymentInfoResponse, error)
+	GetDeploymentInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DeploymentInfo, error)
 	SupportsFeature(ctx context.Context, in *SupportsFeatureRequest, opts ...grpc.CallOption) (*SupportsFeatureResponse, error)
 	Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
 	Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error)
@@ -102,9 +102,9 @@ func NewResourceMonitorClient(cc grpc.ClientConnInterface) ResourceMonitorClient
 	return &resourceMonitorClient{cc}
 }
 
-func (c *resourceMonitorClient) GetDeploymentInfo(ctx context.Context, in *GetDeploymentInfoRequest, opts ...grpc.CallOption) (*GetDeploymentInfoResponse, error) {
+func (c *resourceMonitorClient) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DeploymentInfo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetDeploymentInfoResponse)
+	out := new(DeploymentInfo)
 	err := c.cc.Invoke(ctx, ResourceMonitor_GetDeploymentInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -247,7 +247,7 @@ type ResourceMonitorServer interface {
 	// Backward compatibility:
 	// - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
 	// - Clients should fall back to existing request fields/env vars/SupportsFeature.
-	GetDeploymentInfo(context.Context, *GetDeploymentInfoRequest) (*GetDeploymentInfoResponse, error)
+	GetDeploymentInfo(context.Context, *emptypb.Empty) (*DeploymentInfo, error)
 	SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error)
 	Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error)
 	Call(context.Context, *ResourceCallRequest) (*CallResponse, error)
@@ -285,7 +285,7 @@ type ResourceMonitorServer interface {
 // pointer dereference when methods are called.
 type UnimplementedResourceMonitorServer struct{}
 
-func (UnimplementedResourceMonitorServer) GetDeploymentInfo(context.Context, *GetDeploymentInfoRequest) (*GetDeploymentInfoResponse, error) {
+func (UnimplementedResourceMonitorServer) GetDeploymentInfo(context.Context, *emptypb.Empty) (*DeploymentInfo, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDeploymentInfo not implemented")
 }
 func (UnimplementedResourceMonitorServer) SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error) {
@@ -346,7 +346,7 @@ func RegisterResourceMonitorServer(s grpc.ServiceRegistrar, srv ResourceMonitorS
 }
 
 func _ResourceMonitor_GetDeploymentInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetDeploymentInfoRequest)
+	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -358,7 +358,7 @@ func _ResourceMonitor_GetDeploymentInfo_Handler(srv interface{}, ctx context.Con
 		FullMethod: ResourceMonitor_GetDeploymentInfo_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ResourceMonitorServer).GetDeploymentInfo(ctx, req.(*GetDeploymentInfoRequest))
+		return srv.(ResourceMonitorServer).GetDeploymentInfo(ctx, req.(*emptypb.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }

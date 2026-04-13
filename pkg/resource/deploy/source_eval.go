@@ -1141,8 +1141,8 @@ func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature 
 }
 
 func (rm *resmon) GetDeploymentInfo(_ context.Context,
-	_ *pulumirpc.GetDeploymentInfoRequest,
-) (*pulumirpc.GetDeploymentInfoResponse, error) {
+	_ *emptypb.Empty,
+) (*pulumirpc.DeploymentInfo, error) {
 	config := make(map[string]string, len(rm.constructInfo.Config))
 	for k, v := range rm.constructInfo.Config {
 		config[k.String()] = v
@@ -1153,7 +1153,7 @@ func (rm *resmon) GetDeploymentInfo(_ context.Context,
 		configSecretKeys[i] = k.String()
 	}
 
-	return &pulumirpc.GetDeploymentInfoResponse{
+	return &pulumirpc.DeploymentInfo{
 		Project:           rm.constructInfo.Project,
 		Stack:             rm.constructInfo.Stack,
 		Organization:      rm.organization,

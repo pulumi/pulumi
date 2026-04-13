@@ -20,8 +20,8 @@ class ResourceMonitorStub(object):
         """
         self.GetDeploymentInfo = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
-                request_serializer=pulumi_dot_resource__pb2.GetDeploymentInfoRequest.SerializeToString,
-                response_deserializer=pulumi_dot_resource__pb2.GetDeploymentInfoResponse.FromString,
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.DeploymentInfo.FromString,
                 )
         self.SupportsFeature = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/SupportsFeature',
@@ -196,8 +196,8 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetDeploymentInfo': grpc.unary_unary_rpc_method_handler(
                     servicer.GetDeploymentInfo,
-                    request_deserializer=pulumi_dot_resource__pb2.GetDeploymentInfoRequest.FromString,
-                    response_serializer=pulumi_dot_resource__pb2.GetDeploymentInfoResponse.SerializeToString,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.DeploymentInfo.SerializeToString,
             ),
             'SupportsFeature': grpc.unary_unary_rpc_method_handler(
                     servicer.SupportsFeature,
@@ -282,8 +282,8 @@ class ResourceMonitor(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
-            pulumi_dot_resource__pb2.GetDeploymentInfoRequest.SerializeToString,
-            pulumi_dot_resource__pb2.GetDeploymentInfoResponse.FromString,
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            pulumi_dot_resource__pb2.DeploymentInfo.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

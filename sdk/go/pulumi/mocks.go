@@ -140,9 +140,9 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 	}, nil
 }
 
-func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *pulumirpc.GetDeploymentInfoRequest,
+func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
 	opts ...grpc.CallOption,
-) (*pulumirpc.GetDeploymentInfoResponse, error) {
+) (*pulumirpc.DeploymentInfo, error) {
 	features := []pulumirpc.ResourceMonitorFeature{
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS,
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
@@ -157,7 +157,7 @@ func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *pulumirpc.GetDe
 		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
 	}
 
-	return &pulumirpc.GetDeploymentInfoResponse{
+	return &pulumirpc.DeploymentInfo{
 		Project:           m.project,
 		Stack:             m.stack,
 		SupportedFeatures: features,

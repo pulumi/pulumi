@@ -12,57 +12,40 @@ import * as pulumi_alias_pb from "./alias_pb";
 import * as pulumi_source_pb from "./source_pb";
 import * as pulumi_callback_pb from "./callback_pb";
 
-export class GetDeploymentInfoRequest extends jspb.Message { 
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetDeploymentInfoRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: GetDeploymentInfoRequest): GetDeploymentInfoRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetDeploymentInfoRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetDeploymentInfoRequest;
-    static deserializeBinaryFromReader(message: GetDeploymentInfoRequest, reader: jspb.BinaryReader): GetDeploymentInfoRequest;
-}
-
-export namespace GetDeploymentInfoRequest {
-    export type AsObject = {
-    }
-}
-
-export class GetDeploymentInfoResponse extends jspb.Message { 
+export class DeploymentInfo extends jspb.Message { 
     getProject(): string;
-    setProject(value: string): GetDeploymentInfoResponse;
+    setProject(value: string): DeploymentInfo;
     getStack(): string;
-    setStack(value: string): GetDeploymentInfoResponse;
+    setStack(value: string): DeploymentInfo;
     getOrganization(): string;
-    setOrganization(value: string): GetDeploymentInfoResponse;
+    setOrganization(value: string): DeploymentInfo;
 
     getConfigMap(): jspb.Map<string, string>;
     clearConfigMap(): void;
     clearConfigsecretkeysList(): void;
     getConfigsecretkeysList(): Array<string>;
-    setConfigsecretkeysList(value: Array<string>): GetDeploymentInfoResponse;
+    setConfigsecretkeysList(value: Array<string>): DeploymentInfo;
     addConfigsecretkeys(value: string, index?: number): string;
     getDryrun(): boolean;
-    setDryrun(value: boolean): GetDeploymentInfoResponse;
+    setDryrun(value: boolean): DeploymentInfo;
     getParallel(): number;
-    setParallel(value: number): GetDeploymentInfoResponse;
+    setParallel(value: number): DeploymentInfo;
     clearSupportedfeaturesList(): void;
     getSupportedfeaturesList(): Array<ResourceMonitorFeature>;
-    setSupportedfeaturesList(value: Array<ResourceMonitorFeature>): GetDeploymentInfoResponse;
+    setSupportedfeaturesList(value: Array<ResourceMonitorFeature>): DeploymentInfo;
     addSupportedfeatures(value: ResourceMonitorFeature, index?: number): ResourceMonitorFeature;
 
     serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): GetDeploymentInfoResponse.AsObject;
-    static toObject(includeInstance: boolean, msg: GetDeploymentInfoResponse): GetDeploymentInfoResponse.AsObject;
+    toObject(includeInstance?: boolean): DeploymentInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: DeploymentInfo): DeploymentInfo.AsObject;
     static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
     static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: GetDeploymentInfoResponse, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): GetDeploymentInfoResponse;
-    static deserializeBinaryFromReader(message: GetDeploymentInfoResponse, reader: jspb.BinaryReader): GetDeploymentInfoResponse;
+    static serializeBinaryToWriter(message: DeploymentInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): DeploymentInfo;
+    static deserializeBinaryFromReader(message: DeploymentInfo, reader: jspb.BinaryReader): DeploymentInfo;
 }
 
-export namespace GetDeploymentInfoResponse {
+export namespace DeploymentInfo {
     export type AsObject = {
         project: string,
         stack: string,

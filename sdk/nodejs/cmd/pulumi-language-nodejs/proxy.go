@@ -231,8 +231,8 @@ func (p *monitorProxy) SupportsFeature(
 }
 
 func (p *monitorProxy) GetDeploymentInfo(
-	ctx context.Context, req *pulumirpc.GetDeploymentInfoRequest,
-) (*pulumirpc.GetDeploymentInfoResponse, error) {
+	ctx context.Context, req *emptypb.Empty,
+) (*pulumirpc.DeploymentInfo, error) {
 	return p.target.GetDeploymentInfo(ctx, req)
 }
 
