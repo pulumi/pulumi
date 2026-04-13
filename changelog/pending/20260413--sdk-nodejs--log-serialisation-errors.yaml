@@ -1,4 +1,4 @@
 changes:
 - type: feat
-  scope: sdk/nodejs
+  scope: sdk/nodejs,python,go
   description: Log serialisation errors at error level when marshalling outputs to the wire protocol

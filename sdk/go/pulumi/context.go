@@ -1422,6 +1422,7 @@ func (ctx *Context) readPackageResource(
 		// Prepare the inputs for an impending operation.
 		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, res, false /* remote */, true /* custom */)
 		if err != nil {
+			contract.IgnoreError(ctx.Log.Error(fmt.Sprintf("ReadResource(%s, %s): error marshaling properties: %v", t, name, err), nil))
 			return
 		}
 
@@ -1816,6 +1817,7 @@ func (ctx *Context) registerResource(
 		// Prepare the inputs for an impending operation.
 		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, resState, remote, custom)
 		if err != nil {
+			contract.IgnoreError(ctx.Log.Error(fmt.Sprintf("RegisterResource(%s, %s): error marshaling properties: %v", t, name, err), nil))
 			return
 		}
 

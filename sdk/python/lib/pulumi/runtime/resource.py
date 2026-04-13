@@ -610,7 +610,7 @@ def get_resource(
                 )
 
         except Exception as exn:
-            log.debug(
+            log.error(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}"
             )
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
@@ -887,7 +887,7 @@ def read_resource(
             )
 
         except Exception as exn:
-            log.debug(
+            log.error(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}"
             )
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
@@ -1177,7 +1177,7 @@ def register_resource(
                 None, wrap_with_context(do_rpc_call)
             )
         except Exception as exn:
-            log.debug(
+            log.error(
                 f"exception when preparing or executing rpc for {ty=} {name=}: {traceback.format_exc()}"
             )
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
