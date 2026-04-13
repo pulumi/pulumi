@@ -81,7 +81,11 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 				}
 
 				if len(diags) != 0 {
-					return edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, ref.envName, yaml, diags)
+					err = edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, ref.projectName+"/"+ref.envName, yaml, diags)
+					contract.IgnoreError(err)
+				}
+				if client.DiagnosticsHaveErrors(diags) {
+					return err
 				}
 
 				return nil
@@ -131,12 +135,13 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 					return err
 				}
 
-				if len(diags) == 0 {
+				if len(diags) != 0 {
+					err = edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, ref.projectName+"/"+ref.envName, newYAML, diags)
+					contract.IgnoreError(err)
+				}
+				if !client.DiagnosticsHaveErrors(diags) {
 					return nil
 				}
-
-				err = edit.env.writeYAMLEnvironmentDiagnostics(edit.env.esc.stderr, ref.envName, newYAML, diags)
-				contract.IgnoreError(err)
 
 				fmt.Fprintln(edit.env.esc.stderr, "Press ENTER to continue editing or ^D to exit")
 

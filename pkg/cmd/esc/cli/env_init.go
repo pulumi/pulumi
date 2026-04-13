@@ -66,7 +66,7 @@ func newEnvInitCmd(env *envCommand) *cobra.Command {
 					return fmt.Errorf("updating environment definition: %w", err)
 				}
 				if len(diags) != 0 {
-					err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, ref.envName, yaml, diags)
+					err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, ref.projectName+"/"+ref.envName, yaml, diags)
 					contract.IgnoreError(err)
 
 					return fmt.Errorf("updating environment definition: too many errors")

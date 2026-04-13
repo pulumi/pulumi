@@ -370,8 +370,12 @@ func (cmd *envCommand) writeYAMLEnvironmentDiagnostics(
 				},
 			}
 		}
+		severity := hcl.DiagError
+		if d.Severity == client.DiagWarning {
+			severity = hcl.DiagWarning
+		}
 		err := writer.WriteDiagnostic(&hcl.Diagnostic{
-			Severity: hcl.DiagError,
+			Severity: severity,
 			Summary:  d.Summary,
 			Subject:  subject,
 		})
@@ -439,7 +443,7 @@ func (esc *escCommand) updateEnvironment(
 		if err != nil {
 			return nil, fmt.Errorf("creating environment draft: %w", err)
 		}
-		if len(diags) == 0 {
+		if !client.DiagnosticsHaveErrors(diags) {
 			fmt.Fprintf(esc.stdout, "Change request created: %v\n", changeRequestID)
 			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
 
@@ -456,7 +460,7 @@ func (esc *escCommand) updateEnvironment(
 		if err != nil {
 			return nil, fmt.Errorf("updating environment draft: %w", err)
 		}
-		if len(diags) == 0 {
+		if !client.DiagnosticsHaveErrors(diags) {
 			fmt.Fprintln(esc.stdout, "Change request updated")
 			fmt.Fprintf(esc.stdout, "Change request URL: %v\n", esc.changeRequestURL(ref, changeRequestID))
 		}
@@ -467,7 +471,7 @@ func (esc *escCommand) updateEnvironment(
 		if err != nil {
 			return nil, fmt.Errorf("updating environment definition: %w", err)
 		}
-		if len(diags) == 0 && envUpdateSuccessMessage != "" {
+		if !client.DiagnosticsHaveErrors(diags) && envUpdateSuccessMessage != "" {
 			fmt.Fprintln(esc.stdout, envUpdateSuccessMessage)
 		}
 		return diags, nil

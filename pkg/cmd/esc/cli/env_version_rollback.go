@@ -58,7 +58,7 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 			}
 
 			if len(diags) != 0 {
-				err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, ref.envName, yaml, diags)
+				err = env.writeYAMLEnvironmentDiagnostics(env.esc.stderr, ref.projectName+"/"+ref.envName, yaml, diags)
 				contract.IgnoreError(err)
 				return errors.New("could not roll back: too many errors")
 			}

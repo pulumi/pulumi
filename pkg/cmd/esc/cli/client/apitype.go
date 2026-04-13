@@ -22,10 +22,32 @@ import (
 	"github.com/pulumi/esc"
 )
 
+type EnvironmentDiagnosticSeverity string
+
+const (
+	DiagError   EnvironmentDiagnosticSeverity = "error"
+	DiagWarning EnvironmentDiagnosticSeverity = "warning"
+)
+
 type EnvironmentDiagnostic struct {
-	Range   *esc.Range `json:"range,omitempty"`
-	Summary string     `json:"summary,omitempty"`
-	Detail  string     `json:"detail,omitempty"`
+	Range    *esc.Range                    `json:"range,omitempty"`
+	Summary  string                        `json:"summary,omitempty"`
+	Detail   string                        `json:"detail,omitempty"`
+	Severity EnvironmentDiagnosticSeverity `json:"severity,omitempty"`
+}
+
+func (d EnvironmentDiagnostic) IsError() bool {
+	// Empty severity means error for backward compatibility.
+	return d.Severity == DiagError || d.Severity == ""
+}
+
+func DiagnosticsHaveErrors(diags []EnvironmentDiagnostic) bool {
+	for _, d := range diags {
+		if d.IsError() {
+			return true
+		}
+	}
+	return false
 }
 
 type EnvironmentErrorResponse struct {

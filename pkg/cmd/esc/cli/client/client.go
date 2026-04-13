@@ -713,13 +713,19 @@ func (pc *client) UpdateEnvironmentWithRevision(
 		}
 		return nil, 0, err
 	}
+	defer contract.IgnoreClose(resp.Body)
 
 	revision, err := strconv.Atoi(resp.Header.Get(revisionHeader))
 	if err != nil {
 		return nil, 0, fmt.Errorf("parsing revision number: %w", err)
 	}
 
-	return nil, revision, nil
+	var updateResp UpdateEnvironmentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&updateResp); err != nil {
+		return nil, revision, nil
+	}
+
+	return updateResp.Diagnostics, revision, nil
 }
 
 func (pc *client) CreateEnvironmentDraft(

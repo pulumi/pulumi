@@ -11,7 +11,7 @@ Environment created: test-user/default/test-stdin
 > esc env init default/test-stdin -f=-
 Error: unknown property "bar"
 
-  on test-stdin line 1:
+  on default/test-stdin line 1:
    1: {"values":{"foo":"${bar}"}}
 
 Error: updating environment definition: too many errors

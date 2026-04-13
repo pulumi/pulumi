@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pgavlin/fx/v2"
 	"github.com/pgavlin/fx/v2/maps"
 	"github.com/pulumi/esc"
@@ -388,10 +389,16 @@ func mapDiags(diags syntax.Diagnostics) []client.EnvironmentDiagnostic {
 			}
 		}
 
+		severity := client.DiagError
+		if d.Severity == hcl.DiagWarning {
+			severity = client.DiagWarning
+		}
+
 		out[i] = client.EnvironmentDiagnostic{
-			Range:   rng,
-			Summary: d.Summary,
-			Detail:  d.Detail,
+			Range:    rng,
+			Summary:  d.Summary,
+			Detail:   d.Detail,
+			Severity: severity,
 		}
 	}
 	return out
@@ -669,12 +676,13 @@ func (c *testPulumiClient) UpdateEnvironmentWithRevision(
 		return nil, 0, errors.New("etag mismatch")
 	}
 
-	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml, nil)
-	if err == nil && len(diags) == 0 {
+	envId := projectName + "/" + envName
+	_, diags, err := c.checkEnvironment(ctx, orgName, envId, yaml, nil)
+	if err == nil && !client.DiagnosticsHaveErrors(diags) {
 		h := fnv.New32()
 		h.Write(yaml)
 
-		yaml, err = eval.EncryptSecrets(ctx, envName, yaml, rot128{})
+		yaml, err = eval.EncryptSecrets(ctx, envId, yaml, rot128{})
 		if err != nil {
 			return nil, 0, err
 		}
@@ -713,7 +721,8 @@ func (c *testPulumiClient) CreateEnvironmentDraft(
 		return "", nil, errors.New("etag mismatch")
 	}
 
-	_, diags, err := c.checkEnvironment(ctx, orgName, envName, yaml, nil)
+	envId := projectName + "/" + envName
+	_, diags, err := c.checkEnvironment(ctx, orgName, envId, yaml, nil)
 	if err != nil || len(diags) != 0 {
 		return "", diags, nil
 	}

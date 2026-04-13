@@ -60,7 +60,7 @@ values:
 > esc env version rollback default/test@2
 Error: not found
 
-  on test line 2:
+  on default/test line 2:
    2:     - c
 
 Error: could not roll back: too many errors
