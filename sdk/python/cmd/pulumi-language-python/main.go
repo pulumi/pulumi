@@ -1504,12 +1504,6 @@ func (host *pythonLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
-func (host *pythonLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
-) error {
-	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
-}
-
 // RunPlugin runs a Python based plugin.
 //
 // We support two ways of running Python based plugins: bare directories or

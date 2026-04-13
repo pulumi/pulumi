@@ -1317,12 +1317,6 @@ func (host *goLanguageHost) GetProgramDependencies(
 	}, nil
 }
 
-func (host *goLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
-) error {
-	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
-}
-
 func (host *goLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
