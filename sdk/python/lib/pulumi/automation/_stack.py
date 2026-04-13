@@ -910,6 +910,7 @@ class Stack:
         run_program: Optional[bool] = None,
         config_file: Optional[str] = None,
         program: Optional[PulumiFn] = None,
+        diff: Optional[bool] = None,
     ) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -938,6 +939,7 @@ class Stack:
         :param preview_only: Deprecated, use `preview_destroy` instead. Only show a preview of the destroy, but don't perform the destroy itself
         :param run_program: Run the program in the workspace to destroy the stack
         :param config_file: Path to a Pulumi config file to use for this update.
+        :param diff: Display operation as a rich diff showing the overall change.
         :returns: DestroyResult
         """
         program = program or self.workspace.program
