@@ -52,6 +52,13 @@ type ResolvedPolicyEnvironment struct {
 	Secrets []string
 }
 
+// PolicyEnvironmentResolver resolves ESC environment references for local
+// policy packs. Backends that support ESC provide an implementation; when nil,
+// environment references in local pack config are an error.
+type PolicyEnvironmentResolver interface {
+	ResolveEnvironments(ctx context.Context, environments []string) (*ResolvedPolicyEnvironment, error)
+}
+
 // parsePolicyConfigKey splits a policyConfig key into an optional pack name
 // prefix and the policy name. Keys may be "policyName" or "packName:policyName".
 // This mirrors pulumiConfig's optional namespace pattern (e.g., "aws:region").
@@ -139,6 +146,46 @@ func deepMergeMap(dst, src map[string]any) {
 			dst[k] = sv
 		}
 	}
+}
+
+// mergeAnalyzerConfig merges two AnalyzerPolicyConfig maps. When both base and
+// overlay define the same policy key, the struct fields are deep-merged:
+// overlay's EnforcementLevel wins if set, and Properties maps are recursively
+// merged via deepMergeMap (overlay wins on conflict). This matches the deep
+// merge behavior of the cloud path's mergePolicyConfig/deepMergePolicyJSON.
+func mergeAnalyzerConfig(
+	base, overlay map[string]plugin.AnalyzerPolicyConfig,
+) map[string]plugin.AnalyzerPolicyConfig {
+	if len(overlay) == 0 {
+		return base
+	}
+	result := make(map[string]plugin.AnalyzerPolicyConfig, len(base)+len(overlay))
+	for k, v := range base {
+		result[k] = v
+	}
+	for k, ov := range overlay {
+		bv, exists := result[k]
+		if !exists {
+			result[k] = ov
+			continue
+		}
+		// Overlay enforcement level wins if set.
+		if ov.EnforcementLevel != "" {
+			bv.EnforcementLevel = ov.EnforcementLevel
+		}
+		// Deep merge properties: overlay wins on conflict.
+		// Clone base properties first to avoid mutating the original map.
+		if len(ov.Properties) > 0 {
+			merged := make(map[string]any, len(bv.Properties)+len(ov.Properties))
+			for pk, pv := range bv.Properties {
+				merged[pk] = pv
+			}
+			deepMergeMap(merged, ov.Properties)
+			bv.Properties = merged
+		}
+		result[k] = bv
+	}
+	return result
 }
 
 // RequiredPolicy represents a set of policies to apply during an update.
@@ -295,6 +342,10 @@ type UpdateOptions struct {
 
 	// RequiredPolicies is the set of policies that are required to run as part of the update.
 	RequiredPolicies []RequiredPolicy
+
+	// PolicyEnvResolver resolves ESC environments for local policy packs.
+	// Nil when the backend does not support ESC (e.g. DIY backend).
+	PolicyEnvResolver PolicyEnvironmentResolver
 
 	// the degree of parallelism for resource operations (<=1 for serial).
 	Parallel int32
@@ -649,7 +700,46 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				return
 			}
 
-			analyzer, err := loadPolicyAnalyzer(plugctx.Base(), plugctx, tokens.QName(abs), pack.Path, analyzerOpts)
+			// Load config and ESC environment references from the config file.
+			var configFromFile map[string]plugin.AnalyzerPolicyConfig
+			var environments []string
+			if pack.Config != "" {
+				var loadErr error
+				configFromFile, environments, loadErr = resourceanalyzer.LoadPolicyPackConfigAndEnvironmentsFromFile(pack.Config)
+				if loadErr != nil {
+					errs <- loadErr
+					return
+				}
+			}
+
+			// Resolve ESC environments if present.
+			policyOpts := *analyzerOpts
+			var resolved *ResolvedPolicyEnvironment
+			if len(environments) > 0 {
+				resolver := deployOpts.PolicyEnvResolver
+				if resolver == nil {
+					errs <- fmt.Errorf(
+						"policy pack at %q specifies ESC environments but the current backend does not support them",
+						pack.Path)
+					return
+				}
+				var resolveErr error
+				resolved, resolveErr = resolver.ResolveEnvironments(plugctx.Base(), environments)
+				if resolveErr != nil {
+					errs <- fmt.Errorf("resolving ESC environments for policy pack at %q: %w", pack.Path, resolveErr)
+					return
+				}
+				if resolved != nil {
+					if len(resolved.EnvironmentVariables) > 0 {
+						policyOpts.AdditionalEnv = resolved.EnvironmentVariables
+					}
+					if len(resolved.Secrets) > 0 {
+						logging.AddGlobalFilter(logging.CreateFilter(resolved.Secrets, "[secret]"))
+					}
+				}
+			}
+
+			analyzer, err := loadPolicyAnalyzer(plugctx.Base(), plugctx, tokens.QName(abs), pack.Path, &policyOpts)
 			if err != nil {
 				errs <- err
 				return
@@ -677,26 +767,31 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				}
 				return
 			}
-			var configFromFile map[string]plugin.AnalyzerPolicyConfig
-			if pack.Config != "" {
-				configFromFile, err = resourceanalyzer.LoadPolicyPackConfigFromFile(pack.Config)
-				if err != nil {
-					errs <- err
-					plugctx.Diag.Infof(diag.Message("", "LoadPolicyPackConfigFromFile %s"), err.Error())
+
+			// Merge ESC policyConfig as initialConfig; file config wins on conflict
+			// (same precedence as cloud path where API config wins over ESC).
+			initialConfig := analyzerInfo.InitialConfig
+			if resolved != nil && len(resolved.Config) > 0 {
+				escParsed, parseErr := resourceanalyzer.ParsePolicyPackConfigFromAPI(resolved.Config)
+				if parseErr != nil {
+					errs <- fmt.Errorf("parsing ESC config for policy pack at %q: %w", pack.Path, parseErr)
 					return
 				}
+				// Layer: defaults < initialConfig < ESC config < file config.
+				// ReconcilePolicyPackConfig applies initialConfig first, then config.
+				// We merge ESC into initialConfig so file config can override it.
+				initialConfig = mergeAnalyzerConfig(initialConfig, escParsed)
 			}
+
 			config, validationErrors, err := resourceanalyzer.ReconcilePolicyPackConfig(
-				analyzerInfo.Policies, analyzerInfo.InitialConfig, configFromFile)
+				analyzerInfo.Policies, initialConfig, configFromFile)
 			if err != nil {
 				errs <- fmt.Errorf("reconciling policy config for %q at %q: %w", analyzerInfo.Name, pack.Path, err)
-				plugctx.Diag.Infof(diag.Message("", "ReconcilePolicyPackConfig %s"), err.Error())
 				return
 			}
 			appendValidationErrors(analyzerInfo.Name, analyzerInfo.Version, validationErrors)
 			if err = analyzer.Configure(config); err != nil {
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
-				plugctx.Diag.Infof(diag.Message("", "Configure %s"), err.Error())
 				return
 			}
 		}(i, pack)

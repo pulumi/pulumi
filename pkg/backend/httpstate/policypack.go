@@ -268,6 +268,68 @@ func escValueToInterface(val esc.Value) any {
 	}
 }
 
+// localPolicyEnvironmentResolver implements engine.PolicyEnvironmentResolver
+// for local policy packs using the httpstate ESC backend.
+type localPolicyEnvironmentResolver struct {
+	envs    backend.EnvironmentsBackend
+	orgName string
+}
+
+var _ engine.PolicyEnvironmentResolver = (*localPolicyEnvironmentResolver)(nil)
+
+// NewLocalPolicyEnvironmentResolver creates a resolver for local policy pack
+// ESC environments.
+func NewLocalPolicyEnvironmentResolver(
+	envs backend.EnvironmentsBackend,
+	orgName string,
+) engine.PolicyEnvironmentResolver {
+	return &localPolicyEnvironmentResolver{envs: envs, orgName: orgName}
+}
+
+func (r *localPolicyEnvironmentResolver) ResolveEnvironments(
+	ctx context.Context,
+	environments []string,
+) (*engine.ResolvedPolicyEnvironment, error) {
+	if len(environments) == 0 {
+		return nil, nil
+	}
+
+	yaml := workspace.NewEnvironment(environments).Definition()
+
+	env, diags, err := r.envs.OpenYAMLEnvironment(ctx, r.orgName, yaml, 2*time.Hour)
+	if err != nil {
+		return nil, fmt.Errorf("opening ESC environments: %w", err)
+	}
+	if len(diags) != 0 {
+		var diagMsgs strings.Builder
+		for _, d := range diags {
+			fmt.Fprintf(&diagMsgs, "  %s\n", d.Summary)
+		}
+		return nil, fmt.Errorf("opening ESC environments:\n%s", diagMsgs.String())
+	}
+
+	result := &engine.ResolvedPolicyEnvironment{}
+
+	if policyConfigVal, ok := env.Properties["policyConfig"]; ok {
+		policyConfig, err := escValueToConfigMap(policyConfigVal)
+		if err != nil {
+			return nil, fmt.Errorf("extracting policyConfig from ESC environment: %w", err)
+		}
+		result.Config = policyConfig
+	}
+
+	envVars, secrets, _, err := prepareEnvironment(env)
+	if err != nil {
+		return nil, fmt.Errorf("preparing ESC environment: %w", err)
+	}
+	if len(envVars) > 0 {
+		result.EnvironmentVariables = envVars
+	}
+	result.Secrets = secrets
+
+	return result, nil
+}
+
 func newCloudBackendPolicyPackReference(
 	cloudConsoleURL, orgName string, name tokens.QName,
 ) *cloudBackendPolicyPackReference {
