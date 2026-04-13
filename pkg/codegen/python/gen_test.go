@@ -109,7 +109,7 @@ func TestGeneratePackage(t *testing.T) {
 	})
 }
 
-func TestGeneratePackageCachesPackageRefPerMonitor(t *testing.T) {
+func TestGeneratePackageCachesPackageRefInRuntimeSettings(t *testing.T) {
 	t.Parallel()
 
 	version := semver.MustParse("1.0.0")
@@ -134,10 +134,10 @@ func TestGeneratePackageCachesPackageRefPerMonitor(t *testing.T) {
 	require.NoError(t, err)
 
 	text := string(utilities)
-	assert.Contains(t, text, "_package_refs = {}")
-	assert.Contains(t, text, "monitor = pulumi.runtime.settings.get_monitor()")
-	assert.Contains(t, text, "_package_ref = _package_refs.get(monitor, ...)")
-	assert.Contains(t, text, "_package_refs[monitor] = _package_ref")
+	assert.Contains(t, text, `_package_key = ("parameterized", get_version(), "terraform-provider", "1.1.0", "ZXhhbXBsZQ==")`)
+	assert.Contains(t, text, "_package_ref = pulumi.runtime.settings._get_package_ref(_package_key)")
+	assert.Contains(t, text, "pulumi.runtime.settings._set_package_ref(_package_key, _package_ref)")
+	assert.NotContains(t, text, "_package_refs = {}")
 	assert.NotContains(t, text, "_package_ref = ...")
 	assert.NotContains(t, text, "global _package_ref")
 }
