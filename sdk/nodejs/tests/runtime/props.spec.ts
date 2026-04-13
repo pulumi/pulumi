@@ -516,4 +516,19 @@ describe("runtime", () => {
             );
         });
     });
+
+    describe("serialization error enrichment", () => {
+        it("includes property name in error when serialization fails", async () => {
+            const rejected = Promise.reject(new Error("inner serialization error"));
+            // Suppress unhandled rejection warning - the rejection is handled via serializeProperties.
+            rejected.catch(() => {});
+
+            await assert.rejects(
+                runtime.serializeProperties("test", { problematicProp: rejected }),
+                (err: Error) => {
+                    return err.message.includes('"problematicProp"');
+                },
+            );
+        });
+    });
 });
