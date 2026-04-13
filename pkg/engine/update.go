@@ -1171,7 +1171,11 @@ type previewActions struct {
 }
 
 func isInternalStep(step deploy.Step) bool {
-	return step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step)
+	if step.Op() == deploy.OpRemovePendingReplace || isDefaultProviderStep(step) {
+		return true
+	}
+	refreshStep, ok := step.(*deploy.RefreshStep)
+	return ok && refreshStep.IsInternal()
 }
 
 func shouldRecordReadStep(step deploy.Step) bool {
