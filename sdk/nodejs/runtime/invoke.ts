@@ -112,6 +112,9 @@ export function invokeOutput<T>(
             resolve(<T>result, isKnown, containsSecrets, dependencies, undefined);
         })
         .catch((err) => {
+            log.error(
+                `Invoke RPC failed: tok=${tok}, err=${err instanceof Error ? err.stack || err.message : String(err)}`,
+            );
             resolve(<any>undefined, true, false, [], err);
         });
 
@@ -164,6 +167,9 @@ export function invokeSingleOutput<T>(
             resolve(<T>value, isKnown, containsSecrets, dependencies, undefined);
         })
         .catch((err) => {
+            log.error(
+                `Invoke RPC failed: tok=${tok}, err=${err instanceof Error ? err.stack || err.message : String(err)}`,
+            );
             resolve(<any>undefined, true, false, [], err);
         });
 

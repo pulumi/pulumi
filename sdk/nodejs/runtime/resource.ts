@@ -313,6 +313,10 @@ export function getResource(
                 });
             })
             .catch((err) => {
+                log.error(
+                    `GetResource RPC failed: urn=${urn}, err=${err instanceof Error ? err.stack || err.message : String(err)}`,
+                    res,
+                );
                 done();
                 throw err;
             }),
@@ -450,6 +454,10 @@ export function readResource(
                 });
             })
             .catch((err) => {
+                log.error(
+                    `ReadResource RPC failed: t=${t}, name=${name}, err=${err instanceof Error ? err.stack || err.message : String(err)}`,
+                    res,
+                );
                 done();
                 throw err;
             }),
@@ -811,7 +819,10 @@ export function registerResource(
                 });
             })
             .catch((err) => {
-                log.debug(`RegisterResource RPC failed: t=${t}, name=${name}, err=${err}`);
+                log.error(
+                    `RegisterResource RPC failed: t=${t}, name=${name}, err=${err instanceof Error ? err.stack || err.message : String(err)}`,
+                    res,
+                );
                 // If we fail to prepare the resource, we need to ensure that we still call done to prevent a hang.
                 done();
                 throw err;

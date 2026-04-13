@@ -175,10 +175,15 @@ async function serializeFilteredProperties(
         if (acceptKey(k)) {
             // We treat properties with undefined values as if they do not exist.
             const dependentResources = new Set<Resource>();
-            const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources, opts);
-            if (v !== undefined) {
-                result[k] = v;
-                propertyToDependentResources.set(k, dependentResources);
+            try {
+                const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources, opts);
+                if (v !== undefined) {
+                    result[k] = v;
+                    propertyToDependentResources.set(k, dependentResources);
+                }
+            } catch (err) {
+                const detail = err instanceof Error ? err.stack || err.message : String(err);
+                throw new Error(`error serializing property "${k}": ${detail}`);
             }
         }
     }
