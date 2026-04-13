@@ -2139,10 +2139,11 @@ func TestGetDeploymentInfo(t *testing.T) {
 			DisableOutputValues:       true,
 			DisableResourceReferences: false,
 		},
-	}, &providerSourceMock{}, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys, opentracing.SpanFromContext(t.Context()))
+	}, &providerSourceMock{}, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
+		opentracing.SpanFromContext(t.Context()))
 	require.NoError(t, err)
 	t.Cleanup(func() {
-		require.NoError(t, mon.Cancel(context.Background()))
+		require.NoError(t, mon.Cancel(t.Context()))
 	})
 
 	conn, err := grpc.NewClient(mon.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
