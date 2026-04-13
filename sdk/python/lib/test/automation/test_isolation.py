@@ -27,7 +27,7 @@ import pytest
 
 import pulumi
 from pulumi import automation
-from .test_utils import get_test_org
+from .test_utils import get_test_org, stack_cleanup
 
 
 class BadResource(pulumi.CustomResource):
@@ -59,19 +59,18 @@ def check_isolation(minimal=False):
         stack_name=stack_name, project_name="isolation-test", program=program
     )
 
-    with pytest.raises(automation.errors.CommandError):
-        stack.set_config("bad", automation.ConfigValue("1"))
-        stack.up(on_output=ignore)
+    with stack_cleanup(stack):
+        with pytest.raises(automation.errors.CommandError):
+            stack.set_config("bad", automation.ConfigValue("1"))
+            stack.up(on_output=ignore)
 
-    if not minimal:
-        stack.set_config("bad", automation.ConfigValue("0"))
-        stack.up(on_output=ignore)
+        if not minimal:
+            stack.set_config("bad", automation.ConfigValue("0"))
+            stack.up(on_output=ignore)
 
-    destroy_res = stack.destroy()
-    assert destroy_res.summary.kind == "destroy"
-    assert destroy_res.summary.result == "succeeded"
-
-    stack.workspace.remove_stack(stack_name)
+        destroy_res = stack.destroy()
+        assert destroy_res.summary.kind == "destroy"
+        assert destroy_res.summary.result == "succeeded"
 
 
 async def async_stack_up(stack):
@@ -96,27 +95,28 @@ async def test_parallel_updates():
         )
         for stack_name in {first_stack_name, second_stack_name}
     ]
-    stack_up_responses = await asyncio.gather(
-        *[async_stack_up(stack) for stack in stacks]
-    )
-    assert all(
-        {
-            stack_response.summary.result == "succeeded"
-            for stack_response in stack_up_responses
-        }
-    )
-    stack_destroy_responses = await asyncio.gather(
-        *[async_stack_destroy(stack) for stack in stacks]
-    )
-    assert all(
-        {
-            stack_response.summary.result == "succeeded"
-            for stack_response in stack_destroy_responses
-        }
-    )
-
-    for stack in stacks:
-        stack.workspace.remove_stack(stack.name)
+    try:
+        stack_up_responses = await asyncio.gather(
+            *[async_stack_up(stack) for stack in stacks]
+        )
+        assert all(
+            {
+                stack_response.summary.result == "succeeded"
+                for stack_response in stack_up_responses
+            }
+        )
+        stack_destroy_responses = await asyncio.gather(
+            *[async_stack_destroy(stack) for stack in stacks]
+        )
+        assert all(
+            {
+                stack_response.summary.result == "succeeded"
+                for stack_response in stack_destroy_responses
+            }
+        )
+    finally:
+        for stack in stacks:
+            stack.workspace.remove_stack(stack.name, force=True)
 
 
 @pytest.mark.skipif(

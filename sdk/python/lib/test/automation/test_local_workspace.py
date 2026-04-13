@@ -52,7 +52,7 @@ from pulumi.resource import (
     ResourceOptions,
 )
 
-from .test_utils import get_test_org, get_test_suffix, stack_namer
+from .test_utils import get_test_org, get_test_suffix, stack_cleanup, stack_namer
 
 extensions = ["json", "yaml", "yml"]
 
@@ -211,14 +211,14 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
 
-        Stack.create(stack_name, ws)
-        # Trying to create the stack again throws an error
-        self.assertRaises(StackAlreadyExistsError, Stack.create, stack_name, ws)
-        # Stack.select succeeds
-        self.assertEqual(Stack.select(stack_name, ws).name, stack_name)
-        # Stack.create_or_select succeeds
-        self.assertEqual(Stack.create_or_select(stack_name, ws).name, stack_name)
-        ws.remove_stack(stack_name)
+        stack = Stack.create(stack_name, ws)
+        with stack_cleanup(stack, destroy=False):
+            # Trying to create the stack again throws an error
+            self.assertRaises(StackAlreadyExistsError, Stack.create, stack_name, ws)
+            # Stack.select succeeds
+            self.assertEqual(Stack.select(stack_name, ws).name, stack_name)
+            # Stack.create_or_select succeeds
+            self.assertEqual(Stack.create_or_select(stack_name, ws).name, stack_name)
 
     # If we rename a stack, we should be able to delete the stack by using the
     # new name.
@@ -244,44 +244,44 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
+        with stack_cleanup(stack, destroy=False):
+            # Ensure an env that doesn't exist errors
+            self.assertRaises(CommandError, stack.add_environments, "non-existent-env")
 
-        # Ensure an env that doesn't exist errors
-        self.assertRaises(CommandError, stack.add_environments, "non-existent-env")
+            # Ensure envs that do exist can be added
+            stack.add_environments(
+                "automation-api-test-env", "automation-api-test-env-2"
+            )
 
-        # Ensure envs that do exist can be added
-        stack.add_environments("automation-api-test-env", "automation-api-test-env-2")
+            # Ensure envs can be listed
+            envs = stack.list_environments()
+            self.assertListEqual(
+                envs, ["automation-api-test-env", "automation-api-test-env-2"]
+            )
 
-        # Ensure envs can be listed
-        envs = stack.list_environments()
-        self.assertListEqual(
-            envs, ["automation-api-test-env", "automation-api-test-env-2"]
-        )
+            # Check that we can access config from each env.
+            config = stack.get_all_config()
+            self.assertEqual(config[f"{project_name}:new_key"].value, "test_value")
+            self.assertEqual(config[f"{project_name}:also"].value, "business")
 
-        # Check that we can access config from each env.
-        config = stack.get_all_config()
-        self.assertEqual(config[f"{project_name}:new_key"].value, "test_value")
-        self.assertEqual(config[f"{project_name}:also"].value, "business")
+            # Ensure envs can be removed
+            stack.remove_environment("automation-api-test-env-2")
 
-        # Ensure envs can be removed
-        stack.remove_environment("automation-api-test-env-2")
+            # Check that only one env remains
+            envs = stack.list_environments()
+            self.assertListEqual(envs, ["automation-api-test-env"])
 
-        # Check that only one env remains
-        envs = stack.list_environments()
-        self.assertListEqual(envs, ["automation-api-test-env"])
+            # Check that we can still access config from the remaining env,
+            # and that the config from the removed env is no longer present.
+            self.assertEqual(stack.get_config("new_key").value, "test_value")
+            self.assertRaises(CommandError, stack.get_config, "also")
 
-        # Check that we can still access config from the remaining env,
-        # and that the config from the removed env is no longer present.
-        self.assertEqual(stack.get_config("new_key").value, "test_value")
-        self.assertRaises(CommandError, stack.get_config, "also")
+            stack.remove_environment("automation-api-test-env")
+            self.assertRaises(CommandError, stack.get_config, "new_key")
 
-        stack.remove_environment("automation-api-test-env")
-        self.assertRaises(CommandError, stack.get_config, "new_key")
-
-        # Check that no envs remain
-        envs = stack.list_environments()
-        self.assertEqual(len(envs), 0)
-
-        ws.remove_stack(stack_name)
+            # Check that no envs remain
+            envs = stack.list_environments()
+            self.assertEqual(len(envs), 0)
 
     def test_config_functions(self):
         project_name = "python_test"
@@ -289,36 +289,34 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
+        with stack_cleanup(stack, destroy=False):
+            config: ConfigMap = {
+                "plain": ConfigValue(value="abc"),
+                "secret": ConfigValue(value="def", secret=True),
+            }
 
-        config: ConfigMap = {
-            "plain": ConfigValue(value="abc"),
-            "secret": ConfigValue(value="def", secret=True),
-        }
+            plain_key = normalize_config_key("plain", project_name)
+            secret_key = normalize_config_key("secret", project_name)
 
-        plain_key = normalize_config_key("plain", project_name)
-        secret_key = normalize_config_key("secret", project_name)
+            self.assertRaises(CommandError, stack.get_config, plain_key)
 
-        self.assertRaises(CommandError, stack.get_config, plain_key)
+            values = stack.get_all_config()
+            self.assertEqual(len(values), 0)
 
-        values = stack.get_all_config()
-        self.assertEqual(len(values), 0)
+            stack.set_all_config(config)
+            values = stack.get_all_config()
+            self.assertEqual(values[plain_key].value, "abc")
+            self.assertFalse(values[plain_key].secret)
+            self.assertEqual(values[secret_key].value, "def")
+            self.assertTrue(values[secret_key].secret)
 
-        stack.set_all_config(config)
-        values = stack.get_all_config()
-        self.assertEqual(values[plain_key].value, "abc")
-        self.assertFalse(values[plain_key].secret)
-        self.assertEqual(values[secret_key].value, "def")
-        self.assertTrue(values[secret_key].secret)
+            stack.remove_config("plain")
+            values = stack.get_all_config()
+            self.assertEqual(len(values), 1)
 
-        stack.remove_config("plain")
-        values = stack.get_all_config()
-        self.assertEqual(len(values), 1)
-
-        stack.set_config("foo", ConfigValue(value="bar"))
-        values = stack.get_all_config()
-        self.assertEqual(len(values), 2)
-
-        ws.remove_stack(stack_name)
+            stack.set_config("foo", ConfigValue(value="bar"))
+            values = stack.get_all_config()
+            self.assertEqual(len(values), 2)
 
     def test_config_functions_path(self):
         project_name = "python_test"
@@ -326,89 +324,87 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
+        with stack_cleanup(stack, destroy=False):
+            # test backward compatibility
+            stack.set_config("key1", ConfigValue(value="value1"))
+            # test new flag without subPath
+            stack.set_config("key2", ConfigValue(value="value2"), path=False)
+            # test new flag with subPath
+            stack.set_config("key3.subKey1", ConfigValue(value="value3"), path=True)
+            # test secret
+            stack.set_config("key4", ConfigValue(value="value4", secret=True))
+            # test subPath and key as secret
+            stack.set_config(
+                "key5.subKey1", ConfigValue(value="value5", secret=True), path=True
+            )
+            # test string with dots
+            stack.set_config("key6.subKey1", ConfigValue(value="value6", secret=True))
+            # test string with dots
+            stack.set_config(
+                "key7.subKey1", ConfigValue(value="value7", secret=True), path=False
+            )
+            # test subPath
+            stack.set_config("key7.subKey2", ConfigValue(value="value8"), path=True)
+            # test subPath
+            stack.set_config("key7.subKey3", ConfigValue(value="value9"), path=True)
 
-        # test backward compatibility
-        stack.set_config("key1", ConfigValue(value="value1"))
-        # test new flag without subPath
-        stack.set_config("key2", ConfigValue(value="value2"), path=False)
-        # test new flag with subPath
-        stack.set_config("key3.subKey1", ConfigValue(value="value3"), path=True)
-        # test secret
-        stack.set_config("key4", ConfigValue(value="value4", secret=True))
-        # test subPath and key as secret
-        stack.set_config(
-            "key5.subKey1", ConfigValue(value="value5", secret=True), path=True
-        )
-        # test string with dots
-        stack.set_config("key6.subKey1", ConfigValue(value="value6", secret=True))
-        # test string with dots
-        stack.set_config(
-            "key7.subKey1", ConfigValue(value="value7", secret=True), path=False
-        )
-        # test subPath
-        stack.set_config("key7.subKey2", ConfigValue(value="value8"), path=True)
-        # test subPath
-        stack.set_config("key7.subKey3", ConfigValue(value="value9"), path=True)
+            # test backward compatibility
+            cv1 = stack.get_config("key1")
+            self.assertEqual(cv1.value, "value1")
+            self.assertFalse(cv1.secret)
 
-        # test backward compatibility
-        cv1 = stack.get_config("key1")
-        self.assertEqual(cv1.value, "value1")
-        self.assertFalse(cv1.secret)
+            # test new flag without subPath
+            cv2 = stack.get_config("key2", path=False)
+            self.assertEqual(cv2.value, "value2")
+            self.assertFalse(cv2.secret)
 
-        # test new flag without subPath
-        cv2 = stack.get_config("key2", path=False)
-        self.assertEqual(cv2.value, "value2")
-        self.assertFalse(cv2.secret)
+            # test new flag with subPath
+            cv3 = stack.get_config("key3.subKey1", path=True)
+            self.assertEqual(cv3.value, "value3")
+            self.assertFalse(cv3.secret)
 
-        # test new flag with subPath
-        cv3 = stack.get_config("key3.subKey1", path=True)
-        self.assertEqual(cv3.value, "value3")
-        self.assertFalse(cv3.secret)
+            # test secret
+            cv4 = stack.get_config("key4")
+            self.assertEqual(cv4.value, "value4")
+            self.assertTrue(cv4.secret)
 
-        # test secret
-        cv4 = stack.get_config("key4")
-        self.assertEqual(cv4.value, "value4")
-        self.assertTrue(cv4.secret)
+            # test subPath and key as secret
+            cv5 = stack.get_config("key5.subKey1", path=True)
+            self.assertEqual(cv5.value, "value5")
+            self.assertTrue(cv5.secret)
 
-        # test subPath and key as secret
-        cv5 = stack.get_config("key5.subKey1", path=True)
-        self.assertEqual(cv5.value, "value5")
-        self.assertTrue(cv5.secret)
+            # test string with dots
+            cv6 = stack.get_config("key6.subKey1")
+            self.assertEqual(cv6.value, "value6")
+            self.assertTrue(cv6.secret)
 
-        # test string with dots
-        cv6 = stack.get_config("key6.subKey1")
-        self.assertEqual(cv6.value, "value6")
-        self.assertTrue(cv6.secret)
+            # test string with dots
+            cv7 = stack.get_config("key7.subKey1", path=False)
+            self.assertEqual(cv7.value, "value7")
+            self.assertTrue(cv7.secret)
 
-        # test string with dots
-        cv7 = stack.get_config("key7.subKey1", path=False)
-        self.assertEqual(cv7.value, "value7")
-        self.assertTrue(cv7.secret)
+            # test string with dots
+            cv8 = stack.get_config("key7.subKey2", path=True)
+            self.assertEqual(cv8.value, "value8")
+            self.assertFalse(cv8.secret)
 
-        # test string with dots
-        cv8 = stack.get_config("key7.subKey2", path=True)
-        self.assertEqual(cv8.value, "value8")
-        self.assertFalse(cv8.secret)
+            # test string with dots
+            cv9 = stack.get_config("key7.subKey3", path=True)
+            self.assertEqual(cv9.value, "value9")
+            self.assertFalse(cv9.secret)
 
-        # test string with dots
-        cv9 = stack.get_config("key7.subKey3", path=True)
-        self.assertEqual(cv9.value, "value9")
-        self.assertFalse(cv9.secret)
+            stack.remove_config("key1")
+            stack.remove_config("key2", path=False)
+            stack.remove_config("key3", path=False)
+            stack.remove_config("key4", path=False)
+            stack.remove_config("key5", path=False)
+            stack.remove_config("key6.subKey1", path=False)
+            stack.remove_config("key7.subKey1", path=False)
 
-        stack.remove_config("key1")
-        stack.remove_config("key2", path=False)
-        stack.remove_config("key3", path=False)
-        stack.remove_config("key4", path=False)
-        stack.remove_config("key5", path=False)
-        stack.remove_config("key6.subKey1", path=False)
-        stack.remove_config("key7.subKey1", path=False)
-
-        cfg = stack.get_all_config()
-        self.assertEqual(
-            cfg["python_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}'
-        )
-
-        ws.remove_stack(stack_name)
+            cfg = stack.get_all_config()
+            self.assertEqual(
+                cfg["python_test:key7"].value, '{"subKey2":"value8","subKey3":"value9"}'
+            )
 
     def test_import_resources(self):
         ws = LocalWorkspace(work_dir=get_test_path("data", "import"))
@@ -416,27 +412,27 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = Stack.create(stack_name, ws)
         random_plugin_version = "4.16.3"
         ws.install_plugin("random", random_plugin_version)
-        result = stack.import_resources(
-            protect=False,
-            resources=[
-                {
-                    "type": "random:index/randomPassword:RandomPassword",
-                    "name": "randomPassword",
-                    "id": "supersecret",
-                }
-            ],
-        )
+        with stack_cleanup(stack, destroy=False):
+            result = stack.import_resources(
+                protect=False,
+                resources=[
+                    {
+                        "type": "random:index/randomPassword:RandomPassword",
+                        "name": "randomPassword",
+                        "id": "supersecret",
+                    }
+                ],
+            )
 
-        self.assertEqual(result.summary.result, "succeeded")
-        expected_generated_code_path = get_test_path(
-            "data", "import", "expected_generated_code.yaml"
-        )
-        expected_generated_code = ""
-        with open(expected_generated_code_path, "r") as codeFile:
-            expected_generated_code = codeFile.read()
-        self.assertEqual(result.generated_code, expected_generated_code)
-        stack.destroy()
-        ws.remove_stack(stack_name)
+            self.assertEqual(result.summary.result, "succeeded")
+            expected_generated_code_path = get_test_path(
+                "data", "import", "expected_generated_code.yaml"
+            )
+            expected_generated_code = ""
+            with open(expected_generated_code_path, "r") as codeFile:
+                expected_generated_code = codeFile.read()
+            self.assertEqual(result.generated_code, expected_generated_code)
+            stack.destroy()
         ws.remove_plugin("random", random_plugin_version)
 
     def test_config_all_functions_path(self):
@@ -445,52 +441,50 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
+        with stack_cleanup(stack, destroy=False):
+            stack.set_all_config(
+                {
+                    "key1": ConfigValue(value="value1", secret=False),
+                    "key2": ConfigValue(value="value2", secret=True),
+                    "key3.subKey1": ConfigValue(value="value3", secret=False),
+                    "key3.subKey2": ConfigValue(value="value4", secret=False),
+                    "key3.subKey3": ConfigValue(value="value5", secret=False),
+                    "key4.subKey1": ConfigValue(value="value6", secret=True),
+                },
+                path=True,
+            )
 
-        stack.set_all_config(
-            {
-                "key1": ConfigValue(value="value1", secret=False),
-                "key2": ConfigValue(value="value2", secret=True),
-                "key3.subKey1": ConfigValue(value="value3", secret=False),
-                "key3.subKey2": ConfigValue(value="value4", secret=False),
-                "key3.subKey3": ConfigValue(value="value5", secret=False),
-                "key4.subKey1": ConfigValue(value="value6", secret=True),
-            },
-            path=True,
-        )
+            # test the SetAllConfigWithOptions configured the first item
+            cv1 = stack.get_config("key1")
+            self.assertEqual(cv1.value, "value1")
+            self.assertFalse(cv1.secret)
 
-        # test the SetAllConfigWithOptions configured the first item
-        cv1 = stack.get_config("key1")
-        self.assertEqual(cv1.value, "value1")
-        self.assertFalse(cv1.secret)
+            # test the SetAllConfigWithOptions configured the second item
+            cv2 = stack.get_config("key2", path=False)
+            self.assertEqual(cv2.value, "value2")
+            self.assertTrue(cv2.secret)
 
-        # test the SetAllConfigWithOptions configured the second item
-        cv2 = stack.get_config("key2", path=False)
-        self.assertEqual(cv2.value, "value2")
-        self.assertTrue(cv2.secret)
+            # test the SetAllConfigWithOptions configured the third item
+            cv3 = stack.get_config("key3.subKey1", path=True)
+            self.assertEqual(cv3.value, "value3")
+            self.assertFalse(cv3.secret)
 
-        # test the SetAllConfigWithOptions configured the third item
-        cv3 = stack.get_config("key3.subKey1", path=True)
-        self.assertEqual(cv3.value, "value3")
-        self.assertFalse(cv3.secret)
+            # test the SetAllConfigWithOptions configured the third item
+            cv4 = stack.get_config("key3.subKey2", path=True)
+            self.assertEqual(cv4.value, "value4")
+            self.assertFalse(cv4.secret)
 
-        # test the SetAllConfigWithOptions configured the third item
-        cv4 = stack.get_config("key3.subKey2", path=True)
-        self.assertEqual(cv4.value, "value4")
-        self.assertFalse(cv4.secret)
+            # test the SetAllConfigWithOptions configured the fourth item
+            cv5 = stack.get_config("key4.subKey1", path=True)
+            self.assertEqual(cv5.value, "value6")
+            self.assertTrue(cv5.secret)
 
-        # test the SetAllConfigWithOptions configured the fourth item
-        cv5 = stack.get_config("key4.subKey1", path=True)
-        self.assertEqual(cv5.value, "value6")
-        self.assertTrue(cv5.secret)
+            stack.remove_all_config(
+                ["key1", "key2", "key3.subKey1", "key3.subKey2", "key4"], path=True
+            )
 
-        stack.remove_all_config(
-            ["key1", "key2", "key3.subKey1", "key3.subKey2", "key4"], path=True
-        )
-
-        cfg = stack.get_all_config()
-        self.assertEqual(cfg["python_test:key3"].value, '{"subKey3":"value5"}')
-
-        ws.remove_stack(stack_name)
+            cfg = stack.get_all_config()
+            self.assertEqual(cfg["python_test:key3"].value, '{"subKey3":"value5"}')
 
     def test_bulk_config_ops(self):
         project_name = "python_test"
@@ -498,23 +492,21 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
-
-        config: ConfigMap = {
-            "one": ConfigValue(value="one"),
-            "two": ConfigValue(value="two"),
-            "three": ConfigValue(value="three", secret=True),
-            "four": ConfigValue(value="four", secret=True),
-            "five": ConfigValue(value="five"),
-            "six": ConfigValue(value="six"),
-            "seven": ConfigValue(value="seven", secret=True),
-            "eight": ConfigValue(value="eight", secret=True),
-            "nine": ConfigValue(value="nine"),
-            "ten": ConfigValue(value="ten"),
-        }
-        stack.set_all_config(config)
-        stack.remove_all_config(list(config))
-
-        ws.remove_stack(stack_name)
+        with stack_cleanup(stack, destroy=False):
+            config: ConfigMap = {
+                "one": ConfigValue(value="one"),
+                "two": ConfigValue(value="two"),
+                "three": ConfigValue(value="three", secret=True),
+                "four": ConfigValue(value="four", secret=True),
+                "five": ConfigValue(value="five"),
+                "six": ConfigValue(value="six"),
+                "seven": ConfigValue(value="seven", secret=True),
+                "eight": ConfigValue(value="eight", secret=True),
+                "nine": ConfigValue(value="nine"),
+                "ten": ConfigValue(value="ten"),
+            }
+            stack.set_all_config(config)
+            stack.remove_all_config(list(config))
 
     def test_config_flag_like(self):
         project_name = "python_test"
@@ -522,14 +514,14 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
-        stack.set_config("key", ConfigValue(value="-value"))
-        stack.set_config("secret-key", ConfigValue(value="-value", secret=True))
-        all_config = stack.get_all_config()
-        self.assertFalse(all_config["python_test:key"].secret)
-        self.assertEqual(all_config["python_test:key"].value, "-value")
-        self.assertTrue(all_config["python_test:secret-key"].secret)
-        self.assertEqual(all_config["python_test:secret-key"].value, "-value")
-        ws.remove_stack(stack_name)
+        with stack_cleanup(stack, destroy=False):
+            stack.set_config("key", ConfigValue(value="-value"))
+            stack.set_config("secret-key", ConfigValue(value="-value", secret=True))
+            all_config = stack.get_all_config()
+            self.assertFalse(all_config["python_test:key"].secret)
+            self.assertEqual(all_config["python_test:key"].value, "-value")
+            self.assertTrue(all_config["python_test:secret-key"].secret)
+            self.assertEqual(all_config["python_test:secret-key"].value, "-value")
 
     def test_set_all_config_json(self):
         project_name = "python_config_json_test"
@@ -537,39 +529,37 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
+        with stack_cleanup(stack, destroy=False):
+            # Set config using JSON format
+            config_json = json.dumps(
+                {
+                    f"{project_name}:plainKey": {
+                        "value": "plainValue",
+                        "secret": False,
+                    },
+                    f"{project_name}:secretKey": {
+                        "value": "secretValue",
+                        "secret": True,
+                    },
+                    f"{project_name}:numberKey": {
+                        "value": "42",
+                        "secret": False,
+                    },
+                }
+            )
 
-        # Set config using JSON format
-        config_json = json.dumps(
-            {
-                f"{project_name}:plainKey": {
-                    "value": "plainValue",
-                    "secret": False,
-                },
-                f"{project_name}:secretKey": {
-                    "value": "secretValue",
-                    "secret": True,
-                },
-                f"{project_name}:numberKey": {
-                    "value": "42",
-                    "secret": False,
-                },
-            }
-        )
+            stack.set_all_config_json(config_json)
 
-        stack.set_all_config_json(config_json)
+            # Verify the config was set correctly
+            all_config = stack.get_all_config()
 
-        # Verify the config was set correctly
-        all_config = stack.get_all_config()
+            self.assertEqual(all_config[f"{project_name}:plainKey"].value, "plainValue")
+            self.assertFalse(all_config[f"{project_name}:plainKey"].secret)
 
-        self.assertEqual(all_config[f"{project_name}:plainKey"].value, "plainValue")
-        self.assertFalse(all_config[f"{project_name}:plainKey"].secret)
+            self.assertTrue(all_config[f"{project_name}:secretKey"].secret)
 
-        self.assertTrue(all_config[f"{project_name}:secretKey"].secret)
-
-        self.assertEqual(all_config[f"{project_name}:numberKey"].value, "42")
-        self.assertFalse(all_config[f"{project_name}:numberKey"].secret)
-
-        ws.remove_stack(stack_name)
+            self.assertEqual(all_config[f"{project_name}:numberKey"].value, "42")
+            self.assertFalse(all_config[f"{project_name}:numberKey"].secret)
 
     # This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
     # config from the file. This means we can't remove the stack at the end of the test.
@@ -580,29 +570,27 @@ class TestLocalWorkspace(unittest.TestCase):
         stack_name = fully_qualified_stack_name(get_test_org(), project_name, "dev")
         project_dir = get_test_path("data", project_name)
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
+        with stack_cleanup(stack, destroy=False):
+            all_config = stack.get_all_config()
+            outer_val = all_config["nested_config:outer"]
+            self.assertFalse(outer_val.secret)
+            self.assertEqual(
+                outer_val.value, '{"inner":"my_value","other":"something_else"}'
+            )
 
-        all_config = stack.get_all_config()
-        outer_val = all_config["nested_config:outer"]
-        self.assertFalse(outer_val.secret)
-        self.assertEqual(
-            outer_val.value, '{"inner":"my_value","other":"something_else"}'
-        )
+            list_val = all_config["nested_config:myList"]
+            self.assertFalse(list_val.secret)
+            self.assertEqual(list_val.value, '["one","two","three"]')
 
-        list_val = all_config["nested_config:myList"]
-        self.assertFalse(list_val.secret)
-        self.assertEqual(list_val.value, '["one","two","three"]')
+            outer = stack.get_config("outer")
+            self.assertFalse(outer.secret)
+            self.assertEqual(
+                outer_val.value, '{"inner":"my_value","other":"something_else"}'
+            )
 
-        outer = stack.get_config("outer")
-        self.assertFalse(outer.secret)
-        self.assertEqual(
-            outer_val.value, '{"inner":"my_value","other":"something_else"}'
-        )
-
-        arr = stack.get_config("myList")
-        self.assertFalse(arr.secret)
-        self.assertEqual(arr.value, '["one","two","three"]')
-
-        stack.workspace.remove_stack(stack_name)
+            arr = stack.get_config("myList")
+            self.assertFalse(arr.secret)
+            self.assertEqual(arr.value, '["one","two","three"]')
 
     def test_tag_methods(self):
         if os.getenv("PULUMI_ACCESS_TOKEN") is None:
@@ -614,28 +602,26 @@ class TestLocalWorkspace(unittest.TestCase):
         project_settings = ProjectSettings(name=project_name, runtime=runtime)
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
-        _ = Stack.create(stack_name, ws)
+        stack = Stack.create(stack_name, ws)
+        with stack_cleanup(stack, destroy=False):
+            # Lists tag values
+            result = ws.list_tags(stack_name)
+            self.assertEqual(result["pulumi:project"], project_name)
+            self.assertEqual(result["pulumi:runtime"], runtime)
 
-        # Lists tag values
-        result = ws.list_tags(stack_name)
-        self.assertEqual(result["pulumi:project"], project_name)
-        self.assertEqual(result["pulumi:runtime"], runtime)
+            # Sets tag values
+            ws.set_tag(stack_name, "foo", "bar")
+            result = ws.list_tags(stack_name)
+            self.assertEqual(result["foo"], "bar")
 
-        # Sets tag values
-        ws.set_tag(stack_name, "foo", "bar")
-        result = ws.list_tags(stack_name)
-        self.assertEqual(result["foo"], "bar")
+            # Removes tag values
+            ws.remove_tag(stack_name, "foo")
+            result = ws.list_tags(stack_name)
+            self.assertTrue("foo" not in result)
 
-        # Removes tag values
-        ws.remove_tag(stack_name, "foo")
-        result = ws.list_tags(stack_name)
-        self.assertTrue("foo" not in result)
-
-        # Gets a single tag value
-        result = ws.get_tag(stack_name, "pulumi:project")
-        self.assertEqual(result, project_name)
-
-        ws.remove_stack(stack_name)
+            # Gets a single tag value
+            result = ws.get_tag(stack_name, "pulumi:project")
+            self.assertEqual(result, project_name)
 
     def test_list_stacks(self):
         mock_with_returned_stacks = PulumiCommand()
@@ -767,13 +753,11 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
-
-        history = stack.history()
-        self.assertEqual(len(history), 0)
-        info = stack.info()
-        self.assertIsNone(info)
-
-        ws.remove_stack(stack_name)
+        with stack_cleanup(stack, destroy=False):
+            history = stack.history()
+            self.assertEqual(len(history), 0)
+            info = stack.info()
+            self.assertIsNone(info)
 
     def test_stack_lifecycle_local_program(self):
         project_name = "testproj"
@@ -781,40 +765,38 @@ class TestLocalWorkspace(unittest.TestCase):
         work_dir = get_test_path("data", project_name)
         stack = create_stack(stack_name, work_dir=work_dir)
         self.assertIsNone(print(stack))
+        with stack_cleanup(stack):
+            config: ConfigMap = {
+                "bar": ConfigValue(value="abc"),
+                "buzz": ConfigValue(value="secret", secret=True),
+            }
+            stack.set_all_config(config)
 
-        config: ConfigMap = {
-            "bar": ConfigValue(value="abc"),
-            "buzz": ConfigValue(value="secret", secret=True),
-        }
-        stack.set_all_config(config)
+            # pulumi up
+            up_res = stack.up()
+            self.assertEqual(len(up_res.outputs), 3)
+            self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+            self.assertFalse(up_res.outputs["exp_static"].secret)
+            self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+            self.assertFalse(up_res.outputs["exp_cfg"].secret)
+            self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+            self.assertTrue(up_res.outputs["exp_secret"].secret)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
 
-        # pulumi up
-        up_res = stack.up()
-        self.assertEqual(len(up_res.outputs), 3)
-        self.assertEqual(up_res.outputs["exp_static"].value, "foo")
-        self.assertFalse(up_res.outputs["exp_static"].secret)
-        self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
-        self.assertFalse(up_res.outputs["exp_cfg"].secret)
-        self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
-        self.assertTrue(up_res.outputs["exp_secret"].secret)
-        self.assertEqual(up_res.summary.kind, "update")
-        self.assertEqual(up_res.summary.result, "succeeded")
+            # pulumi preview
+            preview_result = stack.preview()
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
 
-        # pulumi preview
-        preview_result = stack.preview()
-        self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
+            # pulumi refresh
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
 
-        # pulumi refresh
-        refresh_res = stack.refresh()
-        self.assertEqual(refresh_res.summary.kind, "refresh")
-        self.assertEqual(refresh_res.summary.result, "succeeded")
-
-        # pulumi destroy
-        destroy_res = stack.destroy()
-        self.assertEqual(destroy_res.summary.kind, "destroy")
-        self.assertEqual(destroy_res.summary.result, "succeeded")
-
-        stack.workspace.remove_stack(stack_name)
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
 
     def test_stack_lifecycle_inline_program(self):
         project_name = "inline_python"
@@ -828,7 +810,7 @@ class TestLocalWorkspace(unittest.TestCase):
             "buzz": ConfigValue(value="secret", secret=True),
         }
 
-        try:
+        with stack_cleanup(stack):
             stack.set_all_config(stack_config)
 
             # pulumi up
@@ -856,8 +838,6 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_on_error(self):
         project_name = "inline_python"
@@ -866,7 +846,7 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=pulumi_program, project_name=project_name
         )
 
-        try:
+        with stack_cleanup(stack):
             error = ""
 
             def logger(e):
@@ -919,8 +899,6 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_preview_refresh(self):
         project_name = "inline_python"
@@ -929,7 +907,7 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=pulumi_program, project_name=project_name
         )
 
-        try:
+        with stack_cleanup(stack):
             # pulumi up
             stack.up()
 
@@ -941,8 +919,6 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_preview_refresh_with_resource(self):
         project_name = "inline_python"
@@ -951,7 +927,7 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=pulumi_program_with_resource, project_name=project_name
         )
 
-        try:
+        with stack_cleanup(stack):
             # pulumi up
             stack.up()
 
@@ -963,8 +939,6 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_preview_destroy(self):
         project_name = "inline_python"
@@ -973,15 +947,13 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=pulumi_program, project_name=project_name
         )
 
-        try:
+        with stack_cleanup(stack):
             # pulumi up
             stack.up()
 
             # pulumi destroy
             destroy_res = stack.preview_destroy()
             self.assertEqual(destroy_res.change_summary, {"delete": 1})
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_preview_destroy_with_resource(self):
         project_name = "inline_python"
@@ -990,7 +962,7 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=pulumi_program_with_resource, project_name=project_name
         )
 
-        try:
+        with stack_cleanup(stack):
             # pulumi up
             stack.up()
 
@@ -1006,8 +978,6 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_preview_with_json(self):
         project_name = "inline_python"
@@ -1016,7 +986,7 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=pulumi_program_with_resource, project_name=project_name
         )
 
-        try:
+        with stack_cleanup(stack):
             # pulumi up
             stack.up()
 
@@ -1032,8 +1002,6 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_stack_lifecycle_inline_program_remove_without_destroy(self):
         project_name = "inline_python"
@@ -1085,7 +1053,7 @@ class TestLocalWorkspace(unittest.TestCase):
             "buzz": ConfigValue(value="secret", secret=True),
         }
 
-        try:
+        with stack_cleanup(stack):
             stack.set_all_config(stack_config)
 
             # pulumi up
@@ -1113,8 +1081,6 @@ class TestLocalWorkspace(unittest.TestCase):
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_stack_lifecycle_inline_program_with_exclude_protected(self):
         project_name = "inline_python"
@@ -1141,7 +1107,7 @@ class TestLocalWorkspace(unittest.TestCase):
             stack_name, program=destroy_program, project_name=project_name
         )
 
-        try:
+        with stack_cleanup(stack):
             # pulumi up
             stack.set_all_config({"protect": ConfigValue(value="true")})
             up_res = stack.up()
@@ -1167,9 +1133,6 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
 
-        finally:
-            stack.workspace.remove_stack(stack_name)
-
     def test_supports_stack_outputs(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
@@ -1191,7 +1154,7 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(outputs["exp_secret"].value, "secret")
             self.assertTrue(outputs["exp_secret"].secret)
 
-        try:
+        with stack_cleanup(stack):
             stack.set_all_config(stack_config)
 
             initial_outputs = stack.outputs()
@@ -1213,8 +1176,6 @@ class TestLocalWorkspace(unittest.TestCase):
 
             outputs_after_destroy = stack.outputs()
             self.assertEqual(len(outputs_after_destroy), 0)
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_pulumi_version(self):
         ws = LocalWorkspace()
@@ -1229,23 +1190,21 @@ class TestLocalWorkspace(unittest.TestCase):
         stack = create_stack(
             stack_name, program=pulumi_program, project_name=project_name
         )
+        with stack_cleanup(stack):
+            # pulumi up
+            stack.up()
 
-        # pulumi up
-        stack.up()
+            # preview with refresh
+            pre_res = stack.preview(refresh=True)
+            self.assertRegex(pre_res.stdout, r".*refreshing.*")
 
-        # preview with refresh
-        pre_res = stack.preview(refresh=True)
-        self.assertRegex(pre_res.stdout, r".*refreshing.*")
+            # up with refresh
+            up_res = stack.up(refresh=True)
+            self.assertRegex(up_res.stdout, r".*refreshing.*")
 
-        # up with refresh
-        up_res = stack.up(refresh=True)
-        self.assertRegex(up_res.stdout, r".*refreshing.*")
-
-        # destroy with refresh
-        destroy_res = stack.destroy(refresh=True)
-        self.assertRegex(destroy_res.stdout, r".*refreshing.*")
-
-        stack.workspace.remove_stack(stack_name)
+            # destroy with refresh
+            destroy_res = stack.destroy(refresh=True)
+            self.assertRegex(destroy_res.stdout, r".*refreshing.*")
 
     def test_pulumi_command(self):
         p = PulumiCommand()
@@ -1263,9 +1222,9 @@ class TestLocalWorkspace(unittest.TestCase):
             project_name=project_name,
             opts=LocalWorkspaceOptions(work_dir=get_test_path("data", project_name)),
         )
-        project_settings = stack.workspace.project_settings()
-        self.assertEqual(project_settings.description, "This is a description")
-        stack.workspace.remove_stack(stack_name)
+        with stack_cleanup(stack, destroy=False):
+            project_settings = stack.workspace.project_settings()
+            self.assertEqual(project_settings.description, "This is a description")
 
     def test_project_settings_populates_main(self):
         main_cases = [
@@ -1286,9 +1245,9 @@ class TestLocalWorkspace(unittest.TestCase):
                 project_name=project_name,
                 opts=LocalWorkspaceOptions(project_settings=project_settings),
             )
-            project_settings = stack.workspace.project_settings()
-            self.assertEqual(expected_main, project_settings.main)
-            stack.workspace.remove_stack(stack_name)
+            with stack_cleanup(stack, destroy=False):
+                project_settings = stack.workspace.project_settings()
+                self.assertEqual(expected_main, project_settings.main)
 
     def test_structured_events(self):
         project_name = "structured_events"
@@ -1302,7 +1261,7 @@ class TestLocalWorkspace(unittest.TestCase):
             "buzz": ConfigValue(value="secret", secret=True),
         }
 
-        try:
+        with stack_cleanup(stack):
             stack.set_all_config(stack_config)
 
             # can't mutate a bool from the callback, so use a single-item list
@@ -1343,8 +1302,6 @@ class TestLocalWorkspace(unittest.TestCase):
             )
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     # TODO[pulumi/pulumi#7127]: Re-enabled the warning.
     @unittest.skip(
@@ -1451,7 +1408,7 @@ class TestLocalWorkspace(unittest.TestCase):
             "obj4": ConfigValue(value="{}", secret=True),
         }
 
-        try:
+        with stack_cleanup(stack):
             stack.set_all_config(stack_config)
 
             events: List[str] = []
@@ -1533,8 +1490,6 @@ class TestLocalWorkspace(unittest.TestCase):
             events = []
             stack.up(on_event=find_diagnostic_events)
             validate(events)
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
     def test_install(self):
         class MockCmd(PulumiCommand):
@@ -1722,12 +1677,10 @@ class TestLocalWorkspace(unittest.TestCase):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
         stack = create_stack(stack_name, program=program, project_name=project_name)
-
-        # We expect the above program to fail.
-        with pytest.raises(InlineSourceRuntimeError):
-            stack.preview()
-
-        stack.workspace.remove_stack(stack_name)
+        with stack_cleanup(stack, destroy=False):
+            # We expect the above program to fail.
+            with pytest.raises(InlineSourceRuntimeError):
+                stack.preview()
 
 
 def pulumi_program():
@@ -1799,8 +1752,6 @@ def test_no_logs(caplog):
         stack_name, program=pulumi_program_with_resource, project_name=project_name
     )
 
-    try:
+    with stack_cleanup(stack, destroy=False):
         stack.preview()
         assert len(caplog.records) == 0, "Nothing should be logged"
-    finally:
-        stack.workspace.remove_stack(stack_name, force=True)
