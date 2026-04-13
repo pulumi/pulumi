@@ -124,12 +124,6 @@ service LanguageRuntime {
     // user on how to use the linked package in the project.
     rpc Link(LinkRequest) returns (LinkResponse) {}
 
-    // `RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-    // in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-    // containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-    // the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-    rpc RunPlugin2(stream RunPlugin2Request) returns (stream RunPluginResponse) {}
-
     // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
     // Operations aborted in this way will return an error.
     rpc Cancel(google.protobuf.Empty) returns (google.protobuf.Empty) {}
@@ -507,28 +501,6 @@ message RunPluginResponse {
         // An exit code that the plugin program has terminated with. This should be the last message sent by the host.
         int32 exitcode = 3;
     }
-}
-
-// `RunPlugin2Request` is the type of requests streamed by a [](pulumirpc.LanguageRuntime.RunPlugin2) call.
-// The first message must contain a `start` request with the plugin configuration. Subsequent messages may contain
-// a `cancel` request to signal graceful shutdown of the plugin.
-message RunPlugin2Request {
-    oneof request {
-        // The initial request to start the plugin.
-        RunPluginRequest start = 1;
-
-        // A request to cancel the running plugin.
-        RunPluginCancelRequest cancel = 2;
-    }
-}
-
-// `RunPluginCancelRequest` is sent on a [](pulumirpc.LanguageRuntime.RunPlugin2) stream to request shutdown of the
-// running plugin. By default (`force` = false), the plugin receives a graceful shutdown signal (e.g. SIGINT). If
-// `force` is true, the plugin is killed immediately (e.g. SIGKILL).
-message RunPluginCancelRequest {
-    // If true, forcefully kill the plugin process immediately.
-    // If false (default), send a graceful shutdown signal.
-    bool force = 1;
 }
 
 // `GenerateProgramRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProgram)
