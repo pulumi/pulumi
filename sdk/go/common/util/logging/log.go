@@ -26,6 +26,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -57,6 +58,15 @@ var (
 
 func init() {
 	slogHandler = slog.New(discardHandler{})
+
+	// Register the standard logging flags on flag.CommandLine, matching
+	// the behavior glog had via its own init(). Plugin binaries (language
+	// hosts) use the standard flag package and receive these flags from
+	// the CLI when --logflow is enabled.
+	flag.BoolVar(&LogToStderr, "logtostderr", false,
+		"Log to stderr instead of to files")
+	flag.IntVar(&Verbose, "v", 0,
+		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 }
 
 const LevelTrace = slog.LevelDebug - 4
