@@ -77,8 +77,9 @@ type Import struct {
 	Parameterization  *Parameterization // The parameterization to use for the resource, if any.
 
 	// ProviderInputs holds the full inputs for an explicit provider that is not yet in state.
-	// When set, these inputs are used to create the provider during import instead of relying
-	// on ambient stack configuration from GetPackageConfig.
+	// When set, these inputs are used to create the provider during import. Unlike default
+	// providers (which use ambient stack config via GetPackageConfig), explicit providers
+	// are configured solely from these inputs.
 	ProviderInputs resource.PropertyMap
 
 	// True if this import should create an empty component resource. ID must not be set if this is used.

@@ -201,9 +201,9 @@ func buildImportFile(
 					return importFile{}, fmt.Errorf("could not parse provider reference: %w", err)
 				}
 
-				// We can't import providers yet (we skip them above), but resources that use a new
-				// explicit provider can still be in the import file. We serialize the provider's full
-				// inputs so the import system can create it with the correct configuration.
+				// Providers are not imported as resources (we skip them above), but resources
+				// that use a new explicit provider can still be in the import file. We serialize
+				// the provider's full inputs so the import system can create it.
 				if !sdkproviders.IsDefaultProvider(ref.URN()) {
 					var has bool
 					provider, has = fullNameTable[ref.URN()]
