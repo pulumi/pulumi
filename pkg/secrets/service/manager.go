@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -31,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -51,12 +51,12 @@ func newServiceCrypter(ctx context.Context, client *client.Client, stack client.
 		supportsBatchEncryption: promise.Run(func() (bool, error) {
 			capabilitiesResponse, err := client.GetCapabilities(ctx)
 			if err != nil {
-				logging.V(3).Infof("error requesting service capabilities: %v", err)
+				slog.Info("error requesting service capabilities", "err", err)
 				return false, nil
 			}
 			capabilities, err := capabilitiesResponse.Parse()
 			if err != nil {
-				logging.V(3).Infof("error parsing service capabilities: %v", err)
+				slog.Info("error parsing service capabilities", "err", err)
 				return false, nil
 			}
 			return capabilities.BatchEncryption, nil

@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/binary"
 	"io"
+	"log/slog"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -25,7 +26,6 @@ import (
 	"google.golang.org/grpc/encoding/proto"
 	"google.golang.org/grpc/metadata"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -72,43 +72,43 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 
 			err := pipes.connect()
 			if err != nil {
-				logging.V(10).Infof("Sync invoke: Error connecting to pipes: %s\n", err)
+				slog.Debug("Sync invoke: Error connecting to pipes", "err", err)
 				return err
 			}
 
 			for {
 				// read a 4-byte request length
-				logging.V(10).Infoln("Sync invoke: Reading length from request pipe")
+				slog.Debug("Sync invoke: Reading length from request pipe")
 				var reqLen uint32
 				if err := binary.Read(pipes.reader(), binary.BigEndian, &reqLen); err != nil {
 					// This is benign on shutdown.
 					if err == io.EOF {
 						// We were asked to gracefully cancel.  Just exit now.
-						logging.V(10).Infof("Sync invoke: Gracefully shutting down")
+						slog.Debug("Sync invoke: Gracefully shutting down")
 						return nil
 					}
 
-					logging.V(10).Infof("Sync invoke: Received error reading length from pipe: %s\n", err)
+					slog.Debug("Sync invoke: Received error reading length from pipe", "err", err)
 					return err
 				}
 
 				// read the request in full
-				logging.V(10).Infoln("Sync invoke: Reading message from request pipe")
+				slog.Debug("Sync invoke: Reading message from request pipe")
 				reqBytes := make([]byte, reqLen)
 				if _, err := io.ReadFull(pipes.reader(), reqBytes); err != nil {
-					logging.V(10).Infof("Sync invoke: Received error reading message from pipe: %s\n", err)
+					slog.Debug("Sync invoke: Received error reading message from pipe", "err", err)
 					return err
 				}
 
 				// decode and dispatch the request
-				logging.V(10).Infof("Sync invoke: Unmarshalling request")
+				slog.Debug("Sync invoke: Unmarshalling request")
 				var req pulumirpc.ResourceInvokeRequest
 				if err := pbcodec.Unmarshal(reqBytes, &req); err != nil {
-					logging.V(10).Infof("Sync invoke: Received error reading full from pipe: %s\n", err)
+					slog.Debug("Sync invoke: Received error reading full from pipe", "err", err)
 					return err
 				}
 
-				logging.V(10).Infof("Sync invoke: Invoking: %s", req.GetTok())
+				slog.Debug("Sync invoke: Invoking", "tok", req.GetTok())
 				res, err := target.Invoke(ctx, &req)
 				// Unfortunately, `monitor.Invoke` can return errors for non-exceptional cases. This
 				// can happen, for example, if the underlying provider call ends up returning an
@@ -132,8 +132,8 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 				// this error into that array, knowing that the SDK will see it and immediately
 				// throw, just like it would have done for an RPC error in the normal async case.
 				if err != nil {
-					logging.V(10).Infof("Sync invoke: Received error invoking: %s\n", err)
-					logging.V(10).Infof("Sync invoke: Converting error to response.\n")
+					slog.Debug("Sync invoke: Received error invoking", "err", err)
+					slog.Debug("Sync invoke: Converting error to response")
 					if res == nil {
 						res = &pulumirpc.InvokeResponse{}
 					}
@@ -145,25 +145,25 @@ func servePipes(ctx context.Context, pipes pipes, target pulumirpc.ResourceMonit
 				}
 
 				// encode the response
-				logging.V(10).Infof("Sync invoke: Marshalling response")
+				slog.Debug("Sync invoke: Marshalling response")
 				resBytes, err := pbcodec.Marshal(res)
 				if err != nil {
-					logging.V(10).Infof("Sync invoke: Received error marshalling: %s\n", err)
+					slog.Debug("Sync invoke: Received error marshalling", "err", err)
 					return err
 				}
 
 				// write the 4-byte response length
-				logging.V(10).Infoln("Sync invoke: Writing length to request pipe")
+				slog.Debug("Sync invoke: Writing length to request pipe")
 				//nolint:gosec // Max message size for protobuf is 2GB, so the int -> uint32 conversion is safe.
 				if err := binary.Write(pipes.writer(), binary.BigEndian, uint32(len(resBytes))); err != nil {
-					logging.V(10).Infof("Sync invoke: Error writing length to pipe: %s\n", err)
+					slog.Debug("Sync invoke: Error writing length to pipe", "err", err)
 					return err
 				}
 
 				// write the response in full
-				logging.V(10).Infoln("Sync invoke: Writing message to request pipe")
+				slog.Debug("Sync invoke: Writing message to request pipe")
 				if _, err := pipes.writer().Write(resBytes); err != nil {
-					logging.V(10).Infof("Sync invoke: Error writing message to pipe: %s\n", err)
+					slog.Debug("Sync invoke: Error writing message to pipe", "err", err)
 					return err
 				}
 			}

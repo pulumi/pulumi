@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -26,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -38,11 +38,11 @@ func installPolicyPack(
 	policy RequiredPolicy,
 ) error {
 	policyID := fmt.Sprintf("%s@v%s", policy.Name(), policy.Version())
-	logging.V(preparePluginLog).Infof("installPolicyPack(%s): beginning install", policyID)
+	slog.Info("installPolicyPack: beginning install", "policyID", policyID)
 
 	// Check if already installed
 	if policy.Installed() {
-		logging.V(preparePluginLog).Infof("installPolicyPack(%s): already installed", policyID)
+		slog.Info("installPolicyPack: already installed", "policyID", policyID)
 		return nil
 	}
 
@@ -79,7 +79,7 @@ func installPolicyPack(
 		}
 	}
 
-	logging.V(preparePluginVerboseLog).Infof("installPolicyPack(%s): initiating download", policyID)
+	slog.Info("installPolicyPack: initiating download", "policyID", policyID)
 
 	downloadStream, size, err := policy.Download(ctx, withDownloadProgress)
 	if err != nil {
@@ -110,8 +110,7 @@ func installPolicyPack(
 		return fmt.Errorf("failed to download policy pack %s: %w", policyID, err)
 	}
 
-	logging.V(preparePluginVerboseLog).Infof(
-		"installPolicyPack(%s): extracting tarball to installation directory", policyID)
+	slog.Info("installPolicyPack: extracting tarball to installation directory", "policyID", policyID)
 
 	// In a similar manner to downloads, we'll use a progress bar to show
 	// install progress by wrapping the tarball file with a progress reporting
@@ -161,7 +160,7 @@ func installPolicyPack(
 		}
 	}
 
-	logging.V(preparePluginLog).Infof("installPolicyPack(%s): installation complete", policyID)
+	slog.Info("installPolicyPack: installation complete", "policyID", policyID)
 	return nil
 }
 
@@ -186,13 +185,13 @@ func ensurePoliciesAreInstalled(
 	policies []RequiredPolicy,
 	manager *installManager,
 ) {
-	logging.V(preparePluginLog).Infof("ensurePoliciesAreInstalled(): beginning, %d policies", len(policies))
+	slog.Info("ensurePoliciesAreInstalled: beginning", "policies", len(policies))
 	for _, policy := range policies {
 		manager.InstallPolicyPack(func() error {
 			return installPolicyPack(ctx, plugctx, opts, policy)
 		})
 	}
-	logging.V(preparePluginLog).Infof("ensurePoliciesAreInstalled(): completed")
+	slog.Info("ensurePoliciesAreInstalled: completed")
 }
 
 type lockedWriter struct {

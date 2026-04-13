@@ -18,10 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jonboulle/clockwork"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type tokenSourceCapability interface {
@@ -111,21 +111,21 @@ func (ts *tokenSource) handleRequests(
 			return
 		}
 
-		logging.V(9).Infof("trying to renew token. Current token expiring at: %v ", state.expires)
+		slog.Info("trying to renew token", "expires", state.expires)
 
 		newToken, newTokenExpires, err := refreshToken(ctx, duration, state.token)
 		// Renewing might fail because of network issues, or because the token is no longer valid.
 		// We only care about the latter, if it's just a network issue we should retry again.
 		var expired expiredTokenError
 		if errors.As(err, &expired) {
-			logging.V(3).Infof("error renewing lease: %v", err)
+			slog.Info("error renewing lease", "err", err)
 			state.error = fmt.Errorf("renewing lease: %w", err)
 			renewTicker.Stop()
 		} else if err != nil {
 			// If we failed to renew the lease, we will retry in the next cycle.
-			logging.V(3).Infof("error renewing lease: %v", err)
+			slog.Info("error renewing lease", "err", err)
 		} else {
-			logging.V(5).Infof("renewed lease. Next expiry: %v", newTokenExpires)
+			slog.Info("renewed lease", "nextExpiry", newTokenExpires)
 			state.token = newToken
 			state.expires = newTokenExpires
 		}

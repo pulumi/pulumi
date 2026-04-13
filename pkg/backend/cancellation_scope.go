@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -26,7 +27,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type cancellationScope struct {
@@ -67,21 +67,21 @@ func (cancellationScopeSource) NewScope(
 			// termination func.
 			if cancelContext.CancelErr() == nil {
 				// Grab the stack traces for all goroutines and log them.
-				if logging.Verbose >= 9 {
+				if slog.Default().Enabled(context.TODO(), slog.LevelInfo) {
 					var b bytes.Buffer
 					f := bufio.NewWriter(&b)
 					if err := pprof.Lookup("goroutine").WriteTo(f, 2); err != nil {
-						logging.V(9).Infof("failed to get goroutine stack traces: %s", err)
+						slog.Info("failed to get goroutine stack traces", "err", err)
 					} else {
 						if err := f.Flush(); err != nil {
-							logging.V(9).Infof("failed to flush buffer: %s", err)
+							slog.Info("failed to flush buffer", "err", err)
 						}
 						// We still write out the information we got, even if the flush failed.
-						logging.V(9).Infoln("goroutines at time of cancellation:")
+						slog.Info("goroutines at time of cancellation")
 						r := bytes.NewReader(b.Bytes())
 						scan := bufio.NewScanner(r)
 						for scan.Scan() {
-							logging.V(9).Info(scan.Text())
+							slog.Info(scan.Text())
 						}
 					}
 				}

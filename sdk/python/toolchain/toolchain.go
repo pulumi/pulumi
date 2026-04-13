@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type typeChecker int
@@ -141,7 +141,7 @@ func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 	switch options.Toolchain {
 	case Auto:
 		if _, err := searchup(options.ProgramDir, "uv.lock"); err == nil {
-			logging.V(9).Infof("Python toolchain: detected uv (found uv.lock)")
+			slog.Info("Python toolchain: detected uv (found uv.lock)")
 			virtualenv := options.Virtualenv
 			if virtualenv != "" && !filepath.IsAbs(virtualenv) {
 				virtualenv = filepath.Join(options.Root, virtualenv)
@@ -149,10 +149,10 @@ func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 			return newUv(options.ProgramDir, virtualenv)
 		}
 		if _, err := searchup(options.ProgramDir, "poetry.lock"); err == nil {
-			logging.V(9).Infof("Python toolchain: detected poetry (found poetry.lock)")
+			slog.Info("Python toolchain: detected poetry (found poetry.lock)")
 			return newPoetry(options.ProgramDir)
 		}
-		logging.V(9).Infof("Python toolchain: defaulting to pip")
+		slog.Info("Python toolchain: defaulting to pip")
 		return newPip(options.Root, options.Virtualenv)
 	case Poetry:
 		return newPoetry(options.ProgramDir)
@@ -225,15 +225,15 @@ func usePyenv(cwd string) (bool, string, string, error) {
 		// No .python-version file found
 		return false, "", "", nil
 	}
-	logging.V(9).Infof("Python toolchain: found .python-version %s", versionFile)
+	slog.Info("Python toolchain: found .python-version", "versionFile", versionFile)
 	pyenvPath, err := exec.LookPath("pyenv")
 	if err != nil {
 		if !errors.Is(err, exec.ErrNotFound) {
 			return false, "", "", fmt.Errorf("error while looking for pyenv %+v", err)
 		}
 		// No pyenv installed
-		logging.V(9).Infof("Python toolchain: found .python-version file at %s, but could not find pyenv executable",
-			versionFile)
+		slog.Info("Python toolchain: found .python-version file, but could not find pyenv executable",
+			"versionFile", versionFile)
 		return false, "", "", nil
 	}
 	return true, pyenvPath, versionFile, nil

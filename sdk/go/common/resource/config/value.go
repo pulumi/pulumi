@@ -16,10 +16,10 @@ package config
 
 import (
 	"context"
+	"log/slog"
 	"strconv"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type Type int
@@ -185,7 +185,7 @@ func (c Value) unmarshalObject() (object, error) {
 	case TypeBool:
 		b, err := strconv.ParseBool(c.value)
 		if err != nil {
-			logging.Warningf("Failed to parse boolean value '%s': %v. Defaulting to false.", c.value, err)
+			slog.Warn("Failed to parse boolean value, defaulting to false", "value", c.value, "err", err)
 			return newObject(false), nil
 		}
 		return newObject(b), nil

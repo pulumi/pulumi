@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -29,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
@@ -130,7 +130,7 @@ func ShowJSONEvents(events <-chan engine.StampedEvent, done chan<- bool, opts Op
 	encoder.SetEscapeHTML(false)
 	for e := range events {
 		if err := logJSONEvent(encoder, e, opts); err != nil {
-			logging.V(7).Infof("failed to log event: %v", err)
+			slog.Info("failed to log event", "err", err)
 		}
 
 		// In the event of cancellation, break out of the loop.
@@ -283,7 +283,7 @@ func getPreviewMetadataStep(
 		if err == nil {
 			step.OldState = &res
 		} else {
-			logging.V(7).Infof("not adding old state as there was an error serializing: %s", err)
+			slog.Info("not adding old state as there was an error serializing", "err", err)
 		}
 	}
 	if m.New != nil {
@@ -292,7 +292,7 @@ func getPreviewMetadataStep(
 		if err == nil {
 			step.NewState = &res
 		} else {
-			logging.V(7).Infof("not adding new state as there was an error serializing: %s", err)
+			slog.Info("not adding new state as there was an error serializing", "err", err)
 		}
 	}
 

@@ -16,13 +16,13 @@ package schema
 
 import (
 	"context"
+	"log/slog"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -79,7 +79,7 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 	ctx context.Context, descriptor *PackageDescriptor,
 ) (PackageReference, error) {
 	label := "GetSchema"
-	logging.V(7).Infof("%s executing: package=%s, version=%s", label, descriptor.Name, descriptor.Version)
+	slog.Info("executing", "label", label, "package", descriptor.Name, "version", descriptor.Version)
 
 	var versionString string
 	if descriptor.Version != nil {
@@ -103,7 +103,7 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcError)
+		slog.Info("failed", "label", label, "err", rpcError)
 		return nil, err
 	}
 
@@ -117,7 +117,7 @@ func (l *LoaderClient) LoadPackageReferenceV2(
 		return nil, err
 	}
 
-	logging.V(7).Infof("%s success", label)
+	slog.Info("success", "label", label)
 	return p, nil
 }
 

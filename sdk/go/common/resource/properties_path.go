@@ -18,11 +18,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
@@ -82,7 +82,7 @@ func parsePropertyPath(path string, strict bool) (PropertyPath, error) {
 				return nil, errors.New("expected property name after '.'")
 			} else if path[0] == '[' {
 				// We tolerate a '.' followed by a '[', which is not strictly legal, but is common from old providers.
-				logging.V(10).Infof("property path '%s' contains a '.' followed by a '['; this is not strictly legal", path)
+				slog.Debug("property path contains a '.' followed by a '['; this is not strictly legal", "path", path)
 			}
 		case '[':
 			// If the character following the '[' is a '"', parse a string key.

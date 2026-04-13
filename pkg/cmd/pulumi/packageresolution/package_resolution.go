@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path"
 	"strings"
 
@@ -35,7 +36,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -230,8 +230,8 @@ func registryResolution(
 			},
 			InstalledInWorkspace: installed,
 		}
-		logging.V(3).Infof("Resolved package %q via the registry to plugin %#v (installedInWorkspace=%t)\n",
-			spec.Source, plugin, installed)
+		slog.Info("resolved package via the registry to plugin",
+			"source", spec.Source, "plugin", plugin, "installedInWorkspace", installed)
 
 		return plugin, nil
 	}
@@ -255,8 +255,8 @@ func registryResolution(
 		Pkg:                  pkgDescriptor,
 		InstalledInWorkspace: installed,
 	}
-	logging.V(3).Infof("Resolved package %q via the registry to package %#v (installedInWorkspace=%t)\n",
-		spec.Source, pkg, installed)
+	slog.Info("resolved package via the registry to package",
+		"source", spec.Source, "pkg", pkg, "installedInWorkspace", installed)
 	return pkg, nil
 }
 
@@ -267,7 +267,7 @@ func Resolve(
 	spec workspace.PackageSpec,
 	options Options,
 ) (Resolution, error) {
-	logging.V(3).Infof("Resolving package from %#v\n", spec)
+	slog.Info("resolving package", "spec", spec)
 	if plugin.IsLocalPluginPath(ctx, spec.Source) {
 		return PathResolution{
 			Path:                 spec.Source,
@@ -302,8 +302,8 @@ func Resolve(
 	}
 
 	remoteResolution := func() (Resolution, error) {
-		logging.V(3).Infof("Resolved package %#v to an external source %#v\n",
-			spec, naivePackageDescriptor)
+		slog.Info("resolved package to an external source",
+			"spec", spec, "descriptor", naivePackageDescriptor)
 		// If we have the exact version installed, then use that
 		if ws.HasPlugin(ctx, naivePackageDescriptor.PluginDescriptor) {
 			return naiveResolution(spec, naivePackageDescriptor, true), nil
@@ -412,11 +412,11 @@ func Resolve(
 	}
 
 	if registryQueryErr != nil {
-		logging.V(3).Infof("Failed to resolve package %#v\n", spec)
+		slog.Info("failed to resolve package", "spec", spec)
 		return nil, registryQueryErr
 	}
 
-	logging.V(3).Infof("Failed to resolve package %#v\n", spec)
+	slog.Info("failed to resolve package", "spec", spec)
 	return nil, &PackageNotFoundError{
 		Package:     spec.Source,
 		Version:     spec.Version,

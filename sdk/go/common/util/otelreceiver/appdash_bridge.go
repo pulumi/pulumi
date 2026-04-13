@@ -20,13 +20,13 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pulumi/appdash"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	resourcepb "go.opentelemetry.io/proto/otlp/resource/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -72,7 +72,7 @@ func StartAppDashBridge(exporter SpanExporter) (*AppDashBridge, error) {
 
 	go server.Start()
 
-	logging.V(5).Infof("AppDash bridge started on port %d", port)
+	slog.Info("AppDash bridge started", "port", port)
 
 	return b, nil
 }
@@ -143,7 +143,7 @@ func (c *bridgeCollector) Collect(id appdash.SpanID, anns ...appdash.Annotation)
 	}
 
 	if err := c.exporter.ExportSpans(context.Background(), []*tracepb.ResourceSpans{resourceSpans}); err != nil {
-		logging.V(5).Infof("AppDash bridge: failed to export span: %v", err)
+		slog.Info("AppDash bridge: failed to export span", "err", err)
 		return err
 	}
 

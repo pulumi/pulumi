@@ -23,10 +23,13 @@ package logging
 // should be updated to properly filter as well before forwarding things along.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,6 +52,19 @@ var (
 	rwLock  sync.RWMutex
 	filters []Filter
 )
+
+var (
+	slogHandler *slog.Logger
+	logFilePath string
+)
+
+func init() {
+	slogHandler = slog.New(discardHandler{})
+	slog.SetDefault(slogHandler)
+}
+
+const LevelTrace = slog.LevelDebug - 4
+
 
 // VerboseLogger logs messages only if verbosity matches the level it was built with.
 //
@@ -127,10 +143,22 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	}
 	if logToStderr {
 		maybeSetFlag("logtostderr", "true")
+		slogHandler = slog.New(filteringHandler{inner: slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+			Level: LevelTrace,
+		})})
+	} else if verbose > 0 {
+		f, err := os.CreateTemp("", "pulumi-*.log")
+		if err == nil {
+			logFilePath = f.Name()
+			slogHandler = slog.New(filteringHandler{inner: slog.NewJSONHandler(f, &slog.HandlerOptions{
+				Level: LevelTrace,
+			})})
+		}
 	}
 	if verbose > 0 {
 		maybeSetFlag("v", strconv.Itoa(verbose))
 	}
+	slog.SetDefault(slogHandler)
 }
 
 func GetLogfilePath() (string, error) {
@@ -214,4 +242,53 @@ func FilterString(msg string) string {
 	}
 
 	return msg
+}
+
+type discardHandler struct{}
+
+func (discardHandler) Enabled(context.Context, slog.Level) bool  { return false }
+func (discardHandler) Handle(context.Context, slog.Record) error { return nil }
+func (d discardHandler) WithAttrs([]slog.Attr) slog.Handler      { return d }
+func (d discardHandler) WithGroup(string) slog.Handler           { return d }
+
+// filteringHandler wraps any slog.Handler and applies FilterString to
+// the record's message and string-typed attributes before forwarding.
+// This makes direct slog.Info(...) calls flow through the same secret
+// redaction as the old logging.V(n).Infof(...) API.
+type filteringHandler struct {
+	inner slog.Handler
+}
+
+func (f filteringHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return f.inner.Enabled(ctx, level)
+}
+
+func (f filteringHandler) Handle(ctx context.Context, r slog.Record) error {
+	r.Message = FilterString(r.Message)
+	newRec := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
+	r.Attrs(func(a slog.Attr) bool {
+		newRec.AddAttrs(filterAttr(a))
+		return true
+	})
+	return f.inner.Handle(ctx, newRec)
+}
+
+func (f filteringHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	filtered := make([]slog.Attr, len(attrs))
+	for i, a := range attrs {
+		filtered[i] = filterAttr(a)
+	}
+	return filteringHandler{inner: f.inner.WithAttrs(filtered)}
+}
+
+func (f filteringHandler) WithGroup(name string) slog.Handler {
+	return filteringHandler{inner: f.inner.WithGroup(name)}
+}
+
+// filterAttr applies FilterString to a slog.Attr if its value is a string.
+func filterAttr(a slog.Attr) slog.Attr {
+	if a.Value.Kind() == slog.KindString {
+		a.Value = slog.StringValue(FilterString(a.Value.String()))
+	}
+	return a
 }

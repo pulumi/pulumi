@@ -17,6 +17,7 @@ package operations
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"sync"
 	"time"
@@ -30,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
@@ -119,7 +119,7 @@ const (
 
 func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
-	logging.V(6).Infof("GetLogs[%v]", state.URN)
+	slog.Info("GetLogs", "urn", state.URN)
 	//exhaustive:ignore
 	switch state.Type {
 	case awsFunctionType:
@@ -133,7 +133,7 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		sort.SliceStable(logResult, func(i, j int) bool {
 			return logResult[i].Timestamp < logResult[j].Timestamp
 		})
-		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
+		slog.Info("GetLogs return", "urn", state.URN, "count", len(logResult))
 		return &logResult, nil
 	case awsLogGroupType:
 		name := state.Outputs["name"].StringValue()
@@ -146,11 +146,11 @@ func (ops *awsOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 		sort.SliceStable(logResult, func(i, j int) bool {
 			return logResult[i].Timestamp < logResult[j].Timestamp
 		})
-		logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logResult))
+		slog.Info("GetLogs return", "urn", state.URN, "count", len(logResult))
 		return &logResult, nil
 	default:
 		// Else this resource kind does not produce any logs.
-		logging.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
+		slog.Info("GetLogs does not produce logs", "urn", state.URN)
 		return nil, nil
 	}
 }
@@ -239,12 +239,12 @@ func (p *awsConnection) getLogsForLogGroupsConcurrently(
 			}, func(resp *cloudwatchlogs.FilterLogEventsOutput, lastPage bool) bool {
 				ret = append(ret, resp.Events...)
 				if !lastPage {
-					logging.V(5).Infof("[getLogs] Getting more logs for %v...\n", logGroup)
+					slog.Info("getLogs: getting more logs", "logGroup", logGroup)
 				}
 				return true
 			})
 			if err != nil {
-				logging.V(5).Infof("[getLogs] Error getting logs: %v %v\n", logGroup, err)
+				slog.Info("getLogs: error getting logs", "logGroup", logGroup, "err", err)
 			}
 			ch <- ret
 		}(logGroup)

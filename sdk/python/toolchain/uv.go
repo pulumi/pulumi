@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"os"
 	"os/exec"
@@ -36,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gopkg.in/yaml.v3"
 )
 
@@ -100,7 +100,7 @@ func newUv(root, virtualenv string) (*uv, error) {
 	if err != nil {
 		return nil, err
 	}
-	logging.V(9).Infof("Python toolchain: using uv version %s", version)
+	slog.Info("Python toolchain: using uv version", "version", version)
 
 	u := &uv{
 		virtualenvPath: virtualenv,
@@ -247,7 +247,7 @@ func (u *uv) PrepareProject(
 }
 
 func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error {
-	logging.V(9).Infof("uv linking %s", packages)
+	slog.Info("uv linking", "packages", packages)
 	args := []string{"add", "--no-sync"} // Don't update the venv
 
 	needs, err := u.needsNoWorkspacesFlag(ctx)
@@ -379,7 +379,7 @@ func (u *uv) About(ctx context.Context) (Info, error) {
 	g.Go(func() error {
 		version, err := getPythonVersion(ctx, u.Command)
 		if err != nil {
-			logging.V(9).Infof("getPythonVersion: %v", err)
+			slog.Info("getPythonVersion", "err", err)
 		} else {
 			pythonVersion = version
 		}

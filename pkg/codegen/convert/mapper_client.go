@@ -16,12 +16,12 @@ package convert
 
 import (
 	"context"
+	"log/slog"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
@@ -70,7 +70,7 @@ func (m *mapperClient) GetMapping(
 	hint *MapperPackageHint,
 ) ([]byte, error) {
 	label := "GetMapping"
-	logging.V(7).Infof("%s executing: provider=%s, hint=%v", label, provider, hint)
+	slog.Info("executing mapper call", "label", label, "provider", provider, "hint", hint)
 
 	pluginName := ""
 	var parameterizationHint *codegenrpc.MapperParameterizationHint
@@ -92,10 +92,10 @@ func (m *mapperClient) GetMapping(
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcError)
+		slog.Info("mapper call failed", "label", label, "err", rpcError)
 		return nil, err
 	}
 
-	logging.V(7).Infof("%s success: data=#%d", label, len(resp.Data))
+	slog.Info("mapper call success", "label", label, "dataLen", len(resp.Data))
 	return resp.Data, nil
 }

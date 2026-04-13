@@ -31,6 +31,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -140,7 +141,7 @@ func main() {
 		cmdutil.InitTracing("pulumi-language-python", "pulumi-language-python", tracing)
 	} else {
 		if err := cmdutil.InitOtelTracing("pulumi-language-python", otelEndpoint); err != nil {
-			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+			slog.Info("failed to initialize OTel tracing", "err", err)
 		}
 		defer cmdutil.CloseOtelTracing()
 	}
@@ -160,10 +161,10 @@ func main() {
 			cmdutil.Exit(err)
 		}
 
-		logging.V(3).Infof("language host identified executor from path: `%s`", pathExec)
+		slog.Info("language host identified executor from path", "path", pathExec)
 		pythonExec = pathExec
 	} else {
-		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
+		slog.Info("language host asked to use specific executor", "executor", givenExecutor)
 		pythonExec = givenExecutor
 	}
 
@@ -382,7 +383,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	defer func() {
 		err := os.RemoveAll(tmp)
 		if err != nil {
-			logging.V(5).Infof("failed to remove temporary directory: %s", err)
+			slog.Info("failed to remove temporary directory", "err", err)
 		}
 	}()
 	// We use [build](https://build.pypa.io/en/stable/) as the build frontend to
@@ -396,7 +397,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	useUv := err == nil
 	if useUv {
 		// `uv` is available, use it to create our virtual environment.
-		logging.V(5).Infof("Creating virtual environment using uv at %s", venv)
+		slog.Info("Creating virtual environment using uv", "venv", venv)
 		cmd := exec.CommandContext(ctx, "uv", "venv", venv)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return nil, fmt.Errorf("create virtual environment using uv: %w\n%s", err, string(out))
@@ -409,7 +410,7 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 		}
 	} else {
 		// Fallback to pip+venv
-		logging.V(5).Infof("Creating virtual environment using pip+venv at %s", venv)
+		slog.Info("Creating virtual environment using pip+venv", "venv", venv)
 		cmd := exec.CommandContext(ctx, "python", "-m", "venv", venv)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return nil, fmt.Errorf("create virtual environment using venv: %w\n%s", err, string(out))
@@ -447,8 +448,8 @@ func (host *pythonLanguageHost) Pack(ctx context.Context, req *pulumirpc.PackReq
 	buildCmd.Stderr = &stderr
 
 	err = buildCmd.Run()
-	logging.V(5).Infof("Pack stdout: %s", stdout.String())
-	logging.V(5).Infof("Pack stderr: %s", stderr.String())
+	slog.Info("Pack stdout", "stdout", stdout.String())
+	slog.Info("Pack stderr", "stderr", stderr.String())
 	if err != nil {
 		return nil, fmt.Errorf("run python build: %w\n%s\n%s", err, stdout.String(), stderr.String())
 	}
@@ -582,12 +583,12 @@ func readAllPulumiPluginJSONPaths(
 	}
 	cmd, err := tc.Command(ctx, args...)
 	if err != nil {
-		logging.V(5).Infof("readAllPulumiPluginJSONPaths: could not create command: %v", err)
+		slog.Info("readAllPulumiPluginJSONPaths: could not create command", "err", err)
 		return map[string]string{}, nil
 	}
 	out, err := cmd.Output()
 	if err != nil {
-		logging.V(5).Infof("readAllPulumiPluginJSONPaths: failed to run script: %v", err)
+		slog.Info("readAllPulumiPluginJSONPaths: failed to run script", "err", err)
 		return map[string]string{}, nil
 	}
 	var paths map[string]string
@@ -627,7 +628,7 @@ func listPulumiPackageInfos(ctx context.Context, tc toolchain.Toolchain) ([]pulu
 		if path := pluginJSONPaths[pkg.Name]; path != "" {
 			data, err := os.ReadFile(path)
 			if err != nil {
-				logging.V(5).Infof("listPulumiPackageInfos: failed to read %s: %v", path, err)
+				slog.Info("listPulumiPackageInfos: failed to read", "path", path, "err", err)
 			} else {
 				pluginJSON = &plugin.PulumiPluginJSON{}
 				if err := json.Unmarshal(data, pluginJSON); err != nil {
@@ -664,7 +665,7 @@ func packageDependencyFromPluginJSON(
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
 		if !p.Resource {
-			logging.V(5).Infof("GetRequiredPlugins: Ignoring package %s with resource set to false", pkg.Name)
+			slog.Info("GetRequiredPlugins: Ignoring package with resource set to false", "package", pkg.Name)
 			return nil, nil
 		}
 
@@ -692,9 +693,8 @@ func packageDependencyFromPluginJSON(
 		// log the issue and skip the package.
 		v, err := determinePluginVersion(pkg.Version)
 		if err != nil {
-			logging.V(5).Infof(
-				"GetRequiredPlugins: Could not determine plugin version for package %s with version %s: %s",
-				pkg.Name, pkg.Version, err)
+			slog.Info("GetRequiredPlugins: Could not determine plugin version for package",
+				"package", pkg.Name, "version", pkg.Version, "err", err)
 			return nil, nil
 		}
 		version = v
@@ -712,7 +712,7 @@ func packageDependencyFromPluginJSON(
 		Parameterization: parameterization,
 	}
 
-	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
+	slog.Info("GetRequiredPlugins: Determining plugin dependency", "result", result)
 	return result, nil
 }
 
@@ -1023,10 +1023,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
-	if logging.V(5) {
-		commandStr := strings.Join(args, " ")
-		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
-	}
+	commandStr := strings.Join(args, " ")
+	slog.Info("Language host launching process", "exec", host.exec, "command", commandStr)
 
 	tc, err := toolchain.ResolveToolchain(opts)
 	if err != nil {
@@ -1147,7 +1145,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 				err := startDebugging(ctx, engineClient, cmd, dbg, "Pulumi: Program (Python)")
 				if err != nil {
 					// kill the program if we can't start debugging.
-					logging.Errorf("Unable to start debugging: %v", err)
+					slog.Error("Unable to start debugging", "err", err)
 					contract.IgnoreError(cmd.Process.Kill())
 				}
 			}()
@@ -1420,7 +1418,7 @@ func (host *pythonLanguageHost) RuntimeOptionsPrompts(ctx context.Context,
 func (host *pythonLanguageHost) Template(
 	ctx context.Context, req *pulumirpc.TemplateRequest,
 ) (*pulumirpc.TemplateResponse, error) {
-	logging.V(5).Infof("Template(%+v)", req)
+	slog.Info("Template", "req", req)
 
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
@@ -1524,7 +1522,7 @@ func (host *pythonLanguageHost) RunPlugin2(
 func (host *pythonLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run python plugin in %s with args %v", req.Info.ProgramDirectory, req.Args)
+	slog.Info("Attempting to run python plugin", "programDirectory", req.Info.ProgramDirectory, "args", req.Args)
 	ctx := server.Context()
 
 	engineClient, closer, err := host.connectToEngine()
@@ -1600,7 +1598,7 @@ func (host *pythonLanguageHost) RunPlugin(
 		if err != nil {
 			return err
 		}
-		logging.V(5).Infof("RunPlugin: %s", cmd.String())
+		slog.Info("RunPlugin", "command", cmd.String())
 	} else {
 		// For policy analyzers we need to send the program directory as an argument _last_, for everything
 		// else it comes first
@@ -1688,7 +1686,7 @@ func (host *pythonLanguageHost) RunPlugin(
 				err := startDebugging(ctx, engineClient, cmd, dbg, fmt.Sprintf("Pulumi: Plugin (%s)", req.Name))
 				if err != nil {
 					// kill the program if we can't start debugging.
-					logging.Errorf("Unable to start debugging: %v", err)
+					slog.Error("Unable to start debugging", "err", err)
 					contract.IgnoreError(cmd.Process.Kill())
 				}
 			}()
@@ -1912,7 +1910,7 @@ func removeReleaseCandidateSuffix(version string) string {
 func (host *pythonLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	slog.Info("Linking", "packages", req.Packages, "rootDirectory", req.Info.RootDirectory)
 	opts, err := parseOptions(req.Info.RootDirectory, req.Info.ProgramDirectory, req.Info.Options.AsMap(), false)
 	if err != nil {
 		return nil, err
@@ -1942,7 +1940,7 @@ func (host *pythonLanguageHost) Link(
 		var version *semver.Version
 		v, err := semver.New(dep.Package.Version)
 		if err != nil {
-			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+			slog.Info("Invalid version for package", "version", dep.Package.Version, "package", dep.Package.Name)
 		} else {
 			version = v
 		}
@@ -1955,7 +1953,7 @@ func (host *pythonLanguageHost) Link(
 			if dep.Package.Parameterization.Version != "" {
 				v, err := semver.New(dep.Package.Parameterization.Version)
 				if err != nil {
-					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+					slog.Info("Invalid version for package", "version", dep.Package.Version, "package", dep.Package.Name)
 				} else {
 					param.Version = *v
 				}

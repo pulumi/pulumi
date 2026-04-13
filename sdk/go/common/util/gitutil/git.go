@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"os/exec"
@@ -42,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -302,7 +302,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 			if p.sshKeys == nil {
 				p.sshKeys = make(map[string]transport.AuthMethod)
 			}
-			logging.V(10).Infof("caching auth for %s", endpoint.Host)
+			slog.Debug("caching auth", "host", endpoint.Host)
 			p.sshKeys[endpoint.Host] = auth
 		}()
 
@@ -320,7 +320,7 @@ func (p *urlAuthParser) Parse(remoteURL string) (string, transport.AuthMethod, e
 		// If we could't acquire a key (most likely because there is no
 		// config defined for the host), we still treat the URL as valid
 		// and attempt to use the SSH agent for auth.
-		logging.V(10).Infof("%s: using agent auth instead", err)
+		slog.Debug("using agent auth instead", "err", err)
 		auth, err = gitssh.DefaultAuthBuilder(endpoint.User)
 		if err != nil {
 			return "", nil, err
@@ -403,7 +403,7 @@ func getSSHPublicKeys(user string, host string, sshConfig sshUserSettings) (*git
 	if err != nil {
 		return nil, err
 	}
-	logging.V(10).Infof("Inferred SSH key '%s' for Git host %s", privateKeyPath, host)
+	slog.Debug("inferred SSH key for Git host", "privateKeyPath", privateKeyPath, "host", host)
 
 	privateKeyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
@@ -460,7 +460,7 @@ func expandHomeDir(path string) (string, error) {
 
 // GitCloneAndCheckoutCommit clones the Git repository and checkouts the specified commit.
 func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.Hash, path string) error {
-	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, commit, path)
+	slog.Debug("attempting to clone", "url", url, "commit", commit, "path", path)
 
 	// go-git v5 has limited ADO support and cannot perform this operation.
 	// TODO(https://github.com/go-git/go-git/pull/1204): Remove once go-git v6 is released.
@@ -493,7 +493,7 @@ func GitCloneAndCheckoutCommit(ctx context.Context, url string, commit plumbing.
 
 // GitCloneAndCheckoutRevision clones a Git repository, resolves the revision and checks it out.
 func GitCloneAndCheckoutRevision(ctx context.Context, url string, revision plumbing.Revision, path string) error {
-	logging.V(10).Infof("Attempting to clone from %s at commit %v and path %s", url, revision, path)
+	slog.Debug("attempting to clone", "url", url, "revision", revision, "path", path)
 
 	// go-git v5 has limited ADO support and cannot perform this operation.
 	// TODO(https://github.com/go-git/go-git/pull/1204): Remove once go-git v6 is released.
@@ -543,7 +543,7 @@ func GitCloneOrPull(
 		))
 	defer span.End()
 
-	logging.V(10).Infof("Attempting to clone from %s at ref %s", rawurl, referenceName)
+	slog.Debug("attempting to clone at ref", "url", rawurl, "ref", referenceName)
 
 	// go-git v5 has limited ADO support and cannot perform this operation.
 	// TODO(https://github.com/go-git/go-git/pull/1204): Remove once go-git v6 is released.

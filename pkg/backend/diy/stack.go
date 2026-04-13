@@ -17,6 +17,7 @@ package diy
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -29,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // diyStack is a diy stack descriptor.
@@ -113,7 +113,7 @@ func (s *diyStack) Tags() map[apitype.StackTagName]string {
 
 	tags, err := s.b.loadStackTags(context.Background(), s.ref)
 	if err != nil {
-		logging.Errorf("failed to load stack tags: %v", err)
+		slog.Error("failed to load stack tags", "err", err)
 		return nil
 	}
 

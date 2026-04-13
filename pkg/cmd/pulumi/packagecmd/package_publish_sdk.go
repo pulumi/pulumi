@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/spf13/cobra"
 )
 
@@ -134,7 +134,7 @@ func publishToNPM(path string) error {
 		return err
 	}
 
-	logging.V(1).Infof("Logged in as %s", whoami)
+	slog.Info("Logged in", "whoami", whoami)
 
 	// TODO: possibly check package dependencies
 
@@ -179,7 +179,7 @@ func publishToNPM(path string) error {
 	// Verify version doesn't already exist
 	infoCmd := exec.Command(npm, "info", pkgNameWithVersion)
 	infoCmd.Stderr = os.Stderr
-	logging.V(1).Infof("Running %s", infoCmd)
+	slog.Info("Running npm info", "cmd", infoCmd)
 	// we actually do not care about the error here; we care whether the output is empty.
 	output, _ := infoCmd.Output()
 
@@ -189,14 +189,14 @@ func publishToNPM(path string) error {
 		return nil
 	}
 
-	logging.V(1).Infof("The version does not exist yet, and it is safe to publish")
+	slog.Info("The version does not exist yet, and it is safe to publish")
 	fmt.Printf("Publishing %s to npm package registry...\n", pkgInfo.Name)
 	npmPublishCmd := exec.Command(npm, "publish", path, "-tag", npmTag)
 	npmPublishCmd.Stdout = os.Stdout
 	npmPublishCmd.Stderr = os.Stderr
 	err = npmPublishCmd.Run()
 	if err != nil {
-		logging.V(1).Infof("error publishing package, verifying...")
+		slog.Info("error publishing package, verifying")
 		// first, check if the package was published after all, by re-running npm info
 		// to verify we're not encountering a time-of-check to time-of-use (TOC/TOU) issue.
 		infoCheckCmd := exec.Command("npm", "info", pkgNameWithVersion)

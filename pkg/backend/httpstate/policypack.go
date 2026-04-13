@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -40,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/nodejs/npm"
 )
@@ -467,7 +467,7 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	// "Installing policy pack" progress bar before dependency installation begins.
 	contract.IgnoreClose(tgz)
 
-	logging.V(7).Infof("Unpacking policy pack %q %q\n", tempDir, finalDir)
+	slog.Info("Unpacking policy pack", "tempDir", tempDir, "finalDir", finalDir)
 
 	// If two calls to `plugin install` for the same plugin are racing, the second one will be
 	// unable to rename the directory. That's OK, just ignore the error. The temp directory created

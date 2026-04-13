@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"sync"
 
 	"github.com/gofrs/uuid"
@@ -28,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
@@ -178,7 +178,7 @@ func (rs *resourceStatusServer) reserveToken(urn resource.URN, refresh, persiste
 		return "", nil, nil
 	}
 
-	logging.V(5).Infof("Reserving token for %s (refresh: %t)", urn, refresh)
+	slog.Info("Reserving token", "urn", urn, "refresh", refresh)
 
 	token, err := uuid.NewV4()
 	if err != nil {
@@ -202,7 +202,7 @@ func (rs *resourceStatusServer) ReleaseToken(urn resource.URN) []stepInfo {
 		return nil
 	}
 
-	logging.V(5).Infof("ReleaseToken %s", urn)
+	slog.Info("ReleaseToken", "urn", urn)
 
 	if urn == "" {
 		return nil
@@ -248,11 +248,11 @@ func (rs *resourceStatusServer) RefreshSteps() map[resource.URN]Step {
 func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 	req *pulumirpc.PublishViewStepsRequest,
 ) (*pulumirpc.PublishViewStepsResponse, error) {
-	logging.V(5).Infof("ResourceStatus.PublishViewSteps received for token %s", req.Token)
+	slog.Info("ResourceStatus.PublishViewSteps received", "token", req.Token)
 
 	info, ok := rs.tokens.Load(req.Token)
 	if !ok {
-		logging.V(5).Infof("ResourceStatus: token %s not found", req.Token)
+		slog.Info("ResourceStatus: token not found", "token", req.Token)
 		return nil, fmt.Errorf("token %s not found", req.Token)
 	}
 	viewOf := info.urn
@@ -266,7 +266,7 @@ func (rs *resourceStatusServer) PublishViewSteps(ctx context.Context,
 		return rs.unmarshalViewStep(viewOf, step, info.refresh, info.persisted)
 	})
 	if err != nil {
-		logging.V(5).Infof("ResourceStatus: error unmarshaling steps: %v", err)
+		slog.Info("ResourceStatus: error unmarshaling steps", "err", err)
 		return nil, fmt.Errorf("unmarshaling steps: %w", err)
 	}
 
@@ -304,7 +304,7 @@ func (rs *resourceStatusServer) publishViewSteps(info *tokenInfo, steps []Step) 
 	for _, step := range steps {
 		payload, err := events.OnResourceStepPre(step)
 		if err != nil {
-			logging.V(5).Infof("ResourceStatus: error publishing view steps: %v", err)
+			slog.Info("ResourceStatus: error publishing view steps", "err", err)
 			return fmt.Errorf("publishing view steps: %w", err)
 		}
 

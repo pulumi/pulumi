@@ -15,6 +15,7 @@
 package logging
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -23,7 +24,6 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // timestampRe matches the timestamp embedded in log filenames (e.g. "stack-20260401T030000.log").
@@ -55,7 +55,7 @@ func rotateLogs(logsDir string, now time.Time) {
 
 	entries, err := os.ReadDir(logsDir)
 	if err != nil {
-		logging.V(5).Infof("log rotation: could not read %s: %v", logsDir, err)
+		slog.Info("log rotation: could not read logs dir", "dir", logsDir, "err", err)
 		return
 	}
 
@@ -98,9 +98,9 @@ func rotateLogs(logsDir string, now time.Time) {
 	var remaining []logFile
 	for _, f := range files {
 		if f.timestamp.Before(cutoff) {
-			logging.V(7).Infof("log rotation: removing expired %s", f.path)
+			slog.Info("log rotation: removing expired", "path", f.path)
 			if err := os.Remove(f.path); err != nil {
-				logging.V(5).Infof("log rotation: could not remove %s: %v", f.path, err)
+				slog.Info("log rotation: could not remove", "path", f.path, "err", err)
 				remaining = append(remaining, f)
 			}
 		} else {
@@ -116,9 +116,9 @@ func rotateLogs(logsDir string, now time.Time) {
 
 	for i := 0; i < len(remaining) && totalSize > maxTotalBytes; i++ {
 		f := remaining[i]
-		logging.V(7).Infof("log rotation: removing %s (total %d > %d)", f.path, totalSize, maxTotalBytes)
+		slog.Info("log rotation: removing", "path", f.path, "totalSize", totalSize, "maxTotalBytes", maxTotalBytes)
 		if err := os.Remove(f.path); err != nil {
-			logging.V(5).Infof("log rotation: could not remove %s: %v", f.path, err)
+			slog.Info("log rotation: could not remove", "path", f.path, "err", err)
 		} else {
 			totalSize -= f.size
 		}

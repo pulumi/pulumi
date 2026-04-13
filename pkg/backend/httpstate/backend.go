@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -64,7 +65,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -1268,7 +1268,7 @@ func (b *cloudBackend) IsExplainPreviewEnabled(ctx context.Context, opts display
 	}
 
 	if !b.Capabilities(ctx).CopilotExplainPreviewV1 {
-		logging.V(7).Infof("CopilotExplainPreviewV1 is not supported by the backend")
+		slog.Info("CopilotExplainPreviewV1 is not supported by the backend")
 		return false
 	}
 
@@ -1283,7 +1283,7 @@ func (b *cloudBackend) isNeoFeaturesEnabled(opts display.Options) bool {
 
 	// Is Neo enabled for this project in Pulumi Cloud
 	if b.neoEnabledForCurrentProject == nil {
-		logging.V(3).Info(
+		slog.Info(
 			"error: neoEnabledForCurrentProject has not been set. only available after an update has been started.")
 		return false
 	}
@@ -1592,7 +1592,7 @@ func (b *cloudBackend) createAndStartUpdate(
 	}
 	// Any non-preview update will be considered part of the stack's update history.
 	if action != apitype.PreviewUpdate {
-		logging.V(7).Infof("Stack %s being updated to version %d", stackRef, version)
+		slog.Info("stack being updated", "stack", stackRef, "version", version)
 	}
 
 	userName, _, _, err := b.CurrentUser()
@@ -1616,8 +1616,8 @@ func (b *cloudBackend) createAndStartUpdate(
 		op.Opts.Display.ShowNeoFeatures = false
 		neoEnabledValueString = "is not"
 	}
-	logging.V(7).Infof("Neo in org '%s' %s enabled for user '%s'%s",
-		stackID.Owner, neoEnabledValueString, userName, continuationString)
+	slog.Info("Neo enabled status for user",
+		"org", stackID.Owner, "status", neoEnabledValueString, "user", userName, "continuation", continuationString)
 
 	return update, updateMetadata{
 		version:        version,
@@ -1664,7 +1664,7 @@ func (b *cloudBackend) apply(
 
 	if b.isNeoFeaturesEnabled(op.Opts.Display) {
 		if !b.Capabilities(ctx).CopilotSummarizeErrorV1 {
-			logging.V(7).Infof("CopilotSummarizeErrorV1 is not supported by the backend")
+			slog.Info("CopilotSummarizeErrorV1 is not supported by the backend")
 		} else {
 			originalEvents := events
 			// New var as we need a bidirectional channel type to be able to read from it.
@@ -1711,7 +1711,7 @@ func (b *cloudBackend) apply(
 			default:
 				// Fallback on Info if we don't recognize the severity.
 				cmdutil.Diag().Infof(m)
-				logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
+				slog.Info("unknown message severity", "severity", msg.Severity)
 			}
 		}
 		fmt.Print("\n")
@@ -2267,16 +2267,16 @@ func (b *cloudBackend) tryNextUpdate(ctx context.Context, update client.UpdateId
 			if try < 10 {
 				warn = false
 			}
-			logging.V(3).Infof("Expected %s HTTP %d error after %d retries (retrying): %v",
-				b.CloudURL(), errResp.Code, try, err)
+			slog.Info("expected HTTP error (retrying)",
+				"cloudURL", b.CloudURL(), "code", errResp.Code, "try", try, "err", err)
 		} else {
 			// Otherwise, we will issue an error.
-			logging.V(3).Infof("Unexpected %s HTTP %d error after %d retries (erroring): %v",
-				b.CloudURL(), errResp.Code, try, err)
+			slog.Info("unexpected HTTP error (erroring)",
+				"cloudURL", b.CloudURL(), "code", errResp.Code, "try", try, "err", err)
 			return false, nil, err
 		}
 	} else {
-		logging.V(3).Infof("Unexpected %s error after %d retries (retrying): %v", b.CloudURL(), try, err)
+		slog.Info("unexpected error (retrying)", "cloudURL", b.CloudURL(), "try", try, "err", err)
 	}
 
 	// Issue a warning if appropriate.
@@ -2653,7 +2653,7 @@ func detectUserInfo(
 	return promise.Run(func() (userInfo, error) {
 		account, err := workspace.GetAccount(cloudURL)
 		if err == nil && account.Username != "" {
-			logging.V(1).Infof("found cached username for access token")
+			slog.Info("found cached username for access token")
 			return userInfo{
 				username:      account.Username,
 				organizations: account.Organizations,
@@ -2661,7 +2661,7 @@ func detectUserInfo(
 			}, nil
 		}
 
-		logging.V(1).Infof("no username for access token")
+		slog.Info("no username for access token")
 		username, orgs, tokenInfo, err := client.GetPulumiAccountDetails(ctx)
 		if err != nil {
 			d.Warningf(diag.Message("" /*urn*/, "failed to get user account details: %v"), err)
@@ -2680,7 +2680,7 @@ func detectDefaultOrg(ctx context.Context, d diag.Sink, client *client.Client) *
 	return promise.Run(func() (string, error) {
 		resp, err := client.GetDefaultOrg(ctx)
 		if err != nil {
-			logging.V(1).Infof("failed to get default org: %v", err)
+			slog.Info("failed to get default org", "err", err)
 			return "", err
 		}
 		return resp.GitHubLogin, nil
@@ -2711,7 +2711,7 @@ func (b *cloudBackend) downgradeDeploymentVersionIfNeeded(
 	// Downgrade to v3 if the version is greater than 3 and the service does not support it.
 	// Version 3 is supported by the service even if the version from capabilities isn't set.
 	if version > 3 && b.Capabilities(ctx).DeploymentSchemaVersion <= 3 {
-		logging.V(7).Infof("Downgrading deployment schema version %d to 3 for compatibility with backend", version)
+		slog.Info("downgrading deployment schema version to 3 for compatibility with backend", "version", version)
 		return 3, nil
 	}
 	return version, features

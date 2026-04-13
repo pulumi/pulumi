@@ -18,12 +18,12 @@ package main
 
 import (
 	"io"
+	"log/slog"
 	"os"
 	"path"
 	"syscall"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Unix specific pipe implementation. Fairly simple as it sits on top of a pair of standard fifo
@@ -63,12 +63,12 @@ func (p *unixPipes) writer() io.Writer {
 
 func (p *unixPipes) connect() error {
 	if err := syscall.Mkfifo(path.Join(p.dir, "invoke_req"), 0o600); err != nil {
-		logging.V(10).Infof("createPipes: Received error opening request pipe: %s\n", err)
+		slog.Debug("createPipes: error opening request pipe", "err", err)
 		return err
 	}
 
 	if err := syscall.Mkfifo(path.Join(p.dir, "invoke_res"), 0o600); err != nil {
-		logging.V(10).Infof("createPipes: Received error opening result pipe: %s\n", err)
+		slog.Debug("createPipes: error opening result pipe", "err", err)
 		return err
 	}
 

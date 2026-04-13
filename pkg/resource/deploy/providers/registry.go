@@ -20,6 +20,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/blang/semver"
@@ -36,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -477,7 +477,7 @@ func (r *Registry) GetProvider(ref providers.Reference) (plugin.Provider, bool) 
 	r.m.RLock()
 	defer r.m.RUnlock()
 
-	logging.V(7).Infof("GetProvider(%v)", ref)
+	slog.Info("GetProvider", "ref", ref)
 
 	provider, ok := r.providers[ref]
 	return provider, ok
@@ -487,7 +487,7 @@ func (r *Registry) setProvider(ref providers.Reference, provider plugin.Provider
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	logging.V(7).Infof("setProvider(%v)", ref)
+	slog.Info("setProvider", "ref", ref)
 
 	r.providers[ref] = provider
 
@@ -502,11 +502,11 @@ func (r *Registry) deleteProvider(ref providers.Reference) (plugin.Provider, boo
 
 	provider, ok := r.providers[ref]
 	if !ok {
-		logging.V(7).Infof("deleteProvider(%v): false", ref)
+		slog.Info("deleteProvider", "ref", ref, "found", false)
 		return nil, false
 	}
 	delete(r.providers, ref)
-	logging.V(7).Infof("deleteProvider(%v): true", ref)
+	slog.Info("deleteProvider", "ref", ref, "found", true)
 	return provider, true
 }
 
@@ -586,7 +586,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 	contract.Requiref(providers.IsProviderType(req.URN.Type()), "urn", "must be a provider type, got %v", req.URN.Type())
 
 	label := fmt.Sprintf("%s.Check(%s)", r.label(), req.URN)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
+	slog.Info("Registry.Check: executing", "label", label, "numOlds", len(req.Olds), "numNews", len(req.News))
 
 	// Parse the version from the provider properties and load the provider.
 	providerPkg := providers.GetProviderPackage(req.URN.Type())
@@ -697,8 +697,11 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 	contract.Requiref(req.ID != "", "id", "must not be empty")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", r.label(), req.URN, req.ID)
-	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+	slog.Info("Registry.Diff: executing",
+		"label", label,
+		"numOldInputs", len(req.OldInputs),
+		"numOldOutputs", len(req.OldOutputs),
+		"numNewInputs", len(req.NewInputs))
 
 	// Create a reference using the URN and the unconfigured ID and fetch the provider.
 	provider, ok := r.GetProvider(mustNewReference(req.URN, UnconfiguredID))
@@ -737,7 +740,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 		contract.IgnoreClose(provider)
 	}
 
-	logging.V(7).Infof("%s: executed (%#v, %#v)", label, diff.Changes, diff.ReplaceKeys)
+	slog.Info("Registry.Diff: executed", "label", label, "changes", diff.Changes, "replaceKeys", diff.ReplaceKeys)
 
 	return diff, nil
 }
@@ -756,7 +759,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 	}
 
 	ref := mustNewReference(urn, res.ID)
-	logging.V(7).Infof("Same(%v)", ref)
+	slog.Info("Same", "ref", ref)
 
 	// If this provider is already configured, then we're done.
 	_, ok := r.GetProvider(ref)
@@ -820,7 +823,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
 
-	logging.V(7).Infof("loaded provider %v", ref)
+	slog.Info("loaded provider", "ref", ref)
 
 	r.setProvider(ref, provider)
 
@@ -833,7 +836,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State) error {
 // The provider must have been loaded by a prior call to Check.
 func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 	label := fmt.Sprintf("%s.Create(%s)", r.label(), req.URN)
-	logging.V(7).Infof("%s executing (#news=%v)", label, len(req.Properties))
+	slog.Info("Registry.Create: executing", "label", label, "numNews", len(req.Properties))
 
 	// Fetch the unconfigured provider, configure it, and register it under a new ID. We remove the
 	// unconfigured ID from the provider map so nothing else tries to use and re-configure this instance.
@@ -924,8 +927,11 @@ func (r *Registry) Create(ctx context.Context, req plugin.CreateRequest) (plugin
 // The provider must have been loaded by a prior call to Check.
 func (r *Registry) Update(ctx context.Context, req plugin.UpdateRequest) (plugin.UpdateResponse, error) {
 	label := fmt.Sprintf("%s.Update(%s,%s)", r.label(), req.ID, req.URN)
-	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+	slog.Info("Registry.Update: executing",
+		"label", label,
+		"numOldInputs", len(req.OldInputs),
+		"numOldOutputs", len(req.OldOutputs),
+		"numNewInputs", len(req.NewInputs))
 
 	// Fetch the unconfigured provider, configure it, and register it under a new ID. We remove the
 	// unconfigured ID from the provider map so nothing else tries to use and re-configure this instance.

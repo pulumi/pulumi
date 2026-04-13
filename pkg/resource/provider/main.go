@@ -19,6 +19,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"time"
@@ -63,7 +64,7 @@ func MainContext(
 	var serverOpts []grpc.ServerOption
 	if otelEP != "" {
 		if err := cmdutil.InitOtelTracing(name, otelEP); err != nil {
-			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+			slog.Info("failed to initialize OTel tracing", "err", err)
 		} else {
 			defer cmdutil.CloseOtelTracing()
 

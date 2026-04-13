@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -34,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	utilenv "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 )
@@ -533,7 +533,7 @@ serviceLoop:
 	// If we still have elided writes once the channel has closed, flush the snapshot.
 	var err error
 	if hasElidedWrites {
-		logging.V(9).Infof("SnapshotManager: flushing elided writes...")
+		slog.Info("SnapshotManager: flushing elided writes")
 		err = sj.saveSnapshot()
 	}
 	done <- err

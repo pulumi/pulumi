@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	mapset "github.com/deckarep/golang-set/v2"
@@ -28,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -69,7 +69,7 @@ func (ex *deploymentExecutor) checkTargets(targets UrnTargets) error {
 		if !hasOld && !hasNew {
 			hasUnknownTarget = true
 
-			logging.V(7).Infof("Targeted resource could not be found in the stack [urn=%v]", target)
+			slog.Info("Targeted resource could not be found in the stack", "urn", target)
 			if strings.Contains(string(target), "$") {
 				ex.deployment.Diag().Errorf(diag.GetTargetCouldNotBeFoundError(), target)
 			} else {
@@ -138,13 +138,13 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	go PanicRecovery(ex.deployment.panicErrs, func() {
 		select {
 		case <-callerCtx.Done():
-			logging.V(4).Infof("deploymentExecutor.Execute(...): signalling cancellation to providers...")
+			slog.Info("deploymentExecutor.Execute: signalling cancellation to providers")
 			cancelErr := ex.deployment.ctx.Host.SignalCancellation()
 			if cancelErr != nil {
-				logging.V(4).Infof("deploymentExecutor.Execute(...): failed to signal cancellation to providers: %v", cancelErr)
+				slog.Info("deploymentExecutor.Execute: failed to signal cancellation to providers", "err", cancelErr)
 			}
 		case <-done:
-			logging.V(4).Infof("deploymentExecutor.Execute(...): exiting provider canceller")
+			slog.Info("deploymentExecutor.Execute: exiting provider canceller")
 		}
 	})
 
@@ -200,7 +200,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		if err == nil {
 			closeErr := src.Cancel(callerCtx)
 			if closeErr != nil {
-				logging.V(4).Infof("deploymentExecutor.Execute(...): source iterator closed with error: %s", closeErr)
+				slog.Info("deploymentExecutor.Execute: source iterator closed with error", "err", closeErr)
 				ex.reportError("", closeErr)
 				err = result.BailError(closeErr)
 			}
@@ -251,7 +251,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 					return
 				}
 			case <-done:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming events goroutine exiting")
+				slog.Info("deploymentExecutor.Execute: incoming events goroutine exiting")
 				return
 			}
 		}
@@ -266,7 +266,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 	//  3. The stepExecCancel cancel context gets canceled. This means some error occurred in the step executor
 	//     and we need to bail. This can also happen if the user hits Ctrl-C.
 	canceled, err := func() (bool, error) {
-		logging.V(4).Infof("deploymentExecutor.Execute(...): waiting for incoming events")
+		slog.Info("deploymentExecutor.Execute: waiting for incoming events")
 
 		// We're ingesting events from two sources: the source iterator and the step generator. We need to make sure
 		// that both are done before we exit the loop. The source iterator is done when it sends us nil. The step
@@ -276,11 +276,11 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		for {
 			select {
 			case event := <-stepGenEvents:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming async event")
+				slog.Info("deploymentExecutor.Execute: incoming async event")
 
 				if err := ex.handleSingleEvent(event); err != nil {
 					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+						slog.Info("deploymentExecutor.Execute: error handling event", "err", err)
 						ex.reportError(ex.deployment.generateEventURN(event), err)
 					}
 					cancel()
@@ -288,8 +288,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				}
 
 			case event := <-incomingEvents:
-				logging.V(4).Infof("deploymentExecutor.Execute(...): incoming source event (nil? %v, %v)", event.Event == nil,
-					event.Error)
+				slog.Info("deploymentExecutor.Execute: incoming source event",
+					"isNil", event.Event == nil, "err", event.Error)
 
 				if event.Error != nil {
 					if !result.IsBail(event.Error) {
@@ -306,7 +306,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				} else {
 					if err := ex.handleSingleEvent(event.Event); err != nil {
 						if !result.IsBail(err) {
-							logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", err)
+							slog.Info("deploymentExecutor.Execute: error handling event", "err", err)
 							ex.reportError(ex.deployment.generateEventURN(event.Event), err)
 						}
 						cancel()
@@ -314,7 +314,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 					}
 				}
 			case <-ctx.Done():
-				logging.V(4).Infof("deploymentExecutor.Execute(...): context finished: %v", ctx.Err())
+				slog.Info("deploymentExecutor.Execute: context finished", "err", ctx.Err())
 
 				// NOTE: we use the presence of an error in the caller context in order to distinguish caller-initiated
 				// cancellation from internally-initiated cancellation.
@@ -330,7 +330,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				err := ex.performPostSteps(ctx, ex.deployment.opts.Targets, ex.deployment.opts.Excludes)
 				if err != nil {
 					if !result.IsBail(err) {
-						logging.V(4).Infof("deploymentExecutor.Execute(...): error performing deletes: %v", err)
+						slog.Info("deploymentExecutor.Execute: error performing deletes", "err", err)
 						ex.reportError("", err)
 						return false, result.BailError(err)
 					}
@@ -358,7 +358,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		}
 	}
 
-	logging.V(4).Infof("deploymentExecutor.Execute(...): step executor has completed")
+	slog.Info("deploymentExecutor.Execute: step executor has completed")
 
 	// Check that we did operations for everything expected in the plan. We mutate ResourcePlan.Ops as we run
 	// so by the time we get here everything in the map should have an empty ops list (except for unneeded
@@ -386,7 +386,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 				}
 
 				rErr := fmt.Errorf("expected resource operations for %v but none were seen", urn)
-				logging.V(4).Infof("deploymentExecutor.Execute(...): error handling event: %v", rErr)
+				slog.Info("deploymentExecutor.Execute: error handling event", "err", rErr)
 				ex.reportError(urn, rErr)
 				err = errors.Join(err, rErr)
 			}
@@ -407,7 +407,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		err := ex.stepGen.AnalyzeResources()
 		if err != nil {
 			if !result.IsBail(err) {
-				logging.V(4).Infof("deploymentExecutor.Execute(...): error analyzing resources: %v", err)
+				slog.Info("deploymentExecutor.Execute: error analyzing resources", "err", err)
 				ex.reportError("", err)
 			}
 			return nil, result.BailErrorf("failed to analyze resources: %v", err)
@@ -452,7 +452,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		return nil
 	}
 
-	logging.V(7).Infof("performPostSteps(...): beginning")
+	slog.Info("performPostSteps: beginning")
 
 	// GenerateDeletes/Refreshes mutates state we need to lock the step executor while we do this.
 	ex.stepExec.Lock()
@@ -462,7 +462,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		// Regardless of if this error'd or not the step executor needs unlocking
 		ex.stepExec.Unlock()
 		if err != nil {
-			logging.V(7).Infof("performPostSteps(...): generating refreshes produced error result")
+			slog.Info("performPostSteps: generating refreshes produced error result")
 			return err
 		}
 
@@ -480,7 +480,7 @@ func (ex *deploymentExecutor) performPostSteps(
 		// Regardless of if this error'd or not the step executor needs unlocking
 		ex.stepExec.Unlock()
 		if err != nil {
-			logging.V(7).Infof("performPostSteps(...): generating deletes produced error result")
+			slog.Info("performPostSteps: generating deletes produced error result")
 			return err
 		}
 
@@ -539,10 +539,10 @@ func (ex *deploymentExecutor) performPostSteps(
 			}
 			antichain = newChain
 
-			logging.V(4).Infof("deploymentExecutor.Execute(...): beginning antichain")
+			slog.Info("deploymentExecutor.Execute: beginning antichain")
 			tok := ex.stepExec.ExecuteParallel(antichain)
 			tok.Wait(ctx)
-			logging.V(4).Infof("deploymentExecutor.Execute(...): antichain complete")
+			slog.Info("deploymentExecutor.Execute: antichain complete")
 		}
 	}
 
@@ -569,7 +569,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 	var err error
 	switch e := event.(type) {
 	case ContinueResourceImportEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceImportEvent")
+		slog.Info("deploymentExecutor.handleSingleEvent: received ContinueResourceImportEvent")
 		ex.asyncEventsExpected--
 		var async bool
 		steps, async, err = ex.stepGen.ContinueStepsFromImport(e)
@@ -577,7 +577,7 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 			ex.asyncEventsExpected++
 		}
 	case ContinueResourceRefreshEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceRefreshEvent")
+		slog.Info("deploymentExecutor.handleSingleEvent: received ContinueResourceRefreshEvent")
 		ex.asyncEventsExpected--
 		var async bool
 		steps, async, err = ex.stepGen.ContinueStepsFromRefresh(e)
@@ -585,21 +585,21 @@ func (ex *deploymentExecutor) handleSingleEvent(event SourceEvent) error {
 			ex.asyncEventsExpected++
 		}
 	case ContinueResourceDiffEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ContinueResourceDiffEvent")
+		slog.Info("deploymentExecutor.handleSingleEvent: received ContinueResourceDiffEvent")
 		ex.asyncEventsExpected--
 		steps, err = ex.stepGen.ContinueStepsFromDiff(e)
 	case RegisterResourceEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received RegisterResourceEvent")
+		slog.Info("deploymentExecutor.handleSingleEvent: received RegisterResourceEvent")
 		var async bool
 		steps, async, err = ex.stepGen.GenerateSteps(e)
 		if async {
 			ex.asyncEventsExpected++
 		}
 	case ReadResourceEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received ReadResourceEvent")
+		slog.Info("deploymentExecutor.handleSingleEvent: received ReadResourceEvent")
 		steps, err = ex.stepGen.GenerateReadSteps(e)
 	case RegisterResourceOutputsEvent:
-		logging.V(4).Infof("deploymentExecutor.handleSingleEvent(...): received register resource outputs")
+		slog.Info("deploymentExecutor.handleSingleEvent: received register resource outputs")
 		return ex.stepExec.ExecuteRegisterResourceOutputs(e)
 	}
 

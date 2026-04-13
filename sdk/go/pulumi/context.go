@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"math"
 	"net/url"
@@ -40,7 +41,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
@@ -800,7 +800,7 @@ func (ctx *Context) invokePackageRaw(
 	}
 
 	// Now, invoke the RPC to the provider synchronously.
-	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
+	slog.Info("Invoke: RPC call being made synchronously", "tok", tok, "numArgs", len(resolvedArgsMap))
 	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok:               tok,
 		Args:              rpcArgs,
@@ -811,13 +811,13 @@ func (ctx *Context) invokePackageRaw(
 		PackageRef:        packageRef,
 	})
 	if err != nil {
-		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
+		slog.Info("Invoke: error", "tok", tok, "err", err)
 		return nil, err
 	}
 
 	// If there were any failures from the provider, return them.
 	if len(resp.Failures) > 0 {
-		logging.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
+		slog.Info("Invoke: success with failures", "tok", tok, "numFailures", len(resp.Failures))
 		var ferr error
 		for _, failure := range resp.Failures {
 			ferr = multierror.Append(ferr,
@@ -874,7 +874,7 @@ func (ctx *Context) InvokePackage(
 		return errors.New("unexpected secret result returned to invoke call, " +
 			"consider using the output-versioned variant of the invoke")
 	}
-	logging.V(9).Infof("Invoke(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
+	slog.Info("Invoke: success", "tok", tok, "numOuts", len(outProps), "err", err)
 	return nil
 }
 
@@ -897,7 +897,7 @@ func (ctx *Context) InvokePackageRaw(
 	if err != nil {
 		return false, err
 	}
-	logging.V(9).Infof("InvokePackageRaw(%s, ...): success: w/ %d outs (err=%v)", tok, len(outProps), err)
+	slog.Info("InvokePackageRaw: success", "tok", tok, "numOuts", len(outProps), "err", err)
 	return hasSecret, nil
 }
 
@@ -1144,7 +1144,7 @@ func (ctx *Context) CallPackage(
 				})
 			}
 			if err != nil {
-				logging.V(9).Infof("Call(%s, ...): success: w/ unmarshal error: %v", tok, err)
+				slog.Info("Call: success with unmarshal error", "tok", tok, "err", err)
 				internal.RejectOutput(output, err)
 				return
 			}
@@ -1160,7 +1160,7 @@ func (ctx *Context) CallPackage(
 				internal.ResolveOutput(output, dest.Interface(), known, secret, resourcesToInternal(deps))
 			}
 
-			logging.V(9).Infof("Call(%s, ...): success: w/ %d outs (err=%v)", tok, len(outprops), err)
+			slog.Info("Call: success", "tok", tok, "numOuts", len(outprops), "err", err)
 		}()
 
 		// Prepare the RPC request.
@@ -1172,12 +1172,12 @@ func (ctx *Context) CallPackage(
 
 		// Now, call the RPC.
 		var resp *pulumirpc.CallResponse
-		logging.V(9).Infof("Call(%s): Goroutine spawned, RPC call being made", tok)
+		slog.Info("Call: goroutine spawned, RPC call being made", "tok", tok)
 		resp, err = ctx.state.monitor.Call(ctx.ctx, req)
 		if err != nil {
-			logging.V(9).Infof("Call(%s, ...): error: %v", tok, err)
+			slog.Info("Call: error", "tok", tok, "err", err)
 		} else if len(resp.Failures) > 0 {
-			logging.V(9).Infof("Call(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
+			slog.Info("Call: success with failures", "tok", tok, "numFailures", len(resp.Failures))
 			for _, failure := range resp.Failures {
 				err = multierror.Append(err,
 					fmt.Errorf("%s call failed: %s (%s)", tok, failure.Reason, failure.Property))
@@ -1425,7 +1425,7 @@ func (ctx *Context) readPackageResource(
 			return
 		}
 
-		logging.V(9).Infof("ReadResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
+		slog.Info("ReadResource: goroutine spawned, RPC call being made", "type", t, "name", name)
 		resp, err := ctx.state.monitor.ReadResource(ctx.ctx, &pulumirpc.ReadResourceRequest{
 			Type:                    t,
 			Name:                    name,
@@ -1441,9 +1441,9 @@ func (ctx *Context) readPackageResource(
 			PackageRef:              packageRef,
 		})
 		if err != nil {
-			logging.V(9).Infof("ReadResource(%s, %s): error: %v", t, name, err)
+			slog.Info("ReadResource: error", "type", t, "name", name, "err", err)
 		} else {
-			logging.V(9).Infof("ReadResource(%s, %s): success: %s %s ...", t, name, resp.Urn, id)
+			slog.Info("ReadResource: success", "type", t, "name", name, "urn", resp.Urn, "id", id)
 		}
 		if resp != nil {
 			urn, resID = resp.Urn, string(idToRead)
@@ -1473,7 +1473,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	}
 
 	tok := "pulumi:pulumi:getResource"
-	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
+	slog.Info("Invoke: RPC call being made synchronously", "tok", tok, "numArgs", len(resolvedArgsMap))
 	resp, err := ctx.state.monitor.Invoke(ctx.ctx, &pulumirpc.ResourceInvokeRequest{
 		Tok:             "pulumi:pulumi:getResource",
 		Args:            rpcArgs,
@@ -1485,7 +1485,7 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 
 	// If there were any failures from the provider, return them.
 	if len(resp.Failures) > 0 {
-		logging.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
+		slog.Info("Invoke: success with failures", "tok", tok, "numFailures", len(resp.Failures))
 		var ferr error
 		for _, failure := range resp.Failures {
 			ferr = multierror.Append(ferr,
@@ -1807,7 +1807,7 @@ func (ctx *Context) registerResource(
 		if options.Hooks != nil {
 			mHooks, hooksErr := marshalResourceHooks(ctx.ctx, options.Hooks)
 			if hooksErr != nil {
-				logging.V(9).Infof("marshalResourceHooks(%s, %s): error: %v", t, name, err)
+				slog.Info("marshalResourceHooks: error", "type", t, "name", name, "err", err)
 				return
 			}
 			hooks = mHooks
@@ -1840,12 +1840,12 @@ func (ctx *Context) registerResource(
 		if options.URN != "" {
 			resp, err = ctx.getResource(options.URN)
 			if err != nil {
-				logging.V(9).Infof("getResource(%s, %s): error: %v", t, name, err)
+				slog.Info("getResource: error", "type", t, "name", name, "err", err)
 			} else {
-				logging.V(9).Infof("getResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
+				slog.Info("getResource: success", "type", t, "name", name, "urn", resp.Urn, "id", resp.Id)
 			}
 		} else {
-			logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
+			slog.Info("RegisterResource: goroutine spawned, RPC call being made", "type", t, "name", name)
 
 			var deleteBeforeReplace bool
 			if options.DeleteBeforeReplace != nil {
@@ -1891,9 +1891,9 @@ func (ctx *Context) registerResource(
 				EnvVarMappings:             inputs.envVarMappings,
 			})
 			if err != nil {
-				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+				slog.Info("RegisterResource: error", "type", t, "name", name, "err", err)
 			} else {
-				logging.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
+				slog.Info("RegisterResource: success", "type", t, "name", name, "urn", resp.Urn, "id", resp.Id)
 			}
 		}
 
@@ -2880,7 +2880,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 	ctx.state.registeredOutputsLock.Lock()
 	if ctx.state.registeredOutputs[urn] {
 		// Outputs were already registered, make this a no-op
-		logging.V(9).Infof("RegisterResourceOutputs(%s): outputs already registered, skipping", urn)
+		slog.Info("RegisterResourceOutputs: outputs already registered, skipping", "urn", urn)
 		ctx.state.registeredOutputsLock.Unlock()
 		return nil
 	}
@@ -2918,13 +2918,13 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		}
 
 		// Register the outputs
-		logging.V(9).Infof("RegisterResourceOutputs(%s): RPC call being made", urn)
+		slog.Info("RegisterResourceOutputs: RPC call being made", "urn", urn)
 		_, err = ctx.state.monitor.RegisterResourceOutputs(ctx.ctx, &pulumirpc.RegisterResourceOutputsRequest{
 			Urn:     string(urn),
 			Outputs: outsMarshalled,
 		})
 
-		logging.V(9).Infof("RegisterResourceOutputs(%s): %v", urn, err)
+		slog.Info("RegisterResourceOutputs: error", "urn", urn, "err", err)
 	}()
 
 	return nil

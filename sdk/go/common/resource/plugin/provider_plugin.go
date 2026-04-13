@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -47,7 +48,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	envutil "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -338,13 +338,13 @@ func handshake(
 		status, ok := status.FromError(err)
 		if ok && status.Code() == codes.Unimplemented {
 			// If the provider doesn't implement Handshake, that's fine -- we'll fall back to existing behaviour.
-			logging.V(7).Infof("Handshake: not supported by '%v'", bin)
+			slog.Info("Handshake: not supported", "bin", bin)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to handshake with '%v': %w", bin, err)
 	}
 
-	logging.V(7).Infof("Handshake: success [%v]", bin)
+	slog.Info("Handshake: success", "bin", bin)
 	return &ProviderHandshakeResponse{
 		AcceptSecrets:                   res.GetAcceptSecrets(),
 		AcceptResources:                 res.GetAcceptResources(),
@@ -483,7 +483,7 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	// Diff/CheckConfig.  This gets turned into a error with type: "Internal".
 	case nodejsDynamicProviderType:
 		if err.Code() == codes.Internal {
-			logging.V(8).Infof("treating error %s as unimplemented error", err)
+			slog.Debug("treating error as unimplemented error", "err", err)
 			return true
 		}
 
@@ -491,7 +491,7 @@ func isDiffCheckConfigLogicallyUnimplemented(err *rpcerror.Error, providerType t
 	// package that the provider was expected. That caused the error to be wrapped with an "Unknown" error.
 	case kubernetesProviderType:
 		if err.Code() == codes.Unknown && strings.Contains(err.Message(), "Unimplemented") {
-			logging.V(8).Infof("treating error %s as unimplemented error", err)
+			slog.Debug("treating error as unimplemented error", "err", err)
 			return true
 		}
 	}
@@ -594,7 +594,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
 
 	label := fmt.Sprintf("%s.CheckConfig(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
+	slog.Info("CheckConfig executing", "label", label, "olds", len(req.Olds), "news", len(req.News))
 
 	molds, err := MarshalProperties(req.Olds, MarshalOptions{
 		Label:        label + ".olds",
@@ -626,11 +626,11 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 		code := rpcError.Code()
 		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, req.URN.Type()) {
 			// For backwards compatibility, just return the news as if the provider was okay with them.
-			logging.V(7).Infof("%s unimplemented rpc: returning news as is", label)
+			slog.Info("CheckConfig unimplemented rpc: returning news as is", "label", label)
 			return CheckConfigResponse{Properties: req.News}, nil
 		}
-		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
-			rpcError.Message())
+		slog.Debug("CheckConfig provider received rpc error",
+			"label", label, "code", rpcError.Code(), "message", rpcError.Message())
 		return CheckConfigResponse{}, err
 	}
 
@@ -658,7 +658,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
 	annotateSecrets(inputs, req.News)
-	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
+	slog.Info("CheckConfig success", "label", label, "inputs", len(inputs), "failures", len(failures))
 	return CheckConfigResponse{Properties: inputs, Failures: failures}, nil
 }
 
@@ -705,8 +705,11 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		"req.Type (%s) != req.URN.Type() (%s)", req.Type, req.URN.Type())
 
 	label := fmt.Sprintf("%s.DiffConfig(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+	slog.Info("DiffConfig executing",
+		"label", label,
+		"oldInputs", len(req.OldInputs),
+		"oldOutputs", len(req.OldOutputs),
+		"newInputs", len(req.NewInputs))
 
 	mOldInputs, err := MarshalProperties(req.OldInputs, MarshalOptions{
 		Label:        label + ".oldInputs",
@@ -748,7 +751,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		rpcError := rpcerror.Convert(err)
 		code := rpcError.Code()
 		if code == codes.Unimplemented || isDiffCheckConfigLogicallyUnimplemented(rpcError, req.URN.Type()) {
-			logging.V(7).Infof("%s unimplemented rpc: returning DiffUnknown with no replaces", label)
+			slog.Info("DiffConfig unimplemented rpc: returning DiffUnknown with no replaces", "label", label)
 			// In this case, the provider plugin did not implement this and we have to provide some answer:
 			//
 			// There are two interesting scenarios with the present gRPC interface:
@@ -764,8 +767,8 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 			// to first-class providers.
 			return DiffResult{Changes: DiffUnknown, ReplaceKeys: nil}, nil
 		}
-		logging.V(8).Infof("%s provider received rpc error `%s`: `%s`", label, rpcError.Code(),
-			rpcError.Message())
+		slog.Debug("DiffConfig provider received rpc error",
+			"label", label, "code", rpcError.Code(), "message", rpcError.Message())
 		// https://github.com/pulumi/pulumi/issues/14529: Old versions of kubernetes would error on this
 		// call if "kubeconfig" was set to a file. This didn't cause issues later when the same config was
 		// passed to Configure, and for many years silently "worked".
@@ -775,7 +778,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		// work for old versions we have an explicit ignore for this one error here.
 		if p.pkg == "kubernetes" &&
 			strings.Contains(rpcError.Error(), "cannot unmarshal string into Go value of type struct") {
-			logging.V(8).Infof("%s ignoring error from kubernetes provider", label)
+			slog.Debug("DiffConfig ignoring error from kubernetes provider", "label", label)
 			return DiffResult{Changes: DiffUnknown}, nil
 		}
 
@@ -797,8 +800,13 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
-	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v",
-		label, changes, replaces, stables, deleteBeforeReplace, diffs)
+	slog.Info("DiffConfig success",
+		"label", label,
+		"changes", changes,
+		"replaces", replaces,
+		"stables", stables,
+		"deleteBeforeReplace", deleteBeforeReplace,
+		"diffs", diffs)
 
 	return DiffResult{
 		Changes:             DiffChanges(changes),
@@ -961,7 +969,7 @@ func restoreElidedAssetContents(original resource.PropertyMap, transformed resou
 // Configure configures the resource provider with "globals" that control its behavior.
 func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (ConfigureResponse, error) {
 	label := p.label() + ".Configure()"
-	logging.V(7).Infof("%s executing (#vars=%d)", label, len(req.Inputs))
+	slog.Info("Configure executing", "label", label, "vars", len(req.Inputs))
 
 	// Convert the inputs to a config map. If any are unknown, do not configure the underlying plugin: instead, leave
 	// the cfgknown bit unset and carry on.
@@ -1042,7 +1050,7 @@ func (p *provider) Configure(ctx context.Context, req ConfigureRequest) (Configu
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+			slog.Info("Configure failed", "label", label, "err", rpcError.Message())
 			err = createConfigureError(rpcError)
 			p.configSource.MustReject(err)
 			return
@@ -1076,7 +1084,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	contract.Assertf(req.News != nil, "Check requires new properties")
 
 	label := fmt.Sprintf("%s.Check(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s executing (#olds=%d,#news=%d)", label, len(req.Olds), len(req.News))
+	slog.Info("Check executing", "label", label, "olds", len(req.Olds), "news", len(req.News))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1143,7 +1151,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		slog.Info("Check failed", "label", label, "err", rpcError.Message())
 		return CheckResponse{}, rpcError
 	}
 
@@ -1176,7 +1184,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
+	slog.Info("Check success", "label", label, "inputs", len(inputs), "failures", len(failures))
 	return CheckResponse{Properties: inputs, Failures: failures}, nil
 }
 
@@ -1195,8 +1203,11 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	contract.Assertf(req.OldOutputs != nil, "Diff requires old output properties")
 
 	label := fmt.Sprintf("%s.Diff(%s,%s)", p.label(), req.URN, req.ID)
-	logging.V(7).Infof("%s: executing (#oldInputs=%d#oldOutputs=%d,#newInputs=%d)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+	slog.Info("Diff executing",
+		"label", label,
+		"oldInputs", len(req.OldInputs),
+		"oldOutputs", len(req.OldOutputs),
+		"newInputs", len(req.NewInputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1209,7 +1220,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	// property was sourced from another resource's output properties--don't call into the underlying provider.
 	// Instead, indicate that the diff is unavailable and write a message
 	if !pcfg.known {
-		logging.V(7).Infof("%s: cannot diff due to unknown config", label)
+		slog.Info("Diff cannot diff due to unknown config", "label", label)
 		const message = "The provider for this resource has inputs that are not known during preview.\n" +
 			"This preview may not correctly represent the changes that will be applied during an update."
 		return DiffResult{}, DiffUnavailable(message)
@@ -1263,7 +1274,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		slog.Info("Diff failed", "label", label, "err", rpcError.Message())
 		return DiffResult{}, rpcError
 	}
 
@@ -1283,8 +1294,14 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 
 	changes := resp.GetChanges()
 	deleteBeforeReplace := resp.GetDeleteBeforeReplace()
-	logging.V(7).Infof("%s success: changes=%d #replaces=%v #stables=%v delbefrepl=%v, diffs=#%v, detaileddiff=%v",
-		label, changes, replaces, stables, deleteBeforeReplace, diffs, resp.GetDetailedDiff())
+	slog.Info("Diff success",
+		"label", label,
+		"changes", changes,
+		"replaces", replaces,
+		"stables", stables,
+		"deleteBeforeReplace", deleteBeforeReplace,
+		"diffs", diffs,
+		"detailedDiff", resp.GetDetailedDiff())
 
 	return DiffResult{
 		Changes:             DiffChanges(changes),
@@ -1309,7 +1326,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	contract.Assertf(req.Properties != nil, "Create requires properties")
 
 	label := fmt.Sprintf("%s.Create(%s)", p.label(), req.URN)
-	logging.V(7).Infof("%s executing (#props=%v)", label, len(req.Properties))
+	slog.Info("Create executing", "label", label, "props", len(req.Properties))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1372,7 +1389,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 	})
 	if err != nil {
 		resourceStatus, id, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
-		logging.V(7).Infof("%s failed: %v", label, resourceError)
+		slog.Info("Create failed", "label", label, "err", resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
 			return CreateResponse{}, resourceError
@@ -1408,7 +1425,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		annotateSecrets(outs, req.Properties)
 	}
 
-	logging.V(7).Infof("%s success: id=%s; #outs=%d", label, id, len(outs))
+	slog.Info("Create success", "label", label, "id", id, "outs", len(outs))
 
 	return CreateResponse{
 		ID:                  id,
@@ -1431,7 +1448,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	contract.Assertf(req.ID != "", "Read ID was empty")
 
 	label := fmt.Sprintf("%s.Read(%s,%s)", p.label(), req.ID, req.URN)
-	logging.V(7).Infof("%s executing (#inputs=%v, #state=%v)", label, len(req.Inputs), len(req.State))
+	slog.Info("Read executing", "label", label, "inputs", len(req.Inputs), "state", len(req.State))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1504,7 +1521,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	})
 	if err != nil {
 		resourceStatus, readID, liveObject, liveInputs, refreshBeforeUpdate, resourceError = parseError(err)
-		logging.V(7).Infof("%s failed: %v", label, err)
+		slog.Info("Read failed", "label", label, "err", err)
 
 		if resourceStatus != resource.StatusPartialFailure {
 			return ReadResponse{Status: resourceStatus}, resourceError
@@ -1555,7 +1572,7 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	restoreElidedAssetContents(req.Inputs, newInputs)
 	restoreElidedAssetContents(req.Inputs, newState)
 
-	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
+	slog.Info("Read success", "label", label, "id", readID, "outs", len(newState), "inputs", len(newInputs))
 	return ReadResponse{ReadResult{
 		ID:                  readID,
 		Outputs:             newState,
@@ -1579,8 +1596,11 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	contract.Assertf(req.NewInputs != nil, "Update requires new properties")
 
 	label := fmt.Sprintf("%s.Update(%s,%s)", p.label(), req.ID, req.URN)
-	logging.V(7).Infof("%s executing (#oldInputs=%v,#oldOutputs=%v,#newInputs=%v)",
-		label, len(req.OldInputs), len(req.OldOutputs), len(req.NewInputs))
+	slog.Info("Update executing",
+		"label", label,
+		"oldInputs", len(req.OldInputs),
+		"oldOutputs", len(req.OldOutputs),
+		"newInputs", len(req.NewInputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1677,7 +1697,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	})
 	if err != nil {
 		resourceStatus, _, liveObject, _, refreshBeforeUpdate, resourceError = parseError(err)
-		logging.V(7).Infof("%s failed: %v", label, resourceError)
+		slog.Info("Update failed", "label", label, "err", resourceError)
 
 		if resourceStatus != resource.StatusPartialFailure {
 			return UpdateResponse{Status: resourceStatus}, resourceError
@@ -1706,7 +1726,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 	if !protocol.acceptSecrets {
 		annotateSecrets(outs, req.NewInputs)
 	}
-	logging.V(7).Infof("%s success; #outs=%d", label, len(outs))
+	slog.Info("Update success", "label", label, "outs", len(outs))
 
 	return UpdateResponse{
 		Properties:          outs,
@@ -1730,7 +1750,7 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 	contract.Assertf(req.Outputs != nil, "Delete requires output properties")
 
 	label := fmt.Sprintf("%s.Delete(%s,%s)", p.label(), req.URN, req.ID)
-	logging.V(7).Infof("%s executing (#inputs=%d, #outputs=%d)", label, len(req.Inputs), len(req.Outputs))
+	slog.Info("Delete executing", "label", label, "inputs", len(req.Inputs), "outputs", len(req.Outputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1790,11 +1810,11 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 		OldViews:              oldViews,
 	}); err != nil {
 		resourceStatus, rpcErr := resourceStateAndError(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcErr)
+		slog.Info("Delete failed", "label", label, "err", rpcErr)
 		return DeleteResponse{Status: resourceStatus}, rpcErr
 	}
 
-	logging.V(7).Infof("%s success", label)
+	slog.Info("Delete success", "label", label)
 	return DeleteResponse{Status: resource.StatusOK}, err
 }
 
@@ -1806,7 +1826,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	contract.Assertf(req.Inputs != nil, "Construct requires input properties")
 
 	label := fmt.Sprintf("%s.Construct(%s, %s, %s)", p.label(), req.Type, req.Name, req.Parent)
-	logging.V(7).Infof("%s executing (#inputs=%v)", label, len(req.Inputs))
+	slog.Info("Construct executing", "label", label, "inputs", len(req.Inputs))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -1834,7 +1854,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+			slog.Info("Construct failed", "label", label, "err", rpcError.Message())
 			return ConstructResult{}, rpcError
 		}
 		return ConstructResult{
@@ -2015,7 +2035,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 		outputDependencies[resource.PropertyKey(k)] = urns
 	}
 
-	logging.V(7).Infof("%s success: #outputs=%d", label, len(outputs))
+	slog.Info("Construct success", "label", label, "outputs", len(outputs))
 	return ConstructResponse{
 		URN:                resource.URN(resp.GetUrn()),
 		Outputs:            outputs,
@@ -2028,7 +2048,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	contract.Assertf(req.Tok != "", "Invoke requires a token")
 
 	label := fmt.Sprintf("%s.Invoke(%s)", p.label(), req.Tok)
-	logging.V(7).Infof("%s executing (#args=%d)", label, len(req.Args))
+	slog.Info("Invoke executing", "label", label, "args", len(req.Args))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -2059,7 +2079,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		slog.Info("Invoke failed", "label", label, "err", rpcError.Message())
 		return InvokeResponse{}, rpcError
 	}
 
@@ -2090,7 +2110,7 @@ func (p *provider) Invoke(ctx context.Context, req InvokeRequest) (InvokeRespons
 		}
 	}
 
-	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	slog.Info("Invoke success", "label", label, "ret", len(ret), "failures", len(failures))
 	return InvokeResponse{
 		Properties: ret,
 		Failures:   failures,
@@ -2102,7 +2122,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	contract.Assertf(req.Tok != "", "Call requires a token")
 
 	label := fmt.Sprintf("%s.Call(%s)", p.label(), req.Tok)
-	logging.V(7).Infof("%s executing (#args=%d)", label, len(req.Args))
+	slog.Info("Call executing", "label", label, "args", len(req.Args))
 
 	// Ensure that the plugin is configured.
 	client := p.clientRaw
@@ -2161,7 +2181,7 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		slog.Info("Call failed", "label", label, "err", rpcError.Message())
 		return CallResult{}, rpcError
 	}
 
@@ -2193,14 +2213,14 @@ func (p *provider) Call(_ context.Context, req CallRequest) (CallResponse, error
 		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
 	}
 
-	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	slog.Info("Call success", "label", label, "ret", len(ret), "failures", len(failures))
 	return CallResult{Return: ret, ReturnDependencies: returnDependencies, Failures: failures}, nil
 }
 
 // GetPluginInfo returns this plugin's information.
 func (p *provider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 	label := p.label() + ".GetPluginInfo()"
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("GetPluginInfo executing", "label", label)
 
 	var version *semver.Version
 	if p.overrideVersion != nil {
@@ -2211,7 +2231,7 @@ func (p *provider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 		resp, err := p.clientRaw.GetPluginInfo(p.requestContext(), &emptypb.Empty{})
 		if err != nil {
 			rpcError := rpcerror.Convert(err)
-			logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+			slog.Info("GetPluginInfo failed", "label", label, "err", rpcError.Message())
 			return PluginInfo{}, rpcError
 		}
 
@@ -2224,7 +2244,7 @@ func (p *provider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 		}
 	}
 
-	logging.V(7).Infof("%s success (#version=%v) success", label, version)
+	slog.Info("GetPluginInfo success", "label", label, "version", version)
 	return PluginInfo{
 		Version: version,
 	}, nil
@@ -2233,14 +2253,14 @@ func (p *provider) GetPluginInfo(ctx context.Context) (PluginInfo, error) {
 // Attach attaches this plugin to the engine
 func (p *provider) Attach(address string) error {
 	label := p.label() + ".Attach()"
-	logging.V(7).Infof("%s executing", label)
+	slog.Info("Attach executing", "label", label)
 
 	// Calling Attach happens immediately after loading, and does not require configuration to proceed.
 	// Thus, we access the clientRaw property, rather than calling getClient.
 	_, err := p.clientRaw.Attach(p.requestContext(), &pulumirpc.PluginAttach{Address: address})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		slog.Info("Attach failed", "label", label, "err", rpcError.Message())
 		return rpcError
 	}
 
@@ -2251,8 +2271,8 @@ func (p *provider) SignalCancellation(ctx context.Context) error {
 	_, err := p.clientRaw.Cancel(p.requestContext(), &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
-		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
-			rpcError.Message())
+		slog.Debug("provider received rpc error",
+			"code", rpcError.Code(), "message", rpcError.Message())
 		if rpcError.Code() == codes.Unimplemented {
 			// For backwards compatibility, do nothing if it's not implemented.
 			return nil
@@ -2308,15 +2328,15 @@ func createConfigureError(rpcerr *rpcerror.Error) error {
 // `codes.DataLoss`, or `codes.Unknown` to us.
 func resourceStateAndError(err error) (resource.Status, *rpcerror.Error) {
 	rpcError := rpcerror.Convert(err)
-	logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(), rpcError.Message())
+	slog.Debug("provider received rpc error", "code", rpcError.Code(), "message", rpcError.Message())
 	//nolint:exhaustive // We want to handle only some error codes specially
 	switch rpcError.Code() {
 	case codes.Internal, codes.DataLoss, codes.Unknown:
-		logging.V(8).Infof("rpc error kind `%s` may not be recoverable", rpcError.Code())
+		slog.Debug("rpc error kind may not be recoverable", "code", rpcError.Code())
 		return resource.StatusUnknown, rpcError
 	}
 
-	logging.V(8).Infof("rpc error kind `%s` is well-understood and recoverable", rpcError.Code())
+	slog.Debug("rpc error kind is well-understood and recoverable", "code", rpcError.Code())
 	return resource.StatusOK, rpcError
 }
 
@@ -2406,7 +2426,7 @@ func decorateProviderSpans(span opentracing.Span, method string, req, resp any, 
 // GetMapping fetches the conversion mapping (if any) for this resource provider.
 func (p *provider) GetMapping(ctx context.Context, req GetMappingRequest) (GetMappingResponse, error) {
 	label := p.label() + ".GetMapping"
-	logging.V(7).Infof("%s executing: key=%s, provider=%s", label, req.Key, req.Provider)
+	slog.Info("GetMapping executing", "label", label, "key", req.Key, "provider", req.Provider)
 
 	resp, err := p.clientRaw.GetMapping(p.requestContext(), &pulumirpc.GetMappingRequest{
 		Key:      req.Key,
@@ -2418,14 +2438,14 @@ func (p *provider) GetMapping(ctx context.Context, req GetMappingRequest) (GetMa
 		if code == codes.Unimplemented {
 			// For backwards compatibility, just return nothing as if the provider didn't have a mapping for
 			// the given key
-			logging.V(7).Infof("%s unimplemented", label)
+			slog.Info("GetMapping unimplemented", "label", label)
 			return GetMappingResponse{}, nil
 		}
-		logging.V(7).Infof("%s failed: %v", label, rpcError)
+		slog.Info("GetMapping failed", "label", label, "err", rpcError)
 		return GetMappingResponse{}, err
 	}
 
-	logging.V(7).Infof("%s success: data=#%d provider=%s", label, len(resp.Data), resp.Provider)
+	slog.Info("GetMapping success", "label", label, "data", len(resp.Data), "provider", resp.Provider)
 	return GetMappingResponse{
 		Data:     resp.Data,
 		Provider: resp.Provider,
@@ -2434,7 +2454,7 @@ func (p *provider) GetMapping(ctx context.Context, req GetMappingRequest) (GetMa
 
 func (p *provider) GetMappings(ctx context.Context, req GetMappingsRequest) (GetMappingsResponse, error) {
 	label := p.label() + ".GetMappings"
-	logging.V(7).Infof("%s executing: key=%s", label, req.Key)
+	slog.Info("GetMappings executing", "label", label, "key", req.Key)
 
 	resp, err := p.clientRaw.GetMappings(p.requestContext(), &pulumirpc.GetMappingsRequest{
 		Key: req.Key,
@@ -2444,14 +2464,14 @@ func (p *provider) GetMappings(ctx context.Context, req GetMappingsRequest) (Get
 		code := rpcError.Code()
 		if code == codes.Unimplemented {
 			// For backwards compatibility just return nil to indicate unimplemented.
-			logging.V(7).Infof("%s unimplemented", label)
+			slog.Info("GetMappings unimplemented", "label", label)
 			return GetMappingsResponse{}, nil
 		}
-		logging.V(7).Infof("%s failed: %v", label, rpcError)
+		slog.Info("GetMappings failed", "label", label, "err", rpcError)
 		return GetMappingsResponse{}, err
 	}
 
-	logging.V(7).Infof("%s success: providers=%v", label, resp.Providers)
+	slog.Info("GetMappings success", "label", label, "providers", resp.Providers)
 	// Ensure we don't return nil here because we use it as an "unimplemented" flag elsewhere in the system
 	if resp.Providers == nil {
 		resp.Providers = []string{}

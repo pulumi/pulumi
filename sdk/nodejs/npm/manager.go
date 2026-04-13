@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 type PackageManagerType string
@@ -240,7 +240,7 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 		if err == nil {
 			return yarn, nil
 		}
-		logging.Warningf("could not find yarn on the $PATH, trying pnpm instead: %v", err)
+		slog.Warn("could not find yarn on the $PATH, trying pnpm instead", "err", err)
 	}
 
 	// Prefer pnpm if pnpm-lock.yaml exists.
@@ -249,7 +249,7 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 		if err == nil {
 			return pnpm, nil
 		}
-		logging.Warningf("could not find pnpm on the $PATH, trying bun instead: %v", err)
+		slog.Warn("could not find pnpm on the $PATH, trying bun instead", "err", err)
 	}
 
 	// Prefer bun if bun.lock (bun >= v1.2) or bun.lockb (bun < 1.2) exists
@@ -258,7 +258,7 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 		if err == nil {
 			return bun, nil
 		}
-		logging.Warningf("could not find bun on the $PATH, trying npm instead: %v", err)
+		slog.Warn("could not find bun on the $PATH, trying npm instead", "err", err)
 	}
 
 	// Finally, fall back to npm.

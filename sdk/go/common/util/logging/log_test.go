@@ -15,9 +15,14 @@
 package logging
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"log/slog"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInitLogging(t *testing.T) {
@@ -91,4 +96,110 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t,
 		"value is True and FALSE but [secret] is hidden",
 		msg7)
+}
+
+// withFilters runs fn with the given global filters installed, then restores
+// the previous filter list. Not parallel-safe — callers must avoid t.Parallel().
+func withFilters(t *testing.T, newFilters []Filter, fn func()) {
+	t.Helper()
+	rwLock.Lock()
+	prev := filters
+	filters = newFilters
+	rwLock.Unlock()
+	t.Cleanup(func() {
+		rwLock.Lock()
+		filters = prev
+		rwLock.Unlock()
+	})
+	fn()
+}
+
+// recordToMap decodes a single JSON line emitted by slog.NewJSONHandler into
+// a map for easy assertion.
+func recordToMap(t *testing.T, line []byte) map[string]any {
+	t.Helper()
+	var m map[string]any
+	require.NoError(t, json.Unmarshal(line, &m))
+	return m
+}
+
+func TestFilteringHandlerFiltersMessage(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: LevelTrace})
+	logger := slog.New(filteringHandler{inner: inner})
+
+	withFilters(t, []Filter{CreateFilter([]string{"hunter2"}, "[secret]")}, func() {
+		logger.Info("the password is hunter2 and the user is alice")
+	})
+
+	rec := recordToMap(t, buf.Bytes())
+	assert.Equal(t, "the password is [secret] and the user is alice", rec["msg"])
+}
+
+func TestFilteringHandlerFiltersStringAttrs(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: LevelTrace})
+	logger := slog.New(filteringHandler{inner: inner})
+
+	withFilters(t, []Filter{CreateFilter([]string{"hunter2"}, "[secret]")}, func() {
+		logger.Info("login", "password", "hunter2", "user", "alice")
+	})
+
+	rec := recordToMap(t, buf.Bytes())
+	assert.Equal(t, "[secret]", rec["password"])
+	assert.Equal(t, "alice", rec["user"])
+}
+
+func TestFilteringHandlerLeavesNonStringAttrsAlone(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: LevelTrace})
+	logger := slog.New(filteringHandler{inner: inner})
+
+	withFilters(t, []Filter{CreateFilter([]string{"hunter2"}, "[secret]")}, func() {
+		logger.Info("login", "attempts", 3, "ok", true)
+	})
+
+	rec := recordToMap(t, buf.Bytes())
+	assert.Equal(t, float64(3), rec["attempts"])
+	assert.Equal(t, true, rec["ok"])
+}
+
+func TestFilteringHandlerWithAttrs(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: LevelTrace})
+	logger := slog.New(filteringHandler{inner: inner})
+
+	withFilters(t, []Filter{CreateFilter([]string{"hunter2"}, "[secret]")}, func() {
+		// WithAttrs eagerly filters secret-bearing attributes too.
+		sub := logger.With("password", "hunter2", "service", "auth")
+		sub.Info("login")
+	})
+
+	rec := recordToMap(t, buf.Bytes())
+	assert.Equal(t, "[secret]", rec["password"])
+	assert.Equal(t, "auth", rec["service"])
+}
+
+func TestFilteringHandlerNoFilters(t *testing.T) {
+	var buf bytes.Buffer
+	inner := slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: LevelTrace})
+	logger := slog.New(filteringHandler{inner: inner})
+
+	withFilters(t, nil, func() {
+		logger.Info("hello", "key", "value")
+	})
+
+	rec := recordToMap(t, buf.Bytes())
+	assert.Equal(t, "hello", rec["msg"])
+	assert.Equal(t, "value", rec["key"])
+}
+
+func TestFilteringHandlerEnabledForwarded(t *testing.T) {
+	t.Parallel()
+	inner := slog.NewJSONHandler(&bytes.Buffer{}, &slog.HandlerOptions{Level: slog.LevelWarn})
+	h := filteringHandler{inner: inner}
+
+	assert.False(t, h.Enabled(context.Background(), slog.LevelInfo))
+	assert.True(t, h.Enabled(context.Background(), slog.LevelWarn))
+	assert.True(t, h.Enabled(context.Background(), slog.LevelError))
 }

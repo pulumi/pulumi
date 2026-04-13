@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -255,16 +256,7 @@ func newPlugin[T any](
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
 ) (_ *Plugin, _ *T, retErr error) {
-	if logging.V(9) {
-		var argstr strings.Builder
-		for i, arg := range args {
-			if i > 0 {
-				argstr.WriteString(",")
-			}
-			argstr.WriteString(arg)
-		}
-		logging.V(9).Infof("newPlugin(): Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr.String())
-	}
+	slog.Info("newPlugin: launching plugin", "prefix", prefix, "bin", bin, "args", args)
 
 	// Create a span for the plugin initialization
 	opts := []opentracing.StartSpanOption{
@@ -316,7 +308,7 @@ func newPlugin[T any](
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	var sawPolicyModuleNotFoundErr bool
 	if kind == apitype.ResourcePlugin && !isDynamicPluginBinary(bin) {
-		logging.V(9).Infof("Hiding logs from %q:%q", prefix, bin)
+		slog.Info("hiding logs", "prefix", prefix, "bin", bin)
 		plug.unstructuredOutput = &unstructuredOutput{diag: ctx.Diag}
 	}
 	runtrace := func(t io.Reader, streamID streamID, done chan<- bool) {
@@ -523,7 +515,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, err
 		}
 
-		logging.V(9).Infof("Launching plugin '%v' from '%v' via runtime '%s'", prefix, pluginDir, runtimeInfo.Name())
+		slog.Info("launching plugin via runtime", "prefix", prefix, "pluginDir", pluginDir, "runtime", runtimeInfo.Name())
 
 		// ProgramInfo needs pluginDir to be an absolute path
 		pluginDir, err = filepath.Abs(pluginDir)
@@ -613,7 +605,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 	}()
 
 	kill := sync.OnceValue(func() error {
-		logging.V(9).Infof("killing plugin %s\n", bin)
+		slog.Info("killing plugin", "bin", bin)
 		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
 		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
 		// for the child processes to close.
@@ -745,7 +737,7 @@ func (p *Plugin) healthCheck() bool {
 				return
 			}
 
-			logging.V(9).Infof("healthCheck(): failed with: %v", err)
+			slog.Info("healthCheck failed", "err", err)
 			healthy <- false
 			return
 		}

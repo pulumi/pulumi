@@ -15,9 +15,9 @@
 package engine
 
 import (
-	"golang.org/x/sync/errgroup"
+	"log/slog"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"golang.org/x/sync/errgroup"
 )
 
 // installManager manages concurrent installation of plugins and policy packs.
@@ -41,7 +41,7 @@ func (im *installManager) InstallPlugin(f func() error) {
 	} else {
 		im.tasks.Go(func() error {
 			if err := f(); err != nil {
-				logging.V(7).Infof("InstallPlugin(): failed to install plugin: %v", err)
+				slog.Info("InstallPlugin(): failed to install plugin", "err", err)
 			}
 			return nil
 		})

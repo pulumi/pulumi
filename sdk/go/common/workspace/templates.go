@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -32,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
@@ -59,15 +59,15 @@ var (
 func getTemplateGitRepository(templateKind TemplateKind) string {
 	if templateKind == TemplateKindPolicyPack {
 		if repo := env.PolicyTemplateGitRepository.Value(); repo != "" {
-			logging.V(5).Infof("Using custom policy template repository from %s: %s",
-				env.PolicyTemplateGitRepository.Var().Name(), repo)
+			slog.Info("Using custom policy template repository",
+				"envVar", env.PolicyTemplateGitRepository.Var().Name(), "repo", repo)
 			return repo
 		}
 		return pulumiPolicyTemplateGitRepository
 	}
 	if repo := env.TemplateGitRepository.Value(); repo != "" {
-		logging.V(5).Infof("Using custom template repository from %s: %s",
-			env.TemplateGitRepository.Var().Name(), repo)
+		slog.Info("Using custom template repository",
+			"envVar", env.TemplateGitRepository.Var().Name(), "repo", repo)
 		return repo
 	}
 	return pulumiTemplateGitRepository
@@ -78,15 +78,15 @@ func getTemplateGitRepository(templateKind TemplateKind) string {
 func getTemplateBranch(templateKind TemplateKind) string {
 	if templateKind == TemplateKindPolicyPack {
 		if branch := env.PolicyTemplateBranch.Value(); branch != "" {
-			logging.V(5).Infof("Using custom policy template branch from %s: %s",
-				env.PolicyTemplateBranch.Var().Name(), branch)
+			slog.Info("Using custom policy template branch",
+				"envVar", env.PolicyTemplateBranch.Var().Name(), "branch", branch)
 			return branch
 		}
 		return pulumiPolicyTemplateBranch
 	}
 	if branch := env.TemplateBranch.Value(); branch != "" {
-		logging.V(5).Infof("Using custom template branch from %s: %s",
-			env.TemplateBranch.Var().Name(), branch)
+		slog.Info("Using custom template branch",
+			"envVar", env.TemplateBranch.Var().Name(), "branch", branch)
 		return branch
 	}
 	return pulumiTemplateBranch
@@ -159,9 +159,9 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 			template, err := LoadTemplate(filepath.Join(path, name))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
-				logging.V(2).Infof(
-					"Failed to load template %s: %s",
-					name, err,
+				slog.Info(
+					"Failed to load template",
+					"name", name, "err", err,
 				)
 				result = append(result, Template{Name: name, Error: err})
 			} else if err == nil {
@@ -213,9 +213,9 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 			template, err := LoadPolicyPackTemplate(filepath.Join(path, name))
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
-				logging.V(2).Infof(
-					"Failed to load template %s: %s",
-					name, err,
+				slog.Info(
+					"Failed to load template",
+					"name", name, "err", err,
 				)
 				result = append(result, PolicyPackTemplate{Name: name, Error: err})
 			} else if err == nil {
@@ -435,9 +435,9 @@ func RetrieveGitFolder(ctx context.Context, rawurl string, path string) (string,
 	if err != nil {
 		return "", fmt.Errorf("failed to get git ref: %w", err)
 	}
-	logging.V(10).Infof(
-		"Attempting to fetch from %s at commit %s@%s for subdirectory '%s'",
-		url, ref, commit, subDirectory)
+	slog.Debug(
+		"Attempting to fetch",
+		"url", url, "ref", ref, "commit", commit, "subDirectory", subDirectory)
 
 	if ref != "" {
 		// Different reference attempts to cycle through
@@ -457,7 +457,7 @@ func RetrieveGitFolder(ctx context.Context, rawurl string, path string) (string,
 			if err == nil {
 				break
 			}
-			logging.V(10).Infof("Failed to clone %s@%s: %v", url, ref, err)
+			slog.Debug("Failed to clone", "url", url, "ref", ref, "err", err)
 			cloneErrs = append(cloneErrs, fmt.Errorf("ref '%s': %w", ref, err))
 		}
 		if len(cloneErrs) == len(refAttempts) {
@@ -465,21 +465,21 @@ func RetrieveGitFolder(ctx context.Context, rawurl string, path string) (string,
 		}
 	} else {
 		if cloneErr := gitutil.GitCloneAndCheckoutCommit(ctx, url, commit, path); cloneErr != nil {
-			logging.V(10).Infof("Failed to clone %s@%s: %v", url, commit, err)
+			slog.Debug("Failed to clone", "url", url, "commit", commit, "err", err)
 			return "", fmt.Errorf("failed to clone and checkout %s(%s): %w", url, commit, cloneErr)
 		}
 	}
 
 	// Verify the sub directory exists.
 	fullPath := filepath.Join(path, filepath.FromSlash(subDirectory))
-	logging.V(10).Infof("Cloned %s at commit %s@%s to %s", url, ref, commit, fullPath)
+	slog.Debug("Cloned", "url", url, "ref", ref, "commit", commit, "fullPath", fullPath)
 	info, err := os.Stat(fullPath)
 	if err != nil {
-		logging.V(10).Infof("Failed to stat %s after cloning %s: %v", fullPath, url, err)
+		slog.Debug("Failed to stat after cloning", "fullPath", fullPath, "url", url, "err", err)
 		return "", err
 	}
 	if !info.IsDir() {
-		logging.V(10).Infof("%s was not a directory after cloning %s: %v", fullPath, url, err)
+		slog.Debug("path was not a directory after cloning", "fullPath", fullPath, "url", url, "err", err)
 		return "", fmt.Errorf("%s is not a directory", fullPath)
 	}
 

@@ -37,6 +37,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -141,7 +142,7 @@ func main() {
 		cmdutil.InitTracing("pulumi-language-nodejs", "pulumi-language-nodejs", tracing)
 	} else {
 		if err := cmdutil.InitOtelTracing("pulumi-language-nodejs", otelEndpoint); err != nil {
-			logging.V(3).Infof("failed to initialize OTel tracing: %v", err)
+			slog.Info("failed to initialize OTel tracing", "err", err)
 		}
 		defer cmdutil.CloseOtelTracing()
 	}
@@ -332,22 +333,22 @@ func parseOptions(options map[string]any, runtime string) (nodeOptions, error) {
 	if runtime == "bun" {
 		// Bun handles TypeScript natively; ts-node is not used, so PULUMI_NODEJS_TYPESCRIPT must not be set.
 		if nodeOptions.typescript {
-			logging.V(6).Info("bun runtime: ignoring 'typescript' option (bun handles TypeScript natively)")
+			slog.Info("bun runtime: ignoring 'typescript' option (bun handles TypeScript natively)")
 		}
 		nodeOptions.typescript = false
 		// Bun resolves tsconfig itself; PULUMI_NODEJS_TSCONFIG_PATH must not be set.
 		if nodeOptions.tsconfigpath != "" {
-			logging.V(6).Infof("bun runtime: ignoring 'tsconfig' option %q (bun resolves tsconfig itself)",
-				nodeOptions.tsconfigpath)
+			slog.Info("bun runtime: ignoring 'tsconfig' option (bun resolves tsconfig itself)",
+				"tsconfig", nodeOptions.tsconfigpath)
 		}
 		nodeOptions.tsconfigpath = ""
 		if nodeOptions.nodeargs != "" {
-			logging.V(6).Infof("bun runtime: ignoring 'nodeargs' option %q (not supported for bun)",
-				nodeOptions.nodeargs)
+			slog.Info("bun runtime: ignoring 'nodeargs' option (not supported for bun)",
+				"nodeargs", nodeOptions.nodeargs)
 		}
 		nodeOptions.nodeargs = ""
 		if nodeOptions.packagemanager != npm.BunPackageManager {
-			logging.V(6).Info("bun runtime: ignoring 'packagemanager' option (bun always uses bun as package manager)")
+			slog.Info("bun runtime: ignoring 'packagemanager' option (bun always uses bun as package manager)")
 		}
 		nodeOptions.packagemanager = npm.BunPackageManager
 	}
@@ -403,7 +404,7 @@ func checkPulumiSDKVersion(ctx context.Context, programDirectory string) error {
 
 	packages, err := pm.ListPackages(ctx, programDirectory, true /*transitive*/)
 	if err != nil {
-		logging.V(5).Infof("skipping @pulumi/pulumi version check: %v", err)
+		slog.Info("skipping @pulumi/pulumi version check", "err", err)
 		return nil
 	}
 
@@ -411,8 +412,8 @@ func checkPulumiSDKVersion(ctx context.Context, programDirectory string) error {
 		if pkg.Name == "@pulumi/pulumi" {
 			v, err := semver.Parse(pkg.Version)
 			if err != nil {
-				logging.V(5).Infof("skipping @pulumi/pulumi version check: could not parse version %q: %v",
-					pkg.Version, err)
+				slog.Info("skipping @pulumi/pulumi version check: could not parse version",
+					"version", pkg.Version, "err", err)
 				continue
 			}
 			if v.LT(minBunPulumiSDKVersion) {
@@ -423,7 +424,7 @@ func checkPulumiSDKVersion(ctx context.Context, programDirectory string) error {
 		}
 	}
 
-	logging.V(5).Info("skipping @pulumi/pulumi version check: package not found in lockfile")
+	slog.Info("skipping @pulumi/pulumi version check: package not found in lockfile")
 	return nil
 }
 
@@ -497,7 +498,7 @@ func (host *nodeLanguageHost) GetRequiredPackages(ctx context.Context,
 	}
 
 	if err != nil {
-		logging.V(3).Infof("one or more errors while discovering plugins: %s", err)
+		slog.Info("one or more errors while discovering plugins", "err", err)
 	}
 	return &pulumirpc.GetRequiredPackagesResponse{
 		Packages: packages,
@@ -918,10 +919,8 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 
 	runtimeArgs = append(runtimeArgs, args...)
 
-	if logging.V(5) {
-		commandStr := strings.Join(runtimeArgs, " ")
-		logging.V(5).Infoln("Language host launching process: ", runtimeBin, commandStr)
-	}
+	slog.Info("Language host launching process",
+		"runtimeBin", runtimeBin, "command", strings.Join(runtimeArgs, " "))
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
 		"execRuntime",
@@ -963,7 +962,7 @@ func (host *nodeLanguageHost) execRuntime(ctx context.Context, req *pulumirpc.Ru
 	}
 	cmd.WaitDelay = 5 * time.Second
 
-	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
+	slog.Info("Constructed NodeJS command to run", "cmd", cmd)
 
 	// Copy cmd.Stdout to os.Stdout. Nodejs sometimes changes the blocking mode of its stdout/stderr,
 	// so it's unsafe to assign cmd.Stdout directly to os.Stdout. See the description of
@@ -1228,7 +1227,7 @@ func useFnm(cwd string) (string, error) {
 			return "", fmt.Errorf("error while looking for fnm: %w", err)
 		}
 		// fnm is not installed
-		logging.V(9).Infof("Could not find fnm executable")
+		slog.Info("Could not find fnm executable")
 		return "", errFnmNotFound
 	}
 	versionFile, err := fsutil.Searchup(cwd, ".nvmrc")
@@ -1251,7 +1250,7 @@ func useFnm(cwd string) (string, error) {
 		return "", err
 	}
 	version := strings.TrimSpace(string(versionBytes))
-	logging.V(9).Infof("Found node version %s in file %s", version, versionFile)
+	slog.Info("Found node version", "version", version, "versionFile", versionFile)
 	return version, nil
 }
 
@@ -1543,7 +1542,7 @@ func (host *nodeLanguageHost) RunPlugin2(
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
-	logging.V(5).Infof("Attempting to run nodejs plugin in %s", req.Info.ProgramDirectory)
+	slog.Info("Attempting to run nodejs plugin", "programDirectory", req.Info.ProgramDirectory)
 	ctx := server.Context()
 
 	engineClient, closer, err := host.connectToEngine()
@@ -1687,7 +1686,7 @@ func (host *nodeLanguageHost) RunPlugin(
 	cmd.Env = env
 	cmd.Stdout, cmd.Stderr = stdout, stderr
 
-	logging.V(5).Infof("Constructed NodeJS command to run: %s", cmd)
+	slog.Info("Constructed NodeJS command to run", "cmd", cmd)
 
 	run := func() error {
 		if err := cmd.Start(); err != nil {
@@ -2132,7 +2131,7 @@ func (o *oomSniffer) Scan(r io.Reader) {
 func (host *nodeLanguageHost) Link(
 	ctx context.Context, req *pulumirpc.LinkRequest,
 ) (*pulumirpc.LinkResponse, error) {
-	logging.V(5).Infof("Linking %+v in %s", req.Packages, req.Info.RootDirectory)
+	slog.Info("Linking", "packages", req.Packages, "rootDirectory", req.Info.RootDirectory)
 	opts, err := parseOptions(req.Info.Options.AsMap(), host.runtime)
 	if err != nil {
 		return nil, err
@@ -2182,7 +2181,7 @@ func (host *nodeLanguageHost) Link(
 		var version *semver.Version
 		v, err := semver.New(dep.Package.Version)
 		if err != nil {
-			logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+			slog.Info("Invalid version for package", "version", dep.Package.Version, "package", dep.Package.Name)
 		} else {
 			version = v
 		}
@@ -2195,7 +2194,7 @@ func (host *nodeLanguageHost) Link(
 			if dep.Package.Parameterization.Version != "" {
 				v, err := semver.New(dep.Package.Parameterization.Version)
 				if err != nil {
-					logging.V(5).Infof("Invalid version %s for package %s", dep.Package.Version, dep.Package.Name)
+					slog.Info("Invalid version for package", "version", dep.Package.Version, "package", dep.Package.Name)
 				} else {
 					param.Version = *v
 				}

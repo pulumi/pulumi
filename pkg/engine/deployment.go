@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/opentracing/opentracing-go"
@@ -36,7 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -217,7 +217,7 @@ func newDeployment(
 	cancelCtx, cancelFunc := context.WithCancel(context.Background())
 	go deploy.PanicRecovery(panicErrsChannel, func() {
 		<-ctx.Cancel.Canceled()
-		logging.V(7).Infof("engine.newDeployment(...): received cancellation signal")
+		slog.Info("engine.newDeployment: received cancellation signal")
 		cancelFunc()
 	})
 

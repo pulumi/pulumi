@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"strings"
 	"time"
@@ -30,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // TODO[pulumi/pulumi#54] This should be factored out behind an OperationsProvider RPC interface and versioned with the
@@ -71,14 +71,14 @@ const (
 
 func (ops *gcpOpsProvider) GetLogs(query LogQuery) (*[]LogEntry, error) {
 	state := ops.component.State
-	logging.V(6).Infof("GetLogs[%v]", state.URN)
+	slog.Info("GetLogs", "urn", state.URN)
 	//exhaustive:ignore
 	switch state.Type {
 	case gcpFunctionType:
 		return ops.getFunctionLogs(state, query)
 	default:
 		// Else this resource kind does not produce any logs.
-		logging.V(6).Infof("GetLogs[%v] does not produce logs", state.URN)
+		slog.Info("GetLogs does not produce logs", "urn", state.URN)
 		return nil, nil
 	}
 }
@@ -115,17 +115,17 @@ func (ops *gcpOpsProvider) getFunctionLogs(state *resource.State, query LogQuery
 	for {
 		entry, err := it.Next()
 		if err == iterator.Done {
-			logging.V(5).Infof("GetLogs[%v] return %d logs", state.URN, len(logs))
+			slog.Info("GetLogs returning logs", "urn", state.URN, "count", len(logs))
 			return &logs, nil
 		}
 		if err != nil {
-			logging.V(5).Infof("GetLogs[%v] error iterating logs: %s", state.URN, err)
+			slog.Info("GetLogs error iterating logs", "urn", state.URN, "err", err)
 			return nil, err
 		}
 
 		message, err := getLogEntryMessage(entry)
 		if err != nil {
-			logging.V(5).Infof("GetLogs[%v] error getting entry message, ignoring: %s", state.URN, err)
+			slog.Info("GetLogs error getting entry message, ignoring", "urn", state.URN, "err", err)
 			continue
 		}
 

@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"runtime"
 	"strings"
@@ -271,7 +272,7 @@ func pulumiAPICall(ctx context.Context,
 		//
 		// If this becomes a performance bottleneck, we may want to consider marshaling json directly to this
 		// gzip.Writer instead of marshaling to a byte array and compressing it to another buffer.
-		logging.V(apiRequestDetailLogLevel).Infoln("compressing payload using gzip")
+		slog.Log(context.TODO(), logging.LevelTrace, "compressing payload using gzip")
 		var buf bytes.Buffer
 		writer := gzip.NewWriter(&buf)
 		defer contract.IgnoreClose(writer)
@@ -286,8 +287,8 @@ func pulumiAPICall(ctx context.Context,
 			return "", nil, fmt.Errorf("closing compressed payload: %w", err)
 		}
 
-		logging.V(apiRequestDetailLogLevel).Infof("gzip compression ratio: %f, original size: %d bytes",
-			float64(len(body))/float64(len(buf.Bytes())), len(body))
+		slog.Log(context.TODO(), logging.LevelTrace, "gzip compression ratio",
+			"ratio", float64(len(body))/float64(len(buf.Bytes())), "originalSize", len(body))
 		bodyReader = &buf
 	} else {
 		bodyReader = bytes.NewReader(body)
@@ -322,7 +323,7 @@ func pulumiAPICall(ctx context.Context,
 	if tracingOptions.PropagateSpans {
 		carrier := opentracing.HTTPHeadersCarrier(req.Header)
 		if err = requestSpan.Tracer().Inject(requestSpan.Context(), opentracing.HTTPHeaders, carrier); err != nil {
-			logging.Errorf("injecting tracing headers: %v", err)
+			slog.Error("injecting tracing headers", "err", err)
 		}
 	}
 	if tracingOptions.TracingHeader != "" {
@@ -336,10 +337,10 @@ func pulumiAPICall(ctx context.Context,
 		req.Header.Set("Content-Encoding", "gzip")
 	}
 
-	logging.V(apiRequestLogLevel).Infof("Making Pulumi API call: %s", url)
-	if logging.V(apiRequestDetailLogLevel) {
-		logging.V(apiRequestDetailLogLevel).Infof(
-			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
+	slog.Debug("Making Pulumi API call", "url", url)
+	if slog.Default().Enabled(context.TODO(), logging.LevelTrace) {
+		slog.Log(context.TODO(), logging.LevelTrace,
+			"Pulumi API call details", "url", url, "headers", req.Header, "body", string(body))
 	}
 
 	resp, err := client.Do(req, opts.RetryPolicy)
@@ -350,7 +351,7 @@ func pulumiAPICall(ctx context.Context,
 		}
 		return "", nil, fmt.Errorf("performing HTTP request: %w", err)
 	}
-	logging.V(apiRequestLogLevel).Infof("Pulumi API call response code (%s): %v", url, resp.Status)
+	slog.Debug("Pulumi API call response code", "url", url, "status", resp.Status)
 
 	requestSpan.SetTag("responseCode", resp.Status)
 
@@ -528,8 +529,9 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	if err != nil {
 		return fmt.Errorf("reading response from API: %w", err)
 	}
-	if logging.V(apiRequestDetailLogLevel) {
-		logging.V(apiRequestDetailLogLevel).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
+	if slog.Default().Enabled(context.TODO(), logging.LevelTrace) {
+		slog.Log(context.TODO(), logging.LevelTrace,
+			"Pulumi API call response body", "url", url, "body", string(respBody))
 	}
 
 	if respObj != nil {
@@ -578,7 +580,7 @@ func bodyIntoReader(resp *http.Response) (io.ReadCloser, error) {
 		// The HTTP/1.1 spec recommends we treat x-gzip as an alias of gzip.
 		fallthrough
 	case "gzip":
-		logging.V(apiRequestDetailLogLevel).Infoln("decompressing gzipped response from service")
+		slog.Log(context.TODO(), logging.LevelTrace, "decompressing gzipped response from service")
 		reader, err := gzip.NewReader(resp.Body)
 		if reader != nil {
 			defer contract.IgnoreClose(reader)

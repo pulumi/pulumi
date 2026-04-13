@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"time"
@@ -54,7 +55,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -515,9 +515,9 @@ func NewPreviewCmd() *cobra.Command {
 
 			start := time.Now()
 			metadata, err := meta.Result(ctx)
-			logging.V(9).Infof("Waiting for language runtime metadata for %s", time.Since(start))
+			slog.Info("waiting for language runtime metadata", "duration", time.Since(start))
 			if err != nil {
-				logging.V(9).Infof("Could not retrieve language runtime metadata: %s", err)
+				slog.Info("could not retrieve language runtime metadata", "err", err)
 			} else {
 				maps.Copy(m.Environment, metadata)
 			}

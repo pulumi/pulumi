@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
@@ -87,16 +87,16 @@ func NewPolicyProxy(ctx context.Context, stdout io.Writer) (*PolicyProxy, io.Wri
 		return nil, nil, err
 	}
 	analyzer.port = handle.Port
-	logging.V(9).Infof("Started policy proxy on port %d", analyzer.port)
+	slog.Info("Started policy proxy", "port", analyzer.port)
 
 	return analyzer, stdoutW, nil
 }
 
 func (p *PolicyProxy) AwaitConfiguration(ctx context.Context) (*pulumirpc.AnalyzerStackConfigureRequest, error) {
-	logging.V(9).Infof("Awaiting policy pack configuration on port %d", p.port)
+	slog.Info("Awaiting policy pack configuration", "port", p.port)
 	fmt.Fprintf(p.stdout, "%d\n", p.port)
 	config, err := p.stackConfiguration.Promise().Result(ctx)
-	logging.V(9).Infof("Awaited policy pack configuration %v", config)
+	slog.Info("Awaited policy pack configuration", "config", config)
 	return config, err
 }
 
@@ -115,7 +115,7 @@ func (p *PolicyProxy) Attach(ctx context.Context, cmd *exec.Cmd) error {
 		p.stdoutR.Close()
 	}()
 
-	logging.V(9).Infof("Waiting to attach to policy pack")
+	slog.Info("Waiting to attach to policy pack")
 	// Read the port number from the subprocess's stdout.
 	var port int
 	_, err := fmt.Fscanf(p.stdoutR, "%d\n", &port)
@@ -124,7 +124,7 @@ func (p *PolicyProxy) Attach(ctx context.Context, cmd *exec.Cmd) error {
 		p.client.Reject(err)
 		return err
 	}
-	logging.V(9).Infof("Attaching to policy pack on port %d", port)
+	slog.Info("Attaching to policy pack", "port", port)
 
 	// Proxy everything else to the normal stdout.
 	go func() {
@@ -160,7 +160,7 @@ func (p *PolicyProxy) Attach(ctx context.Context, cmd *exec.Cmd) error {
 				return configErr
 			}
 			// codes.Unimplemented is fine -- older policy packs don't implement ConfigureStack.
-			logging.V(7).Infof("PolicyProxy.Attach: ConfigureStack not supported by policy pack, ignoring")
+			slog.Info("PolicyProxy.Attach: ConfigureStack not supported by policy pack, ignoring")
 		}
 	}
 
@@ -188,7 +188,7 @@ func (p *PolicyProxy) awaitClient(ctx context.Context) (pulumirpc.AnalyzerClient
 	// The engine sometimes calls others methods before calling StackConfiguration, for example for `policy
 	// publish`, in this case just report no configuration.
 	p.stackConfiguration.Fulfill(nil)
-	logging.V(9).Infof("Awaiting policy pack client")
+	slog.Info("Awaiting policy pack client")
 	client, err := p.client.Promise().Result(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("policy pack not started: %w", err)
@@ -241,14 +241,14 @@ func (p *PolicyProxy) GetPluginInfo(
 	ctx context.Context,
 	req *emptypb.Empty,
 ) (*pulumirpc.PluginInfo, error) {
-	logging.V(9).Infof("GetPluginInfo")
+	slog.Info("GetPluginInfo")
 	client, err := p.awaitClient(ctx)
-	logging.V(9).Infof("GetPluginInfo: awaitClient returned err=%v", err)
+	slog.Info("GetPluginInfo: awaitClient returned", "err", err)
 	if err != nil {
 		return nil, err
 	}
 	info, err := client.GetPluginInfo(ctx, req)
-	logging.V(9).Infof("GetPluginInfo: client.GetPluginInfo returned info=%v, err=%v", info, err)
+	slog.Info("GetPluginInfo: client.GetPluginInfo returned", "info", info, "err", err)
 	return info, err
 }
 

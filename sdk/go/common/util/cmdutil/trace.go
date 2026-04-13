@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net"
 	"net/url"
 	"os"
@@ -31,7 +32,6 @@ import (
 	"github.com/pulumi/appdash"
 	appdash_opentracing "github.com/pulumi/appdash/opentracing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
@@ -259,13 +259,13 @@ func InitOtelReceiver(endpoint string) error {
 	// spans are grafted onto the OTel trace via SetTraceParent().
 	TracingEndpoint = bridge.Endpoint()
 
-	logging.V(5).Infof("Started local OTLP receiver at %s with exporter for %s", ep, endpoint)
-	logging.V(5).Infof("Started AppDash bridge at %s for legacy OpenTracing plugins", bridge.Endpoint())
+	slog.Info("started local OTLP receiver", "endpoint", ep, "exporterFor", endpoint)
+	slog.Info("started AppDash bridge for legacy OpenTracing plugins", "endpoint", bridge.Endpoint())
 
 	// Set up Otel TracerProvider for CLI's own spans
 	// The CLI sends its spans to the local receiver, which forwards to the configured exporter
 	if err := InitOtelTracing("pulumi-cli", ep); err != nil {
-		logging.V(3).Infof("failed to initialize OTel tracer provider: %v", err)
+		slog.Info("failed to initialize OTel tracer provider", "err", err)
 	}
 
 	return nil
@@ -343,19 +343,19 @@ func CloseOtelTracing() {
 
 	if tp != nil {
 		if err := tp.Shutdown(ctx); err != nil {
-			logging.V(3).Infof("error closing OTel tracer provider: %v", err)
+			slog.Info("error closing OTel tracer provider", "err", err)
 		}
 	}
 
 	if bridge != nil {
 		if err := bridge.Shutdown(ctx); err != nil {
-			logging.V(3).Infof("error closing AppDash bridge: %v", err)
+			slog.Info("error closing AppDash bridge", "err", err)
 		}
 	}
 
 	if recv != nil {
 		if err := recv.Shutdown(ctx); err != nil {
-			logging.V(3).Infof("error closing OTLP receiver: %v", err)
+			slog.Info("error closing OTLP receiver", "err", err)
 		}
 	}
 }

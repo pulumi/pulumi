@@ -19,26 +19,23 @@ package cmdutil
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	netpprof "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 func InitPprofServer(ctx context.Context) {
 	sigusr := make(chan os.Signal, 1)
 	go func() {
-		defer logging.Flush()
-
 		<-sigusr
 
 		listener, err := net.Listen("tcp", "localhost:0")
 		if err != nil {
-			logging.Errorf("could not start listener for pprof server: %s", err)
+			slog.Error("could not start listener for pprof server", "err", err)
 			return
 		}
 		mux := http.NewServeMux()
@@ -55,16 +52,15 @@ func InitPprofServer(ctx context.Context) {
 
 		u := fmt.Sprintf("http://localhost:%d/debug/pprof/", listener.Addr().(*net.TCPAddr).Port)
 		// Don't use logging.V here, we always want to create & write a log file here.
-		logging.Infof("pprof server running on %s", u)
-		logging.Flush() // Immediately flush after logging the URL so we don't have to wait for the periodic flush.
+		slog.Info("pprof server running", "url", u)
 
 		select {
 		case <-ctx.Done():
 		case err := <-serverErr:
-			logging.Errorf("pprof server error: %s", err)
+			slog.Error("pprof server error", "err", err)
 		}
 		if err := listener.Close(); err != nil {
-			logging.Errorf("failed to close pprof listener: %s", err)
+			slog.Error("failed to close pprof listener", "err", err)
 		}
 	}()
 	signal.Notify(sigusr, syscall.SIGUSR1)

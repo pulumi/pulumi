@@ -22,13 +22,13 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"log/slog"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -193,20 +193,18 @@ func isTemplatePath(query string) bool {
 	_, err := os.Stat(query)
 	if errors.Is(err, fs.ErrNotExist) {
 		if looksLikePath(query) {
-			const msg = "%q looks like a file path, but no file exists. Assuming to be a template name"
-			logging.Warningf(msg, query)
+			slog.Warn("looks like a file path, but no file exists; assuming to be a template name", "query", query)
 		}
 		return false
 	} else if err != nil {
-		logging.Warningf("unable to stat %q: %s", query, err.Error())
+		slog.Warn("unable to stat", "query", query, "err", err.Error())
 		return false
 	}
 
 	// query does point to a local file.
 
 	if !looksLikePath(query) {
-		const msg = `Assuming %[1]q is a file path, use "./%[1]s" to be unambiguous`
-		logging.Warningf(msg, query)
+		slog.Warn(`assuming query is a file path, use "./<query>" to be unambiguous`, "query", query)
 	}
 	return err == nil
 }

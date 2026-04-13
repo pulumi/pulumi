@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -234,7 +235,7 @@ func (source *getPulumiSource) Download(
 	getHTTPResponse func(*http.Request) (io.ReadCloser, int64, error),
 ) (io.ReadCloser, int64, error) {
 	serverURL := "https://get.pulumi.com/releases/plugins"
-	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
+	slog.Info("downloading plugin", "source", source.name, "url", serverURL)
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
 		url.QueryEscape(standardAssetName(source.name, source.kind, version, opSy, arch)))
@@ -308,7 +309,7 @@ func (source *gitlabSource) GetLatestVersion(
 	releaseURL := fmt.Sprintf(
 		"https://%s/api/v4/projects/%s/releases/permalink/latest",
 		source.host, source.project)
-	logging.V(9).Infof("plugin GitLab releases url: %s", releaseURL)
+	slog.Info("plugin GitLab releases url", "url", releaseURL)
 	req, err := source.newHTTPRequest(ctx, releaseURL, "application/json")
 	if err != nil {
 		return nil, err
@@ -343,7 +344,7 @@ func (source *gitlabSource) Download(
 	assetURL := fmt.Sprintf(
 		"https://%s/api/v4/projects/%s/releases/v%s/downloads/%s",
 		source.host, source.project, version, assetName)
-	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
+	slog.Info("downloading plugin", "source", source.name, "url", assetURL)
 
 	req, err := source.newHTTPRequest(ctx, assetURL, "application/octet-stream")
 	if err != nil {
@@ -477,7 +478,7 @@ func newGithubSource(url *url.URL, name string, kind apitype.PluginKind) (*githu
 	// envvar we made up we check to see if it's set here and log a warning. This can be removed after a few
 	// releases.
 	if os.Getenv("GITHUB_PERSONAL_ACCESS_TOKEN") != "" {
-		logging.Warningf("GITHUB_PERSONAL_ACCESS_TOKEN is no longer used for Github authentication, set GITHUB_TOKEN instead")
+		slog.Warn("GITHUB_PERSONAL_ACCESS_TOKEN is no longer used for Github authentication, set GITHUB_TOKEN instead")
 	}
 
 	host := url.Host
@@ -604,7 +605,7 @@ func (source *githubSource) getHTTPResponse(
 		}
 	}
 
-	logging.Errorf("GitHub rate limit exceeded for %s%s%s", req.URL, tryAgain, addAuth)
+	slog.Error("GitHub rate limit exceeded", "url", req.URL, "tryAgain", tryAgain, "addAuth", addAuth)
 	return nil, -1, fmt.Errorf("rate limit exceeded: %w", err)
 }
 
@@ -615,7 +616,7 @@ func (source *githubSource) GetLatestVersion(
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/latest",
 		source.host, source.organization, source.repository)
-	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
+	slog.Info("plugin GitHub releases url", "url", releaseURL)
 	resp, length, err := source.getHTTPResponse(ctx, getHTTPResponse, releaseURL, "application/json")
 	if err != nil {
 		return nil, err
@@ -653,7 +654,7 @@ func (source *githubSource) Download(
 		directURL := fmt.Sprintf(
 			"https://github.com/%s/%s/releases/download/v%s/%s",
 			source.organization, source.repository, version, assetName)
-		logging.V(1).Infof("%s trying direct download from %s", source.name, directURL)
+		slog.Info("trying direct plugin download", "source", source.name, "url", directURL)
 
 		req, err := buildHTTPRequest(ctx, directURL, "")
 		if err != nil {
@@ -664,7 +665,7 @@ func (source *githubSource) Download(
 		if err == nil {
 			return resp, length, nil
 		}
-		logging.V(1).Infof("%s direct download failed, falling back to API: %v", source.name, err)
+		slog.Info("direct plugin download failed, falling back to API", "source", source.name, "err", err)
 	}
 
 	return source.downloadViaAPI(ctx, version, opSy, arch, getHTTPResponse, assetName)
@@ -679,7 +680,7 @@ func (source *githubSource) downloadViaAPI(
 	releaseURL := fmt.Sprintf(
 		"https://%s/repos/%s/%s/releases/tags/v%s",
 		source.host, source.organization, source.repository, version)
-	logging.V(9).Infof("plugin GitHub releases url: %s", releaseURL)
+	slog.Info("plugin GitHub releases url", "url", releaseURL)
 	resp, length, err := source.getHTTPResponse(ctx, getHTTPResponse, releaseURL, "application/json")
 	if err != nil {
 		return nil, -1, err
@@ -703,12 +704,12 @@ func (source *githubSource) downloadViaAPI(
 		}
 	}
 	if assetURL == "" {
-		logging.V(9).Infof("github response: %v", release)
-		logging.V(9).Infof("plugin asset '%s' not found", assetName)
+		slog.Info("github response", "release", release)
+		slog.Info("plugin asset not found", "assetName", assetName)
 		return nil, -1, fmt.Errorf("plugin asset '%s' not found", assetName)
 	}
 
-	logging.V(1).Infof("%s downloading from %s", source.name, assetURL)
+	slog.Info("downloading plugin", "source", source.name, "url", assetURL)
 	return source.getHTTPResponse(ctx, getHTTPResponse, assetURL, "application/octet-stream")
 }
 
@@ -759,7 +760,7 @@ func (source *httpSource) Download(
 ) (io.ReadCloser, int64, error) {
 	serverURL := interpolateURL(source.url, source.name, version, opSy, arch)
 	serverURL = strings.TrimSuffix(serverURL, "/")
-	logging.V(1).Infof("%s downloading from %s", source.name, serverURL)
+	slog.Info("downloading plugin", "source", source.name, "url", serverURL)
 
 	endpoint := fmt.Sprintf("%s/%s",
 		serverURL,
@@ -826,7 +827,7 @@ func (source *fallbackSource) Download(
 	if err == nil {
 		return resp, length, nil
 	}
-	logging.Infof("Failed to download from GitHub, falling back to get.pulumi.com: %v", err)
+	slog.Info("failed to download from GitHub, falling back to get.pulumi.com", "err", err)
 
 	// Fallback to get.pulumi.com
 	pulumi := newGetPulumiSource(source.name, source.kind)
@@ -835,7 +836,7 @@ func (source *fallbackSource) Download(
 	// which returns the GitHub URL, not the get.pulumi.com URL. When we actually fall back to
 	// get.pulumi.com here, we need to check if there's an override for that specific URL.
 	if overrideURL, ok := pluginDownloadURLOverridesParsed.get(pulumi.url()); ok {
-		logging.V(1).Infof("Applying URL override for %s: %s -> %s", source.name, pulumi.url(), overrideURL)
+		slog.Info("applying URL override", "source", source.name, "from", pulumi.url(), "to", overrideURL)
 		overrideSource, err := newPluginSource(source.name, source.kind, overrideURL)
 		if err != nil {
 			return nil, 0, fmt.Errorf("unable to construct override for %q: %w", source.name, err)
@@ -1382,7 +1383,7 @@ func (info *PluginInfo) Size() uint64 {
 	}
 	size, err := getPluginSize(info.Path)
 	if err != nil {
-		logging.V(6).Infof("unable to get plugin dir size for %s: %v", info.Path, err)
+		slog.Info("unable to get plugin dir size", "path", info.Path, "err", err)
 		return 0
 	}
 	info.size = size
@@ -1556,10 +1557,10 @@ func buildHTTPRequest(ctx context.Context, pluginEndpoint string, authorization 
 }
 
 func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
-	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	slog.Info("full plugin download url", "url", req.URL)
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
-	logging.V(11).Infof("plugin install request headers: %v", req.Header)
+	slog.Log(context.TODO(), logging.LevelTrace, "plugin install request headers", "headers", req.Header)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -1568,7 +1569,7 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 
 	// As above this might include authentication information, but also to be consistent at what level headers
 	// print at.
-	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
+	slog.Log(context.TODO(), logging.LevelTrace, "plugin install response headers", "headers", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		contract.IgnoreClose(resp.Body)
@@ -1579,10 +1580,10 @@ func getHTTPResponse(req *http.Request) (io.ReadCloser, int64, error) {
 }
 
 func getHTTPResponseWithRetry(req *http.Request) (io.ReadCloser, int64, error) {
-	logging.V(9).Infof("full plugin download url: %s", req.URL)
+	slog.Info("full plugin download url", "url", req.URL)
 	// This logs at level 11 because it could include authentication headers, we reserve log level 11 for
 	// detailed api logs that may include credentials.
-	logging.V(11).Infof("plugin install request headers: %v", req.Header)
+	slog.Log(context.TODO(), logging.LevelTrace, "plugin install request headers", "headers", req.Header)
 
 	resp, err := httputil.DoWithRetry(req, http.DefaultClient)
 	if err != nil {
@@ -1591,7 +1592,7 @@ func getHTTPResponseWithRetry(req *http.Request) (io.ReadCloser, int64, error) {
 
 	// As above this might include authentication information, but also to be consistent at what level headers
 	// print at.
-	logging.V(11).Infof("plugin install response headers: %v", resp.Header)
+	slog.Log(context.TODO(), logging.LevelTrace, "plugin install response headers", "headers", resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		contract.IgnoreClose(resp.Body)
@@ -1732,7 +1733,7 @@ func (d *pluginDownloader) tryDownloadToFile(ctx context.Context, pkgPlugin Plug
 		return "", nil, err
 	}
 	readErr, writeErr := d.tryDownload(ctx, pkgPlugin, file)
-	logging.V(10).Infof("try downloaded plugin %s to %s: %v %v", pkgPlugin, file.Name(), readErr, writeErr)
+	slog.Debug("try downloaded plugin", "plugin", pkgPlugin, "file", file.Name(), "readErr", readErr, "writeErr", writeErr)
 	if readErr != nil || writeErr != nil {
 		err2 := os.Remove(file.Name())
 		if err2 != nil {
@@ -2088,9 +2089,8 @@ func getPluginInfoAndPath(
 		}
 		if plugin.Version != nil && spec.Version != nil {
 			if !plugin.Version.Equals(*spec.Version) {
-				logging.Warningf(
-					"Project plugin %s with version %s is incompatible with requested version %s.\n",
-					spec.Name, plugin.Version, spec.Version)
+				slog.Warn("project plugin is incompatible with requested version",
+					"name", spec.Name, "pluginVersion", plugin.Version, "requestedVersion", spec.Version)
 				continue
 			}
 		}
@@ -2122,8 +2122,9 @@ func getPluginInfoAndPath(
 	if includeAmbient {
 		if path, err := exec.LookPath(filename); err == nil {
 			ambientPath = path
-			logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found on $PATH %s",
-				spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, path)
+			slog.Info("GetPluginPath: found on $PATH",
+				"kind", spec.Kind, "name", spec.Name, "version", spec.Version,
+				"pluginDownloadURL", spec.PluginDownloadURL, "path", path)
 		}
 	}
 
@@ -2146,8 +2147,9 @@ func getPluginInfoAndPath(
 					// on windows we just trust the fact that the .exe can actually be launched.
 					if stat, err := os.Stat(candidate); err == nil &&
 						(stat.Mode()&0o100 != 0 || runtime.GOOS == windowsGOOS) {
-						logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found next to current executable %s",
-							spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, candidate)
+						slog.Info("GetPluginPath: found next to current executable",
+							"kind", spec.Kind, "name", spec.Name, "version", spec.Version,
+							"pluginDownloadURL", spec.PluginDownloadURL, "candidate", candidate)
 						bundledPath = candidate
 						break
 					}
@@ -2211,16 +2213,19 @@ func getPluginInfoAndPath(
 		spec.Version != nil &&
 		isPreReleaseVersion(*spec.Version) {
 		// We're looking for a plugin matching an exact hash, so we can't use the semver range logic.
-		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling prerelease plugin behaviour",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+		slog.Info("GetPluginPath: enabling prerelease plugin behaviour",
+			"kind", spec.Kind, "name", spec.Name, "version", spec.Version,
+			"pluginDownloadURL", spec.PluginDownloadURL)
 		match = SelectPrereleasePlugin(plugins, spec)
 	} else if !enableLegacyPluginBehavior && spec.Version != nil {
-		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): enabling new plugin behavior",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+		slog.Info("GetPluginPath: enabling new plugin behavior",
+			"kind", spec.Kind, "name", spec.Name, "version", spec.Version,
+			"pluginDownloadURL", spec.PluginDownloadURL)
 		match = SelectCompatiblePlugin(plugins, spec)
 	} else {
-		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): using legacy plugin behavior",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL)
+		slog.Info("GetPluginPath: using legacy plugin behavior",
+			"kind", spec.Kind, "name", spec.Name, "version", spec.Version,
+			"pluginDownloadURL", spec.PluginDownloadURL)
 		match = LegacySelectCompatiblePlugin(plugins, spec)
 	}
 
@@ -2232,8 +2237,9 @@ func getPluginInfoAndPath(
 
 	if match != nil {
 		matchPath := getPluginPath(match)
-		logging.V(6).Infof("GetPluginPath(%s, %s, %v, %s): found in cache at %s",
-			spec.Kind, spec.Name, spec.Version, spec.PluginDownloadURL, matchPath)
+		slog.Info("GetPluginPath: found in cache",
+			"kind", spec.Kind, "name", spec.Name, "version", spec.Version,
+			"pluginDownloadURL", spec.PluginDownloadURL, "path", matchPath)
 		return match, matchPath, nil
 	}
 
@@ -2334,8 +2340,8 @@ func LegacySelectCompatiblePlugin(
 
 			if m != nil {
 				match = m
-				logging.V(6).Infof("LegacySelectCompatiblePlugin(%s, %s, %s): found candidate (#%s)",
-					spec.Kind, name, spec.Version, match.Version)
+				slog.Info("LegacySelectCompatiblePlugin: found candidate",
+					"kind", spec.Kind, "name", name, "requestedVersion", spec.Version, "matchVersion", match.Version)
 			}
 		}
 	}
@@ -2352,7 +2358,7 @@ func SelectCompatiblePlugin(
 	plugins []PluginInfo, spec PluginDescriptor,
 ) *PluginInfo {
 	name, _ := spec.LocalName()
-	logging.V(7).Infof("SelectCompatiblePlugin(..., %s): beginning", name)
+	slog.Info("SelectCompatiblePlugin: beginning", "name", name)
 	var bestMatch PluginInfo
 	var hasMatch bool
 
@@ -2370,23 +2376,22 @@ func SelectCompatiblePlugin(
 		case !hasMatch && plugin.Version == nil:
 			// This is the plugin we're looking for, but it doesn't have a version. We haven't seen anything better yet,
 			// so take it.
-			logging.V(7).Infof(
-				"SelectCompatiblePlugin(..., %s): best plugin %s: no version and no other candidates",
-				name, plugin.String())
+			slog.Info("SelectCompatiblePlugin: best plugin, no version and no other candidates",
+				"name", name, "plugin", plugin.String())
 			hasMatch = true
 			bestMatch = plugin
 		case plugin.Version == nil:
 			// This is a rare case - we've already seen a version-less plugin and we're seeing another here. Ignore this
 			// one and defer to the one we previously selected.
-			logging.V(7).Infof("SelectCompatiblePlugin(..., %s): skipping plugin %s: no version", name, plugin.String())
+			slog.Info("SelectCompatiblePlugin: skipping plugin, no version", "name", name, "plugin", plugin.String())
 		case spec.Version.EQ(*plugin.Version):
 			// This plugin is compatible with the requested semver range. Save it as the best match and continue.
-			logging.V(7).Infof("SelectCompatiblePlugin(..., %s): best plugin %s: semver match", name, plugin.String())
+			slog.Info("SelectCompatiblePlugin: best plugin, semver match", "name", name, "plugin", plugin.String())
 			hasMatch = true
 			bestMatch = plugin
 		default:
-			logging.V(7).Infof(
-				"SelectCompatiblePlugin(..., %s): skipping plugin %s: semver mismatch", name, plugin.String())
+			slog.Info("SelectCompatiblePlugin: skipping plugin, semver mismatch",
+				"name", name, "plugin", plugin.String())
 		}
 	}
 
@@ -2456,21 +2461,21 @@ var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 func tryPlugin(file os.DirEntry) (apitype.PluginKind, string, semver.Version, bool) {
 	// Only directories contain plugins.
 	if !file.IsDir() {
-		logging.V(11).Infof("skipping file in plugin directory: %s", file.Name())
+		slog.Log(context.TODO(), logging.LevelTrace, "skipping file in plugin directory", "file", file.Name())
 		return "", "", semver.Version{}, false
 	}
 
 	// Ignore plugins which are being installed
 	if installingPluginRegexp.MatchString(file.Name()) {
-		logging.V(11).Infof("skipping plugin %s which is being installed", file.Name())
+		slog.Log(context.TODO(), logging.LevelTrace, "skipping plugin which is being installed", "file", file.Name())
 		return "", "", semver.Version{}, false
 	}
 
 	// Filenames must match the plugin regexp.
 	match := pluginRegexp.FindStringSubmatch(file.Name())
 	if len(match) != len(pluginRegexp.SubexpNames()) {
-		logging.V(11).Infof("skipping plugin %s with missing capture groups: expect=%d, actual=%d",
-			file.Name(), len(pluginRegexp.SubexpNames()), len(match))
+		slog.Log(context.TODO(), logging.LevelTrace, "skipping plugin with missing capture groups",
+			"file", file.Name(), "expect", len(pluginRegexp.SubexpNames()), "actual", len(match))
 		return "", "", semver.Version{}, false
 	}
 	var kind apitype.PluginKind
@@ -2484,7 +2489,7 @@ func tryPlugin(file os.DirEntry) (apitype.PluginKind, string, semver.Version, bo
 			if IsPluginKind(v) {
 				kind = apitype.PluginKind(v)
 			} else {
-				logging.V(11).Infof("skipping invalid plugin kind: %s", v)
+				slog.Log(context.TODO(), logging.LevelTrace, "skipping invalid plugin kind", "kind", v)
 			}
 		case "Name":
 			name = v
@@ -2494,15 +2499,15 @@ func tryPlugin(file os.DirEntry) (apitype.PluginKind, string, semver.Version, bo
 			if err == nil {
 				version = &ver
 			} else {
-				logging.V(11).Infof("skipping invalid plugin version: %s", v)
+				slog.Log(context.TODO(), logging.LevelTrace, "skipping invalid plugin version", "version", v)
 			}
 		}
 	}
 
 	// If anything was missing or invalid, skip this plugin.
 	if kind == "" || name == "" || version == nil {
-		logging.V(11).Infof("skipping plugin with missing information: kind=%s, name=%s, version=%v",
-			kind, name, version)
+		slog.Log(context.TODO(), logging.LevelTrace, "skipping plugin with missing information",
+			"kind", kind, "name", name, "version", version)
 		return "", "", semver.Version{}, false
 	}
 

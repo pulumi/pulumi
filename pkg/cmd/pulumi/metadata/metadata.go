@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -54,7 +54,7 @@ func GetPolicyPublishMetadata(root string) map[string]string {
 	}
 
 	if err := addGitMetadata(root, m); err != nil {
-		logging.V(3).Infof("errors detecting git metadata: %s", err)
+		slog.Info("errors detecting git metadata", "err", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
@@ -116,7 +116,7 @@ func GetUpdateMetadata(
 	addPulumiCLIMetadataToEnvironment(m.Environment, flags, os.Environ)
 
 	if err := addGitMetadata(root, m); err != nil {
-		logging.V(3).Infof("errors detecting git metadata: %s", err)
+		slog.Info("errors detecting git metadata", "err", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
