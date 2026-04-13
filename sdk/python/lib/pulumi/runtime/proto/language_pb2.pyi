@@ -380,7 +380,11 @@ global___GetRequiredPackagesResponse = GetRequiredPackagesResponse
 
 @typing.final
 class RunRequest(google.protobuf.message.Message):
-    """`RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call."""
+    """`RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call.
+    NOTE: execution context fields (project/stack/config/dryRun/parallel/organization) remain for
+    backward compatibility. Newer language runtimes may read monitor execution context via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitor_address`.
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 

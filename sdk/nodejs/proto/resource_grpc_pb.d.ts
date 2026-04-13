@@ -14,6 +14,7 @@ import * as pulumi_source_pb from "./source_pb";
 import * as pulumi_callback_pb from "./callback_pb";
 
 interface IResourceMonitorService extends grpc.ServiceDefinition<grpc.UntypedServiceImplementation> {
+    getDeploymentInfo: IResourceMonitorService_IGetDeploymentInfo;
     supportsFeature: IResourceMonitorService_ISupportsFeature;
     invoke: IResourceMonitorService_IInvoke;
     call: IResourceMonitorService_ICall;
@@ -28,6 +29,15 @@ interface IResourceMonitorService extends grpc.ServiceDefinition<grpc.UntypedSer
     signalAndWaitForShutdown: IResourceMonitorService_ISignalAndWaitForShutdown;
 }
 
+interface IResourceMonitorService_IGetDeploymentInfo extends grpc.MethodDefinition<pulumi_resource_pb.GetDeploymentInfoRequest, pulumi_resource_pb.GetDeploymentInfoResponse> {
+    path: "/pulumirpc.ResourceMonitor/GetDeploymentInfo";
+    requestStream: false;
+    responseStream: false;
+    requestSerialize: grpc.serialize<pulumi_resource_pb.GetDeploymentInfoRequest>;
+    requestDeserialize: grpc.deserialize<pulumi_resource_pb.GetDeploymentInfoRequest>;
+    responseSerialize: grpc.serialize<pulumi_resource_pb.GetDeploymentInfoResponse>;
+    responseDeserialize: grpc.deserialize<pulumi_resource_pb.GetDeploymentInfoResponse>;
+}
 interface IResourceMonitorService_ISupportsFeature extends grpc.MethodDefinition<pulumi_resource_pb.SupportsFeatureRequest, pulumi_resource_pb.SupportsFeatureResponse> {
     path: "/pulumirpc.ResourceMonitor/SupportsFeature";
     requestStream: false;
@@ -140,6 +150,7 @@ interface IResourceMonitorService_ISignalAndWaitForShutdown extends grpc.MethodD
 export const ResourceMonitorService: IResourceMonitorService;
 
 export interface IResourceMonitorServer extends grpc.UntypedServiceImplementation {
+    getDeploymentInfo: grpc.handleUnaryCall<pulumi_resource_pb.GetDeploymentInfoRequest, pulumi_resource_pb.GetDeploymentInfoResponse>;
     supportsFeature: grpc.handleUnaryCall<pulumi_resource_pb.SupportsFeatureRequest, pulumi_resource_pb.SupportsFeatureResponse>;
     invoke: grpc.handleUnaryCall<pulumi_resource_pb.ResourceInvokeRequest, pulumi_provider_pb.InvokeResponse>;
     call: grpc.handleUnaryCall<pulumi_resource_pb.ResourceCallRequest, pulumi_provider_pb.CallResponse>;
@@ -155,6 +166,9 @@ export interface IResourceMonitorServer extends grpc.UntypedServiceImplementatio
 }
 
 export interface IResourceMonitorClient {
+    getDeploymentInfo(request: pulumi_resource_pb.GetDeploymentInfoRequest, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.GetDeploymentInfoResponse) => void): grpc.ClientUnaryCall;
+    getDeploymentInfo(request: pulumi_resource_pb.GetDeploymentInfoRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.GetDeploymentInfoResponse) => void): grpc.ClientUnaryCall;
+    getDeploymentInfo(request: pulumi_resource_pb.GetDeploymentInfoRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.GetDeploymentInfoResponse) => void): grpc.ClientUnaryCall;
     supportsFeature(request: pulumi_resource_pb.SupportsFeatureRequest, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.SupportsFeatureResponse) => void): grpc.ClientUnaryCall;
     supportsFeature(request: pulumi_resource_pb.SupportsFeatureRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.SupportsFeatureResponse) => void): grpc.ClientUnaryCall;
     supportsFeature(request: pulumi_resource_pb.SupportsFeatureRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.SupportsFeatureResponse) => void): grpc.ClientUnaryCall;
@@ -195,6 +209,9 @@ export interface IResourceMonitorClient {
 
 export class ResourceMonitorClient extends grpc.Client implements IResourceMonitorClient {
     constructor(address: string, credentials: grpc.ChannelCredentials, options?: Partial<grpc.ClientOptions>);
+    public getDeploymentInfo(request: pulumi_resource_pb.GetDeploymentInfoRequest, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.GetDeploymentInfoResponse) => void): grpc.ClientUnaryCall;
+    public getDeploymentInfo(request: pulumi_resource_pb.GetDeploymentInfoRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.GetDeploymentInfoResponse) => void): grpc.ClientUnaryCall;
+    public getDeploymentInfo(request: pulumi_resource_pb.GetDeploymentInfoRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.GetDeploymentInfoResponse) => void): grpc.ClientUnaryCall;
     public supportsFeature(request: pulumi_resource_pb.SupportsFeatureRequest, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.SupportsFeatureResponse) => void): grpc.ClientUnaryCall;
     public supportsFeature(request: pulumi_resource_pb.SupportsFeatureRequest, metadata: grpc.Metadata, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.SupportsFeatureResponse) => void): grpc.ClientUnaryCall;
     public supportsFeature(request: pulumi_resource_pb.SupportsFeatureRequest, metadata: grpc.Metadata, options: Partial<grpc.CallOptions>, callback: (error: grpc.ServiceError | null, response: pulumi_resource_pb.SupportsFeatureResponse) => void): grpc.ClientUnaryCall;
