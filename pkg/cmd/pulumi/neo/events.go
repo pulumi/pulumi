@@ -38,9 +38,23 @@ const (
 	// message into the TUI.
 	userEventUserMessage = "user_message"
 
+	// userEventUserConfirmation is the user event the CLI posts in response to a
+	// user_approval_request backend event, approving or denying the operation.
+	userEventUserConfirmation = "user_confirmation"
+
 	// Additional backend event types forwarded to the TUI.
 	backendEventExecToolCallProgress = "exec_tool_call_progress"
 	backendEventError                = "error"
 	backendEventWarning              = "warning"
 	backendEventCancelled            = "cancelled"
+	backendEventUserApprovalRequest  = "user_approval_request"
 )
+
+// UserConfirmationEvent is the user event the CLI posts in response to a
+// user_approval_request, approving or denying the requested operation.
+type UserConfirmationEvent struct {
+	Type       string `json:"type"`                   // always "user_confirmation"
+	ApprovalID string `json:"approval_request_id"`    // echoes the approval_request_id from the request
+	Approved   bool   `json:"ok"`                     // true to approve, false to deny
+	Message    string `json:"instructions,omitempty"` // if rejected, guidance for the agent on what to do instead
+}

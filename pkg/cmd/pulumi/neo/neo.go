@@ -129,7 +129,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackRefName, projectName, "cli")
+		resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackRefName, projectName, "cli", client.NeoApprovalModeManual)
 		if err != nil {
 			return err
 		}
@@ -151,17 +151,19 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 
 	uiCh := make(chan UIEvent, 64)
 	sendCh := make(chan string, 4)
+	approvalCh := make(chan ApprovalResponse, 4)
 
 	// Resolve the username for the welcome greeting.
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
 	model := NewModel(ModelConfig{
-		Org:      orgName,
-		WorkDir:  cwdFlag,
-		Username: username,
-		EventCh:  uiCh,
-		SendCh:   sendCh,
-		Busy:     prompt != "",
+		Org:        orgName,
+		WorkDir:    cwdFlag,
+		Username:   username,
+		EventCh:    uiCh,
+		SendCh:     sendCh,
+		ApprovalCh: approvalCh,
+		Busy:       prompt != "",
 	})
 
 	p := tea.NewProgram(model,
@@ -181,7 +183,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	// createTask creates the Neo task with the given prompt and starts the session.
 	// Called immediately if a prompt was provided, or on the first user message.
 	createTask := func(initialPrompt string) error {
-		resp, err := pc.CreateNeoTask(gctx, orgName, initialPrompt, stackRefName, projectName, "cli")
+		resp, err := pc.CreateNeoTask(gctx, orgName, initialPrompt, stackRefName, projectName, "cli", client.NeoApprovalModeManual)
 		if err != nil {
 			return err
 		}
@@ -196,11 +198,12 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		}
 
 		session := &Session{
-			Client:   pc,
-			Handlers: handlers,
-			OrgName:  orgName,
-			TaskID:   resp.TaskID,
-			UIEvents: uiCh,
+			Client:     pc,
+			Handlers:   handlers,
+			OrgName:    orgName,
+			TaskID:     resp.TaskID,
+			UIEvents:   uiCh,
+			ApprovalCh: approvalCh,
 		}
 		return session.Run(gctx)
 	}
@@ -216,6 +219,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return err
 	})
 
+	// Post user chat messages to the API. If no task exists yet, the first
+	// message creates one.
 	g.Go(func() error {
 		taskCreated := prompt != ""
 		for {

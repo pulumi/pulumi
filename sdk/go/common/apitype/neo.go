@@ -135,3 +135,13 @@ type AgentBackendEventWarning struct {
 type AgentBackendEventCancelled struct {
 	Type string `json:"type"` // always "cancelled"
 }
+
+// AgentBackendEventUserApprovalRequest is a backend event asking the user to approve or
+// deny a potentially-sensitive operation before the agent proceeds. The CLI replies with
+// a user_confirmation user event echoing the ID.
+type AgentBackendEventUserApprovalRequest struct {
+	Type        string `json:"type"` // always "user_approval_request"
+	ID          string `json:"id,omitempty"`
+	Message     string `json:"message,omitempty"`
+	Sensitivity string `json:"sensitivity,omitempty"`
+}

@@ -867,7 +867,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer successServer.Close()
 
 		client := newMockClient(successServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -881,7 +881,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer errorServer.Close()
 
 		client := newMockClient(errorServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -895,7 +895,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		client := newMockClient(unauthorizedServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -922,7 +922,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", "cli")
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", "cli", "")
 		require.NoError(t, err)
 
 		assert.Equal(t, http.MethodPost, gotMethod)
@@ -958,7 +958,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "")
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "", "")
 		require.NoError(t, err)
 
 		message, _ := gotBody["message"].(map[string]any)

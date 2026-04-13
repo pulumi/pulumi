@@ -29,6 +29,9 @@ import (
 // (separator + input line + hint line).
 const inputBarHeight = 3
 
+// approvalResponse is an alias for the session's ApprovalResponse type,
+// used by the TUI to send approval answers back to the session goroutine.
+
 // blockKind identifies the type of rendered block in the output log.
 type blockKind int
 
@@ -41,6 +44,7 @@ const (
 	blockWarning
 	blockCancelled
 	blockUserMessage
+	blockApproval
 )
 
 // block is a single rendered item in the TUI output log.
@@ -56,11 +60,12 @@ type block struct {
 
 // ModelConfig holds the parameters needed to create a TUI Model.
 type ModelConfig struct {
-	Org      string
-	WorkDir  string
-	Username string
-	EventCh  <-chan UIEvent
-	SendCh   chan<- string
+	Org        string
+	WorkDir    string
+	Username   string
+	EventCh    <-chan UIEvent
+	SendCh     chan<- string
+	ApprovalCh chan<- ApprovalResponse
 	// Busy seeds the input-gating state. True when the caller has already
 	// handed a prompt to the backend — the TUI starts with Enter disabled
 	// until the first UITaskIdle.
@@ -69,12 +74,13 @@ type ModelConfig struct {
 
 // Model is the top-level bubbletea model for the Neo TUI.
 type Model struct {
-	welcome   welcomeModel
-	viewport  viewport.Model
-	textInput textinput.Model
-	blocks    []block
-	eventCh   <-chan UIEvent
-	sendCh    chan<- string
+	welcome    welcomeModel
+	viewport   viewport.Model
+	textInput  textinput.Model
+	blocks     []block
+	eventCh    <-chan UIEvent
+	sendCh     chan<- string
+	approvalCh chan<- ApprovalResponse
 	// busy is true from the moment the user sends a message (or a prompt was
 	// provided up front) until the session emits UITaskIdle / UICancelled /
 	// UIError. While busy, Enter is swallowed so the user can't talk over
@@ -88,6 +94,10 @@ type Model struct {
 	// frame advances on each spinner.TickMsg while busy and drives the
 	// shimmer animation on the busy block's label.
 	frame int
+	// Approval state: set when the session has emitted a UIApprovalRequest and
+	// the TUI is waiting for the user to type y/yes or a denial reason.
+	pendingApproval   bool
+	pendingApprovalID string
 }
 
 var (
@@ -127,14 +137,15 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		viewport:  vp,
-		textInput: ti,
-		eventCh:   cfg.EventCh,
-		sendCh:    cfg.SendCh,
-		busy:      cfg.Busy,
-		spinner:   sp,
-		width:     80,
-		height:    24,
+		viewport:   vp,
+		textInput:  ti,
+		eventCh:    cfg.EventCh,
+		sendCh:     cfg.SendCh,
+		approvalCh: cfg.ApprovalCh,
+		busy:       cfg.Busy,
+		spinner:    sp,
+		width:      80,
+		height:     24,
 	}
 	m.viewport.SetContent(m.welcome.View())
 	if cfg.Busy {
@@ -183,11 +194,60 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rebuildContent()
 
 	case tea.KeyMsg:
-		//nolint:exhaustive // Only Ctrl-C and Enter need special handling; everything else flows through to the text input.
-		switch msg.Type {
-		case tea.KeyCtrlC:
+		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
-		case tea.KeyEnter:
+		}
+
+		// Approval mode: "y"/"yes" + Enter approves, anything else + Enter denies
+		// with the typed text as guidance. We handle this before the busy check
+		// because the agent is intentionally paused here waiting for the user.
+		if m.pendingApproval {
+			if msg.Type == tea.KeyEnter {
+				text := strings.TrimSpace(m.textInput.Value())
+				approved := strings.EqualFold(text, "y") || strings.EqualFold(text, "yes")
+				var denialMsg string
+				if !approved {
+					denialMsg = text
+				}
+				if m.approvalCh != nil {
+					select {
+					case m.approvalCh <- ApprovalResponse{
+						ApprovalID: m.pendingApprovalID,
+						Approved:   approved,
+						Message:    denialMsg,
+					}:
+					default:
+					}
+				}
+				m.pendingApproval = false
+				m.pendingApprovalID = ""
+				m.textInput.Prompt = "❯ "
+				m.textInput.PromptStyle = promptStyle
+				m.textInput.Placeholder = "Send a message..."
+				m.textInput.Reset()
+				choice := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✓ Approved")
+				if !approved {
+					choice = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("✗ Denied")
+					if denialMsg != "" {
+						choice += " — " + denialMsg
+					}
+				}
+				m.appendBlock(block{kind: blockUserMessage, rendered: "  " + choice})
+				if approved {
+					cmd := m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
+					m.rebuildContent()
+					return m, cmd
+				}
+				m.rebuildContent()
+				return m, nil
+			}
+			// Pass other keys to textinput for typing the denial reason.
+			var tiCmd tea.Cmd
+			m.textInput, tiCmd = m.textInput.Update(msg)
+			return m, tiCmd
+		}
+
+		if msg.Type == tea.KeyEnter {
 			if m.busy {
 				// Agent is mid-turn — leave the typed text in the input so
 				// the user can send it after the next UITaskIdle.
@@ -327,6 +387,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			kind:     blockUserMessage,
 			rendered: promptStyle.Render("❯") + " " + userMsgBubble.Render(" "+msg.Content+" "),
 		})
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIApprovalRequest:
+		m.endBusy()
+		warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+		m.appendBlock(block{
+			kind:     blockApproval,
+			rendered: "  " + warnStyle.Render("⚠ Approval required") + "\n    " + msg.Message,
+		})
+		m.pendingApproval = true
+		m.pendingApprovalID = msg.ApprovalID
+		m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
+		m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+		m.textInput.Placeholder = ""
+		m.textInput.Reset()
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
