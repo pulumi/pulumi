@@ -182,7 +182,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 			t.Context(), opentracing.NoopTracer{}.StartSpan("test"),
 			diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 			httpClient, "https://api.pulumi.com", "GET", "/api/test", nil,
-			apiAccessToken("some-token"), httpCallOptions{},
+			apiAccessToken("some-token"), httpCallOptions{}, nil,
 		)
 
 		var loginErr backenderr.LoginRequiredError
@@ -226,7 +226,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 				t.Context(), opentracing.NoopTracer{}.StartSpan("test"),
 				diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 				httpClient, "https://api.pulumi.com", "GET", "/api/test", nil,
-				apiAccessToken("some-token"), httpCallOptions{},
+				apiAccessToken("some-token"), httpCallOptions{}, nil,
 			)
 
 			var loginErr backenderr.LoginRequiredError
@@ -258,7 +258,7 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 			t.Context(), opentracing.NoopTracer{}.StartSpan("test"),
 			diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 			httpClient, "https://api.pulumi.com", "GET", "/api/test", nil,
-			apiAccessToken(""), httpCallOptions{},
+			apiAccessToken(""), httpCallOptions{}, nil,
 		)
 
 		assert.True(t, errors.Is(err, backenderr.LoginRequiredError{}))

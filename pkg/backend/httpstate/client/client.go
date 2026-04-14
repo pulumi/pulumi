@@ -156,6 +156,7 @@ var newClient = func(apiURL, apiToken string, insecure bool, d diag.Sink) *Clien
 			client: &defaultHTTPClient{
 				client: httpClient,
 			},
+			seenWarnings: make(map[string]bool),
 		},
 	}
 }
@@ -177,6 +178,7 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 		client: &defaultHTTPClient{
 			client: httpClient,
 		},
+		seenWarnings: make(map[string]bool),
 	}
 	return pc
 }

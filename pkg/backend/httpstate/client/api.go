@@ -258,7 +258,7 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 func pulumiAPICall(ctx context.Context,
 	requestSpan opentracing.Span,
 	d diag.Sink, client httpClient, cloudAPI, method, path string, body []byte,
-	tok accessToken, opts httpCallOptions,
+	tok accessToken, opts httpCallOptions, seenWarnings map[string]bool,
 ) (string, *http.Response, error) {
 	// Normalize URL components
 	cloudAPI = strings.TrimSuffix(cloudAPI, "/")
@@ -356,6 +356,12 @@ func pulumiAPICall(ctx context.Context,
 
 	if warningHeader, ok := resp.Header["X-Pulumi-Warning"]; ok {
 		for _, warning := range warningHeader {
+			if seenWarnings[warning] {
+				continue
+			}
+			if seenWarnings != nil {
+				seenWarnings[warning] = true
+			}
 			d.Warningf(diag.RawMessage("", warning))
 		}
 	}
@@ -437,7 +443,8 @@ type restClient interface {
 
 // defaultRESTClient is the default implementation for calling the Pulumi REST API.
 type defaultRESTClient struct {
-	client httpClient
+	client       httpClient
+	seenWarnings map[string]bool
 }
 
 // HTTPClient returns the HTTP client for this REST client.
@@ -500,7 +507,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 
 	// Make API call
 	url, resp, err := pulumiAPICall(
-		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts)
+		ctx, requestSpan, diag, c.client, cloudAPI, method, path+querystring, reqBody, tok, opts, c.seenWarnings)
 	if err != nil {
 		otelSpan.RecordError(err)
 		otelSpan.SetStatus(codes.Error, err.Error())
