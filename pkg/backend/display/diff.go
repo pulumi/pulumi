@@ -445,7 +445,8 @@ func renderDiff(
 			details = buf.String()
 		} else {
 			details = getResourcePropertiesDetails(
-				metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets)
+				metadata, indent, planning, opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets,
+				metadata.Keys)
 		}
 	}
 	fprintIgnoreError(out, opts.Color.Colorize(summary))
