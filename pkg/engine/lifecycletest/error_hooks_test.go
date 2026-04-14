@@ -73,7 +73,8 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -87,7 +88,8 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Create(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -162,7 +164,8 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -176,7 +179,8 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Update(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -352,7 +356,8 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 
 		hook1, err := deploytest.NewErrorHook(monitor, callbacks, "hook1",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
@@ -366,7 +371,8 @@ func TestErrorHooks_OperationIdentifierAndMultipleHooks_Delete(t *testing.T) {
 
 		hook2, err := deploytest.NewErrorHook(monitor, callbacks, "hook2",
 			func(_ context.Context, urn resource.URN, _ resource.ID, name string,
-				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap, failedOperation string, errs []string,
+				typ tokens.Type, _, _ *pulumirpc.ResourceOptions, _, _, _ resource.PropertyMap,
+				failedOperation string, errs []string,
 			) (bool, error) {
 				require.Equal(t, "resA", name)
 				require.Equal(t, tokens.Type("pkgA:m:typA"), typ)
