@@ -1,0 +1,10 @@
+changes:
+- type: feat
+  scope: cli
+  description: |
+    Add `pulumi resources list`, a new agent-first command that browses resources in a
+    stack's state with AG Grid-style filtering (by type, name, project, stack, status),
+    sorting, pagination, grouping, and column selection. Output defaults to a human
+    table when stdout is a TTY and machine-readable JSON otherwise; `--output` can
+    force table, json, jsonl, csv, or yaml. This is read-only and fully backward
+    compatible.
