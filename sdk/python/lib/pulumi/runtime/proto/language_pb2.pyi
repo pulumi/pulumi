@@ -855,60 +855,6 @@ class RunPluginResponse(google.protobuf.message.Message):
 global___RunPluginResponse = RunPluginResponse
 
 @typing.final
-class RunPlugin2Request(google.protobuf.message.Message):
-    """`RunPlugin2Request` is the type of requests streamed by a [](pulumirpc.LanguageRuntime.RunPlugin2) call.
-    The first message must contain a `start` request with the plugin configuration. Subsequent messages may contain
-    a `cancel` request to signal graceful shutdown of the plugin.
-    """
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    START_FIELD_NUMBER: builtins.int
-    CANCEL_FIELD_NUMBER: builtins.int
-    @property
-    def start(self) -> global___RunPluginRequest:
-        """The initial request to start the plugin."""
-
-    @property
-    def cancel(self) -> global___RunPluginCancelRequest:
-        """A request to cancel the running plugin."""
-
-    def __init__(
-        self,
-        *,
-        start: global___RunPluginRequest | None = ...,
-        cancel: global___RunPluginCancelRequest | None = ...,
-    ) -> None: ...
-    def HasField(self, field_name: typing.Literal["cancel", b"cancel", "request", b"request", "start", b"start"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["cancel", b"cancel", "request", b"request", "start", b"start"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["request", b"request"]) -> typing.Literal["start", "cancel"] | None: ...
-
-global___RunPlugin2Request = RunPlugin2Request
-
-@typing.final
-class RunPluginCancelRequest(google.protobuf.message.Message):
-    """`RunPluginCancelRequest` is sent on a [](pulumirpc.LanguageRuntime.RunPlugin2) stream to request shutdown of the
-    running plugin. By default (`force` = false), the plugin receives a graceful shutdown signal (e.g. SIGINT). If
-    `force` is true, the plugin is killed immediately (e.g. SIGKILL).
-    """
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    FORCE_FIELD_NUMBER: builtins.int
-    force: builtins.bool
-    """If true, forcefully kill the plugin process immediately.
-    If false (default), send a graceful shutdown signal.
-    """
-    def __init__(
-        self,
-        *,
-        force: builtins.bool = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["force", b"force"]) -> None: ...
-
-global___RunPluginCancelRequest = RunPluginCancelRequest
-
-@typing.final
 class GenerateProgramRequest(google.protobuf.message.Message):
     """`GenerateProgramRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.GenerateProgram)
     call.

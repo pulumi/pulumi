@@ -33,6 +33,21 @@ func LoadPolicyPackConfigFromFile(file string) (map[string]plugin.AnalyzerPolicy
 	if err != nil {
 		return nil, err
 	}
+	config, _, err := parsePolicyPackConfig(b)
+	return config, err
+}
+
+// LoadPolicyPackConfigAndEnvironmentsFromFile loads policy pack config and
+// ESC environment references from a JSON config file. The "environments" key,
+// if present, is extracted and returned separately; the remaining keys are
+// parsed as policy config.
+func LoadPolicyPackConfigAndEnvironmentsFromFile(
+	file string,
+) (map[string]plugin.AnalyzerPolicyConfig, []string, error) {
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return nil, nil, err
+	}
 	return parsePolicyPackConfig(b)
 }
 
@@ -74,18 +89,37 @@ func ParsePolicyPackConfigFromAPI(config map[string]*json.RawMessage) (map[strin
 	return result, nil
 }
 
-func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, error) {
+func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, []string, error) {
 	result := make(map[string]plugin.AnalyzerPolicyConfig)
 
 	// Gracefully allow empty content.
 	if strings.TrimSpace(string(b)) == "" {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	config := make(map[string]any)
 	if err := json.Unmarshal(b, &config); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	// Extract ESC environment references if present.
+	var environments []string
+	if envsRaw, ok := config["environments"]; ok {
+		envsSlice, ok := envsRaw.([]any)
+		if !ok {
+			return nil, nil, fmt.Errorf(`"environments" must be an array of strings, got %T`, envsRaw)
+		}
+		environments = make([]string, 0, len(envsSlice))
+		for i, v := range envsSlice {
+			s, ok := v.(string)
+			if !ok {
+				return nil, nil, fmt.Errorf(`"environments[%d]" must be a string, got %T`, i, v)
+			}
+			environments = append(environments, s)
+		}
+		delete(config, "environments")
+	}
+
 	for k, v := range config {
 		var enforcementLevel apitype.EnforcementLevel
 		var properties map[string]any
@@ -93,20 +127,20 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, er
 		case string:
 			el := apitype.EnforcementLevel(val)
 			if !el.IsValid() {
-				return nil, fmt.Errorf("parsing enforcement level for %q: %q is not a valid enforcement level", k, val)
+				return nil, nil, fmt.Errorf("parsing enforcement level for %q: %q is not a valid enforcement level", k, val)
 			}
 			enforcementLevel = el
 		case map[string]any:
 			el, err := extractEnforcementLevel(val)
 			if err != nil {
-				return nil, fmt.Errorf("parsing enforcement level for %q: %w", k, err)
+				return nil, nil, fmt.Errorf("parsing enforcement level for %q: %w", k, err)
 			}
 			enforcementLevel = el
 			if len(val) > 0 {
 				properties = val
 			}
 		default:
-			return nil, fmt.Errorf("parsing %q: %v is not a valid value; must be a string or object", k, v)
+			return nil, nil, fmt.Errorf("parsing %q: %v is not a valid value; must be a string or object", k, v)
 		}
 
 		// Don't bother including empty configs.
@@ -119,7 +153,7 @@ func parsePolicyPackConfig(b []byte) (map[string]plugin.AnalyzerPolicyConfig, er
 			Properties:       properties,
 		}
 	}
-	return result, nil
+	return result, environments, nil
 }
 
 // extractEnforcementLevel looks for "enforcementLevel" in the map, and if so, validates that it is a valid value, and

@@ -197,16 +197,6 @@ class LanguageRuntimeStub:
     user on how to use the linked package in the project.
     """
 
-    RunPlugin2: grpc.StreamStreamMultiCallable[
-        pulumi.language_pb2.RunPlugin2Request,
-        pulumi.language_pb2.RunPluginResponse,
-    ]
-    """`RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-    in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-    containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-    the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-    """
-
     Cancel: grpc.UnaryUnaryMultiCallable[
         google.protobuf.empty_pb2.Empty,
         google.protobuf.empty_pb2.Empty,
@@ -375,16 +365,6 @@ class LanguageRuntimeAsyncStub:
     as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
     `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
     user on how to use the linked package in the project.
-    """
-
-    RunPlugin2: grpc.aio.StreamStreamMultiCallable[
-        pulumi.language_pb2.RunPlugin2Request,
-        pulumi.language_pb2.RunPluginResponse,
-    ]
-    """`RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-    in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-    containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-    the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
     """
 
     Cancel: grpc.aio.UnaryUnaryMultiCallable[
@@ -587,18 +567,6 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         as wheel or tar.gz files, or source directories. `Link` will update the language specific project files, such as
         `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
         user on how to use the linked package in the project.
-        """
-
-    
-    def RunPlugin2(
-        self,
-        request_iterator: _MaybeAsyncIterator[pulumi.language_pb2.RunPlugin2Request],
-        context: _ServicerContext,
-    ) -> typing.Union[collections.abc.Iterator[pulumi.language_pb2.RunPluginResponse], collections.abc.AsyncIterator[pulumi.language_pb2.RunPluginResponse]]:
-        """`RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-        in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-        containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-        the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
         """
 
     

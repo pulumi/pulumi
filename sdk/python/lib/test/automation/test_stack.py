@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 from pulumi.automation._stack import Stack, _watch_logs
 from pulumi.automation import EngineEvent, create_stack
 import pytest
-from .test_utils import stack_namer
+from .test_utils import stack_cleanup, stack_namer
 
 
 class TestStack(unittest.IsolatedAsyncioTestCase):
@@ -82,7 +82,7 @@ class TestStack(unittest.IsolatedAsyncioTestCase):
         # log watcher thread, but before the actual Pulumi operation starts.
         # This means that we never send a CancelEvent to the events log.
 
-        try:
+        with stack_cleanup(stack, destroy=False):
             # Preview
             try:
                 stack.preview(color="invalid color name")
@@ -115,9 +115,6 @@ class TestStack(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(True, "should have thrown")
             except Exception as e:
                 self.assertIn("unsupported color option", str(e))
-
-        finally:
-            stack.workspace.remove_stack(stack_name)
 
 
 class TestStackArgOrdering(unittest.TestCase):

@@ -792,6 +792,9 @@ Event: ${line}\n${e.toString()}`);
                     args.push("--run-program=false");
                 }
             }
+            if (opts.diff) {
+                args.push("--diff");
+            }
             applyGlobalOpts(opts, args);
         }
 
@@ -2216,6 +2219,11 @@ export interface DestroyOptions extends GlobalOpts {
      * Run the program in the workspace to perform the destroy.
      */
     runProgram?: boolean;
+
+    /**
+     * Display the operation as a rich diff showing the overall change.
+     */
+    diff?: boolean;
 }
 
 /**

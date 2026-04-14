@@ -247,6 +247,22 @@ func TestConfigNodeTypedStringList(t *testing.T) {
 	assert.Equal(t, listType.ElementType, model.StringType, "the element type is a string")
 }
 
+func TestConfigNodeTypedOptionalStringList(t *testing.T) {
+	t.Parallel()
+	source := `config names "list(optional(string))" { default = [null] }`
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, 1, len(program.Nodes), "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, "names", config.Name())
+	listType, ok := config.Type().(*model.ListType)
+	assert.True(t, ok, "the type of config is a list type")
+	assert.True(t, model.IsOptionalType(listType.ElementType), "the element type is optional")
+}
+
 func TestConfigNodeTypedIntList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(int)\" { }"

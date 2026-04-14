@@ -96,6 +96,8 @@ describe("LocalWorkspace - Config", () => {
         assert.strictEqual(values2["config_flag_like:key"].secret, false);
         assert.strictEqual(values2["config_flag_like:secret-key"].value, "-value2");
         assert.strictEqual(values2["config_flag_like:secret-key"].secret, true);
+
+        await ws.removeStack(stackName);
     });
     it(`Config path`, async () => {
         const projectName = "node_test";
@@ -253,6 +255,8 @@ describe("LocalWorkspace - Config", () => {
         const list = await stack.getConfig("myList");
         assert.strictEqual(list.secret, false);
         assert.strictEqual(list.value, '["one","two","three"]');
+
+        await stack.workspace.removeStack(stackName);
     });
     // TODO[https://github.com/pulumi/pulumi/issues/7127]: Re-enabled the warning.
     // Temporarily skipping test until we've re-enabled the warning.

@@ -696,64 +696,6 @@ export namespace RunPluginResponse {
 
 }
 
-export class RunPlugin2Request extends jspb.Message { 
-
-    hasStart(): boolean;
-    clearStart(): void;
-    getStart(): RunPluginRequest | undefined;
-    setStart(value?: RunPluginRequest): RunPlugin2Request;
-
-    hasCancel(): boolean;
-    clearCancel(): void;
-    getCancel(): RunPluginCancelRequest | undefined;
-    setCancel(value?: RunPluginCancelRequest): RunPlugin2Request;
-
-    getRequestCase(): RunPlugin2Request.RequestCase;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RunPlugin2Request.AsObject;
-    static toObject(includeInstance: boolean, msg: RunPlugin2Request): RunPlugin2Request.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RunPlugin2Request, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RunPlugin2Request;
-    static deserializeBinaryFromReader(message: RunPlugin2Request, reader: jspb.BinaryReader): RunPlugin2Request;
-}
-
-export namespace RunPlugin2Request {
-    export type AsObject = {
-        start?: RunPluginRequest.AsObject,
-        cancel?: RunPluginCancelRequest.AsObject,
-    }
-
-    export enum RequestCase {
-        REQUEST_NOT_SET = 0,
-        START = 1,
-        CANCEL = 2,
-    }
-
-}
-
-export class RunPluginCancelRequest extends jspb.Message { 
-    getForce(): boolean;
-    setForce(value: boolean): RunPluginCancelRequest;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): RunPluginCancelRequest.AsObject;
-    static toObject(includeInstance: boolean, msg: RunPluginCancelRequest): RunPluginCancelRequest.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: RunPluginCancelRequest, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): RunPluginCancelRequest;
-    static deserializeBinaryFromReader(message: RunPluginCancelRequest, reader: jspb.BinaryReader): RunPluginCancelRequest;
-}
-
-export namespace RunPluginCancelRequest {
-    export type AsObject = {
-        force: boolean,
-    }
-}
-
 export class GenerateProgramRequest extends jspb.Message { 
 
     getSourceMap(): jspb.Map<string, string>;

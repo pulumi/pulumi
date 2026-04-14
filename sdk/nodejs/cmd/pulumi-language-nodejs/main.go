@@ -1534,12 +1534,6 @@ func startDebugging(
 	return nil
 }
 
-func (host *nodeLanguageHost) RunPlugin2(
-	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
-) error {
-	return status.Errorf(codes.Unimplemented, "RunPlugin2 is not yet implemented")
-}
-
 func (host *nodeLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest, server pulumirpc.LanguageRuntime_RunPluginServer,
 ) error {
@@ -2161,8 +2155,8 @@ func (host *nodeLanguageHost) Link(
 	// We'll use module syntax (import, export) it is a typescript project, or package.json["type"] is set to "module".
 	usesModuleSyntax := isTypeScript
 	if !usesModuleSyntax {
-		if p, err := fsutil.Searchup(req.Info.ProgramDirectory, "package.json"); err == nil {
-			if data, err := readPackageJSON(p); err == nil {
+		if p, err := npm.SearchupPackageManifest(req.Info.ProgramDirectory); err == nil {
+			if data, _, err := npm.ReadPackageManifest(filepath.Dir(p)); err == nil {
 				if typ, ok := data["type"]; ok {
 					if typeS, ok := typ.(string); ok && typeS == "module" {
 						usesModuleSyntax = true

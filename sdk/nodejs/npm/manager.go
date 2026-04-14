@@ -17,7 +17,6 @@ package npm
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -100,23 +99,27 @@ func listPackagesFromLockFile(startDir, lockFileName string, transitive bool) ([
 	return filterDirectDependencies(dir, deps)
 }
 
-// filterDirectDependencies filters deps to only include packages declared directly in the package.json found in dir.
+// filterDirectDependencies filters deps to only include packages declared directly in the package manifest
+// (package.json or package.yaml) found in dir.
 func filterDirectDependencies(dir string, deps []plugin.DependencyInfo) ([]plugin.DependencyInfo, error) {
-	packageJSONPath := filepath.Join(dir, "package.json")
-	content, err := os.ReadFile(packageJSONPath)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("could not find %s", packageJSONPath)
-	}
+	manifestPath, err := findManifestInDir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("could not read %s: %w", packageJSONPath, err)
+		return nil, err
+	}
+	if manifestPath == "" {
+		return nil, fmt.Errorf("could not find package.json or package.yaml in %s", dir)
+	}
+	content, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("could not read %s: %w", manifestPath, err)
 	}
 
 	var pkg struct {
-		Dependencies    map[string]string `json:"dependencies"`
-		DevDependencies map[string]string `json:"devDependencies"`
+		Dependencies    map[string]string `json:"dependencies" yaml:"dependencies"`
+		DevDependencies map[string]string `json:"devDependencies" yaml:"devDependencies"`
 	}
-	if err := json.Unmarshal(content, &pkg); err != nil {
-		return nil, fmt.Errorf("could not parse %s: %w", packageJSONPath, err)
+	if err := unmarshalManifestBytes(manifestPath, content, &pkg); err != nil {
+		return nil, fmt.Errorf("could not parse %s: %w", manifestPath, err)
 	}
 
 	directDeps := make(map[string]bool, len(pkg.Dependencies)+len(pkg.DevDependencies))
@@ -182,14 +185,24 @@ func Install(ctx context.Context, packagemanager PackageManagerType, dir string,
 // ResolvePackageManager determines which package manager to use.
 //
 // If the packagemanager argument is set, and it is not `AutoPackageManager` then, that package
-// manager is used. Otherwise, if the `PULUMI_PREFER_YARN` environment variable is set, or if
-// a yarn.lock file exists, then YarnClassic is used. If a pnpm-lock.yaml file exists, then
-// pnpm is used. If either bun.lockb or bun.lock (for newer versions of bun) then bun is used.
-// Otherwise npm is used. The argument pwd is the directory  we're checking for
-// the presence of a lockfile.
+// manager is used. Otherwise, if the project's manifest is package.yaml, pnpm is used since it
+// is the only package manager that reads package.yaml. Otherwise, if the `PULUMI_PREFER_YARN`
+// environment variable is set, or if a yarn.lock file exists, then YarnClassic is used. If a
+// pnpm-lock.yaml file exists, then pnpm is used. If either bun.lockb or bun.lock (for newer
+// versions of bun) then bun is used. Otherwise npm is used. The argument pwd is the directory
+// we're checking for the presence of a lockfile.
 func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (PackageManager, error) {
+	manifestPath, _ := SearchupPackageManifest(pwd)
+	requiresPnpm := manifestPath != "" && filepath.Base(manifestPath) == "package.yaml"
+
 	// If a package manager is explicitly specified, use it.
 	if packagemanager != "" && packagemanager != AutoPackageManager {
+		if requiresPnpm && packagemanager != PnpmPackageManager {
+			return nil, fmt.Errorf(
+				"the project's manifest is package.yaml, which is only supported by pnpm, "+
+					"but the runtime package manager is set to %q. "+
+					"Use pnpm, or convert package.yaml to package.json", packagemanager)
+		}
 		switch packagemanager {
 		case AutoPackageManager:
 			// Make the linter for exhaustive switch cases happy, we never get here.
@@ -208,6 +221,17 @@ func ResolvePackageManager(packagemanager PackageManagerType, pwd string) (Packa
 	}
 
 	// No packagemanager specified, try to determine the best one to use.
+
+	// If the nearest manifest is a package.yaml, pnpm is the only option. Don't fall through to the other package
+	// managers since they would fail with a confusing ENOENT.
+	if requiresPnpm {
+		pnpm, err := newPnpm()
+		if err != nil {
+			return nil, fmt.Errorf("the project's manifest is package.yaml, which requires pnpm, "+
+				"but pnpm could not be found on the $PATH: %w", err)
+		}
+		return pnpm, nil
+	}
 
 	// Prefer yarn if PULUMI_PREFER_YARN is truthy, or if yarn.lock exists.
 	if preferYarn() || checkYarnLock(pwd) {

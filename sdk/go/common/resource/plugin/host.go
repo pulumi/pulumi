@@ -726,22 +726,41 @@ func (host *defaultHost) Close() (err error) {
 		host.pluginLock.Lock()
 		// N.B We purposefully do not unlock this.
 
-		// Close all plugins.
-		for _, plug := range host.analyzerPlugins {
-			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Name, err)
-			}
-		}
+		cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelCancel()
+
+		// Close plugins in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based
+		// providers run inside a language host, so we close them first to give them a chance to shut down cleanly
+		// before closing the language host that spawned them. Each plugin gets a Cancel RPC before being killed, giving
+		// it a chance to shut down gracefully.
+		var wg sync.WaitGroup
 		for _, plug := range host.resourcePlugins {
-			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
-			}
+			wg.Go(func() {
+				contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
+				}
+			})
 		}
+		for _, plug := range host.analyzerPlugins {
+			wg.Go(func() {
+				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Name, err)
+				}
+			})
+		}
+		wg.Wait()
+
 		for _, plug := range host.languagePlugins {
-			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
-			}
+			wg.Go(func() {
+				contract.IgnoreError(plug.Plugin.Cancel())
+				if err := plug.Plugin.Close(); err != nil {
+					logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
+				}
+			})
 		}
+		wg.Wait()
 
 		// Empty out all maps.
 		host.analyzerPlugins = make(map[tokens.QName]*analyzerPlugin)

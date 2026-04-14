@@ -163,7 +163,7 @@ def _generate_options_types(
         source.append(
             ast.ClassDef(
                 name=class_name,
-                bases=[],
+                bases=[ast.Name(id="BaseOptions", ctx=ast.Load())],
                 keywords=[],
                 body=class_body,
                 decorator_list=[],
@@ -809,20 +809,33 @@ def main(argv: list[str]) -> int:
         boilerplate_tree = ast.parse(boilerplate_code)
         module_body.extend(boilerplate_tree.body)
 
-    # Generate options types.
-    _generate_options_types(structure, module_body)
+    # Validate that the boilerplate defines a BaseOptions class.
+    has_base_options = any(
+        isinstance(node, ast.ClassDef) and node.name == "BaseOptions"
+        for node in module_body
+    )
+    if not has_base_options:
+        print("Boilerplate must define a `BaseOptions` class.", file=sys.stderr)
+        return 1
 
-    # Generate command methods on the API class.
+    # Validate that the boilerplate defines an API class.
     api_class: Optional[ast.ClassDef] = None
     for node in module_body:
         if isinstance(node, ast.ClassDef) and node.name == "API":
             api_class = node
             break
 
-    if api_class is not None:
-        methods: List[ast.stmt] = []
-        _generate_commands(structure, methods)
-        api_class.body.extend(methods)
+    if api_class is None:
+        print("Boilerplate must define an `API` class.", file=sys.stderr)
+        return 1
+
+    # Generate options types.
+    _generate_options_types(structure, module_body)
+
+    # Generate command methods on the API class.
+    methods: List[ast.stmt] = []
+    _generate_commands(structure, methods)
+    api_class.body.extend(methods)
 
     module = ast.Module(body=module_body, type_ignores=[])
     ast.fix_missing_locations(module)

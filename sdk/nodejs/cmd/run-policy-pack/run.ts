@@ -22,6 +22,7 @@ import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import { defaultErrorMessage } from "../run/error";
 import * as log from "../../log";
+import { readPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 
@@ -89,10 +90,9 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 
     let packageObject: Record<string, any>;
     try {
-        const packageJson = path.join(projectRoot, "package.json");
-        packageObject = require(packageJson);
+        packageObject = readPackageManifest(projectRoot).data;
     } catch {
-        // This is all best-effort so if we can't load the package.json file, that's
+        // This is all best-effort so if we can't load the package manifest, that's
         // fine.
         return;
     }

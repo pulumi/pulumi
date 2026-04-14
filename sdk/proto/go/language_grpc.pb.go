@@ -50,7 +50,6 @@ const (
 	LanguageRuntime_GeneratePackage_FullMethodName        = "/pulumirpc.LanguageRuntime/GeneratePackage"
 	LanguageRuntime_Pack_FullMethodName                   = "/pulumirpc.LanguageRuntime/Pack"
 	LanguageRuntime_Link_FullMethodName                   = "/pulumirpc.LanguageRuntime/Link"
-	LanguageRuntime_RunPlugin2_FullMethodName             = "/pulumirpc.LanguageRuntime/RunPlugin2"
 	LanguageRuntime_Cancel_FullMethodName                 = "/pulumirpc.LanguageRuntime/Cancel"
 )
 
@@ -142,11 +141,6 @@ type LanguageRuntimeClient interface {
 	// `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
 	// user on how to use the linked package in the project.
 	Link(ctx context.Context, in *LinkRequest, opts ...grpc.CallOption) (*LinkResponse, error)
-	// `RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-	// in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-	// containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-	// the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-	RunPlugin2(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[RunPlugin2Request, RunPluginResponse], error)
 	// `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
 	// Operations aborted in this way will return an error.
 	Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -339,19 +333,6 @@ func (c *languageRuntimeClient) Link(ctx context.Context, in *LinkRequest, opts 
 	return out, nil
 }
 
-func (c *languageRuntimeClient) RunPlugin2(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[RunPlugin2Request, RunPluginResponse], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &LanguageRuntime_ServiceDesc.Streams[2], LanguageRuntime_RunPlugin2_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[RunPlugin2Request, RunPluginResponse]{ClientStream: stream}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type LanguageRuntime_RunPlugin2Client = grpc.BidiStreamingClient[RunPlugin2Request, RunPluginResponse]
-
 func (c *languageRuntimeClient) Cancel(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -450,11 +431,6 @@ type LanguageRuntimeServer interface {
 	// `package.json`, `pyproject.toml`, `go.mod`, etc, to include the dependency. `Link` returns instructions for the
 	// user on how to use the linked package in the project.
 	Link(context.Context, *LinkRequest) (*LinkResponse, error)
-	// `RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-	// in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-	// containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-	// the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-	RunPlugin2(grpc.BidiStreamingServer[RunPlugin2Request, RunPluginResponse]) error
 	// `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
 	// Operations aborted in this way will return an error.
 	Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
@@ -515,9 +491,6 @@ func (UnimplementedLanguageRuntimeServer) Pack(context.Context, *PackRequest) (*
 }
 func (UnimplementedLanguageRuntimeServer) Link(context.Context, *LinkRequest) (*LinkResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Link not implemented")
-}
-func (UnimplementedLanguageRuntimeServer) RunPlugin2(grpc.BidiStreamingServer[RunPlugin2Request, RunPluginResponse]) error {
-	return status.Errorf(codes.Unimplemented, "method RunPlugin2 not implemented")
 }
 func (UnimplementedLanguageRuntimeServer) Cancel(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cancel not implemented")
@@ -817,13 +790,6 @@ func _LanguageRuntime_Link_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LanguageRuntime_RunPlugin2_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(LanguageRuntimeServer).RunPlugin2(&grpc.GenericServerStream[RunPlugin2Request, RunPluginResponse]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type LanguageRuntime_RunPlugin2Server = grpc.BidiStreamingServer[RunPlugin2Request, RunPluginResponse]
-
 func _LanguageRuntime_Cancel_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -920,12 +886,6 @@ var LanguageRuntime_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "RunPlugin",
 			Handler:       _LanguageRuntime_RunPlugin_Handler,
 			ServerStreams: true,
-		},
-		{
-			StreamName:    "RunPlugin2",
-			Handler:       _LanguageRuntime_RunPlugin2_Handler,
-			ServerStreams: true,
-			ClientStreams: true,
 		},
 	},
 	Metadata: "pulumi/language.proto",

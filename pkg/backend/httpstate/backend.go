@@ -1575,6 +1575,9 @@ func (b *cloudBackend) createAndStartUpdate(
 			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, b, policy, update.Owner))
 	}
 
+	// Provide ESC environment resolver for local policy packs.
+	op.Opts.Engine.PolicyEnvResolver = NewLocalPolicyEnvironmentResolver(b, update.Owner)
+
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
 	tags, err := backend.GetMergedStackTags(ctx, stack, op.Root, op.Proj, op.StackConfiguration.Config)
