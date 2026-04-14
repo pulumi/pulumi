@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -791,7 +792,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			oldInputs := resource.NewPropertyMapFromMap(c.oldInputs)
 			state := resource.NewPropertyMapFromMap(c.state)
 			inputs := resource.NewPropertyMapFromMap(c.inputs)
-			diff, hiddenProperties := TranslateDetailedDiff(&StepEventMetadata{
+			diff, hiddenProperties, _ := TranslateDetailedDiff(&StepEventMetadata{
 				Old:          &StepEventStateMetadata{Inputs: oldInputs, Outputs: state},
 				New:          &StepEventStateMetadata{Inputs: inputs, HideDiffs: c.hideDiff},
 				DetailedDiff: c.detailedDiff,
@@ -800,4 +801,114 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			assert.ElementsMatch(t, c.expectedHidden, hiddenProperties)
 		})
 	}
+}
+
+func TestTranslateDetailedDiffReplacePaths(t *testing.T) {
+	t.Parallel()
+
+	state := resource.NewPropertyMapFromMap(map[string]any{
+		"region": "us-east-1",
+		"size":   "t2.micro",
+		"tags":   map[string]any{"env": "prod"},
+	})
+	inputs := resource.NewPropertyMapFromMap(map[string]any{
+		"region": "eu-west-1",
+		"size":   "t2.large",
+		"tags":   map[string]any{"env": "staging"},
+	})
+
+	t.Run("no replace diffs returns empty replacePaths", func(t *testing.T) {
+		t.Parallel()
+		_, _, replacePaths := TranslateDetailedDiff(&StepEventMetadata{
+			Old: &StepEventStateMetadata{Outputs: state},
+			New: &StepEventStateMetadata{Inputs: inputs},
+			DetailedDiff: map[string]plugin.PropertyDiff{
+				"size": {Kind: plugin.DiffUpdate},
+			},
+		}, false)
+		assert.Empty(t, replacePaths)
+	})
+
+	t.Run("UPDATE_REPLACE returns that path", func(t *testing.T) {
+		t.Parallel()
+		_, _, replacePaths := TranslateDetailedDiff(&StepEventMetadata{
+			Old: &StepEventStateMetadata{Outputs: state},
+			New: &StepEventStateMetadata{Inputs: inputs},
+			DetailedDiff: map[string]plugin.PropertyDiff{
+				"region": {Kind: plugin.DiffUpdateReplace},
+			},
+		}, false)
+		assert.Equal(t, []resource.PropertyPath{{"region"}}, replacePaths)
+	})
+
+	t.Run("ADD_REPLACE returns that path", func(t *testing.T) {
+		t.Parallel()
+		_, _, replacePaths := TranslateDetailedDiff(&StepEventMetadata{
+			Old: &StepEventStateMetadata{Outputs: resource.NewPropertyMapFromMap(map[string]any{})},
+			New: &StepEventStateMetadata{Inputs: inputs},
+			DetailedDiff: map[string]plugin.PropertyDiff{
+				"region": {Kind: plugin.DiffAddReplace},
+			},
+		}, false)
+		assert.Equal(t, []resource.PropertyPath{{"region"}}, replacePaths)
+	})
+
+	t.Run("DELETE_REPLACE returns that path", func(t *testing.T) {
+		t.Parallel()
+		_, _, replacePaths := TranslateDetailedDiff(&StepEventMetadata{
+			Old: &StepEventStateMetadata{Outputs: state},
+			New: &StepEventStateMetadata{Inputs: resource.NewPropertyMapFromMap(map[string]any{})},
+			DetailedDiff: map[string]plugin.PropertyDiff{
+				"region": {Kind: plugin.DiffDeleteReplace},
+			},
+		}, false)
+		assert.Equal(t, []resource.PropertyPath{{"region"}}, replacePaths)
+	})
+
+	t.Run("mixed UPDATE and UPDATE_REPLACE returns only REPLACE paths", func(t *testing.T) {
+		t.Parallel()
+		_, _, replacePaths := TranslateDetailedDiff(&StepEventMetadata{
+			Old: &StepEventStateMetadata{Outputs: state},
+			New: &StepEventStateMetadata{Inputs: inputs},
+			DetailedDiff: map[string]plugin.PropertyDiff{
+				"size":   {Kind: plugin.DiffUpdate},
+				"region": {Kind: plugin.DiffUpdateReplace},
+			},
+		}, false)
+		assert.Equal(t, []resource.PropertyPath{{"region"}}, replacePaths)
+	})
+
+	t.Run("nested path UPDATE_REPLACE returns nested path", func(t *testing.T) {
+		t.Parallel()
+		nestedState := resource.NewPropertyMapFromMap(map[string]any{
+			"tags": map[string]any{"env": "prod"},
+		})
+		nestedInputs := resource.NewPropertyMapFromMap(map[string]any{
+			"tags": map[string]any{"env": "staging"},
+		})
+		_, _, replacePaths := TranslateDetailedDiff(&StepEventMetadata{
+			Old: &StepEventStateMetadata{Outputs: nestedState},
+			New: &StepEventStateMetadata{Inputs: nestedInputs},
+			DetailedDiff: map[string]plugin.PropertyDiff{
+				"tags.env": {Kind: plugin.DiffUpdateReplace},
+			},
+		}, false)
+		assert.Equal(t, []resource.PropertyPath{{"tags", "env"}}, replacePaths)
+	})
+
+	t.Run("duplicate replace paths are deduplicated and sorted", func(t *testing.T) {
+		t.Parallel()
+		_, _, replacePaths := TranslateDetailedDiff(&StepEventMetadata{
+			Old: &StepEventStateMetadata{Outputs: state},
+			New: &StepEventStateMetadata{Inputs: inputs},
+			DetailedDiff: map[string]plugin.PropertyDiff{
+				"region": {Kind: plugin.DiffUpdateReplace},
+				"size":   {Kind: plugin.DiffUpdateReplace},
+			},
+		}, false)
+		require.Len(t, replacePaths, 2)
+		// Paths should be sorted
+		assert.Equal(t, "region", replacePaths[0].String())
+		assert.Equal(t, "size", replacePaths[1].String())
+	})
 }

@@ -576,6 +576,7 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 
 type propertyPrinter struct {
 	dest io.StringWriter
+	buf  *bytes.Buffer
 
 	op             display.StepOp
 	planning       bool
@@ -585,13 +586,43 @@ type propertyPrinter struct {
 	truncateOutput bool
 	showSecrets    bool
 
-	indent int
+	indent       int
+	replacePaths []resource.PropertyPath
+	currentPath  resource.PropertyPath
 }
 
 func (p *propertyPrinter) indented(amt int) *propertyPrinter {
 	new := *p
 	new.indent += amt
 	return &new
+}
+
+// forcesReplacement returns true if appending key to the current path matches any replace path.
+func (p *propertyPrinter) forcesReplacement(key resource.PropertyKey) bool {
+	checkPath := append(append(resource.PropertyPath{}, p.currentPath...), string(key))
+	for _, rp := range p.replacePaths {
+		if rp.String() == checkPath.String() {
+			return true
+		}
+	}
+	return false
+}
+
+// writeReplaceAnnotation inserts " # forces replacement" before the trailing newline+reset of the
+// last written output, when a replace path buffer is available.
+func (p *propertyPrinter) writeReplaceAnnotation() {
+	if p.buf == nil {
+		return
+	}
+	// Every write via writeVerbatim/writef/writeIndentedf appends colors.Reset after the content.
+	// The last write will be a "\n" wrapped as: <color>\n<{%reset%}>.
+	// We look for the suffix "\n" + colors.Reset and insert the annotation before the newline.
+	s := p.buf.String()
+	suffix := "\n" + colors.Reset
+	if strings.HasSuffix(s, suffix) {
+		p.buf.Truncate(len(s) - len(suffix))
+		p.buf.WriteString(" # forces replacement" + suffix)
+	}
 }
 
 func (p *propertyPrinter) withOp(op display.StepOp) *propertyPrinter {
@@ -790,7 +821,7 @@ func printOldNewDiffs(
 	}
 
 	if diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets, hiddenDiffs)
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets, hiddenDiffs, nil)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
@@ -800,10 +831,11 @@ func printOldNewDiffs(
 
 func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resource.PropertyKey,
 	planning bool, indent int, summary bool, truncateOutput bool, debug bool, showSecrets bool,
-	hidden []resource.PropertyPath,
+	hidden []resource.PropertyPath, replacePaths []resource.PropertyPath,
 ) {
 	p := propertyPrinter{
 		dest:           b,
+		buf:            b,
 		planning:       planning,
 		indent:         indent,
 		prefix:         true,
@@ -811,6 +843,7 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 		summary:        summary,
 		truncateOutput: truncateOutput,
 		showSecrets:    showSecrets,
+		replacePaths:   replacePaths,
 	}
 	p.printHiddenPaths(hidden)
 	p.printObjectDiff(diff, include)
@@ -852,12 +885,24 @@ func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
 
 func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {
 	titleFunc := propertyTitlePrinter(string(key), maxkey)
+	forces := p.forcesReplacement(key)
 	if add, isadd := diff.Adds[key]; isadd {
 		p.printAdd(add, titleFunc)
+		if forces {
+			p.writeReplaceAnnotation()
+		}
 	} else if del, isdelete := diff.Deletes[key]; isdelete {
 		p.printDelete(del, titleFunc)
+		if forces {
+			p.writeReplaceAnnotation()
+		}
 	} else if update, isupdate := diff.Updates[key]; isupdate {
-		p.printPropertyValueDiff(titleFunc, update)
+		subP := *p
+		subP.currentPath = append(append(resource.PropertyPath{}, p.currentPath...), string(key))
+		subP.printPropertyValueDiff(titleFunc, update)
+		if forces {
+			p.writeReplaceAnnotation()
+		}
 	} else if same := diff.Sames[key]; !p.summary && shouldPrintPropertyValue(same, p.planning) {
 		p.withOp(deploy.OpSame).withPrefix(false).printObjectProperty(key, same, maxkey)
 	}

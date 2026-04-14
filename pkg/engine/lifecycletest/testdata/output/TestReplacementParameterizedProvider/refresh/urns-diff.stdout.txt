@@ -8,10 +8,10 @@
 <{%reset%}>    [id=4]
 <{%reset%}><{%reset%}>    --outputs:--<{%reset%}>
 <{%reset%}>    version: <{%reset%}><{%reset%}>"0.5.0"<{%reset%}><{%reset%}>
-<{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgExt:m:typA::resC: (same)
+<{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgExt:m:typA::resB: (same)
 <{%reset%}>    [id=2]
 <{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::3]
-<{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgExt:m:typA::resB: (same)
+<{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgExt:m:typA::resC: (same)
 <{%reset%}>    [id=2]
 <{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgExt::default_0_5_0::3]
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
