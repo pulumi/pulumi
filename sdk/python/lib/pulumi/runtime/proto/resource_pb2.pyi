@@ -1436,7 +1436,6 @@ class ErrorHookRequest(google.protobuf.message.Message):
     OLD_OUTPUTS_FIELD_NUMBER: builtins.int
     FAILED_OPERATION_FIELD_NUMBER: builtins.int
     ERRORS_FIELD_NUMBER: builtins.int
-    OPTIONS_FIELD_NUMBER: builtins.int
     OLD_OPTIONS_FIELD_NUMBER: builtins.int
     NEW_OPTIONS_FIELD_NUMBER: builtins.int
     urn: builtins.str
@@ -1466,10 +1465,6 @@ class ErrorHookRequest(google.protobuf.message.Message):
         """the errors that have been seen so far (newest-first)."""
 
     @property
-    def options(self) -> global___ResourceOptions:
-        """Deprecated fallback for old/new_options. Old engines may only set this."""
-
-    @property
     def old_options(self) -> global___ResourceOptions:
         """optional old resource options for the resource. Old engines may not set this."""
 
@@ -1489,12 +1484,11 @@ class ErrorHookRequest(google.protobuf.message.Message):
         old_outputs: google.protobuf.struct_pb2.Struct | None = ...,
         failed_operation: builtins.str = ...,
         errors: collections.abc.Iterable[builtins.str] | None = ...,
-        options: global___ResourceOptions | None = ...,
         old_options: global___ResourceOptions | None = ...,
         new_options: global___ResourceOptions | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "new_options", b"new_options", "old_inputs", b"old_inputs", "old_options", b"old_options", "old_outputs", b"old_outputs", "options", b"options"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_options", b"new_options", "old_inputs", b"old_inputs", "old_options", b"old_options", "old_outputs", b"old_outputs", "options", b"options", "type", b"type", "urn", b"urn"]) -> None: ...
+    def HasField(self, field_name: typing.Literal["new_inputs", b"new_inputs", "new_options", b"new_options", "old_inputs", b"old_inputs", "old_options", b"old_options", "old_outputs", b"old_outputs"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["errors", b"errors", "failed_operation", b"failed_operation", "id", b"id", "name", b"name", "new_inputs", b"new_inputs", "new_options", b"new_options", "old_inputs", b"old_inputs", "old_options", b"old_options", "old_outputs", b"old_outputs", "type", b"type", "urn", b"urn"]) -> None: ...
 
 global___ErrorHookRequest = ErrorHookRequest
 

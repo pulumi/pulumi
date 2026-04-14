@@ -1200,11 +1200,6 @@ export class ErrorHookRequest extends jspb.Message {
     setErrorsList(value: Array<string>): ErrorHookRequest;
     addErrors(value: string, index?: number): string;
 
-    hasOptions(): boolean;
-    clearOptions(): void;
-    getOptions(): ResourceOptions | undefined;
-    setOptions(value?: ResourceOptions): ErrorHookRequest;
-
     hasOldOptions(): boolean;
     clearOldOptions(): void;
     getOldOptions(): ResourceOptions | undefined;
@@ -1236,7 +1231,6 @@ export namespace ErrorHookRequest {
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         failedOperation: string,
         errorsList: Array<string>,
-        options?: ResourceOptions.AsObject,
         oldOptions?: ResourceOptions.AsObject,
         newOptions?: ResourceOptions.AsObject,
     }
