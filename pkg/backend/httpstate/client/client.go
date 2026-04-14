@@ -1701,20 +1701,28 @@ func (pc *Client) CreateNeoTask(
 	return &resp, nil
 }
 
+// NeoStreamEvent is one item from a Neo task SSE stream. Exactly one of Data or Err is
+// populated: Data carries an event payload, Err carries a terminal stream error (after
+// which no further values are sent before the channel closes).
+type NeoStreamEvent struct {
+	Data []byte
+	Err  error
+}
+
 // StreamNeoTaskEvents opens an SSE connection to the Neo task event stream and returns a
-// channel of raw event payloads (the bytes following each `data:` line, joined for
-// multi-line events). The channel is closed when the stream ends or ctx is cancelled. Any
-// connection or read error is returned via the error channel.
+// channel of events. Each value carries either a raw event payload (the bytes following
+// each `data:` line, joined for multi-line events) or a terminal stream error. The
+// channel is closed when the stream ends or ctx is cancelled.
 //
 // The endpoint is the SSE stream introduced in pulumi/pulumi-service#40132. This call does
 // not impose its own timeout — callers should manage lifetime via ctx.
 func (pc *Client) StreamNeoTaskEvents(
 	ctx context.Context, orgName, taskID string,
-) (<-chan []byte, <-chan error, error) {
+) (<-chan NeoStreamEvent, error) {
 	streamURL := pc.apiURL + fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events/stream", orgName, taskID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
 	if err != nil {
-		return nil, nil, fmt.Errorf("creating Neo event stream request: %w", err)
+		return nil, fmt.Errorf("creating Neo event stream request: %w", err)
 	}
 	req.Header.Set("Accept", "text/event-stream")
 	req.Header.Set("Cache-Control", "no-cache")
@@ -1723,22 +1731,27 @@ func (pc *Client) StreamNeoTaskEvents(
 
 	resp, err := pc.restClient.HTTPClient().Do(req, retryNone)
 	if err != nil {
-		return nil, nil, fmt.Errorf("opening Neo event stream: %w", err)
+		return nil, fmt.Errorf("opening Neo event stream: %w", err)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, nil, fmt.Errorf("opening Neo event stream: HTTP %d: %s",
+		return nil, fmt.Errorf("opening Neo event stream: HTTP %d: %s",
 			resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
-	events := make(chan []byte)
-	errs := make(chan error, 1)
+	stream := make(chan NeoStreamEvent)
 
 	go func() {
 		defer resp.Body.Close()
-		defer close(events)
-		defer close(errs)
+		defer close(stream)
+
+		send := func(evt NeoStreamEvent) {
+			select {
+			case stream <- evt:
+			case <-ctx.Done():
+			}
+		}
 
 		// Tool payloads can be large, so give the scanner a generous max line size.
 		scanner := bufio.NewScanner(resp.Body)
@@ -1751,10 +1764,7 @@ func (pc *Client) StreamNeoTaskEvents(
 			}
 			payload := bytes.Clone(data.Bytes())
 			data.Reset()
-			select {
-			case events <- payload:
-			case <-ctx.Done():
-			}
+			send(NeoStreamEvent{Data: payload})
 		}
 
 		for scanner.Scan() {
@@ -1777,12 +1787,12 @@ func (pc *Client) StreamNeoTaskEvents(
 			// single event type and the JSON payload carries its own kind discriminator.
 		}
 		flush()
-		if err := scanner.Err(); err != nil && !errors.Is(err, context.Canceled) {
-			errs <- fmt.Errorf("reading Neo event stream: %w", err)
+		if err := scanner.Err(); err != nil && ctx.Err() == nil {
+			send(NeoStreamEvent{Err: fmt.Errorf("reading Neo event stream: %w", err)})
 		}
 	}()
 
-	return events, errs, nil
+	return stream, nil
 }
 
 // PostNeoTaskUserEvent posts an AgentUserEvent to a Neo task via the RespondToTask

@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 )
 
 // ToolHandler executes a single named method on a Neo CLI-local tool. The method is the
@@ -33,7 +35,7 @@ type ToolHandler interface {
 // for posting CLI tool result user events back to the Neo task. It is an interface so the
 // loop can be unit-tested without a live HTTP backend.
 type EventStreamer interface {
-	StreamNeoTaskEvents(ctx context.Context, orgName, taskID string) (<-chan []byte, <-chan error, error)
+	StreamNeoTaskEvents(ctx context.Context, orgName, taskID string) (<-chan client.NeoStreamEvent, error)
 	PostNeoTaskUserEvent(ctx context.Context, orgName, taskID string, body any) error
 }
 
@@ -51,7 +53,7 @@ type Session struct {
 
 // Run drives the loop. It blocks until ctx is cancelled or the SSE stream errors out.
 func (s *Session) Run(ctx context.Context) error {
-	events, errs, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID)
+	stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID)
 	if err != nil {
 		return fmt.Errorf("opening event stream: %w", err)
 	}
@@ -60,15 +62,14 @@ func (s *Session) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case streamErr, ok := <-errs:
-			if ok && streamErr != nil {
-				return streamErr
-			}
-		case raw, ok := <-events:
+		case evt, ok := <-stream:
 			if !ok {
 				return nil
 			}
-			if err := s.handleEvent(ctx, raw); err != nil {
+			if evt.Err != nil {
+				return evt.Err
+			}
+			if err := s.handleEvent(ctx, evt.Data); err != nil {
 				return err
 			}
 		}

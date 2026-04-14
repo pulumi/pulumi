@@ -23,6 +23,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 )
 
 type fakeHandler struct {
@@ -39,8 +41,7 @@ func (f *fakeHandler) Invoke(_ context.Context, method string, _ json.RawMessage
 }
 
 type fakeStreamer struct {
-	events chan []byte
-	errs   chan error
+	stream chan client.NeoStreamEvent
 
 	mu     sync.Mutex
 	posted []any
@@ -48,13 +49,12 @@ type fakeStreamer struct {
 
 func newFakeStreamer() *fakeStreamer {
 	return &fakeStreamer{
-		events: make(chan []byte, 8),
-		errs:   make(chan error, 1),
+		stream: make(chan client.NeoStreamEvent, 8),
 	}
 }
 
-func (f *fakeStreamer) StreamNeoTaskEvents(_ context.Context, _, _ string) (<-chan []byte, <-chan error, error) {
-	return f.events, f.errs, nil
+func (f *fakeStreamer) StreamNeoTaskEvents(_ context.Context, _, _ string) (<-chan client.NeoStreamEvent, error) {
+	return f.stream, nil
 }
 
 func (f *fakeStreamer) PostNeoTaskUserEvent(_ context.Context, _, _ string, body any) error {
@@ -105,7 +105,7 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 
 	// Mixed-mode assistantMessage: one cli call (must be executed), one cloud call
 	// (must be ignored — the agent runtime handles it).
-	streamer.events <- mustAgentResponseEnvelope(t, AssistantMessage{
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, AssistantMessage{
 		Type:    backendEventAssistantMessage,
 		IsFinal: true,
 		ToolCalls: []ToolCall{
@@ -122,8 +122,8 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 				ExecutionMode: "cloud",
 			},
 		},
-	})
-	close(streamer.events)
+	})}
+	close(streamer.stream)
 
 	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
 	require.NoError(t, s.Run(t.Context()))
@@ -178,13 +178,13 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 
 	// assistantMessage with only a cloud-marked call: the CLI must not respond at all,
 	// otherwise the agent (which is not paused) would receive a stray tool_result.
-	streamer.events <- mustAgentResponseEnvelope(t, AssistantMessage{
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, AssistantMessage{
 		Type: backendEventAssistantMessage,
 		ToolCalls: []ToolCall{
 			{ToolCallID: "c1", Name: "web_search__query", ExecutionMode: "cloud"},
 		},
-	})
-	close(streamer.events)
+	})}
+	close(streamer.stream)
 
 	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
 	require.NoError(t, s.Run(t.Context()))
@@ -203,15 +203,15 @@ func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing
 		"shell":      &fakeHandler{wantMethod: "run", result: map[string]any{"exit_code": 0}},
 	}
 
-	streamer.events <- mustAgentResponseEnvelope(t, AssistantMessage{
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, AssistantMessage{
 		Type:    backendEventAssistantMessage,
 		IsFinal: true,
 		ToolCalls: []ToolCall{
 			{ToolCallID: "c1", Name: "filesystem__read", Args: json.RawMessage(`{}`), ExecutionMode: "cli"},
 			{ToolCallID: "c2", Name: "shell__run", Args: json.RawMessage(`{}`), ExecutionMode: "cli"},
 		},
-	})
-	close(streamer.events)
+	})}
+	close(streamer.stream)
 
 	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
 	require.NoError(t, s.Run(t.Context()))
@@ -248,14 +248,14 @@ func TestSession_IgnoresUserInputAndUnknownBackendEvents(t *testing.T) {
 	// userInput envelope — should be ignored.
 	userInput, err := json.Marshal(ConsoleEventEnvelope{Type: "userInput", ID: "u1"})
 	require.NoError(t, err)
-	streamer.events <- userInput
+	streamer.stream <- client.NeoStreamEvent{Data: userInput}
 
 	// agentResponse with an unrelated backend event type.
-	streamer.events <- mustAgentResponseEnvelope(t, map[string]any{
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, map[string]any{
 		"type":    "agent_message",
 		"content": "hello",
-	})
-	close(streamer.events)
+	})}
+	close(streamer.stream)
 
 	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
 	require.NoError(t, s.Run(t.Context()))
