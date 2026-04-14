@@ -8,17 +8,17 @@
 <{%reset%}><{%fg 9%}>    zed: <{%reset%}><{%fg 9%}>"baz"<{%reset%}><{%fg 9%}>
 <{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resA: (replace)
 <{%reset%}>    [id=4]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>" # forces replacement
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
 <{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resA: (create-replacement)
 <{%reset%}>    [id=4]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>" # forces replacement
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
 <{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typB::resB: (replace)
 <{%reset%}>    [id=3]
 <{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}>    zed: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typB::resB: (create-replacement)
 <{%reset%}>    [id=3]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>b<{%reset%}><{%fg 1%}>ar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>fro<{%reset%}><{%reset%}>b<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
 <{%reset%}><{%reset%}>    zed: <{%reset%}><{%reset%}>"baz"<{%reset%}><{%reset%}>
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-2 to replace<{%reset%}>
