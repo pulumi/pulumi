@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/display
+  description: Annotate properties that force resource replacement with `# forces replacement`
