@@ -47,8 +47,14 @@ type traceService struct {
 	r *Receiver
 }
 
+// ServiceRegistrar registers additional gRPC services on the receiver
+// before it starts serving.
+type ServiceRegistrar func(*grpc.Server)
+
 // Start creates and starts a new OTLP receiver with the given exporter.
-func Start(exporter SpanExporter) (*Receiver, error) {
+// Optional ServiceRegistrar functions are called to register additional
+// gRPC services (e.g. the OTLP LogsService) before the server starts.
+func Start(exporter SpanExporter, registrars ...ServiceRegistrar) (*Receiver, error) {
 	addr := "127.0.0.1:0"
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -67,6 +73,9 @@ func Start(exporter SpanExporter) (*Receiver, error) {
 	r.server = grpc.NewServer()
 
 	coltracepb.RegisterTraceServiceServer(r.server, &traceService{r: r})
+	for _, reg := range registrars {
+		reg(r.server)
+	}
 
 	go func() {
 		defer close(r.done)
