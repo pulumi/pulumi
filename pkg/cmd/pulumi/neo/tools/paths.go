@@ -56,7 +56,10 @@ func resolveUnderRoot(root, p string, allowMissing bool) (string, error) {
 		}
 	}
 	rel, err := filepath.Rel(root, resolved)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+	if err != nil {
+		return "", fmt.Errorf("resolving %q: %w", p, err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("path %q is outside the working directory %q", p, root)
 	}
 	return resolved, nil
