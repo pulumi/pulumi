@@ -207,7 +207,7 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int, sho
 
 func getResourcePropertiesDetails(
 	step engine.StepEventMetadata, indent int, planning bool, summary bool, truncateOutput bool,
-	debug bool, showSecrets bool,
+	debug bool, showSecrets bool, replaceKeys []resource.PropertyKey,
 ) string {
 	var b bytes.Buffer
 
@@ -237,10 +237,10 @@ func getResourcePropertiesDetails(
 		}
 	} else if len(new.Outputs) > 0 && step.Op != deploy.OpImport && step.Op != deploy.OpImportReplacement {
 		printOldNewDiffs(&b, old.Outputs, new.Outputs, nil, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets, hideDiff)
+			summary, truncateOutput, debug, showSecrets, hideDiff, replaceKeys)
 	} else {
 		printOldNewDiffs(&b, old.Inputs, new.Inputs, step.Diffs, planning, indent, step.Op,
-			summary, truncateOutput, debug, showSecrets, hideDiff)
+			summary, truncateOutput, debug, showSecrets, hideDiff, replaceKeys)
 	}
 
 	return b.String()
@@ -640,7 +640,7 @@ func (p *propertyPrinter) writeReplaceAnnotation() {
 	suffix := "\n" + colors.Reset
 	if strings.HasSuffix(s, suffix) {
 		p.buf.Truncate(len(s) - len(suffix))
-		p.buf.WriteString(" # forces replacement" + suffix)
+		p.buf.WriteString(colors.Reset + colors.SpecReplace + " # forces replacement" + suffix)
 	}
 }
 
@@ -808,7 +808,7 @@ func shortHash(hash string) string {
 func printOldNewDiffs(
 	b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, include []resource.PropertyKey,
 	planning bool, indent int, op display.StepOp, summary bool, truncateOutput bool, debug bool, showSecrets bool,
-	hidePaths []resource.PropertyPath,
+	hidePaths []resource.PropertyPath, replaceKeys []resource.PropertyKey,
 ) {
 	var hiddenDiffs []resource.PropertyPath
 
@@ -840,7 +840,13 @@ func printOldNewDiffs(
 	}
 
 	if diff != nil {
-		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput, debug, showSecrets, hiddenDiffs, nil)
+		// Convert top-level replaceKeys to PropertyPaths for the display layer.
+		replacePaths := make([]resource.PropertyPath, 0, len(replaceKeys))
+		for _, k := range replaceKeys {
+			replacePaths = append(replacePaths, resource.PropertyPath{string(k)})
+		}
+		PrintObjectDiff(b, *diff, include, planning, indent, summary, truncateOutput,
+			debug, showSecrets, hiddenDiffs, replacePaths)
 	} else {
 		// If there's no diff, report the op as Same - there's no diff to render
 		// so it should be rendered as if nothing changed.
@@ -902,12 +908,24 @@ func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
 	}
 }
 
+// isUnknown returns true if the value will display as [unknown] — either a Computed value
+// or an Output value whose element is not yet known.
+func isUnknown(v resource.PropertyValue) bool {
+	if v.IsComputed() {
+		return true
+	}
+	if v.IsOutput() {
+		return !v.OutputValue().Known
+	}
+	return false
+}
+
 func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {
 	titleFunc := propertyTitlePrinter(string(key), maxkey)
 	forces := p.forcesReplacement(key)
 	if add, isadd := diff.Adds[key]; isadd {
 		p.printAdd(add, titleFunc)
-		if forces {
+		if forces && !isUnknown(add) {
 			p.writeReplaceAnnotation()
 		}
 	} else if del, isdelete := diff.Deletes[key]; isdelete {
@@ -919,7 +937,7 @@ func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxk
 		subP := *p
 		subP.currentPath = append(append(resource.PropertyPath{}, p.currentPath...), string(key))
 		subP.printPropertyValueDiff(titleFunc, update)
-		if forces {
+		if forces && !isUnknown(update.New) {
 			p.writeReplaceAnnotation()
 		}
 	} else if same := diff.Sames[key]; !p.summary && shouldPrintPropertyValue(same, p.planning) {
