@@ -1893,7 +1893,6 @@ func (rm *resmon) wrapErrorHookCallback(
 			Errors:          errorMessages,
 			OldOptions:      oldOptions,
 			NewOptions:      newOptions,
-			Options:         newOptions, // Backward-compatible fallback for older SDKs that only read `options`.
 		})
 		if err != nil {
 			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)
