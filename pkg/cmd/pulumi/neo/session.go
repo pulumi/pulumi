@@ -22,11 +22,13 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // ToolHandler executes a single named method on a Neo CLI-local tool. The method is the
 // part of the agent's full tool name after the "<server>__" prefix; args is the raw JSON
-// arguments object. The returned value is JSON-encoded into the ToolResultItem content.
+// arguments object. The returned value is JSON-encoded into the AgentUserEventToolResultItem
+// content.
 type ToolHandler interface {
 	Invoke(ctx context.Context, method string, args json.RawMessage) (any, error)
 }
@@ -77,7 +79,7 @@ func (s *Session) Run(ctx context.Context) error {
 }
 
 func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
-	var env ConsoleEventEnvelope
+	var env apitype.AgentConsoleEvent
 	if err := json.Unmarshal(raw, &env); err != nil {
 		s.logf("warning: skipping malformed Neo console event: %v", err)
 		return nil
@@ -87,7 +89,7 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		return nil
 	}
 
-	var head BackendEventHeader
+	var head apitype.AgentBackendEventHeader
 	if err := json.Unmarshal(env.EventBody, &head); err != nil {
 		s.logf("warning: skipping malformed backend event: %v", err)
 		return nil
@@ -96,7 +98,7 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		return nil
 	}
 
-	var msg AssistantMessage
+	var msg apitype.AgentBackendEventAssistantMessage
 	if err := json.Unmarshal(env.EventBody, &msg); err != nil {
 		return fmt.Errorf("decoding assistantMessage: %w", err)
 	}
@@ -105,7 +107,7 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 	// message are handled by the agent runtime — touching them would double-execute
 	// the tool. If no calls are cli-marked there is nothing to do and posting an empty
 	// tool_result would confuse the agent (which is not paused waiting for us).
-	cliCalls := make([]ToolCall, 0, len(msg.ToolCalls))
+	cliCalls := make([]apitype.AgentBackendEventToolCall, 0, len(msg.ToolCalls))
 	for _, call := range msg.ToolCalls {
 		if call.ExecutionMode == toolExecutionModeCLI {
 			cliCalls = append(cliCalls, call)
@@ -117,8 +119,8 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 	return s.runBatch(ctx, cliCalls)
 }
 
-func (s *Session) runBatch(ctx context.Context, calls []ToolCall) error {
-	items := make([]ToolResultItem, 0, len(calls))
+func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
+	items := make([]apitype.AgentUserEventToolResultItem, 0, len(calls))
 	for _, call := range calls {
 		s.logf("→ %s", call.Name)
 
@@ -126,7 +128,7 @@ func (s *Session) runBatch(ctx context.Context, calls []ToolCall) error {
 		// "running" state. If this post fails, the agent will believe the tool never
 		// started, so any tool_result we'd send later would be rejected or mis-attributed.
 		// Abort the batch and let the session loop surface the error.
-		execEvt := ExecToolCallEvent{
+		execEvt := apitype.AgentUserEventExecToolCall{
 			Type:       userEventExecToolCall,
 			ToolCallID: call.ToolCallID,
 			Name:       call.Name,
@@ -138,7 +140,7 @@ func (s *Session) runBatch(ctx context.Context, calls []ToolCall) error {
 		items = append(items, s.invokeToolCall(ctx, call))
 	}
 
-	result := ToolResultEvent{
+	result := apitype.AgentUserEventToolResult{
 		Type:        userEventToolResult,
 		ToolResults: items,
 	}
@@ -148,11 +150,14 @@ func (s *Session) runBatch(ctx context.Context, calls []ToolCall) error {
 	return nil
 }
 
-// invokeToolCall dispatches a single ToolCall to the appropriate handler by splitting the
-// tool name on "__" into server and method. Errors are returned as ToolResultItems with
-// IsError=true rather than propagated, so the agent can retry or report.
-func (s *Session) invokeToolCall(ctx context.Context, call ToolCall) ToolResultItem {
-	res := ToolResultItem{ToolCallID: call.ToolCallID, Name: call.Name}
+// invokeToolCall dispatches a single tool call to the appropriate handler by splitting
+// the tool name on "__" into server and method. Errors are returned as
+// AgentUserEventToolResultItem with IsError=true rather than propagated, so the agent can
+// retry or report.
+func (s *Session) invokeToolCall(
+	ctx context.Context, call apitype.AgentBackendEventToolCall,
+) apitype.AgentUserEventToolResultItem {
+	res := apitype.AgentUserEventToolResultItem{ToolCallID: call.ToolCallID, Name: call.Name}
 
 	server, method, ok := strings.Cut(call.Name, "__")
 	if !ok {

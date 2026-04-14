@@ -21,9 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
-	"path/filepath"
 	"runtime"
-	"strings"
 	"time"
 )
 
@@ -40,11 +38,7 @@ type Shell struct {
 // resolved to its canonical path (following symlinks) so that the containment check
 // in resolveDir cannot be bypassed via symlinks.
 func NewShell(cwd string) (*Shell, error) {
-	abs, err := filepath.Abs(cwd)
-	if err != nil {
-		return nil, fmt.Errorf("resolving shell cwd: %w", err)
-	}
-	abs, err = filepath.EvalSymlinks(abs)
+	abs, err := canonicalRoot(cwd)
 	if err != nil {
 		return nil, fmt.Errorf("resolving shell cwd: %w", err)
 	}
@@ -79,19 +73,7 @@ func (s *Shell) resolveDir(dir string) (string, error) {
 	if dir == "" {
 		return s.Cwd, nil
 	}
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		return "", fmt.Errorf("resolving cwd %q: %w", dir, err)
-	}
-	abs, err = filepath.EvalSymlinks(abs)
-	if err != nil {
-		return "", fmt.Errorf("resolving cwd %q: %w", dir, err)
-	}
-	rel, err := filepath.Rel(s.Cwd, abs)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("cwd %q is outside the working directory %q", dir, s.Cwd)
-	}
-	return abs, nil
+	return resolveUnderRoot(s.Cwd, dir, false)
 }
 
 // maxOutputBytes is the maximum number of bytes captured from stdout or stderr.

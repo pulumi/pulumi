@@ -47,11 +47,7 @@ type Filesystem struct {
 
 // NewFilesystem creates a Filesystem handler rooted at the given absolute directory.
 func NewFilesystem(root string) (*Filesystem, error) {
-	abs, err := filepath.Abs(root)
-	if err != nil {
-		return nil, fmt.Errorf("resolving filesystem root: %w", err)
-	}
-	abs, err = filepath.EvalSymlinks(abs)
+	abs, err := canonicalRoot(root)
 	if err != nil {
 		return nil, fmt.Errorf("resolving filesystem root: %w", err)
 	}
@@ -114,57 +110,7 @@ func (f *Filesystem) resolve(p string) (string, error) {
 	if !filepath.IsAbs(target) {
 		target = filepath.Join(f.Root, target)
 	}
-	abs, err := filepath.Abs(target)
-	if err != nil {
-		return "", fmt.Errorf("resolving %q: %w", p, err)
-	}
-
-	// Resolve symlinks to prevent symlink-based directory traversal. If the full
-	// path doesn't exist yet (e.g. a write to a new file in a new directory),
-	// walk up to the nearest existing ancestor, resolve that, and re-join the
-	// remaining path components.
-	resolved, err := filepath.EvalSymlinks(abs)
-	if err != nil && os.IsNotExist(err) {
-		resolved, err = evalClosestAncestor(abs)
-		if err != nil {
-			return "", fmt.Errorf("resolving %q: %w", p, err)
-		}
-	} else if err != nil {
-		return "", fmt.Errorf("resolving %q: %w", p, err)
-	}
-
-	rel, err := filepath.Rel(f.Root, resolved)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("path %q is outside the working directory %q", p, f.Root)
-	}
-	return resolved, nil
-}
-
-// evalClosestAncestor walks up from abs until it finds an existing directory, resolves
-// symlinks on that ancestor, and re-joins the remaining path tail. This handles write
-// targets where intermediate directories don't exist yet.
-func evalClosestAncestor(abs string) (string, error) {
-	cur := abs
-	var tail []string
-	for {
-		parent := filepath.Dir(cur)
-		tail = append(tail, filepath.Base(cur))
-		resolved, err := filepath.EvalSymlinks(parent)
-		if err == nil {
-			// Reverse tail and rejoin.
-			for i, j := 0, len(tail)-1; i < j; i, j = i+1, j-1 {
-				tail[i], tail[j] = tail[j], tail[i]
-			}
-			return filepath.Join(append([]string{resolved}, tail...)...), nil
-		}
-		if !os.IsNotExist(err) {
-			return "", err
-		}
-		if parent == cur {
-			return "", fmt.Errorf("no existing ancestor for %q", abs)
-		}
-		cur = parent
-	}
+	return resolveUnderRoot(f.Root, target, true)
 }
 
 func (f *Filesystem) read(p string, offset, limit int) (any, error) {

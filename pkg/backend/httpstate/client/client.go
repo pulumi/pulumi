@@ -1701,21 +1701,21 @@ func (pc *Client) CreateNeoTask(
 	return &resp, nil
 }
 
-// NeoStreamEvent is one item from a Neo task SSE stream. Exactly one of Data or Err is
-// populated: Data carries an event payload, Err carries a terminal stream error (after
-// which no further values are sent before the channel closes).
+// NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
+// one of Data or Err is populated: Data carries an event payload, Err carries a terminal
+// stream error (after which no further values are sent before the channel closes).
 type NeoStreamEvent struct {
 	Data []byte
 	Err  error
 }
 
-// StreamNeoTaskEvents opens an SSE connection to the Neo task event stream and returns a
-// channel of events. Each value carries either a raw event payload (the bytes following
-// each `data:` line, joined for multi-line events) or a terminal stream error. The
-// channel is closed when the stream ends or ctx is cancelled.
+// StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
+// stream and returns a channel of events. Each value carries either a raw event payload
+// (the bytes following each `data:` line, joined for multi-line events) or a terminal
+// stream error. The channel is closed when the stream ends or ctx is cancelled.
 //
-// The endpoint is the SSE stream introduced in pulumi/pulumi-service#40132. This call does
-// not impose its own timeout — callers should manage lifetime via ctx.
+// The endpoint is the SSE stream introduced in pulumi/pulumi-service#40132. This call
+// does not impose its own timeout — callers should manage lifetime via ctx.
 func (pc *Client) StreamNeoTaskEvents(
 	ctx context.Context, orgName, taskID string,
 ) (<-chan NeoStreamEvent, error) {
