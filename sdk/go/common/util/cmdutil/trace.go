@@ -216,7 +216,9 @@ func OTelEndpoint() string {
 }
 
 // InitOTelReceiver starts the OTLP receiver with the given endpoint.
-func InitOtelReceiver(endpoint string) error {
+// Optional registrars are called to register additional gRPC services
+// on the receiver before it starts serving.
+func InitOtelReceiver(endpoint string, registrars ...otelreceiver.ServiceRegistrar) error {
 	if endpoint == "" {
 		return nil
 	}
@@ -226,7 +228,7 @@ func InitOtelReceiver(endpoint string) error {
 		return fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
 
-	receiver, err := otelreceiver.Start(exporter)
+	receiver, err := otelreceiver.Start(exporter, registrars...)
 	if err != nil {
 		_ = exporter.Shutdown(context.Background())
 		return fmt.Errorf("failed to start OTLP receiver: %w", err)
