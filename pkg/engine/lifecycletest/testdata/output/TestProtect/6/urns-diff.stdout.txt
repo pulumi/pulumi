@@ -1,9 +1,9 @@
 <{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resA: (create-replacement) 🔒
 <{%reset%}>    [id=3]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>b<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>d<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>b<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>d<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
 <{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resA: (replace) 🔒
 <{%reset%}>    [id=3]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>b<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>d<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>b<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>d<{%reset%}><{%reset%}>az<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
 <{%reset%}><{%reset%}><{%fg 9%}>--urn:pulumi:test::test::pkgA:m:typA::resA: (delete-replaced)
 <{%fg 9%}>    [id=3]
 <{%reset%}><{%fg 9%}>    foo: <{%reset%}><{%fg 9%}>"baz"<{%reset%}><{%fg 9%}>
