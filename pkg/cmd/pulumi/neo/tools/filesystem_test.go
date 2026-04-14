@@ -52,7 +52,7 @@ func TestFilesystem_DirectoryTreeShallow(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), nil, 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(root, "a.txt"), nil, 0o600))
 	require.NoError(t, os.Mkdir(filepath.Join(root, "sub"), 0o755))
 
 	fs, err := NewFilesystem(root)
@@ -111,7 +111,7 @@ func TestFilesystem_ReadOffsetBeyondFileReturnsEmpty(t *testing.T) {
 
 	root := t.TempDir()
 	target := filepath.Join(root, "small.txt")
-	require.NoError(t, os.WriteFile(target, []byte("line1\nline2\n"), 0o644))
+	require.NoError(t, os.WriteFile(target, []byte("line1\nline2\n"), 0o600))
 
 	fs, err := NewFilesystem(root)
 	require.NoError(t, err)

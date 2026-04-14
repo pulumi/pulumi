@@ -17,6 +17,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -107,7 +108,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 // to a location under Root. Relative paths are resolved against Root.
 func (f *Filesystem) resolve(p string) (string, error) {
 	if p == "" {
-		return "", fmt.Errorf("path is required")
+		return "", errors.New("path is required")
 	}
 	target := p
 	if !filepath.IsAbs(target) {
@@ -202,7 +203,7 @@ func (f *Filesystem) write(p, content string) (any, error) {
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(abs, []byte(content), 0o600); err != nil {
 		return nil, err
 	}
 	return map[string]any{"bytes_written": len(content)}, nil
