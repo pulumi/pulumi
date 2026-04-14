@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Forward provider warnings from Check, Diff, Create, Read, and Update responses
