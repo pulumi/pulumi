@@ -1224,6 +1224,9 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 		} else if issueCheckErrors(sg.deployment, new, urn, resp.Failures) {
 			invalid = true
 		}
+		for _, w := range resp.Warnings {
+			sg.deployment.Diag().Warningf(diag.RawMessage(urn, w))
+		}
 		new.Inputs = inputs
 	}
 
@@ -1862,6 +1865,9 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					return nil, err
 				} else if issueCheckErrors(sg.deployment, new, urn, failures) {
 					return nil, result.BailErrorf("resource %v has check errors: %v", urn, failures)
+				}
+				for _, w := range resp.Warnings {
+					sg.deployment.Diag().Warningf(diag.RawMessage(urn, w))
 				}
 				new.Inputs = inputs
 			}
@@ -2767,6 +2773,9 @@ func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldO
 		} else {
 			diff.Changes = plugin.DiffNone
 		}
+	}
+	for _, w := range diff.Warnings {
+		d.Warningf(diag.RawMessage(urn, w))
 	}
 	return diff, nil
 }

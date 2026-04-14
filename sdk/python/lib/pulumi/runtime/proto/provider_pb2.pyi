@@ -893,6 +893,7 @@ class CheckResponse(google.protobuf.message.Message):
 
     INPUTS_FIELD_NUMBER: builtins.int
     FAILURES_FIELD_NUMBER: builtins.int
+    WARNINGS_FIELD_NUMBER: builtins.int
     @property
     def inputs(self) -> google.protobuf.struct_pb2.Struct:
         """A valid, checked set of inputs. May contain defaults."""
@@ -901,14 +902,19 @@ class CheckResponse(google.protobuf.message.Message):
     def failures(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___CheckFailure]:
         """Any validation failures that occurred."""
 
+    @property
+    def warnings(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Provider warnings to surface to the user."""
+
     def __init__(
         self,
         *,
         inputs: google.protobuf.struct_pb2.Struct | None = ...,
         failures: collections.abc.Iterable[global___CheckFailure] | None = ...,
+        warnings: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["inputs", b"inputs"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["failures", b"failures", "inputs", b"inputs"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["failures", b"failures", "inputs", b"inputs", "warnings", b"warnings"]) -> None: ...
 
 global___CheckResponse = CheckResponse
 
@@ -1152,6 +1158,7 @@ class DiffResponse(google.protobuf.message.Message):
     DIFFS_FIELD_NUMBER: builtins.int
     DETAILEDDIFF_FIELD_NUMBER: builtins.int
     HASDETAILEDDIFF_FIELD_NUMBER: builtins.int
+    WARNINGS_FIELD_NUMBER: builtins.int
     deleteBeforeReplace: builtins.bool
     """If true, this resource must be deleted *before* its replacement is created."""
     changes: global___DiffResponse.DiffChanges.ValueType
@@ -1185,6 +1192,10 @@ class DiffResponse(google.protobuf.message.Message):
         will compute a representation based on the simple diff fields (`changes`, `replaces`, and so on).
         """
 
+    @property
+    def warnings(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Provider warnings to surface to the user."""
+
     def __init__(
         self,
         *,
@@ -1195,8 +1206,9 @@ class DiffResponse(google.protobuf.message.Message):
         diffs: collections.abc.Iterable[builtins.str] | None = ...,
         detailedDiff: collections.abc.Mapping[builtins.str, global___PropertyDiff] | None = ...,
         hasDetailedDiff: builtins.bool = ...,
+        warnings: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["changes", b"changes", "deleteBeforeReplace", b"deleteBeforeReplace", "detailedDiff", b"detailedDiff", "diffs", b"diffs", "hasDetailedDiff", b"hasDetailedDiff", "replaces", b"replaces", "stables", b"stables"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["changes", b"changes", "deleteBeforeReplace", b"deleteBeforeReplace", "detailedDiff", b"detailedDiff", "diffs", b"diffs", "hasDetailedDiff", b"hasDetailedDiff", "replaces", b"replaces", "stables", b"stables", "warnings", b"warnings"]) -> None: ...
 
 global___DiffResponse = DiffResponse
 
@@ -1268,6 +1280,7 @@ class CreateResponse(google.protobuf.message.Message):
     ID_FIELD_NUMBER: builtins.int
     PROPERTIES_FIELD_NUMBER: builtins.int
     REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+    WARNINGS_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the created resource."""
     refresh_before_update: builtins.bool
@@ -1278,15 +1291,20 @@ class CreateResponse(google.protobuf.message.Message):
         additional values that were computed or made available during creation.
         """
 
+    @property
+    def warnings(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Provider warnings to surface to the user."""
+
     def __init__(
         self,
         *,
         id: builtins.str = ...,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         refresh_before_update: builtins.bool = ...,
+        warnings: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "properties", b"properties", "refresh_before_update", b"refresh_before_update", "warnings", b"warnings"]) -> None: ...
 
 global___CreateResponse = CreateResponse
 
@@ -1367,6 +1385,7 @@ class ReadResponse(google.protobuf.message.Message):
     PROPERTIES_FIELD_NUMBER: builtins.int
     INPUTS_FIELD_NUMBER: builtins.int
     REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+    WARNINGS_FIELD_NUMBER: builtins.int
     id: builtins.str
     """The ID of the read resource."""
     refresh_before_update: builtins.bool
@@ -1381,6 +1400,10 @@ class ReadResponse(google.protobuf.message.Message):
         [](pulumirpc.ResourceProvider.Check) call with the same values.
         """
 
+    @property
+    def warnings(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Provider warnings to surface to the user."""
+
     def __init__(
         self,
         *,
@@ -1388,9 +1411,10 @@ class ReadResponse(google.protobuf.message.Message):
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         inputs: google.protobuf.struct_pb2.Struct | None = ...,
         refresh_before_update: builtins.bool = ...,
+        warnings: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["inputs", b"inputs", "properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "inputs", b"inputs", "properties", b"properties", "refresh_before_update", b"refresh_before_update", "warnings", b"warnings"]) -> None: ...
 
 global___ReadResponse = ReadResponse
 
@@ -1487,6 +1511,7 @@ class UpdateResponse(google.protobuf.message.Message):
 
     PROPERTIES_FIELD_NUMBER: builtins.int
     REFRESH_BEFORE_UPDATE_FIELD_NUMBER: builtins.int
+    WARNINGS_FIELD_NUMBER: builtins.int
     refresh_before_update: builtins.bool
     """Indicates that this resource should always be refreshed prior to updates."""
     @property
@@ -1495,14 +1520,19 @@ class UpdateResponse(google.protobuf.message.Message):
         additional values that were computed or made available during the update.
         """
 
+    @property
+    def warnings(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Provider warnings to surface to the user."""
+
     def __init__(
         self,
         *,
         properties: google.protobuf.struct_pb2.Struct | None = ...,
         refresh_before_update: builtins.bool = ...,
+        warnings: collections.abc.Iterable[builtins.str] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["properties", b"properties"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["properties", b"properties", "refresh_before_update", b"refresh_before_update"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["properties", b"properties", "refresh_before_update", b"refresh_before_update", "warnings", b"warnings"]) -> None: ...
 
 global___UpdateResponse = UpdateResponse
 

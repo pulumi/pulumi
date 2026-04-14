@@ -674,7 +674,7 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	// Copy over any secret annotations, since we could not pass any to the provider, and return.
 	annotateSecrets(inputs, req.News)
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
-	return CheckConfigResponse{Properties: inputs, Failures: failures}, nil
+	return CheckConfigResponse{Properties: inputs, Failures: failures, Warnings: resp.GetWarnings()}, nil
 }
 
 func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
@@ -822,6 +822,7 @@ func (p *provider) DiffConfig(ctx context.Context, req DiffConfigRequest) (DiffC
 		ChangedKeys:         diffs,
 		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,
+		Warnings:            resp.GetWarnings(),
 	}, nil
 }
 
@@ -1192,7 +1193,7 @@ func (p *provider) Check(ctx context.Context, req CheckRequest) (CheckResponse, 
 	}
 
 	logging.V(7).Infof("%s success: inputs=#%d failures=#%d", label, len(inputs), len(failures))
-	return CheckResponse{Properties: inputs, Failures: failures}, nil
+	return CheckResponse{Properties: inputs, Failures: failures, Warnings: resp.GetWarnings()}, nil
 }
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties.
@@ -1308,6 +1309,7 @@ func (p *provider) Diff(ctx context.Context, req DiffRequest) (DiffResponse, err
 		ChangedKeys:         diffs,
 		DetailedDiff:        decodeDetailedDiff(resp),
 		DeleteBeforeReplace: deleteBeforeReplace,
+		Warnings:            resp.GetWarnings(),
 	}, nil
 }
 
@@ -1430,6 +1432,7 @@ func (p *provider) Create(ctx context.Context, req CreateRequest) (CreateRespons
 		Properties:          outs,
 		Status:              resourceStatus,
 		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
+		Warnings:            resp.GetWarnings(),
 	}, resourceError
 }
 
@@ -1457,10 +1460,13 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 
 	// If the provider is not fully configured, return an empty bag.
 	if !pcfg.known {
-		return ReadResponse{ReadResult{
-			Outputs: resource.PropertyMap{},
-			Inputs:  resource.PropertyMap{},
-		}, resource.StatusUnknown}, nil
+		return ReadResponse{
+			ReadResult: ReadResult{
+				Outputs: resource.PropertyMap{},
+				Inputs:  resource.PropertyMap{},
+			},
+			Status: resource.StatusUnknown,
+		}, nil
 	}
 
 	// Marshal the resource inputs and state so we can perform the RPC.
@@ -1571,12 +1577,16 @@ func (p *provider) Read(ctx context.Context, req ReadRequest) (ReadResponse, err
 	restoreElidedAssetContents(req.Inputs, newState)
 
 	logging.V(7).Infof("%s success; id=%q, #outs=%d, #inputs=%d", label, readID, len(newState), len(newInputs))
-	return ReadResponse{ReadResult{
-		ID:                  readID,
-		Outputs:             newState,
-		Inputs:              newInputs,
-		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
-	}, resourceStatus}, resourceError
+	return ReadResponse{
+		ReadResult: ReadResult{
+			ID:                  readID,
+			Outputs:             newState,
+			Inputs:              newInputs,
+			RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
+		},
+		Status:   resourceStatus,
+		Warnings: resp.GetWarnings(),
+	}, resourceError
 }
 
 // Update updates an existing resource with new values.
@@ -1727,6 +1737,7 @@ func (p *provider) Update(ctx context.Context, req UpdateRequest) (UpdateRespons
 		Properties:          outs,
 		Status:              resourceStatus,
 		RefreshBeforeUpdate: refreshBeforeUpdate && supportsRefreshBeforeUpdate,
+		Warnings:            resp.GetWarnings(),
 	}, resourceError
 }
 

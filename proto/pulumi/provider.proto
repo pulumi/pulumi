@@ -634,6 +634,9 @@ message CheckResponse {
 
     // Any validation failures that occurred.
     repeated CheckFailure failures = 2;
+
+    // Provider warnings to surface to the user.
+    repeated string warnings = 3;
 }
 
 // A `CheckFailure` describes a single validation error that arose as part of a
@@ -772,6 +775,9 @@ message DiffResponse {
     // True if and only if this response contains a `detailedDiff`.
     bool hasDetailedDiff = 7;
 
+    // Provider warnings to surface to the user.
+    repeated string warnings = 8;
+
     // The type of high-level diff results.
     enum DiffChanges {
         // A diff was performed but it is unknown whether there are changes or not. This exists to support legacy
@@ -829,6 +835,9 @@ message CreateResponse {
 
     // Indicates that this resource should always be refreshed prior to updates.
     bool refresh_before_update = 3;
+
+    // Provider warnings to surface to the user.
+    repeated string warnings = 4;
 }
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
@@ -880,6 +889,9 @@ message ReadResponse {
 
     // Indicates that this resource should always be refreshed prior to updates.
     bool refresh_before_update = 4;
+
+    // Provider warnings to surface to the user.
+    repeated string warnings = 5;
 }
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
@@ -936,6 +948,9 @@ message UpdateResponse {
 
     // Indicates that this resource should always be refreshed prior to updates.
     bool refresh_before_update = 2;
+
+    // Provider warnings to surface to the user.
+    repeated string warnings = 3;
 }
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.

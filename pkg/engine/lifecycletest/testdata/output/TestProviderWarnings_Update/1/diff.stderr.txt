@@ -1,0 +1,1 @@
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>update warning from provider<{%reset%}>

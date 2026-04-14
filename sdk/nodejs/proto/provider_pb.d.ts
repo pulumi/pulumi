@@ -679,6 +679,10 @@ export class CheckResponse extends jspb.Message {
     getFailuresList(): Array<CheckFailure>;
     setFailuresList(value: Array<CheckFailure>): CheckResponse;
     addFailures(value?: CheckFailure, index?: number): CheckFailure;
+    clearWarningsList(): void;
+    getWarningsList(): Array<string>;
+    setWarningsList(value: Array<string>): CheckResponse;
+    addWarnings(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CheckResponse.AsObject;
@@ -694,6 +698,7 @@ export namespace CheckResponse {
     export type AsObject = {
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         failuresList: Array<CheckFailure.AsObject>,
+        warningsList: Array<string>,
     }
 }
 
@@ -827,6 +832,10 @@ export class DiffResponse extends jspb.Message {
     clearDetaileddiffMap(): void;
     getHasdetaileddiff(): boolean;
     setHasdetaileddiff(value: boolean): DiffResponse;
+    clearWarningsList(): void;
+    getWarningsList(): Array<string>;
+    setWarningsList(value: Array<string>): DiffResponse;
+    addWarnings(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DiffResponse.AsObject;
@@ -848,6 +857,7 @@ export namespace DiffResponse {
 
         detaileddiffMap: Array<[string, PropertyDiff.AsObject]>,
         hasdetaileddiff: boolean,
+        warningsList: Array<string>,
     }
 
     export enum DiffChanges {
@@ -912,6 +922,10 @@ export class CreateResponse extends jspb.Message {
     setProperties(value?: google_protobuf_struct_pb.Struct): CreateResponse;
     getRefreshBeforeUpdate(): boolean;
     setRefreshBeforeUpdate(value: boolean): CreateResponse;
+    clearWarningsList(): void;
+    getWarningsList(): Array<string>;
+    setWarningsList(value: Array<string>): CreateResponse;
+    addWarnings(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): CreateResponse.AsObject;
@@ -928,6 +942,7 @@ export namespace CreateResponse {
         id: string,
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         refreshBeforeUpdate: boolean,
+        warningsList: Array<string>,
     }
 }
 
@@ -998,6 +1013,10 @@ export class ReadResponse extends jspb.Message {
     setInputs(value?: google_protobuf_struct_pb.Struct): ReadResponse;
     getRefreshBeforeUpdate(): boolean;
     setRefreshBeforeUpdate(value: boolean): ReadResponse;
+    clearWarningsList(): void;
+    getWarningsList(): Array<string>;
+    setWarningsList(value: Array<string>): ReadResponse;
+    addWarnings(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ReadResponse.AsObject;
@@ -1015,6 +1034,7 @@ export namespace ReadResponse {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         inputs?: google_protobuf_struct_pb.Struct.AsObject,
         refreshBeforeUpdate: boolean,
+        warningsList: Array<string>,
     }
 }
 
@@ -1095,6 +1115,10 @@ export class UpdateResponse extends jspb.Message {
     setProperties(value?: google_protobuf_struct_pb.Struct): UpdateResponse;
     getRefreshBeforeUpdate(): boolean;
     setRefreshBeforeUpdate(value: boolean): UpdateResponse;
+    clearWarningsList(): void;
+    getWarningsList(): Array<string>;
+    setWarningsList(value: Array<string>): UpdateResponse;
+    addWarnings(value: string, index?: number): string;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): UpdateResponse.AsObject;
@@ -1110,6 +1134,7 @@ export namespace UpdateResponse {
     export type AsObject = {
         properties?: google_protobuf_struct_pb.Struct.AsObject,
         refreshBeforeUpdate: boolean,
+        warningsList: Array<string>,
     }
 }
 

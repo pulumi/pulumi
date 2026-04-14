@@ -414,6 +414,10 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			outs = resp.Properties
 			refreshBeforeUpdate = resp.RefreshBeforeUpdate
 
+			for _, w := range resp.Warnings {
+				s.Deployment().Diag().Warningf(diag.RawMessage(s.URN(), w))
+			}
+
 			if err == nil && !s.deployment.opts.DryRun && id == "" {
 				return resourceStatus, nil, errors.New("provider did not return an ID from Create")
 			}
@@ -1044,6 +1048,10 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.Outputs = resp.Properties
 		s.new.RefreshBeforeUpdate = resp.RefreshBeforeUpdate
 
+		for _, w := range resp.Warnings {
+			s.deployment.Diag().Warningf(diag.RawMessage(s.new.URN, w))
+		}
+
 		// UpdateStep doesn't create, but does modify state.
 		// Change the Modified timestamp.
 		now := time.Now().UTC()
@@ -1312,6 +1320,10 @@ func (s *ReadStep) Apply() (resource.Status, StepCompleteFunc, error) {
 
 		if result.ID != "" {
 			s.new.ID = result.ID
+		}
+
+		for _, w := range result.Warnings {
+			s.deployment.Diag().Warningf(diag.RawMessage(urn, w))
 		}
 	}
 

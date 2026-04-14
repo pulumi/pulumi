@@ -136,6 +136,7 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 		Changes:             changes,
 		Diffs:               diffs,
 		DetailedDiff:        detailedDiff,
+		Warnings:            diff.Warnings,
 	}, nil
 }
 
@@ -298,7 +299,7 @@ func (p *providerServer) CheckConfig(ctx context.Context,
 		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures, Warnings: resp.Warnings}, nil
 }
 
 func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
@@ -478,7 +479,7 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
 	}
 
-	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures}, nil
+	return &pulumirpc.CheckResponse{Inputs: rpcInputs, Failures: rpcFailures, Warnings: resp.Warnings}, nil
 }
 
 func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
@@ -578,6 +579,7 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 		Id:                  string(resp.ID),
 		Properties:          rpcState,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Warnings:            resp.Warnings,
 	}, nil
 }
 
@@ -643,6 +645,7 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 		Properties:          rpcState,
 		Inputs:              rpcInputs,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Warnings:            resp.Warnings,
 	}, nil
 }
 
@@ -714,6 +717,7 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 	return &pulumirpc.UpdateResponse{
 		Properties:          rpcState,
 		RefreshBeforeUpdate: resp.RefreshBeforeUpdate,
+		Warnings:            resp.Warnings,
 	}, nil
 }
 

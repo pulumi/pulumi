@@ -628,7 +628,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.CreateResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.CreateResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.CreateResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -670,7 +670,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.ReadResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.ReadResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.ReadResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -712,7 +712,7 @@ if (goog.DEBUG && !COMPILED) {
  * @constructor
  */
 proto.pulumirpc.UpdateResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.pulumirpc.UpdateResponse.repeatedFields_, null);
 };
 goog.inherits(proto.pulumirpc.UpdateResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
@@ -5802,7 +5802,7 @@ proto.pulumirpc.CheckRequest.prototype.hasAutonaming = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.CheckResponse.repeatedFields_ = [2];
+proto.pulumirpc.CheckResponse.repeatedFields_ = [2,3];
 
 
 
@@ -5837,7 +5837,8 @@ proto.pulumirpc.CheckResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 failuresList: jspb.Message.toObjectList(msg.getFailuresList(),
-    proto.pulumirpc.CheckFailure.toObject, includeInstance)
+    proto.pulumirpc.CheckFailure.toObject, includeInstance),
+warningsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -5884,6 +5885,10 @@ proto.pulumirpc.CheckResponse.deserializeBinaryFromReader = function(msg, reader
       reader.readMessage(value,proto.pulumirpc.CheckFailure.deserializeBinaryFromReader);
       msg.addFailures(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addWarnings(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5927,6 +5932,13 @@ proto.pulumirpc.CheckResponse.serializeBinaryToWriter = function(message, writer
       2,
       f,
       proto.pulumirpc.CheckFailure.serializeBinaryToWriter
+    );
+  }
+  f = message.getWarningsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      3,
+      f
     );
   }
 };
@@ -6004,6 +6016,43 @@ proto.pulumirpc.CheckResponse.prototype.addFailures = function(opt_value, opt_in
  */
 proto.pulumirpc.CheckResponse.prototype.clearFailuresList = function() {
   return this.setFailuresList([]);
+};
+
+
+/**
+ * repeated string warnings = 3;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.CheckResponse.prototype.getWarningsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 3));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.CheckResponse} returns this
+ */
+proto.pulumirpc.CheckResponse.prototype.setWarningsList = function(value) {
+  return jspb.Message.setField(this, 3, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.CheckResponse} returns this
+ */
+proto.pulumirpc.CheckResponse.prototype.addWarnings = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 3, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.CheckResponse} returns this
+ */
+proto.pulumirpc.CheckResponse.prototype.clearWarningsList = function() {
+  return this.setWarningsList([]);
 };
 
 
@@ -6774,7 +6823,7 @@ proto.pulumirpc.PropertyDiff.prototype.setInputdiff = function(value) {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.DiffResponse.repeatedFields_ = [1,2,5];
+proto.pulumirpc.DiffResponse.repeatedFields_ = [1,2,5,8];
 
 
 
@@ -6813,7 +6862,8 @@ deletebeforereplace: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
 changes: jspb.Message.getFieldWithDefault(msg, 4, 0),
 diffsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f,
 detaileddiffMap: (f = msg.getDetaileddiffMap()) ? f.toObject(includeInstance, proto.pulumirpc.PropertyDiff.toObject) : [],
-hasdetaileddiff: jspb.Message.getBooleanFieldWithDefault(msg, 7, false)
+hasdetaileddiff: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
+warningsList: (f = jspb.Message.getRepeatedField(msg, 8)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -6879,6 +6929,10 @@ proto.pulumirpc.DiffResponse.deserializeBinaryFromReader = function(msg, reader)
     case 7:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setHasdetaileddiff(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addWarnings(value);
       break;
     default:
       reader.skipField();
@@ -6952,6 +7006,13 @@ proto.pulumirpc.DiffResponse.serializeBinaryToWriter = function(message, writer)
   if (f) {
     writer.writeBool(
       7,
+      f
+    );
+  }
+  f = message.getWarningsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      8,
       f
     );
   }
@@ -7152,6 +7213,43 @@ proto.pulumirpc.DiffResponse.prototype.getHasdetaileddiff = function() {
  */
 proto.pulumirpc.DiffResponse.prototype.setHasdetaileddiff = function(value) {
   return jspb.Message.setProto3BooleanField(this, 7, value);
+};
+
+
+/**
+ * repeated string warnings = 8;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.DiffResponse.prototype.getWarningsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 8));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.DiffResponse} returns this
+ */
+proto.pulumirpc.DiffResponse.prototype.setWarningsList = function(value) {
+  return jspb.Message.setField(this, 8, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.DiffResponse} returns this
+ */
+proto.pulumirpc.DiffResponse.prototype.addWarnings = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 8, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.DiffResponse} returns this
+ */
+proto.pulumirpc.DiffResponse.prototype.clearWarningsList = function() {
+  return this.setWarningsList([]);
 };
 
 
@@ -7517,6 +7615,13 @@ proto.pulumirpc.CreateRequest.prototype.setResourceStatusToken = function(value)
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.CreateResponse.repeatedFields_ = [4];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -7550,7 +7655,8 @@ proto.pulumirpc.CreateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 id: jspb.Message.getFieldWithDefault(msg, 1, ""),
 properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+warningsList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -7600,6 +7706,10 @@ proto.pulumirpc.CreateResponse.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRefreshBeforeUpdate(value);
       break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addWarnings(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -7648,6 +7758,13 @@ proto.pulumirpc.CreateResponse.serializeBinaryToWriter = function(message, write
   if (f) {
     writer.writeBool(
       3,
+      f
+    );
+  }
+  f = message.getWarningsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      4,
       f
     );
   }
@@ -7724,6 +7841,43 @@ proto.pulumirpc.CreateResponse.prototype.getRefreshBeforeUpdate = function() {
  */
 proto.pulumirpc.CreateResponse.prototype.setRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
+/**
+ * repeated string warnings = 4;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.CreateResponse.prototype.getWarningsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 4));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.CreateResponse} returns this
+ */
+proto.pulumirpc.CreateResponse.prototype.setWarningsList = function(value) {
+  return jspb.Message.setField(this, 4, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.CreateResponse} returns this
+ */
+proto.pulumirpc.CreateResponse.prototype.addWarnings = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 4, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.CreateResponse} returns this
+ */
+proto.pulumirpc.CreateResponse.prototype.clearWarningsList = function() {
+  return this.setWarningsList([]);
 };
 
 
@@ -8170,6 +8324,13 @@ proto.pulumirpc.ReadRequest.prototype.clearOldViewsList = function() {
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.ReadResponse.repeatedFields_ = [5];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -8204,7 +8365,8 @@ proto.pulumirpc.ReadResponse.toObject = function(includeInstance, msg) {
 id: jspb.Message.getFieldWithDefault(msg, 1, ""),
 properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
 inputs: (f = msg.getInputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
+refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 4, false),
+warningsList: (f = jspb.Message.getRepeatedField(msg, 5)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -8258,6 +8420,10 @@ proto.pulumirpc.ReadResponse.deserializeBinaryFromReader = function(msg, reader)
     case 4:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRefreshBeforeUpdate(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addWarnings(value);
       break;
     default:
       reader.skipField();
@@ -8315,6 +8481,13 @@ proto.pulumirpc.ReadResponse.serializeBinaryToWriter = function(message, writer)
   if (f) {
     writer.writeBool(
       4,
+      f
+    );
+  }
+  f = message.getWarningsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      5,
       f
     );
   }
@@ -8428,6 +8601,43 @@ proto.pulumirpc.ReadResponse.prototype.getRefreshBeforeUpdate = function() {
  */
 proto.pulumirpc.ReadResponse.prototype.setRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 4, value);
+};
+
+
+/**
+ * repeated string warnings = 5;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.ReadResponse.prototype.getWarningsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 5));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.ReadResponse} returns this
+ */
+proto.pulumirpc.ReadResponse.prototype.setWarningsList = function(value) {
+  return jspb.Message.setField(this, 5, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.ReadResponse} returns this
+ */
+proto.pulumirpc.ReadResponse.prototype.addWarnings = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 5, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.ReadResponse} returns this
+ */
+proto.pulumirpc.ReadResponse.prototype.clearWarningsList = function() {
+  return this.setWarningsList([]);
 };
 
 
@@ -9034,6 +9244,13 @@ proto.pulumirpc.UpdateRequest.prototype.clearOldViewsList = function() {
 
 
 
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.pulumirpc.UpdateResponse.repeatedFields_ = [3];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -9066,7 +9283,8 @@ proto.pulumirpc.UpdateResponse.prototype.toObject = function(opt_includeInstance
 proto.pulumirpc.UpdateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
 properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 2, false)
+refreshBeforeUpdate: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
+warningsList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -9112,6 +9330,10 @@ proto.pulumirpc.UpdateResponse.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setRefreshBeforeUpdate(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addWarnings(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -9153,6 +9375,13 @@ proto.pulumirpc.UpdateResponse.serializeBinaryToWriter = function(message, write
   if (f) {
     writer.writeBool(
       2,
+      f
+    );
+  }
+  f = message.getWarningsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      3,
       f
     );
   }
@@ -9211,6 +9440,43 @@ proto.pulumirpc.UpdateResponse.prototype.getRefreshBeforeUpdate = function() {
  */
 proto.pulumirpc.UpdateResponse.prototype.setRefreshBeforeUpdate = function(value) {
   return jspb.Message.setProto3BooleanField(this, 2, value);
+};
+
+
+/**
+ * repeated string warnings = 3;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.UpdateResponse.prototype.getWarningsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 3));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.UpdateResponse} returns this
+ */
+proto.pulumirpc.UpdateResponse.prototype.setWarningsList = function(value) {
+  return jspb.Message.setField(this, 3, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.UpdateResponse} returns this
+ */
+proto.pulumirpc.UpdateResponse.prototype.addWarnings = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 3, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.UpdateResponse} returns this
+ */
+proto.pulumirpc.UpdateResponse.prototype.clearWarningsList = function() {
+  return this.setWarningsList([]);
 };
 
 

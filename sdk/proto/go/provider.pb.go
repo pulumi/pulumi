@@ -1422,7 +1422,9 @@ type CheckResponse struct {
 	// A valid, checked set of inputs. May contain defaults.
 	Inputs *structpb.Struct `protobuf:"bytes,1,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	// Any validation failures that occurred.
-	Failures      []*CheckFailure `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
+	Failures []*CheckFailure `protobuf:"bytes,2,rep,name=failures,proto3" json:"failures,omitempty"`
+	// Provider warnings to surface to the user.
+	Warnings      []string `protobuf:"bytes,3,rep,name=warnings,proto3" json:"warnings,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1467,6 +1469,13 @@ func (x *CheckResponse) GetInputs() *structpb.Struct {
 func (x *CheckResponse) GetFailures() []*CheckFailure {
 	if x != nil {
 		return x.Failures
+	}
+	return nil
+}
+
+func (x *CheckResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
 	}
 	return nil
 }
@@ -1754,8 +1763,10 @@ type DiffResponse struct {
 	DetailedDiff map[string]*PropertyDiff `protobuf:"bytes,6,rep,name=detailedDiff,proto3" json:"detailedDiff,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// True if and only if this response contains a `detailedDiff`.
 	HasDetailedDiff bool `protobuf:"varint,7,opt,name=hasDetailedDiff,proto3" json:"hasDetailedDiff,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Provider warnings to surface to the user.
+	Warnings      []string `protobuf:"bytes,8,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DiffResponse) Reset() {
@@ -1835,6 +1846,13 @@ func (x *DiffResponse) GetHasDetailedDiff() bool {
 		return x.HasDetailedDiff
 	}
 	return false
+}
+
+func (x *DiffResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
 }
 
 // `CreateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Create) call.
@@ -1961,8 +1979,10 @@ type CreateResponse struct {
 	Properties *structpb.Struct `protobuf:"bytes,2,opt,name=properties,proto3" json:"properties,omitempty"`
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `protobuf:"varint,3,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Provider warnings to surface to the user.
+	Warnings      []string `protobuf:"bytes,4,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateResponse) Reset() {
@@ -2014,6 +2034,13 @@ func (x *CreateResponse) GetRefreshBeforeUpdate() bool {
 		return x.RefreshBeforeUpdate
 	}
 	return false
+}
+
+func (x *CreateResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
 }
 
 // `ReadRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Read) call.
@@ -2151,8 +2178,10 @@ type ReadResponse struct {
 	Inputs *structpb.Struct `protobuf:"bytes,3,opt,name=inputs,proto3" json:"inputs,omitempty"`
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `protobuf:"varint,4,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Provider warnings to surface to the user.
+	Warnings      []string `protobuf:"bytes,5,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ReadResponse) Reset() {
@@ -2211,6 +2240,13 @@ func (x *ReadResponse) GetRefreshBeforeUpdate() bool {
 		return x.RefreshBeforeUpdate
 	}
 	return false
+}
+
+func (x *ReadResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
 }
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.
@@ -2379,8 +2415,10 @@ type UpdateResponse struct {
 	Properties *structpb.Struct `protobuf:"bytes,1,opt,name=properties,proto3" json:"properties,omitempty"`
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool `protobuf:"varint,2,opt,name=refresh_before_update,json=refreshBeforeUpdate,proto3" json:"refresh_before_update,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Provider warnings to surface to the user.
+	Warnings      []string `protobuf:"bytes,3,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateResponse) Reset() {
@@ -2425,6 +2463,13 @@ func (x *UpdateResponse) GetRefreshBeforeUpdate() bool {
 		return x.RefreshBeforeUpdate
 	}
 	return false
+}
+
+func (x *UpdateResponse) GetWarnings() []string {
+	if x != nil {
+		return x.Warnings
+	}
+	return nil
 }
 
 // `DeleteRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Delete) call.
@@ -4025,10 +4070,11 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x04Mode\x12\v\n" +
 	"\aPROPOSE\x10\x00\x12\v\n" +
 	"\aENFORCE\x10\x01\x12\v\n" +
-	"\aDISABLE\x10\x02J\x04\b\x04\x10\x05R\x0esequenceNumber\"u\n" +
+	"\aDISABLE\x10\x02J\x04\b\x04\x10\x05R\x0esequenceNumber\"\x91\x01\n" +
 	"\rCheckResponse\x12/\n" +
 	"\x06inputs\x18\x01 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x123\n" +
-	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\"B\n" +
+	"\bfailures\x18\x02 \x03(\v2\x17.pulumirpc.CheckFailureR\bfailures\x12\x1a\n" +
+	"\bwarnings\x18\x03 \x03(\tR\bwarnings\"B\n" +
 	"\fCheckFailure\x12\x1a\n" +
 	"\bproperty\x18\x01 \x01(\tR\bproperty\x12\x16\n" +
 	"\x06reason\x18\x02 \x01(\tR\x06reason\"\x8f\x02\n" +
@@ -4053,7 +4099,7 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x0eDELETE_REPLACE\x10\x03\x12\n" +
 	"\n" +
 	"\x06UPDATE\x10\x04\x12\x12\n" +
-	"\x0eUPDATE_REPLACE\x10\x05\"\xdd\x03\n" +
+	"\x0eUPDATE_REPLACE\x10\x05\"\xf9\x03\n" +
 	"\fDiffResponse\x12\x1a\n" +
 	"\breplaces\x18\x01 \x03(\tR\breplaces\x12\x18\n" +
 	"\astables\x18\x02 \x03(\tR\astables\x120\n" +
@@ -4061,7 +4107,8 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\achanges\x18\x04 \x01(\x0e2#.pulumirpc.DiffResponse.DiffChangesR\achanges\x12\x14\n" +
 	"\x05diffs\x18\x05 \x03(\tR\x05diffs\x12M\n" +
 	"\fdetailedDiff\x18\x06 \x03(\v2).pulumirpc.DiffResponse.DetailedDiffEntryR\fdetailedDiff\x12(\n" +
-	"\x0fhasDetailedDiff\x18\a \x01(\bR\x0fhasDetailedDiff\x1aX\n" +
+	"\x0fhasDetailedDiff\x18\a \x01(\bR\x0fhasDetailedDiff\x12\x1a\n" +
+	"\bwarnings\x18\b \x03(\tR\bwarnings\x1aX\n" +
 	"\x11DetailedDiffEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
 	"\x05value\x18\x02 \x01(\v2\x17.pulumirpc.PropertyDiffR\x05value:\x028\x01\"=\n" +
@@ -4079,13 +4126,14 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x04name\x18\x05 \x01(\tR\x04name\x12\x12\n" +
 	"\x04type\x18\x06 \x01(\tR\x04type\x126\n" +
 	"\x17resource_status_address\x18\a \x01(\tR\x15resourceStatusAddress\x122\n" +
-	"\x15resource_status_token\x18\b \x01(\tR\x13resourceStatusToken\"\x8d\x01\n" +
+	"\x15resource_status_token\x18\b \x01(\tR\x13resourceStatusToken\"\xa9\x01\n" +
 	"\x0eCreateResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"properties\x122\n" +
-	"\x15refresh_before_update\x18\x03 \x01(\bR\x13refreshBeforeUpdate\"\xdb\x02\n" +
+	"\x15refresh_before_update\x18\x03 \x01(\bR\x13refreshBeforeUpdate\x12\x1a\n" +
+	"\bwarnings\x18\x04 \x03(\tR\bwarnings\"\xdb\x02\n" +
 	"\vReadRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03urn\x18\x02 \x01(\tR\x03urn\x127\n" +
@@ -4097,14 +4145,15 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	"\x04type\x18\x06 \x01(\tR\x04type\x126\n" +
 	"\x17resource_status_address\x18\a \x01(\tR\x15resourceStatusAddress\x122\n" +
 	"\x15resource_status_token\x18\b \x01(\tR\x13resourceStatusToken\x12,\n" +
-	"\told_views\x18\t \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xbc\x01\n" +
+	"\told_views\x18\t \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\xd8\x01\n" +
 	"\fReadResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x127\n" +
 	"\n" +
 	"properties\x18\x02 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"properties\x12/\n" +
 	"\x06inputs\x18\x03 \x01(\v2\x17.google.protobuf.StructR\x06inputs\x122\n" +
-	"\x15refresh_before_update\x18\x04 \x01(\bR\x13refreshBeforeUpdate\"\xdf\x03\n" +
+	"\x15refresh_before_update\x18\x04 \x01(\bR\x13refreshBeforeUpdate\x12\x1a\n" +
+	"\bwarnings\x18\x05 \x03(\tR\bwarnings\"\xdf\x03\n" +
 	"\rUpdateRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03urn\x18\x02 \x01(\tR\x03urn\x12+\n" +
@@ -4120,12 +4169,13 @@ const file_pulumi_provider_proto_rawDesc = "" +
 	" \x01(\tR\x04type\x126\n" +
 	"\x17resource_status_address\x18\v \x01(\tR\x15resourceStatusAddress\x122\n" +
 	"\x15resource_status_token\x18\f \x01(\tR\x13resourceStatusToken\x12,\n" +
-	"\told_views\x18\r \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"}\n" +
+	"\told_views\x18\r \x03(\v2\x0f.pulumirpc.ViewR\boldViews\"\x99\x01\n" +
 	"\x0eUpdateResponse\x127\n" +
 	"\n" +
 	"properties\x18\x01 \x01(\v2\x17.google.protobuf.StructR\n" +
 	"properties\x122\n" +
-	"\x15refresh_before_update\x18\x02 \x01(\bR\x13refreshBeforeUpdate\"\xfe\x02\n" +
+	"\x15refresh_before_update\x18\x02 \x01(\bR\x13refreshBeforeUpdate\x12\x1a\n" +
+	"\bwarnings\x18\x03 \x03(\tR\bwarnings\"\xfe\x02\n" +
 	"\rDeleteRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03urn\x18\x02 \x01(\tR\x03urn\x127\n" +

@@ -167,6 +167,7 @@ type CheckConfigRequest struct {
 type CheckConfigResponse struct {
 	Properties resource.PropertyMap
 	Failures   []CheckFailure
+	Warnings   []string
 }
 
 type DiffConfigRequest struct {
@@ -240,6 +241,7 @@ type CheckRequest struct {
 type CheckResponse struct {
 	Properties resource.PropertyMap
 	Failures   []CheckFailure
+	Warnings   []string
 }
 
 type DiffRequest struct {
@@ -274,6 +276,7 @@ type CreateResponse struct {
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
+	Warnings            []string
 }
 
 type ReadRequest struct {
@@ -293,7 +296,8 @@ type ReadRequest struct {
 
 type ReadResponse struct {
 	ReadResult
-	Status resource.Status
+	Status   resource.Status
+	Warnings []string
 }
 
 type UpdateRequest struct {
@@ -318,6 +322,7 @@ type UpdateResponse struct {
 	Status     resource.Status
 	// Indicates that this resource should always be refreshed prior to updates.
 	RefreshBeforeUpdate bool
+	Warnings            []string
 }
 
 type DeleteRequest struct {
@@ -636,6 +641,7 @@ type DiffResult struct {
 	ChangedKeys         []resource.PropertyKey  // an optional list of keys that changed.
 	DetailedDiff        map[string]PropertyDiff // an optional structured diff
 	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
+	Warnings            []string                // provider warnings to surface to the user.
 }
 
 // NewDetailedDiffFromObjectDiff computes the detailed diff of Updated, Added and Deleted keys.
