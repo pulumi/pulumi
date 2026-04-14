@@ -114,23 +114,25 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 	if len(cliCalls) == 0 {
 		return nil
 	}
-	s.runBatch(ctx, cliCalls)
-	return nil
+	return s.runBatch(ctx, cliCalls)
 }
 
-func (s *Session) runBatch(ctx context.Context, calls []ToolCall) {
+func (s *Session) runBatch(ctx context.Context, calls []ToolCall) error {
 	items := make([]ToolResultItem, 0, len(calls))
 	for _, call := range calls {
 		s.logf("→ %s", call.Name)
 
-		// Best-effort notification so the UI shows the tool as "running".
+		// The agent runtime relies on exec_tool_call to transition the call into its
+		// "running" state. If this post fails, the agent will believe the tool never
+		// started, so any tool_result we'd send later would be rejected or mis-attributed.
+		// Abort the batch and let the session loop surface the error.
 		execEvt := ExecToolCallEvent{
 			Type:       userEventExecToolCall,
 			ToolCallID: call.ToolCallID,
 			Name:       call.Name,
 		}
 		if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, execEvt); err != nil {
-			s.logf("warning: posting exec_tool_call: %v", err)
+			return fmt.Errorf("posting exec_tool_call for %q: %w", call.Name, err)
 		}
 
 		items = append(items, s.invokeToolCall(ctx, call))
@@ -143,6 +145,7 @@ func (s *Session) runBatch(ctx context.Context, calls []ToolCall) {
 	if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, result); err != nil {
 		s.logf("error: posting tool_result: %v", err)
 	}
+	return nil
 }
 
 // invokeToolCall dispatches a single ToolCall to the appropriate handler by splitting the

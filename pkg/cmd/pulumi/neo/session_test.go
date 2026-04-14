@@ -43,8 +43,9 @@ func (f *fakeHandler) Invoke(_ context.Context, method string, _ json.RawMessage
 type fakeStreamer struct {
 	stream chan client.NeoStreamEvent
 
-	mu     sync.Mutex
-	posted []any
+	mu      sync.Mutex
+	posted  []any
+	postErr error
 }
 
 func newFakeStreamer() *fakeStreamer {
@@ -61,7 +62,7 @@ func (f *fakeStreamer) PostNeoTaskUserEvent(_ context.Context, _, _ string, body
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.posted = append(f.posted, body)
-	return nil
+	return f.postErr
 }
 
 func mustAgentResponseEnvelope(t *testing.T, inner any) []byte {
@@ -238,6 +239,37 @@ func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing
 	require.Len(t, result.ToolResults, 2)
 	assert.Equal(t, "c1", result.ToolResults[0].ToolCallID)
 	assert.Equal(t, "c2", result.ToolResults[1].ToolCallID)
+}
+
+func TestSession_ExecToolCallPostFailureAbortsBatch(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	streamer.postErr = errors.New("network down")
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "hi"}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, AssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []ToolCall{
+			{ToolCallID: "c1", Name: "filesystem__read", Args: json.RawMessage(`{}`), ExecutionMode: "cli"},
+		},
+	})}
+
+	s := &Session{Client: streamer, Handlers: handlers, OrgName: "org", TaskID: "task"}
+	err := s.Run(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exec_tool_call")
+	assert.Contains(t, err.Error(), "network down")
+
+	// Only the failed exec_tool_call attempt should have been observed — the tool
+	// must not have run and no tool_result must have been posted after the failure.
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Len(t, streamer.posted, 1)
+	_, ok := streamer.posted[0].(ExecToolCallEvent)
+	assert.True(t, ok, "the only posted body should be the exec_tool_call attempt")
 }
 
 func TestSession_IgnoresUserInputAndUnknownBackendEvents(t *testing.T) {
