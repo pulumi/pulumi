@@ -23,7 +23,7 @@
 <{%fg 1%}>  - value: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:index:typA::resB: (create-replacement)
 <{%reset%}>    [id=3]
-<{%reset%}><{%fg 3%}>  ~ value: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>foo<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>bar<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 3%}>  ~ value: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>foo<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>bar<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 13%}>+-2 replaced<{%reset%}>
 

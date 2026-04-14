@@ -1,9 +1,9 @@
 <{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resA: (create-replacement)
 <{%reset%}>    [id=3]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>initial<{%reset%}><{%reset%}>-value-a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>changed<{%reset%}><{%reset%}>-value-a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>initial<{%reset%}><{%reset%}>-value-a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>changed<{%reset%}><{%reset%}>-value-a<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resA: (replace)
 <{%reset%}>    [id=3]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>initial<{%reset%}><{%reset%}>-value-a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>changed<{%reset%}><{%reset%}>-value-a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>initial<{%reset%}><{%reset%}>-value-a<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>changed<{%reset%}><{%reset%}>-value-a<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resB: (create-replacement)
 <{%reset%}>    [id=5]
 <{%reset%}><{%fg 3%}>  ~ bar: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>initial<{%reset%}><{%reset%}>-value-b<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>changed<{%reset%}><{%reset%}>-value-b<{%reset%}><{%fg 3%}>"

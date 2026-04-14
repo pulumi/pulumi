@@ -19,12 +19,12 @@
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::resA: (replace)
 <{%reset%}>    [id=5]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - foo: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::resA: (create-replacement)
 <{%reset%}>    [id=5]
-<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 3%}>  ~ foo: <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 1%}>r<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%reset%}>ba<{%reset%}><{%fg 2%}>z<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typB::resB: (replace)
 <{%reset%}>    [id=4]
 <{%reset%}><{%reset%}>    frob  : <{%reset%}><{%reset%}>"inactive"<{%reset%}><{%reset%}>
@@ -35,7 +35,7 @@
 <{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typB::resB: (create-replacement)
 <{%reset%}>    [id=4]
 <{%reset%}><{%reset%}>    frob  : <{%reset%}><{%reset%}>"inactive"<{%reset%}><{%reset%}>
-<{%reset%}><{%fg 3%}>  ~ parent: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>0<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 3%}>  ~ parent: <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 1%}>0<{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 3%}>"<{%reset%}><{%fg 2%}>3<{%reset%}><{%fg 3%}>"
 <{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
     <{%fg 1%}>- 1 deleted<{%reset%}>
     <{%fg 13%}>+-2 replaced<{%reset%}>

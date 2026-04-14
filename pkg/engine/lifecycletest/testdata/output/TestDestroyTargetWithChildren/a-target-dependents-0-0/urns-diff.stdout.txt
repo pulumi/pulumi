@@ -15,15 +15,15 @@
 <{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Resource::I: (delete)
 <{%fg 1%}>    [id=7]
 <{%reset%}><{%fg 1%}>    A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:index:Resource::N: (delete)
-<{%fg 1%}>    [id=8]
-<{%reset%}><{%fg 1%}>    A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}>        <{%fg 1%}>- urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::K: (delete)
-<{%fg 1%}>            [id=9]
+<{%fg 1%}>            [id=8]
 <{%reset%}><{%fg 1%}>            A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
-<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::H: (delete)
-<{%fg 1%}>    [id=10]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:index:Resource::N: (delete)
+<{%fg 1%}>    [id=9]
+<{%reset%}><{%fg 1%}>    A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::G: (delete)
+<{%fg 1%}>    [id=10]
+<{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component$pkgA:index:Resource::H: (delete)
 <{%fg 1%}>    [id=11]
 <{%reset%}><{%reset%}><{%fg 1%}>- urn:pulumi:test::test::pkgA:index:Component$pkgA:index:Component::D: (delete)
 <{%fg 1%}>    [id=2]

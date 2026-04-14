@@ -21,12 +21,12 @@
 <{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pulumi:providers:pkgA::A: (replace)
 <{%reset%}>    [id=7]
-<{%reset%}><{%fg 2%}>  + A: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}><{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 2%}>  + A: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pulumi:providers:pkgA::A: (create-replacement)
 <{%reset%}>    [id=7]
-<{%reset%}><{%fg 2%}>  + A: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}><{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 2%}>  + A: <{%reset%}><{%fg 2%}>"bar"<{%reset%}><{%fg 2%}>
 <{%reset%}><{%reset%}><{%fg 13%}>+-urn:pulumi:test::test::pkgA:m:typA::B: (replace)
 <{%reset%}>    [id=6]
 <{%reset%}><{%fg 3%}>    [provider: <{%reset%}><{%fg 1%}>urn:pulumi:test::test::pulumi:providers:pkgA::A::0<{%reset%}><{%fg 3%}> => <{%reset%}><{%fg 2%}>urn:pulumi:test::test::pulumi:providers:pkgA::A::9<{%reset%}><{%fg 3%}>]
@@ -40,7 +40,7 @@
 <{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pulumi:providers:pkgA::C: (create-replacement)
 <{%reset%}>    [id=5]
-<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}><{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 10%}>    --outputs:--<{%reset%}>
 <{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"bar"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pulumi:providers:pkgA::D: (update)
@@ -59,7 +59,7 @@
 <{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::F: (create-replacement)
 <{%reset%}>    [id=3]
-<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}><{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::G: (update)
 <{%reset%}>    [id=15]
 <{%reset%}><{%fg 1%}>  - B: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
@@ -77,7 +77,7 @@
 <{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 10%}>++urn:pulumi:test::test::pkgA:m:typA::K: (create-replacement)
 <{%reset%}>    [id=1]
-<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}><{%reset%}><{%fg 13%}> # forces replacement
+<{%reset%}><{%fg 1%}>  - A: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
 <{%reset%}><{%reset%}><{%fg 3%}>~ urn:pulumi:test::test::pkgA:m:typA::L: (update)
 <{%reset%}>    [id=17]
 <{%reset%}><{%fg 1%}>  - B: <{%reset%}><{%fg 1%}>"foo"<{%reset%}><{%fg 1%}>
