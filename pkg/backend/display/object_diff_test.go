@@ -424,3 +424,156 @@ func TestGetResourceOutputsPropertiesString(t *testing.T) {
 		})
 	}
 }
+
+func TestPrintObjectDiff_ForcesReplacementAnnotation(t *testing.T) {
+	t.Parallel()
+
+	makeDiff := func(key string, oldVal, newVal resource.PropertyValue) resource.ObjectDiff {
+		return resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				resource.PropertyKey(key): {Old: oldVal, New: newVal},
+			},
+		}
+	}
+
+	t.Run("annotation appears for primitive update that forces replacement", func(t *testing.T) {
+		t.Parallel()
+		diff := makeDiff("region",
+			resource.NewProperty("us-east-1"),
+			resource.NewProperty("eu-west-1"))
+		replacePaths := []resource.PropertyPath{{"region"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		assert.Contains(t, buf.String(), "# forces replacement")
+	})
+
+	t.Run("annotation does NOT appear for non-replacement update", func(t *testing.T) {
+		t.Parallel()
+		diff := makeDiff("size",
+			resource.NewProperty("t2.micro"),
+			resource.NewProperty("t2.large"))
+		// replacePaths is nil — no replacement
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, nil)
+		assert.NotContains(t, buf.String(), "# forces replacement")
+	})
+
+	t.Run("annotation appears for add that forces replacement", func(t *testing.T) {
+		t.Parallel()
+		diff := resource.ObjectDiff{
+			Adds: resource.PropertyMap{
+				"region": resource.NewProperty("eu-west-1"),
+			},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{},
+		}
+		replacePaths := []resource.PropertyPath{{"region"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		assert.Contains(t, buf.String(), "# forces replacement")
+	})
+
+	t.Run("annotation appears for delete that forces replacement", func(t *testing.T) {
+		t.Parallel()
+		diff := resource.ObjectDiff{
+			Adds: resource.PropertyMap{},
+			Deletes: resource.PropertyMap{
+				"region": resource.NewProperty("us-east-1"),
+			},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{},
+		}
+		replacePaths := []resource.PropertyPath{{"region"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		assert.Contains(t, buf.String(), "# forces replacement")
+	})
+
+	t.Run("multiple replacements all annotated", func(t *testing.T) {
+		t.Parallel()
+		diff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"region": {
+					Old: resource.NewProperty("us-east-1"),
+					New: resource.NewProperty("eu-west-1"),
+				},
+				"zone": {
+					Old: resource.NewProperty("a"),
+					New: resource.NewProperty("b"),
+				},
+			},
+		}
+		replacePaths := []resource.PropertyPath{{"region"}, {"zone"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		output := buf.String()
+		// Both replacements should be annotated (count occurrences)
+		count := strings.Count(output, "# forces replacement")
+		assert.Equal(t, 2, count)
+	})
+
+	t.Run("annotation does NOT appear for non-replacement in mixed diff", func(t *testing.T) {
+		t.Parallel()
+		diff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"region": {
+					Old: resource.NewProperty("us-east-1"),
+					New: resource.NewProperty("eu-west-1"),
+				},
+				"size": {
+					Old: resource.NewProperty("t2.micro"),
+					New: resource.NewProperty("t2.large"),
+				},
+			},
+		}
+		// Only region forces replacement, not size
+		replacePaths := []resource.PropertyPath{{"region"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		output := buf.String()
+		// Exactly one annotation for region
+		count := strings.Count(output, "# forces replacement")
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("nested object replacement annotation at nested path", func(t *testing.T) {
+		t.Parallel()
+		// Nested object: tags.env forces replacement
+		innerDiff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"env": {
+					Old: resource.NewProperty("prod"),
+					New: resource.NewProperty("staging"),
+				},
+			},
+		}
+		diff := resource.ObjectDiff{
+			Adds:    resource.PropertyMap{},
+			Deletes: resource.PropertyMap{},
+			Sames:   resource.PropertyMap{},
+			Updates: map[resource.PropertyKey]resource.ValueDiff{
+				"tags": {
+					Object: &innerDiff,
+				},
+			},
+		}
+		replacePaths := []resource.PropertyPath{{"tags", "env"}}
+		var buf bytes.Buffer
+		PrintObjectDiff(&buf, diff, nil, false, 1, false, false, false, false, nil, replacePaths)
+		output := buf.String()
+		assert.Contains(t, output, "# forces replacement")
+	})
+}

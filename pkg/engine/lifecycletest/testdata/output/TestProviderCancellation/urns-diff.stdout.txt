@@ -1,5 +1,6 @@
 <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res2: (create)
 <{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res3: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res0: (create)
 <{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res1: (create)
 <{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::res0: (create)
 <{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>

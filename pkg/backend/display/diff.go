@@ -213,7 +213,7 @@ func renderDiffPolicyRemediationEvent(payload engine.PolicyRemediationEventPaylo
 	if detailed {
 		var b bytes.Buffer
 		PrintObjectDiff(&b, *resource.ToResourceObjectDiff(diff), nil,
-			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets, nil)
+			false /*planning*/, 2, true /*summary*/, true /*truncateOutput*/, false /*debug*/, opts.ShowSecrets, nil, nil)
 		remediationLine = fmt.Sprintf("%s\n%s", remediationLine, b.String())
 	} else {
 		var b bytes.Buffer
@@ -445,9 +445,9 @@ func renderDiff(
 	if metadata.Op != deploy.OpSame {
 		if metadata.DetailedDiff != nil {
 			var buf bytes.Buffer
-			if diff, hidden := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
+			if diff, hidden, replacePaths := engine.TranslateDetailedDiff(&metadata, refresh); diff != nil {
 				PrintObjectDiff(&buf, *diff, nil /*include*/, planning, indent+1,
-					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets, hidden)
+					opts.SummaryDiff, opts.TruncateOutput, debug, opts.ShowSecrets, hidden, replacePaths)
 			} else {
 				PrintObject(
 					&buf, metadata.Old.Inputs, planning, indent+1, deploy.OpSame, true, /*prefix*/
