@@ -595,7 +595,6 @@ func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
 
 type propertyPrinter struct {
 	dest io.StringWriter
-	buf  *bytes.Buffer
 
 	op             display.StepOp
 	planning       bool
@@ -625,23 +624,6 @@ func (p *propertyPrinter) forcesReplacement(key resource.PropertyKey) bool {
 		}
 	}
 	return false
-}
-
-// writeReplaceAnnotation inserts " # forces replacement" before the trailing newline+reset of the
-// last written output, when a replace path buffer is available.
-func (p *propertyPrinter) writeReplaceAnnotation() {
-	if p.buf == nil {
-		return
-	}
-	// Every write via writeVerbatim/writef/writeIndentedf appends colors.Reset after the content.
-	// The last write will be a "\n" wrapped as: <color>\n<{%reset%}>.
-	// We look for the suffix "\n" + colors.Reset and insert the annotation before the newline.
-	s := p.buf.String()
-	suffix := "\n" + colors.Reset
-	if strings.HasSuffix(s, suffix) {
-		p.buf.Truncate(len(s) - len(suffix))
-		p.buf.WriteString(colors.Reset + colors.SpecReplace + " # forces replacement" + suffix)
-	}
 }
 
 func (p *propertyPrinter) withOp(op display.StepOp) *propertyPrinter {
@@ -860,7 +842,6 @@ func PrintObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, include []resour
 ) {
 	p := propertyPrinter{
 		dest:           b,
-		buf:            b,
 		planning:       planning,
 		indent:         indent,
 		prefix:         true,
@@ -908,28 +889,45 @@ func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
 	}
 }
 
+// appendReplaceAnnotation inserts " # forces replacement" before the trailing
+// newline+reset sequence in the given output string.
+func appendReplaceAnnotation(s string) string {
+	suffix := "\n" + colors.Reset
+	if strings.HasSuffix(s, suffix) {
+		return s[:len(s)-len(suffix)] + colors.Reset + colors.SpecReplace + " # forces replacement" + suffix
+	}
+	return s
+}
+
 func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {
 	titleFunc := propertyTitlePrinter(string(key), maxkey)
 	forces := p.forcesReplacement(key)
+
+	// When the property forces replacement, capture output in a local buffer
+	// so we can append the annotation to the last line.
+	pp := p
+	var capture *bytes.Buffer
+	if forces {
+		capture = &bytes.Buffer{}
+		clone := *p
+		clone.dest = capture
+		pp = &clone
+	}
+
 	if add, isadd := diff.Adds[key]; isadd {
-		p.printAdd(add, titleFunc)
-		if forces {
-			p.writeReplaceAnnotation()
-		}
+		pp.printAdd(add, titleFunc)
 	} else if del, isdelete := diff.Deletes[key]; isdelete {
-		p.printDelete(del, titleFunc)
-		if forces {
-			p.writeReplaceAnnotation()
-		}
+		pp.printDelete(del, titleFunc)
 	} else if update, isupdate := diff.Updates[key]; isupdate {
-		subP := *p
-		subP.currentPath = append(append(resource.PropertyPath{}, p.currentPath...), string(key))
+		subP := *pp
+		subP.currentPath = append(append(resource.PropertyPath{}, pp.currentPath...), string(key))
 		subP.printPropertyValueDiff(titleFunc, update)
-		if forces {
-			p.writeReplaceAnnotation()
-		}
-	} else if same := diff.Sames[key]; !p.summary && shouldPrintPropertyValue(same, p.planning) {
-		p.withOp(deploy.OpSame).withPrefix(false).printObjectProperty(key, same, maxkey)
+	} else if same := diff.Sames[key]; !pp.summary && shouldPrintPropertyValue(same, pp.planning) {
+		pp.withOp(deploy.OpSame).withPrefix(false).printObjectProperty(key, same, maxkey)
+	}
+
+	if capture != nil {
+		writeString(p.dest, appendReplaceAnnotation(capture.String()))
 	}
 }
 
