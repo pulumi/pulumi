@@ -32,6 +32,8 @@ import (
 func InitPprofServer(ctx context.Context) {
 	sigusr := make(chan os.Signal, 1)
 	go func() {
+		defer logging.Flush()
+
 		<-sigusr
 
 		listener, err := net.Listen("tcp", "localhost:0")
@@ -54,6 +56,7 @@ func InitPprofServer(ctx context.Context) {
 		u := fmt.Sprintf("http://localhost:%d/debug/pprof/", listener.Addr().(*net.TCPAddr).Port)
 		// Don't use logging.V here, we always want to create & write a log file here.
 		logging.Infof("pprof server running on %s", u)
+		logging.Flush() // Immediately flush after logging the URL so we don't have to wait for the periodic flush.
 
 		select {
 		case <-ctx.Done():

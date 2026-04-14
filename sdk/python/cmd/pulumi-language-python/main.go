@@ -130,7 +130,7 @@ func main() {
 	}
 
 	args := flag.Args()
-	logging.InitLogging(logging.LogToStderr, logging.Verbose, false)
+	logging.InitLogging(false, 0, false)
 
 	// Use OTel when the CLI provides an OTLP endpoint; fall back to
 	// OpenTracing otherwise.  Only one system should be active to avoid

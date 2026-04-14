@@ -22,10 +22,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const pulumiSDKVersion = "v3"
@@ -97,8 +97,9 @@ func (d DocLanguageHelper) GetTypeName(pkg schema.PackageReference, t schema.Typ
 	goPkg := moduleToPackage(d.goPkgInfo.ModuleToPackage, relativeToModule)
 	modPkg, ok := d.packages[goPkg]
 	if !ok {
-		glog.Fatalf("cannot calculate type string for type %q. could not find a package for module %q",
+		logging.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
 			t.String(), goPkg)
+		return ""
 	}
 	return modPkg.typeString(t)
 }
@@ -179,8 +180,9 @@ func (d DocLanguageHelper) GetMethodResultName(pkg schema.PackageReference, modN
 		t := objectReturnType.Properties[0].Type
 		modPkg, ok := d.packages[modName]
 		if !ok {
-			glog.Fatalf("cannot calculate type string for type %q. could not find a package for module %q",
+			logging.Errorf("cannot calculate type string for type %q. could not find a package for module %q",
 				t.String(), modName)
+			return ""
 		}
 		return modPkg.outputType(t)
 	}

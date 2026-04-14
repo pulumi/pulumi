@@ -54,6 +54,7 @@ var (
 var (
 	slogHandler *slog.Logger
 	logFilePath string
+	logFile     *os.File
 )
 
 func init() {
@@ -63,10 +64,17 @@ func init() {
 	// the behavior glog had via its own init(). Plugin binaries (language
 	// hosts) use the standard flag package and receive these flags from
 	// the CLI when --logflow is enabled.
-	flag.BoolVar(&LogToStderr, "logtostderr", false,
-		"Log to stderr instead of to files")
-	flag.IntVar(&Verbose, "v", 0,
-		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
+	//
+	// Guard with Lookup so we don't panic if a transitive dependency
+	// (e.g. glog) has already registered the same flag name.
+	if flag.CommandLine.Lookup("logtostderr") == nil {
+		flag.BoolVar(&LogToStderr, "logtostderr", false,
+			"Log to stderr instead of to files")
+	}
+	if flag.CommandLine.Lookup("v") == nil {
+		flag.IntVar(&Verbose, "v", 0,
+			"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
+	}
 }
 
 const LevelTrace = slog.LevelDebug - 4
@@ -75,12 +83,11 @@ const LevelTrace = slog.LevelDebug - 4
 // The value is 0 when disabled, or the verbosity level when enabled.
 type VerboseLogger int32
 
-func (v VerboseLogger) Enabled() bool { return v > 0 }
+func (v VerboseLogger) Enabled() bool { return Verbose >= int(v) && v > 0 }
 
 // slogLevel maps the pulumi verbosity level to a slog level:
 //
-//	V(1)–V(6)  → Info
-//	V(7)–V(9)  → Info
+//	V(1)–V(9)  → Info
 //	V(10)      → Debug
 //	V(11)+     → Trace
 func (v VerboseLogger) slogLevel() slog.Level {
@@ -96,24 +103,21 @@ func (v VerboseLogger) slogLevel() slog.Level {
 
 func (v VerboseLogger) Info(args ...any) {
 	if v.Enabled() {
-		msg := FilterString(fmt.Sprint(args...))
-		slogHandler.Log(context.TODO(), v.slogLevel(), msg, "v", int(v))
+		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v))
 	}
 }
 
 // Infoln is equivalent to the global Infoln function, guarded by the value of v.
 func (v VerboseLogger) Infoln(args ...any) {
 	if v.Enabled() {
-		msg := FilterString(fmt.Sprint(args...))
-		slogHandler.Log(context.TODO(), v.slogLevel(), msg, "v", int(v))
+		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v))
 	}
 }
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
 func (v VerboseLogger) Infof(format string, args ...any) {
 	if v.Enabled() {
-		msg := FilterString(fmt.Sprintf(format, args...))
-		slogHandler.Log(context.TODO(), v.slogLevel(), msg, "v", int(v))
+		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprintf(format, args...), "v", int(v))
 	}
 }
 
@@ -122,18 +126,15 @@ func V(level int32) VerboseLogger {
 }
 
 func Errorf(format string, args ...any) {
-	msg := FilterString(fmt.Sprintf(format, args...))
-	slogHandler.Error(msg)
+	slogHandler.Error(fmt.Sprintf(format, args...))
 }
 
 func Infof(format string, args ...any) {
-	msg := FilterString(fmt.Sprintf(format, args...))
-	slogHandler.Info(msg)
+	slogHandler.Info(fmt.Sprintf(format, args...))
 }
 
 func Warningf(format string, args ...any) {
-	msg := FilterString(fmt.Sprintf(format, args...))
-	slogHandler.Warn(msg)
+	slogHandler.Warn(fmt.Sprintf(format, args...))
 }
 
 func InitLogging(logToStderr bool, verbose int, logFlow bool) {
@@ -141,18 +142,44 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	Verbose = verbose
 	LogFlow = logFlow
 
+	// Parse flags so that CLI-provided values (e.g. -v, -logtostderr passed
+	// via --logflow) are available. Then let non-default function arguments
+	// win, matching the original glog-era behavior where InitLogging(false,0,false)
+	// preserved whatever the flags said.
+	if !flag.Parsed() {
+		flag.CommandLine.Parse([]string{}) //nolint:errcheck
+	}
 	if logToStderr {
-		slogHandler = slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		LogToStderr = true
+	} else if f := flag.CommandLine.Lookup("logtostderr"); f != nil {
+		LogToStderr = f.Value.String() == "true"
+	}
+	if verbose > 0 {
+		Verbose = verbose
+	} else if f := flag.CommandLine.Lookup("v"); f != nil {
+		fmt.Sscan(f.Value.String(), &Verbose) //nolint:errcheck
+	}
+
+	if LogToStderr {
+		slogHandler = slog.New(filteringHandler{inner: slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 			Level: LevelTrace,
-		}))
-	} else if verbose > 0 {
+		})})
+	} else if Verbose > 0 {
 		f, err := os.CreateTemp("", "pulumi-*.log")
 		if err == nil {
 			logFilePath = f.Name()
-			slogHandler = slog.New(slog.NewJSONHandler(f, &slog.HandlerOptions{
+			logFile = f
+			slogHandler = slog.New(filteringHandler{inner: slog.NewJSONHandler(f, &slog.HandlerOptions{
 				Level: LevelTrace,
-			}))
+			})})
 		}
+	}
+}
+
+// Flush flushes any pending log I/O.
+func Flush() {
+	if logFile != nil {
+		logFile.Sync() //nolint:errcheck
 	}
 }
 
@@ -231,3 +258,42 @@ func (discardHandler) Enabled(context.Context, slog.Level) bool  { return false 
 func (discardHandler) Handle(context.Context, slog.Record) error { return nil }
 func (d discardHandler) WithAttrs([]slog.Attr) slog.Handler      { return d }
 func (d discardHandler) WithGroup(string) slog.Handler           { return d }
+
+// filteringHandler wraps any slog.Handler and applies FilterString
+// to the record's message and string-typed attributes before forwarding.
+type filteringHandler struct {
+	inner slog.Handler
+}
+
+func (f filteringHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return f.inner.Enabled(ctx, level)
+}
+
+func (f filteringHandler) Handle(ctx context.Context, r slog.Record) error {
+	r.Message = FilterString(r.Message)
+	newRec := slog.NewRecord(r.Time, r.Level, r.Message, r.PC)
+	r.Attrs(func(a slog.Attr) bool {
+		newRec.AddAttrs(filterAttr(a))
+		return true
+	})
+	return f.inner.Handle(ctx, newRec)
+}
+
+func (f filteringHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	filtered := make([]slog.Attr, len(attrs))
+	for i, a := range attrs {
+		filtered[i] = filterAttr(a)
+	}
+	return filteringHandler{inner: f.inner.WithAttrs(filtered)}
+}
+
+func (f filteringHandler) WithGroup(name string) slog.Handler {
+	return filteringHandler{inner: f.inner.WithGroup(name)}
+}
+
+func filterAttr(a slog.Attr) slog.Attr {
+	if a.Value.Kind() == slog.KindString {
+		a.Value = slog.StringValue(FilterString(a.Value.String()))
+	}
+	return a
+}
