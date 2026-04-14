@@ -889,24 +889,12 @@ func (p *propertyPrinter) printHiddenPaths(paths []resource.PropertyPath) {
 	}
 }
 
-// isUnknown returns true if the value will display as [unknown] — either a Computed value
-// or an Output value whose element is not yet known.
-func isUnknown(v resource.PropertyValue) bool {
-	if v.IsComputed() {
-		return true
-	}
-	if v.IsOutput() {
-		return !v.OutputValue().Known
-	}
-	return false
-}
-
 func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxkey int, diff resource.ObjectDiff) {
 	titleFunc := propertyTitlePrinter(string(key), maxkey)
 	forces := p.forcesReplacement(key)
 	if add, isadd := diff.Adds[key]; isadd {
 		p.printAdd(add, titleFunc)
-		if forces && !isUnknown(add) {
+		if forces {
 			p.writeReplaceAnnotation()
 		}
 	} else if del, isdelete := diff.Deletes[key]; isdelete {
@@ -918,7 +906,7 @@ func (p *propertyPrinter) printObjectPropertyDiff(key resource.PropertyKey, maxk
 		subP := *p
 		subP.currentPath = append(append(resource.PropertyPath{}, p.currentPath...), string(key))
 		subP.printPropertyValueDiff(titleFunc, update)
-		if forces && !isUnknown(update.New) {
+		if forces {
 			p.writeReplaceAnnotation()
 		}
 	} else if same := diff.Sames[key]; !p.summary && shouldPrintPropertyValue(same, p.planning) {
