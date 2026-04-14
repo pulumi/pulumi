@@ -50,6 +50,10 @@ func NewFilesystem(root string) (*Filesystem, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolving filesystem root: %w", err)
 	}
+	abs, err = filepath.EvalSymlinks(abs)
+	if err != nil {
+		return nil, fmt.Errorf("resolving filesystem root: %w", err)
+	}
 	info, err := os.Stat(abs)
 	if err != nil {
 		return nil, fmt.Errorf("filesystem root %q: %w", abs, err)
@@ -113,11 +117,53 @@ func (f *Filesystem) resolve(p string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolving %q: %w", p, err)
 	}
-	rel, err := filepath.Rel(f.Root, abs)
+
+	// Resolve symlinks to prevent symlink-based directory traversal. If the full
+	// path doesn't exist yet (e.g. a write to a new file in a new directory),
+	// walk up to the nearest existing ancestor, resolve that, and re-join the
+	// remaining path components.
+	resolved, err := filepath.EvalSymlinks(abs)
+	if err != nil && os.IsNotExist(err) {
+		resolved, err = evalClosestAncestor(abs)
+		if err != nil {
+			return "", fmt.Errorf("resolving %q: %w", p, err)
+		}
+	} else if err != nil {
+		return "", fmt.Errorf("resolving %q: %w", p, err)
+	}
+
+	rel, err := filepath.Rel(f.Root, resolved)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("path %q is outside the working directory %q", p, f.Root)
 	}
-	return abs, nil
+	return resolved, nil
+}
+
+// evalClosestAncestor walks up from abs until it finds an existing directory, resolves
+// symlinks on that ancestor, and re-joins the remaining path tail. This handles write
+// targets where intermediate directories don't exist yet.
+func evalClosestAncestor(abs string) (string, error) {
+	cur := abs
+	var tail []string
+	for {
+		parent := filepath.Dir(cur)
+		tail = append(tail, filepath.Base(cur))
+		resolved, err := filepath.EvalSymlinks(parent)
+		if err == nil {
+			// Reverse tail and rejoin.
+			for i, j := 0, len(tail)-1; i < j; i, j = i+1, j-1 {
+				tail[i], tail[j] = tail[j], tail[i]
+			}
+			return filepath.Join(append([]string{resolved}, tail...)...), nil
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+		if parent == cur {
+			return "", fmt.Errorf("no existing ancestor for %q", abs)
+		}
+		cur = parent
+	}
 }
 
 func (f *Filesystem) read(p string, offset, limit int) (any, error) {
@@ -133,13 +179,17 @@ func (f *Filesystem) read(p string, offset, limit int) (any, error) {
 	if offset > 0 || limit > 0 {
 		// Apply line-based slicing matching the upstream tool's offset/limit semantics.
 		lines := strings.Split(content, "\n")
-		if offset > 0 && offset < len(lines) {
-			lines = lines[offset:]
+		if offset >= len(lines) {
+			content = ""
+		} else {
+			if offset > 0 {
+				lines = lines[offset:]
+			}
+			if limit > 0 && limit < len(lines) {
+				lines = lines[:limit]
+			}
+			content = strings.Join(lines, "\n")
 		}
-		if limit > 0 && limit < len(lines) {
-			lines = lines[:limit]
-		}
-		content = strings.Join(lines, "\n")
 	}
 	return map[string]any{"content": content}, nil
 }

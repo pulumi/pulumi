@@ -36,9 +36,19 @@ type Shell struct {
 	DefaultTimeout time.Duration
 }
 
-// NewShell creates a Shell handler with sensible defaults.
-func NewShell(cwd string) *Shell {
-	return &Shell{Cwd: cwd, DefaultTimeout: 2 * time.Minute}
+// NewShell creates a Shell handler with sensible defaults. The working directory is
+// resolved to its canonical path (following symlinks) so that the containment check
+// in resolveDir cannot be bypassed via symlinks.
+func NewShell(cwd string) (*Shell, error) {
+	abs, err := filepath.Abs(cwd)
+	if err != nil {
+		return nil, fmt.Errorf("resolving shell cwd: %w", err)
+	}
+	abs, err = filepath.EvalSymlinks(abs)
+	if err != nil {
+		return nil, fmt.Errorf("resolving shell cwd: %w", err)
+	}
+	return &Shell{Cwd: abs, DefaultTimeout: 2 * time.Minute}, nil
 }
 
 // Invoke dispatches a single shell method call.
@@ -64,6 +74,7 @@ func (s *Shell) Invoke(ctx context.Context, method string, args json.RawMessage)
 }
 
 // resolveDir validates that dir is under s.Cwd. An empty dir defaults to s.Cwd.
+// Symlinks are resolved to prevent symlink-based directory traversal.
 func (s *Shell) resolveDir(dir string) (string, error) {
 	if dir == "" {
 		return s.Cwd, nil
@@ -72,11 +83,39 @@ func (s *Shell) resolveDir(dir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolving cwd %q: %w", dir, err)
 	}
+	abs, err = filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", fmt.Errorf("resolving cwd %q: %w", dir, err)
+	}
 	rel, err := filepath.Rel(s.Cwd, abs)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("cwd %q is outside the working directory %q", dir, s.Cwd)
 	}
 	return abs, nil
+}
+
+// maxOutputBytes is the maximum number of bytes captured from stdout or stderr.
+// Output beyond this limit is silently discarded and "truncated" is set in the result.
+const maxOutputBytes = 1 << 20 // 1 MiB
+
+// cappedBuffer is a bytes.Buffer that stops accepting writes after a limit.
+type cappedBuffer struct {
+	buf       bytes.Buffer
+	limit     int
+	truncated bool
+}
+
+func (c *cappedBuffer) Write(p []byte) (int, error) {
+	remaining := c.limit - c.buf.Len()
+	if remaining <= 0 {
+		c.truncated = true
+		return len(p), nil
+	}
+	if len(p) > remaining {
+		c.truncated = true
+		p = p[:remaining]
+	}
+	return c.buf.Write(p)
 }
 
 func (s *Shell) run(ctx context.Context, command string, dir string) (any, error) {
@@ -91,15 +130,16 @@ func (s *Shell) run(ctx context.Context, command string, dir string) (any, error
 	}
 	cmd.Dir = dir
 
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	stdout := &cappedBuffer{limit: maxOutputBytes}
+	stderr := &cappedBuffer{limit: maxOutputBytes}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
 	err := cmd.Run()
 
 	result := map[string]any{
-		"stdout":    stdout.String(),
-		"stderr":    stderr.String(),
+		"stdout":    stdout.buf.String(),
+		"stderr":    stderr.buf.String(),
 		"exit_code": 0,
 	}
 	if err != nil {
@@ -112,6 +152,9 @@ func (s *Shell) run(ctx context.Context, command string, dir string) (any, error
 	}
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
 		result["timed_out"] = true
+	}
+	if stdout.truncated || stderr.truncated {
+		result["truncated"] = true
 	}
 	return result, nil
 }

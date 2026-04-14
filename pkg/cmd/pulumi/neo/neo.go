@@ -121,11 +121,15 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	if err != nil {
 		return err
 	}
+	sh, err := tools.NewShell(cwdFlag)
+	if err != nil {
+		return err
+	}
 	session := &Session{
 		Client: pc,
 		Handlers: map[string]ToolHandler{
 			"filesystem": fs,
-			"shell":      tools.NewShell(cwdFlag),
+			"shell":      sh,
 		},
 		OrgName: orgName,
 		TaskID:  resp.TaskID,

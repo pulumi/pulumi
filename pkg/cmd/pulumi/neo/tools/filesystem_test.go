@@ -89,6 +89,39 @@ func TestFilesystem_RejectsRelativeEscape(t *testing.T) {
 	assert.Contains(t, err.Error(), "outside the working directory")
 }
 
+func TestFilesystem_RejectsSymlinkEscape(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	// Create a symlink inside root that points outside it.
+	link := filepath.Join(root, "escape")
+	require.NoError(t, os.Symlink("/etc", link))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	_, err = fs.Invoke(t.Context(), "read",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, filepath.Join(root, "escape", "passwd"))))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the working directory")
+}
+
+func TestFilesystem_ReadOffsetBeyondFileReturnsEmpty(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	target := filepath.Join(root, "small.txt")
+	require.NoError(t, os.WriteFile(target, []byte("line1\nline2\n"), 0o644))
+
+	fs, err := NewFilesystem(root)
+	require.NoError(t, err)
+
+	res, err := fs.Invoke(t.Context(), "read",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"offset":999}`, target)))
+	require.NoError(t, err)
+	assert.Equal(t, "", res.(map[string]any)["content"])
+}
+
 func TestFilesystem_UnimplementedMethodsReturnClearError(t *testing.T) {
 	t.Parallel()
 

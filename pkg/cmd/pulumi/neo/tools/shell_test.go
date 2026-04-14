@@ -33,7 +33,8 @@ func TestShell_ExecuteCapturesStdout(t *testing.T) {
 	}
 	t.Parallel()
 
-	sh := NewShell(t.TempDir())
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
 	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"echo hi"}`))
 	require.NoError(t, err)
 	m := res.(map[string]any)
@@ -47,7 +48,8 @@ func TestShell_ExecuteHonorsTimeout(t *testing.T) {
 	}
 	t.Parallel()
 
-	sh := NewShell(t.TempDir())
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
 	sh.DefaultTimeout = 50 * time.Millisecond
 	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"sleep 5"}`))
 	require.NoError(t, err)
@@ -60,7 +62,8 @@ func TestShell_ExecuteCapturesNonZeroExit(t *testing.T) {
 	}
 	t.Parallel()
 
-	sh := NewShell(t.TempDir())
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
 	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"exit 3"}`))
 	require.NoError(t, err)
 	assert.Equal(t, 3, res.(map[string]any)["exit_code"])
@@ -76,18 +79,24 @@ func TestShell_ExecuteHonorsCwdSubdirectory(t *testing.T) {
 	sub := filepath.Join(root, "child")
 	require.NoError(t, os.Mkdir(sub, 0o755))
 
-	sh := NewShell(root)
+	sh, err := NewShell(root)
+	require.NoError(t, err)
+	// Resolve sub through EvalSymlinks so the comparison matches on macOS where
+	// /var -> /private/var.
+	resolvedSub, err := filepath.EvalSymlinks(sub)
+	require.NoError(t, err)
 	res, err := sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"pwd","cwd":"`+sub+`"}`))
 	require.NoError(t, err)
-	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), sub))
+	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), resolvedSub))
 }
 
 func TestShell_ExecuteRejectsCwdOutsideRoot(t *testing.T) {
 	t.Parallel()
 
-	sh := NewShell(t.TempDir())
-	_, err := sh.Invoke(t.Context(), "shell_execute",
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(`{"command":"echo hi","cwd":"/tmp"}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "outside the working directory")
@@ -96,17 +105,51 @@ func TestShell_ExecuteRejectsCwdOutsideRoot(t *testing.T) {
 func TestShell_ExecuteRejectsEmptyCommand(t *testing.T) {
 	t.Parallel()
 
-	sh := NewShell(t.TempDir())
-	_, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":""}`))
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":""}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "non-empty command")
+}
+
+func TestShell_RejectsCwdSymlinkEscape(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	link := filepath.Join(root, "escape")
+	require.NoError(t, os.Symlink("/tmp", link))
+
+	sh, err := NewShell(root)
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"echo hi","cwd":"`+link+`"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the working directory")
+}
+
+func TestShell_TruncatesLargeOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	// Generate more than maxOutputBytes of stdout.
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"dd if=/dev/zero bs=1048576 count=2 2>/dev/null | tr '\\0' 'A'"}`))
+	require.NoError(t, err)
+	m := res.(map[string]any)
+	assert.True(t, m["truncated"].(bool))
+	assert.LessOrEqual(t, len(m["stdout"].(string)), maxOutputBytes)
 }
 
 func TestShell_RejectsUnknownMethod(t *testing.T) {
 	t.Parallel()
 
-	sh := NewShell(t.TempDir())
-	_, err := sh.Invoke(t.Context(), "run", json.RawMessage(`{"command":"echo"}`))
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "run", json.RawMessage(`{"command":"echo"}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown shell method")
 }
