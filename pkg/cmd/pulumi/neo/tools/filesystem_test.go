@@ -73,7 +73,12 @@ func TestFilesystem_RejectsAbsolutePathOutsideRoot(t *testing.T) {
 	fs, err := NewFilesystem(t.TempDir())
 	require.NoError(t, err)
 
-	_, err = fs.Invoke(t.Context(), "read", json.RawMessage(`{"file_path":"/etc/passwd"}`))
+	outside := t.TempDir()
+	target := filepath.Join(outside, "passwd")
+	require.NoError(t, os.WriteFile(target, nil, 0o600))
+
+	_, err = fs.Invoke(t.Context(), "read",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "outside the working directory")
 }
@@ -93,9 +98,12 @@ func TestFilesystem_RejectsSymlinkEscape(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
+	outside := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "passwd"), nil, 0o600))
+
 	// Create a symlink inside root that points outside it.
 	link := filepath.Join(root, "escape")
-	require.NoError(t, os.Symlink("/etc", link))
+	require.NoError(t, os.Symlink(outside, link))
 
 	fs, err := NewFilesystem(root)
 	require.NoError(t, err)

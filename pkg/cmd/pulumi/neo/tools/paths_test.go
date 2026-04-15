@@ -56,8 +56,12 @@ func TestResolveUnderRoot_RejectsSymlinkEscape(t *testing.T) {
 
 	root, err := canonicalRoot(t.TempDir())
 	require.NoError(t, err)
+	outside, err := canonicalRoot(t.TempDir())
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "passwd"), nil, 0o600))
+
 	link := filepath.Join(root, "escape")
-	require.NoError(t, os.Symlink("/etc", link))
+	require.NoError(t, os.Symlink(outside, link))
 
 	_, err = resolveUnderRoot(root, filepath.Join(link, "passwd"), false)
 	require.Error(t, err)
