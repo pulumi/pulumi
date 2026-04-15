@@ -139,8 +139,8 @@ func init() {
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources/parse", "getSearchResourcesParse")
 
 	// APIs for interacting with the Package Registry
-	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")
-	addEndpoint("POST", "/api/preview/registry/packages/{source}/{publisher}/{name}/versions/{version}/complete", "completePackagePublish")
+	addEndpoint("POST", "/api/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")
+	addEndpoint("POST", "/api/registry/packages/{source}/{publisher}/{name}/versions/{version}/complete", "completePackagePublish")
 	addEndpoint("DELETE", "/api/registry/packages/{source}/{publisher}/{name}/versions/{version}", "deletePackageVersion")
 
 	// APIs for interacting with the Template Registry
