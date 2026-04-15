@@ -42,6 +42,8 @@ export type ComponentResourceConstructor = {
 /**
  * Returns true if the given value is a constructor whose prototype chain
  * includes ComponentResource.
+ *
+ * @internal exported for testing
  */
 export function isComponentResourceConstructor(value: any): value is ComponentResourceConstructor {
     if (typeof value !== "function" || !value.prototype) {
