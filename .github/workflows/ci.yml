@@ -161,7 +161,7 @@ jobs:
             --version-set current \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
             --partition-package github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language \
-                pkg/testing/pulumi-test-language 1 \
+                pkg/testing/pulumi-test-language 2 \
             --partition-module sdk 1 \
             --partition-module sdk/go/pulumi-language-go 1 \
             --partition-module tests 8
