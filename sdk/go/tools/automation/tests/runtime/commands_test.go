@@ -22,9 +22,10 @@
 // surrounding tree stays green without needing the output/ tree to exist
 // yet. The outer generator tests regenerate output/ and spawn this package
 // with the tag enabled.
-//nolint:paralleltest // These tests share the generated output directory
 // and the API singleton; running them in parallel provides no benefit and
 // just muddles the output.
+//
+//nolint:paralleltest // These tests share the generated output directory
 package runtime_test
 
 import (

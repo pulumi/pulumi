@@ -126,8 +126,8 @@ func TestRuntimeCommands(t *testing.T) {
 		t.Fatalf("resolving generator directory: %v", err)
 	}
 
-	cmd := exec.Command("go", "test", "-tags=automation_runtime", "-v", "./tests/runtime/...")
-	cmd.Dir = dir
+	cmd := exec.Command("go", "test", "-tags=automation_runtime", "-v", "./...")
+	cmd.Dir = filepath.Join(dir, "tests", "runtime")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("runtime tests failed: %v\n%s", err, out)
