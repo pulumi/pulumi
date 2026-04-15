@@ -48,7 +48,7 @@ download_release() {
 
 LANGUAGES=(
   # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
-  "dotnet v3.102.1"
+  "dotnet v3.103.0"
   # renovate: datasource=github-releases depName=pulumi/pulumi-java
   "java v1.23.0"
   # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
