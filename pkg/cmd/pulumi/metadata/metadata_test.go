@@ -16,6 +16,7 @@ package metadata
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -55,7 +56,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
 		assert.Equal(t, test.Message, "message for commit alpha")
 		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
@@ -79,7 +80,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
 		assert.Equal(t, "message for commit beta", test.Message)
 		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
@@ -98,7 +99,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
 		assert.Equal(t, "message for commit beta", test.Message)
 		featureBranch2SHA := test.Environment[backend.GitHead]
@@ -113,7 +114,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
 		assert.Equal(t, "message for commit alpha", test.Message) // The prior commit
 		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
@@ -129,7 +130,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 		// Ref is still branch2, since `git tag` didn't change anything.
 		assertEnvValue(t, test, backend.GitHeadName, "refs/heads/feature/branch2")
 	}
@@ -142,7 +143,7 @@ func TestReadingGitRepo(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 		assert.NotContains(t, test.Environment, backend.GitHeadName,
 			"Expected no 'git.headName' key, since in detached head state.")
 	}
@@ -160,10 +161,115 @@ func TestReadingGitRepo(t *testing.T) {
 			Environment: make(map[string]string),
 		}
 
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 		name, ok := test.Environment[backend.GitHeadName]
 		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
 		assert.Equal(t, "branch-from-ci", name)
+	}
+}
+
+// TestReadingHgRepo tests that metadata for a local Mercurial repository is
+// populated into the same git.* / vcs.* keys as a Git repository.
+func TestReadingHgRepo(t *testing.T) {
+	if _, err := exec.LookPath("hg"); err != nil {
+		t.Skip("hg binary not found on PATH; skipping")
+	}
+
+	// Disable CI/CD detection so running this in CI doesn't perturb the expected values.
+	t.Setenv("PULUMI_DISABLE_CI_DETECTION", "1")
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Isolate hg from the user's ~/.hgrc. Keep the config file outside the repo
+	// so it doesn't show up in `hg status` as an untracked file.
+	hgrc := filepath.Join(t.TempDir(), "hgrc")
+	require.NoError(t, os.WriteFile(hgrc, []byte(
+		"[ui]\nusername = test <test@test.org>\n",
+	), 0o600))
+	t.Setenv("HGRCPATH", hgrc)
+
+	e.RunCommand("hg", "init")
+	// Configure default remote path.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(e.RootPath, ".hg", "hgrc"),
+		[]byte("[paths]\ndefault = https://bitbucket.org/owner-name/repo-name\n"),
+		0o600,
+	))
+	// Ignore any scaffolding files ptesting drops in RootPath (e.g. .yarnrc)
+	// so they don't pollute `hg status` and cause false "dirty" readings.
+	require.NoError(t, os.WriteFile(
+		filepath.Join(e.RootPath, ".hgignore"),
+		[]byte("syntax: glob\n.yarnrc\n.hgignore\n"),
+		0o600,
+	))
+
+	// First commit on the default branch.
+	e.WriteTestFile("alpha.txt", "")
+	e.RunCommand("hg", "add", "alpha.txt")
+	e.RunCommand("hg", "commit", "-m", "message for commit alpha\n\nDescription for commit alpha")
+
+	// State of the world from a clean hg repo on the default branch.
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
+
+		assert.Equal(t, "message for commit alpha", test.Message)
+		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find hg node hash in update environment map")
+		require.Len(t, test.Environment[backend.GitHead], 40, "Expected full 40-char hg node hash")
+
+		// Mercurial always reports a branch; on a fresh repo that's "default".
+		assertEnvValue(t, test, backend.GitHeadName, "default")
+		assertEnvValue(t, test, backend.GitDirty, "false")
+
+		assertEnvValue(t, test, backend.GitAuthor, "test")
+		assertEnvValue(t, test, backend.GitAuthorEmail, "test@test.org")
+
+		// Mercurial has no committer/author split; committer keys are not set.
+		assert.NotContains(t, test.Environment, backend.GitCommitter)
+		assert.NotContains(t, test.Environment, backend.GitCommitterEmail)
+
+		assertEnvValue(t, test, backend.VCSRepoOwner, "owner-name")
+		assertEnvValue(t, test, backend.VCSRepoName, "repo-name")
+		assertEnvValue(t, test, backend.VCSRepoKind, "bitbucket.org")
+		assertEnvValue(t, test, backend.VCSRepoRoot, ".")
+	}
+
+	// Switch to a named branch; hg.headName is now reported.
+	e.RunCommand("hg", "branch", "feature/branch1")
+	e.WriteTestFile("beta.txt", "")
+	e.RunCommand("hg", "add", "beta.txt")
+	e.RunCommand("hg", "commit", "-m", "message for commit beta")
+	// Untracked file forces dirty.
+	e.WriteTestFile("beta-unsubmitted.txt", "")
+
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
+
+		assert.Equal(t, "message for commit beta", test.Message)
+		assertEnvValue(t, test, backend.GitHeadName, "feature/branch1")
+		assertEnvValue(t, test, backend.GitDirty, "true")
+	}
+
+	// CI-driven branch name should be adopted when on the default branch.
+	e.RunCommand("hg", "update", "default")
+
+	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION")
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("TRAVIS", "1")
+	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
+
+	{
+		test := &backend.UpdateMetadata{
+			Environment: make(map[string]string),
+		}
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
+		assertEnvValue(t, test, backend.GitHeadName, "branch-from-ci")
 	}
 }
 
@@ -193,7 +299,7 @@ func TestReadingGitLabMetadata(t *testing.T) {
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
-		require.NoError(t, addGitMetadata(e.RootPath, test))
+		require.NoError(t, addVCSMetadata(e.RootPath, test))
 
 		assert.Contains(t, test.Environment, backend.GitHead, "Expected to find Git SHA in update environment map")
 
@@ -416,7 +522,7 @@ func TestGitMetadataIsReadFromEnvironmentWhenNoRepo(t *testing.T) {
 	}
 
 	// Act.
-	err := addGitMetadata(e.RootPath, test)
+	err := addVCSMetadata(e.RootPath, test)
 
 	// Assert.
 	require.NoError(t, err)
@@ -475,7 +581,7 @@ func TestGitMetadataIsNotReadFromEnvironmentWhenRepo(t *testing.T) {
 	}
 
 	// Act.
-	err := addGitMetadata(subDir, test)
+	err := addVCSMetadata(subDir, test)
 
 	// Assert.
 	require.NoError(t, err)
