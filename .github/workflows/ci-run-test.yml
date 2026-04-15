@@ -87,6 +87,7 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   DOTNET_ROLL_FORWARD: "Major"
   SEGMENT_DOWNLOAD_TIMEOUT_MIN: 10
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.OTEL_EXPORTER_OTLP_ENDPOINT }}
 
 jobs:
   test:
@@ -251,8 +252,6 @@ jobs:
           npm install -g yarn pnpm
       - name: Install bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
-        with:
-          bun-version: 1.2.23
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet build
@@ -360,6 +359,7 @@ jobs:
           make build_package
           cd bin
           yarn link
+          bun link
       - name: Ensure dependencies for the Python SDK
         run: |
           cd sdk/python

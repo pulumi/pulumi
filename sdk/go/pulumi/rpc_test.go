@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -178,7 +178,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	t.Parallel()
 
 	// Create interesting inputs.
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	customURN := resource.NewURN("stack", "project", "", "test:index:custom", "test")
@@ -280,50 +280,50 @@ func TestMarshalRoundtrip(t *testing.T) {
 	assert.Equal(t, "foo", res["h"])
 	assert.Equal(t, nil, res["i"])
 	custom := res["jCustomResource"].(*simpleCustomResource)
-	urn, _, _, _ := custom.URN().awaitURN(context.Background())
+	urn, _, _, _ := custom.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(customURN), urn)
-	id, _, _, _ := custom.ID().awaitID(context.Background())
+	id, _, _, _ := custom.ID().awaitID(t.Context())
 	assert.Equal(t, ID("id"), id)
 	component := res["jComponentResource"].(*simpleComponentResource)
-	urn, _, _, _ = component.URN().awaitURN(context.Background())
+	urn, _, _, _ = component.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(componentURN), urn)
 	provider := res["jProviderResource"].(*simpleProviderResource)
-	urn, _, _, _ = provider.URN().awaitURN(context.Background())
+	urn, _, _, _ = provider.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(providerURN), urn)
-	id, _, _, _ = provider.ID().awaitID(context.Background())
+	id, _, _, _ = provider.ID().awaitID(t.Context())
 	assert.Equal(t, ID("id"), id)
 	previewCustom := res["jPreviewCustomResource"].(*simpleCustomResource)
-	urn, _, _, _ = previewCustom.URN().awaitURN(context.Background())
+	urn, _, _, _ = previewCustom.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(previewCustomURN), urn)
-	_, known, _, _ := previewCustom.ID().awaitID(context.Background())
+	_, known, _, _ := previewCustom.ID().awaitID(t.Context())
 	assert.False(t, known)
 	previewProvider := res["jPreviewProviderResource"].(*simpleProviderResource)
-	urn, _, _, _ = previewProvider.URN().awaitURN(context.Background())
+	urn, _, _, _ = previewProvider.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(previewProviderURN), urn)
-	_, known, _, _ = previewProvider.ID().awaitID(context.Background())
+	_, known, _, _ = previewProvider.ID().awaitID(t.Context())
 	assert.False(t, known)
 	missingCustom := res["kCustomResource"].(CustomResource)
-	urn, _, _, _ = missingCustom.URN().awaitURN(context.Background())
+	urn, _, _, _ = missingCustom.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(missingCustomURN), urn)
-	id, _, _, _ = missingCustom.ID().awaitID(context.Background())
+	id, _, _, _ = missingCustom.ID().awaitID(t.Context())
 	assert.Equal(t, ID("id"), id)
 	missingComponent := res["kComponentResource"].(ComponentResource)
-	urn, _, _, _ = missingComponent.URN().awaitURN(context.Background())
+	urn, _, _, _ = missingComponent.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(missingComponentURN), urn)
 	missingProvider := res["kProviderResource"].(ProviderResource)
-	urn, _, _, _ = missingProvider.URN().awaitURN(context.Background())
+	urn, _, _, _ = missingProvider.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(missingProviderURN), urn)
-	id, _, _, _ = missingProvider.ID().awaitID(context.Background())
+	id, _, _, _ = missingProvider.ID().awaitID(t.Context())
 	assert.Equal(t, ID("id"), id)
 	missingPreviewCustom := res["kPreviewCustomResource"].(CustomResource)
-	urn, _, _, _ = missingPreviewCustom.URN().awaitURN(context.Background())
+	urn, _, _, _ = missingPreviewCustom.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(missingPreviewCustomURN), urn)
-	_, known, _, _ = missingPreviewCustom.ID().awaitID(context.Background())
+	_, known, _, _ = missingPreviewCustom.ID().awaitID(t.Context())
 	assert.False(t, known)
 	missingPreviewProvider := res["kPreviewProviderResource"].(ProviderResource)
-	urn, _, _, _ = missingPreviewProvider.URN().awaitURN(context.Background())
+	urn, _, _, _ = missingPreviewProvider.URN().awaitURN(t.Context())
 	assert.Equal(t, URN(missingPreviewProviderURN), urn)
-	_, known, _, _ = missingPreviewProvider.ID().awaitID(context.Background())
+	_, known, _, _ = missingPreviewProvider.ID().awaitID(t.Context())
 	assert.False(t, known)
 }
 
@@ -418,7 +418,7 @@ type testResource struct {
 func TestResourceState(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	var theResource testResource
@@ -503,7 +503,7 @@ func TestResourceState(t *testing.T) {
 func TestUnmarshalSecret(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
@@ -522,7 +522,7 @@ func TestUnmarshalSecret(t *testing.T) {
 func TestUnmarshalInternalMapValue(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	m := make(map[string]any)
@@ -546,7 +546,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	t.Parallel()
 
 	// Create interesting inputs.
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	out, resolve, _ := NewOutput()
@@ -835,7 +835,7 @@ func TestRegisterResourceModule(t *testing.T) {
 func TestInvalidAsset(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	var d Asset
@@ -851,7 +851,7 @@ func TestInvalidAsset(t *testing.T) {
 func TestInvalidArchive(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	var d Archive
@@ -867,7 +867,7 @@ func TestInvalidArchive(t *testing.T) {
 func TestUnmarshalPointer(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	res := resource.ResourceReference{
@@ -883,10 +883,58 @@ func TestUnmarshalPointer(t *testing.T) {
 	assert.IsType(t, &simpleComponentResource{}, d)
 }
 
+func TestUnmarshalOutputNullElement(t *testing.T) {
+	t.Parallel()
+
+	ctx, err := NewContext(t.Context(), RunInfo{})
+	require.NoError(t, err)
+
+	// A known output whose element is null represents an optional property that
+	// was not set. When the destination is a pointer type, unmarshalOutput must
+	// preserve the nil zero value rather than allocating a non-nil pointer to
+	// the zero value.
+	knownNull := resource.NewProperty(resource.Output{
+		Element: resource.NewNullProperty(),
+		Known:   true,
+	})
+
+	var bp *bool
+	_, err = unmarshalOutput(ctx, knownNull, reflect.ValueOf(&bp).Elem())
+	require.NoError(t, err)
+	assert.Nil(t, bp, "expected nil *bool for known output with null element")
+
+	var fp *float64
+	_, err = unmarshalOutput(ctx, knownNull, reflect.ValueOf(&fp).Elem())
+	require.NoError(t, err)
+	assert.Nil(t, fp, "expected nil *float64 for known output with null element")
+
+	var sp *string
+	_, err = unmarshalOutput(ctx, knownNull, reflect.ValueOf(&sp).Elem())
+	require.NoError(t, err)
+	assert.Nil(t, sp, "expected nil *string for known output with null element")
+
+	var ip *int
+	_, err = unmarshalOutput(ctx, knownNull, reflect.ValueOf(&ip).Elem())
+	require.NoError(t, err)
+	assert.Nil(t, ip, "expected nil *int for known output with null element")
+
+	// A known output with a non-null element should still allocate the pointer.
+	knownTrue := resource.NewProperty(resource.Output{
+		Element: resource.NewProperty(true),
+		Known:   true,
+	})
+
+	var bp2 *bool
+	_, err = unmarshalOutput(ctx, knownTrue, reflect.ValueOf(&bp2).Elem())
+	require.NoError(t, err)
+	require.NotNil(t, bp2)
+	assert.True(t, *bp2)
+}
+
 func TestDependsOnComponent(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	registerResource := func(name string, res Resource, custom bool, options ...ResourceOption) (Resource, []string) {
@@ -938,7 +986,7 @@ func TestDependsOnComponent(t *testing.T) {
 func TestOutputValueMarshalling(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	values := []struct {
@@ -1230,7 +1278,7 @@ func (MyNestedOutputArgs) ElementType() reflect.Type {
 func TestOutputValueMarshallingNested(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	RegisterOutputType(TemplateOptionsOutput{})
@@ -1735,7 +1783,7 @@ func (o TreeSizeMapOutput) MapIndex(k StringInput) TreeSizeOutput {
 func TestOutputValueMarshallingEnums(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewContext(context.Background(), RunInfo{})
+	_, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	RegisterOutputType(TreeSizeOutput{})
@@ -1860,7 +1908,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			ctx, err := NewContext(context.Background(), RunInfo{})
+			ctx, err := NewContext(t.Context(), RunInfo{})
 			require.NoError(t, err)
 
 			actual, err := unmarshalPropertyMap(ctx, c.input)
@@ -1872,7 +1920,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 	t.Run("unknown", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, err := NewContext(context.Background(), RunInfo{})
+		ctx, err := NewContext(t.Context(), RunInfo{})
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
@@ -1896,7 +1944,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 	t.Run("secret", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, err := NewContext(context.Background(), RunInfo{})
+		ctx, err := NewContext(t.Context(), RunInfo{})
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
@@ -1921,7 +1969,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 	t.Run("output", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, err := NewContext(context.Background(), RunInfo{})
+		ctx, err := NewContext(t.Context(), RunInfo{})
 		require.NoError(t, err)
 
 		dependencies := []resource.URN{"urn:pulumi:test_stack::test_project::pkg:index:type::name"}
@@ -2005,7 +2053,7 @@ func TestUnmarshalPropertyMap(t *testing.T) {
 	t.Run("resource", func(t *testing.T) {
 		t.Parallel()
 
-		ctx, err := NewContext(context.Background(), RunInfo{})
+		ctx, err := NewContext(t.Context(), RunInfo{})
 		require.NoError(t, err)
 
 		actual, err := unmarshalPropertyMap(ctx, resource.PropertyMap{
@@ -2046,7 +2094,7 @@ func (ComponentArgs) ElementType() reflect.Type {
 func TestResourceReferenceDependencies(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := NewContext(context.Background(), RunInfo{})
+	ctx, err := NewContext(t.Context(), RunInfo{})
 	require.NoError(t, err)
 
 	custom1URN := URN(resource.NewURN("stack", "project", "", "test:index:custom", "custom1"))

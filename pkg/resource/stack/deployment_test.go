@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -121,7 +121,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			resource.AfterDelete:  {"hook2"},
 		},
 	}.Make()
-	dep, err := SerializeResource(context.Background(), res, config.NopEncrypter, false /* showSecrets */)
+	dep, err := SerializeResource(t.Context(), res, config.NopEncrypter, false /* showSecrets */)
 	require.NoError(t, err)
 
 	// assert some things about the deployment record:
@@ -217,7 +217,7 @@ func TestDeploymentSerialization(t *testing.T) {
 func TestSerializeDeploymentWithMetadata(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	tests := []struct {
 		name             string
@@ -320,7 +320,7 @@ func TestSerializeDeploymentWithMetadata(t *testing.T) {
 
 func TestLoadTooNewDeployment(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionLatest + 1,
@@ -334,7 +334,7 @@ func TestLoadTooNewDeployment(t *testing.T) {
 
 func TestLoadTooOldDeployment(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionOldestSupported - 1,
@@ -349,7 +349,7 @@ func TestLoadTooOldDeployment(t *testing.T) {
 // TestUnsupportedFeature tests that an unsupported feature in the deployment errors as expected.
 func TestUnsupportedFeature(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	untypedDeployment := &apitype.UntypedDeployment{
 		Version: DeploymentSchemaVersionLatest,
@@ -368,7 +368,7 @@ func TestUnsupportedFeature(t *testing.T) {
 // TestDeserializeUntypedDeploymentFeatures tests that the deserializer does not error for features that are supported.
 func TestDeserializeUntypedDeploymentFeatures(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for _, features := range combinations.All([]string{
 		"refreshBeforeUpdate",
@@ -459,7 +459,6 @@ func TestCustomSerialization(t *testing.T) {
 	strProp := resource.NewProperty("strProp")
 
 	computed := resource.Computed{Element: strProp}
-	output := resource.Output{Element: strProp}
 	secret := &resource.Secret{Element: strProp}
 
 	propMap := resource.NewPropertyMapFromMap(map[string]any{
@@ -487,9 +486,11 @@ func TestCustomSerialization(t *testing.T) {
 		// Specialized resource types
 		"asset-text": textAsset,
 
-		"computed": computed,
-		"output":   output,
-		"secret":   secret,
+		"computed":     computed,
+		"output":       resource.Output{Element: strProp},
+		"knownOutput":  resource.Output{Element: strProp, Known: true},
+		"secretOutput": resource.Output{Element: strProp, Known: true, Secret: true},
+		"secret":       secret,
 	})
 
 	assert.True(t, propMap.ContainsSecrets())
@@ -531,6 +532,8 @@ func TestCustomSerialization(t *testing.T) {
 
 			`"computed":{"V":{"Element":{"V":"strProp"}}}`,
 			`"output":{"V":{"Element":{"V":"strProp"}}}`,
+			`"knownOutput":{"V":{"Element":{"V":"strProp"}}}`,
+			`"secretOutput":{"V":{"Element":{"V":"strProp"}}}`,
 			`"secret":{"V":{"Element":{"V":"strProp"}}}`,
 		}
 
@@ -550,7 +553,7 @@ func TestCustomSerialization(t *testing.T) {
 	t.Run("SerializeProperties", func(t *testing.T) {
 		t.Parallel()
 
-		serializedPropMap, err := SerializeProperties(context.Background(), propMap, config.BlindingCrypter, false /* showSecrets */)
+		serializedPropMap, err := SerializeProperties(t.Context(), propMap, config.BlindingCrypter, false /* showSecrets */)
 		require.NoError(t, err)
 
 		// Now JSON encode the results?
@@ -584,6 +587,8 @@ func TestCustomSerialization(t *testing.T) {
 			// Computed values are replaced with a magic constant.
 			`"computed":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"`,
 			`"output":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"`,
+			`"knownOutput":"strProp"`,
+			`"secretOutput":{"4dabf18193072939515e22adb298388d":"1b47061264138c4ac30d75fd1eb44270","ciphertext":"[secret]"}`,
 
 			// Secrets are serialized with the special sig key, and their underlying cipher text.
 			// Since we passed in a config.BlindingCrypter the cipher text isn't super-useful.
@@ -605,7 +610,7 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 	t.Parallel()
 
 	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		SecretsProviders: &apitype.SecretsProvidersV1{Type: b64.Type},
 		Resources: []apitype.ResourceV3{
@@ -623,7 +628,7 @@ func TestDeserializeDeploymentSecretCache(t *testing.T) {
 func TestDeserializeInvalidResourceErrors(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{},
@@ -662,7 +667,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 	t.Parallel()
 
 	urn := "urn:pulumi:urn:pulumi:test_stack::test_project::pkg:index:type::name"
-	ctx := context.Background()
+	ctx := t.Context()
 	deployment, err := DeserializeDeploymentV3(ctx, apitype.DeploymentV3{
 		Resources: []apitype.ResourceV3{
 			{
@@ -717,7 +722,7 @@ func TestDeserializeMissingSecretsManager(t *testing.T) {
 func TestSerializePropertyValue(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	rapid.Check(t, func(t *rapid.T) {
 		v := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
 		_, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
@@ -729,7 +734,7 @@ func TestSerializePropertyValue(t *testing.T) {
 func TestSerializePropertyValue_ShowSecrets(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	crypter := config.NewPanicCrypter()
 
 	secret := resource.MakeSecret(resource.NewProperty("secret"))
@@ -792,22 +797,30 @@ func TestPropertyValueSchema(t *testing.T) {
 	}))
 }
 
-func replaceOutputsWithComputed(v resource.PropertyValue) resource.PropertyValue {
+func replaceOutputsWithInner(v resource.PropertyValue) resource.PropertyValue {
 	switch {
 	case v.IsArray():
 		a := v.ArrayValue()
 		for i, v := range a {
-			a[i] = replaceOutputsWithComputed(v)
+			a[i] = replaceOutputsWithInner(v)
 		}
 	case v.IsObject():
 		o := v.ObjectValue()
 		for k, v := range o {
-			o[k] = replaceOutputsWithComputed(v)
+			o[k] = replaceOutputsWithInner(v)
 		}
 	case v.IsOutput():
-		return resource.MakeComputed(resource.NewProperty(""))
+		o := v.OutputValue()
+		inner := resource.NewProperty(resource.Computed{Element: resource.NewProperty("")})
+		if o.Known {
+			inner = replaceOutputsWithInner(o.Element)
+		}
+		if o.Secret {
+			inner = resource.MakeSecret(inner)
+		}
+		return inner
 	case v.IsSecret():
-		v.SecretValue().Element = replaceOutputsWithComputed(v.SecretValue().Element)
+		v.SecretValue().Element = replaceOutputsWithInner(v.SecretValue().Element)
 	}
 	return v
 }
@@ -823,7 +836,7 @@ func TestRoundTripPropertyValue(t *testing.T) {
 		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter)
 		require.NoError(t, err)
 
-		resource_testing.AssertEqualPropertyValues(t, replaceOutputsWithComputed(original), deserialized)
+		resource_testing.AssertEqualPropertyValues(t, replaceOutputsWithInner(original), deserialized)
 	})
 }
 
@@ -897,6 +910,22 @@ func ArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 	return LiteralArchiveObjectGenerator(maxDepth)
 }
 
+// FloatObjectGenerator generates float object values representing NaN and Inf, matching the
+// wire format used by SerializePropertyValue.
+func FloatObjectGenerator() *rapid.Generator[map[string]any] {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
+		hex := rapid.SampledFrom([]string{
+			"7ff8000000000001", // NaN
+			"7ff0000000000000", // +Inf
+			"fff0000000000000", // -Inf
+		}).Draw(t, "float hex")
+		return map[string]any{
+			resource.SigKey: floatSignature,
+			"value":         hex,
+		}
+	})
+}
+
 // ResourceReferenceObjectGenerator generates resource reference object values.
 func ResourceReferenceObjectGenerator() *rapid.Generator[any] {
 	return rapid.Custom(func(t *rapid.T) any {
@@ -958,6 +987,7 @@ func ObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
 		NumberObjectGenerator().AsAny(),
 		StringObjectGenerator().AsAny(),
 		AssetObjectGenerator().AsAny(),
+		FloatObjectGenerator().AsAny(),
 		ResourceReferenceObjectGenerator(),
 	}
 	if maxDepth > 0 {
@@ -973,7 +1003,7 @@ func ObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
 func TestSecretInputRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	res := &resource.State{
 		URN:  "urn:pulumi:stack::project::pkg:index:type::name",

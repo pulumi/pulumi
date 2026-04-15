@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/python
+  description: Add `new` command to Automation API

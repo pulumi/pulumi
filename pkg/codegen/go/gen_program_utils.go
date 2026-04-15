@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,12 +46,12 @@ func (p *promptToInputArrayHelper) getFnName() string {
 func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) {
 	switch functionName {
 	case "readFile":
-		return `func readFileOrPanic(path string) pulumi.StringPtrInput {
+		return `func readFileOrPanic(path string) string {
 				data, err := os.ReadFile(path)
 				if err != nil {
 					panic(err.Error())
 				}
-				return pulumi.String(string(data))
+				return string(data)
 			}`, true
 	case "filebase64":
 		return `func filebase64OrPanic(path string) string {

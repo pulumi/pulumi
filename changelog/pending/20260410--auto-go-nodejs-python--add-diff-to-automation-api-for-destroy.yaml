@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go,nodejs,python
+  description: Add --diff to automation api for destroy

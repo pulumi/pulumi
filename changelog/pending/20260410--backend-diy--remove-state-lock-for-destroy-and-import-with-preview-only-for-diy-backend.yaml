@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: backend/diy
+  description: Remove state lock for destroy and import with preview only for diy backend

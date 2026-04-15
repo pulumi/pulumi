@@ -1,10 +1,10 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,8 +17,55 @@ package operations
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/stretchr/testify/require"
 )
+
+func TestConfigureNeoTaskOption(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name                    string
+		neoTaskOnFailureFlag    bool
+		isDIYBackend            bool
+		expectedStartNeoTaskErr bool
+	}{
+		{
+			name:                    "flag enabled with cloud backend sets option",
+			neoTaskOnFailureFlag:    true,
+			isDIYBackend:            false,
+			expectedStartNeoTaskErr: true,
+		},
+		{
+			name:                    "flag disabled with cloud backend leaves option false",
+			neoTaskOnFailureFlag:    false,
+			isDIYBackend:            false,
+			expectedStartNeoTaskErr: false,
+		},
+		{
+			name:                    "flag enabled with DIY backend does not set option",
+			neoTaskOnFailureFlag:    true,
+			isDIYBackend:            true,
+			expectedStartNeoTaskErr: false,
+		},
+		{
+			name:                    "flag disabled with DIY backend leaves option false",
+			neoTaskOnFailureFlag:    false,
+			isDIYBackend:            true,
+			expectedStartNeoTaskErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := display.Options{}
+			configureNeoTaskOption(tt.neoTaskOnFailureFlag, nil, &opts, tt.isDIYBackend)
+			require.Equal(t, tt.expectedStartNeoTaskErr, opts.StartNeoTaskOnError)
+		})
+	}
+}
 
 func TestGetRefreshOption(t *testing.T) {
 	t.Parallel()

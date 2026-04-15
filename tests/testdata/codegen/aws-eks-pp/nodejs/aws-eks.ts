@@ -47,7 +47,7 @@ export = async () => {
     for (const range of zones.names.map((v, k) => ({key: k, value: v}))) {
         rta.push(new aws.ec2.RouteTableAssociation(`rta-${range.key}`, {
             routeTableId: eksRouteTable.id,
-            subnetId: vpcSubnet[range.key].id,
+            subnetId: String(vpcSubnet[range.key].id),
         }));
     }
     const subnetIds = vpcSubnet.map(__item => __item.id);

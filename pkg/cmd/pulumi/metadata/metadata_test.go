@@ -1,10 +1,10 @@
-// Copyright 2024-2025, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -148,20 +148,22 @@ func TestReadingGitRepo(t *testing.T) {
 	}
 
 	// Confirm that data can be inferred from the CI system if unavailable.
-	// Fake running under Travis CI.
+	// Fake running under Travis CI. We also need to unset GITHUB_ACTIONS so that
+	// the GitHub Actions detector doesn't take precedence when running in CI.
 	os.Unsetenv("PULUMI_DISABLE_CI_DETECTION") // Restore our CI/CD detection logic.
+	t.Setenv("GITHUB_ACTIONS", "")
 	t.Setenv("TRAVIS", "1")
 	t.Setenv("TRAVIS_BRANCH", "branch-from-ci")
-	t.Setenv("GITHUB_REF", "branch-from-ci")
 
 	{
 		test := &backend.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
+
 		require.NoError(t, addGitMetadata(e.RootPath, test))
-		assert.Contains(t, test.Environment, backend.GitHeadName, "Expected 'git.headName' key, from CI util.")
-		// TODO: https://github.com/pulumi/pulumi/issues/5303
-		// assert.Equal(t, "branch-from-ci", test.Environment[backend.GitHeadName])
+		name, ok := test.Environment[backend.GitHeadName]
+		assert.True(t, ok, "Expected 'git.headName' key, from CI util.")
+		assert.Equal(t, "branch-from-ci", name)
 	}
 }
 
@@ -304,6 +306,87 @@ func TestAddEscMetadataToEnvironment(t *testing.T) {
 
 	expected := "[{\"id\":\"proj/env1\"},{\"id\":\"proj/env2@stable\"}]"
 	assert.Equal(t, expected, env[backend.StackEnvironments])
+}
+
+func TestDetectAIAgent(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{
+			name: "explicit AI_AGENT wins",
+			env: map[string]string{
+				"AI_AGENT":        "my-agent",
+				"CODEX_THREAD_ID": "thread",
+			},
+			want: "my-agent",
+		},
+		{
+			name: "normalize copilot cli alias",
+			env: map[string]string{
+				"AI_AGENT": "github-copilot-cli",
+			},
+			want: "github-copilot",
+		},
+		{
+			name: "codex",
+			env: map[string]string{
+				"CODEX_THREAD_ID": "thread",
+			},
+			want: "codex",
+		},
+		{
+			name: "cowork beats claude",
+			env: map[string]string{
+				"CLAUDE_CODE_IS_COWORK": "1",
+				"CLAUDE_CODE":           "1",
+			},
+			want: "cowork",
+		},
+		{
+			name: "copilot vars",
+			env: map[string]string{
+				"COPILOT_MODEL": "gpt-5",
+			},
+			want: "github-copilot",
+		},
+		{
+			name: "none",
+			env:  map[string]string{},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			getEnv := func(key string) string {
+				return tt.env[key]
+			}
+			assert.Equal(t, tt.want, detectAIAgent(getEnv))
+		})
+	}
+}
+
+func TestAddExecutionMetadataToEnvironmentDetectsAgent(t *testing.T) {
+	t.Setenv("CODEX_THREAD_ID", "thread")
+	env := map[string]string{}
+	addExecutionMetadataToEnvironment(env, "unknown", "")
+
+	assert.Equal(t, "cli", env[backend.ExecutionKind])
+	assert.Equal(t, "codex", env[backend.ExecutionAgent])
+}
+
+func TestAddExecutionMetadataToEnvironmentUsesExplicitAgent(t *testing.T) {
+	t.Setenv("CODEX_THREAD_ID", "thread")
+	env := map[string]string{}
+	addExecutionMetadataToEnvironment(env, "unknown", "user-provided")
+
+	assert.Equal(t, "user-provided", env[backend.ExecutionAgent])
 }
 
 // Tests that Git metadata can be read from the environment if there is no Git repository present.

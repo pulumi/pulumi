@@ -1,10 +1,10 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 )
 
@@ -98,6 +99,12 @@ func (node *npmManager) Link(ctx context.Context, dir, packageName, path string)
 		return fmt.Errorf("error executing npm command %s: %w, output: %s", cmd.String(), err, out)
 	}
 	return nil
+}
+
+func (node *npmManager) ListPackages(
+	ctx context.Context, dir string, transitive bool,
+) ([]plugin.DependencyInfo, error) {
+	return listPackagesFromLockFile(dir, "package-lock.json", transitive)
 }
 
 func (node *npmManager) Pack(ctx context.Context, dir string, stderr io.Writer) ([]byte, error) {

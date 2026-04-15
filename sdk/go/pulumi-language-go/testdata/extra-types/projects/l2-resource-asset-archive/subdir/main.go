@@ -42,6 +42,12 @@ func main() {
 		if err != nil {
 			return err
 		}
+		_, err = assetarchive.NewArchiveResource(ctx, "remotearc", &assetarchive.ArchiveResourceArgs{
+			Value: pulumi.NewRemoteArchive("https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/archive.tar"),
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 }

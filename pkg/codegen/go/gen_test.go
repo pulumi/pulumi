@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -525,6 +525,10 @@ func TestTitle(t *testing.T) {
 	assert.Equal("WaldoThud_Fred", Title("waldo-Thud_Fred"))
 	assert.Equal("WaldoThud_Fred", Title("waldo-thud_Fred"))
 	assert.Equal("WaldoThud_Fred", Title("$waldo-thud_Fred"))
+	assert.Equal("_6to4Interface", Title("6to4Interface"))
+	assert.Equal("_3gppInfos", Title("3gppInfos"))
+	assert.Equal("_3gppRaw", Title("3gppRaw"))
+	assert.Equal("_0foo", Title("0foo"))
 }
 
 func TestRegressTypeDuplicatesInChunking(t *testing.T) {

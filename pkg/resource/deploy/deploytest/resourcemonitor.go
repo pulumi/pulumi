@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -180,6 +180,8 @@ type ResourceHookFunc func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
+	oldOptions *pulumirpc.ResourceOptions,
+	newOptions *pulumirpc.ResourceOptions,
 	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error
 
@@ -189,6 +191,8 @@ type ErrorHookFunc func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
+	oldOptions *pulumirpc.ResourceOptions,
+	newOptions *pulumirpc.ResourceOptions,
 	newInputs, oldInputs, oldOutputs resource.PropertyMap,
 	failedOperation string,
 	errors []string,
@@ -276,12 +280,16 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
+		oldOptions := req.OldOptions
+		newOptions := req.NewOptions
 		err = f(
 			context.Background(),
 			resource.URN(req.Urn),
 			resource.ID(req.Id),
 			req.Name,
 			tokens.Type(req.Type),
+			oldOptions,
+			newOptions,
 			newInputs,
 			oldInputs,
 			newOutputs,
@@ -358,6 +366,8 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
+		oldOptions := req.OldOptions
+		newOptions := req.NewOptions
 		if req.FailedOperation != "" {
 			switch req.FailedOperation {
 			case "create", "update", "delete":
@@ -366,9 +376,20 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 				return nil, fmt.Errorf("invalid failed operation: %q", req.FailedOperation)
 			}
 		}
-
-		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, oldOutputs, failedOperation, req.Errors)
+		retry, err := f(
+			context.Background(),
+			resource.URN(req.Urn),
+			resource.ID(req.Id),
+			req.Name,
+			tokens.Type(req.Type),
+			oldOptions,
+			newOptions,
+			newInputs,
+			oldInputs,
+			oldOutputs,
+			failedOperation,
+			req.Errors,
+		)
 		if err != nil {
 			return &pulumirpc.ErrorHookResponse{
 				Error: err.Error(),
@@ -476,9 +497,10 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	}
 
 	trigger, err := plugin.MarshalPropertyValue("replacementTrigger", opts.ReplacementTrigger, plugin.MarshalOptions{
-		KeepUnknowns:  true,
-		KeepSecrets:   rm.supportsSecrets,
-		KeepResources: rm.supportsResourceReferences,
+		KeepUnknowns:     true,
+		KeepSecrets:      rm.supportsSecrets,
+		KeepResources:    rm.supportsResourceReferences,
+		KeepOutputValues: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling replacement trigger: %w", err)
@@ -627,7 +649,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 func (rm *ResourceMonitor) RegisterResourceOutputs(urn resource.URN, outputs resource.PropertyMap) error {
 	// marshal outputs
 	outs, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{
-		KeepUnknowns: true,
+		KeepUnknowns:  true,
+		KeepResources: rm.supportsResourceReferences,
 	})
 	if err != nil {
 		return err

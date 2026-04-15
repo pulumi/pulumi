@@ -1,4 +1,4 @@
-// Copyright 2021-2024, Pulumi Corporation.
+// Copyright 2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -87,27 +87,8 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Assets and archives",
 	},
 	{
-		Directory:   "synthetic-resource-properties",
-		Description: "Synthetic resource properties",
-		SkipCompile: codegen.NewStringSet(TestNodeJS, TestDotnet, TestGo), // not a real package
-	},
-	{
-		Directory:   "aws-s3-folder",
-		Description: "AWS S3 Folder",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8064]
-		//   TODO[pulumi/pulumi#8065]
-	},
-	{
 		Directory:   "aws-eks",
 		Description: "AWS EKS",
-	},
-	{
-		Directory:   "csharp-invoke-options",
-		Description: "A program that uses InvokeOptions in C#",
-		// Test only C# because the other languages have conformance tests
-		Skip: allProgLanguages.Except(TestDotnet),
 	},
 	{
 		Directory:   "aws-fargate",
@@ -162,10 +143,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "AWS Webserver",
 	},
 	{
-		Directory:   "simple-range",
-		Description: "Simple range as int expression translation",
-	},
-	{
 		Directory:   "azure-native-v2-eventgrid",
 		Description: "Azure Native V2 basic example to ensure that importPathPatten works",
 		// Specifically use a simplified azure-native v2.x schema when testing this program
@@ -202,10 +179,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "K8s Template with quoted string property keys to ensure that resource binding works here",
 	},
 	{
-		Directory:   "random-pet",
-		Description: "Random Pet",
-	},
-	{
 		Directory:   "aws-secret",
 		Description: "Secret",
 	},
@@ -237,25 +210,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        codegen.NewStringSet(TestPython, TestNodeJS, TestDotnet),
 	},
 	{
-		Directory:   "pulumi-stack-reference",
-		Description: "StackReference as resource",
-	},
-	{
-		Directory:   "logical-name",
-		Description: "Logical names",
-	},
-	{
-		Directory:   "aws-lambda",
-		Description: "AWS Lambdas",
-		// We have special testing for this case because lambda is a python keyword.
-		Skip: codegen.NewStringSet(TestGo, TestNodeJS, TestDotnet),
-	},
-	{
-		Directory:   "deferred-outputs",
-		Description: "Tests program with mutually dependant components that emit deferred outputs",
-		SkipCompile: allProgLanguages,
-	},
-	{
 		Directory:   "traverse-union-repro",
 		Description: `Handling the error "cannot traverse value of type union(...)"`,
 		BindOptions: []pcl.BindOption{
@@ -281,27 +235,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
-		Directory:   "entries-function",
-		Description: "Using the entries function",
-		// go and dotnet do fully not support GenForExpression yet
-		// Todo: https://github.com/pulumi/pulumi/issues/12606
-		SkipCompile: allProgLanguages.Except(TestNodeJS).Except(TestPython),
-	},
-	{
-		Directory:   "depends-on-array",
-		Description: "Using DependsOn resource option with an array of resources",
-	},
-	{
-		Directory:   "multiline-string",
-		Description: "Multiline string literals",
-	},
-	{
-		Directory:   "config-variables",
-		Description: "Basic program with a bunch of config variables",
-		// TODO[https://github.com/pulumi/pulumi/issues/14957] - object config variables are broken here
-		SkipCompile: codegen.NewStringSet(TestGo, TestDotnet),
-	},
-	{
 		Directory:   "regress-11176",
 		Description: "Regression test for https://github.com/pulumi/pulumi/issues/11176",
 		Skip:        allProgLanguages.Except(TestGo),
@@ -316,27 +249,9 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Skip:        allProgLanguages.Except(TestPython),
 	},
 	{
-		Directory:   "iterating-optional-range-expressions",
-		Description: "Test that we can iterate over range expression that are option(iterator)",
-		// TODO: dotnet and go
-		Skip: allProgLanguages.Except(TestNodeJS).Except(TestPython),
-		// We are using a synthetic schema defined in range-1.0.0.json so we can't compile all the way
-		SkipCompile: allProgLanguages,
-	},
-	{
-		Directory:   "output-literals",
-		Description: "Tests that we can return various literal values via stack outputs",
-	},
-	{
 		Directory:   "dynamic-entries",
 		Description: "Testing iteration of dynamic entries in TypeScript",
 		Skip:        allProgLanguages.Except(TestNodeJS),
-		SkipCompile: allProgLanguages,
-	},
-	{
-		Directory:   "simple-splat",
-		Description: "An example that shows we can compile splat expressions from array of objects",
-		// Skip compiling because we are using a test schema without a corresponding real package
 		SkipCompile: allProgLanguages,
 	},
 	{

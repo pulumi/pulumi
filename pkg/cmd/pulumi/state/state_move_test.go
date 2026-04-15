@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1449,4 +1449,54 @@ func TestProviderParentsAreTreatedAsProviders(t *testing.T) {
 		destSnapshot.Resources[2].Provider)
 	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:pulumi:Stack::test-destStack"),
 		destSnapshot.Resources[2].Parent)
+}
+
+// Regression test for #22093: when a provider is copied to the destination stack,
+// its dependencies on resources that remain in the source stack must be removed.
+func TestMoveBreaksCopiedProviderDependenciesToRemainingSourceResources(t *testing.T) {
+	t.Parallel()
+
+	sourceRootURN := resource.DefaultRootStackURN("sourceStack", "test")
+	providerURN := resource.NewURN("sourceStack", "test", "", "pulumi:providers:a", "default_1_0_0")
+	remainingURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "remaining")
+	moveURN := resource.NewURN("sourceStack", "test", "", "a:b:c", "moveMe")
+
+	sourceResources := []*resource.State{
+		{
+			URN:  sourceRootURN,
+			Type: sourceRootURN.Type(),
+		},
+		{
+			URN:    remainingURN,
+			Type:   remainingURN.Type(),
+			Parent: sourceRootURN,
+		},
+		{
+			URN:          providerURN,
+			Type:         providerURN.Type(),
+			ID:           "provider_id",
+			Parent:       sourceRootURN,
+			Custom:       true,
+			Dependencies: []resource.URN{remainingURN},
+		},
+		{
+			URN:      moveURN,
+			Type:     moveURN.Type(),
+			Provider: string(providerURN) + "::provider_id",
+			Parent:   sourceRootURN,
+		},
+	}
+
+	sourceSnapshot, destSnapshot, stdout := runMove(t, sourceResources, []string{string(moveURN)})
+
+	require.Len(t, sourceSnapshot.Resources, 3)
+	require.Len(t, destSnapshot.Resources, 3)
+	assert.Equal(t, urn.URN("urn:pulumi:destStack::test::pulumi:providers:a::default_1_0_0"),
+		destSnapshot.Resources[1].URN)
+	assert.Empty(t, destSnapshot.Resources[1].Dependencies)
+	assert.Contains(t, stdout.String(),
+		"The following resources being moved to organization/test/destStack have "+
+			"dependencies on resources in organization/test/sourceStack:\n\n"+
+			"  - urn:pulumi:sourceStack::test::pulumi:providers:a::default_1_0_0 has "+
+			"a dependency on urn:pulumi:sourceStack::test::a:b:c::remaining")
 }

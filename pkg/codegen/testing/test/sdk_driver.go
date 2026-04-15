@@ -1,4 +1,4 @@
-// Copyright 2021-2024, Pulumi Corporation.
+// Copyright 2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -135,10 +135,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 	{
 		Directory:   "simple-enum-schema",
 		Description: "Simple schema with enum types",
-	},
-	{
-		Directory:   "simple-plain-schema",
-		Description: "Simple schema with plain properties",
 	},
 	{
 		Directory:   "simple-plain-schema-with-root-package",
@@ -346,11 +342,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Skip:        allLanguages.Except("go/any"),
 	},
 	{
-		Directory: "functions-secrets",
-		// Secret properties for non-Output<T> returning functions cannot be secret because they are plain.
-		Description: "functions that have properties that are secrets in the schema",
-	},
-	{
 		Directory:        "secrets",
 		Description:      "Generate a resource with secret properties",
 		SkipCompileCheck: codegen.NewStringSet(TestDotnet),
@@ -451,10 +442,6 @@ var PulumiPulumiSDKTests = []*SDKTest{
 		Directory:   "python-typed-dict-pyproject",
 		Description: "Testing TypedDict generation for inputs.",
 		Skip:        allLanguages.Except("python/any"),
-	},
-	{
-		Directory:   "config-variables",
-		Description: "Testing config variables.",
 	},
 	{
 		Directory:   "overlay-supported-languages",

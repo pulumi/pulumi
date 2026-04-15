@@ -1,0 +1,13 @@
+{
+    "name": "bun-debugger",
+    "main": "index.ts",
+    "dependencies": {
+        "@pulumi/pulumi": "latest"
+    },
+    "devDependencies": {
+        "@types/bun": "latest"
+    },
+    "peerDependencies": {
+        "typescript": "^5"
+    }
+}

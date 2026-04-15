@@ -1,0 +1,54 @@
+<{%fg 13%}><{%bold%}>View in Browser (Ctrl+O): <{%underline%}><{%fg 12%}>link<{%reset%}>
+
+<%hide-cursor%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>     <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  project-stack  <{%bold%}><{%reset%}><{%reset%}>           <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                 <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack  myproject-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+<%cursor-up:2%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                       <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>       <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack        myproject-dev  running<{%bold%}><{%reset%}><{%reset%}>      <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  └─ aws:s3:Bucket           mybucket       <{%bold%}><{%reset%}><{%reset%}>             <%clear-to-end%>
+ <{%bold%}><{%fg 1%}>- <{%reset%}>     └─ aws:s3:BucketObject  myobject       <{%bold%}><{%fg 1%}>deleting<{%reset%}><{%bold%}><{%fg 1%}><{%reset%}>     <%clear-to-end%>
+<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                       <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack        myproject-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  └─ aws:s3:Bucket           mybucket       <{%bold%}><{%reset%}><{%reset%}>            <%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>     └─ aws:s3:BucketObject  myobject       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                       <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>       <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack        myproject-dev  running<{%bold%}><{%reset%}><{%reset%}>      <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%fg 1%}>- <{%reset%}>  └─ aws:s3:Bucket           mybucket       <{%bold%}><{%fg 1%}>deleting<{%reset%}><{%bold%}><{%fg 1%}><{%reset%}>     <%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>     └─ aws:s3:BucketObject  myobject       <{%fg 1%}>deleted<{%reset%}>      <%clear-to-end%>
+<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                       <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack        myproject-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>  └─ aws:s3:Bucket           mybucket       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>     └─ aws:s3:BucketObject  myobject       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+<%cursor-up:4%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                       <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%bold%}><{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack        myproject-dev  running<{%bold%}><{%reset%}><{%reset%}>     <{%reset%}>Configuration:<{%reset%}><%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>  └─ aws:s3:Bucket           mybucket       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>     └─ aws:s3:BucketObject  myobject       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    1 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                       <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack        myproject-dev  <{%reset%}><{%reset%}>            1 <{%fg 5%}>message<{%reset%}><%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>  └─ aws:s3:Bucket           mybucket       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>     └─ aws:s3:BucketObject  myobject       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+<%clear-to-end%>
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}><%clear-to-end%>
+<{%fg 8%}>    1 unchanged<{%reset%}><%clear-to-end%>
+<%cursor-up:7%>     <{%underline%}><{%fg 12%}>Type<{%reset%}>                       <{%underline%}><{%fg 12%}>Name<{%reset%}>           <{%underline%}><{%fg 12%}>Status<{%reset%}>      <{%underline%}><{%fg 12%}>Info<{%reset%}><%clear-to-end%>
+ <{%reset%}>  <{%reset%}>  pulumi:pulumi:Stack        myproject-dev  <{%reset%}><{%reset%}>            1 <{%fg 5%}>message<{%reset%}><%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>  └─ aws:s3:Bucket           mybucket       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+ <{%fg 1%}>- <{%reset%}>     └─ aws:s3:BucketObject  myobject       <{%fg 1%}>deleted<{%reset%}>     <%clear-to-end%>
+<%clear-to-end%>
+<%clear-to-end%>
+<%clear-to-end%>
+<%cursor-up:2%><{%fg 13%}><{%bold%}>Diagnostics:<{%reset%}>
+  <{%fg 12%}>pulumi:pulumi:Stack (myproject-dev):<{%reset%}>
+    <{%reset%}>Configuration:<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 1%}>- 2 deleted<{%reset%}>
+    1 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 7s
+
+<%show-cursor%>

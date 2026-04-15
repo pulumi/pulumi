@@ -1,5 +1,5 @@
 PROJECT_NAME := Pulumi SDK
-SDKS         ?= nodejs python go
+SDKS         ?= nodejs python go pcl
 SUB_PROJECTS := $(SDKS:%=sdk/%)
 
 include build/common.mk
@@ -13,15 +13,15 @@ _ := $(shell mkdir -p bin)
 _ := $(shell cd pkg && go build -o ../bin/helpmakego github.com/iwahbe/helpmakego)
 
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
-# nodejs and python codegen tests are much slower than go/dotnet:
-PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
+# nodejs and python codegen tests are much slower than go:
+PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(go|nodejs|python)')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
 TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
 VERSION         = $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ./scripts/pulumi-version.sh))
 
 # Relative paths to directories with go.mod files that should be linted.
-LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python
+LINT_GOLANG_PKGS := sdk pkg tests sdk/go/pulumi-language-go sdk/nodejs/cmd/pulumi-language-nodejs sdk/python/cmd/pulumi-language-python sdk/pcl
 
 # Additional arguments to pass to golangci-lint.
 GOLANGCI_LINT_ARGS ?=
@@ -48,27 +48,21 @@ ensure: .make/ensure/go .make/ensure/phony $(SUB_PROJECTS:%=%_ensure)
 	@mkdir -p .make/ensure && touch .make/ensure/phony
 
 .PHONY: build-proto build_proto
-PROTO_FILES := $(sort $(shell find proto -type f -name '*.proto') proto/generate.sh proto/build-container/Dockerfile $(wildcard proto/build-container/scripts/*))
-PROTO_CKSUM = cksum ${PROTO_FILES} | LC_ALL=C sort --key=3
+PROTO_SOURCES := $(sort $(shell find proto -name '*.proto')) proto/generate.sh
 build-proto: build_proto
-build_proto: proto/.checksum.txt
-proto/.checksum.txt: ${PROTO_FILES}
-	@printf "Protobuffer interfaces are ....... "
-	@if [ "$$(cat proto/.checksum.txt)" = "`${PROTO_CKSUM}`" ]; then \
-		printf "\033[0;32malready up to date\033[0m\n"; \
-	else \
-		printf "\033[0;34mout of date: REBUILDING\033[0m\n"; \
-		cd proto && ./generate.sh || exit 1; \
-		cd ../ && ${PROTO_CKSUM} > $@; \
-		printf "\033[0;34mProtobuffer interfaces have been \033[0;32mREBUILT\033[0m\n"; \
-	fi
+build_proto: .make/proto
+.make/proto: $(PROTO_SOURCES)
+	cd proto && ./generate.sh
+	@mkdir -p .make && touch $@
 
 .PHONY: check-proto check_proto
 check-proto: check_proto
-check_proto:
-	@if [ "$$(cat proto/.checksum.txt)" != "`${PROTO_CKSUM}`" ]; then \
-		echo "Protobuf checksum doesn't match. Run \`make build_proto\` to rebuild."; \
-		${PROTO_CKSUM} | diff - proto/.checksum.txt; \
+check_proto: .make/proto
+	@if ! git diff --quiet -- sdk/proto/go sdk/nodejs/proto \
+	    sdk/python/lib/pulumi/runtime/proto proto/grpc_version.txt; then \
+		echo "Proto output is out of date. Run 'make build_proto' and commit."; \
+		git diff -- sdk/proto/go sdk/nodejs/proto \
+		    sdk/python/lib/pulumi/runtime/proto proto/grpc_version.txt; \
 		exit 1; \
 	fi
 
@@ -79,16 +73,28 @@ generate::
 
 .PHONY: generate-cli-spec
 generate-cli-spec::
-	go run -C pkg ./cmd/pulumi generate-cli-spec > specification.json
+	go run -C pkg ./cmd/pulumi generate-cli-spec --overrides ../tools/automation/automation-overrides.json > tools/automation/specification.json
 
 .PHONY: generate-nodejs-automation-api
 generate-nodejs-automation-api:: generate-cli-spec
-	cd sdk/nodejs/tools/automation && npm start ../../../../specification.json
+	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/standard.ts ../../automation/interface
+
+.PHONY: test-nodejs-automation-api
+test-nodejs-automation-api:: generate-cli-spec
+	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm test
+
+.PHONY: generate-python-automation-api
+generate-python-automation-api:: generate-cli-spec
+	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python main.py ../../../../tools/automation/specification.json boilerplate/standard.py ../../lib/pulumi/automation/interface
+
+.PHONY: test-python-automation-api
+test-python-automation-api::
+	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python -m unittest tests.test_commands -v
 
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
 bin/pulumi: GO_BUILD_TAGS =
-bin/pulumi: proto/.checksum.txt .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
+bin/pulumi: .make/proto .make/ensure/go $(shell bin/helpmakego pkg/cmd/pulumi)
 	go build -C pkg -o ../$@ -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
 
 .PHONY: bin/pulumi-display.wasm
@@ -114,9 +120,6 @@ build_cover::
 
 install_cover:: build_cover
 	cp bin/pulumi $(PULUMI_BIN)
-
-developer_docs::
-	cd developer-docs && make html
 
 dist::
 	cd pkg && go install -tags="${GO_BUILD_TAGS}" -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${PROJECT}
@@ -205,7 +208,7 @@ test_codegen_%: get_schemas
 test_pkg_rest: get_schemas
 	@cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 
-test_pkg:: test_pkg_rest test_codegen_dotnet test_codegen_go test_codegen_nodejs test_codegen_python
+test_pkg:: test_pkg_rest test_codegen_go test_codegen_nodejs test_codegen_python
 
 subset=$(subst test_integration_,,$(word 1,$(subst !, ,$@)))
 test_integration_%:
@@ -231,6 +234,7 @@ tidy_fix::
 	./scripts/tidy.sh
 
 renovate: tidy_fix
+	./scripts/renovate-changelog.py
 
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate
@@ -294,5 +298,7 @@ work:
 		sdk \
 		sdk/go/pulumi-language-go \
 		sdk/nodejs/cmd/pulumi-language-nodejs \
+		sdk/nodejs/cmd/pulumi-language-bun \
 		sdk/python/cmd/pulumi-language-python \
+		sdk/pcl \
 		tests

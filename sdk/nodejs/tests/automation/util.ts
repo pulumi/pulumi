@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 import { randomUUID } from "crypto";
 import * as tmp from "tmp";
 
-import { LocalWorkspaceOptions, ProjectRuntime } from "../../automation";
+import { LocalWorkspaceOptions, ProjectRuntime, Stack } from "../../automation";
 
 /** @internal */
 export function getTestSuffix() {
@@ -137,4 +137,30 @@ function withTestConfigPassphrase(opts?: LocalWorkspaceOptions): LocalWorkspaceO
             PULUMI_CONFIG_PASSPHRASE: "test",
         },
     };
+}
+
+/**
+ * Runs a test function with a stack, ensuring the stack is destroyed and
+ * removed after the test completes, even if the test fails.
+ *
+ * Set destroy to false to skip the destroy step.
+ *
+ * @internal
+ */
+export async function withStack<T>(
+    stack: Stack,
+    fn: (stack: Stack) => Promise<T>,
+    { destroy = true }: { destroy?: boolean } = {},
+): Promise<T> {
+    try {
+        return await fn(stack);
+    } finally {
+        try {
+            if (destroy) {
+                await stack.destroy();
+            }
+        } finally {
+            await stack.workspace.removeStack(stack.name, { force: true });
+        }
+    }
 }

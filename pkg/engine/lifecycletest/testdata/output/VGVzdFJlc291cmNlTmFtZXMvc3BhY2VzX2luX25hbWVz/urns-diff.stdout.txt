@@ -1,0 +1,8 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::spaces in names: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA::spaces in names: (create)
+<{%fg 2%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::spaces in names::2]
+<{%reset%}><{%reset%}>    <{%fg 2%}>+ urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typB::spaces in names: (create)
+<{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 3 created<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -98,11 +98,15 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-invoke-options-depends-on": "not implemented yet",
+	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
+	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
+	"l3-range-ref":                       "Property 'k1' does not exist on type 'Target[]'",
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 }
 
-// We should run the nodejs tests twice. Once with tsc and once with ts-node.
-func testLanguage(t *testing.T, forceTsc bool) {
+// testLanguage runs the language conformance tests for the given runtime ("nodejs" or "bun").
+// forceTsc controls whether to pre-compile TypeScript before running.
+func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 	// Set PATH to include the local dist directory so policy can run.
 	dist, err := filepath.Abs(filepath.Join("..", "..", "dist"))
 	require.NoError(t, err)
@@ -131,7 +135,7 @@ func testLanguage(t *testing.T, forceTsc bool) {
 			// Run the language plugin
 			handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 				Init: func(srv *grpc.Server) error {
-					host := newLanguageHost(engineAddress, "", "", forceTsc)
+					host := newLanguageHost(engineAddress, runtime, "", "", forceTsc)
 					pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 					return nil
 				},
@@ -143,27 +147,36 @@ func testLanguage(t *testing.T, forceTsc bool) {
 			rootDir, err := filepath.Abs(t.TempDir())
 			require.NoError(t, err)
 
+			providersDir := "testdata/providers"
+			policyPackDir := "testdata/policies"
 			snapshotDir := "./testdata"
 			if local {
 				snapshotDir += "/local"
 			} else {
 				snapshotDir += "/published"
 			}
-			if forceTsc {
-				snapshotDir += "/tsc"
-			} else {
-				snapshotDir += "/tsnode"
+			switch runtime {
+			case "bun":
+				snapshotDir += "/bun"
+				providersDir = "testdata/providers-bun"
+				policyPackDir = "testdata/policies-bun"
+			case "nodejs":
+				if forceTsc {
+					snapshotDir += "/tsc"
+				} else {
+					snapshotDir += "/tsnode"
+				}
 			}
 
 			// Prepare to run the tests
 			prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-				LanguagePluginName:   "nodejs",
+				LanguagePluginName:   runtime,
 				LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 				TemporaryDirectory:   rootDir,
 				SnapshotDirectory:    snapshotDir,
 				CoreSdkDirectory:     "../..",
 				CoreSdkVersion:       sdk.Version.String(),
-				PolicyPackDirectory:  "testdata/policies",
+				PolicyPackDirectory:  policyPackDir,
 				Local:                local,
 				SnapshotEdits: []*testingrpc.PrepareLanguageTestsRequest_Replacement{
 					{
@@ -177,7 +190,7 @@ func testLanguage(t *testing.T, forceTsc bool) {
 						Replacement: "ROOT/artifacts",
 					},
 				},
-				ProvidersDirectory: "testdata/providers",
+				ProvidersDirectory: providersDir,
 			})
 			require.NoError(t, err)
 
@@ -190,13 +203,21 @@ func testLanguage(t *testing.T, forceTsc bool) {
 						t.Skip("Skipping l1- tests in local mode")
 					}
 
+					if runtime == "bun" {
+						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" {
+							t.Skip(
+								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
+									"https://github.com/pulumi/pulumi/issues/22100")
+						}
+					}
+
 					if expected, ok := expectedFailures[tt]; ok {
 						t.Skipf("Skipping known failure: %s", expected)
 					}
 
 					// Skip l2-large-string on Node.js 24 https://github.com/nodejs/node/issues/58197
 					// TODO: https://github.com/pulumi/pulumi/issues/19442
-					if tt == "l2-large-string" {
+					if runtime == "nodejs" && tt == "l2-large-string" {
 						cmd := exec.Command("node", "-v")
 						output, err := cmd.Output()
 						require.NoError(t, err)
@@ -235,10 +256,15 @@ func testLanguage(t *testing.T, forceTsc bool) {
 
 //nolint:paralleltest // testLanguage uses t.Setenv
 func TestLanguageTSC(t *testing.T) {
-	testLanguage(t, true)
+	testLanguage(t, "nodejs", true)
 }
 
 //nolint:paralleltest // testLanguage uses t.Setenv
 func TestLanguageTSNode(t *testing.T) {
-	testLanguage(t, false)
+	testLanguage(t, "nodejs", false)
+}
+
+//nolint:paralleltest // testLanguage uses t.Setenv
+func TestLanguageBun(t *testing.T) {
+	testLanguage(t, "bun", false)
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -83,4 +83,12 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t,
 		"These are my secrets: [secret]",
 		msg6)
+
+	// Boolean strings "true" and "false" are not masked, regardless of case.
+	filter7 := CreateFilter([]string{"true", "false", "True", "FALSE", "realsecret"}, "[secret]")
+	msg7 := filter7.Filter(
+		"value is True and FALSE but realsecret is hidden")
+	assert.Equal(t,
+		"value is True and FALSE but [secret] is hidden",
+		msg7)
 }

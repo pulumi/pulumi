@@ -40,7 +40,7 @@ func main() {
 		policy, err := iam.NewPolicy(ctx, "policy", &iam.PolicyArgs{
 			Path:        pulumi.String("/"),
 			Description: pulumi.String("My test policy"),
-			Policy:      pulumi.String(json0),
+			Policy:      pulumi.String(pulumi.String(json0)),
 		})
 		if err != nil {
 			return err

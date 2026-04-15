@@ -54,6 +54,9 @@ jobs:
           cache: true
           cache-dependency-path: pkg/go.sum
           go-version-file: pkg/go.mod
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix

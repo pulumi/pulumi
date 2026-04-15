@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
@@ -47,7 +48,10 @@ const (
 type toolchain int
 
 const (
-	Pip toolchain = iota
+	// Auto is the default toolchain value. When set, ResolveToolchain will detect the toolchain to use by looking for
+	// lockfiles in the project directory, falling back to pip if none are found.
+	Auto toolchain = iota
+	Pip
 	Poetry
 	Uv
 )
@@ -63,12 +67,6 @@ type PythonOptions struct {
 	Typechecker typeChecker
 	// The package manager to use for managing dependencies.
 	Toolchain toolchain
-}
-
-type PythonPackage struct {
-	Name     string `json:"name"`
-	Version  string `json:"version"`
-	Location string `json:"location"`
 }
 
 type Info struct {
@@ -94,7 +92,7 @@ type Toolchain interface {
 	// ValidateVenv checks if the virtual environment of the toolchain is valid.
 	ValidateVenv(ctx context.Context) error
 	// ListPackages returns a list of Python packages installed in the toolchain.
-	ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error)
+	ListPackages(ctx context.Context, transitive bool) ([]plugin.DependencyInfo, error)
 	// Command returns an *exec.Cmd for running `python` using the configured toolchain.
 	Command(ctx context.Context, args ...string) (*exec.Cmd, error)
 	// ModuleCommand returns an *exec.Cmd for running an installed python module using the configured toolchain.
@@ -113,6 +111,8 @@ type Toolchain interface {
 
 func Name(tc toolchain) string {
 	switch tc {
+	case Auto:
+		return "Auto"
 	case Pip:
 		return "Pip"
 	case Poetry:
@@ -138,17 +138,35 @@ func TypeCheckerName(tc typeChecker) string {
 }
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
-	switch options.Toolchain { //nolint:exhaustive // golangci-lint v2 upgrade
-	case Poetry:
-		dir := options.ProgramDir
-		if dir == "" {
-			dir = options.Root
+	switch options.Toolchain {
+	case Auto:
+		if _, err := searchup(options.ProgramDir, "uv.lock"); err == nil {
+			logging.V(9).Infof("Python toolchain: detected uv (found uv.lock)")
+			virtualenv := options.Virtualenv
+			if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+				virtualenv = filepath.Join(options.Root, virtualenv)
+			}
+			return newUv(options.ProgramDir, virtualenv)
 		}
-		return newPoetry(dir)
+		if _, err := searchup(options.ProgramDir, "poetry.lock"); err == nil {
+			logging.V(9).Infof("Python toolchain: detected poetry (found poetry.lock)")
+			return newPoetry(options.ProgramDir)
+		}
+		logging.V(9).Infof("Python toolchain: defaulting to pip")
+		return newPip(options.Root, options.Virtualenv)
+	case Poetry:
+		return newPoetry(options.ProgramDir)
 	case Uv:
-		return newUv(options.Root, options.Virtualenv)
+		virtualenv := options.Virtualenv
+		if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+			virtualenv = filepath.Join(options.Root, virtualenv)
+		}
+		return newUv(options.ProgramDir, virtualenv)
+	case Pip:
+		return newPip(options.Root, options.Virtualenv)
+	default:
+		return nil, fmt.Errorf("unknown toolchain: %d", options.Toolchain)
 	}
-	return newPip(options.Root, options.Virtualenv)
 }
 
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
@@ -337,4 +355,14 @@ func getPythonVersion(ctx context.Context,
 		return semver.Version{}, fmt.Errorf("failed to parse python version %q: %w", versionStr, err)
 	}
 	return pythonVersion, nil
+}
+
+// pythonNormRe matches runs of PEP 503 separator characters.
+var pythonNormRe = regexp.MustCompile(`[-_.]+`)
+
+// normalizePythonPackageName normalizes a Python package name to its canonical form per PEP 503:
+// lowercase, with runs of '-', '_', and '.' replaced by a single '-'.
+// https://peps.python.org/pep-0503/
+func normalizePythonPackageName(name string) string {
+	return pythonNormRe.ReplaceAllString(strings.ToLower(name), "-")
 }

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pcl
+  description: Builtin functions element and range take int parameters not numbers

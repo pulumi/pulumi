@@ -2,7 +2,8 @@ PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
 VERSION          := $(if ${PULUMI_VERSION},${PULUMI_VERSION},$(shell ../../scripts/pulumi-version.sh javascript))
 
-LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
+LANGHOST_NODE_PKG := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3
+LANGHOST_BUN_PKG  := github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-bun/v3
 
 TEST_FAST_TIMEOUT := 2m
 
@@ -48,7 +49,7 @@ build_package:: ensure
 	mkdir -p bin/tests/runtime/langhost/cases/
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
-build_plugin: ../../bin/pulumi-language-nodejs
+build_plugin: ../../bin/pulumi-language-nodejs ../../bin/pulumi-language-bun
 	cp ./dist/pulumi-resource-pulumi-nodejs ../../bin
 
 .PHONY: ../../bin/pulumi-language-nodejs
@@ -57,7 +58,15 @@ build_plugin: ../../bin/pulumi-language-nodejs
 	-o ../../$@ \
 		-tags="${GO_BUILD_TAGS}" \
 		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
-		${LANGHOST_PKG}
+		${LANGHOST_NODE_PKG}
+
+.PHONY: ../../bin/pulumi-language-bun
+../../bin/pulumi-language-bun:
+	go build -C cmd/pulumi-language-bun \
+	-o ../../$@ \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" \
+		github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-bun/v3
 
 build:: build_package build_plugin
 
@@ -67,11 +76,23 @@ install_package:: build
 install_plugin:: build
 	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-nodejs \
 	   -tags="${GO_BUILD_TAGS}" \
-	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_NODE_PKG}
+	GOBIN=$(PULUMI_BIN) go install -C cmd/pulumi-language-bun \
+	   -tags="${GO_BUILD_TAGS}" \
+	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
 
 install:: install_package install_plugin
 
-unit_tests:: $(TEST_ALL_DEPS)
+tools_tests::
+	go run -C ../../pkg ./cmd/pulumi generate-cli-spec \
+		--overrides ../tools/automation/automation-overrides.json \
+		> ../../tools/automation/specification.json
+	cd tools/automation && yarn install && \
+		npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && \
+		yarn build && \
+		yarn test
+
+unit_tests:: $(TEST_ALL_DEPS) tools_tests
 	yarn run nyc --no-clean -s mocha --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
 		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
@@ -85,15 +106,16 @@ test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
 	node 'bin/tests/runtime/install-package-tests.js'
 
-TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4
+TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4 ^6
 
 version=$(subst sxs_test_,,$(word 1,$(subst !, ,$@)))
 sxs_test_%:
 	@cd tests/sxs_ts_test && ( \
 		cp -f package$(version).json package.json && \
+		if [ -f tsconfig$(version).json ]; then project=tsconfig$(version).json; else project=tsconfig.json; fi && \
 		yarn install && \
 		yarn run tsc --version && \
-		yarn run tsc &&  \
+		yarn run tsc --project $$project && \
 		rm package.json && \
 		echo "✅ TypeScript $(version) passed" \
 	) || ( \
@@ -134,14 +156,21 @@ dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
 	go install -C cmd/pulumi-language-nodejs \
 		-tags="${GO_BUILD_TAGS}" \
-		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_NODE_PKG}
+	go install -C cmd/pulumi-language-bun \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
+
 	cp dist/pulumi-resource-pulumi-nodejs "${GOBIN}"
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -C cmd/pulumi-language-nodejs \
-	   -tags="${GO_BUILD_TAGS}" \
-	   -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_NODE_PKG}
+	go install -C cmd/pulumi-language-bun \
+		-tags="${GO_BUILD_TAGS}" \
+		-ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_BUN_PKG}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 
 clean::

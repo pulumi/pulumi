@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,10 @@ The Pulumi Core SDK for Python. This package defines the core primitives that
 providers and libraries in the Pulumi ecosystem use to create and manage
 resources.
 """
+
+# IMPORTANT: Import _instrumentation BEFORE any other modules to enable OTel tracing.
+# The instrumentation works by monkey-patching grpc, which must happen before it's loaded.
+from .runtime import _instrumentation  # noqa: F401 - imported for side effects
 
 # Make all module members inside of this package available as package members.
 from .asset import (
@@ -101,6 +105,8 @@ from .resource_hooks import (
     ResourceHook,
     ResourceHookBinding,
     ResourceHookOptions,
+    resource_hook,
+    error_hook,
 )
 
 from .log import (
@@ -200,6 +206,8 @@ __all__ = [
     "ResourceHook",
     "ResourceHookBinding",
     "ResourceHookOptions",
+    "resource_hook",
+    "error_hook",
     # log
     "debug",
     "info",

@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ func TestGeneratingPackageJSON_UsingZippedLocalDependency(t *testing.T) {
 		"tfe": "sdk/tfe/tfe-0.68.2.tgz",
 	}
 
-	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
+	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies, "nodejs")
 	require.NoError(t, err)
 	require.Contains(t, string(packageJSON), `"@pulumi/tfe": "sdk/tfe/tfe-0.68.2.tgz"`)
 }
@@ -194,7 +194,7 @@ func TestGeneratingPackageJSON_UsingLocalSourceDependency(t *testing.T) {
 		"tfe": "sdk/tfe",
 	}
 
-	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies)
+	packageJSON, err := generatePackageJSON(program, "my-test-project", localDependencies, "nodejs")
 	require.NoError(t, err, "unexpected error generating package.json")
 	require.Contains(t, string(packageJSON), `"@pulumi/tfe": "file:sdk/tfe"`)
 }

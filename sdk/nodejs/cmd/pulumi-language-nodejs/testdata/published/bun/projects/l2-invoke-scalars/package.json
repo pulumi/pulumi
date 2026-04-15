@@ -1,0 +1,15 @@
+{
+	"name": "l2-invoke-scalars",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/scalar-returns": "ROOT/artifacts/pulumi-scalar-returns-21.0.0.tgz"
+	}
+}

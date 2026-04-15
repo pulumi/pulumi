@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package ints
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -1330,7 +1329,7 @@ func TestAboutPython(t *testing.T) {
 	e.RunCommand("pulumi", "install")
 	stdout, _ := e.RunCommand("pulumi", "about")
 	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "pulumi_kubernetes")
+	assert.Contains(t, stdout, "pulumi-kubernetes")
 	// Assert we parsed the language plugin, we don't assert against the minor version number
 	assert.Regexp(t, regexp.MustCompile(`language\W+python\W+3\.`), stdout)
 }
@@ -1580,13 +1579,13 @@ func TestConvertTerraformProviderPython(t *testing.T) {
 	found := false
 	depList := []string{}
 	for _, dep := range a.Dependencies {
-		if dep.Name == "pulumi_supabase" {
+		if dep.Name == "pulumi-supabase" {
 			found = true
 			break
 		}
 		depList = append(depList, dep.Name)
 	}
-	require.True(t, found, fmt.Sprintf("pulumi_supabase not found in dependencies.  Full list: %v", depList))
+	require.True(t, found, fmt.Sprintf("pulumi-supabase not found in dependencies.  Full list: %v", depList))
 }
 
 func TestConfigGetterOverloads(t *testing.T) {
@@ -2574,7 +2573,7 @@ func TestGetLanguageRuntimeMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	p := metadata.GetLanguageRuntimeMetadata(t.Context(), e.RootPath, project)
-	meta, err := p.Result(context.Background())
+	meta, err := p.Result(t.Context())
 
 	require.NoError(t, err)
 	require.Equal(t, meta["runtime.name"], "python")

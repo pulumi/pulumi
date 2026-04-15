@@ -24,7 +24,7 @@ const server = new aws.ec2.Instance("server", {
     },
     instanceType: aws.ec2.InstanceType.T2_Micro,
     securityGroups: [securityGroup.name],
-    ami: ami.then(ami => ami.id),
+    ami: String(ami.then(ami => ami.id)),
     userData: `#!/bin/bash
 echo "Hello, World!" > index.html
 nohup python -m SimpleHTTPServer 80 &

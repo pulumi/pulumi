@@ -19,6 +19,7 @@ COVER_PACKAGES=( \
     "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3/..." \
     "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3/..." \
     "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3/..." \
+    "github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl/v3/..." \
 )
 
 # Join COVER_PACKAGES with commas.

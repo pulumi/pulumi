@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
@@ -37,7 +38,9 @@ const (
 // ChooseTemplate will prompt the user to choose amongst the available templates.
 func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 	if !opts.IsInteractive {
-		return nil, errors.New("template or url is required when running in non-interactive mode")
+		return nil, backenderr.NonInteractiveInputRequiredError{
+			Detail: "template or url is required when running in non-interactive mode",
+		}
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -115,5 +115,51 @@ func TestGoStringMap(t *testing.T) {
 
 		const expt = `property.NewMap(map[string]property.Value{"k1":property.New(true), "k2":property.New(false)})`
 		assert.Equal(t, expt, NewMap(map[string]Value{"k1": New(true), "k2": New(false)}).GoString())
+	})
+}
+
+func TestGoStringPath(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, `property.Path{}`, PathFromSegments().GoString())
+	})
+
+	t.Run("single key", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			`property.PathFromSegments(property.NewSegment("foo"))`,
+			PathFromSegments(NewSegment("foo")).GoString())
+	})
+
+	t.Run("key and index", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			`property.PathFromSegments(property.NewSegment("foo"), property.NewSegment(0))`,
+			PathFromSegments(NewSegment("foo"), NewSegment(0)).GoString())
+	})
+}
+
+func TestGoStringGlob(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, `property.Glob{}`, GlobFromSegments().GoString())
+	})
+
+	t.Run("splat", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			`property.GlobFromSegments(property.Splat)`,
+			GlobFromSegments(Splat).GoString())
+	})
+
+	t.Run("key and splat", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			`property.GlobFromSegments(property.NewSegment("foo"), property.Splat)`,
+			GlobFromSegments(NewSegment("foo"), Splat).GoString())
 	})
 }

@@ -15,7 +15,6 @@
 package convert
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -62,7 +61,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	// Act.
 	//
 	// After the first time, we should have attempted an installation.
-	data, err := mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
+	data, err := mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -72,7 +71,7 @@ func TestCachingPluginMapper_OnlyInstallsOnce(t *testing.T) {
 	// Act.
 	//
 	// After the second time, we should still have only attempted an installation once.
-	data, err = mapper.GetMapping(context.Background(), "gcp", nil /*hint*/)
+	data, err = mapper.GetMapping(t.Context(), "gcp", nil /*hint*/)
 
 	// Assert.
 	require.NoError(t, err)
@@ -129,7 +128,7 @@ func TestCachingPluginMapper_ConcurrentAccess(t *testing.T) {
 			defer wg.Done()
 
 			// Get the mapping - this will cause concurrent map writes without proper locking
-			_, err := mapper.GetMapping(context.Background(), p, nil /*hint*/)
+			_, err := mapper.GetMapping(t.Context(), p, nil /*hint*/)
 			require.NoError(t, err)
 		}(provider)
 	}

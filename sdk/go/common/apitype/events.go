@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -232,6 +232,8 @@ type StepEventStateMetadata struct {
 	Protect bool `json:"protect,omitempty"`
 	// Taint is set to true when we wish to force it to be replaced upon the next update.
 	Taint bool `json:"taint,omitempty"`
+	// External is true if this resource is "external" to Pulumi and we don't control the lifecycle.
+	External bool `json:"external,omitempty"`
 	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
 	RetainOnDelete bool `json:"retainOnDelete,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have

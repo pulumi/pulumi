@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+# Copyright 2016, Pulumi Corporation.  All rights reserved.
 
 from pulumi import export
 from pulumi.dynamic import CreateResult, Resource, ResourceProvider

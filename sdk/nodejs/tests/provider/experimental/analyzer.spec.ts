@@ -1,4 +1,4 @@
-// Copyright 2025-2025, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -57,6 +57,39 @@ describe("Analyzer", function () {
                     outString: { type: "string" },
                     outStringNotOutput: { type: "string" },
                     outBoolean: { type: "boolean" },
+                },
+            },
+        });
+    });
+
+    it("infers inherited input properties", async function () {
+        const dir = path.join(__dirname, "testdata", "inherited-inputs");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    baseProp: { type: "string", plain: true },
+                    childProp: { type: "string", plain: true },
+                },
+                outputs: {
+                    outResult: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("handles empty args interface", async function () {
+        const dir = path.join(__dirname, "testdata", "empty-args");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {},
+                outputs: {
+                    outResult: { type: "string" },
                 },
             },
         });

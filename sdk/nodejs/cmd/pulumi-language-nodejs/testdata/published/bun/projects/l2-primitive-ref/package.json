@@ -1,0 +1,15 @@
+{
+	"name": "l2-primitive-ref",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/primitive-ref": "ROOT/artifacts/pulumi-primitive-ref-11.0.0.tgz"
+	}
+}

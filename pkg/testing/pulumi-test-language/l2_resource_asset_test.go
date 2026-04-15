@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -329,6 +329,32 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
 				"value": mremoteass,
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not register resource: %w", err)
+	}
+
+	remotearc, err := resource.NewURIArchive(
+		"https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c" +
+			"/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/archive.tar")
+	if err != nil {
+		return nil, fmt.Errorf("could not create remote archive: %w", err)
+	}
+
+	mremotetarc, err := plugin.MarshalArchive(remotearc, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal remote archive: %w", err)
+	}
+
+	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   "asset-archive:index:ArchiveResource",
+		Custom: true,
+		Name:   "remotearc",
+		Object: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": mremotetarc,
 			},
 		},
 	})

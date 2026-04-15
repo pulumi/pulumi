@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/esc"
 	"github.com/pulumi/esc/eval"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -100,7 +101,7 @@ type configEnvInitCmd struct {
 
 func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.yes && !cmd.parent.interactive {
-		return errors.New("--yes must be passed in to proceed when running in non-interactive mode")
+		return backenderr.NonInteractiveRequiresYesError{}
 	}
 
 	opts := display.Options{Color: cmd.parent.color}

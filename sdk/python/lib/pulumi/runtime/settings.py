@@ -1,4 +1,4 @@
-# Copyright 2016-2026, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@ Runtime settings and configuration.
 """
 
 from __future__ import annotations
+
+from ._instrumentation import wrap_with_context
 
 import asyncio
 import os
@@ -432,7 +434,9 @@ async def _monitor_supports_feature(
                 handle_grpc_error(exn)
             return False
 
-    return await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+    return await asyncio.get_event_loop().run_in_executor(
+        None, wrap_with_context(do_rpc_call)
+    )
 
 
 async def _load_monitor_feature_support():

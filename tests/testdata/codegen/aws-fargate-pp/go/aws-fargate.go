@@ -27,7 +27,7 @@ func main() {
 		}
 		// Create a security group that permits HTTP ingress and unrestricted egress.
 		webSecurityGroup, err := ec2.NewSecurityGroup(ctx, "webSecurityGroup", &ec2.SecurityGroupArgs{
-			VpcId: pulumi.String(vpc.Id),
+			VpcId: pulumi.String(pulumi.String(vpc.Id)),
 			Egress: ec2.SecurityGroupEgressArray{
 				&ec2.SecurityGroupEgressArgs{
 					Protocol: pulumi.String("-1"),
@@ -76,7 +76,7 @@ func main() {
 		json0 := string(tmpJSON0)
 		// Create an IAM role that can be used by our service's task.
 		taskExecRole, err := iam.NewRole(ctx, "taskExecRole", &iam.RoleArgs{
-			AssumeRolePolicy: pulumi.String(json0),
+			AssumeRolePolicy: pulumi.String(pulumi.String(json0)),
 		})
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func main() {
 			Port:       pulumi.Int(80),
 			Protocol:   pulumi.String("HTTP"),
 			TargetType: pulumi.String("ip"),
-			VpcId:      pulumi.String(vpc.Id),
+			VpcId:      pulumi.String(pulumi.String(vpc.Id)),
 		})
 		if err != nil {
 			return err
@@ -147,7 +147,7 @@ func main() {
 				pulumi.String("FARGATE"),
 			},
 			ExecutionRoleArn:     taskExecRole.Arn,
-			ContainerDefinitions: pulumi.String(json1),
+			ContainerDefinitions: pulumi.String(pulumi.String(json1)),
 		})
 		if err != nil {
 			return err

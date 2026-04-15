@@ -1,16 +1,17 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package analyzer
 
 import (
@@ -172,7 +173,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
-			result, err := parsePolicyPackConfig([]byte(test.JSON))
+			result, _, err := parsePolicyPackConfig([]byte(test.JSON))
 			require.NoError(t, err)
 			assert.Equal(t, test.Expected, result)
 		})
@@ -206,9 +207,80 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := parsePolicyPackConfig([]byte(test))
+			result, _, err := parsePolicyPackConfig([]byte(test))
 			assert.Nil(t, result)
 			assert.Error(t, err)
+		})
+	}
+}
+
+func TestParsePolicyPackConfigWithEnvironments(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		json         string
+		wantEnvs     []string
+		wantPolicies int
+		wantErr      string
+	}{
+		{
+			name: "environments and policies",
+			json: `{"environments":["org/secrets","org/config"],` +
+				`"cost-policy":{"enforcementLevel":"mandatory","maxCost":1000}}`,
+			wantEnvs:     []string{"org/secrets", "org/config"},
+			wantPolicies: 1,
+		},
+		{
+			name:         "only environments",
+			json:         `{"environments":["org/secrets"]}`,
+			wantEnvs:     []string{"org/secrets"},
+			wantPolicies: 0,
+		},
+		{
+			name:         "no environments key",
+			json:         `{"cost-policy":"mandatory"}`,
+			wantEnvs:     nil,
+			wantPolicies: 1,
+		},
+		{
+			name:    "invalid environments type",
+			json:    `{"environments":"not-an-array"}`,
+			wantErr: "environments",
+		},
+		{
+			name:    "invalid environments entry type",
+			json:    `{"environments":[123]}`,
+			wantErr: "environments",
+		},
+		{
+			name:         "empty config",
+			json:         ``,
+			wantEnvs:     nil,
+			wantPolicies: 0,
+		},
+		{
+			name:         "empty environments array",
+			json:         `{"environments":[],"cost-policy":"advisory"}`,
+			wantEnvs:     []string{},
+			wantPolicies: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			config, envs, err := parsePolicyPackConfig([]byte(tt.json))
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantEnvs, envs)
+			if config == nil {
+				assert.Equal(t, 0, tt.wantPolicies)
+			} else {
+				require.Len(t, config, tt.wantPolicies)
+			}
 		})
 	}
 }

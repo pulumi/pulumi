@@ -18,7 +18,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("content", data.Content)
+		ctx.Export("content", pulumi.Any(data.Content))
 		return nil
 	})
 }

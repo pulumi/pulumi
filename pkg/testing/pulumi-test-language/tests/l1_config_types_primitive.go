@@ -17,7 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -26,6 +26,7 @@ func init() {
 			{
 				Config: config.Map{
 					config.MustMakeKey("l1-config-types-primitive", "aNumber"): config.NewValue("3.5"),
+					config.MustMakeKey("l1-config-types-primitive", "anInt"):   config.NewValue("56"),
 					config.MustMakeKey("l1-config-types-primitive", "aString"): config.NewValue("Hello"),
 					config.MustMakeKey("l1-config-types-primitive", "aBool"):   config.NewValue("false"),
 				},
@@ -39,10 +40,19 @@ func init() {
 
 					outputs := stack.Outputs
 
-					require.Len(l, outputs, 3, "expected 3 outputs")
-					AssertPropertyMapMember(l, outputs, "theNumber", resource.NewProperty(4.75))
-					AssertPropertyMapMember(l, outputs, "theString", resource.NewProperty("Hello World"))
-					AssertPropertyMapMember(l, outputs, "theBool", resource.NewProperty(true))
+					assert.Equal(l, resource.PropertyMap{
+						// Provided config
+						"theNumber":  resource.NewProperty(4.75),
+						"theInteger": resource.NewProperty(60.0),
+						"theString":  resource.NewProperty("Hello World"),
+						"theBool":    resource.NewProperty(true),
+
+						// Default values
+						"defaultNumber":  resource.NewProperty(42.7),
+						"defaultInteger": resource.NewProperty(3.0),
+						"defaultString":  resource.NewProperty("defaultStringValue"),
+						"defaultBool":    resource.NewProperty(false),
+					}, outputs)
 				},
 			},
 		},

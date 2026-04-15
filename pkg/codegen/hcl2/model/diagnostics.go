@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -107,7 +107,7 @@ func tupleIndexOutOfRange(tupleLen int, indexRange hcl.Range) *hcl.Diagnostic {
 	return errorf(indexRange, "tuple index must be between 0 and %d", tupleLen)
 }
 
-func unknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {
+func UnknownObjectProperty(name string, indexRange hcl.Range, props []string) *hcl.Diagnostic {
 	slices.Sort(props)
 	return errorf(indexRange, "unknown property '%s' among %v", name, props)
 }

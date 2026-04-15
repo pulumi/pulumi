@@ -1,4 +1,4 @@
-// Copyright 2025-2026, Pulumi Corporation.
+// Copyright 2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package fuzzing
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // ExclusionRule represents a rule that determines if a snapshot should be excluded from fuzzing.
@@ -55,14 +56,16 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeResourceReferencingAliasedProviderDestroyV2,
 		// TODO[pulumi/pulumi#21402]
 		ExcludeRefreshWithTargetedProviderParentChangeDestroyV2,
-		// TODO[pulumi/pulumi#21645]
-		ExcludeDependenciesInProgramButNotInSnapshotRefreshV2,
 		// TODO[pulumi/pulumi#21672]
 		ExcludeParentedResourcesRefreshV2,
 		// TODO[pulumi/pulumi#21675]
 		ExcludeDependenciesOnPendingReplacementRefreshV2,
 		// TODO[pulumi/pulumi#21700]
 		ExcludePendingReplacementRegisteredInUpdate,
+		// TODO[pulumi/pulumi#22481]
+		ExcludeDeletedWithRefreshV2,
+		// TODO[pulumi/pulumi#22511]
+		ExcludeTargetedUpdateRefreshWithChildProvider,
 	}
 }
 
@@ -590,43 +593,6 @@ func ExcludeTargetsRefreshV2(
 	return false
 }
 
-func ExcludeDependenciesInProgramButNotInSnapshotRefreshV2(
-	snap *SnapshotSpec,
-	prog *ProgramSpec,
-	_ *ProviderSpec,
-	plan *PlanSpec,
-) bool {
-	if plan.Operation != PlanOperationRefreshV2 && !plan.RefreshProgram {
-		return false
-	}
-	snapResources := make(map[resource.URN]bool)
-	for _, res := range snap.Resources {
-		snapResources[res.URN()] = true
-	}
-
-	for _, res := range prog.ResourceRegistrations {
-		if res.Parent != "" && !snapResources[res.Parent] {
-			return true
-		}
-		for _, dep := range res.Dependencies {
-			if !snapResources[dep] {
-				return true
-			}
-		}
-		for _, deps := range res.PropertyDependencies {
-			for _, dep := range deps {
-				if !snapResources[dep] {
-					return true
-				}
-			}
-		}
-		if res.DeletedWith != "" && !snapResources[res.DeletedWith] {
-			return true
-		}
-	}
-	return false
-}
-
 func ExcludeParentedResourcesRefreshV2(
 	snap *SnapshotSpec,
 	prog *ProgramSpec,
@@ -702,6 +668,87 @@ func ExcludeDependenciesOnPendingReplacementRefreshV2(
 		}
 		if res.DeletedWith != "" && pendingReplacementURNs[res.DeletedWith] {
 			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeDeletedWithRefreshV2 excludes snapshots where a component resource
+// (non-custom, non-provider) has a non-empty DeletedWith field during a
+// refreshV2 operation. During refreshV2, component resources do not receive
+// refresh steps and can end up reordered relative to their DeletedWith
+// targets, violating a snapshot integrity constraint. Custom resources are
+// not affected since they receive refresh steps that maintain ordering.
+func ExcludeDeletedWithRefreshV2(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationRefreshV2 {
+		return false
+	}
+
+	for _, res := range snap.Resources {
+		if res.DeletedWith != "" && !res.Custom && !providers.IsProviderType(res.Type) {
+			return true
+		}
+	}
+
+	for _, res := range prog.ResourceRegistrations {
+		if res.DeletedWith != "" && !res.Custom && !providers.IsProviderType(res.Type) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeTargetedUpdateRefreshWithChildProvider excludes scenarios where a
+// targeted update with refresh has a provider that is a child of another
+// resource in the snapshot and the program contains an aliased resource whose
+// type belongs to the same package as a child provider. During the refresh
+// phase, the child provider's read can fail, causing it to be dropped from the
+// snapshot while the aliased resource still references it.
+//
+// We match on package rather than direct provider reference because the program
+// resource may not explicitly set its Provider field — the engine matches it to
+// the snapshot resource (which uses the child provider) via the alias.
+func ExcludeTargetedUpdateRefreshWithChildProvider(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+	if !plan.Refresh {
+		return false
+	}
+	if len(plan.TargetURNs) == 0 {
+		return false
+	}
+
+	// Collect the package names of all child providers in the snapshot.
+	childProviderPkgs := make(map[tokens.Package]bool)
+	for _, res := range snap.Resources {
+		if providers.IsProviderType(res.Type) && res.Parent != "" {
+			childProviderPkgs[providers.GetProviderPackage(res.Type)] = true
+		}
+	}
+	if len(childProviderPkgs) == 0 {
+		return false
+	}
+
+	// Check if any aliased program resource uses a child provider's package.
+	for _, res := range prog.ResourceRegistrations {
+		if len(res.Aliases) > 0 {
+			resPkg := res.Type.Module().Package()
+			if childProviderPkgs[resPkg] {
+				return true
+			}
 		}
 	}
 

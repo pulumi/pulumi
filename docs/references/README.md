@@ -9,5 +9,7 @@ TypeDocs from the NodeJS/TypeScript SDK, and so on).
 :titlesonly:
 
 /proto/README
+/docs/references/metaschema
+/docs/references/deployment-schema
 Terraform Bridge <https://pulumi-developer-docs.readthedocs.io/projects/pulumi-terraform-bridge/en/latest/docs/README.html>
 :::

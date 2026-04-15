@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -413,7 +413,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				EntryPoint:       ".",
 			},
 		})
-		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
+		require.ErrorContains(t, err, "no package-lock.json found (searching upwards from")
 	})
 
 	t.Run("With package.json in project root, no lock files", func(t *testing.T) {
@@ -438,7 +438,7 @@ func TestGetProgramDependencies(t *testing.T) {
 				EntryPoint:       ".",
 			},
 		})
-		require.ErrorContains(t, err, "no package-lock.json or yarn.lock file found (searching upwards from")
+		require.ErrorContains(t, err, "no package-lock.json found (searching upwards from")
 	})
 
 	t.Run("With package.json and yarn.lock in project root", func(t *testing.T) {
@@ -675,18 +675,18 @@ func TestGetProgramDependencies(t *testing.T) {
 func TestParseOptions(t *testing.T) {
 	t.Parallel()
 
-	opts, err := parseOptions(nil)
+	opts, err := parseOptions(nil, "nodejs")
 	require.NoError(t, err)
 	require.Equal(t, npm.AutoPackageManager, opts.packagemanager)
 
 	_, err = parseOptions(map[string]any{
 		"typescript": 123,
-	})
+	}, "nodejs")
 	require.ErrorContains(t, err, "typescript option must be a boolean")
 
 	_, err = parseOptions(map[string]any{
 		"packagemanager": "poetry",
-	})
+	}, "nodejs")
 	require.ErrorContains(t, err, "packagemanager option must be one of")
 
 	for _, tt := range []struct {
@@ -701,7 +701,7 @@ func TestParseOptions(t *testing.T) {
 	} {
 		opts, err = parseOptions(map[string]any{
 			"packagemanager": tt.input,
-		})
+		}, "nodejs")
 		require.NoError(t, err)
 		require.Equal(t, tt.expected, opts.packagemanager)
 	}
@@ -721,10 +721,9 @@ time.sleep(3)
 `
 
 	// Create a named pipe to use as stdout
-	tmp := os.TempDir()
+	tmp := t.TempDir()
 	p := filepath.Join(tmp, "fake-stdout")
 	err := syscall.Mkfifo(p, 0o644)
-	defer os.Remove(p)
 	require.NoError(t, err)
 	// Open fd without O_NONBLOCK, ensuring that os.NewFile does not return a pollable file.
 	// When our python script changes the file to non-blocking, Go does not notice and continues to

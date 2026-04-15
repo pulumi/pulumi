@@ -640,6 +640,9 @@ func TestIncompleteLongLines(t *testing.T) {
 func TestIncompleteLinesWithReopens(t *testing.T) {
 	t.Parallel()
 
+	// TODO[pulumi/pulumi#19888]: Skipping flaky test
+	t.Skip("Skipping because the tail library is flaky.  See pulumi/pulumi#19888")
+
 	tailTest, cleanup := NewTailTest("incomplete-lines-reopens", t)
 	defer cleanup()
 	filename := "test.txt"

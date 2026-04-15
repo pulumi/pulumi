@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -299,6 +299,8 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.new.URN,
 				s.new.URN.Name(),
 				s.Type(),
+				nil, /* oldOptions */
+				resourceOptionsFromState(s.new),
 				s.new.Inputs,
 				nil, /* oldInputs */
 				s.new.Outputs,
@@ -314,6 +316,8 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.new.URN,
 				s.new.URN.Name(),
 				s.Type(),
+				resourceOptionsFromState(s.old),
+				resourceOptionsFromState(s.new),
 				s.new.Inputs,
 				s.old.Inputs,
 				s.new.Outputs,

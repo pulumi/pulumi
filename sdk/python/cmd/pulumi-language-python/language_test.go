@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,12 +101,14 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l1-builtin-try":    "Temporarily disabled until pr #18915 is submitted",
-	"l1-builtin-can":    "Temporarily disabled until pr #18916 is submitted",
-	"l1-builtin-list":   "singleOrNone throws for empty list instead of returning null",
-	"l1-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
-	"l2-builtin-object": "lookup generates lambda using 'def' as parameter name (Python keyword)",
-	"l3-range":          "enumerate(map) gives (index, key) pairs instead of (key, value); map range generates wrong resource names", //nolint:lll
+	"l1-builtin-try":                     "Temporarily disabled until pr #18915 is submitted",
+	"l1-builtin-can":                     "Temporarily disabled until pr #18916 is submitted",
+	"l3-deferred-outputs":                "does not type-check",
+	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
+	"l3-range-ref":                       `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
+	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
+	"l3-component-nested":                "syntax error",
 }
 
 type languageTestConfig struct {
@@ -215,8 +217,16 @@ func testLanguageWithConfig(t *testing.T, config languageTestConfig) {
 						t.Skip("pulumi#21830: Expected to fail")
 					}
 
-					if config.typechecker == "pyright" && tt == "l3-component-simple" {
-						t.Skip("Skipping l3-component-simple test with pyright due to issues with optional properties")
+					if config.typechecker == "pyright" &&
+						(tt == "l3-component-simple" ||
+							tt == "l3-rewrite-conversions" ||
+							tt == "l3-component-config-primitives" ||
+							tt == "l3-component-config-objects") {
+						t.Skipf("Skipping %s test with pyright due to issues with optional properties", tt)
+					}
+
+					if config.name == "classes" && tt == "l2-snake-names" {
+						t.Skip(`"EntryArgs" is not a known attribute of module "pulumi_snake_names.cool_module"`)
 					}
 
 					if expected, ok := expectedFailures[tt]; ok {

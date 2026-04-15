@@ -5,7 +5,6 @@ import (
 
 	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 type DeploymentZonesArgs struct {
@@ -50,7 +49,7 @@ func NewExampleComponent(
 	password, err := random.NewRandomPassword(ctx, fmt.Sprintf("%s-password", name), &random.RandomPasswordArgs{
 		Length:          pulumi.Int(16),
 		Special:         pulumi.Bool(true),
-		OverrideSpecial: args.Input,
+		OverrideSpecial: pulumi.String(args.Input),
 	}, pulumi.Parent(&componentResource))
 	if err != nil {
 		return nil, err

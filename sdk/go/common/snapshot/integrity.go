@@ -180,6 +180,11 @@ type SnapshotIntegrityError struct {
 
 	// Metadata about the operation that caused the error, if available.
 	Metadata *apitype.SnapshotIntegrityErrorMetadataV1
+
+	// AutoRepairErr, if non-nil, indicates that an automatic repair of this
+	// integrity error was attempted but failed. Running `pulumi state repair`
+	// is unlikely to succeed when this is set.
+	AutoRepairErr error
 }
 
 // The set of operations alongside which snapshot integrity checks can be

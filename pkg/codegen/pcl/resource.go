@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -76,6 +77,8 @@ type ResourceOptions struct {
 	ReplacementTrigger model.Expression
 	// Environment variable mappings for provider resources.
 	EnvVarMappings model.Expression
+	// Hooks are lifecycle hooks for the resource, keyed by hook type with lists of command arrays.
+	Hooks model.Expression
 }
 
 // Resource represents a resource instantiation inside of a program or component.
@@ -132,7 +135,7 @@ func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagn
 }
 
 func (r *Resource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-	if value, hasValue := context.Variables[r.Name()]; hasValue {
+	if value, hasValue := hcl2.LookupVariable(context, r.Name()); hasValue {
 		return value, nil
 	}
 	return cty.DynamicVal, nil
@@ -196,7 +199,7 @@ func (p *ResourceProperty) Value(*hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 		case hcl.TraverseIndex:
 			switch t.Key.Type() {
 			case cty.String:
-				_, err = fmt.Fprintf(&buffer, "[%s]", t.Key.AsString())
+				_, err = fmt.Fprintf(&buffer, `["%s"]`, model.EscapeString(t.Key.AsString()))
 			case cty.Number:
 				idx, _ := t.Key.AsBigFloat().Int64()
 				_, err = fmt.Fprintf(&buffer, "[%d]", idx)

@@ -35,8 +35,8 @@ func main() {
 			}
 			fromModule = append(fromModule, __res)
 		}
-		ctx.Export("mainId", main.Id)
-		ctx.Export("values", fromModule.Values.First)
+		ctx.Export("mainId", pulumi.Any(main.Id))
+		ctx.Export("values", pulumi.Any(fromModule.Values.First))
 		return nil
 	})
 }

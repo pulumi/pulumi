@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -35,6 +34,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -250,29 +250,12 @@ func (p *poetry) LinkPackages(ctx context.Context, packages map[string]string) e
 	return nil
 }
 
-func (p *poetry) ListPackages(ctx context.Context, transitive bool) ([]PythonPackage, error) {
-	args := []string{"list", "-v", "--format", "json"}
-	if !transitive {
-		args = append(args, "--not-required")
-	}
-
-	cmd, err := p.ModuleCommand(ctx, "pip", args...)
+func (p *poetry) ListPackages(_ context.Context, transitive bool) ([]plugin.DependencyInfo, error) {
+	lockDir, err := searchup(p.directory, "poetry.lock")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not find poetry.lock: %w", err)
 	}
-
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(cmd.Args, " "), err)
-	}
-
-	var packages []PythonPackage
-	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
-	if err := jsonDecoder.Decode(&packages); err != nil {
-		return nil, fmt.Errorf("parsing `python %s` output: %w", strings.Join(cmd.Args, " "), err)
-	}
-
-	return packages, nil
+	return listPackagesFromLockFile(filepath.Join(lockDir, "poetry.lock"), transitive, nil)
 }
 
 func (p *poetry) Command(ctx context.Context, args ...string) (*exec.Cmd, error) {

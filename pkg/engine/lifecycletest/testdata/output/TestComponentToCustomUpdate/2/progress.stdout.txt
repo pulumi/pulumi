@@ -5,8 +5,6 @@
  <{%bold%}><{%fg 13%}>+-<{%reset%}> prog myType::resA <{%bold%}><{%fg 13%}>replacing<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
  <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> 
  <{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%fg 9%}>deleted original<{%reset%}> 
- <{%bold%}><{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> pulumi:providers:pkgA default <{%fg 1%}>deleted<{%reset%}> 
  <{%fg 13%}>+-<{%reset%}> prog myType::resA <{%fg 13%}>replaced<{%reset%}> [diff: <{%fg 3%}>~provider<{%reset%}><{%reset%}>]
  <{%reset%}>  <{%reset%}> pulumi:pulumi:Stack project-stack <{%reset%}><{%reset%}> 
 <{%fg 13%}><{%bold%}>Resources:<{%reset%}>

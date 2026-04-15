@@ -51,7 +51,7 @@ func main() {
 			SecurityGroups: pulumi.StringArray{
 				securityGroup.Name,
 			},
-			Ami:      pulumi.String(ami.Id),
+			Ami:      pulumi.String(pulumi.String(ami.Id)),
 			UserData: pulumi.String("#!/bin/bash\necho \"Hello, World!\" > index.html\nnohup python -m SimpleHTTPServer 80 &\n"),
 		})
 		if err != nil {

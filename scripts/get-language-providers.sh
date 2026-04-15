@@ -47,9 +47,12 @@ download_release() {
 }
 
 LANGUAGES=(
-  "dotnet v3.101.2"
-  "java v1.21.2"
-  "yaml v1.29.1"
+  # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
+  "dotnet v3.102.1"
+  # renovate: datasource=github-releases depName=pulumi/pulumi-java
+  "java v1.23.0"
+  # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
+  "yaml v1.31.0"
 )
 
 for i in "${LANGUAGES[@]}"; do

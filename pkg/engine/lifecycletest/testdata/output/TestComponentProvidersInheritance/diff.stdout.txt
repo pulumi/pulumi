@@ -2,8 +2,6 @@
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkg::provA]
 <{%reset%}><{%reset%}><{%fg 2%}>+ my_component: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::my_component::resA]
-<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkg: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkg::default]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkg:index:component: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkg:index:component::resB]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkg:index:type: (create)

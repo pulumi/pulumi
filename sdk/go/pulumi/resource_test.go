@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -193,7 +193,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	newRes := func(name string) (Resource, URN) {
 		res := &testRes{foo: name}
 		res.urn = CreateURN(String(name), String("t"), nil, String("stack"), String("project"))
-		urn, _, _, err := res.urn.awaitURN(context.Background())
+		urn, _, _, err := res.urn.awaitURN(t.Context())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +207,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	resolveDependsOn := func(opts *resourceOptions) []URN {
 		allDeps := map[URN]Resource{}
 		for _, ds := range opts.DependsOn {
-			if err := ds.addDeps(context.Background(), allDeps, nil /* from */); err != nil {
+			if err := ds.addDeps(t.Context(), allDeps, nil /* from */); err != nil {
 				t.Fatal(err)
 			}
 		}
@@ -1388,7 +1388,7 @@ func TestRehydratedComponentConsideredRemote(t *testing.T) {
 			&component))
 		require.False(t, component.keepDependency())
 
-		urn, _, _, err := component.URN().awaitURN(context.Background())
+		urn, _, _, err := component.URN().awaitURN(t.Context())
 		require.NoError(t, err)
 
 		var rehydrated testComp

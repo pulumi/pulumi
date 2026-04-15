@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -547,6 +547,32 @@ func (spec *PackageSpec) validateTypeToken(
 	}
 	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
 		err := errorf(path, "invalid token '%s' (provider is a reserved word for the root module)", token)
+		diags = diags.Append(err)
+	}
+	moduleName := parts[1]
+
+	// Check if this is a nested index module, we need to use the module format regex to determine this because
+	// "index_mod" might be the module "index_mod" or "index" depending on the moduleFormat.
+	var moduleFormat *regexp.Regexp
+	if spec.Meta != nil && spec.Meta.ModuleFormat != "" {
+		var err error
+		moduleFormat, err = regexp.Compile(spec.Meta.ModuleFormat)
+		if err != nil {
+			diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile module format regex: %v", err))
+			return diags
+		}
+	}
+	if moduleFormat != nil {
+		matches := moduleFormat.FindStringSubmatch(moduleName)
+		if len(matches) > 1 {
+			moduleName = matches[1]
+		}
+	}
+
+	if strings.HasPrefix(moduleName, "index/") {
+		// TODO: We want this to be an error really, but for now warn about it to see if any users comment about it. We
+		// know at least aws-native needs to be updated to handle it.
+		err := warningf(path, "invalid token '%s' (nested modules under index are not allowed)", token)
 		diags = diags.Append(err)
 	}
 	if modules != nil && !slices.Contains(modules, parts[1]) {

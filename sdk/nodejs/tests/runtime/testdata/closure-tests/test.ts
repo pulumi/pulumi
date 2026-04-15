@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ import * as typescript from "typescript";
 import { runtime } from "@pulumi/pulumi";
 // @ts-ignore: The test installs @pulumi/pulumi
 import * as pkg from "@pulumi/pulumi/runtime/closure/package";
+import * as v8 from "v8";
+v8.setFlagsFromString("--allow-natives-syntax");
 
 
 const platformIndependentEOL = /\r\n|\r|\n/g;

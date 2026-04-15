@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package gitutil
 
 import (
-	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -649,7 +648,7 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 
 			dir := t.TempDir()
 
-			err := GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
+			err := GitCloneAndCheckoutRevision(t.Context(), "testdata/revision-test.git", c.revision, dir)
 			if c.expectedError != "" {
 				require.ErrorContains(t, err, c.expectedError)
 				return
@@ -662,6 +661,80 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 			assert.Equal(t, c.expectedContent, string(content))
 		})
 	}
+}
+
+func TestParseGitLsRemoteOutput(t *testing.T) {
+	t.Parallel()
+
+	t.Run("typical output", func(t *testing.T) {
+		t.Parallel()
+		output := "abc123def456abc123def456abc123def456abc1\tHEAD\n" +
+			"abc123def456abc123def456abc123def456abc1\trefs/heads/main\n" +
+			"def456abc123def456abc123def456abc123def4\trefs/tags/v1.0.0\n"
+
+		refs := parseGitLsRemoteOutput(output)
+		require.Len(t, refs, 3)
+
+		assert.Equal(t, plumbing.HEAD, refs[0].Name())
+		assert.Equal(t, plumbing.NewHash("abc123def456abc123def456abc123def456abc1"), refs[0].Hash())
+
+		assert.Equal(t, plumbing.ReferenceName("refs/heads/main"), refs[1].Name())
+		assert.Equal(t, plumbing.NewHash("abc123def456abc123def456abc123def456abc1"), refs[1].Hash())
+
+		assert.Equal(t, plumbing.ReferenceName("refs/tags/v1.0.0"), refs[2].Name())
+		assert.Equal(t, plumbing.NewHash("def456abc123def456abc123def456abc123def4"), refs[2].Hash())
+	})
+
+	t.Run("empty output", func(t *testing.T) {
+		t.Parallel()
+		refs := parseGitLsRemoteOutput("")
+		assert.Empty(t, refs)
+	})
+
+	t.Run("trailing newline", func(t *testing.T) {
+		t.Parallel()
+		output := "abc123def456abc123def456abc123def456abc1\trefs/heads/main\n\n"
+		refs := parseGitLsRemoteOutput(output)
+		require.Len(t, refs, 1)
+		assert.Equal(t, plumbing.ReferenceName("refs/heads/main"), refs[0].Name())
+	})
+
+	t.Run("with peeled tags", func(t *testing.T) {
+		t.Parallel()
+		output := "abc123def456abc123def456abc123def456abc1\trefs/tags/v1.0.0\n" +
+			"def456abc123def456abc123def456abc123def4\trefs/tags/v1.0.0^{}\n"
+		refs := parseGitLsRemoteOutput(output)
+		require.Len(t, refs, 2)
+		assert.Equal(t, plumbing.ReferenceName("refs/tags/v1.0.0"), refs[0].Name())
+		assert.Equal(t, plumbing.ReferenceName("refs/tags/v1.0.0^{}"), refs[1].Name())
+	})
+
+	t.Run("skips non-ref lines", func(t *testing.T) {
+		t.Parallel()
+		output := "From git@github.com:pulumi/pulumi.git\n" +
+			"abc123def456abc123def456abc123def456abc1\tHEAD\n"
+		refs := parseGitLsRemoteOutput(output)
+		require.Len(t, refs, 1)
+		assert.Equal(t, plumbing.HEAD, refs[0].Name())
+	})
+}
+
+func TestGitListRefsADODetection(t *testing.T) {
+	t.Parallel()
+
+	// Verify that ADO URLs are detected for system git routing.
+	// We can't easily test the actual system git call without network access,
+	// but we can verify the detection logic works.
+	adoURL := "https://dev.azure.com/org/project/_git/repo"
+	u, err := parseGitRepoURLParts(adoURL)
+	require.NoError(t, err)
+	assert.Equal(t, AzureDevOpsHostName, u.Hostname)
+
+	// Non-ADO URL should not match.
+	githubURL := "https://github.com/pulumi/pulumi.git"
+	u, err = parseGitRepoURLParts(githubURL)
+	require.NoError(t, err)
+	assert.NotEqual(t, AzureDevOpsHostName, u.Hostname)
 }
 
 func TestGetLatestTagOrHash(t *testing.T) {
@@ -691,7 +764,7 @@ func TestGetLatestTagOrHash(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			v, err := GetLatestTagOrHash(context.Background(), c.dataDir)
+			v, err := GetLatestTagOrHash(t.Context(), c.dataDir)
 			require.NoError(t, err)
 			assert.Equal(t, c.expected.String(), v.String())
 		})

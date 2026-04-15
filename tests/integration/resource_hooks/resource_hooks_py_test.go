@@ -16,6 +16,7 @@ package ints
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -101,6 +102,35 @@ func TestPythonResourceHooksSecrets(t *testing.T) {
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			testutil.RequirePrinted(t, stack, "info", "hook called")
+		},
+	})
+}
+
+// Test that a hook can be declared via a decorator on a function.
+//
+//nolint:paralleltest // ProgramTest calls t.Parallel()
+func TestPythonHookDecorator(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: "python_hook_decorator",
+		Dependencies: []string{
+			filepath.Join("..", "..", "..", "sdk", "python"),
+		},
+		LocalProviders: []integration.LocalDependency{
+			{Package: "testprovider", Path: filepath.Join("..", "..", "testprovider")},
+		},
+		PreviewCompletedHook: func(dir string) error {
+			matches, err := filepath.Glob(filepath.Join(dir, "command-output", "pulumi-preview-initial*.log"))
+			require.NoError(t, err)
+			require.NotEmpty(t, matches, "expected pulumi preview log file")
+
+			previewLog, err := os.ReadFile(matches[0])
+			require.NoError(t, err)
+			require.Contains(t, string(previewLog), "hook called True")
+			return nil
+		},
+		SkipEmptyPreviewUpdate: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			testutil.RequirePrinted(t, stack, "info", "hook called False")
 		},
 	})
 }

@@ -71,7 +71,7 @@ func New(t *testing.T) *Database {
 	user := "postgres"
 	password := "testpassword"
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Start PostgreSQL 17 container using testcontainers
 	postgresContainer, err := postgres.Run(ctx,
