@@ -311,7 +311,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
-			if err := cmdutil.InitOtelReceiver(otelTracesFlag, nil); err != nil {
+			if err := cmdutil.InitOtelReceiver(otelTracesFlag, &backendlogging.SlogLogExporter{}); err != nil {
 				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
 			}
 

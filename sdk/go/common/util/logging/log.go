@@ -145,9 +145,14 @@ func (v VerboseLogger) Infoln(args ...any) {
 // The format string is stored as the slog message and each argument is
 // recorded as a separate "pulumi.log.argN" attribute so that the sink
 // handler can access them individually.
+// Any PropertyValue args are also sent to the export handler as separate
+// attributes with [[key]] placeholders in the exported message.
 func (v VerboseLogger) Infof(format string, args ...any) {
 	if v.Enabled() {
-		slog.Log(context.TODO(), v.slogLevel(), format, fmtAttrs(args, "v", int(v.level))...)
+		level := v.slogLevel()
+		slog.Log(context.TODO(), level, format, fmtAttrs(args, "v", int(v.level))...)
+		exportMsg, pvAttrs := replacePropertyValues(format, args)
+		logToExporter(context.TODO(), level, exportMsg, append(pvAttrs, slog.Int("v", int(v.level)))...)
 	}
 }
 
@@ -157,14 +162,17 @@ func V(level int32) VerboseLogger {
 
 func Errorf(format string, args ...any) {
 	slog.Log(context.TODO(), slog.LevelError, format, fmtAttrs(args)...)
+	logToExporter(context.TODO(), slog.LevelError, fmt.Sprintf(format, args...))
 }
 
 func Infof(format string, args ...any) {
 	slog.Log(context.TODO(), slog.LevelInfo, format, fmtAttrs(args)...)
+	logToExporter(context.TODO(), slog.LevelInfo, fmt.Sprintf(format, args...))
 }
 
 func Warningf(format string, args ...any) {
 	slog.Log(context.TODO(), slog.LevelWarn, format, fmtAttrs(args)...)
+	logToExporter(context.TODO(), slog.LevelWarn, fmt.Sprintf(format, args...))
 }
 
 // fmtAttrs encodes format arguments as slog key-value pairs so that
@@ -221,6 +229,7 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 		}
 	}
 	rebuildLogger()
+	initExportHandler(filepath.Base(os.Args[0]))
 }
 
 // logFileName returns a log file path matching the glog naming convention:
@@ -245,8 +254,9 @@ func logFileName() string {
 	return filepath.Join(os.TempDir(), name)
 }
 
-// Flush flushes any pending log I/O.
+// Flush flushes any pending log I/O and shuts down the export handler.
 func Flush() {
+	shutdownExportHandler()
 	if logFile != nil {
 		logFile.Sync() //nolint:errcheck
 	}
