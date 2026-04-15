@@ -592,6 +592,10 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertFalse(arr.secret)
             self.assertEqual(arr.value, '["one","two","three"]')
 
+            # We're intentionally skipping removing this particular stack at the end of the test,
+            # because it requires the Pulumi.dev.yaml file to be present, and we'll re-use this stack
+            # name in other tests.
+
     def test_tag_methods(self):
         if os.getenv("PULUMI_ACCESS_TOKEN") is None:
             self.skipTest(
