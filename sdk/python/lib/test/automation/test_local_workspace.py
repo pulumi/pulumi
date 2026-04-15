@@ -570,27 +570,31 @@ class TestLocalWorkspace(unittest.TestCase):
         stack_name = fully_qualified_stack_name(get_test_org(), project_name, "dev")
         project_dir = get_test_path("data", project_name)
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
-        with stack_cleanup(stack, destroy=False):
-            all_config = stack.get_all_config()
-            outer_val = all_config["nested_config:outer"]
-            self.assertFalse(outer_val.secret)
-            self.assertEqual(
-                outer_val.value, '{"inner":"my_value","other":"something_else"}'
-            )
 
-            list_val = all_config["nested_config:myList"]
-            self.assertFalse(list_val.secret)
-            self.assertEqual(list_val.value, '["one","two","three"]')
+        all_config = stack.get_all_config()
+        outer_val = all_config["nested_config:outer"]
+        self.assertFalse(outer_val.secret)
+        self.assertEqual(
+            outer_val.value, '{"inner":"my_value","other":"something_else"}'
+        )
 
-            outer = stack.get_config("outer")
-            self.assertFalse(outer.secret)
-            self.assertEqual(
-                outer_val.value, '{"inner":"my_value","other":"something_else"}'
-            )
+        list_val = all_config["nested_config:myList"]
+        self.assertFalse(list_val.secret)
+        self.assertEqual(list_val.value, '["one","two","three"]')
 
-            arr = stack.get_config("myList")
-            self.assertFalse(arr.secret)
-            self.assertEqual(arr.value, '["one","two","three"]')
+        outer = stack.get_config("outer")
+        self.assertFalse(outer.secret)
+        self.assertEqual(
+            outer_val.value, '{"inner":"my_value","other":"something_else"}'
+        )
+
+        arr = stack.get_config("myList")
+        self.assertFalse(arr.secret)
+        self.assertEqual(arr.value, '["one","two","three"]')
+
+        # We're intentionally skipping removing this particular stack at the end of the test,
+        # because it requires the Pulumi.dev.yaml file to be present, and we'll re-use this stack
+        # name in other tests.
 
     def test_tag_methods(self):
         if os.getenv("PULUMI_ACCESS_TOKEN") is None:
