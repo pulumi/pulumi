@@ -84,7 +84,9 @@ def test_warns_for_non_class_values():
 def test_keeps_valid_warns_for_invalid_mixed():
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
-        result = _validate_explicit_components([MyComponent, MyCustom, MyOtherComponent, NotAResource])  # type: ignore[list-item]
+        result = _validate_explicit_components(
+            [MyComponent, MyCustom, MyOtherComponent, NotAResource]
+        )  # type: ignore[list-item]
     assert result == [MyComponent, MyOtherComponent]
     assert len(w) == 2
     messages = [str(x.message) for x in w]
