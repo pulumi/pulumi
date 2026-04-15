@@ -97,7 +97,7 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 						},
 						{
 							Name: "index",
-							Type: model.NumberType,
+							Type: model.IntType,
 						},
 					},
 					ReturnType: returnType,
@@ -254,11 +254,11 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 			Parameters: []model.Parameter{
 				{
 					Name: "fromOrTo",
-					Type: model.NumberType,
+					Type: model.IntType,
 				},
 				{
 					Name: "to",
-					Type: model.NewOptionalType(model.NumberType),
+					Type: model.NewOptionalType(model.IntType),
 				},
 			},
 			ReturnType: model.NewListType(model.IntType),
