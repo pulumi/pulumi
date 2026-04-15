@@ -287,17 +287,6 @@ function deserialize_pulumirpc_PluginInfo(buffer_arg) {
   return pulumi_plugin_pb.PluginInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_pulumirpc_RunPlugin2Request(arg) {
-  if (!(arg instanceof pulumi_language_pb.RunPlugin2Request)) {
-    throw new Error('Expected argument of type pulumirpc.RunPlugin2Request');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_RunPlugin2Request(buffer_arg) {
-  return pulumi_language_pb.RunPlugin2Request.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_pulumirpc_RunPluginRequest(arg) {
   if (!(arg instanceof pulumi_language_pb.RunPluginRequest)) {
     throw new Error('Expected argument of type pulumirpc.RunPluginRequest');
@@ -629,21 +618,6 @@ link: {
     requestDeserialize: deserialize_pulumirpc_LinkRequest,
     responseSerialize: serialize_pulumirpc_LinkResponse,
     responseDeserialize: deserialize_pulumirpc_LinkResponse,
-  },
-  // `RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-// in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-// containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-// the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-runPlugin2: {
-    path: '/pulumirpc.LanguageRuntime/RunPlugin2',
-    requestStream: true,
-    responseStream: true,
-    requestType: pulumi_language_pb.RunPlugin2Request,
-    responseType: pulumi_language_pb.RunPluginResponse,
-    requestSerialize: serialize_pulumirpc_RunPlugin2Request,
-    requestDeserialize: deserialize_pulumirpc_RunPlugin2Request,
-    responseSerialize: serialize_pulumirpc_RunPluginResponse,
-    responseDeserialize: deserialize_pulumirpc_RunPluginResponse,
   },
   // `Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
 // Operations aborted in this way will return an error.

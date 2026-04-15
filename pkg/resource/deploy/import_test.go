@@ -127,6 +127,190 @@ func TestImporter(t *testing.T) {
 			_, err := i.registerProviders(t.Context())
 			assert.ErrorIs(t, err, expectedErr)
 		})
+		t.Run("explicit provider not in state without inputs still created (#15453)", func(t *testing.T) {
+			t.Parallel()
+
+			version := semver.MustParse("1.0.0")
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+			expectedErr := errors.New("expected check config error")
+
+			// Some providers (like random) don't need any config. Even without
+			// ProviderInputs, we should still attempt to create the provider.
+			i := &importer{
+				deployment: &Deployment{
+					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
+					source: &nullSource{},
+					providers: providers.NewRegistry(&plugin.MockHost{
+						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+							return &deploytest.Provider{
+								CheckConfigF: func(
+									_ context.Context, req plugin.CheckConfigRequest,
+								) (plugin.CheckConfigResponse, error) {
+									return plugin.CheckConfigResponse{}, expectedErr
+								},
+							}, nil
+						},
+					}, true, nil),
+					imports: []Import{
+						{
+							Type:              "foo:bar:Bar",
+							Name:              "res",
+							ID:                "some-id",
+							Provider:          providerURN,
+							Version:           &version,
+							PluginDownloadURL: "download-url",
+						},
+					},
+				},
+			}
+			_, err := i.registerProviders(t.Context())
+			// Provider creation should be attempted even without ProviderInputs
+			assert.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("explicit provider with inputs uses ProviderInputs not ambient config", func(t *testing.T) {
+			t.Parallel()
+
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+			expectedErr := errors.New("expected check config error")
+
+			i := &importer{
+				deployment: &Deployment{
+					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
+					source: &nullSource{},
+					providers: providers.NewRegistry(&plugin.MockHost{
+						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+							return &deploytest.Provider{
+								CheckConfigF: func(
+									_ context.Context, req plugin.CheckConfigRequest,
+								) (plugin.CheckConfigResponse, error) {
+									// Verify the provider receives the ProviderInputs (region)
+									// NOT just ambient config from GetPackageConfig.
+									// The registry's FilterProviderConfig strips internal fields
+									// but passes through user config like "region".
+									assert.Equal(t, resource.NewProperty("eu-west-1"),
+										req.News["region"])
+									return plugin.CheckConfigResponse{}, expectedErr
+								},
+							}, nil
+						},
+					}, true, nil),
+					imports: []Import{
+						{
+							Type:     "foo:bar:Bar",
+							Name:     "res",
+							ID:       "some-id",
+							Provider: providerURN,
+							ProviderInputs: resource.PropertyMap{
+								"region": resource.NewProperty("eu-west-1"),
+							},
+						},
+					},
+				},
+			}
+			_, err := i.registerProviders(t.Context())
+			assert.ErrorIs(t, err, expectedErr)
+		})
+		t.Run("explicit provider already in state uses existing reference", func(t *testing.T) {
+			t.Parallel()
+
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+
+			i := &importer{
+				deployment: &Deployment{
+					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
+					source: &nullSource{},
+					olds: map[resource.URN]*resource.State{
+						providerURN: {
+							URN:  providerURN,
+							ID:   "existing-id",
+							Type: "pulumi:providers:foo",
+						},
+					},
+					providers: providers.NewRegistry(&plugin.MockHost{
+						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+							t.Fatal("ProviderF should not be called for provider already in state")
+							return nil, nil
+						},
+					}, true, nil),
+					imports: []Import{
+						{
+							Type:     "foo:bar:Bar",
+							Name:     "res",
+							ID:       "some-id",
+							Provider: providerURN,
+						},
+					},
+				},
+			}
+			refs, err := i.registerProviders(t.Context())
+			require.NoError(t, err)
+			// Provider reference should be in the map with its existing ID
+			require.Contains(t, refs, providerURN)
+			assert.Contains(t, refs[providerURN], "existing-id")
+		})
+		t.Run("multiple resources sharing same explicit provider deduplicate", func(t *testing.T) {
+			t.Parallel()
+
+			providerURN := resource.URN("urn:pulumi:stack-name::project-name::pulumi:providers:foo::my-provider")
+			expectedErr := errors.New("expected check config error")
+
+			i := &importer{
+				deployment: &Deployment{
+					goals: &gsync.Map[urn.URN, *resource.Goal]{},
+					ctx:   &plugin.Context{Diag: &deploytest.NoopSink{}},
+					target: &Target{
+						Name: tokens.MustParseStackName("stack-name"),
+					},
+					source: &nullSource{},
+					providers: providers.NewRegistry(&plugin.MockHost{
+						ProviderF: func(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
+							return &deploytest.Provider{
+								CheckConfigF: func(
+									_ context.Context, req plugin.CheckConfigRequest,
+								) (plugin.CheckConfigResponse, error) {
+									return plugin.CheckConfigResponse{}, expectedErr
+								},
+							}, nil
+						},
+					}, true, nil),
+					imports: []Import{
+						{
+							Type:     "foo:bar:Bar",
+							Name:     "res1",
+							ID:       "id-1",
+							Provider: providerURN,
+							ProviderInputs: resource.PropertyMap{
+								"region": resource.NewProperty("eu-west-1"),
+							},
+						},
+						{
+							Type:     "foo:bar:Baz",
+							Name:     "res2",
+							ID:       "id-2",
+							Provider: providerURN,
+							ProviderInputs: resource.PropertyMap{
+								"region": resource.NewProperty("eu-west-1"),
+							},
+						},
+					},
+				},
+			}
+			// Should only attempt to create the provider once despite two resources referencing it
+			_, err := i.registerProviders(t.Context())
+			assert.ErrorIs(t, err, expectedErr)
+		})
 	})
 	t.Run("importResources", func(t *testing.T) {
 		t.Parallel()

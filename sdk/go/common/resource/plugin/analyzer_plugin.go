@@ -686,7 +686,14 @@ func (a *analyzer) Cancel(ctx context.Context) error {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("%s failed: err=%v", label, rpcError)
 		if rpcError.Code() == codes.Unimplemented {
+			if a.plug != nil {
+				a.plug.shutdownAcknowledged.Store(true)
+			}
 			return nil
+		}
+	} else {
+		if a.plug != nil {
+			a.plug.shutdownAcknowledged.Store(true)
 		}
 	}
 

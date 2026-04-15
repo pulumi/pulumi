@@ -44,7 +44,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
-	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -112,6 +111,10 @@ func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
 type Plugin struct {
 	stdoutDone <-chan bool
 	stderrDone <-chan bool
+
+	// shutdownAcknowledged is set when the plugin has acknowledged a Cancel RPC (returned success or Unimplemented). If
+	// the plugin exits after that, it's expected — not a premature crash.
+	shutdownAcknowledged atomic.Bool
 
 	// The unstructured output of the process.
 	//
@@ -718,54 +721,7 @@ func buildPluginArguments(opts pluginArgumentOptions) []string {
 	return args
 }
 
-func (p *Plugin) healthCheck() bool {
-	if p.Conn == nil {
-		return false
-	}
-
-	// Check that the plugin looks alive by calling gRPC's Health Check service.
-	// Most plugins don't actually implement this service, which is OK as we treat
-	// an unimplemented status as OK.
-
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	defer cancel()
-
-	healthy := make(chan bool, 1)
-	go func() {
-		health := grpc_health_v1.NewHealthClient(p.Conn)
-		req := &grpc_health_v1.HealthCheckRequest{}
-
-		resp, err := health.Check(ctx, req)
-		if err != nil {
-			// Treat this as healthy as most plugins don't implement gRPC's Health
-			// Check service. An unimplemented status is enough for us to know the
-			// plugin is alive.
-			if status.Code(err) == codes.Unimplemented {
-				healthy <- true
-				return
-			}
-
-			logging.V(9).Infof("healthCheck(): failed with: %v", err)
-			healthy <- false
-			return
-		}
-
-		healthy <- resp.Status == grpc_health_v1.HealthCheckResponse_SERVING
-	}()
-
-	select {
-	case result := <-healthy:
-		return result
-	case <-ctx.Done(): // hit deadline
-		return false
-	}
-}
-
 func (p *Plugin) Close() error {
-	// Something has gone wrong with the plugin if it is not healthy and we have not yet
-	// shut it down.
-	pluginCrashed := !p.healthCheck()
-
 	if p.Conn != nil {
 		contract.IgnoreClose(p.Conn)
 	}
@@ -780,12 +736,13 @@ func (p *Plugin) Close() error {
 		<-p.stderrDone
 	}
 
-	// If the plugin has crashed and p.unstructuredOutput != nil is non-nil, then we
-	// have not displayed any unstructured output to the user - including any
-	// potential stack trace.
+	// If the plugin exited before we had a chance to shut it down, then we have not displayed any unstructured output
+	// to the user - including any potential stack trace.
 	//
 	// To help debug (and to avoid attempting to detect the stack trace), we dump the captured stdout.
-	if pluginCrashed && p.unstructuredOutput != nil && p.unstructuredOutput.done.CompareAndSwap(false, true) {
+	if !p.shutdownAcknowledged.Load() &&
+		p.unstructuredOutput != nil &&
+		p.unstructuredOutput.done.CompareAndSwap(false, true) {
 		id := atomic.AddInt32(&nextStreamID, 1)
 		d := p.unstructuredOutput.diag
 		// This outputs an error block:

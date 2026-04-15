@@ -15,7 +15,7 @@
 import assert from "assert";
 
 import { CommandResult, fullyQualifiedStackName, LocalWorkspace, ProjectSettings, Stack } from "../../automation";
-import { getTestOrg, getTestSuffix, withTestBackend } from "./util";
+import { getTestOrg, getTestSuffix, withStack, withTestBackend } from "./util";
 import { ComponentResource, ComponentResourceOptions } from "../../resource";
 import { Config } from "../../config";
 
@@ -43,10 +43,15 @@ describe("LocalWorkspace - Stack", () => {
         };
         const ws = await LocalWorkspace.create(withTestBackend({ projectSettings }));
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
-        await Stack.create(stackName, ws);
-        await Stack.select(stackName, ws);
-        await Stack.createOrSelect(stackName, ws);
-        await ws.removeStack(stackName);
+        const stack = await Stack.create(stackName, ws);
+        await withStack(
+            stack,
+            async () => {
+                await Stack.select(stackName, ws);
+                await Stack.createOrSelect(stackName, ws);
+            },
+            { destroy: false },
+        );
     });
 
     describe("Tag methods: get/set/remove/list", () => {
@@ -237,38 +242,41 @@ describe("LocalWorkspace - Stack", () => {
         const ws = await LocalWorkspace.create(withTestBackend({ projectSettings }));
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
+        await withStack(
+            stack,
+            async () => {
+                // Adding non-existent env should fail.
+                await assert.rejects(
+                    stack.addEnvironments("non-existent-env"),
+                    "stack.addEnvironments('non-existent-env') did not reject",
+                );
 
-        // Adding non-existent env should fail.
-        await assert.rejects(
-            stack.addEnvironments("non-existent-env"),
-            "stack.addEnvironments('non-existent-env') did not reject",
+                // Adding existing envs should succeed.
+                await stack.addEnvironments("automation-api-test-env", "automation-api-test-env-2");
+
+                let envs = await stack.listEnvironments();
+                assert.deepStrictEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"]);
+
+                const config = await stack.getAllConfig();
+                assert.strictEqual(config["node_env_test:new_key"].value, "test_value");
+                assert.strictEqual(config["node_env_test:also"].value, "business");
+
+                // Removing existing env should succeed.
+                await stack.removeEnvironment("automation-api-test-env");
+                envs = await stack.listEnvironments();
+                assert.deepStrictEqual(envs, ["automation-api-test-env-2"]);
+
+                const alsoConfig = await stack.getConfig("also");
+                assert.strictEqual(alsoConfig.value, "business");
+                await assert.rejects(stack.getConfig("new_key"), "stack.getConfig('new_key') did not reject");
+
+                await stack.removeEnvironment("automation-api-test-env-2");
+                envs = await stack.listEnvironments();
+                assert.strictEqual(envs.length, 0);
+                await assert.rejects(stack.getConfig("also"), "stack.getConfig('also') did not reject");
+            },
+            { destroy: false },
         );
-
-        // Adding existing envs should succeed.
-        await stack.addEnvironments("automation-api-test-env", "automation-api-test-env-2");
-
-        let envs = await stack.listEnvironments();
-        assert.deepStrictEqual(envs, ["automation-api-test-env", "automation-api-test-env-2"]);
-
-        const config = await stack.getAllConfig();
-        assert.strictEqual(config["node_env_test:new_key"].value, "test_value");
-        assert.strictEqual(config["node_env_test:also"].value, "business");
-
-        // Removing existing env should succeed.
-        await stack.removeEnvironment("automation-api-test-env");
-        envs = await stack.listEnvironments();
-        assert.deepStrictEqual(envs, ["automation-api-test-env-2"]);
-
-        const alsoConfig = await stack.getConfig("also");
-        assert.strictEqual(alsoConfig.value, "business");
-        await assert.rejects(stack.getConfig("new_key"), "stack.getConfig('new_key') did not reject");
-
-        await stack.removeEnvironment("automation-api-test-env-2");
-        envs = await stack.listEnvironments();
-        assert.strictEqual(envs.length, 0);
-        await assert.rejects(stack.getConfig("also"), "stack.getConfig('also') did not reject");
-
-        await ws.removeStack(stackName);
     });
 
     it(`can list stacks and currently selected stack`, async () => {
@@ -304,11 +312,16 @@ describe("LocalWorkspace - Stack", () => {
         const ws = await LocalWorkspace.create(withTestBackend({ projectSettings }));
         const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
-        const history = await stack.history();
-        assert.strictEqual(history.length, 0);
-        const info = await stack.info();
-        assert.strictEqual(typeof info, "undefined");
-        await ws.removeStack(stackName);
+        await withStack(
+            stack,
+            async () => {
+                const history = await stack.history();
+                assert.strictEqual(history.length, 0);
+                const info = await stack.info();
+                assert.strictEqual(typeof info, "undefined");
+            },
+            { destroy: false },
+        );
     });
 
     it(`renames a stack`, async () => {
@@ -406,7 +419,7 @@ describe("LocalWorkspace - Stack", () => {
             withTestBackend({}, "import_export_node"),
         );
 
-        try {
+        await withStack(stack, async () => {
             await stack.setAllConfig({
                 bar: { value: "abc" },
                 buzz: { value: "secret", secret: true },
@@ -420,11 +433,6 @@ describe("LocalWorkspace - Stack", () => {
             await stack.importStack(state);
             const configVal = await stack.getConfig("bar");
             assert.strictEqual(configVal.value, "abc");
-        } finally {
-            const destroyRes = await stack.destroy();
-            assert.strictEqual(destroyRes.summary.kind, "destroy");
-            assert.strictEqual(destroyRes.summary.result, "succeeded");
-            await stack.workspace.removeStack(stackName);
-        }
+        });
     });
 });

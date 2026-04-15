@@ -173,7 +173,7 @@ func TestParsePolicyPackConfigSuccess(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
 			t.Parallel()
 
-			result, err := parsePolicyPackConfig([]byte(test.JSON))
+			result, _, err := parsePolicyPackConfig([]byte(test.JSON))
 			require.NoError(t, err)
 			assert.Equal(t, test.Expected, result)
 		})
@@ -207,9 +207,80 @@ func TestParsePolicyPackConfigFail(t *testing.T) {
 		t.Run(test, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := parsePolicyPackConfig([]byte(test))
+			result, _, err := parsePolicyPackConfig([]byte(test))
 			assert.Nil(t, result)
 			assert.Error(t, err)
+		})
+	}
+}
+
+func TestParsePolicyPackConfigWithEnvironments(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		json         string
+		wantEnvs     []string
+		wantPolicies int
+		wantErr      string
+	}{
+		{
+			name: "environments and policies",
+			json: `{"environments":["org/secrets","org/config"],` +
+				`"cost-policy":{"enforcementLevel":"mandatory","maxCost":1000}}`,
+			wantEnvs:     []string{"org/secrets", "org/config"},
+			wantPolicies: 1,
+		},
+		{
+			name:         "only environments",
+			json:         `{"environments":["org/secrets"]}`,
+			wantEnvs:     []string{"org/secrets"},
+			wantPolicies: 0,
+		},
+		{
+			name:         "no environments key",
+			json:         `{"cost-policy":"mandatory"}`,
+			wantEnvs:     nil,
+			wantPolicies: 1,
+		},
+		{
+			name:    "invalid environments type",
+			json:    `{"environments":"not-an-array"}`,
+			wantErr: "environments",
+		},
+		{
+			name:    "invalid environments entry type",
+			json:    `{"environments":[123]}`,
+			wantErr: "environments",
+		},
+		{
+			name:         "empty config",
+			json:         ``,
+			wantEnvs:     nil,
+			wantPolicies: 0,
+		},
+		{
+			name:         "empty environments array",
+			json:         `{"environments":[],"cost-policy":"advisory"}`,
+			wantEnvs:     []string{},
+			wantPolicies: 1,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			config, envs, err := parsePolicyPackConfig([]byte(tt.json))
+			if tt.wantErr != "" {
+				assert.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantEnvs, envs)
+			if config == nil {
+				assert.Equal(t, 0, tt.wantPolicies)
+			} else {
+				require.Len(t, config, tt.wantPolicies)
+			}
 		})
 	}
 }

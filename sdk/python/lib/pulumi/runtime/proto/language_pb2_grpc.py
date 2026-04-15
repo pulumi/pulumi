@@ -99,11 +99,6 @@ class LanguageRuntimeStub(object):
                 request_serializer=pulumi_dot_language__pb2.LinkRequest.SerializeToString,
                 response_deserializer=pulumi_dot_language__pb2.LinkResponse.FromString,
                 )
-        self.RunPlugin2 = channel.stream_stream(
-                '/pulumirpc.LanguageRuntime/RunPlugin2',
-                request_serializer=pulumi_dot_language__pb2.RunPlugin2Request.SerializeToString,
-                response_deserializer=pulumi_dot_language__pb2.RunPluginResponse.FromString,
-                )
         self.Cancel = channel.unary_unary(
                 '/pulumirpc.LanguageRuntime/Cancel',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -276,16 +271,6 @@ class LanguageRuntimeServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def RunPlugin2(self, request_iterator, context):
-        """`RunPlugin2` is a bidirectional streaming version of [](pulumirpc.LanguageRuntime.RunPlugin) that supports
-        in-band cancellation. The client sends an initial [](pulumirpc.RunPlugin2Request) with a `start` message
-        containing the plugin configuration, and can later send a `cancel` message to request graceful shutdown of
-        the plugin. The server streams [](pulumirpc.RunPluginResponse) messages as with `RunPlugin`.
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def Cancel(self, request, context):
         """`Cancel` signals the language runtime to gracefully shut down and abort any ongoing operations.
         Operations aborted in this way will return an error.
@@ -376,11 +361,6 @@ def add_LanguageRuntimeServicer_to_server(servicer, server):
                     servicer.Link,
                     request_deserializer=pulumi_dot_language__pb2.LinkRequest.FromString,
                     response_serializer=pulumi_dot_language__pb2.LinkResponse.SerializeToString,
-            ),
-            'RunPlugin2': grpc.stream_stream_rpc_method_handler(
-                    servicer.RunPlugin2,
-                    request_deserializer=pulumi_dot_language__pb2.RunPlugin2Request.FromString,
-                    response_serializer=pulumi_dot_language__pb2.RunPluginResponse.SerializeToString,
             ),
             'Cancel': grpc.unary_unary_rpc_method_handler(
                     servicer.Cancel,
@@ -669,23 +649,6 @@ class LanguageRuntime(object):
         return grpc.experimental.unary_unary(request, target, '/pulumirpc.LanguageRuntime/Link',
             pulumi_dot_language__pb2.LinkRequest.SerializeToString,
             pulumi_dot_language__pb2.LinkResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def RunPlugin2(request_iterator,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.stream_stream(request_iterator, target, '/pulumirpc.LanguageRuntime/RunPlugin2',
-            pulumi_dot_language__pb2.RunPlugin2Request.SerializeToString,
-            pulumi_dot_language__pb2.RunPluginResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

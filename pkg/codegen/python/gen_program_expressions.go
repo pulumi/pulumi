@@ -272,10 +272,7 @@ func (g *generator) getFunctionImports(x *model.FunctionCallExpression) []string
 	if x.Name != pcl.Invoke {
 		return functionImports[x.Name]
 	}
-
-	pkg, _, _, diags := functionName(x.Args[0])
-	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
-	return []string{"pulumi_" + pkg}
+	return nil
 }
 
 func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionCallExpression) {
@@ -419,7 +416,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module != "" {
 			module = "." + module
 		}
-		name := fmt.Sprintf("%s%s.%s", pkg, module, PyName(fn))
+		name := fmt.Sprintf("%s%s.%s", g.packageAlias(pkg), module, PyName(fn))
 
 		isOut := pcl.IsOutputVersionInvokeCall(expr)
 		if isOut {
@@ -837,7 +834,7 @@ func (g *generator) GenScopeTraversalExpression(w io.Writer, expr *model.ScopeTr
 		}
 	}
 
-	rootName := PyName(expr.RootName)
+	rootName := g.nodeName(expr.RootName)
 	if g.isComponent {
 		configVars := map[string]*pcl.ConfigVariable{}
 		for _, configVar := range g.program.ConfigVariables() {

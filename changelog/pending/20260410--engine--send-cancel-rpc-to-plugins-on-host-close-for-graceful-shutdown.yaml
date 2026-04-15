@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Send Cancel RPC to plugins on host close for graceful shutdown

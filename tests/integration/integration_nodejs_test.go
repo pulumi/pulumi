@@ -2794,7 +2794,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.4")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
@@ -2830,7 +2830,7 @@ func TestPackagesInstall(t *testing.T) {
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.4")
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
@@ -2989,7 +2989,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.4")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-x52a8a71555d964542b308da197755c64dbe63352")

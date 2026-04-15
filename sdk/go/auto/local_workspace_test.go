@@ -3906,3 +3906,143 @@ func TestStackLifecycleInlineProgramRunProgram(t *testing.T) {
 	_, err = s.Destroy(ctx, optdestroy.RunProgram(true))
 	require.NoError(t, err, "destroy failed")
 }
+
+func TestNewOptions(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	pDir := filepath.Join(".", "test", "install")
+	m := &mockPulumiCommand{
+		version: semver.Version{Major: 3, Minor: 130},
+	}
+	workspace, err := NewLocalWorkspace(ctx, WorkDir(pDir), Pulumi(m))
+	require.NoError(t, err)
+
+	// Basic call with no options.
+	_, err = workspace.New(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, []string{"new", "--yes"}, m.capturedArgs)
+
+	// With template.
+	_, err = workspace.New(ctx, &NewOptions{
+		TemplateOrURL: "typescript",
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{"new", "--yes", "typescript"}, m.capturedArgs)
+
+	// With name and generate-only.
+	_, err = workspace.New(ctx, &NewOptions{
+		Name:         "my-project",
+		GenerateOnly: true,
+		Force:        true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"new", "--yes",
+		"--force",
+		"--generate-only",
+		"--name", "my-project",
+	}, m.capturedArgs)
+
+	// With config and template.
+	_, err = workspace.New(ctx, &NewOptions{
+		TemplateOrURL: "aws-typescript",
+		Config:        []string{"aws:region=us-east-1", "project:env=dev"},
+		ConfigPath:    true,
+		Description:   "A test project",
+		Stack:         "dev",
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"new", "--yes",
+		"--config", "aws:region=us-east-1",
+		"--config", "project:env=dev",
+		"--config-path",
+		"--description", "A test project",
+		"--stack", "dev",
+		"aws-typescript",
+	}, m.capturedArgs)
+
+	// With all boolean flags.
+	_, err = workspace.New(ctx, &NewOptions{
+		TemplateOrURL:     "yaml",
+		ConfigPath:        true,
+		Force:             true,
+		GenerateOnly:      true,
+		ListTemplates:     true,
+		Offline:           true,
+		RemoteStackConfig: true,
+		TemplateMode:      true,
+	})
+	require.NoError(t, err)
+	require.Equal(t, []string{
+		"new", "--yes",
+		"--config-path",
+		"--force",
+		"--generate-only",
+		"--list-templates",
+		"--offline",
+		"--remote-stack-config",
+		"--template-mode",
+		"yaml",
+	}, m.capturedArgs)
+}
+
+func TestNewGenerateOnly(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	tmpDir := t.TempDir()
+
+	templateDir, err := filepath.Abs(filepath.Join(".", "test", "new_template"))
+	require.NoError(t, err)
+
+	ws, err := NewLocalWorkspace(ctx, WorkDir(tmpDir))
+	require.NoError(t, err)
+
+	result, err := ws.New(ctx, &NewOptions{
+		TemplateOrURL: templateDir,
+		Name:          "test-new-project",
+		GenerateOnly:  true,
+		Force:         true,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, result.StdOut)
+
+	// Verify a Pulumi.yaml was created with the correct project name.
+	projPath := filepath.Join(tmpDir, "Pulumi.yaml")
+	require.FileExists(t, projPath)
+	contents, err := os.ReadFile(projPath)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "name: test-new-project")
+}
+
+func TestNewGenerateOnlyInSubDir(t *testing.T) {
+	t.Parallel()
+	ctx := t.Context()
+	tmpDir := t.TempDir()
+
+	templateDir, err := filepath.Abs(filepath.Join(".", "test", "new_template"))
+	require.NoError(t, err)
+
+	ws, err := NewLocalWorkspace(ctx, WorkDir(tmpDir))
+	require.NoError(t, err)
+
+	subDir := filepath.Join(tmpDir, "subproject")
+	result, err := ws.New(ctx, &NewOptions{
+		TemplateOrURL: templateDir,
+		Name:          "sub-project",
+		Description:   "A sub-project for testing",
+		Dir:           subDir,
+		GenerateOnly:  true,
+		Force:         true,
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, result.StdOut)
+
+	// Verify the project was created in the subdirectory.
+	projPath := filepath.Join(subDir, "Pulumi.yaml")
+	require.FileExists(t, projPath)
+	contents, err := os.ReadFile(projPath)
+	require.NoError(t, err)
+	require.Contains(t, string(contents), "name: sub-project")
+	require.Contains(t, string(contents), "description: A sub-project for testing")
+}

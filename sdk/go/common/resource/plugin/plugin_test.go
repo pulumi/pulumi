@@ -15,23 +15,22 @@
 package plugin
 
 import (
-	"context"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
 func TestLogFlowArgumentPropagation(t *testing.T) {
@@ -103,93 +102,57 @@ func TestParsePort(t *testing.T) {
 	}
 }
 
-func TestHealthCheck(t *testing.T) {
+func TestPrematureExit(t *testing.T) {
 	t.Parallel()
 
-	startServer := func(healthService bool) (*grpc.Server, *Plugin) {
-		listener, _ := net.Listen("tcp", "127.0.0.1:0")
-		server := grpc.NewServer()
+	// Start a gRPC server to simulate a provider plugin.
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	server := grpc.NewServer()
+	pulumirpc.RegisterResourceProviderServer(server, &pulumirpc.UnimplementedResourceProviderServer{})
 
-		if healthService {
-			healthServer := health.NewServer()
-			grpc_health_v1.RegisterHealthServer(server, healthServer)
-		}
+	ready := make(chan struct{})
+	go func() {
+		close(ready)
+		server.Serve(listener) //nolint:errcheck
+	}()
+	<-ready
 
-		ready := make(chan struct{})
-		go func() {
-			close(ready) // Signal that server is ready
-			err := server.Serve(listener)
-			require.NoError(t, err)
-		}()
-		<-ready // Wait until the server is ready before continuing
+	port := listener.Addr().(*net.TCPAddr).Port
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("127.0.0.1:%d", port),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	require.NoError(t, err)
 
-		port := listener.Addr().(*net.TCPAddr).Port
+	sink := &diag.MockSink{}
 
-		type foo struct{}
-		handshake := func(context.Context, string, string, *grpc.ClientConn) (*foo, error) {
-			return &foo{}, nil
-		}
-
-		conn, _, err := dialPlugin(t.Context(), port, "test", "test", handshake, []grpc.DialOption{
-			grpc.WithTransportCredentials(insecure.NewCredentials()),
-		})
-		require.NoError(t, err)
-
-		return server, &Plugin{Conn: conn}
-	}
-
-	tests := []struct {
-		name           string
-		healthService  bool
-		shutdownServer bool
-		expected       bool
-	}{
-		{
-			name:           "Server with health check - running",
-			healthService:  true,
-			shutdownServer: false,
-			expected:       true,
-		},
-		{
-			name:           "Server with health check - crashed",
-			healthService:  true,
-			shutdownServer: true,
-			expected:       false,
-		},
-		{
-			name:           "Server without health check - running",
-			healthService:  false,
-			shutdownServer: false,
-			expected:       true,
-		},
-		{
-			name:           "Server without health check - crashed",
-			healthService:  false,
-			shutdownServer: true,
-			expected:       false,
+	plug := &Plugin{
+		Bin:  "test-plugin",
+		Conn: conn,
+		Kill: func() error { return nil },
+		unstructuredOutput: &unstructuredOutput{
+			diag: sink,
 		},
 	}
+	plug.unstructuredOutput.output.WriteString("some plugin output\n")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			server, p := startServer(tt.healthService)
-
-			// Simulate a crash by stopping the server before calling healthCheck.
-			if tt.shutdownServer {
-				server.Stop()
-				// Give time for cleanup
-				time.Sleep(100 * time.Millisecond)
-			}
-
-			result := p.healthCheck()
-			assert.Equal(t, tt.expected, result)
-
-			p.Conn.Close()
-			server.Stop()
-		})
+	prov := &provider{
+		plug:      plug,
+		clientRaw: pulumirpc.NewResourceProviderClient(conn),
 	}
+
+	// Simulate a crash: stop the server before calling Close.
+	server.Stop()
+
+	err = prov.Close()
+	require.NoError(t, err)
+
+	// Verify the "exited prematurely" error was reported.
+	require.Len(t, sink.Messages[diag.Error], 1)
+	msg := sink.Messages[diag.Error][0].Diag.Message
+	require.Contains(t, msg, "exited prematurely")
+	require.Contains(t, msg, "some plugin output")
 }
 
 func TestStartupFailure(t *testing.T) {

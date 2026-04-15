@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -250,7 +251,7 @@ func TestParseImportFile_errors(t *testing.T) {
 
 			require.NotEmpty(t, tt.wantErrs, "invalid test: wantErrs must not be empty")
 
-			_, _, err := parseImportFile(tt.give, tokens.MustParseStackName("stack"), "proj", false)
+			_, _, err := parseImportFile(tt.give, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 			require.Error(t, err)
 			for _, wantErr := range tt.wantErrs {
 				assert.ErrorContains(t, err, wantErr)
@@ -270,7 +271,7 @@ func TestParseImportFileJustLogicalName(t *testing.T) {
 			},
 		},
 	}
-	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
@@ -297,7 +298,7 @@ func TestParseImportFileLogicalName(t *testing.T) {
 			},
 		},
 	}
-	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	require.NoError(t, err)
 	v := semver.MustParse("0.0.0")
 	assert.Equal(t, []deploy.Import{
@@ -331,7 +332,7 @@ func TestParseImportFileSameName(t *testing.T) {
 			},
 		},
 	}
-	_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	_, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	assert.ErrorContains(t, err,
 		"resource 'thing' of type 'foo:bar:bar' has an ambiguous URN, set name (or logical name) to be unique")
 }
@@ -358,7 +359,7 @@ func TestParseImportFileSameNameDifferentType(t *testing.T) {
 			},
 		},
 	}
-	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, names, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	require.NoError(t, err)
 	assert.Equal(t, []deploy.Import{
 		{
@@ -410,7 +411,7 @@ func TestParseImportFileAutoURN(t *testing.T) {
 			},
 		},
 	}
-	imports, nt, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false)
+	imports, nt, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
 	require.NoError(t, err)
 
 	// Check the parent URN was auto filled in.
@@ -421,6 +422,66 @@ func TestParseImportFileAutoURN(t *testing.T) {
 	// Check the nameTable was filled in.
 	assert.Equal(t, "otherThing", nt[imports[0].Parent])
 	assert.Equal(t, "thing", nt[imports[2].Parent])
+}
+
+func TestParseImportFileProviderInputs(t *testing.T) {
+	t.Parallel()
+
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
+	f := importFile{
+		NameTable: map[string]resource.URN{
+			"my-prov": providerURN,
+		},
+		Resources: []importSpec{
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+			},
+		},
+		ProviderInputs: map[string]map[string]any{
+			"my-prov": {
+				"region":  "eu-west-1",
+				"version": "6.0.0",
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 1)
+
+	// Verify the provider inputs were deserialized and attached to the import.
+	assert.Equal(t, providerURN, imports[0].Provider)
+	require.NotNil(t, imports[0].ProviderInputs)
+	assert.Equal(t, resource.NewProperty("eu-west-1"), imports[0].ProviderInputs["region"])
+	assert.Equal(t, resource.NewProperty("6.0.0"), imports[0].ProviderInputs["version"])
+}
+
+func TestParseImportFileProviderInputsWithoutEntry(t *testing.T) {
+	t.Parallel()
+
+	// When no providerInputs entry exists for a provider, ProviderInputs should be nil.
+	providerURN := resource.URN("urn:pulumi:stack::proj::pulumi:providers:aws::my-prov")
+	f := importFile{
+		NameTable: map[string]resource.URN{
+			"my-prov": providerURN,
+		},
+		Resources: []importSpec{
+			{
+				Name:     "thing",
+				ID:       "thing-id",
+				Type:     "aws:s3:Bucket",
+				Provider: "my-prov",
+			},
+		},
+	}
+	imports, _, err := parseImportFile(f, tokens.MustParseStackName("stack"), "proj", false, sdkconfig.NopDecrypter)
+	require.NoError(t, err)
+	require.Len(t, imports, 1)
+
+	assert.Equal(t, providerURN, imports[0].Provider)
+	assert.Nil(t, imports[0].ProviderInputs)
 }
 
 // Small test to ensure that importFile is marshalled to JSON sensibly, mostly checking that optional fields
@@ -501,5 +562,53 @@ func TestImportFileMarshal(t *testing.T) {
 		err := enc.Encode(importFile)
 		require.NoError(t, err)
 		assert.NotContains(t, buffer.String(), "resources")
+	})
+
+	t.Run("with providerInputs", func(t *testing.T) {
+		t.Parallel()
+
+		importFile := importFile{
+			NameTable: map[string]resource.URN{
+				"my-prov": "urn:pulumi:stack::proj::pulumi:providers:aws::my-prov",
+			},
+			Resources: []importSpec{
+				{
+					Name:     "bucket",
+					Type:     "aws:s3:Bucket",
+					ID:       "my-bucket",
+					Provider: "my-prov",
+				},
+			},
+			ProviderInputs: map[string]map[string]any{
+				"my-prov": {
+					"region": "eu-west-1",
+				},
+			},
+		}
+
+		var buffer bytes.Buffer
+		err := writeImportFile(importFile, &buffer)
+		require.NoError(t, err)
+		assert.Contains(t, buffer.String(), `"providerInputs"`)
+		assert.Contains(t, buffer.String(), `"eu-west-1"`)
+	})
+
+	t.Run("omit providerInputs when empty", func(t *testing.T) {
+		t.Parallel()
+
+		importFile := importFile{
+			Resources: []importSpec{
+				{
+					Name: "foo",
+					Type: "pkg:mod:Foo",
+					ID:   "abc",
+				},
+			},
+		}
+
+		var buffer bytes.Buffer
+		err := writeImportFile(importFile, &buffer)
+		require.NoError(t, err)
+		assert.NotContains(t, buffer.String(), "providerInputs")
 	})
 }
