@@ -806,6 +806,122 @@ export namespace TransformResourceOptions {
     }
 }
 
+export class ResourceOptions extends jspb.Message { 
+    clearDependsOnList(): void;
+    getDependsOnList(): Array<string>;
+    setDependsOnList(value: Array<string>): ResourceOptions;
+    addDependsOn(value: string, index?: number): string;
+
+    hasProtect(): boolean;
+    clearProtect(): void;
+    getProtect(): boolean | undefined;
+    setProtect(value: boolean): ResourceOptions;
+    clearIgnoreChangesList(): void;
+    getIgnoreChangesList(): Array<string>;
+    setIgnoreChangesList(value: Array<string>): ResourceOptions;
+    addIgnoreChanges(value: string, index?: number): string;
+    clearReplaceOnChangesList(): void;
+    getReplaceOnChangesList(): Array<string>;
+    setReplaceOnChangesList(value: Array<string>): ResourceOptions;
+    addReplaceOnChanges(value: string, index?: number): string;
+    getVersion(): string;
+    setVersion(value: string): ResourceOptions;
+    clearAliasesList(): void;
+    getAliasesList(): Array<pulumi_alias_pb.Alias>;
+    setAliasesList(value: Array<pulumi_alias_pb.Alias>): ResourceOptions;
+    addAliases(value?: pulumi_alias_pb.Alias, index?: number): pulumi_alias_pb.Alias;
+    getProvider(): string;
+    setProvider(value: string): ResourceOptions;
+
+    hasCustomTimeouts(): boolean;
+    clearCustomTimeouts(): void;
+    getCustomTimeouts(): RegisterResourceRequest.CustomTimeouts | undefined;
+    setCustomTimeouts(value?: RegisterResourceRequest.CustomTimeouts): ResourceOptions;
+    getPluginDownloadUrl(): string;
+    setPluginDownloadUrl(value: string): ResourceOptions;
+
+    hasRetainOnDelete(): boolean;
+    clearRetainOnDelete(): void;
+    getRetainOnDelete(): boolean | undefined;
+    setRetainOnDelete(value: boolean): ResourceOptions;
+    getDeletedWith(): string;
+    setDeletedWith(value: string): ResourceOptions;
+
+    hasDeleteBeforeReplace(): boolean;
+    clearDeleteBeforeReplace(): void;
+    getDeleteBeforeReplace(): boolean | undefined;
+    setDeleteBeforeReplace(value: boolean): ResourceOptions;
+    clearAdditionalSecretOutputsList(): void;
+    getAdditionalSecretOutputsList(): Array<string>;
+    setAdditionalSecretOutputsList(value: Array<string>): ResourceOptions;
+    addAdditionalSecretOutputs(value: string, index?: number): string;
+
+    getProvidersMap(): jspb.Map<string, string>;
+    clearProvidersMap(): void;
+
+    getPluginChecksumsMap(): jspb.Map<string, Uint8Array | string>;
+    clearPluginChecksumsMap(): void;
+
+    hasHooks(): boolean;
+    clearHooks(): void;
+    getHooks(): RegisterResourceRequest.ResourceHooksBinding | undefined;
+    setHooks(value?: RegisterResourceRequest.ResourceHooksBinding): ResourceOptions;
+    getImport(): string;
+    setImport(value: string): ResourceOptions;
+    clearHideDiffList(): void;
+    getHideDiffList(): Array<string>;
+    setHideDiffList(value: Array<string>): ResourceOptions;
+    addHideDiff(value: string, index?: number): string;
+    clearReplaceWithList(): void;
+    getReplaceWithList(): Array<string>;
+    setReplaceWithList(value: Array<string>): ResourceOptions;
+    addReplaceWith(value: string, index?: number): string;
+
+    hasReplacementTrigger(): boolean;
+    clearReplacementTrigger(): void;
+    getReplacementTrigger(): google_protobuf_struct_pb.Value | undefined;
+    setReplacementTrigger(value?: google_protobuf_struct_pb.Value): ResourceOptions;
+    getParent(): string;
+    setParent(value: string): ResourceOptions;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ResourceOptions.AsObject;
+    static toObject(includeInstance: boolean, msg: ResourceOptions): ResourceOptions.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ResourceOptions, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ResourceOptions;
+    static deserializeBinaryFromReader(message: ResourceOptions, reader: jspb.BinaryReader): ResourceOptions;
+}
+
+export namespace ResourceOptions {
+    export type AsObject = {
+        dependsOnList: Array<string>,
+        protect?: boolean,
+        ignoreChangesList: Array<string>,
+        replaceOnChangesList: Array<string>,
+        version: string,
+        aliasesList: Array<pulumi_alias_pb.Alias.AsObject>,
+        provider: string,
+        customTimeouts?: RegisterResourceRequest.CustomTimeouts.AsObject,
+        pluginDownloadUrl: string,
+        retainOnDelete?: boolean,
+        deletedWith: string,
+        deleteBeforeReplace?: boolean,
+        additionalSecretOutputsList: Array<string>,
+
+        providersMap: Array<[string, string]>,
+
+        pluginChecksumsMap: Array<[string, Uint8Array | string]>,
+        hooks?: RegisterResourceRequest.ResourceHooksBinding.AsObject,
+        pb_import: string,
+        hideDiffList: Array<string>,
+        replaceWithList: Array<string>,
+        replacementTrigger?: google_protobuf_struct_pb.Value.AsObject,
+        parent: string,
+    }
+}
+
 export class TransformRequest extends jspb.Message { 
     getType(): string;
     setType(value: string): TransformRequest;
@@ -998,6 +1114,16 @@ export class ResourceHookRequest extends jspb.Message {
     getOldOutputs(): google_protobuf_struct_pb.Struct | undefined;
     setOldOutputs(value?: google_protobuf_struct_pb.Struct): ResourceHookRequest;
 
+    hasOldOptions(): boolean;
+    clearOldOptions(): void;
+    getOldOptions(): ResourceOptions | undefined;
+    setOldOptions(value?: ResourceOptions): ResourceHookRequest;
+
+    hasNewOptions(): boolean;
+    clearNewOptions(): void;
+    getNewOptions(): ResourceOptions | undefined;
+    setNewOptions(value?: ResourceOptions): ResourceHookRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ResourceHookRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ResourceHookRequest): ResourceHookRequest.AsObject;
@@ -1018,6 +1144,8 @@ export namespace ResourceHookRequest {
         oldInputs?: google_protobuf_struct_pb.Struct.AsObject,
         newOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
+        oldOptions?: ResourceOptions.AsObject,
+        newOptions?: ResourceOptions.AsObject,
     }
 }
 
@@ -1072,6 +1200,16 @@ export class ErrorHookRequest extends jspb.Message {
     setErrorsList(value: Array<string>): ErrorHookRequest;
     addErrors(value: string, index?: number): string;
 
+    hasOldOptions(): boolean;
+    clearOldOptions(): void;
+    getOldOptions(): ResourceOptions | undefined;
+    setOldOptions(value?: ResourceOptions): ErrorHookRequest;
+
+    hasNewOptions(): boolean;
+    clearNewOptions(): void;
+    getNewOptions(): ResourceOptions | undefined;
+    setNewOptions(value?: ResourceOptions): ErrorHookRequest;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): ErrorHookRequest.AsObject;
     static toObject(includeInstance: boolean, msg: ErrorHookRequest): ErrorHookRequest.AsObject;
@@ -1093,6 +1231,8 @@ export namespace ErrorHookRequest {
         oldOutputs?: google_protobuf_struct_pb.Struct.AsObject,
         failedOperation: string,
         errorsList: Array<string>,
+        oldOptions?: ResourceOptions.AsObject,
+        newOptions?: ResourceOptions.AsObject,
     }
 }
 

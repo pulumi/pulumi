@@ -1085,6 +1085,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 		hasSupport = true
 	case "errorHooks":
 		hasSupport = true
+	case "sendsOptionsToHooks":
+		hasSupport = true
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -1750,7 +1752,8 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+		newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
@@ -1795,6 +1798,8 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			OldInputs:  mOldInputs,
 			NewOutputs: mNewOutputs,
 			OldOutputs: mOldOutputs,
+			OldOptions: oldOptions,
+			NewOptions: newOptions,
 		})
 		if err != nil {
 			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
@@ -1846,7 +1851,8 @@ func (rm *resmon) wrapErrorHookCallback(
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+		newInputs, oldInputs, oldOutputs resource.PropertyMap,
 		failedOperation string, errorMessages []string,
 	) (bool, error) {
 		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
@@ -1886,6 +1892,8 @@ func (rm *resmon) wrapErrorHookCallback(
 			OldOutputs:      mOldOutputs,
 			FailedOperation: failedOperation,
 			Errors:          errorMessages,
+			OldOptions:      oldOptions,
+			NewOptions:      newOptions,
 		})
 		if err != nil {
 			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)

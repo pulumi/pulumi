@@ -180,6 +180,8 @@ type ResourceHookFunc func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
+	oldOptions *pulumirpc.ResourceOptions,
+	newOptions *pulumirpc.ResourceOptions,
 	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error
 
@@ -189,6 +191,8 @@ type ErrorHookFunc func(
 	id resource.ID,
 	name string,
 	typ tokens.Type,
+	oldOptions *pulumirpc.ResourceOptions,
+	newOptions *pulumirpc.ResourceOptions,
 	newInputs, oldInputs, oldOutputs resource.PropertyMap,
 	failedOperation string,
 	errors []string,
@@ -276,12 +280,16 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
+		oldOptions := req.OldOptions
+		newOptions := req.NewOptions
 		err = f(
 			context.Background(),
 			resource.URN(req.Urn),
 			resource.ID(req.Id),
 			req.Name,
 			tokens.Type(req.Type),
+			oldOptions,
+			newOptions,
 			newInputs,
 			oldInputs,
 			newOutputs,
@@ -358,6 +366,8 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 				return nil, fmt.Errorf("unmarshaling old outputs: %w", err)
 			}
 		}
+		oldOptions := req.OldOptions
+		newOptions := req.NewOptions
 		if req.FailedOperation != "" {
 			switch req.FailedOperation {
 			case "create", "update", "delete":
@@ -366,9 +376,20 @@ func prepareErrorHook(callbacks *CallbackServer, name string, f ErrorHookFunc) (
 				return nil, fmt.Errorf("invalid failed operation: %q", req.FailedOperation)
 			}
 		}
-
-		retry, err := f(context.Background(), resource.URN(req.Urn), resource.ID(req.Id), req.Name, tokens.Type(req.Type),
-			newInputs, oldInputs, oldOutputs, failedOperation, req.Errors)
+		retry, err := f(
+			context.Background(),
+			resource.URN(req.Urn),
+			resource.ID(req.Id),
+			req.Name,
+			tokens.Type(req.Type),
+			oldOptions,
+			newOptions,
+			newInputs,
+			oldInputs,
+			oldOutputs,
+			failedOperation,
+			req.Errors,
+		)
 		if err != nil {
 			return &pulumirpc.ErrorHookResponse{
 				Error: err.Error(),

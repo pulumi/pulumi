@@ -299,6 +299,8 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.new.URN,
 				s.new.URN.Name(),
 				s.Type(),
+				nil, /* oldOptions */
+				resourceOptionsFromState(s.new),
 				s.new.Inputs,
 				nil, /* oldInputs */
 				s.new.Outputs,
@@ -314,6 +316,8 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.new.URN,
 				s.new.URN.Name(),
 				s.Type(),
+				resourceOptionsFromState(s.old),
+				resourceOptionsFromState(s.new),
 				s.new.Inputs,
 				s.old.Inputs,
 				s.new.Outputs,

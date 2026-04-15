@@ -1359,6 +1359,212 @@ func (x *TransformResourceOptions) GetReplacementTrigger() *structpb.Value {
 	return nil
 }
 
+// ResourceOptions is a subset of all resource options that are relevant to
+// hook callbacks.
+type ResourceOptions struct {
+	state                   protoimpl.MessageState                        `protogen:"open.v1"`
+	DependsOn               []string                                      `protobuf:"bytes,1,rep,name=depends_on,json=dependsOn,proto3" json:"depends_on,omitempty"`
+	Protect                 *bool                                         `protobuf:"varint,2,opt,name=protect,proto3,oneof" json:"protect,omitempty"`
+	IgnoreChanges           []string                                      `protobuf:"bytes,3,rep,name=ignore_changes,json=ignoreChanges,proto3" json:"ignore_changes,omitempty"`
+	ReplaceOnChanges        []string                                      `protobuf:"bytes,4,rep,name=replace_on_changes,json=replaceOnChanges,proto3" json:"replace_on_changes,omitempty"`
+	Version                 string                                        `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
+	Aliases                 []*Alias                                      `protobuf:"bytes,6,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	Provider                string                                        `protobuf:"bytes,7,opt,name=provider,proto3" json:"provider,omitempty"`
+	CustomTimeouts          *RegisterResourceRequest_CustomTimeouts       `protobuf:"bytes,8,opt,name=custom_timeouts,json=customTimeouts,proto3" json:"custom_timeouts,omitempty"`
+	PluginDownloadUrl       string                                        `protobuf:"bytes,9,opt,name=plugin_download_url,json=pluginDownloadUrl,proto3" json:"plugin_download_url,omitempty"`
+	RetainOnDelete          *bool                                         `protobuf:"varint,10,opt,name=retain_on_delete,json=retainOnDelete,proto3,oneof" json:"retain_on_delete,omitempty"`
+	DeletedWith             string                                        `protobuf:"bytes,11,opt,name=deleted_with,json=deletedWith,proto3" json:"deleted_with,omitempty"`
+	DeleteBeforeReplace     *bool                                         `protobuf:"varint,12,opt,name=delete_before_replace,json=deleteBeforeReplace,proto3,oneof" json:"delete_before_replace,omitempty"`
+	AdditionalSecretOutputs []string                                      `protobuf:"bytes,13,rep,name=additional_secret_outputs,json=additionalSecretOutputs,proto3" json:"additional_secret_outputs,omitempty"`
+	Providers               map[string]string                             `protobuf:"bytes,14,rep,name=providers,proto3" json:"providers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	PluginChecksums         map[string][]byte                             `protobuf:"bytes,15,rep,name=plugin_checksums,json=pluginChecksums,proto3" json:"plugin_checksums,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Hooks                   *RegisterResourceRequest_ResourceHooksBinding `protobuf:"bytes,16,opt,name=hooks,proto3" json:"hooks,omitempty"`
+	Import                  string                                        `protobuf:"bytes,17,opt,name=import,proto3" json:"import,omitempty"`
+	HideDiff                []string                                      `protobuf:"bytes,18,rep,name=hide_diff,json=hideDiff,proto3" json:"hide_diff,omitempty"`
+	ReplaceWith             []string                                      `protobuf:"bytes,19,rep,name=replace_with,json=replaceWith,proto3" json:"replace_with,omitempty"`
+	ReplacementTrigger      *structpb.Value                               `protobuf:"bytes,20,opt,name=replacement_trigger,json=replacementTrigger,proto3" json:"replacement_trigger,omitempty"`
+	Parent                  string                                        `protobuf:"bytes,21,opt,name=parent,proto3" json:"parent,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *ResourceOptions) Reset() {
+	*x = ResourceOptions{}
+	mi := &file_pulumi_resource_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceOptions) ProtoMessage() {}
+
+func (x *ResourceOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_pulumi_resource_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceOptions.ProtoReflect.Descriptor instead.
+func (*ResourceOptions) Descriptor() ([]byte, []int) {
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ResourceOptions) GetDependsOn() []string {
+	if x != nil {
+		return x.DependsOn
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetProtect() bool {
+	if x != nil && x.Protect != nil {
+		return *x.Protect
+	}
+	return false
+}
+
+func (x *ResourceOptions) GetIgnoreChanges() []string {
+	if x != nil {
+		return x.IgnoreChanges
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetReplaceOnChanges() []string {
+	if x != nil {
+		return x.ReplaceOnChanges
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *ResourceOptions) GetAliases() []*Alias {
+	if x != nil {
+		return x.Aliases
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *ResourceOptions) GetCustomTimeouts() *RegisterResourceRequest_CustomTimeouts {
+	if x != nil {
+		return x.CustomTimeouts
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetPluginDownloadUrl() string {
+	if x != nil {
+		return x.PluginDownloadUrl
+	}
+	return ""
+}
+
+func (x *ResourceOptions) GetRetainOnDelete() bool {
+	if x != nil && x.RetainOnDelete != nil {
+		return *x.RetainOnDelete
+	}
+	return false
+}
+
+func (x *ResourceOptions) GetDeletedWith() string {
+	if x != nil {
+		return x.DeletedWith
+	}
+	return ""
+}
+
+func (x *ResourceOptions) GetDeleteBeforeReplace() bool {
+	if x != nil && x.DeleteBeforeReplace != nil {
+		return *x.DeleteBeforeReplace
+	}
+	return false
+}
+
+func (x *ResourceOptions) GetAdditionalSecretOutputs() []string {
+	if x != nil {
+		return x.AdditionalSecretOutputs
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetProviders() map[string]string {
+	if x != nil {
+		return x.Providers
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetPluginChecksums() map[string][]byte {
+	if x != nil {
+		return x.PluginChecksums
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetHooks() *RegisterResourceRequest_ResourceHooksBinding {
+	if x != nil {
+		return x.Hooks
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetImport() string {
+	if x != nil {
+		return x.Import
+	}
+	return ""
+}
+
+func (x *ResourceOptions) GetHideDiff() []string {
+	if x != nil {
+		return x.HideDiff
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetReplaceWith() []string {
+	if x != nil {
+		return x.ReplaceWith
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetReplacementTrigger() *structpb.Value {
+	if x != nil {
+		return x.ReplacementTrigger
+	}
+	return nil
+}
+
+func (x *ResourceOptions) GetParent() string {
+	if x != nil {
+		return x.Parent
+	}
+	return ""
+}
+
 type TransformRequest struct {
 	state         protoimpl.MessageState    `protogen:"open.v1"`
 	Type          string                    `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`             // the type of the resource.
@@ -1373,7 +1579,7 @@ type TransformRequest struct {
 
 func (x *TransformRequest) Reset() {
 	*x = TransformRequest{}
-	mi := &file_pulumi_resource_proto_msgTypes[10]
+	mi := &file_pulumi_resource_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1385,7 +1591,7 @@ func (x *TransformRequest) String() string {
 func (*TransformRequest) ProtoMessage() {}
 
 func (x *TransformRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[10]
+	mi := &file_pulumi_resource_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1398,7 +1604,7 @@ func (x *TransformRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransformRequest.ProtoReflect.Descriptor instead.
 func (*TransformRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{10}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *TransformRequest) GetType() string {
@@ -1453,7 +1659,7 @@ type TransformResponse struct {
 
 func (x *TransformResponse) Reset() {
 	*x = TransformResponse{}
-	mi := &file_pulumi_resource_proto_msgTypes[11]
+	mi := &file_pulumi_resource_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1465,7 +1671,7 @@ func (x *TransformResponse) String() string {
 func (*TransformResponse) ProtoMessage() {}
 
 func (x *TransformResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[11]
+	mi := &file_pulumi_resource_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1478,7 +1684,7 @@ func (x *TransformResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransformResponse.ProtoReflect.Descriptor instead.
 func (*TransformResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{11}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *TransformResponse) GetProperties() *structpb.Struct {
@@ -1507,7 +1713,7 @@ type TransformInvokeRequest struct {
 
 func (x *TransformInvokeRequest) Reset() {
 	*x = TransformInvokeRequest{}
-	mi := &file_pulumi_resource_proto_msgTypes[12]
+	mi := &file_pulumi_resource_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1519,7 +1725,7 @@ func (x *TransformInvokeRequest) String() string {
 func (*TransformInvokeRequest) ProtoMessage() {}
 
 func (x *TransformInvokeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[12]
+	mi := &file_pulumi_resource_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1532,7 +1738,7 @@ func (x *TransformInvokeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransformInvokeRequest.ProtoReflect.Descriptor instead.
 func (*TransformInvokeRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{12}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *TransformInvokeRequest) GetToken() string {
@@ -1567,7 +1773,7 @@ type TransformInvokeResponse struct {
 
 func (x *TransformInvokeResponse) Reset() {
 	*x = TransformInvokeResponse{}
-	mi := &file_pulumi_resource_proto_msgTypes[13]
+	mi := &file_pulumi_resource_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1579,7 +1785,7 @@ func (x *TransformInvokeResponse) String() string {
 func (*TransformInvokeResponse) ProtoMessage() {}
 
 func (x *TransformInvokeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[13]
+	mi := &file_pulumi_resource_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1592,7 +1798,7 @@ func (x *TransformInvokeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransformInvokeResponse.ProtoReflect.Descriptor instead.
 func (*TransformInvokeResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{13}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TransformInvokeResponse) GetArgs() *structpb.Struct {
@@ -1622,7 +1828,7 @@ type TransformInvokeOptions struct {
 
 func (x *TransformInvokeOptions) Reset() {
 	*x = TransformInvokeOptions{}
-	mi := &file_pulumi_resource_proto_msgTypes[14]
+	mi := &file_pulumi_resource_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1634,7 +1840,7 @@ func (x *TransformInvokeOptions) String() string {
 func (*TransformInvokeOptions) ProtoMessage() {}
 
 func (x *TransformInvokeOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[14]
+	mi := &file_pulumi_resource_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1647,7 +1853,7 @@ func (x *TransformInvokeOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransformInvokeOptions.ProtoReflect.Descriptor instead.
 func (*TransformInvokeOptions) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{14}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TransformInvokeOptions) GetProvider() string {
@@ -1681,21 +1887,23 @@ func (x *TransformInvokeOptions) GetPluginChecksums() map[string][]byte {
 // ResourceHookRequest is the request object for resource hook callbacks in CallbackInvokeRequest.
 type ResourceHookRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Urn           string                 `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`                                 // the urn of the resource for which the hook is called.
-	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                   // the optional urn of the resource for which the hook is called.
-	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`                               // the name of the resource for which the hook is called.
-	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`                               // the type of the resource for which the hook is called.
-	NewInputs     *structpb.Struct       `protobuf:"bytes,5,opt,name=new_inputs,json=newInputs,proto3" json:"new_inputs,omitempty"`    // the optional checked new inputs of the resource.
-	OldInputs     *structpb.Struct       `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`    // the optional checked old inputs of the resource.
-	NewOutputs    *structpb.Struct       `protobuf:"bytes,7,opt,name=new_outputs,json=newOutputs,proto3" json:"new_outputs,omitempty"` // the optional new outputs of the resource.
-	OldOutputs    *structpb.Struct       `protobuf:"bytes,8,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"` // the optional old outputs of the resource.
+	Urn           string                 `protobuf:"bytes,1,opt,name=urn,proto3" json:"urn,omitempty"`                                        // the urn of the resource for which the hook is called.
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`                                          // the optional urn of the resource for which the hook is called.
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`                                      // the name of the resource for which the hook is called.
+	Type          string                 `protobuf:"bytes,4,opt,name=type,proto3" json:"type,omitempty"`                                      // the type of the resource for which the hook is called.
+	NewInputs     *structpb.Struct       `protobuf:"bytes,5,opt,name=new_inputs,json=newInputs,proto3" json:"new_inputs,omitempty"`           // the optional checked new inputs of the resource.
+	OldInputs     *structpb.Struct       `protobuf:"bytes,6,opt,name=old_inputs,json=oldInputs,proto3" json:"old_inputs,omitempty"`           // the optional checked old inputs of the resource.
+	NewOutputs    *structpb.Struct       `protobuf:"bytes,7,opt,name=new_outputs,json=newOutputs,proto3" json:"new_outputs,omitempty"`        // the optional new outputs of the resource.
+	OldOutputs    *structpb.Struct       `protobuf:"bytes,8,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"`        // the optional old outputs of the resource.
+	OldOptions    *ResourceOptions       `protobuf:"bytes,9,opt,name=old_options,json=oldOptions,proto3,oneof" json:"old_options,omitempty"`  // optional old resource options for the resource. Old engines may not set this.
+	NewOptions    *ResourceOptions       `protobuf:"bytes,10,opt,name=new_options,json=newOptions,proto3,oneof" json:"new_options,omitempty"` // optional new resource options for the resource. Old engines may not set this.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ResourceHookRequest) Reset() {
 	*x = ResourceHookRequest{}
-	mi := &file_pulumi_resource_proto_msgTypes[15]
+	mi := &file_pulumi_resource_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1707,7 +1915,7 @@ func (x *ResourceHookRequest) String() string {
 func (*ResourceHookRequest) ProtoMessage() {}
 
 func (x *ResourceHookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[15]
+	mi := &file_pulumi_resource_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1720,7 +1928,7 @@ func (x *ResourceHookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceHookRequest.ProtoReflect.Descriptor instead.
 func (*ResourceHookRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{15}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ResourceHookRequest) GetUrn() string {
@@ -1779,6 +1987,20 @@ func (x *ResourceHookRequest) GetOldOutputs() *structpb.Struct {
 	return nil
 }
 
+func (x *ResourceHookRequest) GetOldOptions() *ResourceOptions {
+	if x != nil {
+		return x.OldOptions
+	}
+	return nil
+}
+
+func (x *ResourceHookRequest) GetNewOptions() *ResourceOptions {
+	if x != nil {
+		return x.NewOptions
+	}
+	return nil
+}
+
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
 type ResourceHookResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1789,7 +2011,7 @@ type ResourceHookResponse struct {
 
 func (x *ResourceHookResponse) Reset() {
 	*x = ResourceHookResponse{}
-	mi := &file_pulumi_resource_proto_msgTypes[16]
+	mi := &file_pulumi_resource_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1801,7 +2023,7 @@ func (x *ResourceHookResponse) String() string {
 func (*ResourceHookResponse) ProtoMessage() {}
 
 func (x *ResourceHookResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[16]
+	mi := &file_pulumi_resource_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1814,7 +2036,7 @@ func (x *ResourceHookResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceHookResponse.ProtoReflect.Descriptor instead.
 func (*ResourceHookResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{16}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ResourceHookResponse) GetError() string {
@@ -1836,13 +2058,15 @@ type ErrorHookRequest struct {
 	OldOutputs      *structpb.Struct       `protobuf:"bytes,7,opt,name=old_outputs,json=oldOutputs,proto3" json:"old_outputs,omitempty"`                // the optional old outputs of the resource.
 	FailedOperation string                 `protobuf:"bytes,8,opt,name=failed_operation,json=failedOperation,proto3" json:"failed_operation,omitempty"` // the operation that failed (create, read, update, or delete).
 	Errors          []string               `protobuf:"bytes,9,rep,name=errors,proto3" json:"errors,omitempty"`                                          // the errors that have been seen so far (newest-first).
+	OldOptions      *ResourceOptions       `protobuf:"bytes,10,opt,name=old_options,json=oldOptions,proto3" json:"old_options,omitempty"`               // optional old resource options for the resource. Old engines may not set this.
+	NewOptions      *ResourceOptions       `protobuf:"bytes,11,opt,name=new_options,json=newOptions,proto3" json:"new_options,omitempty"`               // optional new resource options for the resource. Old engines may not set this.
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ErrorHookRequest) Reset() {
 	*x = ErrorHookRequest{}
-	mi := &file_pulumi_resource_proto_msgTypes[17]
+	mi := &file_pulumi_resource_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1854,7 +2078,7 @@ func (x *ErrorHookRequest) String() string {
 func (*ErrorHookRequest) ProtoMessage() {}
 
 func (x *ErrorHookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[17]
+	mi := &file_pulumi_resource_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1867,7 +2091,7 @@ func (x *ErrorHookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorHookRequest.ProtoReflect.Descriptor instead.
 func (*ErrorHookRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{17}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ErrorHookRequest) GetUrn() string {
@@ -1933,6 +2157,20 @@ func (x *ErrorHookRequest) GetErrors() []string {
 	return nil
 }
 
+func (x *ErrorHookRequest) GetOldOptions() *ResourceOptions {
+	if x != nil {
+		return x.OldOptions
+	}
+	return nil
+}
+
+func (x *ErrorHookRequest) GetNewOptions() *ResourceOptions {
+	if x != nil {
+		return x.NewOptions
+	}
+	return nil
+}
+
 // ErrorHookResponse is the response object for error hook callbacks in CallbackInvokeResponse.
 type ErrorHookResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1944,7 +2182,7 @@ type ErrorHookResponse struct {
 
 func (x *ErrorHookResponse) Reset() {
 	*x = ErrorHookResponse{}
-	mi := &file_pulumi_resource_proto_msgTypes[18]
+	mi := &file_pulumi_resource_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1956,7 +2194,7 @@ func (x *ErrorHookResponse) String() string {
 func (*ErrorHookResponse) ProtoMessage() {}
 
 func (x *ErrorHookResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[18]
+	mi := &file_pulumi_resource_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1969,7 +2207,7 @@ func (x *ErrorHookResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ErrorHookResponse.ProtoReflect.Descriptor instead.
 func (*ErrorHookResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{18}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ErrorHookResponse) GetError() string {
@@ -1999,7 +2237,7 @@ type RegisterPackageRequest struct {
 
 func (x *RegisterPackageRequest) Reset() {
 	*x = RegisterPackageRequest{}
-	mi := &file_pulumi_resource_proto_msgTypes[19]
+	mi := &file_pulumi_resource_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2011,7 +2249,7 @@ func (x *RegisterPackageRequest) String() string {
 func (*RegisterPackageRequest) ProtoMessage() {}
 
 func (x *RegisterPackageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[19]
+	mi := &file_pulumi_resource_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2024,7 +2262,7 @@ func (x *RegisterPackageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterPackageRequest.ProtoReflect.Descriptor instead.
 func (*RegisterPackageRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{19}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *RegisterPackageRequest) GetName() string {
@@ -2074,7 +2312,7 @@ type RegisterPackageResponse struct {
 
 func (x *RegisterPackageResponse) Reset() {
 	*x = RegisterPackageResponse{}
-	mi := &file_pulumi_resource_proto_msgTypes[20]
+	mi := &file_pulumi_resource_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2086,7 +2324,7 @@ func (x *RegisterPackageResponse) String() string {
 func (*RegisterPackageResponse) ProtoMessage() {}
 
 func (x *RegisterPackageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[20]
+	mi := &file_pulumi_resource_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2099,7 +2337,7 @@ func (x *RegisterPackageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterPackageResponse.ProtoReflect.Descriptor instead.
 func (*RegisterPackageResponse) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{20}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RegisterPackageResponse) GetRef() string {
@@ -2120,7 +2358,7 @@ type Parameterization struct {
 
 func (x *Parameterization) Reset() {
 	*x = Parameterization{}
-	mi := &file_pulumi_resource_proto_msgTypes[21]
+	mi := &file_pulumi_resource_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2132,7 +2370,7 @@ func (x *Parameterization) String() string {
 func (*Parameterization) ProtoMessage() {}
 
 func (x *Parameterization) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[21]
+	mi := &file_pulumi_resource_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2145,7 +2383,7 @@ func (x *Parameterization) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Parameterization.ProtoReflect.Descriptor instead.
 func (*Parameterization) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{21}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *Parameterization) GetName() string {
@@ -2182,7 +2420,7 @@ type RegisterResourceHookRequest struct {
 
 func (x *RegisterResourceHookRequest) Reset() {
 	*x = RegisterResourceHookRequest{}
-	mi := &file_pulumi_resource_proto_msgTypes[22]
+	mi := &file_pulumi_resource_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2194,7 +2432,7 @@ func (x *RegisterResourceHookRequest) String() string {
 func (*RegisterResourceHookRequest) ProtoMessage() {}
 
 func (x *RegisterResourceHookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[22]
+	mi := &file_pulumi_resource_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2207,7 +2445,7 @@ func (x *RegisterResourceHookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterResourceHookRequest.ProtoReflect.Descriptor instead.
 func (*RegisterResourceHookRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{22}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *RegisterResourceHookRequest) GetName() string {
@@ -2243,7 +2481,7 @@ type RegisterErrorHookRequest struct {
 
 func (x *RegisterErrorHookRequest) Reset() {
 	*x = RegisterErrorHookRequest{}
-	mi := &file_pulumi_resource_proto_msgTypes[23]
+	mi := &file_pulumi_resource_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2255,7 +2493,7 @@ func (x *RegisterErrorHookRequest) String() string {
 func (*RegisterErrorHookRequest) ProtoMessage() {}
 
 func (x *RegisterErrorHookRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[23]
+	mi := &file_pulumi_resource_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2268,7 +2506,7 @@ func (x *RegisterErrorHookRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterErrorHookRequest.ProtoReflect.Descriptor instead.
 func (*RegisterErrorHookRequest) Descriptor() ([]byte, []int) {
-	return file_pulumi_resource_proto_rawDescGZIP(), []int{23}
+	return file_pulumi_resource_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *RegisterErrorHookRequest) GetName() string {
@@ -2295,7 +2533,7 @@ type RegisterResourceRequest_PropertyDependencies struct {
 
 func (x *RegisterResourceRequest_PropertyDependencies) Reset() {
 	*x = RegisterResourceRequest_PropertyDependencies{}
-	mi := &file_pulumi_resource_proto_msgTypes[25]
+	mi := &file_pulumi_resource_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2307,7 +2545,7 @@ func (x *RegisterResourceRequest_PropertyDependencies) String() string {
 func (*RegisterResourceRequest_PropertyDependencies) ProtoMessage() {}
 
 func (x *RegisterResourceRequest_PropertyDependencies) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[25]
+	mi := &file_pulumi_resource_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2342,7 +2580,7 @@ type RegisterResourceRequest_CustomTimeouts struct {
 
 func (x *RegisterResourceRequest_CustomTimeouts) Reset() {
 	*x = RegisterResourceRequest_CustomTimeouts{}
-	mi := &file_pulumi_resource_proto_msgTypes[26]
+	mi := &file_pulumi_resource_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2354,7 +2592,7 @@ func (x *RegisterResourceRequest_CustomTimeouts) String() string {
 func (*RegisterResourceRequest_CustomTimeouts) ProtoMessage() {}
 
 func (x *RegisterResourceRequest_CustomTimeouts) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[26]
+	mi := &file_pulumi_resource_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2406,7 +2644,7 @@ type RegisterResourceRequest_ResourceHooksBinding struct {
 
 func (x *RegisterResourceRequest_ResourceHooksBinding) Reset() {
 	*x = RegisterResourceRequest_ResourceHooksBinding{}
-	mi := &file_pulumi_resource_proto_msgTypes[30]
+	mi := &file_pulumi_resource_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2418,7 +2656,7 @@ func (x *RegisterResourceRequest_ResourceHooksBinding) String() string {
 func (*RegisterResourceRequest_ResourceHooksBinding) ProtoMessage() {}
 
 func (x *RegisterResourceRequest_ResourceHooksBinding) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[30]
+	mi := &file_pulumi_resource_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2493,7 +2731,7 @@ type RegisterResourceResponse_PropertyDependencies struct {
 
 func (x *RegisterResourceResponse_PropertyDependencies) Reset() {
 	*x = RegisterResourceResponse_PropertyDependencies{}
-	mi := &file_pulumi_resource_proto_msgTypes[32]
+	mi := &file_pulumi_resource_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2505,7 +2743,7 @@ func (x *RegisterResourceResponse_PropertyDependencies) String() string {
 func (*RegisterResourceResponse_PropertyDependencies) ProtoMessage() {}
 
 func (x *RegisterResourceResponse_PropertyDependencies) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[32]
+	mi := &file_pulumi_resource_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2538,7 +2776,7 @@ type ResourceCallRequest_ArgumentDependencies struct {
 
 func (x *ResourceCallRequest_ArgumentDependencies) Reset() {
 	*x = ResourceCallRequest_ArgumentDependencies{}
-	mi := &file_pulumi_resource_proto_msgTypes[35]
+	mi := &file_pulumi_resource_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2550,7 +2788,7 @@ func (x *ResourceCallRequest_ArgumentDependencies) String() string {
 func (*ResourceCallRequest_ArgumentDependencies) ProtoMessage() {}
 
 func (x *ResourceCallRequest_ArgumentDependencies) ProtoReflect() protoreflect.Message {
-	mi := &file_pulumi_resource_proto_msgTypes[35]
+	mi := &file_pulumi_resource_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2791,6 +3029,40 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\n" +
 	"\b_protectB\x13\n" +
 	"\x11_retain_on_deleteB\x18\n" +
+	"\x16_delete_before_replace\"\xc3\t\n" +
+	"\x0fResourceOptions\x12\x1d\n" +
+	"\n" +
+	"depends_on\x18\x01 \x03(\tR\tdependsOn\x12\x1d\n" +
+	"\aprotect\x18\x02 \x01(\bH\x00R\aprotect\x88\x01\x01\x12%\n" +
+	"\x0eignore_changes\x18\x03 \x03(\tR\rignoreChanges\x12,\n" +
+	"\x12replace_on_changes\x18\x04 \x03(\tR\x10replaceOnChanges\x12\x18\n" +
+	"\aversion\x18\x05 \x01(\tR\aversion\x12*\n" +
+	"\aaliases\x18\x06 \x03(\v2\x10.pulumirpc.AliasR\aaliases\x12\x1a\n" +
+	"\bprovider\x18\a \x01(\tR\bprovider\x12Z\n" +
+	"\x0fcustom_timeouts\x18\b \x01(\v21.pulumirpc.RegisterResourceRequest.CustomTimeoutsR\x0ecustomTimeouts\x12.\n" +
+	"\x13plugin_download_url\x18\t \x01(\tR\x11pluginDownloadUrl\x12-\n" +
+	"\x10retain_on_delete\x18\n" +
+	" \x01(\bH\x01R\x0eretainOnDelete\x88\x01\x01\x12!\n" +
+	"\fdeleted_with\x18\v \x01(\tR\vdeletedWith\x127\n" +
+	"\x15delete_before_replace\x18\f \x01(\bH\x02R\x13deleteBeforeReplace\x88\x01\x01\x12:\n" +
+	"\x19additional_secret_outputs\x18\r \x03(\tR\x17additionalSecretOutputs\x12G\n" +
+	"\tproviders\x18\x0e \x03(\v2).pulumirpc.ResourceOptions.ProvidersEntryR\tproviders\x12Z\n" +
+	"\x10plugin_checksums\x18\x0f \x03(\v2/.pulumirpc.ResourceOptions.PluginChecksumsEntryR\x0fpluginChecksums\x12M\n" +
+	"\x05hooks\x18\x10 \x01(\v27.pulumirpc.RegisterResourceRequest.ResourceHooksBindingR\x05hooks\x12\x16\n" +
+	"\x06import\x18\x11 \x01(\tR\x06import\x12\x1b\n" +
+	"\thide_diff\x18\x12 \x03(\tR\bhideDiff\x12!\n" +
+	"\freplace_with\x18\x13 \x03(\tR\vreplaceWith\x12G\n" +
+	"\x13replacement_trigger\x18\x14 \x01(\v2\x16.google.protobuf.ValueR\x12replacementTrigger\x12\x16\n" +
+	"\x06parent\x18\x15 \x01(\tR\x06parent\x1a<\n" +
+	"\x0eProvidersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
+	"\x14PluginChecksumsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01B\n" +
+	"\n" +
+	"\b_protectB\x13\n" +
+	"\x11_retain_on_deleteB\x18\n" +
 	"\x16_delete_before_replace\"\xe2\x01\n" +
 	"\x10TransformRequest\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x12\n" +
@@ -2820,7 +3092,7 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x10plugin_checksums\x18\x04 \x03(\v26.pulumirpc.TransformInvokeOptions.PluginChecksumsEntryR\x0fpluginChecksums\x1aB\n" +
 	"\x14PluginChecksumsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xc3\x02\n" +
+	"\x05value\x18\x02 \x01(\fR\x05value:\x028\x01\"\xe7\x03\n" +
 	"\x13ResourceHookRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
@@ -2833,9 +3105,16 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\vnew_outputs\x18\a \x01(\v2\x17.google.protobuf.StructR\n" +
 	"newOutputs\x128\n" +
 	"\vold_outputs\x18\b \x01(\v2\x17.google.protobuf.StructR\n" +
-	"oldOutputs\",\n" +
+	"oldOutputs\x12@\n" +
+	"\vold_options\x18\t \x01(\v2\x1a.pulumirpc.ResourceOptionsH\x00R\n" +
+	"oldOptions\x88\x01\x01\x12@\n" +
+	"\vnew_options\x18\n" +
+	" \x01(\v2\x1a.pulumirpc.ResourceOptionsH\x01R\n" +
+	"newOptions\x88\x01\x01B\x0e\n" +
+	"\f_old_optionsB\x0e\n" +
+	"\f_new_options\",\n" +
 	"\x14ResourceHookResponse\x12\x14\n" +
-	"\x05error\x18\x01 \x01(\tR\x05error\"\xc9\x02\n" +
+	"\x05error\x18\x01 \x01(\tR\x05error\"\xc3\x03\n" +
 	"\x10ErrorHookRequest\x12\x10\n" +
 	"\x03urn\x18\x01 \x01(\tR\x03urn\x12\x0e\n" +
 	"\x02id\x18\x02 \x01(\tR\x02id\x12\x12\n" +
@@ -2848,7 +3127,12 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\vold_outputs\x18\a \x01(\v2\x17.google.protobuf.StructR\n" +
 	"oldOutputs\x12)\n" +
 	"\x10failed_operation\x18\b \x01(\tR\x0ffailedOperation\x12\x16\n" +
-	"\x06errors\x18\t \x03(\tR\x06errors\"?\n" +
+	"\x06errors\x18\t \x03(\tR\x06errors\x12;\n" +
+	"\vold_options\x18\n" +
+	" \x01(\v2\x1a.pulumirpc.ResourceOptionsR\n" +
+	"oldOptions\x12;\n" +
+	"\vnew_options\x18\v \x01(\v2\x1a.pulumirpc.ResourceOptionsR\n" +
+	"newOptions\"?\n" +
 	"\x11ErrorHookResponse\x12\x14\n" +
 	"\x05error\x18\x01 \x01(\tR\x05error\x12\x14\n" +
 	"\x05retry\x18\x02 \x01(\bR\x05retry\"\xc0\x02\n" +
@@ -2906,7 +3190,7 @@ func file_pulumi_resource_proto_rawDescGZIP() []byte {
 }
 
 var file_pulumi_resource_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pulumi_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
+var file_pulumi_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_pulumi_resource_proto_goTypes = []any{
 	(Result)(0),                                          // 0: pulumirpc.Result
 	(*SupportsFeatureRequest)(nil),                       // 1: pulumirpc.SupportsFeatureRequest
@@ -2919,137 +3203,150 @@ var file_pulumi_resource_proto_goTypes = []any{
 	(*ResourceInvokeRequest)(nil),                        // 8: pulumirpc.ResourceInvokeRequest
 	(*ResourceCallRequest)(nil),                          // 9: pulumirpc.ResourceCallRequest
 	(*TransformResourceOptions)(nil),                     // 10: pulumirpc.TransformResourceOptions
-	(*TransformRequest)(nil),                             // 11: pulumirpc.TransformRequest
-	(*TransformResponse)(nil),                            // 12: pulumirpc.TransformResponse
-	(*TransformInvokeRequest)(nil),                       // 13: pulumirpc.TransformInvokeRequest
-	(*TransformInvokeResponse)(nil),                      // 14: pulumirpc.TransformInvokeResponse
-	(*TransformInvokeOptions)(nil),                       // 15: pulumirpc.TransformInvokeOptions
-	(*ResourceHookRequest)(nil),                          // 16: pulumirpc.ResourceHookRequest
-	(*ResourceHookResponse)(nil),                         // 17: pulumirpc.ResourceHookResponse
-	(*ErrorHookRequest)(nil),                             // 18: pulumirpc.ErrorHookRequest
-	(*ErrorHookResponse)(nil),                            // 19: pulumirpc.ErrorHookResponse
-	(*RegisterPackageRequest)(nil),                       // 20: pulumirpc.RegisterPackageRequest
-	(*RegisterPackageResponse)(nil),                      // 21: pulumirpc.RegisterPackageResponse
-	(*Parameterization)(nil),                             // 22: pulumirpc.Parameterization
-	(*RegisterResourceHookRequest)(nil),                  // 23: pulumirpc.RegisterResourceHookRequest
-	(*RegisterErrorHookRequest)(nil),                     // 24: pulumirpc.RegisterErrorHookRequest
-	nil,                                                  // 25: pulumirpc.ReadResourceRequest.PluginChecksumsEntry
-	(*RegisterResourceRequest_PropertyDependencies)(nil), // 26: pulumirpc.RegisterResourceRequest.PropertyDependencies
-	(*RegisterResourceRequest_CustomTimeouts)(nil),       // 27: pulumirpc.RegisterResourceRequest.CustomTimeouts
-	nil, // 28: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
-	nil, // 29: pulumirpc.RegisterResourceRequest.ProvidersEntry
-	nil, // 30: pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
-	(*RegisterResourceRequest_ResourceHooksBinding)(nil), // 31: pulumirpc.RegisterResourceRequest.ResourceHooksBinding
-	nil, // 32: pulumirpc.RegisterResourceRequest.EnvVarMappingsEntry
-	(*RegisterResourceResponse_PropertyDependencies)(nil), // 33: pulumirpc.RegisterResourceResponse.PropertyDependencies
-	nil, // 34: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
-	nil, // 35: pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
-	(*ResourceCallRequest_ArgumentDependencies)(nil), // 36: pulumirpc.ResourceCallRequest.ArgumentDependencies
-	nil,                     // 37: pulumirpc.ResourceCallRequest.ArgDependenciesEntry
-	nil,                     // 38: pulumirpc.ResourceCallRequest.PluginChecksumsEntry
-	nil,                     // 39: pulumirpc.TransformResourceOptions.ProvidersEntry
-	nil,                     // 40: pulumirpc.TransformResourceOptions.PluginChecksumsEntry
-	nil,                     // 41: pulumirpc.TransformInvokeOptions.PluginChecksumsEntry
-	nil,                     // 42: pulumirpc.RegisterPackageRequest.ChecksumsEntry
-	(*structpb.Struct)(nil), // 43: google.protobuf.Struct
-	(*SourcePosition)(nil),  // 44: pulumirpc.SourcePosition
-	(*StackTrace)(nil),      // 45: pulumirpc.StackTrace
-	(*Alias)(nil),           // 46: pulumirpc.Alias
-	(*structpb.Value)(nil),  // 47: google.protobuf.Value
-	(*Callback)(nil),        // 48: pulumirpc.Callback
-	(*emptypb.Empty)(nil),   // 49: google.protobuf.Empty
-	(*InvokeResponse)(nil),  // 50: pulumirpc.InvokeResponse
-	(*CallResponse)(nil),    // 51: pulumirpc.CallResponse
+	(*ResourceOptions)(nil),                              // 11: pulumirpc.ResourceOptions
+	(*TransformRequest)(nil),                             // 12: pulumirpc.TransformRequest
+	(*TransformResponse)(nil),                            // 13: pulumirpc.TransformResponse
+	(*TransformInvokeRequest)(nil),                       // 14: pulumirpc.TransformInvokeRequest
+	(*TransformInvokeResponse)(nil),                      // 15: pulumirpc.TransformInvokeResponse
+	(*TransformInvokeOptions)(nil),                       // 16: pulumirpc.TransformInvokeOptions
+	(*ResourceHookRequest)(nil),                          // 17: pulumirpc.ResourceHookRequest
+	(*ResourceHookResponse)(nil),                         // 18: pulumirpc.ResourceHookResponse
+	(*ErrorHookRequest)(nil),                             // 19: pulumirpc.ErrorHookRequest
+	(*ErrorHookResponse)(nil),                            // 20: pulumirpc.ErrorHookResponse
+	(*RegisterPackageRequest)(nil),                       // 21: pulumirpc.RegisterPackageRequest
+	(*RegisterPackageResponse)(nil),                      // 22: pulumirpc.RegisterPackageResponse
+	(*Parameterization)(nil),                             // 23: pulumirpc.Parameterization
+	(*RegisterResourceHookRequest)(nil),                  // 24: pulumirpc.RegisterResourceHookRequest
+	(*RegisterErrorHookRequest)(nil),                     // 25: pulumirpc.RegisterErrorHookRequest
+	nil,                                                  // 26: pulumirpc.ReadResourceRequest.PluginChecksumsEntry
+	(*RegisterResourceRequest_PropertyDependencies)(nil), // 27: pulumirpc.RegisterResourceRequest.PropertyDependencies
+	(*RegisterResourceRequest_CustomTimeouts)(nil),       // 28: pulumirpc.RegisterResourceRequest.CustomTimeouts
+	nil, // 29: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
+	nil, // 30: pulumirpc.RegisterResourceRequest.ProvidersEntry
+	nil, // 31: pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
+	(*RegisterResourceRequest_ResourceHooksBinding)(nil), // 32: pulumirpc.RegisterResourceRequest.ResourceHooksBinding
+	nil, // 33: pulumirpc.RegisterResourceRequest.EnvVarMappingsEntry
+	(*RegisterResourceResponse_PropertyDependencies)(nil), // 34: pulumirpc.RegisterResourceResponse.PropertyDependencies
+	nil, // 35: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
+	nil, // 36: pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
+	(*ResourceCallRequest_ArgumentDependencies)(nil), // 37: pulumirpc.ResourceCallRequest.ArgumentDependencies
+	nil,                     // 38: pulumirpc.ResourceCallRequest.ArgDependenciesEntry
+	nil,                     // 39: pulumirpc.ResourceCallRequest.PluginChecksumsEntry
+	nil,                     // 40: pulumirpc.TransformResourceOptions.ProvidersEntry
+	nil,                     // 41: pulumirpc.TransformResourceOptions.PluginChecksumsEntry
+	nil,                     // 42: pulumirpc.ResourceOptions.ProvidersEntry
+	nil,                     // 43: pulumirpc.ResourceOptions.PluginChecksumsEntry
+	nil,                     // 44: pulumirpc.TransformInvokeOptions.PluginChecksumsEntry
+	nil,                     // 45: pulumirpc.RegisterPackageRequest.ChecksumsEntry
+	(*structpb.Struct)(nil), // 46: google.protobuf.Struct
+	(*SourcePosition)(nil),  // 47: pulumirpc.SourcePosition
+	(*StackTrace)(nil),      // 48: pulumirpc.StackTrace
+	(*Alias)(nil),           // 49: pulumirpc.Alias
+	(*structpb.Value)(nil),  // 50: google.protobuf.Value
+	(*Callback)(nil),        // 51: pulumirpc.Callback
+	(*emptypb.Empty)(nil),   // 52: google.protobuf.Empty
+	(*InvokeResponse)(nil),  // 53: pulumirpc.InvokeResponse
+	(*CallResponse)(nil),    // 54: pulumirpc.CallResponse
 }
 var file_pulumi_resource_proto_depIdxs = []int32{
-	43, // 0: pulumirpc.ReadResourceRequest.properties:type_name -> google.protobuf.Struct
-	25, // 1: pulumirpc.ReadResourceRequest.pluginChecksums:type_name -> pulumirpc.ReadResourceRequest.PluginChecksumsEntry
-	44, // 2: pulumirpc.ReadResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	45, // 3: pulumirpc.ReadResourceRequest.stackTrace:type_name -> pulumirpc.StackTrace
-	43, // 4: pulumirpc.ReadResourceResponse.properties:type_name -> google.protobuf.Struct
-	43, // 5: pulumirpc.RegisterResourceRequest.object:type_name -> google.protobuf.Struct
-	28, // 6: pulumirpc.RegisterResourceRequest.propertyDependencies:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
-	27, // 7: pulumirpc.RegisterResourceRequest.customTimeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
-	29, // 8: pulumirpc.RegisterResourceRequest.providers:type_name -> pulumirpc.RegisterResourceRequest.ProvidersEntry
-	30, // 9: pulumirpc.RegisterResourceRequest.pluginChecksums:type_name -> pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
-	46, // 10: pulumirpc.RegisterResourceRequest.aliases:type_name -> pulumirpc.Alias
-	47, // 11: pulumirpc.RegisterResourceRequest.replacement_trigger:type_name -> google.protobuf.Value
-	44, // 12: pulumirpc.RegisterResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	45, // 13: pulumirpc.RegisterResourceRequest.stackTrace:type_name -> pulumirpc.StackTrace
-	48, // 14: pulumirpc.RegisterResourceRequest.transforms:type_name -> pulumirpc.Callback
-	31, // 15: pulumirpc.RegisterResourceRequest.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
-	32, // 16: pulumirpc.RegisterResourceRequest.envVarMappings:type_name -> pulumirpc.RegisterResourceRequest.EnvVarMappingsEntry
-	43, // 17: pulumirpc.RegisterResourceResponse.object:type_name -> google.protobuf.Struct
-	34, // 18: pulumirpc.RegisterResourceResponse.propertyDependencies:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
+	46, // 0: pulumirpc.ReadResourceRequest.properties:type_name -> google.protobuf.Struct
+	26, // 1: pulumirpc.ReadResourceRequest.pluginChecksums:type_name -> pulumirpc.ReadResourceRequest.PluginChecksumsEntry
+	47, // 2: pulumirpc.ReadResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	48, // 3: pulumirpc.ReadResourceRequest.stackTrace:type_name -> pulumirpc.StackTrace
+	46, // 4: pulumirpc.ReadResourceResponse.properties:type_name -> google.protobuf.Struct
+	46, // 5: pulumirpc.RegisterResourceRequest.object:type_name -> google.protobuf.Struct
+	29, // 6: pulumirpc.RegisterResourceRequest.propertyDependencies:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry
+	28, // 7: pulumirpc.RegisterResourceRequest.customTimeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
+	30, // 8: pulumirpc.RegisterResourceRequest.providers:type_name -> pulumirpc.RegisterResourceRequest.ProvidersEntry
+	31, // 9: pulumirpc.RegisterResourceRequest.pluginChecksums:type_name -> pulumirpc.RegisterResourceRequest.PluginChecksumsEntry
+	49, // 10: pulumirpc.RegisterResourceRequest.aliases:type_name -> pulumirpc.Alias
+	50, // 11: pulumirpc.RegisterResourceRequest.replacement_trigger:type_name -> google.protobuf.Value
+	47, // 12: pulumirpc.RegisterResourceRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	48, // 13: pulumirpc.RegisterResourceRequest.stackTrace:type_name -> pulumirpc.StackTrace
+	51, // 14: pulumirpc.RegisterResourceRequest.transforms:type_name -> pulumirpc.Callback
+	32, // 15: pulumirpc.RegisterResourceRequest.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
+	33, // 16: pulumirpc.RegisterResourceRequest.envVarMappings:type_name -> pulumirpc.RegisterResourceRequest.EnvVarMappingsEntry
+	46, // 17: pulumirpc.RegisterResourceResponse.object:type_name -> google.protobuf.Struct
+	35, // 18: pulumirpc.RegisterResourceResponse.propertyDependencies:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry
 	0,  // 19: pulumirpc.RegisterResourceResponse.result:type_name -> pulumirpc.Result
-	43, // 20: pulumirpc.RegisterResourceOutputsRequest.outputs:type_name -> google.protobuf.Struct
-	43, // 21: pulumirpc.ResourceInvokeRequest.args:type_name -> google.protobuf.Struct
-	35, // 22: pulumirpc.ResourceInvokeRequest.pluginChecksums:type_name -> pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
-	44, // 23: pulumirpc.ResourceInvokeRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	45, // 24: pulumirpc.ResourceInvokeRequest.stackTrace:type_name -> pulumirpc.StackTrace
-	43, // 25: pulumirpc.ResourceCallRequest.args:type_name -> google.protobuf.Struct
-	37, // 26: pulumirpc.ResourceCallRequest.argDependencies:type_name -> pulumirpc.ResourceCallRequest.ArgDependenciesEntry
-	38, // 27: pulumirpc.ResourceCallRequest.pluginChecksums:type_name -> pulumirpc.ResourceCallRequest.PluginChecksumsEntry
-	44, // 28: pulumirpc.ResourceCallRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
-	45, // 29: pulumirpc.ResourceCallRequest.stackTrace:type_name -> pulumirpc.StackTrace
-	46, // 30: pulumirpc.TransformResourceOptions.aliases:type_name -> pulumirpc.Alias
-	27, // 31: pulumirpc.TransformResourceOptions.custom_timeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
-	39, // 32: pulumirpc.TransformResourceOptions.providers:type_name -> pulumirpc.TransformResourceOptions.ProvidersEntry
-	40, // 33: pulumirpc.TransformResourceOptions.plugin_checksums:type_name -> pulumirpc.TransformResourceOptions.PluginChecksumsEntry
-	31, // 34: pulumirpc.TransformResourceOptions.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
-	47, // 35: pulumirpc.TransformResourceOptions.replacement_trigger:type_name -> google.protobuf.Value
-	43, // 36: pulumirpc.TransformRequest.properties:type_name -> google.protobuf.Struct
-	10, // 37: pulumirpc.TransformRequest.options:type_name -> pulumirpc.TransformResourceOptions
-	43, // 38: pulumirpc.TransformResponse.properties:type_name -> google.protobuf.Struct
-	10, // 39: pulumirpc.TransformResponse.options:type_name -> pulumirpc.TransformResourceOptions
-	43, // 40: pulumirpc.TransformInvokeRequest.args:type_name -> google.protobuf.Struct
-	15, // 41: pulumirpc.TransformInvokeRequest.options:type_name -> pulumirpc.TransformInvokeOptions
-	43, // 42: pulumirpc.TransformInvokeResponse.args:type_name -> google.protobuf.Struct
-	15, // 43: pulumirpc.TransformInvokeResponse.options:type_name -> pulumirpc.TransformInvokeOptions
-	41, // 44: pulumirpc.TransformInvokeOptions.plugin_checksums:type_name -> pulumirpc.TransformInvokeOptions.PluginChecksumsEntry
-	43, // 45: pulumirpc.ResourceHookRequest.new_inputs:type_name -> google.protobuf.Struct
-	43, // 46: pulumirpc.ResourceHookRequest.old_inputs:type_name -> google.protobuf.Struct
-	43, // 47: pulumirpc.ResourceHookRequest.new_outputs:type_name -> google.protobuf.Struct
-	43, // 48: pulumirpc.ResourceHookRequest.old_outputs:type_name -> google.protobuf.Struct
-	43, // 49: pulumirpc.ErrorHookRequest.new_inputs:type_name -> google.protobuf.Struct
-	43, // 50: pulumirpc.ErrorHookRequest.old_inputs:type_name -> google.protobuf.Struct
-	43, // 51: pulumirpc.ErrorHookRequest.old_outputs:type_name -> google.protobuf.Struct
-	42, // 52: pulumirpc.RegisterPackageRequest.checksums:type_name -> pulumirpc.RegisterPackageRequest.ChecksumsEntry
-	22, // 53: pulumirpc.RegisterPackageRequest.parameterization:type_name -> pulumirpc.Parameterization
-	48, // 54: pulumirpc.RegisterResourceHookRequest.callback:type_name -> pulumirpc.Callback
-	48, // 55: pulumirpc.RegisterErrorHookRequest.callback:type_name -> pulumirpc.Callback
-	26, // 56: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependencies
-	33, // 57: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependencies
-	36, // 58: pulumirpc.ResourceCallRequest.ArgDependenciesEntry.value:type_name -> pulumirpc.ResourceCallRequest.ArgumentDependencies
-	1,  // 59: pulumirpc.ResourceMonitor.SupportsFeature:input_type -> pulumirpc.SupportsFeatureRequest
-	8,  // 60: pulumirpc.ResourceMonitor.Invoke:input_type -> pulumirpc.ResourceInvokeRequest
-	9,  // 61: pulumirpc.ResourceMonitor.Call:input_type -> pulumirpc.ResourceCallRequest
-	3,  // 62: pulumirpc.ResourceMonitor.ReadResource:input_type -> pulumirpc.ReadResourceRequest
-	5,  // 63: pulumirpc.ResourceMonitor.RegisterResource:input_type -> pulumirpc.RegisterResourceRequest
-	7,  // 64: pulumirpc.ResourceMonitor.RegisterResourceOutputs:input_type -> pulumirpc.RegisterResourceOutputsRequest
-	48, // 65: pulumirpc.ResourceMonitor.RegisterStackTransform:input_type -> pulumirpc.Callback
-	48, // 66: pulumirpc.ResourceMonitor.RegisterStackInvokeTransform:input_type -> pulumirpc.Callback
-	23, // 67: pulumirpc.ResourceMonitor.RegisterResourceHook:input_type -> pulumirpc.RegisterResourceHookRequest
-	24, // 68: pulumirpc.ResourceMonitor.RegisterErrorHook:input_type -> pulumirpc.RegisterErrorHookRequest
-	20, // 69: pulumirpc.ResourceMonitor.RegisterPackage:input_type -> pulumirpc.RegisterPackageRequest
-	49, // 70: pulumirpc.ResourceMonitor.SignalAndWaitForShutdown:input_type -> google.protobuf.Empty
-	2,  // 71: pulumirpc.ResourceMonitor.SupportsFeature:output_type -> pulumirpc.SupportsFeatureResponse
-	50, // 72: pulumirpc.ResourceMonitor.Invoke:output_type -> pulumirpc.InvokeResponse
-	51, // 73: pulumirpc.ResourceMonitor.Call:output_type -> pulumirpc.CallResponse
-	4,  // 74: pulumirpc.ResourceMonitor.ReadResource:output_type -> pulumirpc.ReadResourceResponse
-	6,  // 75: pulumirpc.ResourceMonitor.RegisterResource:output_type -> pulumirpc.RegisterResourceResponse
-	49, // 76: pulumirpc.ResourceMonitor.RegisterResourceOutputs:output_type -> google.protobuf.Empty
-	49, // 77: pulumirpc.ResourceMonitor.RegisterStackTransform:output_type -> google.protobuf.Empty
-	49, // 78: pulumirpc.ResourceMonitor.RegisterStackInvokeTransform:output_type -> google.protobuf.Empty
-	49, // 79: pulumirpc.ResourceMonitor.RegisterResourceHook:output_type -> google.protobuf.Empty
-	49, // 80: pulumirpc.ResourceMonitor.RegisterErrorHook:output_type -> google.protobuf.Empty
-	21, // 81: pulumirpc.ResourceMonitor.RegisterPackage:output_type -> pulumirpc.RegisterPackageResponse
-	49, // 82: pulumirpc.ResourceMonitor.SignalAndWaitForShutdown:output_type -> google.protobuf.Empty
-	71, // [71:83] is the sub-list for method output_type
-	59, // [59:71] is the sub-list for method input_type
-	59, // [59:59] is the sub-list for extension type_name
-	59, // [59:59] is the sub-list for extension extendee
-	0,  // [0:59] is the sub-list for field type_name
+	46, // 20: pulumirpc.RegisterResourceOutputsRequest.outputs:type_name -> google.protobuf.Struct
+	46, // 21: pulumirpc.ResourceInvokeRequest.args:type_name -> google.protobuf.Struct
+	36, // 22: pulumirpc.ResourceInvokeRequest.pluginChecksums:type_name -> pulumirpc.ResourceInvokeRequest.PluginChecksumsEntry
+	47, // 23: pulumirpc.ResourceInvokeRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	48, // 24: pulumirpc.ResourceInvokeRequest.stackTrace:type_name -> pulumirpc.StackTrace
+	46, // 25: pulumirpc.ResourceCallRequest.args:type_name -> google.protobuf.Struct
+	38, // 26: pulumirpc.ResourceCallRequest.argDependencies:type_name -> pulumirpc.ResourceCallRequest.ArgDependenciesEntry
+	39, // 27: pulumirpc.ResourceCallRequest.pluginChecksums:type_name -> pulumirpc.ResourceCallRequest.PluginChecksumsEntry
+	47, // 28: pulumirpc.ResourceCallRequest.sourcePosition:type_name -> pulumirpc.SourcePosition
+	48, // 29: pulumirpc.ResourceCallRequest.stackTrace:type_name -> pulumirpc.StackTrace
+	49, // 30: pulumirpc.TransformResourceOptions.aliases:type_name -> pulumirpc.Alias
+	28, // 31: pulumirpc.TransformResourceOptions.custom_timeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
+	40, // 32: pulumirpc.TransformResourceOptions.providers:type_name -> pulumirpc.TransformResourceOptions.ProvidersEntry
+	41, // 33: pulumirpc.TransformResourceOptions.plugin_checksums:type_name -> pulumirpc.TransformResourceOptions.PluginChecksumsEntry
+	32, // 34: pulumirpc.TransformResourceOptions.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
+	50, // 35: pulumirpc.TransformResourceOptions.replacement_trigger:type_name -> google.protobuf.Value
+	49, // 36: pulumirpc.ResourceOptions.aliases:type_name -> pulumirpc.Alias
+	28, // 37: pulumirpc.ResourceOptions.custom_timeouts:type_name -> pulumirpc.RegisterResourceRequest.CustomTimeouts
+	42, // 38: pulumirpc.ResourceOptions.providers:type_name -> pulumirpc.ResourceOptions.ProvidersEntry
+	43, // 39: pulumirpc.ResourceOptions.plugin_checksums:type_name -> pulumirpc.ResourceOptions.PluginChecksumsEntry
+	32, // 40: pulumirpc.ResourceOptions.hooks:type_name -> pulumirpc.RegisterResourceRequest.ResourceHooksBinding
+	50, // 41: pulumirpc.ResourceOptions.replacement_trigger:type_name -> google.protobuf.Value
+	46, // 42: pulumirpc.TransformRequest.properties:type_name -> google.protobuf.Struct
+	10, // 43: pulumirpc.TransformRequest.options:type_name -> pulumirpc.TransformResourceOptions
+	46, // 44: pulumirpc.TransformResponse.properties:type_name -> google.protobuf.Struct
+	10, // 45: pulumirpc.TransformResponse.options:type_name -> pulumirpc.TransformResourceOptions
+	46, // 46: pulumirpc.TransformInvokeRequest.args:type_name -> google.protobuf.Struct
+	16, // 47: pulumirpc.TransformInvokeRequest.options:type_name -> pulumirpc.TransformInvokeOptions
+	46, // 48: pulumirpc.TransformInvokeResponse.args:type_name -> google.protobuf.Struct
+	16, // 49: pulumirpc.TransformInvokeResponse.options:type_name -> pulumirpc.TransformInvokeOptions
+	44, // 50: pulumirpc.TransformInvokeOptions.plugin_checksums:type_name -> pulumirpc.TransformInvokeOptions.PluginChecksumsEntry
+	46, // 51: pulumirpc.ResourceHookRequest.new_inputs:type_name -> google.protobuf.Struct
+	46, // 52: pulumirpc.ResourceHookRequest.old_inputs:type_name -> google.protobuf.Struct
+	46, // 53: pulumirpc.ResourceHookRequest.new_outputs:type_name -> google.protobuf.Struct
+	46, // 54: pulumirpc.ResourceHookRequest.old_outputs:type_name -> google.protobuf.Struct
+	11, // 55: pulumirpc.ResourceHookRequest.old_options:type_name -> pulumirpc.ResourceOptions
+	11, // 56: pulumirpc.ResourceHookRequest.new_options:type_name -> pulumirpc.ResourceOptions
+	46, // 57: pulumirpc.ErrorHookRequest.new_inputs:type_name -> google.protobuf.Struct
+	46, // 58: pulumirpc.ErrorHookRequest.old_inputs:type_name -> google.protobuf.Struct
+	46, // 59: pulumirpc.ErrorHookRequest.old_outputs:type_name -> google.protobuf.Struct
+	11, // 60: pulumirpc.ErrorHookRequest.old_options:type_name -> pulumirpc.ResourceOptions
+	11, // 61: pulumirpc.ErrorHookRequest.new_options:type_name -> pulumirpc.ResourceOptions
+	45, // 62: pulumirpc.RegisterPackageRequest.checksums:type_name -> pulumirpc.RegisterPackageRequest.ChecksumsEntry
+	23, // 63: pulumirpc.RegisterPackageRequest.parameterization:type_name -> pulumirpc.Parameterization
+	51, // 64: pulumirpc.RegisterResourceHookRequest.callback:type_name -> pulumirpc.Callback
+	51, // 65: pulumirpc.RegisterErrorHookRequest.callback:type_name -> pulumirpc.Callback
+	27, // 66: pulumirpc.RegisterResourceRequest.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceRequest.PropertyDependencies
+	34, // 67: pulumirpc.RegisterResourceResponse.PropertyDependenciesEntry.value:type_name -> pulumirpc.RegisterResourceResponse.PropertyDependencies
+	37, // 68: pulumirpc.ResourceCallRequest.ArgDependenciesEntry.value:type_name -> pulumirpc.ResourceCallRequest.ArgumentDependencies
+	1,  // 69: pulumirpc.ResourceMonitor.SupportsFeature:input_type -> pulumirpc.SupportsFeatureRequest
+	8,  // 70: pulumirpc.ResourceMonitor.Invoke:input_type -> pulumirpc.ResourceInvokeRequest
+	9,  // 71: pulumirpc.ResourceMonitor.Call:input_type -> pulumirpc.ResourceCallRequest
+	3,  // 72: pulumirpc.ResourceMonitor.ReadResource:input_type -> pulumirpc.ReadResourceRequest
+	5,  // 73: pulumirpc.ResourceMonitor.RegisterResource:input_type -> pulumirpc.RegisterResourceRequest
+	7,  // 74: pulumirpc.ResourceMonitor.RegisterResourceOutputs:input_type -> pulumirpc.RegisterResourceOutputsRequest
+	51, // 75: pulumirpc.ResourceMonitor.RegisterStackTransform:input_type -> pulumirpc.Callback
+	51, // 76: pulumirpc.ResourceMonitor.RegisterStackInvokeTransform:input_type -> pulumirpc.Callback
+	24, // 77: pulumirpc.ResourceMonitor.RegisterResourceHook:input_type -> pulumirpc.RegisterResourceHookRequest
+	25, // 78: pulumirpc.ResourceMonitor.RegisterErrorHook:input_type -> pulumirpc.RegisterErrorHookRequest
+	21, // 79: pulumirpc.ResourceMonitor.RegisterPackage:input_type -> pulumirpc.RegisterPackageRequest
+	52, // 80: pulumirpc.ResourceMonitor.SignalAndWaitForShutdown:input_type -> google.protobuf.Empty
+	2,  // 81: pulumirpc.ResourceMonitor.SupportsFeature:output_type -> pulumirpc.SupportsFeatureResponse
+	53, // 82: pulumirpc.ResourceMonitor.Invoke:output_type -> pulumirpc.InvokeResponse
+	54, // 83: pulumirpc.ResourceMonitor.Call:output_type -> pulumirpc.CallResponse
+	4,  // 84: pulumirpc.ResourceMonitor.ReadResource:output_type -> pulumirpc.ReadResourceResponse
+	6,  // 85: pulumirpc.ResourceMonitor.RegisterResource:output_type -> pulumirpc.RegisterResourceResponse
+	52, // 86: pulumirpc.ResourceMonitor.RegisterResourceOutputs:output_type -> google.protobuf.Empty
+	52, // 87: pulumirpc.ResourceMonitor.RegisterStackTransform:output_type -> google.protobuf.Empty
+	52, // 88: pulumirpc.ResourceMonitor.RegisterStackInvokeTransform:output_type -> google.protobuf.Empty
+	52, // 89: pulumirpc.ResourceMonitor.RegisterResourceHook:output_type -> google.protobuf.Empty
+	52, // 90: pulumirpc.ResourceMonitor.RegisterErrorHook:output_type -> google.protobuf.Empty
+	22, // 91: pulumirpc.ResourceMonitor.RegisterPackage:output_type -> pulumirpc.RegisterPackageResponse
+	52, // 92: pulumirpc.ResourceMonitor.SignalAndWaitForShutdown:output_type -> google.protobuf.Empty
+	81, // [81:93] is the sub-list for method output_type
+	69, // [69:81] is the sub-list for method input_type
+	69, // [69:69] is the sub-list for extension type_name
+	69, // [69:69] is the sub-list for extension extendee
+	0,  // [0:69] is the sub-list for field type_name
 }
 
 func init() { file_pulumi_resource_proto_init() }
@@ -3063,13 +3360,15 @@ func file_pulumi_resource_proto_init() {
 	file_pulumi_callback_proto_init()
 	file_pulumi_resource_proto_msgTypes[4].OneofWrappers = []any{}
 	file_pulumi_resource_proto_msgTypes[9].OneofWrappers = []any{}
+	file_pulumi_resource_proto_msgTypes[10].OneofWrappers = []any{}
+	file_pulumi_resource_proto_msgTypes[16].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pulumi_resource_proto_rawDesc), len(file_pulumi_resource_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   42,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -297,6 +297,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.URN,
 		s.URN().Name(),
 		s.Type(),
+		nil, /* oldOptions */
+		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		nil, /* oldInputs */
 		nil, /* newOutputs */
@@ -371,6 +373,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.new.URN,
 					s.URN().Name(),
 					s.Type(),
+					nil, /* oldOptions */
+					resourceOptionsFromState(s.new),
 					s.new.Inputs,
 					nil, /* oldInputs */
 					nil, /* oldOutputs */
@@ -457,6 +461,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.URN,
 			s.new.URN.Name(),
 			s.new.Type,
+			nil, /* oldOptions */
+			resourceOptionsFromState(s.new),
 			s.new.Inputs,
 			nil, /* oldInputs */
 			s.new.Outputs,
@@ -593,6 +599,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN,
 		s.URN().Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		nil, /* newOptions */
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -680,6 +688,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.old.URN,
 					s.URN().Name(),
 					s.Type(),
+					resourceOptionsFromState(s.old),
+					nil, /* newOptions */
 					nil, /* newInputs */
 					s.old.Inputs,
 					s.old.Outputs,
@@ -757,6 +767,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN,
 		s.old.URN.Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		nil, /* newOptions */
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -924,6 +936,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.URN,
 		s.URN().Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -999,6 +1013,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.new.URN,
 					s.URN().Name(),
 					s.Type(),
+					resourceOptionsFromState(s.old),
+					resourceOptionsFromState(s.new),
 					s.new.Inputs,
 					s.old.Inputs,
 					s.old.Outputs,
@@ -1071,6 +1087,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.URN,
 			s.new.URN.Name(),
 			s.Type(),
+			resourceOptionsFromState(s.old),
+			resourceOptionsFromState(s.new),
 			s.new.Inputs,
 			s.old.Inputs,
 			s.new.Outputs,
