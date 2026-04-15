@@ -97,8 +97,6 @@ func TestShell_ExecuteRejectsCwdOutsideRoot(t *testing.T) {
 
 	sh, err := NewShell(t.TempDir())
 	require.NoError(t, err)
-	// Use a sibling tempdir so the path exists on all platforms (on Windows, /tmp
-	// is not a meaningful absolute path).
 	outside := t.TempDir()
 	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, outside)))
@@ -126,7 +124,6 @@ func TestShell_RejectsCwdSymlinkEscape(t *testing.T) {
 
 	sh, err := NewShell(root)
 	require.NoError(t, err)
-	// Use %q to JSON-encode link so Windows backslashes don't become invalid JSON escapes.
 	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, link)))
 	require.Error(t, err)

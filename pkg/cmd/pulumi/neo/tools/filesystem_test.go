@@ -101,7 +101,6 @@ func TestFilesystem_RejectsSymlinkEscape(t *testing.T) {
 	outside := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(outside, "passwd"), nil, 0o600))
 
-	// Create a symlink inside root that points outside it.
 	link := filepath.Join(root, "escape")
 	require.NoError(t, os.Symlink(outside, link))
 
