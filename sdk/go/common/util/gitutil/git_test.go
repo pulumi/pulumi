@@ -458,6 +458,9 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with no auth", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "")
 		t.Setenv("GITLAB_TOKEN", "")
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "")
+		t.Setenv("BITBUCKET_TOKEN", "")
+		t.Setenv("GENERIC_VCS_TOKEN", "")
 
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
 		require.NoError(t, err)
@@ -511,6 +514,58 @@ func TestParseAuthURL(t *testing.T) {
 		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
 		require.NoError(t, err)
 		assert.Nil(t, auth)
+	})
+
+	t.Run("with AZURE_DEV_OPS_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		_, auth, err := getAuthForURL("http://dev.azure.com/org/project/_git/repo")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+
+		// Also works with legacy visualstudio.com URLs.
+		_, auth, err = getAuthForURL("http://org.visualstudio.com/project/_git/repo")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+
+		// Does not leak to non-ADO URLs.
+		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with BITBUCKET_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("BITBUCKET_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		_, auth, err := getAuthForURL("http://bitbucket.org/team/repo")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-token-auth", Password: "token-1"}, auth)
+
+		// Does not leak to non-Bitbucket URLs.
+		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with GENERIC_VCS_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("GENERIC_VCS_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITLAB_TOKEN", "")
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "")
+		t.Setenv("BITBUCKET_TOKEN", "")
+
+		// Generic token is used as a fallback for unknown hosts.
+		_, auth, err := getAuthForURL("http://git.example.com/org/repo")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+	})
+
+	t.Run("provider-specific token takes precedence over GENERIC_VCS_TOKEN", func(t *testing.T) {
+		t.Setenv("GENERIC_VCS_TOKEN", "generic")
+		t.Setenv("GITHUB_TOKEN", "github")
+		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "github"}, auth)
 	})
 
 	t.Run("with GIT_USERNAME/GIT_PASSWORD set in environment", func(t *testing.T) {
