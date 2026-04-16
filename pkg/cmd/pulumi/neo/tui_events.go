@@ -26,6 +26,13 @@ type UIEvent interface {
 type UIAssistantMessage struct {
 	Content string
 	IsFinal bool
+	// HasPendingCLIWork is true when IsFinal is true AND the original
+	// assistant_message backend event had at least one tool_call with
+	// execution_mode=="cli". In that case the agent is paused handing control to
+	// the CLI to run those tools locally; the declarative busy rule treats the
+	// event as non-final and keeps the spinner on until the CLI has replied and
+	// the agent emits a truly-final message.
+	HasPendingCLIWork bool
 }
 
 func (UIAssistantMessage) uiEvent() {}
@@ -109,3 +116,19 @@ type UIApprovalRequest struct {
 }
 
 func (UIApprovalRequest) uiEvent() {}
+
+// UIAwaitingApprovals is an interim backend signal that the agent is pausing before
+// it will emit a UIApprovalRequest. The declarative busy rule treats it as non-final
+// and shows an "Awaiting approvals" label until the approval request arrives.
+type UIAwaitingApprovals struct{}
+
+func (UIAwaitingApprovals) uiEvent() {}
+
+// UIContextCompression signals that the agent is compressing its context window.
+// Non-final; the TUI surfaces it as a "Compressing context" label on the busy
+// indicator and otherwise doesn't render anything.
+type UIContextCompression struct {
+	Status string
+}
+
+func (UIContextCompression) uiEvent() {}

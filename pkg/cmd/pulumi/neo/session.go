@@ -245,7 +245,11 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 		if err := json.Unmarshal(eventBody, &msg); err != nil {
 			return
 		}
-		sendUI(s.UIEvents, UIAssistantMessage{Content: msg.Content, IsFinal: msg.IsFinal})
+		sendUI(s.UIEvents, UIAssistantMessage{
+			Content:           msg.Content,
+			IsFinal:           msg.IsFinal,
+			HasPendingCLIWork: msg.IsFinal && hasPendingCLIToolCalls(msg.ToolCalls),
+		})
 	case backendEventExecToolCallProgress:
 		var p apitype.AgentBackendEventExecToolCallProgress
 		if err := json.Unmarshal(eventBody, &p); err != nil {
@@ -278,9 +282,23 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 			ApprovalType:    req.ApprovalType,
 			PlanDescription: req.Context.PlanDescription,
 		})
+	case backendEventAwaitingApprovals:
+		sendUI(s.UIEvents, UIAwaitingApprovals{})
+	case backendEventContextCompression:
+		var c apitype.AgentBackendEventContextCompression
+		if err := json.Unmarshal(eventBody, &c); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIContextCompression{Status: c.Status})
+	case backendEventToolResponse,
+		userEventExecToolCall, // server-side echo of a tool running (same discriminator as the CLI-posted event)
+		backendEventChangeEntities,
+		backendEventSetTaskName:
+		// Intentionally ignored: the TUI has no dedicated rendering for these,
+		// and the declarative busy rule does not need a heartbeat — the spinner
+		// Tick is self-perpetuating while busy, and m.cancelling persists across
+		// events until a final one arrives.
 	}
-	// Server-side exec_tool_call and tool_response events describe tools the agent
-	// runtime executes; the CLI-run equivalents are emitted directly from runBatch.
 }
 
 // forwardUserInputToUI parses a userInput event body and sends a UIUserMessage to the TUI.

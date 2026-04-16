@@ -171,6 +171,15 @@ type AgentBackendEventCancelled struct {
 	Type string `json:"type"` // always "cancelled"
 }
 
+// AgentBackendEventContextCompression is a backend event signalling that the agent is
+// compressing its context window. Non-final; the CLI surfaces it as a "Compressing
+// context" label on the busy indicator. Status carries a short human-readable label
+// such as "compressing".
+type AgentBackendEventContextCompression struct {
+	Type   string `json:"type"` // always "context_compression_event"
+	Status string `json:"status,omitempty"`
+}
+
 // AgentUserEventUserConfirmation is the user event a CLI client posts in response to a
 // user_approval_request backend event, approving or denying the requested operation.
 type AgentUserEventUserConfirmation struct {
@@ -181,3 +190,13 @@ type AgentUserEventUserConfirmation struct {
 }
 
 func (AgentUserEventUserConfirmation) isAgentUserEvent() {}
+
+// AgentUserEventCancel is the user event a CLI client posts to ask the agent to abort
+// the current turn. The agent acknowledges by emitting a cancelled backend event. Until
+// that acknowledgement arrives the TUI keeps the busy indicator on with a "Cancelling"
+// label.
+type AgentUserEventCancel struct {
+	Type string `json:"type"` // always "user_cancel"
+}
+
+func (AgentUserEventCancel) isAgentUserEvent() {}
