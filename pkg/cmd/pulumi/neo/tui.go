@@ -43,18 +43,25 @@ const (
 	blockWarning
 	blockCancelled
 	blockUserMessage
-	blockApproval
+	blockApprovalPlan
+	blockApprovalGeneral
+	blockApprovalChoice
 )
 
-// block is a single rendered item in the TUI output log.
 type block struct {
-	kind blockKind
-	// rendered is the cached rendered string for non-busy kinds.
+	kind     blockKind
 	rendered string
-	// label is the text shown after the spinner for blockBusy only.
-	label string
-	// shimmer selects how label is animated; only meaningful for blockBusy.
+	// raw is the source content for width-dependent kinds. renderBlock
+	// recomputes rendered from raw on every WindowSizeMsg so the block
+	// reflows to the new width. blockBusy and blockToolComplete leave raw
+	// empty; blockApprovalChoice carries its verdict in approved below so
+	// renderBlock still runs when raw is empty.
+	raw string
+	// label and shimmer apply to blockBusy only.
+	label   string
 	shimmer shimmerKind
+	// approved applies to blockApprovalChoice only.
+	approved bool
 }
 
 // ModelConfig holds the parameters needed to create a TUI Model.
@@ -145,6 +152,16 @@ var (
 	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 )
 
+// renderIndented word-wraps content (ANSI-safe) to termWidth minus the
+// 2-space transcript gutter, or returns un-wrapped if the width is too
+// small to wrap into.
+func renderIndented(style lipgloss.Style, termWidth int, content string) string {
+	if termWidth <= 4 {
+		return "  " + style.Render(content)
+	}
+	return "  " + style.Width(termWidth-2).Render(content)
+}
+
 // NewModel creates a new TUI Model.
 func NewModel(cfg ModelConfig) Model {
 	ti := textinput.New()
@@ -212,20 +229,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.welcome.termWidth = msg.Width
 
-		vpHeight := msg.Height - inputBarHeight
-		if vpHeight < 1 {
-			vpHeight = 1
-		}
+		vpHeight := max(msg.Height-inputBarHeight, 1)
 		m.viewport.Width = msg.Width
 		m.viewport.Height = vpHeight
 		m.textInput.Width = msg.Width - lipgloss.Width(m.textInput.Prompt) - 1
 
-		// (Re)initialize the glamour renderer with the actual terminal width.
+		// Glamour's wrap width is baked in at construction, so rebuild on resize.
 		if r, err := glamour.NewTermRenderer(
 			glamour.WithStylePath("dark"),
 			glamour.WithWordWrap(msg.Width-4),
 		); err == nil {
 			m.mdRenderer = r
+		}
+		for i := range m.blocks {
+			m.renderBlock(&m.blocks[i])
 		}
 		m.rebuildContent()
 
@@ -293,14 +310,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.PromptStyle = promptStyle
 				m.textInput.Placeholder = "Send a message..."
 				m.textInput.Reset()
-				choice := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✓ Approved")
-				if !approved {
-					choice = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("✗ Denied")
-					if denialMsg != "" {
-						choice += " — " + denialMsg
-					}
-				}
-				m.appendBlock(block{kind: blockUserMessage, rendered: "  " + choice})
+				m.appendRenderedBlock(block{
+					kind:     blockApprovalChoice,
+					approved: approved,
+					raw:      denialMsg,
+				})
 				if approved {
 					cmd := m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 					m.rebuildContent()
@@ -382,18 +396,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.removeBlockKind(blockBusy)
 		if msg.IsFinal {
 			m.removeBlockKind(blockAssistantStreaming)
-			rendered := m.renderMarkdown(msg.Content)
-			m.appendBlock(block{
-				kind:     blockAssistantFinal,
-				rendered: renderAssistantFinal(rendered),
-			})
+			m.appendRenderedBlock(block{kind: blockAssistantFinal, raw: msg.Content})
 		} else if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
-			m.blocks[idx].rendered = renderAssistantStreaming(msg.Content)
+			m.blocks[idx].raw = msg.Content
+			m.renderBlock(&m.blocks[idx])
 		} else {
-			m.appendBlock(block{
-				kind:     blockAssistantStreaming,
-				rendered: renderAssistantStreaming(msg.Content),
-			})
+			m.appendRenderedBlock(block{kind: blockAssistantStreaming, raw: msg.Content})
 		}
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
@@ -431,10 +439,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case UIError:
 		m.endBusy()
-		m.appendBlock(block{
-			kind:     blockError,
-			rendered: "  " + errorStyle.Render("✗ Error: "+msg.Message),
-		})
+		m.appendRenderedBlock(block{kind: blockError, raw: msg.Message})
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -445,10 +450,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case UICancelled:
 		m.endBusy()
-		m.appendBlock(block{
-			kind:     blockCancelled,
-			rendered: "  " + cancelledStyle.Render("Session cancelled."),
-		})
+		m.appendRenderedBlock(block{kind: blockCancelled, raw: "Session cancelled."})
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -481,24 +483,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pendingApprovalID = msg.ApprovalID
 		m.pendingApprovalType = msg.ApprovalType
 		if m.pendingApprovalType == approvalTypePlanExit {
-			// Plan bodies are authored as markdown — headings, bullet lists, code
-			// blocks. Route through the same glamour renderer used for final
-			// assistant messages so the approval reads as a proper plan document
-			// rather than a single-line warning. The approval event's `message`
-			// field holds a generic intro ("I've finished exploring..."); the
-			// actual plan is in `context.plan_description`.
-			header := planAccentStyle.Render("⏺ Proposed plan")
-			body := m.renderMarkdown(msg.PlanDescription)
-			m.appendBlock(block{
-				kind:     blockApproval,
-				rendered: renderHeaderedBlock(header, body),
-			})
+			// The plan body is authored as markdown and lives in
+			// PlanDescription; msg.Message is just a generic intro.
+			m.appendRenderedBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription})
 			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
 		} else {
-			m.appendBlock(block{
-				kind:     blockApproval,
-				rendered: "  " + warningStyle.Render("⚠ Approval required") + "\n    " + msg.Message,
-			})
+			m.appendRenderedBlock(block{kind: blockApprovalGeneral, raw: msg.Message})
 			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
 		}
 		m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
@@ -577,24 +567,12 @@ func (m *Model) showBusy(label string, shimmer shimmerKind) tea.Cmd {
 	return m.spinner.Tick
 }
 
-// appendWarningBlock appends a standard "⚠ msg" warning block to the transcript.
-// Used by UIWarning and by local-only warnings (e.g. the Shift+Tab post-send
-// warning) so both paths share the same rendering.
 func (m *Model) appendWarningBlock(msg string) {
-	m.appendBlock(block{
-		kind:     blockWarning,
-		rendered: "  " + warningStyle.Render("⚠ "+msg),
-	})
+	m.appendRenderedBlock(block{kind: blockWarning, raw: msg})
 }
 
-// appendUserMessageBlock renders a user's chat message as a styled bubble and
-// appends it to the transcript. Used both for optimistic rendering on submit
-// and for echoes that originated outside this TUI.
 func (m *Model) appendUserMessageBlock(content string) {
-	m.appendBlock(block{
-		kind:     blockUserMessage,
-		rendered: promptStyle.Render("❯") + " " + userMsgBubble.Render(" "+content+" "),
-	})
+	m.appendRenderedBlock(block{kind: blockUserMessage, raw: content})
 }
 
 // appendBlock appends a non-busy block, keeping any existing blockBusy
@@ -634,6 +612,84 @@ func (m *Model) findBlockKind(kind blockKind) int {
 		}
 	}
 	return -1
+}
+
+// renderBlock recomputes b.rendered from b.raw using the current terminal
+// width and markdown renderer. blockApprovalChoice is the one kind that
+// still renders when raw is empty (its verdict is carried by b.approved).
+func (m *Model) renderBlock(b *block) {
+	if b.kind == blockApprovalChoice {
+		m.renderApprovalChoice(b)
+		return
+	}
+	if b.raw == "" {
+		return
+	}
+	switch b.kind {
+	case blockWarning:
+		b.rendered = renderIndented(warningStyle, m.width, "⚠ "+b.raw)
+	case blockError:
+		b.rendered = renderIndented(errorStyle, m.width, "✗ Error: "+b.raw)
+	case blockCancelled:
+		b.rendered = renderIndented(cancelledStyle, m.width, b.raw)
+	case blockUserMessage:
+		b.rendered = m.renderUserBubble(b.raw)
+	case blockAssistantStreaming:
+		b.rendered = renderAssistantStreaming(m.wrapPlain(b.raw))
+	case blockAssistantFinal:
+		b.rendered = renderAssistantFinal(m.renderMarkdown(b.raw))
+	case blockApprovalPlan:
+		header := planAccentStyle.Render("⏺ Proposed plan")
+		b.rendered = renderHeaderedBlock(header, m.renderMarkdown(b.raw))
+	case blockApprovalGeneral:
+		header := warningStyle.Render("⚠ Approval required")
+		b.rendered = renderHeaderedBlock(header, m.wrapPlain(b.raw))
+	case blockBusy, blockToolComplete:
+		// No raw: blockBusy renders live from label, blockToolComplete is
+		// pre-styled at event time.
+	case blockApprovalChoice:
+		// Unreachable; kept for exhaustive lint.
+	}
+}
+
+func (m *Model) renderApprovalChoice(b *block) {
+	if b.approved {
+		b.rendered = "  " + lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✓ Approved")
+		return
+	}
+	denied := lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("✗ Denied")
+	if b.raw == "" {
+		b.rendered = "  " + denied
+		return
+	}
+	b.rendered = renderIndented(lipgloss.NewStyle(), m.width, denied+" — "+b.raw)
+}
+
+// renderUserBubble renders a user-chat bubble. Short messages hug their
+// content; only overflow triggers Width, which both wraps and pads so the
+// background colour fills every wrapped line evenly.
+func (m *Model) renderUserBubble(content string) string {
+	prefix := promptStyle.Render("❯") + " " // visible width 2
+	padded := " " + content + " "
+	bubbleWidth := max(m.width-2, 8)
+	style := userMsgBubble
+	if m.width > 4 && lipgloss.Width(padded) > bubbleWidth {
+		style = style.Width(bubbleWidth)
+	}
+	return prefix + style.Render(padded)
+}
+
+// wrapPlain word-wraps non-markdown text to the terminal width.
+func (m *Model) wrapPlain(text string) string {
+	if m.width <= 4 {
+		return text
+	}
+	return lipgloss.NewStyle().Width(m.width - 4).Render(text)
+}
+
+func (m *Model) appendRenderedBlock(b block) {
+	m.renderBlock(&b)
+	m.appendBlock(b)
 }
 
 // renderMarkdown renders text through glamour, falling back to plain text.

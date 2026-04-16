@@ -16,10 +16,12 @@ package neo
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -421,7 +423,7 @@ func TestModel_Update_UIApprovalRequest_ShowsPromptAndPausesAgent(t *testing.T) 
 	assert.False(t, m.busy, "approval request must end busy so the user can answer")
 	assert.True(t, m.pendingApproval)
 	assert.Equal(t, "appr_1", m.pendingApprovalID)
-	assert.GreaterOrEqual(t, m.findBlockKind(blockApproval), 0, "an approval block must be appended")
+	assert.GreaterOrEqual(t, m.findBlockKind(blockApprovalGeneral), 0, "an approval block must be appended")
 	assert.Contains(t, m.textInput.Prompt, "Approve?", "input prompt must reflect approval mode")
 }
 
@@ -955,7 +957,7 @@ func TestModel_Update_UIApprovalRequest_PlanCategory_RendersPlanHeaderAndMarkdow
 	assert.True(t, um.pendingApproval, "plan approval must enter the pending state")
 	assert.Equal(t, approvalTypePlanExit, um.pendingApprovalType,
 		"plan approval must record its wire approval_type")
-	idx := um.findBlockKind(blockApproval)
+	idx := um.findBlockKind(blockApprovalPlan)
 	require.NotEqual(t, -1, idx)
 	assert.Contains(t, um.blocks[idx].rendered, "Proposed plan")
 	// Glamour wraps each word in its own ANSI escape run; assert on word
@@ -985,7 +987,7 @@ func TestModel_Update_UIApprovalRequest_General_UsesExistingApprovalRendering(t 
 
 	assert.NotEqual(t, approvalTypePlanExit, um.pendingApprovalType,
 		"general approval must not be flagged as a plan")
-	idx := um.findBlockKind(blockApproval)
+	idx := um.findBlockKind(blockApprovalGeneral)
 	require.NotEqual(t, -1, idx)
 	assert.Contains(t, um.blocks[idx].rendered, "Approval required")
 	assert.Contains(t, um.textInput.Prompt, "Approve?")
@@ -1090,6 +1092,106 @@ func TestModel_RenderMarkdown_UsesRendererAfterWindowSize(t *testing.T) {
 	assert.Contains(t, got, "hello")
 }
 
+// -----------------------------------------------------------------------------
+// Text reflow: wrapping and resize re-render
+// -----------------------------------------------------------------------------
+
+// visibleLines returns each line's ANSI-stripped visible width.
+func visibleLines(rendered string) []int {
+	lines := strings.Split(rendered, "\n")
+	widths := make([]int, len(lines))
+	for i, l := range lines {
+		widths[i] = lipgloss.Width(l)
+	}
+	return widths
+}
+
+func TestWarningWrapsToTerminalWidth(t *testing.T) {
+	t.Parallel()
+
+	// Long warning must wrap rather than clip at the viewport edge.
+	msg := "this is an intentionally long warning message that must span multiple lines when the terminal is narrow"
+	got := renderIndented(warningStyle, 40, "⚠ "+msg)
+
+	widths := visibleLines(got)
+	require.Greater(t, len(widths), 1, "long warning must wrap to multiple lines; got: %q", got)
+	for i, w := range widths {
+		assert.LessOrEqual(t, w, 40, "line %d exceeds terminal width: width=%d", i, w)
+	}
+	assert.Contains(t, got, "warning", "wrapped output must still contain the message body")
+}
+
+func TestUserBubbleWrapsToTerminalWidth(t *testing.T) {
+	t.Parallel()
+
+	m := &Model{width: 40}
+	long := strings.Repeat("word ", 25) // ~125 chars
+	got := m.renderUserBubble(long)
+
+	require.Contains(t, got, "\n", "long bubble must contain a newline (wrapped): %q", got)
+	for i, w := range visibleLines(got) {
+		assert.LessOrEqual(t, w, 40, "bubble line %d exceeds terminal width: width=%d", i, w)
+	}
+}
+
+func TestUserBubbleDoesNotPadShortMessages(t *testing.T) {
+	t.Parallel()
+
+	// Short messages hug content so the bubble looks like a chat bubble,
+	// not a full-width card.
+	m := &Model{width: 80}
+	got := m.renderUserBubble("hi")
+
+	widths := visibleLines(got)
+	require.Len(t, widths, 1, "short bubble should render on a single line: %q", got)
+	assert.Less(t, widths[0], 20, "short bubble line should hug content, not fill terminal; got width=%d", widths[0])
+}
+
+func TestResizeReRendersWidthDependentBlocks(t *testing.T) {
+	t.Parallel()
+
+	// Blocks cached at event time must re-wrap on resize, not stay at the
+	// old width forever.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	long := strings.Repeat("word ", 25)
+	updated1, _ := m.Update(UIWarning{Message: long})
+	m = updated1.(Model)
+
+	idx := m.findBlockKind(blockWarning)
+	require.NotEqual(t, -1, idx)
+	widthsAt80 := visibleLines(m.blocks[idx].rendered)
+	for i, w := range widthsAt80 {
+		assert.LessOrEqual(t, w, 80, "line %d at width 80 exceeds: width=%d", i, w)
+	}
+
+	updated2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 24})
+	m = updated2.(Model)
+
+	widthsAt40 := visibleLines(m.blocks[idx].rendered)
+	assert.Greater(t, len(widthsAt40), len(widthsAt80),
+		"resize to 40 cols must produce more lines than the 80-col render; 80=%d lines, 40=%d lines",
+		len(widthsAt80), len(widthsAt40))
+	for i, w := range widthsAt40 {
+		assert.LessOrEqual(t, w, 40, "line %d at width 40 exceeds: width=%d", i, w)
+	}
+}
+
+func TestRenderBlock_SkipsWidthIndependentBlocks(t *testing.T) {
+	t.Parallel()
+
+	// Empty-raw kinds (blockBusy, blockToolComplete) keep their pre-styled
+	// rendered string untouched on resize.
+	m := &Model{width: 40}
+	b := block{kind: blockToolComplete, rendered: "  ⏺ Read(\"/x\")"}
+	m.renderBlock(&b)
+	assert.Equal(t, "  ⏺ Read(\"/x\")", b.rendered, "empty raw must be a no-op")
+}
+
 func TestModel_RebuildContent_HandlesMixedBlocksWithoutPanic(t *testing.T) {
 	t.Parallel()
 
@@ -1113,4 +1215,109 @@ func TestModel_RebuildContent_HandlesMixedBlocksWithoutPanic(t *testing.T) {
 	// panic is enough — we don't reach into the viewport internals here.
 	require.NotPanics(t, func() { m.rebuildContent() })
 	require.Len(t, m.blocks, 5, "blocks slice must be untouched")
+}
+
+func TestApprovalGeneralWrapsToTerminalWidth(t *testing.T) {
+	t.Parallel()
+
+	// Long approval message wraps rather than clipping at the viewport edge.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 24})
+	m = updated0.(Model)
+
+	long := strings.Repeat("word ", 25) // ~125 chars
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr",
+		Message:      long,
+		ApprovalType: "general",
+	})
+	um := updated.(Model)
+
+	idx := um.findBlockKind(blockApprovalGeneral)
+	require.NotEqual(t, -1, idx)
+	widths := visibleLines(um.blocks[idx].rendered)
+	require.Greater(t, len(widths), 1,
+		"long approval body must wrap to multiple lines; got: %q", um.blocks[idx].rendered)
+	for i, w := range widths {
+		assert.LessOrEqual(t, w, 40, "line %d exceeds terminal width: width=%d", i, w)
+	}
+}
+
+func TestApprovalPlanReflowsOnResize(t *testing.T) {
+	t.Parallel()
+
+	// Plan markdown must re-render through glamour on resize instead of
+	// staying pinned to the width it arrived at.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	longParagraph := strings.Repeat("alpha ", 30) // ~180 chars, glamour-wrappable
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr",
+		Message:         "intro",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n" + longParagraph,
+	})
+	m = updated.(Model)
+
+	idx := m.findBlockKind(blockApprovalPlan)
+	require.NotEqual(t, -1, idx)
+	linesAt80 := len(visibleLines(m.blocks[idx].rendered))
+
+	updated2, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 24})
+	m = updated2.(Model)
+
+	linesAt40 := len(visibleLines(m.blocks[idx].rendered))
+	assert.Greater(t, linesAt40, linesAt80,
+		"resize to 40 cols must produce more wrapped lines than the 80-col render; 80=%d lines, 40=%d lines",
+		linesAt80, linesAt40)
+}
+
+func TestApprovalChoiceDenialWrapsToTerminalWidth(t *testing.T) {
+	t.Parallel()
+
+	// Denial text can be up to textinput's 4096-char limit; must wrap.
+	outCh := make(chan outboundEvent, 1)
+	evCh := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 24})
+	m = updated0.(Model)
+
+	updated1, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr",
+		Message:      "run something",
+		ApprovalType: "general",
+	})
+	m = updated1.(Model)
+	m.textInput.SetValue(strings.Repeat("because ", 20)) // ~160 chars of denial text
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+	<-outCh
+
+	idx := m.findBlockKind(blockApprovalChoice)
+	require.NotEqual(t, -1, idx)
+	widths := visibleLines(m.blocks[idx].rendered)
+	require.Greater(t, len(widths), 1,
+		"long denial must wrap to multiple lines; got: %q", m.blocks[idx].rendered)
+	for i, w := range widths {
+		assert.LessOrEqual(t, w, 40, "line %d exceeds terminal width: width=%d", i, w)
+	}
+}
+
+func TestApprovalChoiceApprovedStaysSingleLine(t *testing.T) {
+	t.Parallel()
+
+	// Approved carries its verdict in block.approved, not raw — the raw==""
+	// early-exit must not short-circuit this kind.
+	m := &Model{width: 80}
+	b := block{kind: blockApprovalChoice, approved: true}
+	m.renderBlock(&b)
+
+	widths := visibleLines(b.rendered)
+	require.Len(t, widths, 1, "approved verdict must render on a single line: %q", b.rendered)
+	assert.Contains(t, b.rendered, "Approved")
 }
