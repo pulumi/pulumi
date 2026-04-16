@@ -22,6 +22,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+var (
+	toolFuncStyle = lipgloss.NewStyle().Bold(true)
+	toolArgStyle  = lipgloss.NewStyle().Faint(true)
+)
+
 // toolLabelParts returns the display function name and argument for a tool call,
 // formatted in function-call style like Read("file") or Bash("cmd").
 func toolLabelParts(toolName string, args json.RawMessage) (funcName, arg string) {
@@ -90,12 +95,11 @@ func toolLabel(toolName string, args json.RawMessage) string {
 // styledToolLabel returns a lipgloss-styled label: bold func name + dim args.
 func styledToolLabel(toolName string, args json.RawMessage) string {
 	funcName, arg := toolLabelParts(toolName, args)
-	bold := lipgloss.NewStyle().Bold(true).Render(funcName)
+	label := toolFuncStyle.Render(funcName)
 	if arg != "" {
-		dim := lipgloss.NewStyle().Faint(true).Render(fmt.Sprintf("(\"%s\")", arg))
-		return bold + dim
+		label += toolArgStyle.Render(fmt.Sprintf("(\"%s\")", arg))
 	}
-	return bold
+	return label
 }
 
 // extractFilePathArg extracts a file path from args, checking both "file_path" and "path".

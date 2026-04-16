@@ -349,30 +349,29 @@ func (m Model) View() string {
 	}
 	hint := inputHintStyle.Render(hintText)
 
-	return m.viewport.View() + "\n" +
-		sep + "\n" +
-		m.textInput.View() + "\n" +
-		hint
+	return lipgloss.JoinVertical(lipgloss.Left,
+		m.viewport.View(),
+		sep,
+		m.textInput.View(),
+		hint,
+	)
 }
 
 // rebuildContent concatenates the welcome box and all blocks into the viewport.
 // The busy block's spinner glyph is read from m.spinner.View() at render time
 // so the animation tracks the current frame without re-caching per block.
 func (m *Model) rebuildContent() {
-	var sb strings.Builder
-	sb.WriteString(m.welcome.View())
-	sb.WriteString("\n")
+	parts := []string{m.welcome.View()}
 	for _, b := range m.blocks {
 		if b.kind == blockBusy {
-			sb.WriteString("  " + m.spinner.View() + " " + shimmerLabel(b.label, b.shimmer, m.frame))
+			parts = append(parts, "  "+m.spinner.View()+" "+shimmerLabel(b.label, b.shimmer, m.frame))
 		} else {
-			sb.WriteString(b.rendered)
+			parts = append(parts, b.rendered)
 		}
-		sb.WriteString("\n")
 	}
 
 	wasAtBottom := m.viewport.AtBottom()
-	m.viewport.SetContent(sb.String())
+	m.viewport.SetContent(lipgloss.JoinVertical(lipgloss.Left, parts...))
 	if wasAtBottom {
 		m.viewport.GotoBottom()
 	}
@@ -446,23 +445,17 @@ func (m *Model) renderMarkdown(text string) string {
 
 // renderAssistantFinal renders a final assistant message with a white circle marker.
 func renderAssistantFinal(rendered string) string {
-	lines := strings.Split(rendered, "\n")
-	markerPrinted := false
-	var sb strings.Builder
-	for _, line := range lines {
-		stripped := strings.TrimSpace(line)
-		if !markerPrinted {
-			if stripped == "" {
-				continue
-			}
-			trimmed := strings.TrimLeft(line, " ")
-			sb.WriteString("  " + finalMarker + " " + trimmed + "\n")
-			markerPrinted = true
-		} else {
-			sb.WriteString("    " + line + "\n")
-		}
+	trimmed := strings.TrimLeft(rendered, "\n ")
+	if trimmed == "" {
+		return ""
 	}
-	return strings.TrimRight(sb.String(), "\n")
+	firstLine, rest, _ := strings.Cut(trimmed, "\n")
+	first := "  " + finalMarker + " " + firstLine
+	if rest == "" {
+		return first
+	}
+	indented := lipgloss.NewStyle().MarginLeft(4).Render(strings.TrimRight(rest, "\n"))
+	return lipgloss.JoinVertical(lipgloss.Left, first, indented)
 }
 
 // renderAssistantStreaming renders streaming text with a dim indicator.
