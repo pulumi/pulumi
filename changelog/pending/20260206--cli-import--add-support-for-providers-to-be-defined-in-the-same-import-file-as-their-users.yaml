@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/import
-  description: Add support for providers to be defined in the same import file as their users

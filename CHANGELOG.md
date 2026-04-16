@@ -1,5 +1,98 @@
 # Changelog
 
+## 3.231.0 (2026-04-16)
+
+
+### Features
+
+- [cli] Auto-detect Mercurial repository metadata for `pulumi up` / `pulumi preview` updates, mirroring existing Git support
+  [#22618](https://github.com/pulumi/pulumi/pull/22618)
+
+- [engine] Send Cancel RPC to plugins on host close for graceful shutdown
+  [#22569](https://github.com/pulumi/pulumi/pull/22569)
+
+- [engine] Pass resource options to hooks through the engine
+  [#22582](https://github.com/pulumi/pulumi/pull/22582)
+
+- [engine] Add GetDeploymentInfo to the resource monitor service
+
+- [auto/go] Add `New` command to Automation API
+  [#22439](https://github.com/pulumi/pulumi/pull/22439)
+
+- [auto/{go,nodejs,python}] Add --diff to automation api for destroy
+  [#22563](https://github.com/pulumi/pulumi/pull/22563)
+
+- [auto/python] Add `new` command to Automation API
+  [#22439](https://github.com/pulumi/pulumi/pull/22439)
+
+- [pcl] Support for resource hooks in PCL
+  [#22365](https://github.com/pulumi/pulumi/pull/22365)
+
+- [sdk-nodejs] Warn when a non-ComponentResource class is passed in the explicit `components` list to `componentProviderHost`
+  [#22619](https://github.com/pulumi/pulumi/pull/22619)
+
+- [sdk-python] Warn when a non-ComponentResource class is passed in the explicit `components` list to `component_provider_host`
+  [#22619](https://github.com/pulumi/pulumi/pull/22619)
+
+- [cli/import] Add support for providers to be defined in the same import file as their users
+  [#21671](https://github.com/pulumi/pulumi/pull/21671)
+
+- [cli/policy] ESC environment support for local policy packs
+  [#22495](https://github.com/pulumi/pulumi/pull/22495)
+
+- [sdk/nodejs] Support package.yaml when using pnpm
+  [#22491](https://github.com/pulumi/pulumi/pull/22491)
+
+- [sdk/python] Add function decorator variants for resource and error hooks
+  [#22519](https://github.com/pulumi/pulumi/pull/22519)
+
+
+### Bug Fixes
+
+- [auto/{nodejs,python}] Support --run-program for inline programs with preview_refresh/destroy
+
+- [backend/diy] Remove state lock for destroy and import with preview only for diy backend
+  [#22561](https://github.com/pulumi/pulumi/pull/22561)
+
+- [engine] Fix snapshot integrity error with component/provider resources in refresh --run-program
+  [#21817](https://github.com/pulumi/pulumi/pull/21817)
+
+- [pcl] Type list and tuple indices as integers not numbers
+  [#22592](https://github.com/pulumi/pulumi/pull/22592)
+
+- [pcl] Builtin functions element and range take int parameters not numbers
+  [#22597](https://github.com/pulumi/pulumi/pull/22597)
+
+- [programgen/{go,nodejs,python}] Fix some cases of name conflicts in program gen not being handled correctly
+  [#22556](https://github.com/pulumi/pulumi/pull/22556)
+
+- [programgen/nodejs] Add necessary casts between types in generated programs
+  [#22557](https://github.com/pulumi/pulumi/pull/22557)
+
+- [programgen/{nodejs,python}] Fix imports of camelCase modules
+  [#22536](https://github.com/pulumi/pulumi/pull/22536)
+
+- [sdk/python] Support Input[Optional[T]] in Python runtime type unwrapping
+  [#22553](https://github.com/pulumi/pulumi/pull/22553)
+
+- [sdkgen] Warn about modules nested under the index module which are not supported
+  [#22531](https://github.com/pulumi/pulumi/pull/22531)
+
+
+### Miscellaneous
+
+- [java] Upgrade java to v1.24.0
+  [#22615](https://github.com/pulumi/pulumi/pull/22615)
+
+- [yaml] Upgrade yaml to v1.31.1
+  [#22610](https://github.com/pulumi/pulumi/pull/22610)
+
+- [sdk/dotnet] Upgrade dotnet to v3.103.0
+  [#22614](https://github.com/pulumi/pulumi/pull/22614)
+
+- [sdk/nodejs] Replace `got` by `fetch`
+  [#22533](https://github.com/pulumi/pulumi/pull/22533)
+
 ## 3.230.0 (2026-04-08)
 
 
