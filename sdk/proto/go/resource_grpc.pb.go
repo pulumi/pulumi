@@ -34,6 +34,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	ResourceMonitor_GetDeploymentInfo_FullMethodName            = "/pulumirpc.ResourceMonitor/GetDeploymentInfo"
 	ResourceMonitor_SupportsFeature_FullMethodName              = "/pulumirpc.ResourceMonitor/SupportsFeature"
 	ResourceMonitor_Invoke_FullMethodName                       = "/pulumirpc.ResourceMonitor/Invoke"
 	ResourceMonitor_Call_FullMethodName                         = "/pulumirpc.ResourceMonitor/Call"
@@ -54,6 +55,16 @@ const (
 //
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 type ResourceMonitorClient interface {
+	// GetDeploymentInfo returns the execution context associated with this monitor instance.
+	//
+	// This is an additive API intended to reduce duplicated state passed through
+	// environment variables and per-request protobuf fields. New clients should
+	// prefer this over piecemeal feature probing via SupportsFeature.
+	//
+	// Backward compatibility:
+	// - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+	// - Clients should fall back to existing request fields/env vars/SupportsFeature.
+	GetDeploymentInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DeploymentInfo, error)
 	SupportsFeature(ctx context.Context, in *SupportsFeatureRequest, opts ...grpc.CallOption) (*SupportsFeatureResponse, error)
 	Invoke(ctx context.Context, in *ResourceInvokeRequest, opts ...grpc.CallOption) (*InvokeResponse, error)
 	Call(ctx context.Context, in *ResourceCallRequest, opts ...grpc.CallOption) (*CallResponse, error)
@@ -89,6 +100,16 @@ type resourceMonitorClient struct {
 
 func NewResourceMonitorClient(cc grpc.ClientConnInterface) ResourceMonitorClient {
 	return &resourceMonitorClient{cc}
+}
+
+func (c *resourceMonitorClient) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*DeploymentInfo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeploymentInfo)
+	err := c.cc.Invoke(ctx, ResourceMonitor_GetDeploymentInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *resourceMonitorClient) SupportsFeature(ctx context.Context, in *SupportsFeatureRequest, opts ...grpc.CallOption) (*SupportsFeatureResponse, error) {
@@ -217,6 +238,16 @@ func (c *resourceMonitorClient) SignalAndWaitForShutdown(ctx context.Context, in
 //
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 type ResourceMonitorServer interface {
+	// GetDeploymentInfo returns the execution context associated with this monitor instance.
+	//
+	// This is an additive API intended to reduce duplicated state passed through
+	// environment variables and per-request protobuf fields. New clients should
+	// prefer this over piecemeal feature probing via SupportsFeature.
+	//
+	// Backward compatibility:
+	// - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+	// - Clients should fall back to existing request fields/env vars/SupportsFeature.
+	GetDeploymentInfo(context.Context, *emptypb.Empty) (*DeploymentInfo, error)
 	SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error)
 	Invoke(context.Context, *ResourceInvokeRequest) (*InvokeResponse, error)
 	Call(context.Context, *ResourceCallRequest) (*CallResponse, error)
@@ -254,6 +285,9 @@ type ResourceMonitorServer interface {
 // pointer dereference when methods are called.
 type UnimplementedResourceMonitorServer struct{}
 
+func (UnimplementedResourceMonitorServer) GetDeploymentInfo(context.Context, *emptypb.Empty) (*DeploymentInfo, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDeploymentInfo not implemented")
+}
 func (UnimplementedResourceMonitorServer) SupportsFeature(context.Context, *SupportsFeatureRequest) (*SupportsFeatureResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SupportsFeature not implemented")
 }
@@ -309,6 +343,24 @@ func RegisterResourceMonitorServer(s grpc.ServiceRegistrar, srv ResourceMonitorS
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ResourceMonitor_ServiceDesc, srv)
+}
+
+func _ResourceMonitor_GetDeploymentInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ResourceMonitorServer).GetDeploymentInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ResourceMonitor_GetDeploymentInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ResourceMonitorServer).GetDeploymentInfo(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ResourceMonitor_SupportsFeature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -534,6 +586,10 @@ var ResourceMonitor_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "pulumirpc.ResourceMonitor",
 	HandlerType: (*ResourceMonitorServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetDeploymentInfo",
+			Handler:    _ResourceMonitor_GetDeploymentInfo_Handler,
+		},
 		{
 			MethodName: "SupportsFeature",
 			Handler:    _ResourceMonitor_SupportsFeature_Handler,

@@ -36,6 +36,48 @@ else:
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
 
+class _ResourceMonitorFeature:
+    ValueType = typing.NewType("ValueType", builtins.int)
+    V: typing_extensions.TypeAlias = ValueType
+
+class _ResourceMonitorFeatureEnumTypeWrapper(google.protobuf.internal.enum_type_wrapper._EnumTypeWrapper[_ResourceMonitorFeature.ValueType], builtins.type):
+    DESCRIPTOR: google.protobuf.descriptor.EnumDescriptor
+    RESOURCE_MONITOR_FEATURE_SECRETS: _ResourceMonitorFeature.ValueType  # 0
+    RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES: _ResourceMonitorFeature.ValueType  # 1
+    RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES: _ResourceMonitorFeature.ValueType  # 2
+    RESOURCE_MONITOR_FEATURE_ALIAS_SPECS: _ResourceMonitorFeature.ValueType  # 3
+    RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER: _ResourceMonitorFeature.ValueType  # 4
+    RESOURCE_MONITOR_FEATURE_DELETED_WITH: _ResourceMonitorFeature.ValueType  # 5
+    RESOURCE_MONITOR_FEATURE_REPLACE_WITH: _ResourceMonitorFeature.ValueType  # 6
+    RESOURCE_MONITOR_FEATURE_TRANSFORMS: _ResourceMonitorFeature.ValueType  # 7
+    RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS: _ResourceMonitorFeature.ValueType  # 8
+    RESOURCE_MONITOR_FEATURE_PARAMETERIZATION: _ResourceMonitorFeature.ValueType  # 9
+    RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: _ResourceMonitorFeature.ValueType  # 10
+    RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: _ResourceMonitorFeature.ValueType  # 11
+    RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: _ResourceMonitorFeature.ValueType  # 12
+
+class ResourceMonitorFeature(_ResourceMonitorFeature, metaclass=_ResourceMonitorFeatureEnumTypeWrapper):
+    """ResourceMonitorFeature is a strongly typed monitor capability identifier.
+
+    The string IDs used by SupportsFeature are preserved for compatibility; new
+    clients should prefer these enum values from DeploymentInfo.
+    """
+
+RESOURCE_MONITOR_FEATURE_SECRETS: ResourceMonitorFeature.ValueType  # 0
+RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES: ResourceMonitorFeature.ValueType  # 1
+RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES: ResourceMonitorFeature.ValueType  # 2
+RESOURCE_MONITOR_FEATURE_ALIAS_SPECS: ResourceMonitorFeature.ValueType  # 3
+RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER: ResourceMonitorFeature.ValueType  # 4
+RESOURCE_MONITOR_FEATURE_DELETED_WITH: ResourceMonitorFeature.ValueType  # 5
+RESOURCE_MONITOR_FEATURE_REPLACE_WITH: ResourceMonitorFeature.ValueType  # 6
+RESOURCE_MONITOR_FEATURE_TRANSFORMS: ResourceMonitorFeature.ValueType  # 7
+RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS: ResourceMonitorFeature.ValueType  # 8
+RESOURCE_MONITOR_FEATURE_PARAMETERIZATION: ResourceMonitorFeature.ValueType  # 9
+RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS: ResourceMonitorFeature.ValueType  # 10
+RESOURCE_MONITOR_FEATURE_ERROR_HOOKS: ResourceMonitorFeature.ValueType  # 11
+RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS: ResourceMonitorFeature.ValueType  # 12
+global___ResourceMonitorFeature = ResourceMonitorFeature
+
 class _Result:
     ValueType = typing.NewType("ValueType", builtins.int)
     V: typing_extensions.TypeAlias = ValueType
@@ -52,6 +94,76 @@ SUCCESS: Result.ValueType  # 0
 FAIL: Result.ValueType  # 1
 SKIP: Result.ValueType  # 2
 global___Result = Result
+
+@typing.final
+class DeploymentInfo(google.protobuf.message.Message):
+    """DeploymentInfo returns monitor execution state currently sent to programs
+    and/or providers through other channels.
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class ConfigEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        value: builtins.str
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
+    PROJECT_FIELD_NUMBER: builtins.int
+    STACK_FIELD_NUMBER: builtins.int
+    ORGANIZATION_FIELD_NUMBER: builtins.int
+    CONFIG_FIELD_NUMBER: builtins.int
+    CONFIGSECRETKEYS_FIELD_NUMBER: builtins.int
+    DRYRUN_FIELD_NUMBER: builtins.int
+    PARALLEL_FIELD_NUMBER: builtins.int
+    SUPPORTEDFEATURES_FIELD_NUMBER: builtins.int
+    project: builtins.str
+    """The project name."""
+    stack: builtins.str
+    """The stack name."""
+    organization: builtins.str
+    """The organization name."""
+    dryRun: builtins.bool
+    """True if the current execution is preview/dry-run."""
+    parallel: builtins.int
+    """Requested operation parallelism (<=1 for serial execution)."""
+    @property
+    def config(self) -> google.protobuf.internal.containers.ScalarMap[builtins.str, builtins.str]:
+        """The stack configuration values."""
+
+    @property
+    def configSecretKeys(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[builtins.str]:
+        """Configuration keys whose values are secret."""
+
+    @property
+    def supportedFeatures(self) -> google.protobuf.internal.containers.RepeatedScalarFieldContainer[global___ResourceMonitorFeature.ValueType]:
+        """The set of monitor-supported protocol features."""
+
+    def __init__(
+        self,
+        *,
+        project: builtins.str = ...,
+        stack: builtins.str = ...,
+        organization: builtins.str = ...,
+        config: collections.abc.Mapping[builtins.str, builtins.str] | None = ...,
+        configSecretKeys: collections.abc.Iterable[builtins.str] | None = ...,
+        dryRun: builtins.bool = ...,
+        parallel: builtins.int = ...,
+        supportedFeatures: collections.abc.Iterable[global___ResourceMonitorFeature.ValueType] | None = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["config", b"config", "configSecretKeys", b"configSecretKeys", "dryRun", b"dryRun", "organization", b"organization", "parallel", b"parallel", "project", b"project", "stack", b"stack", "supportedFeatures", b"supportedFeatures"]) -> None: ...
+
+global___DeploymentInfo = DeploymentInfo
 
 @typing.final
 class SupportsFeatureRequest(google.protobuf.message.Message):

@@ -12,6 +12,53 @@ import * as pulumi_alias_pb from "./alias_pb";
 import * as pulumi_source_pb from "./source_pb";
 import * as pulumi_callback_pb from "./callback_pb";
 
+export class DeploymentInfo extends jspb.Message { 
+    getProject(): string;
+    setProject(value: string): DeploymentInfo;
+    getStack(): string;
+    setStack(value: string): DeploymentInfo;
+    getOrganization(): string;
+    setOrganization(value: string): DeploymentInfo;
+
+    getConfigMap(): jspb.Map<string, string>;
+    clearConfigMap(): void;
+    clearConfigsecretkeysList(): void;
+    getConfigsecretkeysList(): Array<string>;
+    setConfigsecretkeysList(value: Array<string>): DeploymentInfo;
+    addConfigsecretkeys(value: string, index?: number): string;
+    getDryrun(): boolean;
+    setDryrun(value: boolean): DeploymentInfo;
+    getParallel(): number;
+    setParallel(value: number): DeploymentInfo;
+    clearSupportedfeaturesList(): void;
+    getSupportedfeaturesList(): Array<ResourceMonitorFeature>;
+    setSupportedfeaturesList(value: Array<ResourceMonitorFeature>): DeploymentInfo;
+    addSupportedfeatures(value: ResourceMonitorFeature, index?: number): ResourceMonitorFeature;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): DeploymentInfo.AsObject;
+    static toObject(includeInstance: boolean, msg: DeploymentInfo): DeploymentInfo.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: DeploymentInfo, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): DeploymentInfo;
+    static deserializeBinaryFromReader(message: DeploymentInfo, reader: jspb.BinaryReader): DeploymentInfo;
+}
+
+export namespace DeploymentInfo {
+    export type AsObject = {
+        project: string,
+        stack: string,
+        organization: string,
+
+        configMap: Array<[string, string]>,
+        configsecretkeysList: Array<string>,
+        dryrun: boolean,
+        parallel: number,
+        supportedfeaturesList: Array<ResourceMonitorFeature>,
+    }
+}
+
 export class SupportsFeatureRequest extends jspb.Message { 
     getId(): string;
     setId(value: string): SupportsFeatureRequest;
@@ -1397,6 +1444,22 @@ export namespace RegisterErrorHookRequest {
         name: string,
         callback?: pulumi_callback_pb.Callback.AsObject,
     }
+}
+
+export enum ResourceMonitorFeature {
+    RESOURCE_MONITOR_FEATURE_SECRETS = 0,
+    RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES = 1,
+    RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES = 2,
+    RESOURCE_MONITOR_FEATURE_ALIAS_SPECS = 3,
+    RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER = 4,
+    RESOURCE_MONITOR_FEATURE_DELETED_WITH = 5,
+    RESOURCE_MONITOR_FEATURE_REPLACE_WITH = 6,
+    RESOURCE_MONITOR_FEATURE_TRANSFORMS = 7,
+    RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS = 8,
+    RESOURCE_MONITOR_FEATURE_PARAMETERIZATION = 9,
+    RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS = 10,
+    RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11,
+    RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS = 12,
 }
 
 export enum Result {

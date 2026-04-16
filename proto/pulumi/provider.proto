@@ -520,6 +520,10 @@ message CallRequest {
     reserved 4, 5, 13, 16, 15;
     reserved "provider", "version", "pluginDownloadURL", "pluginChecksums", "sourcePosition";
 
+    // NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    // remain for backward compatibility. Newer providers may read these via
+    // [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
+
     string tok = 1;                                        // the function token to invoke.
     google.protobuf.Struct args = 2;                       // the arguments for the function invocation.
     map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
@@ -1007,6 +1011,10 @@ message ConstructRequest {
         // to complete.
         string delete = 3;
     }
+
+    // NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    // remain for backward compatibility. Newer providers may read these via
+    // [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
 
     // The project to which this resource and its nested resources will belong.
     string project = 1;
