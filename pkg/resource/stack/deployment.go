@@ -69,7 +69,23 @@ const (
 	hooksFeature               = "hooks"
 	taintFeature               = "taint"
 	replaceWithFeature         = "replaceWith"
+	outputDependenciesFeature  = "outputDependencies"
 )
+
+// saveOutputDepsKey is a context key used to signal that Output values should be
+// serialized with their full dependency information.
+type saveOutputDepsKey struct{}
+
+// WithSaveOutputDependencies returns a context that instructs SerializePropertyValue to
+// preserve Output dependency information.
+func WithSaveOutputDependencies(ctx context.Context) context.Context {
+	return context.WithValue(ctx, saveOutputDepsKey{}, true)
+}
+
+func getSaveOutputDependencies(ctx context.Context) bool {
+	v, _ := ctx.Value(saveOutputDepsKey{}).(bool)
+	return v
+}
 
 var (
 	// ErrDeploymentSchemaVersionTooOld is returned from `DeserializeDeployment` if the
@@ -125,6 +141,7 @@ var supportedFeatures = map[string]bool{
 	hooksFeature:               true,
 	taintFeature:               true,
 	replaceWithFeature:         true,
+	outputDependenciesFeature:  true,
 }
 
 // validateSupportedFeatures validates that the features used in a deployment are supported.
@@ -158,6 +175,41 @@ func ApplyFeatures(res apitype.ResourceV3, features map[string]bool) {
 	if len(res.ReplaceWith) > 0 {
 		features[replaceWithFeature] = true
 	}
+	if anyOutputValueSig(res.Outputs) || anyOutputValueSig(res.Inputs) {
+		features[outputDependenciesFeature] = true
+	}
+}
+
+// anyOutputValueSig reports whether any value in the property map (recursively) is an
+// output value with the OutputValueSig signature.
+func anyOutputValueSig(props map[string]any) bool {
+	for _, v := range props {
+		if containsOutputValueSig(v) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsOutputValueSig(v any) bool {
+	switch w := v.(type) {
+	case map[string]any:
+		if sig, ok := w[resource.SigKey]; ok && sig == resource.OutputValueSig {
+			return true
+		}
+		for _, val := range w {
+			if containsOutputValueSig(val) {
+				return true
+			}
+		}
+	case []any:
+		for _, elem := range w {
+			if containsOutputValueSig(elem) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ValidateUntypedDeployment validates a deployment against the Deployment JSON schema.
@@ -613,10 +665,41 @@ func SerializePropertyValue(ctx context.Context, prop resource.PropertyValue, en
 		return computedValuePlaceholder, nil
 	}
 
-	// We can't currently serialize output values fully, we lose the dependency information. But we can
-	// at least serialize the inner value so that we can preserve the shape of the data.
+	// Serialize output values. When the context has saveOutputDependencies set (opt-in via
+	// PULUMI_SAVE_OUTPUT_DEPENDENCIES), or when the output already carries dependency info
+	// (i.e. it was read from a state file that had the outputDependencies feature), we
+	// serialize the full output value including dependencies. This causes ApplyFeatures to
+	// add the "outputDependencies" feature flag, which bumps the state file to version 4
+	// so that older CLIs that don't understand this format refuse to open it.
+	//
+	// Without the flag (the default), we degrade the output to its inner value to preserve
+	// compatibility with older state readers.
 	if prop.IsOutput() {
 		o := prop.OutputValue()
+
+		if getSaveOutputDependencies(ctx) {
+			obj := map[string]any{
+				resource.SigKey: resource.OutputValueSig,
+			}
+			if o.Known {
+				elem, err := SerializePropertyValue(ctx, o.Element, enc, showSecrets)
+				if err != nil {
+					return nil, err
+				}
+				obj["value"] = elem
+			}
+			if o.Secret {
+				obj["secret"] = true
+			}
+			if len(o.Dependencies) > 0 {
+				deps := make([]any, len(o.Dependencies))
+				for i, dep := range o.Dependencies {
+					deps[i] = string(dep)
+				}
+				obj["dependencies"] = deps
+			}
+			return obj, nil
+		}
 
 		element := o.Element
 		if !o.Known {
@@ -988,6 +1071,48 @@ func DeserializePropertyValue(v any, dec config.Decrypter,
 					}
 					floatVal := math.Float64frombits(bits)
 					return resource.NewProperty(floatVal), nil
+				case resource.OutputValueSig:
+					// An output value serialized with full dependency info (requires
+					// the "outputDependencies" state feature).
+					elemRaw, known := objmap["value"]
+					var element resource.PropertyValue
+					if known {
+						element, err = DeserializePropertyValue(elemRaw, dec)
+						if err != nil {
+							return resource.PropertyValue{},
+								fmt.Errorf("deserializing output value element: %w", err)
+						}
+					}
+
+					var secret bool
+					if secretRaw, ok := objmap["secret"]; ok {
+						secret, _ = secretRaw.(bool)
+					}
+
+					var dependencies []resource.URN
+					if depsRaw, ok := objmap["dependencies"]; ok {
+						depsArr, ok := depsRaw.([]any)
+						if !ok {
+							return resource.PropertyValue{},
+								errors.New("malformed output value: dependencies must be an array")
+						}
+						dependencies = make([]resource.URN, len(depsArr))
+						for i, d := range depsArr {
+							s, ok := d.(string)
+							if !ok {
+								return resource.PropertyValue{},
+									errors.New("malformed output value: dependency element must be a string")
+							}
+							dependencies[i] = resource.URN(s)
+						}
+					}
+
+					return resource.NewProperty(resource.Output{
+						Element:      element,
+						Known:        known,
+						Secret:       secret,
+						Dependencies: dependencies,
+					}), nil
 				default:
 					return resource.PropertyValue{}, fmt.Errorf("unrecognized signature '%v' in property map", sig)
 				}

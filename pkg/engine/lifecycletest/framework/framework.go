@@ -261,12 +261,20 @@ func (op TestOp) runWithContext(
 			},
 		}
 
+		journalerCtx := context.Background()
+		if opts.SaveOutputDependencies {
+			journalerCtx = stack.WithSaveOutputDependencies(journalerCtx)
+		}
 		var err error
 		journaler, err = backend.NewSnapshotJournaler(
-			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
+			journalerCtx, journalPersister, secretsManager, secretsProvider, target.Snapshot)
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
 
-		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot, nil)
+		snapCtx := context.Background()
+		if opts.SaveOutputDependencies {
+			snapCtx = stack.WithSaveOutputDependencies(snapCtx)
+		}
+		snapshotManager := backend.NewSnapshotManager(snapCtx, persister, secretsManager, target.Snapshot, nil)
 		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
 		require.NoError(opts.T, err)
 
@@ -385,8 +393,12 @@ func (op TestOp) runWithContext(
 		// The test jounrnaler doesn't support secrets managers, so we need to add it to
 		// the snapshot here before serializing it.
 		snap.SecretsManager = secretsManager
+		serCtx := context.TODO()
+		if opts.SaveOutputDependencies {
+			serCtx = stack.WithSaveOutputDependencies(serCtx)
+		}
 		serializedSnap, _, _, err = stack.SerializeDeploymentWithMetadata(
-			context.TODO(), snap, false)
+			serCtx, snap, false)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("could not serialize snapshot: %w", err))
 		}
