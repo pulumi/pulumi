@@ -1,0 +1,495 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package neo
+
+import (
+	"strings"
+
+	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// inputBarHeight is the number of terminal lines reserved for the input area
+// (separator + input line + hint line).
+const inputBarHeight = 3
+
+// blockKind identifies the type of rendered block in the output log.
+type blockKind int
+
+const (
+	blockBusy blockKind = iota
+	blockToolComplete
+	blockAssistantStreaming
+	blockAssistantFinal
+	blockError
+	blockWarning
+	blockCancelled
+	blockUserMessage
+)
+
+// block is a single rendered item in the TUI output log.
+type block struct {
+	kind blockKind
+	// rendered is the cached rendered string for non-busy kinds.
+	rendered string
+	// label is the text shown after the spinner for blockBusy only.
+	label string
+}
+
+// ModelConfig holds the parameters needed to create a TUI Model.
+type ModelConfig struct {
+	Org      string
+	WorkDir  string
+	Username string
+	EventCh  <-chan UIEvent
+	SendCh   chan<- string // outbound channel for user chat messages
+	// Busy seeds the input-gating state. True when the caller has already
+	// handed a prompt to the backend — the TUI starts with Enter disabled
+	// until the first UITaskIdle.
+	Busy bool
+}
+
+// Model is the top-level bubbletea model for the Neo TUI.
+type Model struct {
+	welcome   welcomeModel
+	viewport  viewport.Model
+	textInput textinput.Model
+	blocks    []block
+	eventCh   <-chan UIEvent
+	sendCh    chan<- string // outbound user messages
+	// busy is true from the moment the user sends a message (or a prompt was
+	// provided up front) until the session emits UITaskIdle / UICancelled /
+	// UIError. While busy, Enter is swallowed so the user can't talk over
+	// the agent and messages can't race task creation. The spinner animation
+	// ticks for as long as busy is true.
+	busy       bool
+	spinner    spinner.Model
+	mdRenderer *glamour.TermRenderer
+	width      int
+	height     int
+}
+
+var (
+	inputSepStyle  = lipgloss.NewStyle().Faint(true)
+	inputHintStyle = lipgloss.NewStyle().Faint(true)
+	promptStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	errorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	warningStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+	cancelledStyle = lipgloss.NewStyle().Faint(true)
+	toolOKMarker   = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("⏺")
+	toolErrMarker  = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("⏺")
+	finalMarker    = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Render("⏺")
+	userMsgBubble  = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Background(lipgloss.Color("8"))
+)
+
+// NewModel creates a new TUI Model.
+func NewModel(cfg ModelConfig) Model {
+	ti := textinput.New()
+	ti.Prompt = "❯ "
+	ti.PromptStyle = promptStyle
+	ti.Placeholder = "Send a message..."
+	ti.Focus()
+	ti.CharLimit = 4096
+
+	vp := viewport.New(80, 24-inputBarHeight)
+
+	sp := spinner.New(
+		spinner.WithSpinner(spinner.MiniDot),
+		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("6"))),
+	)
+
+	m := Model{
+		welcome: welcomeModel{
+			org:       cfg.Org,
+			workDir:   cfg.WorkDir,
+			username:  cfg.Username,
+			termWidth: 80,
+			greeting:  pickGreeting(cfg.Username),
+		},
+		viewport:  vp,
+		textInput: ti,
+		eventCh:   cfg.EventCh,
+		sendCh:    cfg.SendCh,
+		busy:      cfg.Busy,
+		spinner:   sp,
+		width:     80,
+		height:    24,
+	}
+	m.viewport.SetContent(m.welcome.View())
+	return m
+}
+
+// Init returns the initial command that starts listening for events.
+func (m Model) Init() tea.Cmd {
+	cmds := []tea.Cmd{waitForEvent(m.eventCh), textinput.Blink}
+	if m.busy {
+		cmds = append(cmds, m.spinner.Tick)
+	}
+	return tea.Batch(cmds...)
+}
+
+// Update handles messages and returns the updated model and any commands.
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.welcome.termWidth = msg.Width
+
+		vpHeight := msg.Height - inputBarHeight
+		if vpHeight < 1 {
+			vpHeight = 1
+		}
+		m.viewport.Width = msg.Width
+		m.viewport.Height = vpHeight
+		m.textInput.Width = msg.Width - lipgloss.Width(m.textInput.Prompt) - 1
+
+		// (Re)initialize the glamour renderer with the actual terminal width.
+		if r, err := glamour.NewTermRenderer(
+			glamour.WithStylePath("dark"),
+			glamour.WithWordWrap(msg.Width-4),
+		); err == nil {
+			m.mdRenderer = r
+		}
+		m.rebuildContent()
+
+	case tea.KeyMsg:
+		//nolint:exhaustive // Only Ctrl-C and Enter need special handling; everything else flows through to the text input.
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEnter:
+			if m.busy {
+				// Agent is mid-turn — leave the typed text in the input so
+				// the user can send it after the next UITaskIdle.
+				return m, nil
+			}
+			text := strings.TrimSpace(m.textInput.Value())
+			if text != "" {
+				m.textInput.Reset()
+				if m.sendCh != nil {
+					select {
+					case m.sendCh <- text:
+						m.busy = true
+						// Kick the spinner chain — UIThinkingStart will find
+						// busy already true and skip starting it, so we need
+						// to start it here on the interactive path.
+						return m, m.spinner.Tick
+					default:
+					}
+				}
+			}
+			return m, nil
+		}
+
+		// Pass to text input first for typing.
+		var tiCmd tea.Cmd
+		m.textInput, tiCmd = m.textInput.Update(msg)
+		cmds = append(cmds, tiCmd)
+
+		// Also pass to viewport for scrolling (pgup/pgdn/etc).
+		var vpCmd tea.Cmd
+		m.viewport, vpCmd = m.viewport.Update(msg)
+		cmds = append(cmds, vpCmd)
+
+	case tea.MouseMsg:
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		cmds = append(cmds, cmd)
+
+	case spinner.TickMsg:
+		if !m.busy {
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		m.rebuildContent()
+		return m, cmd
+
+	case UIAssistantMessage:
+		if msg.IsFinal {
+			m.removeBlockKind(blockAssistantStreaming)
+			m.removeBlockKind(blockBusy)
+			rendered := m.renderMarkdown(msg.Content)
+			m.blocks = append(m.blocks, block{
+				kind:     blockAssistantFinal,
+				rendered: renderAssistantFinal(rendered),
+			})
+		} else {
+			m.removeBlockKind(blockBusy)
+			idx := m.findBlockKind(blockAssistantStreaming)
+			if idx >= 0 {
+				m.blocks[idx].rendered = renderAssistantStreaming(msg.Content)
+			} else {
+				m.blocks = append(m.blocks, block{
+					kind:     blockAssistantStreaming,
+					rendered: renderAssistantStreaming(msg.Content),
+				})
+			}
+		}
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIThinkingStart:
+		wasBusy := m.busy
+		m.busy = true
+		label := pickThinkingVerb() + "..."
+		if idx := m.findBlockKind(blockBusy); idx >= 0 {
+			m.blocks[idx].label = label
+		} else {
+			m.blocks = append(m.blocks, block{kind: blockBusy, label: label})
+		}
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+		if !wasBusy {
+			cmds = append(cmds, m.spinner.Tick)
+		}
+
+	case UIToolStarted:
+		wasBusy := m.busy
+		m.busy = true
+		label := toolLabel(msg.Name, msg.Args) + " ..."
+		if idx := m.findBlockKind(blockBusy); idx >= 0 {
+			m.blocks[idx].label = label
+		} else {
+			m.blocks = append(m.blocks, block{kind: blockBusy, label: label})
+		}
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+		if !wasBusy {
+			cmds = append(cmds, m.spinner.Tick)
+		}
+
+	case UIToolProgress:
+		if idx := m.findBlockKind(blockBusy); idx >= 0 {
+			m.blocks[idx].label = toolLabel(msg.Name, nil) + ": " + truncate(msg.Message, 60)
+		}
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIToolCompleted:
+		marker := toolOKMarker
+		if msg.IsError {
+			marker = toolErrMarker
+		}
+		completed := block{
+			kind:     blockToolComplete,
+			rendered: "  " + marker + " " + styledToolLabel(msg.Name, msg.Args),
+		}
+		m.insertBeforeBusy(completed)
+		// Keep the busy block alive across the inter-tool gap so the spinner
+		// stays visible while the agent decides its next move. The next
+		// UIThinkingStart or UIToolStarted will overwrite the label.
+		if idx := m.findBlockKind(blockBusy); idx >= 0 {
+			m.blocks[idx].label = pickThinkingVerb() + "..."
+		}
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIError:
+		m.busy = false
+		m.removeBlockKind(blockBusy)
+		m.blocks = append(m.blocks, block{
+			kind:     blockError,
+			rendered: "  " + errorStyle.Render("✗ Error: "+msg.Message),
+		})
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIWarning:
+		m.blocks = append(m.blocks, block{
+			kind:     blockWarning,
+			rendered: "  " + warningStyle.Render("⚠ "+msg.Message),
+		})
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UICancelled:
+		m.busy = false
+		m.removeBlockKind(blockBusy)
+		m.blocks = append(m.blocks, block{
+			kind:     blockCancelled,
+			rendered: "  " + cancelledStyle.Render("Session cancelled."),
+		})
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UITaskIdle:
+		m.busy = false
+		m.removeBlockKind(blockBusy)
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UISessionURL:
+		m.welcome.consoleURL = msg.URL
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIUserMessage:
+		m.blocks = append(m.blocks, block{
+			kind:     blockUserMessage,
+			rendered: promptStyle.Render("❯") + " " + userMsgBubble.Render(" "+msg.Content+" "),
+		})
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	default:
+		// Pass unhandled messages to textinput (e.g. blink).
+		var tiCmd tea.Cmd
+		m.textInput, tiCmd = m.textInput.Update(msg)
+		cmds = append(cmds, tiCmd)
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+// View returns the rendered TUI: viewport on top, input bar at the bottom.
+func (m Model) View() string {
+	sep := inputSepStyle.Render(strings.Repeat("─", m.width))
+	hintText := "  enter to send · ctrl+c to quit"
+	if m.busy {
+		hintText = "  agent is working · enter disabled · ctrl+c to quit"
+	}
+	hint := inputHintStyle.Render(hintText)
+
+	return m.viewport.View() + "\n" +
+		sep + "\n" +
+		m.textInput.View() + "\n" +
+		hint
+}
+
+// rebuildContent concatenates the welcome box and all blocks into the viewport.
+// The busy block's spinner glyph is read from m.spinner.View() at render time
+// so the animation tracks the current frame without re-caching per block.
+func (m *Model) rebuildContent() {
+	var sb strings.Builder
+	sb.WriteString(m.welcome.View())
+	sb.WriteString("\n")
+	for _, b := range m.blocks {
+		if b.kind == blockBusy {
+			sb.WriteString("  " + m.spinner.View() + " " + b.label)
+		} else {
+			sb.WriteString(b.rendered)
+		}
+		sb.WriteString("\n")
+	}
+
+	wasAtBottom := m.viewport.AtBottom()
+	m.viewport.SetContent(sb.String())
+	if wasAtBottom {
+		m.viewport.GotoBottom()
+	}
+}
+
+// insertBeforeBusy inserts b just before the first blockBusy in the slice, or
+// appends if no busy block exists. Used so completed-tool blocks land above the
+// live spinner line rather than after it.
+func (m *Model) insertBeforeBusy(b block) {
+	for i, existing := range m.blocks {
+		if existing.kind == blockBusy {
+			m.blocks = append(m.blocks[:i], append([]block{b}, m.blocks[i:]...)...)
+			return
+		}
+	}
+	m.blocks = append(m.blocks, b)
+}
+
+// removeBlockKind removes all blocks of the given kind.
+func (m *Model) removeBlockKind(kind blockKind) {
+	filtered := m.blocks[:0]
+	for _, b := range m.blocks {
+		if b.kind != kind {
+			filtered = append(filtered, b)
+		}
+	}
+	m.blocks = filtered
+}
+
+// findBlockKind returns the index of the last block of the given kind, or -1.
+func (m *Model) findBlockKind(kind blockKind) int {
+	for i := len(m.blocks) - 1; i >= 0; i-- {
+		if m.blocks[i].kind == kind {
+			return i
+		}
+	}
+	return -1
+}
+
+// renderMarkdown renders text through glamour, falling back to plain text.
+func (m *Model) renderMarkdown(text string) string {
+	if m.mdRenderer == nil {
+		return text
+	}
+	rendered, err := m.mdRenderer.Render(text)
+	if err != nil {
+		return text
+	}
+	return strings.TrimRight(rendered, "\n")
+}
+
+// renderAssistantFinal renders a final assistant message with a white circle marker.
+func renderAssistantFinal(rendered string) string {
+	lines := strings.Split(rendered, "\n")
+	markerPrinted := false
+	var sb strings.Builder
+	for _, line := range lines {
+		stripped := strings.TrimSpace(line)
+		if !markerPrinted {
+			if stripped == "" {
+				continue
+			}
+			trimmed := strings.TrimLeft(line, " ")
+			sb.WriteString("  " + finalMarker + " " + trimmed + "\n")
+			markerPrinted = true
+		} else {
+			sb.WriteString("    " + line + "\n")
+		}
+	}
+	return strings.TrimRight(sb.String(), "\n")
+}
+
+// renderAssistantStreaming renders streaming text with a dim indicator.
+func renderAssistantStreaming(text string) string {
+	if text == "" {
+		return ""
+	}
+	return "  " + text
+}
+
+// waitForEvent returns a tea.Cmd that reads from the UIEvent channel.
+// When the channel closes, it returns tea.Quit.
+func waitForEvent(ch <-chan UIEvent) tea.Cmd {
+	return func() tea.Msg {
+		evt, ok := <-ch
+		if !ok {
+			return tea.Quit()
+		}
+		return evt
+	}
+}
+
+// truncate truncates a string to maxLen characters, adding "..." if needed.
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
