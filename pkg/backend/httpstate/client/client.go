@@ -16,6 +16,7 @@ package client
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -54,9 +55,17 @@ const (
 	NeoRequestTimeout = 20 * time.Second
 )
 
-// NeoTaskRequest represents a request to create a Neo task.
+// NeoTaskRequest represents a request to create a Neo task. This is a thin client-side
+// shape that the server deserializes into apitype.CreateAgentTaskRequest, so the JSON
+// field names must match the IDL-generated tags exactly.
 type NeoTaskRequest struct {
 	Message NeoTaskMessage `json:"message"`
+	// ToolExecutionMode selects where Neo tool calls run. Empty (the default) and "cloud"
+	// mean tools run in the agent container as before; "cli" means the cloud agent emits
+	// cli_tool_request backend events for the local-tool subset (filesystem, shell,
+	// pulumi_preview, pulumi_up) and waits for cli_tool_result user events in response.
+	// JSON tag is camelCase to match apitype.CreateAgentTaskRequest from pulumi-service.
+	ToolExecutionMode string `json:"toolExecutionMode,omitempty"`
 }
 
 // NeoTaskMessage represents the message content for a Neo task.
@@ -1650,14 +1659,17 @@ func (pc *Client) ExplainPreviewWithNeo(
 	return pc.callCopilot(ctx, request)
 }
 
-// CreateNeoTask creates a new Neo agent task via the Neo Tasks API.
-// This is used to start an AI-assisted debugging session when errors occur.
+// CreateNeoTask creates a new Neo agent task via the Neo Tasks API. Pass an empty
+// toolExecutionMode for the default (cloud) mode used by `--neo-task-on-failure`; pass
+// "cli" to have the cloud agent emit CliToolRequest events for the local-tool subset
+// (filesystem, shell) instead of running them itself.
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
 	content string,
 	stackName string,
 	projectName string,
+	toolExecutionMode string,
 ) (*NeoTaskResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
@@ -1667,16 +1679,17 @@ func (pc *Client) CreateNeoTask(
 			Type:      "user_message",
 			Content:   content,
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
-			EntityDiff: &NeoTaskEntityDiff{
-				Add: []NeoTaskEntity{
-					{
-						Type:    "stack",
-						Name:    stackName,
-						Project: projectName,
-					},
-				},
-			},
 		},
+		ToolExecutionMode: toolExecutionMode,
+	}
+	// Only attach a stack entity when we actually have one — the backend rejects
+	// entity_diff entries with empty name/project as "unable to access stack".
+	if stackName != "" && projectName != "" {
+		request.Message.EntityDiff = &NeoTaskEntityDiff{
+			Add: []NeoTaskEntity{
+				{Type: "stack", Name: stackName, Project: projectName},
+			},
+		}
 	}
 
 	path := fmt.Sprintf("/api/preview/agents/%s/tasks", orgName)
@@ -1686,6 +1699,118 @@ func (pc *Client) CreateNeoTask(
 	}
 
 	return &resp, nil
+}
+
+// NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
+// one of Data or Err is populated: Data carries an event payload, Err carries a terminal
+// stream error (after which no further values are sent before the channel closes).
+type NeoStreamEvent struct {
+	Data []byte
+	Err  error
+}
+
+// StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
+// stream and returns a channel of events. Each value carries either a raw event payload
+// (the bytes following each `data:` line, joined for multi-line events) or a terminal
+// stream error. The channel is closed when the stream ends or ctx is cancelled.
+//
+// The endpoint is the SSE stream introduced in pulumi/pulumi-service#40132. This call
+// does not impose its own timeout — callers should manage lifetime via ctx.
+func (pc *Client) StreamNeoTaskEvents(
+	ctx context.Context, orgName, taskID string,
+) (<-chan NeoStreamEvent, error) {
+	streamURL := pc.apiURL + fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events/stream", orgName, taskID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating Neo event stream request: %w", err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
+	req.Header.Set("Authorization", "token "+string(pc.apiToken))
+
+	resp, err := pc.restClient.HTTPClient().Do(req, retryNone)
+	if err != nil {
+		return nil, fmt.Errorf("opening Neo event stream: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, fmt.Errorf("opening Neo event stream: HTTP %d: %s",
+			resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	stream := make(chan NeoStreamEvent)
+
+	go func() {
+		defer resp.Body.Close()
+		defer close(stream)
+
+		send := func(evt NeoStreamEvent) {
+			select {
+			case stream <- evt:
+			case <-ctx.Done():
+			}
+		}
+
+		// Tool payloads can be large, so give the scanner a generous max line size.
+		scanner := bufio.NewScanner(resp.Body)
+		scanner.Buffer(make([]byte, 64*1024), 8*1024*1024)
+
+		var data bytes.Buffer
+		flush := func() {
+			if data.Len() == 0 {
+				return
+			}
+			payload := bytes.Clone(data.Bytes())
+			data.Reset()
+			send(NeoStreamEvent{Data: payload})
+		}
+
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line == "" {
+				flush()
+				continue
+			}
+			if strings.HasPrefix(line, ":") {
+				continue
+			}
+			if chunk, ok := strings.CutPrefix(line, "data:"); ok {
+				chunk = strings.TrimPrefix(chunk, " ")
+				if data.Len() > 0 {
+					data.WriteByte('\n')
+				}
+				data.WriteString(chunk)
+			}
+			// Other SSE fields (event:, id:, retry:) are ignored — the server uses a
+			// single event type and the JSON payload carries its own kind discriminator.
+		}
+		flush()
+		if err := scanner.Err(); err != nil && ctx.Err() == nil {
+			send(NeoStreamEvent{Err: fmt.Errorf("reading Neo event stream: %w", err)})
+		}
+	}()
+
+	return stream, nil
+}
+
+// PostNeoTaskUserEvent posts an AgentUserEvent to a Neo task via the RespondToTask
+// endpoint. The body must be a marshalable value matching one of the AgentUserEvent
+// subtypes from pulumi-service's IDL (e.g. tool_result). The caller is responsible for
+// setting the discriminator `type` field; the body is wrapped in the
+// AgentRespondToTaskRequest envelope ({"event": <body>}) before being sent.
+//
+// Note: this is NOT the /events sub-resource — that one is reserved for the agent
+// runtime posting AgentBackendEvents with an agent task token. User events go to the
+// task root with a user PAT.
+func (pc *Client) PostNeoTaskUserEvent(
+	ctx context.Context, orgName, taskID string, body any,
+) error {
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, struct {
+		Event any `json:"event"`
+	}{Event: body}, nil)
 }
 
 func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {

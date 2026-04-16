@@ -1528,7 +1528,7 @@ func (b *cloudBackend) createNeoTaskOnError(
 		"Help me debug the following Pulumi error for project %s and stack %s:\n\n%s",
 		stackID.Project, stackID.Stack.String(), pulumiOutput)
 
-	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project)
+	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project, "")
 }
 
 type updateMetadata struct {

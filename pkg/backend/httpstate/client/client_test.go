@@ -17,6 +17,7 @@ package client
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -866,7 +867,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer successServer.Close()
 
 		client := newMockClient(successServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -880,7 +881,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer errorServer.Close()
 
 		client := newMockClient(errorServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -894,9 +895,201 @@ func TestCreateNeoTask(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		client := newMockClient(unauthorizedServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
 
 		require.Error(t, err)
 		require.Nil(t, resp)
+	})
+
+	t.Run("RequestShape", func(t *testing.T) {
+		t.Parallel()
+
+		// The backend deserializes into apitype.CreateAgentTaskRequest, so the path,
+		// toolExecutionMode camelCase tag, and entity_diff block have to land exactly
+		// right. Anchor that wire shape here so a refactor can't silently drift it.
+		var (
+			gotPath   string
+			gotMethod string
+			gotBody   map[string]any
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotPath = req.URL.Path
+			gotMethod = req.Method
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_1"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", "cli")
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPost, gotMethod)
+		assert.Equal(t, "/api/preview/agents/my-org/tasks", gotPath)
+		assert.Equal(t, "cli", gotBody["toolExecutionMode"])
+
+		message, _ := gotBody["message"].(map[string]any)
+		require.NotNil(t, message)
+		assert.Equal(t, "user_message", message["type"])
+		assert.Equal(t, "hello", message["content"])
+
+		entityDiff, _ := message["entity_diff"].(map[string]any)
+		require.NotNil(t, entityDiff, "stack+project must produce an entity_diff block")
+		add, _ := entityDiff["add"].([]any)
+		require.Len(t, add, 1)
+		entity, _ := add[0].(map[string]any)
+		assert.Equal(t, "stack", entity["type"])
+		assert.Equal(t, "stack", entity["name"])
+		assert.Equal(t, "proj", entity["project"])
+	})
+
+	t.Run("OmitsEntityDiffWhenStackMissing", func(t *testing.T) {
+		t.Parallel()
+
+		// The backend rejects entity_diff entries with empty name/project, so the
+		// client must omit the block entirely when either side is missing.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_2"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "")
+		require.NoError(t, err)
+
+		message, _ := gotBody["message"].(map[string]any)
+		require.NotNil(t, message)
+		assert.NotContains(t, message, "entity_diff")
+	})
+}
+
+func TestPostNeoTaskUserEvent(t *testing.T) {
+	t.Parallel()
+
+	// The CLI loop must POST user events to the task root (not /events, which is
+	// reserved for the agent runtime) and wrap them in the {"event": ...} envelope.
+	var (
+		gotPath   string
+		gotMethod string
+		gotBody   map[string]any
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotPath = req.URL.Path
+		gotMethod = req.Method
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		rw.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := newMockClient(server)
+	err := client.PostNeoTaskUserEvent(t.Context(), "my-org", "task_1", apitype.AgentUserEventExecToolCall{
+		Type:       "exec_tool_call",
+		ToolCallID: "c1",
+		Name:       "filesystem__read",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, gotMethod)
+	assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1", gotPath)
+
+	event, _ := gotBody["event"].(map[string]any)
+	require.NotNil(t, event, "body must wrap the inner event in {\"event\": ...}")
+	assert.Equal(t, "exec_tool_call", event["type"])
+	assert.Equal(t, "c1", event["tool_call_id"])
+	assert.Equal(t, "filesystem__read", event["name"])
+}
+
+func TestStreamNeoTaskEvents(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ParsesDataFramesAndIgnoresComments", func(t *testing.T) {
+		t.Parallel()
+
+		// SSE framing: blank lines delimit events, lines that start with ":" are
+		// comments (heartbeats), and event-less `data:` frames concatenate with a
+		// single newline separator. Exercise each in one stream.
+		var gotPath string
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotPath = req.URL.Path
+			assert.Equal(t, "text/event-stream", req.Header.Get("Accept"))
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+			flusher, ok := rw.(http.Flusher)
+			require.True(t, ok)
+			_, _ = rw.Write([]byte(": heartbeat\n"))
+			_, _ = rw.Write([]byte("data: {\"type\":\"agentResponse\"}\n\n"))
+			_, _ = rw.Write([]byte("data: line1\ndata: line2\n\n"))
+			flusher.Flush()
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		require.NoError(t, err)
+
+		got := make([][]byte, 0, 2)
+		for evt := range stream {
+			require.NoError(t, evt.Err)
+			got = append(got, evt.Data)
+		}
+		assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1/events/stream", gotPath)
+		require.Len(t, got, 2)
+		assert.Equal(t, `{"type":"agentResponse"}`, string(got[0]))
+		assert.Equal(t, "line1\nline2", string(got[1]))
+	})
+
+	t.Run("HTTPErrorSurfacesBeforeStreamStarts", func(t *testing.T) {
+		t.Parallel()
+
+		// A non-2xx response must fail the initial handshake, not surface as a
+		// stream error later — the caller should not have to drain a dead channel.
+		server := newMockServer(http.StatusUnauthorized, "unauthorized")
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		require.Error(t, err)
+		assert.Nil(t, stream)
+		assert.Contains(t, err.Error(), "401")
+	})
+
+	t.Run("ContextCancelClosesStream", func(t *testing.T) {
+		t.Parallel()
+
+		// Lifetime is caller-controlled via ctx — cancelling mid-stream must close
+		// the channel promptly, even while the server is still holding the HTTP
+		// connection open.
+		ready := make(chan struct{})
+		release := make(chan struct{})
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+			flusher, _ := rw.(http.Flusher)
+			if flusher != nil {
+				flusher.Flush()
+			}
+			close(ready)
+			<-release
+		}))
+		defer server.Close()
+		defer close(release)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(ctx, "my-org", "task_1")
+		require.NoError(t, err)
+
+		<-ready
+		cancel()
+
+		for range stream {
+			// Drain; just verifying the channel closes.
+		}
 	})
 }
