@@ -29,7 +29,7 @@ server = aws.ec2.Instance("server",
     instance_type=instance_type,
     vpc_security_group_ids=[sec_group.id],
     user_data=user_data,
-    ami=str(ami),
+    ami=ami,
     tags={
         "Name": "web-server-www",
     })
