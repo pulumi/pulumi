@@ -175,7 +175,39 @@ export function resetOptions(
     preview: boolean,
     organization: string,
 ) {
+    resetOptionsWithMonitorAndFeatures(project, stack, parallel, engineAddr, monitorAddr, preview, organization);
+}
+
+/**
+ * Resets runtime state like {@link resetOptions}, and optionally injects a monitor
+ * client plus an already-known feature list from `GetDeploymentInfo`.
+ *
+ * @internal
+ */
+export function resetOptionsWithMonitorAndFeatures(
+    project: string,
+    stack: string,
+    parallel: number,
+    engineAddr: string,
+    monitorAddr: string,
+    preview: boolean,
+    organization: string,
+    monitorClient?: resrpc.IResourceMonitorClient,
+    supportedFeatures?: resproto.ResourceMonitorFeature[],
+) {
     const store = getStore();
+
+    const inLocalStore = getLocalStore() !== undefined || monitorAddr === "mock";
+    const providedMonitor = monitorClient as resrpc.ResourceMonitorClient | undefined;
+
+    const previousMonitor = inLocalStore ? store.settings.monitor : monitor;
+    if (previousMonitor && previousMonitor !== monitorClient) {
+        try {
+            (previousMonitor as any).close?.();
+        } catch (err) {
+            // ignore.
+        }
+    }
 
     monitor = undefined;
     engine = undefined;
@@ -194,6 +226,14 @@ export function resetOptions(
     store.settings.options.engineAddr = engineAddr;
     store.settings.options.organization = organization;
 
+    if (monitorClient !== undefined) {
+        if (inLocalStore) {
+            store.settings.monitor = monitorClient;
+        } else {
+            monitor = providedMonitor;
+        }
+    }
+
     store.leakCandidates = new Set<Promise<any>>();
     store.logErrorCount = 0;
     store.stackResource = undefined;
@@ -206,6 +246,54 @@ export function resetOptions(
     store.supportsTransforms = false;
     store.supportsInvokeTransforms = false;
     store.supportsParameterization = false;
+    store.supportsResourceHooks = false;
+    store.supportsErrorHooks = false;
+
+    if (supportedFeatures !== undefined) {
+        const featureSet = new Set(supportedFeatures);
+        const hasFeature = (feature: resproto.ResourceMonitorFeature): boolean => featureSet.has(feature);
+
+        store.supportsSecrets = hasFeature(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_SECRETS);
+        store.supportsResourceReferences = hasFeature(
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+        );
+        store.supportsOutputValues = hasFeature(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES);
+        store.supportsDeletedWith = hasFeature(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_DELETED_WITH);
+        store.supportsReplaceWith = hasFeature(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_REPLACE_WITH);
+        store.supportsAliasSpecs = hasFeature(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS);
+        store.supportsTransforms = hasFeature(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_TRANSFORMS);
+        store.supportsInvokeTransforms = hasFeature(
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+        );
+        store.supportsParameterization = hasFeature(
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+        );
+        store.supportsResourceHooks = hasFeature(
+            resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+        );
+        store.supportsErrorHooks = hasFeature(resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS);
+
+        store.settings.featureSupport = {
+            secrets: store.supportsSecrets,
+            resourceReferences: store.supportsResourceReferences,
+            outputValues: store.supportsOutputValues,
+            aliasSpecs: store.supportsAliasSpecs,
+            replacementTrigger: hasFeature(
+                resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER,
+            ),
+            deletedWith: store.supportsDeletedWith,
+            replaceWith: store.supportsReplaceWith,
+            transforms: store.supportsTransforms,
+            invokeTransforms: store.supportsInvokeTransforms,
+            parameterization: store.supportsParameterization,
+            resourceHooks: store.supportsResourceHooks,
+            errorHooks: store.supportsErrorHooks,
+            sendsOptionsToHooks: hasFeature(
+                resproto.ResourceMonitorFeature.RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS,
+            ),
+        };
+    }
+
     store.callbacks = undefined;
 }
 
@@ -294,9 +382,13 @@ async function monitorSupportsFeature(monitorClient: resrpc.IResourceMonitorClie
  * @internal
  **/
 export async function awaitFeatureSupport(): Promise<void> {
+    const store = getStore();
+    if (Object.keys(store.settings.featureSupport).length > 0) {
+        return;
+    }
+
     const monitorRef = getMonitor();
     if (monitorRef !== undefined) {
-        const store = getStore();
         const [
             secrets,
             resourceReferences,
@@ -336,6 +428,19 @@ export async function awaitFeatureSupport(): Promise<void> {
         store.supportsParameterization = parameterization;
         store.supportsResourceHooks = resourceHooks;
         store.supportsErrorHooks = errorHooks;
+        store.settings.featureSupport = {
+            secrets: store.supportsSecrets,
+            resourceReferences: store.supportsResourceReferences,
+            outputValues: store.supportsOutputValues,
+            deletedWith: store.supportsDeletedWith,
+            replaceWith: store.supportsReplaceWith,
+            aliasSpecs: store.supportsAliasSpecs,
+            transforms: store.supportsTransforms,
+            invokeTransforms: store.supportsInvokeTransforms,
+            parameterization: store.supportsParameterization,
+            resourceHooks: store.supportsResourceHooks,
+            errorHooks: store.supportsErrorHooks,
+        };
     }
 }
 

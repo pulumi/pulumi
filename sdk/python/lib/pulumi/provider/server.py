@@ -159,20 +159,39 @@ class ProviderServicer(ResourceProviderServicer):
             f"request is not ConstructRequest but is {type(request)} instead"
         )
 
-        organization = request.organization if request.organization else "organization"
-        pulumi.runtime.settings.reset_options(
+        (
+            deployment_info,
+            monitor,
+            supported_features,
+        ) = await self._resolve_deployment_info(
+            request.monitorEndpoint,
+            project=request.project,
+            stack=request.stack,
+            organization=request.organization,
+            config=dict(request.config),
+            config_secret_keys=list(request.configSecretKeys),
+            dry_run=request.dryRun,
+            parallel=request.parallel,
+        )
+        organization = (
+            deployment_info.organization
+            if deployment_info.organization
+            else "organization"
+        )
+        pulumi.runtime.settings.reset_options_with_monitor_and_features(
             organization=organization,
-            project=_empty_as_none(request.project),
-            stack=_empty_as_none(request.stack),
-            parallel=_zero_as_none(request.parallel),
+            project=_empty_as_none(deployment_info.project),
+            stack=_empty_as_none(deployment_info.stack),
+            parallel=_zero_as_none(deployment_info.parallel),
             engine_address=self.engine_address,
-            monitor_address=_empty_as_none(request.monitorEndpoint),
-            preview=request.dryRun,
+            monitor=monitor,
+            preview=deployment_info.dryRun,
+            supported_features=supported_features,
         )
         await pulumi.runtime.settings._load_monitor_feature_support()
 
         pulumi.runtime.config.set_all_config(
-            dict(request.config), list(request.configSecretKeys)
+            dict(deployment_info.config), list(deployment_info.configSecretKeys)
         )
         inputs = await self._construct_inputs(request.inputs, request.inputDependencies)
 
@@ -370,20 +389,39 @@ class ProviderServicer(ResourceProviderServicer):
             f"request is not CallRequest but is {type(request)} instead"
         )
 
-        organization = request.organization if request.organization else "organization"
-        pulumi.runtime.settings.reset_options(
+        (
+            deployment_info,
+            monitor,
+            supported_features,
+        ) = await self._resolve_deployment_info(
+            request.monitorEndpoint,
+            project=request.project,
+            stack=request.stack,
+            organization=request.organization,
+            config=dict(request.config),
+            config_secret_keys=list(request.configSecretKeys),
+            dry_run=request.dryRun,
+            parallel=request.parallel,
+        )
+        organization = (
+            deployment_info.organization
+            if deployment_info.organization
+            else "organization"
+        )
+        pulumi.runtime.settings.reset_options_with_monitor_and_features(
             organization=organization,
-            project=_empty_as_none(request.project),
-            stack=_empty_as_none(request.stack),
-            parallel=_zero_as_none(request.parallel),
+            project=_empty_as_none(deployment_info.project),
+            stack=_empty_as_none(deployment_info.stack),
+            parallel=_zero_as_none(deployment_info.parallel),
             engine_address=self.engine_address,
-            monitor_address=_empty_as_none(request.monitorEndpoint),
-            preview=request.dryRun,
+            monitor=monitor,
+            preview=deployment_info.dryRun,
+            supported_features=supported_features,
         )
 
         pulumi.runtime.config.set_all_config(
-            dict(request.config),
-            list(request.configSecretKeys),
+            dict(deployment_info.config),
+            list(deployment_info.configSecretKeys),
         )
 
         args = await self._call_args(request)
@@ -463,6 +501,54 @@ class ProviderServicer(ResourceProviderServicer):
                 for f in result.failures
             ]
         return proto.InvokeResponse(**resp)
+
+    @staticmethod
+    async def _resolve_deployment_info(
+        monitor_endpoint: str,
+        project: str,
+        stack: str,
+        organization: str,
+        config: dict[str, str],
+        config_secret_keys: list[str],
+        dry_run: bool,
+        parallel: int,
+    ) -> tuple[proto.DeploymentInfo, Optional[Any], Optional[list[int]]]:
+        fallback_info = proto.DeploymentInfo(
+            project=project,
+            stack=stack,
+            organization=organization,
+            config=config,
+            configSecretKeys=config_secret_keys,
+            dryRun=dry_run,
+            parallel=parallel,
+        )
+
+        if monitor_endpoint == "":
+            return fallback_info, None, None
+
+        channel = grpc.insecure_channel(monitor_endpoint, options=_GRPC_CHANNEL_OPTIONS)
+        monitor = proto.ResourceMonitorStub(channel)
+
+        def do_rpc_call():
+            try:
+                return monitor.GetDeploymentInfo(empty_pb2.Empty())
+            except grpc.RpcError as exn:
+                if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
+                    return None
+                raise
+
+        try:
+            monitor_info = await asyncio.get_event_loop().run_in_executor(
+                None, do_rpc_call
+            )
+        except grpc.RpcError as exn:
+            pulumi.runtime.settings.handle_grpc_error(exn)
+
+        if monitor_info is None:
+            return fallback_info, monitor, None
+
+        deployment_info = cast(proto.DeploymentInfo, monitor_info)
+        return deployment_info, monitor, list(deployment_info.supportedFeatures)
 
     async def Invoke(
         self, request: proto.InvokeRequest, context

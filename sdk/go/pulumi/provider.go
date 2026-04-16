@@ -33,26 +33,70 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type constructFunc func(ctx *Context, typ, name string, inputs map[string]any,
 	options ResourceOption) (URNInput, Input, error)
 
+func getDeploymentInfo(
+	ctx context.Context,
+	monitorEndpoint string,
+	fallback *pulumirpc.DeploymentInfo,
+) (*pulumirpc.DeploymentInfo, error) {
+	if monitorEndpoint == "" {
+		return fallback, nil
+	}
+
+	conn, err := grpc.NewClient(monitorEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	info, err := pulumirpc.NewResourceMonitorClient(conn).GetDeploymentInfo(ctx, &emptypb.Empty{})
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			return fallback, nil
+		}
+		return nil, err
+	}
+	return info, nil
+}
+
 // construct adapts the gRPC ConstructRequest/ConstructResponse to/from the Pulumi Go SDK programming model.
 func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn *grpc.ClientConn,
 	constructF constructFunc,
 ) (*pulumirpc.ConstructResponse, error) {
-	// Configure the RunInfo.
-	runInfo := RunInfo{
+	info, err := getDeploymentInfo(ctx, req.GetMonitorEndpoint(), &pulumirpc.DeploymentInfo{
 		Project:          req.GetProject(),
 		Stack:            req.GetStack(),
+		Organization:     req.GetOrganization(),
 		Config:           req.GetConfig(),
 		ConfigSecretKeys: req.GetConfigSecretKeys(),
-		Parallel:         req.GetParallel(),
 		DryRun:           req.GetDryRun(),
+		Parallel:         req.GetParallel(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("getting deployment info: %w", err)
+	}
+
+	// Configure the RunInfo.
+	runInfo := RunInfo{
+		Project:          info.GetProject(),
+		Stack:            info.GetStack(),
+		Config:           info.GetConfig(),
+		ConfigSecretKeys: info.GetConfigSecretKeys(),
+		Parallel:         info.GetParallel(),
+		DryRun:           info.GetDryRun(),
 		MonitorAddr:      req.GetMonitorEndpoint(),
 		engineConn:       engineConn,
-		Organization:     req.GetOrganization(),
+		Organization:     info.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
@@ -828,16 +872,28 @@ type callFunc func(ctx *Context, tok string, args map[string]any) (Input, []any,
 func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
 	callF callFunc,
 ) (*pulumirpc.CallResponse, error) {
-	// Configure the RunInfo.
-	runInfo := RunInfo{
+	info, err := getDeploymentInfo(ctx, req.GetMonitorEndpoint(), &pulumirpc.DeploymentInfo{
 		Project:      req.GetProject(),
 		Stack:        req.GetStack(),
+		Organization: req.GetOrganization(),
 		Config:       req.GetConfig(),
-		Parallel:     req.GetParallel(),
 		DryRun:       req.GetDryRun(),
+		Parallel:     req.GetParallel(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("getting deployment info: %w", err)
+	}
+
+	// Configure the RunInfo.
+	runInfo := RunInfo{
+		Project:      info.GetProject(),
+		Stack:        info.GetStack(),
+		Config:       info.GetConfig(),
+		Parallel:     info.GetParallel(),
+		DryRun:       info.GetDryRun(),
 		MonitorAddr:  req.GetMonitorEndpoint(),
 		engineConn:   engineConn,
-		Organization: req.GetOrganization(),
+		Organization: info.GetOrganization(),
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
