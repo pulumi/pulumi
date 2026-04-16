@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 
@@ -348,4 +349,182 @@ func TestSession_InvokeToolCallHandlerError(t *testing.T) {
 
 	assert.True(t, item.IsError)
 	assert.Equal(t, "boom", item.Content.(map[string]string)["error"])
+}
+
+// errStreamer fails at StreamNeoTaskEvents so the Run loop returns immediately.
+type errStreamer struct{ err error }
+
+func (e *errStreamer) StreamNeoTaskEvents(
+	context.Context, string, string,
+) (<-chan client.NeoStreamEvent, error) {
+	return nil, e.err
+}
+
+func (e *errStreamer) PostNeoTaskUserEvent(context.Context, string, string, any) error {
+	return nil
+}
+
+func TestSession_RunWrapsStreamOpenError(t *testing.T) {
+	t.Parallel()
+
+	s := &Session{Client: &errStreamer{err: errors.New("boom")}, OrgName: "o", TaskID: "t"}
+	err := s.Run(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "opening event stream")
+	assert.Contains(t, err.Error(), "boom")
+}
+
+func TestSession_RunReturnsStreamError(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Err: errors.New("stream died")}
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	err := s.Run(t.Context())
+	require.EqualError(t, err, "stream died")
+}
+
+func TestSession_RunHonorsContextCancel(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer() // stream is never closed, never fed
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	err := s.Run(ctx)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestSession_MalformedConsoleEventIsIgnored(t *testing.T) {
+	t.Parallel()
+
+	// A malformed envelope must not crash the loop nor trigger a tool invocation —
+	// the agent keeps publishing other events and we want the loop to stay alive.
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Data: []byte("this is not json")}
+	close(streamer.stream)
+
+	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Empty(t, streamer.posted)
+}
+
+func TestSession_MalformedBackendEventIsIgnored(t *testing.T) {
+	t.Parallel()
+
+	// agentResponse envelope with an inner body that doesn't parse as
+	// AgentBackendEventHeader — the header peek fails and the event is dropped.
+	// Use a JSON string literal so the outer envelope marshals cleanly but the
+	// inner Unmarshal into a struct still fails.
+	streamer := newFakeStreamer()
+	out, err := json.Marshal(apitype.AgentConsoleEvent{
+		Type:      consoleEventAgentResponse,
+		ID:        "evt-1",
+		EventBody: json.RawMessage(`"not-an-object"`),
+	})
+	require.NoError(t, err)
+	streamer.stream <- client.NeoStreamEvent{Data: out}
+	close(streamer.stream)
+
+	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Empty(t, streamer.posted)
+}
+
+func TestSession_AssistantMessageBodyShapeMismatchReturnsError(t *testing.T) {
+	t.Parallel()
+
+	// The header says assistant_message but the body can't decode into the full
+	// shape — this is a server/client contract break and must fail loud so the
+	// caller notices, rather than silently skipping the event.
+	streamer := newFakeStreamer()
+	body, err := json.Marshal(map[string]any{
+		"type":       backendEventAssistantMessage,
+		"tool_calls": "not-an-array",
+	})
+	require.NoError(t, err)
+	out, err := json.Marshal(apitype.AgentConsoleEvent{
+		Type:      consoleEventAgentResponse,
+		EventBody: body,
+	})
+	require.NoError(t, err)
+	streamer.stream <- client.NeoStreamEvent{Data: out}
+
+	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t"}
+	err = s.Run(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "decoding assistantMessage")
+}
+
+func TestSession_LogfWritesLinesToLog(t *testing.T) {
+	t.Parallel()
+
+	// Exercise both the nil-writer fast path (covered indirectly elsewhere) and the
+	// happy path so a refactor can't silently drop user-visible logging.
+	var buf strings.Builder
+	s := &Session{Log: &buf}
+	s.logf("hello %s", "world")
+	assert.Equal(t, "hello world\n", buf.String())
+
+	silent := &Session{} // Log == nil: must not panic.
+	silent.logf("dropped")
+}
+
+func TestSession_ToolResultPostFailureIsLoggedNotReturned(t *testing.T) {
+	t.Parallel()
+
+	// The exec_tool_call post must succeed (tested elsewhere) but if the final
+	// tool_result post fails — e.g. transient 5xx — the loop logs it and moves on
+	// rather than aborting the whole session. The next assistant_message can still
+	// proceed and the agent will retry.
+	streamer := &postSequencer{
+		fakeStreamer: newFakeStreamer(),
+		// posts: [exec_tool_call, tool_result] — fail the second one.
+		errs: []error{nil, errors.New("5xx")},
+	}
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "hi"}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "filesystem__read", Args: json.RawMessage(`{}`), ExecutionMode: "cli"},
+		},
+	})}
+	close(streamer.stream)
+
+	var logBuf strings.Builder
+	s := &Session{Client: streamer, Handlers: handlers, OrgName: "o", TaskID: "t", Log: &logBuf}
+	require.NoError(t, s.Run(t.Context()))
+
+	assert.Contains(t, logBuf.String(), "posting tool_result")
+	assert.Contains(t, logBuf.String(), "5xx")
+}
+
+type postSequencer struct {
+	*fakeStreamer
+	errs []error
+	idx  int
+}
+
+func (p *postSequencer) PostNeoTaskUserEvent(_ context.Context, _, _ string, body any) error {
+	p.mu.Lock()
+	p.posted = append(p.posted, body)
+	var err error
+	if p.idx < len(p.errs) {
+		err = p.errs[p.idx]
+	}
+	p.idx++
+	p.mu.Unlock()
+	return err
 }
