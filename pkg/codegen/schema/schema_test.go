@@ -1185,8 +1185,8 @@ func TestUsingIdInStateInputsIsAnError(t *testing.T) {
 	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 		AllowDanglingReferences: true,
 	})
-	assert.NoError(t, err)
-	assert.NotNil(t, pkg)
+	require.NoError(t, err)
+	require.NotNil(t, pkg)
 	require.True(t, diags.HasErrors())
 	assert.Contains(t, diags.Error(), "id is a reserved property name for stateInputs")
 }
