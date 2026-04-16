@@ -103,12 +103,22 @@ type AgentUserEventExecToolCall struct {
 	Name       string `json:"name"`         // full tool name, e.g. "filesystem__read"
 }
 
+// AgentUserEvent is the sealed interface implemented by user events the TUI posts back
+// to the Neo task. The CLI dispatcher carries values of this type on a single channel
+// and forwards them to PostNeoTaskUserEvent; the JSON discriminator is set per-variant
+// via the Type field.
+type AgentUserEvent interface {
+	isAgentUserEvent()
+}
+
 // AgentUserEventUserMessage is the user event a CLI client posts when the user sends a
 // chat message from the TUI.
 type AgentUserEventUserMessage struct {
 	Type    string `json:"type"` // always "user_message"
 	Content string `json:"content"`
 }
+
+func (AgentUserEventUserMessage) isAgentUserEvent() {}
 
 // AgentBackendEventExecToolCallProgress is a backend event reporting incremental progress
 // for an in-flight tool call, forwarded to the TUI to update the tool's status line.
@@ -154,3 +164,5 @@ type AgentUserEventUserConfirmation struct {
 	Approved   bool   `json:"ok"`                     // true to approve, false to deny
 	Message    string `json:"instructions,omitempty"` // if rejected, guidance for the agent on what to do instead
 }
+
+func (AgentUserEventUserConfirmation) isAgentUserEvent() {}

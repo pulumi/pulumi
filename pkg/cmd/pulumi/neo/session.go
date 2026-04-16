@@ -54,17 +54,6 @@ type Session struct {
 	// UIEvents, when non-nil, receives parsed events for the bubbletea TUI to display.
 	// The Session closes this channel when Run() exits.
 	UIEvents chan<- UIEvent
-	// ApprovalCh, when non-nil, receives approval responses from the TUI.
-	// The session posts them to the API from its own goroutine, avoiding races
-	// with tool result posts in runBatch.
-	ApprovalCh <-chan ApprovalResponse
-}
-
-// ApprovalResponse carries the user's answer to an approval request.
-type ApprovalResponse struct {
-	ApprovalID string
-	Approved   bool
-	Message    string
 }
 
 // Run drives the loop. It blocks until ctx is cancelled or the SSE stream errors out.
@@ -92,10 +81,6 @@ func (s *Session) Run(ctx context.Context) error {
 			}
 			if err := s.handleEvent(ctx, evt.Data); err != nil {
 				return err
-			}
-		case resp, ok := <-s.approvalCh():
-			if ok {
-				s.postApproval(ctx, resp)
 			}
 		}
 	}
@@ -227,25 +212,6 @@ func (s *Session) logf(format string, args ...any) {
 		return
 	}
 	fmt.Fprintf(s.Log, format+"\n", args...)
-}
-
-// approvalCh returns the ApprovalCh or a nil channel (blocks forever in select).
-func (s *Session) approvalCh() <-chan ApprovalResponse {
-	return s.ApprovalCh
-}
-
-// postApproval posts an AgentUserEventUserConfirmation to the API from the session goroutine.
-func (s *Session) postApproval(ctx context.Context, resp ApprovalResponse) {
-	evt := apitype.AgentUserEventUserConfirmation{
-		Type:       userEventUserConfirmation,
-		ApprovalID: resp.ApprovalID,
-		Approved:   resp.Approved,
-		Message:    resp.Message,
-	}
-	if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, evt); err != nil {
-		s.logf("error: posting user_confirmation: %v", err)
-		sendUI(s.UIEvents, UIWarning{Message: "failed to send approval: " + err.Error()})
-	}
 }
 
 // sendUI sends a UIEvent to the TUI channel if it is connected.

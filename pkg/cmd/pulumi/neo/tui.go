@@ -23,14 +23,13 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // inputBarHeight is the number of terminal lines reserved for the input area
 // (separator + input line + hint line).
 const inputBarHeight = 3
-
-// approvalResponse is an alias for the session's ApprovalResponse type,
-// used by the TUI to send approval answers back to the session goroutine.
 
 // blockKind identifies the type of rendered block in the output log.
 type blockKind int
@@ -60,12 +59,14 @@ type block struct {
 
 // ModelConfig holds the parameters needed to create a TUI Model.
 type ModelConfig struct {
-	Org        string
-	WorkDir    string
-	Username   string
-	EventCh    <-chan UIEvent
-	SendCh     chan<- string
-	ApprovalCh chan<- ApprovalResponse
+	Org      string
+	WorkDir  string
+	Username string
+	EventCh  <-chan UIEvent
+	// OutCh carries every TUI-originated user event (chat messages, approval
+	// answers, …) to the dispatcher in runNeo. A single typed channel keeps
+	// Session focused on SSE intake and tool dispatch.
+	OutCh chan<- apitype.AgentUserEvent
 	// Busy seeds the input-gating state. True when the caller has already
 	// handed a prompt to the backend — the TUI starts with Enter disabled
 	// until the first UITaskIdle.
@@ -74,13 +75,12 @@ type ModelConfig struct {
 
 // Model is the top-level bubbletea model for the Neo TUI.
 type Model struct {
-	welcome    welcomeModel
-	viewport   viewport.Model
-	textInput  textinput.Model
-	blocks     []block
-	eventCh    <-chan UIEvent
-	sendCh     chan<- string
-	approvalCh chan<- ApprovalResponse
+	welcome   welcomeModel
+	viewport  viewport.Model
+	textInput textinput.Model
+	blocks    []block
+	eventCh   <-chan UIEvent
+	outCh     chan<- apitype.AgentUserEvent
 	// busy is true from the moment the user sends a message (or a prompt was
 	// provided up front) until the session emits UITaskIdle / UICancelled /
 	// UIError. While busy, Enter is swallowed so the user can't talk over
@@ -137,15 +137,14 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		viewport:   vp,
-		textInput:  ti,
-		eventCh:    cfg.EventCh,
-		sendCh:     cfg.SendCh,
-		approvalCh: cfg.ApprovalCh,
-		busy:       cfg.Busy,
-		spinner:    sp,
-		width:      80,
-		height:     24,
+		viewport:  vp,
+		textInput: ti,
+		eventCh:   cfg.EventCh,
+		outCh:     cfg.OutCh,
+		busy:      cfg.Busy,
+		spinner:   sp,
+		width:     80,
+		height:    24,
 	}
 	m.viewport.SetContent(m.welcome.View())
 	if cfg.Busy {
@@ -209,9 +208,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !approved {
 					denialMsg = text
 				}
-				if m.approvalCh != nil {
+				if m.outCh != nil {
 					select {
-					case m.approvalCh <- ApprovalResponse{
+					case m.outCh <- apitype.AgentUserEventUserConfirmation{
+						Type:       userEventUserConfirmation,
 						ApprovalID: m.pendingApprovalID,
 						Approved:   approved,
 						Message:    denialMsg,
@@ -256,9 +256,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			text := strings.TrimSpace(m.textInput.Value())
 			if text != "" {
 				m.textInput.Reset()
-				if m.sendCh != nil {
+				if m.outCh != nil {
 					select {
-					case m.sendCh <- text:
+					case m.outCh <- apitype.AgentUserEventUserMessage{
+						Type:    userEventUserMessage,
+						Content: text,
+					}:
 						return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 					default:
 					}
