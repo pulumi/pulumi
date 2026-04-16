@@ -867,7 +867,8 @@ func TestCreateNeoTask(t *testing.T) {
 		defer successServer.Close()
 
 		client := newMockClient(successServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
+		resp, err := client.CreateNeoTask(
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "", false)
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -881,7 +882,8 @@ func TestCreateNeoTask(t *testing.T) {
 		defer errorServer.Close()
 
 		client := newMockClient(errorServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
+		resp, err := client.CreateNeoTask(
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "", false)
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -895,7 +897,8 @@ func TestCreateNeoTask(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		client := newMockClient(unauthorizedServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
+		resp, err := client.CreateNeoTask(
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "", false)
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -922,7 +925,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", "cli", "")
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", "cli", "", false)
 		require.NoError(t, err)
 
 		assert.Equal(t, http.MethodPost, gotMethod)
@@ -983,12 +986,51 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "", "")
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "", "", false)
 		require.NoError(t, err)
 
 		message, _ := gotBody["message"].(map[string]any)
 		require.NotNil(t, message)
 		assert.NotContains(t, message, "entity_diff")
+	})
+
+	t.Run("PlanModeInRequestBody", func(t *testing.T) {
+		t.Parallel()
+
+		// planMode is a per-task feature flag plumbed on CreateAgentTaskRequest; the
+		// JSON tag must be camelCase planMode, and an omitted (false) value must not
+		// leak into the request so unrelated callers aren't implicitly opted in.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_3"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "plan this", "", "proj", "cli", "", true)
+		require.NoError(t, err)
+
+		assert.Equal(t, true, gotBody["planMode"], "planMode=true must be sent as planMode:true")
+	})
+
+	t.Run("PlanModeOmittedWhenFalse", func(t *testing.T) {
+		t.Parallel()
+
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_4"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "", "", false)
+		require.NoError(t, err)
+
+		assert.NotContains(t, gotBody, "planMode", "planMode must be omitted when false")
 	})
 }
 

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -38,6 +39,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// sessionConfig is the per-session mutable state shared between the bubbletea TUI
+// (which owns the toggle affordance) and the background dispatcher that calls
+// CreateNeoTask (which needs to read the final planMode value at task-creation time).
+// Both fields are atomic so the TUI can flip them from inside Update without
+// synchronising against the dispatcher goroutine.
+type sessionConfig struct {
+	// planMode reflects the user's current choice, toggled via Shift+Tab. Read once
+	// by the dispatcher when CreateNeoTask is invoked for the first user message;
+	// may be cleared by the TUI when the user approves an exit_plan_mode request.
+	planMode atomic.Bool
+	// taskCreated is set by the dispatcher after CreateNeoTask returns successfully.
+	// The TUI reads it to decide whether Shift+Tab should toggle (pre-task, effective)
+	// or emit a one-shot warning (post-task, ineffective because planMode is task-level).
+	taskCreated atomic.Bool
+}
 
 // NewNeoCmd creates the `pulumi neo` command. This first slice of the command starts a
 // Neo task in `cli` tool execution mode, prints a console URL the user can open in a
@@ -129,7 +146,10 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackRefName, projectName, "cli", client.NeoApprovalModeManual)
+		// Plan mode is only reachable via the TTY's Shift+Tab toggle today; scripted
+		// invocations are never started in plan mode.
+		resp, err := pc.CreateNeoTask(
+			ctx, orgName, prompt, stackRefName, projectName, "cli", client.NeoApprovalModeManual, false)
 		if err != nil {
 			return err
 		}
@@ -155,6 +175,10 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	// Resolve the username for the welcome greeting.
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
+	// Shared state between the TUI (toggle source) and the dispatcher (reader at
+	// CreateNeoTask time). Allocated here so both halves observe the same atomics.
+	sessionCfg := &sessionConfig{}
+
 	model := NewModel(ModelConfig{
 		Org:           orgName,
 		WorkDir:       cwdFlag,
@@ -163,6 +187,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		OutCh:         outCh,
 		Busy:          prompt != "",
 		InitialPrompt: prompt,
+		Config:        sessionCfg,
 	})
 
 	p := tea.NewProgram(model,
@@ -182,8 +207,13 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	// createTask creates the Neo task with the given prompt and starts the session.
 	// Called immediately if a prompt was provided, or on the first user message.
 	createTask := func(initialPrompt string) error {
+		// Snapshot planMode at task-creation time. The toggle is task-level on the
+		// wire, so late flips (e.g. a racing Shift+Tab while we're in flight) don't
+		// retroactively change the task's configuration.
+		planMode := sessionCfg.planMode.Load()
 		resp, err := pc.CreateNeoTask(
-			gctx, orgName, initialPrompt, stackRefName, projectName, "cli", client.NeoApprovalModeManual)
+			gctx, orgName, initialPrompt, stackRefName, projectName, "cli",
+			client.NeoApprovalModeManual, planMode)
 		if err != nil {
 			return err
 		}
@@ -191,6 +221,9 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		ts.mu.Lock()
 		ts.taskID = resp.TaskID
 		ts.mu.Unlock()
+		// Mark the task as created so the TUI's Shift+Tab handler switches from
+		// "toggle the atomic" to "emit a one-shot warning".
+		sessionCfg.taskCreated.Store(true)
 
 		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 		if consoleURL != "" {

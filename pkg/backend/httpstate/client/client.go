@@ -79,6 +79,11 @@ type NeoTaskRequest struct {
 	// ApprovalMode controls whether the agent requires user approval before executing tools.
 	// JSON tag is camelCase to match apitype.CreateAgentTaskRequest from pulumi-service.
 	ApprovalMode NeoApprovalMode `json:"approvalMode,omitempty"`
+	// PlanMode, when true, creates the task in plan mode: the agent explores and asks
+	// questions but must not write files, run `pulumi up`, or open PRs. The server enforces
+	// this by activating PlanModeTracker for the task and gating the exit on an approved
+	// exit_plan_mode call. JSON tag is camelCase to match the service IDL.
+	PlanMode bool `json:"planMode,omitempty"`
 }
 
 // NeoTaskMessage represents the message content for a Neo task.
@@ -1688,6 +1693,7 @@ func (pc *Client) ExplainPreviewWithNeo(
 // "cli" to have the cloud agent emit CliToolRequest events for the local-tool subset
 // (filesystem, shell) instead of running them itself. Pass an approvalMode of "manual"
 // to require user approval before each tool call; empty uses the server default.
+// Pass planMode = true to create the task in plan mode (explore/ask only, no writes).
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
@@ -1696,6 +1702,7 @@ func (pc *Client) CreateNeoTask(
 	projectName string,
 	toolExecutionMode string,
 	approvalMode NeoApprovalMode,
+	planMode bool,
 ) (*NeoTaskResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
@@ -1708,6 +1715,7 @@ func (pc *Client) CreateNeoTask(
 		},
 		ToolExecutionMode: toolExecutionMode,
 		ApprovalMode:      approvalMode,
+		PlanMode:          planMode,
 	}
 	// Only attach a stack entity when we actually have one — the backend rejects
 	// entity_diff entries with empty name/project as "unable to access stack".

@@ -272,9 +272,11 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 			return
 		}
 		sendUI(s.UIEvents, UIApprovalRequest{
-			ApprovalID:  a.ID,
-			Message:     a.Message,
-			Sensitivity: a.Sensitivity,
+			ApprovalID:      a.ID,
+			Message:         a.Message,
+			Sensitivity:     a.Sensitivity,
+			ApprovalType:    a.ApprovalType,
+			PlanDescription: a.Context.PlanDescription,
 		})
 	}
 	// Server-side exec_tool_call and tool_response events describe tools the agent

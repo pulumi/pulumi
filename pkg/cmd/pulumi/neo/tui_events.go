@@ -98,6 +98,14 @@ type UIApprovalRequest struct {
 	ApprovalID  string
 	Message     string
 	Sensitivity string
+	// ApprovalType is the wire discriminator that tells the TUI which rendering
+	// path to use. "plan_exit" triggers the plan rendering (markdown body, plan
+	// header, auto-exit on approval); any other value (today: "general") uses
+	// the regular tool-approval rendering.
+	ApprovalType string
+	// PlanDescription is the markdown plan body, populated only for plan_exit
+	// approvals. The TUI renders it through the glamour markdown renderer.
+	PlanDescription string
 }
 
 func (UIApprovalRequest) uiEvent() {}

@@ -152,6 +152,25 @@ type AgentBackendEventUserApprovalRequest struct {
 	ID          string `json:"id,omitempty"`
 	Message     string `json:"message,omitempty"`
 	Sensitivity string `json:"sensitivity,omitempty"`
+	// ApprovalType discriminates the rendering path. "plan_exit" is the gate fired
+	// for the exit_plan_mode tool — the CLI reads the plan body out of
+	// Context.PlanDescription and renders it as markdown. Any other value (today:
+	// "general") takes the regular tool-approval rendering path.
+	ApprovalType string `json:"approval_type,omitempty"`
+	// Context carries approval-type-specific payload. For "plan_exit" the relevant
+	// field is PlanDescription; for "general" approvals only ToolCallID / ToolName
+	// are set.
+	Context AgentBackendEventUserApprovalRequestContext `json:"context,omitzero"`
+}
+
+// AgentBackendEventUserApprovalRequestContext is the nested payload on
+// user_approval_request events.
+type AgentBackendEventUserApprovalRequestContext struct {
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	ToolName   string `json:"tool_name,omitempty"`
+	// PlanDescription is the markdown plan body the agent is asking the user to
+	// approve. Populated only when ApprovalType == "plan_exit".
+	PlanDescription string `json:"plan_description,omitempty"`
 }
 
 // AgentUserEventUserConfirmation is the user event a CLI client posts in response to a

@@ -853,6 +853,187 @@ func TestModel_View_ShowsHintBasedOnBusy(t *testing.T) {
 	assert.Contains(t, busy.View(), "enter disabled")
 }
 
+// -----------------------------------------------------------------------------
+// Plan mode
+// -----------------------------------------------------------------------------
+
+func TestModel_Update_ShiftTab_TogglesPlanModeBeforeTaskCreation(t *testing.T) {
+	t.Parallel()
+
+	// Shift+Tab before the task is created is the user's affordance to opt
+	// into plan mode. The toggle is reflected in the footer hint so the user
+	// gets immediate feedback without waiting for any server round trip.
+	cfg := &sessionConfig{}
+	m := NewModel(ModelConfig{Config: cfg})
+	assert.NotContains(t, m.View(), "plan mode on")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = updated.(Model)
+	assert.True(t, cfg.planMode.Load(), "Shift+Tab must flip planMode on")
+	assert.Contains(t, m.View(), "plan mode", "hint must show the plan-mode indicator")
+
+	// Second press toggles back off — same affordance, symmetric behaviour.
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = updated.(Model)
+	assert.False(t, cfg.planMode.Load(), "second Shift+Tab must flip planMode off")
+	assert.NotContains(t, m.View(), "plan mode on")
+}
+
+func TestModel_Update_ShiftTab_AfterTaskCreation_WarnsAndDoesNotToggle(t *testing.T) {
+	t.Parallel()
+
+	// Plan mode is task-level on the wire, so a post-creation toggle would be
+	// misleading: the server's state is fixed. The TUI must surface a warning
+	// and leave the atomic alone.
+	cfg := &sessionConfig{}
+	cfg.taskCreated.Store(true)
+	m := NewModel(ModelConfig{Config: cfg})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = updated.(Model)
+
+	assert.False(t, cfg.planMode.Load(), "post-creation Shift+Tab must not toggle planMode")
+	idx := m.findBlockKind(blockWarning)
+	require.NotEqual(t, -1, idx, "post-creation Shift+Tab must append a warning block")
+	assert.Contains(t, m.blocks[idx].rendered, "task-level")
+}
+
+func TestModel_Update_UIApprovalRequest_PlanCategory_RendersPlanHeaderAndMarkdown(t *testing.T) {
+	t.Parallel()
+
+	// A plan-category approval signals that the agent is ready to exit plan
+	// mode with its proposed plan. The body comes in as markdown and must be
+	// routed through the model's renderer so the user sees a formatted plan
+	// rather than raw asterisks. The distinct "Proposed plan" header tells
+	// the user this isn't a regular tool approval.
+	ch := make(chan UIEvent, 4)
+	cfg := &sessionConfig{}
+	cfg.planMode.Store(true)
+	m := NewModel(ModelConfig{EventCh: ch, Config: cfg})
+	// Initialize the markdown renderer (built on WindowSize).
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_1",
+		Message:         "I've finished exploring and have a plan ready for your review.",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n- step one\n- step two",
+	})
+	um := updated.(Model)
+
+	assert.True(t, um.pendingApproval, "plan approval must enter the pending state")
+	assert.True(t, um.pendingApprovalIsPlan, "plan approval must be flagged as a plan")
+	idx := um.findBlockKind(blockApproval)
+	require.NotEqual(t, -1, idx)
+	assert.Contains(t, um.blocks[idx].rendered, "Proposed plan")
+	// Glamour wraps each word in its own ANSI escape run; assert on word
+	// fragments that the renderer never splits ("step" shows up verbatim).
+	assert.Contains(t, um.blocks[idx].rendered, "step", "rendered plan must include the plan body")
+	assert.Contains(t, um.blocks[idx].rendered, "Plan", "rendered plan must include the heading")
+	assert.Contains(t, um.textInput.Prompt, "Approve plan",
+		"prompt must indicate this is a plan approval")
+}
+
+func TestModel_Update_UIApprovalRequest_General_UsesExistingApprovalRendering(t *testing.T) {
+	t.Parallel()
+
+	// Regular (non-plan) tool approvals keep the existing "⚠ Approval required"
+	// rendering and generic prompt. The plan path must not leak into them — they
+	// share the same wire event type (user_approval_request) and only diverge on
+	// ApprovalType.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_2",
+		Message:      "run pulumi up",
+		ApprovalType: "general",
+	})
+	um := updated.(Model)
+
+	assert.False(t, um.pendingApprovalIsPlan)
+	idx := um.findBlockKind(blockApproval)
+	require.NotEqual(t, -1, idx)
+	assert.Contains(t, um.blocks[idx].rendered, "Approval required")
+	assert.Contains(t, um.textInput.Prompt, "Approve?")
+	assert.NotContains(t, um.textInput.Prompt, "plan")
+}
+
+func TestModel_Update_ApprovePlan_ClearsPlanMode(t *testing.T) {
+	t.Parallel()
+
+	// Approving the plan exits plan mode server-side (PlanModeTracker stops
+	// gating writes); the local indicator must mirror that immediately so the
+	// footer doesn't misrepresent the effective state.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	cfg := &sessionConfig{}
+	cfg.planMode.Store(true)
+	m := NewModel(ModelConfig{OutCh: outCh, Config: cfg})
+
+	// Simulate receiving the plan approval request.
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_3",
+		Message:         "I've finished exploring.",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n- step one\n- step two",
+	})
+	m = updated.(Model)
+	m.textInput.SetValue("y")
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected AgentUserEventUserConfirmation, got %T", got)
+		assert.True(t, conf.Approved)
+		assert.Equal(t, "appr_3", conf.ApprovalID)
+	default:
+		t.Fatal("approving plan must post a confirmation event")
+	}
+
+	assert.False(t, cfg.planMode.Load(), "approved plan must auto-clear planMode")
+	assert.False(t, m.pendingApproval)
+	assert.False(t, m.pendingApprovalIsPlan)
+}
+
+func TestModel_Update_DenyPlan_LeavesPlanModeOn(t *testing.T) {
+	t.Parallel()
+
+	// Denying the plan means the user wants the agent to re-plan — plan mode
+	// must stay on so writes remain gated while the agent iterates.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	cfg := &sessionConfig{}
+	cfg.planMode.Store(true)
+	m := NewModel(ModelConfig{OutCh: outCh, Config: cfg})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_4",
+		Message:         "I've finished exploring.",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n- step one\n- step two",
+	})
+	m = updated.(Model)
+	m.textInput.SetValue("cover error handling too")
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok)
+		assert.False(t, conf.Approved)
+		assert.Equal(t, "cover error handling too", conf.Message, "denial text becomes the re-plan instructions")
+	default:
+		t.Fatal("denying plan must post a confirmation event")
+	}
+
+	assert.True(t, cfg.planMode.Load(), "denied plan must leave planMode on")
+}
+
 func TestModel_RenderMarkdown_FallsBackWhenRendererNil(t *testing.T) {
 	t.Parallel()
 
