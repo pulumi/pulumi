@@ -662,7 +662,15 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 	return stack, nil
 }
 
-// CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
+// CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
+// created, beyond the stack itself.
+type CreateStackDetails struct {
+	Messages []apitype.Message
+}
+
+// CreateStack creates a stack with the given cloud and stack name in the scope of the indicated
+// project. It returns the created stack along with any side information the backend wants the CLI
+// to act on (e.g. messages to display to the user).
 func (pc *Client) CreateStack(
 	ctx context.Context,
 	stackID StackIdentifier,
@@ -670,10 +678,10 @@ func (pc *Client) CreateStack(
 	teams []string,
 	state *apitype.UntypedDeployment,
 	config *apitype.StackConfig,
-) (apitype.Stack, error) {
+) (apitype.Stack, CreateStackDetails, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
-		return apitype.Stack{}, fmt.Errorf("validating stack properties: %w", err)
+		return apitype.Stack{}, CreateStackDetails{}, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	stack := apitype.Stack{
@@ -690,13 +698,16 @@ func (pc *Client) CreateStack(
 		Config:    config,
 	}
 
+	var createStackResp apitype.CreateStackResponse
 	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
 	if err := pc.restCall(
-		ctx, "POST", endpoint, nil, &createStackReq, nil); err != nil {
-		return apitype.Stack{}, err
+		ctx, "POST", endpoint, nil, &createStackReq, &createStackResp); err != nil {
+		return apitype.Stack{}, CreateStackDetails{}, err
 	}
 
-	return stack, nil
+	return stack, CreateStackDetails{
+		Messages: createStackResp.Messages,
+	}, nil
 }
 
 // DeleteStack deletes the indicated stack. If force is true, the stack is deleted even if it contains resources.
