@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk/dotnet
+  description: Upgrade dotnet to v3.103.0

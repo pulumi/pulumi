@@ -40,6 +40,63 @@ export type ComponentResourceConstructor = {
 };
 
 /**
+ * Returns true if the given value is a constructor whose prototype chain
+ * includes ComponentResource.
+ *
+ * @internal exported for testing
+ */
+export function isComponentResourceConstructor(value: any): value is ComponentResourceConstructor {
+    if (typeof value !== "function" || !value.prototype) {
+        return false;
+    }
+    let proto = value.prototype;
+    while (proto?.__proto__) {
+        proto = proto.__proto__;
+        if (
+            proto.constructor &&
+            (proto.constructor.name === "ComponentResource" || proto.constructor.__pulumiComponentResource === true)
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Filter the explicit `components` array passed to `componentProviderHost`,
+ * emitting a warning via the supplied `warn` callback for any entry that is
+ * not a `ComponentResource` subclass.
+ *
+ * Source-based component plugins only support classes that extend
+ * `ComponentResource`. Anything else (e.g. a `CustomResource` subclass, a
+ * plain class, or a non-class value) is silently dropped from the generated
+ * schema/SDK, which is a footgun. This helper surfaces a clear diagnostic
+ * naming the offending value while still allowing the host to run with the
+ * valid components.
+ *
+ * @internal exported for testing
+ */
+export function validateExplicitComponents(
+    components: any[],
+    warn: (msg: string) => void = console.warn,
+): ComponentResourceConstructor[] {
+    const valid: ComponentResourceConstructor[] = [];
+    for (const c of components) {
+        if (isComponentResourceConstructor(c)) {
+            valid.push(c);
+        } else {
+            const label = (typeof c === "function" && (c as any).name) || String(c);
+            warn(
+                `componentProviderHost: '${label}' is not a ComponentResource subclass and will be ` +
+                    `excluded from the generated schema/SDK. Source-based component plugins only ` +
+                    `support classes that extend ComponentResource.`,
+            );
+        }
+    }
+    return valid;
+}
+
+/**
  * Get all Pulumi Component constructors from a module's exports.
  * @param moduleExports The exports object of the module to check.
  * @returns Array of Pulumi Component constructors found in the exports.
@@ -216,6 +273,8 @@ export function componentProviderHost(options: ComponentProviderOptions): Promis
         return Promise.resolve();
     }
     isHosting = true;
+
+    options.components = validateExplicitComponents(options.components);
 
     const args = process.argv.slice(2);
     // If dirname is not provided, get it from the call stack

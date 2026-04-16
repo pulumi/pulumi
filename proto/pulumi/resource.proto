@@ -27,6 +27,17 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
+    // GetDeploymentInfo returns the execution context associated with this monitor instance.
+    //
+    // This is an additive API intended to reduce duplicated state passed through
+    // environment variables and per-request protobuf fields. New clients should
+    // prefer this over piecemeal feature probing via SupportsFeature.
+    //
+    // Backward compatibility:
+    // - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+    // - Clients should fall back to existing request fields/env vars/SupportsFeature.
+    rpc GetDeploymentInfo(google.protobuf.Empty) returns (DeploymentInfo) {}
+
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
     rpc Call(ResourceCallRequest) returns (CallResponse) {}
@@ -59,6 +70,54 @@ service ResourceMonitor {
     // after the user program has completed. Runtime SDKs should call this after
     // executing the user's program. This can only be called once.
     rpc SignalAndWaitForShutdown(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
+
+// ResourceMonitorFeature is a strongly typed monitor capability identifier.
+//
+// The string IDs used by SupportsFeature are preserved for compatibility; new
+// clients should prefer these enum values from DeploymentInfo.
+enum ResourceMonitorFeature {
+    RESOURCE_MONITOR_FEATURE_SECRETS = 0;
+    RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES = 1;
+    RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES = 2;
+    RESOURCE_MONITOR_FEATURE_ALIAS_SPECS = 3;
+    RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER = 4;
+    RESOURCE_MONITOR_FEATURE_DELETED_WITH = 5;
+    RESOURCE_MONITOR_FEATURE_REPLACE_WITH = 6;
+    RESOURCE_MONITOR_FEATURE_TRANSFORMS = 7;
+    RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS = 8;
+    RESOURCE_MONITOR_FEATURE_PARAMETERIZATION = 9;
+    RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS = 10;
+    RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11;
+    RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS = 12;
+}
+
+// DeploymentInfo returns monitor execution state currently sent to programs
+// and/or providers through other channels.
+message DeploymentInfo {
+    // The project name.
+    string project = 1;
+
+    // The stack name.
+    string stack = 2;
+
+    // The organization name.
+    string organization = 3;
+
+    // The stack configuration values.
+    map<string, string> config = 4;
+
+    // Configuration keys whose values are secret.
+    repeated string configSecretKeys = 5;
+
+    // True if the current execution is preview/dry-run.
+    bool dryRun = 6;
+
+    // Requested operation parallelism (<=1 for serial execution).
+    int32 parallel = 7;
+
+    // The set of monitor-supported protocol features.
+    repeated ResourceMonitorFeature supportedFeatures = 8;
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use

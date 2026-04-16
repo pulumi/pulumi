@@ -640,7 +640,12 @@ class CallRequest(google.protobuf.message.Message):
     ACCEPTS_OUTPUT_VALUES_FIELD_NUMBER: builtins.int
     STACK_TRACE_HANDLE_FIELD_NUMBER: builtins.int
     tok: builtins.str
-    """the function token to invoke."""
+    """NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    remain for backward compatibility. Newer providers may read these via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
+
+    the function token to invoke.
+    """
     project: builtins.str
     """the project name."""
     stack: builtins.str
@@ -1759,7 +1764,12 @@ class ConstructRequest(google.protobuf.message.Message):
     ALIASES_FIELD_NUMBER: builtins.int
     REPLACEMENT_TRIGGER_FIELD_NUMBER: builtins.int
     project: builtins.str
-    """The project to which this resource and its nested resources will belong."""
+    """NOTE: execution context fields (project/stack/config/dryRun/parallel/monitorEndpoint/organization)
+    remain for backward compatibility. Newer providers may read these via
+    [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitorEndpoint`.
+
+    The project to which this resource and its nested resources will belong.
+    """
     stack: builtins.str
     """The name of the stack being deployed into."""
     dryRun: builtins.bool

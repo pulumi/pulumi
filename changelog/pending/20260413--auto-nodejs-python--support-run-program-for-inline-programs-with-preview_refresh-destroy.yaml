@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: auto/nodejs,python
+  description: Support --run-program for inline programs with preview_refresh/destroy

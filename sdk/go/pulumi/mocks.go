@@ -140,6 +140,30 @@ func (m *mockMonitor) SupportsFeature(ctx context.Context, in *pulumirpc.Support
 	}, nil
 }
 
+func (m *mockMonitor) GetDeploymentInfo(ctx context.Context, in *emptypb.Empty,
+	opts ...grpc.CallOption,
+) (*pulumirpc.DeploymentInfo, error) {
+	features := []pulumirpc.ResourceMonitorFeature{
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS,
+		pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS,
+	}
+
+	return &pulumirpc.DeploymentInfo{
+		Project:           m.project,
+		Stack:             m.stack,
+		SupportedFeatures: features,
+	}, nil
+}
+
 func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.ResourceInvokeRequest,
 	opts ...grpc.CallOption,
 ) (*pulumirpc.InvokeResponse, error) {

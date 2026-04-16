@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk-nodejs
+  description: Warn when a non-ComponentResource class is passed in the explicit `components` list to `componentProviderHost`

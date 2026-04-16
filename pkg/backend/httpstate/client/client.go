@@ -288,11 +288,11 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 }
 
 func publishPackagePath(source, publisher, name string) string {
-	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions", source, publisher, name)
+	return fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions", source, publisher, name)
 }
 
 func completePackagePublishPath(source, publisher, name, version string) string {
-	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+	return fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
 func deletePackageVersionPath(source, publisher, name, version string) string {
@@ -1889,7 +1889,7 @@ func (pc *Client) GetPackage(
 	if version != nil {
 		v = version.String()
 	}
-	url := fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, v)
+	url := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, v)
 	var resp apitype.PackageMetadata
 	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
 	return resp, err
@@ -1972,7 +1972,7 @@ func (pc *Client) downloadWithRawClient(ctx context.Context, downloadURL string)
 }
 
 func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-	url := "/api/preview/registry/packages?limit=499"
+	url := "/api/registry/packages?limit=499"
 	if name != nil {
 		url += "&name=" + *name
 	}
