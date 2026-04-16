@@ -1692,6 +1692,16 @@ func (t *types) bindResourceDetails(
 		stateInputs = si.InputShape
 	}
 
+	var listInputs *ObjectType
+	if spec.ListInputs != nil {
+		li, listDiags, err := t.bindAnonymousObjectType(path+"/listInputs", token+"ListArgs", *spec.ListInputs, options)
+		diags = diags.Extend(listDiags)
+		if err != nil {
+			return diags, fmt.Errorf("error binding list inputs for %v: %w", token, err)
+		}
+		listInputs = li.InputShape
+	}
+
 	aliases := slice.Prealloc[*Alias](len(spec.Aliases))
 	for _, a := range spec.Aliases {
 		aliases = append(aliases, &Alias{compatibility: a.compatibility, Type: a.Type})
@@ -1704,6 +1714,7 @@ func (t *types) bindResourceDetails(
 		InputProperties:           inputProperties,
 		Properties:                properties,
 		StateInputs:               stateInputs,
+		ListInputs:                listInputs,
 		Aliases:                   aliases,
 		DeprecationMessage:        spec.DeprecationMessage,
 		Language:                  makeLanguageMap(spec.Language),
