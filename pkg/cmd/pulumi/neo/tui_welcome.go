@@ -151,8 +151,9 @@ func (w welcomeModel) View() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(magenta).
 		Padding(1, 2).
+		MarginLeft(2).
 		Width(contentWidth).
 		Render(strings.Join(lines, "\n"))
 
-	return "\n  " + strings.ReplaceAll(rendered, "\n", "\n  ") + "\n"
+	return "\n" + rendered + "\n"
 }
