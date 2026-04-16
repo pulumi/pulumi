@@ -94,7 +94,6 @@ func pickGreeting(name string) string {
 func (w welcomeModel) View() string {
 	magenta := lipgloss.Color("5")
 	dim := lipgloss.NewStyle().Faint(true)
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(magenta)
 
 	displayDir := w.workDir
 	if home, err := os.UserHomeDir(); err == nil {
@@ -108,17 +107,11 @@ func (w welcomeModel) View() string {
 	totalWidth := max(w.termWidth, 30)
 	contentWidth := max(totalWidth-2-2-4, 20)
 
-	center := func(s string) string {
-		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, s)
-	}
-
-	var lines []string
-	lines = append(lines, center(titleStyle.Render("Pulumi Neo")), "", w.greeting, "")
-
-	for line := range strings.SplitSeq(strings.TrimRight(pulumipusArt, "\n"), "\n") {
-		lines = append(lines, line)
-	}
-	lines = append(lines, "")
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(magenta).
+		Width(contentWidth).
+		Align(lipgloss.Center)
 
 	infoText := displayDir
 	if w.org != "" {
@@ -135,7 +128,16 @@ func (w welcomeModel) View() string {
 			infoText = displayDir + orgSuffix
 		}
 	}
-	lines = append(lines, dim.Render(infoText))
+
+	parts := []string{
+		titleStyle.Render("Pulumi Neo"),
+		"",
+		w.greeting,
+		"",
+		strings.TrimRight(pulumipusArt, "\n"),
+		"",
+		dim.Render(infoText),
+	}
 
 	if w.consoleURL != "" {
 		linkText := w.consoleURL
@@ -144,16 +146,14 @@ func (w welcomeModel) View() string {
 			linkText = string([]rune(linkText)[:maxLink-3]) + "..."
 		}
 		hyperlink := fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\", w.consoleURL, linkText)
-		lines = append(lines, dim.Render("⟡ "+hyperlink))
+		parts = append(parts, dim.Render("⟡ "+hyperlink))
 	}
 
-	rendered := lipgloss.NewStyle().
+	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(magenta).
 		Padding(1, 2).
-		MarginLeft(2).
+		Margin(1, 0, 1, 2).
 		Width(contentWidth).
-		Render(strings.Join(lines, "\n"))
-
-	return "\n" + rendered + "\n"
+		Render(lipgloss.JoinVertical(lipgloss.Left, parts...))
 }
