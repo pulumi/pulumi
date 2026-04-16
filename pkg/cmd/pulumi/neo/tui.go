@@ -93,9 +93,7 @@ type Model struct {
 	height     int
 	// frame advances on each spinner.TickMsg while busy and drives the
 	// shimmer animation on the busy block's label.
-	frame int
-	// Approval state: set when the session has emitted a UIApprovalRequest and
-	// the TUI is waiting for the user to type y/yes or a denial reason.
+	frame             int
 	pendingApproval   bool
 	pendingApprovalID string
 }
@@ -197,9 +195,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		// Approval mode: "y"/"yes" + Enter approves, anything else + Enter denies
-		// with the typed text as guidance. We handle this before the busy check
-		// because the agent is intentionally paused here waiting for the user.
+		// Handled before the busy check because the agent is intentionally
+		// paused here waiting for the user.
 		if m.pendingApproval {
 			if msg.Type == tea.KeyEnter {
 				text := strings.TrimSpace(m.textInput.Value())
@@ -241,7 +238,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.rebuildContent()
 				return m, nil
 			}
-			// Pass other keys to textinput for typing the denial reason.
 			var tiCmd tea.Cmd
 			m.textInput, tiCmd = m.textInput.Update(msg)
 			return m, tiCmd

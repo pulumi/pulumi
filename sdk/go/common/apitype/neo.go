@@ -104,9 +104,7 @@ type AgentUserEventExecToolCall struct {
 }
 
 // AgentUserEvent is the sealed interface implemented by user events the TUI posts back
-// to the Neo task. The CLI dispatcher carries values of this type on a single channel
-// and forwards them to PostNeoTaskUserEvent; the JSON discriminator is set per-variant
-// via the Type field.
+// to the Neo task. The JSON discriminator is set per-variant via the Type field.
 type AgentUserEvent interface {
 	isAgentUserEvent()
 }
@@ -159,9 +157,9 @@ type AgentBackendEventUserApprovalRequest struct {
 // AgentUserEventUserConfirmation is the user event a CLI client posts in response to a
 // user_approval_request backend event, approving or denying the requested operation.
 type AgentUserEventUserConfirmation struct {
-	Type       string `json:"type"`                   // always "user_confirmation"
-	ApprovalID string `json:"approval_request_id"`    // echoes the approval_request_id from the request
-	Approved   bool   `json:"ok"`                     // true to approve, false to deny
+	Type       string `json:"type"`                // always "user_confirmation"
+	ApprovalID string `json:"approval_request_id"` // echoes the approval_request_id from the request
+	Approved   bool   `json:"ok"`
 	Message    string `json:"instructions,omitempty"` // if rejected, guidance for the agent on what to do instead
 }
 

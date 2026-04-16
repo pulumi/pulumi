@@ -22,6 +22,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // -----------------------------------------------------------------------------
@@ -319,9 +321,9 @@ func TestModel_Update_KeyEnter_WhileBusy_SwallowsAndDoesNotSend(t *testing.T) {
 	t.Parallel()
 
 	// Enter while busy must be a no-op: the typed text stays in the input
-	// (user can retry after UITaskIdle) and no value is posted to sendCh.
-	sendCh := make(chan string, 1)
-	m := NewModel(ModelConfig{SendCh: sendCh, Busy: true})
+	// (user can retry after UITaskIdle) and no value is posted to outCh.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
 	m.textInput.SetValue("queued")
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -330,8 +332,8 @@ func TestModel_Update_KeyEnter_WhileBusy_SwallowsAndDoesNotSend(t *testing.T) {
 	assert.Nil(t, cmd)
 	assert.Equal(t, "queued", um.textInput.Value(), "text must stay in input while busy")
 	select {
-	case got := <-sendCh:
-		t.Fatalf("no message must be sent while busy, got %q", got)
+	case got := <-outCh:
+		t.Fatalf("no message must be sent while busy, got %+v", got)
 	default:
 	}
 }
@@ -339,18 +341,20 @@ func TestModel_Update_KeyEnter_WhileBusy_SwallowsAndDoesNotSend(t *testing.T) {
 func TestModel_Update_KeyEnter_Idle_SendsAndClearsInput(t *testing.T) {
 	t.Parallel()
 
-	sendCh := make(chan string, 1)
-	m := NewModel(ModelConfig{SendCh: sendCh})
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh})
 	m.textInput.SetValue("hello")
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	um := updated.(Model)
 
 	select {
-	case got := <-sendCh:
-		assert.Equal(t, "hello", got)
+	case got := <-outCh:
+		msg, ok := got.(apitype.AgentUserEventUserMessage)
+		require.True(t, ok, "Enter must post a UserMessage event")
+		assert.Equal(t, "hello", msg.Content)
 	default:
-		t.Fatal("Enter must post the input to sendCh")
+		t.Fatal("Enter must post the input to outCh")
 	}
 	assert.Empty(t, um.textInput.Value(), "input must clear after send")
 	assert.True(t, um.busy, "sending must enter the busy state")
@@ -359,8 +363,8 @@ func TestModel_Update_KeyEnter_Idle_SendsAndClearsInput(t *testing.T) {
 func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 	t.Parallel()
 
-	sendCh := make(chan string, 1)
-	m := NewModel(ModelConfig{SendCh: sendCh})
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh})
 	// input left empty
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -368,9 +372,179 @@ func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 
 	assert.False(t, um.busy, "empty Enter must not enter the busy state")
 	select {
-	case got := <-sendCh:
-		t.Fatalf("empty Enter must not send, got %q", got)
+	case got := <-outCh:
+		t.Fatalf("empty Enter must not send, got %+v", got)
 	default:
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Approval flow
+// -----------------------------------------------------------------------------
+
+// newApprovalPendingModel returns a Model that has just received an approval
+// request — busy is cleared, pendingApproval is true, and the prompt has been
+// swapped to the approval prompt. Mirrors the state UIApprovalRequest leaves
+// behind so each Enter test can start from a known point.
+func newApprovalPendingModel(t *testing.T, outCh chan apitype.AgentUserEvent) Model {
+	t.Helper()
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: make(chan UIEvent, 4), Busy: true})
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:  "appr_1",
+		Message:     "Run pulumi up?",
+		Sensitivity: "high",
+	})
+	return updated.(Model)
+}
+
+func TestModel_Update_UIApprovalRequest_ShowsPromptAndPausesAgent(t *testing.T) {
+	t.Parallel()
+
+	// The approval request must clear busy (the agent is intentionally paused),
+	// append a visible approval block, and swap the input prompt so the user
+	// knows Enter now answers the approval rather than sending a chat message.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	m := newApprovalPendingModel(t, outCh)
+
+	assert.False(t, m.busy, "approval request must end busy so the user can answer")
+	assert.True(t, m.pendingApproval)
+	assert.Equal(t, "appr_1", m.pendingApprovalID)
+	assert.GreaterOrEqual(t, m.findBlockKind(blockApproval), 0, "an approval block must be appended")
+	assert.Contains(t, m.textInput.Prompt, "Approve?", "input prompt must reflect approval mode")
+}
+
+func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
+	t.Parallel()
+
+	cases := []string{"y", "Y", "yes", "YES", "Yes"}
+	for _, in := range cases {
+		t.Run(in, func(t *testing.T) {
+			t.Parallel()
+			outCh := make(chan apitype.AgentUserEvent, 1)
+			m := newApprovalPendingModel(t, outCh)
+			m.textInput.SetValue(in)
+
+			updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			um := updated.(Model)
+
+			// Must post a confirmation event with Approved=true and no instructions.
+			select {
+			case got := <-outCh:
+				conf, ok := got.(apitype.AgentUserEventUserConfirmation)
+				require.True(t, ok, "expected UserConfirmation, got %T", got)
+				assert.True(t, conf.Approved, "%q must be parsed as approval", in)
+				assert.Equal(t, "appr_1", conf.ApprovalID, "must echo the request id")
+				assert.Empty(t, conf.Message, "approval must not carry instructions")
+				assert.Equal(t, userEventUserConfirmation, conf.Type)
+			default:
+				t.Fatalf("Enter must post a confirmation event")
+			}
+
+			// State must reset: pendingApproval cleared, prompt restored, input
+			// cleared, and a busy block re-armed because the agent is about to
+			// resume work.
+			assert.False(t, um.pendingApproval)
+			assert.Empty(t, um.pendingApprovalID)
+			assert.Empty(t, um.textInput.Value())
+			assert.True(t, um.busy, "approving must hand the turn back to the agent")
+			require.NotNil(t, cmd, "approval must return the spinner Tick command")
+		})
+	}
+}
+
+func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
+	t.Parallel()
+
+	// Anything that isn't "y"/"yes" is treated as a denial; the typed text becomes
+	// the instructions field so the agent can act on the user's reasoning.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	m := newApprovalPendingModel(t, outCh)
+	m.textInput.SetValue("not on prod")
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	um := updated.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected UserConfirmation, got %T", got)
+		assert.False(t, conf.Approved)
+		assert.Equal(t, "appr_1", conf.ApprovalID)
+		assert.Equal(t, "not on prod", conf.Message, "denial must forward the typed reason")
+	default:
+		t.Fatal("Enter must post a confirmation event")
+	}
+
+	assert.False(t, um.pendingApproval)
+	assert.False(t, um.busy, "denial must NOT re-arm busy — the agent is not running")
+	assert.Nil(t, cmd, "denial must not return a spinner cmd")
+}
+
+func TestModel_Update_KeyEnter_Approval_DenyEmpty(t *testing.T) {
+	t.Parallel()
+
+	// An empty input is a denial with no instructions. Same outcome as a reasoned
+	// denial wire-wise (Approved=false), with an empty Message field.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	m := newApprovalPendingModel(t, outCh)
+	// input left empty
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	um := updated.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected UserConfirmation, got %T", got)
+		assert.False(t, conf.Approved)
+		assert.Empty(t, conf.Message)
+	default:
+		t.Fatal("Enter must post a confirmation event even on empty input")
+	}
+	assert.False(t, um.busy)
+}
+
+func TestModel_Update_Approval_NonEnterKey_ForwardsToTextInput(t *testing.T) {
+	t.Parallel()
+
+	// While waiting for approval, non-Enter keys must still type into the input
+	// (so the user can compose a denial reason). The approval state must NOT
+	// clear and no event may be posted.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	m := newApprovalPendingModel(t, outCh)
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	um := updated.(Model)
+
+	assert.True(t, um.pendingApproval, "non-Enter key must not exit approval mode")
+	assert.Equal(t, "a", um.textInput.Value())
+	select {
+	case got := <-outCh:
+		t.Fatalf("non-Enter must not post a confirmation, got %+v", got)
+	default:
+	}
+}
+
+func TestModel_Update_KeyEnter_Approval_NotGatedByBusy(t *testing.T) {
+	t.Parallel()
+
+	// The approval branch sits ahead of the busy gate in Update because the agent
+	// is intentionally paused waiting for the user. Even if busy somehow stayed
+	// true (e.g. a stray TickMsg arrived between UIApprovalRequest and Enter),
+	// Enter must still answer the approval rather than be swallowed.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	m := newApprovalPendingModel(t, outCh)
+	m.busy = true // simulate a stale busy state
+	m.textInput.SetValue("y")
+
+	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	select {
+	case got := <-outCh:
+		conf, ok := got.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok)
+		assert.True(t, conf.Approved)
+	default:
+		t.Fatal("approval Enter must not be gated by busy")
 	}
 }
 
