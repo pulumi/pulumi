@@ -29,7 +29,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 // LogExporter receives decoded OTLP log records. Property value
@@ -84,8 +84,9 @@ func (s *service) Export(
 }
 
 // decodePropertyValues walks all log record attributes and replaces
-// any BytesValue that decodes as a LogPropertyValue with the JSON
-// string representation.
+// any BytesValue that decodes as a property value (via the magic
+// prefix in plugin.DecodePropertyValueFromLog) with its JSON string
+// representation.
 func decodePropertyValues(logs plog.Logs) {
 	for i := range logs.ResourceLogs().Len() {
 		rl := logs.ResourceLogs().At(i)
@@ -102,9 +103,9 @@ func decodeRecordAttrs(lr plog.LogRecord) {
 	lr.Attributes().Range(func(key string, val pcommon.Value) bool {
 		if val.Type() == pcommon.ValueTypeBytes {
 			raw := val.Bytes().AsRaw()
-			s, err := otelreceiver.DecodePropertyValue(raw)
+			pv, err := plugin.DecodePropertyValueFromLog(raw)
 			if err == nil {
-				b, err := json.Marshal(s.AsMap())
+				b, err := json.Marshal(pv.Mappable())
 				if err == nil {
 					val.SetStr(string(b))
 				}
