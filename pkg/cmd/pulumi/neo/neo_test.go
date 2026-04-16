@@ -207,3 +207,40 @@ func TestResolveTaskTarget_OmitsProjectNameWhenProjectNil(t *testing.T) {
 }
 
 func ws() pkgWorkspace.Context { return &pkgWorkspace.MockContext{} }
+
+// -----------------------------------------------------------------------------
+// NewNeoCmd
+// -----------------------------------------------------------------------------
+
+//nolint:paralleltest // uses t.Setenv to toggle PULUMI_EXPERIMENTAL
+func TestNewNeoCmd_RegistersFlags(t *testing.T) {
+	// Flag surface is part of the public CLI contract — renaming or dropping any
+	// of these breaks users' scripts. Pin the shape.
+	t.Setenv("PULUMI_EXPERIMENTAL", "true")
+	cmd := NewNeoCmd()
+
+	assert.Equal(t, "neo [prompt]", cmd.Use)
+	assert.False(t, cmd.Hidden, "with PULUMI_EXPERIMENTAL=true the command must be visible")
+
+	stack := cmd.Flags().Lookup("stack")
+	require.NotNil(t, stack, "--stack flag must be registered")
+	assert.Equal(t, "s", stack.Shorthand)
+
+	require.NotNil(t, cmd.Flags().Lookup("org"), "--org flag must be registered")
+	require.NotNil(t, cmd.Flags().Lookup("cwd"), "--cwd flag must be registered")
+
+	// cobra.MaximumNArgs(1): 0 or 1 prompt args OK, 2+ rejected.
+	require.NoError(t, cmd.Args(cmd, []string{}))
+	require.NoError(t, cmd.Args(cmd, []string{"hello"}))
+	require.Error(t, cmd.Args(cmd, []string{"a", "b"}), "more than one positional arg must be rejected")
+}
+
+//nolint:paralleltest // uses t.Setenv to toggle PULUMI_EXPERIMENTAL
+func TestNewNeoCmd_HiddenWhenNotExperimental(t *testing.T) {
+	// env.Experimental.Value() is read at command construction; clearing the
+	// env var and re-constructing must hide the command so users on stable
+	// channels don't see it in `pulumi --help`.
+	t.Setenv("PULUMI_EXPERIMENTAL", "")
+	cmd := NewNeoCmd()
+	assert.True(t, cmd.Hidden, "without PULUMI_EXPERIMENTAL the command must be hidden")
+}
