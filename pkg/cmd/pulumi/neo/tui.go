@@ -60,7 +60,7 @@ type ModelConfig struct {
 	WorkDir  string
 	Username string
 	EventCh  <-chan UIEvent
-	SendCh   chan<- string // outbound channel for user chat messages
+	SendCh   chan<- string
 	// Busy seeds the input-gating state. True when the caller has already
 	// handed a prompt to the backend — the TUI starts with Enter disabled
 	// until the first UITaskIdle.
@@ -74,7 +74,7 @@ type Model struct {
 	textInput textinput.Model
 	blocks    []block
 	eventCh   <-chan UIEvent
-	sendCh    chan<- string // outbound user messages
+	sendCh    chan<- string
 	// busy is true from the moment the user sends a message (or a prompt was
 	// provided up front) until the session emits UITaskIdle / UICancelled /
 	// UIError. While busy, Enter is swallowed so the user can't talk over
@@ -156,7 +156,6 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-// Update handles messages and returns the updated model and any commands.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
@@ -413,7 +412,6 @@ func (m *Model) endBusy() {
 	m.removeBlockKind(blockBusy)
 }
 
-// removeBlockKind removes all blocks of the given kind.
 func (m *Model) removeBlockKind(kind blockKind) {
 	filtered := m.blocks[:0]
 	for _, b := range m.blocks {
@@ -487,7 +485,6 @@ func waitForEvent(ch <-chan UIEvent) tea.Cmd {
 	}
 }
 
-// truncate truncates a string to maxLen characters, adding "..." if needed.
 func truncate(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s

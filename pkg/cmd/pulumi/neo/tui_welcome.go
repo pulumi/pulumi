@@ -131,7 +131,6 @@ func (w welcomeModel) View() string {
 		bold.Foreground(lipgloss.Color("5")).Render(title),
 		magenta.Render(strings.Repeat("─", rightDash)), magenta.Render("╮")))
 
-	// Helper to write a box line with padding.
 	boxLine := func(content string, visWidth int) {
 		pad := boxInner - visWidth
 		if pad < 0 {
@@ -141,17 +140,14 @@ func (w welcomeModel) View() string {
 			magenta.Render("│"), content, strings.Repeat(" ", pad), magenta.Render("│")))
 	}
 
-	// Blank line.
 	boxLine("", 0)
 
 	// Greeting (cached at model creation to avoid changing on every View call).
 	greetContent := "  " + w.greeting
 	boxLine(greetContent, lipgloss.Width(greetContent))
 
-	// Blank line.
 	boxLine("", 0)
 
-	// Art lines.
 	artIndent := 4
 	for _, line := range artLines {
 		vis := lipgloss.Width(line)
@@ -159,7 +155,6 @@ func (w welcomeModel) View() string {
 		boxLine(content, artIndent+vis)
 	}
 
-	// Blank line.
 	boxLine("", 0)
 
 	// Info line: path . org
@@ -196,10 +191,8 @@ func (w welcomeModel) View() string {
 		boxLine(linkContent, lipgloss.Width(prefix+"⟡ "+linkText))
 	}
 
-	// Blank line.
 	boxLine("", 0)
 
-	// Bottom border.
 	sb.WriteString(fmt.Sprintf("  %s%s%s\n",
 		magenta.Render("╰"), magenta.Render(strings.Repeat("─", boxInner)), magenta.Render("╯")))
 

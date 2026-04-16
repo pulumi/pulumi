@@ -60,6 +60,6 @@ type BackendEvent struct {
 // UserMessageEvent is the user event the CLI posts when the user sends a chat message
 // from the TUI.
 type UserMessageEvent struct {
-	Type    string `json:"type"`    // always "user_message"
-	Content string `json:"content"` // the user's message text
+	Type    string `json:"type"`
+	Content string `json:"content"`
 }

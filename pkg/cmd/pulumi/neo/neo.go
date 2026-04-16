@@ -124,7 +124,6 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		"shell":      sh,
 	}
 
-	// Check if stdout is a TTY. If so, launch the bubbletea TUI.
 	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
 
 	// Non-TTY requires a prompt — there's no input mechanism.
@@ -152,7 +151,6 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return session.Run(ctx)
 	}
 
-	// TTY: launch the bubbletea TUI.
 	uiCh := make(chan UIEvent, 64)
 	sendCh := make(chan string, 4)
 
