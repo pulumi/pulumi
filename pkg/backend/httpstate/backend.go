@@ -1071,7 +1071,7 @@ func (b *cloudBackend) CreateStack(
 
 	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, initialState)
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
+	apistack, messages, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -1085,6 +1085,23 @@ func (b *cloudBackend) CreateStack(
 			}
 		}
 		return nil, err
+	}
+
+	// Display messages from the backend if present (e.g. subscription warnings).
+	for _, msg := range messages {
+		m := diag.RawMessage("", msg.Message)
+		switch msg.Severity {
+		case apitype.MessageSeverityError:
+			cmdutil.Diag().Errorf(m)
+		case apitype.MessageSeverityWarning:
+			cmdutil.Diag().Warningf(m)
+		case apitype.MessageSeverityInfo:
+			cmdutil.Diag().Infof(m)
+		default:
+			// Fallback on Info if we don't recognize the severity.
+			cmdutil.Diag().Infof(m)
+			logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
+		}
 	}
 
 	stack, err := newStack(ctx, apistack, b)
