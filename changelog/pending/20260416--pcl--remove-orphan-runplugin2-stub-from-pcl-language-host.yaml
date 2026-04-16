@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: pcl
+  description: Remove orphan RunPlugin2 stub from the PCL language host
