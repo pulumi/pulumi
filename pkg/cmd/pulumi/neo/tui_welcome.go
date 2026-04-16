@@ -92,11 +92,10 @@ func pickGreeting(name string) string {
 
 // View renders the welcome box with the Pulumipus mascot art.
 func (w welcomeModel) View() string {
-	magenta := lipgloss.NewStyle().Foreground(lipgloss.Color("5"))
+	magenta := lipgloss.Color("5")
 	dim := lipgloss.NewStyle().Faint(true)
-	bold := lipgloss.NewStyle().Bold(true)
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(magenta)
 
-	// Shorten home directory to ~ for display.
 	displayDir := w.workDir
 	if home, err := os.UserHomeDir(); err == nil {
 		if rel, err := filepath.Rel(home, w.workDir); err == nil && !strings.HasPrefix(rel, "..") {
@@ -104,69 +103,30 @@ func (w welcomeModel) View() string {
 		}
 	}
 
-	artLines := strings.Split(strings.TrimRight(pulumipusArt, "\n"), "\n")
+	// Total box width (incl. border) = termWidth - 2 outer indent.
+	// contentWidth = total - 2 border - 4 horizontal padding.
+	totalWidth := max(w.termWidth, 30)
+	contentWidth := max(totalWidth-2-2-4, 20)
 
-	// Box dimensions: 2-space indent + border chars + inner content.
-	boxWidth := w.termWidth
-	if boxWidth < 30 {
-		boxWidth = 30
-	}
-	boxInner := boxWidth - 4 // 2-space indent + left border + right border
-	if boxInner < 20 {
-		boxInner = 20
+	center := func(s string) string {
+		return lipgloss.PlaceHorizontal(contentWidth, lipgloss.Center, s)
 	}
 
-	var sb strings.Builder
+	var lines []string
+	lines = append(lines, center(titleStyle.Render("Pulumi Neo")), "", w.greeting, "")
 
-	// Top border: ╭──── Pulumi Neo ────────────╮
-	title := " Pulumi Neo "
-	titleLen := len([]rune(title))
-	leftDash := 4
-	rightDash := boxInner - leftDash - titleLen
-	if rightDash < 1 {
-		rightDash = 1
+	for line := range strings.SplitSeq(strings.TrimRight(pulumipusArt, "\n"), "\n") {
+		lines = append(lines, line)
 	}
-	sb.WriteString(fmt.Sprintf("\n  %s%s%s%s%s\n",
-		magenta.Render("╭"), magenta.Render(strings.Repeat("─", leftDash)),
-		bold.Foreground(lipgloss.Color("5")).Render(title),
-		magenta.Render(strings.Repeat("─", rightDash)), magenta.Render("╮")))
+	lines = append(lines, "")
 
-	boxLine := func(content string, visWidth int) {
-		pad := boxInner - visWidth
-		if pad < 0 {
-			pad = 0
-		}
-		sb.WriteString(fmt.Sprintf("  %s%s%s%s\n",
-			magenta.Render("│"), content, strings.Repeat(" ", pad), magenta.Render("│")))
-	}
-
-	boxLine("", 0)
-
-	// Greeting (cached at model creation to avoid changing on every View call).
-	greetContent := "  " + w.greeting
-	boxLine(greetContent, lipgloss.Width(greetContent))
-
-	boxLine("", 0)
-
-	artIndent := 4
-	for _, line := range artLines {
-		vis := lipgloss.Width(line)
-		content := strings.Repeat(" ", artIndent) + line
-		boxLine(content, artIndent+vis)
-	}
-
-	boxLine("", 0)
-
-	// Info line: path . org
 	infoText := displayDir
 	if w.org != "" {
 		infoText += " · org: " + w.org
 	}
-	// Truncate if too long.
-	maxInfo := boxInner - 4
-	if len([]rune(infoText)) > maxInfo && w.org != "" {
+	if lipgloss.Width(infoText) > contentWidth && w.org != "" {
 		orgSuffix := " · org: " + w.org
-		maxPath := maxInfo - len([]rune(orgSuffix))
+		maxPath := contentWidth - lipgloss.Width(orgSuffix)
 		if maxPath > 3 {
 			pathRunes := []rune(displayDir)
 			if len(pathRunes) > maxPath {
@@ -175,26 +135,24 @@ func (w welcomeModel) View() string {
 			infoText = displayDir + orgSuffix
 		}
 	}
-	infoContent := "  " + dim.Render(infoText)
-	boxLine(infoContent, lipgloss.Width(infoContent))
+	lines = append(lines, dim.Render(infoText))
 
-	// Session link (OSC 8 hyperlink).
 	if w.consoleURL != "" {
-		prefix := "  "
 		linkText := w.consoleURL
-		maxLink := boxInner - 4 - 2 // 2 for prefix
-		if len([]rune(linkText)) > maxLink {
+		maxLink := contentWidth - 2 // "⟡ " prefix
+		if len([]rune(linkText)) > maxLink && maxLink > 3 {
 			linkText = string([]rune(linkText)[:maxLink-3]) + "..."
 		}
 		hyperlink := fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\", w.consoleURL, linkText)
-		linkContent := prefix + dim.Render("⟡ "+hyperlink)
-		boxLine(linkContent, lipgloss.Width(prefix+"⟡ "+linkText))
+		lines = append(lines, dim.Render("⟡ "+hyperlink))
 	}
 
-	boxLine("", 0)
+	rendered := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(magenta).
+		Padding(1, 2).
+		Width(contentWidth).
+		Render(strings.Join(lines, "\n"))
 
-	sb.WriteString(fmt.Sprintf("  %s%s%s\n",
-		magenta.Render("╰"), magenta.Render(strings.Repeat("─", boxInner)), magenta.Render("╯")))
-
-	return sb.String()
+	return "\n  " + strings.ReplaceAll(rendered, "\n", "\n  ") + "\n"
 }
