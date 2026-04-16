@@ -1400,6 +1400,113 @@ class ReadResponse(google.protobuf.message.Message):
 global___ReadResponse = ReadResponse
 
 @typing.final
+class ListRequest(google.protobuf.message.Message):
+    """`ListRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.List) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    TOKEN_FIELD_NUMBER: builtins.int
+    QUERY_FIELD_NUMBER: builtins.int
+    LIMIT_FIELD_NUMBER: builtins.int
+    PAGE_SIZE_FIELD_NUMBER: builtins.int
+    CONTINUATION_TOKEN_FIELD_NUMBER: builtins.int
+    token: builtins.str
+    """The resource token (type) to list."""
+    limit: builtins.int
+    """The maximum number of resources to return."""
+    page_size: builtins.int
+    """The requested page size for this streaming call. The provider is free to return less, but should not return more."""
+    continuation_token: builtins.str
+    """An opaque token indicating which page to fetch. Empty for the first page."""
+    @property
+    def query(self) -> google.protobuf.struct_pb2.Struct:
+        """An optional provider-defined filter over resource state."""
+
+    def __init__(
+        self,
+        *,
+        token: builtins.str = ...,
+        query: google.protobuf.struct_pb2.Struct | None = ...,
+        limit: builtins.int = ...,
+        page_size: builtins.int = ...,
+        continuation_token: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["query", b"query"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token", "limit", b"limit", "page_size", b"page_size", "query", b"query", "token", b"token"]) -> None: ...
+
+global___ListRequest = ListRequest
+
+@typing.final
+class ListResult(google.protobuf.message.Message):
+    """`ListResult` is a resource returned by a [](pulumirpc.ResourceProvider.List) call."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    ID_FIELD_NUMBER: builtins.int
+    NAME_FIELD_NUMBER: builtins.int
+    id: builtins.str
+    """The ID of the resource."""
+    name: builtins.str
+    """The resource name, if the provider can supply one. If empty no name was given."""
+    def __init__(
+        self,
+        *,
+        id: builtins.str = ...,
+        name: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["id", b"id", "name", b"name"]) -> None: ...
+
+global___ListResult = ListResult
+
+@typing.final
+class ListContinuation(google.protobuf.message.Message):
+    """`ListContinuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    CONTINUATION_TOKEN_FIELD_NUMBER: builtins.int
+    continuation_token: builtins.str
+    """An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are no
+    more results.
+    """
+    def __init__(
+        self,
+        *,
+        continuation_token: builtins.str = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token"]) -> None: ...
+
+global___ListContinuation = ListContinuation
+
+@typing.final
+class ListResponse(google.protobuf.message.Message):
+    """`ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List)."""
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    RESULT_FIELD_NUMBER: builtins.int
+    CONTINUATION_FIELD_NUMBER: builtins.int
+    @property
+    def result(self) -> global___ListResult:
+        """A resource entry."""
+
+    @property
+    def continuation(self) -> global___ListContinuation:
+        """A continuation marker."""
+
+    def __init__(
+        self,
+        *,
+        result: global___ListResult | None = ...,
+        continuation: global___ListContinuation | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["continuation", b"continuation", "response", b"response", "result", b"result"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["continuation", b"continuation", "response", b"response", "result", b"result"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["response", b"response"]) -> typing.Literal["result", "continuation"] | None: ...
+
+global___ListResponse = ListResponse
+
+@typing.final
 class UpdateRequest(google.protobuf.message.Message):
     """`UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call."""
 
