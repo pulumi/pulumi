@@ -22,6 +22,11 @@ import (
 
 func main() {
 	ctx := context.Background()
+
+	// Initialize OTel tracing if OTEL_EXPORTER_OTLP_ENDPOINT is set
+	shutdownTracing := initTracing(ctx)
+	defer shutdownTracing(ctx)
+
 	server, err := Start(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
