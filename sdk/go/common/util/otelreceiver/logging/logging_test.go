@@ -20,7 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -28,7 +29,6 @@ import (
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	logspb "go.opentelemetry.io/proto/otlp/logs/v1"
 	resourcepb "go.opentelemetry.io/proto/otlp/resource/v1"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type mockLogExporter struct {
@@ -99,16 +99,14 @@ func TestExportForwardsToExporter(t *testing.T) {
 func TestExportDecodesPropertyValues(t *testing.T) {
 	t.Parallel()
 
-	s, err := structpb.NewStruct(map[string]any{
-		"name": "my-bucket",
-		"password": map[string]any{
-			"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-			"value":                            "hunter2",
-		},
+	pv := resource.NewProperty(resource.PropertyMap{
+		"name": resource.NewProperty("my-bucket"),
+		"password": resource.NewProperty(&resource.Secret{
+			Element: resource.NewProperty("hunter2"),
+		}),
 	})
-	require.NoError(t, err)
 
-	encoded, err := otelreceiver.EncodePropertyValue(s)
+	encoded, err := plugin.EncodePropertyValueForLog(pv)
 	require.NoError(t, err)
 
 	exporter := &mockLogExporter{}
@@ -140,10 +138,10 @@ func TestExportDecodesPropertyValues(t *testing.T) {
 	lr := exporter.firstRecord()
 	v, ok := lr.Attributes().Get("inputs")
 	require.True(t, ok)
-	// Property value bytes are decoded to a JSON string.
+	// Property value bytes are decoded to a JSON string of the
+	// resource.PropertyValue's Mappable() representation.
 	jsonStr := v.Str()
 	assert.Contains(t, jsonStr, "my-bucket")
-	assert.Contains(t, jsonStr, "4dabf18193072939515e22adb298388d")
 	assert.Contains(t, jsonStr, "hunter2")
 }
 
