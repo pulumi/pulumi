@@ -145,3 +145,12 @@ type AgentBackendEventUserApprovalRequest struct {
 	Message     string `json:"message,omitempty"`
 	Sensitivity string `json:"sensitivity,omitempty"`
 }
+
+// AgentUserEventUserConfirmation is the user event a CLI client posts in response to a
+// user_approval_request backend event, approving or denying the requested operation.
+type AgentUserEventUserConfirmation struct {
+	Type       string `json:"type"`                   // always "user_confirmation"
+	ApprovalID string `json:"approval_request_id"`    // echoes the approval_request_id from the request
+	Approved   bool   `json:"ok"`                     // true to approve, false to deny
+	Message    string `json:"instructions,omitempty"` // if rejected, guidance for the agent on what to do instead
+}

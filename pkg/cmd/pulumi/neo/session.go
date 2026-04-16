@@ -234,9 +234,9 @@ func (s *Session) approvalCh() <-chan ApprovalResponse {
 	return s.ApprovalCh
 }
 
-// postApproval posts a UserConfirmationEvent to the API from the session goroutine.
+// postApproval posts an AgentUserEventUserConfirmation to the API from the session goroutine.
 func (s *Session) postApproval(ctx context.Context, resp ApprovalResponse) {
-	evt := UserConfirmationEvent{
+	evt := apitype.AgentUserEventUserConfirmation{
 		Type:       userEventUserConfirmation,
 		ApprovalID: resp.ApprovalID,
 		Approved:   resp.Approved,
