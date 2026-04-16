@@ -813,7 +813,32 @@ class Stack:
         args.extend(extra_args)
         args.extend(self._remote_args())
 
-        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        kind = ExecKind.LOCAL.value
+        on_exit = None
+
+        if self.workspace.program:
+            self._check_inline_support()
+
+            kind = ExecKind.INLINE.value
+            server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=4),
+                options=_GRPC_CHANNEL_OPTIONS,
+            )
+            language_server = LanguageServer(self.workspace.program)
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
+                language_server, server
+            )
+
+            port = server.add_insecure_port(address="127.0.0.1:0")
+            server.start()
+
+            def on_exit_fn():
+                server.stop(0)
+
+            on_exit = on_exit_fn
+
+            args.append(f"--client=127.0.0.1:{port}")
+
         args.extend(["--exec-kind", kind])
 
         summary_events: list[SummaryEvent] = []
@@ -834,7 +859,7 @@ class Stack:
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event, None, grpc_server)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit, grpc_server)
 
         if not summary_events:
             raise RuntimeError("summary event never found")
@@ -1086,7 +1111,32 @@ class Stack:
         args.extend(extra_args)
         args.extend(self._remote_args())
 
-        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        kind = ExecKind.LOCAL.value
+        on_exit = None
+
+        if self.workspace.program:
+            self._check_inline_support()
+
+            kind = ExecKind.INLINE.value
+            server = grpc.server(
+                futures.ThreadPoolExecutor(max_workers=4),
+                options=_GRPC_CHANNEL_OPTIONS,
+            )
+            language_server = LanguageServer(self.workspace.program)
+            language_pb2_grpc.add_LanguageRuntimeServicer_to_server(
+                language_server, server
+            )
+
+            port = server.add_insecure_port(address="127.0.0.1:0")
+            server.start()
+
+            def on_exit_fn():
+                server.stop(0)
+
+            on_exit = on_exit_fn
+
+            args.append(f"--client=127.0.0.1:{port}")
+
         args.extend(["--exec-kind", kind])
 
         summary_events: list[SummaryEvent] = []
@@ -1107,7 +1157,7 @@ class Stack:
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output, on_error)
         finally:
-            _cleanup(temp_dir, log_watcher_thread, stop_event, None, grpc_server)
+            _cleanup(temp_dir, log_watcher_thread, stop_event, on_exit, grpc_server)
 
         if not summary_events:
             raise RuntimeError("summary event never found")

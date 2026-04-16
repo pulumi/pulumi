@@ -843,6 +843,55 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
 
+    def test_stack_lifecycle_inline_program_run_program(self):
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(
+            stack_name, program=pulumi_program, project_name=project_name
+        )
+
+        stack_config: ConfigMap = {
+            "bar": ConfigValue(value="abc"),
+            "buzz": ConfigValue(value="secret", secret=True),
+        }
+
+        with stack_cleanup(stack):
+            stack.set_all_config(stack_config)
+
+            # pulumi up
+            up_res = stack.up(run_program=True)
+            self.assertEqual(len(up_res.outputs), 3)
+            self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+            self.assertFalse(up_res.outputs["exp_static"].secret)
+            self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+            self.assertFalse(up_res.outputs["exp_cfg"].secret)
+            self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+            self.assertTrue(up_res.outputs["exp_secret"].secret)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            preview_result = stack.preview(run_program=True)
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
+
+            # pulumi refresh
+            refresh_res = stack.refresh(run_program=True)
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi refresh --preview-only
+            preview_refresh_res = stack.preview_refresh(run_program=True)
+            self.assertEqual(preview_refresh_res.change_summary, {"same": 1})
+
+            # pulumi destroy --preview-only
+            preview_destroy_res = stack.preview_destroy(run_program=True)
+            self.assertEqual(preview_destroy_res.change_summary.get("delete"), 1)
+
+            # pulumi destroy
+            destroy_res = stack.destroy(run_program=True)
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+
     def test_on_error(self):
         project_name = "inline_python"
         stack_name = stack_namer(project_name)
