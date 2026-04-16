@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/go,nodejs,python
+  description: Fix some cases of name conflicts in program gen not being handled correctly

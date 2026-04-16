@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -103,7 +103,7 @@ func TestSourceFuncCancellation(t *testing.T) {
 	t.Parallel()
 
 	// Set up a cancelable context for the operation.
-	cancelCtx, cancelSrc := cancel.NewContext(context.Background())
+	cancelCtx, cancelSrc := cancel.NewContext(t.Context())
 
 	// Wait for our source func, then cancel.
 	ops := make(chan bool)

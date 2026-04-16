@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,10 +94,8 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-parameterized-resource-twice":    "dependency loading reports duplicate package definition for hipackage",
-	"l2-parameterized-invoke":            "dependency loading reports duplicate package definition for subpackage",
-	"l2-parameterized-resource":          "dependency loading reports duplicate package definition for subpackage",
-	"l2-explicit-parameterized-provider": "dependency loading reports duplicate package definition for goodbye",
+	"l3-deferred-outputs": "incorrectly detects cycle",
+	"l3-component-nested": "nested component outputs are not propagated correctly",
 }
 
 func TestLanguage(t *testing.T) {
@@ -114,6 +112,8 @@ func TestLanguage(t *testing.T) {
 		Init: func(srv *grpc.Server) error {
 			host := newLanguageHost(engineAddress, "", "")
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
+			converter := newConverterHost(engineAddress)
+			pulumirpc.RegisterConverterServer(srv, converter)
 			return nil
 		},
 		Cancel: cancel,
@@ -125,10 +125,11 @@ func TestLanguage(t *testing.T) {
 
 	// Prepare to run the tests
 	prepare, err := engine.PrepareLanguageTests(t.Context(), &testingrpc.PrepareLanguageTestsRequest{
-		LanguagePluginName:   "pcl",
-		LanguagePluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
-		TemporaryDirectory:   rootDir,
-		SnapshotDirectory:    "./testdata",
+		LanguagePluginName:    "pcl",
+		LanguagePluginTarget:  fmt.Sprintf("127.0.0.1:%d", handle.Port),
+		TemporaryDirectory:    rootDir,
+		SnapshotDirectory:     "./testdata",
+		ConverterPluginTarget: fmt.Sprintf("127.0.0.1:%d", handle.Port),
 	})
 	require.NoError(t, err)
 
@@ -151,7 +152,7 @@ func TestLanguage(t *testing.T) {
 			result, err := engine.RunLanguageTest(t.Context(), &testingrpc.RunLanguageTestRequest{
 				Token: prepare.Token,
 				Test:  tt,
-			})
+			}, grpc.MaxCallRecvMsgSize(1024*1024*1024))
 
 			require.NoError(t, err)
 			for _, msg := range result.Messages {

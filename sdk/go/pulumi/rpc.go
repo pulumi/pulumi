@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -522,8 +522,16 @@ func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (R
 		}
 	}
 
-	resName := ref.URN.Name()
-	resType := ref.URN.Type()
+	resName := ref.Name
+	if resName == "" && ref.URN.IsValid() {
+		resName = ref.URN.Name()
+	}
+
+	resTypeString := ref.Type
+	if resTypeString == "" && ref.URN.IsValid() {
+		resTypeString = string(ref.URN.Type())
+	}
+	resType := tokens.Type(resTypeString)
 
 	isProvider := tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers"
 	if isProvider {
@@ -790,6 +798,12 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 	// Check for nils and unknowns. The destination will be left with the zero value.
 	if v.IsNull() || v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
 		return false, nil
+	}
+
+	// A known Output whose element is null is effectively null. Return early before
+	// pointer allocation to preserve the nil zero value for pointer destinations.
+	if v.IsOutput() && v.OutputValue().Element.IsNull() {
+		return v.OutputValue().Secret, nil
 	}
 
 	allocatedPointer := false

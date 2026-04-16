@@ -39,7 +39,7 @@ building blocks:
   `K₀`, `K₁`, ..., `Kₙ` and where each `Kᵢ` is associated with a value of type
   `Vᵢ`. Keys may not be duplicated -- that is, no two keys `Kᵢ` and `Kⱼ` may be
   the same.
-* `Union<T₀, T₁, ..., Tₙ>`, which represents a value that can any be of type
+* `Union<T₀, T₁, ..., Tₙ>`, which represents a value that can be any of type
   `T₀`, `T₁`, ..., or `Tₙ`.
 * `Enum<T, V₀, V₁, ..., Vₙ>`, which represents a value of type `T` that can be
   one of the values `V₀`, `V₁`, ..., or `Vₙ`.
@@ -107,7 +107,9 @@ computation. Promises which don't capture metadata (and thus qualify as
 [outputs](outputs)) are not all that common -- plain
 [](pulumirpc.ResourceProvider.Invoke)s (that is, provider function calls which
 do not accept [`Input`](inputs)s or return [`Output`](outputs)) are perhaps the
-primary example of their use.
+primary example of their use. Note that although the underlying computation may
+fail, failures cannot be handled at runtime and cause a hard stop when
+attempting to access a `Promise<T>`'s concrete value.
 
 (resources)=
 ## Resources
@@ -386,6 +388,15 @@ Resource output properties often use `outputShape`d types. While values of these
 types track metadata at a granular level, accessing their values often requires
 a great deal of unwrapping as nesting depth increases.
 
+Rather than projecting these types in their fully-elaborated form, language SDKs
+typically simplify them to a plain `Output<T>` while using an internal
+representation that includes distinguished unknown values. This lets SDKs
+support lifted property and element access into partially-known composite
+values. For example, the Node.js SDK allows accessing an element of an
+`Output<string[]>` via a proxied index operator even when some elements are
+unknown, though it will not allow accessing the entire concrete value via
+`apply`.
+
 (plainshape)=
 #### `plainShape`
 
@@ -473,7 +484,7 @@ references most commonly appear in the context of [component
 providers](component-providers), where it is often useful for a component to be
 able to accept references to other resources, or to return references to its
 child components in its outputs. In order to support the rehydration of these
-references into bonafide strongly-typed resources upon deserialization, a
+references into bona fide strongly-typed resources upon deserialization, a
 resource reference contains both a [URN](urns) and, in the case that the
 resource is not a [component](component-resources), an [ID](resource-ids) and
 the version of the [provider](providers) that manages the resource. While in
@@ -487,3 +498,23 @@ resource; this is necessary as resource shapes may change between SDK versions.
 
 Resource references are hydrated using the [built-in
 provider](built-in-provider)'s `getResource` invoke.
+
+:::{note}
+`getResource` can only be called when there is an active connection to the
+engine's resource monitor — that is, within the scope of a
+[](pulumirpc.ResourceProvider.Construct) call. Resource references therefore
+cannot be resolved inside CRUD methods
+([](pulumirpc.ResourceProvider.Create), [](pulumirpc.ResourceProvider.Read),
+[](pulumirpc.ResourceProvider.Update), [](pulumirpc.ResourceProvider.Delete)),
+[](pulumirpc.ResourceProvider.Configure), or
+[](pulumirpc.ResourceProvider.Invoke). Code in those contexts should treat a
+resource reference as its `ID` if present, falling back to its `URN`; an empty
+`ID` should be treated as [unknown](unknowns).
+:::
+
+:::{toctree}
+:maxdepth: 1
+:titlesonly:
+
+/sdk/go/property/README
+:::

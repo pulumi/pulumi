@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -212,7 +212,16 @@ func (b *diyBackend) saveCheckpoint(
 	checkpoint *apitype.VersionedCheckpoint,
 ) (backupFile string, file string, _ error) {
 	// Make a serializable stack and then use the encoder to encode it.
-	baseFile := stripCompressionExt(b.stackPath(ctx, ref))
+	// stackPath does a bucket listing to find which compression variant exists on disk.
+	existingPath := b.stackPath(ctx, ref)
+	existingCompression := encoding.CompressionNone
+	if ext := filepath.Ext(existingPath); ext == encoding.GZIPExt {
+		existingCompression = encoding.CompressionGzip
+	} else if ext == encoding.ZSTDExt {
+		existingCompression = encoding.CompressionZstd
+	}
+
+	baseFile := stripCompressionExt(existingPath)
 	m, ext := encoding.Detect(baseFile)
 	if m == nil {
 		return "", "", fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
@@ -236,22 +245,21 @@ func (b *diyBackend) saveCheckpoint(
 	// atomically replace it anyway and various other bits of the system depend on being able to find the
 	// .json file to know the stack currently exists (see https://github.com/pulumi/pulumi/issues/9033 for
 	// context).
-	filePlain := stripCompressionExt(file)
-	fileGzip := filePlain + encoding.GZIPExt
-	fileZstd := filePlain + encoding.ZSTDExt
-
-	// We need to make sure that an out of date state file doesn't exist so we
-	// only keep the file of the type we are working with.
-	bckPlain := backupTarget(ctx, b.bucket, filePlain, b.compression == encoding.CompressionNone)
-	bckGzip := backupTarget(ctx, b.bucket, fileGzip, b.compression == encoding.CompressionGzip)
-	bckZstd := backupTarget(ctx, b.bucket, fileZstd, b.compression == encoding.CompressionZstd)
-	switch b.compression {
-	case encoding.CompressionNone:
-		backupFile = bckPlain
-	case encoding.CompressionGzip:
-		backupFile = bckGzip
-	case encoding.CompressionZstd:
-		backupFile = bckZstd
+	//
+	// We only back up the file we're about to write and, if the compression format changed, clean up the
+	// old format.
+	backupFile = backupTarget(ctx, b.bucket, file, true)
+	if existingCompression != b.compression {
+		// The compression format changed — clean up the old file.
+		filePlain := stripCompressionExt(file)
+		switch existingCompression {
+		case encoding.CompressionNone:
+			backupTarget(ctx, b.bucket, filePlain, false)
+		case encoding.CompressionGzip:
+			backupTarget(ctx, b.bucket, filePlain+encoding.GZIPExt, false)
+		case encoding.CompressionZstd:
+			backupTarget(ctx, b.bucket, filePlain+encoding.ZSTDExt, false)
+		}
 	}
 
 	// And now write out the new snapshot file, overwriting that location.

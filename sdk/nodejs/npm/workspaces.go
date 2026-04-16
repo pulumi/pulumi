@@ -1,20 +1,20 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package npm
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -26,7 +26,7 @@ import (
 
 var ErrNotInWorkspace = errors.New("not in a workspace")
 
-// FindWorkspaceRoot determines if we are in a yarn/npm workspace setup and
+// FindWorkspaceRoot determines if we are in a yarn/npm/pnpm workspace setup and
 // returns the root directory of the workspace.  If the startingPath is
 // not in a workspace, it returns ErrNotInWorkspace.
 func FindWorkspaceRoot(startingPath string) (string, error) {
@@ -37,24 +37,28 @@ func FindWorkspaceRoot(startingPath string) (string, error) {
 	if !stat.IsDir() {
 		startingPath = filepath.Dir(startingPath)
 	}
-	// We start at the location of the first `package.json` we find.
-	packageJSONDir, err := searchup(startingPath, "package.json")
+	// We start at the location of the first package manifest we find. If there is no manifest
+	// anywhere up the tree, the directory is not part of any project, much less a workspace.
+	manifestPath, err := SearchupPackageManifest(startingPath)
 	if err != nil {
-		return "", fmt.Errorf("did not find package.json in %s: %w", startingPath, err)
+		if errors.Is(err, os.ErrNotExist) {
+			return "", ErrNotInWorkspace
+		}
+		return "", fmt.Errorf("did not find package.json or package.yaml in %s: %w", startingPath, err)
 	}
+	packageJSONDir := filepath.Dir(manifestPath)
 	currentDir := packageJSONDir
 	nextDir := filepath.Dir(currentDir)
 	for currentDir != nextDir { // We're at the root when the nextDir is the same as the currentDir.
-		p := filepath.Join(currentDir, "package.json")
-		_, err := os.Stat(p)
+		p, err := findManifestInDir(currentDir)
 		if err != nil {
-			if os.IsNotExist(err) {
-				// No package.json in this directory, continue the search in the next directory up.
-				currentDir = nextDir
-				nextDir = filepath.Dir(currentDir)
-				continue
-			}
 			return "", err
+		}
+		if p == "" {
+			// No manifest in this directory, continue the search in the next directory up.
+			currentDir = nextDir
+			nextDir = filepath.Dir(currentDir)
+			continue
 		}
 
 		// First look for pnpm workspace configuration
@@ -75,7 +79,7 @@ func FindWorkspaceRoot(startingPath string) (string, error) {
 			}
 		}
 
-		// No pnpm-workspace.yaml, check for npm/yarn workspaces in the package.json
+		// No pnpm-workspace.yaml, check for npm/yarn workspaces in the manifest
 		workspaces, err := parseWorkspaces(p)
 		if err != nil {
 			return "", fmt.Errorf("failed to parse workspaces from %s: %w", p, err)
@@ -103,18 +107,20 @@ func FindWorkspaceRoot(startingPath string) (string, error) {
 // function will return true for toCheck = `/some/project/packages/foo/`.
 func matchesWorkspaceGlobs(workspaces []string, currentDir string, toCheck string) (bool, error) {
 	for _, workspace := range workspaces {
-		paths, err := filepath.Glob(filepath.Join(currentDir, workspace, "package.json"))
-		if err != nil {
-			return false, err
-		}
-		if paths != nil && slices.Contains(paths, filepath.Join(toCheck, "package.json")) {
-			return true, nil
+		for _, manifestName := range PackageManifestNames {
+			paths, err := filepath.Glob(filepath.Join(currentDir, workspace, manifestName))
+			if err != nil {
+				return false, err
+			}
+			if slices.Contains(paths, filepath.Join(toCheck, manifestName)) {
+				return true, nil
+			}
 		}
 	}
 	return false, nil
 }
 
-// parseWorkspaces reads a package.json file and returns the list of workspaces.
+// parseWorkspaces reads a package manifest and returns the list of workspaces.
 // This supports the simple format for npm and yarn:
 //
 //	{
@@ -137,7 +143,7 @@ func parseWorkspaces(p string) ([]string, error) {
 	pkg := struct {
 		Workspaces []string `json:"workspaces"`
 	}{}
-	err = json.Unmarshal(pkgContents, &pkg)
+	err = unmarshalManifestBytes(p, pkgContents, &pkg)
 	if err == nil {
 		return pkg.Workspaces, nil
 	}
@@ -147,7 +153,7 @@ func parseWorkspaces(p string) ([]string, error) {
 			Packages []string `json:"packages"`
 		} `json:"workspaces"`
 	}{}
-	err = json.Unmarshal(pkgContents, &pkgExtended)
+	err = unmarshalManifestBytes(p, pkgContents, &pkgExtended)
 	if err != nil {
 		return []string{}, err
 	}

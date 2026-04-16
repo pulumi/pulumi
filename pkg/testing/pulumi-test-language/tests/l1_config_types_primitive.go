@@ -26,6 +26,7 @@ func init() {
 			{
 				Config: config.Map{
 					config.MustMakeKey("l1-config-types-primitive", "aNumber"): config.NewValue("3.5"),
+					config.MustMakeKey("l1-config-types-primitive", "anInt"):   config.NewValue("56"),
 					config.MustMakeKey("l1-config-types-primitive", "aString"): config.NewValue("Hello"),
 					config.MustMakeKey("l1-config-types-primitive", "aBool"):   config.NewValue("false"),
 				},
@@ -41,14 +42,16 @@ func init() {
 
 					assert.Equal(l, resource.PropertyMap{
 						// Provided config
-						"theNumber": resource.NewProperty(4.75),
-						"theString": resource.NewProperty("Hello World"),
-						"theBool":   resource.NewProperty(true),
+						"theNumber":  resource.NewProperty(4.75),
+						"theInteger": resource.NewProperty(60.0),
+						"theString":  resource.NewProperty("Hello World"),
+						"theBool":    resource.NewProperty(true),
 
 						// Default values
-						"defaultNumber": resource.NewProperty(42.0),
-						"defaultString": resource.NewProperty("defaultStringValue"),
-						"defaultBool":   resource.NewProperty(false),
+						"defaultNumber":  resource.NewProperty(42.7),
+						"defaultInteger": resource.NewProperty(3.0),
+						"defaultString":  resource.NewProperty("defaultStringValue"),
+						"defaultBool":    resource.NewProperty(false),
 					}, outputs)
 				},
 			},

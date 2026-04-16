@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -101,7 +101,11 @@ func (data *headerRowData) ColorizedColumns() []string {
 		} else {
 			statusColumn = header("Status")
 		}
-		data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
+		if data.display.opts.ShowURNs {
+			data.columns = []string{"", header("URN"), statusColumn, header("Info")}
+		} else {
+			data.columns = []string{"", header("Type"), header("Name"), statusColumn, header("Info")}
+		}
 	}
 
 	return data.columns
@@ -254,6 +258,14 @@ const (
 	infoColumn   column = 4
 )
 
+// When ShowURNs is enabled, Type and Name are collapsed into a single URN
+// column, so the total column count drops from 5 to 4.
+const (
+	urnColumn       column = 1
+	urnStatusColumn column = 2
+	urnInfoColumn   column = 3
+)
+
 func (data *resourceRowData) IsDone() bool {
 	if data.failed {
 		// consider a failed resource 'done'.
@@ -308,20 +320,26 @@ func (data *resourceRowData) ColorizedColumns() []string {
 		// If we don't have a URN yet, mock parent it to the global stack.
 		urn = resource.DefaultRootStackURN(data.display.stack.Q(), data.display.proj)
 	}
-	name := escapeURN(urn.Name())
-	typ := urn.Type().DisplayName()
-
 	done := data.IsDone()
+
+	diagInfo := data.diagInfo
+	failed := data.failed || diagInfo.ErrorCount > 0
+
+	if data.display.opts.ShowURNs {
+		// When showing URNs, collapse Type and Name into a single URN column.
+		// The URN already contains the type, so showing both would be redundant.
+		columns := make([]string, 4)
+		columns[opColumn] = data.display.getStepOpLabel(step, done)
+		columns[urnColumn] = escapeURN(string(urn))
+		columns[urnStatusColumn] = data.display.getStepStatus(step, done, failed)
+		columns[urnInfoColumn] = data.getInfoColumn()
+		return columns
+	}
 
 	columns := make([]string, 5)
 	columns[opColumn] = data.display.getStepOpLabel(step, done)
-	columns[typeColumn] = typ
-	columns[nameColumn] = name
-
-	diagInfo := data.diagInfo
-
-	failed := data.failed || diagInfo.ErrorCount > 0
-
+	columns[typeColumn] = urn.Type().DisplayName()
+	columns[nameColumn] = escapeURN(urn.Name())
 	columns[statusColumn] = data.display.getStepStatus(step, done, failed)
 	columns[infoColumn] = data.getInfoColumn()
 	return columns

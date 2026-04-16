@@ -5,6 +5,9 @@
   "//": [
     "Simple schema with a reference to another type and resource"
   ],
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
   "types": {
     "localref:index/Index:Object": {
       "type": "object"

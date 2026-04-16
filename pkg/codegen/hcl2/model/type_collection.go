@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,11 +68,11 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, 
 	unwrappedCollectionType := unwrapIterableSourceType(collectionType)
 	switch collectionType := unwrappedCollectionType.(type) {
 	case *ListType:
-		keyType, valueType = NumberType, collectionType.ElementType
+		keyType, valueType = IntType, collectionType.ElementType
 	case *MapType:
 		keyType, valueType = StringType, collectionType.ElementType
 	case *TupleType:
-		keyType = NumberType
+		keyType = IntType
 		valueType, _ = UnifyTypes(collectionType.ElementTypes...)
 	case *ObjectType:
 		keyType = StringType

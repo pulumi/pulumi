@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package ints
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -2795,7 +2794,7 @@ func TestPackageAddProviderFromRemoteSource(t *testing.T) {
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.4")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
@@ -2831,7 +2830,7 @@ func TestPackagesInstall(t *testing.T) {
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.4")
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-xd47cf0910e0450400775594609ee82566d1fb355")
@@ -2912,6 +2911,9 @@ func TestInstallLocalPluginCycle(t *testing.T) {
 
 func TestInstallMultiComponentGitRepo(t *testing.T) {
 	t.Parallel()
+
+	t.Skip("https://github.com/pulumi/pulumi/issues/22407")
+
 	// TODO[pulumi/pulumi#21154]: This test doesn't work on windows due to exceeding
 	// the 255 character limit when installing the plugin.
 	if runtime.GOOS == "windows" {
@@ -2987,7 +2989,7 @@ func TestPackageAddProviderFromRemoteSourceNoVersion(t *testing.T) {
 	// Ensure the plugin our package needs is installed manually.  We want to turn off automatic
 	// plugin acquisition here to show that the pulumi-tls-self-signed-cert from the package add
 	// above is used.
-	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.1")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "tls", "v4.11.4")
 	stdout, _ = e.RunCommand("pulumi", "plugin", "ls")
 	require.Contains(t, stdout, "github.com_pulumi_component-test-providers")
 	require.Contains(t, stdout, "0.0.0-x52a8a71555d964542b308da197755c64dbe63352")
@@ -3219,7 +3221,7 @@ func installNodejsProviderDependencies(t *testing.T, dir string) {
 	require.NoError(t, err)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
-	err = pm.Install(context.Background(), dir, false /* production*/, stdout, stderr)
+	err = pm.Install(t.Context(), dir, false /* production*/, stdout, stderr)
 	require.NoError(t, err, "stdout: %s, stderr: %s", stdout, stderr)
 	cmd := exec.Command("yarn", "link", "@pulumi/pulumi")
 	cmd.Dir = dir

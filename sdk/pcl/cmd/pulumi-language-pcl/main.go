@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/signal"
 	"path"
@@ -45,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	aferoutil "github.com/pulumi/pulumi/pkg/v3/util/afero"
+	"github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
 	pclruntime "github.com/pulumi/pulumi/sdk/pcl/v3/runtime"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	pulumiencoding "github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
@@ -230,7 +232,9 @@ func (host *pclLanguageHost) bindProgramFromDirectory(
 	loader := schema.NewCachedLoader(client)
 	defer contract.IgnoreClose(client)
 
-	options := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
+	options := []pcl.BindOption{
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}
@@ -264,19 +268,20 @@ func (host *pclLanguageHost) Run(ctx context.Context, req *pulumirpc.RunRequest)
 	}
 
 	interpreter := pclruntime.NewInterpreter(program, pclruntime.RunInfo{
-		Project:        req.GetProject(),
-		Stack:          req.GetStack(),
-		Organization:   req.GetOrganization(),
-		RootDirectory:  req.GetInfo().RootDirectory,
-		ProgramDir:     req.GetInfo().ProgramDirectory,
-		WorkingDir:     req.GetPwd(),
-		Config:         req.GetConfig(),
-		ConfigSecrets:  req.GetConfigSecretKeys(),
-		MonitorAddress: req.GetMonitorAddress(),
-		EngineAddress:  host.engineAddress,
-		LoaderAddress:  req.GetLoaderTarget(),
-		DryRun:         req.GetDryRun(),
-		Parallel:       req.GetParallel(),
+		Project:            req.GetProject(),
+		Stack:              req.GetStack(),
+		Organization:       req.GetOrganization(),
+		RootDirectory:      req.GetInfo().RootDirectory,
+		ProgramDir:         req.GetInfo().ProgramDirectory,
+		WorkingDir:         req.GetPwd(),
+		Config:             req.GetConfig(),
+		ConfigSecrets:      req.GetConfigSecretKeys(),
+		MonitorAddress:     req.GetMonitorAddress(),
+		EngineAddress:      host.engineAddress,
+		LoaderAddress:      req.GetLoaderTarget(),
+		DryRun:             req.GetDryRun(),
+		Parallel:           req.GetParallel(),
+		PackageDescriptors: allPackageDescriptors(req.Info.ProgramDirectory),
 	})
 
 	if err := interpreter.Run(ctx); err != nil {
@@ -391,7 +396,10 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if !ok || block.Type != "resource" || len(block.Labels) < 2 {
 				continue
 			}
-			pkg := packageNameFromToken(block.Labels[1])
+			pkg, err := runtime.PackageNameFromToken(block.Labels[1])
+			if err != nil {
+				return nil, err
+			}
 			if pkg != "" {
 				if _, exists := descriptorMap[pkg]; !exists {
 					descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
@@ -408,8 +416,15 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 			if !ok {
 				return nil
 			}
-			pkg := packageNameFromToken(token)
-			if pkg != "" {
+			pkg, err := runtime.PackageNameFromToken(token)
+			if err != nil {
+				return hcl.Diagnostics{{
+					Severity: hcl.DiagError,
+					Summary:  "invalid package token",
+					Detail:   err.Error(),
+				}}
+			}
+			if pkg != "" && pkg != "pulumi" {
 				if _, exists := descriptorMap[pkg]; !exists {
 					descriptorMap[pkg] = &schema.PackageDescriptor{Name: pkg}
 				}
@@ -434,8 +449,7 @@ func getPclDependencies(parser *hclsyntax.Parser) ([]*schema.PackageDescriptor, 
 }
 
 func readPclDependencies(programDir string) ([]*schema.PackageDescriptor, error) {
-	parser := hclsyntax.NewParser()
-	parseDiagnostics, err := pcl.ParseDirectory(parser, programDir)
+	parser, parseDiagnostics, err := parsePclTree(programDir)
 	if err != nil {
 		return nil, err
 	}
@@ -444,6 +458,54 @@ func readPclDependencies(programDir string) ([]*schema.PackageDescriptor, error)
 	}
 
 	return getPclDependencies(parser)
+}
+
+func parsePclTree(programDir string) (*hclsyntax.Parser, hcl.Diagnostics, error) {
+	parser := hclsyntax.NewParser()
+	var parseDiagnostics hcl.Diagnostics
+	err := filepath.WalkDir(programDir, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if filepath.Ext(d.Name()) != ".pp" {
+			return nil
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer contract.IgnoreClose(file)
+
+		relPath, err := filepath.Rel(programDir, path)
+		if err != nil {
+			return err
+		}
+
+		if err := parser.ParseFile(file, relPath); err != nil {
+			return err
+		}
+		parseDiagnostics = append(parseDiagnostics, parser.Diagnostics...)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return parser, parseDiagnostics, nil
+}
+
+func allPackageDescriptors(programDir string) map[string]*schema.PackageDescriptor {
+	parser, parseDiagnostics, err := parsePclTree(programDir)
+	if err != nil || parseDiagnostics.HasErrors() {
+		return nil
+	}
+	descriptorMap, diags := pcl.ReadAllPackageDescriptors(parser.Files)
+	if diags.HasErrors() {
+		return nil
+	}
+	return descriptorMap
 }
 
 func invokeToken(call *hashihclsyntax.FunctionCallExpr) (string, bool) {
@@ -461,20 +523,6 @@ func invokeToken(call *hashihclsyntax.FunctionCallExpr) (string, bool) {
 	return literal.Val.AsString(), true
 }
 
-func packageNameFromToken(token string) string {
-	pkg, mod, name, diags := pcl.DecomposeToken(token, hcl.Range{})
-	if diags.HasErrors() {
-		return ""
-	}
-	if pkg == "pulumi" {
-		if mod == "providers" {
-			return name
-		}
-		return ""
-	}
-	return pkg
-}
-
 func (host *pclLanguageHost) RunPlugin(
 	req *pulumirpc.RunPluginRequest,
 	server pulumirpc.LanguageRuntime_RunPluginServer,
@@ -482,24 +530,16 @@ func (host *pclLanguageHost) RunPlugin(
 	return errors.New("not implemented")
 }
 
+func (host *pclLanguageHost) RunPlugin2(
+	server grpc.BidiStreamingServer[pulumirpc.RunPlugin2Request, pulumirpc.RunPluginResponse],
+) error {
+	return errors.New("not implemented")
+}
+
 func (host *pclLanguageHost) GenerateProject(
 	ctx context.Context, req *pulumirpc.GenerateProjectRequest,
 ) (*pulumirpc.GenerateProjectResponse, error) {
-	loader, err := schema.NewLoaderClient(req.LoaderTarget)
-	if err != nil {
-		return nil, err
-	}
-	defer loader.Close()
-
-	bindOptions := []pcl.BindOption{pcl.PreferOutputVersionedInvokes}
-	if !req.Strict {
-		bindOptions = append(bindOptions, pcl.NonStrictBindOptions()...)
-	}
-	program, diags, err := pcl.BindDirectory(
-		req.SourceDirectory,
-		schema.NewCachedLoader(loader),
-		bindOptions...,
-	)
+	program, diags, err := host.bindProgramFromDirectory(req.SourceDirectory, req.LoaderTarget, req.Strict)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +589,15 @@ func (host *pclLanguageHost) GenerateProject(
 		return nil, fmt.Errorf("copy source directory: %w", err)
 	}
 
+	// Only copy local dependencies that the program actually references.
+	referencedPackages := map[string]bool{}
+	for _, ref := range program.PackageReferences() {
+		referencedPackages[ref.Name()] = true
+	}
 	for name, content := range req.LocalDependencies {
+		if !referencedPackages[name] {
+			continue
+		}
 		outPath := path.Join(directory, name+".pp")
 		err := fsutil.CopyFile(outPath, content, nil)
 		if err != nil {
@@ -579,7 +627,10 @@ func (host *pclLanguageHost) GenerateProgram(
 		}
 	}
 
-	options := []pcl.BindOption{pcl.Loader(schema.NewCachedLoader(loader)), pcl.PreferOutputVersionedInvokes}
+	options := []pcl.BindOption{
+		pcl.Loader(schema.NewCachedLoader(loader)),
+		pcl.PreferOutputVersionedInvokes,
+	}
 	if !req.Strict {
 		options = append(options, pcl.NonStrictBindOptions()...)
 	}

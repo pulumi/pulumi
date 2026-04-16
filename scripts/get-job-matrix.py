@@ -64,7 +64,7 @@ INTEGRATION_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/sdk/v3/nodejs/npm",
     "github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python",
     "github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs",
-    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go",
+    "github.com/pulumi/pulumi/sdk/go/pulumi-language-go/v3",
     # And the entirety of the 'tests' module
 }
 
@@ -87,7 +87,6 @@ def is_performance_test(pkg: str) -> bool:
 # Keep this in sync with filters defined in .github/workflows/on-pr.yml.
 CODEGEN_TEST_PACKAGES = {
     "github.com/pulumi/pulumi/pkg/v3/codegen/docs",
-    "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet",
     "github.com/pulumi/pulumi/pkg/v3/codegen/go",
     "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs",
     "github.com/pulumi/pulumi/pkg/v3/codegen/python",

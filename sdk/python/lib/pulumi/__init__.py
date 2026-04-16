@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -105,6 +105,8 @@ from .resource_hooks import (
     ResourceHook,
     ResourceHookBinding,
     ResourceHookOptions,
+    resource_hook,
+    error_hook,
 )
 
 from .log import (
@@ -204,6 +206,8 @@ __all__ = [
     "ResourceHook",
     "ResourceHookBinding",
     "ResourceHookOptions",
+    "resource_hook",
+    "error_hook",
     # log
     "debug",
     "info",

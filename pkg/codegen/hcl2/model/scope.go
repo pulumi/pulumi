@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package model
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -68,7 +69,7 @@ func (v *Variable) Type() Type {
 }
 
 func (v *Variable) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-	if value, hasValue := context.Variables[v.Name]; hasValue {
+	if value, hasValue := hcl2.LookupVariable(context, v.Name); hasValue {
 		return value, nil
 	}
 	return cty.DynamicVal, nil

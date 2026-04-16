@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pulumi"
-version = "3.226.1"
+version = "3.231.0"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
@@ -39,7 +39,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    'mypy==1.17.1',
+    'mypy==1.20.0',
     'pyright==1.1.404',
     'pytest~=8.4.0',
     'pytest-timeout>=2.3.1',

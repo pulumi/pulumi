@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -837,7 +837,10 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 		return client, nil
 	}
 
-	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if rm.grpcDialOptions != nil {
 		opts := rm.grpcDialOptions(map[string]any{
 			"mode": "client",
@@ -1080,6 +1083,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "resourceHooks":
 		hasSupport = true
 	case "errorHooks":
+		hasSupport = true
+	case "sendsOptionsToHooks":
 		hasSupport = true
 	}
 
@@ -1746,7 +1751,8 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+		newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
@@ -1791,6 +1797,8 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			OldInputs:  mOldInputs,
 			NewOutputs: mNewOutputs,
 			OldOutputs: mOldOutputs,
+			OldOptions: oldOptions,
+			NewOptions: newOptions,
 		})
 		if err != nil {
 			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
@@ -1842,7 +1850,8 @@ func (rm *resmon) wrapErrorHookCallback(
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+		newInputs, oldInputs, oldOutputs resource.PropertyMap,
 		failedOperation string, errorMessages []string,
 	) (bool, error) {
 		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
@@ -1882,6 +1891,8 @@ func (rm *resmon) wrapErrorHookCallback(
 			OldOutputs:      mOldOutputs,
 			FailedOperation: failedOperation,
 			Errors:          errorMessages,
+			OldOptions:      oldOptions,
+			NewOptions:      newOptions,
 		})
 		if err != nil {
 			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)
@@ -3226,6 +3237,8 @@ func downgradeOutputValues(v resource.PropertyMap) resource.PropertyMap {
 			return resource.NewProperty(
 				resource.ResourceReference{
 					URN:            ref.URN,
+					Name:           ref.Name,
+					Type:           ref.Type,
 					ID:             downgradeOutputPropertyValue(ref.ID),
 					PackageVersion: ref.PackageVersion,
 				})

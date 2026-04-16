@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix snapshot integrity error with component/provider resources in refresh --run-program

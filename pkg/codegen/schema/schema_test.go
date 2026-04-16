@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -1567,6 +1568,7 @@ func TestValidateTypeToken(t *testing.T) {
 		input         string
 		expectError   bool
 		allowedExtras map[string][]string
+		moduleFormat  string
 	}{
 		{
 			name:  "valid",
@@ -1632,21 +1634,40 @@ func TestValidateTypeToken(t *testing.T) {
 			name:  "non-reserved-provider-token-valid",
 			input: "example:other:provider",
 		},
+		/* TODO: This test should be re-enabled once we make modules nested under index an error instead of a warning.
+		{
+			name:        "nested index module",
+			input:       "example:index/nested:typename",
+			expectError: true,
+		},
+		*/
+		{
+			name:  "not really index",
+			input: "example:index_foo/nested:typename",
+		},
+		{
+			name:         "module format strips off nested part",
+			input:        "example:index/Nested:typename",
+			moduleFormat: "(.*)(?:/[^/]*)",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
 			spec := &PackageSpec{Name: "example"}
+			if c.moduleFormat != "" {
+				spec.Meta = &MetadataSpec{ModuleFormat: c.moduleFormat}
+			}
 			allowed := map[string][]string{"example": nil}
 			for pkg, mods := range c.allowedExtras {
 				allowed[pkg] = mods
 			}
 			errors := spec.validateTypeToken(allowed, "type", c.input)
 			if c.expectError {
-				assert.True(t, errors.HasErrors())
+				assert.True(t, errors.HasErrors(), "expected an error but got none")
 			} else {
-				assert.False(t, errors.HasErrors())
+				assert.False(t, errors.HasErrors(), "unexpected error: %v", errors)
 			}
 		})
 	}
@@ -2190,6 +2211,7 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
+	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
 	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
 	require.NoError(t, err)
 	return pluginCtx.Host
@@ -2635,4 +2657,19 @@ func TestBindParameterizedExternals(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
+}
+
+func TestTokenToModuleIndexPrefix(t *testing.T) {
+	t.Parallel()
+
+	defaultPkg := &Package{}
+	assert.Equal(t, "", defaultPkg.TokenToModule("test:index:Resource"))
+	assert.Equal(t, "indexMine", defaultPkg.TokenToModule("test:indexMine:Resource"))
+	assert.Equal(t, "indexMine/nested", defaultPkg.TokenToModule("test:indexMine/nested:Resource"))
+
+	formattedPkg := &Package{
+		moduleFormat: regexp.MustCompile("(.*)(?:/[^/]*)"),
+	}
+	assert.Equal(t, "", formattedPkg.TokenToModule("test:index/getResource:getResource"))
+	assert.Equal(t, "indexMine", formattedPkg.TokenToModule("test:indexMine/getResource:getResource"))
 }

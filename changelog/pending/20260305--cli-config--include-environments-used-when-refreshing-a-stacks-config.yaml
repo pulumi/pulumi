@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/config
-  description: Include environments used when refreshing a stack's config

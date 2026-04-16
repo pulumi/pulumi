@@ -81,7 +81,6 @@ This is a fire and forget process. Once a step has been generated
 the step generator immediately moves on to the next `RegisterResourceEvent`. It
 is the responsibility of the [step executor](step-execution) to communicate the
 results of each step back to the [resource monitor](resource-monitor).
-executor to the step generator.
 
 ### Process Overview
 
@@ -255,6 +254,23 @@ flowchart LR
 
     style C fill:#f99
 ```
+
+To determine which deletions can safely run in parallel, the step generator
+treats the resource dependency graph as a [partially ordered
+set](https://en.wikipedia.org/wiki/Partially_ordered_set) and decomposes it
+into *antichains* — subsets of resources that do not depend on one another and
+can therefore be deleted concurrently. The algorithm is:
+
+1. While condemned resources remain:
+   a. Identify all resources with no outgoing dependency edges (the current
+      "maximal" elements of the remaining poset).
+   b. Remove them from the graph. They form one antichain (a parallel batch of
+      deletes).
+   c. Repeat.
+
+Because dependent resources must be deleted before the resources they depend on,
+the resulting list of batches is reversed before being submitted to the step
+executor. Each batch is executed to completion before the next begins.
 
 #### Replacement Decision Flow
 

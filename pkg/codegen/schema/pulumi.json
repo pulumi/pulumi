@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json",
+    "$id": "https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json",
     "title": "Pulumi Package Metaschema",
     "description": "A description of the schema for a Pulumi Package",
     "type": "object",

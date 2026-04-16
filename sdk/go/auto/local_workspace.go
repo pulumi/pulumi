@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -280,7 +280,7 @@ func (l *LocalWorkspace) SetConfigWithOptions(
 	if val.Secret {
 		secretArg = "--secret"
 	}
-	args = append(args, key, secretArg, "--non-interactive", "--", val.Value)
+	args = append(args, key, secretArg, "--", val.Value)
 
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
@@ -560,6 +560,24 @@ func (l *LocalWorkspace) WhoAmIDetails(ctx context.Context) (WhoAmIResult, error
 			fmt.Errorf("could not determine authenticated user: %w", err), stdout, stderr, errCode)
 	}
 	return WhoAmIResult{User: strings.TrimSpace(stdout)}, nil
+}
+
+// OrgGetDefault returns the default organization for the current backend.
+func (l *LocalWorkspace) OrgGetDefault(ctx context.Context) (string, error) {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "org", "get-default")
+	if err != nil {
+		return "", newAutoError(fmt.Errorf("could not get default organization: %w", err), stdout, stderr, errCode)
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
+// OrgSetDefault sets the default organization for the current backend.
+func (l *LocalWorkspace) OrgSetDefault(ctx context.Context, orgName string) error {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "org", "set-default", orgName)
+	if err != nil {
+		return newAutoError(fmt.Errorf("could not set default organization: %w", err), stdout, stderr, errCode)
+	}
+	return nil
 }
 
 // Stack returns a summary of the currently selected stack, if any.
@@ -857,6 +875,76 @@ func (l *LocalWorkspace) Install(ctx context.Context, opts *InstallOptions) erro
 		return newAutoError(fmt.Errorf("could not install dependencies: %w", err), stdout, stderr, errCode)
 	}
 	return nil
+}
+
+func (l *LocalWorkspace) New(ctx context.Context, opts *NewOptions) (NewResult, error) {
+	var stdoutWriters []io.Writer
+	if opts != nil && opts.Stdout != nil {
+		stdoutWriters = append(stdoutWriters, opts.Stdout)
+	}
+	var stderrWriters []io.Writer
+	if opts != nil && opts.Stderr != nil {
+		stderrWriters = append(stderrWriters, opts.Stderr)
+	}
+	args := []string{"new", "--yes"}
+	if opts != nil {
+		if opts.AI != "" {
+			args = append(args, "--ai", opts.AI)
+		}
+		for _, c := range opts.Config {
+			args = append(args, "--config", c)
+		}
+		if opts.ConfigPath {
+			args = append(args, "--config-path")
+		}
+		if opts.Description != "" {
+			args = append(args, "--description", opts.Description)
+		}
+		if opts.Dir != "" {
+			args = append(args, "--dir", opts.Dir)
+		}
+		if opts.Force {
+			args = append(args, "--force")
+		}
+		if opts.GenerateOnly {
+			args = append(args, "--generate-only")
+		}
+		if opts.Language != "" {
+			args = append(args, "--language", opts.Language)
+		}
+		if opts.ListTemplates {
+			args = append(args, "--list-templates")
+		}
+		if opts.Name != "" {
+			args = append(args, "--name", opts.Name)
+		}
+		if opts.Offline {
+			args = append(args, "--offline")
+		}
+		if opts.RemoteStackConfig {
+			args = append(args, "--remote-stack-config")
+		}
+		for _, r := range opts.RuntimeOptions {
+			args = append(args, "--runtime-options", r)
+		}
+		if opts.SecretsProvider != "" {
+			args = append(args, "--secrets-provider", opts.SecretsProvider)
+		}
+		if opts.Stack != "" {
+			args = append(args, "--stack", opts.Stack)
+		}
+		if opts.TemplateMode {
+			args = append(args, "--template-mode")
+		}
+		if opts.TemplateOrURL != "" {
+			args = append(args, opts.TemplateOrURL)
+		}
+	}
+	stdout, stderr, errCode, err := l.runPulumiInputCmdSync(ctx, nil, stdoutWriters, stderrWriters, args...)
+	if err != nil {
+		return NewResult{}, newAutoError(fmt.Errorf("could not create new project: %w", err), stdout, stderr, errCode)
+	}
+	return NewResult{StdOut: stdout, StdErr: stderr}, nil
 }
 
 func (l *LocalWorkspace) runPulumiInputCmdSync(

@@ -5,6 +5,11 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { InvokeArgs, InvokeResult, InvokeOutputArgs } from "./invoke";
+export const invoke: typeof import("./invoke").invoke = null as any;
+export const invokeOutput: typeof import("./invoke").invokeOutput = null as any;
+utilities.lazyLoad(exports, ["invoke","invokeOutput"], () => require("./invoke"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;

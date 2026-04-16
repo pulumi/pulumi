@@ -91,9 +91,12 @@ type FlagRule struct {
 
 // OverridesScope describes overrides for a command path.
 type OverridesScope struct {
-	Path      []string            `json:"path"`
-	Propagate bool                `json:"propagate"`
-	Flags     map[string]FlagRule `json:"flags"`
+	Path      []string `json:"path"`
+	Propagate bool     `json:"propagate"`
+	// Exclude, when true, removes this command (and, when Propagate is true, its
+	// descendants) from the generated specification.
+	Exclude bool                `json:"exclude,omitempty"`
+	Flags   map[string]FlagRule `json:"flags"`
 }
 
 // Overrides is the top-level automation overrides file.
@@ -249,6 +252,35 @@ func applyOverrides(
 func buildStructure(
 	cmd *cobra.Command, overrides *Overrides, breadcrumbs []string, inherited map[string]Flag,
 ) any {
+	// Before doing any work, check if this command should be excluded by any
+	// matching scope. Exclusion applies to this command and, when the scope's
+	// Propagate is true, its entire subtree.
+	if overrides != nil && len(overrides.Scopes) > 0 {
+		for _, scope := range overrides.Scopes {
+			if len(scope.Path) > len(breadcrumbs) {
+				continue
+			}
+			match := true
+			for i := 0; i < len(scope.Path); i++ {
+				if scope.Path[i] != breadcrumbs[i] {
+					match = false
+					break
+				}
+			}
+			if !match {
+				continue
+			}
+			// Scope applies directly to this node if the paths are equal.
+			// It also applies if the scope is a prefix *and* marked Propagate.
+			if len(scope.Path) < len(breadcrumbs) && !scope.Propagate {
+				continue
+			}
+			if scope.Exclude {
+				return nil
+			}
+		}
+	}
+
 	localFlags := collectFlags(cmd)
 	merged := applyOverrides(localFlags, inherited, overrides, breadcrumbs)
 

@@ -83,7 +83,16 @@ install_plugin:: build
 
 install:: install_package install_plugin
 
-unit_tests:: $(TEST_ALL_DEPS)
+tools_tests::
+	go run -C ../../pkg ./cmd/pulumi generate-cli-spec \
+		--overrides ../tools/automation/automation-overrides.json \
+		> ../../tools/automation/specification.json
+	cd tools/automation && yarn install && \
+		npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && \
+		yarn build && \
+		yarn test
+
+unit_tests:: $(TEST_ALL_DEPS) tools_tests
 	yarn run nyc --no-clean -s mocha --timeout 120000 \
 		--exclude 'bin/tests/automation/**/*.spec.js' \
 		--exclude 'bin/tests/runtime/closure-integration-tests.js' \
@@ -97,15 +106,16 @@ test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
 	node 'bin/tests/runtime/install-package-tests.js'
 
-TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4
+TSC_SUPPORTED_VERSIONS = ~3.8.3 ^3 ^4 ^6
 
 version=$(subst sxs_test_,,$(word 1,$(subst !, ,$@)))
 sxs_test_%:
 	@cd tests/sxs_ts_test && ( \
 		cp -f package$(version).json package.json && \
+		if [ -f tsconfig$(version).json ]; then project=tsconfig$(version).json; else project=tsconfig.json; fi && \
 		yarn install && \
 		yarn run tsc --version && \
-		yarn run tsc &&  \
+		yarn run tsc --project $$project && \
 		rm package.json && \
 		echo "✅ TypeScript $(version) passed" \
 	) || ( \

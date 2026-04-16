@@ -1,10 +1,10 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,7 +43,7 @@ func TestProviderServer_Configure_variables(t *testing.T) {
 	}
 	srv := NewProviderServer(&provider)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := srv.Configure(ctx, &pulumirpc.ConfigureRequest{
 		Variables: map[string]string{
 			"ns:foo": `"bar"`,
@@ -89,7 +89,7 @@ func (p *stubProvider) Read(ctx context.Context, req ReadRequest) (ReadResponse,
 // When importing random passwords, the secret passed as "ID" should not leak in plain text into the final ID.
 func TestProviderServer_Read_respects_ID(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
+	ctx := t.Context()
 	provider := stubProvider{
 		ReadFunc: func(
 			urn resource.URN, id resource.ID,

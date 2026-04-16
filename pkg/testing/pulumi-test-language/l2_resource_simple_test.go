@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -555,6 +555,15 @@ func (c *convertTestConverter) ConvertProgram(
 	err := os.WriteFile(
 		filepath.Join(req.TargetDirectory, "main.pp"),
 		[]byte("resource \"res\" \"simple:index:Resource\" {\n    value = true\n}\n"),
+		0o600,
+	)
+	if err != nil {
+		return &plugin.ConvertProgramResponse{}, err
+	}
+
+	err = os.WriteFile(
+		filepath.Join(req.TargetDirectory, "Pulumi.yaml"),
+		[]byte("name: simple\nruntime: mock\n"),
 		0o600,
 	)
 	return &plugin.ConvertProgramResponse{}, err

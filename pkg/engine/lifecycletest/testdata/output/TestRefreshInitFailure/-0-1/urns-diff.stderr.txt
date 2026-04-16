@@ -1,0 +1,2 @@
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>Refreshed resource is in an unhealthy state:
+* Refresh reports continued to fail to initialize<{%reset%}>

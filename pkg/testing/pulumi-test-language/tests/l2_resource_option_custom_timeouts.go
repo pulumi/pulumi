@@ -17,49 +17,65 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func init() {
+	createRun := func(timeout string, seconds float64) TestRun {
+		return TestRun{
+			Config: config.Map{
+				config.MustMakeKey("l2-resource-option-custom-timeouts", "createTimeout"): config.NewValue(timeout),
+			},
+			Assert: func(l *L, res AssertArgs) {
+				require.NoError(l, res.Err)
+				require.Len(l, res.Snap.Resources, 8)
+
+				noTimeouts := RequireSingleNamedResource(l, res.Snap.Resources, "noTimeouts")
+				createOnly := RequireSingleNamedResource(l, res.Snap.Resources, "createOnly")
+				updateOnly := RequireSingleNamedResource(l, res.Snap.Resources, "updateOnly")
+				deleteOnly := RequireSingleNamedResource(l, res.Snap.Resources, "deleteOnly")
+				allTimeouts := RequireSingleNamedResource(l, res.Snap.Resources, "allTimeouts")
+
+				assert.Equal(l, resource.CustomTimeouts{}, noTimeouts.CustomTimeouts)
+
+				require.Equal(l, resource.CustomTimeouts{
+					Create: 300,
+				}, createOnly.CustomTimeouts)
+
+				assert.Equal(l, resource.CustomTimeouts{
+					Update: 600,
+				}, updateOnly.CustomTimeouts)
+
+				assert.Equal(l, resource.CustomTimeouts{
+					Delete: 180,
+				}, deleteOnly.CustomTimeouts)
+
+				assert.Equal(l, resource.CustomTimeouts{
+					Create: 120,
+					Update: 240,
+					Delete: 60,
+				}, allTimeouts.CustomTimeouts)
+
+				configTimeout := RequireSingleNamedResource(l, res.Snap.Resources, "configTimeout")
+				assert.Equal(l, resource.CustomTimeouts{
+					Create: seconds,
+				}, configTimeout.CustomTimeouts)
+			},
+		}
+	}
+
 	LanguageTests["l2-resource-option-custom-timeouts"] = LanguageTest{
+		RunsShareSource: true,
 		Providers: []func() plugin.Provider{
 			func() plugin.Provider { return &providers.SimpleProvider{} },
 		},
 		Runs: []TestRun{
-			{
-				Assert: func(l *L, res AssertArgs) {
-					RequireStackResource(l, res.Err, res.Changes)
-					require.Len(l, res.Snap.Resources, 7)
-
-					noTimeouts := RequireSingleNamedResource(l, res.Snap.Resources, "noTimeouts")
-					createOnly := RequireSingleNamedResource(l, res.Snap.Resources, "createOnly")
-					updateOnly := RequireSingleNamedResource(l, res.Snap.Resources, "updateOnly")
-					deleteOnly := RequireSingleNamedResource(l, res.Snap.Resources, "deleteOnly")
-					allTimeouts := RequireSingleNamedResource(l, res.Snap.Resources, "allTimeouts")
-
-					assert.Equal(l, resource.CustomTimeouts{}, noTimeouts.CustomTimeouts)
-
-					require.Equal(l, resource.CustomTimeouts{
-						Create: 300,
-					}, createOnly.CustomTimeouts)
-
-					assert.Equal(l, resource.CustomTimeouts{
-						Update: 600,
-					}, updateOnly.CustomTimeouts)
-
-					assert.Equal(l, resource.CustomTimeouts{
-						Delete: 180,
-					}, deleteOnly.CustomTimeouts)
-
-					assert.Equal(l, resource.CustomTimeouts{
-						Create: 120,
-						Update: 240,
-						Delete: 60,
-					}, allTimeouts.CustomTimeouts)
-				},
-			},
+			createRun("7m", 420),
+			createRun("1h", 60*60),
+			createRun(".2m", 12),
 		},
 	}
 }

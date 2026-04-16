@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import traceback
 import grpc
 import grpc.aio
 
-from google.protobuf import struct_pb2
+from google.protobuf import empty_pb2, struct_pb2
 from pulumi.provider.provider import InvokeResult, Provider, CallResult, ConstructResult
 from pulumi.resource import (
     ProviderResource,
@@ -478,6 +478,10 @@ class ProviderServicer(ResourceProviderServicer):
         return proto.ConfigureResponse(
             acceptSecrets=True, acceptResources=True, acceptOutputs=True
         )
+
+    async def Cancel(self, request, context):
+        self.provider.cancel()
+        return empty_pb2.Empty()
 
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:
         if self.provider.version is None:

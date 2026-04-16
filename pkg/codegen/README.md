@@ -17,7 +17,6 @@ Configuration Language (PCL)](pcl).
 
 /pkg/codegen/sdks.md
 /pkg/codegen/programs.md
-/pkg/codegen/docs/README
 /pkg/codegen/schema/README
 /pkg/codegen/pcl/README
 :::
