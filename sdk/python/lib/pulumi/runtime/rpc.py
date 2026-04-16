@@ -1142,7 +1142,7 @@ A Resolver is a function that takes four arguments:
     2. A boolean "is_known", which represents whether or not this value is known to have a particular value at this
        point in time (not always true for previews), and
     3. A boolean "is_secret", which represents whether or not this value is contains secret data, and
-    4. An exception, which (if provided) is an exception that occured when attempting to create the resource to whom
+    4. An exception, which (if provided) is an exception that occurred when attempting to create the resource to whom
        this resolver belongs.
 
 If argument 4 is not none, this output is considered to be abnormally resolved and attempts to await its future will
