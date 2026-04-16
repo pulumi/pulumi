@@ -100,3 +100,10 @@ type AgentUserEventExecToolCall struct {
 	ToolCallID string `json:"tool_call_id"` // from the inbound AgentBackendEventToolCall.ToolCallID
 	Name       string `json:"name"`         // full tool name, e.g. "filesystem__read"
 }
+
+// AgentUserEventUserMessage is the user event a CLI client posts when the user sends a
+// chat message from the TUI.
+type AgentUserEventUserMessage struct {
+	Type    string `json:"type"` // always "user_message"
+	Content string `json:"content"`
+}

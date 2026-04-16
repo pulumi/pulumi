@@ -34,6 +34,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -245,7 +246,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 					sendUI(uiCh, UIWarning{Message: "dropped message: task not ready"})
 					continue
 				}
-				evt := UserMessageEvent{
+				evt := apitype.AgentUserEventUserMessage{
 					Type:    userEventUserMessage,
 					Content: text,
 				}
