@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Auto-detect Mercurial repository metadata for `pulumi up` / `pulumi preview` updates, mirroring existing Git support

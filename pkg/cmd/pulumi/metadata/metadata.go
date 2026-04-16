@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/hgutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -53,8 +54,8 @@ func GetPolicyPublishMetadata(root string) map[string]string {
 		Environment: make(map[string]string),
 	}
 
-	if err := addGitMetadata(root, m); err != nil {
-		logging.V(3).Infof("errors detecting git metadata: %s", err)
+	if err := addVCSMetadata(root, m); err != nil {
+		logging.V(3).Infof("errors detecting VCS metadata: %s", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
@@ -115,8 +116,8 @@ func GetUpdateMetadata(
 
 	addPulumiCLIMetadataToEnvironment(m.Environment, flags, os.Environ)
 
-	if err := addGitMetadata(root, m); err != nil {
-		logging.V(3).Infof("errors detecting git metadata: %s", err)
+	if err := addVCSMetadata(root, m); err != nil {
+		logging.V(3).Infof("errors detecting VCS metadata: %s", err)
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
@@ -310,32 +311,48 @@ func addEscMetadataToEnvironment(env map[string]string, escEnvironments []string
 	env[backend.StackEnvironments] = string(jsonData)
 }
 
-// addGitMetadata populate's the environment metadata bag with Git-related values.
-func addGitMetadata(projectRoot string, m *backend.UpdateMetadata) error {
+// addVCSMetadata populates the environment metadata bag with VCS-related
+// values. It prefers Git when a `.git` directory is found walking up from
+// projectRoot, falls back to Mercurial when a `.hg` directory is found, and
+// finally falls back to explicit environment variables when no repository is
+// detected. Mercurial metadata is written to the same git.* / vcs.* keys as
+// Git so that downstream consumers (the Pulumi service, stack tags, the UI)
+// don't need to special-case it.
+func addVCSMetadata(projectRoot string, m *backend.UpdateMetadata) error {
 	var allErrors *multierror.Error
 
 	// Gather git-related data as appropriate. (Returns nil, nil if no repo found.)
-	repo, err := gitutil.GetGitRepository(projectRoot)
+	gitRepo, err := gitutil.GetGitRepository(projectRoot)
 	if err != nil {
 		return fmt.Errorf("detecting Git repository: %w", err)
 	}
-	if repo == nil {
-		// If we couldn't find a repository, see if explicit environment variables have been set to provide us with
-		// metadata.
-		addGitMetadataFromEnvironment(m)
-
-		return nil
+	if gitRepo != nil {
+		if err := addGitRemoteMetadataToMap(gitRepo, projectRoot, m.Environment); err != nil {
+			allErrors = multierror.Append(allErrors, err)
+		}
+		if err := addGitCommitMetadata(gitRepo, projectRoot, m); err != nil {
+			allErrors = multierror.Append(allErrors, err)
+		}
+		return allErrors.ErrorOrNil()
 	}
 
-	if err := addGitRemoteMetadataToMap(repo, projectRoot, m.Environment); err != nil {
-		allErrors = multierror.Append(allErrors, err)
+	hgRepo, err := hgutil.FindRepository(projectRoot)
+	if err != nil {
+		return fmt.Errorf("detecting Mercurial repository: %w", err)
+	}
+	if hgRepo != nil {
+		if err := addHgRemoteMetadataToMap(hgRepo, projectRoot, m.Environment); err != nil {
+			allErrors = multierror.Append(allErrors, err)
+		}
+		if err := addHgCommitMetadata(hgRepo, m); err != nil {
+			allErrors = multierror.Append(allErrors, err)
+		}
+		return allErrors.ErrorOrNil()
 	}
 
-	if err := addGitCommitMetadata(repo, projectRoot, m); err != nil {
-		allErrors = multierror.Append(allErrors, err)
-	}
-
-	return allErrors.ErrorOrNil()
+	// No repository found — fall back to explicit environment variables.
+	addGitMetadataFromEnvironment(m)
+	return nil
 }
 
 // addGitMetadataFromEnvironment retrieves Git-related metadata from environment variables in the case that a Git
@@ -540,4 +557,81 @@ func (w *anyWriter) Write(d []byte) (int, error) {
 		*w = true
 	}
 	return len(d), nil
+}
+
+// addHgRemoteMetadataToMap reads the given hg repo's default path and
+// populates the vcs.* keys. Shape mirrors addGitRemoteMetadataToMap.
+func addHgRemoteMetadataToMap(repo *hgutil.Repository, projectRoot string, env map[string]string) error {
+	var allErrors *multierror.Error
+
+	remoteURL, err := repo.GetRemoteURL()
+	if err != nil {
+		return fmt.Errorf("detecting hg remote URL: %w", err)
+	}
+
+	if remoteURL != "" {
+		// hg URL shapes overlap with git's for the common hosts we care about
+		// (Bitbucket/Heptapod HTTPS, ssh://). Delegate parsing to hgutil.
+		vcsInfo, err := hgutil.TryGetVCSInfo(remoteURL)
+		if err != nil {
+			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS project information: %w", err))
+		} else {
+			env[backend.VCSRepoOwner] = vcsInfo.Owner
+			env[backend.VCSRepoName] = vcsInfo.Repo
+			env[backend.VCSRepoKind] = vcsInfo.Kind
+		}
+	}
+
+	// Add the repository root path.
+	rel, err := filepath.Rel(repo.Root, projectRoot)
+	if err != nil {
+		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+	} else if !strings.HasPrefix(rel, "..") {
+		env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+	}
+
+	return allErrors.ErrorOrNil()
+}
+
+// addHgCommitMetadata populates git.* commit keys from the hg working
+// directory parent. Mercurial has no separate committer/author concept, so
+// only git.author / git.author.email are set (matching what the pulumi-service
+// deployment executor writes via PULUMI_ENV for hg sources).
+func addHgCommitMetadata(repo *hgutil.Repository, m *backend.UpdateMetadata) error {
+	ciVars := ciutil.DetectVars()
+
+	info, err := repo.GetHeadCommit()
+	if err != nil {
+		return fmt.Errorf("getting hg HEAD commit info: %w", err)
+	}
+
+	m.Environment[backend.GitHead] = info.Hash
+
+	// Mercurial always reports a branch (defaulting to "default"), unlike git
+	// which reports "HEAD" when detached. CI vars override when available.
+	branch := info.Branch
+	if ciVars.BranchName != "" {
+		branch = ciVars.BranchName
+	}
+	if branch != "" {
+		m.Environment[backend.GitHeadName] = branch
+	}
+
+	msg := strings.TrimSpace(info.Message)
+	if msg == "" && ciVars.CommitMessage != "" {
+		msg = ciVars.CommitMessage
+	}
+	if m.Message == "" {
+		m.Message = gitCommitTitle(msg)
+	}
+
+	if info.Author != "" {
+		m.Environment[backend.GitAuthor] = info.Author
+	}
+	if info.AuthorEmail != "" {
+		m.Environment[backend.GitAuthorEmail] = info.AuthorEmail
+	}
+
+	m.Environment[backend.GitDirty] = strconv.FormatBool(info.Dirty)
+	return nil
 }
