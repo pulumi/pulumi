@@ -1088,24 +1088,7 @@ func (b *cloudBackend) CreateStack(
 	}
 
 	// Display messages from the backend if present.
-	if len(details.Messages) > 0 {
-		for _, msg := range details.Messages {
-			m := diag.RawMessage("", msg.Message)
-			switch msg.Severity {
-			case apitype.MessageSeverityError:
-				cmdutil.Diag().Errorf(m)
-			case apitype.MessageSeverityWarning:
-				cmdutil.Diag().Warningf(m)
-			case apitype.MessageSeverityInfo:
-				cmdutil.Diag().Infof(m)
-			default:
-				// Fallback on Info if we don't recognize the severity.
-				cmdutil.Diag().Infof(m)
-				logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
-			}
-		}
-		fmt.Print("\n")
-	}
+	displayBackendMessages(details.Messages)
 
 	stack, err := newStack(ctx, apistack, b)
 	if err != nil {
@@ -1721,24 +1704,7 @@ func (b *cloudBackend) apply(
 	}
 
 	// Display messages from the backend if present.
-	if len(updateMeta.messages) > 0 {
-		for _, msg := range updateMeta.messages {
-			m := diag.RawMessage("", msg.Message)
-			switch msg.Severity {
-			case apitype.MessageSeverityError:
-				cmdutil.Diag().Errorf(m)
-			case apitype.MessageSeverityWarning:
-				cmdutil.Diag().Warningf(m)
-			case apitype.MessageSeverityInfo:
-				cmdutil.Diag().Infof(m)
-			default:
-				// Fallback on Info if we don't recognize the severity.
-				cmdutil.Diag().Infof(m)
-				logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
-			}
-		}
-		fmt.Print("\n")
-	}
+	displayBackendMessages(updateMeta.messages)
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
 	return b.runEngineAction(
@@ -2750,4 +2716,30 @@ func (b *cloudBackend) downgradeUntypedDeploymentVersionIfNeeded(
 		deployment.Version, deployment.Features = b.downgradeDeploymentVersionIfNeeded(
 			ctx, deployment.Version, deployment.Features)
 	}
+}
+
+// displayBackendMessages renders backend-vended messages to the user via the default
+// diagnostic sink, mapping each message's severity to the appropriate log level. A trailing
+// blank line is printed when any messages are displayed, to separate them from subsequent
+// output. If messages is empty, this is a no-op.
+func displayBackendMessages(messages []apitype.Message) {
+	if len(messages) == 0 {
+		return
+	}
+	for _, msg := range messages {
+		m := diag.RawMessage("", msg.Message)
+		switch msg.Severity {
+		case apitype.MessageSeverityError:
+			cmdutil.Diag().Errorf(m)
+		case apitype.MessageSeverityWarning:
+			cmdutil.Diag().Warningf(m)
+		case apitype.MessageSeverityInfo:
+			cmdutil.Diag().Infof(m)
+		default:
+			// Fallback on Info if we don't recognize the severity.
+			cmdutil.Diag().Infof(m)
+			logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
+		}
+	}
+	fmt.Print("\n")
 }
