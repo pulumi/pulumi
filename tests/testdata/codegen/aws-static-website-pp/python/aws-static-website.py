@@ -4,7 +4,7 @@ import pulumi_aws_static_website as aws_static_website
 website_resource = aws_static_website.Website("websiteResource",
     site_path="string",
     index_html="string",
-    cache_ttl=0,
+    cache_ttl=float(0),
     cdn_args={
         "cloudfront_function_associations": [{
             "event_type": "string",
