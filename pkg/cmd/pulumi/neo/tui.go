@@ -50,6 +50,8 @@ type block struct {
 	rendered string
 	// label is the text shown after the spinner for blockBusy only.
 	label string
+	// shimmer selects how label is animated; only meaningful for blockBusy.
+	shimmer shimmerKind
 }
 
 // ModelConfig holds the parameters needed to create a TUI Model.
@@ -83,6 +85,9 @@ type Model struct {
 	mdRenderer *glamour.TermRenderer
 	width      int
 	height     int
+	// frame advances on each spinner.TickMsg while busy and drives the
+	// shimmer animation on the busy block's label.
+	frame int
 }
 
 var (
@@ -133,7 +138,11 @@ func NewModel(cfg ModelConfig) Model {
 	}
 	m.viewport.SetContent(m.welcome.View())
 	if cfg.Busy {
-		m.blocks = append(m.blocks, block{kind: blockBusy, label: pickThinkingVerb() + "..."})
+		m.blocks = append(m.blocks, block{
+			kind:    blockBusy,
+			label:   pickThinkingVerb() + "...",
+			shimmer: shimmerVerb,
+		})
 	}
 	return m
 }
@@ -191,7 +200,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.sendCh != nil {
 					select {
 					case m.sendCh <- text:
-						return m, m.showBusy(pickThinkingVerb() + "...")
+						return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 					default:
 					}
 				}
@@ -220,6 +229,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
+		// Advance the shimmer animation in lockstep with the spinner glyph.
+		// Modulo a large bound keeps the int from growing unbounded across
+		// long sessions; the value itself only matters mod label length.
+		m.frame = (m.frame + 1) & 0x3fffffff
 		m.rebuildContent()
 		return m, cmd
 
@@ -244,14 +257,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolStarted:
-		if cmd := m.showBusy(toolLabel(msg.Name, msg.Args) + " ..."); cmd != nil {
+		if cmd := m.showBusy(toolLabel(msg.Name, msg.Args)+" ...", shimmerWave); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolProgress:
-		if cmd := m.showBusy(toolLabel(msg.Name, nil) + ": " + truncate(msg.Message, 60)); cmd != nil {
+		if cmd := m.showBusy(toolLabel(msg.Name, nil)+": "+truncate(msg.Message, 60), shimmerWave); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 		m.rebuildContent()
@@ -268,7 +281,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		// Keep the busy block alive across the inter-tool gap so the spinner
 		// stays visible while the agent decides its next move.
-		if cmd := m.showBusy(pickThinkingVerb() + "..."); cmd != nil {
+		if cmd := m.showBusy(pickThinkingVerb()+"...", shimmerVerb); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 		m.rebuildContent()
@@ -352,7 +365,7 @@ func (m *Model) rebuildContent() {
 	sb.WriteString("\n")
 	for _, b := range m.blocks {
 		if b.kind == blockBusy {
-			sb.WriteString("  " + m.spinner.View() + " " + b.label)
+			sb.WriteString("  " + m.spinner.View() + " " + shimmerLabel(b.label, b.shimmer, m.frame))
 		} else {
 			sb.WriteString(b.rendered)
 		}
@@ -367,13 +380,13 @@ func (m *Model) rebuildContent() {
 }
 
 // showBusy ensures the busy indicator is the last block, with the given
-// label, and the spinner is ticking. Always remove-then-append so blockBusy
-// is guaranteed to be at the bottom regardless of prior state. Returns the
-// spinner Tick cmd if we weren't already busy; nil otherwise. Callers batch
-// the return value into their cmds.
-func (m *Model) showBusy(label string) tea.Cmd {
+// label and shimmer style, and the spinner is ticking. Always remove-then-
+// append so blockBusy is guaranteed to be at the bottom regardless of prior
+// state. Returns the spinner Tick cmd if we weren't already busy; nil
+// otherwise. Callers batch the return value into their cmds.
+func (m *Model) showBusy(label string, shimmer shimmerKind) tea.Cmd {
 	m.removeBlockKind(blockBusy)
-	m.blocks = append(m.blocks, block{kind: blockBusy, label: label})
+	m.blocks = append(m.blocks, block{kind: blockBusy, label: label, shimmer: shimmer})
 	if m.busy {
 		return nil
 	}
@@ -392,9 +405,11 @@ func (m *Model) appendBlock(b block) {
 }
 
 // endBusy clears the busy flag (the spinner drops its next tick) and
-// removes the busy indicator block.
+// removes the busy indicator block. Resets the shimmer frame so the next
+// busy session starts clean rather than mid-wave.
 func (m *Model) endBusy() {
 	m.busy = false
+	m.frame = 0
 	m.removeBlockKind(blockBusy)
 }
 
