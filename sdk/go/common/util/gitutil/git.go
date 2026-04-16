@@ -360,6 +360,23 @@ func getAuthForURL(url string) (string, transport.AuthMethod, error) {
 				Username: "oauth2",
 				Password: os.Getenv("GITLAB_TOKEN"),
 			}
+		} else if (strings.Contains(endpoint, "dev.azure.com") ||
+			strings.Contains(endpoint, "visualstudio.com")) &&
+			os.Getenv("AZURE_DEV_OPS_TOKEN") != "" {
+			auth = &http.BasicAuth{
+				Username: "x-access-token",
+				Password: os.Getenv("AZURE_DEV_OPS_TOKEN"),
+			}
+		} else if strings.Contains(endpoint, "bitbucket") && os.Getenv("BITBUCKET_TOKEN") != "" {
+			auth = &http.BasicAuth{
+				Username: "x-token-auth",
+				Password: os.Getenv("BITBUCKET_TOKEN"),
+			}
+		} else if os.Getenv("GENERIC_VCS_TOKEN") != "" {
+			auth = &http.BasicAuth{
+				Username: "x-access-token",
+				Password: os.Getenv("GENERIC_VCS_TOKEN"),
+			}
 		} else if os.Getenv("GIT_USERNAME") != "" || os.Getenv("GIT_PASSWORD") != "" {
 			auth = &http.BasicAuth{
 				Username: os.Getenv("GIT_USERNAME"),
