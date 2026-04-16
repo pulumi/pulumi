@@ -197,6 +197,112 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 	assert.Empty(t, streamer.posted)
 }
 
+// collectUIEvents drains a UIEvents channel until it is closed, returning everything seen.
+// Use with a Session that sets s.UIEvents — Run closes the channel when it exits.
+func collectUIEvents(ch <-chan UIEvent) []UIEvent {
+	var out []UIEvent
+	for evt := range ch {
+		out = append(out, evt)
+	}
+	return out
+}
+
+func hasUIEvent[T UIEvent](events []UIEvent) bool {
+	for _, e := range events {
+		if _, ok := e.(T); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func TestSession_FinalAssistantMessageWithoutCliCallsEmitsTaskIdle(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// A final assistant_message with no CLI tool calls signals the agent's turn is
+	// complete — the TUI depends on UITaskIdle to re-enable input.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	events := collectUIEvents(uiCh)
+	assert.True(t, hasUIEvent[UITaskIdle](events), "expected UITaskIdle after final assistant_message with no cli calls")
+}
+
+func TestSession_StreamingAssistantMessageDoesNotEmitTaskIdle(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// A non-final assistant_message is a streaming chunk, not a turn completion.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: false,
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	events := collectUIEvents(uiCh)
+	assert.False(t, hasUIEvent[UITaskIdle](events), "streaming chunks must not emit UITaskIdle")
+}
+
+func TestSession_FinalAssistantMessageWithCliCallsDoesNotEmitTaskIdle(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "hi"}},
+	}
+
+	// Final assistant_message carrying CLI tool calls: runBatch handles the transition.
+	// We must not emit UITaskIdle here or the TUI would unblock input while the agent
+	// is still mid-turn.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "filesystem__read", Args: json.RawMessage(`{}`), ExecutionMode: "cli"},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	events := collectUIEvents(uiCh)
+	assert.False(t, hasUIEvent[UITaskIdle](events), "pending cli tool calls must not emit UITaskIdle")
+}
+
 func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing.T) {
 	t.Parallel()
 

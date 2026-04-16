@@ -132,6 +132,9 @@ func NewModel(cfg ModelConfig) Model {
 		height:    24,
 	}
 	m.viewport.SetContent(m.welcome.View())
+	if cfg.Busy {
+		m.blocks = append(m.blocks, block{kind: blockBusy, label: pickThinkingVerb() + "..."})
+	}
 	return m
 }
 
@@ -188,11 +191,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.sendCh != nil {
 					select {
 					case m.sendCh <- text:
-						m.busy = true
-						// Kick the spinner chain — UIThinkingStart will find
-						// busy already true and skip starting it, so we need
-						// to start it here on the interactive path.
-						return m, m.spinner.Tick
+						return m, m.showBusy(pickThinkingVerb() + "...")
 					default:
 					}
 				}
@@ -225,62 +224,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
+		m.removeBlockKind(blockBusy)
 		if msg.IsFinal {
 			m.removeBlockKind(blockAssistantStreaming)
-			m.removeBlockKind(blockBusy)
 			rendered := m.renderMarkdown(msg.Content)
-			m.blocks = append(m.blocks, block{
+			m.appendBlock(block{
 				kind:     blockAssistantFinal,
 				rendered: renderAssistantFinal(rendered),
 			})
+		} else if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
+			m.blocks[idx].rendered = renderAssistantStreaming(msg.Content)
 		} else {
-			m.removeBlockKind(blockBusy)
-			idx := m.findBlockKind(blockAssistantStreaming)
-			if idx >= 0 {
-				m.blocks[idx].rendered = renderAssistantStreaming(msg.Content)
-			} else {
-				m.blocks = append(m.blocks, block{
-					kind:     blockAssistantStreaming,
-					rendered: renderAssistantStreaming(msg.Content),
-				})
-			}
+			m.appendBlock(block{
+				kind:     blockAssistantStreaming,
+				rendered: renderAssistantStreaming(msg.Content),
+			})
 		}
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
-
-	case UIThinkingStart:
-		wasBusy := m.busy
-		m.busy = true
-		label := pickThinkingVerb() + "..."
-		if idx := m.findBlockKind(blockBusy); idx >= 0 {
-			m.blocks[idx].label = label
-		} else {
-			m.blocks = append(m.blocks, block{kind: blockBusy, label: label})
-		}
-		m.rebuildContent()
-		cmds = append(cmds, waitForEvent(m.eventCh))
-		if !wasBusy {
-			cmds = append(cmds, m.spinner.Tick)
-		}
 
 	case UIToolStarted:
-		wasBusy := m.busy
-		m.busy = true
-		label := toolLabel(msg.Name, msg.Args) + " ..."
-		if idx := m.findBlockKind(blockBusy); idx >= 0 {
-			m.blocks[idx].label = label
-		} else {
-			m.blocks = append(m.blocks, block{kind: blockBusy, label: label})
+		if cmd := m.showBusy(toolLabel(msg.Name, msg.Args) + " ..."); cmd != nil {
+			cmds = append(cmds, cmd)
 		}
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
-		if !wasBusy {
-			cmds = append(cmds, m.spinner.Tick)
-		}
 
 	case UIToolProgress:
-		if idx := m.findBlockKind(blockBusy); idx >= 0 {
-			m.blocks[idx].label = toolLabel(msg.Name, nil) + ": " + truncate(msg.Message, 60)
+		if cmd := m.showBusy(toolLabel(msg.Name, nil) + ": " + truncate(msg.Message, 60)); cmd != nil {
+			cmds = append(cmds, cmd)
 		}
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
@@ -290,24 +262,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.IsError {
 			marker = toolErrMarker
 		}
-		completed := block{
+		m.appendBlock(block{
 			kind:     blockToolComplete,
 			rendered: "  " + marker + " " + styledToolLabel(msg.Name, msg.Args),
-		}
-		m.insertBeforeBusy(completed)
+		})
 		// Keep the busy block alive across the inter-tool gap so the spinner
-		// stays visible while the agent decides its next move. The next
-		// UIThinkingStart or UIToolStarted will overwrite the label.
-		if idx := m.findBlockKind(blockBusy); idx >= 0 {
-			m.blocks[idx].label = pickThinkingVerb() + "..."
+		// stays visible while the agent decides its next move.
+		if cmd := m.showBusy(pickThinkingVerb() + "..."); cmd != nil {
+			cmds = append(cmds, cmd)
 		}
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIError:
-		m.busy = false
-		m.removeBlockKind(blockBusy)
-		m.blocks = append(m.blocks, block{
+		m.endBusy()
+		m.appendBlock(block{
 			kind:     blockError,
 			rendered: "  " + errorStyle.Render("✗ Error: "+msg.Message),
 		})
@@ -315,7 +284,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIWarning:
-		m.blocks = append(m.blocks, block{
+		m.appendBlock(block{
 			kind:     blockWarning,
 			rendered: "  " + warningStyle.Render("⚠ "+msg.Message),
 		})
@@ -323,9 +292,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UICancelled:
-		m.busy = false
-		m.removeBlockKind(blockBusy)
-		m.blocks = append(m.blocks, block{
+		m.endBusy()
+		m.appendBlock(block{
 			kind:     blockCancelled,
 			rendered: "  " + cancelledStyle.Render("Session cancelled."),
 		})
@@ -333,8 +301,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UITaskIdle:
-		m.busy = false
-		m.removeBlockKind(blockBusy)
+		m.endBusy()
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -344,7 +311,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIUserMessage:
-		m.blocks = append(m.blocks, block{
+		m.appendBlock(block{
 			kind:     blockUserMessage,
 			rendered: promptStyle.Render("❯") + " " + userMsgBubble.Render(" "+msg.Content+" "),
 		})
@@ -399,17 +366,36 @@ func (m *Model) rebuildContent() {
 	}
 }
 
-// insertBeforeBusy inserts b just before the first blockBusy in the slice, or
-// appends if no busy block exists. Used so completed-tool blocks land above the
-// live spinner line rather than after it.
-func (m *Model) insertBeforeBusy(b block) {
-	for i, existing := range m.blocks {
-		if existing.kind == blockBusy {
-			m.blocks = append(m.blocks[:i], append([]block{b}, m.blocks[i:]...)...)
-			return
-		}
+// showBusy ensures the busy indicator is the last block, with the given
+// label, and the spinner is ticking. Always remove-then-append so blockBusy
+// is guaranteed to be at the bottom regardless of prior state. Returns the
+// spinner Tick cmd if we weren't already busy; nil otherwise. Callers batch
+// the return value into their cmds.
+func (m *Model) showBusy(label string) tea.Cmd {
+	m.removeBlockKind(blockBusy)
+	m.blocks = append(m.blocks, block{kind: blockBusy, label: label})
+	if m.busy {
+		return nil
+	}
+	m.busy = true
+	return m.spinner.Tick
+}
+
+// appendBlock appends a non-busy block, keeping any existing blockBusy
+// pinned at the bottom.
+func (m *Model) appendBlock(b block) {
+	if idx := m.findBlockKind(blockBusy); idx >= 0 {
+		m.blocks = append(m.blocks[:idx], append([]block{b}, m.blocks[idx:]...)...)
+		return
 	}
 	m.blocks = append(m.blocks, b)
+}
+
+// endBusy clears the busy flag (the spinner drops its next tick) and
+// removes the busy indicator block.
+func (m *Model) endBusy() {
+	m.busy = false
+	m.removeBlockKind(blockBusy)
 }
 
 // removeBlockKind removes all blocks of the given kind.
