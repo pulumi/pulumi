@@ -358,6 +358,17 @@ func TestModel_Update_KeyEnter_Idle_SendsAndClearsInput(t *testing.T) {
 	}
 	assert.Empty(t, um.textInput.Value(), "input must clear after send")
 	assert.True(t, um.busy, "sending must enter the busy state")
+
+	// Optimistic render: the user's message must appear in the transcript
+	// as soon as Enter is handled, before any server echo arrives.
+	idx := um.findBlockKind(blockUserMessage)
+	require.NotEqual(t, -1, idx, "Enter must render the user message immediately")
+	assert.Contains(t, um.blocks[idx].rendered, "hello")
+
+	// The content is queued for echo suppression so the server's replay
+	// doesn't duplicate the block.
+	require.Len(t, um.pendingUserEchoes, 1)
+	assert.Equal(t, "hello", um.pendingUserEchoes[0])
 }
 
 func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
@@ -371,6 +382,7 @@ func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 	um := updated.(Model)
 
 	assert.False(t, um.busy, "empty Enter must not enter the busy state")
+	assert.Equal(t, -1, um.findBlockKind(blockUserMessage), "empty Enter must not render a user block")
 	select {
 	case got := <-outCh:
 		t.Fatalf("empty Enter must not send, got %+v", got)
@@ -736,6 +748,8 @@ func TestModel_Update_UISessionURL_UpdatesWelcomeConsoleURL(t *testing.T) {
 func TestModel_Update_UIUserMessage_AppendsUserBlock(t *testing.T) {
 	t.Parallel()
 
+	// With an empty pending queue the echo comes from outside this TUI
+	// (e.g. the web UI on the same task) and must render as a user block.
 	ch := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{EventCh: ch})
 	updated, _ := m.Update(UIUserMessage{Content: "hi there"})
@@ -744,6 +758,86 @@ func TestModel_Update_UIUserMessage_AppendsUserBlock(t *testing.T) {
 	idx := um.findBlockKind(blockUserMessage)
 	require.NotEqual(t, -1, idx)
 	assert.Contains(t, um.blocks[idx].rendered, "hi there")
+}
+
+func TestModel_Update_UIUserMessage_SelfEchoIsSuppressed(t *testing.T) {
+	t.Parallel()
+
+	// Submitting "hi" renders a block optimistically and queues the content
+	// for suppression. When the server echoes that same message back, the
+	// queue entry is popped and the redundant render is skipped — so the
+	// transcript contains exactly one user block.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	evCh := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
+	m.textInput.SetValue("hi")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(Model)
+	<-outCh // drain the submitted event so outCh doesn't leak
+	require.Len(t, m.pendingUserEchoes, 1)
+
+	updated2, _ := m.Update(UIUserMessage{Content: "hi"})
+	m = updated2.(Model)
+
+	count := 0
+	for _, b := range m.blocks {
+		if b.kind == blockUserMessage {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count, "self-echo must not double-render the user message")
+	assert.Empty(t, m.pendingUserEchoes, "matching echo must pop the queue entry")
+}
+
+func TestModel_Update_UIUserMessage_ForeignEchoStillRenders(t *testing.T) {
+	t.Parallel()
+
+	// A user message that didn't originate from this TUI (for example, the
+	// user typing in the web UI for the same task) must still render. The
+	// dedup queue only suppresses echoes that match what this TUI submitted.
+	outCh := make(chan apitype.AgentUserEvent, 1)
+	evCh := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
+	m.textInput.SetValue("from cli")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(Model)
+	<-outCh
+
+	updated2, _ := m.Update(UIUserMessage{Content: "from web"})
+	m = updated2.(Model)
+
+	count := 0
+	for _, b := range m.blocks {
+		if b.kind == blockUserMessage {
+			count++
+		}
+	}
+	assert.Equal(t, 2, count, "non-matching echo must still render as a user block")
+	require.Len(t, m.pendingUserEchoes, 1, "non-matching echo must not pop the queue")
+	assert.Equal(t, "from cli", m.pendingUserEchoes[0])
+}
+
+func TestNewModel_InitialPromptRendersUserBlock(t *testing.T) {
+	t.Parallel()
+
+	// `pulumi neo "my prompt"` sends the prompt via CreateNeoTask rather
+	// than outCh, so the TUI only learns about it through ModelConfig.
+	// NewModel must render it as a user block and seed the echo queue so
+	// the server's replay doesn't duplicate it.
+	m := NewModel(ModelConfig{InitialPrompt: "kick off", Busy: true})
+
+	idx := m.findBlockKind(blockUserMessage)
+	require.NotEqual(t, -1, idx, "initial prompt must appear as a user block at startup")
+	assert.Contains(t, m.blocks[idx].rendered, "kick off")
+
+	require.Len(t, m.pendingUserEchoes, 1)
+	assert.Equal(t, "kick off", m.pendingUserEchoes[0])
+
+	// The busy block still sits at the bottom so the spinner is visible
+	// while the agent starts its first turn.
+	assert.Equal(t, blockBusy, m.blocks[len(m.blocks)-1].kind)
 }
 
 func TestModel_View_ShowsHintBasedOnBusy(t *testing.T) {

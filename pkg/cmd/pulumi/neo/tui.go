@@ -71,6 +71,12 @@ type ModelConfig struct {
 	// handed a prompt to the backend — the TUI starts with Enter disabled
 	// until the first UITaskIdle.
 	Busy bool
+	// InitialPrompt, when non-empty, is rendered as the first user message
+	// in the transcript and seeds the self-echo suppression queue. Use this
+	// for the prompt passed on the command line (e.g. `pulumi neo "..."`)
+	// which is sent to the backend via CreateNeoTask rather than outCh and
+	// would otherwise only appear once the SSE stream echoes it back.
+	InitialPrompt string
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -96,6 +102,13 @@ type Model struct {
 	frame             int
 	pendingApproval   bool
 	pendingApprovalID string
+	// pendingUserEchoes is a FIFO of user-message contents the TUI has
+	// already rendered optimistically on submit. When a UIUserMessage
+	// arrives (the server's echo of our own input) and the front of the
+	// queue matches, it is popped and the redundant render is skipped.
+	// Non-matching UIUserMessage events still render — they originated
+	// from another client (e.g. the web UI).
+	pendingUserEchoes []string
 }
 
 var (
@@ -145,6 +158,10 @@ func NewModel(cfg ModelConfig) Model {
 		height:    24,
 	}
 	m.viewport.SetContent(m.welcome.View())
+	if cfg.InitialPrompt != "" {
+		m.appendUserMessageBlock(cfg.InitialPrompt)
+		m.pendingUserEchoes = append(m.pendingUserEchoes, cfg.InitialPrompt)
+	}
 	if cfg.Busy {
 		m.blocks = append(m.blocks, block{
 			kind:    blockBusy,
@@ -258,6 +275,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Type:    userEventUserMessage,
 						Content: text,
 					}:
+						// Render optimistically so the user sees their message in
+						// the transcript before the server echoes it back. The
+						// echo is reconciled against pendingUserEchoes in the
+						// UIUserMessage handler to avoid duplicates.
+						m.appendUserMessageBlock(text)
+						m.pendingUserEchoes = append(m.pendingUserEchoes, text)
 						return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 					default:
 					}
@@ -382,11 +405,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIUserMessage:
-		m.appendBlock(block{
-			kind:     blockUserMessage,
-			rendered: promptStyle.Render("❯") + " " + userMsgBubble.Render(" "+msg.Content+" "),
-		})
-		m.rebuildContent()
+		// If the queue's front matches, this is the server echoing a message
+		// we already rendered optimistically on submit — pop and skip.
+		// Otherwise it came from another client (e.g. the web UI) and we
+		// render it normally.
+		if len(m.pendingUserEchoes) > 0 && m.pendingUserEchoes[0] == msg.Content {
+			m.pendingUserEchoes = m.pendingUserEchoes[1:]
+		} else {
+			m.appendUserMessageBlock(msg.Content)
+			m.rebuildContent()
+		}
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIApprovalRequest:
@@ -465,6 +493,16 @@ func (m *Model) showBusy(label string, shimmer shimmerKind) tea.Cmd {
 	}
 	m.busy = true
 	return m.spinner.Tick
+}
+
+// appendUserMessageBlock renders a user's chat message as a styled bubble and
+// appends it to the transcript. Used both for optimistic rendering on submit
+// and for echoes that originated outside this TUI.
+func (m *Model) appendUserMessageBlock(content string) {
+	m.appendBlock(block{
+		kind:     blockUserMessage,
+		rendered: promptStyle.Render("❯") + " " + userMsgBubble.Render(" "+content+" "),
+	})
 }
 
 // appendBlock appends a non-busy block, keeping any existing blockBusy
