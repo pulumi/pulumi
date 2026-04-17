@@ -42,11 +42,11 @@ func main() {
 				WebhookSecret: "very important secret",
 			},
 			Servers: []map[string]interface{}{
-				&ServersArgs{
-					Name: "First",
+				map[string]interface{}{
+					"name": "First",
 				},
-				&ServersArgs{
-					Name: "Second",
+				map[string]interface{}{
+					"name": "Second",
 				},
 			},
 			DeploymentZones: map[string]interface{}{

@@ -23,7 +23,7 @@ func main() {
 		}
 		ctx.Export("targetBucket", bucket.Loggings.ApplyT(func(loggings []s3.BucketLogging) (*string, error) {
 			return &loggings[0].TargetBucket, nil
-		}).(pulumi.StringPtrOutput))
+		}).(pulumi.StringOutput))
 		return nil
 	})
 }

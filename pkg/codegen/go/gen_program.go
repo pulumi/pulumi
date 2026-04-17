@@ -1162,7 +1162,9 @@ func (g *generator) genHelpers(w io.Writer) {
 		parts := strings.Split(inputType, ".")
 		contract.Assertf(len(parts) == 2, "genHelpers inputType expected to have two parts.")
 		typ := parts[1]
-		promptType := typ
+		// For non-primitive Pulumi element types (e.g. pulumi.StringOutput),
+		// keep the fully qualified type name in the helper parameter.
+		promptType := inputType
 		if t, ok := primitives[typ]; ok {
 			promptType = t
 		}

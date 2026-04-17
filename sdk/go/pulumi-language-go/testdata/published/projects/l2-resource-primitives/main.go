@@ -13,9 +13,9 @@ func main() {
 			Integer: pulumi.Int(42),
 			String:  pulumi.String("hello"),
 			NumberArray: pulumi.Float64Array{
-				pulumi.Float64(-1),
-				pulumi.Float64(0),
-				pulumi.Float64(1),
+				pulumi.Float64(float64(-1)),
+				pulumi.Float64(float64(0)),
+				pulumi.Float64(float64(1)),
 			},
 			BooleanMap: pulumi.BoolMap{
 				"t": pulumi.Bool(true),

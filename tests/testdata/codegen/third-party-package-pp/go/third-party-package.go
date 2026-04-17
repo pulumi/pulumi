@@ -16,13 +16,13 @@ func main() {
 			return err
 		}
 		_, err = module.NewObject(ctx, "Question", &module.ObjectArgs{
-			Answer: pulumi.Float64(42),
+			Answer: pulumi.Float64(float64(42)),
 		})
 		if err != nil {
 			return err
 		}
 		_, err = sub.NewObject(ctx, "Question2", &sub.ObjectArgs{
-			Answer: pulumi.Float64(24),
+			Answer: pulumi.Float64(float64(24)),
 		})
 		if err != nil {
 			return err

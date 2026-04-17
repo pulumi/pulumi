@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	moduleformatmod "example.com/pulumi-module-format/sdk/go/v29/moduleformat/mod"
 	"example.com/pulumi-names/sdk/go/v6/names/mod"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -33,7 +35,7 @@ func main() {
 			return err
 		}
 		modResource, err := moduleformatmod.NewResource(ctx, "modResource", &moduleformatmod.ResourceArgs{
-			Text: pulumi.Sprintf("%v-%v", mod2, Mod),
+			Text: pulumi.String(fmt.Sprintf("%v-%v", mod2, Mod)),
 		})
 		if err != nil {
 			return err
@@ -41,7 +43,7 @@ func main() {
 		ctx.Export("namesResourceVal", namesResource.Value)
 		ctx.Export("modResourceText", modResource.Text)
 		ctx.Export("nameVariables", pulumi.Bool(names && Names))
-		ctx.Export("modVariables", pulumi.Sprintf("%v-%v", mod2, Mod))
+		ctx.Export("modVariables", pulumi.String(fmt.Sprintf("%v-%v", mod2, Mod)))
 		return nil
 	})
 }

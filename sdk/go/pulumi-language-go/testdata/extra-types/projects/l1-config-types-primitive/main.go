@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -23,7 +25,7 @@ func main() {
 		}
 		ctx.Export("defaultInteger", pulumi.Float64(optionalInt+2))
 		aString := cfg.Require("aString")
-		ctx.Export("theString", pulumi.Sprintf("%v World", aString))
+		ctx.Export("theString", pulumi.String(fmt.Sprintf("%v World", aString)))
 		optionalString := "defaultStringValue"
 		if param := cfg.Get("optionalString"); param != "" {
 			optionalString = param

@@ -8,13 +8,13 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		_, err := union.NewExample(ctx, "stringOrIntegerExample1", &union.ExampleArgs{
-			StringOrIntegerProperty: pulumi.Any(42),
+			StringOrIntegerProperty: pulumi.Int(42),
 		})
 		if err != nil {
 			return err
 		}
 		_, err = union.NewExample(ctx, "stringOrIntegerExample2", &union.ExampleArgs{
-			StringOrIntegerProperty: pulumi.Any("forty two"),
+			StringOrIntegerProperty: pulumi.String("forty two"),
 		})
 		if err != nil {
 			return err
@@ -22,7 +22,7 @@ func main() {
 		mapMapUnionExample, err := union.NewExample(ctx, "mapMapUnionExample", &union.ExampleArgs{
 			MapMapUnionProperty: pulumi.MapMap{
 				"key1": pulumi.Map{
-					"key1a": pulumi.Any("value1a"),
+					"key1a": pulumi.String("value1a"),
 				},
 			},
 		})

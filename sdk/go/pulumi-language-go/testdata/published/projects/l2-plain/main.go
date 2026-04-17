@@ -44,14 +44,14 @@ func main() {
 			Data: plain.DataArgs{
 				InnerData: plain.InnerDataArgs{
 					Boolean:   false,
-					Float:     0,
+					Float:     float64(0),
 					Integer:   0,
 					String:    "",
 					BoolArray: []bool{},
 					StringMap: map[string]string{},
 				},
 				Boolean:   false,
-				Float:     0,
+				Float:     float64(0),
 				Integer:   0,
 				String:    "",
 				BoolArray: []bool{},

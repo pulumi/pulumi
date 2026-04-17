@@ -60,10 +60,10 @@ func main() {
 				AssignIpv6AddressOnCreation: pulumi.Bool(false),
 				VpcId:                       eksVpc.ID(),
 				MapPublicIpOnLaunch:         pulumi.Bool(true),
-				CidrBlock:                   pulumi.Sprintf("10.100.%v.0/24", key0),
+				CidrBlock:                   pulumi.String(fmt.Sprintf("10.100.%v.0/24", key0)),
 				AvailabilityZone:            pulumi.String(pulumi.String(val0)),
 				Tags: pulumi.StringMap{
-					"Name": pulumi.Sprintf("pulumi-sn-%v", val0),
+					"Name": pulumi.String(fmt.Sprintf("pulumi-sn-%v", val0)),
 				},
 			})
 			if err != nil {
