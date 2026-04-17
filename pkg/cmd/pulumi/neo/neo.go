@@ -24,7 +24,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
-	"golang.org/x/term"
 
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -125,10 +124,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		"shell":      sh,
 	}
 
-	isTTY := term.IsTerminal(int(os.Stdout.Fd()))
-
-	// Non-TTY requires a prompt — there's no input mechanism.
-	if !isTTY {
+	// Non-interactive mode requires a prompt — there's no input mechanism.
+	if !cmdutil.Interactive() {
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
