@@ -234,20 +234,36 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 		return
 	}
 
-	var be BackendEvent
-	if err := json.Unmarshal(eventBody, &be); err != nil {
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil {
 		return
 	}
 
-	switch be.Type {
+	switch head.Type {
 	case backendEventAssistantMessage:
-		sendUI(s.UIEvents, UIAssistantMessage{Content: be.Content, IsFinal: be.IsFinal})
+		var msg apitype.AgentBackendEventAssistantMessage
+		if err := json.Unmarshal(eventBody, &msg); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIAssistantMessage{Content: msg.Content, IsFinal: msg.IsFinal})
 	case backendEventExecToolCallProgress:
-		sendUI(s.UIEvents, UIToolProgress{Name: be.Name, Message: be.Content})
+		var p apitype.AgentBackendEventExecToolCallProgress
+		if err := json.Unmarshal(eventBody, &p); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIToolProgress{Name: p.Name, Message: p.Content})
 	case backendEventError:
-		sendUI(s.UIEvents, UIError{Message: be.Message})
+		var e apitype.AgentBackendEventError
+		if err := json.Unmarshal(eventBody, &e); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIError{Message: e.Message})
 	case backendEventWarning:
-		sendUI(s.UIEvents, UIWarning{Message: be.Message})
+		var w apitype.AgentBackendEventWarning
+		if err := json.Unmarshal(eventBody, &w); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIWarning{Message: w.Message})
 	case backendEventCancelled:
 		sendUI(s.UIEvents, UICancelled{})
 	}
@@ -261,11 +277,11 @@ func (s *Session) forwardUserInputToUI(eventBody json.RawMessage) {
 		return
 	}
 
-	var be BackendEvent
-	if err := json.Unmarshal(eventBody, &be); err != nil {
+	var evt apitype.AgentUserEventUserMessage
+	if err := json.Unmarshal(eventBody, &evt); err != nil {
 		return
 	}
-	if be.Content != "" {
-		sendUI(s.UIEvents, UIUserMessage{Content: be.Content})
+	if evt.Content != "" {
+		sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
 	}
 }

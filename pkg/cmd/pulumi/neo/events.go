@@ -44,15 +44,3 @@ const (
 	backendEventWarning              = "warning"
 	backendEventCancelled            = "cancelled"
 )
-
-// BackendEvent is a permissive view over the inner eventBody used by the TUI forwarder
-// to read whichever fields a given backend event type populates, without needing a
-// separate typed struct per discriminator.
-type BackendEvent struct {
-	Type       string `json:"type"`
-	Content    string `json:"content,omitempty"`
-	IsFinal    bool   `json:"is_final,omitempty"`
-	ToolCallID string `json:"tool_call_id,omitempty"`
-	Name       string `json:"name,omitempty"`
-	Message    string `json:"message,omitempty"`
-}
