@@ -1967,6 +1967,69 @@ func TestResourceListInputsRoundtrip(t *testing.T) {
 	require.False(t, diags.HasErrors(), diags.Error())
 }
 
+func TestResourceListInputsReservedNames(t *testing.T) {
+	t.Parallel()
+
+	t.Run("pulumi disallowed", func(t *testing.T) {
+		t.Parallel()
+
+		spec := PackageSpec{
+			Name: "test",
+			Resources: map[string]ResourceSpec{
+				"test:index:Widget": {
+					ListInputs: &ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]PropertySpec{
+							"pulumi": {
+								TypeSpec: TypeSpec{Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		_, diags, err := BindSpec(spec, noOpLoader{}, ValidationOptions{
+			AllowDanglingReferences: true,
+		})
+		require.Error(t, err)
+		require.True(t, diags.HasErrors())
+		assert.Contains(t, diags.Error(), "pulumi is a reserved property name")
+	})
+
+	t.Run("id and urn allowed", func(t *testing.T) {
+		t.Parallel()
+
+		spec := PackageSpec{
+			Name: "test",
+			Resources: map[string]ResourceSpec{
+				"test:index:Widget": {
+					ListInputs: &ObjectTypeSpec{
+						Type: "object",
+						Properties: map[string]PropertySpec{
+							"id": {
+								TypeSpec: TypeSpec{Type: "string"},
+							},
+							"urn": {
+								TypeSpec: TypeSpec{Type: "string"},
+							},
+						},
+						Required: []string{"id", "urn"},
+					},
+				},
+			},
+		}
+
+		pkg, diags, err := BindSpec(spec, noOpLoader{}, ValidationOptions{
+			AllowDanglingReferences: true,
+		})
+		require.NoError(t, err)
+		require.False(t, diags.HasErrors(), diags.Error())
+		require.Len(t, pkg.Resources, 1)
+		require.NotNil(t, pkg.Resources[0].ListInputs)
+	})
+}
+
 func TestFunctionSpecToJSONAndYAMLTurnaround(t *testing.T) {
 	t.Parallel()
 
