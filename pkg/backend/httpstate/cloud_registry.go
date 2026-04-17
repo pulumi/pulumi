@@ -85,6 +85,24 @@ func (r *cloudRegistry) DownloadTemplate(ctx ctx.Context, downloadURL string) (i
 	return r.cl.DownloadTemplate(ctx, downloadURL)
 }
 
+func (r *cloudRegistry) GetPackageReadmeMarkdown(
+	ctx ctx.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	return r.cl.GetPackageReadmeMarkdown(ctx, source, publisher, name, version, opts)
+}
+
+func (r *cloudRegistry) GetPackageNavMarkdown(
+	ctx ctx.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	return r.cl.GetPackageNavMarkdown(ctx, source, publisher, name, version, opts)
+}
+
+func (r *cloudRegistry) GetPackageDocsMarkdown(
+	ctx ctx.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	return r.cl.GetPackageDocsMarkdown(ctx, source, publisher, name, version, token, opts)
+}
+
 func (r *cloudRegistry) DeletePackageVersion(
 	ctx ctx.Context, source, publisher, name string, version semver.Version,
 ) error {

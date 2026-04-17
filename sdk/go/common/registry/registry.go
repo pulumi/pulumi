@@ -59,6 +59,21 @@ type Registry interface {
 	// DownloadTemplate downloads a template given the value of
 	// [apitype.TemplateMetadata].DownloadURL.
 	DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error)
+
+	// GetPackageReadmeMarkdown retrieves the processed README as markdown.
+	GetPackageReadmeMarkdown(
+		ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+	) (string, error)
+
+	// GetPackageNavMarkdown retrieves the navigation tree as markdown.
+	GetPackageNavMarkdown(
+		ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+	) (string, error)
+
+	// GetPackageDocsMarkdown retrieves documentation for a resource or function as markdown.
+	GetPackageDocsMarkdown(
+		ctx context.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
+	) (string, error)
 }
 
 type registryKey struct{}
@@ -136,4 +151,34 @@ func (r *onDemandRegistry) DownloadTemplate(
 		return nil, err
 	}
 	return impl.DownloadTemplate(ctx, downloadURL)
+}
+
+func (r *onDemandRegistry) GetPackageReadmeMarkdown(
+	ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return "", err
+	}
+	return impl.GetPackageReadmeMarkdown(ctx, source, publisher, name, version, opts)
+}
+
+func (r *onDemandRegistry) GetPackageNavMarkdown(
+	ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return "", err
+	}
+	return impl.GetPackageNavMarkdown(ctx, source, publisher, name, version, opts)
+}
+
+func (r *onDemandRegistry) GetPackageDocsMarkdown(
+	ctx context.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return "", err
+	}
+	return impl.GetPackageDocsMarkdown(ctx, source, publisher, name, version, token, opts)
 }

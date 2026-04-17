@@ -37,6 +37,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// TODO: discuss whether this command can be replaced by `pulumi package nav` and
+// `pulumi package docs`, which use the registry API and return processed docs
+// (lang spans resolved, Hugo shortcodes expanded) without requiring a local plugin.
 func newPackageInfoCmd() *cobra.Command {
 	var module string
 	var resource string

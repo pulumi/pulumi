@@ -72,6 +72,24 @@ func (r registryClient) GetTemplate(
 	return meta, err
 }
 
+func (r registryClient) GetPackageReadmeMarkdown(
+	ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	return r.c.GetPackageReadmeMarkdown(ctx, source, publisher, name, version, opts)
+}
+
+func (r registryClient) GetPackageNavMarkdown(
+	ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	return r.c.GetPackageNavMarkdown(ctx, source, publisher, name, version, opts)
+}
+
+func (r registryClient) GetPackageDocsMarkdown(
+	ctx context.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	return r.c.GetPackageDocsMarkdown(ctx, source, publisher, name, version, token, opts)
+}
+
 func (r registryClient) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
 	bytes, err := r.c.DownloadTemplate(ctx, downloadURL)
 	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {

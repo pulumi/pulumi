@@ -2031,6 +2031,61 @@ func (pc *Client) GetPackage(
 	return resp, err
 }
 
+func (pc *Client) GetPackageReadmeMarkdown(
+	ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	path := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s/readme", source, publisher, name, version)
+	format := "markdown"
+	query := struct {
+		Format *string `url:"format"`
+		Lang   *string `url:"lang,omitempty"`
+		OS     *string `url:"os,omitempty"`
+	}{Format: &format, Lang: optStr(opts.Lang), OS: optStr(opts.OS)}
+	return pc.getTextBody(ctx, path, query)
+}
+
+func (pc *Client) GetPackageNavMarkdown(
+	ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	path := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s/nav", source, publisher, name, version)
+	format := "markdown"
+	query := struct {
+		Format *string `url:"format"`
+		Lang   *string `url:"lang,omitempty"`
+		Q      *string `url:"q,omitempty"`
+	}{Format: &format, Lang: optStr(opts.Lang), Q: optStr(opts.Query)}
+	return pc.getTextBody(ctx, path, query)
+}
+
+func (pc *Client) GetPackageDocsMarkdown(
+	ctx context.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	path := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s/docs/%s",
+		source, publisher, name, version, url.PathEscape(token))
+	format := "markdown"
+	query := struct {
+		Format *string `url:"format"`
+		Lang   *string `url:"lang,omitempty"`
+		OS     *string `url:"os,omitempty"`
+	}{Format: &format, Lang: optStr(opts.Lang), OS: optStr(opts.OS)}
+	return pc.getTextBody(ctx, path, query)
+}
+
+func (pc *Client) getTextBody(ctx context.Context, path string, query any) (string, error) {
+	var body []byte
+	if err := pc.restCall(ctx, "GET", path, query, nil, &body); err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
+func optStr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 // DeletePackageVersion deletes a specific version of a package from the registry.
 func (pc *Client) DeletePackageVersion(
 	ctx context.Context, source, publisher, name string, version semver.Version,

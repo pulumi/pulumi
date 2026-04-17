@@ -1093,3 +1093,92 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		}
 	})
 }
+
+func TestGetPackageReadmeMarkdown(t *testing.T) {
+	t.Parallel()
+
+	expectedMarkdown := "# My Package\n\nThis is the readme."
+
+	mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "GET", req.Method)
+		assert.Equal(t, "/api/registry/packages/pulumi/pulumi/random/versions/4.19.1/readme", req.URL.Path)
+		assert.Equal(t, "markdown", req.URL.Query().Get("format"))
+		assert.Equal(t, "python", req.URL.Query().Get("lang"))
+		assert.Equal(t, "linux", req.URL.Query().Get("os"))
+		return expectedMarkdown
+	})
+	defer mockServer.Close()
+
+	client := newMockClient(mockServer)
+	result, err := client.GetPackageReadmeMarkdown(t.Context(), "pulumi", "pulumi", "random", "4.19.1",
+		apitype.PackageDocsOptions{Lang: "python", OS: "linux"})
+	require.NoError(t, err)
+	assert.Equal(t, expectedMarkdown, result)
+}
+
+func TestGetPackageNavMarkdown(t *testing.T) {
+	t.Parallel()
+
+	expectedMarkdown := "# random v4.19.1\n\n## index/\n\n- RandomPassword"
+
+	mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "GET", req.Method)
+		assert.Equal(t, "/api/registry/packages/pulumi/pulumi/random/versions/4.19.1/nav", req.URL.Path)
+		assert.Equal(t, "markdown", req.URL.Query().Get("format"))
+		assert.Equal(t, "go", req.URL.Query().Get("lang"))
+		assert.Equal(t, "Password", req.URL.Query().Get("q"))
+		return expectedMarkdown
+	})
+	defer mockServer.Close()
+
+	client := newMockClient(mockServer)
+	result, err := client.GetPackageNavMarkdown(t.Context(), "pulumi", "pulumi", "random", "4.19.1",
+		apitype.PackageDocsOptions{Lang: "go", Query: "Password"})
+	require.NoError(t, err)
+	assert.Equal(t, expectedMarkdown, result)
+}
+
+func TestGetPackageDocsMarkdown(t *testing.T) {
+	t.Parallel()
+
+	expectedMarkdown := "# RandomPassword\n\n## Inputs\n\n| Name | Type |"
+
+	mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "GET", req.Method)
+		// url.PathEscape encodes slashes but not colons (valid in path segments).
+		assert.Equal(t,
+			"/api/registry/packages/pulumi/pulumi/random/versions/4.19.1/docs/random:index%2FrandomPassword:RandomPassword",
+			req.URL.RawPath)
+		assert.Equal(t, "markdown", req.URL.Query().Get("format"))
+		assert.Equal(t, "python", req.URL.Query().Get("lang"))
+		assert.Equal(t, "linux", req.URL.Query().Get("os"))
+		return expectedMarkdown
+	})
+	defer mockServer.Close()
+
+	client := newMockClient(mockServer)
+	result, err := client.GetPackageDocsMarkdown(t.Context(), "pulumi", "pulumi", "random", "4.19.1",
+		"random:index/randomPassword:RandomPassword",
+		apitype.PackageDocsOptions{Lang: "python", OS: "linux"})
+	require.NoError(t, err)
+	assert.Equal(t, expectedMarkdown, result)
+}
+
+func TestGetPackageDocsMarkdown_OmitsEmptyQueryParams(t *testing.T) {
+	t.Parallel()
+
+	mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "markdown", req.URL.Query().Get("format"))
+		// These should be absent, not empty strings.
+		assert.Empty(t, req.URL.Query().Get("lang"))
+		assert.Empty(t, req.URL.Query().Get("os"))
+		return "content"
+	})
+	defer mockServer.Close()
+
+	client := newMockClient(mockServer)
+	_, err := client.GetPackageDocsMarkdown(t.Context(), "pulumi", "pulumi", "random", "4.19.1",
+		"random:index/randomPassword:RandomPassword",
+		apitype.PackageDocsOptions{})
+	require.NoError(t, err)
+}

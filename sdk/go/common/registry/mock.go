@@ -40,6 +40,16 @@ type Mock struct {
 	ListTemplatesF func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
 
 	DownloadTemplateF func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
+
+	GetPackageReadmeMarkdownF func(
+		ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+	) (string, error)
+	GetPackageNavMarkdownF func(
+		ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+	) (string, error)
+	GetPackageDocsMarkdownF func(
+		ctx context.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
+	) (string, error)
 }
 
 func (m Mock) GetPackage(
@@ -75,8 +85,35 @@ func (m Mock) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype
 }
 
 func (m Mock) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
-	if m.ListTemplatesF == nil {
+	if m.DownloadTemplateF == nil {
 		panic("registry.Mock.DownloadTemplateF not implemented")
 	}
 	return m.DownloadTemplateF(ctx, downloadURL)
+}
+
+func (m Mock) GetPackageReadmeMarkdown(
+	ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	if m.GetPackageReadmeMarkdownF == nil {
+		panic("registry.Mock.GetPackageReadmeMarkdownF not implemented")
+	}
+	return m.GetPackageReadmeMarkdownF(ctx, source, publisher, name, version, opts)
+}
+
+func (m Mock) GetPackageNavMarkdown(
+	ctx context.Context, source, publisher, name, version string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	if m.GetPackageNavMarkdownF == nil {
+		panic("registry.Mock.GetPackageNavMarkdownF not implemented")
+	}
+	return m.GetPackageNavMarkdownF(ctx, source, publisher, name, version, opts)
+}
+
+func (m Mock) GetPackageDocsMarkdown(
+	ctx context.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
+) (string, error) {
+	if m.GetPackageDocsMarkdownF == nil {
+		panic("registry.Mock.GetPackageDocsMarkdownF not implemented")
+	}
+	return m.GetPackageDocsMarkdownF(ctx, source, publisher, name, version, token, opts)
 }

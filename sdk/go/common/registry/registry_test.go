@@ -66,6 +66,24 @@ func (r mockRegistry) DownloadTemplate(ctx context.Context, downloadURL string) 
 	return r.downloadTemplate(ctx, downloadURL)
 }
 
+func (r mockRegistry) GetPackageReadmeMarkdown(
+	_ context.Context, _, _, _, _ string, _ apitype.PackageDocsOptions,
+) (string, error) {
+	panic("not implemented in mock")
+}
+
+func (r mockRegistry) GetPackageNavMarkdown(
+	_ context.Context, _, _, _, _ string, _ apitype.PackageDocsOptions,
+) (string, error) {
+	panic("not implemented in mock")
+}
+
+func (r mockRegistry) GetPackageDocsMarkdown(
+	_ context.Context, _, _, _, _, _ string, _ apitype.PackageDocsOptions,
+) (string, error) {
+	panic("not implemented in mock")
+}
+
 func TestOnDemandRegistry(t *testing.T) {
 	t.Parallel()
 
