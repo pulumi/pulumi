@@ -64,9 +64,10 @@ type ModelConfig struct {
 	Username string
 	EventCh  <-chan UIEvent
 	// OutCh carries every TUI-originated user event (chat messages, approval
-	// answers, …) to the dispatcher in runNeo. A single typed channel keeps
-	// Session focused on SSE intake and tool dispatch.
-	OutCh chan<- apitype.AgentUserEvent
+	// answers, …) to the dispatcher in runNeo. Each send also carries the
+	// TUI's current planMode, which the dispatcher reads on the first
+	// user_message to configure CreateNeoTask.
+	OutCh chan<- outboundEvent
 	// Busy seeds the input-gating state. True when the caller has already
 	// handed a prompt to the backend — the TUI starts with Enter disabled
 	// until the first UITaskIdle.
@@ -77,11 +78,10 @@ type ModelConfig struct {
 	// which is sent to the backend via CreateNeoTask rather than outCh and
 	// would otherwise only appear once the SSE stream echoes it back.
 	InitialPrompt string
-	// Config is the shared session state the TUI and the dispatcher both
-	// read/write — today just the plan-mode toggle and a "task created" flag.
-	// NewModel allocates a zero-value sessionConfig if this is nil so tests
-	// can construct a Model without plumbing the shared state through.
-	Config *sessionConfig
+	// MessageSent seeds the post-first-message gate. Set it to true in tests
+	// that want to exercise the Shift+Tab post-send warning path without
+	// having to simulate a full Enter-driven send first.
+	MessageSent bool
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -91,7 +91,7 @@ type Model struct {
 	textInput textinput.Model
 	blocks    []block
 	eventCh   <-chan UIEvent
-	outCh     chan<- apitype.AgentUserEvent
+	outCh     chan<- outboundEvent
 	// busy is true from the moment the user sends a message (or a prompt was
 	// provided up front) until the session emits UITaskIdle / UICancelled /
 	// UIError. While busy, Enter is swallowed so the user can't talk over
@@ -114,15 +114,19 @@ type Model struct {
 	// Non-matching UIUserMessage events still render — they originated
 	// from another client (e.g. the web UI).
 	pendingUserEchoes []string
-	// config is shared with the dispatcher goroutine in runNeo. Owned via a
-	// pointer so Shift+Tab / plan-approval handlers can mutate the atomics
-	// that the dispatcher reads at CreateNeoTask time. Always non-nil after
-	// NewModel — the constructor allocates a fresh one if the caller passed nil.
-	config *sessionConfig
-	// pendingApprovalIsPlan is true when the currently pending approval is an
-	// exit_plan_mode gate, so the Enter handler knows to auto-clear planMode on
-	// approval.
-	pendingApprovalIsPlan bool
+	// planMode is the user's current plan-mode choice, toggled via Shift+Tab.
+	// Pre-first-message this is the live affordance; once messageSent flips
+	// true, Shift+Tab stops toggling and planMode is effectively frozen
+	// (further changes happen only via plan-approval auto-clear below).
+	planMode bool
+	// messageSent flips to true when the TUI successfully dispatches its
+	// first user_message on outCh. From that point on, Shift+Tab emits the
+	// "plan mode is task-level" warning instead of toggling.
+	messageSent bool
+	// pendingApprovalType is the raw wire approval_type for the currently
+	// pending approval (empty when none). The Enter handler checks for
+	// approvalTypePlanExit so it can auto-clear planMode on approval.
+	pendingApprovalType string
 }
 
 var (
@@ -136,10 +140,9 @@ var (
 	toolErrMarker  = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("⏺")
 	finalMarker    = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Render("⏺")
 	userMsgBubble  = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Background(lipgloss.Color("8"))
-	// planModeIndicatorStyle is a distinct cyan+bold so the footer banner is
-	// visible at a glance; it contrasts against the faint, neutral hint line.
-	planModeIndicatorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
-	planBlockHeaderStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	// planAccentStyle is a distinct cyan+bold used for both the footer banner
+	// and the "Proposed plan" block header so they read as the same visual cue.
+	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 )
 
 // NewModel creates a new TUI Model.
@@ -158,11 +161,6 @@ func NewModel(cfg ModelConfig) Model {
 		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("6"))),
 	)
 
-	sc := cfg.Config
-	if sc == nil {
-		sc = &sessionConfig{}
-	}
-
 	m := Model{
 		welcome: welcomeModel{
 			org:       cfg.Org,
@@ -171,15 +169,15 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		viewport:  vp,
-		textInput: ti,
-		eventCh:   cfg.EventCh,
-		outCh:     cfg.OutCh,
-		busy:      cfg.Busy,
-		spinner:   sp,
-		width:     80,
-		height:    24,
-		config:    sc,
+		viewport:    vp,
+		textInput:   ti,
+		eventCh:     cfg.EventCh,
+		outCh:       cfg.OutCh,
+		busy:        cfg.Busy,
+		spinner:     sp,
+		width:       80,
+		height:      24,
+		messageSent: cfg.MessageSent,
 	}
 	m.viewport.SetContent(m.welcome.View())
 	if cfg.InitialPrompt != "" {
@@ -242,20 +240,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// intercept the key before textinput.Update sees it, since textinput
 		// otherwise treats Shift+Tab as a keypress with no visible effect.
 		if msg.Type == tea.KeyShiftTab {
-			if m.config.taskCreated.Load() {
-				// Plan mode is task-level on the wire. Toggling post-creation
-				// would be misleading — the server's state is already fixed.
-				m.appendBlock(block{
-					kind: blockWarning,
-					rendered: "  " + warningStyle.Render(
-						"⚠ Plan mode is task-level — start a new `pulumi neo` session to change it."),
-				})
+			if m.messageSent {
+				// Plan mode is task-level on the wire and gets snapshotted at
+				// the moment the first message is sent. A post-send toggle
+				// would be misleading — it could not affect the task.
+				m.appendWarningBlock(
+					"Plan mode is task-level — start a new `pulumi neo` session to change it.")
 				m.rebuildContent()
 				return m, nil
 			}
-			// Flip the atomic. The dispatcher reads it lazily at CreateNeoTask
-			// time, so this write doesn't need ordering with task creation.
-			m.config.planMode.Store(!m.config.planMode.Load())
+			m.planMode = !m.planMode
 			m.rebuildContent()
 			return m, nil
 		}
@@ -270,27 +264,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !approved {
 					denialMsg = text
 				}
-				wasPlanApproval := m.pendingApprovalIsPlan
+				wasPlanApproval := m.pendingApprovalType == approvalTypePlanExit
 				if m.outCh != nil {
 					select {
-					case m.outCh <- apitype.AgentUserEventUserConfirmation{
-						Type:       userEventUserConfirmation,
-						ApprovalID: m.pendingApprovalID,
-						Approved:   approved,
-						Message:    denialMsg,
+					case m.outCh <- outboundEvent{
+						event: apitype.AgentUserEventUserConfirmation{
+							Type:       userEventUserConfirmation,
+							ApprovalID: m.pendingApprovalID,
+							Approved:   approved,
+							Message:    denialMsg,
+						},
+						planMode: m.planMode,
 					}:
 					default:
 					}
 				}
 				m.pendingApproval = false
 				m.pendingApprovalID = ""
-				m.pendingApprovalIsPlan = false
+				m.pendingApprovalType = ""
 				// Approving a plan exits plan mode server-side (the PlanModeTracker
 				// stops gating writes), so mirror that locally. Denial leaves the
 				// mode on — the agent will re-plan and gate-out again on the next
 				// exit_plan_mode call.
-				if wasPlanApproval && approved && m.config != nil {
-					m.config.planMode.Store(false)
+				if wasPlanApproval && approved {
+					m.planMode = false
 				}
 				m.textInput.Prompt = "❯ "
 				m.textInput.PromptStyle = promptStyle
@@ -328,9 +325,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.Reset()
 				if m.outCh != nil {
 					select {
-					case m.outCh <- apitype.AgentUserEventUserMessage{
-						Type:    userEventUserMessage,
-						Content: text,
+					case m.outCh <- outboundEvent{
+						event: apitype.AgentUserEventUserMessage{
+							Type:    userEventUserMessage,
+							Content: text,
+						},
+						planMode: m.planMode,
 					}:
 						// Render optimistically so the user sees their message in
 						// the transcript before the server echoes it back. The
@@ -338,6 +338,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// UIUserMessage handler to avoid duplicates.
 						m.appendUserMessageBlock(text)
 						m.pendingUserEchoes = append(m.pendingUserEchoes, text)
+						// Freeze the plan-mode affordance: planMode has now been
+						// committed to the dispatcher and any later Shift+Tab
+						// would be a no-op on the server.
+						m.messageSent = true
 						return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 					default:
 					}
@@ -435,10 +439,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIWarning:
-		m.appendBlock(block{
-			kind:     blockWarning,
-			rendered: "  " + warningStyle.Render("⚠ "+msg.Message),
-		})
+		m.appendWarningBlock(msg.Message)
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -478,27 +479,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.endBusy()
 		m.pendingApproval = true
 		m.pendingApprovalID = msg.ApprovalID
-		m.pendingApprovalIsPlan = msg.ApprovalType == approvalTypePlanExit
-		if m.pendingApprovalIsPlan {
+		m.pendingApprovalType = msg.ApprovalType
+		if m.pendingApprovalType == approvalTypePlanExit {
 			// Plan bodies are authored as markdown — headings, bullet lists, code
 			// blocks. Route through the same glamour renderer used for final
 			// assistant messages so the approval reads as a proper plan document
 			// rather than a single-line warning. The approval event's `message`
 			// field holds a generic intro ("I've finished exploring..."); the
 			// actual plan is in `context.plan_description`.
-			header := "  " + planBlockHeaderStyle.Render("⏺ Proposed plan")
+			header := planAccentStyle.Render("⏺ Proposed plan")
 			body := m.renderMarkdown(msg.PlanDescription)
-			indentedBody := lipgloss.NewStyle().MarginLeft(4).Render(strings.TrimRight(body, "\n"))
 			m.appendBlock(block{
 				kind:     blockApproval,
-				rendered: lipgloss.JoinVertical(lipgloss.Left, header, indentedBody),
+				rendered: renderHeaderedBlock(header, body),
 			})
 			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
 		} else {
-			warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 			m.appendBlock(block{
 				kind:     blockApproval,
-				rendered: "  " + warnStyle.Render("⚠ Approval required") + "\n    " + msg.Message,
+				rendered: "  " + warningStyle.Render("⚠ Approval required") + "\n    " + msg.Message,
 			})
 			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
 		}
@@ -524,15 +523,16 @@ func (m Model) View() string {
 	// The hint stays on a single line to keep inputBarHeight constant; the
 	// plan-mode indicator is prepended inline when active so the viewport sizing
 	// code doesn't need to track hint-line count.
-	planPrefix := ""
-	if m.config != nil && m.config.planMode.Load() {
-		planPrefix = planModeIndicatorStyle.Render("⏸ plan mode") + inputHintStyle.Render(" · ")
-	}
 	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
 	if m.busy {
 		hintText = "agent is working · enter disabled · ctrl+c to quit"
 	}
-	hint := "  " + planPrefix + inputHintStyle.Render(hintText)
+	hint := "  "
+	if m.planMode {
+		hint += planAccentStyle.Render("⏸ plan mode")
+		hintText = " · " + hintText
+	}
+	hint += inputHintStyle.Render(hintText)
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
@@ -575,6 +575,16 @@ func (m *Model) showBusy(label string, shimmer shimmerKind) tea.Cmd {
 	}
 	m.busy = true
 	return m.spinner.Tick
+}
+
+// appendWarningBlock appends a standard "⚠ msg" warning block to the transcript.
+// Used by UIWarning and by local-only warnings (e.g. the Shift+Tab post-send
+// warning) so both paths share the same rendering.
+func (m *Model) appendWarningBlock(msg string) {
+	m.appendBlock(block{
+		kind:     blockWarning,
+		rendered: "  " + warningStyle.Render("⚠ "+msg),
+	})
 }
 
 // appendUserMessageBlock renders a user's chat message as a styled bubble and
@@ -638,6 +648,19 @@ func (m *Model) renderMarkdown(text string) string {
 	return strings.TrimRight(rendered, "\n")
 }
 
+// renderHeaderedBlock renders "  header" followed by body indented by 4 spaces,
+// matching the visual style of tool/assistant/plan blocks in the transcript. If
+// body is empty only the header line is returned, so callers can pass the split
+// first line of some content as the header and the remainder as the body.
+func renderHeaderedBlock(header, body string) string {
+	first := "  " + header
+	if strings.TrimSpace(body) == "" {
+		return first
+	}
+	indented := lipgloss.NewStyle().MarginLeft(4).Render(strings.TrimRight(body, "\n"))
+	return lipgloss.JoinVertical(lipgloss.Left, first, indented)
+}
+
 // renderAssistantFinal renders a final assistant message with a white circle marker.
 func renderAssistantFinal(rendered string) string {
 	trimmed := strings.TrimLeft(rendered, "\n ")
@@ -645,12 +668,7 @@ func renderAssistantFinal(rendered string) string {
 		return ""
 	}
 	firstLine, rest, _ := strings.Cut(trimmed, "\n")
-	first := "  " + finalMarker + " " + firstLine
-	if rest == "" {
-		return first
-	}
-	indented := lipgloss.NewStyle().MarginLeft(4).Render(strings.TrimRight(rest, "\n"))
-	return lipgloss.JoinVertical(lipgloss.Left, first, indented)
+	return renderHeaderedBlock(finalMarker+" "+firstLine, rest)
 }
 
 // renderAssistantStreaming renders streaming text with a dim indicator.

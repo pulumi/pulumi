@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"sync/atomic"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -40,20 +39,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// sessionConfig is the per-session mutable state shared between the bubbletea TUI
-// (which owns the toggle affordance) and the background dispatcher that calls
-// CreateNeoTask (which needs to read the final planMode value at task-creation time).
-// Both fields are atomic so the TUI can flip them from inside Update without
-// synchronising against the dispatcher goroutine.
-type sessionConfig struct {
-	// planMode reflects the user's current choice, toggled via Shift+Tab. Read once
-	// by the dispatcher when CreateNeoTask is invoked for the first user message;
-	// may be cleared by the TUI when the user approves an exit_plan_mode request.
-	planMode atomic.Bool
-	// taskCreated is set by the dispatcher after CreateNeoTask returns successfully.
-	// The TUI reads it to decide whether Shift+Tab should toggle (pre-task, effective)
-	// or emit a one-shot warning (post-task, ineffective because planMode is task-level).
-	taskCreated atomic.Bool
+// outboundEvent is the local envelope the TUI uses to dispatch user events to
+// runNeo's dispatcher loop. It wraps the wire-level AgentUserEvent and tacks on
+// planMode, which is only meaningful for the first user_message (the one that
+// triggers CreateNeoTask). Wrapping keeps planMode out of apitype and avoids a
+// second channel for a value that's always produced alongside a message.
+type outboundEvent struct {
+	event    apitype.AgentUserEvent
+	planMode bool
 }
 
 // NewNeoCmd creates the `pulumi neo` command. This first slice of the command starts a
@@ -146,10 +139,11 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		// Plan mode is only reachable via the TTY's Shift+Tab toggle today; scripted
-		// invocations are never started in plan mode.
 		resp, err := pc.CreateNeoTask(
-			ctx, orgName, prompt, stackRefName, projectName, "cli", client.NeoApprovalModeManual, false)
+			ctx, orgName, prompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+				ToolExecutionMode: "cli",
+				ApprovalMode:      client.NeoApprovalModeManual,
+			})
 		if err != nil {
 			return err
 		}
@@ -170,14 +164,9 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	}
 
 	uiCh := make(chan UIEvent, 64)
-	outCh := make(chan apitype.AgentUserEvent, 8)
+	outCh := make(chan outboundEvent, 8)
 
-	// Resolve the username for the welcome greeting.
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
-
-	// Shared state between the TUI (toggle source) and the dispatcher (reader at
-	// CreateNeoTask time). Allocated here so both halves observe the same atomics.
-	sessionCfg := &sessionConfig{}
 
 	model := NewModel(ModelConfig{
 		Org:           orgName,
@@ -187,7 +176,6 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		OutCh:         outCh,
 		Busy:          prompt != "",
 		InitialPrompt: prompt,
-		Config:        sessionCfg,
 	})
 
 	p := tea.NewProgram(model,
@@ -206,14 +194,15 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 
 	// createTask creates the Neo task with the given prompt and starts the session.
 	// Called immediately if a prompt was provided, or on the first user message.
-	createTask := func(initialPrompt string) error {
-		// Snapshot planMode at task-creation time. The toggle is task-level on the
-		// wire, so late flips (e.g. a racing Shift+Tab while we're in flight) don't
-		// retroactively change the task's configuration.
-		planMode := sessionCfg.planMode.Load()
+	// planMode is the value the TUI captured at the moment the first message was
+	// sent; the CLI-prompt path always passes false.
+	createTask := func(initialPrompt string, planMode bool) error {
 		resp, err := pc.CreateNeoTask(
-			gctx, orgName, initialPrompt, stackRefName, projectName, "cli",
-			client.NeoApprovalModeManual, planMode)
+			gctx, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+				ToolExecutionMode: "cli",
+				ApprovalMode:      client.NeoApprovalModeManual,
+				PlanMode:          planMode,
+			})
 		if err != nil {
 			return err
 		}
@@ -221,9 +210,6 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		ts.mu.Lock()
 		ts.taskID = resp.TaskID
 		ts.mu.Unlock()
-		// Mark the task as created so the TUI's Shift+Tab handler switches from
-		// "toggle the atomic" to "emit a one-shot warning".
-		sessionCfg.taskCreated.Store(true)
 
 		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 		if consoleURL != "" {
@@ -241,8 +227,9 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	}
 
 	if prompt != "" {
+		// The command-line prompt path always passes false for planMode.
 		g.Go(func() error {
-			return createTask(prompt)
+			return createTask(prompt, false)
 		})
 	}
 
@@ -260,14 +247,15 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 			select {
 			case <-gctx.Done():
 				return nil
-			case evt, ok := <-outCh:
+			case ob, ok := <-outCh:
 				if !ok {
 					return nil
 				}
-				if msg, isMsg := evt.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
+				if msg, isMsg := ob.event.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
 					taskCreated = true
+					planMode := ob.planMode
 					g.Go(func() error {
-						return createTask(msg.Content)
+						return createTask(msg.Content, planMode)
 					})
 					continue
 				}
@@ -282,7 +270,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 					sendUI(uiCh, UIWarning{Message: "dropped event: task not ready"})
 					continue
 				}
-				if err := pc.PostNeoTaskUserEvent(gctx, orgName, taskID, evt); err != nil {
+				if err := pc.PostNeoTaskUserEvent(gctx, orgName, taskID, ob.event); err != nil {
 					sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
 				}
 			}

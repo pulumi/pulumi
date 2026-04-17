@@ -33,12 +33,7 @@ const (
 	// handled by the agent runtime and must not be touched by the CLI.
 	toolExecutionModeCLI = "cli"
 
-	// userEventUserMessage is the user event the CLI posts when the user types a chat
-	// message into the TUI.
-	userEventUserMessage = "user_message"
-
-	// userEventUserConfirmation is the user event the CLI posts in response to a
-	// user_approval_request backend event, approving or denying the operation.
+	userEventUserMessage      = "user_message"
 	userEventUserConfirmation = "user_confirmation"
 
 	// Additional backend event types forwarded to the TUI.

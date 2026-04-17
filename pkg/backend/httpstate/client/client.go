@@ -1688,21 +1688,25 @@ func (pc *Client) ExplainPreviewWithNeo(
 	return pc.callCopilot(ctx, request)
 }
 
-// CreateNeoTask creates a new Neo agent task via the Neo Tasks API. Pass an empty
-// toolExecutionMode for the default (cloud) mode used by `--neo-task-on-failure`; pass
-// "cli" to have the cloud agent emit CliToolRequest events for the local-tool subset
-// (filesystem, shell) instead of running them itself. Pass an approvalMode of "manual"
-// to require user approval before each tool call; empty uses the server default.
-// Pass planMode = true to create the task in plan mode (explore/ask only, no writes).
+// CreateNeoTaskOptions bundles the optional knobs on CreateNeoTask. The zero value
+// corresponds to the defaults used by `--neo-task-on-failure`: cloud tool execution,
+// server-default approval policy, and plan mode off.
+type CreateNeoTaskOptions struct {
+	ToolExecutionMode string
+	ApprovalMode      NeoApprovalMode
+	PlanMode          bool
+}
+
+// CreateNeoTask creates a new Neo agent task via the Neo Tasks API. See
+// CreateNeoTaskOptions for the available knobs; pass a zero-value struct to accept
+// server defaults (the `--neo-task-on-failure` path).
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
 	content string,
 	stackName string,
 	projectName string,
-	toolExecutionMode string,
-	approvalMode NeoApprovalMode,
-	planMode bool,
+	opts CreateNeoTaskOptions,
 ) (*NeoTaskResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
@@ -1713,9 +1717,9 @@ func (pc *Client) CreateNeoTask(
 			Content:   content,
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 		},
-		ToolExecutionMode: toolExecutionMode,
-		ApprovalMode:      approvalMode,
-		PlanMode:          planMode,
+		ToolExecutionMode: opts.ToolExecutionMode,
+		ApprovalMode:      opts.ApprovalMode,
+		PlanMode:          opts.PlanMode,
 	}
 	// Only attach a stack entity when we actually have one — the backend rejects
 	// entity_diff entries with empty name/project as "unable to access stack".

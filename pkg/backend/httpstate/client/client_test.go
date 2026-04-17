@@ -868,7 +868,7 @@ func TestCreateNeoTask(t *testing.T) {
 
 		client := newMockClient(successServer)
 		resp, err := client.CreateNeoTask(
-			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "", false)
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -883,7 +883,7 @@ func TestCreateNeoTask(t *testing.T) {
 
 		client := newMockClient(errorServer)
 		resp, err := client.CreateNeoTask(
-			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "", false)
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -898,7 +898,7 @@ func TestCreateNeoTask(t *testing.T) {
 
 		client := newMockClient(unauthorizedServer)
 		resp, err := client.CreateNeoTask(
-			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "", false)
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -925,7 +925,9 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", "cli", "", false)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode: "cli",
+		})
 		require.NoError(t, err)
 
 		assert.Equal(t, http.MethodPost, gotMethod)
@@ -965,8 +967,10 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(
-			t.Context(), "my-org", "hi", "stack", "proj", "cli", NeoApprovalModeManual)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode: "cli",
+			ApprovalMode:      NeoApprovalModeManual,
+		})
 		require.NoError(t, err)
 
 		assert.Equal(t, "manual", gotBody["approvalMode"])
@@ -986,7 +990,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "", "", false)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", CreateNeoTaskOptions{})
 		require.NoError(t, err)
 
 		message, _ := gotBody["message"].(map[string]any)
@@ -1009,7 +1013,10 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "plan this", "", "proj", "cli", "", true)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "plan this", "", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode: "cli",
+			PlanMode:          true,
+		})
 		require.NoError(t, err)
 
 		assert.Equal(t, true, gotBody["planMode"], "planMode=true must be sent as planMode:true")
@@ -1027,7 +1034,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "", "", false)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", CreateNeoTaskOptions{})
 		require.NoError(t, err)
 
 		assert.NotContains(t, gotBody, "planMode", "planMode must be omitted when false")
