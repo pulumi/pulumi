@@ -436,6 +436,22 @@ output "values" {
 	assert.Nil(t, strictProgram)
 }
 
+func TestBindingReadProviderResourceFails(t *testing.T) {
+	t.Parallel()
+
+	source := `
+read provider "pulumi:providers:random" {
+	id = "provider-id"
+}
+`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Nil(t, program)
+	require.Error(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, "provider resources cannot be read: 'pulumi:providers:random'", diags[0].Summary)
+}
+
 func TestBindingUnknownResourceFromKnownSchemaWhenSkippingResourceTypeChecking(t *testing.T) {
 	t.Parallel()
 	// here the random package is available, but it doesn't have a resource called "Unknown"

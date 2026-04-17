@@ -72,6 +72,10 @@ func unknownResourceType(token string, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "unknown resource type '%s'", token)
 }
 
+func componentResourceCannotBeRead(token string, tokenRange hcl.Range) *hcl.Diagnostic {
+	return errorf(tokenRange, "component resources cannot be read: '%s'", token)
+}
+
 func functionLoadError(token string, err error, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "error loading function '%s': %v", token, err)
 }
