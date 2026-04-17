@@ -92,3 +92,12 @@ type UIUserMessage struct {
 }
 
 func (UIUserMessage) uiEvent() {}
+
+// UIApprovalRequest signals that the agent needs user approval for an operation.
+type UIApprovalRequest struct {
+	ApprovalID  string
+	Message     string
+	Sensitivity string
+}
+
+func (UIApprovalRequest) uiEvent() {}

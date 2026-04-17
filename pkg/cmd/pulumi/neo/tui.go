@@ -23,6 +23,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // inputBarHeight is the number of terminal lines reserved for the input area
@@ -41,6 +43,7 @@ const (
 	blockWarning
 	blockCancelled
 	blockUserMessage
+	blockApproval
 )
 
 // block is a single rendered item in the TUI output log.
@@ -60,7 +63,10 @@ type ModelConfig struct {
 	WorkDir  string
 	Username string
 	EventCh  <-chan UIEvent
-	SendCh   chan<- string
+	// OutCh carries every TUI-originated user event (chat messages, approval
+	// answers, …) to the dispatcher in runNeo. A single typed channel keeps
+	// Session focused on SSE intake and tool dispatch.
+	OutCh chan<- apitype.AgentUserEvent
 	// Busy seeds the input-gating state. True when the caller has already
 	// handed a prompt to the backend — the TUI starts with Enter disabled
 	// until the first UITaskIdle.
@@ -74,7 +80,7 @@ type Model struct {
 	textInput textinput.Model
 	blocks    []block
 	eventCh   <-chan UIEvent
-	sendCh    chan<- string
+	outCh     chan<- apitype.AgentUserEvent
 	// busy is true from the moment the user sends a message (or a prompt was
 	// provided up front) until the session emits UITaskIdle / UICancelled /
 	// UIError. While busy, Enter is swallowed so the user can't talk over
@@ -87,7 +93,9 @@ type Model struct {
 	height     int
 	// frame advances on each spinner.TickMsg while busy and drives the
 	// shimmer animation on the busy block's label.
-	frame int
+	frame             int
+	pendingApproval   bool
+	pendingApprovalID string
 }
 
 var (
@@ -130,7 +138,7 @@ func NewModel(cfg ModelConfig) Model {
 		viewport:  vp,
 		textInput: ti,
 		eventCh:   cfg.EventCh,
-		sendCh:    cfg.SendCh,
+		outCh:     cfg.OutCh,
 		busy:      cfg.Busy,
 		spinner:   sp,
 		width:     80,
@@ -183,11 +191,59 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rebuildContent()
 
 	case tea.KeyMsg:
-		//nolint:exhaustive // Only Ctrl-C and Enter need special handling; everything else flows through to the text input.
-		switch msg.Type {
-		case tea.KeyCtrlC:
+		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
-		case tea.KeyEnter:
+		}
+
+		// Handled before the busy check because the agent is intentionally
+		// paused here waiting for the user.
+		if m.pendingApproval {
+			if msg.Type == tea.KeyEnter {
+				text := strings.TrimSpace(m.textInput.Value())
+				approved := strings.EqualFold(text, "y") || strings.EqualFold(text, "yes")
+				var denialMsg string
+				if !approved {
+					denialMsg = text
+				}
+				if m.outCh != nil {
+					select {
+					case m.outCh <- apitype.AgentUserEventUserConfirmation{
+						Type:       userEventUserConfirmation,
+						ApprovalID: m.pendingApprovalID,
+						Approved:   approved,
+						Message:    denialMsg,
+					}:
+					default:
+					}
+				}
+				m.pendingApproval = false
+				m.pendingApprovalID = ""
+				m.textInput.Prompt = "❯ "
+				m.textInput.PromptStyle = promptStyle
+				m.textInput.Placeholder = "Send a message..."
+				m.textInput.Reset()
+				choice := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✓ Approved")
+				if !approved {
+					choice = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("✗ Denied")
+					if denialMsg != "" {
+						choice += " — " + denialMsg
+					}
+				}
+				m.appendBlock(block{kind: blockUserMessage, rendered: "  " + choice})
+				if approved {
+					cmd := m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
+					m.rebuildContent()
+					return m, cmd
+				}
+				m.rebuildContent()
+				return m, nil
+			}
+			var tiCmd tea.Cmd
+			m.textInput, tiCmd = m.textInput.Update(msg)
+			return m, tiCmd
+		}
+
+		if msg.Type == tea.KeyEnter {
 			if m.busy {
 				// Agent is mid-turn — leave the typed text in the input so
 				// the user can send it after the next UITaskIdle.
@@ -196,9 +252,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			text := strings.TrimSpace(m.textInput.Value())
 			if text != "" {
 				m.textInput.Reset()
-				if m.sendCh != nil {
+				if m.outCh != nil {
 					select {
-					case m.sendCh <- text:
+					case m.outCh <- apitype.AgentUserEventUserMessage{
+						Type:    userEventUserMessage,
+						Content: text,
+					}:
 						return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 					default:
 					}
@@ -327,6 +386,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			kind:     blockUserMessage,
 			rendered: promptStyle.Render("❯") + " " + userMsgBubble.Render(" "+msg.Content+" "),
 		})
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIApprovalRequest:
+		m.endBusy()
+		warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+		m.appendBlock(block{
+			kind:     blockApproval,
+			rendered: "  " + warnStyle.Render("⚠ Approval required") + "\n    " + msg.Message,
+		})
+		m.pendingApproval = true
+		m.pendingApprovalID = msg.ApprovalID
+		m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
+		m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+		m.textInput.Placeholder = ""
+		m.textInput.Reset()
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 

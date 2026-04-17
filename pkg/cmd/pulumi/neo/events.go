@@ -38,9 +38,14 @@ const (
 	// message into the TUI.
 	userEventUserMessage = "user_message"
 
+	// userEventUserConfirmation is the user event the CLI posts in response to a
+	// user_approval_request backend event, approving or denying the operation.
+	userEventUserConfirmation = "user_confirmation"
+
 	// Additional backend event types forwarded to the TUI.
 	backendEventExecToolCallProgress = "exec_tool_call_progress"
 	backendEventError                = "error"
 	backendEventWarning              = "warning"
 	backendEventCancelled            = "cancelled"
+	backendEventUserApprovalRequest  = "user_approval_request"
 )

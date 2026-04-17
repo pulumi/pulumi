@@ -266,6 +266,16 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 		sendUI(s.UIEvents, UIWarning{Message: w.Message})
 	case backendEventCancelled:
 		sendUI(s.UIEvents, UICancelled{})
+	case backendEventUserApprovalRequest:
+		var a apitype.AgentBackendEventUserApprovalRequest
+		if err := json.Unmarshal(eventBody, &a); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIApprovalRequest{
+			ApprovalID:  a.ID,
+			Message:     a.Message,
+			Sensitivity: a.Sensitivity,
+		})
 	}
 	// Server-side exec_tool_call and tool_response events describe tools the agent
 	// runtime executes; the CLI-run equivalents are emitted directly from runBatch.

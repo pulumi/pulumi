@@ -129,7 +129,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackRefName, projectName, "cli")
+		resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackRefName, projectName, "cli", client.NeoApprovalModeManual)
 		if err != nil {
 			return err
 		}
@@ -150,7 +150,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	}
 
 	uiCh := make(chan UIEvent, 64)
-	sendCh := make(chan string, 4)
+	outCh := make(chan apitype.AgentUserEvent, 8)
 
 	// Resolve the username for the welcome greeting.
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
@@ -160,7 +160,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		WorkDir:  cwdFlag,
 		Username: username,
 		EventCh:  uiCh,
-		SendCh:   sendCh,
+		OutCh:    outCh,
 		Busy:     prompt != "",
 	})
 
@@ -181,7 +181,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	// createTask creates the Neo task with the given prompt and starts the session.
 	// Called immediately if a prompt was provided, or on the first user message.
 	createTask := func(initialPrompt string) error {
-		resp, err := pc.CreateNeoTask(gctx, orgName, initialPrompt, stackRefName, projectName, "cli")
+		resp, err := pc.CreateNeoTask(
+			gctx, orgName, initialPrompt, stackRefName, projectName, "cli", client.NeoApprovalModeManual)
 		if err != nil {
 			return err
 		}
@@ -216,20 +217,23 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return err
 	})
 
+	// Post TUI-originated user events to the API. Chat messages may arrive before
+	// any task exists — the first one creates it. Other event types (approvals
+	// and anything we add later) only make sense once a task is live.
 	g.Go(func() error {
 		taskCreated := prompt != ""
 		for {
 			select {
 			case <-gctx.Done():
 				return nil
-			case text, ok := <-sendCh:
+			case evt, ok := <-outCh:
 				if !ok {
 					return nil
 				}
-				if !taskCreated {
+				if msg, isMsg := evt.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
 					taskCreated = true
 					g.Go(func() error {
-						return createTask(text)
+						return createTask(msg.Content)
 					})
 					continue
 				}
@@ -238,17 +242,14 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 				ts.mu.Unlock()
 				if taskID == "" {
 					// Unreachable in normal use: the TUI gates Enter on busy state
-					// until UITaskIdle, so no message should arrive here before the
-					// task ID is known. Surface instead of silently dropping.
-					sendUI(uiCh, UIWarning{Message: "dropped message: task not ready"})
+					// until UITaskIdle, and approvals only fire in response to backend
+					// events that imply the task exists. Surface instead of silently
+					// dropping.
+					sendUI(uiCh, UIWarning{Message: "dropped event: task not ready"})
 					continue
 				}
-				evt := apitype.AgentUserEventUserMessage{
-					Type:    userEventUserMessage,
-					Content: text,
-				}
 				if err := pc.PostNeoTaskUserEvent(gctx, orgName, taskID, evt); err != nil {
-					sendUI(uiCh, UIWarning{Message: "failed to send message: " + err.Error()})
+					sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
 				}
 			}
 		}

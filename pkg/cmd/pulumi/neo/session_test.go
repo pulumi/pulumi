@@ -712,6 +712,20 @@ func TestSession_ForwardToUI_EmitsAllEventTypes(t *testing.T) {
 				return ok
 			},
 		},
+		{
+			"user_approval_request",
+			map[string]any{
+				"type":        backendEventUserApprovalRequest,
+				"id":          "appr_42",
+				"message":     "Run pulumi up?",
+				"sensitivity": "high",
+			},
+			func(e UIEvent) bool {
+				m, ok := e.(UIApprovalRequest)
+				return ok && m.ApprovalID == "appr_42" &&
+					m.Message == "Run pulumi up?" && m.Sensitivity == "high"
+			},
+		},
 	}
 
 	for _, tc := range cases {

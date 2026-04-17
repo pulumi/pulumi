@@ -867,7 +867,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer successServer.Close()
 
 		client := newMockClient(successServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -881,7 +881,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer errorServer.Close()
 
 		client := newMockClient(errorServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -895,7 +895,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		client := newMockClient(unauthorizedServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "")
+		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", "", "")
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -922,12 +922,15 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", "cli")
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", "cli", "")
 		require.NoError(t, err)
 
 		assert.Equal(t, http.MethodPost, gotMethod)
 		assert.Equal(t, "/api/preview/agents/my-org/tasks", gotPath)
 		assert.Equal(t, "cli", gotBody["toolExecutionMode"])
+		// approvalMode is omitempty — must not appear in the body when empty so the
+		// server falls back to its default (auto) mode.
+		assert.NotContains(t, gotBody, "approvalMode", "empty approvalMode must be omitted")
 
 		message, _ := gotBody["message"].(map[string]any)
 		require.NotNil(t, message)
@@ -944,6 +947,28 @@ func TestCreateNeoTask(t *testing.T) {
 		assert.Equal(t, "proj", entity["project"])
 	})
 
+	t.Run("ApprovalModeManualSerializes", func(t *testing.T) {
+		t.Parallel()
+
+		// When the CLI passes NeoApprovalModeManual, the body must carry
+		// approvalMode:"manual" so the server gates each tool call on a
+		// user_approval_request. The wire tag is camelCase to match the IDL.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_3"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(
+			t.Context(), "my-org", "hi", "stack", "proj", "cli", NeoApprovalModeManual)
+		require.NoError(t, err)
+
+		assert.Equal(t, "manual", gotBody["approvalMode"])
+	})
+
 	t.Run("OmitsEntityDiffWhenStackMissing", func(t *testing.T) {
 		t.Parallel()
 
@@ -958,7 +983,7 @@ func TestCreateNeoTask(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "")
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", "", "")
 		require.NoError(t, err)
 
 		message, _ := gotBody["message"].(map[string]any)
