@@ -1331,14 +1331,14 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 	newInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0"), "foo": resource.NewProperty("bar")}
 
 	// First, do the Check/Diff/Update flow to register the provider with new config.
-	check, err := r.Check(context.Background(), plugin.CheckRequest{
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:  urn,
 		Olds: oldInputs,
 		News: newInputs,
 	})
 	require.NoError(t, err)
 
-	_, err = r.Diff(context.Background(), plugin.DiffRequest{
+	_, err = r.Diff(t.Context(), plugin.DiffRequest{
 		URN:        urn,
 		ID:         id,
 		OldOutputs: oldInputs,
@@ -1346,7 +1346,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = r.Update(context.Background(), plugin.UpdateRequest{
+	_, err = r.Update(t.Context(), plugin.UpdateRequest{
 		URN:        urn,
 		ID:         id,
 		OldOutputs: oldInputs,
@@ -1362,7 +1362,7 @@ func TestSameUpdateRace_UpdateFirst(t *testing.T) {
 	// Now call Same (as EnsureProvider would) with old state.
 	// Since the provider is already registered, Same should return early.
 	oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
-	err = r.Same(context.Background(), oldState, false)
+	err = r.Same(t.Context(), oldState, false)
 	require.NoError(t, err)
 
 	// Still only one provider should exist - Same should NOT have created a new one.
@@ -1421,7 +1421,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	// First, call Same (as EnsureProvider would) with old state.
 	// This simulates EnsureProvider running before the Update completes.
 	oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
-	err := r.Same(context.Background(), oldState, false)
+	err := r.Same(t.Context(), oldState, false)
 	require.NoError(t, err)
 
 	// One provider should be created from Same.
@@ -1431,14 +1431,14 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	providersMu.Unlock()
 
 	// Now do the Check/Diff/Update flow.
-	check, err := r.Check(context.Background(), plugin.CheckRequest{
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:  urn,
 		Olds: oldInputs,
 		News: newInputs,
 	})
 	require.NoError(t, err)
 
-	_, err = r.Diff(context.Background(), plugin.DiffRequest{
+	_, err = r.Diff(t.Context(), plugin.DiffRequest{
 		URN:        urn,
 		ID:         id,
 		OldOutputs: oldInputs,
@@ -1452,7 +1452,7 @@ func TestSameUpdateRace_SameFirst(t *testing.T) {
 	providersMu.Unlock()
 
 	// Update should close Same's provider because it's overwriting it.
-	_, err = r.Update(context.Background(), plugin.UpdateRequest{
+	_, err = r.Update(t.Context(), plugin.UpdateRequest{
 		URN:        urn,
 		ID:         id,
 		OldOutputs: oldInputs,
@@ -1518,14 +1518,14 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 			newInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0"), "foo": resource.NewProperty("bar")}
 
 			// Do Check first (outside of goroutines) since Update depends on it.
-			check, err := r.Check(context.Background(), plugin.CheckRequest{
+			check, err := r.Check(t.Context(), plugin.CheckRequest{
 				URN:  urn,
 				Olds: oldInputs,
 				News: newInputs,
 			})
 			require.NoError(t, err)
 
-			_, err = r.Diff(context.Background(), plugin.DiffRequest{
+			_, err = r.Diff(t.Context(), plugin.DiffRequest{
 				URN:        urn,
 				ID:         id,
 				OldOutputs: oldInputs,
@@ -1540,12 +1540,12 @@ func TestSameUpdateRace_Concurrent(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
-				_ = r.Same(context.Background(), oldState, false)
+				_ = r.Same(t.Context(), oldState, false)
 			}()
 
 			go func() {
 				defer wg.Done()
-				_, _ = r.Update(context.Background(), plugin.UpdateRequest{
+				_, _ = r.Update(t.Context(), plugin.UpdateRequest{
 					URN:        urn,
 					ID:         id,
 					OldOutputs: oldInputs,

@@ -1037,7 +1037,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 		})
 
 		resAPromise := promise.Run(func() (*deploytest.RegisterResourceResponse, error) {
-			provA, err := provAPromise.Result(context.Background())
+			provA, err := provAPromise.Result(t.Context())
 			if err != nil {
 				return nil, err
 			}
@@ -1047,7 +1047,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 				return nil, err
 			}
 
-			resB, err := resBPromise.Result(context.Background())
+			resB, err := resBPromise.Result(t.Context())
 			if err != nil {
 				return nil, err
 			}
@@ -1059,7 +1059,7 @@ func TestDBRProviderUpgrade(t *testing.T) {
 			})
 		})
 
-		_, err := resAPromise.Result(context.Background())
+		_, err := resAPromise.Result(t.Context())
 		return err
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
