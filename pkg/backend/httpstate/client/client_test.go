@@ -1182,3 +1182,60 @@ func TestGetPackageDocsMarkdown_OmitsEmptyQueryParams(t *testing.T) {
 		apitype.PackageDocsOptions{})
 	require.NoError(t, err)
 }
+
+func TestSearchPackages(t *testing.T) {
+	t.Parallel()
+
+	expected := []apitype.PackageMetadata{
+		{Name: "random", Publisher: "pulumi", Source: "pulumi", Version: semver.Version{Major: 4, Minor: 19, Patch: 1}, PackageStatus: apitype.PackageStatusGA, Visibility: apitype.VisibilityPublic},
+	}
+
+	mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "GET", req.Method)
+		assert.Equal(t, "/api/registry/packages", req.URL.Path)
+		assert.Equal(t, "myorg", req.URL.Query().Get("orgLogin"))
+		assert.Equal(t, "random", req.URL.Query().Get("search"))
+		assert.Equal(t, "provider", req.URL.Query().Get("type"))
+		assert.Equal(t, "10", req.URL.Query().Get("limit"))
+
+		data, err := json.Marshal(apitype.ListPackagesResponse{Packages: expected})
+		require.NoError(t, err)
+		return string(data)
+	})
+	defer mockServer.Close()
+
+	client := newMockClient(mockServer)
+	result, err := client.SearchPackages(t.Context(), apitype.PackageSearchOptions{
+		OrgName: "myorg",
+		Search:  "random",
+		Type:    "provider",
+		Limit:   10,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, expected, result)
+}
+
+func TestListPackageVersions(t *testing.T) {
+	t.Parallel()
+
+	expected := []apitype.PackageMetadata{
+		{Name: "random", Publisher: "pulumi", Source: "pulumi", Version: semver.Version{Major: 4, Minor: 19, Patch: 1}, PackageStatus: apitype.PackageStatusGA, Visibility: apitype.VisibilityPublic},
+		{Name: "random", Publisher: "pulumi", Source: "pulumi", Version: semver.Version{Major: 4, Minor: 19}, PackageStatus: apitype.PackageStatusGA, Visibility: apitype.VisibilityPublic},
+	}
+
+	mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		assert.Equal(t, "GET", req.Method)
+		assert.Equal(t, "/api/registry/packages/pulumi/pulumi/random/versions", req.URL.Path)
+		assert.Equal(t, "5", req.URL.Query().Get("limit"))
+
+		data, err := json.Marshal(apitype.ListPackagesResponse{Packages: expected})
+		require.NoError(t, err)
+		return string(data)
+	})
+	defer mockServer.Close()
+
+	client := newMockClient(mockServer)
+	result, err := client.ListPackageVersions(t.Context(), "pulumi", "pulumi", "random", 5)
+	require.NoError(t, err)
+	assert.Equal(t, expected, result)
+}

@@ -16,6 +16,7 @@ package packagecmd
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/blang/semver"
@@ -37,9 +38,21 @@ type resolvedPackage struct {
 	Version   string
 }
 
-// parseAndResolvePackage parses a user-provided package argument (e.g. "aws",
-// "aws@7.20.0", "pulumi/pulumi/aws") and resolves it via the registry.
+// TODO: the registry:// URL handling here duplicates logic in
+// cmd/pulumi/templates/cloud.go. Consider teaching ResolvePackageFromName
+// to accept registry:// URLs so all consumers get it for free.
+//
+// parseAndResolvePackage parses a user-provided package argument and resolves
+// it via the registry. Accepts:
+//   - registry://packages/source/publisher/name[@version]
+//   - source/publisher/name[@version]
+//   - publisher/name[@version]
+//   - name[@version]
 func parseAndResolvePackage(ctx context.Context, pkg string) (resolvedPackage, error) {
+	if registry.IsRegistryURL(pkg) {
+		return parseRegistryURL(pkg)
+	}
+
 	name, versionStr, _ := strings.Cut(pkg, "@")
 
 	var version *semver.Version
@@ -62,6 +75,26 @@ func parseAndResolvePackage(ctx context.Context, pkg string) (resolvedPackage, e
 		Publisher: meta.Publisher,
 		Name:      meta.Name,
 		Version:   meta.Version.String(),
+	}, nil
+}
+
+func parseRegistryURL(pkg string) (resolvedPackage, error) {
+	info, err := registry.ParseRegistryURL(pkg)
+	if err != nil {
+		return resolvedPackage{}, err
+	}
+	if info.ResourceType() != "packages" {
+		return resolvedPackage{}, fmt.Errorf("resource type %q is not valid for packages", info.ResourceType())
+	}
+	v := "latest"
+	if info.Version() != nil {
+		v = info.Version().String()
+	}
+	return resolvedPackage{
+		Source:    info.Source(),
+		Publisher: info.Publisher(),
+		Name:      info.Name(),
+		Version:   v,
 	}, nil
 }
 
@@ -104,6 +137,15 @@ func effectiveLang(flag string) string {
 		return detected
 	}
 	return defaultLang
+}
+
+const maxLimit = 500
+
+func validateLimit(limit int) error {
+	if limit < 1 || limit > maxLimit {
+		return fmt.Errorf("--limit must be between 1 and %d", maxLimit)
+	}
+	return nil
 }
 
 // docsOpts builds a PackageDocsOptions from common flag values.

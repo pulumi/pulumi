@@ -40,9 +40,11 @@ Install and configure Pulumi packages and their plugins and SDKs.`,
 		newPackagePublishCmd(),
 		newPackageDeleteCmd(),
 		newPackageInfoCmd(),
+		newPackageLsCmd(),
 		newPackageReadmeCmd(),
 		newPackageNavCmd(),
 		newPackageDocsCmd(),
+		newPackageVersionsCmd(),
 	)
 	return cmd
 }

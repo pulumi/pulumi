@@ -74,6 +74,16 @@ type Registry interface {
 	GetPackageDocsMarkdown(
 		ctx context.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
 	) (string, error)
+
+	// SearchPackages searches for packages with optional filters.
+	SearchPackages(
+		ctx context.Context, opts apitype.PackageSearchOptions,
+	) ([]apitype.PackageMetadata, error)
+
+	// ListPackageVersions lists all versions of a package.
+	ListPackageVersions(
+		ctx context.Context, source, publisher, name string, limit int,
+	) ([]apitype.PackageMetadata, error)
 }
 
 type registryKey struct{}
@@ -181,4 +191,24 @@ func (r *onDemandRegistry) GetPackageDocsMarkdown(
 		return "", err
 	}
 	return impl.GetPackageDocsMarkdown(ctx, source, publisher, name, version, token, opts)
+}
+
+func (r *onDemandRegistry) SearchPackages(
+	ctx context.Context, opts apitype.PackageSearchOptions,
+) ([]apitype.PackageMetadata, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return nil, err
+	}
+	return impl.SearchPackages(ctx, opts)
+}
+
+func (r *onDemandRegistry) ListPackageVersions(
+	ctx context.Context, source, publisher, name string, limit int,
+) ([]apitype.PackageMetadata, error) {
+	impl, err := r.factory()
+	if err != nil {
+		return nil, err
+	}
+	return impl.ListPackageVersions(ctx, source, publisher, name, limit)
 }

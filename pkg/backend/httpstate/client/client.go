@@ -2086,6 +2086,52 @@ func optStr(s string) *string {
 	return &s
 }
 
+func (pc *Client) SearchPackages(
+	ctx context.Context, opts apitype.PackageSearchOptions,
+) ([]apitype.PackageMetadata, error) {
+	query := struct {
+		OrgLogin *string `url:"orgLogin,omitempty"`
+		Search   *string `url:"search,omitempty"`
+		Name     *string `url:"name,omitempty"`
+		Type     *string `url:"type,omitempty"`
+		Sort     *string `url:"sort,omitempty"`
+		Asc      *bool   `url:"asc,omitempty"`
+		Limit    *int    `url:"limit,omitempty"`
+	}{
+		OrgLogin: optStr(opts.OrgName),
+		Search:   optStr(opts.Search),
+		Name:     optStr(opts.Name),
+		Type:     optStr(opts.Type),
+		Sort:     optStr(opts.Sort),
+		Asc:      opts.Asc,
+	}
+	if opts.Limit > 0 {
+		query.Limit = &opts.Limit
+	}
+	var resp apitype.ListPackagesResponse
+	if err := pc.restCall(ctx, "GET", "/api/registry/packages", query, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Packages, nil
+}
+
+func (pc *Client) ListPackageVersions(
+	ctx context.Context, source, publisher, name string, limit int,
+) ([]apitype.PackageMetadata, error) {
+	path := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions", source, publisher, name)
+	query := struct {
+		Limit *int `url:"limit,omitempty"`
+	}{}
+	if limit > 0 {
+		query.Limit = &limit
+	}
+	var resp apitype.ListPackagesResponse
+	if err := pc.restCall(ctx, "GET", path, query, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Packages, nil
+}
+
 // DeletePackageVersion deletes a specific version of a package from the registry.
 func (pc *Client) DeletePackageVersion(
 	ctx context.Context, source, publisher, name string, version semver.Version,

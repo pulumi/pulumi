@@ -103,6 +103,18 @@ func (r *cloudRegistry) GetPackageDocsMarkdown(
 	return r.cl.GetPackageDocsMarkdown(ctx, source, publisher, name, version, token, opts)
 }
 
+func (r *cloudRegistry) SearchPackages(
+	ctx ctx.Context, opts apitype.PackageSearchOptions,
+) ([]apitype.PackageMetadata, error) {
+	return r.cl.SearchPackages(ctx, opts)
+}
+
+func (r *cloudRegistry) ListPackageVersions(
+	ctx ctx.Context, source, publisher, name string, limit int,
+) ([]apitype.PackageMetadata, error) {
+	return r.cl.ListPackageVersions(ctx, source, publisher, name, limit)
+}
+
 func (r *cloudRegistry) DeletePackageVersion(
 	ctx ctx.Context, source, publisher, name string, version semver.Version,
 ) error {

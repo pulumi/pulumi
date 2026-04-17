@@ -84,6 +84,18 @@ func (r mockRegistry) GetPackageDocsMarkdown(
 	panic("not implemented in mock")
 }
 
+func (r mockRegistry) SearchPackages(
+	_ context.Context, _ apitype.PackageSearchOptions,
+) ([]apitype.PackageMetadata, error) {
+	panic("not implemented in mock")
+}
+
+func (r mockRegistry) ListPackageVersions(
+	_ context.Context, _, _, _ string, _ int,
+) ([]apitype.PackageMetadata, error) {
+	panic("not implemented in mock")
+}
+
 func TestOnDemandRegistry(t *testing.T) {
 	t.Parallel()
 

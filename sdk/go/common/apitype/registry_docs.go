@@ -22,3 +22,14 @@ type PackageDocsOptions struct {
 	OS    string
 	Query string
 }
+
+// PackageSearchOptions holds query parameters for listing/searching packages.
+type PackageSearchOptions struct {
+	OrgName string
+	Search  string
+	Name    string
+	Type    string
+	Sort    string
+	Asc     *bool
+	Limit   int
+}

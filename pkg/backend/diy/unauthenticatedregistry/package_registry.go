@@ -90,6 +90,18 @@ func (r registryClient) GetPackageDocsMarkdown(
 	return r.c.GetPackageDocsMarkdown(ctx, source, publisher, name, version, token, opts)
 }
 
+func (r registryClient) SearchPackages(
+	ctx context.Context, opts apitype.PackageSearchOptions,
+) ([]apitype.PackageMetadata, error) {
+	return r.c.SearchPackages(ctx, opts)
+}
+
+func (r registryClient) ListPackageVersions(
+	ctx context.Context, source, publisher, name string, limit int,
+) ([]apitype.PackageMetadata, error) {
+	return r.c.ListPackageVersions(ctx, source, publisher, name, limit)
+}
+
 func (r registryClient) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
 	bytes, err := r.c.DownloadTemplate(ctx, downloadURL)
 	if apiErr := (&apitype.ErrorResponse{}); errors.As(err, &apiErr) && apiErr.Code == http.StatusNotFound {

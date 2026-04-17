@@ -50,6 +50,13 @@ type Mock struct {
 	GetPackageDocsMarkdownF func(
 		ctx context.Context, source, publisher, name, version, token string, opts apitype.PackageDocsOptions,
 	) (string, error)
+
+	SearchPackagesF func(
+		ctx context.Context, opts apitype.PackageSearchOptions,
+	) ([]apitype.PackageMetadata, error)
+	ListPackageVersionsF func(
+		ctx context.Context, source, publisher, name string, limit int,
+	) ([]apitype.PackageMetadata, error)
 }
 
 func (m Mock) GetPackage(
@@ -116,4 +123,22 @@ func (m Mock) GetPackageDocsMarkdown(
 		panic("registry.Mock.GetPackageDocsMarkdownF not implemented")
 	}
 	return m.GetPackageDocsMarkdownF(ctx, source, publisher, name, version, token, opts)
+}
+
+func (m Mock) SearchPackages(
+	ctx context.Context, opts apitype.PackageSearchOptions,
+) ([]apitype.PackageMetadata, error) {
+	if m.SearchPackagesF == nil {
+		panic("registry.Mock.SearchPackagesF not implemented")
+	}
+	return m.SearchPackagesF(ctx, opts)
+}
+
+func (m Mock) ListPackageVersions(
+	ctx context.Context, source, publisher, name string, limit int,
+) ([]apitype.PackageMetadata, error) {
+	if m.ListPackageVersionsF == nil {
+		panic("registry.Mock.ListPackageVersionsF not implemented")
+	}
+	return m.ListPackageVersionsF(ctx, source, publisher, name, limit)
 }
