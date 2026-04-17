@@ -430,7 +430,12 @@ export abstract class Resource {
      * @param opts
      *  A bag of options that control this resource's behavior.
      * @param remote
-     *  True if this is a remote component resource.
+     *  This parameter is intended for use by code-generated component SDKs;
+     *  end users authoring their own {@link ComponentResource} subclasses
+     *  should leave this at its default (`false`). When `true`, the
+     *  component's children are constructed by the engine rather than in
+     *  this process, and the constructor skips local child registration
+     *  accordingly.
      * @param dependency
      *  True if this is a synthetic resource used internally for dependency tracking.
      */
@@ -1536,7 +1541,12 @@ export class ComponentResource<TData = any> extends Resource {
      * @param opts
      *  A bag of options that control this resource's behavior.
      * @param remote
-     *  True if this is a remote component resource.
+     *  This parameter is intended for use by code-generated component SDKs;
+     *  end users authoring their own {@link ComponentResource} subclasses
+     *  should leave this at its default (`false`). When `true`, the
+     *  component's children are constructed by the engine rather than in
+     *  this process, and the constructor skips local child registration
+     *  accordingly.
      */
     constructor(
         type: string,

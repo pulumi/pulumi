@@ -736,6 +736,9 @@ type resmon struct {
 	packageRefLock sync.RWMutex
 	// A map of UUIDs to the description of a provider package they correspond to
 	packageRefMap map[string]providers.ProviderRequest
+
+	// the organization name for the deployment.
+	organization string
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -817,6 +820,7 @@ func newResourceMonitor(
 		Parallel:         src.opts.Parallel,
 		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", handle.Port),
 	}
+	resmon.organization = string(src.runinfo.Target.Organization)
 	resmon.done = handle.Done
 
 	go d.serve()
@@ -1045,8 +1049,16 @@ func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool)
 func (rm *resmon) SupportsFeature(ctx context.Context,
 	req *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
-	hasSupport := false
+	hasSupport := rm.supportsFeatureID(req.Id)
 
+	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
+
+	return &pulumirpc.SupportsFeatureResponse{
+		HasSupport: hasSupport,
+	}, nil
+}
+
+func (rm *resmon) supportsFeatureID(id string) bool {
 	// NOTE: DO NOT ADD ANY MORE FEATURES TO THIS LIST
 	//
 	// Context: https://github.com/pulumi/pulumi-dotnet/pull/88#pullrequestreview-1265714090
@@ -1057,41 +1069,104 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	//
 	// These old features have to stay as is because old engines DO support them, but wouldn't support the new
 	// SupportsFeatureV2 method.
-
-	switch req.Id {
+	switch id {
 	case "secrets":
-		hasSupport = true
+		return true
 	case "resourceReferences":
-		hasSupport = !rm.opts.DisableResourceReferences
+		return !rm.opts.DisableResourceReferences
 	case "outputValues":
-		hasSupport = !rm.opts.DisableOutputValues
+		return !rm.opts.DisableOutputValues
 	case "aliasSpecs":
-		hasSupport = true
+		return true
 	case "replacementTrigger":
-		hasSupport = true
+		return true
 	case "deletedWith":
-		hasSupport = true
+		return true
 	case "replaceWith":
-		hasSupport = true
+		return true
 	case "transforms":
-		hasSupport = true
+		return true
 	case "invokeTransforms":
-		hasSupport = true
+		return true
 	case "parameterization":
 		// N.B This serves a dual purpose of also indicating that package references are supported.
-		hasSupport = true
+		return true
 	case "resourceHooks":
-		hasSupport = true
+		return true
 	case "errorHooks":
-		hasSupport = true
+		return true
 	case "sendsOptionsToHooks":
-		hasSupport = true
+		return true
+	}
+	return false
+}
+
+func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature {
+	features := make([]pulumirpc.ResourceMonitorFeature, 0, 11)
+	if rm.supportsFeatureID("secrets") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS)
+	}
+	if rm.supportsFeatureID("resourceReferences") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
+	}
+	if rm.supportsFeatureID("outputValues") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
+	}
+	if rm.supportsFeatureID("aliasSpecs") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS)
+	}
+	if rm.supportsFeatureID("replacementTrigger") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER)
+	}
+	if rm.supportsFeatureID("deletedWith") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH)
+	}
+	if rm.supportsFeatureID("replaceWith") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH)
+	}
+	if rm.supportsFeatureID("transforms") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS)
+	}
+	if rm.supportsFeatureID("invokeTransforms") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS)
+	}
+	if rm.supportsFeatureID("parameterization") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION)
+	}
+	if rm.supportsFeatureID("resourceHooks") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS)
+	}
+	if rm.supportsFeatureID("errorHooks") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS)
+	}
+	if rm.supportsFeatureID("sendsOptionsToHooks") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
+	}
+	return features
+}
+
+func (rm *resmon) GetDeploymentInfo(_ context.Context,
+	_ *emptypb.Empty,
+) (*pulumirpc.DeploymentInfo, error) {
+	config := make(map[string]string, len(rm.constructInfo.Config))
+	for k, v := range rm.constructInfo.Config {
+		config[k.String()] = v
 	}
 
-	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
+	configSecretKeys := make([]string, len(rm.constructInfo.ConfigSecretKeys))
+	for i, k := range rm.constructInfo.ConfigSecretKeys {
+		configSecretKeys[i] = k.String()
+	}
 
-	return &pulumirpc.SupportsFeatureResponse{
-		HasSupport: hasSupport,
+	return &pulumirpc.DeploymentInfo{
+		Project:           rm.constructInfo.Project,
+		Stack:             rm.constructInfo.Stack,
+		Organization:      rm.organization,
+		Config:            config,
+		ConfigSecretKeys:  configSecretKeys,
+		DryRun:            rm.constructInfo.DryRun,
+		Parallel:          rm.constructInfo.Parallel,
+		SupportedFeatures: rm.supportedMonitorFeatures(),
 	}, nil
 }
 

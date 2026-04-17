@@ -800,6 +800,75 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
 }
 
+// TestCreateStackDisplaysBackendMessages verifies that backend-vended messages on the
+// CreateStackResponse (e.g. an expired trial warning) flow through the client into the
+// cloudBackend without breaking stack creation, and that displayBackendMessages renders
+// them via the diag sink.
+func TestCreateStackDisplaysBackendMessages(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	const trialWarning = "Your organization's trial has expired. " +
+		"Please contact sales@pulumi.com to upgrade."
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "owner",
+			})
+			require.NoError(t, err)
+		case "/api/stacks/owner/project":
+			rw.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(rw).Encode(apitype.CreateStackResponse{
+				Messages: []apitype.Message{{
+					Severity: apitype.MessageSeverityWarning,
+					Message:  trialWarning,
+				}},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	b, err := New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("owner/project/stack")
+	require.NoError(t, err)
+
+	// CreateStack should succeed and the warning message should not interfere with
+	// stack creation; it is rendered via cmdutil.Diag() as a side effect.
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	// Exercise displayBackendMessages directly with each severity, including an
+	// unknown one, so the helper's switch arms are all covered. The expired-trial
+	// warning is the primary case driving this test.
+	displayBackendMessages([]apitype.Message{
+		{Severity: apitype.MessageSeverityWarning, Message: trialWarning},
+		{Severity: apitype.MessageSeverityError, Message: "test error"},
+		{Severity: apitype.MessageSeverityInfo, Message: "test info"},
+		{Severity: "mystery", Message: "unknown severity"},
+	})
+
+	// Empty input is a no-op and must not panic.
+	displayBackendMessages(nil)
+}
+
 func TestImportDeploymentSchemaVersion(t *testing.T) {
 	t.Parallel()
 

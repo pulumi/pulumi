@@ -281,6 +281,10 @@ message GetRequiredPackagesResponse {
 
 // `RunRequest` is the type of requests sent as part of a [](pulumirpc.LanguageRuntime.Run) call.
 message RunRequest {
+    // NOTE: execution context fields (project/stack/config/dryRun/parallel/organization) remain for
+    // backward compatibility. Newer language runtimes may read monitor execution context via
+    // [](pulumirpc.ResourceMonitor.GetDeploymentInfo) using `monitor_address`.
+
     // The project name.
     string project = 1;
 

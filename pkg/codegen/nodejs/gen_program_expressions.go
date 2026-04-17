@@ -410,22 +410,24 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
-		if output, ok := to.(*model.OutputType); ok {
-			to = output.ElementType
-		}
+		to = model.ResolveOutputs(to)
 		if cns, ok := to.(*model.ConstType); ok {
 			to = cns.Type
 		}
 		fromType := from.Type()
-		isFromOutput := isOutputType(fromType)
-		if output, ok := fromType.(*model.OutputType); ok {
-			fromType = output.ElementType
-		}
+		isFromOutput, isFromPromise := model.ContainsEventuals(fromType)
+		fromType = model.ResolveOutputs(fromType)
 		if cns, ok := fromType.(*model.ConstType); ok {
 			fromType = cns.Type
 		}
 
 		genMaybeOutputConversion := func(conversionExpr func(string)) {
+			if isFromPromise {
+				g.Fgenf(w, "output(%.v).apply(x =>", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
 			if isFromOutput {
 				g.Fgenf(w, "%.v.apply(x =>", from)
 				conversionExpr("x")

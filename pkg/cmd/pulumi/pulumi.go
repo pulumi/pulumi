@@ -61,6 +61,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
@@ -515,6 +516,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
 				ai.NewAICommand(),
+				neo.NewNeoCmd(),
 			},
 		},
 	})

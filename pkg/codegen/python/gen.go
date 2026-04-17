@@ -1258,7 +1258,14 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := PyName(prop.Name)
 		ptype := mod.pyType(prop.Type)
-		fmt.Fprintf(w, "        if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
+		isInstanceType := ptype
+		switch ptype {
+		case "bool", "int", "float", "str":
+			if pname == ptype {
+				isInstanceType = "_builtins." + ptype
+			}
+		}
+		fmt.Fprintf(w, "        if %s and not isinstance(%s, %s):\n", pname, pname, isInstanceType)
 		fmt.Fprintf(w, "            raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
 		// Now perform the assignment.
@@ -1727,7 +1734,14 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := PyName(prop.Name)
 		ptype := mod.pyType(prop.Type)
-		fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
+		isInstanceType := ptype
+		switch ptype {
+		case "bool", "int", "float", "str":
+			if pname == ptype {
+				isInstanceType = "_builtins." + ptype
+			}
+		}
+		fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, isInstanceType)
 		fmt.Fprintf(w, "                raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
 		// Now perform the assignment.

@@ -19,9 +19,9 @@ class PrimitiveComponent(pulumi.ComponentResource):
             integer=args["integer"],
             string=args["string"],
             number_array=[
-                -1,
-                0,
-                1,
+                float(-1),
+                float(0),
+                float(1),
             ],
             boolean_map={
                 "t": True,

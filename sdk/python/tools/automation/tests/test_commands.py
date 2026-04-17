@@ -58,8 +58,7 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(command, "pulumi cancel --yes")
 
     def test_cancel_with_option(self) -> None:
-        options = self.mod.PulumiCancelOptions()
-        options.stack = "dev"
+        options = self.mod.PulumiCancelOptions(stack="dev")
         command = self.api.cancel(options)
         self.assertEqual(command, "pulumi cancel --yes --stack dev")
 
@@ -74,10 +73,11 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(command, "pulumi org set-default -- my-org")
 
     def test_org_search_with_query_flags(self) -> None:
-        options = self.mod.PulumiOrgSearchOptions()
-        options.org = "my-org"
-        options.query = ["type:aws:s3/bucketv2:BucketV2", "modified:>=2023-09-01"]
-        options.output = "json"
+        options = self.mod.PulumiOrgSearchOptions(
+            org="my-org",
+            query=["type:aws:s3/bucketv2:BucketV2", "modified:>=2023-09-01"],
+            output="json",
+        )
         command = self.api.org_search(options)
         self.assertEqual(
             command,
@@ -86,9 +86,10 @@ class TestCommands(unittest.TestCase):
         )
 
     def test_org_search_ai(self) -> None:
-        options = self.mod.PulumiOrgSearchAiOptions()
-        options.org = "my-org"
-        options.query = "find all S3 buckets"
+        options = self.mod.PulumiOrgSearchAiOptions(
+            org="my-org",
+            query="find all S3 buckets",
+        )
         command = self.api.org_search_ai(options)
         self.assertEqual(
             command,
@@ -101,9 +102,7 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(command, "pulumi org")
 
     def test_state_move_variadic(self) -> None:
-        options = self.mod.PulumiStateMoveOptions()
-        options.dest = "prod"
-        options.source = "dev"
+        options = self.mod.PulumiStateMoveOptions(dest="prod", source="dev")
         command = self.api.state_move(options, "urn:1", "urn:2")
         self.assertEqual(
             command,
@@ -116,8 +115,7 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(command, "pulumi state move --yes")
 
     def test_state_move_boolean_flag(self) -> None:
-        options = self.mod.PulumiStateMoveOptions()
-        options.include_parents = True
+        options = self.mod.PulumiStateMoveOptions(include_parents=True)
         command = self.api.state_move(options, "urn:1")
         self.assertEqual(
             command,

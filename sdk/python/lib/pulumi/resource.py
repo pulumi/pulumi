@@ -893,7 +893,11 @@ class Resource:
                and `translate_output_property` methods.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
-        :param bool remote: True if this is a remote component resource.
+        :param bool remote: This parameter is intended for use by code-generated component SDKs;
+               end users authoring their own :class:`ComponentResource` subclasses should leave this at
+               its default (``False``). When ``True``, the component's children are constructed by the
+               engine rather than in this process, and the constructor skips local child registration
+               accordingly.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
@@ -1232,7 +1236,11 @@ class ComponentResource(Resource):
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
-        :param bool remote: True if this is a remote component resource.
+        :param bool remote: This parameter is intended for use by code-generated component SDKs;
+               end users authoring their own :class:`ComponentResource` subclasses should leave this at
+               its default (``False``). When ``True``, the component's children are constructed by the
+               engine rather than in this process, and the constructor skips local child registration
+               accordingly.
         :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
         Resource.__init__(self, t, name, False, props, opts, remote, False, package_ref)

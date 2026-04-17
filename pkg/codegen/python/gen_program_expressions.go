@@ -280,9 +280,34 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
-		output, isOutput := to.(*model.OutputType)
-		if isOutput {
-			to = output.ElementType
+		to = model.ResolveOutputs(to)
+		if cns, ok := to.(*model.ConstType); ok {
+			to = cns.Type
+		}
+
+		fromType := from.Type()
+		isFromOutput, isFromPromise := model.ContainsEventuals(fromType)
+		fromType = model.ResolveOutputs(fromType)
+		if cns, ok := fromType.(*model.ConstType); ok {
+			fromType = cns.Type
+		}
+
+		genMaybeOutputConversion := func(conversionExpr func(string)) {
+			if isFromPromise {
+				g.Fgenf(w, "output(%.v).apply(lambda x: ", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			if isFromOutput {
+				g.Fgenf(w, "%.v.apply(lambda x: ", from)
+				conversionExpr("x")
+				g.Fgenf(w, ")")
+				return
+			}
+			var t bytes.Buffer
+			g.Fgenf(&t, "%.v", from)
+			conversionExpr(t.String())
 		}
 		switch to := to.(type) {
 		case *model.EnumType:
@@ -310,7 +335,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				pkg += "." + strings.ReplaceAll(m, "/", ".")
 			}
 
-			if isOutput {
+			if isFromOutput {
 				g.Fgenf(w, "%.v.apply(lambda x: %s.%s(x))", from, pkg, enumName)
 			} else {
 				diag := pcl.GenEnum(to, from, func(member *schema.Enum) {
@@ -329,11 +354,34 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				}
 			}
 		default:
-			switch arg := from.(type) {
-			case *model.ObjectConsExpression:
-				g.genObjectConsExpression(w, arg, expr.Type())
+			switch {
+			case model.BoolType.AssignableFrom(to) && !model.BoolType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, `%s == "true"`, v)
+				})
+			case model.StringType.AssignableFrom(to) && !model.StringType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					if model.BoolType.AssignableFrom(fromType) {
+						g.Fgenf(w, `"true" if %s else "false"`, v)
+						return
+					}
+					g.Fgenf(w, "str(%s)", v)
+				})
+			case model.NumberType.AssignableFrom(to) && !model.NumberType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "float(%s)", v)
+				})
+			case model.IntType.AssignableFrom(to) && !model.IntType.AssignableFrom(fromType):
+				genMaybeOutputConversion(func(v string) {
+					g.Fgenf(w, "int(%s)", v)
+				})
 			default:
-				g.Fgenf(w, "%.v", expr.Args[0])
+				switch arg := from.(type) {
+				case *model.ObjectConsExpression:
+					g.genObjectConsExpression(w, arg, expr.Type())
+				default:
+					g.Fgenf(w, "%.v", expr.Args[0])
+				}
 			}
 		}
 	case pcl.IntrinsicApply:

@@ -164,7 +164,9 @@ def _generate_options_types(
             ast.ClassDef(
                 name=class_name,
                 bases=[ast.Name(id="BaseOptions", ctx=ast.Load())],
-                keywords=[],
+                keywords=[
+                    ast.keyword(arg="total", value=ast.Constant(value=False)),
+                ],
                 body=class_body,
                 decorator_list=[],
             )
@@ -489,18 +491,18 @@ def _emit_preset_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
         return
 
     if not is_omitted:
-        # Wrap in: if getattr(options, "<opt_name>", None) is None:
+        # Wrap in: if options.get("<opt_name>") is None:
         opt_name = _snake_case(flag_name)
         body.append(
             ast.If(
                 test=ast.Compare(
                     left=ast.Call(
-                        func=ast.Name(id="getattr", ctx=ast.Load()),
-                        args=[
-                            ast.Name(id="options", ctx=ast.Load()),
-                            ast.Constant(value=opt_name),
-                            ast.Constant(value=None),
-                        ],
+                        func=ast.Attribute(
+                            value=ast.Name(id="options", ctx=ast.Load()),
+                            attr="get",
+                            ctx=ast.Load(),
+                        ),
+                        args=[ast.Constant(value=opt_name)],
                         keywords=[],
                     ),
                     ops=[ast.Is()],
@@ -522,20 +524,20 @@ def _emit_option_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
     required = flag.get("required", False)
     opt_name = _snake_case(flag_name)
 
-    # Access: getattr(options, "opt_name", None)
+    # Access: options.get("opt_name")
     def _opt_access() -> ast.Call:
         return ast.Call(
-            func=ast.Name(id="getattr", ctx=ast.Load()),
-            args=[
-                ast.Name(id="options", ctx=ast.Load()),
-                ast.Constant(value=opt_name),
-                ast.Constant(value=None),
-            ],
+            func=ast.Attribute(
+                value=ast.Name(id="options", ctx=ast.Load()),
+                attr="get",
+                ctx=ast.Load(),
+            ),
+            args=[ast.Constant(value=opt_name)],
             keywords=[],
         )
 
     if repeatable:
-        # for __item in getattr(options, "x", None) or []:
+        # for __item in options.get("x") or []:
         inner: List[ast.stmt]
         if flag_type == "boolean":
             inner = [
@@ -593,7 +595,7 @@ def _emit_option_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
             )
         )
     elif flag_type == "boolean":
-        # if getattr(options, "x", None): __flags.append("--flag")
+        # if options.get("x"): __flags.append("--flag")
         body.append(
             ast.If(
                 test=_opt_access(),
@@ -614,7 +616,7 @@ def _emit_option_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
             )
         )
     elif required:
-        # __flags.extend(["--flag", str(getattr(options, "x", None))])
+        # __flags.extend(["--flag", str(options.get("x"))])
         body.append(
             ast.Expr(
                 value=ast.Call(
@@ -641,7 +643,7 @@ def _emit_option_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
             )
         )
     else:
-        # if getattr(options, "x", None) is not None: __flags.extend(["--flag", str(...)])
+        # if options.get("x") is not None: __flags.extend(["--flag", str(...)])
         body.append(
             ast.If(
                 test=ast.Compare(
