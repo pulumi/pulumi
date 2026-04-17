@@ -51,10 +51,18 @@ type Session struct {
 	// Log receives single-line status messages so the caller can render them however it
 	// likes (stderr today, a TUI tomorrow). nil disables logging.
 	Log io.Writer
+	// UIEvents, when non-nil, receives parsed events for the bubbletea TUI to display.
+	// The Session closes this channel when Run() exits.
+	UIEvents chan<- UIEvent
 }
 
 // Run drives the loop. It blocks until ctx is cancelled or the SSE stream errors out.
+// If UIEvents is set, it is closed when Run returns.
 func (s *Session) Run(ctx context.Context) error {
+	if s.UIEvents != nil {
+		defer close(s.UIEvents)
+	}
+
 	stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID)
 	if err != nil {
 		return fmt.Errorf("opening event stream: %w", err)
@@ -84,10 +92,19 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		s.logf("warning: skipping malformed Neo console event: %v", err)
 		return nil
 	}
-	// We only care about agent → user events. User input echoes are ignored.
+	// Forward user input echoes to the TUI so the user's messages are visible.
+	if env.Type == consoleEventUserInput && len(env.EventBody) > 0 {
+		s.forwardUserInputToUI(env.EventBody)
+		return nil
+	}
+
+	// We only care about agent → user events for tool dispatch.
 	if env.Type != consoleEventAgentResponse || len(env.EventBody) == 0 {
 		return nil
 	}
+
+	// Forward all backend events to the TUI (if connected) before tool dispatch.
+	s.forwardToUI(env.EventBody)
 
 	var head apitype.AgentBackendEventHeader
 	if err := json.Unmarshal(env.EventBody, &head); err != nil {
@@ -114,6 +131,11 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		}
 	}
 	if len(cliCalls) == 0 {
+		// No CLI-side work to do. If the agent marked this as its final message,
+		// the turn is complete and the TUI can re-enable input.
+		if msg.IsFinal {
+			sendUI(s.UIEvents, UITaskIdle{})
+		}
 		return nil
 	}
 	return s.runBatch(ctx, cliCalls)
@@ -122,7 +144,7 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEventToolCall) error {
 	items := make([]apitype.AgentUserEventToolResultItem, 0, len(calls))
 	for _, call := range calls {
-		s.logf("→ %s", call.Name)
+		sendUI(s.UIEvents, UIToolStarted{Name: call.Name, Args: call.Args})
 
 		// The agent runtime relies on exec_tool_call to transition the call into its
 		// "running" state. If this post fails, the agent will believe the tool never
@@ -137,7 +159,10 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 			return fmt.Errorf("posting exec_tool_call for %q: %w", call.Name, err)
 		}
 
-		items = append(items, s.invokeToolCall(ctx, call))
+		result := s.invokeToolCall(ctx, call)
+		items = append(items, result)
+
+		sendUI(s.UIEvents, UIToolCompleted{Name: call.Name, Args: call.Args, IsError: result.IsError})
 	}
 
 	result := apitype.AgentUserEventToolResult{
@@ -147,6 +172,7 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 	if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, result); err != nil {
 		s.logf("error: posting tool_result: %v", err)
 	}
+
 	return nil
 }
 
@@ -186,4 +212,76 @@ func (s *Session) logf(format string, args ...any) {
 		return
 	}
 	fmt.Fprintf(s.Log, format+"\n", args...)
+}
+
+// sendUI sends a UIEvent to the TUI channel if it is connected.
+// Uses a non-blocking send so the session loop is never blocked by a slow TUI.
+func sendUI(ch chan<- UIEvent, evt UIEvent) {
+	if ch == nil {
+		return
+	}
+	select {
+	case ch <- evt:
+	default:
+	}
+}
+
+// forwardToUI parses a backend event body and sends the appropriate UIEvent to the TUI.
+// This is called for every agentResponse envelope so the TUI can display all event types,
+// not just the assistant_message tool calls that the session loop acts on.
+func (s *Session) forwardToUI(eventBody json.RawMessage) {
+	if s.UIEvents == nil {
+		return
+	}
+
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil {
+		return
+	}
+
+	switch head.Type {
+	case backendEventAssistantMessage:
+		var msg apitype.AgentBackendEventAssistantMessage
+		if err := json.Unmarshal(eventBody, &msg); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIAssistantMessage{Content: msg.Content, IsFinal: msg.IsFinal})
+	case backendEventExecToolCallProgress:
+		var p apitype.AgentBackendEventExecToolCallProgress
+		if err := json.Unmarshal(eventBody, &p); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIToolProgress{Name: p.Name, Message: p.Content})
+	case backendEventError:
+		var e apitype.AgentBackendEventError
+		if err := json.Unmarshal(eventBody, &e); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIError{Message: e.Message})
+	case backendEventWarning:
+		var w apitype.AgentBackendEventWarning
+		if err := json.Unmarshal(eventBody, &w); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIWarning{Message: w.Message})
+	case backendEventCancelled:
+		sendUI(s.UIEvents, UICancelled{})
+	}
+	// Server-side exec_tool_call and tool_response events describe tools the agent
+	// runtime executes; the CLI-run equivalents are emitted directly from runBatch.
+}
+
+// forwardUserInputToUI parses a userInput event body and sends a UIUserMessage to the TUI.
+func (s *Session) forwardUserInputToUI(eventBody json.RawMessage) {
+	if s.UIEvents == nil {
+		return
+	}
+
+	var evt apitype.AgentUserEventUserMessage
+	if err := json.Unmarshal(eventBody, &evt); err != nil {
+		return
+	}
+	if evt.Content != "" {
+		sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+	}
 }

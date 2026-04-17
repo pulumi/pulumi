@@ -16,13 +16,15 @@
 // pairs with Pulumi Cloud's Neo agent when a task is created in `cli` tool execution mode.
 //
 // The wire types consumed by this loop live in sdk/go/common/apitype (see neo.go there).
-// This file only defines the string discriminator values we filter on.
+// This file only defines the string discriminator values we filter on and the local-only
+// helper shapes the TUI uses to peek at backend events.
 package neo
 
 // Discriminator values for the AgentConsoleEvent envelope and the inner backend/user
 // events we care about.
 const (
 	consoleEventAgentResponse    = "agentResponse"
+	consoleEventUserInput        = "userInput"
 	backendEventAssistantMessage = "assistant_message"
 	userEventToolResult          = "tool_result"
 	userEventExecToolCall        = "exec_tool_call"
@@ -31,4 +33,14 @@ const (
 	// that the CLI client must execute locally. Cloud-marked or unset calls are
 	// handled by the agent runtime and must not be touched by the CLI.
 	toolExecutionModeCLI = "cli"
+
+	// userEventUserMessage is the user event the CLI posts when the user types a chat
+	// message into the TUI.
+	userEventUserMessage = "user_message"
+
+	// Additional backend event types forwarded to the TUI.
+	backendEventExecToolCallProgress = "exec_tool_call_progress"
+	backendEventError                = "error"
+	backendEventWarning              = "warning"
+	backendEventCancelled            = "cancelled"
 )

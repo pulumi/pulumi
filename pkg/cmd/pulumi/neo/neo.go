@@ -19,8 +19,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
 	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -30,6 +33,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -47,18 +51,21 @@ func NewNeoCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "neo \"<initial prompt>\"",
+		Use:   "neo [prompt]",
 		Short: "Start a Pulumi Neo agent task with local tool execution",
 		Long: "Creates a Pulumi Neo agent task in CLI tool execution mode and runs the local " +
 			"tool loop. Filesystem and shell tool calls from the agent run on this machine, " +
 			"in the working directory you select, instead of in the cloud agent container. " +
-			"The interactive chat happens in the Pulumi Console — this command prints the URL " +
-			"to open after starting the task.",
+			"If no prompt is provided, the TUI starts and waits for your first message.",
 		Hidden: !env.Experimental.Value(),
-		Args:   cobra.ExactArgs(1),
+		Args:   cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			return runNeo(ctx, args[0], stackName, orgFlag, cwdFlag)
+			var prompt string
+			if len(args) > 0 {
+				prompt = args[0]
+			}
+			return runNeo(ctx, prompt, stackName, orgFlag, cwdFlag)
 		},
 	}
 
@@ -104,19 +111,6 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return err
 	}
 
-	resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackRefName, projectName, "cli")
-	if err != nil {
-		return err
-	}
-
-	consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
-	if consoleURL != "" {
-		fmt.Fprintf(os.Stderr, "Neo task: %s\n", consoleURL)
-	} else {
-		fmt.Fprintf(os.Stderr, "Neo task created (id %s)\n", resp.TaskID)
-	}
-	fmt.Fprintf(os.Stderr, "Running local tool loop in %s. Press Ctrl-C to exit.\n", cwdFlag)
-
 	fs, err := tools.NewFilesystem(cwdFlag)
 	if err != nil {
 		return err
@@ -125,17 +119,142 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	if err != nil {
 		return err
 	}
-	session := &Session{
-		Client: pc,
-		Handlers: map[string]ToolHandler{
-			"filesystem": fs,
-			"shell":      sh,
-		},
-		OrgName: orgName,
-		TaskID:  resp.TaskID,
-		Log:     os.Stderr,
+	handlers := map[string]ToolHandler{
+		"filesystem": fs,
+		"shell":      sh,
 	}
-	return session.Run(ctx)
+
+	// Non-interactive mode requires a prompt — there's no input mechanism.
+	if !cmdutil.Interactive() {
+		if prompt == "" {
+			return errors.New("a prompt argument is required in non-interactive mode")
+		}
+		resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackRefName, projectName, "cli")
+		if err != nil {
+			return err
+		}
+		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+		if consoleURL != "" {
+			fmt.Println(consoleURL)
+		} else {
+			fmt.Printf("Neo task created (id %s)\n", resp.TaskID)
+		}
+		session := &Session{
+			Client:   pc,
+			Handlers: handlers,
+			OrgName:  orgName,
+			TaskID:   resp.TaskID,
+			Log:      os.Stderr,
+		}
+		return session.Run(ctx)
+	}
+
+	uiCh := make(chan UIEvent, 64)
+	sendCh := make(chan string, 4)
+
+	// Resolve the username for the welcome greeting.
+	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
+
+	model := NewModel(ModelConfig{
+		Org:      orgName,
+		WorkDir:  cwdFlag,
+		Username: username,
+		EventCh:  uiCh,
+		SendCh:   sendCh,
+		Busy:     prompt != "",
+	})
+
+	p := tea.NewProgram(model,
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+	)
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	// taskState tracks the task ID once created (may be deferred if no prompt).
+	type taskState struct {
+		mu     sync.Mutex
+		taskID string
+	}
+	ts := &taskState{}
+
+	// createTask creates the Neo task with the given prompt and starts the session.
+	// Called immediately if a prompt was provided, or on the first user message.
+	createTask := func(initialPrompt string) error {
+		resp, err := pc.CreateNeoTask(gctx, orgName, initialPrompt, stackRefName, projectName, "cli")
+		if err != nil {
+			return err
+		}
+
+		ts.mu.Lock()
+		ts.taskID = resp.TaskID
+		ts.mu.Unlock()
+
+		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+		if consoleURL != "" {
+			sendUI(uiCh, UISessionURL{URL: consoleURL})
+		}
+
+		session := &Session{
+			Client:   pc,
+			Handlers: handlers,
+			OrgName:  orgName,
+			TaskID:   resp.TaskID,
+			UIEvents: uiCh,
+		}
+		return session.Run(gctx)
+	}
+
+	if prompt != "" {
+		g.Go(func() error {
+			return createTask(prompt)
+		})
+	}
+
+	g.Go(func() error {
+		_, err := p.Run()
+		return err
+	})
+
+	g.Go(func() error {
+		taskCreated := prompt != ""
+		for {
+			select {
+			case <-gctx.Done():
+				return nil
+			case text, ok := <-sendCh:
+				if !ok {
+					return nil
+				}
+				if !taskCreated {
+					taskCreated = true
+					g.Go(func() error {
+						return createTask(text)
+					})
+					continue
+				}
+				ts.mu.Lock()
+				taskID := ts.taskID
+				ts.mu.Unlock()
+				if taskID == "" {
+					// Unreachable in normal use: the TUI gates Enter on busy state
+					// until UITaskIdle, so no message should arrive here before the
+					// task ID is known. Surface instead of silently dropping.
+					sendUI(uiCh, UIWarning{Message: "dropped message: task not ready"})
+					continue
+				}
+				evt := apitype.AgentUserEventUserMessage{
+					Type:    userEventUserMessage,
+					Content: text,
+				}
+				if err := pc.PostNeoTaskUserEvent(gctx, orgName, taskID, evt); err != nil {
+					sendUI(uiCh, UIWarning{Message: "failed to send message: " + err.Error()})
+				}
+			}
+		}
+	})
+
+	return g.Wait()
 }
 
 // resolveTaskTarget figures out the org, project, and stack name to attach to the new Neo

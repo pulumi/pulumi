@@ -41,12 +41,14 @@ type AgentBackendEventHeader struct {
 }
 
 // AgentBackendEventAssistantMessage is the agent → user backend event that may carry
-// tool_calls. When any tool call has execution_mode == "cli", the message is sent with
-// is_final: true and the agent pauses until the CLI replies with an
-// AgentUserEventToolResult. Conversational text fields are intentionally omitted — CLI
-// clients only act on tool_calls.
+// tool_calls and/or streamed conversational text. When any tool call has
+// execution_mode == "cli", the message is sent with is_final: true and the agent pauses
+// until the CLI replies with an AgentUserEventToolResult. Content carries the streamed
+// assistant text that the TUI renders; the session loop ignores it and only acts on
+// tool_calls.
 type AgentBackendEventAssistantMessage struct {
 	Type      string                      `json:"type"` // always "assistant_message"
+	Content   string                      `json:"content,omitempty"`
 	ToolCalls []AgentBackendEventToolCall `json:"tool_calls,omitempty"`
 	IsFinal   bool                        `json:"is_final,omitempty"`
 }
@@ -99,4 +101,37 @@ type AgentUserEventExecToolCall struct {
 	Type       string `json:"type"`         // always "exec_tool_call"
 	ToolCallID string `json:"tool_call_id"` // from the inbound AgentBackendEventToolCall.ToolCallID
 	Name       string `json:"name"`         // full tool name, e.g. "filesystem__read"
+}
+
+// AgentUserEventUserMessage is the user event a CLI client posts when the user sends a
+// chat message from the TUI.
+type AgentUserEventUserMessage struct {
+	Type    string `json:"type"` // always "user_message"
+	Content string `json:"content"`
+}
+
+// AgentBackendEventExecToolCallProgress is a backend event reporting incremental progress
+// for an in-flight tool call, forwarded to the TUI to update the tool's status line.
+type AgentBackendEventExecToolCallProgress struct {
+	Type    string `json:"type"` // always "exec_tool_call_progress"
+	Name    string `json:"name"`
+	Content string `json:"content,omitempty"`
+}
+
+// AgentBackendEventError is a backend event reporting a fatal error for the current turn.
+type AgentBackendEventError struct {
+	Type    string `json:"type"` // always "error"
+	Message string `json:"message"`
+}
+
+// AgentBackendEventWarning is a backend event reporting a non-fatal warning.
+type AgentBackendEventWarning struct {
+	Type    string `json:"type"` // always "warning"
+	Message string `json:"message"`
+}
+
+// AgentBackendEventCancelled is a backend event signalling that the agent has cancelled
+// the current turn (e.g. the user interrupted it).
+type AgentBackendEventCancelled struct {
+	Type string `json:"type"` // always "cancelled"
 }

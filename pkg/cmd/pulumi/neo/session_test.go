@@ -197,6 +197,112 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 	assert.Empty(t, streamer.posted)
 }
 
+// collectUIEvents drains a UIEvents channel until it is closed, returning everything seen.
+// Use with a Session that sets s.UIEvents — Run closes the channel when it exits.
+func collectUIEvents(ch <-chan UIEvent) []UIEvent {
+	var out []UIEvent
+	for evt := range ch {
+		out = append(out, evt)
+	}
+	return out
+}
+
+func hasUIEvent[T UIEvent](events []UIEvent) bool {
+	for _, e := range events {
+		if _, ok := e.(T); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func TestSession_FinalAssistantMessageWithoutCliCallsEmitsTaskIdle(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// A final assistant_message with no CLI tool calls signals the agent's turn is
+	// complete — the TUI depends on UITaskIdle to re-enable input.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	events := collectUIEvents(uiCh)
+	assert.True(t, hasUIEvent[UITaskIdle](events), "expected UITaskIdle after final assistant_message with no cli calls")
+}
+
+func TestSession_StreamingAssistantMessageDoesNotEmitTaskIdle(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// A non-final assistant_message is a streaming chunk, not a turn completion.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: false,
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	events := collectUIEvents(uiCh)
+	assert.False(t, hasUIEvent[UITaskIdle](events), "streaming chunks must not emit UITaskIdle")
+}
+
+func TestSession_FinalAssistantMessageWithCliCallsDoesNotEmitTaskIdle(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "hi"}},
+	}
+
+	// Final assistant_message carrying CLI tool calls: runBatch handles the transition.
+	// We must not emit UITaskIdle here or the TUI would unblock input while the agent
+	// is still mid-turn.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{ToolCallID: "c1", Name: "filesystem__read", Args: json.RawMessage(`{}`), ExecutionMode: "cli"},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	events := collectUIEvents(uiCh)
+	assert.False(t, hasUIEvent[UITaskIdle](events), "pending cli tool calls must not emit UITaskIdle")
+}
+
 func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing.T) {
 	t.Parallel()
 
@@ -527,4 +633,222 @@ func (p *postSequencer) PostNeoTaskUserEvent(_ context.Context, _, _ string, bod
 	p.idx++
 	p.mu.Unlock()
 	return err
+}
+
+// -----------------------------------------------------------------------------
+// forwardToUI / forwardUserInputToUI
+// -----------------------------------------------------------------------------
+
+// drainUIEvents reads everything currently buffered on ch without blocking,
+// then returns. Use to collect events posted by synchronous forwarder calls.
+func drainUIEvents(ch <-chan UIEvent) []UIEvent {
+	var out []UIEvent
+	for {
+		select {
+		case e := <-ch:
+			out = append(out, e)
+		default:
+			return out
+		}
+	}
+}
+
+func TestSession_ForwardToUI_EmitsAllEventTypes(t *testing.T) {
+	t.Parallel()
+
+	// Each backend event type has exactly one matching UIEvent. If this mapping
+	// drifts (e.g. a new backend event type is added without updating the
+	// switch), the TUI goes silent for that event. Pin every arm here.
+	cases := []struct {
+		name string
+		body map[string]any
+		want func(UIEvent) bool
+	}{
+		{
+			"assistant_message_streaming",
+			map[string]any{"type": backendEventAssistantMessage, "content": "hi", "is_final": false},
+			func(e UIEvent) bool {
+				m, ok := e.(UIAssistantMessage)
+				return ok && m.Content == "hi" && !m.IsFinal
+			},
+		},
+		{
+			"assistant_message_final",
+			map[string]any{"type": backendEventAssistantMessage, "content": "done", "is_final": true},
+			func(e UIEvent) bool {
+				m, ok := e.(UIAssistantMessage)
+				return ok && m.Content == "done" && m.IsFinal
+			},
+		},
+		{
+			"exec_tool_call_progress",
+			map[string]any{"type": backendEventExecToolCallProgress, "name": "filesystem__read", "content": "50%"},
+			func(e UIEvent) bool {
+				m, ok := e.(UIToolProgress)
+				return ok && m.Name == "filesystem__read" && m.Message == "50%"
+			},
+		},
+		{
+			"error",
+			map[string]any{"type": backendEventError, "message": "boom"},
+			func(e UIEvent) bool {
+				m, ok := e.(UIError)
+				return ok && m.Message == "boom"
+			},
+		},
+		{
+			"warning",
+			map[string]any{"type": backendEventWarning, "message": "careful"},
+			func(e UIEvent) bool {
+				m, ok := e.(UIWarning)
+				return ok && m.Message == "careful"
+			},
+		},
+		{
+			"cancelled",
+			map[string]any{"type": backendEventCancelled},
+			func(e UIEvent) bool {
+				_, ok := e.(UICancelled)
+				return ok
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ch := make(chan UIEvent, 4)
+			s := &Session{UIEvents: ch}
+			body, err := json.Marshal(tc.body)
+			require.NoError(t, err)
+
+			s.forwardToUI(body)
+
+			events := drainUIEvents(ch)
+			require.Len(t, events, 1, "expected one UIEvent")
+			assert.Truef(t, tc.want(events[0]), "unexpected UIEvent: %#v", events[0])
+		})
+	}
+}
+
+func TestSession_ForwardToUI_UnknownTypeIsIgnored(t *testing.T) {
+	t.Parallel()
+
+	// A backend event type the CLI doesn't recognize must fall through the
+	// forwarder switch without emitting anything — otherwise we'd flood the TUI
+	// with junk whenever the service adds new event types.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{"type": "some_future_event", "content": "x"})
+	require.NoError(t, err)
+
+	s.forwardToUI(body)
+	assert.Empty(t, drainUIEvents(ch))
+}
+
+func TestSession_ForwardToUI_NilChannelIsNoOp(t *testing.T) {
+	t.Parallel()
+
+	// The Session is used both in TUI mode (UIEvents != nil) and in
+	// non-interactive mode (nil). In the latter, forwardToUI must return
+	// without touching nil — sendUI alone wouldn't help because the JSON
+	// unmarshal has already happened.
+	s := &Session{UIEvents: nil}
+	body, err := json.Marshal(map[string]any{"type": backendEventError, "message": "boom"})
+	require.NoError(t, err)
+	// Must not panic.
+	s.forwardToUI(body)
+}
+
+func TestSession_ForwardToUI_MalformedJSONIsIgnored(t *testing.T) {
+	t.Parallel()
+
+	// A malformed body must not crash the forwarder nor leak a partially-decoded
+	// event. This is the error-path companion to the happy-path table.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	s.forwardToUI(json.RawMessage(`not-json`))
+	assert.Empty(t, drainUIEvents(ch))
+}
+
+func TestSession_ForwardUserInputToUI_EmitsUserMessage(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{"content": "hello there"})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	um, ok := events[0].(UIUserMessage)
+	require.True(t, ok)
+	assert.Equal(t, "hello there", um.Content)
+}
+
+func TestSession_ForwardUserInputToUI_EmptyContentDropped(t *testing.T) {
+	t.Parallel()
+
+	// A userInput envelope with no content is a no-op — emitting a blank
+	// UIUserMessage would draw an empty user bubble in the TUI.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{"content": ""})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+	assert.Empty(t, drainUIEvents(ch))
+}
+
+func TestSession_ForwardUserInputToUI_NilChannelIsNoOp(t *testing.T) {
+	t.Parallel()
+
+	s := &Session{UIEvents: nil}
+	body, err := json.Marshal(map[string]any{"content": "hi"})
+	require.NoError(t, err)
+	s.forwardUserInputToUI(body) // must not panic
+}
+
+func TestSession_ForwardUserInputToUI_MalformedJSONIgnored(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	s.forwardUserInputToUI(json.RawMessage(`not-json`))
+	assert.Empty(t, drainUIEvents(ch))
+}
+
+func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) {
+	t.Parallel()
+
+	// End-to-end: a userInput console envelope must surface as a UIUserMessage
+	// on the TUI channel. This is the missing handleEvent branch (currently
+	// 92.9% coverage) and the path the TUI depends on to show what the user
+	// typed — if this regresses, the user's own messages vanish from the log.
+	streamer := newFakeStreamer()
+	inner, err := json.Marshal(map[string]any{"content": "typed by user"})
+	require.NoError(t, err)
+	envelope, err := json.Marshal(apitype.AgentConsoleEvent{
+		Type:      consoleEventUserInput,
+		ID:        "u1",
+		EventBody: inner,
+	})
+	require.NoError(t, err)
+	streamer.stream <- client.NeoStreamEvent{Data: envelope}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	events := collectUIEvents(uiCh)
+	require.True(t, hasUIEvent[UIUserMessage](events), "userInput envelope must emit UIUserMessage")
 }
