@@ -1150,6 +1150,47 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
 }
 
+func TestUsingIdInStateInputsIsAnError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"value": {
+							TypeSpec: TypeSpec{Type: "string"},
+						},
+					},
+				},
+				InputProperties: map[string]PropertySpec{
+					"value": {
+						TypeSpec: TypeSpec{Type: "string"},
+					},
+				},
+				StateInputs: &ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"id": {
+							TypeSpec: TypeSpec{Type: "string"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, pkg)
+	require.True(t, diags.HasErrors())
+	assert.Contains(t, diags.Error(), "id is a reserved property name for stateInputs")
+}
+
 func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))

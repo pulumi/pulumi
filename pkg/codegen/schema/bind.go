@@ -1676,6 +1676,14 @@ func (t *types) bindResourceDetails(
 
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
+		for name := range spec.StateInputs.Properties {
+			if isReservedStateInputPropertyKey(name) {
+				diags = diags.Append(errorf(
+					path+"/stateInputs/properties/"+name,
+					"%s is a reserved property name for stateInputs", name))
+			}
+		}
+
 		si, stateDiags, err := t.bindAnonymousObjectType(path+"/stateInputs", token+"Args", *spec.StateInputs, options)
 		diags = diags.Extend(stateDiags)
 		if err != nil {
