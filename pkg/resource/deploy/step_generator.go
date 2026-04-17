@@ -1928,7 +1928,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 					// This resource might already be pending-delete
 					if dependentResource.Delete {
 						oldViews := sg.deployment.GetOldViews(dependentResource.URN)
-						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, dependentResource, oldViews))
+						steps = append(steps, NewDeleteStep(sg.deployment, sg.deletes, sg.replaces, dependentResource, oldViews))
 					} else {
 						// Check if the resource is protected, if it is we can't do this replacement chain.
 						if dependentResource.Protect {
@@ -1944,7 +1944,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 						}
 						oldViews := sg.deployment.GetOldViews(dependentResource.URN)
 						steps = append(steps,
-							NewDeleteReplacementStep(sg.deployment, sg.deletes, dependentResource, true, oldViews))
+							NewDeleteReplacementStep(sg.deployment, sg.deletes, sg.replaces, dependentResource, true, oldViews))
 					}
 					// Mark the condemned resource as deleted. We won't know until later in the deployment whether
 					// or not we're going to be replacing this resource.
@@ -1964,7 +1964,7 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 				// successful.
 				if !old.PendingReplacement {
 					oldViews := sg.deployment.GetOldViews(old.URN)
-					steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, old, true, oldViews))
+					steps = append(steps, NewDeleteReplacementStep(sg.deployment, sg.deletes, sg.replaces, old, true, oldViews))
 				}
 
 				return append(steps,
@@ -2182,13 +2182,13 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 					logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 					sg.deletes[res.URN] = true
 					oldViews := sg.deployment.GetOldViews(res.URN)
-					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, res, false, oldViews))
+					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, sg.replaces, res, false, oldViews))
 				} else if !sg.isOperatedOn(res.URN) {
 					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 					sg.deletes[res.URN] = true
 					if !res.PendingReplacement {
 						oldViews := sg.deployment.GetOldViews(res.URN)
-						deleteSteps = append(deleteSteps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
+						deleteSteps = append(deleteSteps, NewDeleteStep(sg.deployment, sg.deletes, sg.replaces, res, oldViews))
 					} else {
 						deleteSteps = append(deleteSteps, NewRemovePendingReplaceStep(sg.deployment, res))
 					}
@@ -2221,7 +2221,7 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 		if isTargeted(res) {
 			sg.deletes[res.URN] = true
 			oldViews := sg.deployment.GetOldViews(res.URN)
-			deleteSteps = append(deleteSteps, NewDeleteStep(sg.deployment, sg.deletes, res, oldViews))
+			deleteSteps = append(deleteSteps, NewDeleteStep(sg.deployment, sg.deletes, sg.replaces, res, oldViews))
 		}
 	}
 

@@ -244,6 +244,89 @@ func TestReplaceWithAndDeletedWith(t *testing.T) {
 	require.ElementsMatch(t, []string{deleted[0].Name(), deleted[1].Name()}, []string{"resB", "resC"})
 }
 
+// TestDeletedWithDuringReplacement verifies that when a resource is replaced,
+// dependents with deleted_with pointing to it skip their provider Delete call.
+func TestDeletedWithDuringReplacement(t *testing.T) {
+	t.Parallel()
+
+	deleted := []resource.URN{}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					return plugin.CreateResponse{
+						ID:         resource.ID(fmt.Sprintf("created-id-%d", len(deleted))),
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+
+				DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+					deleted = append(deleted, req.URN)
+					return plugin.DeleteResponse{}, nil
+				},
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+
+	inputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: inputs,
+		})
+		require.NoError(t, err)
+
+		// resB replaces when resA replaces, and should skip Delete when resA is being replaced.
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs:      resource.NewPropertyMapFromMap(map[string]any{}),
+			ReplaceWith: []resource.URN{respA.URN},
+			DeletedWith: respA.URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+
+	project := p.GetProject()
+
+	// Step 0: initial deployment.
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	// Step 1: change resA's input to trigger replacement of both A and B.
+	inputs["foo"] = resource.NewProperty("baz")
+	deleted = nil
+
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 3)
+
+	// resA should be deleted (it's being replaced), but resB should NOT be deleted
+	// because deleted_with=resA means its Delete is skipped when resA is also going away.
+	require.Len(t, deleted, 1, "only resA should have its provider Delete called; resB should be skipped via deleted_with")
+	require.Equal(t, "resA", deleted[0].Name())
+}
+
 func TestReplaceWithDeleteBeforeReplace(t *testing.T) {
 	t.Parallel()
 

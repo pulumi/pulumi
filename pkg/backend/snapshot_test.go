@@ -642,7 +642,7 @@ func TestDeletion(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -664,7 +664,7 @@ func TestFailedDelete(t *testing.T) {
 	})
 
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -817,7 +817,7 @@ func TestRecordingDeleteSuccess(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 
@@ -845,7 +845,7 @@ func TestRecordingDeleteFailure(t *testing.T) {
 		resourceA,
 	})
 	manager, sp := MockSetup(t, snap)
-	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, resourceA, nil)
+	step := deploy.NewDeleteStep(nil, map[resource.URN]bool{}, map[resource.URN]bool{}, resourceA, nil)
 	mutation, err := manager.BeginMutation(step)
 	require.NoError(t, err)
 

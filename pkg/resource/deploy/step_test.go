@@ -246,10 +246,14 @@ func TestDeleteStep(t *testing.T) {
 			"false-key": false,
 			"true-key":  true,
 		}
-		assert.False(t, isDeletedWith("", otherDeletions))
-		assert.False(t, isDeletedWith("does-not-exist", otherDeletions))
-		assert.False(t, isDeletedWith("false-key", otherDeletions))
-		assert.True(t, isDeletedWith("true-key", otherDeletions))
+		noReplacements := map[resource.URN]bool{}
+		assert.False(t, isDeletedWith("", otherDeletions, noReplacements))
+		assert.False(t, isDeletedWith("does-not-exist", otherDeletions, noReplacements))
+		assert.False(t, isDeletedWith("false-key", otherDeletions, noReplacements))
+		assert.True(t, isDeletedWith("true-key", otherDeletions, noReplacements))
+		// deleted_with should also fire when the target is being replaced, not just deleted.
+		otherReplacements := map[resource.URN]bool{"replaced-key": true}
+		assert.True(t, isDeletedWith("replaced-key", noReplacements, otherReplacements))
 	})
 	t.Run("Apply", func(t *testing.T) {
 		t.Parallel()

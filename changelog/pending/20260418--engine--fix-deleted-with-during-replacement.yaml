@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix deleted_with not firing during resource replacement
