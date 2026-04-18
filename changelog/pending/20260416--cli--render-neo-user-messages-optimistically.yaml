@@ -1,0 +1,10 @@
+changes:
+- type: fix
+  scope: cli
+  description: |
+    Render user messages in the `pulumi neo` TUI as soon as they're submitted
+    instead of waiting for the Pulumi Cloud event stream to echo them back.
+    The initial prompt passed on the command line also appears in the
+    transcript at startup. Self-echoes from the server are de-duplicated;
+    user input that originated from another client (e.g. the web UI on the
+    same task) still renders.

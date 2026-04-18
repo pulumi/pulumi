@@ -156,12 +156,13 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
 	model := NewModel(ModelConfig{
-		Org:      orgName,
-		WorkDir:  cwdFlag,
-		Username: username,
-		EventCh:  uiCh,
-		OutCh:    outCh,
-		Busy:     prompt != "",
+		Org:           orgName,
+		WorkDir:       cwdFlag,
+		Username:      username,
+		EventCh:       uiCh,
+		OutCh:         outCh,
+		Busy:          prompt != "",
+		InitialPrompt: prompt,
 	})
 
 	p := tea.NewProgram(model,
