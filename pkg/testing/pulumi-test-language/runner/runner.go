@@ -64,7 +64,6 @@ import (
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
-// LanguageTestServer is the interface for the language test gRPC server.
 type LanguageTestServer interface {
 	testingrpc.LanguageTestServer
 	pulumirpc.EngineServer
@@ -984,6 +983,8 @@ func (eng *languageTestServer) RunLanguageTest(
 							pkg.Name, strings.Join(validations, "\n"))), nil
 				}
 
+				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
+				// any intermediate build files don't end up getting captured in the snapshot folder.
 				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
 				if err != nil {
 					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
@@ -991,8 +992,8 @@ func (eng *languageTestServer) RunLanguageTest(
 				localDependencies[pkg.Name] = sdkArtifact
 				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
 
-				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
-				// any intermediate build files don't end up getting captured in the snapshot folder.
+				// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
+				// Again we need to make a snapshot edit for this.
 				sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
@@ -1849,11 +1850,11 @@ func (rtc roundTripClient) roundTrip(
 		return "", diags, err
 	}
 
+	// If the Pulumi.yaml has `main` set return the subpath
 	proj, err := workspace.LoadProject(filepath.Join(ejectDir, "Pulumi.yaml"))
 	if err != nil {
 		return "", diags, fmt.Errorf("load ejected project: %w", err)
 	}
-	// If the Pulumi.yaml has `main` set return the subpath
 	if proj.Main != "" {
 		ejectDir = filepath.Join(ejectDir, proj.Main)
 	}
