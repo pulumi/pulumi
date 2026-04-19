@@ -115,7 +115,7 @@ func TestNoInternalTests(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	engine := runner.NewLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 
 	response, err := engine.GetLanguageTests(ctx, &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
