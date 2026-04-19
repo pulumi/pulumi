@@ -395,7 +395,7 @@ type replacement struct {
 	Replacement string
 }
 
-type CompiledReplacement struct {
+type compiledReplacement struct {
 	Path        *regexp.Regexp
 	Pattern     *regexp.Regexp
 	Replacement string
@@ -426,10 +426,6 @@ type testToken struct {
 	Local                 bool
 	ProvidersDirectory    string
 	ConverterPluginTarget string
-
-	// testdata is the filesystem containing PCL test data.
-	// It is NOT serialized into the base64 token; it is injected at runtime.
-	testdata fs.FS `json:"-"`
 }
 
 func installDependencies(
@@ -684,10 +680,9 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
-	token.testdata = eng.testdata
 
 	// If the language defines any snapshot edits compile those regexs to apply now
-	snapshotEdits := []CompiledReplacement{}
+	snapshotEdits := []compiledReplacement{}
 	for _, replace := range token.SnapshotEdits {
 		pathRegex, err := regexp.Compile(replace.Path)
 		if err != nil {
@@ -697,7 +692,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if err != nil {
 			return nil, fmt.Errorf("invalid edit regex %s: %w", replace.Pattern, err)
 		}
-		snapshotEdits = append(snapshotEdits, CompiledReplacement{
+		snapshotEdits = append(snapshotEdits, compiledReplacement{
 			Path:        pathRegex,
 			Pattern:     editRegex,
 			Replacement: replace.Replacement,
@@ -1038,7 +1033,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects", eng.testdata)
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
 		return languageTestResult, err
 	}
@@ -1080,7 +1075,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
+		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project", eng.testdata)
 }
 
 func createStackReferences(
@@ -1132,11 +1127,12 @@ func runLanguageTests(
 	ctx context.Context, token testToken, testName string, test tests.LanguageTest,
 	loader schema.ReferenceLoader, packages []*schema.Package, sdks, localDependencies map[string]string,
 	languageClient plugin.LanguageRuntime, grpcServer *plugin.GrpcServer,
-	disableSnapshotWriting bool, snapshotEdits []CompiledReplacement,
+	disableSnapshotWriting bool, snapshotEdits []compiledReplacement,
 	testBackend diy.Backend,
 	stdout, stderr *bytes.Buffer,
 	pctx *plugin.Context,
 	projectDir string,
+	testdata fs.FS,
 ) (*testingrpc.RunLanguageTestResponse, error) {
 	sm := b64secrets.NewBase64SecretsManager()
 	dec := sm.Decrypter()
@@ -1162,7 +1158,7 @@ func runLanguageTests(
 				pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 			}
 
-			if err := copyDirectory(token.testdata, pclDir, sourceDir, nil, nil); err != nil {
+			if err := copyDirectory(testdata, pclDir, sourceDir, nil, nil); err != nil {
 				return nil, fmt.Errorf("copy source test data: %w", err)
 			}
 
@@ -1666,7 +1662,7 @@ type roundTripClient struct {
 	plugin.LanguageRuntime
 	converter              pulumirpc.ConverterClient
 	disableSnapshotWriting bool
-	snapshotEdits          []CompiledReplacement
+	snapshotEdits          []compiledReplacement
 	projectsBaseDir        string
 	ejectSnapshotBaseDir   string
 }

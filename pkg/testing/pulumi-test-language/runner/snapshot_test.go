@@ -51,7 +51,7 @@ func TestCopyDirectoryWithEdit(t *testing.T) {
 
 	dst := t.TempDir()
 
-	edits := []CompiledReplacement{
+	edits := []compiledReplacement{
 		{regexp.MustCompile("file2.txt"), regexp.MustCompile("goodbye"), "hello"},
 	}
 
@@ -78,7 +78,7 @@ func TestCopyDirectoryWithMultilineEdit(t *testing.T) {
 
 	dst := t.TempDir()
 
-	edits := []CompiledReplacement{
+	edits := []compiledReplacement{
 		{regexp.MustCompile("file2.txt"), regexp.MustCompile("goodbye"), "hello"},
 	}
 
