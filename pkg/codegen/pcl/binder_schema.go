@@ -282,7 +282,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	packageNames := codegen.StringSet{}
 
 	if r, ok := n.(*Resource); ok {
-		token, tokenRange := getResourceToken(r)
+		token, tokenRange := r.GetToken()
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
 		if mod == "providers" {
 			packageNames.Add(name)

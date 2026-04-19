@@ -228,19 +228,19 @@ func Linearize(p *Program) []Node {
 func MapProvidersAsResources(p *Program) {
 	for _, n := range p.Nodes {
 		if r, ok := n.(*Resource); ok && r.Schema != nil {
-			pkg, mod, name, _ := r.DecomposeToken()
+			pkg, mod, name, _ := DecomposeToken(r.GetToken())
 			if r.Schema.IsProvider && pkg == "pulumi" && mod == "providers" {
 				// the binder emits tokens like this when the module is "index"
-				r.Token = name + "::Provider"
+				r.token = name + "::Provider"
 			}
 		}
 	}
 }
 
 func FixupPulumiPackageTokens(r *Resource) {
-	pkg, mod, name, _ := r.DecomposeToken()
+	pkg, mod, name, _ := DecomposeToken(r.GetToken())
 	if pkg == "pulumi" && mod == "pulumi" {
-		r.Token = "pulumi::" + name
+		r.token = "pulumi::" + name
 	}
 }
 

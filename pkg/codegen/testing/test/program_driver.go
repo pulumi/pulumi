@@ -628,7 +628,7 @@ func TestProgramCodegen(
 func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages codegen.StringSet) {
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
-			pkg, _, _, _ := r.DecomposeToken()
+			pkg, _, _, _ := pcl.DecomposeToken(r.GetToken())
 			if pkg != "pulumi" {
 				extraPulumiPackages.Add(pkg)
 			}
