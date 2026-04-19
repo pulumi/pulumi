@@ -518,8 +518,8 @@ func (x *ConditionalExpression) Typecheck(typecheckOperands bool) hcl.Diagnostic
 	resultType, _ := UnifyTypes(x.TrueResult.Type(), x.FalseResult.Type())
 
 	// Typecheck the condition expression.
-	if InputType(BoolType).ConversionFrom(x.Condition.Type()) == NoConversion {
-		diagnostics = append(diagnostics, ExprNotConvertible(InputType(BoolType), x.Condition))
+	if NewInputType(BoolType).ConversionFrom(x.Condition.Type()) == NoConversion {
+		diagnostics = append(diagnostics, ExprNotConvertible(NewInputType(BoolType), x.Condition))
 	}
 
 	x.exprType = liftOperationType(resultType, x.Condition)
@@ -803,14 +803,14 @@ func (x *ForExpression) typecheck(typecheckCollection, typecheckOperands bool) h
 
 	if x.Key != nil {
 		// A key expression is only present when producing a map. Key types must therefore be strings.
-		if !InputType(StringType).ConversionFrom(x.Key.Type()).Exists() {
-			diagnostics = append(diagnostics, ExprNotConvertible(InputType(StringType), x.Key))
+		if !NewInputType(StringType).ConversionFrom(x.Key.Type()).Exists() {
+			diagnostics = append(diagnostics, ExprNotConvertible(NewInputType(StringType), x.Key))
 		}
 	}
 
 	if x.Condition != nil {
-		if !InputType(BoolType).ConversionFrom(x.Condition.Type()).Exists() {
-			diagnostics = append(diagnostics, ExprNotConvertible(InputType(BoolType), x.Condition))
+		if !NewInputType(BoolType).ConversionFrom(x.Condition.Type()).Exists() {
+			diagnostics = append(diagnostics, ExprNotConvertible(NewInputType(BoolType), x.Condition))
 		}
 	}
 
@@ -1245,8 +1245,8 @@ func (x *IndexExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics {
 		}
 	}
 
-	if !InputType(keyType).ConversionFrom(x.Key.Type()).Exists() {
-		diagnostics = append(diagnostics, ExprNotConvertible(InputType(keyType), x.Key))
+	if !NewInputType(keyType).ConversionFrom(x.Key.Type()).Exists() {
+		diagnostics = append(diagnostics, ExprNotConvertible(NewInputType(keyType), x.Key))
 	}
 
 	resultType := wrapIterableResultType(x.Collection.Type(), valueType)
@@ -1590,7 +1590,7 @@ func (x *ObjectConsExpression) Typecheck(typecheckOperands bool) hcl.Diagnostics
 		}
 
 		keys = append(keys, item.Key)
-		if !InputType(StringType).ConversionFrom(item.Key.Type()).Exists() {
+		if !NewInputType(StringType).ConversionFrom(item.Key.Type()).Exists() {
 			diagnostics = append(diagnostics, objectKeysMustBeStrings(item.Key))
 		}
 	}

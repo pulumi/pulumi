@@ -577,8 +577,8 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				continue
 			}
-			if model.InputType(t).ConversionFrom(item.Value.Type()) == model.NoConversion {
-				diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(t), item.Value))
+			if model.NewInputType(t).ConversionFrom(item.Value.Type()) == model.NoConversion {
+				diagnostics = append(diagnostics, model.ExprNotConvertible(model.NewInputType(t), item.Value))
 			}
 		case *model.Block:
 			diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
@@ -628,7 +628,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				}
 
 				switch {
-				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
+				case model.NewInputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
 					condExpr := &model.ConditionalExpression{
 						Condition:  expr,
 						TrueResult: model.VariableReference(resourceVar),
@@ -645,7 +645,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					contract.Assertf(checkDiagnostics, "failed to typecheck conditional expression: %v", diags)
 
 					node.VariableType = condExpr.Type()
-				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
+				case model.NewInputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
 					functions := pulumiBuiltins(b.options)
 					rangeArgs := []model.Expression{expr}
 					rangeSig, _ := functions["range"].GetSignature(rangeArgs)

@@ -247,13 +247,13 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 				typ := model.ResolveOutputs(expr.Type())
 
 				switch {
-				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
+				case model.NewInputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
 					// if range expression has a boolean type
 					// then variable type T of the component becomes Option<T>
 					transformComponentType = func(variableType model.Type) model.Type {
 						return model.NewOptionalType(variableType)
 					}
-				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
+				case model.NewInputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
 					// if the range expression has a numeric type
 					// then value of the iteration is a number
 					// and the variable type T of the component becomes List<T>
@@ -351,7 +351,7 @@ func (b *binder) bindComponent(node *Component) hcl.Diagnostics {
 
 	inputProperties := map[string]model.Type{}
 	for _, cv := range componentProgram.ConfigVariables() {
-		inputProperties[cv.LogicalName()] = model.InputType(cv.Type())
+		inputProperties[cv.LogicalName()] = model.NewInputType(cv.Type())
 	}
 	node.InputType = model.NewObjectType(inputProperties)
 

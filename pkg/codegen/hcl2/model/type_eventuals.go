@@ -39,6 +39,15 @@ func resolveEventuals(t Type, resolveOutputs bool) (Type, typeTransform) {
 
 func resolveEventualsImpl(t Type, resolveOutputs bool, seen map[Type]Type) (Type, typeTransform) {
 	switch t := t.(type) {
+	case *InputType:
+		element, transform := resolveEventualsImpl(t.ElementType, resolveOutputs, seen)
+		if makeOutput > transform {
+			transform = makeOutput
+		}
+		if resolveOutputs {
+			return element, transform
+		}
+		return newInputType(element), transform
 	case *OutputType:
 		if resolveOutputs {
 			return t.ElementType, makeOutput
@@ -143,6 +152,8 @@ func containsOutputsImpl(t Type, seen map[Type]struct{}) bool {
 	seen[t] = struct{}{}
 
 	switch t := t.(type) {
+	case *InputType:
+		return true
 	case *OutputType:
 		return true
 	case *PromiseType:
@@ -192,6 +203,8 @@ func containsPromisesImpl(t Type, seen map[Type]struct{}) bool {
 	seen[t] = struct{}{}
 
 	switch t := t.(type) {
+	case *InputType:
+		return true
 	case *PromiseType:
 		return true
 	case *OutputType:
@@ -239,18 +252,44 @@ func liftOperationType(resultType Type, arguments ...Expression) Type {
 	return transform.do(resultType)
 }
 
-// InputType returns the result of replacing each type in T with union(T, output(T)).
-func InputType(t Type) Type {
+// IsInputType returns true if the type encodes input-shape.
+func IsInputType(t Type) bool {
+	switch t.(type) {
+	case *InputType, *OutputType:
+		return true
+	default:
+		return false
+	}
+}
+
+// UnwrapInputType removes input-shape wrappers.
+func UnwrapInputType(t Type) Type {
+	for {
+		switch t := t.(type) {
+		case *InputType:
+			return UnwrapInputType(t.ElementType)
+		case *OutputType:
+			return UnwrapInputType(t.ElementType)
+		default:
+			return t
+		}
+	}
+}
+
+// NewInputType returns the result of replacing each type in T with input(T).
+func NewInputType(t Type) Type {
 	return inputTypeImpl(t, map[Type]Type{})
 }
 
 func inputTypeImpl(t Type, seen map[Type]Type) Type {
-	if t == DynamicType || t == NoneType {
+	if t == NoneType {
 		return t
 	}
 
 	var src Type
 	switch t := t.(type) {
+	case *InputType:
+		return t
 	case *OutputType:
 		return t
 	case *PromiseType:
@@ -280,5 +319,5 @@ func inputTypeImpl(t Type, seen map[Type]Type) Type {
 		src = t
 	}
 
-	return NewUnionType(src, NewOutputType(src))
+	return newInputType(src)
 }

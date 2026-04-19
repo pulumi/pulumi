@@ -82,8 +82,7 @@ hook "foo" {
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
-		Summary: "cannot assign expression of type ((), {}) to location of type " +
-			"list(output(string) | string) | output(list(string)): ",
+		Summary:  "cannot assign value of type () to type string",
 		Subject: &hcl.Range{
 			Filename: "program.pp",
 			Start: hcl.Pos{

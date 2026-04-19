@@ -216,8 +216,8 @@ func typecheckArgs(srcRange hcl.Range, signature StaticFunctionSignature, args .
 				diagnostics = append(diagnostics, missingRequiredArgument(param, srcRange))
 			}
 		} else {
-			if !InputType(param.Type).ConversionFrom(remainingArgs[0].Type()).Exists() {
-				diagnostics = append(diagnostics, ExprNotConvertible(InputType(param.Type), remainingArgs[0]))
+			if !NewInputType(param.Type).ConversionFrom(remainingArgs[0].Type()).Exists() {
+				diagnostics = append(diagnostics, ExprNotConvertible(NewInputType(param.Type), remainingArgs[0]))
 			}
 			remainingArgs = remainingArgs[1:]
 		}
@@ -230,8 +230,8 @@ func typecheckArgs(srcRange hcl.Range, signature StaticFunctionSignature, args .
 			diagnostics = append(diagnostics, extraArguments(len(signature.Parameters), len(args), srcRange))
 		} else {
 			for _, arg := range remainingArgs {
-				if !InputType(varargs.Type).ConversionFrom(arg.Type()).Exists() {
-					diagnostics = append(diagnostics, ExprNotConvertible(InputType(varargs.Type), arg))
+				if !NewInputType(varargs.Type).ConversionFrom(arg.Type()).Exists() {
+					diagnostics = append(diagnostics, ExprNotConvertible(NewInputType(varargs.Type), arg))
 				}
 			}
 		}

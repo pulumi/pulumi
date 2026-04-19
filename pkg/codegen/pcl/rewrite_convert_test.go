@@ -63,7 +63,7 @@ func TestRewriteConversions(t *testing.T) {
 		{
 			input:  `{a: "b"}`,
 			output: `{a: "b"}`,
-			to: model.InputType(model.NewObjectType(map[string]model.Type{
+			to: model.NewInputType(model.NewObjectType(map[string]model.Type{
 				"a": model.StringType,
 			})),
 		},
@@ -77,7 +77,7 @@ func TestRewriteConversions(t *testing.T) {
 		{
 			input:  `{a: "b"}`,
 			output: `__convert({a: "b"})`,
-			to: model.InputType(model.NewObjectType(map[string]model.Type{
+			to: model.NewInputType(model.NewObjectType(map[string]model.Type{
 				"a": model.StringType,
 			}, &schema.ObjectType{})),
 		},

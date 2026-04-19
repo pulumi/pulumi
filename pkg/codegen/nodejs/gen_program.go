@@ -1347,7 +1347,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 		rangeExpr := r.Options.Range
 		if model.ContainsOutputs(r.Options.Range.Type()) {
 			rangeExpr = g.lowerExpression(rangeExpr, rangeType)
-			if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
+			if model.NewInputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
 			} else {
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
@@ -1442,7 +1442,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				return
 			}
 		}
-		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
+		if model.NewInputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 			if needsDefinition {
 				g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, qualifiedMemberName)
 			}
@@ -1459,7 +1459,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 				g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, qualifiedMemberName)
 			}
 			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+			if model.NewInputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
 				resKey = "value"
 			} else {
@@ -1575,7 +1575,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 		rangeType := model.ResolveOutputs(component.Options.Range.Type())
 		rangeExpr := g.lowerExpression(component.Options.Range, rangeType)
 
-		if model.InputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
+		if model.NewInputType(model.BoolType).ConversionFrom(rangeType) == model.SafeConversion {
 			g.Fgenf(w, "%slet %s: %s | undefined;\n", g.Indent, variableName, componentName)
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
@@ -1589,7 +1589,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%sconst %s: %s[] = [];\n", g.Indent, variableName, componentName)
 
 			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+			if model.NewInputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor (const range = {value: 0}; range.value < %.12o; range.value++) {\n", g.Indent, rangeExpr)
 				resKey = "value"
 			} else {

@@ -174,8 +174,8 @@ func (b *binder) bindConfigVariable(node *ConfigVariable) hcl.Diagnostics {
 			node.Nullable = true
 		}
 
-		if model.InputType(node.typ).ConversionFrom(node.DefaultValue.Type()) == model.NoConversion {
-			errorDiagnostic := model.ExprNotConvertible(model.InputType(node.typ), node.DefaultValue)
+		if model.NewInputType(node.typ).ConversionFrom(node.DefaultValue.Type()) == model.NoConversion {
+			errorDiagnostic := model.ExprNotConvertible(model.NewInputType(node.typ), node.DefaultValue)
 			diagnostics = append(diagnostics, errorDiagnostic)
 		}
 	}
@@ -244,8 +244,8 @@ func (b *binder) bindOutputVariable(node *OutputVariable) hcl.Diagnostics {
 
 	if value, ok := block.Body.Attribute("value"); ok {
 		node.Value = value.Value
-		if model.InputType(node.typ).ConversionFrom(node.Value.Type()) == model.NoConversion {
-			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(node.typ), node.Value))
+		if model.NewInputType(node.typ).ConversionFrom(node.Value.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.NewInputType(node.typ), node.Value))
 		}
 	}
 	node.Definition = block
@@ -293,8 +293,8 @@ func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 		node.Command = cmd.Value
 		// Command must be a list. Elements may include dynamic expressions (e.g. inputs.X) but must resolve to strings.
 		listType := model.NewListType(model.StringType)
-		if model.InputType(listType).ConversionFrom(node.Command.Type()) == model.NoConversion {
-			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(listType), node.Command))
+		if model.NewInputType(listType).ConversionFrom(node.Command.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.NewInputType(listType), node.Command))
 		}
 	} else {
 		diagnostics = append(diagnostics, &hcl.Diagnostic{
@@ -307,8 +307,8 @@ func (b *binder) bindHook(node *Hook) hcl.Diagnostics {
 
 	if onDryRun, ok := block.Body.Attribute("onDryRun"); ok {
 		node.OnDryRun = onDryRun.Value
-		if model.InputType(model.BoolType).ConversionFrom(node.OnDryRun.Type()) == model.NoConversion {
-			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.BoolType), node.OnDryRun))
+		if model.NewInputType(model.BoolType).ConversionFrom(node.OnDryRun.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(model.NewInputType(model.BoolType), node.OnDryRun))
 		}
 	}
 
@@ -336,8 +336,9 @@ func (b *binder) bindPulumi(node *PulumiBlock) hcl.Diagnostics {
 
 	if value, ok := block.Body.Attribute("requiredVersionRange"); ok {
 		node.RequiredVersion = value.Value
-		if model.InputType(model.StringType).ConversionFrom(node.RequiredVersion.Type()) == model.NoConversion {
-			diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(model.StringType), node.RequiredVersion))
+		if model.NewInputType(model.StringType).ConversionFrom(node.RequiredVersion.Type()) == model.NoConversion {
+			diagnostics = append(diagnostics, model.ExprNotConvertible(
+				model.NewInputType(model.StringType), node.RequiredVersion))
 		}
 	}
 

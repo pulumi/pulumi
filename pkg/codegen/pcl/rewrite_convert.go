@@ -70,8 +70,8 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 	case *model.AnonymousFunctionExpression:
 		x.Body, _ = rewriteConversions(x.Body, to, diags)
 	case *model.BinaryOpExpression:
-		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, model.InputType(x.LeftOperandType()), diags)
-		x.RightOperand, _ = rewriteConversions(x.RightOperand, model.InputType(x.RightOperandType()), diags)
+		x.LeftOperand, _ = rewriteConversions(x.LeftOperand, model.NewInputType(x.LeftOperandType()), diags)
+		x.RightOperand, _ = rewriteConversions(x.RightOperand, model.NewInputType(x.RightOperandType()), diags)
 		left, leftUnwrapped := unwrapIntToNumberConvert(x.LeftOperand)
 		right, rightUnwrapped := unwrapIntToNumberConvert(x.RightOperand)
 		if leftUnwrapped && rightUnwrapped {
@@ -80,7 +80,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		}
 	case *model.ConditionalExpression:
 		var trueChanged, falseChanged bool
-		x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
+		x.Condition, _ = rewriteConversions(x.Condition, model.NewInputType(model.BoolType), diags)
 		x.TrueResult, trueChanged = rewriteConversions(x.TrueResult, to, diags)
 		x.FalseResult, falseChanged = rewriteConversions(x.FalseResult, to, diags)
 		typecheck = trueChanged || falseChanged
@@ -88,10 +88,10 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		traverserType := model.NumberType
 		if x.Key != nil {
 			traverserType = model.StringType
-			x.Key, _ = rewriteConversions(x.Key, model.InputType(model.StringType), diags)
+			x.Key, _ = rewriteConversions(x.Key, model.NewInputType(model.StringType), diags)
 		}
 		if x.Condition != nil {
-			x.Condition, _ = rewriteConversions(x.Condition, model.InputType(model.BoolType), diags)
+			x.Condition, _ = rewriteConversions(x.Condition, model.NewInputType(model.BoolType), diags)
 		}
 
 		valueType, tdiags := to.Traverse(model.MakeTraverser(traverserType))
@@ -104,12 +104,12 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			if len(args) == 0 {
 				break
 			}
-			args[0], _ = rewriteConversions(args[0], model.InputType(param.Type), diags)
+			args[0], _ = rewriteConversions(args[0], model.NewInputType(param.Type), diags)
 			args = args[1:]
 		}
 		if x.Signature.VarargsParameter != nil {
 			for i := range args {
-				args[i], _ = rewriteConversions(args[i], model.InputType(x.Signature.VarargsParameter.Type), diags)
+				args[i], _ = rewriteConversions(args[i], model.NewInputType(x.Signature.VarargsParameter.Type), diags)
 			}
 		}
 	case *model.IndexExpression:
@@ -137,7 +137,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			*diags = diags.Extend(tdiags)
 
 			var valueChanged bool
-			item.Key, _ = rewriteConversions(item.Key, model.InputType(model.StringType), diags)
+			item.Key, _ = rewriteConversions(item.Key, model.NewInputType(model.StringType), diags)
 			item.Value, valueChanged = rewriteConversions(item.Value, valueType.(model.Type), diags)
 			typecheck = typecheck || valueChanged
 		}
@@ -159,7 +159,7 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 			typecheck = typecheck || exprChanged
 		}
 	case *model.UnaryOpExpression:
-		x.Operand, _ = rewriteConversions(x.Operand, model.InputType(x.OperandType()), diags)
+		x.Operand, _ = rewriteConversions(x.Operand, model.NewInputType(x.OperandType()), diags)
 		operand, unwrapped := unwrapIntToNumberConvert(x.Operand)
 		if unwrapped {
 			x.Operand = operand
@@ -179,12 +179,29 @@ func rewriteConversions(x model.Expression, to model.Type, diags *hcl.Diagnostic
 		x, typeChanged = value, true
 	}
 	// If the expression's type is directly assignable to the destination type, no conversion is necessary.
-	if to.AssignableFrom(x.Type()) && sameSchemaTypes(to, x.Type()) {
+	//
+	// Exception: for Input<T> where T is schema-annotated and the source is an object
+	// constructor, keep an explicit __convert(...) call so schema shape information is
+	// preserved downstream in codegen.
+	if to.AssignableFrom(x.Type()) && sameSchemaTypes(to, x.Type()) && !needsSchemaInputConvert(to, x) {
 		return x, typeChanged
 	}
 
 	// Otherwise, wrap the expression in a call to __convert.
 	return NewConvertCall(x, to), true
+}
+
+func needsSchemaInputConvert(to model.Type, x model.Expression) bool {
+	if _, ok := to.(*model.InputType); !ok {
+		return false
+	}
+	if _, ok := x.(*model.ObjectConsExpression); !ok {
+		return false
+	}
+
+	unwrapped := model.UnwrapInputType(to)
+	_, hasSchema := GetSchemaForType(unwrapped)
+	return hasSchema
 }
 
 func unwrapIntToNumberConvert(expr model.Expression) (model.Expression, bool) {

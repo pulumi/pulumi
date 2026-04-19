@@ -1345,7 +1345,7 @@ component myComp "./myComponent" {
 		targetType := component.InputType.(*model.ObjectType).Properties[attr.Name]
 		require.NotNil(t, targetType, "expected a target type for input %q", attr.Name)
 
-		expr, convertDiags := pcl.RewriteConversions(attr.Value, model.InputType(targetType))
+		expr, convertDiags := pcl.RewriteConversions(attr.Value, model.NewInputType(targetType))
 		require.False(t, convertDiags.HasErrors())
 		require.Equal(t, " 42.5\n", fmt.Sprintf("%v", expr))
 	}

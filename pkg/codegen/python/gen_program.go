@@ -1226,7 +1226,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 
 		if model.ContainsOutputs(rangeType) {
 			loweredRangeExpr, rangeExprTemps := g.lowerExpression(rangeExpr, rangeType)
-			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
+			if model.NewInputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			} else {
 				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
@@ -1319,7 +1319,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			}
 		}
 
-		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
+		if model.NewInputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 			if needsDefinition {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			}
@@ -1336,7 +1336,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			}
 
 			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+			if model.NewInputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
 				resKey = "value"
 			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {
@@ -1450,7 +1450,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 
 	if r.Options != nil && r.Options.Range != nil {
 		rangeExpr := r.Options.Range
-		if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
+		if model.NewInputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 			g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			g.Fgenf(w, "%sif %.v:\n", g.Indent, rangeExpr)
 			g.Indented(func() {
@@ -1463,7 +1463,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 			g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
 
 			resKey := "key"
-			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+			if model.NewInputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 				g.Fgenf(w, "%sfor range in [{\"value\": i} for i in range(0, %.v)]:\n", g.Indent, rangeExpr)
 				resKey = "value"
 			} else if _, isMap := pcl.UnwrapOption(rangeExpr.Type()).(*model.MapType); isMap {

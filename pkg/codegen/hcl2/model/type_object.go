@@ -112,7 +112,7 @@ func (t *ObjectType) Pretty() pretty.Formatter {
 func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	key, keyType := GetTraverserKey(traverser)
 
-	if !InputType(StringType).ConversionFrom(keyType).Exists() {
+	if !NewInputType(StringType).ConversionFrom(keyType).Exists() {
 		diags := unsupportedObjectProperty(traverser.SourceRange())
 		if !t.Strict {
 			diags.Severity = hcl.DiagWarning

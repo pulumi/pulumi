@@ -509,6 +509,8 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 		return schemaArrayTypes[element], true
 	case *model.ObjectType:
 		return model.GetObjectTypeAnnotation[schema.Type](t)
+	case *model.InputType:
+		return GetSchemaForType(t.ElementType)
 	case *model.OutputType:
 		return GetSchemaForType(t.ElementType)
 	case *model.PromiseType:

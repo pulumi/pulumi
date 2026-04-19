@@ -82,7 +82,7 @@ func (*TupleType) SyntaxNode() hclsyntax.Node {
 func (t *TupleType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics) {
 	key, keyType := GetTraverserKey(traverser)
 
-	if !InputType(NumberType).AssignableFrom(keyType) {
+	if !NewInputType(NumberType).AssignableFrom(keyType) {
 		return DynamicType, hcl.Diagnostics{unsupportedTupleIndex(traverser.SourceRange())}
 	}
 

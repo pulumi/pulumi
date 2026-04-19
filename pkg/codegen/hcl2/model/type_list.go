@@ -75,7 +75,7 @@ func (t *ListType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnosti
 	_, indexType := GetTraverserKey(traverser)
 
 	var diagnostics hcl.Diagnostics
-	if !InputType(NumberType).ConversionFrom(indexType).Exists() {
+	if !NewInputType(NumberType).ConversionFrom(indexType).Exists() {
 		diagnostics = hcl.Diagnostics{unsupportedListIndex(traverser.SourceRange())}
 	}
 	return t.ElementType, diagnostics

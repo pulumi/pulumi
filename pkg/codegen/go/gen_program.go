@@ -1619,7 +1619,7 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		if isValUsed {
 			valVar = "val0"
 		}
-		if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+		if model.NewInputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)
@@ -1921,7 +1921,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 		if isValUsed {
 			valVar = "val0"
 		}
-		if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
+		if model.NewInputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
 			g.Fgenf(w, "for index := 0; index < %.v; index++ {\n", rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%skey0 := index\n", g.Indent)

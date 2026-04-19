@@ -64,7 +64,7 @@ func (t *MapType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostic
 	_, keyType := GetTraverserKey(traverser)
 
 	var diagnostics hcl.Diagnostics
-	if !InputType(StringType).ConversionFrom(keyType).Exists() {
+	if !NewInputType(StringType).ConversionFrom(keyType).Exists() {
 		diagnostics = hcl.Diagnostics{unsupportedMapKey(traverser.SourceRange())}
 	}
 	return t.ElementType, diagnostics

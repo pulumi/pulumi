@@ -538,43 +538,29 @@ func TestObjectType(t *testing.T) {
 func TestInputType(t *testing.T) {
 	t.Parallel()
 
-	// Test that InputType(DynamicType) just returns DynamicType.
-	assert.Equal(t, DynamicType, InputType(DynamicType))
+	assert.Equal(t, newInputType(DynamicType), NewInputType(DynamicType))
 
-	// Test that InputType(T) correctly recurses through constructed types. The result of InputType(T) should be
-	// union(innerInputType(T), output(innerInputType(T))), where innerInputType(T) recurses thorough constructed
-	// types.
+	// Test that NewInputType(T) correctly recurses through constructed types using input wrappers.
+	assert.Equal(t, newInputType(BoolType), NewInputType(BoolType))
 
-	assert.Equal(t, NewUnionType(BoolType, NewOutputType(BoolType)), InputType(BoolType))
+	assert.Equal(t, newInputType(NewOptionalType(newInputType(BoolType))), NewInputType(NewOptionalType(BoolType)))
 
-	assert.Equal(t, NewUnionType(
-		NewOptionalType(NewUnionType(BoolType, NewOutputType(BoolType))),
-		NewOutputType(NewOptionalType(BoolType))), InputType(NewOptionalType(BoolType)))
+	assert.Equal(t, newInputType(NewPromiseType(newInputType(BoolType))), NewInputType(NewPromiseType(BoolType)))
 
-	assert.Equal(t, NewUnionType(
-		NewPromiseType(NewUnionType(BoolType, NewOutputType(BoolType))),
-		NewOutputType(BoolType)), InputType(NewPromiseType(BoolType)))
+	assert.Equal(t, newInputType(NewMapType(newInputType(BoolType))), NewInputType(NewMapType(BoolType)))
 
-	assert.Equal(t, NewUnionType(
-		NewMapType(NewUnionType(BoolType, NewOutputType(BoolType))),
-		NewOutputType(NewMapType(BoolType))), InputType(NewMapType(BoolType)))
+	assert.Equal(t, newInputType(NewListType(newInputType(BoolType))), NewInputType(NewListType(BoolType)))
 
-	assert.Equal(t, NewUnionType(
-		NewListType(NewUnionType(BoolType, NewOutputType(BoolType))),
-		NewOutputType(NewListType(BoolType))), InputType(NewListType(BoolType)))
+	assert.Equal(t,
+		newInputType(NewUnionType(newInputType(BoolType), newInputType(IntType))),
+		NewInputType(NewUnionType(BoolType, IntType)))
 
-	assert.Equal(t, NewUnionType(
-		NewUnionType(BoolType, IntType, NewOutputType(BoolType), NewOutputType(IntType)),
-		NewOutputType(NewUnionType(BoolType, IntType))),
-		InputType(NewUnionType(BoolType, IntType)))
+	assert.Equal(t,
+		newInputType(NewObjectType(map[string]Type{"foo": newInputType(BoolType)})),
+		NewInputType(NewObjectType(map[string]Type{"foo": BoolType})))
 
-	assert.Equal(t, NewUnionType(
-		NewObjectType(map[string]Type{"foo": NewUnionType(BoolType, NewOutputType(BoolType))}),
-		NewOutputType(NewObjectType(map[string]Type{"foo": BoolType}))),
-		InputType(NewObjectType(map[string]Type{"foo": BoolType})))
-
-	assert.True(t, InputType(BoolType).ConversionFrom(BoolType).Exists())
-	assert.True(t, InputType(NumberType).ConversionFrom(NumberType).Exists())
+	assert.True(t, NewInputType(BoolType).ConversionFrom(BoolType).Exists())
+	assert.True(t, NewInputType(NumberType).ConversionFrom(NumberType).Exists())
 }
 
 func assertUnified(t *testing.T, expectedSafe, expectedUnsafe Type, types ...Type) {
@@ -721,7 +707,7 @@ func TestRecursiveObjectType(t *testing.T) {
 	assert.False(t, hasOutputs)
 
 	// InputType conversion
-	inputLinkedListType := InputType(resolvedLinkedListType)
+	inputLinkedListType := NewInputType(resolvedLinkedListType)
 	hasOutputs, _ = ContainsEventuals(inputLinkedListType)
 	assert.True(t, hasOutputs)
 }
