@@ -15,13 +15,14 @@
 package main
 
 import (
-	conformancetestrunner "github.com/pulumi/pulumi/pkg/v3/testing/conformance-test-runner"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+
+	runner "github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -242,7 +243,7 @@ func (h *L2LargeLanguageHost) Run(
 func TestL2LargeString(t *testing.T) {
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := conformancetestrunner.NewLanguageTestServer()
+	engine := runner.NewLanguageTestServer()
 	runtime := &L2LargeLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

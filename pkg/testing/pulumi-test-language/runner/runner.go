@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package conformancetestrunner
+package runner
 
 import (
 	"bytes"
@@ -91,7 +91,11 @@ type LanguageTestServer interface {
 //
 // languageTests is the map of test-name → LanguageTest describing each
 // conformance test to expose.
-func Start(ctx context.Context, testdata fs.FS, languageTests map[string]tests.LanguageTest) (LanguageTestServer, error) {
+func Start(
+	ctx context.Context,
+	testdata fs.FS,
+	languageTests map[string]tests.LanguageTest,
+) (LanguageTestServer, error) {
 	server := &languageTestServer{
 		ctx:            ctx,
 		cancel:         make(chan bool),

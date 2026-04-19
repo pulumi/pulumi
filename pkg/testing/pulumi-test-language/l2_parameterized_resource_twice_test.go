@@ -15,13 +15,14 @@
 package main
 
 import (
-	conformancetestrunner "github.com/pulumi/pulumi/pkg/v3/testing/conformance-test-runner"
 	"context"
 	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+
+	runner "github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -336,7 +337,7 @@ func TestL2ParameterizedResourceTwice(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := conformancetestrunner.NewLanguageTestServer()
+	engine := runner.NewLanguageTestServer()
 	runtime := &L2ParameterizedResourceTwiceLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

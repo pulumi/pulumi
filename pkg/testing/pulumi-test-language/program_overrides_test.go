@@ -15,13 +15,14 @@
 package main
 
 import (
-	conformancetestrunner "github.com/pulumi/pulumi/pkg/v3/testing/conformance-test-runner"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	runner "github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -140,7 +141,7 @@ func TestProgramOverrides_DontGenerateProgram(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := conformancetestrunner.NewLanguageTestServer()
+	engine := runner.NewLanguageTestServer()
 
 	runtime := &ProgramOverridesLanguageHost{
 		tempDir: tempDir,
@@ -221,7 +222,7 @@ func TestProgramOverrides_WorkWithMultipleRuns(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := conformancetestrunner.NewLanguageTestServer()
+	engine := runner.NewLanguageTestServer()
 
 	runtime := &ProgramOverridesLanguageHost{
 		tempDir: tempDir,
@@ -397,7 +398,7 @@ func TestProgramOverrides_MustMatchRuns(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := conformancetestrunner.NewLanguageTestServer()
+	engine := runner.NewLanguageTestServer()
 
 	runtime := &ProgramOverridesLanguageHost{tempDir: tempDir}
 

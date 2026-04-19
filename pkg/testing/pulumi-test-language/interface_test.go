@@ -15,13 +15,14 @@
 package main
 
 import (
-	conformancetestrunner "github.com/pulumi/pulumi/pkg/v3/testing/conformance-test-runner"
 	"context"
 	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	runner "github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -114,7 +115,7 @@ func TestNoInternalTests(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	engine := conformancetestrunner.NewLanguageTestServer()
+	engine := runner.NewLanguageTestServer()
 
 	response, err := engine.GetLanguageTests(ctx, &testingrpc.GetLanguageTestsRequest{})
 	require.NoError(t, err)
@@ -134,7 +135,7 @@ func TestUniqueProviderVersions(t *testing.T) {
 	highestVersion := semver.Version{Major: 0, Minor: 0, Patch: 0}
 	for _, test := range tests.LanguageTests {
 		for _, provider := range test.Providers {
-			version, _ := conformancetestrunner.GetProviderVersion(provider())
+			version, _ := runner.GetProviderVersion(provider())
 			if version.GT(highestVersion) {
 				highestVersion = version
 			}
@@ -151,7 +152,7 @@ func TestUniqueProviderVersions(t *testing.T) {
 			provider := provider()
 
 			pkg := string(provider.Pkg())
-			version, err := conformancetestrunner.GetProviderVersion(provider)
+			version, err := runner.GetProviderVersion(provider)
 			require.NoError(t, err)
 
 			vstr := version.String()
@@ -186,7 +187,7 @@ func TestProviderVersions(t *testing.T) {
 				// it is not necessarily the case that the plugin info version is the same as package version
 				continue
 			}
-			version, err := conformancetestrunner.GetProviderVersion(provider)
+			version, err := runner.GetProviderVersion(provider)
 			require.NoError(t, err)
 
 			schema, err := provider.GetSchema(t.Context(), plugin.GetSchemaRequest{})
