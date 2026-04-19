@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"testing"
 
-	runner "github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	runner "github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 )
 
