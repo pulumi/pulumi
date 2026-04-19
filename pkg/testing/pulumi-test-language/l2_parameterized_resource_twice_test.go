@@ -15,6 +15,7 @@
 package main
 
 import (
+	conformancetestrunner "github.com/pulumi/pulumi/pkg/v3/testing/conformance-test-runner"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -335,7 +336,7 @@ func TestL2ParameterizedResourceTwice(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := conformancetestrunner.NewLanguageTestServer()
 	runtime := &L2ParameterizedResourceTwiceLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

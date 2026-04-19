@@ -15,6 +15,7 @@
 package main
 
 import (
+	conformancetestrunner "github.com/pulumi/pulumi/pkg/v3/testing/conformance-test-runner"
 	"context"
 	"errors"
 	"fmt"
@@ -272,7 +273,7 @@ func TestL2ContinueOnError(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := conformancetestrunner.NewLanguageTestServer()
 	runtime := &L2ContinueOnErrorHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

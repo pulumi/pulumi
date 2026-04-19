@@ -1,4 +1,4 @@
-// Copyright 2016, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package conformancetestrunner
 
 import (
 	"bytes"
@@ -64,6 +64,7 @@ import (
 	pbempty "google.golang.org/protobuf/types/known/emptypb"
 )
 
+// LanguageTestServer is the interface for the language test gRPC server.
 type LanguageTestServer interface {
 	testingrpc.LanguageTestServer
 	pulumirpc.EngineServer
@@ -74,92 +75,23 @@ type LanguageTestServer interface {
 	// Cancel signals that the test server should be terminated.
 	Cancel()
 
-	// Done awaits the test servers termination, and returns any errors that result.
+	// Done awaits the test server's termination, and returns any errors that result.
 	Done() error
+
+	// SetDisableSnapshotWriting controls whether snapshot writing is disabled.
+	// When true, snapshots are validated but not written to disk.
+	SetDisableSnapshotWriting(bool)
 }
 
-func newLanguageTestServer() *languageTestServer {
-	return &languageTestServer{
-		providersLock:  gsync.Map[string, *sync.Mutex]{},
-		providersCache: make(map[string]bool),
-		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
-		artifactMap:    gsync.Map[string, string]{},
-	}
-}
-
-func installDependencies(
-	languageClient plugin.LanguageRuntime,
-	programInfo plugin.ProgramInfo,
-	isPlugin bool,
-) *testingrpc.RunLanguageTestResponse {
-	installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
-		plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
-	)
-	programOrPlugin := "program"
-	if isPlugin {
-		programOrPlugin = "plugin"
-	}
-	if err != nil {
-		return makeTestResponse(fmt.Sprintf("install %s dependencies: %v", programOrPlugin, err))
-	}
-
-	// We'll use a WaitGroup to wait for the stdout (1) and stderr (2) readers to be fully drained, as well as for the
-	// done channel to close (3), before we carry on.
-	var wg sync.WaitGroup
-	wg.Add(3)
-
-	var installStdoutBytes []byte
-	var installStderrBytes []byte
-
-	installErrorChan := make(chan error, 3)
-
-	go func() {
-		defer wg.Done()
-		var err error
-		if installStdoutBytes, err = io.ReadAll(installStdout); err != nil {
-			installErrorChan <- err
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		var err error
-		if installStderrBytes, err = io.ReadAll(installStderr); err != nil {
-			installErrorChan <- err
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		if err := <-installDone; err != nil {
-			installErrorChan <- err
-		}
-	}()
-
-	var installErrs []error
-	wg.Wait()
-	close(installErrorChan)
-	for err := range installErrorChan {
-		if err != nil {
-			installErrs = append(installErrs, err)
-		}
-	}
-
-	err = errors.Join(installErrs...)
-	if err != nil {
-		return &testingrpc.RunLanguageTestResponse{
-			Success:  false,
-			Messages: []string{fmt.Sprintf("install %s dependencies: %v", programOrPlugin, err)},
-			Stdout:   string(installStdoutBytes),
-			Stderr:   string(installStderrBytes),
-		}
-	}
-
-	return nil
-}
-
-func Start(ctx context.Context) (LanguageTestServer, error) {
-	// New up an engine RPC server.
+// Start creates and starts a language test server parameterized by the given
+// testdata filesystem and language-test map.
+//
+// testdata is an embed.FS (or any fs.FS) containing the PCL test-data tree,
+// typically embedded via //go:embed testdata in the tests package.
+//
+// languageTests is the map of test-name → LanguageTest describing each
+// conformance test to expose.
+func Start(ctx context.Context, testdata fs.FS, languageTests map[string]tests.LanguageTest) (LanguageTestServer, error) {
 	server := &languageTestServer{
 		ctx:            ctx,
 		cancel:         make(chan bool),
@@ -168,9 +100,10 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
 		artifactMap:    gsync.Map[string, string]{},
 		cliVersion:     "3.200.0",
+		testdata:       testdata,
+		languageTests:  languageTests,
 	}
 
-	// Fire up a gRPC server and start listening for incomings.
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Cancel: server.cancel,
 		Init: func(srv *grpc.Server) error {
@@ -217,6 +150,11 @@ type languageTestServer struct {
 	previousMessage string
 
 	cliVersion string // Used by RequirePulumiVersion to mock the CLI version
+
+	// testdata is the filesystem containing PCL test data.
+	testdata fs.FS
+	// languageTests is the map of all tests exposed by this server.
+	languageTests map[string]tests.LanguageTest
 }
 
 func (eng *languageTestServer) Address() string {
@@ -229,6 +167,29 @@ func (eng *languageTestServer) Cancel() {
 
 func (eng *languageTestServer) Done() error {
 	return <-eng.done
+}
+
+func (eng *languageTestServer) SetDisableSnapshotWriting(v bool) {
+	eng.DisableSnapshotWriting = v
+}
+
+// NewLanguageTestServer creates a languageTestServer pre-populated with the
+// default test data and language tests from the tests sub-package.  It does
+// NOT start a gRPC listener; call Start for a fully-networked server.
+//
+// The returned server is suitable for use in unit tests that call
+// PrepareLanguageTests / RunLanguageTest / GetLanguageTests directly, without
+// going through gRPC.
+func NewLanguageTestServer() LanguageTestServer {
+	return &languageTestServer{
+		providersLock:  gsync.Map[string, *sync.Mutex]{},
+		providersCache: make(map[string]bool),
+		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
+		artifactMap:    gsync.Map[string, string]{},
+		cliVersion:     "3.200.0",
+		testdata:       tests.LanguageTestdata,
+		languageTests:  tests.LanguageTests,
+	}
 }
 
 func (eng *languageTestServer) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
@@ -403,8 +364,8 @@ func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
 	req *testingrpc.GetLanguageTestsRequest,
 ) (*testingrpc.GetLanguageTestsResponse, error) {
-	filtered := make([]string, 0, len(tests.LanguageTests))
-	for testName := range tests.LanguageTests {
+	filtered := make([]string, 0, len(eng.languageTests))
+	for testName := range eng.languageTests {
 		// Don't return internal tests
 		if strings.HasPrefix(testName, "internal-") {
 			continue
@@ -430,7 +391,7 @@ type replacement struct {
 	Replacement string
 }
 
-type compiledReplacement struct {
+type CompiledReplacement struct {
 	Path        *regexp.Regexp
 	Pattern     *regexp.Regexp
 	Replacement string
@@ -461,6 +422,81 @@ type testToken struct {
 	Local                 bool
 	ProvidersDirectory    string
 	ConverterPluginTarget string
+
+	// testdata is the filesystem containing PCL test data.
+	// It is NOT serialized into the base64 token; it is injected at runtime.
+	testdata fs.FS `json:"-"`
+}
+
+func installDependencies(
+	languageClient plugin.LanguageRuntime,
+	programInfo plugin.ProgramInfo,
+	isPlugin bool,
+) *testingrpc.RunLanguageTestResponse {
+	installStdout, installStderr, installDone, err := languageClient.InstallDependencies(
+		plugin.InstallDependenciesRequest{Info: programInfo, IsPlugin: isPlugin},
+	)
+	programOrPlugin := "program"
+	if isPlugin {
+		programOrPlugin = "plugin"
+	}
+	if err != nil {
+		return makeTestResponse(fmt.Sprintf("install %s dependencies: %v", programOrPlugin, err))
+	}
+
+	// We'll use a WaitGroup to wait for the stdout (1) and stderr (2) readers to be fully drained, as well as for the
+	// done channel to close (3), before we carry on.
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	var installStdoutBytes []byte
+	var installStderrBytes []byte
+
+	installErrorChan := make(chan error, 3)
+
+	go func() {
+		defer wg.Done()
+		var err error
+		if installStdoutBytes, err = io.ReadAll(installStdout); err != nil {
+			installErrorChan <- err
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		var err error
+		if installStderrBytes, err = io.ReadAll(installStderr); err != nil {
+			installErrorChan <- err
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := <-installDone; err != nil {
+			installErrorChan <- err
+		}
+	}()
+
+	var installErrs []error
+	wg.Wait()
+	close(installErrorChan)
+	for err := range installErrorChan {
+		if err != nil {
+			installErrs = append(installErrs, err)
+		}
+	}
+
+	err = errors.Join(installErrs...)
+	if err != nil {
+		return &testingrpc.RunLanguageTestResponse{
+			Success:  false,
+			Messages: []string{fmt.Sprintf("install %s dependencies: %v", programOrPlugin, err)},
+			Stdout:   string(installStdoutBytes),
+			Stderr:   string(installStderrBytes),
+		}
+	}
+
+	return nil
 }
 
 func (eng *languageTestServer) PrepareLanguageTests(
@@ -545,7 +581,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	programOverrides := map[string]programOverride{}
 	for testName, override := range req.ProgramOverrides {
-		test, has := tests.LanguageTests[testName]
+		test, has := eng.languageTests[testName]
 		if !has {
 			return nil, fmt.Errorf("program override for non-existent test: %s", testName)
 		}
@@ -605,7 +641,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}, nil
 }
 
-func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
+func GetProviderVersion(provider plugin.Provider) (semver.Version, error) {
 	pkg := provider.Pkg()
 	info, err := provider.GetPluginInfo(context.TODO())
 	if err != nil {
@@ -626,13 +662,10 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 	return false
 }
 
-// TODO(https://github.com/pulumi/pulumi/issues/13944): We need a RunLanguageTest(t *testing.T) function that
-// handles the machinery of plugging the language test logs into the testing.T.
-
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
-	test, has := tests.LanguageTests[req.Test]
+	test, has := eng.languageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
 	}
@@ -647,9 +680,10 @@ func (eng *languageTestServer) RunLanguageTest(
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
+	token.testdata = eng.testdata
 
 	// If the language defines any snapshot edits compile those regexs to apply now
-	snapshotEdits := []compiledReplacement{}
+	snapshotEdits := []CompiledReplacement{}
 	for _, replace := range token.SnapshotEdits {
 		pathRegex, err := regexp.Compile(replace.Path)
 		if err != nil {
@@ -659,7 +693,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if err != nil {
 			return nil, fmt.Errorf("invalid edit regex %s: %w", replace.Pattern, err)
 		}
-		snapshotEdits = append(snapshotEdits, compiledReplacement{
+		snapshotEdits = append(snapshotEdits, CompiledReplacement{
 			Path:        pathRegex,
 			Pattern:     editRegex,
 			Replacement: replace.Replacement,
@@ -726,7 +760,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	// And fill that host with our test providers
 	for _, provider := range test.Providers {
 		p := provider()
-		version, err := getProviderVersion(p)
+		version, err := GetProviderVersion(p)
 		if err != nil {
 			return nil, err
 		}
@@ -736,9 +770,6 @@ func (eng *languageTestServer) RunLanguageTest(
 		pkg := p.Pkg().String()
 		if slices.Contains(test.LanguageProviders, pkg) {
 			cacheKey := fmt.Sprintf("%s@%s", key, token.TemporaryDirectory)
-			// The second return value indicates whether the result was loaded or stored
-			// in the map. We don't care here, the end result is always that there's a
-			// mutex that we can lock safely in the map.
 			lock, _ := eng.providersLock.LoadOrStore(cacheKey, &sync.Mutex{})
 			lock.Lock()
 			defer lock.Unlock()
@@ -827,7 +858,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.Runs) > 1 && !test.RunsShareSource {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
+		err = copyDirectory(eng.testdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
@@ -896,9 +927,6 @@ func (eng *languageTestServer) RunLanguageTest(
 			sdkName := fmt.Sprintf("%s-%s", pkg.Name, pkg.Version)
 			sdkTempDir := filepath.Join(token.TemporaryDirectory, "sdks", sdkName)
 			sdks[sdkName] = sdkTempDir
-			// Multiple tests might try to generate the same SDK at the same time so we need to be atomic here. We do this
-			// using a per-sdk lock for fine grained control. The generated SDK artifacts are then cached, and will be
-			// reused.
 			response, err := func() (*testingrpc.RunLanguageTestResponse, error) {
 				lock, _ := eng.sdkLocks.LoadOrStore(sdkTempDir, &sync.Mutex{})
 				lock.Lock()
@@ -906,8 +934,6 @@ func (eng *languageTestServer) RunLanguageTest(
 
 				sdkArtifact, ok := eng.artifactMap.Load(sdkTempDir)
 				if ok {
-					// If the directory already exists then we know we already created the artifact.
-					// Just use it
 					localDependencies[pkg.Name] = sdkArtifact
 					return nil, nil
 				}
@@ -927,7 +953,6 @@ func (eng *languageTestServer) RunLanguageTest(
 				if err != nil {
 					return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
 				}
-				// TODO: Might be good to test warning diagnostics here
 				if diags.HasErrors() {
 					return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
 				}
@@ -938,7 +963,6 @@ func (eng *languageTestServer) RunLanguageTest(
 					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
 				}
 				validations, err := doSnapshot(eng.DisableSnapshotWriting, sdkSnapshotDir, snapshotDir)
-				// If we made a snapshot edit we can clean it up now
 				if sdkSnapshotDir != sdkTempDir {
 					err := os.RemoveAll(sdkSnapshotDir)
 					if err != nil {
@@ -954,8 +978,6 @@ func (eng *languageTestServer) RunLanguageTest(
 							pkg.Name, strings.Join(validations, "\n"))), nil
 				}
 
-				// Pack the SDK and add it to the artifact dependencies, we do this in the temporary directory so that
-				// any intermediate build files don't end up getting captured in the snapshot folder.
 				sdkArtifact, err = languageClient.Pack(sdkTempDir, artifactsDir)
 				if err != nil {
 					return nil, fmt.Errorf("sdk packing for %s: %w", pkg.Name, err)
@@ -963,14 +985,11 @@ func (eng *languageTestServer) RunLanguageTest(
 				localDependencies[pkg.Name] = sdkArtifact
 				eng.artifactMap.Store(sdkTempDir, sdkArtifact)
 
-				// Check that packing the SDK didn't mutate any files, but it may have added ignorable build files.
-				// Again we need to make a snapshot edit for this.
 				sdkSnapshotDir, err = editSnapshot(sdkTempDir, snapshotEdits)
 				if err != nil {
 					return nil, fmt.Errorf("sdk snapshot creation for %s: %w", pkg.Name, err)
 				}
 				validations, err = compareDirectories(sdkSnapshotDir, snapshotDir, true /* allowNewFiles */)
-				// If we made a snapshot edit we can clean it up now
 				if sdkSnapshotDir != sdkTempDir {
 					err := os.RemoveAll(sdkSnapshotDir)
 					if err != nil {
@@ -1028,9 +1047,6 @@ func (eng *languageTestServer) RunLanguageTest(
 		return nil, fmt.Errorf("dial converter plugin: %w", err)
 	}
 
-	// Use isolated temp and snapshot directories for the eject run so it doesn't overwrite the
-	// normal project dir or project snapshots.
-
 	ejectToken := token
 	ejectToken.TemporaryDirectory = filepath.Join(token.TemporaryDirectory, "eject")
 	if err := os.MkdirAll(ejectToken.TemporaryDirectory, 0o755); err != nil {
@@ -1046,7 +1062,6 @@ func (eng *languageTestServer) RunLanguageTest(
 		ejectSnapshotBaseDir:   filepath.Join(token.SnapshotDirectory, "eject-pcl"),
 	}
 
-	// Use a fresh backend dir so the eject run doesn't collide with the stack from the first run.
 	ejectBackendDir := filepath.Join(token.TemporaryDirectory, "backends", req.Test+"-eject")
 	if err := os.MkdirAll(ejectBackendDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create eject backend dir: %w", err)
@@ -1113,7 +1128,7 @@ func runLanguageTests(
 	ctx context.Context, token testToken, testName string, test tests.LanguageTest,
 	loader schema.ReferenceLoader, packages []*schema.Package, sdks, localDependencies map[string]string,
 	languageClient plugin.LanguageRuntime, grpcServer *plugin.GrpcServer,
-	disableSnapshotWriting bool, snapshotEdits []compiledReplacement,
+	disableSnapshotWriting bool, snapshotEdits []CompiledReplacement,
 	testBackend diy.Backend,
 	stdout, stderr *bytes.Buffer,
 	pctx *plugin.Context,
@@ -1143,7 +1158,7 @@ func runLanguageTests(
 				pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 			}
 
-			if err := copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil); err != nil {
+			if err := copyDirectory(token.testdata, pclDir, sourceDir, nil, nil); err != nil {
 				return nil, fmt.Errorf("copy source test data: %w", err)
 			}
 
@@ -1178,7 +1193,6 @@ func runLanguageTests(
 		programPackages := program.PackageReferences()
 
 		if i == 0 || !test.RunsShareSource {
-			// TODO(https://github.com/pulumi/pulumi/issues/13940): We don't report back warning diagnostics here
 			var diagnostics hcl.Diagnostics
 
 			// If we're running in local mode we need to generate the packages first before calling GenerateProject
@@ -1198,7 +1212,6 @@ func runLanguageTests(
 					if err != nil {
 						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, err)), nil
 					}
-					// TODO: Might be good to test warning diagnostics here
 					if diags.HasErrors() {
 						return makeTestResponse(fmt.Sprintf("generate package %s: %v", pkg.Name, diags)), nil
 					}
@@ -1206,8 +1219,6 @@ func runLanguageTests(
 				}
 			}
 
-			// If an override has been supplied for the given test, we'll just copy that over as-is, instead of calling
-			// GenerateProject to generate a program for testing.
 			if programOverride, ok := token.ProgramOverrides[testName]; ok {
 				err = copyDirectory(os.DirFS(programOverride.Paths[i]), ".", projectDir, nil, nil)
 				if err != nil {
@@ -1223,8 +1234,6 @@ func runLanguageTests(
 					return makeTestResponse(fmt.Sprintf("generate project: %v", diagnostics)), nil
 				}
 
-				// GenerateProject only handles the .pp source files it doesn't copy across other files like testdata so we copy
-				// them across here.
 				err = copyDirectory(os.DirFS(rootDirectory), ".", projectDir, nil, []string{".pp"})
 				if err != nil {
 					return nil, fmt.Errorf("copy testdata: %w", err)
@@ -1245,7 +1254,6 @@ func runLanguageTests(
 				if len(validations) > 0 {
 					return makeTestResponse("program snapshot validation failed:\n" + strings.Join(validations, "\n")), nil
 				}
-				// If we made a snapshot edit we can clean it up now
 				if projectDirSnapshot != projectDir {
 					err = os.RemoveAll(projectDirSnapshot)
 					if err != nil {
@@ -1277,12 +1285,6 @@ func runLanguageTests(
 			return resp, nil
 		}
 
-		// TODO(https://github.com/pulumi/pulumi/issues/13942): This should only add new things, don't modify
-
-		// Query the language plugin for what it thinks the project dependencies are, we expect to see pulumi and the SDKs.
-		// We make a transitive query here because some languages (e.g. Python) treat dependencies as transitive if any of
-		// their dependencies has a dependency on the package, even if the program also directly lists it as a dependency as
-		// well.
 		dependencies, err := languageClient.GetProgramDependencies(programInfo, true)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("get program dependencies: %v", err)), nil
@@ -1295,7 +1297,6 @@ func runLanguageTests(
 		}
 		for _, pkg := range programPackages {
 			if pkg.Name() == "pulumi" {
-				// Skip the pulumi package, the version for that is handled above.
 				continue
 			}
 
@@ -1305,23 +1306,13 @@ func runLanguageTests(
 			})
 		}
 		for _, expectedDependency := range expectedDependencies {
-			// We have to do some fuzzy matching by name here because the language plugin returns the name of the
-			// library, which is generally _not_ just the plugin name. e.g. "@pulumi/aws" for the nodejs aws library.
-
-			// When checking for version equality we _want_ to do a semver exact match but not all languages support
-			// semver, so we will allow a fuzzy match of the version as well.
 			versionsMatch := func(expected, actual string) bool {
 				if expected == actual {
 					return true
 				}
-				// Actual might be the empty string, some languages can't always return versions especially for local
-				// dependencies. In this case we treat it as matching as this is just supposed to be a best effort check.
 				if actual == "" {
 					return true
 				}
-
-				// Expected _will_ be a semver (because we got it from the provider version), but actual could be
-				// _anything_. We assume it will at least have the major.minor.patch part from the expected semver.
 				expectedSV := semver.MustParse(expected)
 				expectedSV.Pre = nil
 				expectedSV.Build = nil
@@ -1330,9 +1321,6 @@ func runLanguageTests(
 				return strings.Contains(actual, expected)
 			}
 
-			// found is the version we've found for this dependency, if any. We fuzzy match by name and then check version
-			// so this is just to give better error messages. For our main dependencies we should have a different version
-			// for every package, so the fuzzy check by name then exact check by version should be unique.
 			var found *string
 			for _, actual := range dependencies {
 				sanatize := func(s string) string {
@@ -1358,7 +1346,6 @@ func runLanguageTests(
 			}
 		}
 
-		// Query the language plugin for what it thinks the project packages are, we expect to see the SDKs.
 		packages, err := languageClient.GetRequiredPackages(programInfo)
 		if err != nil {
 			return makeTestResponse(fmt.Sprintf("get required packages: %v", err)), nil
@@ -1366,7 +1353,6 @@ func runLanguageTests(
 		expectedPackages := []workspace.PackageDescriptor{}
 		for _, pkg := range programPackages {
 			if pkg.Name() == "pulumi" {
-				// Skip the pulumi package, the version for that is handled above.
 				continue
 			}
 
@@ -1435,7 +1421,6 @@ func runLanguageTests(
 				return makeTestResponse(fmt.Sprintf("missing expected package %v", expectedPackage)), nil
 			}
 		}
-		// For packages we need a symmetric check, we shouldn't have any packages that _aren't_ expected.
 		for _, actual := range packages {
 			var found bool
 			for _, expectedPackage := range expectedPackages {
@@ -1454,7 +1439,6 @@ func runLanguageTests(
 
 		testBackend.SetCurrentProject(project)
 
-		// Create a new stack for the test
 		stackReference, err := testBackend.ParseStackReference("test")
 		if err != nil {
 			return nil, fmt.Errorf("parse test stack reference: %w", err)
@@ -1471,8 +1455,6 @@ func runLanguageTests(
 				return nil, fmt.Errorf("get test stack: %w", err)
 			}
 		}
-		// Update the stack tags for the test run, nil is not valid so check for that and use an empty map
-		// instead if needed.
 		tags := run.StackTags
 		if tags == nil {
 			tags = map[string]string{}
@@ -1485,13 +1467,11 @@ func runLanguageTests(
 		updateOptions := run.UpdateOptions
 		updateOptions.Host = pctx.Host
 
-		// Translate the policy pack option on the test to point to the paths given by the testdata
 		if len(run.PolicyPacks) > 0 && token.PolicyPackDirectory == "" {
 			return nil, errors.New("policy packs specified but no policy pack directory given")
 		}
 
 		for policyPack, policyConfig := range run.PolicyPacks {
-			// Write the policy config to a JSON file
 			var policyConfigFile string
 			if len(policyConfig) != 0 {
 				policyConfigFile = filepath.Join(projectDir, policyPack+".json")
@@ -1505,7 +1485,6 @@ func runLanguageTests(
 				}
 			}
 
-			// Copy the policy pack to a temporary directory and link in the core SDK into it
 			policyPackDir := filepath.Join(token.TemporaryDirectory, "policy_packs", policyPack)
 			err = os.MkdirAll(policyPackDir, 0o755)
 			if err != nil {
@@ -1518,7 +1497,6 @@ func runLanguageTests(
 
 			policyInfo := plugin.NewProgramInfo(policyPackDir, policyPackDir, ".", nil)
 
-			// Link the core SDK into the policy pack
 			linkDeps := []workspace.LinkablePackageDescriptor{{
 				Path: token.CoreArtifact,
 				Descriptor: workspace.PackageDescriptor{
@@ -1532,7 +1510,6 @@ func runLanguageTests(
 				return makeTestResponse(fmt.Sprintf("link program: %v", err)), nil
 			}
 
-			// Install the dependencies for the policy pack
 			resp := installDependencies(languageClient, policyInfo, true /* isPlugin */)
 			if resp != nil {
 				return resp, nil
@@ -1546,7 +1523,6 @@ func runLanguageTests(
 			updateOptions.LocalPolicyPacks = append(updateOptions.LocalPolicyPacks, pack)
 		}
 
-		// Set up the stack and engine configuration
 		opts := backend.UpdateOptions{
 			AutoApprove: true,
 			SkipPreview: true,
@@ -1576,8 +1552,6 @@ func runLanguageTests(
 
 		assertPreview := run.AssertPreview
 		if assertPreview == nil {
-			// if no assertPreview is provided for the test run, we create a default implementation
-			// where we simply assert that the preview changes did not error
 			assertPreview = func(
 				l *tests.L, args tests.AssertPreviewArgs,
 			) {
@@ -1585,7 +1559,6 @@ func runLanguageTests(
 			}
 		}
 
-		// Perform a preview on the stack
 		eventsCts := &promise.CompletionSource[[]engine.Event]{}
 		eventSink := make(chan engine.Event, 1)
 		go func() {
@@ -1603,7 +1576,6 @@ func runLanguageTests(
 			return nil, fmt.Errorf("preview events: %w", err)
 		}
 
-		// assert preview results
 		previewResult := tests.WithL(func(l *tests.L) {
 			assertPreview(l, tests.AssertPreviewArgs{
 				ProjectDirectory: projectDir,
@@ -1642,7 +1614,6 @@ func runLanguageTests(
 
 		var snap *deploy.Snapshot
 		if res == nil {
-			// Refetch the stack so we can get the snapshot
 			s, err = testBackend.GetStack(ctx, stackReference)
 			if err != nil {
 				return nil, fmt.Errorf("get stack: %w", err)
@@ -1653,8 +1624,6 @@ func runLanguageTests(
 				return nil, fmt.Errorf("snapshot: %w", err)
 			}
 		} else {
-			// We still want to try to get a snapshot, but won't error out
-			// if we can't.
 			s, err = testBackend.GetStack(ctx, stackReference)
 			if err == nil {
 				snap, _ = s.Snapshot(ctx, b64secrets.Base64SecretsProvider)
@@ -1693,13 +1662,9 @@ type roundTripClient struct {
 	plugin.LanguageRuntime
 	converter              pulumirpc.ConverterClient
 	disableSnapshotWriting bool
-	snapshotEdits          []compiledReplacement
-	// projectsBaseDir is the base directory under which per-test project dirs live.
-	// It is used to derive the relative path when constructing the eject PCL snapshot path.
-	projectsBaseDir string
-	// ejectSnapshotBaseDir is the root under which ejected-PCL snapshots are stored
-	// (e.g. {SnapshotDirectory}/eject-pcl).
-	ejectSnapshotBaseDir string
+	snapshotEdits          []CompiledReplacement
+	projectsBaseDir        string
+	ejectSnapshotBaseDir   string
 }
 
 func (rtc roundTripClient) GenerateProject(
@@ -1780,7 +1745,6 @@ func (rtc roundTripClient) GenerateProgram(
 	if err := filepath.WalkDir(pclDir, walk); err != nil {
 		return nil, diags, err
 	}
-	// TODO: Snapshot files
 	lang, diags2, err := rtc.LanguageRuntime.GenerateProgram(pclFiles, loaderTarget, strict)
 	return lang, diags.Extend(diags2), err
 }
@@ -1820,7 +1784,6 @@ func (rtc roundTripClient) roundTrip(
 		return "", diags, err
 	}
 
-	// If the Pulumi.yaml has `main` set return the subpath
 	proj, err := workspace.LoadProject(filepath.Join(ejectDir, "Pulumi.yaml"))
 	if err != nil {
 		return "", diags, fmt.Errorf("load ejected project: %w", err)

@@ -1,4 +1,4 @@
-// Copyright 2016, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package conformancetestrunner
 
 import (
 	"bytes"
@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func copyDirectory(fs iofs.FS, src string, dst string, edits []compiledReplacement, filter []string) error {
+func copyDirectory(fs iofs.FS, src string, dst string, edits []CompiledReplacement, filter []string) error {
 	return iofs.WalkDir(fs, src, func(path string, d iofs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -69,7 +69,7 @@ func copyDirectory(fs iofs.FS, src string, dst string, edits []compiledReplaceme
 		}
 		defer dstFile.Close()
 
-		editsToApply := []compiledReplacement{}
+		editsToApply := []CompiledReplacement{}
 		for _, replace := range edits {
 			if replace.Path.MatchString(relativePath) {
 				editsToApply = append(editsToApply, replace)
@@ -207,7 +207,7 @@ func compareDirectories(actualDir, expectedDir string, allowNewFiles bool) ([]st
 // It _might_ be worth changing this approach to instead fold this edit logic directly into the comparison
 // itself rather than having to copy all the files in a snapshot. i.e. an one the file mutation of each file
 // as part of the compare rather than edit and write all then doing a direct comparison.
-func editSnapshot(snapshotDirectory string, edits []compiledReplacement) (string, error) {
+func editSnapshot(snapshotDirectory string, edits []CompiledReplacement) (string, error) {
 	// If we have any edits to apply then we need to copy to a temporary directory and apply the edits there.
 	result := snapshotDirectory
 	if len(edits) > 0 {
@@ -225,8 +225,8 @@ func editSnapshot(snapshotDirectory string, edits []compiledReplacement) (string
 	return result, nil
 }
 
-// Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
-// write the new files instead.
+// doSnapshot does a snapshot check of the generated source code against the snapshot code.
+// If PULUMI_ACCEPT is true just write the new files instead.
 func doSnapshot(
 	disableSnapshotWriting bool,
 	sourceDirectory, snapshotDirectory string,

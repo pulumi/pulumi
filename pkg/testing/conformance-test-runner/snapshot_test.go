@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package conformancetestrunner
 
 import (
 	"os"
@@ -51,7 +51,7 @@ func TestCopyDirectoryWithEdit(t *testing.T) {
 
 	dst := t.TempDir()
 
-	edits := []compiledReplacement{
+	edits := []CompiledReplacement{
 		{regexp.MustCompile("file2.txt"), regexp.MustCompile("goodbye"), "hello"},
 	}
 
@@ -78,7 +78,7 @@ func TestCopyDirectoryWithMultilineEdit(t *testing.T) {
 
 	dst := t.TempDir()
 
-	edits := []compiledReplacement{
+	edits := []CompiledReplacement{
 		{regexp.MustCompile("file2.txt"), regexp.MustCompile("goodbye"), "hello"},
 	}
 

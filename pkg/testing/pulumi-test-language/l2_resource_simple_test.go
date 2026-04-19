@@ -15,6 +15,7 @@
 package main
 
 import (
+	conformancetestrunner "github.com/pulumi/pulumi/pkg/v3/testing/conformance-test-runner"
 	"context"
 	"errors"
 	"fmt"
@@ -294,7 +295,7 @@ func TestL2ResourceSimple(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := conformancetestrunner.NewLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -332,8 +333,8 @@ func TestL2SimpleResource_BadSnapshot(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
-	engine.DisableSnapshotWriting = true
+	engine := conformancetestrunner.NewLanguageTestServer()
+	engine.SetDisableSnapshotWriting(true)
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -373,7 +374,7 @@ func TestL2SimpleResource_MissingResource(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := conformancetestrunner.NewLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{
 		tempDir:      tempDir,
 		skipResource: true,
@@ -416,7 +417,7 @@ func TestL2SimpleResource_MissingRequiredPlugins(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := conformancetestrunner.NewLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{
 		tempDir:             tempDir,
 		skipRequiredPlugins: true,
@@ -459,7 +460,7 @@ func TestL2ResourceSnapshotEdit(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := conformancetestrunner.NewLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -503,7 +504,7 @@ func TestL2ResourceLanguageInfo(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := conformancetestrunner.NewLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{
 		tempDir:            tempDir,
 		expectLanguageInfo: true,
@@ -577,7 +578,7 @@ func TestL2ResourceSimple_ConvertPath(t *testing.T) {
 
 	tempDir := t.TempDir()
 	snapshotDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := conformancetestrunner.NewLanguageTestServer()
 	runtime := &L2ResourceSimpleLanguageHost{tempDir: tempDir, skipPathChecks: true}
 	conv := &convertTestConverter{}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
