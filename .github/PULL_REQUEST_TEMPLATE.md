@@ -14,7 +14,7 @@
 - [ ] `make lint` — clean
 - [ ] `make test_fast` — all pass
 - [ ] `make tidy_fix` — clean
-- [ ] `make format_fix` — clean
+- [ ] `make format` — clean
 - [ ] Relevant SDK tests pass (if SDK changes)
 - [ ] `make check_proto` — clean (if proto changes)
 
