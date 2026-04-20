@@ -32,10 +32,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func getResourceToken(node *Resource) (string, hcl.Range) {
-	return node.syntax.Labels[1], node.syntax.LabelRanges[1]
-}
-
 func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 
@@ -272,7 +268,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	node.InputType, node.OutputType = model.DynamicType, model.DynamicType
 
 	// Find the resource's schema.
-	token, tokenRange := getResourceToken(node)
+	token, tokenRange := node.GetToken()
 	pkg, module, name, diagnostics := DecomposeToken(token, tokenRange)
 	if diagnostics.HasErrors() {
 		return diagnostics
@@ -280,7 +276,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 
 	makeResourceDynamic := func() {
 		// make the inputs and outputs of the resource dynamic
-		node.Token = token
+		node.token = token
 		node.OutputType = model.DynamicType
 		inferredInputProperties := map[string]model.Type{}
 		for _, attr := range node.Inputs {
@@ -352,7 +348,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	}
 	node.Schema = res
 	inputProperties, properties = res.InputProperties, res.Properties
-	node.Token = token
+	node.token = token
 
 	// Create input and output types for the schema.
 	// first reduce property types which are unions of objects into just an object when possible
@@ -778,7 +774,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 							Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for resource %q",
 								attr.Value.Type().Pretty().String(),
 								propertyType.String(),
-								node.Token),
+								node.token),
 						})
 					}
 				}

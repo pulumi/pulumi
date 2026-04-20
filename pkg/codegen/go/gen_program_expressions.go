@@ -533,8 +533,9 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 	res := annotation.Node
 
 	// Get the disambiguated resource name and module alias.
-	pkg, _, _, _ := res.DecomposeToken()
-	mod := g.resolveModule(res.Token)
+	token, tokenRange := res.GetToken()
+	pkg, _, _, _ := pcl.DecomposeToken(token, tokenRange)
+	mod := g.resolveModule(token)
 	originalMod := mod
 	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
 		originalMod = mod
@@ -548,7 +549,7 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 			resourceName = rawResourceName(res.Schema)
 		}
 	} else {
-		resourceName = tokenToName(res.Token)
+		resourceName = tokenToName(token)
 	}
 	modOrAlias := g.getModOrAlias(pkg, mod, originalMod)
 

@@ -886,7 +886,8 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pcl.FixupPulumiPackageTokens(r)
-			pkg, mod, name, _ := r.DecomposeToken()
+			token, tokenRange := r.GetToken()
+			pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
 			if pkg == "pulumi" {
 				if mod == "providers" {
 					pkg = name
@@ -895,7 +896,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 					continue
 				}
 			} else {
-				mod = g.resolveModule(r.Token)
+				mod = g.resolveModule(token)
 			}
 			vPath, err := g.getVersionPath(program, pkg)
 			if err != nil {
@@ -941,8 +942,9 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 					if objectType, ok := call.Args[0].Type().(*model.ObjectType); ok {
 						if annotation, ok := model.GetObjectTypeAnnotation[*pcl.ResourceAnnotation](objectType); ok {
 							res := annotation.Node
-							resPkg, _, resName, _ := res.DecomposeToken()
-							resMod := g.resolveModule(res.Token)
+							token, tokenRange := res.GetToken()
+							resPkg, _, resName, _ := pcl.DecomposeToken(token, tokenRange)
+							resMod := g.resolveModule(token)
 							vPath, err := g.getVersionPath(program, resPkg)
 							if err != nil {
 								panic(err)
@@ -1495,8 +1497,9 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 
 func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 	resName, resNameVar := r.LogicalName(), g.nodeName(r.Name())
-	pkg, _, typ, _ := r.DecomposeToken()
-	mod := g.resolveModule(r.Token)
+	token, tokenRange := r.GetToken()
+	pkg, _, typ, _ := pcl.DecomposeToken(token, tokenRange)
+	mod := g.resolveModule(token)
 	originalMod := mod
 	if pkg == "pulumi" && mod == "providers" {
 		pkg = typ
@@ -1525,8 +1528,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 			input.Value = expr
 			g.genTemps(w, temps)
 		}
-		pkg, _, _, _ := r.DecomposeToken()
-		mod := g.resolveModule(r.Token)
+		token, tokenRange := r.GetToken()
+		pkg, _, _, _ := pcl.DecomposeToken(token, tokenRange)
+		mod := g.resolveModule(token)
 		if pkgCtx := g.contexts[pkg][mod]; pkgCtx != nil {
 			typ = disambiguatedResourceName(r.Schema, pkgCtx)
 		}

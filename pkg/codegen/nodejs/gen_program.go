@@ -603,7 +603,7 @@ func (g *generator) collectProgramImports(program *pcl.Program) programImports {
 	for _, n := range program.Nodes {
 		switch n := n.(type) {
 		case *pcl.Resource:
-			pkg, _, _, _ := n.DecomposeToken()
+			pkg, _, _, _ := pcl.DecomposeToken(n.GetToken())
 			var packageRef schema.PackageReference
 			if n.Schema != nil && n.Schema.PackageReference != nil {
 				packageRef = n.Schema.PackageReference
@@ -1022,7 +1022,7 @@ func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pcl.FixupPulumiPackageTokens(r)
-	pkg, module, member, diagnostics := r.DecomposeToken()
+	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
 
 	if r.Schema != nil {
 		module = moduleName(module, r.Schema.PackageReference)

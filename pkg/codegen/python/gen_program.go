@@ -629,7 +629,7 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
 			pcl.FixupPulumiPackageTokens(r)
-			pkg, _, _, _ := r.DecomposeToken()
+			pkg, _, _, _ := pcl.DecomposeToken(r.GetToken())
 			if pkg == "pulumi" {
 				continue
 			}
@@ -766,7 +766,7 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 // resourceTypeName computes the qualified name of a python resource.
 func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := r.DecomposeToken()
+	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
 	pcl.FixupPulumiPackageTokens(r)
 
 	// Normalize module.

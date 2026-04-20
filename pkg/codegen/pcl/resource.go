@@ -100,7 +100,7 @@ type Resource struct {
 	LenientTraversal bool
 
 	// Token is the type token for this resource.
-	Token string
+	token string
 
 	// Schema is the schema definition for this resource, if any.
 	Schema *schema.Resource
@@ -118,6 +118,16 @@ type Resource struct {
 
 	// The resource's options, if any.
 	Options *ResourceOptions
+}
+
+// GetToken returns the resource's token and its source range. If the resource has been successfully bound, the token is
+// canonical, else it's what was parsed from the source code.
+func (r *Resource) GetToken() (string, hcl.Range) {
+	token := r.token
+	if token == "" {
+		token = r.syntax.Labels[1]
+	}
+	return token, r.syntax.LabelRanges[1]
 }
 
 // SyntaxNode returns the syntax node associated with the resource.
@@ -168,13 +178,6 @@ func (r *Resource) LogicalName() string {
 	}
 
 	return r.Name()
-}
-
-// DecomposeToken attempts to decompose the resource's type token into its package, module, and type. If decomposition
-// fails, a description of the failure is returned in the diagnostics.
-func (r *Resource) DecomposeToken() (string, string, string, hcl.Diagnostics) {
-	_, tokenRange := getResourceToken(r)
-	return DecomposeToken(r.Token, tokenRange)
 }
 
 // ResourceProperty represents a resource property.
