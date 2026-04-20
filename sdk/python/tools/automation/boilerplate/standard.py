@@ -14,7 +14,7 @@
 
 import os
 from collections.abc import Callable, Mapping
-from typing import Any, TypedDict
+from typing import Any, Optional, TypedDict
 
 from pulumi.automation._cmd import CommandResult, PulumiCommand
 
