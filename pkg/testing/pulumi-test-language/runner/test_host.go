@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package runner
 
 import (
 	"context"
@@ -215,7 +215,7 @@ func (h *testHost) EnsurePlugins(plugins []workspace.PluginDescriptor, kinds plu
 			return fmt.Errorf("initializing provider %s for ensure plugins: %w", name, err)
 		}
 		pkg := p.Pkg()
-		version, err := getProviderVersion(p)
+		version, err := GetProviderVersion(p)
 		if err != nil {
 			return fmt.Errorf("get provider version %s: %w", pkg, err)
 		}
@@ -250,7 +250,7 @@ func (h *testHost) ResolvePlugin(
 				return nil, fmt.Errorf("initializing provider %s for resolve plugin: %w", name, err)
 			}
 			pkg := p.Pkg()
-			providerVersion, err := getProviderVersion(p)
+			providerVersion, err := GetProviderVersion(p)
 			if err != nil {
 				return nil, fmt.Errorf("get provider version %s: %w", pkg, err)
 			}

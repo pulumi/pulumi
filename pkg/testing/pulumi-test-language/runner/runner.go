@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package runner
 
 import (
 	"bytes"
@@ -74,16 +74,22 @@ type LanguageTestServer interface {
 	// Cancel signals that the test server should be terminated.
 	Cancel()
 
-	// Done awaits the test servers termination, and returns any errors that result.
+	// Done awaits the test server's termination, and returns any errors that result.
 	Done() error
+
+	// SetDisableSnapshotWriting controls whether snapshot writing is disabled.
+	// When true, snapshots are validated but not written to disk.
+	SetDisableSnapshotWriting(bool)
 }
 
-func newLanguageTestServer() *languageTestServer {
+func NewLanguageTestServer(testdata fs.FS, languageTests map[string]tests.LanguageTest) LanguageTestServer {
 	return &languageTestServer{
 		providersLock:  gsync.Map[string, *sync.Mutex]{},
 		providersCache: make(map[string]bool),
 		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
 		artifactMap:    gsync.Map[string, string]{},
+		testdata:       testdata,
+		languageTests:  languageTests,
 	}
 }
 
@@ -158,7 +164,19 @@ func installDependencies(
 	return nil
 }
 
-func Start(ctx context.Context) (LanguageTestServer, error) {
+// Start creates and starts a language test server parameterized by the given
+// testdata filesystem and language-test map.
+//
+// testdata is an embed.FS (or any fs.FS) containing the PCL test-data tree,
+// typically embedded via //go:embed testdata in the tests package.
+//
+// languageTests is the map of test-name → LanguageTest describing each
+// conformance test that the server exposes.
+func Start(
+	ctx context.Context,
+	testdata fs.FS,
+	languageTests map[string]tests.LanguageTest,
+) (LanguageTestServer, error) {
 	// New up an engine RPC server.
 	server := &languageTestServer{
 		ctx:            ctx,
@@ -168,6 +186,8 @@ func Start(ctx context.Context) (LanguageTestServer, error) {
 		sdkLocks:       gsync.Map[string, *sync.Mutex]{},
 		artifactMap:    gsync.Map[string, string]{},
 		cliVersion:     "3.200.0",
+		testdata:       testdata,
+		languageTests:  languageTests,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -217,6 +237,11 @@ type languageTestServer struct {
 	previousMessage string
 
 	cliVersion string // Used by RequirePulumiVersion to mock the CLI version
+
+	// testdata is the filesystem containing PCL test data.
+	testdata fs.FS
+	// languageTests is the map of all tests exposed by this server.
+	languageTests map[string]tests.LanguageTest
 }
 
 func (eng *languageTestServer) Address() string {
@@ -229,6 +254,10 @@ func (eng *languageTestServer) Cancel() {
 
 func (eng *languageTestServer) Done() error {
 	return <-eng.done
+}
+
+func (eng *languageTestServer) SetDisableSnapshotWriting(v bool) {
+	eng.DisableSnapshotWriting = v
 }
 
 func (eng *languageTestServer) Log(_ context.Context, req *pulumirpc.LogRequest) (*pbempty.Empty, error) {
@@ -403,8 +432,8 @@ func (eng *languageTestServer) GetLanguageTests(
 	ctx context.Context,
 	req *testingrpc.GetLanguageTestsRequest,
 ) (*testingrpc.GetLanguageTestsResponse, error) {
-	filtered := make([]string, 0, len(tests.LanguageTests))
-	for testName := range tests.LanguageTests {
+	filtered := make([]string, 0, len(eng.languageTests))
+	for testName := range eng.languageTests {
 		// Don't return internal tests
 		if strings.HasPrefix(testName, "internal-") {
 			continue
@@ -545,7 +574,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 
 	programOverrides := map[string]programOverride{}
 	for testName, override := range req.ProgramOverrides {
-		test, has := tests.LanguageTests[testName]
+		test, has := eng.languageTests[testName]
 		if !has {
 			return nil, fmt.Errorf("program override for non-existent test: %s", testName)
 		}
@@ -605,7 +634,7 @@ func (eng *languageTestServer) PrepareLanguageTests(
 	}, nil
 }
 
-func getProviderVersion(provider plugin.Provider) (semver.Version, error) {
+func GetProviderVersion(provider plugin.Provider) (semver.Version, error) {
 	pkg := provider.Pkg()
 	info, err := provider.GetPluginInfo(context.TODO())
 	if err != nil {
@@ -632,7 +661,7 @@ func hasDependency(pkg *schema.Package, dep string) bool {
 func (eng *languageTestServer) RunLanguageTest(
 	ctx context.Context, req *testingrpc.RunLanguageTestRequest,
 ) (*testingrpc.RunLanguageTestResponse, error) {
-	test, has := tests.LanguageTests[req.Test]
+	test, has := eng.languageTests[req.Test]
 	if !has {
 		return nil, fmt.Errorf("unknown test %s", req.Test)
 	}
@@ -726,7 +755,7 @@ func (eng *languageTestServer) RunLanguageTest(
 	// And fill that host with our test providers
 	for _, provider := range test.Providers {
 		p := provider()
-		version, err := getProviderVersion(p)
+		version, err := GetProviderVersion(p)
 		if err != nil {
 			return nil, err
 		}
@@ -827,7 +856,7 @@ func (eng *languageTestServer) RunLanguageTest(
 		if len(test.Runs) > 1 && !test.RunsShareSource {
 			pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 		}
-		err = copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil)
+		err = copyDirectory(eng.testdata, pclDir, sourceDir, nil, nil)
 		if err != nil {
 			return nil, fmt.Errorf("copy source test data: %w", err)
 		}
@@ -1015,7 +1044,7 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	languageTestResult, err := runLanguageTests(ctx, token, req.Test, test, loader, packages,
 		sdks, localDependencies, languageClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects")
+		eng.DisableSnapshotWriting, snapshotEdits, testBackend, stdout, stderr, pctx, "projects", eng.testdata)
 	if err != nil || !languageTestResult.Success || token.ConverterPluginTarget == "" || req.SkipConvertTests {
 		return languageTestResult, err
 	}
@@ -1061,7 +1090,8 @@ func (eng *languageTestServer) RunLanguageTest(
 
 	return runLanguageTests(ctx, ejectToken, req.Test, test, loader, packages,
 		sdks, localDependencies, ejectTestingClient, grpcServer,
-		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx, "round-tripped-project")
+		eng.DisableSnapshotWriting, snapshotEdits, ejectTestBackend, stdout, stderr, pctx,
+		"round-tripped-project", eng.testdata)
 }
 
 func createStackReferences(
@@ -1118,6 +1148,7 @@ func runLanguageTests(
 	stdout, stderr *bytes.Buffer,
 	pctx *plugin.Context,
 	projectDir string,
+	testdata fs.FS,
 ) (*testingrpc.RunLanguageTestResponse, error) {
 	sm := b64secrets.NewBase64SecretsManager()
 	dec := sm.Decrypter()
@@ -1143,7 +1174,7 @@ func runLanguageTests(
 				pclDir = filepath.Join(pclDir, strconv.Itoa(i))
 			}
 
-			if err := copyDirectory(tests.LanguageTestdata, pclDir, sourceDir, nil, nil); err != nil {
+			if err := copyDirectory(testdata, pclDir, sourceDir, nil, nil); err != nil {
 				return nil, fmt.Errorf("copy source test data: %w", err)
 			}
 
@@ -1229,7 +1260,6 @@ func runLanguageTests(
 				if err != nil {
 					return nil, fmt.Errorf("copy testdata: %w", err)
 				}
-
 				snapshotDir := filepath.Join(token.SnapshotDirectory, projectSubDir, testName)
 				if len(test.Runs) > 1 && !test.RunsShareSource {
 					snapshotDir = filepath.Join(snapshotDir, strconv.Itoa(i))

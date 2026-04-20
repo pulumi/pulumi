@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package runner
 
 import (
 	"bytes"
@@ -225,8 +225,8 @@ func editSnapshot(snapshotDirectory string, edits []compiledReplacement) (string
 	return result, nil
 }
 
-// Do a snapshot check of the generated source code against the snapshot code. If PULUMI_ACCEPT is true just
-// write the new files instead.
+// doSnapshot does a snapshot check of the generated source code against the snapshot code.
+// If PULUMI_ACCEPT is true just write the new files instead.
 func doSnapshot(
 	disableSnapshotWriting bool,
 	sourceDirectory, snapshotDirectory string,

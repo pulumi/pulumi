@@ -22,6 +22,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -371,7 +374,7 @@ func TestL2ResourceAssetArchive(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 	runtime := &L2ResourceAssetArchiveLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
