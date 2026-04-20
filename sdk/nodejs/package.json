@@ -35,6 +35,7 @@
         "semver": "^7.5.2",
         "source-map-support": "^0.5.6",
         "tmp": "^0.2.4",
+        "package-directory": "^8.2.0",
         "upath": "^1.1.0"
     },
     "devDependencies": {
