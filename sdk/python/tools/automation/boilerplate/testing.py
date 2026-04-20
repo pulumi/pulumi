@@ -13,9 +13,9 @@
 # limitations under the License.
 
 from collections.abc import Callable, Mapping
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 
 class API:
-    def _run(self, args: List[str], **_ignored: Any) -> str:
+    def _run(self, args: list[str], **_ignored: Any) -> str:
         return "pulumi " + " ".join(args)

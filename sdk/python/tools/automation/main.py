@@ -147,6 +147,12 @@ def _generate_commands(
 
         for i, arg in enumerate(arg_list):
             arg_name = _snake_case(arg.get("name", f"arg{i}"))
+            if arg_name in _RESERVED_KWARG_NAMES:
+                raise ValueError(
+                    f"Positional argument {arg.get('name')!r} in command {command!r} "
+                    f"collides with a reserved keyword argument ({arg_name!r}); "
+                    f"rename it in the spec."
+                )
             arg_type = arg.get("type", "string")
             optional = i >= required_count
             variadic = i == len(arg_list) - 1 and is_variadic
