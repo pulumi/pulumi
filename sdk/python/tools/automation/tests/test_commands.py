@@ -111,6 +111,19 @@ class TestCommands(unittest.TestCase):
             "pulumi state move --yes --include-parents -- urn:1",
         )
 
+    def test_base_options_kwargs_accepted(self) -> None:
+        # The four BaseOptions kwargs are lifted into every generated method
+        # alongside the flag kwargs. The testing boilerplate ignores them, but
+        # the call must still succeed — this locks in the signature shape.
+        command = self.api.cancel(
+            stack="dev",
+            cwd="/tmp",
+            additional_env={"FOO": "bar"},
+            on_output=lambda _: None,
+            on_error=lambda _: None,
+        )
+        self.assertEqual(command, "pulumi cancel --yes --stack dev")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,16 +14,9 @@
 
 import os
 from collections.abc import Callable, Mapping
-from typing import Any, Optional, TypedDict
+from typing import Any, Optional
 
 from pulumi.automation._cmd import CommandResult, PulumiCommand
-
-
-class BaseOptions(TypedDict, total=False):
-    cwd: str
-    additional_env: Mapping[str, str]
-    on_output: Callable[[str], Any]
-    on_error: Callable[[str], Any]
 
 
 class API:
@@ -32,11 +25,19 @@ class API:
     def __init__(self, command: PulumiCommand) -> None:
         self._command = command
 
-    def _run(self, options: BaseOptions, args: list[str]) -> CommandResult:
+    def _run(
+        self,
+        args: list[str],
+        *,
+        cwd: Optional[str] = None,
+        additional_env: Optional[Mapping[str, str]] = None,
+        on_output: Optional[Callable[[str], Any]] = None,
+        on_error: Optional[Callable[[str], Any]] = None,
+    ) -> CommandResult:
         return self._command.run(
             args,
-            options.get("cwd") or os.getcwd(),
-            options.get("additional_env") or {},
-            options.get("on_output"),
-            options.get("on_error"),
+            cwd or os.getcwd(),
+            additional_env or {},
+            on_output,
+            on_error,
         )
