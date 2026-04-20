@@ -1,0 +1,11 @@
+changes:
+- type: feat
+  scope: cli
+  description: |
+    Implement the `filesystem__grep` and `filesystem__content_replace` local tools
+    for `pulumi neo`. `grep` runs a regex search across files in the project root
+    with an optional `include` glob filter and returns results in `path:lineno: line`
+    form. `content_replace` performs a literal multi-file search-and-replace with a
+    `file_pattern` glob and `dry_run` preview mode. Both tools skip binary files,
+    hidden directories, and `node_modules`, and reject paths outside the project
+    root. Their input schemas match the cloud-side tool definitions.
