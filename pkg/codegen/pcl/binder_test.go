@@ -1350,3 +1350,95 @@ component myComp "./myComponent" {
 		require.Equal(t, " 42.5\n", fmt.Sprintf("%v", expr))
 	}
 }
+
+func TestMaxAcceptsMixedIntAndNumber(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "number" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxAcceptsStringArgument(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "string" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMinAcceptsMixedIntAndNumber(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "number" {}
+config "b" "int" {}
+
+output "result" {
+  value = min(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxAcceptsOutputInt(t *testing.T) {
+	t.Parallel()
+	source := `
+config "b" "int" {}
+
+resource "ri" "random:index/randomInteger:RandomInteger" {
+  min = 0
+  max = 10
+}
+
+output "result" {
+  value = max(ri.result, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxRejectsListArgument(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "list(string)" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Error(t, err)
+	require.Equal(t, hcl.Diagnostics{{
+		Severity: hcl.DiagError,
+		Summary:  "cannot assign expression of type list(string) to location of type int | output(int): ",
+		Subject: &hcl.Range{
+			Filename: "program.pp",
+			Start:    hcl.Pos{Line: 5, Column: 18, Byte: 86},
+			End:      hcl.Pos{Line: 5, Column: 19, Byte: 87},
+		},
+	}}, diags)
+	require.Nil(t, program)
+}

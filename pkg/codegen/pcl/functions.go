@@ -555,12 +555,44 @@ func pulumiBuiltins(options bindOptions) map[string]*model.Function {
 		"rootDirectory": model.NewFunction(model.StaticFunctionSignature{
 			ReturnType: model.StringType,
 		}),
+		"max": newMinMaxFunction(),
+		"min": newMinMaxFunction(),
 		// pulumiResourceType/Name takes a single argument, the resource, and returns a string. There isn't a good way
 		// to do this with a StaticFunctionSignature so we use a GenericFunctionSignature with a similar check for
 		// "resource type" as we do for `call` expressions.
 		"pulumiResourceType": newResourceFunction("pulumiResourceType"),
 		"pulumiResourceName": newResourceFunction("pulumiResourceName"),
 	}
+}
+
+// newMinMaxFunction produces the type signature for the "min" & "max" PCL functions.
+//
+// It is a function from `(int, ...int) -> int` when no argument is a [model.NumberType], and `(number, ...number) ->
+// number` otherwise.
+func newMinMaxFunction() *model.Function {
+	return model.NewFunction(model.GenericFunctionSignature(
+		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
+			var diags hcl.Diagnostics
+			var typ model.Type = model.IntType
+			for _, v := range args {
+				if model.ResolveOutputs(v.Type()) == model.NumberType {
+					typ = model.NumberType
+				}
+			}
+
+			return model.StaticFunctionSignature{
+				Parameters: []model.Parameter{{
+					Name: "first",
+					Type: typ,
+				}},
+				VarargsParameter: &model.Parameter{
+					Name: "rest",
+					Type: typ,
+				},
+				ReturnType: typ,
+			}, diags
+		},
+	))
 }
 
 func newResourceFunction(functionName string) *model.Function {
