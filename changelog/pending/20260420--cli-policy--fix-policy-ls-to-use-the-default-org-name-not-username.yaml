@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/policy
+  description: Fix `policy ls` to use the default org name, not username
