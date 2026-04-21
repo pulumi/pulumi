@@ -51,11 +51,6 @@ func toolLabelParts(toolName string, args json.RawMessage) (funcName, arg string
 			return "Edit", p
 		}
 		return "Edit", ""
-	case "multi_edit":
-		if p := extractFilePathArg(args); p != "" {
-			return "MultiEdit", p
-		}
-		return "MultiEdit", ""
 	case "content_replace":
 		if p := extractArg(args, "pattern"); p != "" {
 			return "Replace", p
