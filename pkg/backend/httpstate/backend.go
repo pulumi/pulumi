@@ -1826,14 +1826,23 @@ func (b *cloudBackend) runEngineAction(
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
-			journalManager, err := engine.NewJournalSnapshotManager(snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
-			if err != nil {
-				validationErrs = append(validationErrs, err)
-			}
 			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
+			managers := []engine.SnapshotManager{snapshotManager}
+			collectErrorsOnly := []bool{false}
+			// Skip the journal validation manager if NewSnapshotJournaler failed above: a typed-nil
+			// *SnapshotJournaler would be wrapped into a non-nil Journal interface and panic on dispatch.
+			if snapshotJournaler != nil {
+				journalManager, jmErr := engine.NewJournalSnapshotManager(
+					snapshotJournaler, u.Target.Snapshot, op.SecretsManager)
+				if jmErr != nil {
+					validationErrs = append(validationErrs, jmErr)
+				}
+				managers = append(managers, journalManager)
+				collectErrorsOnly = append(collectErrorsOnly, true)
+			}
 			combinedManager = &engine.CombinedManager{
-				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
-				CollectErrorsOnly: []bool{false, true},
+				Managers:          managers,
+				CollectErrorsOnly: collectErrorsOnly,
 			}
 		}
 	}
