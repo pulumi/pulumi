@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import importlib
+import importlib.util
 import os
 import subprocess
 import sys
 import unittest
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, Dict, List
 
 TOOLS_DIR = Path(__file__).resolve().parent.parent
 FIXTURE = Path(__file__).resolve().parent / "fixture.json"
@@ -110,6 +113,81 @@ class TestCommands(unittest.TestCase):
             command,
             "pulumi state move --yes --include-parents -- urn:1",
         )
+
+    def test_base_options_kwargs_propagate(self) -> None:
+        # The four BaseOptions kwargs are lifted into every generated method
+        # and must be forwarded verbatim to ``self._run``. Spy on ``_run`` and
+        # assert it sees exactly those four kwargs with the expected values.
+        #
+        # The assertion is on the full captured dict (not ``assertIn`` per
+        # key), so a future fifth BaseOptions kwarg added to the generator
+        # forces this test to be updated — which, in turn, catches any
+        # boilerplate that forgot to accept it.
+        on_out: Callable[[str], Any] = lambda _: None
+        on_err: Callable[[str], Any] = lambda _: None
+
+        api = self.mod.API()
+        captured: Dict[str, Any] = {}
+        original_run = api._run
+
+        def spy(args: List[str], **kwargs: Any) -> str:
+            captured.update(kwargs)
+            return original_run(args, **kwargs)
+
+        api._run = spy  # type: ignore[method-assign]
+
+        api.cancel(
+            stack="dev",
+            cwd="/tmp",
+            additional_env={"FOO": "bar"},
+            on_output=on_out,
+            on_error=on_err,
+        )
+
+        self.assertEqual(
+            captured,
+            {
+                "cwd": "/tmp",
+                "additional_env": {"FOO": "bar"},
+                "on_output": on_out,
+                "on_error": on_err,
+            },
+        )
+
+
+class TestCollisionGuards(unittest.TestCase):
+    """Unit tests for the generator's collision checks against reserved names."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        # Import main.py directly under a non-conflicting name (the generated
+        # output also uses ``main`` as its module name).
+        spec = importlib.util.spec_from_file_location(
+            "automation_generator", str(TOOLS_DIR / "main.py")
+        )
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        cls.gen = module
+
+    def test_flag_collides_with_reserved_kwarg(self) -> None:
+        structure = {
+            "type": "command",
+            "flags": {"cwd": {"name": "cwd", "type": "string"}},
+            "arguments": {"arguments": []},
+        }
+        with self.assertRaises(ValueError) as ctx:
+            self.gen._generate_commands(structure, [], breadcrumbs=["test"])
+        self.assertIn("reserved keyword argument", str(ctx.exception))
+
+    def test_positional_collides_with_reserved_kwarg(self) -> None:
+        structure = {
+            "type": "command",
+            "arguments": {"arguments": [{"name": "cwd"}]},
+        }
+        with self.assertRaises(ValueError) as ctx:
+            self.gen._generate_commands(structure, [], breadcrumbs=["test"])
+        self.assertIn("reserved keyword argument", str(ctx.exception))
 
 
 if __name__ == "__main__":

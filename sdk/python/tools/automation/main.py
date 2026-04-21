@@ -71,6 +71,32 @@ def _base_flag(flag: Mapping[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in flag.items() if k not in ("omit", "preset")}
 
 
+# Keyword arguments lifted from ``BaseOptions`` that every generated method
+# exposes alongside its flag kwargs. Kept in signature order: each tuple is
+# ``(name, annotation_expression, description)``. ``annotation_expression`` is
+# parsed with ``ast.parse`` to build the AST.
+_BASE_OPTIONS_KWARGS: List[Tuple[str, str, str]] = [
+    ("cwd", "Optional[str]", "Working directory to run the command in."),
+    (
+        "additional_env",
+        "Optional[Mapping[str, str]]",
+        "Additional environment variables to set when running the command.",
+    ),
+    (
+        "on_output",
+        "Optional[Callable[[str], Any]]",
+        "A callback to invoke when the command outputs stdout data.",
+    ),
+    (
+        "on_error",
+        "Optional[Callable[[str], Any]]",
+        "A callback to invoke when the command outputs stderr data.",
+    ),
+]
+
+_RESERVED_KWARG_NAMES = frozenset(name for name, _, _ in _BASE_OPTIONS_KWARGS)
+
+
 def _generate_commands(
     structure: Mapping[str, Any],
     methods: List[ast.stmt],
@@ -121,6 +147,12 @@ def _generate_commands(
 
         for i, arg in enumerate(arg_list):
             arg_name = _snake_case(arg.get("name", f"arg{i}"))
+            if arg_name in _RESERVED_KWARG_NAMES:
+                raise ValueError(
+                    f"Positional argument {arg.get('name')!r} in command {command!r} "
+                    f"collides with a reserved keyword argument ({arg_name!r}); "
+                    f"rename it in the spec."
+                )
             arg_type = arg.get("type", "string")
             optional = i >= required_count
             variadic = i == len(arg_list) - 1 and is_variadic
@@ -170,6 +202,11 @@ def _generate_commands(
             raise ValueError(
                 f"Flag {flag_name!r} collides with another flag in command {command!r}"
             )
+        if kwarg_name in _RESERVED_KWARG_NAMES:
+            raise ValueError(
+                f"Flag {flag_name!r} in command {command!r} collides with a reserved "
+                f"keyword argument ({kwarg_name!r}); rename or omit it in the spec."
+            )
         seen_kwarg_names.add(kwarg_name)
 
         flag_type = str(flag.get("type", "string"))
@@ -189,6 +226,15 @@ def _generate_commands(
         description = flag.get("description")
         if description:
             flag_doc_lines.append(f":param {kwarg_name}: {description}")
+
+    # Append the BaseOptions kwargs (cwd, additional_env, on_output, on_error)
+    # after the flag kwargs, matching the shape of hand-written methods on
+    # ``LocalWorkspace``. These kwargs are forwarded verbatim to ``self._run``.
+    for base_name, annotation_src, description in _BASE_OPTIONS_KWARGS:
+        annotation = ast.parse(annotation_src, mode="eval").body
+        kwonlyargs.append(ast.arg(arg=base_name, annotation=annotation))
+        kw_defaults.append(ast.Constant(value=None))
+        flag_doc_lines.append(f":param {base_name}: {description}")
 
     # Build method body.
     body: List[ast.stmt] = []
@@ -307,10 +353,8 @@ def _generate_commands(
         )
     )
 
-    # return self._run({}, __final)
-    # The empty dict is a placeholder for ``BaseOptions``: a follow-up PR will
-    # replace this with the BaseOptions kwargs (cwd, additional_env, on_output,
-    # on_error) propagated through this method's signature.
+    # return self._run(__final, cwd=cwd, additional_env=additional_env,
+    #                  on_output=on_output, on_error=on_error)
     body.append(
         ast.Return(
             value=ast.Call(
@@ -319,11 +363,14 @@ def _generate_commands(
                     attr="_run",
                     ctx=ast.Load(),
                 ),
-                args=[
-                    ast.Dict(keys=[], values=[]),
-                    ast.Name(id="__final", ctx=ast.Load()),
+                args=[ast.Name(id="__final", ctx=ast.Load())],
+                keywords=[
+                    ast.keyword(
+                        arg=base_name,
+                        value=ast.Name(id=base_name, ctx=ast.Load()),
+                    )
+                    for base_name, _, _ in _BASE_OPTIONS_KWARGS
                 ],
-                keywords=[],
             )
         )
     )
@@ -789,15 +836,6 @@ def main(argv: list[str]) -> int:
         boilerplate_code = boilerplate_path.read_text(encoding="utf-8")
         boilerplate_tree = ast.parse(boilerplate_code)
         module_body.extend(boilerplate_tree.body)
-
-    # Validate that the boilerplate defines a BaseOptions class.
-    has_base_options = any(
-        isinstance(node, ast.ClassDef) and node.name == "BaseOptions"
-        for node in module_body
-    )
-    if not has_base_options:
-        print("Boilerplate must define a `BaseOptions` class.", file=sys.stderr)
-        return 1
 
     # Validate that the boilerplate defines an API class.
     api_class: Optional[ast.ClassDef] = None

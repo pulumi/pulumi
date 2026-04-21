@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Optional, TypedDict
-
-
-class BaseOptions(TypedDict, total=False):
-    pass
+from collections.abc import Callable, Mapping
+from typing import Any, Optional
 
 
 class API:
-    def _run(self, options: BaseOptions, args: List[str]) -> str:
+    def _run(self, args: list[str], **_ignored: Any) -> str:
         return "pulumi " + " ".join(args)
