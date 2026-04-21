@@ -190,6 +190,9 @@ func logFileName() string {
 	username := "unknownuser"
 	if u, err := user.Current(); err == nil {
 		username = u.Username
+		// On Windows, Username is often DOMAIN\user. Replace path separators
+		// so the log filename doesn't accidentally create subdirectories.
+		username = strings.ReplaceAll(username, string(filepath.Separator), "_")
 	}
 	now := time.Now()
 	name := fmt.Sprintf("%s.%s.%s.log.INFO.%04d%02d%02d-%02d%02d%02d.%d",
