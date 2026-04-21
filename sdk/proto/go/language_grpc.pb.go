@@ -77,12 +77,13 @@ type LanguageRuntimeClient interface {
 	// :::
 	GetRequiredPlugins(ctx context.Context, in *GetRequiredPluginsRequest, opts ...grpc.CallOption) (*GetRequiredPluginsResponse, error)
 	// `GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-	// by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-	// to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-	// back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-	// determine which plugins are required to service the import of a given resource, since given the presence of
-	// [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-	// with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+	// by a program or plugin. It is used to pre-install packages before running a program with
+	// [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+	// registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+	// resources into a stack, it is used to determine which plugins are required to service the import of a given
+	// resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+	// true that a package name corresponds 1:1 with a plugin name. It replaces
+	// [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
 	// providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
 	// provide multiple packages.
 	GetRequiredPackages(ctx context.Context, in *GetRequiredPackagesRequest, opts ...grpc.CallOption) (*GetRequiredPackagesResponse, error)
@@ -367,12 +368,13 @@ type LanguageRuntimeServer interface {
 	// :::
 	GetRequiredPlugins(context.Context, *GetRequiredPluginsRequest) (*GetRequiredPluginsResponse, error)
 	// `GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-	// by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-	// to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-	// back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-	// determine which plugins are required to service the import of a given resource, since given the presence of
-	// [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-	// with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+	// by a program or plugin. It is used to pre-install packages before running a program with
+	// [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+	// registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+	// resources into a stack, it is used to determine which plugins are required to service the import of a given
+	// resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+	// true that a package name corresponds 1:1 with a plugin name. It replaces
+	// [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
 	// providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
 	// provide multiple packages.
 	GetRequiredPackages(context.Context, *GetRequiredPackagesRequest) (*GetRequiredPackagesResponse, error)

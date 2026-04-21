@@ -2481,11 +2481,7 @@ func TestPythonComponentProviderInComponentProvider(t *testing.T) {
 		Dir:             filepath.Join("component_provider", "python", "component-in-component"),
 		RelativeWorkDir: "program",
 		PrepareProject: func(info *engine.Projinfo) error {
-			// Install the dependencies for the two providers: `provider-nested`
-			// which is used within `provider`, which in turn is used by the
-			// program.
 			providerNestedPath := filepath.Join(info.Root, "..", "provider-nested")
-			installPythonProviderDependencies(t, providerNestedPath)
 
 			// For `provider` we need to generate `provider-nested`'s SDK and
 			// link it into the plugin.

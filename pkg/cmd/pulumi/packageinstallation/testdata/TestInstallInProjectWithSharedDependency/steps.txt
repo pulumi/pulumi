@@ -29,3 +29,4 @@ DownloadPlugin.MarkInstallationDone{PluginDescriptor{Name:"plugin-a", Kind:"reso
 RunPackage{ctx, "/project", "$HOME/.pulumi/plugins/resource-plugin-a", "plugin-a", nil} -> {invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-a"}, nil}
 GenerateLocalSDK{ctx, ProjectRuntimeInfo{name:"go"}, "/project", invariantProvider{path:"$HOME/.pulumi/plugins/resource-plugin-a"}} -> {LinkablePackageDescriptor{Path:"$HOME/.pulumi/plugins/resource-plugin-a"}, nil}
 LinkIntoProject{ctx, ProjectRuntimeInfo{name:"go"}, "/project", [2]{LinkablePackageDescriptor{Path:"$HOME/.pulumi/plugins/resource-plugin-a"}, LinkablePackageDescriptor{Path:"$HOME/.pulumi/plugins/resource-plugin-b"}}} -> {nil}
+GetRequiredPackages{ctx, "$HOME/.pulumi/plugins/resource-plugin-a", PluginProject{Runtime:ProjectRuntimeInfo{name:"go"}, Packages:map[1]{"plugin-b":PackageSpec{Source:"plugin-b", PluginDownloadURL:"https://example.com/plugin-b.tar.gz"}}}} -> {nil, nil}
