@@ -38,6 +38,7 @@ func NewFilterCmd() *cobra.Command {
 			"\n" +
 			"With --changes-only, events are filtered down to only resource changes, and\n" +
 			"each event's state metadata is restricted to the properties that changed.\n",
+		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !changesOnly {
 				_, err := io.Copy(cmd.OutOrStdout(), cmd.InOrStdin())
