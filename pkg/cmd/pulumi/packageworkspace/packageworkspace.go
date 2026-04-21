@@ -122,10 +122,7 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 	}, w.stdout, w.stderr)
 }
 
-// Install an already downloaded plugin at a specific path.
-//
-// InstallPlugin should assume that all dependencies of the plugin are already
-// installed.
+// Get a list of packages required by the source based plugin at dirPath.
 func (w Workspace) GetRequiredPackages(
 	ctx context.Context, dirPath string, project *workspace.PluginProject,
 ) ([]workspace.PackageDescriptor, error) {
