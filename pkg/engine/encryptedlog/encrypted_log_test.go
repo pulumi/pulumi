@@ -405,9 +405,9 @@ func TestV1GoldenData(t *testing.T) {
 	// the plaintext "Hello, PLOG v1!\n". If the format ever changes, this test
 	// will catch it.
 	golden, err := base64.StdEncoding.DecodeString(
-		"UExPRwEAPFNrcG9TRGRNY0RJclpDOUVTR1E1WmpGVU0wdDBjMnBFVUROV2JTOVNiVGx2WVdwT1dt" +
-			"RnVNbUZqY3owPQAAAEQAAAAAAAAAAAAAAAHQ5ZUrfOfE0r/+aPKp7NRX2gpCrBGIJgj3Pl2Ztxn3" +
-			"tLKmracwfcAaqfmwsL4mbrKen2vYLziniQ==")
+		"UExPRwEALEVuUFF2TW9oQnBGaml2RTlCUVVBQjdJS2V5aTJtb3FIMUFicytHcUJrUzQ9" +
+			"AAAARAAAAAAAAAAAAAAAAQ9Y92bKmK4Mp6thx3VtOQbvn9h3fHYSaV2eSh0ur4CwxiTa" +
+			"jiDxfppi7qb+7j0uo0Zt9emP3Zd6")
 	require.NoError(t, err)
 
 	ctx := t.Context()
