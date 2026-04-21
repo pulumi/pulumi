@@ -15,26 +15,27 @@
 package events
 
 import (
-	"io"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// NewEventsCmd is the parent of the `pulumi events` subcommand tree. It does not perform any
+// work on its own — running `pulumi events` without a subcommand prints the command's help text.
+// Behaviour lives on the subcommands (currently `filter`).
+//
+// Hidden from `--help` while the interface is being developed.
 func NewEventsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "events",
 		Short: "Operate on engine event streams",
 		Long: "Operate on engine event streams.\n" +
 			"\n" +
-			"Reads an engine event stream from stdin and writes it to stdout.\n",
+			"Subcommands ingest an engine event stream (typically piped from `pulumi up --json`\n" +
+			"or similar) and produce a transformed stream on stdout.\n",
 		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			_, err := io.Copy(cmd.OutOrStdout(), cmd.InOrStdin())
-			return err
-		},
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+	cmd.AddCommand(NewFilterCmd())
 	return cmd
 }
