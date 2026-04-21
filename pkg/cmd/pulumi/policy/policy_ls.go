@@ -33,7 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPolicyLsCmd() *cobra.Command {
+func newPolicyLsCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var jsonOut bool
 
 	cmd := &cobra.Command{
@@ -44,7 +44,6 @@ func newPolicyLsCmd() *cobra.Command {
 			ctx := cmd.Context()
 
 			// Try to read the current project
-			ws := pkgWorkspace.Instance
 			project, _, err := ws.ReadProject()
 			if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 				return err
@@ -52,7 +51,7 @@ func newPolicyLsCmd() *cobra.Command {
 
 			// Get backend.
 			b, err := cmdBackend.CurrentBackend(
-				ctx, ws, cmdBackend.DefaultLoginManager, project,
+				ctx, ws, lm, project,
 				display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err
@@ -63,7 +62,7 @@ func newPolicyLsCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				orgName = cliArgs[0]
 			} else {
-				orgName, _, _, err = b.CurrentUser()
+				orgName, err = backend.GetDefaultOrg(ctx, b, project)
 				if err != nil {
 					return err
 				}
