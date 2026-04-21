@@ -18,7 +18,7 @@ package logging
 // necessary.  This is primarily used so we can make a best effort approach to filtering out secrets
 // from any logs we emit before they get written to log-files/stderr.
 //
-// Code in pulumi should use this package instead of directly importing slog itself.  If any slog
+// Code in pulumi may use this package instead of directly importing slog itself.  If any slog
 // methods are needed that are not exported from this, they can be added, with the caveat that they
 // should be updated to properly filter as well before forwarding things along.
 
@@ -81,9 +81,9 @@ const LevelTrace = slog.LevelDebug - 4
 
 // VerboseLogger logs messages only if verbosity matches the level it was built with.
 // The value is 0 when disabled, or the verbosity level when enabled.
-type VerboseLogger int32
+type VerboseLogger struct{ level int32 }
 
-func (v VerboseLogger) Enabled() bool { return Verbose >= int(v) && v > 0 }
+func (v VerboseLogger) Enabled() bool { return Verbose >= int(v.level) && v.level > 0 }
 
 // slogLevel maps the pulumi verbosity level to a slog level:
 //
@@ -92,9 +92,9 @@ func (v VerboseLogger) Enabled() bool { return Verbose >= int(v) && v > 0 }
 //	V(11)+     → Trace
 func (v VerboseLogger) slogLevel() slog.Level {
 	switch {
-	case v >= 11:
+	case v.level >= 11:
 		return LevelTrace
-	case v >= 10:
+	case v.level >= 10:
 		return slog.LevelDebug
 	default:
 		return slog.LevelInfo
@@ -103,26 +103,24 @@ func (v VerboseLogger) slogLevel() slog.Level {
 
 func (v VerboseLogger) Info(args ...any) {
 	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v))
+		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v.level))
 	}
 }
 
 // Infoln is equivalent to the global Infoln function, guarded by the value of v.
 func (v VerboseLogger) Infoln(args ...any) {
-	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v))
-	}
+	v.Info(args...)
 }
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
 func (v VerboseLogger) Infof(format string, args ...any) {
 	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprintf(format, args...), "v", int(v))
+		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprintf(format, args...), "v", int(v.level))
 	}
 }
 
 func V(level int32) VerboseLogger {
-	return VerboseLogger(level)
+	return VerboseLogger{level: level}
 }
 
 func Errorf(format string, args ...any) {
@@ -147,7 +145,9 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	// win, matching the original glog-era behavior where InitLogging(false,0,false)
 	// preserved whatever the flags said.
 	if !flag.Parsed() {
-		flag.CommandLine.Parse([]string{}) //nolint:errcheck
+		if err := flag.CommandLine.Parse([]string{}); err != nil {
+			panic(fmt.Sprintf("failed to parse flags: %v", err))
+		}
 	}
 	if logToStderr {
 		LogToStderr = true
