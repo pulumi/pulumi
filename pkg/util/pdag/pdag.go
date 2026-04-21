@@ -23,6 +23,7 @@ import (
 	"iter"
 	"runtime/debug"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"golang.org/x/sync/errgroup"
@@ -297,13 +298,26 @@ func (g *DAG[T]) Walk(ctx context.Context, process func(context.Context, T) erro
 		value any
 		stack []byte
 	}
+
+	// We can't use the wg to prevent walks from racing against errors since the `done` returned from `g.Drain` runs
+	// before `wg.Go` registers that an error was returned. Instead we manually track errors and then block until
+	// `wg` registers the error before discarding the run.
+	//
+	// We block to prevent multiple threads from being spawned and then discarded.
+	var failed atomic.Bool
+
 	for node, done := range g.Drain(ctx) {
 		if err := ctx.Err(); err != nil {
 			cancelError = err
 			break
 		}
 		wg.Go(func() (err error) {
-			defer done()
+			defer func() {
+				if err != nil {
+					failed.Store(true)
+				}
+				done()
+			}()
 			defer func() {
 				p := recover()
 				if p == nil {
@@ -317,6 +331,10 @@ func (g *DAG[T]) Walk(ctx context.Context, process func(context.Context, T) erro
 				panicMu.Unlock()
 				err = errors.Join(err, errProcessPanicked)
 			}()
+			if failed.Load() {
+				<-ctx.Done()
+				return nil
+			}
 			return process(ctx, node)
 		})
 	}
