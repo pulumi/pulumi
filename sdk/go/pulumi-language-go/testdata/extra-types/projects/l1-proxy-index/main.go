@@ -32,7 +32,7 @@ func main() {
 		ctx.Export("c", c.ApplyT(func(c map[string]interface{}) (*string, error) {
 			val := c["property"].(string)
 			return &val, nil
-		}).(pulumi.StringPtrOutput))
+		}).(pulumi.StringOutput))
 		ctx.Export("o", o.ApplyT(func(o map[string]interface{}) (string, error) {
 			return o["property"].(string), nil
 		}).(pulumi.StringOutput))

@@ -11,7 +11,7 @@ func main() {
 		_, err := awsstaticwebsite.NewWebsite(ctx, "websiteResource", &awsstaticwebsite.WebsiteArgs{
 			SitePath:  pulumi.String("string"),
 			IndexHTML: pulumi.String("string"),
-			CacheTTL:  pulumi.Float64(0),
+			CacheTTL:  pulumi.Float64(float64(0)),
 			CdnArgs: &awsstaticwebsite.CDNArgsArgs{
 				CloudfrontFunctionAssociations: cloudfront.DistributionOrderedCacheBehaviorFunctionAssociationArray{
 					&cloudfront.DistributionOrderedCacheBehaviorFunctionAssociationArgs{

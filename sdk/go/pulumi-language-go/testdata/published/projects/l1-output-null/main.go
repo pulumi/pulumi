@@ -7,7 +7,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		ctx.Export("array", pulumi.Array{
-			nil,
+			pulumi.Any(nil),
 		})
 		return nil
 	})

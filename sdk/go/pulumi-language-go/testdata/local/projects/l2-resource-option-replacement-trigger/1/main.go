@@ -15,7 +15,7 @@ func main() {
 			return err
 		}
 		unknown, err := output.NewResource(ctx, "unknown", &output.ResourceArgs{
-			Value: pulumi.Float64(2),
+			Value: pulumi.Float64(float64(2)),
 		})
 		if err != nil {
 			return err

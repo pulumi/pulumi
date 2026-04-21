@@ -35,7 +35,7 @@ func main() {
 								Image: pulumi.String("nginx"),
 								ReadinessProbe: &corev1.ProbeArgs{
 									HttpGet: &corev1.HTTPGetActionArgs{
-										Port: pulumi.Any(8080),
+										Port: pulumi.Int(8080),
 									},
 								},
 							},

@@ -17,7 +17,7 @@ func main() {
 			key0 := index
 			val0 := index
 			__res, err := nestedobject.NewTarget(ctx, fmt.Sprintf("item-%v", key0), &nestedobject.TargetArgs{
-				Name: pulumi.Sprintf("%v-%v", prefix, val0),
+				Name: pulumi.String(fmt.Sprintf("%v-%v", prefix, val0)),
 			})
 			if err != nil {
 				return err

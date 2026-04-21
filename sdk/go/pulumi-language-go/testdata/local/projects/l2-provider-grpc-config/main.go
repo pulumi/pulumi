@@ -14,7 +14,7 @@ func main() {
 			String3:     pulumi.String("{}"),
 			Int1:        pulumi.Int(0),
 			Int2:        pulumi.Int(42),
-			Num1:        pulumi.Float64(0),
+			Num1:        pulumi.Float64(float64(0)),
 			Num2:        pulumi.Float64(42.42),
 			Bool1:       pulumi.Bool(true),
 			Bool2:       pulumi.Bool(false),
