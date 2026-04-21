@@ -134,6 +134,12 @@ type Model struct {
 	// pending approval (empty when none). The Enter handler checks for
 	// approvalTypePlanExit so it can auto-clear planMode on approval.
 	pendingApprovalType string
+	// cancelling is true from the moment the user presses ESC (the TUI posts an
+	// AgentUserEventCancel upstream) until the next final event arrives. While
+	// it is true the busy label is overridden to "Cancelling..." so the user
+	// can see their request is being acted on even if the agent is still
+	// mid-tool.
+	cancelling bool
 }
 
 var (
@@ -271,6 +277,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// ESC asks the agent to abort the current turn. Posts user_cancel
+		// upstream and flips the local cancelling flag so the spinner label
+		// switches to "Cancelling..." until the backend acknowledges via
+		// cancelled / error / a new final assistant_message. Ignored when the
+		// TUI isn't busy or is already waiting on an approval (where the
+		// agent is paused for us anyway).
+		if msg.Type == tea.KeyEsc {
+			if m.busy && !m.pendingApproval && !m.cancelling {
+				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
+				m.cancelling = true
+				cmd := m.showBusy("Cancelling...", shimmerVerb)
+				m.rebuildContent()
+				return m, cmd
+			}
+			return m, nil
+		}
+
 		// Handled before the busy check because the agent is intentionally
 		// paused here waiting for the user.
 		if m.pendingApproval {
@@ -282,20 +305,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					denialMsg = text
 				}
 				wasPlanApproval := m.pendingApprovalType == approvalTypePlanExit
-				if m.outCh != nil {
-					select {
-					case m.outCh <- outboundEvent{
-						event: apitype.AgentUserEventUserConfirmation{
-							Type:       userEventUserConfirmation,
-							ApprovalID: m.pendingApprovalID,
-							Approved:   approved,
-							Message:    denialMsg,
-						},
-						planMode: m.planMode,
-					}:
-					default:
-					}
-				}
+				m.sendOut(outboundEvent{
+					event: apitype.AgentUserEventUserConfirmation{
+						Type:       userEventUserConfirmation,
+						ApprovalID: m.pendingApprovalID,
+						Approved:   approved,
+						Message:    denialMsg,
+					},
+					planMode: m.planMode,
+				})
 				m.pendingApproval = false
 				m.pendingApprovalID = ""
 				m.pendingApprovalType = ""
@@ -337,28 +355,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			text := strings.TrimSpace(m.textInput.Value())
 			if text != "" {
 				m.textInput.Reset()
-				if m.outCh != nil {
-					select {
-					case m.outCh <- outboundEvent{
-						event: apitype.AgentUserEventUserMessage{
-							Type:    userEventUserMessage,
-							Content: text,
-						},
-						planMode: m.planMode,
-					}:
-						// Render optimistically so the user sees their message in
-						// the transcript before the server echoes it back. The
-						// echo is reconciled against pendingUserEchoes in the
-						// UIUserMessage handler to avoid duplicates.
-						m.appendUserMessageBlock(text)
-						m.pendingUserEchoes = append(m.pendingUserEchoes, text)
-						// Freeze the plan-mode affordance: planMode has now been
-						// committed to the dispatcher and any later Shift+Tab
-						// would be a no-op on the server.
-						m.messageSent = true
-						return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
-					default:
-					}
+				sent := m.sendOut(outboundEvent{
+					event: apitype.AgentUserEventUserMessage{
+						Type:    userEventUserMessage,
+						Content: text,
+					},
+					planMode: m.planMode,
+				})
+				if sent {
+					// Render optimistically so the user sees their message in
+					// the transcript before the server echoes it back. The
+					// echo is reconciled against pendingUserEchoes in the
+					// UIUserMessage handler to avoid duplicates.
+					m.appendUserMessageBlock(text)
+					m.pendingUserEchoes = append(m.pendingUserEchoes, text)
+					// Freeze the plan-mode affordance: planMode has now been
+					// committed to the dispatcher and any later Shift+Tab
+					// would be a no-op on the server.
+					m.messageSent = true
+					return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 				}
 			}
 			return m, nil
@@ -393,30 +408,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
-		m.removeBlockKind(blockBusy)
-		if msg.IsFinal {
+		// A truly-final message closes out any in-flight streaming block. The
+		// final-marker append is guarded because IsFinal=true can arrive with
+		// empty content (e.g. a hand-off that became final once the server
+		// reconciled pending tool calls) and we don't want a phantom marker.
+		if msg.IsFinal && !msg.HasPendingCLIWork {
 			m.removeBlockKind(blockAssistantStreaming)
-			m.appendRenderedBlock(block{kind: blockAssistantFinal, raw: msg.Content})
-		} else if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
-			m.blocks[idx].raw = msg.Content
-			m.renderBlock(&m.blocks[idx])
-		} else {
-			m.appendRenderedBlock(block{kind: blockAssistantStreaming, raw: msg.Content})
+			if msg.Content != "" {
+				m.appendRenderedBlock(block{kind: blockAssistantFinal, raw: msg.Content})
+			}
+		} else if msg.Content != "" {
+			if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
+				m.blocks[idx].raw = msg.Content
+				m.renderBlock(&m.blocks[idx])
+			} else {
+				m.appendRenderedBlock(block{kind: blockAssistantStreaming, raw: msg.Content})
+			}
 		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolStarted:
-		if cmd := m.showBusy(toolLabel(msg.Name, msg.Args)+" ...", shimmerWave); cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolProgress:
-		if cmd := m.showBusy(toolLabel(msg.Name, nil)+": "+truncate(msg.Message, 60), shimmerWave); cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -431,35 +450,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		// Keep the busy block alive across the inter-tool gap so the spinner
 		// stays visible while the agent decides its next move.
-		if cmd := m.showBusy(pickThinkingVerb()+"...", shimmerVerb); cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIError:
-		m.endBusy()
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.appendRenderedBlock(block{kind: blockError, raw: msg.Message})
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIWarning:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.appendWarningBlock(msg.Message)
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UICancelled:
-		m.endBusy()
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.appendRenderedBlock(block{kind: blockCancelled, raw: "Session cancelled."})
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UITaskIdle:
-		m.endBusy()
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UISessionURL:
+		// Informational metadata for the welcome box — has no opinion on busy state.
 		m.welcome.consoleURL = msg.URL
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
@@ -473,12 +492,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pendingUserEchoes = m.pendingUserEchoes[1:]
 		} else {
 			m.appendUserMessageBlock(msg.Content)
-			m.rebuildContent()
 		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIAwaitingApprovals:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIContextCompression:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIApprovalRequest:
-		m.endBusy()
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.pendingApproval = true
 		m.pendingApprovalID = msg.ApprovalID
 		m.pendingApprovalType = msg.ApprovalType
@@ -552,6 +582,66 @@ func (m *Model) rebuildContent() {
 	}
 }
 
+// applyBusyForEvent is the single point that decides whether the busy
+// indicator should be visible after a UIEvent arrives, mirroring the web
+// console's "is the last event in the stream final?" rule. Final events hide
+// the spinner and re-enable input; non-final events keep it on, with a label
+// chosen by labelForUIEvent (or "Cancelling..." overriding everything while
+// the user's cancel request is in flight).
+func (m *Model) applyBusyForEvent(ev UIEvent) tea.Cmd {
+	if isFinalUIEvent(ev) {
+		m.cancelling = false
+		m.endBusy()
+		return nil
+	}
+	if m.cancelling {
+		return m.showBusy("Cancelling...", shimmerVerb)
+	}
+	label, shim, set := m.labelForUIEvent(ev)
+	if !set {
+		// Non-opinionated event (warning, foreign user message, session URL,
+		// non-final tick): leave the busy state exactly as it is.
+		return nil
+	}
+	return m.showBusy(label, shim)
+}
+
+// isFinalUIEvent reports whether ev closes the agent's turn. See
+// applyBusyForEvent for the full rule and the CLI-work exception.
+func isFinalUIEvent(ev UIEvent) bool {
+	switch e := ev.(type) {
+	case UIAssistantMessage:
+		return e.IsFinal && !e.HasPendingCLIWork
+	case UIApprovalRequest, UICancelled, UIError, UITaskIdle:
+		return true
+	default:
+		return false
+	}
+}
+
+// labelForUIEvent picks the busy-indicator label for a non-final UIEvent. The
+// third return value is false when the event has no opinion on the label — in
+// that case the caller leaves the current label alone.
+func (m *Model) labelForUIEvent(ev UIEvent) (string, shimmerKind, bool) {
+	switch e := ev.(type) {
+	case UIToolStarted:
+		return toolLabel(e.Name, e.Args) + " ...", shimmerWave, true
+	case UIToolProgress:
+		return toolLabel(e.Name, nil) + ": " + truncate(e.Message, 60), shimmerWave, true
+	case UIToolCompleted:
+		return pickThinkingVerb() + "...", shimmerVerb, true
+	case UIAssistantMessage:
+		// Only reached when non-final (streaming) or when IsFinal=true with
+		// pending CLI work — i.e. the agent is still working.
+		return pickThinkingVerb() + "...", shimmerVerb, true
+	case UIAwaitingApprovals:
+		return "Awaiting approvals...", shimmerVerb, true
+	case UIContextCompression:
+		return "Compressing context...", shimmerVerb, true
+	}
+	return "", 0, false
+}
+
 // showBusy ensures the busy indicator is the last block, with the given
 // label and shimmer style, and the spinner is ticking. Always remove-then-
 // append so blockBusy is guaranteed to be at the bottom regardless of prior
@@ -583,6 +673,18 @@ func (m *Model) appendBlock(b block) {
 		return
 	}
 	m.blocks = append(m.blocks, b)
+}
+
+// sendOut is a non-blocking send on the outbound channel. Returns true on
+// success. Safe when m.outCh is nil: select with default falls through,
+// since sending on a nil channel blocks forever.
+func (m *Model) sendOut(e outboundEvent) bool {
+	select {
+	case m.outCh <- e:
+		return true
+	default:
+		return false
+	}
 }
 
 // endBusy clears the busy flag (the spinner drops its next tick) and
