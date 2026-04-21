@@ -237,13 +237,6 @@ func MapProvidersAsResources(p *Program) {
 	}
 }
 
-func FixupPulumiPackageTokens(r *Resource) {
-	pkg, mod, name, _ := DecomposeToken(r.GetToken())
-	if pkg == "pulumi" && mod == "pulumi" {
-		r.token = "pulumi::" + name
-	}
-}
-
 // SortedFunctionParameters returns a list of properties of the input type from the schema
 // for an invoke function call which has multi argument inputs. We assume here
 // that the expression is an invoke which has it's args (2nd parameter) annotated

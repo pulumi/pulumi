@@ -885,7 +885,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*pcl.Resource); isResource {
-			pcl.FixupPulumiPackageTokens(r)
 			token, tokenRange := r.GetToken()
 			pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
 			if pkg == "pulumi" {
