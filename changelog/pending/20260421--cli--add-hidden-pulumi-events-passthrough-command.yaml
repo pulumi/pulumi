@@ -1,7 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: |
-    Add an experimental `pulumi events` command that reads an engine event stream
-    from stdin and writes it to stdout. This is the first iteration; the command
-    is hidden from `--help` while the interface is being developed.
