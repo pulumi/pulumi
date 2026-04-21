@@ -261,20 +261,19 @@ func TestDAG_Walk_ErrorPropogation(t *testing.T) {
 	require.NoError(t, dag.NewEdge(h1, h2))
 
 	var completed atomic.Int32
-	expectedErr := errors.New("processing error")
 
 	err := dag.Walk(t.Context(), func(ctx context.Context, v int) error {
 		completed.Add(1)
 		if v == 1 {
 			// Error on the middle node after the first node has completed
-			return expectedErr
+			return assert.AnError
 		}
 		return nil
 	})
 
-	assert.ErrorIs(t, err, expectedErr)
+	assert.ErrorIs(t, err, assert.AnError)
 	// Node 0 should have completed, node 1 errored (but was added), node 2 should not run
-	assert.Equal(t, int(completed.Load()), 2)
+	assert.Equal(t, 2, int(completed.Load()))
 }
 
 // TestDAG_Walk_MaxProcs checks that we saturate up to the maximum allows procs, but no
