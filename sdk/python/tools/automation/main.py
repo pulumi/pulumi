@@ -28,13 +28,6 @@ def _sanitise_keyword(value: str) -> str:
     return value
 
 
-def _pascal_case(value: str) -> str:
-    """
-    Convert a string into PascalCase.
-    """
-    return _sanitise_keyword(stringcase.pascalcase(_prepare_string(value)))
-
-
 def _snake_case(value: str) -> str:
     """
     Convert a string into snake_case.
@@ -65,12 +58,6 @@ def _create_command_name(breadcrumbs: List[str]) -> str:
     return "pulumi " + " ".join(breadcrumbs)
 
 
-def _create_options_type_name(breadcrumbs: List[str]) -> str:
-    """Convert a list of subcommand breadcrumbs into the options type name."""
-    command = "pulumi " + " ".join(breadcrumbs)
-    return _pascal_case(command) + "Options"
-
-
 def _create_method_name(breadcrumbs: List[str]) -> str:
     """Convert a list of subcommand breadcrumbs into a snake_case method name."""
     return _snake_case("_".join(breadcrumbs))
@@ -82,107 +69,6 @@ def _base_flag(flag: Mapping[str, Any]) -> Dict[str, Any]:
     leak from parent to child via inheritance.
     """
     return {k: v for k, v in flag.items() if k not in ("omit", "preset")}
-
-
-def _generate_options_types(
-    structure: Mapping[str, Any],
-    source: List[ast.stmt],
-    breadcrumbs: List[str] = [],
-    inherited: Dict[str, Mapping[str, Any]] = {},
-) -> None:
-    """
-    Collect all the flags for the current subcommand, including all the parent flags.
-    Only emit options types for structures that will also have a corresponding
-    command method (commands and executable menus), skipping non-executable menus
-    like the root node.
-    """
-    command = _create_command_name(breadcrumbs)
-    class_name = _create_options_type_name(breadcrumbs)
-
-    all_flags: Dict[str, Mapping[str, Any]] = {
-        **inherited,
-        **(structure.get("flags") or {}),
-    }
-
-    # Only emit options types for nodes that produce command methods.
-    should_emit = structure.get("type") == "command" or (
-        structure.get("type") == "menu" and structure.get("executable")
-    )
-
-    if should_emit:
-        # Visible flags (not omitted).
-        visible_flags = {k: v for k, v in all_flags.items() if not v.get("omit")}
-
-        flag_items: List[Tuple[str, str, str]] = []
-        for flag in visible_flags.values():
-            name = str(flag.get("name", ""))
-            if not name:
-                continue
-
-            identifier = _snake_case(name)
-            if not identifier:
-                continue
-
-            flag_type = str(flag.get("type", "string"))
-            repeatable = bool(flag.get("repeatable", False))
-            annotation = _convert_type(flag_type, repeatable)
-            description = flag.get("description")
-
-            flag_items.append((identifier, annotation, description))
-
-        class_body: List[ast.stmt] = []
-
-        doc_lines = [f"Options for the `{command}` command."]
-        description_lines = [
-            f"{identifier}: {description}"
-            for identifier, _, description in flag_items
-            if description
-        ]
-        if description_lines:
-            doc_lines.append("")
-            doc_lines.extend(description_lines)
-
-        class_body.append(
-            ast.Expr(value=ast.Constant(value="\n".join(doc_lines))),
-        )
-
-        if not flag_items:
-            class_body.append(ast.Pass())
-        else:
-            for identifier, annotation, _ in flag_items:
-                annotation_expr = ast.parse(annotation, mode="eval").body
-                class_body.append(
-                    ast.AnnAssign(
-                        target=ast.Name(id=identifier, ctx=ast.Store()),
-                        annotation=annotation_expr,
-                        value=None,
-                        simple=1,
-                    )
-                )
-
-        source.append(
-            ast.ClassDef(
-                name=class_name,
-                bases=[ast.Name(id="BaseOptions", ctx=ast.Load())],
-                keywords=[
-                    ast.keyword(arg="total", value=ast.Constant(value=False)),
-                ],
-                body=class_body,
-                decorator_list=[],
-            )
-        )
-
-    # Recurse into child commands if this node is a menu.
-    if structure.get("type") == "menu":
-        commands = structure.get("commands") or {}
-        child_inherited = {k: _base_flag(v) for k, v in all_flags.items()}
-        for name, child in commands.items():
-            _generate_options_types(
-                child,
-                source,
-                breadcrumbs=[*breadcrumbs, str(name)],
-                inherited=child_inherited,
-            )
 
 
 def _generate_commands(
@@ -216,18 +102,17 @@ def _generate_commands(
         return
 
     method_name = _create_method_name(breadcrumbs)
-    options_type = _create_options_type_name(breadcrumbs)
+    command = _create_command_name(breadcrumbs)
 
-    # Build parameter list: self, options, then positional arguments.
-    params: List[ast.arg] = [
-        ast.arg(arg="self"),
-        ast.arg(arg="options", annotation=ast.Name(id=options_type, ctx=ast.Load())),
-    ]
+    # Build positional parameters: self, then positionals (required first, then
+    # optional with a ``None`` default), with any trailing variadic positional
+    # captured separately as ``*name``.
+    params: List[ast.arg] = [ast.arg(arg="self")]
     defaults: List[ast.expr] = []
-
     arg_specs: List[Tuple[str, bool, bool]] = []  # (name, optional, variadic)
     arguments_spec = structure.get("arguments") if structure.get("type") == "command" else None
     vararg: Optional[ast.arg] = None
+    positional_names: set = set()
 
     if arguments_spec:
         arg_list = arguments_spec.get("arguments", [])
@@ -240,25 +125,80 @@ def _generate_commands(
             optional = i >= required_count
             variadic = i == len(arg_list) - 1 and is_variadic
 
+            base_annotation = ast.Name(id=_convert_type(arg_type, False), ctx=ast.Load())
             if variadic:
-                vararg = ast.arg(
-                    arg=arg_name,
-                    annotation=ast.Name(id=_convert_type(arg_type, False), ctx=ast.Load()),
-                )
+                vararg = ast.arg(arg=arg_name, annotation=base_annotation)
             else:
-                params.append(
-                    ast.arg(
-                        arg=arg_name,
-                        annotation=ast.Name(id=_convert_type(arg_type, False), ctx=ast.Load()),
+                # Optional positional arguments default to ``None`` at runtime, so
+                # annotate them as ``Optional[...]`` to keep the generated code
+                # compatible with strict type checkers (PEP 484).
+                annotation: ast.expr
+                if optional:
+                    annotation = ast.Subscript(
+                        value=ast.Name(id="Optional", ctx=ast.Load()),
+                        slice=base_annotation,
+                        ctx=ast.Load(),
                     )
-                )
+                else:
+                    annotation = base_annotation
+                params.append(ast.arg(arg=arg_name, annotation=annotation))
                 if optional:
                     defaults.append(ast.Constant(value=None))
 
             arg_specs.append((arg_name, optional, variadic))
+            positional_names.add(arg_name)
+
+    # Build keyword-only parameters from the visible flags.
+    visible_flags = [f for f in all_flags.values() if not f.get("omit")]
+    kwonlyargs: List[ast.arg] = []
+    kw_defaults: List[Optional[ast.expr]] = []
+    flag_doc_lines: List[str] = []
+    seen_kwarg_names: set = set()
+
+    for flag in visible_flags:
+        flag_name = str(flag.get("name", ""))
+        if not flag_name:
+            continue
+        kwarg_name = _snake_case(flag_name)
+        if not kwarg_name:
+            continue
+        if kwarg_name in positional_names:
+            raise ValueError(
+                f"Flag {flag_name!r} collides with a positional argument in command {command!r}"
+            )
+        if kwarg_name in seen_kwarg_names:
+            raise ValueError(
+                f"Flag {flag_name!r} collides with another flag in command {command!r}"
+            )
+        seen_kwarg_names.add(kwarg_name)
+
+        flag_type = str(flag.get("type", "string"))
+        repeatable = bool(flag.get("repeatable", False))
+        required = bool(flag.get("required", False))
+        # If the flag has a user-facing preset (omit=False, preset!=None), the
+        # generator needs to tell apart "user did not pass it" from "user passed
+        # the falsey default", so it falls back to ``Optional[T]`` even for
+        # booleans. Without this distinction the preset code path would never
+        # trigger.
+        exposed_preset = "preset" in flag and not flag.get("omit", False)
+
+        annotation, default = _kwarg_type(flag_type, repeatable, required, exposed_preset)
+        kwonlyargs.append(ast.arg(arg=kwarg_name, annotation=annotation))
+        kw_defaults.append(default)
+
+        description = flag.get("description")
+        if description:
+            flag_doc_lines.append(f":param {kwarg_name}: {description}")
 
     # Build method body.
     body: List[ast.stmt] = []
+
+    # Docstring: short summary plus per-flag :param descriptions.
+    doc_lines = [f"Run `{command}`."]
+    if flag_doc_lines:
+        doc_lines.append("")
+        doc_lines.extend(flag_doc_lines)
+    body.append(ast.Expr(value=ast.Constant(value="\n".join(doc_lines))))
 
     # __final = []
     body.append(
@@ -367,7 +307,10 @@ def _generate_commands(
         )
     )
 
-    # return self._run(options, __final)
+    # return self._run({}, __final)
+    # The empty dict is a placeholder for ``BaseOptions``: a follow-up PR will
+    # replace this with the BaseOptions kwargs (cwd, additional_env, on_output,
+    # on_error) propagated through this method's signature.
     body.append(
         ast.Return(
             value=ast.Call(
@@ -377,7 +320,7 @@ def _generate_commands(
                     ctx=ast.Load(),
                 ),
                 args=[
-                    ast.Name(id="options", ctx=ast.Load()),
+                    ast.Dict(keys=[], values=[]),
                     ast.Name(id="__final", ctx=ast.Load()),
                 ],
                 keywords=[],
@@ -392,14 +335,64 @@ def _generate_commands(
                 posonlyargs=[],
                 args=params,
                 vararg=vararg,
-                kwonlyargs=[],
-                kw_defaults=[],
+                kwonlyargs=kwonlyargs,
+                kw_defaults=kw_defaults,
                 defaults=defaults,
             ),
             body=body,
             decorator_list=[],
             returns=None,
         )
+    )
+
+
+def _kwarg_type(
+    flag_type: str,
+    repeatable: bool,
+    required: bool,
+    exposed_preset: bool,
+) -> Tuple[ast.expr, Optional[ast.expr]]:
+    """
+    Compute the (annotation, default) pair for a keyword argument derived from
+    a flag specification.
+
+    Rules:
+    - Repeatable flags are ``Optional[list[T]] = None``.
+    - Required flags get the bare type with no default.
+    - Boolean flags without a user-overridable preset default to ``False``.
+    - All other optional flags are ``Optional[T] = None``. Booleans with an
+      overridable preset use this branch too, so the preset code path can tell
+      apart "user did not pass" from "user passed False".
+    """
+    base = ast.Name(id=_convert_type(flag_type, False), ctx=ast.Load())
+
+    if repeatable:
+        return (
+            ast.Subscript(
+                value=ast.Name(id="Optional", ctx=ast.Load()),
+                slice=ast.Subscript(
+                    value=ast.Name(id="list", ctx=ast.Load()),
+                    slice=base,
+                    ctx=ast.Load(),
+                ),
+                ctx=ast.Load(),
+            ),
+            ast.Constant(value=None),
+        )
+
+    if required:
+        return base, None
+
+    if flag_type == "boolean" and not exposed_preset:
+        return ast.Name(id="bool", ctx=ast.Load()), ast.Constant(value=False)
+
+    return (
+        ast.Subscript(
+            value=ast.Name(id="Optional", ctx=ast.Load()),
+            slice=base,
+            ctx=ast.Load(),
+        ),
+        ast.Constant(value=None),
     )
 
 
@@ -491,20 +484,13 @@ def _emit_preset_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
         return
 
     if not is_omitted:
-        # Wrap in: if options.get("<opt_name>") is None:
+        # Wrap in: if <opt_name> is None:
+        # Only emit the preset when the user did not explicitly pass a value.
         opt_name = _snake_case(flag_name)
         body.append(
             ast.If(
                 test=ast.Compare(
-                    left=ast.Call(
-                        func=ast.Attribute(
-                            value=ast.Name(id="options", ctx=ast.Load()),
-                            attr="get",
-                            ctx=ast.Load(),
-                        ),
-                        args=[ast.Constant(value=opt_name)],
-                        keywords=[],
-                    ),
+                    left=ast.Name(id=opt_name, ctx=ast.Load()),
                     ops=[ast.Is()],
                     comparators=[ast.Constant(value=None)],
                 ),
@@ -524,20 +510,13 @@ def _emit_option_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
     required = flag.get("required", False)
     opt_name = _snake_case(flag_name)
 
-    # Access: options.get("opt_name")
-    def _opt_access() -> ast.Call:
-        return ast.Call(
-            func=ast.Attribute(
-                value=ast.Name(id="options", ctx=ast.Load()),
-                attr="get",
-                ctx=ast.Load(),
-            ),
-            args=[ast.Constant(value=opt_name)],
-            keywords=[],
-        )
+    # Access: the kwarg variable directly (e.g. ``ai`` instead of
+    # ``options.get("ai")``).
+    def _opt_access() -> ast.Name:
+        return ast.Name(id=opt_name, ctx=ast.Load())
 
     if repeatable:
-        # for __item in options.get("x") or []:
+        # for __item in <opt_name> or []:
         inner: List[ast.stmt]
         if flag_type == "boolean":
             inner = [
@@ -595,7 +574,7 @@ def _emit_option_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
             )
         )
     elif flag_type == "boolean":
-        # if options.get("x"): __flags.append("--flag")
+        # if <opt_name>: __flags.append("--flag")
         body.append(
             ast.If(
                 test=_opt_access(),
@@ -616,7 +595,7 @@ def _emit_option_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
             )
         )
     elif required:
-        # __flags.extend(["--flag", str(options.get("x"))])
+        # __flags.extend(["--flag", str(<opt_name>)])
         body.append(
             ast.Expr(
                 value=ast.Call(
@@ -643,7 +622,7 @@ def _emit_option_flag(body: List[ast.stmt], flag: Mapping[str, Any]) -> None:
             )
         )
     else:
-        # if options.get("x") is not None: __flags.extend(["--flag", str(...)])
+        # if <opt_name> is not None: __flags.extend(["--flag", str(<opt_name>)])
         body.append(
             ast.If(
                 test=ast.Compare(
@@ -830,9 +809,6 @@ def main(argv: list[str]) -> int:
     if api_class is None:
         print("Boilerplate must define an `API` class.", file=sys.stderr)
         return 1
-
-    # Generate options types.
-    _generate_options_types(structure, module_body)
 
     # Generate command methods on the API class.
     methods: List[ast.stmt] = []

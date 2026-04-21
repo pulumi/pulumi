@@ -48,37 +48,31 @@ class TestCommands(unittest.TestCase):
         cls.api = mod.API()
 
     def test_cancel(self) -> None:
-        options = self.mod.PulumiCancelOptions()
-        command = self.api.cancel(options, "my-stack")
+        command = self.api.cancel("my-stack")
         self.assertEqual(command, "pulumi cancel --yes -- my-stack")
 
     def test_cancel_no_stack(self) -> None:
-        options = self.mod.PulumiCancelOptions()
-        command = self.api.cancel(options)
+        command = self.api.cancel()
         self.assertEqual(command, "pulumi cancel --yes")
 
     def test_cancel_with_option(self) -> None:
-        options = self.mod.PulumiCancelOptions(stack="dev")
-        command = self.api.cancel(options)
+        command = self.api.cancel(stack="dev")
         self.assertEqual(command, "pulumi cancel --yes --stack dev")
 
     def test_org_get_default(self) -> None:
-        options = self.mod.PulumiOrgGetDefaultOptions()
-        command = self.api.org_get_default(options)
+        command = self.api.org_get_default()
         self.assertEqual(command, "pulumi org get-default")
 
     def test_org_set_default(self) -> None:
-        options = self.mod.PulumiOrgSetDefaultOptions()
-        command = self.api.org_set_default(options, "my-org")
+        command = self.api.org_set_default("my-org")
         self.assertEqual(command, "pulumi org set-default -- my-org")
 
     def test_org_search_with_query_flags(self) -> None:
-        options = self.mod.PulumiOrgSearchOptions(
+        command = self.api.org_search(
             org="my-org",
             query=["type:aws:s3/bucketv2:BucketV2", "modified:>=2023-09-01"],
             output="json",
         )
-        command = self.api.org_search(options)
         self.assertEqual(
             command,
             "pulumi org search --org my-org --output json "
@@ -86,37 +80,32 @@ class TestCommands(unittest.TestCase):
         )
 
     def test_org_search_ai(self) -> None:
-        options = self.mod.PulumiOrgSearchAiOptions(
+        command = self.api.org_search_ai(
             org="my-org",
             query="find all S3 buckets",
         )
-        command = self.api.org_search_ai(options)
         self.assertEqual(
             command,
             "pulumi org search ai --org my-org --query find all S3 buckets",
         )
 
     def test_org_executable_menu(self) -> None:
-        options = self.mod.PulumiOrgOptions()
-        command = self.api.org(options)
+        command = self.api.org()
         self.assertEqual(command, "pulumi org")
 
     def test_state_move_variadic(self) -> None:
-        options = self.mod.PulumiStateMoveOptions(dest="prod", source="dev")
-        command = self.api.state_move(options, "urn:1", "urn:2")
+        command = self.api.state_move("urn:1", "urn:2", dest="prod", source="dev")
         self.assertEqual(
             command,
             "pulumi state move --yes --dest prod --source dev -- urn:1 urn:2",
         )
 
     def test_state_move_no_args(self) -> None:
-        options = self.mod.PulumiStateMoveOptions()
-        command = self.api.state_move(options)
+        command = self.api.state_move()
         self.assertEqual(command, "pulumi state move --yes")
 
     def test_state_move_boolean_flag(self) -> None:
-        options = self.mod.PulumiStateMoveOptions(include_parents=True)
-        command = self.api.state_move(options, "urn:1")
+        command = self.api.state_move("urn:1", include_parents=True)
         self.assertEqual(
             command,
             "pulumi state move --yes --include-parents -- urn:1",
