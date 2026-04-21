@@ -1021,7 +1021,6 @@ func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
-	pcl.FixupPulumiPackageTokens(r)
 	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
 
 	if r.Schema != nil {
