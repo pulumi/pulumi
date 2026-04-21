@@ -30,8 +30,11 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
@@ -165,7 +168,7 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 			Level: LevelTrace,
 		})})
 	} else if Verbose > 0 {
-		f, err := os.CreateTemp("", "pulumi-*.log")
+		f, err := os.Create(logFileName())
 		if err == nil {
 			logFilePath = f.Name()
 			logFile = f
@@ -174,6 +177,25 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 			})})
 		}
 	}
+}
+
+// logFileName returns a log file path matching the glog naming convention:
+// <program>.<host>.<user>.log.<severity>.<YYYYMMDD>-<HHMMSS>.<pid>
+func logFileName() string {
+	program := filepath.Base(os.Args[0])
+	host, _ := os.Hostname()
+	if i := strings.IndexByte(host, '.'); i >= 0 {
+		host = host[:i]
+	}
+	username := "unknownuser"
+	if u, err := user.Current(); err == nil {
+		username = u.Username
+	}
+	now := time.Now()
+	name := fmt.Sprintf("%s.%s.%s.log.INFO.%04d%02d%02d-%02d%02d%02d.%d",
+		program, host, username, now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute(), now.Second(), os.Getpid())
+	return filepath.Join(os.TempDir(), name)
 }
 
 // Flush flushes any pending log I/O.
