@@ -507,6 +507,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				trace.NewViewTraceCmd(),
 				trace.NewConvertTraceCmd(),
 				events.NewReplayEventsCmd(),
+				events.NewEventsCmd(),
 				clispec.NewGenCLISpecCmd(cmd),
 			},
 		},
