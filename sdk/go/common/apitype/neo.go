@@ -70,6 +70,33 @@ type AgentBackendEventToolCall struct {
 	ExecutionMode string `json:"execution_mode,omitempty"`
 }
 
+// AgentBackendEventUserApprovalRequest is the backend event the agent emits to gate an
+// operation on human approval. CLI clients reply with an AgentUserEventUserConfirmation
+// referencing the same ApprovalID.
+type AgentBackendEventUserApprovalRequest struct {
+	Type string `json:"type"` // always "user_approval_request"
+	// ApprovalID is the correlation id echoed back on the user_confirmation reply. The
+	// wire field is "id" because the service reuses the generic event id here.
+	ApprovalID  string `json:"id,omitempty"`
+	Message     string `json:"message,omitempty"`
+	Sensitivity string `json:"sensitivity,omitempty"`
+	// ApprovalType discriminates the rendering path. "plan_exit" gates the
+	// exit_plan_mode tool — the CLI reads the plan body out of Context.PlanDescription
+	// and renders it with markdown. "general" covers regular tool approvals.
+	ApprovalType string                               `json:"approval_type,omitempty"`
+	Context      AgentBackendEventUserApprovalContext `json:"context"`
+}
+
+// AgentBackendEventUserApprovalContext is the nested payload on an
+// AgentBackendEventUserApprovalRequest.
+type AgentBackendEventUserApprovalContext struct {
+	ToolCallID string `json:"tool_call_id,omitempty"`
+	ToolName   string `json:"tool_name,omitempty"`
+	// PlanDescription is the markdown plan body the agent is asking the user to
+	// approve. Populated only when ApprovalType == "plan_exit".
+	PlanDescription string `json:"plan_description,omitempty"`
+}
+
 // AgentUserEventToolResult is the user event a CLI client posts to resume an agent turn
 // after executing one or more cli-marked tool calls.
 type AgentUserEventToolResult struct {
@@ -142,16 +169,6 @@ type AgentBackendEventWarning struct {
 // the current turn (e.g. the user interrupted it).
 type AgentBackendEventCancelled struct {
 	Type string `json:"type"` // always "cancelled"
-}
-
-// AgentBackendEventUserApprovalRequest is a backend event asking the user to approve or
-// deny a potentially-sensitive operation before the agent proceeds. The CLI replies with
-// a user_confirmation user event echoing the ID.
-type AgentBackendEventUserApprovalRequest struct {
-	Type        string `json:"type"` // always "user_approval_request"
-	ID          string `json:"id,omitempty"`
-	Message     string `json:"message,omitempty"`
-	Sensitivity string `json:"sensitivity,omitempty"`
 }
 
 // AgentUserEventUserConfirmation is the user event a CLI client posts in response to a

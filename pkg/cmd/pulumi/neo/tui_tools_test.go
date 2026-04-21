@@ -47,6 +47,8 @@ func TestToolLabelParts(t *testing.T) {
 		{"write_short", "write", nil, "Write", ""},
 		{"edit_with_path", "edit", json.RawMessage(`{"file_path":"/x"}`), "Edit", "/x"},
 		{"edit_no_path", "edit", json.RawMessage(`{}`), "Edit", ""},
+		{"multi_edit_with_path", "multi_edit", json.RawMessage(`{"file_path":"/x"}`), "MultiEdit", "/x"},
+		{"multi_edit_no_path", "multi_edit", json.RawMessage(`{}`), "MultiEdit", ""},
 		{"content_replace_with_pattern", "content_replace", json.RawMessage(`{"pattern":"needle"}`), "Replace", "needle"},
 		{"content_replace_no_pattern", "content_replace", nil, "Replace", ""},
 		{"execute_command_short", "execute_command", json.RawMessage(`{"command":"ls -la"}`), "Bash", "ls -la"},

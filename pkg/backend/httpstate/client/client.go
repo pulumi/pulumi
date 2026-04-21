@@ -79,6 +79,11 @@ type NeoTaskRequest struct {
 	// ApprovalMode controls whether the agent requires user approval before executing tools.
 	// JSON tag is camelCase to match apitype.CreateAgentTaskRequest from pulumi-service.
 	ApprovalMode NeoApprovalMode `json:"approvalMode,omitempty"`
+	// PlanMode, when true, creates the task in plan mode: the agent explores and asks
+	// questions but must not write files, run `pulumi up`, or open PRs. The server enforces
+	// this by activating PlanModeTracker for the task and gating the exit on an approved
+	// exit_plan_mode call. JSON tag is camelCase to match the service IDL.
+	PlanMode bool `json:"planMode,omitempty"`
 }
 
 // NeoTaskMessage represents the message content for a Neo task.
@@ -1683,19 +1688,25 @@ func (pc *Client) ExplainPreviewWithNeo(
 	return pc.callCopilot(ctx, request)
 }
 
-// CreateNeoTask creates a new Neo agent task via the Neo Tasks API. Pass an empty
-// toolExecutionMode for the default (cloud) mode used by `--neo-task-on-failure`; pass
-// "cli" to have the cloud agent emit CliToolRequest events for the local-tool subset
-// (filesystem, shell) instead of running them itself. Pass an approvalMode of "manual"
-// to require user approval before each tool call; empty uses the server default.
+// CreateNeoTaskOptions bundles the optional knobs on CreateNeoTask. The zero value
+// corresponds to the defaults used by `--neo-task-on-failure`: cloud tool execution,
+// server-default approval policy, and plan mode off.
+type CreateNeoTaskOptions struct {
+	ToolExecutionMode string
+	ApprovalMode      NeoApprovalMode
+	PlanMode          bool
+}
+
+// CreateNeoTask creates a new Neo agent task via the Neo Tasks API. See
+// CreateNeoTaskOptions for the available knobs; pass a zero-value struct to accept
+// server defaults (the `--neo-task-on-failure` path).
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
 	content string,
 	stackName string,
 	projectName string,
-	toolExecutionMode string,
-	approvalMode NeoApprovalMode,
+	opts CreateNeoTaskOptions,
 ) (*NeoTaskResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
@@ -1706,8 +1717,9 @@ func (pc *Client) CreateNeoTask(
 			Content:   content,
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 		},
-		ToolExecutionMode: toolExecutionMode,
-		ApprovalMode:      approvalMode,
+		ToolExecutionMode: opts.ToolExecutionMode,
+		ApprovalMode:      opts.ApprovalMode,
+		PlanMode:          opts.PlanMode,
 	}
 	// Only attach a stack entity when we actually have one — the backend rejects
 	// entity_diff entries with empty name/project as "unable to access stack".

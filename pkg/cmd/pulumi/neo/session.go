@@ -267,14 +267,16 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 	case backendEventCancelled:
 		sendUI(s.UIEvents, UICancelled{})
 	case backendEventUserApprovalRequest:
-		var a apitype.AgentBackendEventUserApprovalRequest
-		if err := json.Unmarshal(eventBody, &a); err != nil {
+		var req apitype.AgentBackendEventUserApprovalRequest
+		if err := json.Unmarshal(eventBody, &req); err != nil {
 			return
 		}
 		sendUI(s.UIEvents, UIApprovalRequest{
-			ApprovalID:  a.ID,
-			Message:     a.Message,
-			Sensitivity: a.Sensitivity,
+			ApprovalID:      req.ApprovalID,
+			Message:         req.Message,
+			Sensitivity:     req.Sensitivity,
+			ApprovalType:    req.ApprovalType,
+			PlanDescription: req.Context.PlanDescription,
 		})
 	}
 	// Server-side exec_tool_call and tool_response events describe tools the agent

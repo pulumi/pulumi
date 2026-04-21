@@ -322,7 +322,7 @@ func TestModel_Update_KeyEnter_WhileBusy_SwallowsAndDoesNotSend(t *testing.T) {
 
 	// Enter while busy must be a no-op: the typed text stays in the input
 	// (user can retry after UITaskIdle) and no value is posted to outCh.
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
 	m.textInput.SetValue("queued")
 
@@ -341,7 +341,7 @@ func TestModel_Update_KeyEnter_WhileBusy_SwallowsAndDoesNotSend(t *testing.T) {
 func TestModel_Update_KeyEnter_Idle_SendsAndClearsInput(t *testing.T) {
 	t.Parallel()
 
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	m := NewModel(ModelConfig{OutCh: outCh})
 	m.textInput.SetValue("hello")
 
@@ -350,8 +350,8 @@ func TestModel_Update_KeyEnter_Idle_SendsAndClearsInput(t *testing.T) {
 
 	select {
 	case got := <-outCh:
-		msg, ok := got.(apitype.AgentUserEventUserMessage)
-		require.True(t, ok, "Enter must post a UserMessage event")
+		msg, ok := got.event.(apitype.AgentUserEventUserMessage)
+		require.True(t, ok, "Enter must post a UserMessage event, got %T", got.event)
 		assert.Equal(t, "hello", msg.Content)
 	default:
 		t.Fatal("Enter must post the input to outCh")
@@ -374,7 +374,7 @@ func TestModel_Update_KeyEnter_Idle_SendsAndClearsInput(t *testing.T) {
 func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 	t.Parallel()
 
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	m := NewModel(ModelConfig{OutCh: outCh})
 	// input left empty
 
@@ -398,7 +398,7 @@ func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 // request — busy is cleared, pendingApproval is true, and the prompt has been
 // swapped to the approval prompt. Mirrors the state UIApprovalRequest leaves
 // behind so each Enter test can start from a known point.
-func newApprovalPendingModel(t *testing.T, outCh chan apitype.AgentUserEvent) Model {
+func newApprovalPendingModel(t *testing.T, outCh chan outboundEvent) Model {
 	t.Helper()
 	m := NewModel(ModelConfig{OutCh: outCh, EventCh: make(chan UIEvent, 4), Busy: true})
 	updated, _ := m.Update(UIApprovalRequest{
@@ -415,7 +415,7 @@ func TestModel_Update_UIApprovalRequest_ShowsPromptAndPausesAgent(t *testing.T) 
 	// The approval request must clear busy (the agent is intentionally paused),
 	// append a visible approval block, and swap the input prompt so the user
 	// knows Enter now answers the approval rather than sending a chat message.
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	m := newApprovalPendingModel(t, outCh)
 
 	assert.False(t, m.busy, "approval request must end busy so the user can answer")
@@ -432,7 +432,7 @@ func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 	for _, in := range cases {
 		t.Run(in, func(t *testing.T) {
 			t.Parallel()
-			outCh := make(chan apitype.AgentUserEvent, 1)
+			outCh := make(chan outboundEvent, 1)
 			m := newApprovalPendingModel(t, outCh)
 			m.textInput.SetValue(in)
 
@@ -442,8 +442,8 @@ func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 			// Must post a confirmation event with Approved=true and no instructions.
 			select {
 			case got := <-outCh:
-				conf, ok := got.(apitype.AgentUserEventUserConfirmation)
-				require.True(t, ok, "expected UserConfirmation, got %T", got)
+				conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+				require.True(t, ok, "expected UserConfirmation, got %T", got.event)
 				assert.True(t, conf.Approved, "%q must be parsed as approval", in)
 				assert.Equal(t, "appr_1", conf.ApprovalID, "must echo the request id")
 				assert.Empty(t, conf.Message, "approval must not carry instructions")
@@ -469,7 +469,7 @@ func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 
 	// Anything that isn't "y"/"yes" is treated as a denial; the typed text becomes
 	// the instructions field so the agent can act on the user's reasoning.
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	m := newApprovalPendingModel(t, outCh)
 	m.textInput.SetValue("not on prod")
 
@@ -478,8 +478,8 @@ func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 
 	select {
 	case got := <-outCh:
-		conf, ok := got.(apitype.AgentUserEventUserConfirmation)
-		require.True(t, ok, "expected UserConfirmation, got %T", got)
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected UserConfirmation, got %T", got.event)
 		assert.False(t, conf.Approved)
 		assert.Equal(t, "appr_1", conf.ApprovalID)
 		assert.Equal(t, "not on prod", conf.Message, "denial must forward the typed reason")
@@ -497,7 +497,7 @@ func TestModel_Update_KeyEnter_Approval_DenyEmpty(t *testing.T) {
 
 	// An empty input is a denial with no instructions. Same outcome as a reasoned
 	// denial wire-wise (Approved=false), with an empty Message field.
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	m := newApprovalPendingModel(t, outCh)
 	// input left empty
 
@@ -506,8 +506,8 @@ func TestModel_Update_KeyEnter_Approval_DenyEmpty(t *testing.T) {
 
 	select {
 	case got := <-outCh:
-		conf, ok := got.(apitype.AgentUserEventUserConfirmation)
-		require.True(t, ok, "expected UserConfirmation, got %T", got)
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected UserConfirmation, got %T", got.event)
 		assert.False(t, conf.Approved)
 		assert.Empty(t, conf.Message)
 	default:
@@ -522,7 +522,7 @@ func TestModel_Update_Approval_NonEnterKey_ForwardsToTextInput(t *testing.T) {
 	// While waiting for approval, non-Enter keys must still type into the input
 	// (so the user can compose a denial reason). The approval state must NOT
 	// clear and no event may be posted.
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	m := newApprovalPendingModel(t, outCh)
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
@@ -544,7 +544,7 @@ func TestModel_Update_KeyEnter_Approval_NotGatedByBusy(t *testing.T) {
 	// is intentionally paused waiting for the user. Even if busy somehow stayed
 	// true (e.g. a stray TickMsg arrived between UIApprovalRequest and Enter),
 	// Enter must still answer the approval rather than be swallowed.
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	m := newApprovalPendingModel(t, outCh)
 	m.busy = true // simulate a stale busy state
 	m.textInput.SetValue("y")
@@ -552,7 +552,7 @@ func TestModel_Update_KeyEnter_Approval_NotGatedByBusy(t *testing.T) {
 	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	select {
 	case got := <-outCh:
-		conf, ok := got.(apitype.AgentUserEventUserConfirmation)
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
 		require.True(t, ok)
 		assert.True(t, conf.Approved)
 	default:
@@ -767,7 +767,7 @@ func TestModel_Update_UIUserMessage_SelfEchoIsSuppressed(t *testing.T) {
 	// for suppression. When the server echoes that same message back, the
 	// queue entry is popped and the redundant render is skipped — so the
 	// transcript contains exactly one user block.
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	evCh := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
 	m.textInput.SetValue("hi")
@@ -796,7 +796,7 @@ func TestModel_Update_UIUserMessage_ForeignEchoStillRenders(t *testing.T) {
 	// A user message that didn't originate from this TUI (for example, the
 	// user typing in the web UI for the same task) must still render. The
 	// dedup queue only suppresses echoes that match what this TUI submitted.
-	outCh := make(chan apitype.AgentUserEvent, 1)
+	outCh := make(chan outboundEvent, 1)
 	evCh := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
 	m.textInput.SetValue("from cli")
@@ -851,6 +851,217 @@ func TestModel_View_ShowsHintBasedOnBusy(t *testing.T) {
 	busy := NewModel(ModelConfig{Busy: true})
 	assert.Contains(t, busy.View(), "agent is working")
 	assert.Contains(t, busy.View(), "enter disabled")
+}
+
+// -----------------------------------------------------------------------------
+// Plan mode
+// -----------------------------------------------------------------------------
+
+func TestModel_Update_ShiftTab_TogglesPlanModeBeforeFirstMessage(t *testing.T) {
+	t.Parallel()
+
+	// Shift+Tab before the first message is sent is the user's affordance to
+	// opt into plan mode. The toggle is reflected in the footer hint so the
+	// user gets immediate feedback without waiting for any server round trip.
+	m := NewModel(ModelConfig{})
+	assert.NotContains(t, m.View(), "plan mode on")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = updated.(Model)
+	assert.True(t, m.planMode, "Shift+Tab must flip planMode on")
+	assert.Contains(t, m.View(), "plan mode", "hint must show the plan-mode indicator")
+
+	// Second press toggles back off — same affordance, symmetric behaviour.
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = updated.(Model)
+	assert.False(t, m.planMode, "second Shift+Tab must flip planMode off")
+	assert.NotContains(t, m.View(), "plan mode on")
+}
+
+func TestModel_Update_ShiftTab_AfterFirstMessage_WarnsAndDoesNotToggle(t *testing.T) {
+	t.Parallel()
+
+	// Plan mode is task-level on the wire and is snapshotted the moment the
+	// first message is dispatched. A post-send toggle would be misleading —
+	// the dispatcher has already captured planMode for CreateNeoTask, so any
+	// later flip could not affect the task.
+	m := NewModel(ModelConfig{MessageSent: true})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = updated.(Model)
+
+	assert.False(t, m.planMode, "post-send Shift+Tab must not toggle planMode")
+	idx := m.findBlockKind(blockWarning)
+	require.NotEqual(t, -1, idx, "post-send Shift+Tab must append a warning block")
+	assert.Contains(t, m.blocks[idx].rendered, "task-level")
+}
+
+func TestModel_Update_KeyEnter_SendingFirstMessageFreezesPlanMode(t *testing.T) {
+	t.Parallel()
+
+	// Sending the first user message both (a) carries the current planMode
+	// across to the dispatcher and (b) flips messageSent so any subsequent
+	// Shift+Tab is a no-op. This is the moment the TUI commits planMode.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m.planMode = true
+	m.textInput.SetValue("kick off")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated.(Model)
+
+	select {
+	case got := <-outCh:
+		msg, ok := got.event.(apitype.AgentUserEventUserMessage)
+		require.True(t, ok, "expected AgentUserEventUserMessage, got %T", got.event)
+		assert.Equal(t, "kick off", msg.Content)
+		assert.True(t, got.planMode, "outbound envelope must carry the TUI's planMode")
+	default:
+		t.Fatal("Enter must post the input to outCh")
+	}
+
+	assert.True(t, m.messageSent, "first send must freeze the plan-mode affordance")
+
+	// Shift+Tab after send must warn, not toggle.
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	m = updated2.(Model)
+	assert.True(t, m.planMode, "post-send Shift+Tab must leave planMode untouched")
+	assert.NotEqual(t, -1, m.findBlockKind(blockWarning), "post-send Shift+Tab must warn")
+}
+
+func TestModel_Update_UIApprovalRequest_PlanCategory_RendersPlanHeaderAndMarkdown(t *testing.T) {
+	t.Parallel()
+
+	// A plan-category approval signals that the agent is ready to exit plan
+	// mode with its proposed plan. The body comes in as markdown and must be
+	// routed through the model's renderer so the user sees a formatted plan
+	// rather than raw asterisks. The distinct "Proposed plan" header tells
+	// the user this isn't a regular tool approval.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.planMode = true
+	// Initialize the markdown renderer (built on WindowSize).
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_1",
+		Message:         "I've finished exploring and have a plan ready for your review.",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n- step one\n- step two",
+	})
+	um := updated.(Model)
+
+	assert.True(t, um.pendingApproval, "plan approval must enter the pending state")
+	assert.Equal(t, approvalTypePlanExit, um.pendingApprovalType,
+		"plan approval must record its wire approval_type")
+	idx := um.findBlockKind(blockApproval)
+	require.NotEqual(t, -1, idx)
+	assert.Contains(t, um.blocks[idx].rendered, "Proposed plan")
+	// Glamour wraps each word in its own ANSI escape run; assert on word
+	// fragments that the renderer never splits ("step" shows up verbatim).
+	assert.Contains(t, um.blocks[idx].rendered, "step", "rendered plan must include the plan body")
+	assert.Contains(t, um.blocks[idx].rendered, "Plan", "rendered plan must include the heading")
+	assert.Contains(t, um.textInput.Prompt, "Approve plan",
+		"prompt must indicate this is a plan approval")
+}
+
+func TestModel_Update_UIApprovalRequest_General_UsesExistingApprovalRendering(t *testing.T) {
+	t.Parallel()
+
+	// Regular (non-plan) tool approvals keep the existing "⚠ Approval required"
+	// rendering and generic prompt. The plan path must not leak into them — they
+	// share the same wire event type (user_approval_request) and only diverge on
+	// ApprovalType.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_2",
+		Message:      "run pulumi up",
+		ApprovalType: "general",
+	})
+	um := updated.(Model)
+
+	assert.NotEqual(t, approvalTypePlanExit, um.pendingApprovalType,
+		"general approval must not be flagged as a plan")
+	idx := um.findBlockKind(blockApproval)
+	require.NotEqual(t, -1, idx)
+	assert.Contains(t, um.blocks[idx].rendered, "Approval required")
+	assert.Contains(t, um.textInput.Prompt, "Approve?")
+	assert.NotContains(t, um.textInput.Prompt, "plan")
+}
+
+func TestModel_Update_ApprovePlan_ClearsPlanMode(t *testing.T) {
+	t.Parallel()
+
+	// Approving the plan exits plan mode server-side (PlanModeTracker stops
+	// gating writes); the local indicator must mirror that immediately so the
+	// footer doesn't misrepresent the effective state.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m.planMode = true
+
+	// Simulate receiving the plan approval request.
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_3",
+		Message:         "I've finished exploring.",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n- step one\n- step two",
+	})
+	m = updated.(Model)
+	m.textInput.SetValue("y")
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected AgentUserEventUserConfirmation, got %T", got.event)
+		assert.True(t, conf.Approved)
+		assert.Equal(t, "appr_3", conf.ApprovalID)
+	default:
+		t.Fatal("approving plan must post a confirmation event")
+	}
+
+	assert.False(t, m.planMode, "approved plan must auto-clear planMode")
+	assert.False(t, m.pendingApproval)
+	assert.Empty(t, m.pendingApprovalType, "approval type must be cleared after response")
+}
+
+func TestModel_Update_DenyPlan_LeavesPlanModeOn(t *testing.T) {
+	t.Parallel()
+
+	// Denying the plan means the user wants the agent to re-plan — plan mode
+	// must stay on so writes remain gated while the agent iterates.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m.planMode = true
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_4",
+		Message:         "I've finished exploring.",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n- step one\n- step two",
+	})
+	m = updated.(Model)
+	m.textInput.SetValue("cover error handling too")
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok)
+		assert.False(t, conf.Approved)
+		assert.Equal(t, "cover error handling too", conf.Message, "denial text becomes the re-plan instructions")
+	default:
+		t.Fatal("denying plan must post a confirmation event")
+	}
+
+	assert.True(t, m.planMode, "denied plan must leave planMode on")
 }
 
 func TestModel_RenderMarkdown_FallsBackWhenRendererNil(t *testing.T) {
