@@ -50,19 +50,19 @@ func runChangesOnly(in io.Reader, out io.Writer) error {
 // filterChangesOnly applies the `--changes-only` transform to a single engine event, returning nil
 // if the event should be dropped from the stream or a freshly-constructed, filtered copy otherwise.
 //
-// The filter matches the behaviour of `pulumi preview --json --changes-only` (see pulumi/pulumi
-// #22068): only resource-lifecycle events for real changes are kept, and their state metadata is
-// restricted to the properties that actually changed.
+// Rules:
 //
-//   - Events that aren't resource-lifecycle events (stdout, diagnostic, prelude, progress, policy,
-//     summary, ...) are dropped entirely.
-//   - Resource events whose op is `same`, `read`, `read-replacement`, `discard`, or `refresh` are
-//     dropped: these are observations, not changes.
-//   - For `update` and `replace` ops the `Inputs` map on `Old` and `New` is restricted to the top
-//     level keys the provider reported via `Diffs`. For creates, deletes, and other ops every
-//     property is, by definition, new or gone so inputs are kept in full.
-//   - `Outputs` are dropped from `Old` and `New` for every kept event: they describe post-state,
-//     not the change itself.
+//   - Non-resource events (stdout, diagnostic, prelude, summary, policy, progress, cancel, ...)
+//     are passed through unchanged — they carry context the consumer may care about regardless of
+//     whether any resource changed.
+//   - Resource events whose op is `same` are dropped: `same` is the engine's explicit marker that
+//     nothing changed. Every other op (create, update, replace, delete, read, refresh,
+//     read-replacement, read-discard) represents a real observable change and is kept.
+//   - For kept resource events, if the provider reported a non-empty `Diffs` list, `Old.Inputs`
+//     and `New.Inputs` are restricted to those top-level keys. For ops that typically have no
+//     diffs (e.g. create and delete, where every property is new or gone) inputs are kept in full.
+//   - `Outputs` are preserved: consumers that render these events still want to see the resulting
+//     state.
 //
 // The input event is never mutated; every pointer returned references freshly-allocated structs so
 // callers can safely keep and modify the result.
@@ -76,18 +76,18 @@ func filterChangesOnly(evt apitype.EngineEvent) *apitype.EngineEvent {
 	case evt.ResOpFailedEvent != nil:
 		md = &evt.ResOpFailedEvent.Metadata
 	default:
-		return nil
+		// Non-resource event: pass through a shallow copy so callers still own a fresh pointer.
+		cp := evt
+		return &cp
 	}
 
-	//exhaustive:ignore
-	switch md.Op {
-	case apitype.OpSame, apitype.OpRead, apitype.OpReadReplacement, apitype.OpReadDiscard, apitype.OpRefresh:
+	if md.Op == apitype.OpSame {
 		return nil
 	}
 
 	filteredMd := *md
-	filteredMd.Old = filterStateChangesOnly(md.Old, md.Op, md.Diffs)
-	filteredMd.New = filterStateChangesOnly(md.New, md.Op, md.Diffs)
+	filteredMd.Old = restrictInputsToDiffs(md.Old, md.Diffs)
+	filteredMd.New = restrictInputsToDiffs(md.New, md.Diffs)
 
 	out := apitype.EngineEvent{Sequence: evt.Sequence, Timestamp: evt.Timestamp}
 	switch {
@@ -107,20 +107,18 @@ func filterChangesOnly(evt apitype.EngineEvent) *apitype.EngineEvent {
 	return &out
 }
 
-// filterStateChangesOnly returns a filtered copy of s suitable for `--changes-only` output.
-// Outputs are always dropped; inputs are kept in full for every op except update and replace, where
-// they are restricted to the top-level keys in diffs.
-func filterStateChangesOnly(
-	s *apitype.StepEventStateMetadata, op apitype.OpType, diffs []string,
+// restrictInputsToDiffs returns a shallow copy of s with `Inputs` narrowed to the top-level keys
+// in diffs. If diffs is empty the full `Inputs` map is preserved (every property is, by the
+// engine's own report, either unchanged or — for creates and deletes — entirely new or gone).
+// `Outputs` are carried over unchanged.
+func restrictInputsToDiffs(
+	s *apitype.StepEventStateMetadata, diffs []string,
 ) *apitype.StepEventStateMetadata {
 	if s == nil {
 		return nil
 	}
 	out := *s
-	out.Outputs = map[string]any{}
-	//exhaustive:ignore
-	switch op {
-	case apitype.OpUpdate, apitype.OpReplace:
+	if len(diffs) > 0 {
 		keep := make(map[string]bool, len(diffs))
 		for _, k := range diffs {
 			keep[k] = true

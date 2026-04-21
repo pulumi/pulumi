@@ -27,12 +27,9 @@ import (
 // Hidden from `--help` while the interface is being developed.
 func NewEventsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "events",
-		Short: "Operate on engine event streams",
-		Long: "Operate on engine event streams.\n" +
-			"\n" +
-			"Subcommands ingest an engine event stream (typically piped from `pulumi up --json`\n" +
-			"or similar) and produce a transformed stream on stdout.\n",
+		Use:    "events",
+		Short:  "Work with engine event streams",
+		Long:   "Commands for working with Pulumi engine event streams.\n",
 		Hidden: true,
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)

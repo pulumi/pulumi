@@ -44,9 +44,11 @@ func resourcePreEvent(op apitype.OpType, diffs []string, oldIn, newIn map[string
 	}
 }
 
-func TestFilterChangesOnly_DropsNonResourceEvents(t *testing.T) {
+func TestFilterChangesOnly_KeepsNonResourceEvents(t *testing.T) {
 	t.Parallel()
 
+	// Non-resource events carry context (stdout, diagnostics, summary, ...) that consumers of a
+	// filtered stream may still care about, so the filter passes them through unchanged.
 	cases := []struct {
 		name  string
 		event apitype.EngineEvent
@@ -67,16 +69,28 @@ func TestFilterChangesOnly_DropsNonResourceEvents(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Nil(t, filterChangesOnly(c.event), "%s events must be dropped under --changes-only", c.name)
+			got := filterChangesOnly(c.event)
+			require.NotNil(t, got, "%s events must pass through --changes-only", c.name)
+			assert.Equal(t, c.event, *got, "%s events must pass through unchanged", c.name)
 		})
 	}
 }
 
-func TestFilterChangesOnly_DropsNonChangeOps(t *testing.T) {
+func TestFilterChangesOnly_DropsOpSame(t *testing.T) {
 	t.Parallel()
 
+	// OpSame is the engine's explicit "nothing changed" marker — that's the one op we drop.
+	evt := resourcePreEvent(apitype.OpSame, nil, map[string]any{"foo": "a"}, map[string]any{"foo": "a"})
+	assert.Nil(t, filterChangesOnly(evt), "OpSame resource events must be dropped")
+}
+
+func TestFilterChangesOnly_KeepsReadRefreshDiscardAndReplacements(t *testing.T) {
+	t.Parallel()
+
+	// Read, refresh, read-replacement, and read-discard all represent real observable changes:
+	// a resource was pulled in, refreshed state diverged, or a resource was dropped from state.
+	// They must survive the filter.
 	ops := []apitype.OpType{
-		apitype.OpSame,
 		apitype.OpRead,
 		apitype.OpReadReplacement,
 		apitype.OpReadDiscard,
@@ -85,14 +99,22 @@ func TestFilterChangesOnly_DropsNonChangeOps(t *testing.T) {
 	for _, op := range ops {
 		t.Run(string(op), func(t *testing.T) {
 			t.Parallel()
-			evt := resourcePreEvent(op, nil, map[string]any{"foo": "a"}, map[string]any{"foo": "b"})
-			assert.Nil(t, filterChangesOnly(evt),
-				"op %q is an observation, not a change, and must be dropped", op)
+			evt := resourcePreEvent(op, []string{"foo"},
+				map[string]any{"foo": "old", "bar": "s"},
+				map[string]any{"foo": "new", "bar": "s"})
+			got := filterChangesOnly(evt)
+			require.NotNil(t, got, "%s events must survive --changes-only", op)
+			require.NotNil(t, got.ResourcePreEvent)
+			md := got.ResourcePreEvent.Metadata
+			assert.Equal(t, op, md.Op)
+			// Diffs, when present, still restrict inputs regardless of the op.
+			assert.Equal(t, map[string]any{"foo": "old"}, md.Old.Inputs)
+			assert.Equal(t, map[string]any{"foo": "new"}, md.New.Inputs)
 		})
 	}
 }
 
-func TestFilterChangesOnly_UpdateRestrictsInputsToDiffs(t *testing.T) {
+func TestFilterChangesOnly_UpdateRestrictsInputsAndKeepsOutputs(t *testing.T) {
 	t.Parallel()
 
 	oldIn := map[string]any{"foo": "old", "bar": "stable", "baz": "also-stable"}
@@ -115,8 +137,10 @@ func TestFilterChangesOnly_UpdateRestrictsInputsToDiffs(t *testing.T) {
 		"Old.Inputs must contain only changed keys")
 	assert.Equal(t, map[string]any{"foo": "new"}, md.New.Inputs,
 		"New.Inputs must contain only changed keys")
-	assert.Empty(t, md.Old.Outputs, "Old.Outputs must be dropped")
-	assert.Empty(t, md.New.Outputs, "New.Outputs must be dropped")
+	assert.Equal(t, map[string]any{"o": 1}, md.Old.Outputs,
+		"Old.Outputs must be preserved — consumers still want to see resulting state")
+	assert.Equal(t, map[string]any{"o": 2}, md.New.Outputs,
+		"New.Outputs must be preserved")
 }
 
 func TestFilterChangesOnly_ReplaceRestrictsInputsToDiffs(t *testing.T) {
@@ -133,10 +157,11 @@ func TestFilterChangesOnly_ReplaceRestrictsInputsToDiffs(t *testing.T) {
 	assert.Equal(t, map[string]any{"foo": "new"}, md.New.Inputs)
 }
 
-func TestFilterChangesOnly_CreateKeepsAllInputs(t *testing.T) {
+func TestFilterChangesOnly_CreateKeepsAllInputsAndOutputs(t *testing.T) {
 	t.Parallel()
 
-	// Creates have no "Old" state; the engine typically sets Old to nil.
+	// Creates have no "Old" state and typically no Diffs; every property is new, so the full
+	// Inputs map is preserved along with the Outputs.
 	evt := apitype.EngineEvent{
 		ResourcePreEvent: &apitype.ResourcePreEvent{
 			Metadata: apitype.StepEventMetadata{
@@ -156,10 +181,10 @@ func TestFilterChangesOnly_CreateKeepsAllInputs(t *testing.T) {
 	assert.Nil(t, md.Old)
 	assert.Equal(t, map[string]any{"foo": "a", "bar": "b"}, md.New.Inputs,
 		"create events keep all inputs — every property is new")
-	assert.Empty(t, md.New.Outputs, "outputs are still stripped")
+	assert.Equal(t, map[string]any{"o": 1}, md.New.Outputs, "outputs must be preserved")
 }
 
-func TestFilterChangesOnly_DeleteKeepsAllOldInputs(t *testing.T) {
+func TestFilterChangesOnly_DeleteKeepsAllOldInputsAndOutputs(t *testing.T) {
 	t.Parallel()
 
 	evt := apitype.EngineEvent{
@@ -180,7 +205,7 @@ func TestFilterChangesOnly_DeleteKeepsAllOldInputs(t *testing.T) {
 	md := got.ResourcePreEvent.Metadata
 	assert.Equal(t, map[string]any{"foo": "a", "bar": "b"}, md.Old.Inputs,
 		"delete events keep all old inputs — consumers need to know what's gone")
-	assert.Empty(t, md.Old.Outputs)
+	assert.Equal(t, map[string]any{"o": 1}, md.Old.Outputs, "outputs must be preserved")
 	assert.Nil(t, md.New)
 }
 
@@ -205,6 +230,8 @@ func TestFilterChangesOnly_KeepsResOutputsAndResOpFailed(t *testing.T) {
 	require.NotNil(t, gotOut)
 	require.NotNil(t, gotOut.ResOutputsEvent)
 	assert.Equal(t, map[string]any{"foo": "n"}, gotOut.ResOutputsEvent.Metadata.New.Inputs)
+	assert.Equal(t, map[string]any{"o": 1}, gotOut.ResOutputsEvent.Metadata.New.Outputs,
+		"ResOutputsEvent outputs must be preserved")
 
 	// ResOpFailedEvent with a create op retains Status/Steps on the copy.
 	failed := apitype.EngineEvent{
@@ -263,7 +290,8 @@ func TestFilterChangesOnly_DoesNotMutateInput(t *testing.T) {
 func TestRunChangesOnly_FiltersJSONLStream(t *testing.T) {
 	t.Parallel()
 
-	// Build an input stream that mixes events that should be dropped with one real update.
+	// Build an input stream that mixes non-resource events, a same-op resource event (the only
+	// one that should be dropped), and a real update.
 	events := []apitype.EngineEvent{
 		{StdoutEvent: &apitype.StdoutEngineEvent{Message: "boot"}},
 		resourcePreEvent(apitype.OpSame, nil, map[string]any{"x": 1}, map[string]any{"x": 1}),
@@ -282,16 +310,25 @@ func TestRunChangesOnly_FiltersJSONLStream(t *testing.T) {
 	var out bytes.Buffer
 	require.NoError(t, runChangesOnly(&input, &out))
 
-	// Only the update event should survive.
+	// The stdout, update, and summary events survive; only the OpSame event is dropped.
 	lines := strings.Split(strings.TrimRight(out.String(), "\n"), "\n")
-	require.Len(t, lines, 1, "expected one surviving event, got: %s", out.String())
+	require.Len(t, lines, 3, "expected 3 surviving events, got: %s", out.String())
 
-	var got apitype.EngineEvent
-	require.NoError(t, json.Unmarshal([]byte(lines[0]), &got))
-	require.NotNil(t, got.ResourcePreEvent)
-	assert.Equal(t, apitype.OpUpdate, got.ResourcePreEvent.Metadata.Op)
-	assert.Equal(t, map[string]any{"foo": "old"}, got.ResourcePreEvent.Metadata.Old.Inputs)
-	assert.Equal(t, map[string]any{"foo": "new"}, got.ResourcePreEvent.Metadata.New.Inputs)
+	var stdoutEvt apitype.EngineEvent
+	require.NoError(t, json.Unmarshal([]byte(lines[0]), &stdoutEvt))
+	require.NotNil(t, stdoutEvt.StdoutEvent, "stdout event must pass through")
+	assert.Equal(t, "boot", stdoutEvt.StdoutEvent.Message)
+
+	var updateEvt apitype.EngineEvent
+	require.NoError(t, json.Unmarshal([]byte(lines[1]), &updateEvt))
+	require.NotNil(t, updateEvt.ResourcePreEvent)
+	assert.Equal(t, apitype.OpUpdate, updateEvt.ResourcePreEvent.Metadata.Op)
+	assert.Equal(t, map[string]any{"foo": "old"}, updateEvt.ResourcePreEvent.Metadata.Old.Inputs)
+	assert.Equal(t, map[string]any{"foo": "new"}, updateEvt.ResourcePreEvent.Metadata.New.Inputs)
+
+	var summaryEvt apitype.EngineEvent
+	require.NoError(t, json.Unmarshal([]byte(lines[2]), &summaryEvt))
+	require.NotNil(t, summaryEvt.SummaryEvent, "summary event must pass through")
 }
 
 func TestRunChangesOnly_EmptyStream(t *testing.T) {
