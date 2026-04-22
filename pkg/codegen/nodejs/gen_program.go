@@ -1006,16 +1006,56 @@ func (g *generator) genNode(w io.Writer, n pcl.Node) {
 }
 
 func resourceRequiresAsyncMain(r *pcl.Resource) bool {
-	if r.Options == nil || r.Options.Range == nil {
-		return false
+	if r.Options != nil && r.Options.Range != nil {
+		if model.ContainsPromises(r.Options.Range.Type()) {
+			return true
+		}
 	}
 
-	return model.ContainsPromises(r.Options.Range.Type())
+	// Resource inputs (and options like `provider`) may reference `call(...)` on plain-returning
+	// methods, which program-gen lowers to `await x.method(...)`. `await` is only valid inside an
+	// async function, so force async main whenever any such call is present.
+	for _, input := range r.Inputs {
+		if containsPlainCall(input.Value) {
+			return true
+		}
+	}
+	if r.Options != nil {
+		for _, e := range []model.Expression{
+			r.Options.Aliases, r.Options.Range, r.Options.Parent, r.Options.Provider,
+			r.Options.Providers, r.Options.DependsOn, r.Options.Protect, r.Options.RetainOnDelete,
+		} {
+			if e != nil && containsPlainCall(e) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func outputRequiresAsyncMain(ov *pcl.OutputVariable) bool {
 	outputName := ov.LogicalName()
-	return makeValidIdentifier(outputName) != outputName
+	if makeValidIdentifier(outputName) != outputName {
+		return true
+	}
+	return containsPlainCall(ov.Value)
+}
+
+// containsPlainCall reports whether the expression (or any subexpression) is a `call(...)`
+// invocation on a method whose return type is plain (not wrapped in Output). Such calls are
+// emitted as `(await x.method(...))` which must live inside an async function.
+func containsPlainCall(expr model.Expression) bool {
+	var found bool
+	_, _ = model.VisitExpression(expr, model.IdentityVisitor,
+		func(e model.Expression) (model.Expression, hcl.Diagnostics) {
+			if call, ok := e.(*model.FunctionCallExpression); ok && call.Name == pcl.Call {
+				if _, isOutput := call.Signature.ReturnType.(*model.OutputType); !isOutput {
+					found = true
+				}
+			}
+			return e, nil
+		})
+	return found
 }
 
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.

@@ -103,6 +103,13 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 	if err != nil {
 		return b.zeroCallSignature(), hcl.Diagnostics{errorf(args[1].SyntaxNode().Range(), "%v", err.Error())}
 	}
+	// Methods marked ReturnTypePlain synchronously return a plain value (no Output wrapping);
+	// keep the return type as-is so downstream code (e.g. program-gen) doesn't wrap traversals
+	// in __apply calls that would fail to type-check.
+	returnType := b.schemaTypeToType(method.Function.ReturnType)
+	if !method.Function.ReturnTypePlain {
+		returnType = model.NewOutputType(returnType)
+	}
 	sig := model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
 			{
@@ -118,7 +125,7 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 				Type: sigArgsType,
 			},
 		},
-		ReturnType: model.NewOutputType(b.schemaTypeToType(method.Function.ReturnType)),
+		ReturnType: returnType,
 	}
 
 	if argsObject, isObjectExpression := args[1].(*model.ObjectConsExpression); isObjectExpression {

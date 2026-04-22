@@ -519,7 +519,18 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("unmarshal invoke result: %w", err)
 			}
-			resultPV := resource.NewProperty(resultPM)
+			// Methods declared with ReturnTypePlain but no object return type use the magic wire
+			// key "res" to carry the single value; unwrap it so callers get the value directly.
+			var resultPV resource.PropertyValue
+			if fun.ReturnTypePlain {
+				if _, isObject := fun.ReturnType.(*schema.ObjectType); !isObject {
+					resultPV = resultPM["res"]
+				} else {
+					resultPV = resource.NewProperty(resultPM)
+				}
+			} else {
+				resultPV = resource.NewProperty(resultPM)
+			}
 			if len(dependsOn) > 0 {
 				resultPV = resource.NewProperty(resource.Output{
 					Element:      resultPV,

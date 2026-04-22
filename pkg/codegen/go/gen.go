@@ -341,6 +341,11 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 
 	// Is it a provider resource?
 	if components[0] == "pulumi" && components[1] == "providers" {
+		// When the provider belongs to the package we're currently generating code for, omit the
+		// package-qualified prefix so the name resolves against the local package.
+		if pkg.pkg != nil && components[2] == pkg.pkg.Name() {
+			return "Provider"
+		}
 		return components[2] + ".Provider"
 	}
 

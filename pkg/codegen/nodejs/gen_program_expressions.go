@@ -531,6 +531,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			panic(err)
 		}
 
+		// Plain method returns are Promise<T> in the Node SDK; we need to `await` them so downstream
+		// traversals/field access operate on the resolved value. This requires an async main,
+		// which is enforced during node-program analysis (see callRequiresAsyncMain).
+		_, hasOutput := expr.Signature.ReturnType.(*model.OutputType)
+		plainCall := !hasOutput
+		if plainCall {
+			g.Fprint(w, "(await ")
+		}
+
 		validMethod := makeValidIdentifier(method)
 		g.Fgenf(w, "%v.%s(", self, validMethod)
 
@@ -545,6 +554,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		g.Fprint(w, ")")
+		if plainCall {
+			g.Fprint(w, ")")
+		}
 	case pcl.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
