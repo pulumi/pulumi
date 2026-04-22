@@ -25,6 +25,7 @@ from ._output import OutputMap
 from ._project_settings import ProjectSettings
 from ._stack_settings import StackSettings
 from ._tag import TagMap
+from .interface import API
 
 PulumiFn = Callable[[], Optional[Awaitable[None]]]
 
@@ -170,6 +171,13 @@ class Workspace(ABC):
     pulumi_command: PulumiCommand
     """
     The underlying PulumiCommand instance that is used to execute CLI commands.
+    """
+
+    cli_api: API
+    """
+    Low-level Automation API for invoking Pulumi CLI commands.
+
+    @internal
     """
 
     @abstractmethod
