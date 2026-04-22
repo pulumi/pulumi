@@ -26,6 +26,7 @@ import (
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	otellog "github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver/logging"
 )
 
 // Receiver is an OTLP gRPC receiver that can receive traces, metrics, and logs
@@ -47,14 +48,10 @@ type traceService struct {
 	r *Receiver
 }
 
-// ServiceRegistrar registers additional gRPC services on the receiver
-// before it starts serving.
-type ServiceRegistrar func(*grpc.Server)
-
-// Start creates and starts a new OTLP receiver with the given exporter.
-// Optional ServiceRegistrar functions are called to register additional
-// gRPC services (e.g. the OTLP LogsService) before the server starts.
-func Start(exporter SpanExporter, registrars ...ServiceRegistrar) (*Receiver, error) {
+// Start creates and starts a new OTLP receiver with the given span
+// and log exporters.  Either exporter may be nil if that signal is
+// not needed.
+func Start(exporter SpanExporter, logExporter otellog.LogExporter) (*Receiver, error) {
 	addr := "127.0.0.1:0"
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -73,8 +70,8 @@ func Start(exporter SpanExporter, registrars ...ServiceRegistrar) (*Receiver, er
 	r.server = grpc.NewServer()
 
 	coltracepb.RegisterTraceServiceServer(r.server, &traceService{r: r})
-	for _, reg := range registrars {
-		reg(r.server)
+	if logExporter != nil {
+		otellog.Register(r.server, logExporter)
 	}
 
 	go func() {

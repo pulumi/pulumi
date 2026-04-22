@@ -20,10 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	collogspb "go.opentelemetry.io/proto/otlp/collector/logs/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
@@ -96,18 +95,12 @@ func TestExportForwardsToExporter(t *testing.T) {
 	assert.Equal(t, "value", v.Str())
 }
 
-func TestExportDecodesPropertyValues(t *testing.T) {
+func TestExportPassesThroughBytesAttributes(t *testing.T) {
 	t.Parallel()
 
-	pv := resource.NewProperty(resource.PropertyMap{
-		"name": resource.NewProperty("my-bucket"),
-		"password": resource.NewProperty(&resource.Secret{
-			Element: resource.NewProperty("hunter2"),
-		}),
-	})
-
-	encoded, err := plugin.EncodePropertyValueForLog(pv)
-	require.NoError(t, err)
+	// Property value bytes are passed through to the exporter as-is;
+	// decoding is the consumer's responsibility.
+	encoded := []byte("pulumiPv" + "some-protobuf-data")
 
 	exporter := &mockLogExporter{}
 	svc := &service{exporter: exporter}
@@ -138,11 +131,8 @@ func TestExportDecodesPropertyValues(t *testing.T) {
 	lr := exporter.firstRecord()
 	v, ok := lr.Attributes().Get("inputs")
 	require.True(t, ok)
-	// Property value bytes are decoded to a JSON string of the
-	// resource.PropertyValue's Mappable() representation.
-	jsonStr := v.Str()
-	assert.Contains(t, jsonStr, "my-bucket")
-	assert.Contains(t, jsonStr, "hunter2")
+	require.Equal(t, pcommon.ValueTypeBytes, v.Type())
+	assert.Equal(t, encoded, v.Bytes().AsRaw())
 }
 
 func TestExportNilExporterDoesNotPanic(t *testing.T) {

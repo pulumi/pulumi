@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package logging implements the OTLP LogsService receiver that decodes
-// property value attributes and forwards log records to a LogExporter.
+// Package logging implements the OTLP LogsService receiver that
+// forwards log records to a LogExporter.
 package logging
 
 import (
 	"context"
-	"encoding/json"
 
 	collogspb "go.opentelemetry.io/proto/otlp/collector/logs/v1"
 	"google.golang.org/grpc"
@@ -26,26 +25,21 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-// LogExporter receives decoded OTLP log records. Property value
-// attributes have already been converted from binary to JSON strings.
+// LogExporter receives OTLP log records.  Property value attributes
+// are passed through as raw bytes; the consumer is responsible for
+// decoding them (e.g. via plugin.UnmarshalProperties).
 type LogExporter interface {
 	ExportLogs(ctx context.Context, logs plog.Logs) error
 	Shutdown(ctx context.Context) error
 }
 
-// NewRegistrar returns a ServiceRegistrar that registers the OTLP
-// LogsService on a gRPC server, forwarding decoded log records to
-// the given exporter.
-func NewRegistrar(exporter LogExporter) func(*grpc.Server) {
-	return func(s *grpc.Server) {
-		collogspb.RegisterLogsServiceServer(s, &service{exporter: exporter})
-	}
+// Register registers the OTLP LogsService on a gRPC server,
+// forwarding log records to the given exporter.
+func Register(s *grpc.Server, exporter LogExporter) {
+	collogspb.RegisterLogsServiceServer(s, &service{exporter: exporter})
 }
 
 type service struct {
@@ -72,8 +66,6 @@ func (s *service) Export(
 		return nil, status.Errorf(codes.Internal, "failed to unmarshal logs: %v", err)
 	}
 
-	decodePropertyValues(logs)
-
 	if s.exporter != nil {
 		if err := s.exporter.ExportLogs(ctx, logs); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to export logs: %v", err)
@@ -81,36 +73,4 @@ func (s *service) Export(
 	}
 
 	return &collogspb.ExportLogsServiceResponse{}, nil
-}
-
-// decodePropertyValues walks all log record attributes and replaces
-// any BytesValue that decodes as a property value (via the magic
-// prefix in plugin.DecodePropertyValueFromLog) with its JSON string
-// representation.
-func decodePropertyValues(logs plog.Logs) {
-	for i := range logs.ResourceLogs().Len() {
-		rl := logs.ResourceLogs().At(i)
-		for j := range rl.ScopeLogs().Len() {
-			sl := rl.ScopeLogs().At(j)
-			for k := range sl.LogRecords().Len() {
-				decodeRecordAttrs(sl.LogRecords().At(k))
-			}
-		}
-	}
-}
-
-func decodeRecordAttrs(lr plog.LogRecord) {
-	lr.Attributes().Range(func(key string, val pcommon.Value) bool {
-		if val.Type() == pcommon.ValueTypeBytes {
-			raw := val.Bytes().AsRaw()
-			pv, err := plugin.DecodePropertyValueFromLog(raw)
-			if err == nil {
-				b, err := json.Marshal(pv.Mappable())
-				if err == nil {
-					val.SetStr(string(b))
-				}
-			}
-		}
-		return true
-	})
 }

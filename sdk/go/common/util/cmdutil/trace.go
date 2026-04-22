@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver"
+	otellog "github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver/logging"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
 	"go.opentelemetry.io/otel"
@@ -215,10 +216,9 @@ func OTelEndpoint() string {
 	return otelEndpoint
 }
 
-// InitOTelReceiver starts the OTLP receiver with the given endpoint.
-// Optional registrars are called to register additional gRPC services
-// on the receiver before it starts serving.
-func InitOtelReceiver(endpoint string, registrars ...otelreceiver.ServiceRegistrar) error {
+// InitOtelReceiver starts the OTLP receiver with the given endpoint and
+// optional log exporter.
+func InitOtelReceiver(endpoint string, logExporter otellog.LogExporter) error {
 	if endpoint == "" {
 		return nil
 	}
@@ -228,7 +228,7 @@ func InitOtelReceiver(endpoint string, registrars ...otelreceiver.ServiceRegistr
 		return fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
 
-	receiver, err := otelreceiver.Start(exporter, registrars...)
+	receiver, err := otelreceiver.Start(exporter, logExporter)
 	if err != nil {
 		_ = exporter.Shutdown(context.Background())
 		return fmt.Errorf("failed to start OTLP receiver: %w", err)
