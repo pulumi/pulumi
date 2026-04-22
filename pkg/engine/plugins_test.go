@@ -52,7 +52,8 @@ func TestDefaultProvidersSingle(t *testing.T) {
 		},
 	})
 
-	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	defaultProviders, err := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	require.NoError(t, err)
 	require.NotNil(t, defaultProviders)
 
 	aws, ok := defaultProviders[tokens.Package("aws")]
@@ -88,7 +89,8 @@ func TestDefaultProvidersOverrideNoVersion(t *testing.T) {
 		},
 	})
 
-	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	defaultProviders, err := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	require.NoError(t, err)
 	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -123,7 +125,8 @@ func TestDefaultProvidersOverrideNewerVersion(t *testing.T) {
 		},
 	})
 
-	defaultProviders := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	defaultProviders, err := computeDefaultProviderPackages(languagePlugins, NewPackageSet())
+	require.NoError(t, err)
 	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -151,7 +154,8 @@ func TestDefaultProvidersSnapshotOverrides(t *testing.T) {
 		},
 	})
 
-	defaultProviders := computeDefaultProviderPackages(languagePlugins, snapshotPlugins)
+	defaultProviders, err := computeDefaultProviderPackages(languagePlugins, snapshotPlugins)
+	require.NoError(t, err)
 	require.NotNil(t, defaultProviders)
 	aws, ok := defaultProviders[tokens.Package("aws")]
 	assert.True(t, ok)
@@ -612,8 +616,84 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 		},
 	}
 	plugins := NewPackageSet(p1, p2)
-	result := computeDefaultProviderPackages(plugins, plugins)
+	result, err := computeDefaultProviderPackages(plugins, plugins)
+	require.NoError(t, err)
 	assert.Equal(t, map[tokens.Package]workspace.PackageDescriptor{
 		"foo": p2,
 	}, result)
+}
+
+func TestDefaultProvidersConflictAcrossDifferentPlugins(t *testing.T) {
+	t.Parallel()
+
+	// Two distinct plugins both claim to provide the Pulumi package name
+	// "scaleway": a native plugin named "scaleway" and a bridged Terraform
+	// provider parameterized as "scaleway". The engine must return a clear
+	// error instead of panicking or silently picking a winner. Regression
+	// test for https://github.com/pulumi/pulumi/issues/22678.
+	native := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "scaleway",
+			Version: mustMakeVersion("1.47.0"),
+			Kind:    apitype.ResourcePlugin,
+		},
+	}
+	bridged := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "terraform-provider",
+			Version: mustMakeVersion("1.1.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "scaleway",
+			Version: semver.MustParse("2.73.0"),
+		},
+	}
+
+	plugins := NewPackageSet(native, bridged)
+	result, err := computeDefaultProviderPackages(plugins, plugins)
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "\"scaleway\"")
+	assert.Contains(t, err.Error(), "terraform-provider")
+}
+
+func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
+	t.Parallel()
+
+	// Two PackageDescriptors from the same bridge plugin ("terraform-provider")
+	// with the same parameterization name ("scaleway") but different
+	// parameterization versions should be treated as "same source, different
+	// versions" and resolve cleanly to the newer one, not as a conflict.
+	older := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "terraform-provider",
+			Version: mustMakeVersion("1.1.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "scaleway",
+			Version: semver.MustParse("2.72.0"),
+		},
+	}
+	newer := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "terraform-provider",
+			Version: mustMakeVersion("1.1.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "scaleway",
+			Version: semver.MustParse("2.73.0"),
+		},
+	}
+
+	plugins := NewPackageSet(older, newer)
+	result, err := computeDefaultProviderPackages(plugins, plugins)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	got, ok := result[tokens.Package("scaleway")]
+	require.True(t, ok)
+	require.NotNil(t, got.Parameterization)
+	assert.Equal(t, "2.73.0", got.Parameterization.Version.String())
 }

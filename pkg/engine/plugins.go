@@ -659,10 +659,46 @@ func installPlugin(
 // that the engine uses to determine which version of a particular provider to load.
 //
 // Note: it is critical that this function be 100% deterministic.
+// samePluginSource reports whether two PackageDescriptors refer to the same
+// underlying plugin (matching binary Name and matching parameterization
+// origin). Two descriptors that differ only in version are the same source;
+// two descriptors with different plugin Names (for example, a native
+// "scaleway" provider and a "terraform-provider" bridge parameterized as
+// "scaleway") are not.
+func samePluginSource(a, b workspace.PackageDescriptor) bool {
+	if a.Name != b.Name {
+		return false
+	}
+	if (a.Parameterization == nil) != (b.Parameterization == nil) {
+		return false
+	}
+	if a.Parameterization != nil && a.Parameterization.Name != b.Parameterization.Name {
+		return false
+	}
+	return true
+}
+
+// describePluginSource returns a human-readable description of a plugin that
+// distinguishes bridged (parameterized) packages from native ones. The output
+// of PackageDescriptor.String is insufficient here because it collapses both
+// forms onto the parameterized name, which hides the distinction users need
+// to resolve a conflict.
+func describePluginSource(p workspace.PackageDescriptor) string {
+	var pluginVer string
+	if p.Version != nil {
+		pluginVer = " v" + p.Version.String()
+	}
+	if p.Parameterization != nil {
+		return fmt.Sprintf("plugin %q%s parameterized as %q v%s",
+			p.Name, pluginVer, p.Parameterization.Name, p.Parameterization.Version.String())
+	}
+	return fmt.Sprintf("plugin %q%s", p.Name, pluginVer)
+}
+
 func computeDefaultProviderPackages(
 	languagePackages PackageSet,
 	allPackages PackageSet,
-) map[tokens.Package]workspace.PackageDescriptor {
+) (map[tokens.Package]workspace.PackageDescriptor, error) {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -704,6 +740,23 @@ func computeDefaultProviderPackages(
 		name := tokens.Package(p.PackageName())
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
+			// Two different underlying plugins cannot both provide the same default
+			// provider package name. This happens, for example, when a project
+			// installs both a native Pulumi provider named "scaleway" and a bridged
+			// Terraform provider added via `pulumi package add terraform-provider
+			// scaleway/scaleway`, which parameterizes the bridge as "scaleway".
+			// Return a clear error so the user can uninstall one or disambiguate
+			// with an explicit `provider` option on each resource.
+			if !samePluginSource(seenPlugin, p) {
+				return nil, fmt.Errorf(
+					"package %q is provided by more than one plugin:\n"+
+						"  %s\n"+
+						"  %s\n"+
+						"Remove one of the packages, or pass an explicit `provider` "+
+						"option on each resource to disambiguate.",
+					name, describePluginSource(seenPlugin), describePluginSource(p))
+			}
+
 			if seenPlugin.Version == nil {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
@@ -743,5 +796,5 @@ func computeDefaultProviderPackages(
 		defaultProviderInfo[name] = plugin
 	}
 
-	return defaultProviderInfo
+	return defaultProviderInfo, nil
 }
