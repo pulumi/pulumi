@@ -1304,6 +1304,58 @@ func TestDeleteEnvironmentTags(t *testing.T) {
 	})
 }
 
+func TestServerErrorRequestID(t *testing.T) {
+	t.Run("500 with request ID", func(t *testing.T) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Pulumi-Request-ID", "test-req-id-123")
+			w.WriteHeader(http.StatusInternalServerError)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    500,
+				Message: "internal server error",
+			})
+			require.NoError(t, err)
+		})
+
+		_, _, err := client.ListEnvironments(context.Background(), "")
+		assert.ErrorContains(t, err, "internal server error")
+		assert.ErrorContains(t, err, "(Request ID: test-req-id-123)")
+	})
+
+	t.Run("500 without request ID", func(t *testing.T) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    500,
+				Message: "internal server error",
+			})
+			require.NoError(t, err)
+		})
+
+		_, _, err := client.ListEnvironments(context.Background(), "")
+		assert.ErrorContains(t, err, "internal server error")
+		assert.NotContains(t, err.Error(), "Request ID")
+	})
+
+	t.Run("4xx does not include request ID", func(t *testing.T) {
+		client := newTestClient(t, http.MethodGet, "/api/esc/environments", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Pulumi-Request-ID", "test-req-id-456")
+			w.WriteHeader(http.StatusBadRequest)
+
+			err := json.NewEncoder(w).Encode(apitype.ErrorResponse{
+				Code:    400,
+				Message: "bad request",
+			})
+			require.NoError(t, err)
+		})
+
+		_, _, err := client.ListEnvironments(context.Background(), "")
+		assert.ErrorContains(t, err, "bad request")
+		assert.NotContains(t, err.Error(), "Request ID")
+	})
+}
+
 func TestGetDefaultOrg(t *testing.T) {
 	t.Run("Not Found", func(t *testing.T) {
 		// GIVEN
