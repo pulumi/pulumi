@@ -744,6 +744,10 @@ func (p *Plugin) Close() error {
 		contract.IgnoreClose(p.Conn)
 	}
 
+	// Kill will set shutdownAcknowledged to true, so we read it here before killing the plugin to determine if the
+	// plugin exited before or after we attempted to shut it down.
+	shutdownAcknowledged := p.shutdownAcknowledged.Load()
+
 	result := p.Kill()
 
 	// Wait for stdout and stderr to drain if we attached to the plugin we won't have a stdout/err
@@ -758,7 +762,7 @@ func (p *Plugin) Close() error {
 	// to the user - including any potential stack trace.
 	//
 	// To help debug (and to avoid attempting to detect the stack trace), we dump the captured stdout.
-	if !p.shutdownAcknowledged.Load() &&
+	if !shutdownAcknowledged &&
 		p.unstructuredOutput != nil &&
 		p.unstructuredOutput.done.CompareAndSwap(false, true) {
 		id := atomic.AddInt32(&nextStreamID, 1)
