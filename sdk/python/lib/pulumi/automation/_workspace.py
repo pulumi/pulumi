@@ -175,9 +175,10 @@ class Workspace(ABC):
 
     cli_api: API
     """
-    Low-level Automation API for invoking Pulumi CLI commands.
-
-    @internal
+    Low-level Automation API for invoking Pulumi CLI commands directly. Every
+    visible `pulumi` subcommand is exposed as a method taking the flags as
+    keyword arguments, on top of the shared `cwd`, `additional_env`,
+    `on_output`, and `on_error` parameters.
     """
 
     @abstractmethod
