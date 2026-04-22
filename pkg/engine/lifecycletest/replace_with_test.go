@@ -260,7 +260,6 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 	}
 
 	run := func(t *testing.T, tc testCase) {
-		t.Parallel()
 		if tc.transitiveChain {
 			tc.addResC = true
 		}
@@ -372,31 +371,37 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 
 	// A is CBR (default), B has deletedWith A.
 	t.Run("A_CBR_B_deletedWith", func(t *testing.T) {
+		t.Parallel()
 		run(t, testCase{})
 	})
 
 	// A is DBR, B has deletedWith A.
 	t.Run("A_DBR_B_deletedWith", func(t *testing.T) {
+		t.Parallel()
 		run(t, testCase{aDeleteBeforeReplace: true})
 	})
 
 	// A is DBR, B has deletedWith A and is also DBR.
 	t.Run("A_DBR_B_deletedWith_DBR", func(t *testing.T) {
+		t.Parallel()
 		run(t, testCase{aDeleteBeforeReplace: true, bDeleteBeforeReplace: ptr(true)})
 	})
 
 	// A is CBR, B has deletedWith A, DBR, and dependsOn A.
 	t.Run("A_CBR_B_deletedWith_DBR_dependsOn", func(t *testing.T) {
+		t.Parallel()
 		run(t, testCase{bDeleteBeforeReplace: ptr(true), bDependsOnA: true})
 	})
 
 	// A is CBR, B has deletedWith+DBR+dependsOn A, C depends on A (no deletedWith).
 	t.Run("A_CBR_B_deletedWith_DBR_dependsOn_C_dependsOn", func(t *testing.T) {
+		t.Parallel()
 		run(t, testCase{bDeleteBeforeReplace: ptr(true), bDependsOnA: true, addResC: true})
 	})
 
 	// Transitive: A → B{deletedWith:A} → C{deletedWith:B}. Both B and C skip Delete.
 	t.Run("transitive_deletedWith_chain", func(t *testing.T) {
+		t.Parallel()
 		run(t, testCase{transitiveChain: true})
 	})
 }

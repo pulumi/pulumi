@@ -2182,7 +2182,8 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt UrnTargets, excludesOpt UrnT
 					logging.V(7).Infof("Planner decided to delete '%v' due to replacement", res.URN)
 					sg.deletes[res.URN] = true
 					oldViews := sg.deployment.GetOldViews(res.URN)
-					deleteSteps = append(deleteSteps, NewDeleteReplacementStep(sg.deployment, sg.deletes, sg.replaces, res, false, oldViews))
+					deleteSteps = append(deleteSteps,
+						NewDeleteReplacementStep(sg.deployment, sg.deletes, sg.replaces, res, false, oldViews))
 				} else if !sg.isOperatedOn(res.URN) {
 					logging.V(7).Infof("Planner decided to delete '%v'", res.URN)
 					sg.deletes[res.URN] = true
