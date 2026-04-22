@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: auto/python
-  description: Add low-level "cancel" command to the auto-generated interface
+  description: Expose the auto-generated Pulumi CLI interface as `workspace.cli_api`
