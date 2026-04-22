@@ -15,6 +15,8 @@
 package plugin
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -22,6 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/diagtest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -153,6 +156,39 @@ func TestPrematureExit(t *testing.T) {
 	msg := sink.Messages[diag.Error][0].Diag.Message
 	require.Contains(t, msg, "exited prematurely")
 	require.Contains(t, msg, "some plugin output")
+}
+
+func TestCloseDoesNotReportPrematureExitForIntentionalKill(t *testing.T) {
+	t.Parallel()
+
+	tmp := t.TempDir()
+
+	bin := filepath.Join(tmp, "test-plugin")
+	cmd := exec.Command("go", "build", "-o", bin, ".")
+	cmd.Dir = filepath.Join("testdata", "test-provider-plugin")
+	buildStdout, err := cmd.CombinedOutput()
+	t.Log(string(buildStdout))
+	require.NoError(t, err)
+
+	var stdout, stderr bytes.Buffer
+	d := diagtest.MockSink(&stdout, &stderr)
+	ctx, err := NewContext(t.Context(), d, d, nil, nil, "", nil, false, nil, nil)
+	require.NoError(t, err)
+
+	handshake := func(context.Context, string, string, *grpc.ClientConn) (*bool, error) {
+		result := true
+		return &result, nil
+	}
+
+	plug, _, err := newPlugin(
+		ctx, tmp, bin, "test-plugin", apitype.ResourcePlugin, nil, nil,
+		handshake, converterPluginDialOptions(ctx, "test-plugin", bin), false)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = plug.Close() })
+
+	err = plug.Close()
+	require.NoError(t, err)
+	require.Empty(t, stderr.String())
 }
 
 func TestStartupFailure(t *testing.T) {
