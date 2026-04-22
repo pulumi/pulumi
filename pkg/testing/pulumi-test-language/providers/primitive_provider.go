@@ -283,9 +283,12 @@ func (p *PrimitiveProvider) Create(
 		return v
 	}
 	str := unsecret(req.Properties["string"])
-	id := "id"
+	var id string
 	if str.IsString() {
 		id = str.StringValue()
+	}
+	if id == "" {
+		id = "id"
 	}
 	if req.Preview {
 		id = ""
