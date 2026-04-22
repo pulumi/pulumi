@@ -2238,22 +2238,38 @@ func TestSetAllConfigJson(t *testing.T) {
 	assert.False(t, numberKey.Secret, "numberKey should not be secret")
 }
 
-// This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
-// config from the file. This means we can't remove the stack at the end of the test.
-// We should also not include secrets in this config, because the secret encryption is only valid within
+// This test reads nested config from a Pulumi.<stack>.yaml file.
+// We should not include secrets in this config, because the secret encryption is only valid within
 // the context of a stack and org, and running this test in different orgs will fail if there are secrets.
 func TestNestedConfig(t *testing.T) {
 	t.Parallel()
 	ctx := t.Context()
-	stackName := FullyQualifiedStackName(pulumiOrg, "nested_config", "dev")
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, "nested_config", sName)
 
-	// initialize
-	pDir := filepath.Join(".", "test", "nested_config")
+	// Copy the fixture to a temp dir and rename the stack config file to
+	// match the random stack name so parallel CI runs don't collide.
+	pDir := t.TempDir()
+	srcDir := filepath.Join(".", "test", "nested_config")
+	projYAML, err := os.ReadFile(filepath.Join(srcDir, "Pulumi.yaml"))
+	require.NoError(t, err)
+
+	//nolint:gosec // writing test fixture to temp dir
+	require.NoError(t, os.WriteFile(filepath.Join(pDir, "Pulumi.yaml"), projYAML, 0o600))
+	stackYAML, err := os.ReadFile(filepath.Join(srcDir, "Pulumi.dev.yaml"))
+	require.NoError(t, err)
+
+	stackCfgName := "Pulumi." + sName + ".yaml"
+	//nolint:gosec // writing test fixture to temp dir
+	require.NoError(t, os.WriteFile(filepath.Join(pDir, stackCfgName), stackYAML, 0o600))
+
 	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
-	if err != nil {
-		t.Errorf("failed to initialize stack, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err)
+
+	defer func() {
+		err := s.Workspace().RemoveStack(ctx, stackName)
+		require.NoError(t, err, "failed to remove stack. Resources have leaked.")
+	}()
 
 	// Also retrieve the stack settings directly from the yaml file and
 	// make sure the config agrees with the config loaded by Pulumi.
@@ -2265,10 +2281,7 @@ func TestNestedConfig(t *testing.T) {
 	}
 
 	allConfig, err := s.GetAllConfig(ctx)
-	if err != nil {
-		t.Errorf("failed to get config, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err)
 	allConfKeys := map[string]bool{}
 	for k := range allConfig {
 		allConfKeys[k] = true
@@ -2287,18 +2300,12 @@ func TestNestedConfig(t *testing.T) {
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", listVal.Value)
 
 	outer, err := s.GetConfig(ctx, "outer")
-	if err != nil {
-		t.Errorf("failed to get config, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err)
 	assert.False(t, outer.Secret)
 	assert.JSONEq(t, "{\"inner\":\"my_value\", \"other\": \"something_else\"}", outer.Value)
 
 	list, err := s.GetConfig(ctx, "myList")
-	if err != nil {
-		t.Errorf("failed to get config, err: %v", err)
-		t.FailNow()
-	}
+	require.NoError(t, err)
 	assert.False(t, list.Secret)
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
 }
