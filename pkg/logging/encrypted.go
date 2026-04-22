@@ -84,7 +84,7 @@ func StartLogging(
 	RotateLogs(logsDir)
 
 	ts := time.Now().Format("20060102T150405")
-	name := "pulumi-" + ts + ".log"
+	name := fmt.Sprintf("pulumi-%s-%d.log", ts, os.Getpid())
 	filePath := filepath.Join(logsDir, name)
 
 	f, err := os.Create(filePath)

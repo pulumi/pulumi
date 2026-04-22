@@ -19,11 +19,13 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -104,10 +106,7 @@ func newDecryptCmd(ws pkgWorkspace.Context) *cobra.Command {
 			}
 			defer gz.Close()
 
-			if _, err := io.Copy(out, gz); err != nil {
-				return fmt.Errorf("decompressing log: %w", err)
-			}
-			return nil
+			return formatLogRecords(gz, out)
 		},
 	}
 
@@ -151,10 +150,7 @@ func decryptPLOG(
 		return fmt.Errorf("decrypting log: %w", err)
 	}
 
-	if _, err := io.Copy(out, reader); err != nil {
-		return fmt.Errorf("reading decrypted log: %w", err)
-	}
-	return nil
+	return formatLogRecords(reader, out)
 }
 
 // stackNameFromFilename extracts the stack name from a log filename.
@@ -180,7 +176,7 @@ func secretsManagerFromStack(ctx context.Context, s backend.Stack) (secrets.Mana
 		return nil, fmt.Errorf("exporting deployment: %w", err)
 	}
 	if dep == nil || len(dep.Deployment) == 0 {
-		return nil, fmt.Errorf("stack has no deployment")
+		return nil, errors.New("stack has no deployment")
 	}
 
 	var v3 apitype.DeploymentV3
@@ -188,7 +184,7 @@ func secretsManagerFromStack(ctx context.Context, s backend.Stack) (secrets.Mana
 		return nil, fmt.Errorf("unmarshaling deployment: %w", err)
 	}
 	if v3.SecretsProviders == nil {
-		return nil, fmt.Errorf("deployment has no secrets provider configured")
+		return nil, errors.New("deployment has no secrets provider configured")
 	}
 
 	provider := backend_secrets.NamedStackProvider{StackName: s.Ref().Name().String()}
@@ -297,4 +293,50 @@ func parseLogTimestamp(name string) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return t, true
+}
+
+// formatLogRecords reads JSON log lines from r, reconstructs formatted
+// messages from pulumi.log.arg* fields, removes those fields, and
+// writes the resulting JSON to w.
+func formatLogRecords(r io.Reader, w io.Writer) error {
+	scanner := bufio.NewScanner(r)
+	enc := json.NewEncoder(w)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+
+		var rec map[string]any
+		if err := json.Unmarshal(line, &rec); err != nil {
+			// Not JSON — write through as-is (e.g. old plain-text logs).
+			fmt.Fprintf(w, "%s\n", line)
+			continue
+		}
+
+		// Collect pulumi.log.argN keys in order, reconstruct the
+		// formatted message, and delete the arg keys.
+		var argKeys []string
+		for k := range rec {
+			if strings.HasPrefix(k, "pulumi.log.arg") {
+				argKeys = append(argKeys, k)
+			}
+		}
+		if len(argKeys) > 0 {
+			sort.Strings(argKeys)
+			args := make([]any, len(argKeys))
+			for i, k := range argKeys {
+				args[i] = rec[k]
+				delete(rec, k)
+			}
+			if msg, ok := rec["msg"].(string); ok {
+				rec["msg"] = fmt.Sprintf(msg, args...)
+			}
+		}
+
+		if err := enc.Encode(rec); err != nil {
+			return err
+		}
+	}
+	return scanner.Err()
 }

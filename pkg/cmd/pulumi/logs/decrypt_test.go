@@ -15,7 +15,9 @@
 package logs
 
 import (
+	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,6 +46,40 @@ func TestDecryptGzipLog(t *testing.T) {
 
 	stdout, _ := e.RunCommand("pulumi", "logs", "decrypt", logFile)
 	assert.Equal(t, content, stdout)
+}
+
+func TestFormatLogRecordsFoldsArgs(t *testing.T) {
+	t.Parallel()
+
+	// Simulate a JSON log record produced by the slog sink handler.
+	// The msg field contains a format string; pulumi.log.argN fields
+	// hold the individual arguments that should be folded back in.
+	input := map[string]any{
+		"time":            "2026-04-30T10:00:00Z",
+		"level":           "INFO",
+		"msg":             "loading plugin %s version %s",
+		"pulumi.log.arg0": "aws",
+		"pulumi.log.arg1": "6.0.0",
+		"v":               3,
+	}
+	line, err := json.Marshal(input)
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+	err = formatLogRecords(bytes.NewReader(append(line, '\n')), &out)
+	require.NoError(t, err)
+
+	var got map[string]any
+	err = json.Unmarshal(out.Bytes(), &got)
+	require.NoError(t, err)
+
+	assert.Equal(t, "loading plugin aws version 6.0.0", got["msg"])
+
+	assert.NotContains(t, got, "pulumi.log.arg0")
+	assert.NotContains(t, got, "pulumi.log.arg1")
+
+	assert.Equal(t, "INFO", got["level"])
+	assert.EqualValues(t, 3, got["v"])
 }
 
 // TestDecryptEncryptedLog verifies the full flow: automatic logging creates
