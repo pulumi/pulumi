@@ -94,7 +94,6 @@ import (
 	declared "github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
-	otellog "github.com/pulumi/pulumi/sdk/v3/go/common/util/otelreceiver/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
@@ -314,7 +313,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
-			if err := cmdutil.InitOtelReceiver(otelTracesFlag, otellog.NewRegistrar(nil)); err != nil {
+			if err := cmdutil.InitOtelReceiver(otelTracesFlag, nil); err != nil {
 				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
 			}
 

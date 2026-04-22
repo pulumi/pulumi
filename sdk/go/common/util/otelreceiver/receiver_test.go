@@ -78,7 +78,7 @@ func TestReceiverWithExporter(t *testing.T) {
 	// Create a mock exporter to capture spans
 	exporter := &mockExporter{}
 
-	receiver, err := Start(exporter)
+	receiver, err := Start(exporter, nil)
 	require.NoError(t, err)
 	defer func() {
 		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
