@@ -132,3 +132,64 @@ type UIContextCompression struct {
 }
 
 func (UIContextCompression) uiEvent() {}
+
+// UIPulumiStart opens a persistent preview/up block in the TUI for a pulumi tool
+// call. The block accumulates resource and diagnostic rows as they stream in,
+// and is finalized by UIPulumiEnd.
+//
+// The open block is keyed on ToolName: subsequent UIPulumi{Resource,Diag,End}
+// events for the in-flight call update the same block. Once UIPulumiEnd fires
+// the block is finalized; the next UIPulumiStart with the same ToolName starts
+// a fresh block. Relies on Session.runBatch dispatching tool calls serially —
+// concurrent calls would clobber each other.
+type UIPulumiStart struct {
+	ToolName  string
+	StackName string
+	// IsPreview is true for pulumi_preview, false for pulumi_up. Used by the
+	// renderer to title the block (PulumiPreview vs PulumiUp) and to pick the
+	// "planned changes" vs "applied changes" wording.
+	IsPreview bool
+}
+
+func (UIPulumiStart) uiEvent() {}
+
+// UIPulumiResource reports one resource the engine is acting on. URN is used
+// as the dedup key — duplicate events for the same URN update the row in place
+// (e.g. status transitions from "planned" to "running" to "done").
+type UIPulumiResource struct {
+	ToolName string
+	// Op is the StepOp string: create, update, delete, replace, read, refresh, etc.
+	Op   string
+	URN  string
+	Type string
+	// Status is "planned" (preview only), "running" (up, pre-event), "done"
+	// (up, outputs-event), or "failed" (up, operation-failed event).
+	Status string
+}
+
+func (UIPulumiResource) uiEvent() {}
+
+// UIPulumiDiag appends one diagnostic row to the open pulumi block. URN may be
+// empty for stack-level diagnostics.
+type UIPulumiDiag struct {
+	ToolName string
+	Severity string
+	Message  string
+	URN      string
+}
+
+func (UIPulumiDiag) uiEvent() {}
+
+// UIPulumiEnd finalizes the open pulumi block. Err is empty on success. Counts
+// is the display.ResourceChanges map already flattened to string keys for
+// render-time transport without pulling display into this package.
+type UIPulumiEnd struct {
+	ToolName string
+	Err      string
+	Counts   map[string]int
+	// Elapsed is the duration the backend call took, pre-formatted so the TUI
+	// doesn't need to care about time types.
+	Elapsed string
+}
+
+func (UIPulumiEnd) uiEvent() {}

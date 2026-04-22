@@ -47,6 +47,7 @@ const (
 	blockApprovalPlan
 	blockApprovalGeneral
 	blockApprovalChoice
+	blockPulumiOp
 )
 
 type block struct {
@@ -63,6 +64,41 @@ type block struct {
 	shimmer shimmerKind
 	// approved applies to blockApprovalChoice only.
 	approved bool
+	// pulumi carries per-block state for blockPulumiOp. It is mutated in place
+	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
+	// re-rendered by renderBlock on every update.
+	pulumi *pulumiBlockState
+}
+
+// pulumiBlockState accumulates the live state of a blockPulumiOp. Resources are
+// deduped by URN (the index into resources is stored in resourceByURN so late
+// events like ResourceOutputs can upgrade the status of an earlier
+// ResourcePre). Diags are append-only because they carry their own severity
+// and messages aren't keyed.
+type pulumiBlockState struct {
+	toolName      string
+	stackName     string
+	isPreview     bool
+	resources     []pulumiResourceRow
+	resourceByURN map[string]int
+	diags         []pulumiDiagRow
+	counts        map[string]int
+	elapsed       string
+	err           string
+	done          bool
+}
+
+type pulumiResourceRow struct {
+	op     string
+	urn    string
+	typ    string
+	status string
+}
+
+type pulumiDiagRow struct {
+	severity string
+	message  string
+	urn      string
 }
 
 // ModelConfig holds the parameters needed to create a TUI Model.
@@ -516,6 +552,70 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
+	case UIPulumiStart:
+		// Reuse an existing open block for the same tool name if one is present
+		// (shouldn't happen in practice — each tool call is serialized — but it
+		// guards against a stale block if the agent retries). An open block has
+		// done==false. On reuse we reset state so the new run starts clean.
+		idx := m.findOpenPulumiBlock(msg.ToolName)
+		if idx < 0 {
+			b := block{kind: blockPulumiOp, pulumi: &pulumiBlockState{
+				toolName:      msg.ToolName,
+				stackName:     msg.StackName,
+				isPreview:     msg.IsPreview,
+				resourceByURN: map[string]int{},
+			}}
+			m.renderBlock(&b)
+			m.appendBlock(b)
+		} else {
+			m.blocks[idx].pulumi = &pulumiBlockState{
+				toolName:      msg.ToolName,
+				stackName:     msg.StackName,
+				isPreview:     msg.IsPreview,
+				resourceByURN: map[string]int{},
+			}
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiResource:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			m.blocks[idx].pulumi.addResource(msg.Op, msg.URN, msg.Type, msg.Status)
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiDiag:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.diags = append(st.diags, pulumiDiagRow{
+				severity: msg.Severity,
+				message:  msg.Message,
+				urn:      msg.URN,
+			})
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiEnd:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.counts = msg.Counts
+			st.elapsed = msg.Elapsed
+			st.err = msg.Err
+			st.done = true
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
 	case UIApprovalRequest:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.pendingApproval = true
@@ -733,6 +833,10 @@ func (m *Model) renderBlock(b *block) {
 		m.renderApprovalChoice(b)
 		return
 	}
+	if b.kind == blockPulumiOp {
+		b.rendered = m.renderPulumiBlock(b.pulumi)
+		return
+	}
 	if b.raw == "" {
 		return
 	}
@@ -758,8 +862,8 @@ func (m *Model) renderBlock(b *block) {
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.
-	case blockApprovalChoice:
-		// Unreachable; kept for exhaustive lint.
+	case blockApprovalChoice, blockPulumiOp:
+		// Unreachable: both are handled by early returns above.
 	}
 }
 
