@@ -52,7 +52,7 @@ func (p *PlainComponentProvider) Pkg() tokens.Package {
 }
 
 func (p *PlainComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("35.0.0")
+	ver := semver.Version{Major: 36}
 	return plugin.PluginInfo{Version: &ver}, nil
 }
 
@@ -61,7 +61,7 @@ func (p *PlainComponentProvider) GetSchema(
 ) (plugin.GetSchemaResponse, error) {
 	pkg := schema.PackageSpec{
 		Name:    "plaincomponent",
-		Version: "35.0.0",
+		Version: "36.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
 			"plaincomponent:index:Settings": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -167,9 +167,9 @@ func (p *PlainComponentProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "35.0.0" {
+	if version.StringValue() != "36.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 35.0.0"),
+			Failures: makeCheckFailure("version", "version is not 36.0.0"),
 		}, nil
 	}
 	if len(req.News) != 1 {
@@ -296,7 +296,7 @@ func (p *PlainComponentProvider) Construct(
 		Custom:   true,
 		Name:     req.Name + "-child",
 		Parent:   parent.Urn,
-		Version:  "35.0.0",
+		Version:  "36.0.0",
 		Provider: req.Options.Providers["plaincomponent"],
 		Object: &structpb.Struct{
 			Fields: map[string]*structpb.Value{

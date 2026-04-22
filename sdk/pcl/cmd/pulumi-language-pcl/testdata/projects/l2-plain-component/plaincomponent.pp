@@ -1,4 +1,4 @@
 package "plaincomponent" {
   baseProviderName    = "plaincomponent"
-  baseProviderVersion = "35.0.0"
+  baseProviderVersion = "36.0.0"
 }
