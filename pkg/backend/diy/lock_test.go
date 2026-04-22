@@ -73,7 +73,8 @@ func TestLockURLForError(t *testing.T) {
 			name:     "URL with password",
 			baseURL:  "https://user:password@example.com",
 			lockPath: "/.pulumi/locks/organization/proj/stack/18262c43-124d-4f19-b90f-24db3c0a22a3.json",
-			expected: "https://****:****@example.com/.pulumi/locks/organization/proj/stack/18262c43-124d-4f19-b90f-24db3c0a22a3.json",
+			expected: "https://****:****@example.com/.pulumi/locks/organization/proj/stack/" +
+				"18262c43-124d-4f19-b90f-24db3c0a22a3.json",
 		},
 		{
 			name:     "URL without password",
