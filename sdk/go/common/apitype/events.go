@@ -246,7 +246,7 @@ type StepEventStateMetadata struct {
 	// InitErrors is the set of errors encountered in the process of initializing resource.
 	InitErrors []string `json:"initErrors,omitempty"`
 	// HideDiffs is the set of property paths where diffs are not displayed.
-	HideDiffs []resource.PropertyPath `json:"hideDiffs,omitempty"`
+	HideDiffs []resource.BackCompatPropertyPath `json:"hideDiffs,omitempty"`
 }
 
 // ResourcePreEvent is emitted before a resource is modified.

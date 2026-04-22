@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +42,9 @@ func init() {
 					require.Len(l, snap.Resources, 8, "expected 8 resources in snapshot")
 
 					withIgnore := RequireSingleNamedResource(l, snap.Resources, "withIgnoreChanges")
-					assert.Equal(l, []string{"value"}, withIgnore.IgnoreChanges,
+					assert.Equal(l, []property.Glob{
+						property.GlobFromSegments(property.NewSegment("value")),
+					}, withIgnore.IgnoreChanges,
 						"expected component with ignoreChanges to have IgnoreChanges set")
 
 					withoutIgnore := RequireSingleNamedResource(l, snap.Resources, "withoutIgnoreChanges")

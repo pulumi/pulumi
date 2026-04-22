@@ -69,6 +69,14 @@ var names = NameTable{
 	logicalURN:  logicalName,
 }
 
+func mustParseGlob(s string) property.Glob {
+	var p property.Glob
+	if err := p.UnmarshalText([]byte(s)); err != nil {
+		panic(err)
+	}
+	return p
+}
+
 func renderExpr(t *testing.T, x model.Expression) property.Value {
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
@@ -183,7 +191,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	var parent resource.URN
 	var providerRef string
 	var importID resource.ID
-	var ignoreChanges []string
+	var ignoreChanges []property.Glob
 	if r.Options != nil {
 		if r.Options.Protect != nil {
 			v, diags := r.Options.Protect.Evaluate(&hcl.EvalContext{})
@@ -215,7 +223,9 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 			if assert.True(t, v.IsArray()) {
 				for _, item := range v.AsArray().All {
 					if assert.True(t, item.IsString()) {
-						ignoreChanges = append(ignoreChanges, item.AsString())
+						var p property.Glob
+						require.NoError(t, p.UnmarshalText([]byte(item.AsString())))
+						ignoreChanges = append(ignoreChanges, p)
 					}
 				}
 			}
@@ -280,7 +290,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:aws",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{mustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				},
@@ -290,7 +300,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:random",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{mustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:random::default_123",
 				},
@@ -300,7 +310,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:pkg",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{mustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
 				},

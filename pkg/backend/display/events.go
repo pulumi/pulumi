@@ -34,9 +34,36 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 var matchAnsiControlCodes = regexp.MustCompile(`\x1b\[[0-9;]*[mK]`)
+
+// propertyPathsToBackCompats converts legacy [resource.PropertyPath] values (as carried on
+// in-memory event metadata) to [resource.BackCompatPropertyPath] for on-disk storage.
+func propertyPathsToBackCompats(paths []resource.PropertyPath) []resource.BackCompatPropertyPath {
+	if len(paths) == 0 {
+		return nil
+	}
+	out := make([]resource.BackCompatPropertyPath, len(paths))
+	for i, p := range paths {
+		out[i] = resource.BackCompatPropertyPath(resource.FromResourcePropertyPath(p))
+	}
+	return out
+}
+
+// backCompatsToPropertyPaths converts on-disk [resource.BackCompatPropertyPath] values to the
+// legacy [resource.PropertyPath] slice used by the display/diff engines.
+func backCompatsToPropertyPaths(paths []resource.BackCompatPropertyPath) []resource.PropertyPath {
+	if len(paths) == 0 {
+		return nil
+	}
+	out := make([]resource.PropertyPath, len(paths))
+	for i, p := range paths {
+		out[i] = resource.ToResourcePropertyPath(property.Glob(p))
+	}
+	return out
+}
 
 // ConvertEngineEvent converts a raw engine.Event into an apitype.EngineEvent used in the Pulumi
 // REST API. Returns an error if the engine event is unknown or not in an expected format.
@@ -361,7 +388,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
-		HideDiffs:      md.HideDiffs,
+		HideDiffs:      propertyPathsToBackCompats(md.HideDiffs),
 	}
 }
 
@@ -631,6 +658,6 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
-		HideDiffs:      md.HideDiffs,
+		HideDiffs:      backCompatsToPropertyPaths(md.HideDiffs),
 	}
 }

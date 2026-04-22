@@ -322,7 +322,11 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 	if len(state.IgnoreChanges) > 0 {
 		ignoreChanges := make([]model.Expression, len(state.IgnoreChanges))
 		for i, prop := range state.IgnoreChanges {
-			v := cty.StringVal(prop)
+			text, err := prop.MarshalText()
+			if err != nil {
+				return nil, err
+			}
+			v := cty.StringVal(string(text))
 			ignoreChanges[i] = &model.LiteralValueExpression{
 				Tokens: syntax.NewLiteralValueTokens(v),
 				Value:  v,

@@ -19,9 +19,18 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func mustParseGlob(s string) property.Glob {
+	var g property.Glob
+	if err := g.UnmarshalText([]byte(s)); err != nil {
+		panic(err)
+	}
+	return g
+}
 
 func TestPlan(t *testing.T) {
 	t.Parallel()
@@ -463,8 +472,8 @@ func TestResourcePlan(t *testing.T) {
 				t.Parallel()
 				rp := &ResourcePlan{
 					Goal: &GoalPlan{
-						IgnoreChanges: []string{
-							"foo",
+						IgnoreChanges: []property.Glob{
+							mustParseGlob("foo"),
 						},
 					},
 				}
@@ -472,8 +481,8 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					resource.PropertyMap{},
 					&resource.Goal{
-						IgnoreChanges: []string{
-							"bar",
+						IgnoreChanges: []property.Glob{
+							mustParseGlob("bar"),
 						},
 					})
 				assert.ErrorContains(t, err, "ignoreChanges changed")

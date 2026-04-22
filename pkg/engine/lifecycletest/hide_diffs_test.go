@@ -156,11 +156,8 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 	}
 
 	created := p.Run(t, &deploy.Snapshot{})
-	assert.Equal(t, created.Resources[1].HideDiff, []resource.PropertyPath{
-		{"array"},
-		{"map"},
-		{"scalar"},
-	})
+	assert.Equal(t, []string{"array", "map", "scalar"},
+		resource.GlobsToStrings(created.Resources[1].HideDiff))
 	propValue = resource.NewProperty("b")
 	p.Run(t, created) // Update
 }
