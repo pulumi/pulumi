@@ -258,7 +258,7 @@ func newPlugin[T any](
 	dialOptions []grpc.DialOption,
 	attachDebugger bool,
 ) (_ *Plugin, _ *T, retErr error) {
-	if logging.V(9) {
+	if logging.V(9).Enabled() {
 		var argstr strings.Builder
 		for i, arg := range args {
 			if i > 0 {
