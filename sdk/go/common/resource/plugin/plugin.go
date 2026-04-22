@@ -539,7 +539,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			return nil, fmt.Errorf("loading runtime: %w", err)
 		}
 
-		rctx, kill := context.WithCancel(ctx.Request()) //nolint:govet // lostcancel
+		rctx, kill := context.WithCancel(ctx.Request())
 
 		info := NewProgramInfo(pluginDir, pluginDir, ".", runtimeInfo.Options())
 		stdout, stderr, done, err := runtime.RunPlugin(rctx, RunPluginInfo{
@@ -552,14 +552,14 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 			LoaderAddress:    ctx.Host.LoaderAddr(),
 		})
 		if err != nil {
-			return nil, err //nolint:govet // lostcancel
+			kill() // make sure to clean up the runtime if we failed to start the plugin
+			return nil, err
 		}
 
-		return &Plugin{
+		p := &Plugin{
 			Bin:    bin,
 			Args:   args,
 			Env:    environment,
-			Kill:   func() error { kill(); return nil },
 			Stdout: io.NopCloser(stdout),
 			Stderr: io.NopCloser(stderr),
 			Wait: func(ctx context.Context) (int, error) {
@@ -569,7 +569,20 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 				}
 				return int(exitcode), nil
 			},
-		}, nil
+		}
+
+		p.Kill = func() error {
+			logging.V(9).Infof("killing plugin %s\n", bin)
+
+			// If we're killing the plugin then it's shutdown is expected
+			p.shutdownAcknowledged.Store(true)
+
+			// Ask the runtime to kill the plugin.  This will cause the Wait() function above to unblock and return.
+			kill()
+			return nil
+		}
+
+		return p, nil
 	}
 
 	cmd := exec.Command(bin, args...)
@@ -615,8 +628,34 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		}
 	}()
 
-	kill := sync.OnceValue(func() error {
+	p := &Plugin{
+		Bin:    bin,
+		Args:   args,
+		Env:    environment,
+		Stdin:  in,
+		Stdout: outr,
+		Stderr: errr,
+		Wait: func(ctx context.Context) (int, error) {
+			_, err := wait.Promise().Result(ctx)
+			if err != nil {
+				// If this is a non-zero exit code, we need to return it.
+				if exiterr, ok := err.(*exec.ExitError); ok {
+					// If the plugin is a process, we need to return the exit code.
+					if _, ok := exiterr.Sys().(syscall.WaitStatus); ok {
+						return exiterr.ExitCode(), nil
+					}
+				}
+			}
+			return 0, err
+		},
+	}
+
+	p.Kill = sync.OnceValue(func() error {
 		logging.V(9).Infof("killing plugin %s\n", bin)
+
+		// If we're killing the plugin then it's shutdown is expected
+		p.shutdownAcknowledged.Store(true)
+
 		// On each platform, plugins are not loaded directly, instead a shell launches each plugin as a child process, so
 		// instead we need to kill all the children of the PID we have recorded, as well. Otherwise we will block waiting
 		// for the child processes to close.
@@ -647,28 +686,7 @@ func ExecPlugin(ctx *Context, bin, prefix string, kind apitype.PluginKind,
 		return result.ErrorOrNil()
 	})
 
-	return &Plugin{
-		Bin:    bin,
-		Args:   args,
-		Env:    environment,
-		Kill:   kill,
-		Stdin:  in,
-		Stdout: outr,
-		Stderr: errr,
-		Wait: func(ctx context.Context) (int, error) {
-			_, err := wait.Promise().Result(ctx)
-			if err != nil {
-				// If this is a non-zero exit code, we need to return it.
-				if exiterr, ok := err.(*exec.ExitError); ok {
-					// If the plugin is a process, we need to return the exit code.
-					if _, ok := exiterr.Sys().(syscall.WaitStatus); ok {
-						return exiterr.ExitCode(), nil
-					}
-				}
-			}
-			return 0, err
-		},
-	}, nil
+	return p, nil
 }
 
 // ValidatePulumiVersionRange validates that the CLI version satisfies the passed version range. The supported syntax
