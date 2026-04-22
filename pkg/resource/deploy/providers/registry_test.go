@@ -133,6 +133,22 @@ type testProvider struct {
 	config     func(resource.PropertyMap) error
 }
 
+type lifecycleTrackingProvider struct {
+	*testProvider
+	closeCalls  int
+	cancelCalls int
+}
+
+func (p *lifecycleTrackingProvider) Close() error {
+	p.closeCalls++
+	return nil
+}
+
+func (p *lifecycleTrackingProvider) SignalCancellation(context.Context) error {
+	p.cancelCalls++
+	return nil
+}
+
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
@@ -699,6 +715,57 @@ func TestCRUDNoProviders(t *testing.T) {
 	assert.Error(t, err)
 	assert.Empty(t, check.Failures)
 	assert.Nil(t, check.Properties)
+}
+
+func TestDiffReplaceSignalsCancellationBeforeClose(t *testing.T) {
+	t.Parallel()
+
+	var tracked *lifecycleTrackingProvider
+	loader := newLoader(t, "pkgA", "1.0.0", func(pkg tokens.Package, ver semver.Version) (plugin.Provider, error) {
+		tracked = &lifecycleTrackingProvider{
+			testProvider: &testProvider{
+				pkg:     pkg,
+				version: ver,
+				checkConfig: func(
+					_ resource.URN, _ resource.PropertyMap, news resource.PropertyMap, _ bool,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return news, nil, nil
+				},
+				diffConfig: func(
+					_ resource.URN, _ resource.PropertyMap, _ resource.PropertyMap, _ bool, _ []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
+				},
+				config: func(resource.PropertyMap) error { return nil },
+			},
+		}
+		return tracked, nil
+	})
+
+	r := NewRegistry(newPluginHost(t, []*providerLoader{loader}), false, nil)
+	typ := providers.MakeProviderType("pkgA")
+	urn := resource.NewURN("test", "test", "", typ, "a")
+
+	_, err := r.Check(t.Context(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: resource.PropertyMap{},
+		News: resource.PropertyMap{"version": resource.NewProperty("1.0.0")},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, tracked)
+
+	diff, err := r.Diff(t.Context(), plugin.DiffRequest{
+		URN:        urn,
+		ID:         resource.ID("existing"),
+		OldOutputs: resource.PropertyMap{},
+		NewInputs:  resource.PropertyMap{"version": resource.NewProperty("1.0.0")},
+	})
+	require.NoError(t, err)
+	require.True(t, diff.Replace())
+
+	// Registry should signal cancellation before closing on replace.
+	assert.Equal(t, 1, tracked.closeCalls)
+	assert.Equal(t, 1, tracked.cancelCalls)
 }
 
 func TestCRUDWrongPackage(t *testing.T) {
