@@ -107,6 +107,9 @@ var (
 	NumberType = NewOpaqueType("number")
 	// StringType represents the set of UTF-8 string values.
 	StringType = NewOpaqueType("string")
+	// IDType represents resource IDs. It is distinct from string in the type
+	// system but safely convertible to and from string.
+	IDType = NewOpaqueType("id")
 	// DynamicType represents the set of all values.
 	DynamicType = NewOpaqueType("dynamic")
 )

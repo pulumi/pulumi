@@ -356,7 +356,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	inputType := b.schemaTypeToType(inputObjectType)
 
 	outputProperties := map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
+		"id":  model.NewOutputType(model.IDType),
 		"urn": model.NewOutputType(model.StringType),
 	}
 	for _, prop := range properties {

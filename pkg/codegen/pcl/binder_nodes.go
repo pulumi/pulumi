@@ -266,7 +266,7 @@ func (s *hookScope) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scop
 
 		properties := map[string]model.Type{
 			"urn":        model.StringType,
-			"id":         model.StringType,
+			"id":         model.IDType,
 			"name":       model.StringType,
 			"type":       model.StringType,
 			"newInputs":  model.NewMapType(model.DynamicType),

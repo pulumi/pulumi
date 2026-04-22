@@ -109,6 +109,9 @@ func (t *OpaqueType) conversionFromImpl(
 				}
 				return NoConversion, noConversionDiag
 			case StringType:
+				if src == IDType {
+					return SafeConversion, nil
+				}
 				ckb, _ := BoolType.conversionFromImpl(src, unifying, false, seen)
 				ckn, _ := NumberType.conversionFromImpl(src, unifying, false, seen)
 				if ckb == SafeConversion || ckn == SafeConversion {
@@ -116,6 +119,12 @@ func (t *OpaqueType) conversionFromImpl(
 				}
 				if ckb == UnsafeConversion || ckn == UnsafeConversion {
 					return UnsafeConversion, nil
+				}
+				return NoConversion, noConversionDiag
+			case IDType:
+				kind, _ := StringType.conversionFromImpl(src, unifying, checkUnsafe, seen)
+				if kind.Exists() {
+					return kind, nil
 				}
 				return NoConversion, noConversionDiag
 			default:
@@ -135,6 +144,7 @@ func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 //
 // - The dynamic type is safely convertible from any other type, and is unsafely convertible _to_ any other type
 // - The string type is safely convertible from bool, number, and int
+// - The id type is safely convertible to and from string, and otherwise behaves like string
 // - The number type is safely convertible from int and unsafely convertible from string
 // - The int type is unsafely convertible from string
 // - The bool type is unsafely convertible from string
@@ -153,6 +163,8 @@ func (t *OpaqueType) String() string {
 		return "bool"
 	case StringType:
 		return "string"
+	case IDType:
+		return "id"
 	default:
 		if hclsyntax.ValidIdentifier(string(*t)) {
 			return string(*t)
@@ -180,7 +192,7 @@ func (t *OpaqueType) string(_ map[Type]struct{}) string {
 	return t.String()
 }
 
-var opaquePrecedence = []Type{StringType, NumberType, IntType, BoolType}
+var opaquePrecedence = []Type{StringType, NumberType, IntType, BoolType, IDType}
 
 func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
 	return unify(t, other, func() (Type, ConversionKind) {
