@@ -48,34 +48,34 @@ func init() {
 					assert.Equal(l, "true", string(source2.ID))
 
 					assert.Equal(l, resource.PropertyMap{
-						"boolean": resource.NewBoolProperty(false),
-						"float":   resource.NewNumberProperty(1234),
-						"integer": resource.NewNumberProperty(1234),
-						"string":  resource.NewStringProperty("1234"),
-						"numberArray": resource.NewArrayProperty([]resource.PropertyValue{
-							resource.NewNumberProperty(1234),
+						"boolean": resource.NewProperty(false),
+						"float":   resource.NewProperty(1234.0),
+						"integer": resource.NewProperty(1234.0),
+						"string":  resource.NewProperty("1234"),
+						"numberArray": resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(1234.0),
 						}),
-						"booleanMap": resource.NewObjectProperty(resource.PropertyMap{
-							"sink": resource.NewBoolProperty(false),
+						"booleanMap": resource.NewProperty(resource.PropertyMap{
+							"sink": resource.NewProperty(false),
 						}),
 					}, sink1.Inputs)
 					assert.Equal(l, resource.PropertyMap{
-						"boolean": resource.NewBoolProperty(true),
-						"float":   resource.NewNumberProperty(1),
-						"integer": resource.NewNumberProperty(2),
-						"string":  resource.NewStringProperty("abc"),
-						"numberArray": resource.NewArrayProperty([]resource.PropertyValue{
-							resource.NewNumberProperty(3),
+						"boolean": resource.NewProperty(true),
+						"float":   resource.NewProperty(1.0),
+						"integer": resource.NewProperty(2.0),
+						"string":  resource.NewProperty("abc"),
+						"numberArray": resource.NewProperty([]resource.PropertyValue{
+							resource.NewProperty(3.0),
 						}),
-						"booleanMap": resource.NewObjectProperty(resource.PropertyMap{
-							"sink": resource.NewBoolProperty(true),
+						"booleanMap": resource.NewProperty(resource.PropertyMap{
+							"sink": resource.NewProperty(true),
 						}),
 					}, sink2.Inputs)
 
 					assert.Equal(l, resource.PropertyMap{
-						"ids": resource.NewObjectProperty(resource.PropertyMap{
-							"source1Token": resource.NewStringProperty("1234"),
-							"source2Token": resource.NewStringProperty("true"),
+						"ids": resource.NewProperty(resource.PropertyMap{
+							"source2Token": resource.NewProperty("true"),
+							"source1Token": resource.NewProperty("1234"),
 						}),
 					}, stack.Outputs)
 				},
