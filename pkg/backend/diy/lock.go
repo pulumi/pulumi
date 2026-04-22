@@ -114,8 +114,13 @@ func (b *diyBackend) checkForLock(ctx context.Context, stackRef backend.StackRef
 // lockURLForError returns a URL that can be used in error messages to help users find the lock file.
 func (b *diyBackend) lockURLForError(lockPath string) string {
 	if parsedURL, err := url.Parse(b.url); err == nil {
+		if parsedURL.User != nil {
+			parsedURL.User = url.UserPassword("****", "****")
+		}
 		parsedURL.Path = path.Join(parsedURL.Path, lockPath)
-		return parsedURL.String()
+		// Go's URL encoder percent-encodes '*' as '%2A'; replace back so the
+		// redaction placeholder is human-readable in error messages.
+		return strings.ReplaceAll(parsedURL.String(), "%2A", "*")
 	}
 	// If we couldn't parse the URL, we'll just return a naive concatenation,
 	// which is what we used to do before we started using URL parsing.
@@ -153,7 +158,7 @@ func (b *diyBackend) Unlock(ctx context.Context, stackRef backend.StackReference
 	if err != nil {
 		b.d.Errorf(
 			diag.Message("", "there was a problem deleting the lock at %v, manual clean up may be required: %v"),
-			path.Join(b.url, b.lockPath(stackRef)),
+			b.lockURLForError(b.lockPath(stackRef)),
 			err)
 	}
 }
