@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
 func TestInputUsage(t *testing.T) {
@@ -146,34 +147,48 @@ func inferModuleName(codeDir string) string {
 	return filepath.Base(filepath.Dir(codeDir))
 }
 
-func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+// copyToTempDir copies the generated package into a fresh t.TempDir so that commands that mutate
+// the tree (go mod init/edit/tidy) do not modify the committed golden fixture.
+func copyToTempDir(t *testing.T, codeDir string) string {
+	tmp := t.TempDir()
+	require.NoError(t, fsutil.CopyFile(tmp, codeDir, nil))
+	return tmp
+}
+
+func setupPackageInTempDir(t *testing.T, goExe, codeDir string) string {
 	sdk, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk"))
 	require.NoError(t, err)
 
-	goExe, err := executable.FindExecutable("go")
-	require.NoError(t, err)
+	workDir := copyToTempDir(t, codeDir)
 
-	goMod := filepath.Join(codeDir, "go.mod")
+	goMod := filepath.Join(workDir, "go.mod")
 	alreadyHaveGoMod, err := test.PathExists(goMod)
 	require.NoError(t, err)
 
-	if alreadyHaveGoMod {
-		t.Logf("Found an existing go.mod, leaving as is")
-	} else {
-		test.RunCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", inferModuleName(codeDir))
-		replacement := "github.com/pulumi/pulumi/sdk/v3=" + sdk
-		test.RunCommand(t, "go_mod_edit", codeDir, goExe, "mod", "edit", "-replace", replacement)
+	if !alreadyHaveGoMod {
+		test.RunCommand(t, "go_mod_init", workDir, goExe, "mod", "init", inferModuleName(codeDir))
 	}
+	replacement := "github.com/pulumi/pulumi/sdk/v3=" + sdk
+	test.RunCommand(t, "go_mod_edit", workDir, goExe, "mod", "edit", "-replace", replacement)
+	test.RunCommand(t, "go_mod_tidy", workDir, goExe, "mod", "tidy")
 
-	test.RunCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
-	test.RunCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
+	return workDir
+}
+
+func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+	goExe, err := executable.FindExecutable("go")
+	require.NoError(t, err)
+
+	workDir := setupPackageInTempDir(t, goExe, codeDir)
+	test.RunCommand(t, "go_build", workDir, goExe, "build", "-v", "all")
 }
 
 func testGeneratedPackage(t *testing.T, codeDir string) {
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
-	test.RunCommand(t, "go-test", codeDir, goExe, "test", inferModuleName(codeDir)+"/...")
+	workDir := setupPackageInTempDir(t, goExe, codeDir)
+	test.RunCommand(t, "go-test", workDir, goExe, "test", "./...")
 }
 
 func TestGenerateTypeNames(t *testing.T) {
