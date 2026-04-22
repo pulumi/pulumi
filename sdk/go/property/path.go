@@ -54,7 +54,7 @@ func (p *Path) UnmarshalText(text []byte) error {
 	}
 	*p = Path{}
 	for v := range g.segments {
-		if _, ok := v.(splat); ok {
+		if _, ok := v.(SplatSegment); ok {
 			return errors.New("splat not allowed in non-glob paths")
 		}
 	}

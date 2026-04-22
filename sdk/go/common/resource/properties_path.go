@@ -23,7 +23,80 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
+
+// BackCompatPropertyPath represents a [property.Glob] that allows serializing non-strict property paths to avoid
+// breaking existing state. Property paths will always be re-serialized as valid [property.Glob] values.
+type BackCompatPropertyPath property.Glob
+
+func (p BackCompatPropertyPath) MarshalText() ([]byte, error) { return property.Glob(p).MarshalText() }
+
+func (p *BackCompatPropertyPath) UnmarshalText(b []byte) error {
+	// If we are able to parse strictly, then we do so
+	if err := ((*property.Glob)(p)).UnmarshalText(b); err == nil {
+		return nil
+	}
+	var oldP PropertyPath
+	if err := oldP.UnmarshalText(b); err != nil {
+		return err
+	}
+	*p = BackCompatPropertyPath(FromResourcePropertyPath(oldP))
+	return nil
+}
+
+// GlobsToStrings renders each [property.Glob] in globs to its canonical string form. The
+// zero-value glob is rendered as the empty string.
+func GlobsToStrings(globs []property.Glob) []string {
+	if len(globs) == 0 {
+		return nil
+	}
+	out := make([]string, len(globs))
+	for i, g := range globs {
+		if g == (property.Glob{}) {
+			out[i] = ""
+			continue
+		}
+		b, err := g.MarshalText()
+		contract.AssertNoErrorf(err, "non-empty glob should always marshal")
+		out[i] = string(b)
+	}
+	return out
+}
+
+// BackCompatsToStrings renders each [BackCompatPropertyPath] to its canonical string form. The
+// zero-value path is rendered as the empty string.
+func BackCompatsToStrings(paths []BackCompatPropertyPath) []string {
+	return GlobsToStrings(BackCompatsToGlobs(paths))
+}
+
+// GlobsToBackCompats converts a slice of [property.Glob] into a slice of
+// [BackCompatPropertyPath]. The underlying representation is identical, so the conversion is
+// purely a type change.
+func GlobsToBackCompats(globs []property.Glob) []BackCompatPropertyPath {
+	if len(globs) == 0 {
+		return nil
+	}
+	out := make([]BackCompatPropertyPath, len(globs))
+	for i, g := range globs {
+		out[i] = BackCompatPropertyPath(g)
+	}
+	return out
+}
+
+// BackCompatsToGlobs converts a slice of [BackCompatPropertyPath] into a slice of
+// [property.Glob]. The underlying representation is identical, so the conversion is purely a type
+// change.
+func BackCompatsToGlobs(paths []BackCompatPropertyPath) []property.Glob {
+	if len(paths) == 0 {
+		return nil
+	}
+	out := make([]property.Glob, len(paths))
+	for i, p := range paths {
+		out[i] = property.Glob(p)
+	}
+	return out
+}
 
 // PropertyPath represents a path to a nested property. The path may be composed of strings (which access properties
 // in ObjectProperty values) and integers (which access elements of ArrayProperty values).

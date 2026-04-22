@@ -220,7 +220,7 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 			e := stack[i]
 			var expansion []entry
 			switch segment := segment.(type) {
-			case splat:
+			case SplatSegment:
 				switch {
 				case e.val.IsMap():
 					for k, v := range e.val.AsMap().AllStable {
@@ -285,15 +285,15 @@ var (
 	_ GlobSegment = IndexSegment{}
 )
 
-var Splat splat
+var Splat SplatSegment
 
-type splat struct{}
+type SplatSegment struct{}
 
-func (splat) GoString() string          { return "property.Splat" }
+func (SplatSegment) GoString() string   { return "property.Splat" }
 func (s KeySegment) GoString() string   { return fmt.Sprintf("property.NewSegment(%q)", s.string) }
 func (i IndexSegment) GoString() string { return fmt.Sprintf("property.NewSegment(%d)", i.i) }
 
-func (splat) globApply(v Value) ([]Value, PathApplyFailure) {
+func (SplatSegment) globApply(v Value) ([]Value, PathApplyFailure) {
 	switch {
 	case v.IsMap():
 		values := make([]Value, 0, v.AsMap().Len())
@@ -352,7 +352,7 @@ func (g Glob) Matches(p Path) bool {
 				continue
 			}
 			return false
-		case splat:
+		case SplatSegment:
 			continue
 		default:
 			contract.Failf("invalid glob segment %T", gp)
