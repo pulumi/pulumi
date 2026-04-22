@@ -53,6 +53,15 @@ import (
 //nolint:lll // JWT token is long
 const testJWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 
+// testCloudURL honors the PULUMI_API override so CI can point tests at a non-production
+// Pulumi Cloud (e.g. staging). Falls back to the default production endpoint.
+func testCloudURL() string {
+	if u := env.APIURL.Value(); u != "" {
+		return u
+	}
+	return client.PulumiCloudURL
+}
+
 //nolint:paralleltest // mutates global configuration
 func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 	// Arrange
@@ -62,10 +71,10 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, testCloudURL(), false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), testCloudURL(), &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -122,10 +131,10 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, testCloudURL(), false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), testCloudURL(), &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -280,10 +289,10 @@ func TestDisableIntegrityChecking(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, testCloudURL(), false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), testCloudURL(), &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -435,10 +444,10 @@ func TestListStackNames(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, testCloudURL(), false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), testCloudURL(), &workspace.Project{Name: "testproj-list-stacks"}, false)
 	require.NoError(t, err)
 
 	// Create test stacks
@@ -550,10 +559,10 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 
 	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, testCloudURL(), false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), testCloudURL(), &workspace.Project{Name: "testproj-list-stacks"}, false)
 	require.NoError(t, err)
 
 	// Create a test stack

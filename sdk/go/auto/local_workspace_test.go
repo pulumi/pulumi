@@ -60,6 +60,16 @@ const (
 	pulumiTestOrg = "moolumi"
 )
 
+// consoleURLPrefix returns the expected permalink prefix, honoring PULUMI_API so tests
+// can point at non-production Pulumi Cloud (e.g. staging).
+func consoleURLPrefix() string {
+	apiURL := os.Getenv("PULUMI_API")
+	if apiURL == "" {
+		return "https://app.pulumi.com"
+	}
+	return strings.Replace(apiURL, "://api.", "://app.", 1)
+}
+
 type mockPulumiCommand struct {
 	version      semver.Version
 	stdout       string
@@ -233,8 +243,8 @@ func TestRemoveWithForce(t *testing.T) {
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
-	const permalinkSearchStr = "https://app.pulumi.com"
-	startRegex := regexp.MustCompile(permalinkSearchStr)
+	permalinkSearchStr := consoleURLPrefix()
+	startRegex := regexp.MustCompile(regexp.QuoteMeta(permalinkSearchStr))
 	permalink, err := GetPermalink(res.StdOut)
 	require.NoError(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))
@@ -319,8 +329,8 @@ func TestNewStackLocalSource(t *testing.T) {
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
-	const permalinkSearchStr = "https://app.pulumi.com"
-	startRegex := regexp.MustCompile(permalinkSearchStr)
+	permalinkSearchStr := consoleURLPrefix()
+	startRegex := regexp.MustCompile(regexp.QuoteMeta(permalinkSearchStr))
 	permalink, err := GetPermalink(res.StdOut)
 	require.NoError(t, err, "failed to get permalink.")
 	assert.True(t, startRegex.MatchString(permalink))

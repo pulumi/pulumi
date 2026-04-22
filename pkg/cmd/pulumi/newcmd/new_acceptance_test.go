@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -198,7 +199,11 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 
 	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
 	require.NoError(t, err)
-	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
+	cloudURL := env.APIURL.Value()
+	if cloudURL == "" {
+		cloudURL = client.PulumiCloudURL
+	}
+	assert.True(t, strings.HasPrefix(b.URL(), client.CloudConsoleURL(cloudURL)))
 
 	backendDir := t.TempDir()
 

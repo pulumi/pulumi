@@ -59,7 +59,9 @@ function withCloudBackend(
     runtime?: string,
 ): LocalWorkspaceOptions {
     let url = "https://api.pulumi.com";
-    if (process.env.PULUMI_BACKEND_URL) {
+    if (process.env.PULUMI_API) {
+        url = process.env.PULUMI_API;
+    } else if (process.env.PULUMI_BACKEND_URL) {
         url = process.env.PULUMI_BACKEND_URL;
     }
     const backend = {
