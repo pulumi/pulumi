@@ -666,16 +666,9 @@ func installPlugin(
 // "scaleway" provider and a "terraform-provider" bridge parameterized as
 // "scaleway") are not.
 func samePluginSource(a, b workspace.PackageDescriptor) bool {
-	if a.Name != b.Name {
-		return false
-	}
-	if (a.Parameterization == nil) != (b.Parameterization == nil) {
-		return false
-	}
-	if a.Parameterization != nil && a.Parameterization.Name != b.Parameterization.Name {
-		return false
-	}
-	return true
+	return a.Name == b.Name && 
+		(a.Parameterization == nil) == (b.Parameterization == nil) &&
+		(a.Parameterization == nil || a.Parameterization.Name == b.Parameterization.Name)
 }
 
 // describePluginSource returns a human-readable description of a plugin that
