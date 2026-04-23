@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: engine
-  description: Signal providers to cancel before closing them during replacement

@@ -1,9 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: |
-    `pulumi neo` now executes the `edit` filesystem tool locally, matching the schema
-    and response wording of the upstream mcp-claude-code tool so the agent sees
-    identical output whether the call ran on Cloud or CLI. `edit` performs exact-string
-    replacement with occurrence-count validation, and creates a new file when the
-    target is missing and `old_string` is empty.

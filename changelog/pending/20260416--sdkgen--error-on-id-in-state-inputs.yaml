@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen
-  description: Error on 'id' in state inputs

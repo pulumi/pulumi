@@ -1,8 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: |
-    Add support for handling user approval requests in the `pulumi neo` terminal UI.
-    When the agent requests confirmation for a sensitive action, the TUI prompts the
-    user and forwards their response back to the Pulumi Console. Hidden behind
-    PULUMI_EXPERIMENTAL.

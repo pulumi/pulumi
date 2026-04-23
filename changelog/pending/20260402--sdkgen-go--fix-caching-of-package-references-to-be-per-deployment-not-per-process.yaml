@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdkgen/go
-  description: Fix caching of package references to be per-deployment not per-process

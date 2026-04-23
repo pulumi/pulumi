@@ -20,7 +20,6 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -69,14 +68,11 @@ func NewReader(
 		return nil, fmt.Errorf("encryptedlog: reading encrypted key: %w", err)
 	}
 
-	encodedKey, err := dec.DecryptValue(ctx, string(encryptedKeyBytes))
+	decryptedKey, err := dec.DecryptValue(ctx, string(encryptedKeyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("encryptedlog: decrypting session key: %w", err)
 	}
-	sessionKey, err := base64.StdEncoding.DecodeString(encodedKey)
-	if err != nil {
-		return nil, fmt.Errorf("encryptedlog: decoding session key: %w", err)
-	}
+	sessionKey := []byte(decryptedKey)
 	if len(sessionKey) != keySize {
 		return nil, fmt.Errorf("encryptedlog: invalid session key size %d", len(sessionKey))
 	}

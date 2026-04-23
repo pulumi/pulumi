@@ -1,5 +1,118 @@
 # Changelog
 
+## 3.232.0 (2026-04-22)
+
+
+### Features
+
+- [cli] Add an experimental `pulumi neo` command that creates a Pulumi Neo agent task in CLI
+tool-execution mode and runs the local tool loop. Filesystem and shell tool calls
+issued by the agent run on the user's machine in their working directory; the
+interactive chat continues to happen in the Pulumi Console at the URL the command
+prints. Hidden behind PULUMI_EXPERIMENTAL.
+
+  [#22473](https://github.com/pulumi/pulumi/pull/22473)
+
+- [cli] Add support for handling user approval requests in the `pulumi neo` terminal UI.
+When the agent requests confirmation for a sensitive action, the TUI prompts the
+user and forwards their response back to the Pulumi Console. Hidden behind
+PULUMI_EXPERIMENTAL.
+
+  [#22589](https://github.com/pulumi/pulumi/pull/22589)
+
+- [cli] Add an interactive terminal UI for `pulumi neo` built with bubbletea, rendering
+agent messages, tool calls, and streaming output in the terminal alongside the
+Pulumi Console session. Hidden behind PULUMI_EXPERIMENTAL.
+
+  [#22570](https://github.com/pulumi/pulumi/pull/22570)
+
+- [cli] Switch logging library from glog to slog.
+
+BREAKING: any `if logging.V(x) {` need to be changed to `if logging.V(x).Enabled()`
+
+  [#22548](https://github.com/pulumi/pulumi/pull/22548)
+
+- [cli] Add a plan-mode toggle to the `pulumi neo` TUI, bound to Shift+Tab. When
+plan mode is on, Neo explores and asks questions without writing files,
+running `pulumi up`, or opening PRs, and surfaces an approved plan via a
+dedicated approval gate. The toggle must be set before the first message
+(plan mode is task-level on the wire); approving the proposed plan exits
+plan mode automatically.
+
+  [#22634](https://github.com/pulumi/pulumi/pull/22634)
+
+- [cli] The `pulumi neo` TUI now drives its "thinking" spinner off a single declarative
+rule (the spinner stays on until a final event — final assistant message, approval
+request, cancellation, or error — lands), so the indicator no longer flickers off
+when the agent hands off tool calls to the CLI or when streaming text arrives
+between tools. Press `Esc` during a turn to ask the agent to cancel; the label
+switches to "Cancelling..." until the backend acknowledges.
+
+  [#22637](https://github.com/pulumi/pulumi/pull/22637)
+
+- [cli] `pulumi neo` now executes the `edit` filesystem tool locally, matching the schema
+and response wording of the upstream mcp-claude-code tool so the agent sees
+identical output whether the call ran on Cloud or CLI. `edit` performs exact-string
+replacement with occurrence-count validation, and creates a new file when the
+target is missing and `old_string` is empty.
+
+  [#22654](https://github.com/pulumi/pulumi/pull/22654)
+
+
+### Bug Fixes
+
+- [cli] Render user messages in the `pulumi neo` TUI as soon as they're submitted
+instead of waiting for the Pulumi Cloud event stream to echo them back.
+The initial prompt passed on the command line also appears in the
+transcript at startup. Self-echoes from the server are de-duplicated;
+user input that originated from another client (e.g. the web UI on the
+same task) still renders.
+
+  [#22629](https://github.com/pulumi/pulumi/pull/22629)
+
+- [cli] Wrap warnings, errors, and user-message bubbles to the terminal width in the
+`pulumi neo` TUI. Previously these blocks rendered as single long lines that
+were clipped at the right edge of the viewport. On resize, all width-dependent
+transcript blocks (user messages, warnings, errors, assistant messages) now
+reflow to the new terminal width.
+
+  [#22635](https://github.com/pulumi/pulumi/pull/22635)
+
+- [cli/policy] Fix `policy ls` to use the default org name, not username
+  [#22656](https://github.com/pulumi/pulumi/pull/22656)
+
+- [engine] Fix provider registry race condition in parallel delete-before-replace
+  [#21487](https://github.com/pulumi/pulumi/pull/21487)
+
+- [engine] Signal providers to cancel before closing them during replacement
+
+- [sdkgen] Error on 'id' in state inputs
+  [#22636](https://github.com/pulumi/pulumi/pull/22636)
+
+- [programgen/python] Add necessary casts between types in generated programs
+  [#22567](https://github.com/pulumi/pulumi/pull/22567)
+
+- [sdkgen/go] Fix caching of package references to be per-deployment not per-process
+  [#22170](https://github.com/pulumi/pulumi/pull/22170)
+
+
+### Miscellaneous
+
+- [java] Upgrade java to v1.25.0
+  [#22673](https://github.com/pulumi/pulumi/pull/22673)
+
+- [auto/go] Generate command methods for the Go Automation API codegen
+  [#22612](https://github.com/pulumi/pulumi/pull/22612)
+
+- [sdk] Clarify docs on the `remote` parameter of `ComponentResource` / `Resource` in the Node and Python SDKs
+  [#22603](https://github.com/pulumi/pulumi/pull/22603)
+
+- [sdk/dotnet] Upgrade dotnet to v3.103.1
+  [#22676](https://github.com/pulumi/pulumi/pull/22676)
+
+- [yaml] Upgrade yaml to v1.32.0
+  [#22674](https://github.com/pulumi/pulumi/pull/22674)
+
 ## 3.231.0 (2026-04-16)
 
 

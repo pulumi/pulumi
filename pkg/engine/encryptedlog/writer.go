@@ -21,7 +21,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -55,9 +54,8 @@ func NewWriter(
 		return nil, fmt.Errorf("encryptedlog: generating session key: %w", err)
 	}
 
-	// Encrypt the base64-encoded session key via the caller's secrets provider.
-	encodedKey := base64.StdEncoding.EncodeToString(sessionKey[:])
-	encryptedKey, err := enc.EncryptValue(ctx, encodedKey)
+	// Encrypt the raw session key via the caller's secrets provider.
+	encryptedKey, err := enc.EncryptValue(ctx, string(sessionKey[:]))
 	if err != nil {
 		return nil, fmt.Errorf("encryptedlog: encrypting session key: %w", err)
 	}
