@@ -644,11 +644,9 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		var schemaRes *schema.Resource
 		switch r := n.(type) {
 		case *pcl.Resource:
-			pcl.FixupPulumiPackageTokens(r)
 			pkg, _, _, _ = pcl.DecomposeToken(r.GetToken())
 			schemaRes = r.Schema
 		case *pcl.ReadResource:
-			pcl.FixupPulumiPackageTokensForRead(r)
 			pkg, _, _, _ = pcl.DecomposeToken(r.GetToken())
 			schemaRes = r.Schema
 		default:
@@ -793,9 +791,7 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 // resourceTypeName computes the qualified name of a python resource.
 func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
-	token, tokenRange := r.GetToken()
-	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
-	pcl.FixupPulumiPackageTokens(r)
+	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
 
 	// Normalize module.
 	if r.Schema != nil {

@@ -179,7 +179,12 @@ func (p *PrimitiveProvider) Check(
 				Failures: makeCheckFailure(key, "missing value"),
 			}
 		}
-		if !assertType(unsecret(v)) {
+		v = unsecret(v)
+		if v.IsComputed() {
+			// We can't type check if the value is computed.
+			return nil
+		}
+		if !assertType(v) {
 			return &plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "value is not a "+typ),
 			}
@@ -212,7 +217,12 @@ func (p *PrimitiveProvider) Check(
 	// Check the array is numbers
 	numberArray := unsecret(req.News["numberArray"])
 	for _, v := range numberArray.ArrayValue() {
-		if !unsecret(v).IsNumber() {
+		v = unsecret(v)
+		if v.IsComputed() {
+			// We can't type check if the value is computed.
+			continue
+		}
+		if !v.IsNumber() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("numberArray", "array element is not a number"),
 			}, nil
@@ -225,7 +235,12 @@ func (p *PrimitiveProvider) Check(
 	// Check the map values are booleans
 	booleanMap := unsecret(req.News["booleanMap"])
 	for _, v := range booleanMap.ObjectValue() {
-		if !unsecret(v).IsBool() {
+		v = unsecret(v)
+		if v.IsComputed() {
+			// We can't type check if the value is computed.
+			continue
+		}
+		if !v.IsBool() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("booleanMap", "map value is not a boolean"),
 			}, nil
@@ -251,7 +266,30 @@ func (p *PrimitiveProvider) Create(
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	id := "id"
+	// Use the string field as the ID, most places treat the ID as opaque, but doing
+	// this lets us write l2-id-type to test conversions with the ID type.
+	unsecret := func(v resource.PropertyValue) resource.PropertyValue {
+		for {
+			if v.IsSecret() {
+				v = v.SecretValue().Element
+				continue
+			}
+			if v.IsOutput() {
+				v = v.OutputValue().Element
+				continue
+			}
+			break
+		}
+		return v
+	}
+	str := unsecret(req.Properties["string"])
+	var id string
+	if str.IsString() {
+		id = str.StringValue()
+	}
+	if id == "" {
+		id = "id"
+	}
 	if req.Preview {
 		id = ""
 	}

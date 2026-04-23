@@ -94,6 +94,7 @@ yarn-error.log
 # Local environment settings
 .env
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 
 # Local mise.toml
 .mise.local.toml

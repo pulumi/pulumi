@@ -898,7 +898,6 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 	for _, n := range program.Nodes {
 		switch r := n.(type) {
 		case *pcl.Resource:
-			pcl.FixupPulumiPackageTokens(r)
 			token, tokenRange := r.GetToken()
 			pkg, mod, name, _ := pcl.DecomposeToken(token, tokenRange)
 			if pkg == "pulumi" {

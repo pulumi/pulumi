@@ -614,6 +614,8 @@ func TestRejectDuplicateNames(t *testing.T) {
 }
 
 func TestImportResourceRef(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		schemaFile string
@@ -673,24 +675,37 @@ func TestImportResourceRef(t *testing.T) {
 			},
 		},
 	}
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+			t.Parallel()
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
-				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
+				filepath.Join(testdataPath, tt.schemaFile))
 			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
 			require.NoError(t, err)
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 				AllowDanglingReferences: true,
 			})
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				if err == nil && !diags.HasErrors() {
+					t.Errorf("BindSpec() expected error but got none")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("BindSpec() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if diags.HasErrors() {
+				t.Errorf("BindSpec() diagnostics = %v, wantErr %v", diags, tt.wantErr)
 				return
 			}
 			tt.validator(pkg)

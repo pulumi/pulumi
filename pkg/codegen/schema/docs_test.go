@@ -25,6 +25,7 @@ import (
 
 	"github.com/pgavlin/goldmark/ast"
 	"github.com/pgavlin/goldmark/testutil"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -133,10 +134,14 @@ func getDocsForPackage(pkg *Package) []doc {
 }
 
 func TestParseAndRenderDocs(t *testing.T) {
+	t.Parallel()
+
 	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
+
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
 
 	for _, f := range files {
 		if filepath.Ext(f.Name()) != ".json" || strings.Contains(f.Name(), "awsx") {
@@ -144,7 +149,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 		}
 
 		t.Run(f.Name(), func(t *testing.T) {
-			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+			t.Parallel()
 
 			path := filepath.Join(testdataPath, f.Name())
 			contents, err := os.ReadFile(path)
@@ -156,11 +161,14 @@ func TestParseAndRenderDocs(t *testing.T) {
 			if err = json.Unmarshal(contents, &spec); err != nil {
 				t.Fatalf("could not unmarshal package spec: %v", err)
 			}
-			pkg, err := ImportSpec(spec, nil, ValidationOptions{
+			pkg, diags, err := BindSpec(spec, loader, ValidationOptions{
 				AllowDanglingReferences: true,
 			})
 			if err != nil {
-				t.Fatalf("could not import package: %v", err)
+				t.Fatalf("could not bind package: %v", err)
+			}
+			if diags.HasErrors() {
+				t.Fatalf("could not bind package: %v", diags)
 			}
 
 			//nolint:paralleltest // these are large, compute heavy tests. keep them in a single thread

@@ -128,6 +128,8 @@ var expectedFailures = map[string]string{
 	"l2-resource-primitive-conversions":  "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-range-ref":                       "fails with syntax errors",
+
+	"l2-id-type": "codegen isn't keeping track of ID right now",
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

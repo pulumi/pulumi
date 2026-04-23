@@ -731,7 +731,7 @@ func computeDefaultProviderPackages(
 		defaultProviderPlugins[name] = p
 	}
 
-	if logging.V(preparePluginLog) {
+	if logging.V(preparePluginLog).Enabled() {
 		logging.V(preparePluginLog).Infoln("computeDefaultProviderPlugins(): summary of default plugins:")
 		for pkg, info := range defaultProviderPlugins {
 			logging.V(preparePluginLog).Infof("  %-15s = %s", pkg, info.Version)

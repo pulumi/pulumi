@@ -73,7 +73,7 @@ func (persister *cloudSnapshotPersister) Save(deployment apitype.TypedDeployment
 			return err
 		}
 		if err := persister.saveDiff(ctx, diff, version, persister.tokenSource); err != nil {
-			if logging.V(3) {
+			if logging.V(3).Enabled() {
 				logging.V(3).Infof("ignoring error saving checkpoint "+
 					"with PatchUpdateCheckpointDelta, falling back to "+
 					"PatchUpdateCheckpoint: %v", err)

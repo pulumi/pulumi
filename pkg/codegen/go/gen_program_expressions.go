@@ -238,12 +238,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case pcl.IntrinsicConvert:
 		from := expr.Args[0]
 		to := pcl.LowerConversion(from, expr.Signature.ReturnType)
-		output, isOutput := to.(*model.OutputType)
+
 		originalTo := to
-		if isOutput {
-			to = output.ElementType
+		isOutput, _ := model.ContainsEventuals(to)
+		to = model.ResolveOutputs(to)
+		if cns, ok := to.(*model.ConstType); ok {
+			to = cns.Type
 		}
-		_, isFromOutput := from.Type().(*model.OutputType)
+		fromType := from.Type()
+		isFromOutput, _ := model.ContainsEventuals(fromType)
 
 		switch to := to.(type) {
 		case *model.EnumType:
@@ -323,7 +326,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			g.genScopeTraversalExpression(w, arg, expr.Type())
 		default:
 			// Add a cast to the type we expect if needed
-			if originalTo.AssignableFrom(from.Type()) && (isOutput == isFromOutput) {
+			if originalTo.AssignableFrom(fromType) && (isOutput == isFromOutput) {
 				g.Fgenf(w, "%.v", from)
 			} else {
 				typeName := g.argumentTypeName(to, isOutput)
@@ -454,6 +457,24 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		optionsBag = buf.String()
 		g.Fgenf(w, "%v)", optionsBag)
+	case "max":
+		g.Fgen(w, "max(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
+	case "min":
+		g.Fgen(w, "min(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
 	case "split":
 		g.Fgenf(w, "strings.Split(%v, %v)", expr.Args[1], expr.Args[0])
 	case "join":

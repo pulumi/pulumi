@@ -43,18 +43,25 @@ const (
 	blockWarning
 	blockCancelled
 	blockUserMessage
-	blockApproval
+	blockApprovalPlan
+	blockApprovalGeneral
+	blockApprovalChoice
 )
 
-// block is a single rendered item in the TUI output log.
 type block struct {
-	kind blockKind
-	// rendered is the cached rendered string for non-busy kinds.
+	kind     blockKind
 	rendered string
-	// label is the text shown after the spinner for blockBusy only.
-	label string
-	// shimmer selects how label is animated; only meaningful for blockBusy.
+	// raw is the source content for width-dependent kinds. renderBlock
+	// recomputes rendered from raw on every WindowSizeMsg so the block
+	// reflows to the new width. blockBusy and blockToolComplete leave raw
+	// empty; blockApprovalChoice carries its verdict in approved below so
+	// renderBlock still runs when raw is empty.
+	raw string
+	// label and shimmer apply to blockBusy only.
+	label   string
 	shimmer shimmerKind
+	// approved applies to blockApprovalChoice only.
+	approved bool
 }
 
 // ModelConfig holds the parameters needed to create a TUI Model.
@@ -64,9 +71,10 @@ type ModelConfig struct {
 	Username string
 	EventCh  <-chan UIEvent
 	// OutCh carries every TUI-originated user event (chat messages, approval
-	// answers, …) to the dispatcher in runNeo. A single typed channel keeps
-	// Session focused on SSE intake and tool dispatch.
-	OutCh chan<- apitype.AgentUserEvent
+	// answers, …) to the dispatcher in runNeo. Each send also carries the
+	// TUI's current planMode, which the dispatcher reads on the first
+	// user_message to configure CreateNeoTask.
+	OutCh chan<- outboundEvent
 	// Busy seeds the input-gating state. True when the caller has already
 	// handed a prompt to the backend — the TUI starts with Enter disabled
 	// until the first UITaskIdle.
@@ -77,6 +85,10 @@ type ModelConfig struct {
 	// which is sent to the backend via CreateNeoTask rather than outCh and
 	// would otherwise only appear once the SSE stream echoes it back.
 	InitialPrompt string
+	// MessageSent seeds the post-first-message gate. Set it to true in tests
+	// that want to exercise the Shift+Tab post-send warning path without
+	// having to simulate a full Enter-driven send first.
+	MessageSent bool
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -86,7 +98,7 @@ type Model struct {
 	textInput textinput.Model
 	blocks    []block
 	eventCh   <-chan UIEvent
-	outCh     chan<- apitype.AgentUserEvent
+	outCh     chan<- outboundEvent
 	// busy is true from the moment the user sends a message (or a prompt was
 	// provided up front) until the session emits UITaskIdle / UICancelled /
 	// UIError. While busy, Enter is swallowed so the user can't talk over
@@ -109,6 +121,25 @@ type Model struct {
 	// Non-matching UIUserMessage events still render — they originated
 	// from another client (e.g. the web UI).
 	pendingUserEchoes []string
+	// planMode is the user's current plan-mode choice, toggled via Shift+Tab.
+	// Pre-first-message this is the live affordance; once messageSent flips
+	// true, Shift+Tab stops toggling and planMode is effectively frozen
+	// (further changes happen only via plan-approval auto-clear below).
+	planMode bool
+	// messageSent flips to true when the TUI successfully dispatches its
+	// first user_message on outCh. From that point on, Shift+Tab emits the
+	// "plan mode is task-level" warning instead of toggling.
+	messageSent bool
+	// pendingApprovalType is the raw wire approval_type for the currently
+	// pending approval (empty when none). The Enter handler checks for
+	// approvalTypePlanExit so it can auto-clear planMode on approval.
+	pendingApprovalType string
+	// cancelling is true from the moment the user presses ESC (the TUI posts an
+	// AgentUserEventCancel upstream) until the next final event arrives. While
+	// it is true the busy label is overridden to "Cancelling..." so the user
+	// can see their request is being acted on even if the agent is still
+	// mid-tool.
+	cancelling bool
 }
 
 var (
@@ -122,7 +153,20 @@ var (
 	toolErrMarker  = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("⏺")
 	finalMarker    = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Render("⏺")
 	userMsgBubble  = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Background(lipgloss.Color("8"))
+	// planAccentStyle is a distinct cyan+bold used for both the footer banner
+	// and the "Proposed plan" block header so they read as the same visual cue.
+	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 )
+
+// renderIndented word-wraps content (ANSI-safe) to termWidth minus the
+// 2-space transcript gutter, or returns un-wrapped if the width is too
+// small to wrap into.
+func renderIndented(style lipgloss.Style, termWidth int, content string) string {
+	if termWidth <= 4 {
+		return "  " + style.Render(content)
+	}
+	return "  " + style.Width(termWidth-2).Render(content)
+}
 
 // NewModel creates a new TUI Model.
 func NewModel(cfg ModelConfig) Model {
@@ -148,14 +192,15 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		viewport:  vp,
-		textInput: ti,
-		eventCh:   cfg.EventCh,
-		outCh:     cfg.OutCh,
-		busy:      cfg.Busy,
-		spinner:   sp,
-		width:     80,
-		height:    24,
+		viewport:    vp,
+		textInput:   ti,
+		eventCh:     cfg.EventCh,
+		outCh:       cfg.OutCh,
+		busy:        cfg.Busy,
+		spinner:     sp,
+		width:       80,
+		height:      24,
+		messageSent: cfg.MessageSent,
 	}
 	m.viewport.SetContent(m.welcome.View())
 	if cfg.InitialPrompt != "" {
@@ -190,26 +235,63 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.welcome.termWidth = msg.Width
 
-		vpHeight := msg.Height - inputBarHeight
-		if vpHeight < 1 {
-			vpHeight = 1
-		}
+		vpHeight := max(msg.Height-inputBarHeight, 1)
 		m.viewport.Width = msg.Width
 		m.viewport.Height = vpHeight
 		m.textInput.Width = msg.Width - lipgloss.Width(m.textInput.Prompt) - 1
 
-		// (Re)initialize the glamour renderer with the actual terminal width.
+		// Glamour's wrap width is baked in at construction, so rebuild on resize.
 		if r, err := glamour.NewTermRenderer(
 			glamour.WithStylePath("dark"),
 			glamour.WithWordWrap(msg.Width-4),
 		); err == nil {
 			m.mdRenderer = r
 		}
+		for i := range m.blocks {
+			m.renderBlock(&m.blocks[i])
+		}
 		m.rebuildContent()
 
 	case tea.KeyMsg:
 		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
+		}
+
+		// Shift+Tab toggles plan mode. The toggle must run before the approval
+		// and busy guards so users can flip the indicator at any point in the
+		// pre-task window, even while the startup spinner is up. It also has to
+		// intercept the key before textinput.Update sees it, since textinput
+		// otherwise treats Shift+Tab as a keypress with no visible effect.
+		if msg.Type == tea.KeyShiftTab {
+			if m.messageSent {
+				// Plan mode is task-level on the wire and gets snapshotted at
+				// the moment the first message is sent. A post-send toggle
+				// would be misleading — it could not affect the task.
+				m.appendWarningBlock(
+					"Plan mode is task-level — start a new `pulumi neo` session to change it.")
+				m.rebuildContent()
+				return m, nil
+			}
+			m.planMode = !m.planMode
+			m.rebuildContent()
+			return m, nil
+		}
+
+		// ESC asks the agent to abort the current turn. Posts user_cancel
+		// upstream and flips the local cancelling flag so the spinner label
+		// switches to "Cancelling..." until the backend acknowledges via
+		// cancelled / error / a new final assistant_message. Ignored when the
+		// TUI isn't busy or is already waiting on an approval (where the
+		// agent is paused for us anyway).
+		if msg.Type == tea.KeyEsc {
+			if m.busy && !m.pendingApproval && !m.cancelling {
+				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
+				m.cancelling = true
+				cmd := m.showBusy("Cancelling...", shimmerVerb)
+				m.rebuildContent()
+				return m, cmd
+			}
+			return m, nil
 		}
 
 		// Handled before the busy check because the agent is intentionally
@@ -222,31 +304,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !approved {
 					denialMsg = text
 				}
-				if m.outCh != nil {
-					select {
-					case m.outCh <- apitype.AgentUserEventUserConfirmation{
+				wasPlanApproval := m.pendingApprovalType == approvalTypePlanExit
+				m.sendOut(outboundEvent{
+					event: apitype.AgentUserEventUserConfirmation{
 						Type:       userEventUserConfirmation,
 						ApprovalID: m.pendingApprovalID,
 						Approved:   approved,
 						Message:    denialMsg,
-					}:
-					default:
-					}
-				}
+					},
+					planMode: m.planMode,
+				})
 				m.pendingApproval = false
 				m.pendingApprovalID = ""
+				m.pendingApprovalType = ""
+				// Approving a plan exits plan mode server-side (the PlanModeTracker
+				// stops gating writes), so mirror that locally. Denial leaves the
+				// mode on — the agent will re-plan and gate-out again on the next
+				// exit_plan_mode call.
+				if wasPlanApproval && approved {
+					m.planMode = false
+				}
 				m.textInput.Prompt = "❯ "
 				m.textInput.PromptStyle = promptStyle
 				m.textInput.Placeholder = "Send a message..."
 				m.textInput.Reset()
-				choice := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✓ Approved")
-				if !approved {
-					choice = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("✗ Denied")
-					if denialMsg != "" {
-						choice += " — " + denialMsg
-					}
-				}
-				m.appendBlock(block{kind: blockUserMessage, rendered: "  " + choice})
+				m.appendRenderedBlock(block{
+					kind:     blockApprovalChoice,
+					approved: approved,
+					raw:      denialMsg,
+				})
 				if approved {
 					cmd := m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 					m.rebuildContent()
@@ -269,21 +355,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			text := strings.TrimSpace(m.textInput.Value())
 			if text != "" {
 				m.textInput.Reset()
-				if m.outCh != nil {
-					select {
-					case m.outCh <- apitype.AgentUserEventUserMessage{
+				sent := m.sendOut(outboundEvent{
+					event: apitype.AgentUserEventUserMessage{
 						Type:    userEventUserMessage,
 						Content: text,
-					}:
-						// Render optimistically so the user sees their message in
-						// the transcript before the server echoes it back. The
-						// echo is reconciled against pendingUserEchoes in the
-						// UIUserMessage handler to avoid duplicates.
-						m.appendUserMessageBlock(text)
-						m.pendingUserEchoes = append(m.pendingUserEchoes, text)
-						return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
-					default:
-					}
+					},
+					planMode: m.planMode,
+				})
+				if sent {
+					// Render optimistically so the user sees their message in
+					// the transcript before the server echoes it back. The
+					// echo is reconciled against pendingUserEchoes in the
+					// UIUserMessage handler to avoid duplicates.
+					m.appendUserMessageBlock(text)
+					m.pendingUserEchoes = append(m.pendingUserEchoes, text)
+					// Freeze the plan-mode affordance: planMode has now been
+					// committed to the dispatcher and any later Shift+Tab
+					// would be a no-op on the server.
+					m.messageSent = true
+					return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
 				}
 			}
 			return m, nil
@@ -318,36 +408,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
-		m.removeBlockKind(blockBusy)
-		if msg.IsFinal {
+		// A truly-final message closes out any in-flight streaming block. The
+		// final-marker append is guarded because IsFinal=true can arrive with
+		// empty content (e.g. a hand-off that became final once the server
+		// reconciled pending tool calls) and we don't want a phantom marker.
+		if msg.IsFinal && !msg.HasPendingCLIWork {
 			m.removeBlockKind(blockAssistantStreaming)
-			rendered := m.renderMarkdown(msg.Content)
-			m.appendBlock(block{
-				kind:     blockAssistantFinal,
-				rendered: renderAssistantFinal(rendered),
-			})
-		} else if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
-			m.blocks[idx].rendered = renderAssistantStreaming(msg.Content)
-		} else {
-			m.appendBlock(block{
-				kind:     blockAssistantStreaming,
-				rendered: renderAssistantStreaming(msg.Content),
-			})
+			if msg.Content != "" {
+				m.appendRenderedBlock(block{kind: blockAssistantFinal, raw: msg.Content})
+			}
+		} else if msg.Content != "" {
+			if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
+				m.blocks[idx].raw = msg.Content
+				m.renderBlock(&m.blocks[idx])
+			} else {
+				m.appendRenderedBlock(block{kind: blockAssistantStreaming, raw: msg.Content})
+			}
 		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolStarted:
-		if cmd := m.showBusy(toolLabel(msg.Name, msg.Args)+" ...", shimmerWave); cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolProgress:
-		if cmd := m.showBusy(toolLabel(msg.Name, nil)+": "+truncate(msg.Message, 60), shimmerWave); cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -362,44 +450,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		// Keep the busy block alive across the inter-tool gap so the spinner
 		// stays visible while the agent decides its next move.
-		if cmd := m.showBusy(pickThinkingVerb()+"...", shimmerVerb); cmd != nil {
-			cmds = append(cmds, cmd)
-		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIError:
-		m.endBusy()
-		m.appendBlock(block{
-			kind:     blockError,
-			rendered: "  " + errorStyle.Render("✗ Error: "+msg.Message),
-		})
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.appendRenderedBlock(block{kind: blockError, raw: msg.Message})
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIWarning:
-		m.appendBlock(block{
-			kind:     blockWarning,
-			rendered: "  " + warningStyle.Render("⚠ "+msg.Message),
-		})
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.appendWarningBlock(msg.Message)
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UICancelled:
-		m.endBusy()
-		m.appendBlock(block{
-			kind:     blockCancelled,
-			rendered: "  " + cancelledStyle.Render("Session cancelled."),
-		})
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.appendRenderedBlock(block{kind: blockCancelled, raw: "Session cancelled."})
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UITaskIdle:
-		m.endBusy()
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UISessionURL:
+		// Informational metadata for the welcome box — has no opinion on busy state.
 		m.welcome.consoleURL = msg.URL
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
@@ -413,20 +492,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pendingUserEchoes = m.pendingUserEchoes[1:]
 		} else {
 			m.appendUserMessageBlock(msg.Content)
-			m.rebuildContent()
 		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIAwaitingApprovals:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIContextCompression:
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIApprovalRequest:
-		m.endBusy()
-		warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-		m.appendBlock(block{
-			kind:     blockApproval,
-			rendered: "  " + warnStyle.Render("⚠ Approval required") + "\n    " + msg.Message,
-		})
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.pendingApproval = true
 		m.pendingApprovalID = msg.ApprovalID
-		m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
+		m.pendingApprovalType = msg.ApprovalType
+		if m.pendingApprovalType == approvalTypePlanExit {
+			// The plan body is authored as markdown and lives in
+			// PlanDescription; msg.Message is just a generic intro.
+			m.appendRenderedBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription})
+			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
+		} else {
+			m.appendRenderedBlock(block{kind: blockApprovalGeneral, raw: msg.Message})
+			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
+		}
 		m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 		m.textInput.Placeholder = ""
 		m.textInput.Reset()
@@ -446,11 +540,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View returns the rendered TUI: viewport on top, input bar at the bottom.
 func (m Model) View() string {
 	sep := inputSepStyle.Render(strings.Repeat("─", m.width))
-	hintText := "  enter to send · ctrl+c to quit"
+	// The hint stays on a single line to keep inputBarHeight constant; the
+	// plan-mode indicator is prepended inline when active so the viewport sizing
+	// code doesn't need to track hint-line count.
+	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
 	if m.busy {
-		hintText = "  agent is working · enter disabled · ctrl+c to quit"
+		hintText = "agent is working · enter disabled · ctrl+c to quit"
 	}
-	hint := inputHintStyle.Render(hintText)
+	hint := "  "
+	if m.planMode {
+		hint += planAccentStyle.Render("⏸ plan mode")
+		hintText = " · " + hintText
+	}
+	hint += inputHintStyle.Render(hintText)
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
@@ -480,6 +582,66 @@ func (m *Model) rebuildContent() {
 	}
 }
 
+// applyBusyForEvent is the single point that decides whether the busy
+// indicator should be visible after a UIEvent arrives, mirroring the web
+// console's "is the last event in the stream final?" rule. Final events hide
+// the spinner and re-enable input; non-final events keep it on, with a label
+// chosen by labelForUIEvent (or "Cancelling..." overriding everything while
+// the user's cancel request is in flight).
+func (m *Model) applyBusyForEvent(ev UIEvent) tea.Cmd {
+	if isFinalUIEvent(ev) {
+		m.cancelling = false
+		m.endBusy()
+		return nil
+	}
+	if m.cancelling {
+		return m.showBusy("Cancelling...", shimmerVerb)
+	}
+	label, shim, set := m.labelForUIEvent(ev)
+	if !set {
+		// Non-opinionated event (warning, foreign user message, session URL,
+		// non-final tick): leave the busy state exactly as it is.
+		return nil
+	}
+	return m.showBusy(label, shim)
+}
+
+// isFinalUIEvent reports whether ev closes the agent's turn. See
+// applyBusyForEvent for the full rule and the CLI-work exception.
+func isFinalUIEvent(ev UIEvent) bool {
+	switch e := ev.(type) {
+	case UIAssistantMessage:
+		return e.IsFinal && !e.HasPendingCLIWork
+	case UIApprovalRequest, UICancelled, UIError, UITaskIdle:
+		return true
+	default:
+		return false
+	}
+}
+
+// labelForUIEvent picks the busy-indicator label for a non-final UIEvent. The
+// third return value is false when the event has no opinion on the label — in
+// that case the caller leaves the current label alone.
+func (m *Model) labelForUIEvent(ev UIEvent) (string, shimmerKind, bool) {
+	switch e := ev.(type) {
+	case UIToolStarted:
+		return toolLabel(e.Name, e.Args) + " ...", shimmerWave, true
+	case UIToolProgress:
+		return toolLabel(e.Name, nil) + ": " + truncate(e.Message, 60), shimmerWave, true
+	case UIToolCompleted:
+		return pickThinkingVerb() + "...", shimmerVerb, true
+	case UIAssistantMessage:
+		// Only reached when non-final (streaming) or when IsFinal=true with
+		// pending CLI work — i.e. the agent is still working.
+		return pickThinkingVerb() + "...", shimmerVerb, true
+	case UIAwaitingApprovals:
+		return "Awaiting approvals...", shimmerVerb, true
+	case UIContextCompression:
+		return "Compressing context...", shimmerVerb, true
+	}
+	return "", 0, false
+}
+
 // showBusy ensures the busy indicator is the last block, with the given
 // label and shimmer style, and the spinner is ticking. Always remove-then-
 // append so blockBusy is guaranteed to be at the bottom regardless of prior
@@ -495,14 +657,12 @@ func (m *Model) showBusy(label string, shimmer shimmerKind) tea.Cmd {
 	return m.spinner.Tick
 }
 
-// appendUserMessageBlock renders a user's chat message as a styled bubble and
-// appends it to the transcript. Used both for optimistic rendering on submit
-// and for echoes that originated outside this TUI.
+func (m *Model) appendWarningBlock(msg string) {
+	m.appendRenderedBlock(block{kind: blockWarning, raw: msg})
+}
+
 func (m *Model) appendUserMessageBlock(content string) {
-	m.appendBlock(block{
-		kind:     blockUserMessage,
-		rendered: promptStyle.Render("❯") + " " + userMsgBubble.Render(" "+content+" "),
-	})
+	m.appendRenderedBlock(block{kind: blockUserMessage, raw: content})
 }
 
 // appendBlock appends a non-busy block, keeping any existing blockBusy
@@ -513,6 +673,18 @@ func (m *Model) appendBlock(b block) {
 		return
 	}
 	m.blocks = append(m.blocks, b)
+}
+
+// sendOut is a non-blocking send on the outbound channel. Returns true on
+// success. Safe when m.outCh is nil: select with default falls through,
+// since sending on a nil channel blocks forever.
+func (m *Model) sendOut(e outboundEvent) bool {
+	select {
+	case m.outCh <- e:
+		return true
+	default:
+		return false
+	}
 }
 
 // endBusy clears the busy flag (the spinner drops its next tick) and
@@ -544,6 +716,84 @@ func (m *Model) findBlockKind(kind blockKind) int {
 	return -1
 }
 
+// renderBlock recomputes b.rendered from b.raw using the current terminal
+// width and markdown renderer. blockApprovalChoice is the one kind that
+// still renders when raw is empty (its verdict is carried by b.approved).
+func (m *Model) renderBlock(b *block) {
+	if b.kind == blockApprovalChoice {
+		m.renderApprovalChoice(b)
+		return
+	}
+	if b.raw == "" {
+		return
+	}
+	switch b.kind {
+	case blockWarning:
+		b.rendered = renderIndented(warningStyle, m.width, "⚠ "+b.raw)
+	case blockError:
+		b.rendered = renderIndented(errorStyle, m.width, "✗ Error: "+b.raw)
+	case blockCancelled:
+		b.rendered = renderIndented(cancelledStyle, m.width, b.raw)
+	case blockUserMessage:
+		b.rendered = m.renderUserBubble(b.raw)
+	case blockAssistantStreaming:
+		b.rendered = renderAssistantStreaming(m.wrapPlain(b.raw))
+	case blockAssistantFinal:
+		b.rendered = renderAssistantFinal(m.renderMarkdown(b.raw))
+	case blockApprovalPlan:
+		header := planAccentStyle.Render("⏺ Proposed plan")
+		b.rendered = renderHeaderedBlock(header, m.renderMarkdown(b.raw))
+	case blockApprovalGeneral:
+		header := warningStyle.Render("⚠ Approval required")
+		b.rendered = renderHeaderedBlock(header, m.wrapPlain(b.raw))
+	case blockBusy, blockToolComplete:
+		// No raw: blockBusy renders live from label, blockToolComplete is
+		// pre-styled at event time.
+	case blockApprovalChoice:
+		// Unreachable; kept for exhaustive lint.
+	}
+}
+
+func (m *Model) renderApprovalChoice(b *block) {
+	if b.approved {
+		b.rendered = "  " + lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✓ Approved")
+		return
+	}
+	denied := lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("✗ Denied")
+	if b.raw == "" {
+		b.rendered = "  " + denied
+		return
+	}
+	b.rendered = renderIndented(lipgloss.NewStyle(), m.width, denied+" — "+b.raw)
+}
+
+// renderUserBubble renders a user-chat bubble. Short messages hug their
+// content; only overflow triggers Width, which both wraps and pads so the
+// background colour fills every wrapped line evenly.
+func (m *Model) renderUserBubble(content string) string {
+	prefix := promptStyle.Render("❯") + " " // visible width 2
+	padded := " " + content + " "
+	bubbleWidth := max(m.width-2, 8)
+	style := userMsgBubble
+	if m.width > 4 && lipgloss.Width(padded) > bubbleWidth {
+		style = style.Width(bubbleWidth)
+	}
+	return prefix + style.Render(padded)
+}
+
+// wrapPlain word-wraps non-markdown text to the terminal width.
+func (m *Model) wrapPlain(text string) string {
+	if m.width <= 4 {
+		return text
+	}
+	return lipgloss.NewStyle().Width(m.width - 4).Render(text)
+}
+
+func (m *Model) appendRenderedBlock(b block) {
+	m.renderBlock(&b)
+	m.appendBlock(b)
+}
+
 // renderMarkdown renders text through glamour, falling back to plain text.
 func (m *Model) renderMarkdown(text string) string {
 	if m.mdRenderer == nil {
@@ -556,6 +806,19 @@ func (m *Model) renderMarkdown(text string) string {
 	return strings.TrimRight(rendered, "\n")
 }
 
+// renderHeaderedBlock renders "  header" followed by body indented by 4 spaces,
+// matching the visual style of tool/assistant/plan blocks in the transcript. If
+// body is empty only the header line is returned, so callers can pass the split
+// first line of some content as the header and the remainder as the body.
+func renderHeaderedBlock(header, body string) string {
+	first := "  " + header
+	if strings.TrimSpace(body) == "" {
+		return first
+	}
+	indented := lipgloss.NewStyle().MarginLeft(4).Render(strings.TrimRight(body, "\n"))
+	return lipgloss.JoinVertical(lipgloss.Left, first, indented)
+}
+
 // renderAssistantFinal renders a final assistant message with a white circle marker.
 func renderAssistantFinal(rendered string) string {
 	trimmed := strings.TrimLeft(rendered, "\n ")
@@ -563,12 +826,7 @@ func renderAssistantFinal(rendered string) string {
 		return ""
 	}
 	firstLine, rest, _ := strings.Cut(trimmed, "\n")
-	first := "  " + finalMarker + " " + firstLine
-	if rest == "" {
-		return first
-	}
-	indented := lipgloss.NewStyle().MarginLeft(4).Render(strings.TrimRight(rest, "\n"))
-	return lipgloss.JoinVertical(lipgloss.Left, first, indented)
+	return renderHeaderedBlock(finalMarker+" "+firstLine, rest)
 }
 
 // renderAssistantStreaming renders streaming text with a dim indicator.

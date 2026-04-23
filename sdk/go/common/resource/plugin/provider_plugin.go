@@ -1970,6 +1970,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	rpcReq := &pulumirpc.ConstructRequest{
 		Project:                 req.Info.Project,
 		Stack:                   req.Info.Stack,
+		Organization:            req.Info.Organization,
 		Config:                  config,
 		ConfigSecretKeys:        configSecretKeys,
 		DryRun:                  req.Info.DryRun,

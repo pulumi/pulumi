@@ -913,21 +913,20 @@ func (pkg *Package) TokenToModule(tok string) string {
 		return ""
 	}
 
-	switch components[1] {
-	case "providers":
+	if components[0] == "pulumi" && (components[1] == "pulumi" || components[1] == "providers") {
 		return ""
-	default:
-		format := pkg.moduleFormat
-		if format == nil {
-			format = defaultModuleFormat
-		}
-
-		matches := format.FindStringSubmatch(components[1])
-		if len(matches) < 2 || matches[1] == "index" {
-			return ""
-		}
-		return matches[1]
 	}
+
+	format := pkg.moduleFormat
+	if format == nil {
+		format = defaultModuleFormat
+	}
+
+	matches := format.FindStringSubmatch(components[1])
+	if len(matches) < 2 || matches[1] == "index" {
+		return ""
+	}
+	return matches[1]
 }
 
 func TokenToRuntimeModule(tok string) string {

@@ -70,12 +70,13 @@ class LanguageRuntimeStub:
         pulumi.language_pb2.GetRequiredPackagesResponse,
     ]
     """`GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-    by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-    to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-    back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-    determine which plugins are required to service the import of a given resource, since given the presence of
-    [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-    with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+    by a program or plugin. It is used to pre-install packages before running a program with
+    [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+    registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+    resources into a stack, it is used to determine which plugins are required to service the import of a given
+    resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+    true that a package name corresponds 1:1 with a plugin name. It replaces
+    [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
     providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
     provide multiple packages.
     """
@@ -240,12 +241,13 @@ class LanguageRuntimeAsyncStub:
         pulumi.language_pb2.GetRequiredPackagesResponse,
     ]
     """`GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-    by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-    to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-    back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-    determine which plugins are required to service the import of a given resource, since given the presence of
-    [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-    with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+    by a program or plugin. It is used to pre-install packages before running a program with
+    [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+    registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+    resources into a stack, it is used to determine which plugins are required to service the import of a given
+    resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+    true that a package name corresponds 1:1 with a plugin name. It replaces
+    [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
     providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
     provide multiple packages.
     """
@@ -416,12 +418,13 @@ class LanguageRuntimeServicer(metaclass=abc.ABCMeta):
         context: _ServicerContext,
     ) -> typing.Union[pulumi.language_pb2.GetRequiredPackagesResponse, collections.abc.Awaitable[pulumi.language_pb2.GetRequiredPackagesResponse]]:
         """`GetRequiredPackages` computes the complete set of anticipated [packages](pulumirpc.PackageDependency) required
-        by a program. It is used to pre-install packages before running a program with [](pulumirpc.LanguageRuntime.Run),
-        to avoid the need to install them on-demand in response to [resource registrations](resource-registration) sent
-        back from the running program to the engine. Moreover, when importing resources into a stack, it is used to
-        determine which plugins are required to service the import of a given resource, since given the presence of
-        [parameterized providers](parameterized-providers), it is not in general true that a package name corresponds 1:1
-        with a plugin name. It replaces [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
+        by a program or plugin. It is used to pre-install packages before running a program with
+        [](pulumirpc.LanguageRuntime.Run), to avoid the need to install them on-demand in response to [resource
+        registrations](resource-registration) sent back from the running program to the engine. Moreover, when importing
+        resources into a stack, it is used to determine which plugins are required to service the import of a given
+        resource, since given the presence of [parameterized providers](parameterized-providers), it is not in general
+        true that a package name corresponds 1:1 with a plugin name. It replaces
+        [](pulumirpc.LanguageRuntime.GetRequiredPlugins) in the face of [parameterized
         providers](parameterized-providers), which as mentioned above can enable multiple instances of the same plugin to
         provide multiple packages.
         """

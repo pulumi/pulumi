@@ -37,7 +37,7 @@ func NewPolicyCmd() *cobra.Command {
 	cmd.AddCommand(newPolicyEnableCmd())
 	cmd.AddCommand(newPolicyGroupCmd())
 	cmd.AddCommand(newPolicyInstallCmd())
-	cmd.AddCommand(newPolicyLsCmd())
+	cmd.AddCommand(newPolicyLsCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 	cmd.AddCommand(newPolicyNewCmd())
 	cmd.AddCommand(newPolicyPublishCmd())
 	cmd.AddCommand(newPolicyRmCmd())

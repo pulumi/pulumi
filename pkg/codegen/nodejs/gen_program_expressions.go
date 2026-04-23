@@ -596,6 +596,24 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fprint(w, ")")
 	case "join":
 		g.Fgenf(w, "%.20v.join(%v)", expr.Args[1], expr.Args[0])
+	case "max":
+		g.Fgen(w, "Math.max(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
+	case "min":
+		g.Fgen(w, "Math.min(")
+		for i, arg := range expr.Args {
+			if i > 0 {
+				g.Fgen(w, ", ")
+			}
+			g.Fgenf(w, "%v", arg)
+		}
+		g.Fgen(w, ")")
 	case "length":
 		g.Fgenf(w, "%.20v.length", expr.Args[0])
 	case "lookup":

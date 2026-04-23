@@ -1,7 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: |
-    Add an interactive terminal UI for `pulumi neo` built with bubbletea, rendering
-    agent messages, tool calls, and streaming output in the terminal alongside the
-    Pulumi Console session. Hidden behind PULUMI_EXPERIMENTAL.

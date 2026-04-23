@@ -92,6 +92,55 @@ func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
 	p.Run(t, nil)
 }
 
+func TestRemoteComponentConstructInfoIncludesOrganization(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(
+					_ context.Context,
+					req plugin.ConstructRequest,
+					monitor *deploytest.ResourceMonitor,
+				) (plugin.ConstructResponse, error) {
+					assert.Equal(t, "project-name", req.Info.Project)
+					assert.Equal(t, "stack-name", req.Info.Stack)
+					assert.Equal(t, "organization", req.Info.Organization)
+
+					resp, err := monitor.RegisterResource(req.Type, req.Name, false, deploytest.ResourceOptions{
+						Parent: req.Parent,
+					})
+					require.NoError(t, err)
+
+					return plugin.ConstructResponse{URN: resp.URN}, nil
+				},
+			}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Project: "project-name",
+		Stack:   "stack-name",
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+
+	project := p.GetProject()
+	target := p.GetTarget(t, nil)
+	target.Organization = "organization"
+
+	_, err := lt.TestOp(engine.Update).Run(project, target, p.Options, false, p.BackendClient, nil)
+	require.NoError(t, err)
+}
+
 // Tests that two remote components implemented by provider Construct methods interact correctly when they have
 // interdependencies specified only in the user program (that is, the Construct implementations themselves do not have
 // explicit dependencies).
