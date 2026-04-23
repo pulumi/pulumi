@@ -1,4 +1,4 @@
-// Copyright 2016, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,16 +15,15 @@
 // The tsnode import is used for type-checking only. Do not reference it in the emitted code.
 import * as tsnode from "ts-node";
 import * as fs from "fs";
+import * as util from "util";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as semver from "semver";
 import * as tsutils from "../../tsutils";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
-import { readPackageManifest } from "../../runtime/manifest";
+import { addProcessListener } from "../../runtime/process-listener";
 import * as settings from "../../runtime/settings";
 import { componentProviderHost, getPulumiComponents } from "../../provider/experimental/provider";
-import { defaultErrorMessage } from "../run/error";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -39,7 +38,7 @@ const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
  * Attempts to provide a detailed error message for module load failure if the
  * module that failed to load is the top-level module.
  * @param program The name of the program given to `run`, i.e. the top level module
- * @param error The error that occurred. Must be a module load error.
+ * @param error The error that occured. Must be a module load error.
  */
 function reportModuleLoadFailure(program: string, error: Error): never {
     throwOrPrintModuleLoadError(program, error);
@@ -90,9 +89,10 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 
     let packageObject: Record<string, any>;
     try {
-        packageObject = readPackageManifest(projectRoot).data;
+        const packageJson = path.join(projectRoot, "package.json");
+        packageObject = require(packageJson);
     } catch {
-        // This is all best-effort so if we can't load the package manifest, that's
+        // This is all best-effort so if we can't load the package.json file, that's
         // fine.
         return;
     }
@@ -173,18 +173,14 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         const skipProject = !fs.existsSync(tsConfigPath);
         const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         const tsn: typeof tsnode = require(tsnodeRequire);
-        const ts = require(typescriptRequire);
-        const tsVersion = semver.parse(ts.version);
-        // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
-        const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
         tsn.register({
             typeCheck: true,
             skipProject: skipProject,
             compiler: typescriptRequire,
             compilerOptions: {
                 target: "ES2020", // TypeScript 3.8 supports this
-                module: useNodeNext ? "nodenext" : "commonjs",
-                moduleResolution: useNodeNext ? "nodenext" : "node",
+                module: "commonjs",
+                moduleResolution: "node",
                 sourceMap: "true",
                 ...compilerOptions,
             },
@@ -215,7 +211,15 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
 
         errorSet.add(err);
 
-        const defaultMessage = defaultErrorMessage(err);
+        // colorize stack trace if exists
+        const stackMessage = err.stack && util.inspect(err, { colors: true });
+
+        // Default message should be to include the full stack (which includes the message), or
+        // fallback to just the message if we can't get the stack.
+        //
+        // If both the stack and message are empty, then just stringify the err object itself. This
+        // is also necessary as users can throw arbitrary things in JS (including non-Errors).
+        const defaultMessage = stackMessage || err.message || "" + err;
 
         // First, log the error.
         if (RunError.isInstance(err)) {
@@ -250,11 +254,11 @@ ${errMsg}`,
         opts.reportLoggedError(err);
     };
 
-    process.on("uncaughtException", uncaughtHandler);
+    addProcessListener("uncaughtException", uncaughtHandler);
     // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
     // just suppress the TS strictness here.
-    process.on("unhandledRejection", uncaughtHandler);
-    process.on("exit", settings.disconnectSync);
+    addProcessListener("unhandledRejection", uncaughtHandler);
+    addProcessListener("exit", settings.disconnectSync);
 
     // Trigger callback to update a sentinel variable tracking
     // whether the program is running.
@@ -279,16 +283,17 @@ ${errMsg}`,
             const components = getPulumiComponents(reqResult);
             if (components.length > 0) {
                 const absDir = path.resolve(program);
-                const { data: packageJSON, path: packageJSONPath } = readPackageManifest(absDir);
+                const packageJSONPath = path.join(absDir, "package.json");
+                const packStr = fs.readFileSync(packageJSONPath, { encoding: "utf-8" });
+                const packageJSON = JSON.parse(packStr);
                 if (!packageJSON?.name) {
-                    throw new Error(`${path.basename(packageJSONPath)} is missing a 'name' field.`);
+                    throw new Error(`${packageJSONPath} is missing a 'name' field.`);
                 }
                 const matches = packageJSON.name.match(/(@.*?\/)?(.+)/);
                 const providerName = matches[2].replace(/[^-a-zA-Z0-9_]/g, "-");
                 if (!/^[a-zA-Z]/.test(providerName)) {
                     throw new Error(
-                        `Invalid provider name '${providerName}' in ${path.basename(packageJSONPath)}. ` +
-                            `Provider names must start with a letter.`,
+                        `Invalid provider name '${providerName}' in package.json. Provider names must start with a letter.`,
                     );
                 }
                 let namespace = undefined;
