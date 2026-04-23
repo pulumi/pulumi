@@ -60,7 +60,7 @@ var _ plugin.Provider = (*ConfigurerProvider)(nil)
 
 const (
 	configurerPkg     = "configurer"
-	configurerVersion = "36.0.0"
+	configurerVersion = "38.0.0"
 )
 
 func (p *ConfigurerProvider) Close() error                             { return nil }

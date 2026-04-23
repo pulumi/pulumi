@@ -1,4 +1,4 @@
 package "configurer" {
   baseProviderName    = "configurer"
-  baseProviderVersion = "36.0.0"
+  baseProviderVersion = "38.0.0"
 }
