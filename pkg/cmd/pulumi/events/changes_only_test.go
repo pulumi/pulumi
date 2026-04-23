@@ -26,19 +26,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-// resourcePreEvent builds a ResourcePreEvent fixture. Outputs share the input keys (mirroring what
-// most Pulumi providers do: outputs include every input plus derived fields) and add a derived
-// `id` key, so tests can observe how the --changes-only filter narrows both `Inputs` and
-// `Outputs` using the same `Diffs` list.
+// resourcePreEvent is a tiny helper for building ResourcePreEvent fixtures in table tests.
 func resourcePreEvent(op apitype.OpType, diffs []string, oldIn, newIn map[string]any) apitype.EngineEvent {
-	oldOut := map[string]any{"id": "id-old"}
-	for k := range oldIn {
-		oldOut[k] = "out-old-" + k
-	}
-	newOut := map[string]any{"id": "id-new"}
-	for k := range newIn {
-		newOut[k] = "out-new-" + k
-	}
 	return apitype.EngineEvent{
 		Sequence:  7,
 		Timestamp: 42,
@@ -48,8 +37,8 @@ func resourcePreEvent(op apitype.OpType, diffs []string, oldIn, newIn map[string
 				URN:   "urn:pulumi:stack::proj::pkg:index:Res::r",
 				Type:  "pkg:index:Res",
 				Diffs: diffs,
-				Old:   &apitype.StepEventStateMetadata{URN: "urn:old", Inputs: oldIn, Outputs: oldOut},
-				New:   &apitype.StepEventStateMetadata{URN: "urn:new", Inputs: newIn, Outputs: newOut},
+				Old:   &apitype.StepEventStateMetadata{URN: "urn:old", Inputs: oldIn, Outputs: map[string]any{"o": 1}},
+				New:   &apitype.StepEventStateMetadata{URN: "urn:new", Inputs: newIn, Outputs: map[string]any{"o": 2}},
 			},
 		},
 	}
@@ -100,8 +89,7 @@ func TestFilterChangesOnly_KeepsReadRefreshDiscardAndReplacements(t *testing.T) 
 
 	// Read, refresh, read-replacement, and read-discard all represent real observable changes:
 	// a resource was pulled in, refreshed state diverged, or a resource was dropped from state.
-	// They must survive the filter and — when `Diffs` is reported — be narrowed the same way as
-	// update/replace.
+	// They must survive the filter.
 	ops := []apitype.OpType{
 		apitype.OpRead,
 		apitype.OpReadReplacement,
@@ -119,16 +107,14 @@ func TestFilterChangesOnly_KeepsReadRefreshDiscardAndReplacements(t *testing.T) 
 			require.NotNil(t, got.ResourcePreEvent)
 			md := got.ResourcePreEvent.Metadata
 			assert.Equal(t, op, md.Op)
+			// Diffs, when present, still restrict inputs regardless of the op.
 			assert.Equal(t, map[string]any{"foo": "old"}, md.Old.Inputs)
 			assert.Equal(t, map[string]any{"foo": "new"}, md.New.Inputs)
-			assert.Equal(t, map[string]any{"foo": "out-old-foo"}, md.Old.Outputs,
-				"Outputs must be narrowed by the same Diffs list as inputs")
-			assert.Equal(t, map[string]any{"foo": "out-new-foo"}, md.New.Outputs)
 		})
 	}
 }
 
-func TestFilterChangesOnly_UpdateRestrictsInputsAndOutputsToDiffs(t *testing.T) {
+func TestFilterChangesOnly_UpdateRestrictsInputsAndKeepsOutputs(t *testing.T) {
 	t.Parallel()
 
 	oldIn := map[string]any{"foo": "old", "bar": "stable", "baz": "also-stable"}
@@ -151,13 +137,13 @@ func TestFilterChangesOnly_UpdateRestrictsInputsAndOutputsToDiffs(t *testing.T) 
 		"Old.Inputs must contain only changed keys")
 	assert.Equal(t, map[string]any{"foo": "new"}, md.New.Inputs,
 		"New.Inputs must contain only changed keys")
-	assert.Equal(t, map[string]any{"foo": "out-old-foo"}, md.Old.Outputs,
-		"Old.Outputs must be narrowed to the same Diffs keys; the derived `id` key is dropped")
-	assert.Equal(t, map[string]any{"foo": "out-new-foo"}, md.New.Outputs,
-		"New.Outputs must be narrowed to the same Diffs keys")
+	assert.Equal(t, map[string]any{"o": 1}, md.Old.Outputs,
+		"Old.Outputs must be preserved — consumers still want to see resulting state")
+	assert.Equal(t, map[string]any{"o": 2}, md.New.Outputs,
+		"New.Outputs must be preserved")
 }
 
-func TestFilterChangesOnly_ReplaceRestrictsInputsAndOutputsToDiffs(t *testing.T) {
+func TestFilterChangesOnly_ReplaceRestrictsInputsToDiffs(t *testing.T) {
 	t.Parallel()
 
 	oldIn := map[string]any{"foo": "old", "bar": "stable"}
@@ -169,15 +155,13 @@ func TestFilterChangesOnly_ReplaceRestrictsInputsAndOutputsToDiffs(t *testing.T)
 	md := got.ResourcePreEvent.Metadata
 	assert.Equal(t, map[string]any{"foo": "old"}, md.Old.Inputs)
 	assert.Equal(t, map[string]any{"foo": "new"}, md.New.Inputs)
-	assert.Equal(t, map[string]any{"foo": "out-old-foo"}, md.Old.Outputs)
-	assert.Equal(t, map[string]any{"foo": "out-new-foo"}, md.New.Outputs)
 }
 
 func TestFilterChangesOnly_CreateKeepsAllInputsAndOutputs(t *testing.T) {
 	t.Parallel()
 
 	// Creates have no "Old" state and typically no Diffs; every property is new, so the full
-	// `Inputs` and `Outputs` maps are preserved.
+	// Inputs map is preserved along with the Outputs.
 	evt := apitype.EngineEvent{
 		ResourcePreEvent: &apitype.ResourcePreEvent{
 			Metadata: apitype.StepEventMetadata{
@@ -185,7 +169,7 @@ func TestFilterChangesOnly_CreateKeepsAllInputsAndOutputs(t *testing.T) {
 				URN: "urn:pulumi:stack::proj::pkg:index:Res::r",
 				New: &apitype.StepEventStateMetadata{
 					Inputs:  map[string]any{"foo": "a", "bar": "b"},
-					Outputs: map[string]any{"id": "xyz", "foo": "a"},
+					Outputs: map[string]any{"o": 1},
 				},
 			},
 		},
@@ -197,8 +181,7 @@ func TestFilterChangesOnly_CreateKeepsAllInputsAndOutputs(t *testing.T) {
 	assert.Nil(t, md.Old)
 	assert.Equal(t, map[string]any{"foo": "a", "bar": "b"}, md.New.Inputs,
 		"create events keep all inputs — every property is new")
-	assert.Equal(t, map[string]any{"id": "xyz", "foo": "a"}, md.New.Outputs,
-		"create events keep all outputs with no Diffs to narrow by")
+	assert.Equal(t, map[string]any{"o": 1}, md.New.Outputs, "outputs must be preserved")
 }
 
 func TestFilterChangesOnly_DeleteKeepsAllOldInputsAndOutputs(t *testing.T) {
@@ -211,7 +194,7 @@ func TestFilterChangesOnly_DeleteKeepsAllOldInputsAndOutputs(t *testing.T) {
 				URN: "urn:pulumi:stack::proj::pkg:index:Res::r",
 				Old: &apitype.StepEventStateMetadata{
 					Inputs:  map[string]any{"foo": "a", "bar": "b"},
-					Outputs: map[string]any{"id": "xyz", "foo": "a"},
+					Outputs: map[string]any{"o": 1},
 				},
 			},
 		},
@@ -222,16 +205,14 @@ func TestFilterChangesOnly_DeleteKeepsAllOldInputsAndOutputs(t *testing.T) {
 	md := got.ResourcePreEvent.Metadata
 	assert.Equal(t, map[string]any{"foo": "a", "bar": "b"}, md.Old.Inputs,
 		"delete events keep all old inputs — consumers need to know what's gone")
-	assert.Equal(t, map[string]any{"id": "xyz", "foo": "a"}, md.Old.Outputs,
-		"delete events keep all old outputs with no Diffs to narrow by")
+	assert.Equal(t, map[string]any{"o": 1}, md.Old.Outputs, "outputs must be preserved")
 	assert.Nil(t, md.New)
 }
 
 func TestFilterChangesOnly_KeepsResOutputsAndResOpFailed(t *testing.T) {
 	t.Parallel()
 
-	// ResOutputsEvent with an update op — outputs are narrowed by Diffs the same way as
-	// ResourcePreEvent.
+	// ResOutputsEvent with an update op.
 	outputs := apitype.EngineEvent{
 		ResOutputsEvent: &apitype.ResOutputsEvent{
 			Metadata: apitype.StepEventMetadata{
@@ -240,7 +221,7 @@ func TestFilterChangesOnly_KeepsResOutputsAndResOpFailed(t *testing.T) {
 				Diffs: []string{"foo"},
 				New: &apitype.StepEventStateMetadata{
 					Inputs:  map[string]any{"foo": "n", "bar": "s"},
-					Outputs: map[string]any{"foo": "post-n", "id": "xyz"},
+					Outputs: map[string]any{"o": 1},
 				},
 			},
 		},
@@ -249,8 +230,8 @@ func TestFilterChangesOnly_KeepsResOutputsAndResOpFailed(t *testing.T) {
 	require.NotNil(t, gotOut)
 	require.NotNil(t, gotOut.ResOutputsEvent)
 	assert.Equal(t, map[string]any{"foo": "n"}, gotOut.ResOutputsEvent.Metadata.New.Inputs)
-	assert.Equal(t, map[string]any{"foo": "post-n"}, gotOut.ResOutputsEvent.Metadata.New.Outputs,
-		"ResOutputsEvent outputs must be narrowed by Diffs")
+	assert.Equal(t, map[string]any{"o": 1}, gotOut.ResOutputsEvent.Metadata.New.Outputs,
+		"ResOutputsEvent outputs must be preserved")
 
 	// ResOpFailedEvent with a create op retains Status/Steps on the copy.
 	failed := apitype.EngineEvent{
@@ -278,8 +259,8 @@ func TestFilterChangesOnly_DoesNotMutateInput(t *testing.T) {
 
 	oldIn := map[string]any{"foo": "old", "bar": "stable"}
 	newIn := map[string]any{"foo": "new", "bar": "stable"}
-	originalOldOutputs := map[string]any{"foo": "out-old", "id": "x"}
-	originalNewOutputs := map[string]any{"foo": "out-new", "id": "y"}
+	originalOldOutputs := map[string]any{"o": 1}
+	originalNewOutputs := map[string]any{"o": 2}
 
 	evt := apitype.EngineEvent{
 		Sequence:  1,
@@ -300,8 +281,8 @@ func TestFilterChangesOnly_DoesNotMutateInput(t *testing.T) {
 	// The originals must be untouched: filter callers expect a pure function.
 	assert.Equal(t, map[string]any{"foo": "old", "bar": "stable"}, oldIn)
 	assert.Equal(t, map[string]any{"foo": "new", "bar": "stable"}, newIn)
-	assert.Equal(t, map[string]any{"foo": "out-old", "id": "x"}, originalOldOutputs)
-	assert.Equal(t, map[string]any{"foo": "out-new", "id": "y"}, originalNewOutputs)
+	assert.Equal(t, map[string]any{"o": 1}, originalOldOutputs)
+	assert.Equal(t, map[string]any{"o": 2}, originalNewOutputs)
 	assert.Equal(t, oldIn, evt.ResourcePreEvent.Metadata.Old.Inputs)
 	assert.Equal(t, newIn, evt.ResourcePreEvent.Metadata.New.Inputs)
 }
@@ -344,8 +325,6 @@ func TestRunChangesOnly_FiltersJSONLStream(t *testing.T) {
 	assert.Equal(t, apitype.OpUpdate, updateEvt.ResourcePreEvent.Metadata.Op)
 	assert.Equal(t, map[string]any{"foo": "old"}, updateEvt.ResourcePreEvent.Metadata.Old.Inputs)
 	assert.Equal(t, map[string]any{"foo": "new"}, updateEvt.ResourcePreEvent.Metadata.New.Inputs)
-	assert.Equal(t, map[string]any{"foo": "out-old-foo"}, updateEvt.ResourcePreEvent.Metadata.Old.Outputs)
-	assert.Equal(t, map[string]any{"foo": "out-new-foo"}, updateEvt.ResourcePreEvent.Metadata.New.Outputs)
 
 	var summaryEvt apitype.EngineEvent
 	require.NoError(t, json.Unmarshal([]byte(lines[2]), &summaryEvt))

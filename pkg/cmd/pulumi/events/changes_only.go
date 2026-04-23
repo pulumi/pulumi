@@ -58,17 +58,11 @@ func runChangesOnly(in io.Reader, out io.Writer) error {
 //   - Resource events whose op is `same` are dropped: `same` is the engine's explicit marker that
 //     nothing changed. Every other op (create, update, replace, delete, read, refresh,
 //     read-replacement, read-discard) represents a real observable change and is kept.
-//   - For kept resource events, if the provider reported a non-empty `Diffs` list, the same set
-//     of top-level keys is used to restrict both `Inputs` and `Outputs` on `Old` and `New`. For
-//     ops that typically have no diffs (e.g. create and delete, where every property is new or
-//     gone) both maps are kept in full.
-//
-// Using the input-level `Diffs` to narrow `Outputs` is deliberately pragmatic: the engine only
-// exposes input-side diffs, and in practice Pulumi providers export outputs whose keys mirror
-// inputs, so filtering by `Diffs` keeps the properties a reader of a changes-only stream actually
-// cares about while dropping stable derived outputs (ids, arns, ...). Output keys that don't
-// overlap with `Diffs` are dropped — consumers that need the full post-state can work from the
-// unfiltered stream.
+//   - For kept resource events, if the provider reported a non-empty `Diffs` list, `Old.Inputs`
+//     and `New.Inputs` are restricted to those top-level keys. For ops that typically have no
+//     diffs (e.g. create and delete, where every property is new or gone) inputs are kept in full.
+//   - `Outputs` are preserved: consumers that render these events still want to see the resulting
+//     state.
 //
 // The input event is never mutated; every pointer returned references freshly-allocated structs so
 // callers can safely keep and modify the result.
@@ -92,8 +86,8 @@ func filterChangesOnly(evt apitype.EngineEvent) *apitype.EngineEvent {
 	}
 
 	filteredMd := *md
-	filteredMd.Old = restrictToDiffs(md.Old, md.Diffs)
-	filteredMd.New = restrictToDiffs(md.New, md.Diffs)
+	filteredMd.Old = restrictInputsToDiffs(md.Old, md.Diffs)
+	filteredMd.New = restrictInputsToDiffs(md.New, md.Diffs)
 
 	out := apitype.EngineEvent{Sequence: evt.Sequence, Timestamp: evt.Timestamp}
 	switch {
@@ -113,11 +107,11 @@ func filterChangesOnly(evt apitype.EngineEvent) *apitype.EngineEvent {
 	return &out
 }
 
-// restrictToDiffs returns a shallow copy of s with `Inputs` and `Outputs` narrowed to the
-// top-level keys in diffs. If diffs is empty the full `Inputs` and `Outputs` maps are preserved
-// (every property is, by the engine's own report, either unchanged or — for creates and deletes —
-// entirely new or gone).
-func restrictToDiffs(
+// restrictInputsToDiffs returns a shallow copy of s with `Inputs` narrowed to the top-level keys
+// in diffs. If diffs is empty the full `Inputs` map is preserved (every property is, by the
+// engine's own report, either unchanged or — for creates and deletes — entirely new or gone).
+// `Outputs` are carried over unchanged.
+func restrictInputsToDiffs(
 	s *apitype.StepEventStateMetadata, diffs []string,
 ) *apitype.StepEventStateMetadata {
 	if s == nil {
@@ -129,23 +123,13 @@ func restrictToDiffs(
 		for _, k := range diffs {
 			keep[k] = true
 		}
-		out.Inputs = pickKeys(s.Inputs, keep)
-		out.Outputs = pickKeys(s.Outputs, keep)
+		filtered := make(map[string]any, len(keep))
+		for k, v := range s.Inputs {
+			if keep[k] {
+				filtered[k] = v
+			}
+		}
+		out.Inputs = filtered
 	}
 	return &out
-}
-
-// pickKeys returns a fresh map containing only the entries of m whose keys are present in keep.
-// A nil input yields a nil output.
-func pickKeys(m map[string]any, keep map[string]bool) map[string]any {
-	if m == nil {
-		return nil
-	}
-	out := make(map[string]any, len(keep))
-	for k, v := range m {
-		if keep[k] {
-			out[k] = v
-		}
-	}
-	return out
 }
