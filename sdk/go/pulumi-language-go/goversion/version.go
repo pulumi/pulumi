@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@ func checkMinimumGoVersion(goVersionOutput string) error {
 	}
 	version := strings.TrimSpace(split[2])
 	version = strings.TrimPrefix(version, "go")
+	// Handle non-standard toolchains (https://go.dev/doc/toolchain#name)
+	version = strings.Split(version, "-")[0]
 
 	currVersion, err := goVersion.NewVersion(version)
 	if err != nil {

@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: sdk
+  description: Clarify docs on the `remote` parameter of `ComponentResource` / `Resource` in the Node and Python SDKs

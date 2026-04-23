@@ -18,6 +18,11 @@ class ResourceMonitorStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.GetDeploymentInfo = channel.unary_unary(
+                '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=pulumi_dot_resource__pb2.DeploymentInfo.FromString,
+                )
         self.SupportsFeature = channel.unary_unary(
                 '/pulumirpc.ResourceMonitor/SupportsFeature',
                 request_serializer=pulumi_dot_resource__pb2.SupportsFeatureRequest.SerializeToString,
@@ -83,6 +88,21 @@ class ResourceMonitorStub(object):
 class ResourceMonitorServicer(object):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
     """
+
+    def GetDeploymentInfo(self, request, context):
+        """GetDeploymentInfo returns the execution context associated with this monitor instance.
+
+        This is an additive API intended to reduce duplicated state passed through
+        environment variables and per-request protobuf fields. New clients should
+        prefer this over piecemeal feature probing via SupportsFeature.
+
+        Backward compatibility:
+        - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+        - Clients should fall back to existing request fields/env vars/SupportsFeature.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def SupportsFeature(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -174,6 +194,11 @@ class ResourceMonitorServicer(object):
 
 def add_ResourceMonitorServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'GetDeploymentInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetDeploymentInfo,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=pulumi_dot_resource__pb2.DeploymentInfo.SerializeToString,
+            ),
             'SupportsFeature': grpc.unary_unary_rpc_method_handler(
                     servicer.SupportsFeature,
                     request_deserializer=pulumi_dot_resource__pb2.SupportsFeatureRequest.FromString,
@@ -244,6 +269,23 @@ def add_ResourceMonitorServicer_to_server(servicer, server):
 class ResourceMonitor(object):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
     """
+
+    @staticmethod
+    def GetDeploymentInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            pulumi_dot_resource__pb2.DeploymentInfo.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def SupportsFeature(request,

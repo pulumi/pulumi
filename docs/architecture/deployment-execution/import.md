@@ -86,7 +86,7 @@ package version. Unlike the `import` resource option, `pulumi import` does not
 insist that the desired state of the resource in the Pulumi program matches the
 actual state of the resource as returned by the provider, since it is capable of
 generating code to match the actual state. Given a resource `R` of type `T` with
-import ID `X` and an (initiall empty) set of input properties `Iₚ`, the engine
+import ID `X` and an (initially empty) set of input properties `Iₚ`, the engine
 performs the following sequence of operations:
 
 1. Fetch the current inputs `Iₐ` and state `Sₐ` for the resource of type `T`
@@ -182,3 +182,17 @@ A few other approaches might be:
 It is likely that some mix of approaches is necessary in order to arrive at a
 satisfactory solution, as none of the above solutions seems universally
 "correct".
+
+### Error handling
+
+When using `pulumi import --file=...`, the engine runs a preview before making
+any changes. If errors are detected during the preview (e.g. a resource is not
+found), the command fails before writing anything to state. When `--skip-preview`
+is specified, the engine instead imports as many resources as possible, writing
+successful imports to state immediately and collecting any errors for display in
+the final output.
+
+Both approaches are safe to retry: importing a resource that already exists in
+state is a no-op. However, it is possible to accidentally import the same
+physical resource under two different logical names, which creates an implicit
+aliasing situation where the stack tracks the same underlying resource twice.

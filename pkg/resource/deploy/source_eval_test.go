@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,7 +29,9 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -230,7 +232,7 @@ func newTestPluginContext(t testing.TB, program deploytest.ProgramFunc) (*plugin
 	statusSink := diagtest.LogSink(t)
 	lang := deploytest.NewLanguageRuntime(program)
 	host := deploytest.NewPluginHost(sink, statusSink, lang)
-	return plugin.NewContext(context.Background(), sink, statusSink, host, nil, "", nil, false,
+	return plugin.NewContext(t.Context(), sink, statusSink, host, nil, "", nil, false,
 		nil, schema.NewLoaderServerFromHost)
 }
 
@@ -494,7 +496,7 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 		nil,
 		EvalSourceOptions{},
 		nil,
-	).Iterate(context.Background(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{})
 	require.NoError(t, err)
 
 	processed := 0
@@ -749,7 +751,7 @@ func TestRegisterDefaultProviders(t *testing.T) {
 		nil,
 		EvalSourceOptions{},
 		nil,
-	).Iterate(context.Background(), &testProviderSource{})
+	).Iterate(t.Context(), &testProviderSource{})
 	require.NoError(t, err)
 
 	processed, defaults := 0, make(map[string]struct{})
@@ -903,7 +905,7 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	require.NoError(t, err)
 
 	iter, err := NewEvalSource(
-		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil).Iterate(context.Background(), providerSource)
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil).Iterate(t.Context(), providerSource)
 	require.NoError(t, err)
 
 	reads := 0
@@ -1015,7 +1017,7 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 	providerSource := &testProviderSource{providers: make(map[sdkproviders.Reference]plugin.Provider)}
 
 	iter, err := NewEvalSource(
-		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil).Iterate(context.Background(), providerSource)
+		ctx, runInfo, nil, nil, EvalSourceOptions{}, nil).Iterate(t.Context(), providerSource)
 	require.NoError(t, err)
 
 	reads, registers := 0, 0
@@ -1266,7 +1268,7 @@ func TestDisableDefaultProviders(t *testing.T) {
 			require.NoError(t, err)
 
 			iter, err := NewEvalSource(
-				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil).Iterate(context.Background(), providerSource)
+				ctx, runInfo, nil, nil, EvalSourceOptions{}, nil).Iterate(t.Context(), providerSource)
 			require.NoError(t, err)
 
 			for {
@@ -1558,7 +1560,7 @@ func TestResouceMonitor_remoteComponentResourceOptions(t *testing.T) {
 				},
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			iter, res := evalSource.Iterate(ctx, &testProviderSource{defaultProvider: provider})
 			require.Nil(t, res, "iterate eval source")
 
@@ -1848,7 +1850,7 @@ func TestResourceInheritsOptionsFromParent(t *testing.T) {
 func TestRequestFromNodeJS(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	newContext := func(md map[string]string) context.Context {
 		return metadata.NewIncomingContext(ctx, metadata.New(md))
 	}
@@ -2069,7 +2071,7 @@ func TestEvalSource(t *testing.T) {
 					},
 				},
 			}
-			_, err := src.Iterate(context.Background(), &providerSourceMock{})
+			_, err := src.Iterate(t.Context(), &providerSourceMock{})
 			assert.ErrorContains(t, err, "failed to decrypt config")
 			assert.True(t, decrypterCalled)
 		})
@@ -2097,20 +2099,89 @@ func TestResmonCancel(t *testing.T) {
 	}()
 
 	// Cancel always returns nil or a joinErrors.
-	assert.Equal(t, errors.Join(err), rm.Cancel(context.Background()))
+	assert.Equal(t, errors.Join(err), rm.Cancel(t.Context()))
+}
+
+func TestGetDeploymentInfo(t *testing.T) {
+	t.Parallel()
+
+	plugctx, err := plugin.NewContext(t.Context(),
+		&deploytest.NoopSink{}, &deploytest.NoopSink{},
+		deploytest.NewPluginHostF(nil, nil, nil)(),
+		nil, "", nil, false, nil, nil)
+	require.NoError(t, err)
+
+	plainKey := config.MustMakeKey("test", "region")
+	secretKey := config.MustMakeKey("test", "apiKey")
+	cfg := map[config.Key]string{
+		plainKey:  "us-west-2",
+		secretKey: "super-secret",
+	}
+	secretKeys := []config.Key{secretKey}
+	programComplete := &promise.CompletionSource[struct{}]{}
+	programComplete.Fulfill(struct{}{})
+
+	mon, err := newResourceMonitor(&evalSource{
+		plugctx: plugctx,
+		runinfo: &EvalRunInfo{
+			ProjectRoot: "/",
+			Pwd:         "/",
+			Program:     ".",
+			Proj:        &workspace.Project{Name: "proj"},
+			Target: &Target{
+				Name:         tokens.MustParseStackName("dev"),
+				Organization: tokens.Name("acme"),
+			},
+		},
+		opts: EvalSourceOptions{
+			DryRun:                    true,
+			Parallel:                  17,
+			DisableOutputValues:       true,
+			DisableResourceReferences: false,
+		},
+	}, &providerSourceMock{}, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
+		opentracing.SpanFromContext(t.Context()))
+	require.NoError(t, err)
+
+	conn, err := grpc.NewClient(mon.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, conn.Close())
+	})
+
+	client := pulumirpc.NewResourceMonitorClient(conn)
+	info, err := client.GetDeploymentInfo(t.Context(), &emptypb.Empty{})
+	require.NoError(t, err)
+
+	assert.Equal(t, "proj", info.GetProject())
+	assert.Equal(t, "dev", info.GetStack())
+	assert.Equal(t, "acme", info.GetOrganization())
+	assert.Equal(t, true, info.GetDryRun())
+	assert.Equal(t, int32(17), info.GetParallel())
+	assert.Equal(t, map[string]string{
+		plainKey.String():  "us-west-2",
+		secretKey.String(): "super-secret",
+	}, info.GetConfig())
+	assert.Equal(t, []string{secretKey.String()}, info.GetConfigSecretKeys())
+
+	features := info.GetSupportedFeatures()
+	assert.NotEmpty(t, features)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
+	assert.NotContains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {
 	t.Parallel()
 	require.Len(t,
-		sourceEvalServeOptions(nil, opentracing.SpanFromContext(context.Background()), "" /* logFile */),
+		sourceEvalServeOptions(nil, opentracing.SpanFromContext(t.Context()), "" /* logFile */),
 		2,
 	)
 
 	require.Len(t,
 		sourceEvalServeOptions(&plugin.Context{
 			DebugTraceMutex: &sync.Mutex{},
-		}, opentracing.SpanFromContext(context.Background()), "logFile.log"),
+		}, opentracing.SpanFromContext(t.Context()), "logFile.log"),
 		4,
 	)
 }
@@ -2128,7 +2199,7 @@ func TestEvalSourceIterator(t *testing.T) {
 				},
 			},
 		}
-		err := iter.Cancel(context.Background())
+		err := iter.Cancel(t.Context())
 		require.NoError(t, err)
 		require.True(t, called)
 	})
@@ -2141,7 +2212,7 @@ func TestEvalSourceIterator(t *testing.T) {
 		iter := &evalSourceIterator{
 			mon: mon,
 		}
-		err := iter.Cancel(context.Background())
+		err := iter.Cancel(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, mon, iter.ResourceMonitor())
 		require.True(t, called)
@@ -2494,7 +2565,7 @@ func TestInvoke(t *testing.T) {
 	t.Run("bad version", func(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{}
-		_, err := rm.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
+		_, err := rm.Invoke(t.Context(), &pulumirpc.ResourceInvokeRequest{
 			Tok:     "pkgA:index:func",
 			Version: "bad-version",
 		})
@@ -2503,7 +2574,7 @@ func TestInvoke(t *testing.T) {
 	t.Run("error in invoke", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(context.Background(),
+		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil, nil)
@@ -2531,7 +2602,7 @@ func TestInvoke(t *testing.T) {
 					return plugin.InvokeResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2548,7 +2619,7 @@ func TestInvoke(t *testing.T) {
 			wg.Done()
 		}()
 
-		_, err = mon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
+		_, err = mon.Invoke(t.Context(), &pulumirpc.ResourceInvokeRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 		})
@@ -2560,7 +2631,7 @@ func TestInvoke(t *testing.T) {
 	t.Run("error in invoke", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(context.Background(),
+		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil, nil)
@@ -2594,7 +2665,7 @@ func TestInvoke(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		wg := &sync.WaitGroup{}
@@ -2611,7 +2682,7 @@ func TestInvoke(t *testing.T) {
 			wg.Done()
 		}()
 
-		res, err := mon.Invoke(context.Background(), &pulumirpc.ResourceInvokeRequest{
+		res, err := mon.Invoke(t.Context(), &pulumirpc.ResourceInvokeRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 		})
@@ -2629,7 +2700,7 @@ func TestCall(t *testing.T) {
 	t.Run("bad version", func(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{}
-		_, err := rm.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+		_, err := rm.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "bad-version",
 		})
@@ -2638,7 +2709,7 @@ func TestCall(t *testing.T) {
 	t.Run("error in call", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(context.Background(),
+		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil, nil)
@@ -2666,7 +2737,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -2697,7 +2768,7 @@ func TestCall(t *testing.T) {
 			close(cancel)
 		}()
 
-		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+		_, err = mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 		})
@@ -2709,7 +2780,7 @@ func TestCall(t *testing.T) {
 	t.Run("handles args and arg dependencies", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(context.Background(),
+		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil, nil)
@@ -2768,7 +2839,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, expectedErr
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		abortChan := make(chan bool)
@@ -2790,7 +2861,7 @@ func TestCall(t *testing.T) {
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
-		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+		_, err = mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 			Args:    args,
@@ -2811,7 +2882,7 @@ func TestCall(t *testing.T) {
 	t.Run("catch invalid arg dependencies", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(context.Background(),
+		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil, nil)
@@ -2851,7 +2922,7 @@ func TestCall(t *testing.T) {
 					return plugin.CallResponse{}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2859,7 +2930,7 @@ func TestCall(t *testing.T) {
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
-		_, err = mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+		_, err = mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 			Args:    args,
@@ -2876,7 +2947,7 @@ func TestCall(t *testing.T) {
 	t.Run("catch invalid arg dependencies", func(t *testing.T) {
 		t.Parallel()
 
-		plugctx, err := plugin.NewContext(context.Background(),
+		plugctx, err := plugin.NewContext(t.Context(),
 			&deploytest.NoopSink{}, &deploytest.NoopSink{},
 			deploytest.NewPluginHostF(nil, nil, nil)(),
 			nil, "", nil, false, nil, nil)
@@ -2932,7 +3003,7 @@ func TestCall(t *testing.T) {
 					}, nil
 				},
 			},
-		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(context.Background()))
+		}, providerRegChan, nil, nil, nil, nil, nil, nil, opentracing.SpanFromContext(t.Context()))
 		require.NoError(t, err)
 
 		args, err := plugin.MarshalProperties(resource.PropertyMap{
@@ -2940,7 +3011,7 @@ func TestCall(t *testing.T) {
 		}, plugin.MarshalOptions{})
 		require.NoError(t, err)
 
-		res, err := mon.Call(context.Background(), &pulumirpc.ResourceCallRequest{
+		res, err := mon.Call(t.Context(), &pulumirpc.ResourceCallRequest{
 			Tok:     "pkgA:index:func",
 			Version: "1.0.0",
 			Args:    args,
@@ -2968,7 +3039,7 @@ func TestReadResource(t *testing.T) {
 	t.Run("bad parent", func(t *testing.T) {
 		t.Parallel()
 		rm := &resmon{}
-		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:   "foo:bar:some-type",
 			Parent: "invalid-parent",
 		})
@@ -2988,7 +3059,7 @@ func TestReadResource(t *testing.T) {
 				},
 			},
 		}
-		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:    "foo:bar:some-type",
 			Version: "1.0.0",
 		})
@@ -3005,7 +3076,7 @@ func TestReadResource(t *testing.T) {
 				},
 			},
 		}
-		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:    "pulumi:providers:fake-provider",
 			Version: "1.0.0",
 			Dependencies: []string{
@@ -3027,7 +3098,7 @@ func TestReadResource(t *testing.T) {
 				},
 			},
 		}
-		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:    "pulumi:providers:fake-provider",
 			Version: "1.0.0",
 			Dependencies: []string{
@@ -3061,7 +3132,7 @@ func TestReadResource(t *testing.T) {
 			}
 			wg.Done()
 		}()
-		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:                    "pulumi:providers:fake-provider",
 			Version:                 "1.0.0",
 			AdditionalSecretOutputs: []string{"foo"},
@@ -3088,7 +3159,7 @@ func TestReadResource(t *testing.T) {
 			cancel <- true
 			wg.Done()
 		}()
-		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:    "pulumi:providers:fake-provider",
 			Version: "1.0.0",
 		})
@@ -3118,7 +3189,7 @@ func TestReadResource(t *testing.T) {
 			cancel <- true
 			wg.Done()
 		}()
-		_, err := rm.ReadResource(context.Background(), &pulumirpc.ReadResourceRequest{
+		_, err := rm.ReadResource(t.Context(), &pulumirpc.ReadResourceRequest{
 			Type:    "pulumi:providers:fake-provider",
 			Version: "1.0.0",
 		})
@@ -3138,7 +3209,7 @@ func TestRegisterResource(t *testing.T) {
 			rm := &resmon{
 				cancel: cancel,
 			}
-			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
+			_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{})
 			assert.ErrorContains(t, err, "resource monitor shut down while sending resource registration")
 		})
 		t.Run("resource monitor shut down while waiting on step's done channel", func(t *testing.T) {
@@ -3154,7 +3225,7 @@ func TestRegisterResource(t *testing.T) {
 				regChan: regChan,
 				cancel:  cancel,
 			}
-			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
+			_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{})
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		})
 		t.Run("resource monitor shut down while waiting on step's done channel", func(t *testing.T) {
@@ -3170,7 +3241,7 @@ func TestRegisterResource(t *testing.T) {
 				regChan: regChan,
 				cancel:  cancel,
 			}
-			_, err := rm.RegisterResource(context.Background(), &pulumirpc.RegisterResourceRequest{})
+			_, err := rm.RegisterResource(t.Context(), &pulumirpc.RegisterResourceRequest{})
 			assert.ErrorContains(t, err, "resource monitor shut down while waiting on step's done channel")
 		})
 	})
@@ -3189,7 +3260,7 @@ func TestRegisterResource(t *testing.T) {
 			Version: "improper-version",
 			Remote:  true,
 		}
-		_, err := rm.RegisterResource(context.Background(), req)
+		_, err := rm.RegisterResource(t.Context(), req)
 		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
 	})
 	t.Run("custom handles improper version", func(t *testing.T) {
@@ -3208,7 +3279,7 @@ func TestRegisterResource(t *testing.T) {
 			Custom:  true,
 		}
 		require.False(t, sdkproviders.IsProviderType(tokens.Type(req.GetType())))
-		_, err := rm.RegisterResource(context.Background(), req)
+		_, err := rm.RegisterResource(t.Context(), req)
 		assert.ErrorContains(t, err, "No Major.Minor.Patch elements found")
 	})
 	t.Run("custom provider handles improper version", func(t *testing.T) {
@@ -3227,7 +3298,7 @@ func TestRegisterResource(t *testing.T) {
 			Custom:  true,
 		}
 		require.True(t, sdkproviders.IsProviderType(tokens.Type(req.GetType())))
-		_, err := rm.RegisterResource(context.Background(), req)
+		_, err := rm.RegisterResource(t.Context(), req)
 		assert.ErrorContains(t, err, "passed invalid version")
 	})
 	t.Run("invalid alias URN", func(t *testing.T) {
@@ -3239,7 +3310,7 @@ func TestRegisterResource(t *testing.T) {
 				"invalid-urn",
 			},
 		}
-		_, err := rm.RegisterResource(context.Background(), req)
+		_, err := rm.RegisterResource(t.Context(), req)
 		assert.ErrorContains(t, err, "invalid alias URN")
 	})
 	t.Run("invalid dependency on property", func(t *testing.T) {
@@ -3258,7 +3329,7 @@ func TestRegisterResource(t *testing.T) {
 				},
 			},
 		}
-		_, err := rm.RegisterResource(context.Background(), req)
+		_, err := rm.RegisterResource(t.Context(), req)
 		assert.ErrorContains(t, err, "invalid dependency on property")
 	})
 	t.Run("remote resource", func(t *testing.T) {
@@ -3294,7 +3365,7 @@ func TestRegisterResource(t *testing.T) {
 					"name": "not-an-urn::id",
 				},
 			}
-			_, err := rm.RegisterResource(context.Background(), req)
+			_, err := rm.RegisterResource(t.Context(), req)
 			assert.ErrorContains(t, err, "could not parse provider reference")
 		})
 		t.Run("catch denied default provider", func(t *testing.T) {
@@ -3331,7 +3402,7 @@ func TestRegisterResource(t *testing.T) {
 					"missing": "urn:pulumi:stack::project::pulumi:providers:aws::prov-1::uuid",
 				},
 			}
-			_, err := rm.RegisterResource(context.Background(), req)
+			_, err := rm.RegisterResource(t.Context(), req)
 			assert.ErrorContains(t, err,
 				"Default provider for 'pulumi' disabled. 'pulumi:providers:some-type' must use an explicit provider.")
 		})
@@ -3367,7 +3438,7 @@ func TestRegisterResource(t *testing.T) {
 					"missing": "urn:pulumi:stack::project::pulumi:providers:aws::prov-1::uuid",
 				},
 			}
-			_, err := rm.RegisterResource(context.Background(), req)
+			_, err := rm.RegisterResource(t.Context(), req)
 			assert.ErrorContains(t, err, "unknown provider")
 		})
 	})
@@ -3425,7 +3496,7 @@ func TestRegisterResource(t *testing.T) {
 			Type:    "pulumi:providers:some-type",
 			Remote:  true,
 		}
-		res, err := rm.RegisterResource(context.Background(), req)
+		res, err := rm.RegisterResource(t.Context(), req)
 		require.NoError(t, err)
 		assert.Equal(t, []string{
 			"untrusted-urn-1",
@@ -3464,7 +3535,7 @@ func TestRegisterResource(t *testing.T) {
 					"c",
 				},
 			}
-			_, err := rm.RegisterResource(context.Background(), req)
+			_, err := rm.RegisterResource(t.Context(), req)
 			require.NoError(t, err)
 			assert.Equal(t,
 				[]string{"a", "b", "c"},
@@ -3490,7 +3561,7 @@ func TestRegisterResource(t *testing.T) {
 						Create: "invalid",
 					},
 				}
-				_, err := rm.RegisterResource(context.Background(), req)
+				_, err := rm.RegisterResource(t.Context(), req)
 				assert.ErrorContains(t, err, "unable to parse customTimeout Value")
 			})
 			t.Run("Delete", func(t *testing.T) {
@@ -3511,7 +3582,7 @@ func TestRegisterResource(t *testing.T) {
 						Delete: "invalid",
 					},
 				}
-				_, err := rm.RegisterResource(context.Background(), req)
+				_, err := rm.RegisterResource(t.Context(), req)
 				assert.ErrorContains(t, err, "unable to parse customTimeout Value")
 			})
 			t.Run("Update", func(t *testing.T) {
@@ -3532,7 +3603,7 @@ func TestRegisterResource(t *testing.T) {
 						Update: "invalid",
 					},
 				}
-				_, err := rm.RegisterResource(context.Background(), req)
+				_, err := rm.RegisterResource(t.Context(), req)
 				assert.ErrorContains(t, err, "unable to parse customTimeout Value")
 			})
 		})
@@ -3643,7 +3714,7 @@ func TestValidationFailures(t *testing.T) {
 			Remote:  true,
 			Object:  marshalledProps,
 		}
-		_, err = rm.RegisterResource(context.Background(), req)
+		_, err = rm.RegisterResource(t.Context(), req)
 		assert.ErrorContains(t, err, "resource monitor shut down")
 		assert.Equal(t, c.expectedStderr, stderr.String())
 		assert.Equal(t, "", stdout.String())

@@ -39,8 +39,8 @@ make build
 SDKS="nodejs python" make build
 # or just the main Pulumi CLI
 SDKS= make build
-# The Node.js TypeScript SDK needs to be built separatly
-cd sdks/nodejs && make build install
+# The Node.js TypeScript SDK needs to be built separately
+cd sdk/nodejs && make build install
 ```
 
 To run a single integration test, run the following command from the repository root.

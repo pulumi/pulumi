@@ -25,5 +25,5 @@ protoc = "29.5"
 "github:WebAssembly/wabt" = "1.0.37"
 dotnet = "8"
 
-[plugins]
-protoc = "https://github.com/paxosglobal/asdf-protoc"
+[tool_alias]
+protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"

@@ -1,4 +1,4 @@
-# Copyright 2026-2026, Pulumi Corporation.
+# Copyright 2026, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ def _initialize_tracing() -> None:
     global _root_context, _tracer_provider  # noqa: PLW0603
 
     traceparent = os.environ.get("TRACEPARENT")
-    otlp_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
+    otlp_endpoint = os.environ.get("PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT")
 
     if not traceparent:
         return

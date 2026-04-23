@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,17 @@ option go_package = "github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc";
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 service ResourceMonitor {
+    // GetDeploymentInfo returns the execution context associated with this monitor instance.
+    //
+    // This is an additive API intended to reduce duplicated state passed through
+    // environment variables and per-request protobuf fields. New clients should
+    // prefer this over piecemeal feature probing via SupportsFeature.
+    //
+    // Backward compatibility:
+    // - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+    // - Clients should fall back to existing request fields/env vars/SupportsFeature.
+    rpc GetDeploymentInfo(google.protobuf.Empty) returns (DeploymentInfo) {}
+
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(ResourceInvokeRequest) returns (InvokeResponse) {}
     rpc Call(ResourceCallRequest) returns (CallResponse) {}
@@ -59,6 +70,54 @@ service ResourceMonitor {
     // after the user program has completed. Runtime SDKs should call this after
     // executing the user's program. This can only be called once.
     rpc SignalAndWaitForShutdown(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+}
+
+// ResourceMonitorFeature is a strongly typed monitor capability identifier.
+//
+// The string IDs used by SupportsFeature are preserved for compatibility; new
+// clients should prefer these enum values from DeploymentInfo.
+enum ResourceMonitorFeature {
+    RESOURCE_MONITOR_FEATURE_SECRETS = 0;
+    RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES = 1;
+    RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES = 2;
+    RESOURCE_MONITOR_FEATURE_ALIAS_SPECS = 3;
+    RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER = 4;
+    RESOURCE_MONITOR_FEATURE_DELETED_WITH = 5;
+    RESOURCE_MONITOR_FEATURE_REPLACE_WITH = 6;
+    RESOURCE_MONITOR_FEATURE_TRANSFORMS = 7;
+    RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS = 8;
+    RESOURCE_MONITOR_FEATURE_PARAMETERIZATION = 9;
+    RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS = 10;
+    RESOURCE_MONITOR_FEATURE_ERROR_HOOKS = 11;
+    RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS = 12;
+}
+
+// DeploymentInfo returns monitor execution state currently sent to programs
+// and/or providers through other channels.
+message DeploymentInfo {
+    // The project name.
+    string project = 1;
+
+    // The stack name.
+    string stack = 2;
+
+    // The organization name.
+    string organization = 3;
+
+    // The stack configuration values.
+    map<string, string> config = 4;
+
+    // Configuration keys whose values are secret.
+    repeated string configSecretKeys = 5;
+
+    // True if the current execution is preview/dry-run.
+    bool dryRun = 6;
+
+    // Requested operation parallelism (<=1 for serial execution).
+    int32 parallel = 7;
+
+    // The set of monitor-supported protocol features.
+    repeated ResourceMonitorFeature supportedFeatures = 8;
 }
 
 // SupportsFeatureRequest allows a client to test if the resource monitor supports a certain feature, which it may use
@@ -286,6 +345,32 @@ message TransformResourceOptions {
     google.protobuf.Value replacement_trigger = 20;
 }
 
+// ResourceOptions is a subset of all resource options that are relevant to
+// hook callbacks.
+message ResourceOptions {
+    repeated string depends_on = 1;
+    optional bool protect = 2;
+    repeated string ignore_changes = 3;
+    repeated string replace_on_changes = 4;
+    string version = 5;
+    repeated Alias aliases = 6;
+    string provider = 7;
+    RegisterResourceRequest.CustomTimeouts custom_timeouts = 8;
+    string plugin_download_url = 9;
+    optional bool retain_on_delete = 10;
+    string deleted_with = 11;
+    optional bool delete_before_replace = 12;
+    repeated string additional_secret_outputs = 13;
+    map<string, string> providers = 14;
+    map<string, bytes> plugin_checksums = 15;
+    RegisterResourceRequest.ResourceHooksBinding hooks = 16;
+    string import = 17;
+    repeated string hide_diff = 18;
+    repeated string replace_with = 19;
+    google.protobuf.Value replacement_trigger = 20;
+    string parent = 21;
+}
+
 message TransformRequest {
     string type = 1; // the type of the resource.
     string name = 2; // the name of the resource.
@@ -331,6 +416,8 @@ message ResourceHookRequest {
     google.protobuf.Struct old_inputs = 6; // the optional checked old inputs of the resource.
     google.protobuf.Struct new_outputs = 7; // the optional new outputs of the resource.
     google.protobuf.Struct old_outputs = 8; // the optional old outputs of the resource.
+    optional ResourceOptions old_options = 9; // optional old resource options for the resource. Old engines may not set this.
+    optional ResourceOptions new_options = 10; // optional new resource options for the resource. Old engines may not set this.
 }
 
 // ResourceHookResponse is the response object for resource hook callbacks in CallbackInvokeResponse.
@@ -349,6 +436,8 @@ message ErrorHookRequest {
     google.protobuf.Struct old_outputs = 7; // the optional old outputs of the resource.
     string failed_operation = 8; // the operation that failed (create, read, update, or delete).
     repeated string errors = 9; // the errors that have been seen so far (newest-first).
+    ResourceOptions old_options = 10; // optional old resource options for the resource. Old engines may not set this.
+    ResourceOptions new_options = 11; // optional new resource options for the resource. Old engines may not set this.
 }
 
 // ErrorHookResponse is the response object for error hook callbacks in CallbackInvokeResponse.

@@ -1,7 +1,6 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pkgA default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> 
  <{%bold%}><{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%bold%}><{%fg 9%}>deleting original<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>interrupt replace<{%reset%}>
  <{%fg 9%}>--<{%reset%}> pkgA:m:typA resA <{%fg 1%}>**deleting failed**<{%reset%}> <{%fg 1%}>error: <{%reset%}><{%reset%}>interrupt replace<{%reset%}>

@@ -15,7 +15,7 @@ for (const range of itemList.map((v, k) => ({key: k, value: v}))) {
     listResource.push(new nestedobject.Target(`listResource-${range.key}`, {name: `${range.key}:${range.value}`}));
 }
 const mapResource: nestedobject.Target[] = [];
-for (const range of Object.entries(itemMap).map(([k, v]) => ({key: k, value: v}))) {
+for (const range of Object.entries(itemMap).sort().map(([k, v]) => ({key: k, value: v}))) {
     mapResource.push(new nestedobject.Target(`mapResource-${range.key}`, {name: `${range.key}=${range.value}`}));
 }
 let boolResource: nestedobject.Target | undefined;

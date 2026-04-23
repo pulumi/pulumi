@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,7 +44,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
@@ -62,6 +61,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
@@ -89,6 +89,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -186,12 +188,14 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var logToStderr bool
 	var tracingFlag string
 	var tracingHeaderFlag string
-	var otelFlag string
+	var otelTracesFlag string
 	var profiling string
 	var verbose int
 	var color string
 	var memProfileRate int
 	var rootSpan oteltrace.Span
+
+	processStartTime := time.Now()
 
 	updateCheckResult := make(chan *updateCheckResult)
 
@@ -276,7 +280,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			logging.InitLogging(logToStderr, verbose, logFlow)
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
-			if err := cmdutil.InitOtelReceiver(otelFlag); err != nil {
+			if err := cmdutil.InitOtelReceiver(otelTracesFlag); err != nil {
 				logging.V(3).Infof("failed to initialize OTLP receiver: %v", err)
 			}
 
@@ -299,10 +303,29 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				ctx = tracing.ContextWithOptions(ctx, tracingOptions)
 			}
 
+			metadata := getCLIMetadata(cmd, os.Environ(), args)
+			logging.V(9).Infof("CLI Metadata: %v", metadata)
+
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
-				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
+
+				if traceparent := os.Getenv("TRACEPARENT"); traceparent != "" {
+					carrier := propagation.MapCarrier{"traceparent": traceparent}
+					ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+				}
+
+				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi",
+					oteltrace.WithTimestamp(processStartTime))
+
+				for k, v := range metadata {
+					rootSpan.SetAttributes(attribute.String("cli."+strings.ToLower(k), v))
+				}
+
+				// Remap legacy OpenTracing spans into this Otel trace, so everything appears in a single trace.
+				sc := rootSpan.SpanContext()
+				cmdutil.SetAppDashTraceParent(sc.TraceID(), sc.SpanID())
 			}
+			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -322,8 +345,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			} else {
 				logging.V(3).Info("Pulumi " + ver.String())
 			}
-			metadata := getCLIMetadata(cmd, os.Environ(), args)
-			logging.V(9).Infof("CLI Metadata: %v", metadata)
 
 			if profiling != "" {
 				if err := cmdutil.InitProfiling(profiling, memProfileRate); err != nil {
@@ -338,7 +359,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				// If there is a new version to report, we will do so after the command has finished.
 				waitForUpdateCheck = true
 				go func() {
-					updateCheckResult <- checkForUpdate(ctx, httpstate.PulumiCloudURL, metadata)
+					updateCheckResult <- checkForUpdate(ctx, client.PulumiCloudURL, metadata)
 					close(updateCheckResult)
 				}()
 			}
@@ -383,10 +404,9 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		"Disable interactive mode for all commands")
 	cmd.PersistentFlags().StringVar(&tracingFlag, "tracing", "",
 		"Emit tracing to the specified endpoint. Use the `file:` scheme to write tracing data to a local file")
-	cmd.PersistentFlags().StringVar(&otelFlag, "otel", "",
-		"Export OpenTelemetry data to the specified endpoint. "+
+	cmd.PersistentFlags().StringVar(&otelTracesFlag, "otel-traces", "",
+		"Export OpenTelemetry traces to the specified endpoint. "+
 			"Use file:// for local JSON files, grpc:// for remote collectors")
-	_ = cmd.PersistentFlags().MarkHidden("otel")
 	cmd.PersistentFlags().StringVar(&profiling, "profiling", "",
 		"Emit CPU and memory profiles and an execution trace to '[filename].[pid].{cpu,mem,trace}', respectively")
 	cmd.PersistentFlags().IntVar(&memProfileRate, "memprofilerate", 0,
@@ -496,6 +516,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
 				ai.NewAICommand(),
+				neo.NewNeoCmd(),
 			},
 		},
 	})

@@ -1,4 +1,4 @@
-// Copyright 2022-2025, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 	case "filebase64sha256":
 		return `def computeFilebase64sha256(path):
 	fileData = open(path).read().encode()
-	hashedData = hashlib.sha256(fileData.encode()).digest()
+	hashedData = hashlib.sha256(fileData).digest()
 	return base64.b64encode(hashedData).decode()`, true
 	case "notImplemented":
 		return fmt.Sprintf(`
@@ -33,11 +33,11 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 %s    raise NotImplementedError(msg)`, indent, indent), true
 	case "singleOrNone":
 		return fmt.Sprintf(
-			`%sdef single_or_none(elements):
-%s    if len(elements) != 1:
-%s        raise Exception("single_or_none expected input list to have a single element")
-%s    return elements[0]
-`, indent, indent, indent, indent), true
+			`%[1]sdef single_or_none(elements):
+%[1]s    if len(elements) > 1:
+%[1]s        raise Exception("single_or_none expected input list to have a single element")
+%[1]s    return elements[0] if elements else None
+`, indent), true
 	case "try":
 		return fmt.Sprintf(`%[1]sdef try_(*fns):
 %[1]s    for fn in fns:

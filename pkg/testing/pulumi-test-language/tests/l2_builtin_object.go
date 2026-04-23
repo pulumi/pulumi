@@ -32,10 +32,31 @@ func init() {
 					RequireStackResource(l, res.Err, res.Changes)
 					stack := RequireSingleResource(l, res.Snap.Resources, "pulumi:pulumi:Stack")
 
+					// Entries must be sorted alphabetically by key.
 					assert.Equal(l, resource.PropertyMap{
 						"entriesOutput": resource.NewProperty([]resource.PropertyValue{
 							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("a"),
+								"value": resource.NewProperty("hello"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("d"),
+								"value": resource.NewProperty("hello"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("m"),
+								"value": resource.NewProperty("hello"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("t"),
+								"value": resource.NewProperty("hello"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
 								"key":   resource.NewProperty("x"),
+								"value": resource.NewProperty("hello"),
+							}),
+							resource.NewProperty(resource.PropertyMap{
+								"key":   resource.NewProperty("z"),
 								"value": resource.NewProperty("hello"),
 							}),
 						}),

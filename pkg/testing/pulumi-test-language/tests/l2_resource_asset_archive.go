@@ -41,7 +41,7 @@ func init() {
 					RequireStackResource(l, err, changes)
 
 					// Check we have the asset, archive, and folder resources in the snapshot, the provider and the stack.
-					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
+					require.Len(l, snap.Resources, 8, "expected 8 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:asset-archive")
 
@@ -70,6 +70,10 @@ func init() {
 					remoteass, ok := resources["remoteass"]
 					require.True(l, ok, "expected remote asset resource")
 					assert.Equal(l, "asset-archive:index:AssetResource", remoteass.Type.String(), "expected asset resource")
+
+					remotearc, ok := resources["remotearc"]
+					require.True(l, ok, "expected remote archive resource")
+					assert.Equal(l, "asset-archive:index:ArchiveResource", remotearc.Type.String(), "expected archive resource")
 
 					main := filepath.Join(projectDirectory, "subdir")
 
@@ -140,6 +144,17 @@ func init() {
 					require.NoError(l, err)
 					assert.Equal(l, "text", string(bs))
 					assert.Equal(l, "982d9e3eb996f559e633f4d194def3761d909f5a3b647d1a851fead67c32c9d1", remoteassValue.Hash)
+
+					remotearcValue, err := resource.NewURIArchive(
+						"https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c" +
+							"/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/archive.tar",
+					)
+					require.NoError(l, err)
+
+					assert.Equal(l,
+						resource.PropertyMap{"value": resource.NewProperty(remotearcValue)},
+						remotearc.Inputs, "expected inputs to be {value: %v}", remotearcValue)
+					assert.Equal(l, remotearc.Inputs, remotearc.Outputs, "expected inputs and outputs to match")
 				},
 			},
 		},

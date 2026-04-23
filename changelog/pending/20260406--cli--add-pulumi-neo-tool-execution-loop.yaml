@@ -1,0 +1,9 @@
+changes:
+- type: feat
+  scope: cli
+  description: |
+    Add an experimental `pulumi neo` command that creates a Pulumi Neo agent task in CLI
+    tool-execution mode and runs the local tool loop. Filesystem and shell tool calls
+    issued by the agent run on the user's machine in their working directory; the
+    interactive chat continues to happen in the Pulumi Console at the URL the command
+    prints. Hidden behind PULUMI_EXPERIMENTAL.

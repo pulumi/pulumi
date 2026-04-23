@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -164,7 +164,8 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// old inputs, not the new ones.
 			st := s.new.Copy()
 			st.Inputs = s.old.Inputs
-			err := s.Deployment().SameProvider(st)
+			// fromCheck=true because we're coming from the Check→Diff→Same flow where Diff determined no changes.
+			err := s.Deployment().SameProvider(st, true)
 			if err != nil {
 				return resource.StatusOK, nil,
 					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
@@ -297,6 +298,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.URN,
 		s.URN().Name(),
 		s.Type(),
+		nil, /* oldOptions */
+		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		nil, /* oldInputs */
 		nil, /* newOutputs */
@@ -371,6 +374,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.new.URN,
 					s.URN().Name(),
 					s.Type(),
+					nil, /* oldOptions */
+					resourceOptionsFromState(s.new),
 					s.new.Inputs,
 					nil, /* oldInputs */
 					nil, /* oldOutputs */
@@ -457,6 +462,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.URN,
 			s.new.URN.Name(),
 			s.new.Type,
+			nil, /* oldOptions */
+			resourceOptionsFromState(s.new),
 			s.new.Inputs,
 			nil, /* oldInputs */
 			s.new.Outputs,
@@ -593,6 +600,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN,
 		s.URN().Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		nil, /* newOptions */
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -680,6 +689,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.old.URN,
 					s.URN().Name(),
 					s.Type(),
+					resourceOptionsFromState(s.old),
+					nil, /* newOptions */
 					nil, /* newInputs */
 					s.old.Inputs,
 					s.old.Outputs,
@@ -757,6 +768,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN,
 		s.old.URN.Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		nil, /* newOptions */
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -924,6 +937,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.URN,
 		s.URN().Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -999,6 +1014,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.new.URN,
 					s.URN().Name(),
 					s.Type(),
+					resourceOptionsFromState(s.old),
+					resourceOptionsFromState(s.new),
 					s.new.Inputs,
 					s.old.Inputs,
 					s.old.Outputs,
@@ -1071,6 +1088,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.URN,
 			s.new.URN.Name(),
 			s.Type(),
+			resourceOptionsFromState(s.old),
+			resourceOptionsFromState(s.new),
 			s.new.Inputs,
 			s.old.Inputs,
 			s.new.Outputs,
@@ -1372,6 +1391,8 @@ type RefreshStep struct {
 	cts *promise.CompletionSource[*resource.State]
 	// the old views for this resource.
 	oldViews []plugin.View
+	// whether the step is internal
+	internal bool
 }
 
 // NewRefreshStep creates a new Refresh step.
@@ -1395,6 +1416,28 @@ func NewRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resou
 	}
 }
 
+// NewInternalRefreshStep creates a new Refresh step that's internal and thus not displayed to the user
+func NewInternalRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resource.State], old *resource.State,
+	oldViews []plugin.View, new *resource.State,
+) Step {
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.ViewOf == "", "old", "must not be a view")
+
+	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
+	if new == nil {
+		new = old
+	}
+
+	return &RefreshStep{
+		deployment: deployment,
+		old:        old,
+		new:        new,
+		cts:        cts,
+		oldViews:   oldViews,
+		internal:   true,
+	}
+}
+
 // True if this is a persisted refresh step that should be respected by the snapshot system.
 func (s *RefreshStep) Persisted() bool { return s.cts != nil }
 
@@ -1414,6 +1457,10 @@ func (s *RefreshStep) Res() *resource.State                         { return s.o
 func (s *RefreshStep) Logical() bool                                { return false }
 func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
 func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
+
+func (s *RefreshStep) IsInternal() bool {
+	return s.internal
+}
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.

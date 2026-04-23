@@ -94,7 +94,7 @@ func (b *binder) bindCallSignature(args []model.Expression) (model.StaticFunctio
 	if method == nil {
 		return b.zeroCallSignature(), hcl.Diagnostics{errorf(
 			args[1].SyntaxNode().Range(),
-			"resource type %q has no method %q", selfRes.Token, methodName,
+			"resource type %q has no method %q", selfRes.token, methodName,
 		)}
 	}
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,11 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 		Short: "Display the current logged-in user",
 		Long: "Display the current logged-in user\n" +
 			"\n" +
-			"Displays the username of the currently logged in user.",
+			"Displays the username of the currently logged in user.\n" +
+			"\n" +
+			"When the current token is a Pulumi Cloud team token or an organization token, " +
+			"the command will return the name of the organization with which the token is associated.",
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			stdout := cmd.OutOrStdout()

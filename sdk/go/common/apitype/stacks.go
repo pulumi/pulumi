@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,7 +71,10 @@ type CreateStackRequest struct {
 }
 
 // CreateStackResponse is the response from a create Stack request.
-type CreateStackResponse struct{}
+type CreateStackResponse struct {
+	// Messages is a list of messages that should be displayed to the user.
+	Messages []Message `json:"messages,omitempty"`
+}
 
 // EncryptValueRequest defines the request body for encrypting a value.
 type EncryptValueRequest struct {

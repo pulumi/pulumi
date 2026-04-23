@@ -13,8 +13,8 @@
 // limitations under the License.
 
 import * as process from "process";
-import type { CommandResult } from "../../../automation/cmd";
-import { PulumiCommand } from "../../../automation/cmd";
+import type { CommandResult } from "../cmd";
+import { PulumiCommand } from "../cmd";
 
 export type BaseOptions = {
     cwd?: string;

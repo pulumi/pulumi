@@ -69,7 +69,7 @@ export class ExampleComponent extends pulumi.ComponentResource {
 
         // Example of iterating a map of objects
         const zonePasswords: random.RandomPassword[] = [];
-        for (const range of Object.entries(args.deploymentZones).map(([k, v]) => ({key: k, value: v}))) {
+        for (const range of Object.entries(args.deploymentZones).sort().map(([k, v]) => ({key: k, value: v}))) {
             zonePasswords.push(new random.RandomPassword(`${name}-zonePasswords-${range.key}`, {
                 length: 16,
                 special: true,

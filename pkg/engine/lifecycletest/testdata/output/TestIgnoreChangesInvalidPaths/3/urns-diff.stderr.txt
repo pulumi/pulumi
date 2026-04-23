@@ -1,0 +1,2 @@
+<{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>
+<{%reset%}>cannot ignore changes in added or removed elements of the path: "qux[0]"<{%reset%}>

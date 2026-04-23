@@ -1,4 +1,4 @@
-# Copyright 2016-2023, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -436,6 +436,13 @@ class LocalWorkspace(Workspace):
         result = self._run_pulumi_cmd_sync(["whoami"])
         return WhoAmIResult(user=result.stdout.strip())
 
+    def org_get_default(self) -> str:
+        result = self._run_pulumi_cmd_sync(["org", "get-default"])
+        return result.stdout.strip()
+
+    def org_set_default(self, org_name: str) -> None:
+        self._run_pulumi_cmd_sync(["org", "set-default", org_name])
+
     def stack(self) -> Optional[StackSummary]:
         stacks = self.list_stacks()
         for stack in stacks:
@@ -545,6 +552,89 @@ class LocalWorkspace(Workspace):
             "The installed version of the CLI does not support this operation. Please "
             "upgrade to at least version 3.91.0."
         )
+
+    def new(
+        self,
+        template_or_url: Optional[str] = None,
+        *,
+        ai: Optional[str] = None,
+        config: Optional[list[str]] = None,
+        config_path: bool = False,
+        description: Optional[str] = None,
+        dir: Optional[str] = None,
+        force: bool = False,
+        generate_only: bool = False,
+        language: Optional[str] = None,
+        list_templates: bool = False,
+        name: Optional[str] = None,
+        offline: bool = False,
+        remote_stack_config: bool = False,
+        runtime_options: Optional[list[str]] = None,
+        secrets_provider: Optional[str] = None,
+        stack: Optional[str] = None,
+        template_mode: bool = False,
+        on_output: Optional[OnOutput] = None,
+    ) -> CommandResult:
+        """Creates a new Pulumi project from a template.
+
+        :param template_or_url: The template name or URL to use.
+        :param ai: Prompt to use for Pulumi AI.
+        :param config: Config values to save (list of "key=value" strings).
+        :param config_path: Config keys contain a path to a property in a map or list to set.
+        :param description: The project description.
+        :param dir: The location to place the generated project.
+        :param force: Forces content to be generated even if it would change existing files.
+        :param generate_only: Generate the project only; do not create a stack, save config, or install dependencies.
+        :param language: Language to use for Pulumi AI.
+        :param list_templates: List locally installed templates and exit.
+        :param name: The project name.
+        :param offline: Use locally cached templates without making any network requests.
+        :param remote_stack_config: Store stack configuration remotely.
+        :param runtime_options: Additional options for the language runtime (list of "key=value" strings).
+        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets.
+        :param stack: The stack name; either an existing stack or stack to create.
+        :param template_mode: Run in template mode, which will skip prompting for AI or Template functionality.
+        :param on_output: A callback that receives the standard output of the command.
+        :returns: CommandResult
+        """
+        args = ["new", "--yes"]
+        if ai is not None:
+            args.extend(["--ai", ai])
+        if config:
+            for item in config:
+                args.extend(["--config", item])
+        if config_path:
+            args.append("--config-path")
+        if description is not None:
+            args.extend(["--description", description])
+        if dir is not None:
+            args.extend(["--dir", dir])
+        if force:
+            args.append("--force")
+        if generate_only:
+            args.append("--generate-only")
+        if language is not None:
+            args.extend(["--language", language])
+        if list_templates:
+            args.append("--list-templates")
+        if name is not None:
+            args.extend(["--name", name])
+        if offline:
+            args.append("--offline")
+        if remote_stack_config:
+            args.append("--remote-stack-config")
+        if runtime_options:
+            for item in runtime_options:
+                args.extend(["--runtime-options", item])
+        if secrets_provider is not None:
+            args.extend(["--secrets-provider", secrets_provider])
+        if stack is not None:
+            args.extend(["--stack", stack])
+        if template_mode:
+            args.append("--template-mode")
+        if template_or_url is not None:
+            args.append(template_or_url)
+        return self._run_pulumi_cmd_sync(args, on_output=on_output)
 
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])

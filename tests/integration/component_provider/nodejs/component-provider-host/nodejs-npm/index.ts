@@ -1,4 +1,4 @@
-// Copyright 2025-2025, Pulumi Corporation.  All rights reserved.
+// Copyright 2025, Pulumi Corporation.  All rights reserved.
 
 import * as pulumi from "@pulumi/pulumi";
 import * as provider from "@pulumi/nodejs-component-provider";

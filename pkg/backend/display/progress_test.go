@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display/internal/terminal"
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -177,6 +178,30 @@ func TestProgressEvents(t *testing.T) {
 
 			opts := defaultOpts()
 			testProgressEvents(t, path, accept, ".non-interactive", opts, 80, 24, false)
+		})
+	}
+}
+
+// TestProgressEventsWithURNs tests that ShowProgressEvents renders full URNs when ShowURNs is set.
+func TestProgressEventsWithURNs(t *testing.T) {
+	t.Parallel()
+
+	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
+
+	entries, err := os.ReadDir("testdata/not-truncated")
+	require.NoError(t, err)
+
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+
+		path := filepath.Join("testdata/not-truncated", entry.Name())
+		t.Run(entry.Name(), func(t *testing.T) {
+			t.Parallel()
+			opts := defaultOpts()
+			opts.ShowURNs = true
+			testProgressEvents(t, path, accept, ".urns-non-interactive", opts, 200, 80, false)
 		})
 	}
 }
@@ -462,5 +487,45 @@ func testSimpleRenderer(
 	} else {
 		err = os.WriteFile(fileName, stdout.Bytes(), 0o600)
 		require.NoError(t, err)
+	}
+}
+
+// Regression test for https://github.com/pulumi/pulumi/issues/21697
+func TestSystemEventDoesNotDeadlockMessageRenderer(t *testing.T) {
+	t.Parallel()
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+
+	var stdout bytes.Buffer
+
+	go ShowProgressEvents(
+		"test", "update", tokens.MustParseStackName("stack"), "project", "link", eventChannel, doneChannel,
+		Options{
+			IsInteractive: true,
+			Color:         colors.Raw,
+			Stdout:        &stdout,
+			Stderr:        &bytes.Buffer{},
+			// Use raw=false to get the messageRenderer
+			term:                terminal.NewMockTerminal(&stdout, 80, 24, false /* raw */),
+			DeterministicOutput: true,
+		}, false)
+
+	go func() {
+		// Send a system event: this is what Ctrl+C produces ("^C received; cancelling...").
+		eventChannel <- engine.NewEvent(engine.StdoutEventPayload{
+			Message: "^C received; cancelling.\n",
+			Color:   colors.Always,
+		})
+
+		// Send the cancel event to terminate the display.
+		eventChannel <- engine.NewCancelEvent()
+		close(eventChannel)
+	}()
+
+	select {
+	case <-doneChannel:
+		// Success: display completed without deadlocking.
+	case <-time.After(10 * time.Second):
+		t.Fatal("display deadlocked processing system event with messageRenderer")
 	}
 }

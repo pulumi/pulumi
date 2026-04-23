@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,11 +69,13 @@ type MockBackend struct {
 	RemoveStackF func(context.Context, Stack, bool, bool) (bool, error)
 	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
+	ListPolicyPacksF func(context.Context, string, ContinuationToken) (
+		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
 		[]StackReference, ContinuationToken, error)
 	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF                      func(StackReference) (config.Crypter, error)
-	GetLatestConfigurationF               func(context.Context, Stack) (config.Map, error)
+	GetLatestConfigurationF               func(context.Context, Stack) (LatestConfiguration, error)
 	GetHistoryF                           func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
 	UpdateStackTagsF                      func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF                     func(context.Context, Stack) (*apitype.UntypedDeployment, error)
@@ -143,9 +145,12 @@ func (be *MockBackend) ListPolicyGroups(context.Context, string, ContinuationTok
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListPolicyPacks(context.Context, string, ContinuationToken) (
+func (be *MockBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 	apitype.ListPolicyPacksResponse, ContinuationToken, error,
 ) {
+	if be.ListPolicyPacksF != nil {
+		return be.ListPolicyPacksF(ctx, orgName, inContToken)
+	}
 	panic("not implemented")
 }
 
@@ -381,7 +386,7 @@ func (be *MockBackend) GetLogs(
 
 func (be *MockBackend) GetLatestConfiguration(ctx context.Context,
 	stack Stack,
-) (config.Map, error) {
+) (LatestConfiguration, error) {
 	if be.GetLatestConfigurationF != nil {
 		return be.GetLatestConfigurationF(ctx, stack)
 	}

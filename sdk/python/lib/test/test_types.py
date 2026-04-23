@@ -54,6 +54,7 @@ async def test_unwrap_type():
         d: pulumi.InputType[str]
         e: Optional[pulumi.InputType[str]]
         f: Optional[pulumi.Input[pulumi.InputType[str]]]
+        g: pulumi.Input[Optional[str]]
 
     # We always call `unwrap_type` with the forward references for `Output[T]` resolved.
     localns = {"Output": Output, "T": typing.TypeVar("T")}
@@ -65,3 +66,4 @@ async def test_unwrap_type():
     assert _types.unwrap_type(anno["d"]) == str
     assert _types.unwrap_type(anno["e"]) == str
     assert _types.unwrap_type(anno["f"]) == str
+    assert _types.unwrap_type(anno["g"]) == str

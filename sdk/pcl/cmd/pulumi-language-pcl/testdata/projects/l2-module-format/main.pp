@@ -44,3 +44,36 @@ resource "res4" "module-format:mod/nested:Resource" {
 output "out4" {
     value = call(res4, "call", { input = "xx" }).output
 }
+
+// First use the fully specified token to invoke and create a resource in the index module.
+resource "res5" "module-format:index_Resource:Resource" {
+    text = invoke("module-format:index_concatWorld:concatWorld", {
+        value: "bonjour",
+    }).result
+}
+
+output "out5" {
+    value = call(res5, "call", { input = "x" }).output
+}
+
+// Next use just the module name as defined by the module format
+resource "res6" "module-format:index:Resource" {
+    text = invoke("module-format:index:concatWorld", {
+        value: "youkoso",
+    }).result
+}
+
+output "out6" {
+    value = call(res6, "call", { input = "xx" }).output
+}
+
+// Next use the short, 2 component, form because this is the index module
+resource "res7" "module-format:Resource" {
+    text = invoke("module-format:concatWorld", {
+        value: "guten tag",
+    }).result
+}
+
+output "out7" {
+    value = call(res7, "call", { input = "xxx" }).output
+}

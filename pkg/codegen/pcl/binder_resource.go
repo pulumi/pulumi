@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package pcl
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
@@ -30,10 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
-
-func getResourceToken(node *Resource) (string, hcl.Range) {
-	return node.syntax.Labels[1], node.syntax.LabelRanges[1]
-}
 
 func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
@@ -271,7 +268,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	node.InputType, node.OutputType = model.DynamicType, model.DynamicType
 
 	// Find the resource's schema.
-	token, tokenRange := getResourceToken(node)
+	token, tokenRange := node.GetToken()
 	pkg, module, name, diagnostics := DecomposeToken(token, tokenRange)
 	if diagnostics.HasErrors() {
 		return diagnostics
@@ -279,7 +276,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 
 	makeResourceDynamic := func() {
 		// make the inputs and outputs of the resource dynamic
-		node.Token = token
+		node.token = token
 		node.OutputType = model.DynamicType
 		inferredInputProperties := map[string]model.Type{}
 		for _, attr := range node.Inputs {
@@ -351,7 +348,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	}
 	node.Schema = res
 	inputProperties, properties = res.InputProperties, res.Properties
-	node.Token = token
+	node.token = token
 
 	// Create input and output types for the schema.
 	// first reduce property types which are unions of objects into just an object when possible
@@ -445,7 +442,8 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 }
 
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
-	if attr.Name == "ignoreChanges" || attr.Name == "hideDiffs" || attr.Name == "replaceOnChanges" {
+	switch attr.Name {
+	case "ignoreChanges", "hideDiffs", "replaceOnChanges", "additionalSecretOutputs":
 		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
 		if !ok {
 			return nil, nil
@@ -458,8 +456,9 @@ func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.
 			})
 		}
 		return scope, nil
+	default:
+		return s.root, nil
 	}
-	return s.root, nil
 }
 
 func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostics) {
@@ -499,16 +498,16 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.IgnoreChanges = item.Value
 			case "hideDiffs":
-				t = model.NewListType(ResourcePropertyType) // Property paths
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.HideDiffs = item.Value
 			case "replaceOnChanges":
-				t = model.NewListType(ResourcePropertyType) // Property paths
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.ReplaceOnChanges = item.Value
 			case "deleteBeforeReplace":
 				t = model.BoolType
 				resourceOptions.DeleteBeforeReplace = item.Value
 			case "additionalSecretOutputs":
-				t = model.NewListType(model.StringType)
+				t = model.NewListType(ResourcePropertyType)
 				resourceOptions.AdditionalSecretOutputs = item.Value
 			case "version":
 				t = model.StringType
@@ -534,6 +533,46 @@ func bindResourceOptions(options *model.Block) (*ResourceOptions, hcl.Diagnostic
 			case "envVarMappings":
 				t = model.NewMapType(model.StringType)
 				resourceOptions.EnvVarMappings = item.Value
+			case "hooks":
+				// hooks is an object mapping hook type names to lists of named hook references.
+				resourceOptions.Hooks = item.Value
+				const invalidHooksMsg = "hooks option must be an object mapping hook names to lists of hook references"
+				validHookTypes := []string{
+					"beforeCreate", "afterCreate",
+					"beforeUpdate", "afterUpdate",
+					"beforeDelete", "afterDelete",
+				}
+				obj, isObj := item.Value.(*model.ObjectConsExpression)
+				if !isObj {
+					diagnostics = append(diagnostics, &hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Summary:  invalidHooksMsg,
+						Subject:  item.Value.SyntaxNode().Range().Ptr(),
+					})
+					continue
+				}
+				for _, kv := range obj.Items {
+					key, keyDiags := kv.Key.Evaluate(&hcl.EvalContext{})
+					if keyDiags.HasErrors() || key.Type() != cty.String {
+						continue
+					}
+					hookType := key.AsString()
+					if !slices.Contains(validHookTypes, hookType) {
+						diagnostics = append(diagnostics, &hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  fmt.Sprintf("unknown hook name '%s'", hookType),
+							Subject:  kv.Key.SyntaxNode().Range().Ptr(),
+						})
+					}
+					if _, isList := kv.Value.(*model.TupleConsExpression); !isList {
+						diagnostics = append(diagnostics, &hcl.Diagnostic{
+							Severity: hcl.DiagError,
+							Summary:  invalidHooksMsg,
+							Subject:  kv.Value.SyntaxNode().Range().Ptr(),
+						})
+					}
+				}
+				continue // skip generic type check; structural validation is done above
 			default:
 				diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 				continue
@@ -637,7 +676,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 					strictCollectionType := !b.options.skipRangeTypecheck
 					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
 					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
+					keyVariable := &model.Variable{
+						Name:         "__key",
+						VariableType: rangeKey,
+					}
 					iterationExpr := &model.ForExpression{
+						KeyVariable: keyVariable,
 						ValueVariable: &model.Variable{
 							Name:         "_",
 							VariableType: rangeValue,
@@ -645,6 +689,12 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 						Collection:                   expr,
 						Value:                        model.VariableReference(resourceVar),
 						StrictCollectionTypechecking: strictCollectionType,
+					}
+					// When iterating over a map or object, preserve the key so the
+					// resulting collection is a map indexed by string rather than a
+					// list indexed by number.
+					if rangeKey == model.StringType {
+						iterationExpr.Key = model.VariableReference(keyVariable)
 					}
 					diags = iterationExpr.Typecheck(false)
 					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.
@@ -724,7 +774,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 							Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for resource %q",
 								attr.Value.Type().Pretty().String(),
 								propertyType.String(),
-								node.Token),
+								node.token),
 						})
 					}
 				}

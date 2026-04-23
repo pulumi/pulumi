@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -230,7 +230,7 @@ func TestSourceIteratorClose(t *testing.T) {
 		stepGen: &stepGenerator{},
 	}
 
-	_, err := ex.Execute(context.Background())
+	_, err := ex.Execute(t.Context())
 	require.NoError(t, err)
 	require.True(t, iter.closed, "The source iterator should be closed after execution")
 }
@@ -252,7 +252,7 @@ func TestSourceIteratorNoCloseOnError(t *testing.T) {
 		stepGen: &stepGenerator{},
 	}
 
-	_, err := ex.Execute(context.Background())
+	_, err := ex.Execute(t.Context())
 	require.ErrorContains(t, err, "BAIL")
 	require.False(t, iter.closed)
 }

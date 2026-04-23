@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -131,6 +131,22 @@ type testProvider struct {
 		resource.PropertyMap, bool) (resource.PropertyMap, []plugin.CheckFailure, error)
 	diffConfig func(resource.URN, resource.PropertyMap, resource.PropertyMap, bool, []string) (plugin.DiffResult, error)
 	config     func(resource.PropertyMap) error
+}
+
+type lifecycleTrackingProvider struct {
+	*testProvider
+	closeCalls  int
+	cancelCalls int
+}
+
+func (p *lifecycleTrackingProvider) Close() error {
+	p.closeCalls++
+	return nil
+}
+
+func (p *lifecycleTrackingProvider) SignalCancellation(context.Context) error {
+	p.cancelCalls++
+	return nil
 }
 
 func (prov *testProvider) Pkg() tokens.Package {
@@ -325,7 +341,7 @@ func TestNewRegistryOldState(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(context.Background(), old)
+		err = r.Same(t.Context(), old, false)
 		require.NoError(t, err)
 
 		// Now we should be able to get it
@@ -340,7 +356,7 @@ func TestNewRegistryOldState(t *testing.T) {
 		ver, err := GetProviderVersion(old.Inputs)
 		require.NoError(t, err)
 		if ver != nil {
-			info, err := p.GetPluginInfo(context.Background())
+			info, err := p.GetPluginInfo(t.Context())
 			require.NoError(t, err)
 			assert.True(t, info.Version.GTE(*ver))
 		}
@@ -374,7 +390,7 @@ func TestCRUD(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(context.Background(), old)
+		err = r.Same(t.Context(), old, false)
 		require.NoError(t, err)
 
 		// Now we should be able to get it
@@ -393,7 +409,7 @@ func TestCRUD(t *testing.T) {
 		timeout := float64(120)
 
 		// Check
-		check, err := r.Check(context.Background(), plugin.CheckRequest{
+		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:  urn,
 			Olds: olds,
 			News: news,
@@ -408,7 +424,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Create
-		create, err := r.Create(context.Background(), plugin.CreateRequest{
+		create, err := r.Create(t.Context(), plugin.CreateRequest{
 			URN:        urn,
 			Name:       urn.Name(),
 			Type:       urn.Type(),
@@ -439,7 +455,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		check, err := r.Check(context.Background(), plugin.CheckRequest{
+		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:  urn,
 			Olds: olds,
 			News: news,
@@ -455,7 +471,7 @@ func TestCRUD(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
+		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
 			OldOutputs: olds,
@@ -470,7 +486,7 @@ func TestCRUD(t *testing.T) {
 		assert.Equal(t, old, p2)
 
 		// Update
-		update, err := r.Update(context.Background(), plugin.UpdateRequest{
+		update, err := r.Update(t.Context(), plugin.UpdateRequest{
 			URN:        urn,
 			ID:         id,
 			OldOutputs: olds,
@@ -497,7 +513,7 @@ func TestCRUD(t *testing.T) {
 		assert.True(t, ok)
 
 		// Delete
-		resp, err := r.Delete(context.Background(), plugin.DeleteRequest{
+		resp, err := r.Delete(t.Context(), plugin.DeleteRequest{
 			URN:     urn,
 			ID:      id,
 			Inputs:  resource.PropertyMap{},
@@ -560,7 +576,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.Nil(t, p)
 
 		// "Same" the provider to add it to registry
-		err = r.Same(context.Background(), old)
+		err = r.Same(t.Context(), old, false)
 		require.NoError(t, err)
 
 		// Now we should be able to get it
@@ -578,7 +594,7 @@ func TestCRUDPreview(t *testing.T) {
 		olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 		// Check
-		check, err := r.Check(context.Background(), plugin.CheckRequest{
+		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:  urn,
 			Olds: olds,
 			News: news,
@@ -603,7 +619,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		check, err := r.Check(context.Background(), plugin.CheckRequest{
+		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:  urn,
 			Olds: olds,
 			News: news,
@@ -619,7 +635,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
+		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
 			OldOutputs: olds,
@@ -645,7 +661,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.True(t, ok)
 
 		// Check
-		check, err := r.Check(context.Background(), plugin.CheckRequest{
+		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:  urn,
 			Olds: olds,
 			News: news,
@@ -661,7 +677,7 @@ func TestCRUDPreview(t *testing.T) {
 		assert.False(t, p.(*testProvider).configured)
 
 		// Diff
-		diff, err := r.Diff(context.Background(), plugin.DiffRequest{
+		diff, err := r.Diff(t.Context(), plugin.DiffRequest{
 			URN:        urn,
 			ID:         id,
 			OldOutputs: olds,
@@ -691,7 +707,7 @@ func TestCRUDNoProviders(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	check, err := r.Check(context.Background(), plugin.CheckRequest{
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:  urn,
 		Olds: olds,
 		News: news,
@@ -699,6 +715,57 @@ func TestCRUDNoProviders(t *testing.T) {
 	assert.Error(t, err)
 	assert.Empty(t, check.Failures)
 	assert.Nil(t, check.Properties)
+}
+
+func TestDiffReplaceSignalsCancellationBeforeClose(t *testing.T) {
+	t.Parallel()
+
+	var tracked *lifecycleTrackingProvider
+	loader := newLoader(t, "pkgA", "1.0.0", func(pkg tokens.Package, ver semver.Version) (plugin.Provider, error) {
+		tracked = &lifecycleTrackingProvider{
+			testProvider: &testProvider{
+				pkg:     pkg,
+				version: ver,
+				checkConfig: func(
+					_ resource.URN, _ resource.PropertyMap, news resource.PropertyMap, _ bool,
+				) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return news, nil, nil
+				},
+				diffConfig: func(
+					_ resource.URN, _ resource.PropertyMap, _ resource.PropertyMap, _ bool, _ []string,
+				) (plugin.DiffResult, error) {
+					return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"id"}}, nil
+				},
+				config: func(resource.PropertyMap) error { return nil },
+			},
+		}
+		return tracked, nil
+	})
+
+	r := NewRegistry(newPluginHost(t, []*providerLoader{loader}), false, nil)
+	typ := providers.MakeProviderType("pkgA")
+	urn := resource.NewURN("test", "test", "", typ, "a")
+
+	_, err := r.Check(t.Context(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: resource.PropertyMap{},
+		News: resource.PropertyMap{"version": resource.NewProperty("1.0.0")},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, tracked)
+
+	diff, err := r.Diff(t.Context(), plugin.DiffRequest{
+		URN:        urn,
+		ID:         resource.ID("existing"),
+		OldOutputs: resource.PropertyMap{},
+		NewInputs:  resource.PropertyMap{"version": resource.NewProperty("1.0.0")},
+	})
+	require.NoError(t, err)
+	require.True(t, diff.Replace())
+
+	// Registry should signal cancellation before closing on replace.
+	assert.Equal(t, 1, tracked.closeCalls)
+	assert.Equal(t, 1, tracked.cancelCalls)
 }
 
 func TestCRUDWrongPackage(t *testing.T) {
@@ -717,7 +784,7 @@ func TestCRUDWrongPackage(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{}
 
 	// Check
-	check, err := r.Check(context.Background(), plugin.CheckRequest{
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:  urn,
 		Olds: olds,
 		News: news,
@@ -743,7 +810,7 @@ func TestCRUDWrongVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
 
 	// Check
-	check, err := r.Check(context.Background(), plugin.CheckRequest{
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:  urn,
 		Olds: olds,
 		News: news,
@@ -769,7 +836,7 @@ func TestCRUDBadVersionNotString(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty(true)}
 
 	// Check
-	check, err := r.Check(context.Background(), plugin.CheckRequest{
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:  urn,
 		Olds: olds,
 		News: news,
@@ -796,7 +863,7 @@ func TestCRUDBadVersion(t *testing.T) {
 	olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty("foo")}
 
 	// Check
-	check, err := r.Check(context.Background(), plugin.CheckRequest{
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:  urn,
 		Olds: olds,
 		News: news,
@@ -832,7 +899,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 		_, err := loadProvider(
-			context.Background(),
+			t.Context(),
 			"myplugin", &version, srv.URL,
 			nil, host, nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
@@ -844,7 +911,7 @@ func TestLoadProvider_missingError(t *testing.T) {
 		t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
 
 		_, err := loadProvider(
-			context.Background(),
+			t.Context(),
 			"myplugin", &version, srv.URL,
 			nil, host, nil /* builtins */, nil)
 		assert.ErrorContains(t, err,
@@ -889,7 +956,7 @@ func TestConcurrentRegistryUsage(t *testing.T) {
 			olds, news := resource.PropertyMap{}, resource.PropertyMap{"version": resource.NewProperty(true)}
 
 			// Check
-			check, err := r.Check(context.Background(), plugin.CheckRequest{
+			check, err := r.Check(t.Context(), plugin.CheckRequest{
 				URN:  providerURN,
 				Olds: olds,
 				News: news,
@@ -920,80 +987,80 @@ func TestRegistry(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.GetSchema(context.Background(), plugin.GetSchemaRequest{})
+			_, _ = r.GetSchema(t.Context(), plugin.GetSchemaRequest{})
 		})
 	})
 	t.Run("GetMapping", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.GetMapping(context.Background(), plugin.GetMappingRequest{})
+			_, _ = r.GetMapping(t.Context(), plugin.GetMappingRequest{})
 		})
 	})
 	t.Run("GetMappings", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.GetMappings(context.Background(), plugin.GetMappingsRequest{})
+			_, _ = r.GetMappings(t.Context(), plugin.GetMappingsRequest{})
 		})
 	})
 	t.Run("CheckConfig", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.CheckConfig(context.Background(), plugin.CheckConfigRequest{AllowUnknowns: true})
+			_, _ = r.CheckConfig(t.Context(), plugin.CheckConfigRequest{AllowUnknowns: true})
 		})
 	})
 	t.Run("DiffConfig", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.DiffConfig(context.Background(), plugin.DiffConfigRequest{AllowUnknowns: true})
+			_, _ = r.DiffConfig(t.Context(), plugin.DiffConfigRequest{AllowUnknowns: true})
 		})
 	})
 	t.Run("Configure", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.Configure(context.Background(), plugin.ConfigureRequest{})
+			_, _ = r.Configure(t.Context(), plugin.ConfigureRequest{})
 		})
 	})
 	t.Run("Read", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		_, err := r.Read(context.Background(), plugin.ReadRequest{})
+		_, err := r.Read(t.Context(), plugin.ReadRequest{})
 		assert.ErrorContains(t, err, "provider resources may not be read")
 	})
 	t.Run("Construct", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		_, err := r.Construct(context.Background(), plugin.ConstructRequest{})
+		_, err := r.Construct(t.Context(), plugin.ConstructRequest{})
 		assert.ErrorContains(t, err, "provider resources may not be constructed")
 	})
 	t.Run("Invoke", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.Invoke(context.Background(), plugin.InvokeRequest{})
+			_, _ = r.Invoke(t.Context(), plugin.InvokeRequest{})
 		})
 	})
 	t.Run("Call", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
 		assert.Panics(t, func() {
-			_, _ = r.Call(context.Background(), plugin.CallRequest{})
+			_, _ = r.Call(t.Context(), plugin.CallRequest{})
 		})
 	})
 	t.Run("GetPluginInfo", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		_, err := r.GetPluginInfo(context.Background())
+		_, err := r.GetPluginInfo(t.Context())
 		assert.ErrorContains(t, err, "the provider registry does not report plugin info")
 	})
 	t.Run("SignalCancellation", func(t *testing.T) {
 		t.Parallel()
 		r := &Registry{}
-		assert.Nil(t, r.SignalCancellation(context.Background()))
+		assert.Nil(t, r.SignalCancellation(t.Context()))
 	})
 }
 
@@ -1100,7 +1167,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		require.NotNil(t, r)
 
 		// Same the provider
-		err := r.Same(context.Background(), old)
+		err := r.Same(t.Context(), old, true)
 		require.NoError(t, err)
 
 		// Verify provider is registered
@@ -1137,7 +1204,7 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		SetEnvironmentVariableMappings(news, mappings)
 
 		// Check should succeed and preserve the mappings
-		check, err := r.Check(context.Background(), plugin.CheckRequest{
+		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:  urn,
 			Olds: resource.PropertyMap{},
 			News: news,
@@ -1171,14 +1238,14 @@ func TestEnvironmentVariableMappings(t *testing.T) {
 		SetEnvironmentVariableMappings(inputs, mappings)
 
 		// Call Check first
-		check, err := r.Check(context.Background(), plugin.CheckRequest{
+		check, err := r.Check(t.Context(), plugin.CheckRequest{
 			URN:  urn,
 			Olds: resource.PropertyMap{},
 			News: inputs,
 		})
 		require.NoError(t, err)
 
-		create, err := r.Create(context.Background(), plugin.CreateRequest{
+		create, err := r.Create(t.Context(), plugin.CreateRequest{
 			URN:        urn,
 			Name:       urn.Name(),
 			Type:       urn.Type(),
@@ -1246,7 +1313,7 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 	SetEnvironmentVariableMappings(inputs, mappings)
 
 	// Load the provider and pass env to host
-	_, err := r.Check(context.Background(), plugin.CheckRequest{
+	_, err := r.Check(t.Context(), plugin.CheckRequest{
 		URN:  urn,
 		Olds: resource.PropertyMap{},
 		News: inputs,
@@ -1264,4 +1331,316 @@ func TestEnvMappingsPassedToHost(t *testing.T) {
 	customValue, ok := store.Raw("CUSTOM_VAR")
 	assert.True(t, ok, "CUSTOM_VAR should also still exist in the environment")
 	assert.Equal(t, targetValue, customValue, "PROVIDER_VAR should have CUSTOM_VAR's value")
+}
+
+// closableTestProvider is a testProvider that tracks when Close is called.
+type closableTestProvider struct {
+	testProvider
+	closed   bool
+	closedMu sync.Mutex
+}
+
+func (p *closableTestProvider) Close() error {
+	p.closedMu.Lock()
+	defer p.closedMu.Unlock()
+	p.closed = true
+	return nil
+}
+
+func (p *closableTestProvider) IsClosed() bool {
+	p.closedMu.Lock()
+	defer p.closedMu.Unlock()
+	return p.closed
+}
+
+// TestSameUpdateRace_UpdateFirst tests that when Update finishes before Same,
+// Same sees the provider already exists and returns early without creating a new instance.
+func TestSameUpdateRace_UpdateFirst(t *testing.T) {
+	t.Parallel()
+
+	// Create a loader that returns closable providers so we can track closes.
+	var createdProviders []*closableTestProvider
+	var providersMu sync.Mutex
+	loader := &providerLoader{
+		pkg:     "pkgA",
+		version: semver.MustParse("1.0.0"),
+		load: func() (plugin.Provider, error) {
+			p := &closableTestProvider{
+				testProvider: testProvider{
+					pkg:     "pkgA",
+					version: semver.MustParse("1.0.0"),
+					checkConfig: func(
+						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+					) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						return news, nil, nil
+					},
+					diffConfig: func(
+						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string,
+					) (plugin.DiffResult, error) {
+						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+					},
+					config: func(resource.PropertyMap) error { return nil },
+				},
+			}
+			providersMu.Lock()
+			createdProviders = append(createdProviders, p)
+			providersMu.Unlock()
+			return p, nil
+		},
+	}
+	host := newPluginHost(t, []*providerLoader{loader})
+
+	r := NewRegistry(host, false, nil)
+
+	urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
+	id := resource.ID("id1")
+	oldInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
+	newInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0"), "foo": resource.NewProperty("bar")}
+
+	// First, do the Check/Diff/Update flow to register the provider with new config.
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: oldInputs,
+		News: newInputs,
+	})
+	require.NoError(t, err)
+
+	_, err = r.Diff(t.Context(), plugin.DiffRequest{
+		URN:        urn,
+		ID:         id,
+		OldOutputs: oldInputs,
+		NewInputs:  newInputs,
+	})
+	require.NoError(t, err)
+
+	_, err = r.Update(t.Context(), plugin.UpdateRequest{
+		URN:        urn,
+		ID:         id,
+		OldOutputs: oldInputs,
+		NewInputs:  check.Properties,
+	})
+	require.NoError(t, err)
+
+	// Only one provider should have been created (from Check).
+	providersMu.Lock()
+	require.Len(t, createdProviders, 1, "Only one provider should be created from Check/Update flow")
+	providersMu.Unlock()
+
+	// Now call Same (as EnsureProvider would) with old state.
+	// Since the provider is already registered, Same should return early.
+	oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
+	err = r.Same(t.Context(), oldState, false)
+	require.NoError(t, err)
+
+	// Still only one provider should exist - Same should NOT have created a new one.
+	providersMu.Lock()
+	require.Len(t, createdProviders, 1, "Same should not create a new provider when one already exists")
+	providersMu.Unlock()
+
+	// The existing provider should not be closed.
+	assert.False(t, createdProviders[0].IsClosed(), "Existing provider should not be closed")
+}
+
+// TestSameUpdateRace_SameFirst tests that when Same finishes before Update,
+// Update properly closes Same's provider to avoid leaks.
+func TestSameUpdateRace_SameFirst(t *testing.T) {
+	t.Parallel()
+
+	// Create a loader that returns closable providers so we can track closes.
+	var createdProviders []*closableTestProvider
+	var providersMu sync.Mutex
+	loader := &providerLoader{
+		pkg:     "pkgA",
+		version: semver.MustParse("1.0.0"),
+		load: func() (plugin.Provider, error) {
+			p := &closableTestProvider{
+				testProvider: testProvider{
+					pkg:     "pkgA",
+					version: semver.MustParse("1.0.0"),
+					checkConfig: func(
+						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+					) (resource.PropertyMap, []plugin.CheckFailure, error) {
+						return news, nil, nil
+					},
+					diffConfig: func(
+						urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string,
+					) (plugin.DiffResult, error) {
+						return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+					},
+					config: func(resource.PropertyMap) error { return nil },
+				},
+			}
+			providersMu.Lock()
+			createdProviders = append(createdProviders, p)
+			providersMu.Unlock()
+			return p, nil
+		},
+	}
+	host := newPluginHost(t, []*providerLoader{loader})
+
+	r := NewRegistry(host, false, nil)
+
+	urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
+	id := resource.ID("id1")
+	oldInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
+	newInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0"), "foo": resource.NewProperty("bar")}
+
+	// First, call Same (as EnsureProvider would) with old state.
+	// This simulates EnsureProvider running before the Update completes.
+	oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
+	err := r.Same(t.Context(), oldState, false)
+	require.NoError(t, err)
+
+	// One provider should be created from Same.
+	providersMu.Lock()
+	require.Len(t, createdProviders, 1, "Same should create one provider")
+	sameProvider := createdProviders[0]
+	providersMu.Unlock()
+
+	// Now do the Check/Diff/Update flow.
+	check, err := r.Check(t.Context(), plugin.CheckRequest{
+		URN:  urn,
+		Olds: oldInputs,
+		News: newInputs,
+	})
+	require.NoError(t, err)
+
+	_, err = r.Diff(t.Context(), plugin.DiffRequest{
+		URN:        urn,
+		ID:         id,
+		OldOutputs: oldInputs,
+		NewInputs:  newInputs,
+	})
+	require.NoError(t, err)
+
+	// Two providers now: one from Same, one from Check.
+	providersMu.Lock()
+	require.Len(t, createdProviders, 2, "Check should create another provider")
+	providersMu.Unlock()
+
+	// Update should close Same's provider because it's overwriting it.
+	_, err = r.Update(t.Context(), plugin.UpdateRequest{
+		URN:        urn,
+		ID:         id,
+		OldOutputs: oldInputs,
+		NewInputs:  check.Properties,
+	})
+	require.NoError(t, err)
+
+	// The provider from Same should now be closed.
+	assert.True(t, sameProvider.IsClosed(), "Same's provider should be closed by Update")
+
+	// The provider from Check/Update should NOT be closed.
+	providersMu.Lock()
+	updateProvider := createdProviders[1]
+	providersMu.Unlock()
+	assert.False(t, updateProvider.IsClosed(), "Update's provider should not be closed")
+}
+
+// TestSameUpdateRace_Concurrent tests the concurrent race between Same and Update.
+// It verifies that regardless of timing, no providers are leaked.
+func TestSameUpdateRace_Concurrent(t *testing.T) {
+	t.Parallel()
+
+	// Run the test multiple times to increase chance of hitting race conditions.
+	for i := 0; i < 100; i++ {
+		func() {
+			// Create a loader that returns closable providers so we can track closes.
+			var createdProviders []*closableTestProvider
+			var providersMu sync.Mutex
+			loader := &providerLoader{
+				pkg:     "pkgA",
+				version: semver.MustParse("1.0.0"),
+				load: func() (plugin.Provider, error) {
+					p := &closableTestProvider{
+						testProvider: testProvider{
+							pkg:     "pkgA",
+							version: semver.MustParse("1.0.0"),
+							checkConfig: func(
+								urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool,
+							) (resource.PropertyMap, []plugin.CheckFailure, error) {
+								return news, nil, nil
+							},
+							diffConfig: func(
+								urn resource.URN, olds, news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string,
+							) (plugin.DiffResult, error) {
+								return plugin.DiffResult{Changes: plugin.DiffSome}, nil
+							},
+							config: func(resource.PropertyMap) error { return nil },
+						},
+					}
+					providersMu.Lock()
+					createdProviders = append(createdProviders, p)
+					providersMu.Unlock()
+					return p, nil
+				},
+			}
+			host := newPluginHost(t, []*providerLoader{loader})
+
+			r := NewRegistry(host, false, nil)
+
+			urn := resource.NewURN("test", "test", "", providers.MakeProviderType("pkgA"), "default")
+			id := resource.ID("id1")
+			oldInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0")}
+			newInputs := resource.PropertyMap{"version": resource.NewProperty("1.0.0"), "foo": resource.NewProperty("bar")}
+
+			// Do Check first (outside of goroutines) since Update depends on it.
+			check, err := r.Check(t.Context(), plugin.CheckRequest{
+				URN:  urn,
+				Olds: oldInputs,
+				News: newInputs,
+			})
+			require.NoError(t, err)
+
+			_, err = r.Diff(t.Context(), plugin.DiffRequest{
+				URN:        urn,
+				ID:         id,
+				OldOutputs: oldInputs,
+				NewInputs:  newInputs,
+			})
+			require.NoError(t, err)
+
+			// Now race Same and Update.
+			var wg sync.WaitGroup
+			wg.Add(2)
+
+			go func() {
+				defer wg.Done()
+				oldState := newProviderState("pkgA", "default", "id1", false, oldInputs)
+				_ = r.Same(t.Context(), oldState, false)
+			}()
+
+			go func() {
+				defer wg.Done()
+				_, _ = r.Update(t.Context(), plugin.UpdateRequest{
+					URN:        urn,
+					ID:         id,
+					OldOutputs: oldInputs,
+					NewInputs:  check.Properties,
+				})
+			}()
+
+			wg.Wait()
+
+			// Count how many providers are closed vs open.
+			providersMu.Lock()
+			numProviders := len(createdProviders)
+			var numClosed, numOpen int
+			for _, p := range createdProviders {
+				if p.IsClosed() {
+					numClosed++
+				} else {
+					numOpen++
+				}
+			}
+			providersMu.Unlock()
+
+			// We should have exactly one provider that is NOT closed (the winner).
+			// All other providers should be closed.
+			assert.Equal(t, 1, numOpen,
+				"Exactly one provider should remain open (iteration %d, total=%d, closed=%d)", i, numProviders, numClosed)
+			assert.Equal(t, numProviders-1, numClosed,
+				"All other providers should be closed (iteration %d)", i)
+		}()
+	}
 }

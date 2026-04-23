@@ -8,11 +8,11 @@
   "resources": {
     "remoteref:index:Root": {
       "properties": {
-        "ec2": {
-          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:ec2/instance:Instance"
+        "res": {
+          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1%2Fv1:Res"
         }
       },
-      "required": ["ec2"],
+      "required": ["res"],
       "type": "object"
     }
   }

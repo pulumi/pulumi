@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,6 +69,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 var ErrUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
@@ -166,7 +169,7 @@ func ValueOrDefaultURL(ws pkgWorkspace.Context, cloudURL string) string {
 	}
 
 	// If none of those led to a cloud URL, simply return the default.
-	return PulumiCloudURL
+	return client.PulumiCloudURL
 }
 
 // Backend extends the base backend interface with specific information about cloud backends.
@@ -259,8 +262,8 @@ func loginWithBrowser(
 	// the nonce and the pulumi access token we created as part of the OAuth flow. If the nonces match, we set the
 	// access token that was passed to us and the redirect to a special welcome page on Pulumi.com
 
-	loginURL := cloudConsoleURL(cloudURL, "cli-login")
-	finalWelcomeURL := cloudConsoleURL(cloudURL, "welcome", "cli")
+	loginURL := client.CloudConsoleURL(cloudURL, "cli-login")
+	finalWelcomeURL := client.CloudConsoleURL(cloudURL, "welcome", "cli")
 
 	if loginURL == "" || finalWelcomeURL == "" {
 		return nil, errors.New("could not determine login url")
@@ -504,7 +507,7 @@ func (m defaultLoginManager) Login(
 
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	var accessToken string
-	accountLink := cloudConsoleURL(cloudURL, "account", "tokens")
+	accountLink := client.CloudConsoleURL(cloudURL, "account", "tokens")
 
 	if !cmdutil.Interactive() {
 		// If interactive mode isn't enabled, the only way to specify a token is through the environment variable.
@@ -668,7 +671,7 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 }
 
 func (b *cloudBackend) Name() string {
-	if b.url == PulumiCloudURL {
+	if b.url == client.PulumiCloudURL {
 		return "pulumi.com"
 	}
 
@@ -678,9 +681,9 @@ func (b *cloudBackend) Name() string {
 func (b *cloudBackend) URL() string {
 	user, _, _, err := b.CurrentUser()
 	if err != nil {
-		return cloudConsoleURL(b.url)
+		return client.CloudConsoleURL(b.url)
 	}
-	return cloudConsoleURL(b.url, user)
+	return client.CloudConsoleURL(b.url, user)
 }
 
 func (b *cloudBackend) SetCurrentProject(project *workspace.Project) {
@@ -774,7 +777,7 @@ func (b *cloudBackend) GetStackPolicyPacks(
 	}
 
 	return slices.Collect(fxs.Map(resp.RequiredPolicies, func(policy apitype.RequiredPolicy) engine.RequiredPolicy {
-		return newCloudRequiredPolicy(b.client, policy, stackID.Owner)
+		return newCloudRequiredPolicy(b.client, b, policy, stackID.Owner)
 	})), nil
 }
 
@@ -954,7 +957,7 @@ func validateProjectName(s string) error {
 // CloudConsoleURL returns a link to the cloud console with the given path elements.  If a console link cannot be
 // created, we return the empty string instead (this can happen if the endpoint isn't a recognized pattern).
 func (b *cloudBackend) CloudConsoleURL(paths ...string) string {
-	return cloudConsoleURL(b.CloudURL(), paths...)
+	return client.CloudConsoleURL(b.CloudURL(), paths...)
 }
 
 // serveBrowserLoginServer hosts the server that completes the browser based login flow.
@@ -1068,7 +1071,7 @@ func (b *cloudBackend) CreateStack(
 
 	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, initialState)
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
+	apistack, details, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -1083,6 +1086,9 @@ func (b *cloudBackend) CreateStack(
 		}
 		return nil, err
 	}
+
+	// Display messages from the backend if present.
+	displayBackendMessages(details.Messages)
 
 	stack, err := newStack(ctx, apistack, b)
 	if err != nil {
@@ -1525,7 +1531,8 @@ func (b *cloudBackend) createNeoTaskOnError(
 		"Help me debug the following Pulumi error for project %s and stack %s:\n\n%s",
 		stackID.Project, stackID.Stack.String(), pulumiOutput)
 
-	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project)
+	return b.client.CreateNeoTask(
+		ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project, client.CreateNeoTaskOptions{})
 }
 
 type updateMetadata struct {
@@ -1569,8 +1576,11 @@ func (b *cloudBackend) createAndStartUpdate(
 	//
 	for _, policy := range updateDetails.RequiredPolicies {
 		op.Opts.Engine.RequiredPolicies = append(
-			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy, update.Owner))
+			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, b, policy, update.Owner))
 	}
+
+	// Provide ESC environment resolver for local policy packs.
+	op.Opts.Engine.PolicyEnvResolver = NewLocalPolicyEnvironmentResolver(b, update.Owner)
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
@@ -1641,6 +1651,13 @@ func (b *cloudBackend) apply(
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
+		// than a logical span, but this is a convenient way to record this information.
+		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
+			tracer := otel.Tracer("pulumi-cli")
+			_, span := tracer.Start(ctx, "time-to-first-print", oteltrace.WithTimestamp(startTime))
+			span.End()
+		}
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
@@ -1688,24 +1705,7 @@ func (b *cloudBackend) apply(
 	}
 
 	// Display messages from the backend if present.
-	if len(updateMeta.messages) > 0 {
-		for _, msg := range updateMeta.messages {
-			m := diag.RawMessage("", msg.Message)
-			switch msg.Severity {
-			case apitype.MessageSeverityError:
-				cmdutil.Diag().Errorf(m)
-			case apitype.MessageSeverityWarning:
-				cmdutil.Diag().Warningf(m)
-			case apitype.MessageSeverityInfo:
-				cmdutil.Diag().Infof(m)
-			default:
-				// Fallback on Info if we don't recognize the severity.
-				cmdutil.Diag().Infof(m)
-				logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
-			}
-		}
-		fmt.Print("\n")
-	}
+	displayBackendMessages(updateMeta.messages)
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
 	return b.runEngineAction(
@@ -1796,7 +1796,7 @@ func (b *cloudBackend) runEngineAction(
 			if err != nil {
 				validationErrs = append(validationErrs, err)
 			}
-			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot)
+			snapshotManager = backend.NewSnapshotManager(persister, op.SecretsManager, u.Target.Snapshot, engineEvents)
 			combinedManager = &engine.CombinedManager{
 				Managers:          []engine.SnapshotManager{snapshotManager, journalManager},
 				CollectErrorsOnly: []bool{false, true},
@@ -1975,20 +1975,20 @@ func (b *cloudBackend) GetHistory(
 
 func (b *cloudBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack,
-) (config.Map, error) {
+) (backend.LatestConfiguration, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
-		return nil, err
+		return backend.LatestConfiguration{}, err
 	}
 
 	cfg, err := b.client.GetLatestConfiguration(ctx, stackID)
 	switch {
 	case err == client.ErrNoPreviousDeployment:
-		return nil, backenderr.ErrNoPreviousDeployment
+		return backend.LatestConfiguration{}, backenderr.ErrNoPreviousDeployment
 	case err != nil:
-		return nil, err
+		return backend.LatestConfiguration{}, err
 	default:
-		return cfg, nil
+		return backend.LatestConfiguration(cfg), nil
 	}
 }
 
@@ -2352,7 +2352,7 @@ func getAccountDetails(
 	// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
 	username, organizations, tokenInfo, err := client.NewClient(cloudURL, accessToken, insecure, cmdutil.Diag()).
 		GetPulumiAccountDetails(ctx)
-	if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == 401 {
+	if errors.Is(err, backenderr.LoginRequiredError{}) {
 		return "", nil, nil, ErrUnauthorized
 	}
 	return username, organizations, tokenInfo, err
@@ -2717,4 +2717,30 @@ func (b *cloudBackend) downgradeUntypedDeploymentVersionIfNeeded(
 		deployment.Version, deployment.Features = b.downgradeDeploymentVersionIfNeeded(
 			ctx, deployment.Version, deployment.Features)
 	}
+}
+
+// displayBackendMessages renders backend-vended messages to the user via the default
+// diagnostic sink, mapping each message's severity to the appropriate log level. A trailing
+// blank line is printed when any messages are displayed, to separate them from subsequent
+// output. If messages is empty, this is a no-op.
+func displayBackendMessages(messages []apitype.Message) {
+	if len(messages) == 0 {
+		return
+	}
+	for _, msg := range messages {
+		m := diag.RawMessage("", msg.Message)
+		switch msg.Severity {
+		case apitype.MessageSeverityError:
+			cmdutil.Diag().Errorf(m)
+		case apitype.MessageSeverityWarning:
+			cmdutil.Diag().Warningf(m)
+		case apitype.MessageSeverityInfo:
+			cmdutil.Diag().Infof(m)
+		default:
+			// Fallback on Info if we don't recognize the severity.
+			cmdutil.Diag().Infof(m)
+			logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
+		}
+	}
+	fmt.Print("\n")
 }

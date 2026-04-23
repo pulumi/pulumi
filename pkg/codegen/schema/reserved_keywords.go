@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,5 +41,9 @@ func isReservedComponentResourcePropertyKey(name string) bool {
 }
 
 func isReservedCustomResourcePropertyKey(name string) bool {
-	return slices.Contains(reservedNonComponentPropertyKeys, name)
+	return slices.Contains(reservedNonComponentPropertyKeys, name) || isReservedKeyword(name)
+}
+
+func isReservedStateInputPropertyKey(name string) bool {
+	return slices.Contains(reservedNonComponentPropertyKeys, name) || isReservedKeyword(name)
 }

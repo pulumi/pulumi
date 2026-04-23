@@ -4,7 +4,7 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as pulumiAws from "@pulumi/aws";
+import * as pulumiGoalias from "@pulumi/goalias";
 import * as pulumiKubernetes from "@pulumi/kubernetes";
 
 export class Component extends pulumi.CustomResource {
@@ -35,7 +35,7 @@ export class Component extends pulumi.CustomResource {
     }
 
     declare public /*out*/ readonly provider: pulumi.Output<pulumiKubernetes.Provider | undefined>;
-    declare public /*out*/ readonly securityGroup: pulumi.Output<pulumiAws.ec2.SecurityGroup>;
+    declare public /*out*/ readonly res: pulumi.Output<pulumiGoalias.mod1.v1.Res>;
     declare public /*out*/ readonly storageClasses: pulumi.Output<{[key: string]: pulumiKubernetes.storage.v1.StorageClass} | undefined>;
 
     /**
@@ -65,11 +65,11 @@ export class Component extends pulumi.CustomResource {
             resourceInputs["requiredMetadataArray"] = args?.requiredMetadataArray;
             resourceInputs["requiredMetadataMap"] = args?.requiredMetadataMap;
             resourceInputs["provider"] = undefined /*out*/;
-            resourceInputs["securityGroup"] = undefined /*out*/;
+            resourceInputs["res"] = undefined /*out*/;
             resourceInputs["storageClasses"] = undefined /*out*/;
         } else {
             resourceInputs["provider"] = undefined /*out*/;
-            resourceInputs["securityGroup"] = undefined /*out*/;
+            resourceInputs["res"] = undefined /*out*/;
             resourceInputs["storageClasses"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);

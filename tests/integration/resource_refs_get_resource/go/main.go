@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.  All rights reserved.
+// Copyright 2016, Pulumi Corporation.  All rights reserved.
 //go:build !all
 // +build !all
 
@@ -158,7 +158,7 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}
 	err = ctx.RegisterResource(typ, name, nil, r, pulumi.URN_(urn))
-	return
+	return r, err
 }
 
 func main() {

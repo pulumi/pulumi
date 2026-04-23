@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -337,7 +337,7 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	logging.V(apiRequestLogLevel).Infof("Making Pulumi API call: %s", url)
-	if logging.V(apiRequestDetailLogLevel) {
+	if logging.V(apiRequestDetailLogLevel).Enabled() {
 		logging.V(apiRequestDetailLogLevel).Infof(
 			"Pulumi API call details (%s): headers=%v; body=%v", url, req.Header, string(body))
 	}
@@ -385,6 +385,22 @@ func pulumiAPICall(ctx context.Context,
 		err = decodeError(respBody, resp.StatusCode, opts, reqID)
 		if resp.StatusCode == 403 {
 			err = backenderr.ForbiddenError{Err: err}
+		}
+
+		if resp.StatusCode == 401 {
+			loginErr := backenderr.LoginRequiredError{}
+			var errResp *apitype.ErrorResponse
+			if errors.As(err, &errResp) {
+				for _, e := range errResp.Errors {
+					if (e.ErrorType == "saml_reauth_required" || e.ErrorType == "saml_login_required") && e.Attribute != nil {
+						if u := CloudConsoleURL(cloudAPI, "signin", "sso", *e.Attribute, "reauth"); u != "" {
+							loginErr.ReauthURL = u
+						}
+						break
+					}
+				}
+			}
+			return "", nil, loginErr
 		}
 
 		return "", nil, err
@@ -512,7 +528,7 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	if err != nil {
 		return fmt.Errorf("reading response from API: %w", err)
 	}
-	if logging.V(apiRequestDetailLogLevel) {
+	if logging.V(apiRequestDetailLogLevel).Enabled() {
 		logging.V(apiRequestDetailLogLevel).Infof("Pulumi API call response body (%s): %v", url, string(respBody))
 	}
 

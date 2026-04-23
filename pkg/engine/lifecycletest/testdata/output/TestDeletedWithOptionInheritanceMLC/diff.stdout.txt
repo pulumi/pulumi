@@ -1,7 +1,5 @@
 <{%fg 2%}>+ pkgA:m:typComponent: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typComponent::deletable]
-<{%reset%}><{%reset%}><{%fg 2%}>+ pulumi:providers:pkgA: (create)
-<{%fg 2%}>    [urn=urn:pulumi:test::test::pulumi:providers:pkgA::default]
 <{%reset%}><{%reset%}><{%fg 2%}>+ pkgA:m:typComponent: (create)
 <{%fg 2%}>    [urn=urn:pulumi:test::test::pkgA:m:typComponent::resA]
 <{%reset%}><{%reset%}>    <{%fg 2%}>+ pkgA:m:typA: (create)

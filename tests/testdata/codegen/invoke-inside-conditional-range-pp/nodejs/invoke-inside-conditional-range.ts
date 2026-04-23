@@ -41,7 +41,7 @@ export = async () => {
             ipv6CidrBlock: enableIpv6 && publicSubnetIpv6Prefixes.length > 0 ? currentVpc.ipv6CidrBlock.apply(ipv6CidrBlock => std.cidrsubnetOutput({
                 input: ipv6CidrBlock,
                 newbits: 8,
-                netnum: publicSubnetIpv6Prefixes[range.value],
+                netnum: Number(publicSubnetIpv6Prefixes[range.value]),
             })).apply(invoke => invoke.result) : null,
             ipv6Native: enableIpv6 && publicSubnetIpv6Native,
             vpcId: currentVpc.id,

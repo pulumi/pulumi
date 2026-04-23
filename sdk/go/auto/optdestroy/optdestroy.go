@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -165,6 +165,13 @@ func RunProgram(f bool) Option {
 	})
 }
 
+// Diff displays operation as a rich diff showing the overall change
+func Diff() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Diff = true
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -189,7 +196,7 @@ type Options struct {
 	ExcludeDependents bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stdout
 	ProgressStreams []io.Writer
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
+	// ErrorProgressStreams allows specifying one or more io.Writers to redirect incremental destroy stderr
 	ErrorProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
@@ -216,6 +223,8 @@ type Options struct {
 	ConfigFile string
 	// When set to true, run the program in the workspace to perform the destroy.
 	RunProgram *bool
+	// Diff displays operation as a rich diff showing the overall change
+	Diff bool
 }
 
 type optionFunc func(*Options)

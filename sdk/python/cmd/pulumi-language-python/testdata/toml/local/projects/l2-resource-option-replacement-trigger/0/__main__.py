@@ -4,7 +4,7 @@ import pulumi_simple as simple
 
 replacement_trigger = simple.Resource("replacementTrigger", value=True,
 opts = pulumi.ResourceOptions(replacement_trigger="test"))
-unknown = output.Resource("unknown", value=1)
+unknown = output.Resource("unknown", value=float(1))
 unknown_replacement_trigger = simple.Resource("unknownReplacementTrigger", value=True,
 opts = pulumi.ResourceOptions(replacement_trigger="hellohello"))
 not_replacement_trigger = simple.Resource("notReplacementTrigger", value=True)

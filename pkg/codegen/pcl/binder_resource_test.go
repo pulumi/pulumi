@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -106,6 +106,11 @@ func TestBindResourceOptions(t *testing.T) {
 			name: "DeletedWith",
 			src:  `deletedWith = "abc123"`,
 			want: cty.StringVal("abc123"),
+		},
+		{
+			name: "AdditionalSecretOutputs",
+			src:  `additionalSecretOutputs = [property]`,
+			want: cty.TupleVal([]cty.Value{cty.StringVal("property")}),
 		},
 	}
 

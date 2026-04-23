@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -336,6 +339,32 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 		return nil, fmt.Errorf("could not register resource: %w", err)
 	}
 
+	remotearc, err := resource.NewURIArchive(
+		"https://raw.githubusercontent.com/pulumi/pulumi/7b0eb7fb10694da2f31c0d15edf671df843e0d4c" +
+			"/cmd/pulumi-test-language/tests/testdata/l2-resource-asset-archive/archive.tar")
+	if err != nil {
+		return nil, fmt.Errorf("could not create remote archive: %w", err)
+	}
+
+	mremotetarc, err := plugin.MarshalArchive(remotearc, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal remote archive: %w", err)
+	}
+
+	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   "asset-archive:index:ArchiveResource",
+		Custom: true,
+		Name:   "remotearc",
+		Object: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"value": mremotetarc,
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not register resource: %w", err)
+	}
+
 	return &pulumirpc.RunResponse{}, nil
 }
 
@@ -345,7 +374,7 @@ func TestL2ResourceAssetArchive(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 	runtime := &L2ResourceAssetArchiveLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {

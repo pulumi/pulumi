@@ -16,40 +16,71 @@ package otelreceiver
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"strings"
 
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 // GRPCExporter sends spans to an OTLP gRPC collector.
 type GRPCExporter struct {
-	conn   *grpc.ClientConn
-	client coltracepb.TraceServiceClient
+	conn    *grpc.ClientConn
+	client  coltracepb.TraceServiceClient
+	headers metadata.MD
 }
 
-func newGRPCExporter(target string) (*GRPCExporter, error) {
-	target = strings.TrimPrefix(target, "grpc://")
+type grpcExporterOptions struct {
+	// target is the gRPC dial target (host:port).
+	target string
+	// tls enables TLS on the connection
+	tls bool
+	// headers are additional key-value pairs sent as gRPC metadata on every export call
+	headers map[string]string
+}
 
-	conn, err := grpc.NewClient(target,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+func newGRPCExporterWithOptions(opts grpcExporterOptions) (*GRPCExporter, error) {
+	target := strings.TrimPrefix(opts.target, "grpc://")
+	target = strings.TrimPrefix(target, "grpcs://")
+
+	var dialOpts []grpc.DialOption
+	if opts.tls {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
+			MinVersion: tls.VersionTLS12,
+		})))
+	} else {
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+
+	conn, err := grpc.NewClient(target, dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to OTLP collector: %w", err)
 	}
 
+	var md metadata.MD
+	if len(opts.headers) > 0 {
+		md = metadata.New(opts.headers)
+	}
+
 	return &GRPCExporter{
-		conn:   conn,
-		client: coltracepb.NewTraceServiceClient(conn),
+		conn:    conn,
+		client:  coltracepb.NewTraceServiceClient(conn),
+		headers: md,
 	}, nil
 }
 
 func (e *GRPCExporter) ExportSpans(ctx context.Context, spans []*tracepb.ResourceSpans) error {
 	if len(spans) == 0 {
 		return nil
+	}
+
+	if len(e.headers) > 0 {
+		ctx = metadata.NewOutgoingContext(ctx, e.headers)
 	}
 
 	req := &coltracepb.ExportTraceServiceRequest{

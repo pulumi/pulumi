@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package auto
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -78,7 +77,7 @@ func TestUpdatePlans(t *testing.T) {
 		t.Skip("Skipping test on Windows due to flakiness")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 
@@ -193,7 +192,7 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName("organization", pName, sName)
 
@@ -253,7 +252,7 @@ func TestUpOptsConfigFileNestedSecretLocalBackend(t *testing.T) {
 func TestDestroyOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
@@ -263,6 +262,11 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	args, _, err := destroyOptsToCmd(
 		&optdestroy.Options{
@@ -281,7 +285,7 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 func TestRefreshOptsConfigFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
@@ -291,6 +295,11 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
@@ -310,14 +319,21 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 func TestRefreshOptsDiff(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
 	pDir := t.TempDir()
 	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
 	require.NoError(t, err)
 
-	stack, err := NewStackLocalSource(ctx, ptesting.RandomStackName(), pDir)
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	argsUp, _, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
 	require.NoError(t, err)
@@ -331,7 +347,7 @@ func TestRefreshOptsDiff(t *testing.T) {
 func TestRefreshOptsClearPendingCreates(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
@@ -341,6 +357,11 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
@@ -357,7 +378,7 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 func TestRename(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
@@ -367,6 +388,11 @@ func TestRename(t *testing.T) {
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	args := renameOptsToCmd(
 		&optrename.Options{
@@ -382,7 +408,7 @@ func TestPreviewImportResources(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	ctx := context.Background()
+	ctx := t.Context()
 	sName := ptesting.RandomStackName()
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 

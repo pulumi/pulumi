@@ -1,0 +1,7 @@
+changes:
+- type: feat
+  scope: cli
+  description: |
+    Switch logging library from glog to slog.
+
+    BREAKING: any `if logging.V(x) {` need to be changed to `if logging.V(x).Enabled()`

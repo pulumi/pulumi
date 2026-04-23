@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -266,7 +266,7 @@ func (op TestOp) runWithContext(
 			context.Background(), journalPersister, secretsManager, secretsProvider, target.Snapshot)
 		require.NoErrorf(opts.T, err, "got error setting up journaler")
 
-		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot)
+		snapshotManager := backend.NewSnapshotManager(persister, secretsManager, target.Snapshot, nil)
 		journalSnapshotManager, err := engine.NewJournalSnapshotManager(journaler, target.Snapshot, secretsManager)
 		require.NoError(opts.T, err)
 
@@ -590,23 +590,16 @@ func fixupEventIDs(events []engine.Event) []engine.Event {
 }
 
 func AssertDisplay(t TB, events []engine.Event, path string) {
-	var expectedStdout []byte
-	var expectedStderr []byte
 	accept := cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-	if !accept {
-		var err error
-		expectedStdout, err = os.ReadFile(filepath.Join(path, "diff.stdout.txt"))
-		require.NoError(t, err)
-
-		expectedStderr, err = os.ReadFile(filepath.Join(path, "diff.stderr.txt"))
-		require.NoError(t, err)
-	}
-
-	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
 
 	events = fixupEventIDs(events)
+
+	filteredEvents := make([]engine.Event, 0, len(events))
+	for _, e := range events {
+		if !e.Internal() {
+			filteredEvents = append(filteredEvents, e)
+		}
+	}
 
 	var expectedEvents []engine.Event
 	if accept {
@@ -619,7 +612,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		defer f.Close()
 
 		enc := json.NewEncoder(f)
-		for _, e := range events {
+		for _, e := range filteredEvents {
 			apiEvent, err := bdisplay.ConvertEngineEvent(e, false)
 			require.NoError(t, err)
 
@@ -627,29 +620,61 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 			require.NoError(t, err)
 		}
 
-		expectedEvents = events
+		expectedEvents = filteredEvents
 	} else {
 		var err error
 		expectedEvents, err = loadEvents(filepath.Join(path, "eventstream.json"))
 		require.NoError(t, err)
 
-		compareEvents(t, expectedEvents, events)
+		compareEvents(t, expectedEvents, filteredEvents)
 	}
 
-	// ShowProgressEvents
+	// Render each display variant: default and --urns, for both diff and progress views.
+	for _, variant := range []struct {
+		prefix   string
+		showURNs bool
+	}{
+		{prefix: "", showURNs: false},
+		{prefix: "urns-", showURNs: true},
+	} {
+		assertDiffDisplay(t, expectedEvents, path, accept, variant.prefix, variant.showURNs)
+		assertProgressDisplay(t, expectedEvents, path, accept, variant.prefix, variant.showURNs)
+	}
+}
+
+// assertDiffDisplay renders events with ShowDiffEvents and asserts/writes the snapshot files.
+func assertDiffDisplay(
+	t TB, events []engine.Event, path string, accept bool, prefix string, showURNs bool,
+) {
+	stdoutPath := filepath.Join(path, prefix+"diff.stdout.txt")
+	stderrPath := filepath.Join(path, prefix+"diff.stderr.txt")
+
+	var expectedStdout, expectedStderr []byte
+	if !accept {
+		var err error
+		expectedStdout, err = os.ReadFile(stdoutPath)
+		require.NoError(t, err)
+
+		expectedStderr, err = os.ReadFile(stderrPath)
+		require.NoError(t, err)
+	}
+
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	var stdout, stderr bytes.Buffer
 
 	go bdisplay.ShowDiffEvents("test", eventChannel, doneChannel, bdisplay.Options{
 		Color:                colors.Raw,
 		ShowSameResources:    true,
 		ShowReplacementSteps: true,
 		ShowReads:            true,
+		ShowURNs:             showURNs,
 		Stdout:               &stdout,
 		Stderr:               &stderr,
 		DeterministicOutput:  true,
 		ShowLinkToNeo:        false,
 	})
 
-	for _, e := range expectedEvents {
+	for _, e := range events {
 		eventChannel <- e
 	}
 	<-doneChannel
@@ -661,27 +686,33 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		err := os.MkdirAll(path, 0o700)
 		require.NoError(t, err)
 
-		err = os.WriteFile(filepath.Join(path, "diff.stdout.txt"), stdout.Bytes(), 0o600)
+		err = os.WriteFile(stdoutPath, stdout.Bytes(), 0o600)
 		require.NoError(t, err)
 
-		err = os.WriteFile(filepath.Join(path, "diff.stderr.txt"), stderr.Bytes(), 0o600)
+		err = os.WriteFile(stderrPath, stderr.Bytes(), 0o600)
 		require.NoError(t, err)
 	}
+}
 
-	expectedStdout = []byte{}
-	expectedStderr = []byte{}
+// assertProgressDisplay renders events with ShowProgressEvents and asserts/writes the snapshot files.
+func assertProgressDisplay(
+	t TB, events []engine.Event, path string, accept bool, prefix string, showURNs bool,
+) {
+	stdoutPath := filepath.Join(path, prefix+"progress.stdout.txt")
+	stderrPath := filepath.Join(path, prefix+"progress.stderr.txt")
+
+	var expectedStdout, expectedStderr []byte
 	if !accept {
 		var err error
-		expectedStdout, err = os.ReadFile(filepath.Join(path, "progress.stdout.txt"))
+		expectedStdout, err = os.ReadFile(stdoutPath)
 		require.NoError(t, err)
 
-		expectedStderr, err = os.ReadFile(filepath.Join(path, "progress.stderr.txt"))
+		expectedStderr, err = os.ReadFile(stderrPath)
 		require.NoError(t, err)
 	}
 
-	eventChannel, doneChannel = make(chan engine.Event), make(chan bool)
-	stdout.Reset()
-	stderr.Reset()
+	eventChannel, doneChannel := make(chan engine.Event), make(chan bool)
+	var stdout, stderr bytes.Buffer
 
 	go bdisplay.ShowProgressEvents(
 		"test", apitype.UpdateUpdate,
@@ -691,6 +722,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 			ShowSameResources:    true,
 			ShowReplacementSteps: true,
 			ShowReads:            true,
+			ShowURNs:             showURNs,
 			SuppressProgress:     true,
 			Stdout:               &stdout,
 			Stderr:               &stderr,
@@ -698,7 +730,7 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 			ShowLinkToNeo:        false,
 		}, false)
 
-	for _, e := range expectedEvents {
+	for _, e := range events {
 		eventChannel <- e
 	}
 	<-doneChannel
@@ -707,10 +739,10 @@ func AssertDisplay(t TB, events []engine.Event, path string) {
 		assert.Equal(t, string(expectedStdout), stdout.String())
 		assert.Equal(t, string(expectedStderr), stderr.String())
 	} else {
-		err := os.WriteFile(filepath.Join(path, "progress.stdout.txt"), stdout.Bytes(), 0o600)
+		err := os.WriteFile(stdoutPath, stdout.Bytes(), 0o600)
 		require.NoError(t, err)
 
-		err = os.WriteFile(filepath.Join(path, "progress.stderr.txt"), stderr.Bytes(), 0o600)
+		err = os.WriteFile(stderrPath, stderr.Bytes(), 0o600)
 		require.NoError(t, err)
 	}
 }

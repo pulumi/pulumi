@@ -1,7 +1,6 @@
 <{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
 
 
- <{%bold%}><{%reset%}>  <{%reset%}> pulumi:providers:pulumi default <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:StackReference other <{%bold%}><{%reset%}><{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>The "pulumi:pulumi:StackReference" resource type is deprecated. Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues.<{%reset%}>
  <{%bold%}><{%reset%}>  <{%reset%}> pulumi:pulumi:StackReference other <{%bold%}><{%reset%}><{%reset%}> <{%fg 3%}>warning: <{%reset%}><{%reset%}>The "pulumi:pulumi:StackReference" resource type is deprecated. Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues.<{%reset%}>
  <{%bold%}><{%fg 10%}>++<{%reset%}> pulumi:pulumi:StackReference other <{%bold%}><{%fg 10%}>creating replacement<{%reset%}> [diff: <{%fg 3%}>~name<{%reset%}><{%reset%}>]; <{%fg 3%}>warning: <{%reset%}><{%reset%}>The "pulumi:pulumi:StackReference" resource type is deprecated. Update your SDK or if already up to date raise an issue at https://github.com/pulumi/pulumi/issues.<{%reset%}>

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,8 +44,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// getIndent computes a step's parent indentation.
-func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata) int {
+// getIndent computes a step's visible parent indentation.
+func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepEventMetadata, opts Options) int {
 	indent := 0
 	for p := step.Res.Parent; p != ""; {
 		par, has := seen[p]
@@ -55,13 +55,15 @@ func getIndent(step engine.StepEventMetadata, seen map[resource.URN]engine.StepE
 			//     least, it would be ideal to preserve the indentation.
 			break
 		}
-		indent++
+		if isRootStack(par) || shouldShow(par, opts) {
+			indent++
+		}
 		p = par.Res.Parent
 	}
 	return indent
 }
 
-func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
+func printStepHeader(b io.StringWriter, step engine.StepEventMetadata, showURNs bool) {
 	var extra string
 	old := step.Old
 	new := step.New
@@ -72,7 +74,11 @@ func printStepHeader(b io.StringWriter, step engine.StepEventMetadata) {
 		// show a locked symbol, since we are either newly protecting this resource, or retaining protection.
 		extra = " 🔒"
 	}
-	writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
+	if showURNs {
+		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.URN), step.Op, extra))
+	} else {
+		writeString(b, fmt.Sprintf("%s: (%s)%s\n", string(step.Type), step.Op, extra))
+	}
 }
 
 func getIndentationString(indent int, op display.StepOp, prefix bool) string {
@@ -117,7 +123,7 @@ func writeVerbatim(b io.StringWriter, op display.StepOp, value string) {
 	writeUnprefixedIndentedf(b, 0, op, "%s", value)
 }
 
-func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) string {
+func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int, showURNs bool) string {
 	var b bytes.Buffer
 
 	op := step.Op
@@ -130,8 +136,8 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	// First, print out the operation's prefix.
 	writeString(&b, deploy.Prefix(op, true /*done*/))
 
-	// Next, print the resource type (since it is easy on the eyes and can be quickly identified).
-	printStepHeader(&b, step)
+	// Next, print the resource type (or full URN if --urns is set).
+	printStepHeader(&b, step, showURNs)
 
 	// For these simple properties, print them as 'same' if they're just an update or replace.
 	simplePropOp := considerSameIfNotCreateOrDelete(op)
@@ -146,7 +152,8 @@ func getResourcePropertiesSummary(step engine.StepEventMetadata, indent int) str
 	if id != "" {
 		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[id=%s]\n", string(id))
 	}
-	if urn != "" {
+	if urn != "" && !showURNs {
+		// Skip the [urn=...] line when --urns is set, since the URN is already shown in the header.
 		writeUnprefixedIndentedf(&b, indent+1, simplePropOp, "[urn=%s]\n", escapeURN(string(urn)))
 	}
 

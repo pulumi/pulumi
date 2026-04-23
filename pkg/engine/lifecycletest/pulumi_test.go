@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -523,6 +523,7 @@ func TestProviderCancellation(t *testing.T) {
 	const resourceCount = 4
 
 	// Set up a cancelable context for the refresh operation.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Wait for our resource ops, then cancel.
@@ -534,6 +535,7 @@ func TestProviderCancellation(t *testing.T) {
 	}()
 
 	// Set up an independent cancelable context for the provider's operations.
+	//nolint:usetesting // the test controls cancellation; t.Context adds unintended cancellation
 	provCtx, provCancel := context.WithCancel(context.Background())
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -597,19 +599,25 @@ func TestProviderCancellation(t *testing.T) {
 
 func TestLanguageRuntimeCancellation(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO[https://github.com/pulumi/pulumi/issues/20325]: Flaky")
 
 	ctx, cancel := context.WithCancel(t.Context())
 
+	// The program cancels the deployment context then blocks until
+	// the engine acknowledges cancellation via the language runtime's
+	// Cancel method (called from SignalCancellation). Because the
+	// program is blocked, the source iterator stays blocked too, so
+	// the executor's event loop can only exit via ctx.Done() — no
+	// race with the source completion event.
+	shutdownCh := make(chan struct{})
 	gracefulShutdown := false
 	programF := func() plugin.LanguageRuntime {
 		return deploytest.NewLanguageRuntimeWithShutdown(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			time.Sleep(1 * time.Second)
 			cancel()
-
+			<-shutdownCh
 			return nil
 		}, func() {
 			gracefulShutdown = true
+			close(shutdownCh)
 		})
 	}
 
@@ -622,7 +630,7 @@ func TestLanguageRuntimeCancellation(t *testing.T) {
 	_, err := op.RunWithContext(ctx, project, target, options, false, nil, nil)
 
 	assert.Error(t, err)
-	assert.Equal(t, err.Error(), "BAIL: canceled")
+	assert.Equal(t, "BAIL: canceled", err.Error())
 	assert.True(t, gracefulShutdown)
 }
 
@@ -2639,6 +2647,7 @@ func TestConfigSecrets(t *testing.T) {
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
 
 	crypter := config.NewSymmetricCrypter(make([]byte, 32))
+	//nolint:usetesting // outlives t.Context inside the engine
 	secret, err := crypter.EncryptValue(context.Background(), "hunter2")
 	require.NoError(t, err)
 
@@ -4933,7 +4942,7 @@ func TestProgramError(t *testing.T) {
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		require.NoError(t, err)
 
-		err = monitor.SignalAndWaitForShutdown(context.Background())
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
 		require.NoError(t, err)
 
 		return nil
