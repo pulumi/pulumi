@@ -233,9 +233,8 @@ class ResourceProviderStub:
         pulumi.provider_pb2.ListRequest,
         pulumi.provider_pb2.ListResponse,
     ]
-    """`List` lists resources of a given token in pages.
-    A `List` stream emits zero or more resource results, and may emit a continuation token indicating another page
-    is available.
+    """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    emit a continuation token indicating another page is available.
     """
 
     Update: grpc.UnaryUnaryMultiCallable[
@@ -535,9 +534,8 @@ class ResourceProviderAsyncStub:
         pulumi.provider_pb2.ListRequest,
         pulumi.provider_pb2.ListResponse,
     ]
-    """`List` lists resources of a given token in pages.
-    A `List` stream emits zero or more resource results, and may emit a continuation token indicating another page
-    is available.
+    """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    emit a continuation token indicating another page is available.
     """
 
     Update: grpc.aio.UnaryUnaryMultiCallable[
@@ -863,9 +861,8 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         request: pulumi.provider_pb2.ListRequest,
         context: _ServicerContext,
     ) -> typing.Union[collections.abc.Iterator[pulumi.provider_pb2.ListResponse], collections.abc.AsyncIterator[pulumi.provider_pb2.ListResponse]]:
-        """`List` lists resources of a given token in pages.
-        A `List` stream emits zero or more resource results, and may emit a continuation token indicating another page
-        is available.
+        """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+        emit a continuation token indicating another page is available.
         """
 
     

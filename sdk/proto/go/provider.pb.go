@@ -2218,7 +2218,7 @@ type ListRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The resource token (type) to list.
 	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	// An optional provider-defined filter over resource state.
+	// An optional provider-defined filter over resource state. This will not be called with unknown values.
 	Query *structpb.Struct `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
 	// The maximum number of resources to return.
 	Limit int64 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`

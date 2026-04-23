@@ -653,9 +653,8 @@ read: {
     responseSerialize: serialize_pulumirpc_ReadResponse,
     responseDeserialize: deserialize_pulumirpc_ReadResponse,
   },
-  // `List` lists resources of a given token in pages.
-// A `List` stream emits zero or more resource results, and may emit a continuation token indicating another page
-// is available.
+  // `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+// emit a continuation token indicating another page is available.
 list: {
     path: '/pulumirpc.ResourceProvider/List',
     requestStream: false,

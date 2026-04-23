@@ -1420,7 +1420,7 @@ class ListRequest(google.protobuf.message.Message):
     """An opaque token indicating which page to fetch. Empty for the first page."""
     @property
     def query(self) -> google.protobuf.struct_pb2.Struct:
-        """An optional provider-defined filter over resource state."""
+        """An optional provider-defined filter over resource state. This will not be called with unknown values."""
 
     def __init__(
         self,

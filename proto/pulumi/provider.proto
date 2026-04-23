@@ -170,9 +170,8 @@ service ResourceProvider {
     // include other properties.
     rpc Read(ReadRequest) returns (ReadResponse) {}
 
-    // `List` lists resources of a given token in pages.
-    // A `List` stream emits zero or more resource results, and may emit a continuation token indicating another page
-    // is available.
+    // `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    // emit a continuation token indicating another page is available.
     rpc List(ListRequest) returns (stream ListResponse) {}
 
     // `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
@@ -896,7 +895,7 @@ message ListRequest {
     // The resource token (type) to list.
     string token = 1;
 
-    // An optional provider-defined filter over resource state.
+    // An optional provider-defined filter over resource state. This will not be called with unknown values.
     google.protobuf.Struct query = 2;
 
     // The maximum number of resources to return.

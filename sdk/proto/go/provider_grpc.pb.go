@@ -197,9 +197,8 @@ type ResourceProviderClient interface {
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
-	// `List` lists resources of a given token in pages.
-	// A `List` stream emits zero or more resource results, and may emit a continuation token indicating another page
-	// is available.
+	// `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+	// emit a continuation token indicating another page is available.
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListResponse], error)
 	// `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
@@ -629,9 +628,8 @@ type ResourceProviderServer interface {
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
-	// `List` lists resources of a given token in pages.
-	// A `List` stream emits zero or more resource results, and may emit a continuation token indicating another page
-	// is available.
+	// `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+	// emit a continuation token indicating another page is available.
 	List(*ListRequest, grpc.ServerStreamingServer[ListResponse]) error
 	// `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)

@@ -325,9 +325,8 @@ class ResourceProviderServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def List(self, request, context):
-        """`List` lists resources of a given token in pages.
-        A `List` stream emits zero or more resource results, and may emit a continuation token indicating another page
-        is available.
+        """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+        emit a continuation token indicating another page is available.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
