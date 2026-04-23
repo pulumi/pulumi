@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestPlannedUpdate(t *testing.T) {
@@ -1698,8 +1699,8 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 		Changes:     plugin.DiffSome,
 		ReplaceKeys: []resource.PropertyKey{"foo"},
 		StableKeys:  []resource.PropertyKey{"zed"},
-		DetailedDiff: map[string]plugin.PropertyDiff{
-			"foo": {
+		DetailedDiff: map[property.Path]plugin.PropertyDiff{
+			property.PathFromSegments(property.NewSegment("foo")): {
 				Kind:      plugin.DiffUpdateReplace,
 				InputDiff: true,
 			},

@@ -18,13 +18,20 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestTranslateDetailedDiff(t *testing.T) {
 	t.Parallel()
+
+	path := func(s string) (p property.Path) {
+		require.NoError(t, p.UnmarshalText([]byte(s)))
+		return p
+	}
 
 	var (
 		A = plugin.PropertyDiff{Kind: plugin.DiffAdd}
@@ -36,7 +43,7 @@ func TestTranslateDetailedDiff(t *testing.T) {
 		state          map[string]any
 		oldInputs      map[string]any
 		inputs         map[string]any
-		detailedDiff   map[string]plugin.PropertyDiff
+		detailedDiff   map[property.Path]plugin.PropertyDiff
 		expected       *resource.ObjectDiff
 		hideDiff       []resource.PropertyPath
 		expectedHidden []resource.PropertyPath
@@ -48,8 +55,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]any{
 				"foo": 24,
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -70,8 +77,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]any{
 				"foo": 42,
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -94,8 +101,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"foo": 24,
 				"bar": "hello",
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -118,8 +125,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"foo": 24,
 				"bar": "world",
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -138,8 +145,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]any{
 				"foo": 24,
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": A,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): A,
 			},
 			expected: &resource.ObjectDiff{
 				Adds: resource.PropertyMap{
@@ -155,8 +162,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"foo": 24,
 			},
 			inputs: map[string]any{},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": D,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): D,
 			},
 			expected: &resource.ObjectDiff{
 				Adds: resource.PropertyMap{},
@@ -175,8 +182,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				"foo": 42,
 			},
 			inputs: map[string]any{},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": {
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): {
 					Kind:      plugin.DiffDelete,
 					InputDiff: true,
 				},
@@ -203,8 +210,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo[1]": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo[1]"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -240,8 +247,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -287,8 +294,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"baz",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo[1]": A,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo[1]"): A,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -320,8 +327,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"bar",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo[1]": D,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo[1]"): D,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -354,8 +361,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo[100]": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo[100]"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -391,8 +398,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo[100][200]": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo[100][200]"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -435,8 +442,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]any{
 				"foo": []any{},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo[0].baz": D,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo[0].baz"): D,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -471,8 +478,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo.qux": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo.qux"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -508,8 +515,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -554,8 +561,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo.qux": A,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo.qux"): A,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -587,8 +594,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"bar": "baz",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo.qux": D,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo.qux"): D,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -621,8 +628,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo.missing": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo.missing"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -658,8 +665,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 					"qux": "alpha",
 				},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo.nested.missing": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo.nested.missing"): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -702,8 +709,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 			inputs: map[string]any{
 				"foo": []any{},
 			},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo[0].baz": D,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo[0].baz"): D,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -728,8 +735,8 @@ func TestTranslateDetailedDiff(t *testing.T) {
 		{
 			state:  map[string]any{},
 			inputs: map[string]any{},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo[something.wonky]probably/miscalculated.by.provider": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				property.PathFromSegments(property.NewSegment("foo[something.wonky]probably/miscalculated.by.provider")): U,
 			},
 			expected: &resource.ObjectDiff{
 				Adds:    resource.PropertyMap{},
@@ -743,12 +750,12 @@ func TestTranslateDetailedDiff(t *testing.T) {
 		{
 			state:  map[string]any{},
 			inputs: map[string]any{},
-			detailedDiff: map[string]plugin.PropertyDiff{
-				"foo":            U, // Should be hidden by "foo"
-				"foo.bar":        U, // Should be hidden by "foo"
-				"fizz.bar":       U,
-				"fizzbuzz.bar":   U, // Should be hidden by "fizzbuzz.bar"
-				"fizzbuzz.other": U,
+			detailedDiff: map[property.Path]plugin.PropertyDiff{
+				path("foo"):            U, // Should be hidden by "foo"
+				path("foo.bar"):        U, // Should be hidden by "foo"
+				path("fizz.bar"):       U,
+				path("fizzbuzz.bar"):   U, // Should be hidden by "fizzbuzz.bar"
+				path("fizzbuzz.other"): U,
 			},
 			hideDiff: []resource.PropertyPath{
 				{"foo"},

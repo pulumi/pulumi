@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestImportOption(t *testing.T) {
@@ -65,8 +66,8 @@ func TestImportOption(t *testing.T) {
 
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
-						DetailedDiff: map[string]plugin.PropertyDiff{
-							"foo": {Kind: diffKind},
+						DetailedDiff: map[property.Path]plugin.PropertyDiff{
+							property.PathFromSegments(property.NewSegment("foo")): {Kind: diffKind},
 						},
 					}, nil
 				},
@@ -384,8 +385,8 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
-						DetailedDiff: map[string]plugin.PropertyDiff{
-							"foo": {Kind: plugin.DiffUpdate},
+						DetailedDiff: map[property.Path]plugin.PropertyDiff{
+							property.PathFromSegments(property.NewSegment("foo")): {Kind: plugin.DiffUpdate},
 						},
 					}, nil
 				},
@@ -573,12 +574,12 @@ func diffImportResource(
 		return plugin.DiffResult{Changes: plugin.DiffNone}, nil
 	}
 
-	detailedDiff := make(map[string]plugin.PropertyDiff)
+	detailedDiff := make(map[property.Path]plugin.PropertyDiff)
 	if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
-		detailedDiff["foo"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
+		detailedDiff[property.PathFromSegments(property.NewSegment("foo"))] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
 	if !req.OldOutputs["frob"].DeepEquals(req.NewInputs["frob"]) {
-		detailedDiff["frob"] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
+		detailedDiff[property.PathFromSegments(property.NewSegment("frob"))] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
 
 	return plugin.DiffResult{
@@ -1454,8 +1455,8 @@ func TestImportWithFailedUpdate(t *testing.T) {
 					diffKind := plugin.DiffUpdate
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
-						DetailedDiff: map[string]plugin.PropertyDiff{
-							"foo": {Kind: diffKind},
+						DetailedDiff: map[property.Path]plugin.PropertyDiff{
+							property.PathFromSegments(property.NewSegment("foo")): {Kind: diffKind},
 						},
 					}, nil
 				},

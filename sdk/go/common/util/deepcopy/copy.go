@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/internal"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Copy returns a deep copy of the provided value.
@@ -39,8 +40,14 @@ func deepCopy(v reflect.Value) reflect.Value {
 		return v
 	}
 
-	if v.Type() == reflect.TypeOf(internal.OutputState{}) {
+	if v.Type() == reflect.TypeFor[internal.OutputState]() {
 		contract.Failf("Outputs cannot be deep copied")
+	}
+
+	// property.Path and property.Glob have value semantics and store their state in unexported
+	// fields that cannot be copied via reflection. Return them as-is.
+	if v.Type() == reflect.TypeFor[property.Path]() || v.Type() == reflect.TypeFor[property.Glob]() {
+		return v
 	}
 
 	typ := v.Type()
@@ -63,7 +70,7 @@ func deepCopy(v reflect.Value) reflect.Value {
 			rv.Set(deepCopy(v.Elem()))
 		}
 		return rv
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.IsNil() {
 			return reflect.New(typ).Elem()
 		}

@@ -1878,8 +1878,8 @@ func TestDetailedDiffReplace(t *testing.T) {
 				DiffF: func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
-						DetailedDiff: map[string]plugin.PropertyDiff{
-							"prop": {Kind: plugin.DiffAddReplace},
+						DetailedDiff: map[property.Path]plugin.PropertyDiff{
+							property.PathFromSegments(property.NewSegment("prop")): {Kind: plugin.DiffAddReplace},
 						},
 					}, nil
 				},
@@ -3494,8 +3494,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"foo"},
-								DetailedDiff: map[string]plugin.PropertyDiff{
-									"foo": {
+								DetailedDiff: map[property.Path]plugin.PropertyDiff{
+									property.PathFromSegments(property.NewSegment("foo")): {
 										Kind:      plugin.DiffUpdateReplace,
 										InputDiff: true,
 									},
@@ -3509,8 +3509,8 @@ func TestPendingDeleteOrder(t *testing.T) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"parent"},
-								DetailedDiff: map[string]plugin.PropertyDiff{
-									"parent": {
+								DetailedDiff: map[property.Path]plugin.PropertyDiff{
+									property.PathFromSegments(property.NewSegment("parent")): {
 										Kind:      plugin.DiffUpdateReplace,
 										InputDiff: true,
 									},
@@ -3641,8 +3641,8 @@ func TestPendingDeleteReplacement(t *testing.T) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"foo"},
-								DetailedDiff: map[string]plugin.PropertyDiff{
-									"foo": {
+								DetailedDiff: map[property.Path]plugin.PropertyDiff{
+									property.PathFromSegments(property.NewSegment("foo")): {
 										Kind:      plugin.DiffUpdateReplace,
 										InputDiff: true,
 									},
@@ -3656,8 +3656,8 @@ func TestPendingDeleteReplacement(t *testing.T) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"parent"},
-								DetailedDiff: map[string]plugin.PropertyDiff{
-									"parent": {
+								DetailedDiff: map[property.Path]plugin.PropertyDiff{
+									property.PathFromSegments(property.NewSegment("parent")): {
 										Kind:      plugin.DiffUpdateReplace,
 										InputDiff: true,
 									},
@@ -3669,8 +3669,8 @@ func TestPendingDeleteReplacement(t *testing.T) {
 							return plugin.DiffResult{
 								Changes:     plugin.DiffSome,
 								ReplaceKeys: []resource.PropertyKey{"frob"},
-								DetailedDiff: map[string]plugin.PropertyDiff{
-									"frob": {
+								DetailedDiff: map[property.Path]plugin.PropertyDiff{
+									property.PathFromSegments(property.NewSegment("frob")): {
 										Kind:      plugin.DiffUpdateReplace,
 										InputDiff: true,
 									},
@@ -4558,8 +4558,8 @@ func TestAutomaticDiff(t *testing.T) {
 						// Should find an update op with the diff set to an input diff
 						assert.Equal(t, deploy.OpUpdate, p.Op)
 						assert.Equal(t, []resource.PropertyKey{"foo"}, p.Diffs)
-						assert.Equal(t, map[string]plugin.PropertyDiff{
-							"foo": {
+						assert.Equal(t, map[property.Path]plugin.PropertyDiff{
+							property.PathFromSegments(property.NewSegment("foo")): {
 								Kind:      plugin.DiffUpdate,
 								InputDiff: true,
 							},

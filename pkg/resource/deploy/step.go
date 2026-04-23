@@ -865,7 +865,7 @@ type UpdateStep struct {
 	reg           RegisterResourceEvent                 // the registration intent to convey a URN back to.
 	old           *resource.State                       // the state of the existing resource.
 	new           *resource.State                       // the newly computed state of the resource after updating.
-	stables       []resource.PropertyKey                // an optional list of properties that won't change during this update.
+	stables       []resource.PropertyKey                // optional list of properties that won't change during the update.
 	diffs         []resource.PropertyKey                // the keys causing a diff.
 	detailedDiff  map[property.Path]plugin.PropertyDiff // the structured diff.
 	ignoreChanges []property.Glob                       // a list of property paths to ignore when updating.
