@@ -92,8 +92,12 @@ func (g *generator) genAnonymousFunctionExpression(
 	g.Fgenf(w, "func(")
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
-		isInput := isInputty(param.Type)
-		g.Fgenf(w, "%s%s %s", leadingSep, makeValidIdentifier(param.Name), g.argumentTypeName(param.Type, isInput))
+		paramType := param.Type
+		if inApply {
+			paramType = model.ResolveOutputs(paramType)
+		}
+		isInput := isInputty(paramType)
+		g.Fgenf(w, "%s%s %s", leadingSep, makeValidIdentifier(param.Name), g.argumentTypeName(paramType, isInput))
 		leadingSep = ", "
 	}
 
@@ -1575,7 +1579,9 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.Apply`
-		g.Fgenf(w, "%.v.ApplyT(%.v)%s", applyArgs[0], then, typeAssertion)
+		g.Fgenf(w, "%.v.ApplyT(", applyArgs[0])
+		g.genAnonymousFunctionExpression(w, then, nil, true)
+		g.Fgenf(w, ")%s", typeAssertion)
 	} else {
 		g.Fgenf(w, "pulumi.All(%.v", applyArgs[0])
 		applyArgs = applyArgs[1:]
@@ -1599,7 +1605,7 @@ func (g *generator) rewriteThenForAllApply(
 ) (*model.AnonymousFunctionExpression, []string) {
 	typeConvDecls := slice.Prealloc[string](len(then.Parameters))
 	for i, v := range then.Parameters {
-		typ := g.argumentTypeName(v.VariableType, false)
+		typ := g.argumentTypeName(model.ResolveOutputs(v.VariableType), false)
 		decl := fmt.Sprintf("%s := _args[%d].(%s)", v.Name, i, typ)
 		typeConvDecls = append(typeConvDecls, decl)
 	}

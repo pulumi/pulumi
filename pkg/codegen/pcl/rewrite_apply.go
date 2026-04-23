@@ -557,7 +557,7 @@ func (ctx *observeContext) rewriteRoot(expr model.Expression) model.Expression {
 	callback := &model.AnonymousFunctionExpression{
 		Signature: model.StaticFunctionSignature{
 			Parameters: make([]model.Parameter, len(ctx.callbackParams)),
-			ReturnType: expr.Type(),
+			ReturnType: model.ResolveOutputs(expr.Type()),
 		},
 		Parameters: ctx.callbackParams,
 		Body:       expr,

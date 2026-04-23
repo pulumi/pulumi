@@ -374,6 +374,66 @@ func TestIntrinsicConvertScopeTraversalToOutputScalar(t *testing.T) {
 	assert.Equal(t, "pulumi.String(notSecret)", index.String())
 }
 
+func TestIntrinsicApplySingleArgResolvesCallbackOutputTypes(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	var index bytes.Buffer
+
+	outputString := model.NewOutputType(model.StringType)
+	arg := model.VariableReference(&model.Variable{
+		Name:         "value",
+		VariableType: outputString,
+	})
+	param := &model.Variable{
+		Name:         "v",
+		VariableType: outputString,
+	}
+	then := &model.AnonymousFunctionExpression{
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "v",
+				Type: outputString,
+			}},
+			ReturnType: outputString,
+		},
+		Parameters: []*model.Variable{param},
+		Body:       model.VariableReference(param),
+	}
+
+	expr := pcl.NewApplyCall([]model.Expression{arg}, then)
+	g.Fgenf(&index, "%v", expr)
+
+	assert.Equal(t,
+		"value.ApplyT(func(v string) (string, error) {\nreturn v, nil\n}).(pulumi.StringOutput)",
+		index.String(),
+	)
+}
+
+func TestRewriteThenForAllApplyResolvesOutputTypeAssertions(t *testing.T) {
+	t.Parallel()
+
+	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
+	param := &model.Variable{
+		Name:         "v",
+		VariableType: model.NewOutputType(model.StringType),
+	}
+	then := &model.AnonymousFunctionExpression{
+		Signature: model.StaticFunctionSignature{
+			Parameters: []model.Parameter{{
+				Name: "v",
+				Type: model.NewOutputType(model.StringType),
+			}},
+			ReturnType: model.StringType,
+		},
+		Parameters: []*model.Variable{param},
+		Body:       model.VariableReference(param),
+	}
+
+	_, decls := g.rewriteThenForAllApply(then)
+	assert.Equal(t, []string{"v := _args[0].(string)"}, decls)
+}
+
 func TestTupleConsExpression(t *testing.T) {
 	t.Parallel()
 
