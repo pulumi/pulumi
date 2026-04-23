@@ -307,7 +307,14 @@ func pulumiAPICall(ctx context.Context,
 	}
 
 	// Specify the specific API version we accept.
-	req.Header.Add("Accept", "application/vnd.pulumi+8")
+	//
+	// v9 advertises that this client tolerates the explicit
+	// {"isSecret": bool, "value": "..."} form of SecretValue in addition to the legacy
+	// heterogeneous form (bare string when not secret, {"secret": "..."} when secret).
+	// The tolerant decoder was added in https://github.com/pulumi/pulumi/pull/22699;
+	// this header lets the service use Accept as a self-attested capability signal
+	// before it flips SecretValue.MarshalJSON server-side.
+	req.Header.Add("Accept", "application/vnd.pulumi+9")
 
 	// Apply credentials if provided.
 	creds, err := tok.Get(ctx)
