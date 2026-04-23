@@ -626,63 +626,64 @@ func TestDefaultProviderPluginsSorting(t *testing.T) {
 func TestDefaultProvidersConflictAcrossDifferentPlugins(t *testing.T) {
 	t.Parallel()
 
-	// Two distinct plugins both claim to provide the Pulumi package name
-	// "scaleway": a native plugin named "scaleway" and a bridged Terraform
-	// provider parameterized as "scaleway". The engine must return a clear
-	// error instead of panicking or silently picking a winner. Regression
-	// test for https://github.com/pulumi/pulumi/issues/22678.
-	native := workspace.PackageDescriptor{
+	// Two distinct plugins both claim to provide the same Pulumi package name
+	// "target": one native plugin named "target" and one bridge plugin
+	// ("parameterize-base") parameterized as "target". The engine must return
+	// a clear error instead of panicking or silently picking a winner.
+	// Regression test for https://github.com/pulumi/pulumi/issues/22678.
+	target := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
-			Name:    "scaleway",
+			Name:    "target",
 			Version: mustMakeVersion("1.47.0"),
 			Kind:    apitype.ResourcePlugin,
 		},
 	}
-	bridged := workspace.PackageDescriptor{
+	parameterized := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
-			Name:    "terraform-provider",
+			Name:    "parameterize-base",
 			Version: mustMakeVersion("1.1.1"),
 			Kind:    apitype.ResourcePlugin,
 		},
 		Parameterization: &workspace.Parameterization{
-			Name:    "scaleway",
+			Name:    "target",
 			Version: semver.MustParse("2.73.0"),
 		},
 	}
 
-	plugins := NewPackageSet(native, bridged)
-	result, err := computeDefaultProviderPackages(plugins, plugins)
+	plugins := NewPackageSet(target, parameterized)
+	_, err := computeDefaultProviderPackages(plugins, plugins)
+
 	var actualErr ambigiousPluginSourceError
 	require.ErrorAs(t, err, &actualErr)
-	assert.Equal(t, ambigiousPluginSourceError{"scaleway", native, bridged})
+	assert.Equal(t, ambigiousPluginSourceError{"target", target, parameterized}, actualErr)
 }
 
 func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
 	t.Parallel()
 
-	// Two PackageDescriptors from the same bridge plugin ("terraform-provider")
-	// with the same parameterization name ("scaleway") but different
+	// Two PackageDescriptors from the same bridge plugin ("parameterize-base")
+	// with the same parameterization name ("target") but different
 	// parameterization versions should be treated as "same source, different
 	// versions" and resolve cleanly to the newer one, not as a conflict.
 	older := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
-			Name:    "terraform-provider",
+			Name:    "parameterize-base",
 			Version: mustMakeVersion("1.1.1"),
 			Kind:    apitype.ResourcePlugin,
 		},
 		Parameterization: &workspace.Parameterization{
-			Name:    "scaleway",
+			Name:    "target",
 			Version: semver.MustParse("2.72.0"),
 		},
 	}
 	newer := workspace.PackageDescriptor{
 		PluginDescriptor: workspace.PluginDescriptor{
-			Name:    "terraform-provider",
+			Name:    "parameterize-base",
 			Version: mustMakeVersion("1.1.1"),
 			Kind:    apitype.ResourcePlugin,
 		},
 		Parameterization: &workspace.Parameterization{
-			Name:    "scaleway",
+			Name:    "target",
 			Version: semver.MustParse("2.73.0"),
 		},
 	}
@@ -690,9 +691,38 @@ func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
 	plugins := NewPackageSet(older, newer)
 	result, err := computeDefaultProviderPackages(plugins, plugins)
 	require.NoError(t, err)
-	require.NotNil(t, result)
-	got, ok := result[tokens.Package("scaleway")]
-	require.True(t, ok)
-	require.NotNil(t, got.Parameterization)
-	assert.Equal(t, "2.73.0", got.Parameterization.Version.String())
+	assert.Equal(t, map[tokens.Package]workspace.PackageDescriptor{
+		"target": newer,
+	}, result)
+}
+
+func TestAmbigiousPluginSourceErrorMessage(t *testing.T) {
+	t.Parallel()
+
+	target := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "target",
+			Version: mustMakeVersion("1.47.0"),
+			Kind:    apitype.ResourcePlugin,
+		},
+	}
+	parameterized := workspace.PackageDescriptor{
+		PluginDescriptor: workspace.PluginDescriptor{
+			Name:    "parameterize-base",
+			Version: mustMakeVersion("1.1.1"),
+			Kind:    apitype.ResourcePlugin,
+		},
+		Parameterization: &workspace.Parameterization{
+			Name:    "target",
+			Version: semver.MustParse("2.73.0"),
+		},
+	}
+
+	err := ambigiousPluginSourceError{"target", target, parameterized}
+	assert.Equal(t,
+		`package "target" is provided by more than one plugin:`+"\n"+
+			`  plugin "target" v1.47.0`+"\n"+
+			`  plugin "parameterize-base" v1.1.1 parameterized as "target" v2.73.0`+"\n"+
+			"Remove one of the packages, or pass an explicit `provider` option on each resource to disambiguate.",
+		err.Error())
 }

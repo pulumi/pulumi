@@ -638,27 +638,6 @@ func installPlugin(
 	return nil
 }
 
-// computeDefaultProviderPackages computes, for every package, a mapping from packages to semver versions reflecting the
-// version of a provider that should be used as the "default" resource when registering resources. This function takes
-// two sets of packages:
-//
-// - a set given to us from the language host; and
-// - the full set of packages.
-//
-// If the language host has sent us a non-empty set of packages, we will use those exclusively to service default
-// provider requests. Otherwise, we will use the full set of packages, which is the existing behavior today.
-//
-// The justification for favoring the language host is that, ultimately, it is the language host that produces resource
-// registrations and therefore it is the language host that should dictate exactly what package to use to satisfy a
-// resource registration. SDKs have the opportunity to specify what plugin (pluginDownloadURL and version) they want to
-// use in RegisterResource. If the plugin is left unspecified, we make a best-guess effort to infer the version and URL
-// that the language host actually wants.
-//
-// Whenever a resource arrives via RegisterResource and does not explicitly specify which provider to use, the engine
-// injects a "default" provider resource that will serve as that resource's provider. This function computes the map
-// that the engine uses to determine which version of a particular provider to load.
-//
-// Note: it is critical that this function be 100% deterministic.
 // samePluginSource reports whether two PackageDescriptors refer to the same
 // underlying plugin (matching binary Name and matching parameterization
 // origin). Two descriptors that differ only in version are the same source;
@@ -666,7 +645,7 @@ func installPlugin(
 // "scaleway" provider and a "terraform-provider" bridge parameterized as
 // "scaleway") are not.
 func samePluginSource(a, b workspace.PackageDescriptor) bool {
-	return a.Name == b.Name && 
+	return a.Name == b.Name &&
 		(a.Parameterization == nil) == (b.Parameterization == nil) &&
 		(a.Parameterization == nil || a.Parameterization.Name == b.Parameterization.Name)
 }
@@ -688,6 +667,44 @@ func describePluginSource(p workspace.PackageDescriptor) string {
 	return fmt.Sprintf("plugin %q%s", p.Name, pluginVer)
 }
 
+// ambigiousPluginSourceError is returned when two distinct plugins both claim
+// to provide the same default provider package name.
+type ambigiousPluginSourceError struct {
+	pkg  tokens.Package
+	a, b workspace.PackageDescriptor
+}
+
+func (err ambigiousPluginSourceError) Error() string {
+	return fmt.Sprintf(
+		"package %q is provided by more than one plugin:\n"+
+			"  %s\n"+
+			"  %s\n"+
+			"Remove one of the packages, or pass an explicit `provider` "+
+			"option on each resource to disambiguate.",
+		err.pkg, describePluginSource(err.a), describePluginSource(err.b))
+}
+
+// computeDefaultProviderPackages computes, for every package, a mapping from packages to semver versions reflecting the
+// version of a provider that should be used as the "default" resource when registering resources. This function takes
+// two sets of packages:
+//
+// - a set given to us from the language host; and
+// - the full set of packages.
+//
+// If the language host has sent us a non-empty set of packages, we will use those exclusively to service default
+// provider requests. Otherwise, we will use the full set of packages, which is the existing behavior today.
+//
+// The justification for favoring the language host is that, ultimately, it is the language host that produces resource
+// registrations and therefore it is the language host that should dictate exactly what package to use to satisfy a
+// resource registration. SDKs have the opportunity to specify what plugin (pluginDownloadURL and version) they want to
+// use in RegisterResource. If the plugin is left unspecified, we make a best-guess effort to infer the version and URL
+// that the language host actually wants.
+//
+// Whenever a resource arrives via RegisterResource and does not explicitly specify which provider to use, the engine
+// injects a "default" provider resource that will serve as that resource's provider. This function computes the map
+// that the engine uses to determine which version of a particular provider to load.
+//
+// Note: it is critical that this function be 100% deterministic.
 func computeDefaultProviderPackages(
 	languagePackages PackageSet,
 	allPackages PackageSet,
@@ -733,13 +750,6 @@ func computeDefaultProviderPackages(
 		name := tokens.Package(p.PackageName())
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
-			// Two different underlying plugins cannot both provide the same default
-			// provider package name. This happens, for example, when a project
-			// installs both a native Pulumi provider named "scaleway" and a bridged
-			// Terraform provider added via `pulumi package add terraform-provider
-			// scaleway/scaleway`, which parameterizes the bridge as "scaleway".
-			// Return a clear error so the user can uninstall one or disambiguate
-			// with an explicit `provider` option on each resource.
 			if !samePluginSource(seenPlugin, p) {
 				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
 			}
