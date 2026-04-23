@@ -51,6 +51,49 @@ const (
 	apiRequestDetailLogLevel = 11 // log level for logging extra details about API requests and responses
 )
 
+// Pulumi service Accept header version history.
+//
+// The CLI advertises its API capabilities to the service by setting the
+// `Accept: application/vnd.pulumi+N` header on every request. Each increment
+// reflects a CLI capability the service can rely on, gating response shape or
+// behavior accordingly. Keep this table in sync with the matching version block
+// in pulumi-service `cmd/service/api/rest/request.go` — the integers are a
+// shared contract across both repos.
+//
+// To add a new capability: append a row, define a named constant for it, and
+// point `currentAPIVersion` at the new constant.
+//
+// CLI Ver. API Ver. Description
+// -------- -------- -----------
+//
+//	pre-1.0     0    Initial API version.
+//	  v15.3     1    New /user/stacks response type.
+//	 v16.07     2    CLI sends "rich update events" during an update.
+//	v0.16.2     3    /user/stacks returns project name; /stacks routes accept project name.
+//	 v1.1.1     4    Policy as Code support.
+//	 v1.5.0     5    renew_lease takes the update token instead of the user access token.
+//	v1.13.1     6    PAC config support.
+//	 v3.3.2     7    CLI sets required headers when uploading policy packs via pre-signed URL.
+//	 v3.9.0     8    CLI handles paginated /user/stacks responses.
+//	 v3.233     9    SecretValue tolerance: CLI decodes the explicit
+//	                 {"isSecret": bool, "value": "..."} object form in addition
+//	                 to the legacy heterogeneous form (bare string when not
+//	                 secret, {"secret": "..."} when secret). Tolerant decoder
+//	                 added in https://github.com/pulumi/pulumi/pull/22699.
+const (
+	// apiVersionExplicitSecretValueObjectForm: CLI decodes the explicit
+	// {"isSecret", "value"} SecretValue form. See row 9 in the table above.
+	apiVersionExplicitSecretValueObjectForm = 9
+
+	// currentAPIVersion is the value this CLI sends in the `Accept` header.
+	// Bump (and add a row to the table above) when introducing a new capability.
+	currentAPIVersion = apiVersionExplicitSecretValueObjectForm
+)
+
+// acceptAPIVersionHeader is the rendered `Accept` header value sent on every
+// request to the Pulumi service. See `currentAPIVersion`.
+var acceptAPIVersionHeader = fmt.Sprintf("application/vnd.pulumi+%d", currentAPIVersion)
+
 func UserAgent() string {
 	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 }
@@ -306,15 +349,9 @@ func pulumiAPICall(ctx context.Context,
 		req.Header[k] = v
 	}
 
-	// Specify the specific API version we accept.
-	//
-	// v9 advertises that this client tolerates the explicit
-	// {"isSecret": bool, "value": "..."} form of SecretValue in addition to the legacy
-	// heterogeneous form (bare string when not secret, {"secret": "..."} when secret).
-	// The tolerant decoder was added in https://github.com/pulumi/pulumi/pull/22699;
-	// this header lets the service use Accept as a self-attested capability signal
-	// before it flips SecretValue.MarshalJSON server-side.
-	req.Header.Add("Accept", "application/vnd.pulumi+9")
+	// Advertise the API capabilities this CLI supports. See the version-history
+	// table above `currentAPIVersion`.
+	req.Header.Add("Accept", acceptAPIVersionHeader)
 
 	// Apply credentials if provided.
 	creds, err := tok.Get(ctx)
