@@ -1,9 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: |
-    Wrap warnings, errors, and user-message bubbles to the terminal width in the
-    `pulumi neo` TUI. Previously these blocks rendered as single long lines that
-    were clipped at the right edge of the viewport. On resize, all width-dependent
-    transcript blocks (user messages, warnings, errors, assistant messages) now
-    reflow to the new terminal width.
