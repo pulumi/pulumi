@@ -1053,60 +1053,17 @@ export namespace ListRequest {
     }
 }
 
-export class ListResult extends jspb.Message { 
-    getId(): string;
-    setId(value: string): ListResult;
-    getName(): string;
-    setName(value: string): ListResult;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ListResult.AsObject;
-    static toObject(includeInstance: boolean, msg: ListResult): ListResult.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ListResult, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ListResult;
-    static deserializeBinaryFromReader(message: ListResult, reader: jspb.BinaryReader): ListResult;
-}
-
-export namespace ListResult {
-    export type AsObject = {
-        id: string,
-        name: string,
-    }
-}
-
-export class ListContinuation extends jspb.Message { 
-    getContinuationToken(): string;
-    setContinuationToken(value: string): ListContinuation;
-
-    serializeBinary(): Uint8Array;
-    toObject(includeInstance?: boolean): ListContinuation.AsObject;
-    static toObject(includeInstance: boolean, msg: ListContinuation): ListContinuation.AsObject;
-    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-    static serializeBinaryToWriter(message: ListContinuation, writer: jspb.BinaryWriter): void;
-    static deserializeBinary(bytes: Uint8Array): ListContinuation;
-    static deserializeBinaryFromReader(message: ListContinuation, reader: jspb.BinaryReader): ListContinuation;
-}
-
-export namespace ListContinuation {
-    export type AsObject = {
-        continuationToken: string,
-    }
-}
-
 export class ListResponse extends jspb.Message { 
 
     hasResult(): boolean;
     clearResult(): void;
-    getResult(): ListResult | undefined;
-    setResult(value?: ListResult): ListResponse;
+    getResult(): ListResponse.Result | undefined;
+    setResult(value?: ListResponse.Result): ListResponse;
 
     hasContinuation(): boolean;
     clearContinuation(): void;
-    getContinuation(): ListContinuation | undefined;
-    setContinuation(value?: ListContinuation): ListResponse;
+    getContinuation(): ListResponse.Continuation | undefined;
+    setContinuation(value?: ListResponse.Continuation): ListResponse;
 
     getResponseCase(): ListResponse.ResponseCase;
 
@@ -1122,9 +1079,54 @@ export class ListResponse extends jspb.Message {
 
 export namespace ListResponse {
     export type AsObject = {
-        result?: ListResult.AsObject,
-        continuation?: ListContinuation.AsObject,
+        result?: ListResponse.Result.AsObject,
+        continuation?: ListResponse.Continuation.AsObject,
     }
+
+
+    export class Result extends jspb.Message { 
+        getId(): string;
+        setId(value: string): Result;
+        getName(): string;
+        setName(value: string): Result;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): Result.AsObject;
+        static toObject(includeInstance: boolean, msg: Result): Result.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: Result, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): Result;
+        static deserializeBinaryFromReader(message: Result, reader: jspb.BinaryReader): Result;
+    }
+
+    export namespace Result {
+        export type AsObject = {
+            id: string,
+            name: string,
+        }
+    }
+
+    export class Continuation extends jspb.Message { 
+        getContinuationToken(): string;
+        setContinuationToken(value: string): Continuation;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): Continuation.AsObject;
+        static toObject(includeInstance: boolean, msg: Continuation): Continuation.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: Continuation, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): Continuation;
+        static deserializeBinaryFromReader(message: Continuation, reader: jspb.BinaryReader): Continuation;
+    }
+
+    export namespace Continuation {
+        export type AsObject = {
+            continuationToken: string,
+        }
+    }
+
 
     export enum ResponseCase {
         RESPONSE_NOT_SET = 0,

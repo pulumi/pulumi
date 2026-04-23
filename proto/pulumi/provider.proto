@@ -908,30 +908,30 @@ message ListRequest {
     string continuation_token = 5;
 }
 
-// `ListResult` is a resource returned by a [](pulumirpc.ResourceProvider.List) call.
-message ListResult {
-    // The ID of the resource.
-    string id = 1;
-
-    // The resource name, if the provider can supply one. If empty no name was given.
-    string name = 2;
-}
-
-// `ListContinuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch.
-message ListContinuation {
-    // An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are no
-    // more results.
-    string continuation_token = 1;
-}
-
 // `ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List).
 message ListResponse {
+    // `Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call.
+    message Result {
+        // The ID of the resource.
+        string id = 1;
+
+        // The resource name, if the provider can supply one. If empty no name was given.
+        string name = 2;
+    }
+
+    // `Continuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch.
+    message Continuation {
+        // An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are
+        // no more results.
+        string continuation_token = 1;
+    }
+
     oneof response {
         // A resource entry.
-        ListResult result = 1;
+        Result result = 1;
 
         // A continuation marker.
-        ListContinuation continuation = 2;
+        Continuation continuation = 2;
     }
 }
 

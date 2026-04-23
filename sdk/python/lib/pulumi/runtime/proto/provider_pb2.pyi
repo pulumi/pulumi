@@ -1437,68 +1437,64 @@ class ListRequest(google.protobuf.message.Message):
 global___ListRequest = ListRequest
 
 @typing.final
-class ListResult(google.protobuf.message.Message):
-    """`ListResult` is a resource returned by a [](pulumirpc.ResourceProvider.List) call."""
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    ID_FIELD_NUMBER: builtins.int
-    NAME_FIELD_NUMBER: builtins.int
-    id: builtins.str
-    """The ID of the resource."""
-    name: builtins.str
-    """The resource name, if the provider can supply one. If empty no name was given."""
-    def __init__(
-        self,
-        *,
-        id: builtins.str = ...,
-        name: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["id", b"id", "name", b"name"]) -> None: ...
-
-global___ListResult = ListResult
-
-@typing.final
-class ListContinuation(google.protobuf.message.Message):
-    """`ListContinuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch."""
-
-    DESCRIPTOR: google.protobuf.descriptor.Descriptor
-
-    CONTINUATION_TOKEN_FIELD_NUMBER: builtins.int
-    continuation_token: builtins.str
-    """An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are no
-    more results.
-    """
-    def __init__(
-        self,
-        *,
-        continuation_token: builtins.str = ...,
-    ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token"]) -> None: ...
-
-global___ListContinuation = ListContinuation
-
-@typing.final
 class ListResponse(google.protobuf.message.Message):
     """`ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List)."""
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
+    @typing.final
+    class Result(google.protobuf.message.Message):
+        """`Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        ID_FIELD_NUMBER: builtins.int
+        NAME_FIELD_NUMBER: builtins.int
+        id: builtins.str
+        """The ID of the resource."""
+        name: builtins.str
+        """The resource name, if the provider can supply one. If empty no name was given."""
+        def __init__(
+            self,
+            *,
+            id: builtins.str = ...,
+            name: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["id", b"id", "name", b"name"]) -> None: ...
+
+    @typing.final
+    class Continuation(google.protobuf.message.Message):
+        """`Continuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        CONTINUATION_TOKEN_FIELD_NUMBER: builtins.int
+        continuation_token: builtins.str
+        """An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are
+        no more results.
+        """
+        def __init__(
+            self,
+            *,
+            continuation_token: builtins.str = ...,
+        ) -> None: ...
+        def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token"]) -> None: ...
+
     RESULT_FIELD_NUMBER: builtins.int
     CONTINUATION_FIELD_NUMBER: builtins.int
     @property
-    def result(self) -> global___ListResult:
+    def result(self) -> global___ListResponse.Result:
         """A resource entry."""
 
     @property
-    def continuation(self) -> global___ListContinuation:
+    def continuation(self) -> global___ListResponse.Continuation:
         """A continuation marker."""
 
     def __init__(
         self,
         *,
-        result: global___ListResult | None = ...,
-        continuation: global___ListContinuation | None = ...,
+        result: global___ListResponse.Result | None = ...,
+        continuation: global___ListResponse.Continuation | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["continuation", b"continuation", "response", b"response", "result", b"result"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["continuation", b"continuation", "response", b"response", "result", b"result"]) -> None: ...
