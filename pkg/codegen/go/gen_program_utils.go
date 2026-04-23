@@ -31,6 +31,7 @@ var primitives = map[string]string{
 	"Int":     "int",
 	"Int64":   "int64",
 	"Float64": "float64",
+	"ID":      "pulumi.ID",
 }
 
 func (p *promptToInputArrayHelper) getFnName() string {

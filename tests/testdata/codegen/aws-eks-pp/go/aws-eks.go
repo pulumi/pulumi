@@ -82,7 +82,7 @@ func main() {
 			}
 			rta = append(rta, __res)
 		}
-		var splat0 pulumi.StringArray
+		var splat0 pulumi.IDArray
 		for _, val0 := range vpcSubnet {
 			splat0 = append(splat0, val0.ID())
 		}
@@ -210,7 +210,7 @@ func main() {
 				SecurityGroupIds: pulumi.StringArray{
 					eksSecurityGroup.ID(),
 				},
-				SubnetIds: subnetIds,
+				SubnetIds: toPulumiIDArray(subnetIds),
 			},
 		})
 		if err != nil {
@@ -220,7 +220,7 @@ func main() {
 			ClusterName:   eksCluster.Name,
 			NodeGroupName: pulumi.String("pulumi-eks-nodegroup"),
 			NodeRoleArn:   ec2Role.Arn,
-			SubnetIds:     subnetIds,
+			SubnetIds:     toPulumiIDArray(subnetIds),
 			Tags: pulumi.StringMap{
 				"Name": pulumi.String("pulumi-cluster-nodeGroup"),
 			},
@@ -285,4 +285,11 @@ func main() {
 		}).(pulumi.StringOutput))
 		return nil
 	})
+}
+func toPulumiIDArray(arr []pulumi.ID) pulumi.IDArray {
+	var pulumiArr pulumi.IDArray
+	for _, v := range arr {
+		pulumiArr = append(pulumiArr, pulumi.ID(v))
+	}
+	return pulumiArr
 }
