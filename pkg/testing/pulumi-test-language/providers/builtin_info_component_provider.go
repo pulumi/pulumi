@@ -40,7 +40,7 @@ func (p *BuiltinInfoComponentProvider) Pkg() tokens.Package {
 
 func (p *BuiltinInfoComponentProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: &semver.Version{Major: 36},
+		Version: &semver.Version{Major: 37},
 	}, nil
 }
 
@@ -49,7 +49,7 @@ func (p *BuiltinInfoComponentProvider) GetSchema(
 ) (plugin.GetSchemaResponse, error) {
 	pkg := schema.PackageSpec{
 		Name:    "builtin-info-component",
-		Version: "36.0.0",
+		Version: "37.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"builtin-info-component:index:BuiltinInfo": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{

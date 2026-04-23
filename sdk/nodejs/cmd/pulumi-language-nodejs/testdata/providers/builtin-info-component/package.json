@@ -1,6 +1,6 @@
 {
     "name": "builtin-info-component",
-    "version": "36.0.0",
+    "version": "37.0.0",
     "main": "index.ts",
     "dependencies": {
         "@pulumi/pulumi": "^3"
