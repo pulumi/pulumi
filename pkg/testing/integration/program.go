@@ -1518,7 +1518,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	if len(pt.opts.Environments) != 0 {
 		envs := make([]string, len(pt.opts.Environments))
 		for i, e := range pt.opts.Environments {
-			envs[i] = pt.opts.getEnvName(e)
+			envs[i] = pt.opts.getEnvNameWithOwner(e)
 		}
 
 		stackFile := filepath.Join(dir, fmt.Sprintf("Pulumi.%v.yaml", stackName))
