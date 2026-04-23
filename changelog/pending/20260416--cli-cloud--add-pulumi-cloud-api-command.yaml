@@ -1,0 +1,6 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: |
+    Add `pulumi cloud api` for calling any Pulumi Cloud API endpoint, with
+    `ls` and `describe` subcommands for discovery.
