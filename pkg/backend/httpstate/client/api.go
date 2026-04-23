@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"runtime"
 	"strings"
 	"time"
@@ -105,6 +106,12 @@ type httpCallOptions struct {
 
 	// ErrorResponse is an optional response body for errors.
 	ErrorResponse any
+
+	// ReturnRawResponse, when true, makes pulumiAPICall skip the 4xx/5xx
+	// typed-error classification (apitype.ErrorResponse, ErrLoginRequired,
+	// ForbiddenError, rate-limit) and return the response as-is. The caller
+	// is responsible for inspecting the status code and decoding the body.
+	ReturnRawResponse bool
 }
 
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
@@ -360,6 +367,10 @@ func pulumiAPICall(ctx context.Context,
 		}
 	}
 
+	if opts.ReturnRawResponse {
+		return url, resp, nil
+	}
+
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
 		return "", nil, backenderr.ErrLoginRequired
@@ -433,6 +444,9 @@ type restClient interface {
 
 	Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
 		respObj any, tok accessToken, opts httpCallOptions) error
+
+	RawCall(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, query url.Values,
+		body []byte, tok accessToken, opts httpCallOptions) (*http.Response, error)
 }
 
 // defaultRESTClient is the default implementation for calling the Pulumi REST API.
@@ -548,6 +562,85 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	}
 
 	return nil
+}
+
+// RawCall issues an arbitrary Pulumi API request and returns the raw
+// *http.Response after gzip decompression. Unlike Call, RawCall does not
+// deserialize the body and does not classify 4xx/5xx into typed errors —
+// the caller inspects the returned response. Used by `pulumi cloud api`
+// to expose arbitrary endpoints to end users.
+func (c *defaultRESTClient) RawCall(
+	ctx context.Context, d diag.Sink, cloudAPI, method, path string, query url.Values,
+	body []byte, tok accessToken, opts httpCallOptions,
+) (*http.Response, error) {
+	requestSpan, ctx := opentracing.StartSpanFromContext(ctx, getEndpointName(method, path),
+		opentracing.Tag{Key: "method", Value: method},
+		opentracing.Tag{Key: "path", Value: path},
+		opentracing.Tag{Key: "api", Value: cloudAPI},
+		opentracing.Tag{Key: "retry", Value: opts.RetryPolicy.String()})
+	defer requestSpan.Finish()
+
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, otelSpan := cmdutil.StartSpan(ctx, tracer, getEndpointName(method, path),
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.String("http.method", method),
+			attribute.String("http.url", cloudAPI+path),
+			attribute.String("http.retry", opts.RetryPolicy.String()),
+		))
+	defer otelSpan.End()
+
+	fullPath := path
+	if len(query) > 0 {
+		fullPath += "?" + query.Encode()
+	}
+
+	opts.ReturnRawResponse = true
+	_, resp, err := pulumiAPICall(ctx, requestSpan, d, c.client, cloudAPI, method, fullPath, body, tok, opts)
+	if err != nil {
+		otelSpan.RecordError(err)
+		otelSpan.SetStatus(codes.Error, err.Error())
+		return nil, err
+	}
+
+	otelSpan.SetAttributes(attribute.Int("http.status_code", resp.StatusCode))
+	if resp.StatusCode >= 400 {
+		otelSpan.SetStatus(codes.Error, resp.Status)
+	} else {
+		otelSpan.SetStatus(codes.Ok, "")
+	}
+
+	// Transparently decompress gzip responses. Content-Encoding and
+	// Content-Length apply to the compressed bytes and would mislead any
+	// consumer that inspects them after decompression, so strip both.
+	if ce := resp.Header.Get("Content-Encoding"); ce == "gzip" || ce == "x-gzip" {
+		gr, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("decompressing gzip response: %w", err)
+		}
+		resp.Body = &gzipReadCloser{gzip: gr, body: resp.Body}
+		resp.Header.Del("Content-Encoding")
+		resp.Header.Del("Content-Length")
+	}
+
+	return resp, nil
+}
+
+// gzipReadCloser wraps a gzip reader and the underlying body so closing the
+// wrapper closes both.
+type gzipReadCloser struct {
+	gzip *gzip.Reader
+	body io.ReadCloser
+}
+
+func (g *gzipReadCloser) Read(p []byte) (int, error) {
+	return g.gzip.Read(p)
+}
+
+func (g *gzipReadCloser) Close() error {
+	g.gzip.Close()
+	return g.body.Close()
 }
 
 // readBody reads the contents of an http.Response into a byte array, returning an error if one occurred while in the

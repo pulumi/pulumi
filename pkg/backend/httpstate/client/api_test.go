@@ -16,10 +16,14 @@ package client
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/opentracing/opentracing-go"
@@ -263,4 +267,178 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 
 		assert.True(t, errors.Is(err, backenderr.LoginRequiredError{}))
 	})
+}
+
+// TestRawCall_GzipRequestCompression pins that POST bodies are gzip
+// compressed on the wire and Content-Encoding: gzip is set when gzipBody is
+// true.
+func TestRawCall_GzipRequestCompression(t *testing.T) {
+	t.Parallel()
+	var gotEncoding string
+	var gotBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotEncoding = r.Header.Get("Content-Encoding")
+		gr, err := gzip.NewReader(r.Body)
+		require.NoError(t, err)
+		gotBody, err = io.ReadAll(gr)
+		require.NoError(t, err)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	c := NewClient(srv.URL, "", false, nil)
+	resp, err := c.RawCall(t.Context(), http.MethodPost, "/x", nil,
+		[]byte(`{"name":"acme"}`),
+		http.Header{"Content-Type": []string{"application/json"}}, true)
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	assert.Equal(t, "gzip", gotEncoding)
+	assert.JSONEq(t, `{"name":"acme"}`, string(gotBody))
+}
+
+// TestRawCall_GzipResponseDecompression pins that gzip-encoded response
+// bodies are transparently decoded and that Content-Encoding and
+// Content-Length headers are removed (both apply to the compressed bytes
+// and would mislead any consumer that inspects them after decompression).
+func TestRawCall_GzipResponseDecompression(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name     string
+		encoding string
+	}{
+		{"gzip", "gzip"},
+		{"x-gzip", "x-gzip"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			payload := `{"ok":true,"msg":"hello"}`
+			var buf bytes.Buffer
+			gw := gzip.NewWriter(&buf)
+			_, err := gw.Write([]byte(payload))
+			require.NoError(t, err)
+			require.NoError(t, gw.Close())
+
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Content-Encoding", tc.encoding)
+				w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+				_, _ = w.Write(buf.Bytes())
+			}))
+			t.Cleanup(srv.Close)
+
+			c := NewClient(srv.URL, "", false, nil)
+			resp, err := c.RawCall(t.Context(), http.MethodGet, "/x", nil, nil, nil, false)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			body, err := io.ReadAll(resp.Body)
+			require.NoError(t, err)
+			assert.JSONEq(t, payload, string(body))
+			assert.Empty(t, resp.Header.Get("Content-Encoding"),
+				"Content-Encoding must be stripped so consumers don't double-decode")
+			assert.Empty(t, resp.Header.Get("Content-Length"),
+				"Content-Length applied to the compressed bytes and is meaningless after decompression")
+		})
+	}
+}
+
+// TestRawCall_WarningHeaderPassthrough pins that X-Pulumi-Warning response
+// headers are surfaced through the diag sink supplied to the Client.
+func TestRawCall_WarningHeaderPassthrough(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("X-Pulumi-Warning", "deprecated field in use")
+		w.Header().Add("X-Pulumi-Warning", "rate limit approaching")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	var stderr bytes.Buffer
+	sink := diag.DefaultSink(io.Discard, &stderr, diag.FormatOptions{Color: colors.Never})
+	c := NewClient(srv.URL, "", false, sink)
+	resp, err := c.RawCall(t.Context(), http.MethodGet, "/x", nil, nil, nil, false)
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	out := stderr.String()
+	assert.Contains(t, out, "deprecated field in use")
+	assert.Contains(t, out, "rate limit approaching")
+}
+
+// TestRawCall_DoesNotClassify4xx pins that RawCall returns the raw response
+// for 4xx/5xx instead of synthesizing a typed error like Call does. Callers
+// inspect the status code themselves.
+func TestRawCall_DoesNotClassify4xx(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"message":"nope"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	c := NewClient(srv.URL, "tok", false, nil)
+	resp, err := c.RawCall(t.Context(), http.MethodGet, "/bad", nil, nil, nil, false)
+	require.NoError(t, err, "RawCall must not turn 4xx into an error")
+	defer resp.Body.Close()
+
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"message":"nope"}`, string(body))
+}
+
+// trackingReadCloser records whether Close has been called, so the test can
+// verify gzipReadCloser forwards Close to the underlying body.
+type trackingReadCloser struct {
+	io.Reader
+	closed bool
+}
+
+func (t *trackingReadCloser) Close() error { t.closed = true; return nil }
+
+// TestGzipReadCloser_ClosesUnderlyingBody pins that closing the wrapper
+// closes both the gzip reader and the underlying response body.
+func TestGzipReadCloser_ClosesUnderlyingBody(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	gw := gzip.NewWriter(&buf)
+	_, _ = gw.Write([]byte(`{"ok":true}`))
+	require.NoError(t, gw.Close())
+
+	body := &trackingReadCloser{Reader: bytes.NewReader(buf.Bytes())}
+	gr, err := gzip.NewReader(body)
+	require.NoError(t, err)
+
+	wrapper := &gzipReadCloser{gzip: gr, body: body}
+	_, err = io.ReadAll(wrapper)
+	require.NoError(t, err)
+	require.NoError(t, wrapper.Close())
+	assert.True(t, body.closed, "underlying body must be closed when the wrapper is closed")
+}
+
+// TestRawCall_AppendsPulumiAcceptVersion pins that the API version is
+// appended to caller-supplied Accept so the server still routes through
+// versioned content negotiation. Go's http.Header preserves multiple Accept
+// values as a slice, so check via Values, not Get.
+func TestRawCall_AppendsPulumiAcceptVersion(t *testing.T) {
+	t.Parallel()
+	var gotAccept []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAccept = r.Header.Values("Accept")
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	t.Cleanup(srv.Close)
+
+	c := NewClient(srv.URL, "", false, nil)
+	resp, err := c.RawCall(t.Context(), http.MethodGet, "/x", nil, nil,
+		http.Header{"Accept": []string{"application/json"}}, false)
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	joined := strings.Join(gotAccept, ", ")
+	assert.Contains(t, joined, "application/json")
+	assert.Contains(t, joined, "application/vnd.pulumi+8",
+		"the transport must always advertise the Pulumi API version")
 }

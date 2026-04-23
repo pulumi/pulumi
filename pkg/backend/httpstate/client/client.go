@@ -238,6 +238,31 @@ func (pc *Client) updateRESTCall(ctx context.Context, method, path string, query
 	return pc.restClient.Call(ctx, pc.diag, pc.apiURL, method, path, queryObj, reqObj, respObj, token, httpOptions)
 }
 
+// RawCall issues an arbitrary Pulumi API request and returns the raw
+// *http.Response after gzip decompression. Unlike the typed Call methods,
+// RawCall does not deserialize the response body and does not classify
+// 4xx/5xx into typed errors; the caller inspects the response for status,
+// headers, and body.
+//
+// header is applied last and overrides defaults set by the transport
+// (Accept, Content-Type) — except Authorization, which is always derived
+// from the Client's token. When gzipBody is true and body is non-nil, the
+// body is gzip-compressed and Content-Encoding: gzip is set.
+func (pc *Client) RawCall(
+	ctx context.Context,
+	method, path string,
+	query url.Values,
+	body []byte,
+	header http.Header,
+	gzipBody bool,
+) (*http.Response, error) {
+	return pc.restClient.RawCall(ctx, pc.diag, pc.apiURL, method, path, query, body, pc.apiToken,
+		httpCallOptions{
+			Header:       header,
+			GzipCompress: gzipBody,
+		})
+}
+
 // getProjectPath returns the API path for the given owner and the given project name joined with path separators
 // and appended to the stack root.
 func getProjectPath(owner string, projectName string) string {
