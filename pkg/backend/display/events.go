@@ -282,9 +282,9 @@ func convertStepEventMetadata(md engine.StepEventMetadata, showSecrets bool) api
 		diffs = append(diffs, string(v))
 	}
 
-	var detailedDiff map[string]apitype.PropertyDiff
+	var detailedDiff map[property.Path]apitype.PropertyDiff
 	if md.DetailedDiff != nil {
-		detailedDiff = make(map[string]apitype.PropertyDiff)
+		detailedDiff = make(map[property.Path]apitype.PropertyDiff)
 		for k, v := range md.DetailedDiff {
 			var d apitype.DiffKind
 			switch v.Kind {
@@ -549,9 +549,9 @@ func convertJSONStepEventMetadata(md apitype.StepEventMetadata) engine.StepEvent
 	for _, v := range md.Diffs {
 		diffs = append(diffs, resource.PropertyKey(v))
 	}
-	var detailedDiff map[string]plugin.PropertyDiff
+	var detailedDiff map[property.Path]plugin.PropertyDiff
 	if md.DetailedDiff != nil {
-		detailedDiff = make(map[string]plugin.PropertyDiff)
+		detailedDiff = make(map[property.Path]plugin.PropertyDiff)
 		for k, v := range md.DetailedDiff {
 			var d plugin.DiffKind
 			switch v.Kind {

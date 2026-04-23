@@ -14,7 +14,10 @@
 
 package apitype
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
+)
 
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
@@ -207,7 +210,7 @@ type StepEventMetadata struct {
 	// The diff for this step as a list of property paths and difference types.
 	// NOTE: We don't want to omitempty this field because we want to distinguish between
 	// a nil value and an empty map. See https://github.com/pulumi/pulumi/pull/15213 for details.
-	DetailedDiff map[string]PropertyDiff `json:"detailedDiff"`
+	DetailedDiff map[property.Path]PropertyDiff `json:"detailedDiff"`
 	// Logical is set if the step is a logical operation in the program.
 	Logical bool `json:"logical,omitempty"`
 	// Provider actually performing the step.

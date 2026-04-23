@@ -379,3 +379,10 @@ func (g Glob) Segments(yield func(GlobSegment) bool) {
 		}
 	}
 }
+
+func (g Glob) Append(segments ...GlobSegment) Glob {
+	for _, s := range segments {
+		g.pathRepr = g.appendGlobSegment(s)
+	}
+	return g
+}

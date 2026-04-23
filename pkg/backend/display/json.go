@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // massagePropertyValue takes a property value and strips out the secrets annotations from it.  If showSecrets is
@@ -256,9 +257,9 @@ func getPreviewMetadataStep(
 	m engine.StepEventMetadata,
 	opts Options,
 ) *display.PreviewStep {
-	var detailedDiff map[string]display.PropertyDiff
+	var detailedDiff map[property.Path]display.PropertyDiff
 	if m.DetailedDiff != nil {
-		detailedDiff = make(map[string]display.PropertyDiff)
+		detailedDiff = make(map[property.Path]display.PropertyDiff)
 		for k, v := range m.DetailedDiff {
 			detailedDiff[k] = display.PropertyDiff{
 				Kind:      v.Kind.String(),

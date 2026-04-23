@@ -20,6 +20,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // StepOp represents the kind of operation performed by a step.  It evaluates to its string label.
@@ -72,7 +73,7 @@ type PreviewStep struct {
 	// ReplaceReasons is a list of keys that are causing replacement (for replacement steps only).
 	ReplaceReasons []resource.PropertyKey `json:"replaceReasons,omitempty"`
 	// DetailedDiff is a structured diff that indicates precise per-property differences.
-	DetailedDiff map[string]PropertyDiff `json:"detailedDiff"`
+	DetailedDiff map[property.Path]PropertyDiff `json:"detailedDiff"`
 }
 
 // PreviewDiagnostic is a warning or error emitted during the execution of the preview.

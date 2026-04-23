@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -52,6 +53,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -677,12 +679,12 @@ func (p *provider) CheckConfig(ctx context.Context, req CheckConfigRequest) (Che
 	return CheckConfigResponse{Properties: inputs, Failures: failures}, nil
 }
 
-func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
+func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[property.Path]PropertyDiff {
 	if !resp.GetHasDetailedDiff() {
 		return nil
 	}
 
-	detailedDiff := make(map[string]PropertyDiff)
+	detailedDiff := make(map[property.Path]PropertyDiff)
 	for k, v := range resp.GetDetailedDiff() {
 		var d DiffKind
 		switch v.GetKind() {
@@ -702,7 +704,12 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[string]PropertyDiff {
 			// Consider unknown diff kinds to be simple updates.
 			d = DiffUpdate
 		}
-		detailedDiff[k] = PropertyDiff{
+		var p property.Path
+		if err := p.UnmarshalText([]byte(k)); err != nil {
+			slog.Warn("invalid property path in detailed diff", slog.String("property path", k), slog.Any("error", err))
+			p = property.PathFromSegments(property.NewSegment(k))
+		}
+		detailedDiff[p] = PropertyDiff{
 			Kind:      d,
 			InputDiff: v.GetInputDiff(),
 		}

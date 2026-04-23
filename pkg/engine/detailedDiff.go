@@ -168,10 +168,7 @@ func TranslateDetailedDiff(step *StepEventMetadata, refresh bool) (*resource.Obj
 	var diff resource.ValueDiff
 diffs:
 	for path, pdiff := range step.DetailedDiff {
-		elements, err := resource.ParsePropertyPath(path)
-		if err != nil {
-			elements = []any{path}
-		}
+		elements := resource.ToResourcePropertyPath(path.AsGlob())
 
 		for _, hiddenPath := range hiddenPaths {
 			if hiddenPath.Contains(elements) {

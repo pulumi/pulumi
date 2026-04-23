@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type GetSchemaRequest struct {
@@ -630,30 +631,28 @@ func (p PropertyDiff) ToReplace() PropertyDiff {
 
 // DiffResult indicates whether an operation should replace or update an existing resource.
 type DiffResult struct {
-	Changes             DiffChanges             // true if this diff represents a changed resource.
-	ReplaceKeys         []resource.PropertyKey  // an optional list of replacement keys.
-	StableKeys          []resource.PropertyKey  // an optional list of property keys that are stable.
-	ChangedKeys         []resource.PropertyKey  // an optional list of keys that changed.
-	DetailedDiff        map[string]PropertyDiff // an optional structured diff
-	DeleteBeforeReplace bool                    // if true, this resource must be deleted before recreating it.
+	Changes             DiffChanges                    // true if this diff represents a changed resource.
+	ReplaceKeys         []resource.PropertyKey         // an optional list of replacement keys.
+	StableKeys          []resource.PropertyKey         // an optional list of property keys that are stable.
+	ChangedKeys         []resource.PropertyKey         // an optional list of keys that changed.
+	DetailedDiff        map[property.Path]PropertyDiff // an optional structured diff
+	DeleteBeforeReplace bool                           // if true, this resource must be deleted before recreating it.
 }
 
 // NewDetailedDiffFromObjectDiff computes the detailed diff of Updated, Added and Deleted keys.
-func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff, inputDiff bool) map[string]PropertyDiff {
+func NewDetailedDiffFromObjectDiff(diff *resource.ObjectDiff, inputDiff bool) map[property.Path]PropertyDiff {
 	if diff == nil {
-		return map[string]PropertyDiff{}
+		return map[property.Path]PropertyDiff{}
 	}
-	out := map[string]PropertyDiff{}
-	objectDiffToDetailedDiff(nil, diff, inputDiff, out)
+	out := map[property.Path]PropertyDiff{}
+	objectDiffToDetailedDiff(property.Path{}, diff, inputDiff, out)
 	return out
 }
 
 func objectDiffToDetailedDiff(
-	prefix resource.PropertyPath, diff *resource.ObjectDiff, inputDiff bool, acc map[string]PropertyDiff,
+	prefix property.Path, diff *resource.ObjectDiff, inputDiff bool, acc map[property.Path]PropertyDiff,
 ) {
-	getPrefix := func(k resource.PropertyKey) resource.PropertyPath {
-		return append(prefix, string(k))
-	}
+	getPrefix := func(k resource.PropertyKey) property.Path { return prefix.Append(property.NewSegment(string(k))) }
 
 	for k, vd := range diff.Updates {
 		nestedPrefix := getPrefix(k)
@@ -661,35 +660,31 @@ func objectDiffToDetailedDiff(
 	}
 
 	for k := range diff.Adds {
-		nestedPrefix := getPrefix(k)
-		acc[nestedPrefix.String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+		acc[getPrefix(k)] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
 	}
 
 	for k := range diff.Deletes {
-		nestedPrefix := getPrefix(k)
-		acc[nestedPrefix.String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+		acc[getPrefix(k)] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
 	}
 }
 
 func arrayDiffToDetailedDiff(
-	prefix resource.PropertyPath, d *resource.ArrayDiff, inputDiff bool, acc map[string]PropertyDiff,
+	prefix property.Path, d *resource.ArrayDiff, inputDiff bool, acc map[property.Path]PropertyDiff,
 ) {
-	nestedPrefix := func(i int) resource.PropertyPath {
-		return append(prefix, i)
-	}
+	nestedPrefix := func(i int) property.Path { return prefix.Append(property.NewSegment(i)) }
 	for i, vd := range d.Updates {
 		valueDiffToDetailedDiff(nestedPrefix(i), vd, inputDiff, acc)
 	}
 	for i := range d.Adds {
-		acc[nestedPrefix(i).String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+		acc[nestedPrefix(i)] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
 	}
 	for i := range d.Deletes {
-		acc[nestedPrefix(i).String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+		acc[nestedPrefix(i)] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
 	}
 }
 
 func valueDiffToDetailedDiff(
-	prefix resource.PropertyPath, vd resource.ValueDiff, inputDiff bool, acc map[string]PropertyDiff,
+	prefix property.Path, vd resource.ValueDiff, inputDiff bool, acc map[property.Path]PropertyDiff,
 ) {
 	if vd.Object != nil {
 		objectDiffToDetailedDiff(prefix, vd.Object, inputDiff, acc)
@@ -698,11 +693,11 @@ func valueDiffToDetailedDiff(
 	} else {
 		switch {
 		case vd.Old.V == nil && vd.New.V != nil:
-			acc[prefix.String()] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
+			acc[prefix] = PropertyDiff{Kind: DiffAdd, InputDiff: inputDiff}
 		case vd.Old.V != nil && vd.New.V == nil:
-			acc[prefix.String()] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
+			acc[prefix] = PropertyDiff{Kind: DiffDelete, InputDiff: inputDiff}
 		default:
-			acc[prefix.String()] = PropertyDiff{Kind: DiffUpdate, InputDiff: inputDiff}
+			acc[prefix] = PropertyDiff{Kind: DiffUpdate, InputDiff: inputDiff}
 		}
 	}
 }
@@ -720,9 +715,9 @@ func (r DiffResult) Replace() bool {
 // Invert computes the inverse diff of the receiver -- the diff that would be
 // required to "undo" this one.
 func (r DiffResult) Invert() DiffResult {
-	var detailedDiff map[string]PropertyDiff
+	var detailedDiff map[property.Path]PropertyDiff
 	if r.DetailedDiff != nil {
-		detailedDiff = make(map[string]PropertyDiff)
+		detailedDiff = make(map[property.Path]PropertyDiff)
 		for k, v := range r.DetailedDiff {
 			detailedDiff[k] = PropertyDiff{
 				Kind:      v.Kind.Invert(),

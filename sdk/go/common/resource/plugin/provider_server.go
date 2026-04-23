@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -77,7 +78,7 @@ func (p *providerServer) checkNYI(method string, err error) error {
 	return err
 }
 
-func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, error) {
+func (p *providerServer) marshalDiff(ctx context.Context, diff DiffResult) (*pulumirpc.DiffResponse, error) {
 	var changes pulumirpc.DiffResponse_DiffChanges
 	switch diff.Changes {
 	case DiffNone:
@@ -104,7 +105,16 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 
 		detailedDiff = make(map[string]*pulumirpc.PropertyDiff)
-		for path, diff := range diff.DetailedDiff {
+		for propertyPath, diff := range diff.DetailedDiff {
+			pathB, err := propertyPath.MarshalText()
+			if err != nil {
+				slog.WarnContext(ctx, "unable to marshal property path",
+					slog.String("property path", fmt.Sprintf("%#v", propertyPath)),
+					slog.String("error", err.Error()),
+				)
+				continue
+			}
+			path := string(pathB)
 			diffs = append(diffs, path)
 
 			var kind pulumirpc.PropertyDiff_Kind
@@ -349,7 +359,7 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 	if err != nil {
 		return nil, p.checkNYI("DiffConfig", err)
 	}
-	return p.marshalDiff(diff)
+	return p.marshalDiff(ctx, diff)
 }
 
 func (p *providerServer) Configure(ctx context.Context,
@@ -530,7 +540,7 @@ func (p *providerServer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (
 	if err != nil {
 		return nil, err
 	}
-	return p.marshalDiff(diff)
+	return p.marshalDiff(ctx, diff)
 }
 
 func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {

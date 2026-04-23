@@ -299,3 +299,10 @@ func (g Path) Segments(yield func(PathSegment) bool) {
 		}
 	}
 }
+
+func (g Path) Append(segments ...PathSegment) Path {
+	for _, s := range segments {
+		g.pathRepr = g.appendGlobSegment(s)
+	}
+	return g
+}
