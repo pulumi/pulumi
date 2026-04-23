@@ -9,7 +9,7 @@ export class BuiltinInfo extends pulumi.ComponentResource {
     public static readonly __pulumiType = 'builtin-info-component:index:BuiltinInfo';
 
     /**
-     * Returns true if the given object is an instance of Simple.  This is designed to work even
+     * Returns true if the given object is an instance of BuiltinInfo.  This is designed to work even
      * when multiple copies of the Pulumi SDK have been loaded into the same process.
      */
     public static isInstance(obj: any): obj is BuiltinInfo {
@@ -19,9 +19,9 @@ export class BuiltinInfo extends pulumi.ComponentResource {
         return obj['__pulumiType'] === BuiltinInfo.__pulumiType;
     }
 
-    declare public readonly organization: pulumi.Output<string>;
-    declare public readonly project: pulumi.Output<string>;
-    declare public readonly stack: pulumi.Output<string>;
+    declare public /*out*/ readonly organization: pulumi.Output<string>;
+    declare public /*out*/ readonly project: pulumi.Output<string>;
+    declare public /*out*/ readonly stack: pulumi.Output<string>;
 
     /**
      * Create a BuiltinInfo resource with the given unique name, arguments, and options.
@@ -43,12 +43,12 @@ export class BuiltinInfo extends pulumi.ComponentResource {
             resourceInputs["stack"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        super(BuiltinInfo.__pulumiType, name, resourceInputs, opts, true /*remote*/, utilities.getPackage());
+        super(BuiltinInfo.__pulumiType, name, resourceInputs, opts, true /*remote*/);
     }
 }
 
 /**
- * The set of arguments for constructing a Simple resource.
+ * The set of arguments for constructing a BuiltinInfo resource.
  */
 export interface BuiltinInfoArgs {
 }
