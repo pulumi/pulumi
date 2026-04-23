@@ -1448,20 +1448,6 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 		if err := pt.runPulumiCommand("pulumi-login", loginArgs, dir, false); err != nil {
 			return err
 		}
-
-		// When running against a Pulumi service, pin the CLI's default org to
-		// PULUMI_TEST_OWNER so that unqualified references (e.g. stack names,
-		// ESC environment refs in Pulumi.<stack>.yaml) resolve to the test
-		// owner rather than to whatever the access token's user happens to
-		// have as their default.
-		if pt.opts.RequireService {
-			if owner := os.Getenv("PULUMI_TEST_OWNER"); owner != "" {
-				setDefaultArgs := []string{"org", "set-default", owner}
-				if err := pt.runPulumiCommand("pulumi-org-set-default", setDefaultArgs, dir, false); err != nil {
-					return err
-				}
-			}
-		}
 	}
 
 	// Stack init
@@ -1532,9 +1518,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	if len(pt.opts.Environments) != 0 {
 		envs := make([]string, len(pt.opts.Environments))
 		for i, e := range pt.opts.Environments {
-			// Pulumi.<stack>.yaml accepts only `project/env`; the owner is
-			// inferred from the CLI's default org, which we pin above.
-			envs[i] = pt.opts.getEnvName(e)
+			envs[i] = pt.opts.getEnvNameWithOwner(e)
 		}
 
 		stackFile := filepath.Join(dir, fmt.Sprintf("Pulumi.%v.yaml", stackName))
