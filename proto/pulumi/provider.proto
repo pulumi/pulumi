@@ -895,7 +895,8 @@ message ListRequest {
     // The resource token (type) to list.
     string token = 1;
 
-    // An optional provider-defined filter over resource state. This will not be called with unknown values.
+    // An optional provider-defined filter over resource state. This is a property map and could contain
+    // unknown/computed values.
     google.protobuf.Struct query = 2;
 
     // The maximum number of resources to return.
@@ -908,8 +909,15 @@ message ListRequest {
     string continuation_token = 5;
 }
 
-// `ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List).
+// `ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List). It must follow one of
+// the following orders. Either it returns a single [](pulumirpc.ListResponse.Computed) or it should return one or more
+// [](pulumirpc.ListResponse.Result) items followed optionally by a [](pulumirpc.ListResponse.Continuation).
 message ListResponse {
+    // `Computed` is returned if [](pulumirpc.ResourceProvider.List) can't compute the result due to unknown values in the query.
+    message Computed {
+
+    }
+
     // `Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call.
     message Result {
         // The ID of the resource.
@@ -927,11 +935,14 @@ message ListResponse {
     }
 
     oneof response {
+        // A computed marker.
+        Computed computed = 1;
+
         // A resource entry.
-        Result result = 1;
+        Result result = 2;
 
         // A continuation marker.
-        Continuation continuation = 2;
+        Continuation continuation = 3;
     }
 }
 

@@ -1420,7 +1420,9 @@ class ListRequest(google.protobuf.message.Message):
     """An opaque token indicating which page to fetch. Empty for the first page."""
     @property
     def query(self) -> google.protobuf.struct_pb2.Struct:
-        """An optional provider-defined filter over resource state. This will not be called with unknown values."""
+        """An optional provider-defined filter over resource state. This is a property map and could contain
+        unknown/computed values.
+        """
 
     def __init__(
         self,
@@ -1438,9 +1440,22 @@ global___ListRequest = ListRequest
 
 @typing.final
 class ListResponse(google.protobuf.message.Message):
-    """`ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List)."""
+    """`ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List). It must follow one of
+    the following orders. Either it returns a single [](pulumirpc.ListResponse.Computed) or it should return one or more
+    [](pulumirpc.ListResponse.Result) items followed optionally by a [](pulumirpc.ListResponse.Continuation).
+    """
 
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    @typing.final
+    class Computed(google.protobuf.message.Message):
+        """`Computed` is returned if [](pulumirpc.ResourceProvider.List) can't compute the result due to unknown values in the query."""
+
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        def __init__(
+            self,
+        ) -> None: ...
 
     @typing.final
     class Result(google.protobuf.message.Message):
@@ -1480,8 +1495,13 @@ class ListResponse(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing.Literal["continuation_token", b"continuation_token"]) -> None: ...
 
+    COMPUTED_FIELD_NUMBER: builtins.int
     RESULT_FIELD_NUMBER: builtins.int
     CONTINUATION_FIELD_NUMBER: builtins.int
+    @property
+    def computed(self) -> global___ListResponse.Computed:
+        """A computed marker."""
+
     @property
     def result(self) -> global___ListResponse.Result:
         """A resource entry."""
@@ -1493,12 +1513,13 @@ class ListResponse(google.protobuf.message.Message):
     def __init__(
         self,
         *,
+        computed: global___ListResponse.Computed | None = ...,
         result: global___ListResponse.Result | None = ...,
         continuation: global___ListResponse.Continuation | None = ...,
     ) -> None: ...
-    def HasField(self, field_name: typing.Literal["continuation", b"continuation", "response", b"response", "result", b"result"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["continuation", b"continuation", "response", b"response", "result", b"result"]) -> None: ...
-    def WhichOneof(self, oneof_group: typing.Literal["response", b"response"]) -> typing.Literal["result", "continuation"] | None: ...
+    def HasField(self, field_name: typing.Literal["computed", b"computed", "continuation", b"continuation", "response", b"response", "result", b"result"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["computed", b"computed", "continuation", b"continuation", "response", b"response", "result", b"result"]) -> None: ...
+    def WhichOneof(self, oneof_group: typing.Literal["response", b"response"]) -> typing.Literal["computed", "result", "continuation"] | None: ...
 
 global___ListResponse = ListResponse
 

@@ -1055,6 +1055,11 @@ export namespace ListRequest {
 
 export class ListResponse extends jspb.Message { 
 
+    hasComputed(): boolean;
+    clearComputed(): void;
+    getComputed(): ListResponse.Computed | undefined;
+    setComputed(value?: ListResponse.Computed): ListResponse;
+
     hasResult(): boolean;
     clearResult(): void;
     getResult(): ListResponse.Result | undefined;
@@ -1079,10 +1084,28 @@ export class ListResponse extends jspb.Message {
 
 export namespace ListResponse {
     export type AsObject = {
+        computed?: ListResponse.Computed.AsObject,
         result?: ListResponse.Result.AsObject,
         continuation?: ListResponse.Continuation.AsObject,
     }
 
+
+    export class Computed extends jspb.Message { 
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): Computed.AsObject;
+        static toObject(includeInstance: boolean, msg: Computed): Computed.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: Computed, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): Computed;
+        static deserializeBinaryFromReader(message: Computed, reader: jspb.BinaryReader): Computed;
+    }
+
+    export namespace Computed {
+        export type AsObject = {
+        }
+    }
 
     export class Result extends jspb.Message { 
         getId(): string;
@@ -1130,8 +1153,9 @@ export namespace ListResponse {
 
     export enum ResponseCase {
         RESPONSE_NOT_SET = 0,
-        RESULT = 1,
-        CONTINUATION = 2,
+        COMPUTED = 1,
+        RESULT = 2,
+        CONTINUATION = 3,
     }
 
 }
