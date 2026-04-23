@@ -652,10 +652,9 @@ func TestDefaultProvidersConflictAcrossDifferentPlugins(t *testing.T) {
 
 	plugins := NewPackageSet(native, bridged)
 	result, err := computeDefaultProviderPackages(plugins, plugins)
-	require.Error(t, err)
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "\"scaleway\"")
-	assert.Contains(t, err.Error(), "terraform-provider")
+	var actualErr ambigiousPluginSourceError
+	require.ErrorAs(t, err, &actualErr)
+	assert.Equal(t, ambigiousPluginSourceError{"scaleway", native, bridged})
 }
 
 func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
