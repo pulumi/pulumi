@@ -741,13 +741,7 @@ func computeDefaultProviderPackages(
 			// Return a clear error so the user can uninstall one or disambiguate
 			// with an explicit `provider` option on each resource.
 			if !samePluginSource(seenPlugin, p) {
-				return nil, fmt.Errorf(
-					"package %q is provided by more than one plugin:\n"+
-						"  %s\n"+
-						"  %s\n"+
-						"Remove one of the packages, or pass an explicit `provider` "+
-						"option on each resource to disambiguate.",
-					name, describePluginSource(seenPlugin), describePluginSource(p))
+				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
 			}
 
 			if seenPlugin.Version == nil {
