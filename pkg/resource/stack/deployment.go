@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -554,8 +555,8 @@ func SerializeResource(
 		SourcePosition:          res.SourcePosition,
 		StackTrace:              stackTrace,
 		HideDiff:                resource.GlobsToBackCompats(res.HideDiff),
-		IgnoreChanges:           resource.GlobsToBackCompats(res.IgnoreChanges),
-		ReplaceOnChanges:        resource.GlobsToBackCompats(res.ReplaceOnChanges),
+		IgnoreChanges:           resource.BackCompatPropertyPathList(res.IgnoreChanges),
+		ReplaceOnChanges:        resource.BackCompatPropertyPathList(res.ReplaceOnChanges),
 		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 		ViewOf:                  res.ViewOf,
 		ResourceHooks:           res.ResourceHooks,
@@ -783,9 +784,9 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			Modified:                res.Modified,
 			SourcePosition:          res.SourcePosition,
 			StackTrace:              stackTrace,
-			IgnoreChanges:           resource.BackCompatsToGlobs(res.IgnoreChanges),
+			IgnoreChanges:           []property.Glob(res.IgnoreChanges),
 			HideDiff:                resource.BackCompatsToGlobs(res.HideDiff),
-			ReplaceOnChanges:        resource.BackCompatsToGlobs(res.ReplaceOnChanges),
+			ReplaceOnChanges:        []property.Glob(res.ReplaceOnChanges),
 			ReplacementTrigger:      trigger,
 			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
 			ViewOf:                  res.ViewOf,
