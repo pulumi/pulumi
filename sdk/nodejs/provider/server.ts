@@ -35,6 +35,8 @@ import * as errorproto from "../proto/errors_pb";
 import * as plugproto from "../proto/plugin_pb";
 import * as provrpc from "../proto/provider_grpc_pb";
 import * as provproto from "../proto/provider_pb";
+import * as resrpc from "../proto/resource_grpc_pb";
+import * as resproto from "../proto/resource_pb";
 import * as statusproto from "../proto/status_pb";
 
 class Server implements grpc.UntypedServiceImplementation {
@@ -601,27 +603,93 @@ async function configureRuntime(req: any, engineAddr: string | undefined) {
         throw new Error("fatal: Missing <engine> address");
     }
 
-    settings.resetOptions(
-        req.getProject(),
-        req.getStack(),
-        req.getParallel(),
-        engineAddr,
-        req.getMonitorendpoint(),
-        req.getDryrun(),
-        req.getOrganization(),
-    );
-
-    // resetOptions doesn't reset the saved features
-    await settings.awaitFeatureSupport();
-
-    const pulumiConfig: { [key: string]: string } = {};
+    let project = req.getProject();
+    let stack = req.getStack();
+    let parallel = req.getParallel();
+    const monitorEndpoint = req.getMonitorendpoint();
+    let dryRun = req.getDryrun();
+    let organization = req.getOrganization();
+    let configSecretKeys = req.getConfigsecretkeysList();
+    let supportedFeatures: resproto.ResourceMonitorFeature[] | undefined = undefined;
+    let pulumiConfig: { [key: string]: string } = {};
     const rpcConfig = req.getConfigMap();
     if (rpcConfig) {
         for (const [k, v] of rpcConfig.entries()) {
             pulumiConfig[k] = v;
         }
     }
-    config.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
+
+    let monitorClient: resrpc.ResourceMonitorClient | undefined;
+    try {
+        if (monitorEndpoint) {
+            monitorClient = new resrpc.ResourceMonitorClient(
+                monitorEndpoint,
+                grpc.credentials.createInsecure(),
+                settings.grpcClientOptions,
+            );
+        }
+
+        if (monitorClient !== undefined) {
+            const client = monitorClient;
+            const monitorDeploymentInfo = await new Promise<any>((resolve, reject) => {
+                client.getDeploymentInfo(new emptyproto.Empty(), (err: grpc.ServiceError | null, resp: any) => {
+                    if (err && err.code === grpc.status.UNIMPLEMENTED) {
+                        return resolve(undefined);
+                    }
+                    if (err) {
+                        return reject(err);
+                    }
+                    if (resp === undefined) {
+                        return reject(new Error("No deployment info response from resource monitor"));
+                    }
+                    return resolve(resp);
+                });
+            });
+
+            if (monitorDeploymentInfo !== undefined) {
+                project = monitorDeploymentInfo.getProject();
+                stack = monitorDeploymentInfo.getStack();
+                parallel = monitorDeploymentInfo.getParallel();
+                dryRun = monitorDeploymentInfo.getDryrun();
+                organization = monitorDeploymentInfo.getOrganization();
+                configSecretKeys = monitorDeploymentInfo.getConfigsecretkeysList();
+                supportedFeatures = monitorDeploymentInfo.getSupportedfeaturesList();
+
+                pulumiConfig = {};
+                const monitorConfig = monitorDeploymentInfo.getConfigMap();
+                if (monitorConfig) {
+                    for (const [k, v] of monitorConfig.entries()) {
+                        pulumiConfig[k] = v;
+                    }
+                }
+            }
+        }
+
+        settings.resetOptionsWithMonitorAndFeatures(
+            project,
+            stack,
+            parallel,
+            engineAddr,
+            monitorEndpoint,
+            dryRun,
+            organization,
+            monitorClient,
+            supportedFeatures,
+        );
+        monitorClient = undefined;
+
+        if (supportedFeatures === undefined) {
+            // Old monitor fallback: ask for feature support when deployment info isn't implemented.
+            await settings.awaitFeatureSupport();
+        }
+    } catch (err) {
+        if (monitorClient !== undefined) {
+            monitorClient.close();
+        }
+        throw err;
+    }
+
+    config.setAllConfig(pulumiConfig, configSecretKeys);
 }
 
 /**

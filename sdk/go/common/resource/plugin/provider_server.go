@@ -19,7 +19,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -137,6 +139,33 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 		Diffs:               diffs,
 		DetailedDiff:        detailedDiff,
 	}, nil
+}
+
+func (p *providerServer) getDeploymentInfo(
+	ctx context.Context,
+	monitorEndpoint string,
+	fallback *pulumirpc.DeploymentInfo,
+) (*pulumirpc.DeploymentInfo, error) {
+	if monitorEndpoint == "" {
+		return fallback, nil
+	}
+
+	conn, err := grpc.NewClient(monitorEndpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	info, err := pulumirpc.NewResourceMonitorClient(conn).GetDeploymentInfo(ctx, &emptypb.Empty{})
+	if err != nil {
+		if status.Code(err) == codes.Unimplemented {
+			return fallback, nil
+		}
+		return nil, err
+	}
+	return info, nil
 }
 
 func (p *providerServer) Handshake(
@@ -772,13 +801,26 @@ func (p *providerServer) Construct(ctx context.Context,
 ) (*pulumirpc.ConstructResponse, error) {
 	typ, name, parent := tokens.Type(req.GetType()), req.GetName(), resource.URN(req.GetParent())
 
+	deploymentInfo, err := p.getDeploymentInfo(ctx, req.GetMonitorEndpoint(), &pulumirpc.DeploymentInfo{
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Organization:     req.GetOrganization(),
+		Config:           req.GetConfig(),
+		ConfigSecretKeys: req.GetConfigSecretKeys(),
+		DryRun:           req.GetDryRun(),
+		Parallel:         req.GetParallel(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs", true /* keepOutputValues */))
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := map[config.Key]string{}
-	for k, v := range req.GetConfig() {
+	for k, v := range deploymentInfo.GetConfig() {
 		configKey, err := config.ParseKey(k)
 		if err != nil {
 			return nil, err
@@ -787,7 +829,7 @@ func (p *providerServer) Construct(ctx context.Context,
 	}
 
 	cfgSecretKeys := []config.Key{}
-	for _, k := range req.GetConfigSecretKeys() {
+	for _, k := range deploymentInfo.GetConfigSecretKeys() {
 		key, err := config.ParseKey(k)
 		if err != nil {
 			return nil, err
@@ -796,12 +838,12 @@ func (p *providerServer) Construct(ctx context.Context,
 	}
 
 	info := ConstructInfo{
-		Project:          req.GetProject(),
-		Stack:            req.GetStack(),
+		Project:          deploymentInfo.GetProject(),
+		Stack:            deploymentInfo.GetStack(),
 		Config:           cfg,
 		ConfigSecretKeys: cfgSecretKeys,
-		DryRun:           req.GetDryRun(),
-		Parallel:         req.GetParallel(),
+		DryRun:           deploymentInfo.GetDryRun(),
+		Parallel:         deploymentInfo.GetParallel(),
 		MonitorAddress:   req.GetMonitorEndpoint(),
 		StackTraceHandle: req.GetStackTraceHandle(),
 	}
@@ -952,13 +994,25 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 }
 
 func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	deploymentInfo, err := p.getDeploymentInfo(ctx, req.GetMonitorEndpoint(), &pulumirpc.DeploymentInfo{
+		Project:      req.GetProject(),
+		Stack:        req.GetStack(),
+		Organization: req.GetOrganization(),
+		Config:       req.GetConfig(),
+		DryRun:       req.GetDryRun(),
+		Parallel:     req.GetParallel(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args", true /* keepOutputValues */))
 	if err != nil {
 		return nil, err
 	}
 
 	cfg := map[config.Key]string{}
-	for k, v := range req.GetConfig() {
+	for k, v := range deploymentInfo.GetConfig() {
 		configKey, err := config.ParseKey(k)
 		if err != nil {
 			return nil, err
@@ -966,11 +1020,11 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		cfg[configKey] = v
 	}
 	info := CallInfo{
-		Project:          req.GetProject(),
-		Stack:            req.GetStack(),
+		Project:          deploymentInfo.GetProject(),
+		Stack:            deploymentInfo.GetStack(),
 		Config:           cfg,
-		DryRun:           req.GetDryRun(),
-		Parallel:         req.GetParallel(),
+		DryRun:           deploymentInfo.GetDryRun(),
+		Parallel:         deploymentInfo.GetParallel(),
 		MonitorAddress:   req.GetMonitorEndpoint(),
 		StackTraceHandle: req.GetStackTraceHandle(),
 	}

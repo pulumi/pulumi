@@ -403,13 +403,37 @@ def reset_options(
     organization: Optional[str] = None,
 ):
     """Resets globals to the values provided."""
+    reset_options_with_monitor_and_features(
+        project=project,
+        stack=stack,
+        root_directory=root_directory,
+        parallel=parallel,
+        engine_address=engine_address,
+        monitor=monitor_address,
+        preview=preview,
+        organization=organization,
+    )
+
+
+def reset_options_with_monitor_and_features(
+    project: Optional[str] = None,
+    stack: Optional[str] = None,
+    root_directory: Optional[str] = None,
+    parallel: Optional[int] = None,
+    engine_address: Optional[str] = None,
+    monitor: Optional[Union[str, Any]] = None,
+    preview: Optional[bool] = None,
+    organization: Optional[str] = None,
+    supported_features: Optional[list[int]] = None,
+):
+    """Resets globals to the values provided, with optional monitor and feature cache."""
 
     ROOT.set(None)
 
     configure(
         Settings(
             project=project,
-            monitor=monitor_address,
+            monitor=monitor,
             engine=engine_address,
             stack=stack,
             root_directory=root_directory,
@@ -418,6 +442,49 @@ def reset_options(
             organization=organization,
         )
     )
+
+    if supported_features is not None:
+        feature_set = set(supported_features)
+        SETTINGS.feature_support = {
+            "secrets": resource_pb2.RESOURCE_MONITOR_FEATURE_SECRETS in feature_set,
+            "resourceReferences": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES in feature_set
+            ),
+            "outputValues": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES in feature_set
+            ),
+            "aliasSpecs": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_ALIAS_SPECS in feature_set
+            ),
+            "replacementTrigger": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER in feature_set
+            ),
+            "deletedWith": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_DELETED_WITH in feature_set
+            ),
+            "replaceWith": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_REPLACE_WITH in feature_set
+            ),
+            "transforms": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_TRANSFORMS in feature_set
+            ),
+            "invokeTransforms": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS in feature_set
+            ),
+            "parameterization": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_PARAMETERIZATION in feature_set
+            ),
+            "resourceHooks": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS in feature_set
+            ),
+            "errorHooks": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_ERROR_HOOKS in feature_set
+            ),
+            "sendsOptionsToHooks": (
+                resource_pb2.RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS
+                in feature_set
+            ),
+        }
 
 
 async def _monitor_supports_feature(
@@ -440,6 +507,24 @@ async def _monitor_supports_feature(
 
 
 async def _load_monitor_feature_support():
+    if all(
+        feature in SETTINGS.feature_support
+        for feature in [
+            "secrets",
+            "resourceReferences",
+            "outputValues",
+            "deletedWith",
+            "replaceWith",
+            "aliasSpecs",
+            "transforms",
+            "invokeTransforms",
+            "parameterization",
+            "resourceHooks",
+            "errorHooks",
+        ]
+    ):
+        return
+
     # Prime the feature support cache.
     await asyncio.gather(
         monitor_supports_feature("secrets"),
