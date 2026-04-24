@@ -765,10 +765,12 @@ func tokenToQualifiedName(pkgAlias, module, member string) string {
 // resourceTypeName computes the qualified name of a python resource.
 func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
+	token, tokenRange := r.GetToken()
+	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
 	// Normalize module.
 	if r.Schema != nil {
+		module = r.Schema.PackageReference.TokenToModule(token)
 		pkg, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{

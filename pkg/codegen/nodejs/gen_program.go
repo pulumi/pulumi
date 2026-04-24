@@ -1061,10 +1061,11 @@ func containsPlainCall(expr model.Expression) bool {
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
-	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
+	token, tokenRange := r.GetToken()
+	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
 
 	if r.Schema != nil {
-		module = moduleName(module, r.Schema.PackageReference)
+		module = moduleName(r.Schema.PackageReference.TokenToModule(token), r.Schema.PackageReference)
 	}
 
 	return pkg, module, title(member), diagnostics
