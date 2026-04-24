@@ -1061,11 +1061,13 @@ func containsPlainCall(expr model.Expression) bool {
 // resourceTypeName computes the NodeJS package, module, and type name for the given resource.
 func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
-	token, tokenRange := r.GetToken()
-	pkg, module, member, diagnostics := pcl.DecomposeToken(token, tokenRange)
+	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
 
 	if r.Schema != nil {
-		module = moduleName(r.Schema.PackageReference.TokenToModule(token), r.Schema.PackageReference)
+		// Use the schema's original token (not the binder's canonical form) so that
+		// TokenToModule gets the full module path (e.g. "iam/policy") that the package's
+		// moduleFormat regex expects, rather than the already-stripped canonical form.
+		module = moduleName(r.Schema.PackageReference.TokenToModule(r.Schema.Token), r.Schema.PackageReference)
 	}
 
 	return pkg, module, title(member), diagnostics

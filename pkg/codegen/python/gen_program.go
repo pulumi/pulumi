@@ -770,7 +770,10 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 
 	// Normalize module.
 	if r.Schema != nil {
-		module = r.Schema.PackageReference.TokenToModule(token)
+		// Use the schema's original token (not the binder's canonical form) so that
+		// TokenToModule gets the full module path (e.g. "iam/policy") that the package's
+		// moduleFormat regex expects, rather than the already-stripped canonical form.
+		module = r.Schema.PackageReference.TokenToModule(r.Schema.Token)
 		pkg, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{
