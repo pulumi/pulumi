@@ -720,9 +720,9 @@ func TestAmbigiousPluginSourceErrorMessage(t *testing.T) {
 
 	err := ambigiousPluginSourceError{"target", target, parameterized}
 	assert.Equal(t,
-		`package "target" is provided by more than one plugin:`+"\n"+
-			`  plugin "target" v1.47.0`+"\n"+
-			`  plugin "parameterize-base" v1.1.1 parameterized as "target" v2.73.0`+"\n"+
-			"Remove one of the packages, or pass an explicit `provider` option on each resource to disambiguate.",
+		`package "target" is provided by more than one plugin:
+  plugin "target" v1.47.0
+  plugin "parameterize-base" v1.1.1 parameterized as "target" v2.73.0
+Remove one of the packages, or pass an explicit `+"`provider`"+` option on each resource to disambiguate.`,
 		err.Error())
 }
