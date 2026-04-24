@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"sort"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -27,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -78,8 +78,8 @@ func runSummary(in io.Reader, out io.Writer) error {
 }
 
 // reduceEvents folds a JSONL engine event stream into an EventSummary. The reduction preserves
-// arrival order for lists (diagnostics, policy violations) and picks the latest observed entry
-// per URN for steps. Failure modes (ResOpFailedEvent, ErrorEvent) are surfaced on the summary's
+// arrival order for lists (diagnostics, policy events) and picks the latest observed entry per
+// URN for steps. Failure modes (ResOpFailedEvent, ErrorEvent) are surfaced on the summary's
 // `Failed` / `Error` fields; they do not abort reduction — a partial stream still yields a
 // useful document.
 func reduceEvents(in io.Reader) (*display.EventSummary, error) {
@@ -126,15 +126,15 @@ func reduceEvents(in io.Reader) (*display.EventSummary, error) {
 			summary.Failed = true
 
 		case evt.DiagnosticEvent != nil:
-			if d := toSummaryDiagnostic(evt.DiagnosticEvent); d != nil {
+			if d := toPreviewDiagnostic(evt.DiagnosticEvent); d != nil {
 				summary.Diagnostics = append(summary.Diagnostics, *d)
 			}
 
 		case evt.PolicyEvent != nil:
-			summary.PolicyViolations = append(summary.PolicyViolations, toPolicyViolation(evt.PolicyEvent))
+			summary.PolicyViolations = append(summary.PolicyViolations, *evt.PolicyEvent)
 
 		case evt.PolicyRemediationEvent != nil:
-			summary.PolicyViolations = append(summary.PolicyViolations, toPolicyRemediation(evt.PolicyRemediationEvent))
+			summary.PolicyRemediations = append(summary.PolicyRemediations, *evt.PolicyRemediationEvent)
 
 		case evt.ErrorEvent != nil:
 			summary.Failed = true
@@ -150,10 +150,11 @@ func reduceEvents(in io.Reader) (*display.EventSummary, error) {
 }
 
 // applyResourceStep records or updates the SummaryStep for md.URN. `OpSame` is ignored —
-// consumers asked for a summary, not a full transcript. A previously-seen step for the same
-// URN is overwritten, so a `ResOutputsEvent` supersedes its earlier `ResourcePreEvent` (the
-// former is emitted strictly later and carries the final step state). The `failed` flag sticks:
-// once a resource has failed, a later successful step for the same URN shouldn't erase that.
+// consumers asked for a summary, not a full transcript. The step's embedded metadata is
+// replaced on each update, so a `ResOutputsEvent` supersedes its earlier `ResourcePreEvent`
+// (the former is emitted strictly later and carries the final step state). `Old` and `New` are
+// zeroed so the summary stays compact. The `failed` flag sticks: once a resource has failed, a
+// later step for the same URN shouldn't erase that.
 func applyResourceStep(
 	byURN map[resource.URN]*display.SummaryStep,
 	order *[]resource.URN,
@@ -166,16 +167,13 @@ func applyResourceStep(
 	urn := resource.URN(md.URN)
 	step, seen := byURN[urn]
 	if !seen {
-		step = &display.SummaryStep{URN: urn}
+		step = &display.SummaryStep{}
 		byURN[urn] = step
 		*order = append(*order, urn)
 	}
-	step.Op = display.StepOp(md.Op)
-	step.Type = md.Type
-	step.Provider = md.Provider
-	step.Diffs = md.Diffs
-	step.ReplaceReasons = md.Keys
-	step.DetailedDiff = md.DetailedDiff
+	md.Old = nil
+	md.New = nil
+	step.StepEventMetadata = md
 	if failed {
 		step.Failed = true
 	}
@@ -197,51 +195,26 @@ func captureStackOutputs(summary *display.EventSummary, md apitype.StepEventMeta
 	}
 }
 
-// toSummaryDiagnostic converts a DiagnosticEvent into a SummaryDiagnostic, dropping entries
+// toPreviewDiagnostic converts a DiagnosticEvent into a PreviewDiagnostic, dropping entries
 // that are meant for live display only. Ephemeral messages are transient progress spinners and
 // must not pollute a persisted summary; `debug`-level messages are noisy and typically hidden
 // from humans too.
-func toSummaryDiagnostic(d *apitype.DiagnosticEvent) *display.SummaryDiagnostic {
+func toPreviewDiagnostic(d *apitype.DiagnosticEvent) *display.PreviewDiagnostic {
 	if d.Ephemeral || d.Severity == "debug" {
 		return nil
 	}
-	return &display.SummaryDiagnostic{
+	return &display.PreviewDiagnostic{
 		URN:      resource.URN(d.URN),
+		Prefix:   d.Prefix,
 		Message:  d.Message,
-		Severity: d.Severity,
+		Severity: diag.Severity(d.Severity),
 	}
 }
 
-// toPolicyViolation flattens a PolicyEvent into a SummaryPolicyViolation.
-func toPolicyViolation(p *apitype.PolicyEvent) display.SummaryPolicyViolation {
-	return display.SummaryPolicyViolation{
-		URN:               resource.URN(p.ResourceURN),
-		PolicyName:        p.PolicyName,
-		PolicyPackName:    p.PolicyPackName,
-		PolicyPackVersion: p.PolicyPackVersion,
-		EnforcementLevel:  p.EnforcementLevel,
-		Severity:          p.Severity,
-		Message:           p.Message,
-		Remediated:        false,
-	}
-}
-
-// toPolicyRemediation flattens a PolicyRemediationEvent into a SummaryPolicyViolation. The
-// before/after payloads carried on remediations are intentionally dropped from the summary —
-// consumers that need them should read the raw event stream.
-func toPolicyRemediation(p *apitype.PolicyRemediationEvent) display.SummaryPolicyViolation {
-	return display.SummaryPolicyViolation{
-		URN:               resource.URN(p.ResourceURN),
-		PolicyPackName:    p.PolicyPackName,
-		PolicyPackVersion: p.PolicyPackVersion,
-		PolicyName:        p.PolicyName,
-		Remediated:        true,
-	}
-}
-
-// applySummaryEvent copies the scalar fields of a SummaryEvent onto the summary and converts
-// `PolicyPacks` into a deterministic sorted list. `DurationSeconds` is expanded to a
-// `time.Duration` to match the convention used by `PreviewDigest.Duration`.
+// applySummaryEvent copies the scalar fields of a SummaryEvent onto the summary.
+// `DurationSeconds` is expanded to a `time.Duration` to match the convention used by
+// `PreviewDigest.Duration`. `PolicyPacks` is passed through as a map — `encoding/json` sorts
+// map keys so the output stays deterministic.
 func applySummaryEvent(summary *display.EventSummary, s *apitype.SummaryEvent) {
 	summary.IsPreview = s.IsPreview
 	summary.MaybeCorrupt = s.MaybeCorrupt
@@ -254,12 +227,7 @@ func applySummaryEvent(summary *display.EventSummary, s *apitype.SummaryEvent) {
 		summary.ChangeSummary = changes
 	}
 	if len(s.PolicyPacks) > 0 {
-		packs := make([]display.SummaryPolicyPack, 0, len(s.PolicyPacks))
-		for name, version := range s.PolicyPacks {
-			packs = append(packs, display.SummaryPolicyPack{Name: name, Version: version})
-		}
-		sort.Slice(packs, func(i, j int) bool { return packs[i].Name < packs[j].Name })
-		summary.PolicyPacks = packs
+		summary.PolicyPacks = s.PolicyPacks
 	}
 }
 

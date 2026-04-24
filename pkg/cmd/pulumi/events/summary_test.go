@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -113,6 +114,25 @@ func TestReduceEvents_ResOutputsSupersedesResourcePre(t *testing.T) {
 		"the later ResOutputsEvent state should win")
 }
 
+func TestReduceEvents_StepZerosOldAndNew(t *testing.T) {
+	t.Parallel()
+
+	// The summary stays compact by zeroing Old/New — full state is available in the raw
+	// event stream for consumers that need it.
+	events := []apitype.EngineEvent{
+		{ResOutputsEvent: &apitype.ResOutputsEvent{Metadata: apitype.StepEventMetadata{
+			Op: apitype.OpUpdate, URN: "urn:r", Type: "pkg:index:Res",
+			Old: &apitype.StepEventStateMetadata{Inputs: map[string]any{"foo": "old"}},
+			New: &apitype.StepEventStateMetadata{Inputs: map[string]any{"foo": "new"}},
+		}}},
+	}
+	summary, err := reduceEvents(encodeStream(t, events))
+	require.NoError(t, err)
+	require.Len(t, summary.Steps, 1)
+	assert.Nil(t, summary.Steps[0].Old, "Old must be nil so the summary stays compact")
+	assert.Nil(t, summary.Steps[0].New, "New must be nil so the summary stays compact")
+}
+
 func TestReduceEvents_CarriesDetailedDiffAndReplaceReasons(t *testing.T) {
 	t.Parallel()
 
@@ -132,8 +152,8 @@ func TestReduceEvents_CarriesDetailedDiffAndReplaceReasons(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, summary.Steps, 1)
 	s := summary.Steps[0]
-	assert.Equal(t, display.StepOp(apitype.OpReplace), s.Op)
-	assert.Equal(t, []string{"foo"}, s.ReplaceReasons)
+	assert.Equal(t, apitype.OpReplace, s.Op)
+	assert.Equal(t, []string{"foo"}, s.Keys)
 	assert.Equal(t, detailed, s.DetailedDiff)
 	assert.Equal(t, "urn:provider", s.Provider)
 }
@@ -234,15 +254,17 @@ func TestReduceEvents_DiagnosticsKeepsNonEphemeralNonDebug(t *testing.T) {
 	summary, err := reduceEvents(encodeStream(t, events))
 	require.NoError(t, err)
 	require.Len(t, summary.Diagnostics, 2)
-	assert.Equal(t, "warning", summary.Diagnostics[0].Severity)
+	assert.Equal(t, diag.Severity("warning"), summary.Diagnostics[0].Severity)
 	assert.Equal(t, "heads up", summary.Diagnostics[0].Message)
 	assert.Equal(t, resource.URN("urn:a"), summary.Diagnostics[0].URN)
-	assert.Equal(t, "error", summary.Diagnostics[1].Severity)
+	assert.Equal(t, diag.Severity("error"), summary.Diagnostics[1].Severity)
 }
 
-func TestReduceEvents_PolicyViolationsAndRemediations(t *testing.T) {
+func TestReduceEvents_PolicyViolationsAndRemediationsGoToSeparateLists(t *testing.T) {
 	t.Parallel()
 
+	// Keeping the two event types in separate fields preserves the PolicyRemediationEvent's
+	// before/after payload — a single fused list would've forced us to drop it.
 	events := []apitype.EngineEvent{
 		{PolicyEvent: &apitype.PolicyEvent{
 			ResourceURN: "urn:a", PolicyName: "require-tag",
@@ -252,16 +274,18 @@ func TestReduceEvents_PolicyViolationsAndRemediations(t *testing.T) {
 		{PolicyRemediationEvent: &apitype.PolicyRemediationEvent{
 			ResourceURN: "urn:b", PolicyName: "default-tag",
 			PolicyPackName: "aws-best", PolicyPackVersion: "1.0.0",
+			Before: map[string]any{"tag": nil},
+			After:  map[string]any{"tag": "auto"},
 		}},
 	}
 	summary, err := reduceEvents(encodeStream(t, events))
 	require.NoError(t, err)
-	require.Len(t, summary.PolicyViolations, 2)
-	assert.False(t, summary.PolicyViolations[0].Remediated,
-		"PolicyEvent must be Remediated=false")
+	require.Len(t, summary.PolicyViolations, 1)
 	assert.Equal(t, "missing tag", summary.PolicyViolations[0].Message)
-	assert.True(t, summary.PolicyViolations[1].Remediated,
-		"PolicyRemediationEvent must be Remediated=true")
+	require.Len(t, summary.PolicyRemediations, 1)
+	assert.Equal(t, map[string]any{"tag": nil}, summary.PolicyRemediations[0].Before,
+		"Before payload must be preserved on remediations")
+	assert.Equal(t, map[string]any{"tag": "auto"}, summary.PolicyRemediations[0].After)
 }
 
 func TestReduceEvents_ErrorEventSetsFailedAndError(t *testing.T) {
@@ -302,10 +326,7 @@ func TestReduceEvents_SummaryEventPopulatesScalarsAndChanges(t *testing.T) {
 		display.StepOp(apitype.OpUpdate): 1,
 		display.StepOp(apitype.OpSame):   5,
 	}, summary.ChangeSummary)
-	// PolicyPacks must be sorted by name regardless of map iteration order.
-	require.Len(t, summary.PolicyPacks, 2)
-	assert.Equal(t, "a-pack", summary.PolicyPacks[0].Name)
-	assert.Equal(t, "z-pack", summary.PolicyPacks[1].Name)
+	assert.Equal(t, map[string]string{"a-pack": "1", "z-pack": "2"}, summary.PolicyPacks)
 }
 
 func TestReduceEvents_PreviewLeavesOutputsEmpty(t *testing.T) {
@@ -399,8 +420,8 @@ func TestRunSummary_EndToEndForUp(t *testing.T) {
 	assert.Equal(t, map[string]any{"bucketName": "b"}, got.Outputs)
 	// Even though the root-stack step is `OpSame`, the non-stack steps should appear.
 	require.Len(t, got.Steps, 2)
-	assert.Equal(t, display.StepOp(apitype.OpCreate), got.Steps[0].Op)
-	assert.Equal(t, display.StepOp(apitype.OpUpdate), got.Steps[1].Op)
+	assert.Equal(t, apitype.OpCreate, got.Steps[0].Op)
+	assert.Equal(t, apitype.OpUpdate, got.Steps[1].Op)
 	assert.Equal(t, 1000, got.StartTime)
 	assert.Equal(t, 1040, got.EndTime)
 }
@@ -485,7 +506,7 @@ func TestRunSummary_EndToEndForRefresh(t *testing.T) {
 	var got display.EventSummary
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got.Steps, 1)
-	assert.Equal(t, display.StepOp(apitype.OpRefresh), got.Steps[0].Op)
+	assert.Equal(t, apitype.OpRefresh, got.Steps[0].Op)
 	assert.Equal(t, []string{"tags"}, got.Steps[0].Diffs)
 }
 
