@@ -48,7 +48,7 @@ func (p *ReadProvider) Pkg() tokens.Package {
 func (p *ReadProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
 	pkg := schema.PackageSpec{
 		Name:    "read",
-		Version: "36.0.0",
+		Version: "38.0.0",
 		Resources: map[string]schema.ResourceSpec{
 			"read:index:Resource": {
 				ObjectTypeSpec: schema.ObjectTypeSpec{
@@ -156,7 +156,7 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 
 func (p *ReadProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(semver.MustParse("36.0.0")),
+		Version: ref(semver.MustParse("38.0.0")),
 	}, nil
 }
 
