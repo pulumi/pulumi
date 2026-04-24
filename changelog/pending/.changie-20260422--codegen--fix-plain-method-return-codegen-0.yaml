@@ -1,0 +1,6 @@
+kind: fix
+body: 'Generate unqualified `Provider` references for the package''s own provider resource in Go codegen'
+custom:
+  Scope: codegen/go
+  PR: ''
+time: '2026-04-22T00:00:00Z'

@@ -1,0 +1,6 @@
+kind: fix
+body: Import the correct class name for a provider resource in Node.js codegen
+custom:
+  Scope: codegen/nodejs
+  PR: ''
+time: '2026-04-22T00:00:00Z'

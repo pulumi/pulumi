@@ -1,0 +1,6 @@
+kind: fix
+body: 'Avoid a self-import when referencing the package''s own provider resource in Python codegen'
+custom:
+  Scope: codegen/python
+  PR: ''
+time: '2026-04-22T00:00:00Z'
