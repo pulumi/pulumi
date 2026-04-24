@@ -82,3 +82,137 @@ type PreviewDiagnostic struct {
 	Message  string        `json:"message,omitempty"`
 	Severity diag.Severity `json:"severity,omitempty"`
 }
+
+// EventSummary is a JSON-serialisable digest of an engine event stream produced by
+// `pulumi preview`, `pulumi up`, `pulumi refresh`, or `pulumi destroy`. It captures the same
+// information a human would see printed by these commands: the configuration, per-resource
+// steps, final stack outputs, policy results, diagnostics, and aggregate counts.
+//
+// The document is emitted by `pulumi events summary` as a single JSON object, the terminal
+// reduction of the JSONL event stream.
+type EventSummary struct {
+	// Version is the schema version. Starts at 1 and will only increase on
+	// backwards-incompatible changes; additive changes keep the same version.
+	Version int `json:"version"`
+
+	// IsPreview is true when the stream came from `pulumi preview`. Taken directly from
+	// SummaryEvent.IsPreview — if no SummaryEvent was seen (an interrupted run) it stays false.
+	IsPreview bool `json:"isPreview"`
+
+	// StartTime is the timestamp of the first event seen, as seconds since the Unix epoch.
+	StartTime int `json:"startTime,omitempty"`
+	// EndTime is the timestamp of the last event seen.
+	EndTime int `json:"endTime,omitempty"`
+
+	// Config contains the stack configuration keys and values for the update, taken from
+	// PreludeEvent. Secrets are blinded by the emitter.
+	Config map[string]string `json:"config,omitempty"`
+
+	// Steps is the list of resource steps excluding `OpSame`. Each URN appears at most once:
+	// the final observed step (ResOutputsEvent preferred over ResourcePreEvent) wins.
+	Steps []*SummaryStep `json:"steps,omitempty"`
+
+	// Outputs is the root stack's final outputs, taken from the last ResOutputsEvent with
+	// type `pulumi:pulumi:Stack`. Empty for previews — outputs aren't applied in a preview.
+	Outputs map[string]any `json:"outputs,omitempty"`
+
+	// ChangeSummary is the per-op resource change count from the final SummaryEvent.
+	ChangeSummary ResourceChanges `json:"changeSummary,omitempty"`
+
+	// Duration is how long the update took, as reported by SummaryEvent.DurationSeconds.
+	// Zero for previews (no duration is reported for a preview).
+	Duration time.Duration `json:"duration,omitempty"`
+
+	// Diagnostics lists non-ephemeral DiagnosticEvents observed in the stream, in the order
+	// they arrived. Ephemeral diagnostics (intended for live display only) are filtered out.
+	Diagnostics []SummaryDiagnostic `json:"diagnostics,omitempty"`
+
+	// PolicyPacks lists the policy packs that ran during the update, sorted by name for
+	// deterministic output. Sourced from SummaryEvent.PolicyPacks.
+	PolicyPacks []SummaryPolicyPack `json:"policyPacks,omitempty"`
+
+	// PolicyViolations collects PolicyEvent and PolicyRemediationEvent entries. Remediations
+	// are represented with `remediated: true`; plain violations with `remediated: false`.
+	PolicyViolations []SummaryPolicyViolation `json:"policyViolations,omitempty"`
+
+	// MaybeCorrupt is true if the engine reported that one or more resources may be corrupt.
+	// Sourced from SummaryEvent.MaybeCorrupt.
+	MaybeCorrupt bool `json:"maybeCorrupt,omitempty"`
+
+	// Failed is true if any `ResOpFailedEvent` was seen, or the engine reported an internal
+	// error. A successful preview/up leaves this false.
+	Failed bool `json:"failed,omitempty"`
+
+	// Error is set to the message of the last `ErrorEvent` in the stream, if any. These are
+	// emitted for engine-internal errors, not user-facing ones — user errors arrive as
+	// DiagnosticEvents with severity=error.
+	Error string `json:"error,omitempty"`
+}
+
+// SummaryStep is the reduced form of a resource step carried in the summary. It contains only
+// what a human sees in the CLI output plus the structured diff — OldState/NewState inputs and
+// outputs are intentionally omitted, as a summary is meant to be compact; consumers that want
+// full state should read the raw event stream.
+type SummaryStep struct {
+	// Op is the operation the engine performed on this resource.
+	Op StepOp `json:"op"`
+	// URN uniquely identifies the resource within the stack.
+	URN resource.URN `json:"urn"`
+	// Type is the resource type token (e.g. `aws:s3/bucket:Bucket`).
+	Type string `json:"type,omitempty"`
+	// Provider is the provider reference that performed the step.
+	Provider string `json:"provider,omitempty"`
+	// Diffs is the list of top-level property keys that changed (same as
+	// StepEventMetadata.Diffs).
+	Diffs []string `json:"diffs,omitempty"`
+	// ReplaceReasons lists keys that triggered a replacement, for `OpReplace` /
+	// `OpCreateReplacement` / `OpDeleteReplaced` (same as StepEventMetadata.Keys).
+	ReplaceReasons []string `json:"replaceReasons,omitempty"`
+	// DetailedDiff is the engine's property-path indexed diff. Preserved verbatim.
+	DetailedDiff map[string]apitype.PropertyDiff `json:"detailedDiff,omitempty"`
+	// Failed is true if a `ResOpFailedEvent` was emitted for this URN.
+	Failed bool `json:"failed,omitempty"`
+}
+
+// SummaryDiagnostic is a diagnostic observed during the update. Ephemeral and debug-level
+// diagnostics are omitted upstream; the rest are preserved here.
+type SummaryDiagnostic struct {
+	// URN is the resource the diagnostic is associated with, if any.
+	URN resource.URN `json:"urn,omitempty"`
+	// Message is the diagnostic text, un-colored.
+	Message string `json:"message"`
+	// Severity is one of `info`, `info#err`, `warning`, `error` — matching
+	// `apitype.DiagnosticEvent.Severity`.
+	Severity string `json:"severity,omitempty"`
+}
+
+// SummaryPolicyPack is a policy pack that ran during the update.
+type SummaryPolicyPack struct {
+	// Name is the policy pack name.
+	Name string `json:"name"`
+	// Version is the pack's version string (may be a version tag prepended with `v` on newer
+	// clients — see `apitype.SummaryEvent.PolicyPacks`).
+	Version string `json:"version,omitempty"`
+}
+
+// SummaryPolicyViolation is a policy violation or remediation emitted for a resource. The
+// `Remediated` flag distinguishes the two: violations come from `PolicyEvent`, remediations
+// from `PolicyRemediationEvent`.
+type SummaryPolicyViolation struct {
+	// URN identifies the resource the policy flagged.
+	URN resource.URN `json:"urn,omitempty"`
+	// PolicyName is the name of the specific policy that fired.
+	PolicyName string `json:"policyName,omitempty"`
+	// PolicyPackName is the enclosing pack.
+	PolicyPackName string `json:"policyPackName,omitempty"`
+	// PolicyPackVersion is the enclosing pack's version.
+	PolicyPackVersion string `json:"policyPackVersion,omitempty"`
+	// EnforcementLevel is one of `warning`, `mandatory`, `remediate`, `none`.
+	EnforcementLevel string `json:"enforcementLevel,omitempty"`
+	// Severity is one of `low`, `medium`, `high`, `critical` — or empty if unspecified.
+	Severity string `json:"severity,omitempty"`
+	// Message is the violation text (empty for remediations, which carry `before`/`after`).
+	Message string `json:"message,omitempty"`
+	// Remediated is true for `PolicyRemediationEvent`, false for `PolicyEvent`.
+	Remediated bool `json:"remediated,omitempty"`
+}

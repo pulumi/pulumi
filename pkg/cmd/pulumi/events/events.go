@@ -22,7 +22,7 @@ import (
 
 // NewEventsCmd is the parent of the `pulumi events` subcommand tree. It does not perform any
 // work on its own — running `pulumi events` without a subcommand prints the command's help text.
-// Behaviour lives on the subcommands (currently `filter`).
+// Behaviour lives on the subcommands (currently `filter` and `summary`).
 //
 // Hidden from `--help` while the interface is being developed.
 func NewEventsCmd() *cobra.Command {
@@ -34,5 +34,6 @@ func NewEventsCmd() *cobra.Command {
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	cmd.AddCommand(NewFilterCmd())
+	cmd.AddCommand(NewSummaryCmd())
 	return cmd
 }
