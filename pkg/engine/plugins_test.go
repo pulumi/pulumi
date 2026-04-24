@@ -653,9 +653,9 @@ func TestDefaultProvidersConflictAcrossDifferentPlugins(t *testing.T) {
 	plugins := NewPackageSet(target, parameterized)
 	_, err := computeDefaultProviderPackages(plugins, plugins)
 
-	var actualErr ambigiousPluginSourceError
+	var actualErr ambiguousPluginSourceError
 	require.ErrorAs(t, err, &actualErr)
-	assert.Equal(t, ambigiousPluginSourceError{"target", target, parameterized}, actualErr)
+	assert.Equal(t, ambiguousPluginSourceError{"target", target, parameterized}, actualErr)
 }
 
 func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
@@ -696,7 +696,7 @@ func TestDefaultProvidersSameBridgeDifferentVersions(t *testing.T) {
 	}, result)
 }
 
-func TestAmbigiousPluginSourceErrorMessage(t *testing.T) {
+func TestAmbiguousPluginSourceErrorMessage(t *testing.T) {
 	t.Parallel()
 
 	target := workspace.PackageDescriptor{
@@ -718,7 +718,7 @@ func TestAmbigiousPluginSourceErrorMessage(t *testing.T) {
 		},
 	}
 
-	err := ambigiousPluginSourceError{"target", target, parameterized}
+	err := ambiguousPluginSourceError{"target", target, parameterized}
 	assert.Equal(t,
 		`package "target" is provided by more than one plugin:
   plugin "target" v1.47.0

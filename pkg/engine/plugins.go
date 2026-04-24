@@ -667,14 +667,14 @@ func describePluginSource(p workspace.PackageDescriptor) string {
 	return fmt.Sprintf("plugin %q%s", p.Name, pluginVer)
 }
 
-// ambigiousPluginSourceError is returned when two distinct plugins both claim
+// ambiguousPluginSourceError is returned when two distinct plugins both claim
 // to provide the same default provider package name.
-type ambigiousPluginSourceError struct {
+type ambiguousPluginSourceError struct {
 	pkg  tokens.Package
 	a, b workspace.PackageDescriptor
 }
 
-func (err ambigiousPluginSourceError) Error() string {
+func (err ambiguousPluginSourceError) Error() string {
 	return fmt.Sprintf(
 		"package %q is provided by more than one plugin:\n"+
 			"  %s\n"+
@@ -751,7 +751,7 @@ func computeDefaultProviderPackages(
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
 			if !samePluginSource(seenPlugin, p) {
-				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
+				return nil, ambiguousPluginSourceError{name, seenPlugin, p}
 			}
 
 			if seenPlugin.Version == nil {
