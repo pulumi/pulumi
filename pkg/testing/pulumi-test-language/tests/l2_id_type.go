@@ -77,6 +77,7 @@ func init() {
 							"source2Token": resource.NewProperty("true"),
 							"source1Token": resource.NewProperty("1234"),
 						}),
+						"base64": resource.NewProperty("YWJj"),
 					}, stack.Outputs)
 				},
 			},

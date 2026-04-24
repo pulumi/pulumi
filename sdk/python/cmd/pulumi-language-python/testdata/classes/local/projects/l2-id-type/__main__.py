@@ -1,4 +1,5 @@
 import pulumi
+import base64
 import pulumi_primitive as primitive
 
 # Test that the ID type is treated the same as a string type, despite being tracked as a distinct type. This 
@@ -44,3 +45,4 @@ sink2 = primitive.Resource("sink2",
         "sink": id_map["source2Token"].apply(lambda x: x == "true"),
     })
 pulumi.export("ids", id_map)
+pulumi.export("base64", sink2.id.apply(lambda id: base64.b64encode(id.encode()).decode()))
