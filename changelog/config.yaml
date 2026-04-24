@@ -20,6 +20,7 @@ scopes:
     - package
     - policy
     - state
+    - convert
   components: [dotnet, go, java, nodejs, python, yaml, pcl]
   docs: []
   engine: []

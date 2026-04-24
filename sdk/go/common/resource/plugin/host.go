@@ -579,6 +579,14 @@ type hostManagedProvider struct {
 // Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
 // provider.
 func (pc hostManagedProvider) Close() error {
+	// Send Cancel before tearing the plugin down so that the plugin can acknowledge a graceful shutdown and
+	// Plugin.Close does not treat the subsequent exit as a premature crash. defaultHost.Close does the same for
+	// providers still in resourcePlugins at shutdown, but callers that Close individual providers (e.g. the
+	// convert mapper) bypass that path.
+	cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelCancel()
+	contract.IgnoreError(pc.SignalCancellation(cancelCtx))
+
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
 	_, err := pc.host.loadPlugin(pc.host.loadRequests, func() (any, error) {
 		if err := pc.Provider.Close(); err != nil {
