@@ -1413,11 +1413,13 @@ class ListRequest(google.protobuf.message.Message):
     token: builtins.str
     """The resource token (type) to list."""
     limit: builtins.int
-    """The maximum number of resources to return."""
+    """The maximum number of resources to return. If less than 1 then no limit is applied."""
     page_size: builtins.int
     """The requested page size for this streaming call. The provider is free to return less, but should not return more."""
     continuation_token: builtins.str
-    """An opaque token indicating which page to fetch. Empty for the first page."""
+    """An opaque token indicating which page to fetch. Empty for the first page. If set `token`, `query`, and `limit`
+    should be the values used to fetch the first page.
+    """
     @property
     def query(self) -> google.protobuf.struct_pb2.Struct:
         """An optional provider-defined filter over resource state. This is a property map and could contain

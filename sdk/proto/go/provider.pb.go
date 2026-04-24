@@ -2221,11 +2221,12 @@ type ListRequest struct {
 	// An optional provider-defined filter over resource state. This is a property map and could contain
 	// unknown/computed values.
 	Query *structpb.Struct `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
-	// The maximum number of resources to return.
+	// The maximum number of resources to return. If less than 1 then no limit is applied.
 	Limit int64 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// The requested page size for this streaming call. The provider is free to return less, but should not return more.
 	PageSize int64 `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
-	// An opaque token indicating which page to fetch. Empty for the first page.
+	// An opaque token indicating which page to fetch. Empty for the first page. If set `token`, `query`, and `limit`
+	// should be the values used to fetch the first page.
 	ContinuationToken string `protobuf:"bytes,5,opt,name=continuation_token,json=continuationToken,proto3" json:"continuation_token,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache

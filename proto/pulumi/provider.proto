@@ -899,13 +899,14 @@ message ListRequest {
     // unknown/computed values.
     google.protobuf.Struct query = 2;
 
-    // The maximum number of resources to return.
+    // The maximum number of resources to return. If less than 1 then no limit is applied.
     int64 limit = 3;
 
     // The requested page size for this streaming call. The provider is free to return less, but should not return more.
     int64 page_size = 4;
 
-    // An opaque token indicating which page to fetch. Empty for the first page.
+    // An opaque token indicating which page to fetch. Empty for the first page. If set `token`, `query`, and `limit`
+    // should be the values used to fetch the first page.
     string continuation_token = 5;
 }
 
