@@ -15,6 +15,7 @@
 package fuzzing
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -146,10 +147,25 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 			)
 		}
 		done := make(chan struct{})
+		// Cancellable context so the 20s cap below can actually interrupt the engine. Without
+		// propagating cancellation, a timed-out iteration leaks its goroutine, plugin host, and
+		// provider subprocesses into later iterations and can eventually saturate the CI runner,
+		// surfacing as the opaque `panic: test timed out after 10m0s`
+		// (see https://github.com/pulumi/pulumi/issues/22719).
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 		go func() {
+			defer close(done)
 			// Operations may fail for legitimate reasons -- e.g. we have configured a provider operation to fail, aborting
 			// execution. We thus only fail if we encounter an actual snapshot integrity error.
-			outSnap, err := op.RunStep(project, p.GetTarget(t, inSnap), opOpts, false, p.BackendClient, nil, "0")
+			outSnap, err := op.RunWithContextStep(
+				ctx, project, p.GetTarget(t, inSnap), opOpts, false, p.BackendClient, nil, "0")
+			// If the outer select cancelled us after the 20s cap, skip all post-op checks — the
+			// outer goroutine is responsible for reporting the timeout, and any error we observe
+			// here is cancellation noise, not a bug.
+			if ctx.Err() != nil {
+				return
+			}
 			if _, isSIE := snapshot.AsSnapshotIntegrityError(err); isSIE {
 				failWithError(err)
 			}
@@ -171,14 +187,27 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 
 			// In all other cases, we expect errors to be "expected", or "bails" in our terminology.
 			assert.True(t, err == nil || result.IsBail(err), "unexpected error: %v", err)
-			close(done)
 		}()
 		select {
-		case <-time.After(20 * time.Second):
-			reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
-			assert.Failf(t, "test timed out after 20 seconds", reproMessage)
 		case <-done:
 			// Test completed within the timeout.
+		case <-time.After(20 * time.Second):
+			cancel()
+			// Wait for the goroutine to observe cancellation and drain before this iteration
+			// returns. Otherwise the next rapid iteration starts on top of a live engine and the
+			// leak cascades.
+			select {
+			case <-done:
+			case <-time.After(30 * time.Second):
+				reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
+				t.Fatalf(
+					"test timed out after 20 seconds and did not respond to cancellation within 30 more seconds\n%s",
+					reproMessage,
+				)
+				return
+			}
+			reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
+			assert.Failf(t, "test timed out after 20 seconds", reproMessage)
 		}
 	}
 }
