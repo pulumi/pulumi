@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: pcl
+  description: Fix binding of StackReference resources to still have the token `pulumi:pulumi:StackReference`

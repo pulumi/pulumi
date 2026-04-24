@@ -1442,3 +1442,28 @@ output "result" {
 	}}, diags)
 	require.Nil(t, program)
 }
+
+func TestStackReferenceGetToken(t *testing.T) {
+	t.Parallel()
+	source := `
+resource stackRef "pulumi:pulumi:StackReference" {
+    name = "org/project/stack"
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+
+	var resource *pcl.Resource
+	for _, node := range program.Nodes {
+		if r, ok := node.(*pcl.Resource); ok && r.Name() == "stackRef" {
+			resource = r
+			break
+		}
+	}
+	require.NotNil(t, resource, "expected a resource named stackRef")
+
+	token, _ := resource.GetToken()
+	assert.Equal(t, "pulumi:pulumi:StackReference", token)
+}

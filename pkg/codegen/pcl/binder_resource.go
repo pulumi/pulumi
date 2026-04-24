@@ -344,7 +344,14 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 		}
 		res = r
-		token = tk
+		// For pulumi built-in resources (e.g. pulumi:pulumi:StackReference), canonicalizeToken
+		// strips the module to produce "pulumi::StackReference" because TokenToModule returns ""
+		// for the pulumi:pulumi module. Reconstruct the full token from the decomposed parts.
+		if pkg == pulumiPackage {
+			token = fmt.Sprintf("%s:%s:%s", pkg, module, name)
+		} else {
+			token = tk
+		}
 	}
 	node.Schema = res
 	inputProperties, properties = res.InputProperties, res.Properties
