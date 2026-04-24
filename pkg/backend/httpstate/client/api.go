@@ -60,8 +60,8 @@ const (
 // in pulumi-service `cmd/service/api/rest/request.go` — the integers are a
 // shared contract across both repos.
 //
-// To add a new capability: append a row, define a named constant for it, and
-// point `currentAPIVersion` at the new constant.
+// To add a new capability: bump `currentAPIVersion` and append a row to the
+// table below.
 //
 // CLI Ver. API Ver. Description
 // -------- -------- -----------
@@ -80,15 +80,7 @@ const (
 //	                 to the legacy heterogeneous form (bare string when not
 //	                 secret, {"secret": "..."} when secret). Tolerant decoder
 //	                 added in https://github.com/pulumi/pulumi/pull/22699.
-const (
-	// apiVersionExplicitSecretValueObjectForm: CLI decodes the explicit
-	// {"isSecret", "value"} SecretValue form. See row 9 in the table above.
-	apiVersionExplicitSecretValueObjectForm = 9
-
-	// currentAPIVersion is the value this CLI sends in the `Accept` header.
-	// Bump (and add a row to the table above) when introducing a new capability.
-	currentAPIVersion = apiVersionExplicitSecretValueObjectForm
-)
+const currentAPIVersion = 9
 
 // acceptAPIVersionHeader is the rendered `Accept` header value sent on every
 // request to the Pulumi service. See `currentAPIVersion`.
