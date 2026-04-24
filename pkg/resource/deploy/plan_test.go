@@ -24,14 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func mustParseGlob(s string) property.Glob {
-	var g property.Glob
-	if err := g.UnmarshalText([]byte(s)); err != nil {
-		panic(err)
-	}
-	return g
-}
-
 func TestPlan(t *testing.T) {
 	t.Parallel()
 	t.Run("ContainsDelete", func(t *testing.T) {
@@ -473,7 +465,7 @@ func TestResourcePlan(t *testing.T) {
 				rp := &ResourcePlan{
 					Goal: &GoalPlan{
 						IgnoreChanges: []property.Glob{
-							mustParseGlob("foo"),
+							property.MustParseGlob("foo"),
 						},
 					},
 				}
@@ -482,7 +474,7 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					&resource.Goal{
 						IgnoreChanges: []property.Glob{
-							mustParseGlob("bar"),
+							property.MustParseGlob("bar"),
 						},
 					})
 				assert.ErrorContains(t, err, "ignoreChanges changed")

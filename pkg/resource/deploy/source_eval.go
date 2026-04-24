@@ -3426,18 +3426,12 @@ func addOutputDependencies(deps mapset.Set[resource.URN], v resource.PropertyVal
 // GlobsToStrings renders each [property.Glob] in globs to its canonical string form. The
 // zero-value glob is rendered as the empty string.
 func globsToStrings(globs []property.Glob) []string {
-	if len(globs) == 0 {
-		return nil
-	}
-	out := make([]string, len(globs))
-	for i, g := range globs {
+	return slice.Map(globs, func(g property.Glob) string {
 		if g == (property.Glob{}) {
-			out[i] = ""
-			continue
+			return ""
 		}
 		b, err := g.MarshalText()
 		contract.AssertNoErrorf(err, "non-empty glob should always marshal")
-		out[i] = string(b)
-	}
-	return out
+		return string(b)
+	})
 }

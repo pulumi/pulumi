@@ -69,14 +69,6 @@ var names = NameTable{
 	logicalURN:  logicalName,
 }
 
-func mustParseGlob(s string) property.Glob {
-	var p property.Glob
-	if err := p.UnmarshalText([]byte(s)); err != nil {
-		panic(err)
-	}
-	return p
-}
-
 func renderExpr(t *testing.T, x model.Expression) property.Value {
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
@@ -290,7 +282,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:aws",
 					RetainOnDelete: true,
-					IgnoreChanges:  []property.Glob{mustParseGlob("fooIgnore")},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				},
@@ -300,7 +292,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:random",
 					RetainOnDelete: true,
-					IgnoreChanges:  []property.Glob{mustParseGlob("fooIgnore")},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:random::default_123",
 				},
@@ -310,7 +302,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:pkg",
 					RetainOnDelete: true,
-					IgnoreChanges:  []property.Glob{mustParseGlob("fooIgnore")},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
 				},

@@ -41,9 +41,7 @@ func init() {
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					hideDiffs := RequireSingleNamedResource(l, snap.Resources, "hideDiffs")
-					assert.Equal(l, []property.Glob{
-						property.GlobFromSegments(property.NewSegment("value")),
-					}, hideDiffs.HideDiff)
+					assert.Equal(l, []property.Glob{property.MustParseGlob("value")}, hideDiffs.HideDiff)
 
 					notHideDiffs := RequireSingleNamedResource(l, snap.Resources, "notHideDiffs")
 					assert.Empty(l, notHideDiffs.HideDiff)
