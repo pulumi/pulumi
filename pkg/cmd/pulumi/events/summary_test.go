@@ -298,6 +298,32 @@ func TestReduceEvents_ErrorEventSetsFailedAndError(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, summary.Failed)
 	assert.Equal(t, "engine exploded", summary.Error)
+	assert.False(t, summary.Completed,
+		"an ErrorEvent without a SummaryEvent means the run didn't reach the end-of-update handshake")
+}
+
+func TestReduceEvents_CompletedFlagTracksSummaryEvent(t *testing.T) {
+	t.Parallel()
+
+	// Without a SummaryEvent the run is "interrupted" — no positive signal of a clean end.
+	noSummary := []apitype.EngineEvent{
+		{ResourcePreEvent: &apitype.ResourcePreEvent{Metadata: apitype.StepEventMetadata{
+			Op: apitype.OpCreate, URN: "urn:r", Type: "pkg:index:Res",
+		}}},
+	}
+	got, err := reduceEvents(encodeStream(t, noSummary))
+	require.NoError(t, err)
+	assert.False(t, got.Completed,
+		"a stream without SummaryEvent must leave Completed=false — we can't tell success from interruption")
+
+	// With a SummaryEvent, Completed is true. `Failed` stays independent so the consumer can
+	// distinguish "completed cleanly and succeeded" from "completed with failures".
+	withSummary := append(noSummary, apitype.EngineEvent{SummaryEvent: &apitype.SummaryEvent{}})
+	got, err = reduceEvents(encodeStream(t, withSummary))
+	require.NoError(t, err)
+	assert.True(t, got.Completed,
+		"a SummaryEvent in the stream must flip Completed — it's the engine's end-of-update handshake")
+	assert.False(t, got.Failed, "SummaryEvent alone does not imply failure")
 }
 
 func TestReduceEvents_SummaryEventPopulatesScalarsAndChanges(t *testing.T) {

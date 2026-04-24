@@ -144,6 +144,13 @@ type EventSummary struct {
 	// Sourced from SummaryEvent.MaybeCorrupt.
 	MaybeCorrupt bool `json:"maybeCorrupt,omitempty"`
 
+	// Completed is true iff a `SummaryEvent` was observed in the stream — the engine's
+	// end-of-update handshake. This distinguishes a cleanly-finished run from an interrupted
+	// one (Ctrl-C, pipe broken, wrapper crashed): both can leave `Failed` false, but only a
+	// completed run has `Completed == true`. Always present in the JSON output so consumers
+	// can rely on it unconditionally.
+	Completed bool `json:"completed"`
+
 	// Failed is true if any `ResOpFailedEvent` was seen, or the engine reported an internal
 	// error. A successful preview/up leaves this false.
 	Failed bool `json:"failed,omitempty"`

@@ -211,11 +211,13 @@ func toPreviewDiagnostic(d *apitype.DiagnosticEvent) *display.PreviewDiagnostic 
 	}
 }
 
-// applySummaryEvent copies the scalar fields of a SummaryEvent onto the summary.
-// `DurationSeconds` is expanded to a `time.Duration` to match the convention used by
-// `PreviewDigest.Duration`. `PolicyPacks` is passed through as a map — `encoding/json` sorts
-// map keys so the output stays deterministic.
+// applySummaryEvent copies the scalar fields of a SummaryEvent onto the summary and marks the
+// run as `Completed` — the SummaryEvent is the engine's end-of-update handshake, so seeing one
+// is the positive signal that the stream wasn't truncated. `DurationSeconds` is expanded to a
+// `time.Duration` to match the convention used by `PreviewDigest.Duration`. `PolicyPacks` is
+// passed through as a map — `encoding/json` sorts map keys so the output stays deterministic.
 func applySummaryEvent(summary *display.EventSummary, s *apitype.SummaryEvent) {
+	summary.Completed = true
 	summary.IsPreview = s.IsPreview
 	summary.MaybeCorrupt = s.MaybeCorrupt
 	summary.Duration = time.Duration(s.DurationSeconds) * time.Second
