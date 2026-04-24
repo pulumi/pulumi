@@ -518,13 +518,16 @@ func (w *postgresWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-// isStackCheckpointKey reports whether key names an uncompressed stack
-// checkpoint (the only blob we store as JSONB). The DIY backend may wrap the
-// bucket in blob.PrefixedBucket using the URL path, so the ".pulumi/stacks/"
-// marker can appear at any depth. Compressed variants (.json.gz, .json.zst)
-// are byte-streams, not JSON, and must always use the legacy column.
-func isStackCheckpointKey(key string) bool {
-	const marker = ".pulumi/stacks/"
+// isJSONStateKey reports whether key names an uncompressed JSON blob under
+// the DIY backend's `.pulumi/` tree — i.e. a checkpoint, history entry,
+// backup, or lock. These are the blobs we store in the JSONB column when the
+// flag is on; everything else (meta.yaml, Pulumi.*.yaml, compressed
+// `.json.gz`/`.json.zst` streams, etc.) stays in the legacy column.
+//
+// The DIY backend may wrap the bucket in blob.PrefixedBucket using the URL
+// path, so the ".pulumi/" marker can appear at any depth.
+func isJSONStateKey(key string) bool {
+	const marker = ".pulumi/"
 	i := strings.Index(key, marker)
 	if i < 0 {
 		return false
@@ -537,11 +540,12 @@ func isStackCheckpointKey(key string) bool {
 
 // Close implements io.Closer.
 func (w *postgresWriter) Close() error {
-	// Opt-in: store stack checkpoints as native JSONB for SQL-queryable state.
-	// Everything else (history, backups, meta.yaml, locks) stays in the legacy
-	// base64-wrapped JSON column. Rows are self-describing: exactly one of
-	// data / data_jsonb is populated, so readers never need the flag.
-	useJSONB := w.bucket.checkpointFormat == "jsonb" && isStackCheckpointKey(w.key)
+	// Opt-in: store uncompressed JSON state blobs (checkpoints, history,
+	// backups, locks) as native JSONB for SQL-queryable state. Everything else
+	// (meta.yaml, Pulumi.*.yaml, compressed .json.gz/.json.zst streams) stays
+	// in the legacy column. Rows are self-describing: exactly one of data /
+	// data_jsonb is populated, so readers never need the flag.
+	useJSONB := w.bucket.checkpointFormat == "jsonb" && isJSONStateKey(w.key)
 
 	if useJSONB {
 		// SECURITY: tableName is from connection string config, not user input - safe from SQL injection

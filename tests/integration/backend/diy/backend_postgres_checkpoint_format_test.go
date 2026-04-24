@@ -182,17 +182,18 @@ func TestPostgresBackendCheckpointFormatJSONB(t *testing.T) {
 	assert.Positive(t, ckptJSONB, "expected at least one checkpoint row in data_jsonb")
 	assert.Zero(t, ckptLegacy, "no .pulumi/stacks/<...>.json row should still be in data")
 
-	// Nothing outside .pulumi/stacks/ should land in data_jsonb. Copies of
-	// checkpoints (e.g. .json.bak) live under .pulumi/stacks/ and inherit
-	// the source row's format by design — that's why the exclusion matches
-	// on path prefix rather than filename suffix.
+	// Every row in data_jsonb must live under `.pulumi/` — meaning it's a
+	// checkpoint, history entry, backup, lock, or Copy-derived sibling like
+	// `.json.bak` that inherited format from its jsonb source row. A row
+	// outside `.pulumi/` in data_jsonb would indicate the write-path gate
+	// leaked to a non-state blob.
 	var leaked int
 	//nolint:gosec // tableName is test-controlled
 	q = fmt.Sprintf(
-		"SELECT count(*) FROM %s WHERE data_jsonb IS NOT NULL AND key NOT LIKE '%%.pulumi/stacks/%%'",
+		"SELECT count(*) FROM %s WHERE data_jsonb IS NOT NULL AND key NOT LIKE '%%.pulumi/%%'",
 		f.tableName)
 	require.NoError(t, db.QueryRowContext(t.Context(), q).Scan(&leaked))
-	assert.Zero(t, leaked, "only keys under .pulumi/stacks/ should use data_jsonb")
+	assert.Zero(t, leaked, "only keys under `.pulumi/` should use data_jsonb")
 }
 
 // TestPostgresBackendCheckpointQueryable verifies the stored JSONB actually

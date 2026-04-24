@@ -40,15 +40,15 @@ WHERE data_jsonb @> '{"checkpoint":{"latest":{"resources":[{"type":"aws:s3/bucke
 ```
 
 Notes:
-- Secret values inside the checkpoint remain encrypted with `PULUMI_CONFIG_PASSPHRASE` — same trust model as the local-file backend.
+- Secret values inside the checkpoint stay encrypted by whichever secrets provider the stack is configured to use (`passphrase`, cloud KMS, HashiCorp Vault, etc.) — same trust model as the local-file backend.
 - Rows are self-describing: exactly one of `data` / `data_jsonb` is populated. The flag controls writes only, so enabling, disabling, or running mixed writers against the same table is always safe.
-- Only stack checkpoints (`.pulumi/stacks/*.json`) use JSONB when the flag is on. History, backups, `meta.yaml`, and locks always use the legacy format.
+- All uncompressed JSON state blobs under `.pulumi/` — checkpoints, history entries, backups, and locks — use JSONB when the flag is on. Non-JSON blobs (`meta.yaml`, `Pulumi.<stack>.yaml`) and compressed variants (`.json.gz`, `.json.zst`) always use the legacy column.
 - Existing rows are not migrated; the next write rewrites that row in the new format. To migrate eagerly:
   ```sql
   UPDATE pulumi_state
   SET data_jsonb = convert_from(decode(data->>'data', 'base64'), 'UTF8')::jsonb,
       data = NULL
-  WHERE key LIKE '.pulumi/stacks/%' AND data_jsonb IS NULL;
+  WHERE key LIKE '%.pulumi/%' AND key LIKE '%.json' AND data_jsonb IS NULL;
   ```
 
 ## PostgreSQL Connection Parameters
