@@ -546,3 +546,74 @@ func TestRunSummary_WritesIndentedJSON(t *testing.T) {
 	assert.True(t, strings.Contains(out.String(), "\n  \""),
 		"expected indented JSON, got: %s", out.String())
 }
+
+func TestRunSummary_ComposesWithChangesOnlyFilter(t *testing.T) {
+	t.Parallel()
+
+	// Exercise the documented pipeline: `pulumi up --json | filter --changes-only | summary`.
+	// Everything that isn't carried by an OpSame event should survive. There is one known
+	// limitation: the root-stack `ResOutputsEvent` is typically emitted with `Op=OpSame`
+	// (the stack itself didn't change even when children did) and carries the stack's
+	// outputs. `--changes-only` drops that event, so the `Outputs` field ends up empty.
+	// This test pins both the happy path *and* the limitation so we notice if either moves.
+	events := []apitype.EngineEvent{
+		{Timestamp: 1000, PreludeEvent: &apitype.PreludeEvent{
+			Config: map[string]string{"proj:region": "us-west-2"},
+		}},
+		{Timestamp: 1010, ResOutputsEvent: &apitype.ResOutputsEvent{
+			Metadata: apitype.StepEventMetadata{
+				Op: apitype.OpCreate, URN: "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b",
+				Type: "aws:s3/bucket:Bucket",
+			},
+		}},
+		{Timestamp: 1020, DiagnosticEvent: &apitype.DiagnosticEvent{
+			URN:     "urn:pulumi:dev::proj::aws:s3/bucket:Bucket::b",
+			Message: "provisioning bucket", Severity: "info",
+		}},
+		// Root-stack OpSame event: dropped by `--changes-only`, so the outputs carried here
+		// never reach summary.
+		{Timestamp: 1030, ResOutputsEvent: &apitype.ResOutputsEvent{
+			Metadata: apitype.StepEventMetadata{
+				Op:   apitype.OpSame,
+				URN:  rootStackURN,
+				Type: string(tokens.RootStackType),
+				New:  &apitype.StepEventStateMetadata{Outputs: map[string]any{"bucketName": "b"}},
+			},
+		}},
+		{Timestamp: 1040, SummaryEvent: &apitype.SummaryEvent{
+			DurationSeconds: 30,
+			ResourceChanges: map[apitype.OpType]int{apitype.OpCreate: 1, apitype.OpSame: 1},
+		}},
+	}
+
+	// Pipe through filter, then summary — verbatim what a user would do at the shell.
+	var filtered bytes.Buffer
+	require.NoError(t, runChangesOnly(encodeStream(t, events), &filtered))
+	var out bytes.Buffer
+	require.NoError(t, runSummary(&filtered, &out))
+
+	var got display.EventSummary
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+
+	// Everything that doesn't ride on an OpSame event survives the pipe.
+	assert.True(t, got.Completed, "SummaryEvent is a non-resource event — passes through the filter")
+	assert.False(t, got.Failed)
+	assert.Equal(t, map[string]string{"proj:region": "us-west-2"}, got.Config,
+		"PreludeEvent passes through the filter untouched")
+	assert.Equal(t, 30*time.Second, got.Duration)
+	assert.Equal(t, display.ResourceChanges{
+		display.StepOp(apitype.OpCreate): 1,
+		display.StepOp(apitype.OpSame):   1,
+	}, got.ChangeSummary, "change counts come from SummaryEvent and are not touched by the filter")
+	require.Len(t, got.Steps, 1, "non-OpSame steps survive the pipe")
+	assert.Equal(t, apitype.OpCreate, got.Steps[0].Op)
+	require.Len(t, got.Diagnostics, 1, "DiagnosticEvents are non-resource and pass through the filter")
+	assert.Equal(t, 1000, got.StartTime)
+	assert.Equal(t, 1040, got.EndTime)
+
+	// KNOWN LIMITATION: the root-stack OpSame event gets dropped by `--changes-only`, so
+	// the stack outputs never reach summary. Consumers that want outputs should pipe
+	// `pulumi up --json | summary` directly, without `filter --changes-only` in between.
+	assert.Empty(t, got.Outputs,
+		"root-stack OpSame event is dropped by --changes-only, so summary can't recover stack outputs")
+}
