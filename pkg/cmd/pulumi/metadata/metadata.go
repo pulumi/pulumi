@@ -234,14 +234,14 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 	}
 	env[backend.ExecutionKind] = execKind
 	if execAgent == "" {
-		execAgent = detectAIAgent(os.Getenv)
+		execAgent = DetectAIAgent(os.Getenv)
 	}
 	if execAgent != "" {
 		env[backend.ExecutionAgent] = execAgent
 	}
 }
 
-func detectAIAgent(getEnv func(string) string) string {
+func DetectAIAgent(getEnv func(string) string) string {
 	normalized := func(agent string) string {
 		agent = strings.TrimSpace(strings.ToLower(agent))
 		switch agent {

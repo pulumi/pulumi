@@ -15,17 +15,33 @@
 package packagecmd
 
 import (
+	"os"
+
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/spf13/cobra"
 )
 
 func NewPackageCmd() *cobra.Command {
+	long := `Work with Pulumi packages
+
+Install and configure Pulumi packages and their plugins and SDKs.`
+
+	if metadata.DetectAIAgent(os.Getenv) != "" {
+		long += "\n\n[Agent guidance]\n" +
+			"  Use `pulumi cloud api` to query the registry. Common routes:\n" +
+			"    Search packages:  /api/registry/packages?search={query}\n" +
+			"    List versions:    /api/registry/packages/{source}/{publisher}/{name}/versions\n" +
+			"    Readme:           /api/registry/packages/{source}/{publisher}/{name}/versions/{version}/readme\n" +
+			"    Nav (resources):  /api/registry/packages/{source}/{publisher}/{name}/versions/{version}/nav\n" +
+			"    Resource docs:    /api/registry/packages/{source}/{publisher}/{name}/versions/{version}/docs/{token}\n" +
+			"  {version} can be `latest`. Set `Accept: text/markdown` or `application/json`."
+	}
+
 	cmd := &cobra.Command{
 		Use:   "package",
 		Short: "Work with Pulumi packages",
-		Long: `Work with Pulumi packages
-
-Install and configure Pulumi packages and their plugins and SDKs.`,
+		Long:  long,
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)

@@ -473,7 +473,7 @@ func TestDetectAIAgent(t *testing.T) {
 			getEnv := func(key string) string {
 				return tt.env[key]
 			}
-			assert.Equal(t, tt.want, detectAIAgent(getEnv))
+			assert.Equal(t, tt.want, DetectAIAgent(getEnv))
 		})
 	}
 }
