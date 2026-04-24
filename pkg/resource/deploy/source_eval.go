@@ -2819,8 +2819,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			AdditionalSecretOutputs: additionalSecretOutputs,
 			DeletedWith:             deletedWith,
 			ReplaceWith:             replaceWith,
-			IgnoreChanges:           resource.GlobsToStrings(ignoreChanges),
-			ReplaceOnChanges:        resource.GlobsToStrings(replaceOnChanges),
+			IgnoreChanges:           globsToStrings(ignoreChanges),
+			ReplaceOnChanges:        globsToStrings(replaceOnChanges),
 			ReplacementTrigger:      replacementTrigger,
 			RetainOnDelete:          retainOnDelete,
 			ResourceHooks:           resourceHooks,
@@ -3421,4 +3421,23 @@ func addOutputDependencies(deps mapset.Set[resource.URN], v resource.PropertyVal
 	if v.IsSecret() {
 		addOutputDependencies(deps, v.SecretValue().Element)
 	}
+}
+
+// GlobsToStrings renders each [property.Glob] in globs to its canonical string form. The
+// zero-value glob is rendered as the empty string.
+func globsToStrings(globs []property.Glob) []string {
+	if len(globs) == 0 {
+		return nil
+	}
+	out := make([]string, len(globs))
+	for i, g := range globs {
+		if g == (property.Glob{}) {
+			out[i] = ""
+			continue
+		}
+		b, err := g.MarshalText()
+		contract.AssertNoErrorf(err, "non-empty glob should always marshal")
+		out[i] = string(b)
+	}
+	return out
 }

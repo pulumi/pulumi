@@ -42,15 +42,14 @@ func init() {
 
 					receiverIgnore := RequireSingleNamedResource(l, snap.Resources, "receiverIgnore")
 					assert.Equal(l, []property.Glob{
-						property.GlobFromSegments(
-							property.NewSegment("details"), property.NewSegment(0), property.NewSegment("key")),
+						property.MustParseGlob("details[0].key"),
 					}, receiverIgnore.IgnoreChanges)
 
 					mapIgnore := RequireSingleNamedResource(l, snap.Resources, "mapIgnore")
 					assert.Equal(l, []property.Glob{
-						property.GlobFromSegments(property.NewSegment("tags"), property.NewSegment("env")),
-						property.GlobFromSegments(property.NewSegment("tags"), property.NewSegment("with.dot")),
-						property.GlobFromSegments(property.NewSegment("tags"), property.NewSegment(`with escaped "`)),
+						property.MustParseGlob("tags.env"),
+						property.MustParseGlob(`tags["with.dot"]`),
+						property.MustParseGlob(`tags["with escaped \""]`),
 					}, mapIgnore.IgnoreChanges)
 
 					noIgnore := RequireSingleNamedResource(l, snap.Resources, "noIgnore")

@@ -1286,7 +1286,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 			Properties: inputs,
 			Options: plugin.AnalyzerResourceOptions{
 				Protect:                 new.Protect,
-				IgnoreChanges:           resource.GlobsToStrings(goal.IgnoreChanges),
+				IgnoreChanges:           globsToStrings(goal.IgnoreChanges),
 				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
 				Aliases:                 new.GetAliases(),
@@ -2753,7 +2753,7 @@ func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldO
 		OldOutputs:    oldOutputs,
 		NewInputs:     newInputs,
 		AllowUnknowns: allowUnknowns,
-		IgnoreChanges: resource.GlobsToStrings(ignoreChanges),
+		IgnoreChanges: globsToStrings(ignoreChanges),
 	})
 	if err != nil {
 		return diff, err
@@ -3155,7 +3155,7 @@ func (sg *stepGenerator) analyzeAll(
 		Properties: inputs,
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 new.Protect,
-			IgnoreChanges:           resource.GlobsToStrings(goal.IgnoreChanges),
+			IgnoreChanges:           globsToStrings(goal.IgnoreChanges),
 			DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 			AdditionalSecretOutputs: new.AdditionalSecretOutputs,
 			Aliases:                 new.GetAliases(),
@@ -3210,7 +3210,7 @@ func (sg *stepGenerator) AnalyzeResources() error {
 					Properties: v.Outputs,
 					Options: plugin.AnalyzerResourceOptions{
 						Protect:                 v.Protect,
-						IgnoreChanges:           resource.GlobsToStrings(v.IgnoreChanges),
+						IgnoreChanges:           globsToStrings(v.IgnoreChanges),
 						DeleteBeforeReplace:     deleteBeforeReplace,
 						AdditionalSecretOutputs: v.AdditionalSecretOutputs,
 						Aliases:                 v.GetAliases(),

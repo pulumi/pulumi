@@ -28,12 +28,12 @@ func resourceOptionsFromState(state *resource.State) *pulumirpc.ResourceOptions 
 
 	resourceOptions := &pulumirpc.ResourceOptions{
 		DependsOn:        urnsToStrings(state.Dependencies),
-		IgnoreChanges:    resource.GlobsToStrings(state.IgnoreChanges),
-		ReplaceOnChanges: resource.GlobsToStrings(state.ReplaceOnChanges),
+		IgnoreChanges:    globsToStrings(state.IgnoreChanges),
+		ReplaceOnChanges: globsToStrings(state.ReplaceOnChanges),
 		Provider:         state.Provider,
 		DeletedWith:      string(state.DeletedWith),
 		Import:           string(state.ImportID),
-		HideDiff:         resource.GlobsToStrings(state.HideDiff),
+		HideDiff:         globsToStrings(state.HideDiff),
 		ReplaceWith:      urnsToStrings(state.ReplaceWith),
 		Hooks:            hookBindingsToProto(state.ResourceHooks),
 		Parent:           string(state.Parent),

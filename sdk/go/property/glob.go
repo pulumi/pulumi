@@ -32,6 +32,17 @@ func GlobFromSegments(segments ...GlobSegment) Glob {
 	return Glob{pathReprFromSegments(segments)}
 }
 
+// MustParseGlob parses text into a [Glob], panicking on parse errors.
+//
+// It is intended for tests and other contexts where the input is a known-good literal.
+func MustParseGlob(text string) Glob {
+	var g Glob
+	if err := g.UnmarshalText([]byte(text)); err != nil {
+		panic(err)
+	}
+	return g
+}
+
 var (
 	_ encoding.TextMarshaler   = Glob{}
 	_ encoding.TextUnmarshaler = &Glob{}

@@ -193,6 +193,24 @@ func TestGlobEncoding(t *testing.T) {
 	})
 }
 
+func TestMustParseGlob(t *testing.T) {
+	t.Parallel()
+
+	t.Run("parses", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t,
+			GlobFromSegments(KeySegment{"x"}, Splat),
+			MustParseGlob("x.*"))
+	})
+
+	t.Run("panics", func(t *testing.T) {
+		t.Parallel()
+		assert.PanicsWithError(t, "cannot unmarshal an empty property path", func() {
+			MustParseGlob("")
+		})
+	})
+}
+
 func TestMatches(t *testing.T) {
 	t.Parallel()
 

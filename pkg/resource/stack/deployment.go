@@ -554,12 +554,14 @@ func SerializeResource(
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
 		StackTrace:              stackTrace,
-		HideDiff:                resource.GlobsToBackCompats(res.HideDiff),
-		IgnoreChanges:           resource.BackCompatPropertyPathList(res.IgnoreChanges),
-		ReplaceOnChanges:        resource.BackCompatPropertyPathList(res.ReplaceOnChanges),
-		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
-		ViewOf:                  res.ViewOf,
-		ResourceHooks:           res.ResourceHooks,
+		HideDiff: slice.Map(res.HideDiff, func(g property.Glob) resource.BackCompatPropertyPath {
+			return resource.BackCompatPropertyPath(g)
+		}),
+		IgnoreChanges:       resource.BackCompatPropertyPathList(res.IgnoreChanges),
+		ReplaceOnChanges:    resource.BackCompatPropertyPathList(res.ReplaceOnChanges),
+		RefreshBeforeUpdate: res.RefreshBeforeUpdate,
+		ViewOf:              res.ViewOf,
+		ResourceHooks:       res.ResourceHooks,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -785,12 +787,14 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			SourcePosition:          res.SourcePosition,
 			StackTrace:              stackTrace,
 			IgnoreChanges:           []property.Glob(res.IgnoreChanges),
-			HideDiff:                resource.BackCompatsToGlobs(res.HideDiff),
-			ReplaceOnChanges:        []property.Glob(res.ReplaceOnChanges),
-			ReplacementTrigger:      trigger,
-			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
-			ViewOf:                  res.ViewOf,
-			ResourceHooks:           res.ResourceHooks,
+			HideDiff: slice.Map(res.HideDiff, func(p resource.BackCompatPropertyPath) property.Glob {
+				return property.Glob(p)
+			}),
+			ReplaceOnChanges:    []property.Glob(res.ReplaceOnChanges),
+			ReplacementTrigger:  trigger,
+			RefreshBeforeUpdate: res.RefreshBeforeUpdate,
+			ViewOf:              res.ViewOf,
+			ResourceHooks:       res.ResourceHooks,
 		}.Make(),
 		nil
 }

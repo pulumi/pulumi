@@ -979,7 +979,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					OldOutputs:            s.old.Outputs,
 					NewInputs:             s.new.Inputs,
 					Timeout:               s.new.CustomTimeouts.Update,
-					IgnoreChanges:         resource.GlobsToStrings(s.ignoreChanges),
+					IgnoreChanges:         globsToStrings(s.ignoreChanges),
 					Preview:               s.deployment.opts.DryRun,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,

@@ -32,4 +32,5 @@ func TestResourceV3DeserializeInvalidIgnoreChangesPath(t *testing.T) {
 
 	var r ResourceV3
 	require.NoError(t, json.Unmarshal(data, &r))
+	require.Empty(t, r.IgnoreChanges)
 }

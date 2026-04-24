@@ -634,8 +634,8 @@ func (rp *ResourcePlan) checkGoal(
 
 	// Check that the ignoreChanges sets are identical.
 	if message, changed := rp.diffStringSets(
-		resource.GlobsToStrings(rp.Goal.IgnoreChanges),
-		resource.GlobsToStrings(programGoal.IgnoreChanges),
+		globsToStrings(rp.Goal.IgnoreChanges),
+		globsToStrings(programGoal.IgnoreChanges),
 	); changed {
 		return fmt.Errorf("ignoreChanges changed: %v", message)
 	}
