@@ -1,0 +1,9 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: |
+    Add a typed `APIVersion` capability constant and `APIVersionCapabilityConfig` struct to
+    `apitype`, plus `Parse()` handling to populate a new `Capabilities.APIVersion` field. This
+    lets clients discover the REST API version range (negotiated via the
+    `Accept: application/vnd.pulumi+N` header) that a Pulumi service advertises via
+    `/api/capabilities`. Older servers that do not emit this capability yield `APIVersion: nil`.
