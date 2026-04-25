@@ -770,10 +770,11 @@ func (g *generator) resourceTypeName(r *pcl.Resource) (string, hcl.Diagnostics) 
 
 	// Normalize module.
 	if r.Schema != nil {
-		// Use the schema's original token (not the binder's canonical form) so that
-		// TokenToModule gets the full module path (e.g. "iam/policy") that the package's
-		// moduleFormat regex expects, rather than the already-stripped canonical form.
-		module = r.Schema.PackageReference.TokenToModule(r.Schema.Token)
+		// pulumi:pulumi:* resources (e.g. StackReference) belong to the root of the
+		// package, not a "pulumi" submodule.
+		if r.Schema.PackageReference.Name() == "pulumi" && module == "pulumi" {
+			module = ""
+		}
 		pkg, err := r.Schema.PackageReference.Definition()
 		if err != nil {
 			diagnostics = append(diagnostics, &hcl.Diagnostic{

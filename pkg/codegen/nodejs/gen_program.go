@@ -1064,10 +1064,7 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 	pkg, module, member, diagnostics := pcl.DecomposeToken(r.GetToken())
 
 	if r.Schema != nil {
-		// Use the schema's original token (not the binder's canonical form) so that
-		// TokenToModule gets the full module path (e.g. "iam/policy") that the package's
-		// moduleFormat regex expects, rather than the already-stripped canonical form.
-		module = moduleName(r.Schema.PackageReference.TokenToModule(r.Schema.Token), r.Schema.PackageReference)
+		module = moduleName(module, r.Schema.PackageReference)
 	}
 
 	return pkg, module, title(member), diagnostics
@@ -1081,6 +1078,11 @@ func moduleName(module string, pkg schema.PackageReference) string {
 			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
 				module = m
 			}
+		}
+		// pulumi:pulumi:* resources (e.g. StackReference) belong to the root of the
+		// package, not a "pulumi" submodule.
+		if pkg.Name() == "pulumi" && module == "pulumi" {
+			return ""
 		}
 	}
 	if module == "index" {
