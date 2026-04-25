@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -350,7 +351,7 @@ func runConvert(
 	loader := schema.NewPluginLoader(pCtx.Host)
 
 	baseMapper, err := convert.NewBasePluginMapper(
-		convert.DefaultWorkspace(),
+		pluginstorage.Instance,
 		from, /*conversionKey*/
 		convert.ProviderFactoryFromHost(ctx, pCtx.Host),
 		installPlugin,

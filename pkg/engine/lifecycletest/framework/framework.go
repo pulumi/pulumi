@@ -135,6 +135,10 @@ func (NopPluginManager) InstallPlugin(
 	return nil
 }
 
+func (NopPluginManager) GetPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
+	return []workspace.PluginInfo{}, nil
+}
+
 func NewUpdateInfo(project workspace.Project, target deploy.Target) engine.UpdateInfo {
 	return engine.UpdateInfo{
 		// The tests run in-memory, so we don't have a real root. Just pretend we're at the filesystem root.
