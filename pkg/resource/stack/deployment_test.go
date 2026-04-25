@@ -758,8 +758,8 @@ func TestDeserializePropertyValue(t *testing.T) {
 	})
 }
 
-func wireValue(v resource.PropertyValue) (any, error) {
-	object, err := SerializePropertyValue(context.Background(), v, config.NopEncrypter, false)
+func wireValue(ctx context.Context, v resource.PropertyValue) (any, error) {
+	object, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
 	if err != nil {
 		return nil, err
 	}
@@ -782,7 +782,7 @@ func TestPropertyValueSchema(t *testing.T) {
 
 	//nolint:paralleltest // uses rapid.T not golang testing.T
 	t.Run("serialized", rapid.MakeCheck(func(t *rapid.T) {
-		wireObject, err := wireValue(resource_testing.PropertyValueGenerator(6).Draw(t, "property value"))
+		wireObject, err := wireValue(t.Context(), resource_testing.PropertyValueGenerator(6).Draw(t, "property value"))
 		require.NoError(t, err)
 
 		err = propertyValueSchema.Validate(wireObject)
@@ -830,7 +830,7 @@ func TestRoundTripPropertyValue(t *testing.T) {
 
 	rapid.Check(t, func(t *rapid.T) {
 		original := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
-		wireObject, err := wireValue(original)
+		wireObject, err := wireValue(t.Context(), original)
 		require.NoError(t, err)
 
 		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter)

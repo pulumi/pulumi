@@ -85,8 +85,8 @@ func waitOut(t *testing.T, output pulumi.Output) interface{} {
 	return result
 }
 
-func waitOutput(output pulumi.Output, timeout time.Duration) (interface{}, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func waitOutput(t *testing.T, output pulumi.Output, timeout time.Duration) (interface{}, error) {
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	ch := make(chan interface{})

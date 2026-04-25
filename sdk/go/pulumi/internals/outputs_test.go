@@ -15,7 +15,6 @@
 package internals
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -24,8 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func await(out pulumi.Output) (any, bool, bool, []pulumi.Resource, error) {
-	result, err := UnsafeAwaitOutput(context.Background(), out)
+func await(t *testing.T, out pulumi.Output) (any, bool, bool, []pulumi.Resource, error) {
+	result, err := UnsafeAwaitOutput(t.Context(), out)
 
 	return result.Value, result.Known, result.Secret, result.Dependencies, err
 }
@@ -45,7 +44,7 @@ func TestBasicOutputs(t *testing.T) {
 		go func() {
 			resolve(42)
 		}()
-		v, known, secret, deps, err := await(out)
+		v, known, secret, deps, err := await(t, out)
 		require.NoError(t, err)
 		assert.True(t, known)
 		assert.False(t, secret)
@@ -58,7 +57,7 @@ func TestBasicOutputs(t *testing.T) {
 		go func() {
 			reject(errors.New("boom"))
 		}()
-		v, _, _, _, err := await(out)
+		v, _, _, _, err := await(t, out)
 		assert.EqualError(t, err, "boom")
 		assert.Nil(t, v)
 	}
