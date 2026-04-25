@@ -173,7 +173,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 
 		// Runs a random sequence of actions from the
 		// map of actions.
-		t.Run(map[string]func(*rapid.T){
+		t.Repeat(map[string]func(*rapid.T){
 			"enqueue": func(t *rapid.T) {
 				pending.Add(1)
 
