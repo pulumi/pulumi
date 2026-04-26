@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,6 +64,8 @@ func ToResourcePropertyValue(v property.Value) PropertyValue {
 		ref := v.AsResourceReference()
 		r = NewProperty(ResourceReference{
 			URN:            ref.URN,
+			Name:           ref.Name,
+			Type:           ref.Type,
 			ID:             ToResourcePropertyValue(ref.ID),
 			PackageVersion: ref.PackageVersion,
 		})
@@ -135,6 +137,8 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 
 		return property.New(property.ResourceReference{
 			URN:            r.URN,
+			Name:           r.Name,
+			Type:           r.Type,
 			ID:             FromResourcePropertyValue(r.ID),
 			PackageVersion: r.PackageVersion,
 		})
@@ -169,4 +173,39 @@ func FromResourcePropertyValue(v PropertyValue) property.Value {
 		contract.Failf("Unknown property value type %T", v.V)
 		return property.Value{}
 	}
+}
+
+func FromResourcePropertyPath(path PropertyPath) property.Glob {
+	var dst []property.GlobSegment
+	for _, s := range path {
+		switch s := s.(type) {
+		case int:
+			dst = append(dst, property.NewSegment(s))
+		case string:
+			if s == "*" {
+				dst = append(dst, property.Splat)
+			} else {
+				dst = append(dst, property.NewSegment(s))
+			}
+		}
+	}
+	return property.GlobFromSegments(dst...)
+}
+
+func ToResourcePropertyPath(path property.Glob) PropertyPath {
+	if path == (property.Glob{}) {
+		return nil
+	}
+	var dst PropertyPath
+	for s := range path.Segments {
+		switch s := s.(type) {
+		case property.IndexSegment:
+			dst = append(dst, s.Index())
+		case property.KeySegment:
+			dst = append(dst, s.Key())
+		case property.SplatSegment:
+			dst = append(dst, "*")
+		}
+	}
+	return dst
 }

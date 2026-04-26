@@ -16,6 +16,7 @@ package perf
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -25,6 +26,20 @@ import (
 )
 
 // TODO: add tests using other languages https://github.com/pulumi/pulumi/issues/17669
+
+func otelTracesEndpoint(t *testing.T) string {
+	t.Helper()
+	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if endpoint == "" {
+		t.Log("OTEL_EXPORTER_OTLP_ENDPOINT not set, traces will not be sent")
+		return ""
+	}
+	return endpoint
+}
+
+func otelResourceEnv(t *testing.T) []string {
+	return []string{"OTEL_RESOURCE_ATTRIBUTES=test.name=" + t.Name()}
+}
 
 //nolint:paralleltest // Do not run in parallel to avoid resource contention
 func TestPerfEmptyUpdate(t *testing.T) {
@@ -43,6 +58,8 @@ func TestPerfEmptyUpdate(t *testing.T) {
 		Quick:       true,
 		ReportStats: benchmarkEnforcer,
 		CloudURL:    integration.MakeTempBackend(t),
+		OtelTraces:  otelTracesEndpoint(t),
+		Env:         otelResourceEnv(t),
 	})
 }
 
@@ -63,6 +80,8 @@ func TestPerfManyComponentUpdate(t *testing.T) {
 		Quick:       true,
 		ReportStats: benchmarkEnforcer,
 		CloudURL:    integration.MakeTempBackend(t),
+		OtelTraces:  otelTracesEndpoint(t),
+		Env:         otelResourceEnv(t),
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -86,6 +105,8 @@ func TestPerfParentChainUpdate(t *testing.T) {
 		Quick:       true,
 		ReportStats: benchmarkEnforcer,
 		CloudURL:    integration.MakeTempBackend(t),
+		OtelTraces:  otelTracesEndpoint(t),
+		Env:         otelResourceEnv(t),
 		LocalProviders: []integration.LocalDependency{
 			{Package: "testprovider", Path: filepath.Join("..", "testprovider")},
 		},
@@ -110,6 +131,8 @@ func TestPerfSecretsBatchUpdate(t *testing.T) {
 		Quick:          false,
 		RequireService: true,
 		ReportStats:    benchmarkEnforcer,
+		OtelTraces:     otelTracesEndpoint(t),
+		Env:            otelResourceEnv(t),
 	})
 }
 
@@ -131,6 +154,8 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 		},
 		Quick:          true,
 		RequireService: true,
+		OtelTraces:     otelTracesEndpoint(t),
+		Env:            otelResourceEnv(t),
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			// Get the fully qualified stack for the above stack, so we can reference it in the benchmark below.
 			organizationName := stack.Outputs["organization"].(string)
@@ -151,6 +176,8 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 				Quick:          false,
 				RequireService: true,
 				ReportStats:    benchmarkEnforcer,
+				OtelTraces:     otelTracesEndpoint(t),
+				Env:            otelResourceEnv(t),
 			})
 		},
 	})
@@ -172,6 +199,8 @@ func TestPerfManyResourcesWithJournaling(t *testing.T) {
 		ReportStats:      initialBenchmark,
 		SkipPreview:      true,
 		DestroyOnCleanup: true,
+		OtelTraces:       otelTracesEndpoint(t),
+		Env:              otelResourceEnv(t),
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			require.Greater(t, len(stack.Deployment.Resources), 2000)
 		},

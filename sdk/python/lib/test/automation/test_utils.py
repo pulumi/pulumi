@@ -1,4 +1,4 @@
-# Copyright 2016-2022, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,31 @@
 
 import os
 import uuid
+from contextlib import contextmanager
 
-from pulumi.automation import fully_qualified_stack_name
+from pulumi.automation import Stack, fully_qualified_stack_name
+
+
+@contextmanager
+def stack_cleanup(stack: Stack, destroy: bool = True):
+    """Context manager that ensures a stack is destroyed and removed after use.
+
+    Usage:
+        stack = create_stack(stack_name, work_dir=work_dir)
+        with stack_cleanup(stack):
+            stack.up()
+            # ... assertions ...
+
+    Set destroy=False to skip the destroy step.
+    """
+    try:
+        yield stack
+    finally:
+        try:
+            if destroy:
+                stack.destroy()
+        finally:
+            stack.workspace.remove_stack(stack.name, force=True)
 
 
 def get_test_org():

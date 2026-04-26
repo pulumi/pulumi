@@ -1,0 +1,315 @@
+{
+    "version": 1,
+    "scopes": [
+        {
+            "path": [],
+            "propagate": true,
+            "flags": {
+                "non-interactive": { "omit": true },
+                "yes": { "omit": true, "preset": true },
+                "cwd": { "omit": true },
+                "emoji": { "omit": true }
+            }
+        },
+        {
+            "path": ["env"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["about"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "color": { "preset": "never", "omit": false }
+            }
+        },
+        {
+            "path": ["up"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "skip-preview": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["refresh"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "skip-preview": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["destroy"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "skip-preview": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["import"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "skip-preview": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["stack", "ls"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["stack", "output"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["stack", "history"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["stack", "tag", "ls"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "get"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "set-all"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "env", "ls"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["config", "refresh"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "force": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["whoami"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["plugin", "ls"],
+            "propagate": false,
+            "exclude": true,
+            "flags": {
+                "json": { "omit": true, "preset": true }
+            }
+        },
+        {
+            "path": ["ai"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["console"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["convert"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["convert-trace"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["deployment"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["gen-completion"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["gen-markdown"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["generate-cli-spec"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["help"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["install"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["login"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["logout"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["logs"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["new"],
+            "propagate": true,
+            "flags": {}
+        },
+        {
+            "path": ["org"],
+            "propagate": true,
+            "flags": {}
+        },
+        {
+            "path": ["package"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["plugin"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["policy"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["preview"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["project"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["replay-events"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["schema"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["stack"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["state"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["template"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["version"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["view-trace"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
+            "path": ["watch"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        }
+    ]
+}

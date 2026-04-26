@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), nil /* args */)
+	err := cmd.Run(t.Context(), nil /* args */)
 	assert.ErrorContains(t, err, "stack dev uses the mock backend: mock does not support --teams")
 }
 

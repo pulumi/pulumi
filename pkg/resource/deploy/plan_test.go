@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -463,8 +464,8 @@ func TestResourcePlan(t *testing.T) {
 				t.Parallel()
 				rp := &ResourcePlan{
 					Goal: &GoalPlan{
-						IgnoreChanges: []string{
-							"foo",
+						IgnoreChanges: []property.Glob{
+							property.MustParseGlob("foo"),
 						},
 					},
 				}
@@ -472,8 +473,8 @@ func TestResourcePlan(t *testing.T) {
 					resource.PropertyMap{},
 					resource.PropertyMap{},
 					&resource.Goal{
-						IgnoreChanges: []string{
-							"bar",
+						IgnoreChanges: []property.Glob{
+							property.MustParseGlob("bar"),
 						},
 					})
 				assert.ErrorContains(t, err, "ignoreChanges changed")

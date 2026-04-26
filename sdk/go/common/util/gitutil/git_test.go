@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package gitutil
 
 import (
-	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -459,6 +458,9 @@ func TestParseAuthURL(t *testing.T) {
 	t.Run("with no auth", func(t *testing.T) {
 		t.Setenv("GITHUB_TOKEN", "")
 		t.Setenv("GITLAB_TOKEN", "")
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "")
+		t.Setenv("BITBUCKET_TOKEN", "")
+		t.Setenv("GENERIC_VCS_TOKEN", "")
 
 		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
 		require.NoError(t, err)
@@ -512,6 +514,58 @@ func TestParseAuthURL(t *testing.T) {
 		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
 		require.NoError(t, err)
 		assert.Nil(t, auth)
+	})
+
+	t.Run("with AZURE_DEV_OPS_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		_, auth, err := getAuthForURL("http://dev.azure.com/org/project/_git/repo")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+
+		// Also works with legacy visualstudio.com URLs.
+		_, auth, err = getAuthForURL("http://org.visualstudio.com/project/_git/repo")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+
+		// Does not leak to non-ADO URLs.
+		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with BITBUCKET_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("BITBUCKET_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		_, auth, err := getAuthForURL("http://bitbucket.org/team/repo")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-token-auth", Password: "token-1"}, auth)
+
+		// Does not leak to non-Bitbucket URLs.
+		_, auth, err = getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Nil(t, auth)
+	})
+
+	t.Run("with GENERIC_VCS_TOKEN set in environment", func(t *testing.T) {
+		t.Setenv("GENERIC_VCS_TOKEN", "token-1")
+		t.Setenv("GITHUB_TOKEN", "")
+		t.Setenv("GITLAB_TOKEN", "")
+		t.Setenv("AZURE_DEV_OPS_TOKEN", "")
+		t.Setenv("BITBUCKET_TOKEN", "")
+
+		// Generic token is used as a fallback for unknown hosts.
+		_, auth, err := getAuthForURL("http://git.example.com/org/repo")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "token-1"}, auth)
+	})
+
+	t.Run("provider-specific token takes precedence over GENERIC_VCS_TOKEN", func(t *testing.T) {
+		t.Setenv("GENERIC_VCS_TOKEN", "generic")
+		t.Setenv("GITHUB_TOKEN", "github")
+		_, auth, err := getAuthForURL("http://github.com/pulumi/templates")
+		require.NoError(t, err)
+		assert.Equal(t, &http.BasicAuth{Username: "x-access-token", Password: "github"}, auth)
 	})
 
 	t.Run("with GIT_USERNAME/GIT_PASSWORD set in environment", func(t *testing.T) {
@@ -649,7 +703,7 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 
 			dir := t.TempDir()
 
-			err := GitCloneAndCheckoutRevision(context.Background(), "testdata/revision-test.git", c.revision, dir)
+			err := GitCloneAndCheckoutRevision(t.Context(), "testdata/revision-test.git", c.revision, dir)
 			if c.expectedError != "" {
 				require.ErrorContains(t, err, c.expectedError)
 				return
@@ -662,6 +716,80 @@ func TestGitCloneAndCheckoutRevision(t *testing.T) {
 			assert.Equal(t, c.expectedContent, string(content))
 		})
 	}
+}
+
+func TestParseGitLsRemoteOutput(t *testing.T) {
+	t.Parallel()
+
+	t.Run("typical output", func(t *testing.T) {
+		t.Parallel()
+		output := "abc123def456abc123def456abc123def456abc1\tHEAD\n" +
+			"abc123def456abc123def456abc123def456abc1\trefs/heads/main\n" +
+			"def456abc123def456abc123def456abc123def4\trefs/tags/v1.0.0\n"
+
+		refs := parseGitLsRemoteOutput(output)
+		require.Len(t, refs, 3)
+
+		assert.Equal(t, plumbing.HEAD, refs[0].Name())
+		assert.Equal(t, plumbing.NewHash("abc123def456abc123def456abc123def456abc1"), refs[0].Hash())
+
+		assert.Equal(t, plumbing.ReferenceName("refs/heads/main"), refs[1].Name())
+		assert.Equal(t, plumbing.NewHash("abc123def456abc123def456abc123def456abc1"), refs[1].Hash())
+
+		assert.Equal(t, plumbing.ReferenceName("refs/tags/v1.0.0"), refs[2].Name())
+		assert.Equal(t, plumbing.NewHash("def456abc123def456abc123def456abc123def4"), refs[2].Hash())
+	})
+
+	t.Run("empty output", func(t *testing.T) {
+		t.Parallel()
+		refs := parseGitLsRemoteOutput("")
+		assert.Empty(t, refs)
+	})
+
+	t.Run("trailing newline", func(t *testing.T) {
+		t.Parallel()
+		output := "abc123def456abc123def456abc123def456abc1\trefs/heads/main\n\n"
+		refs := parseGitLsRemoteOutput(output)
+		require.Len(t, refs, 1)
+		assert.Equal(t, plumbing.ReferenceName("refs/heads/main"), refs[0].Name())
+	})
+
+	t.Run("with peeled tags", func(t *testing.T) {
+		t.Parallel()
+		output := "abc123def456abc123def456abc123def456abc1\trefs/tags/v1.0.0\n" +
+			"def456abc123def456abc123def456abc123def4\trefs/tags/v1.0.0^{}\n"
+		refs := parseGitLsRemoteOutput(output)
+		require.Len(t, refs, 2)
+		assert.Equal(t, plumbing.ReferenceName("refs/tags/v1.0.0"), refs[0].Name())
+		assert.Equal(t, plumbing.ReferenceName("refs/tags/v1.0.0^{}"), refs[1].Name())
+	})
+
+	t.Run("skips non-ref lines", func(t *testing.T) {
+		t.Parallel()
+		output := "From git@github.com:pulumi/pulumi.git\n" +
+			"abc123def456abc123def456abc123def456abc1\tHEAD\n"
+		refs := parseGitLsRemoteOutput(output)
+		require.Len(t, refs, 1)
+		assert.Equal(t, plumbing.HEAD, refs[0].Name())
+	})
+}
+
+func TestGitListRefsADODetection(t *testing.T) {
+	t.Parallel()
+
+	// Verify that ADO URLs are detected for system git routing.
+	// We can't easily test the actual system git call without network access,
+	// but we can verify the detection logic works.
+	adoURL := "https://dev.azure.com/org/project/_git/repo"
+	u, err := parseGitRepoURLParts(adoURL)
+	require.NoError(t, err)
+	assert.Equal(t, AzureDevOpsHostName, u.Hostname)
+
+	// Non-ADO URL should not match.
+	githubURL := "https://github.com/pulumi/pulumi.git"
+	u, err = parseGitRepoURLParts(githubURL)
+	require.NoError(t, err)
+	assert.NotEqual(t, AzureDevOpsHostName, u.Hostname)
 }
 
 func TestGetLatestTagOrHash(t *testing.T) {
@@ -691,7 +819,7 @@ func TestGetLatestTagOrHash(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			v, err := GetLatestTagOrHash(context.Background(), c.dataDir)
+			v, err := GetLatestTagOrHash(t.Context(), c.dataDir)
 			require.NoError(t, err)
 			assert.Equal(t, c.expected.String(), v.String())
 		})

@@ -1,10 +1,10 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -57,7 +57,7 @@ type GoalV1 struct {
 	// true if this resource should be deleted prior to replacement.
 	DeleteBeforeReplace *bool `json:"deleteBeforeReplace,omitempty"`
 	// a list of property names to ignore during changes.
-	IgnoreChanges []string `json:"ignoreChanges,omitempty"`
+	IgnoreChanges resource.BackCompatPropertyPathList `json:"ignoreChanges,omitempty"`
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey `json:"additionalSecretOutputs,omitempty"`
 	// additional URNs that should be aliased to this resource.

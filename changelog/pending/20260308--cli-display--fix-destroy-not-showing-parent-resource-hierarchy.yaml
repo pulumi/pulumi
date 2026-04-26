@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/display
-  description: Fix `pulumi destroy` not showing parent resource hierarchy

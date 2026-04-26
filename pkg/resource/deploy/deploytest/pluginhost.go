@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -189,13 +189,12 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
 	}
 	wrapper.handle = handle
-	conn, err := grpc.NewClient(
-		fmt.Sprintf("127.0.0.1:%v", handle.Port),
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
-		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(fmt.Sprintf("127.0.0.1:%v", handle.Port), dialOpts...)
 	if err != nil {
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %w", err)
@@ -218,13 +217,12 @@ func wrapAnalyzerWithGrpc(analyzer plugin.Analyzer) (plugin.Analyzer, io.Closer,
 		return nil, nil, fmt.Errorf("could not start policy analyzer service: %w", err)
 	}
 	wrapper.handle = handle
-	conn, err := grpc.NewClient(
-		fmt.Sprintf("127.0.0.1:%v", handle.Port),
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
-		grpc.WithStreamInterceptor(rpcutil.OpenTracingStreamClientInterceptor()),
 		rpcutil.GrpcChannelOptions(),
 	)
+	conn, err := grpc.NewClient(fmt.Sprintf("127.0.0.1:%v", handle.Port), dialOpts...)
 	if err != nil {
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to policy analyzer service: %w", err)

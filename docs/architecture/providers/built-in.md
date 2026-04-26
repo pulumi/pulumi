@@ -3,7 +3,7 @@
 
 The built-in provider is a special provider that is always available to Pulumi
 programs (see [](gh-file:pulumi#pkg/resource/deploy/builtins.go) for its
-definition and [](gh-file:pulumi#pkg/resource/deploy/deployment.go#L489) for its
+definition and [](gh-permalink:pulumi?34d2aa32b0a3e41a13e49d83ae48e498459ef96a#pkg/resource/deploy/deployment.go#L489) for its
 injection into deployments as part of the provider registry). It is used to
 manage resources and functionality that are core to the Pulumi programming
 model, such as [stack

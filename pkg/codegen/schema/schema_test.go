@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -613,6 +614,8 @@ func TestRejectDuplicateNames(t *testing.T) {
 }
 
 func TestImportResourceRef(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name       string
 		schemaFile string
@@ -672,24 +675,37 @@ func TestImportResourceRef(t *testing.T) {
 			},
 		},
 	}
+	testdataPath := filepath.Join("..", "testing", "test", "testdata")
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
+			t.Parallel()
 
 			// Read in, decode, and import the schema.
 			schemaBytes, err := os.ReadFile(
-				filepath.Join("..", "testing", "test", "testdata", tt.schemaFile))
+				filepath.Join(testdataPath, tt.schemaFile))
 			require.NoError(t, err)
 
 			var pkgSpec PackageSpec
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
 			require.NoError(t, err)
 
-			pkg, err := ImportSpec(pkgSpec, nil, ValidationOptions{
+			pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
 				AllowDanglingReferences: true,
 			})
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				if err == nil && !diags.HasErrors() {
+					t.Errorf("BindSpec() expected error but got none")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("BindSpec() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if diags.HasErrors() {
+				t.Errorf("BindSpec() diagnostics = %v, wantErr %v", diags, tt.wantErr)
 				return
 			}
 			tt.validator(pkg)
@@ -1149,6 +1165,47 @@ func TestUsingIdInResourcePropertiesEmitsWarning(t *testing.T) {
 	assert.Contains(t, diags[0].Summary, "id is a reserved property name")
 }
 
+func TestUsingIdInStateInputsIsAnError(t *testing.T) {
+	t.Parallel()
+	loader := NewPluginLoader(utils.NewHost(testdataPath))
+	pkgSpec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:TestResource": {
+				ObjectTypeSpec: ObjectTypeSpec{
+					Properties: map[string]PropertySpec{
+						"value": {
+							TypeSpec: TypeSpec{Type: "string"},
+						},
+					},
+				},
+				InputProperties: map[string]PropertySpec{
+					"value": {
+						TypeSpec: TypeSpec{Type: "string"},
+					},
+				},
+				StateInputs: &ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]PropertySpec{
+						"id": {
+							TypeSpec: TypeSpec{Type: "string"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	pkg, diags, err := BindSpec(pkgSpec, loader, ValidationOptions{
+		AllowDanglingReferences: true,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, pkg)
+	require.True(t, diags.HasErrors())
+	assert.Contains(t, diags.Error(), "id is a reserved property name for stateInputs")
+}
+
 func TestOmittingVersionWhenSupportsPackEnabledGivesError(t *testing.T) {
 	t.Parallel()
 	loader := NewPluginLoader(utils.NewHost(testdataPath))
@@ -1567,6 +1624,7 @@ func TestValidateTypeToken(t *testing.T) {
 		input         string
 		expectError   bool
 		allowedExtras map[string][]string
+		moduleFormat  string
 	}{
 		{
 			name:  "valid",
@@ -1632,21 +1690,40 @@ func TestValidateTypeToken(t *testing.T) {
 			name:  "non-reserved-provider-token-valid",
 			input: "example:other:provider",
 		},
+		/* TODO: This test should be re-enabled once we make modules nested under index an error instead of a warning.
+		{
+			name:        "nested index module",
+			input:       "example:index/nested:typename",
+			expectError: true,
+		},
+		*/
+		{
+			name:  "not really index",
+			input: "example:index_foo/nested:typename",
+		},
+		{
+			name:         "module format strips off nested part",
+			input:        "example:index/Nested:typename",
+			moduleFormat: "(.*)(?:/[^/]*)",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
 			spec := &PackageSpec{Name: "example"}
+			if c.moduleFormat != "" {
+				spec.Meta = &MetadataSpec{ModuleFormat: c.moduleFormat}
+			}
 			allowed := map[string][]string{"example": nil}
 			for pkg, mods := range c.allowedExtras {
 				allowed[pkg] = mods
 			}
 			errors := spec.validateTypeToken(allowed, "type", c.input)
 			if c.expectError {
-				assert.True(t, errors.HasErrors())
+				assert.True(t, errors.HasErrors(), "expected an error but got none")
 			} else {
-				assert.False(t, errors.HasErrors())
+				assert.False(t, errors.HasErrors(), "unexpected error: %v", errors)
 			}
 		})
 	}
@@ -2190,6 +2267,7 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
 		Color: cmdutil.GetGlobalColorization(),
 	})
+	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
 	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
 	require.NoError(t, err)
 	return pluginCtx.Host
@@ -2635,4 +2713,19 @@ func TestBindParameterizedExternals(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Empty(t, diags)
+}
+
+func TestTokenToModuleIndexPrefix(t *testing.T) {
+	t.Parallel()
+
+	defaultPkg := &Package{}
+	assert.Equal(t, "", defaultPkg.TokenToModule("test:index:Resource"))
+	assert.Equal(t, "indexMine", defaultPkg.TokenToModule("test:indexMine:Resource"))
+	assert.Equal(t, "indexMine/nested", defaultPkg.TokenToModule("test:indexMine/nested:Resource"))
+
+	formattedPkg := &Package{
+		moduleFormat: regexp.MustCompile("(.*)(?:/[^/]*)"),
+	}
+	assert.Equal(t, "", formattedPkg.TokenToModule("test:index/getResource:getResource"))
+	assert.Equal(t, "indexMine", formattedPkg.TokenToModule("test:indexMine/getResource:getResource"))
 }

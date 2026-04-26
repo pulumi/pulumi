@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ import (
 func TestTokenSource(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dur := 20 * time.Millisecond
 	clock := clockwork.NewFakeClock()
 	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
@@ -70,7 +70,7 @@ func TestTokenSource(t *testing.T) {
 func TestTokenSourceWithQuicklyExpiringInitialToken(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dur := 80 * time.Millisecond
 	clock := clockwork.NewFakeClock()
 	backend := &testTokenBackend{tokens: map[string]time.Time{}, clock: clock, t: t}
@@ -112,7 +112,7 @@ func TestTokenSourceWithClient(t *testing.T) {
 	defer server.Close()
 
 	apiClient := client.NewClient(server.URL, "fake-token", true, nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	clock := clockwork.NewFakeClock()
 

@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package plugin
 
 import (
-	"context"
 	"sync"
 	"testing"
 
@@ -28,7 +27,7 @@ func TestContextRequest_race(t *testing.T) {
 	t.Parallel()
 
 	ctx, err := NewContext(
-		context.Background(),
+		t.Context(),
 		diagtest.LogSink(t), // The diagnostics sink to use for messages.
 		diagtest.LogSink(t), // The diagnostics sink to use for status messages.
 		nil,                 // the host that can be used to fetch providers.

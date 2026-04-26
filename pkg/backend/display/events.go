@@ -1,4 +1,4 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 var matchAnsiControlCodes = regexp.MustCompile(`\x1b\[[0-9;]*[mK]`)
@@ -356,11 +357,14 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Provider:       md.Provider,
 		Protect:        md.Protect,
 		Taint:          md.Taint,
+		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
-		HideDiffs:      md.HideDiffs,
+		HideDiffs: slice.Map(md.HideDiffs, func(p resource.PropertyPath) resource.BackCompatPropertyPath {
+			return resource.BackCompatPropertyPath(resource.FromResourcePropertyPath(p))
+		}),
 	}
 }
 
@@ -625,10 +629,13 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Provider:       md.Provider,
 		Protect:        md.Protect,
 		Taint:          md.Taint,
+		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
-		HideDiffs:      md.HideDiffs,
+		HideDiffs: slice.Map(md.HideDiffs, func(p resource.BackCompatPropertyPath) resource.PropertyPath {
+			return resource.ToResourcePropertyPath(property.Glob(p))
+		}),
 	}
 }

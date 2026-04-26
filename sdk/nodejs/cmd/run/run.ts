@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import { register } from "module";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import { Inputs } from "../../output";
+import { readPackageManifest, searchupPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
 import * as stack from "../../runtime/stack";
 import * as tsutils from "../../tsutils";
@@ -52,7 +53,7 @@ const dynamicImport = (0, eval)("u=>import(u)");
  * Attempts to provide a detailed error message for module load failure if the
  * module that failed to load is the top-level module.
  * @param program The name of the program given to `run`, i.e. the top level module
- * @param error The error that occured. Must be a module load error.
+ * @param error The error that occurred. Must be a module load error.
  */
 async function reportModuleLoadFailure(program: string, error: Error): Promise<void> {
     await throwOrPrintModuleLoadError(program, error);
@@ -64,16 +65,13 @@ async function reportModuleLoadFailure(program: string, error: Error): Promise<v
 
 /**
  * @internal
- * This function searches for the nearest package.json file, scanning up from the
- * program path until it finds one. If it does not find a package.json file, it
- * it returns the folder enclosing the program.
+ * This function searches for the nearest package manifest (package.json or
+ * package.yaml), scanning up from the program path until it finds one. If it
+ * does not find a manifest, it returns the folder enclosing the program.
  * @param programPath the path to the Pulumi program; this is the project "main" directory,
  * which defaults to the project "root" directory.
  */
 async function npmPackageRootFromProgramPath(programPath: string): Promise<string> {
-    // package-directory is an ESM module which we use to find the location of package.json Because it's an ESM module,
-    // we cannot import it directly.
-    const { packageDirectory } = await dynamicImport("package-directory");
     // Check if programPath is a directory. If not, then we
     // look at it's parent dir for the package root.
     let isDirectory = false;
@@ -85,24 +83,22 @@ async function npmPackageRootFromProgramPath(programPath: string): Promise<strin
         // Do nothing, because isDirectory is already false.
     }
     const programDirectory = isDirectory ? programPath : path.dirname(programPath);
-    const pkgDir = await packageDirectory({
-        cwd: programDirectory,
-    });
-    if (pkgDir === undefined) {
+    const manifestPath = searchupPackageManifest(programDirectory);
+    if (manifestPath === undefined) {
         log.warn(
-            "Could not find a package.json file for the program. Using the Pulumi program directory as the project root.",
+            "Could not find a package.json or package.yaml file for the program. " +
+                "Using the Pulumi program directory as the project root.",
         );
         return programDirectory;
     }
-    return pkgDir;
+    return path.dirname(manifestPath);
 }
 
 function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
-    const packageJson = path.join(projectRoot, "package.json");
     try {
-        return require(packageJson);
+        return readPackageManifest(projectRoot).data;
     } catch {
-        // This is all best-effort so if we can't load the package.json file, that's
+        // This is all best-effort so if we can't load the package manifest, that's
         // fine.
         return {};
     }
@@ -391,10 +387,12 @@ export async function run(
             // We're not in ESM mode, or running an older version of ts-node.
             // Let ts-node deal with registration.
             const tsn: typeof tsnode = require(tsnodeRequire);
+            // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
+            const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
             options.compilerOptions = {
                 target: "ES2020", // TypeScript 3.8 supports this
-                module: "commonjs",
-                moduleResolution: "node",
+                module: useNodeNext ? "nodenext" : "commonjs",
+                moduleResolution: useNodeNext ? "nodenext" : "node",
                 sourceMap: "true",
                 ...compilerOptions,
             };

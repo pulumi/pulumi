@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,7 +118,7 @@ func SerializeResourcePlan(
 			Provider:                plan.Goal.Provider,
 			PropertyDependencies:    plan.Goal.PropertyDependencies,
 			DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
-			IgnoreChanges:           plan.Goal.IgnoreChanges,
+			IgnoreChanges:           resource.BackCompatPropertyPathList(plan.Goal.IgnoreChanges),
 			AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
 			Aliases:                 plan.Goal.Aliases,
 			ID:                      plan.Goal.ID,

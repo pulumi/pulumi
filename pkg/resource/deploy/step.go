@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // StepCompleteFunc is the type of functions returned from Step.Apply. These
@@ -164,7 +165,8 @@ func (s *SameStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			// old inputs, not the new ones.
 			st := s.new.Copy()
 			st.Inputs = s.old.Inputs
-			err := s.Deployment().SameProvider(st)
+			// fromCheck=true because we're coming from the Check→Diff→Same flow where Diff determined no changes.
+			err := s.Deployment().SameProvider(st, true)
 			if err != nil {
 				return resource.StatusOK, nil,
 					fmt.Errorf("bad provider state for resource %v: %w", s.URN(), err)
@@ -297,6 +299,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.URN,
 		s.URN().Name(),
 		s.Type(),
+		nil, /* oldOptions */
+		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		nil, /* oldInputs */
 		nil, /* newOutputs */
@@ -371,6 +375,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.new.URN,
 					s.URN().Name(),
 					s.Type(),
+					nil, /* oldOptions */
+					resourceOptionsFromState(s.new),
 					s.new.Inputs,
 					nil, /* oldInputs */
 					nil, /* oldOutputs */
@@ -457,6 +463,8 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.URN,
 			s.new.URN.Name(),
 			s.new.Type,
+			nil, /* oldOptions */
+			resourceOptionsFromState(s.new),
 			s.new.Inputs,
 			nil, /* oldInputs */
 			s.new.Outputs,
@@ -593,6 +601,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN,
 		s.URN().Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		nil, /* newOptions */
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -680,6 +690,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.old.URN,
 					s.URN().Name(),
 					s.Type(),
+					resourceOptionsFromState(s.old),
+					nil, /* newOptions */
 					nil, /* newInputs */
 					s.old.Inputs,
 					s.old.Outputs,
@@ -757,6 +769,8 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.old.URN,
 		s.old.URN.Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		nil, /* newOptions */
 		nil, /* newInputs */
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -854,7 +868,7 @@ type UpdateStep struct {
 	stables       []resource.PropertyKey         // an optional list of properties that won't change during this update.
 	diffs         []resource.PropertyKey         // the keys causing a diff.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured diff.
-	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	ignoreChanges []property.Glob                // a list of property paths to ignore when updating.
 	provider      plugin.Provider                // the optional provider to use.
 	oldViews      []plugin.View                  // the old views for this resource.
 }
@@ -863,7 +877,7 @@ var _ Step = (*UpdateStep)(nil)
 
 func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
 	stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
-	ignoreChanges []string, oldViews []plugin.View,
+	ignoreChanges []property.Glob, oldViews []plugin.View,
 ) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.URN != "", "old", "must have a URN")
@@ -924,6 +938,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		s.new.URN,
 		s.URN().Name(),
 		s.Type(),
+		resourceOptionsFromState(s.old),
+		resourceOptionsFromState(s.new),
 		s.new.Inputs,
 		s.old.Inputs,
 		nil, /* newOutputs */
@@ -963,7 +979,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					OldOutputs:            s.old.Outputs,
 					NewInputs:             s.new.Inputs,
 					Timeout:               s.new.CustomTimeouts.Update,
-					IgnoreChanges:         s.ignoreChanges,
+					IgnoreChanges:         globsToStrings(s.ignoreChanges),
 					Preview:               s.deployment.opts.DryRun,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
@@ -999,6 +1015,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					s.new.URN,
 					s.URN().Name(),
 					s.Type(),
+					resourceOptionsFromState(s.old),
+					resourceOptionsFromState(s.new),
 					s.new.Inputs,
 					s.old.Inputs,
 					s.old.Outputs,
@@ -1071,6 +1089,8 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.URN,
 			s.new.URN.Name(),
 			s.Type(),
+			resourceOptionsFromState(s.old),
+			resourceOptionsFromState(s.new),
 			s.new.Inputs,
 			s.old.Inputs,
 			s.new.Outputs,
@@ -1372,6 +1392,8 @@ type RefreshStep struct {
 	cts *promise.CompletionSource[*resource.State]
 	// the old views for this resource.
 	oldViews []plugin.View
+	// whether the step is internal
+	internal bool
 }
 
 // NewRefreshStep creates a new Refresh step.
@@ -1395,6 +1417,28 @@ func NewRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resou
 	}
 }
 
+// NewInternalRefreshStep creates a new Refresh step that's internal and thus not displayed to the user
+func NewInternalRefreshStep(deployment *Deployment, cts *promise.CompletionSource[*resource.State], old *resource.State,
+	oldViews []plugin.View, new *resource.State,
+) Step {
+	contract.Requiref(old != nil, "old", "must not be nil")
+	contract.Requiref(old.ViewOf == "", "old", "must not be a view")
+
+	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
+	if new == nil {
+		new = old
+	}
+
+	return &RefreshStep{
+		deployment: deployment,
+		old:        old,
+		new:        new,
+		cts:        cts,
+		oldViews:   oldViews,
+		internal:   true,
+	}
+}
+
 // True if this is a persisted refresh step that should be respected by the snapshot system.
 func (s *RefreshStep) Persisted() bool { return s.cts != nil }
 
@@ -1414,6 +1458,10 @@ func (s *RefreshStep) Res() *resource.State                         { return s.o
 func (s *RefreshStep) Logical() bool                                { return false }
 func (s *RefreshStep) Diffs() []resource.PropertyKey                { return s.diff.ChangedKeys }
 func (s *RefreshStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.diff.DetailedDiff }
+
+func (s *RefreshStep) IsInternal() bool {
+	return s.internal
+}
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
@@ -1651,7 +1699,7 @@ type ImportStep struct {
 	old           *resource.State       // the state of the resource fetched from the provider.
 	new           *resource.State       // the newly computed state of the resource after importing.
 	replacing     bool                  // true if we are replacing a Pulumi-managed resource.
-	ignoreChanges []string              // a list of property paths to ignore when updating.
+	ignoreChanges []property.Glob       // a list of property paths to ignore when updating.
 	randomSeed    []byte                // the random seed to use for Check.
 	provider      plugin.Provider       // the optional provider to use.
 
@@ -1663,7 +1711,7 @@ type ImportStep struct {
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
-	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
+	ignoreChanges []property.Glob, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
 ) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
@@ -1687,7 +1735,7 @@ func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 }
 
 func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *resource.State,
-	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
+	ignoreChanges []property.Glob, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
 ) Step {
 	contract.Requiref(original != nil, "original", "must not be nil")
 
@@ -2219,12 +2267,12 @@ type DiffStep struct {
 	pcs           *promise.CompletionSource[plugin.DiffResult] // the completion source for this diff
 	old           *resource.State                              // the old resource state
 	new           *resource.State                              // the new resource state
-	ignoreChanges []string                                     // a list of property paths to ignore when diffing
+	ignoreChanges []property.Glob                              // a list of property paths to ignore when diffing
 }
 
 func NewDiffStep(
 	deployment *Deployment, pcs *promise.CompletionSource[plugin.DiffResult], old, new *resource.State,
-	ignoreChanges []string,
+	ignoreChanges []property.Glob,
 ) Step {
 	return &DiffStep{
 		deployment:    deployment,

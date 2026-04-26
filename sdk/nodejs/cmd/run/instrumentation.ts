@@ -1,4 +1,4 @@
-// Copyright 2026-2026, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,12 +33,14 @@ if (process.env.TRACEPARENT) {
     const { ATTR_SERVICE_NAME } = require("@opentelemetry/semantic-conventions");
 
     const provider = new NodeTracerProvider({
-        resource: new Resource({
-            [ATTR_SERVICE_NAME]: "pulumi-sdk-nodejs",
-        }),
+        resource: Resource.default().merge(
+            new Resource({
+                [ATTR_SERVICE_NAME]: "pulumi-sdk-nodejs",
+            }),
+        ),
     });
 
-    const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+    const otlpEndpoint = process.env.PULUMI_OTEL_EXPORTER_OTLP_ENDPOINT;
     if (otlpEndpoint) {
         const { OTLPTraceExporter } = require("@opentelemetry/exporter-trace-otlp-grpc");
         process.env.OTEL_EXPORTER_OTLP_INSECURE = "true";

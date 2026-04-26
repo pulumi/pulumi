@@ -6,8 +6,17 @@ import builtins as _builtins
 from . import _utilities
 import typing
 # Export this package's modules as members:
+from .lambda__ import *
 from .provider import *
 from .some_resource import *
+
+# Make subpackages available:
+if typing.TYPE_CHECKING:
+    import pulumi_keywords.lambda_ as __lambda_
+    lambda_ = __lambda_
+else:
+    lambda_ = _utilities.lazy_import('pulumi_keywords.lambda_')
+
 _utilities.register(
     resource_modules="""
 [
@@ -16,7 +25,16 @@ _utilities.register(
   "mod": "index",
   "fqn": "pulumi_keywords",
   "classes": {
+   "keywords:index:Lambda": "Lambda",
    "keywords:index:SomeResource": "SomeResource"
+  }
+ },
+ {
+  "pkg": "keywords",
+  "mod": "lambda",
+  "fqn": "pulumi_keywords.lambda_",
+  "classes": {
+   "keywords:lambda:SomeResource": "SomeResource"
   }
  }
 ]

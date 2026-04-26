@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -282,7 +282,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	packageNames := codegen.StringSet{}
 
 	if r, ok := n.(*Resource); ok {
-		token, tokenRange := getResourceToken(r)
+		token, tokenRange := r.GetToken()
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
 		if mod == "providers" {
 			packageNames.Add(name)

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -182,7 +183,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	var parent resource.URN
 	var providerRef string
 	var importID resource.ID
-	var ignoreChanges []string
+	var ignoreChanges []property.Glob
 	if r.Options != nil {
 		if r.Options.Protect != nil {
 			v, diags := r.Options.Protect.Evaluate(&hcl.EvalContext{})
@@ -214,7 +215,9 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 			if assert.True(t, v.IsArray()) {
 				for _, item := range v.AsArray().All {
 					if assert.True(t, item.IsString()) {
-						ignoreChanges = append(ignoreChanges, item.AsString())
+						var p property.Glob
+						require.NoError(t, p.UnmarshalText([]byte(item.AsString())))
+						ignoreChanges = append(ignoreChanges, p)
 					}
 				}
 			}
@@ -279,7 +282,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:aws",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				},
@@ -289,7 +292,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:random",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:random::default_123",
 				},
@@ -299,7 +302,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:pkg",
 					RetainOnDelete: true,
-					IgnoreChanges:  []string{"fooIgnore"},
+					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
 				},
@@ -313,7 +316,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 
 			importState := ImportState{
-				Names:    names,
+				Names:    maps.Clone(names),
 				Snapshot: snapshot,
 			}
 
@@ -352,7 +355,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 			assert.Equal(t, state.Protect, actualState.Protect)
 			if !assert.True(t, actualState.Inputs.DeepEquals(state.Inputs)) {
-				actual, err := stack.SerializeResource(context.Background(), actualState, config.NopEncrypter, false)
+				actual, err := stack.SerializeResource(t.Context(), actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
 				sb, err := json.MarshalIndent(s, "", "    ")
@@ -522,7 +525,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -694,7 +697,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -781,7 +784,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -851,7 +854,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {

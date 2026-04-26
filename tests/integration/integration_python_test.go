@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package ints
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -2482,11 +2481,7 @@ func TestPythonComponentProviderInComponentProvider(t *testing.T) {
 		Dir:             filepath.Join("component_provider", "python", "component-in-component"),
 		RelativeWorkDir: "program",
 		PrepareProject: func(info *engine.Projinfo) error {
-			// Install the dependencies for the two providers: `provider-nested`
-			// which is used within `provider`, which in turn is used by the
-			// program.
 			providerNestedPath := filepath.Join(info.Root, "..", "provider-nested")
-			installPythonProviderDependencies(t, providerNestedPath)
 
 			// For `provider` we need to generate `provider-nested`'s SDK and
 			// link it into the plugin.
@@ -2574,7 +2569,7 @@ func TestGetLanguageRuntimeMetadata(t *testing.T) {
 	require.NoError(t, err)
 
 	p := metadata.GetLanguageRuntimeMetadata(t.Context(), e.RootPath, project)
-	meta, err := p.Result(context.Background())
+	meta, err := p.Result(t.Context())
 
 	require.NoError(t, err)
 	require.Equal(t, meta["runtime.name"], "python")

@@ -11,17 +11,17 @@ func main() {
 			"greeting": pulumi.String("Hello, world!"),
 			"farewell": pulumi.String("Goodbye, world!"),
 		})
-		ctx.Export("numbers", pulumi.Float64Map{
-			"1": pulumi.Float64(1),
-			"2": pulumi.Float64(2),
+		ctx.Export("numbers", pulumi.IntMap{
+			"1": pulumi.Int(1),
+			"2": pulumi.Int(2),
 		})
-		ctx.Export("keys", pulumi.Float64Map{
-			"my.key": pulumi.Float64(1),
-			"my-key": pulumi.Float64(2),
-			"my_key": pulumi.Float64(3),
-			"MY_KEY": pulumi.Float64(4),
-			"mykey":  pulumi.Float64(5),
-			"MYKEY":  pulumi.Float64(6),
+		ctx.Export("keys", pulumi.IntMap{
+			"my.key": pulumi.Int(1),
+			"my-key": pulumi.Int(2),
+			"my_key": pulumi.Int(3),
+			"MY_KEY": pulumi.Int(4),
+			"mykey":  pulumi.Int(5),
+			"MYKEY":  pulumi.Int(6),
 		})
 		return nil
 	})

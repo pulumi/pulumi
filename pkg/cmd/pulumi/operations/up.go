@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
@@ -109,6 +110,7 @@ func NewUpCmd() *cobra.Command {
 	var showReplacementSteps bool
 	var showSames bool
 	var showSecrets bool
+	var showURNs bool
 	var showReads bool
 	var skipPreview bool
 	var showFullOutput bool
@@ -174,6 +176,7 @@ func NewUpCmd() *cobra.Command {
 		if err != nil {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
+		cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 		decrypter := sm.Decrypter()
 		encrypter := sm.Encrypter()
@@ -271,11 +274,11 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
-			return errors.New("update cancelled")
+			return backenderr.CancelledError{Operation: "update"}
 		case err != nil:
 			return err
 		case expectNop && changes != nil && engine.HasChanges(changes):
-			return errors.New("no changes were expected but changes occurred")
+			return backenderr.NoChangesExpectedError{Operation: "update"}
 		default:
 			return nil
 		}
@@ -448,6 +451,7 @@ func NewUpCmd() *cobra.Command {
 		if err != nil {
 			return fmt.Errorf("gathering environment metadata: %w", err)
 		}
+		cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 		decrypter := sm.Decrypter()
 		encrypter := sm.Encrypter()
@@ -515,11 +519,11 @@ func NewUpCmd() *cobra.Command {
 		}, nil /* events */)
 		switch {
 		case err == context.Canceled:
-			return errors.New("update cancelled")
+			return backenderr.CancelledError{Operation: "update"}
 		case err != nil:
 			return err
 		case expectNop && changes != nil && engine.HasChanges(changes):
-			return errors.New("no changes were expected but changes occurred")
+			return backenderr.NoChangesExpectedError{Operation: "update"}
 		default:
 			return nil
 		}
@@ -576,9 +580,7 @@ func NewUpCmd() *cobra.Command {
 
 			interactive := cmdutil.Interactive()
 			if !interactive && !yes {
-				return errors.New(
-					"--yes or --skip-preview must be passed in to proceed when running in non-interactive mode",
-				)
+				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
 			if err := validateAttachDebuggerFlag(attachDebugger); err != nil {
@@ -606,6 +608,7 @@ func NewUpCmd() *cobra.Command {
 				ShowReplacementSteps:   showReplacementSteps,
 				ShowSameResources:      showSames,
 				ShowReads:              showReads,
+				ShowURNs:               showURNs,
 				SuppressOutputs:        suppressOutputs,
 				SuppressProgress:       suppressProgress,
 				TruncateOutput:         !showFullOutput,
@@ -797,6 +800,9 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReads, "show-reads", false,
 		"Show resources that are being read in, alongside those being managed directly in the stack")
+	cmd.PersistentFlags().BoolVar(
+		&showURNs, "urns", false,
+		"Display full URNs instead of short resource names")
 
 	cmd.PersistentFlags().BoolVarP(
 		&skipPreview, "skip-preview", "f", false,

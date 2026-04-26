@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@ package stack
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
@@ -52,7 +51,7 @@ func TestShowStackName(t *testing.T) {
 				},
 			}
 
-			err := runStack(context.Background(), &s, &output, args)
+			err := runStack(t.Context(), &s, &output, args)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected+"\n", output.String())
 		})

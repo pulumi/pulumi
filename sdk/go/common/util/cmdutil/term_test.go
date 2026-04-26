@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -469,6 +469,9 @@ func waitPidDead(pid int, timeout time.Duration) error {
 		default:
 			proc, err = ps.FindProcess(pid)
 			if err == nil && proc == nil {
+				return nil
+			}
+			if err == nil && proc != nil && isZombie(pid) {
 				return nil
 			}
 			time.Sleep(10 * time.Millisecond)

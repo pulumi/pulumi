@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -39,17 +39,247 @@ func TestStateDeleteNoArgs(t *testing.T) {
 
 	cmd := newStateDeleteCommand(&pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{})
 	cmd.SetArgs([]string{})
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err, "Must supply <resource URN> unless pulumi is run interactively")
 }
 
-func TestStateDeleteTooManyArgs(t *testing.T) {
+func TestStateDeleteMultipleURNs(t *testing.T) {
 	t.Parallel()
 
-	cmd := newStateDeleteCommand(&pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{})
-	cmd.SetArgs([]string{"urn", "extra"})
-	err := cmd.ExecuteContext(context.Background())
-	assert.ErrorContains(t, err, "accepts at most 1 arg(s), received 2")
+	var mockStack *backend.MockStack
+
+	var savedDeployment *apitype.UntypedDeployment
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+		ImportDeploymentF: func(_ context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
+			savedDeployment = deployment
+			return nil
+		},
+	}
+
+	mockStack = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{
+				Resources: []*resource.State{
+					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res-a"},
+					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res-b"},
+				},
+			}, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name: "proj",
+			}, "/testing/project", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "", url)
+			assert.Equal(t, tokens.PackageName("proj"), project.Name)
+			return mockBackend, nil
+		},
+	}
+
+	cmd := newStateDeleteCommand(ws, lm)
+	cmd.SetArgs([]string{
+		"--stack=stk",
+		"urn:pulumi:proj::stk::pkg:index:typ::res-a",
+		"urn:pulumi:proj::stk::pkg:index:typ::res-b",
+	})
+	err := cmd.ExecuteContext(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, savedDeployment)
+	deployment := apitype.DeploymentV3{}
+	err = json.Unmarshal(savedDeployment.Deployment, &deployment)
+	require.NoError(t, err)
+	require.Len(t, deployment.Resources, 0)
+}
+
+func TestStateDeleteMultipleURNsResolvesDependencyOrder(t *testing.T) {
+	t.Parallel()
+
+	var mockStack *backend.MockStack
+
+	var savedDeployment *apitype.UntypedDeployment
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+		ImportDeploymentF: func(_ context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
+			savedDeployment = deployment
+			return nil
+		},
+	}
+
+	depURN := resource.URN("urn:pulumi:proj::stk::pkg:index:typ::dependency")
+	dependeeURN := resource.URN("urn:pulumi:proj::stk::pkg:index:typ::dependee")
+
+	mockStack = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{
+				Resources: []*resource.State{
+					{URN: depURN},
+					{
+						URN:          dependeeURN,
+						Dependencies: []resource.URN{depURN},
+					},
+				},
+			}, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name: "proj",
+			}, "/testing/project", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "", url)
+			assert.Equal(t, tokens.PackageName("proj"), project.Name)
+			return mockBackend, nil
+		},
+	}
+
+	cmd := newStateDeleteCommand(ws, lm)
+	cmd.SetArgs([]string{"--stack=stk", string(depURN), string(dependeeURN)})
+	err := cmd.ExecuteContext(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, savedDeployment)
+	deployment := apitype.DeploymentV3{}
+	err = json.Unmarshal(savedDeployment.Deployment, &deployment)
+	require.NoError(t, err)
+	require.Len(t, deployment.Resources, 0)
+}
+
+func TestStateDeleteParentAndChild(t *testing.T) {
+	t.Parallel()
+
+	var mockStack *backend.MockStack
+
+	var savedDeployment *apitype.UntypedDeployment
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+		ImportDeploymentF: func(_ context.Context, _ backend.Stack, deployment *apitype.UntypedDeployment) error {
+			savedDeployment = deployment
+			return nil
+		},
+	}
+
+	parentURN := resource.URN("urn:pulumi:proj::stk::pkg:index:typ::parent")
+	childURN := resource.URN("urn:pulumi:proj::stk::pkg:index:typ::child")
+
+	mockStack = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{
+				Resources: []*resource.State{
+					{URN: parentURN},
+					{
+						URN:    childURN,
+						Parent: parentURN,
+					},
+				},
+			}, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{
+				Name: "proj",
+			}, "/testing/project", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "", url)
+			assert.Equal(t, tokens.PackageName("proj"), project.Name)
+			return mockBackend, nil
+		},
+	}
+
+	// Pass parent first, child second — the command should resolve the correct
+	// deletion order (child before parent) automatically.
+	cmd := newStateDeleteCommand(ws, lm)
+	cmd.SetArgs([]string{"--stack=stk", string(parentURN), string(childURN)})
+	err := cmd.ExecuteContext(t.Context())
+	require.NoError(t, err)
+	require.NotNil(t, savedDeployment)
+	deployment := apitype.DeploymentV3{}
+	err = json.Unmarshal(savedDeployment.Deployment, &deployment)
+	require.NoError(t, err)
+	require.Len(t, deployment.Resources, 0)
+}
+
+func TestStateDeleteInvalidURN(t *testing.T) {
+	t.Parallel()
+
+	var mockStack *backend.MockStack
+	mockBackend := &backend.MockBackend{
+		GetStackF: func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+			assert.Equal(t, "stk", ref.String())
+			return mockStack, nil
+		},
+	}
+	mockStack = &backend.MockStack{
+		BackendF: func() backend.Backend {
+			return mockBackend
+		},
+		SnapshotF: func(ctx context.Context, secretsProvider secrets.Provider) (*deploy.Snapshot, error) {
+			return &deploy.Snapshot{
+				Resources: []*resource.State{
+					{URN: "urn:pulumi:proj::stk::pkg:index:typ::res"},
+				},
+			}, nil
+		},
+	}
+	ws := &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "/testing/project", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(
+			_ context.Context, _ pkgWorkspace.Context, _ diag.Sink,
+			url string, project *workspace.Project, _ bool, _ bool, _ colors.Colorization,
+		) (backend.Backend, error) {
+			assert.Equal(t, "", url)
+			assert.Equal(t, tokens.PackageName("proj"), project.Name)
+			return mockBackend, nil
+		},
+	}
+
+	cmd := newStateDeleteCommand(ws, lm)
+	cmd.SetArgs([]string{"--stack=stk", "not-a-valid-urn"})
+	err := cmd.ExecuteContext(t.Context())
+	assert.ErrorContains(t, err, "is not a valid resource URN")
 }
 
 func TestStateDeleteAllAndURN(t *testing.T) {
@@ -57,7 +287,7 @@ func TestStateDeleteAllAndURN(t *testing.T) {
 
 	cmd := newStateDeleteCommand(&pkgWorkspace.MockContext{}, &cmdBackend.MockLoginManager{})
 	cmd.SetArgs([]string{"--all", "urn"})
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err, "cannot specify a resource URN when deleting all resources")
 }
 
@@ -78,7 +308,7 @@ func TestNoProject(t *testing.T) {
 
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"urn:pulumi:proj::stk::pkg:index:typ::res"})
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err, "no project file found")
 }
 
@@ -133,7 +363,7 @@ func TestStateDeleteURN(t *testing.T) {
 
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
@@ -187,7 +417,7 @@ func TestStateDeleteDependency(t *testing.T) {
 
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::dependency"})
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err,
 		"urn:pulumi:proj::stk::pkg:index:typ::dependency can't be safely deleted "+
 			"because the following resources depend on it:\n"+
@@ -246,13 +476,13 @@ func TestStateDeleteProtected(t *testing.T) {
 
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	assert.ErrorContains(t, err,
 		"urn:pulumi:proj::stk::pkg:index:typ::res can't be safely deleted because it is protected.")
 	assert.Nil(t, savedDeployment)
 
 	cmd.SetArgs([]string{"--force", "--stack=stk", "urn:pulumi:proj::stk::pkg:index:typ::res"})
-	err = cmd.ExecuteContext(context.Background())
+	err = cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 	assert.Equal(t, 3, savedDeployment.Version)
 	assert.Equal(t,
@@ -319,7 +549,7 @@ func TestStateDeleteAll(t *testing.T) {
 
 	cmd := newStateDeleteCommand(ws, lm)
 	cmd.SetArgs([]string{"--stack=stk", "--all"})
-	err := cmd.ExecuteContext(context.Background())
+	err := cmd.ExecuteContext(t.Context())
 	require.NoError(t, err)
 
 	deployment := apitype.DeploymentV3{}

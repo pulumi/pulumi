@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ func (persister *cloudSnapshotPersister) Save(deployment apitype.TypedDeployment
 			return err
 		}
 		if err := persister.saveDiff(ctx, diff, version, persister.tokenSource); err != nil {
-			if logging.V(3) {
+			if logging.V(3).Enabled() {
 				logging.V(3).Infof("ignoring error saving checkpoint "+
 					"with PatchUpdateCheckpointDelta, falling back to "+
 					"PatchUpdateCheckpoint: %v", err)

@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,4 +105,16 @@ func URN() *rapid.Generator[urn.URN] {
 	return rapid.Custom(func(t *rapid.T) urn.URN {
 		return urn.URN(rapid.String().Draw(t, "urn-body"))
 	})
+}
+
+func Glob() *rapid.Generator[property.Glob] {
+	return rapid.Map(rapid.SliceOf(rapid.OneOf(
+		rapid.Just[property.GlobSegment](property.Splat),
+		rapid.Map(rapid.String(), func(s string) property.GlobSegment {
+			return property.NewSegment(s)
+		}),
+		rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), func(s int) property.GlobSegment {
+			return property.NewSegment(s)
+		}),
+	)), func(s []property.GlobSegment) property.Glob { return property.GlobFromSegments(s...) })
 }

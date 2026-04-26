@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,12 +15,7 @@
 package ints
 
 import (
-	"bytes"
-	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -152,46 +147,4 @@ func optsForConstructGo(
 			}
 		},
 	}
-}
-
-//nolint:paralleltest // Mutates environment variables.
-func TestConstructComponentConfigureProviderGo(t *testing.T) {
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows")
-	}
-
-	const testDir = "construct_component_configure_provider"
-	runComponentSetup(t, testDir)
-	pulumiRoot, err := filepath.Abs("../..")
-	require.NoError(t, err)
-	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
-	componentSDK := filepath.Join(pulumiRoot, "tests/testdata/codegen/methods-return-plain-resource/go")
-	sdkPkg := "github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go"
-
-	// The test relies on artifacts (go module) from a codegen test. Ensure the go SDK is generated.
-	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	cmd.Dir = filepath.Join(pulumiRoot, "pkg", "codegen", "go")
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "PULUMI_ACCEPT=1")
-	err = cmd.Run()
-	require.NoErrorf(t, err, "Failed to ensure that methods-return-plain-resource codegen"+
-		" test has generated the Go SDK:\n%s\n%s\n",
-		stdout.String(), stderr.String())
-
-	opts := testConstructComponentConfigureProviderCommonOptions()
-	opts = opts.With(integration.ProgramTestOptions{
-		Dir: filepath.Join(testDir, "go"),
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3=" + pulumiGoSDK,
-			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
-		},
-		NoParallel: true,
-	})
-	integration.ProgramTest(t, &opts)
 }

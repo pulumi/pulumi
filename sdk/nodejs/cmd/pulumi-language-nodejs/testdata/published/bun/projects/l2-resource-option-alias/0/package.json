@@ -10,6 +10,7 @@
 	},
 	"dependencies": {
 		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/component": "ROOT/artifacts/pulumi-component-13.3.7.tgz",
 		"@pulumi/simple": "ROOT/artifacts/pulumi-simple-2.0.0.tgz"
 	}
 }

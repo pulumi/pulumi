@@ -736,3 +736,6 @@ class Provider(ABC):
         Handle the call request.
         """
         raise NotImplementedError("The method 'call' is not implemented")
+
+    async def cancel(self) -> None:
+        """Cancel signals the provider to gracefully shut down and abort any ongoing operations."""

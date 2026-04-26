@@ -124,6 +124,40 @@ def test_analyze_component_empty():
     )
 
 
+def test_analyze_component_inherited_inputs():
+    class BaseArgs(TypedDict):
+        base_prop: str
+
+    class DerivedArgs(BaseArgs):
+        child_prop: str
+
+    class MyComponent(pulumi.ComponentResource):
+        out_result: pulumi.Output[str]
+
+        def __init__(self, args: DerivedArgs): ...
+
+    analyzer = Analyzer("inherited")
+    component = analyzer.analyze_component(MyComponent)
+    assert component == ComponentDefinition(
+        name="MyComponent",
+        module="test_analyzer",
+        inputs={
+            "baseProp": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            "childProp": PropertyDefinition(type=PropertyType.STRING, plain=True),
+        },
+        inputs_mapping={
+            "baseProp": "base_prop",
+            "childProp": "child_prop",
+        },
+        outputs={
+            "outResult": PropertyDefinition(type=PropertyType.STRING),
+        },
+        outputs_mapping={
+            "outResult": "out_result",
+        },
+    )
+
+
 def test_analyze_component_plain_types():
     class ComplexTypeInput(TypedDict):
         a_input_list_str: Optional[pulumi.Input[list[str]]]

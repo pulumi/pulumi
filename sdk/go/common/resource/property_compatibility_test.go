@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -106,4 +106,44 @@ func TestConversionThroughGRPC(t *testing.T) {
 			testRoundTripThroughGRPC(t, tt.value)
 		})
 	}
+}
+
+func TestPropertyPathConvert(t *testing.T) {
+	t.Parallel()
+
+	// property.Glob to PropertyPath
+	//
+	// This is information preserving as long as there are no keys of "*"
+	rapid.Check(t, func(t *rapid.T) {
+		glob := pTest.Glob().Filter(func(p property.Glob) bool {
+			for s := range p.Segments {
+				if s, ok := s.(property.KeySegment); ok && s.Key() == "*" {
+					return false
+				}
+			}
+			return true
+		}).Draw(t, "source")
+		propertyPath := resource.ToResourcePropertyPath(glob)
+		glob2 := resource.FromResourcePropertyPath(propertyPath)
+
+		assert.Equal(t, glob, glob2, "intermediary path: %#v", propertyPath)
+	})
+
+	// PropertyPath to property.Glob
+	//
+	// This should always be information preserving.
+	rapid.Check(t, func(t *rapid.T) {
+		propertyPath := resource.PropertyPath(rapid.SliceOf(rapid.OneOf(
+			rapid.Map(rapid.String(), func(s string) any { return s }),
+			rapid.Map(rapid.Int().Filter(func(i int) bool { return i >= 0 }), func(i int) any { return i }),
+		)).Draw(t, "source"))
+		if len(propertyPath) == 0 {
+			propertyPath = nil
+		}
+
+		glob := resource.FromResourcePropertyPath(propertyPath)
+		propertyPath2 := resource.ToResourcePropertyPath(glob)
+
+		assert.Equal(t, propertyPath, propertyPath2, "intermediary path: %#v", glob)
+	})
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
@@ -388,6 +389,8 @@ type StepEventStateMetadata struct {
 	Protect bool
 	// true to force replacement of this resource on the next update.
 	Taint bool
+	// External is true if this resource is "external" to Pulumi and we don't control the lifecycle.
+	External bool
 	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
 	RetainOnDelete bool `json:"retainOnDelete"`
 	// the resource's input properties (as specified by the program). Note: because this will cross
@@ -544,12 +547,13 @@ func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets b
 		Parent:         state.Parent,
 		Protect:        state.Protect,
 		Taint:          state.Taint,
+		External:       state.External,
 		RetainOnDelete: state.RetainOnDelete,
 		Inputs:         filterResourceProperties(state.Inputs, debug, showSecrets),
 		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
 		Provider:       state.Provider,
 		InitErrors:     state.InitErrors,
-		HideDiffs:      state.HideDiff,
+		HideDiffs:      slice.Map(state.HideDiff, resource.ToResourcePropertyPath),
 	}
 }
 
@@ -835,6 +839,8 @@ func filterPropertyValue(v resource.PropertyValue, debug bool, showSecrets bool)
 		ref := v.ResourceReferenceValue()
 		return resource.NewProperty(resource.ResourceReference{
 			URN:            resource.URN(logging.FilterString(string(ref.URN))),
+			Name:           logging.FilterString(ref.Name),
+			Type:           logging.FilterString(ref.Type),
 			ID:             filterPropertyValue(ref.ID, debug, showSecrets),
 			PackageVersion: logging.FilterString(ref.PackageVersion),
 		})
@@ -910,7 +916,7 @@ func trySendEvent(ch chan<- Event, ev Event) (sent bool) {
 	defer func() {
 		if recover() != nil {
 			sent = false
-			if logging.V(9) {
+			if logging.V(9).Enabled() {
 				logging.V(9).Infof(
 					"Ignoring %v send on a closed channel %p",
 					ev.Type, ch)
@@ -929,7 +935,7 @@ func tryCloseEventChan(ch chan<- Event) (closed bool) {
 	defer func() {
 		if recover() != nil {
 			closed = false
-			if logging.V(9) {
+			if logging.V(9).Enabled() {
 				logging.V(9).Infof(
 					"Ignoring close of a closed event channel %p",
 					ch)

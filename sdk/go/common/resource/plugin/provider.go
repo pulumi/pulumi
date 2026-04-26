@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -775,6 +775,7 @@ type ReadResult struct {
 type ConstructInfo struct {
 	Project          string                // the project name housing the program being run.
 	Stack            string                // the stack name being evaluated.
+	Organization     string                // the organization name housing the program being run (might be empty).
 	Config           map[config.Key]string // the configuration variables to apply before running.
 	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
 	DryRun           bool                  // true if we are performing a dry-run (preview).

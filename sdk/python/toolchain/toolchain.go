@@ -48,7 +48,10 @@ const (
 type toolchain int
 
 const (
-	Pip toolchain = iota
+	// Auto is the default toolchain value. When set, ResolveToolchain will detect the toolchain to use by looking for
+	// lockfiles in the project directory, falling back to pip if none are found.
+	Auto toolchain = iota
+	Pip
 	Poetry
 	Uv
 )
@@ -108,6 +111,8 @@ type Toolchain interface {
 
 func Name(tc toolchain) string {
 	switch tc {
+	case Auto:
+		return "Auto"
 	case Pip:
 		return "Pip"
 	case Poetry:
@@ -133,17 +138,35 @@ func TypeCheckerName(tc typeChecker) string {
 }
 
 func ResolveToolchain(options PythonOptions) (Toolchain, error) {
-	switch options.Toolchain { //nolint:exhaustive // golangci-lint v2 upgrade
-	case Poetry:
-		dir := options.ProgramDir
-		if dir == "" {
-			dir = options.Root
+	switch options.Toolchain {
+	case Auto:
+		if _, err := searchup(options.ProgramDir, "uv.lock"); err == nil {
+			logging.V(9).Infof("Python toolchain: detected uv (found uv.lock)")
+			virtualenv := options.Virtualenv
+			if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+				virtualenv = filepath.Join(options.Root, virtualenv)
+			}
+			return newUv(options.ProgramDir, virtualenv)
 		}
-		return newPoetry(dir)
+		if _, err := searchup(options.ProgramDir, "poetry.lock"); err == nil {
+			logging.V(9).Infof("Python toolchain: detected poetry (found poetry.lock)")
+			return newPoetry(options.ProgramDir)
+		}
+		logging.V(9).Infof("Python toolchain: defaulting to pip")
+		return newPip(options.Root, options.Virtualenv)
+	case Poetry:
+		return newPoetry(options.ProgramDir)
 	case Uv:
-		return newUv(options.Root, options.Virtualenv)
+		virtualenv := options.Virtualenv
+		if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+			virtualenv = filepath.Join(options.Root, virtualenv)
+		}
+		return newUv(options.ProgramDir, virtualenv)
+	case Pip:
+		return newPip(options.Root, options.Virtualenv)
+	default:
+		return nil, fmt.Errorf("unknown toolchain: %d", options.Toolchain)
 	}
-	return newPip(options.Root, options.Virtualenv)
 }
 
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to

@@ -19,7 +19,6 @@ package ints
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"io"
 	"os/exec"
 	"strings"
@@ -43,7 +42,7 @@ func TestCancelSignal(t *testing.T) {
 			e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 			e.RunCommand("pulumi", "install")
 			e.RunCommand("pulumi", "stack", "init", stackName)
-			cmd := e.SetupCommandIn(context.Background(), e.CWD, "pulumi", "up", "--skip-preview", "--yes")
+			cmd := e.SetupCommandIn(t.Context(), e.CWD, "pulumi", "up", "--skip-preview", "--yes")
 
 			var outBuffer bytes.Buffer
 			var errBuffer bytes.Buffer

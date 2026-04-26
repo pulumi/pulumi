@@ -1,22 +1,22 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package httpstate
 
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,12 +60,12 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -104,7 +104,7 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 		})
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := NewLoginManager().Login(ctx, "https://api.example.com", false, "", "", nil, true, display.Options{})
 	var expectedErr backenderr.MissingEnvVarForNonInteractiveError
@@ -120,12 +120,12 @@ func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -261,7 +261,7 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			org, err := inferOrg(context.Background(), tt.getDefaultOrg, tt.getUserOrg)
+			org, err := inferOrg(t.Context(), tt.getDefaultOrg, tt.getUserOrg)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -278,12 +278,12 @@ func TestDisableIntegrityChecking(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj"}, false)
 	require.NoError(t, err)
 
 	stackName := ptesting.RandomStackName()
@@ -383,7 +383,7 @@ func TestCopilotExplainer(t *testing.T) {
 	}
 
 	// Create a backend and API client using our mock transport
-	apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+	apiClient := client.NewClient(client.PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
 	apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 	b := &cloudBackend{
 		client: apiClient,
@@ -410,7 +410,7 @@ func TestCopilotExplainer(t *testing.T) {
 			Color:   colors.Never,
 		}),
 	}
-	summary, err := b.Explain(context.Background(), stackRef, apitype.UpdateUpdate, op, events)
+	summary, err := b.Explain(t.Context(), stackRef, apitype.UpdateUpdate, op, events)
 
 	// Verify results
 	require.NoError(t, err)
@@ -433,12 +433,12 @@ func TestListStackNames(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
 	require.NoError(t, err)
 
 	// Create test stacks
@@ -548,12 +548,12 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 		t.Skipf("Skipping: PULUMI_ACCESS_TOKEN is not set")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
-	_, err := NewLoginManager().Login(ctx, PulumiCloudURL, false, "", "", nil, true, display.Options{})
+	_, err := NewLoginManager().Login(ctx, client.PulumiCloudURL, false, "", "", nil, true, display.Options{})
 	require.NoError(t, err)
 
-	b, err := New(ctx, diagtest.LogSink(t), PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
+	b, err := New(ctx, diagtest.LogSink(t), client.PulumiCloudURL, &workspace.Project{Name: "testproj-list-stacks"}, false)
 	require.NoError(t, err)
 
 	// Create a test stack
@@ -677,7 +677,7 @@ func TestListStackNamesVsListStacks(t *testing.T) {
 func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var lastRequest *http.Request
 
@@ -800,10 +800,79 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
 }
 
+// TestCreateStackDisplaysBackendMessages verifies that backend-vended messages on the
+// CreateStackResponse (e.g. an expired trial warning) flow through the client into the
+// cloudBackend without breaking stack creation, and that displayBackendMessages renders
+// them via the diag sink.
+func TestCreateStackDisplaysBackendMessages(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	const trialWarning = "Your organization's trial has expired. " +
+		"Please contact sales@pulumi.com to upgrade."
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "owner",
+			})
+			require.NoError(t, err)
+		case "/api/stacks/owner/project":
+			rw.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(rw).Encode(apitype.CreateStackResponse{
+				Messages: []apitype.Message{{
+					Severity: apitype.MessageSeverityWarning,
+					Message:  trialWarning,
+				}},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	b, err := New(ctx, nil, server.URL, nil, false)
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("owner/project/stack")
+	require.NoError(t, err)
+
+	// CreateStack should succeed and the warning message should not interfere with
+	// stack creation; it is rendered via cmdutil.Diag() as a side effect.
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	// Exercise displayBackendMessages directly with each severity, including an
+	// unknown one, so the helper's switch arms are all covered. The expired-trial
+	// warning is the primary case driving this test.
+	displayBackendMessages([]apitype.Message{
+		{Severity: apitype.MessageSeverityWarning, Message: trialWarning},
+		{Severity: apitype.MessageSeverityError, Message: "test error"},
+		{Severity: apitype.MessageSeverityInfo, Message: "test info"},
+		{Severity: "mystery", Message: "unknown severity"},
+	})
+
+	// Empty input is a no-op and must not panic.
+	displayBackendMessages(nil)
+}
+
 func TestImportDeploymentSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var lastRequest *http.Request
 
@@ -953,7 +1022,7 @@ func TestIsExplainPreviewEnabled(t *testing.T) {
 		d: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
 	}
 
-	result := b.IsExplainPreviewEnabled(context.Background(), display.Options{})
+	result := b.IsExplainPreviewEnabled(t.Context(), display.Options{})
 	assert.True(t, result)
 }
 
@@ -1254,7 +1323,7 @@ func TestGetAccountDetails(t *testing.T) {
 			}
 
 			username, orgs, tokenInfo, err := getAccountDetails(
-				context.Background(), cloudURL, false, tt.accessToken,
+				t.Context(), cloudURL, false, tt.accessToken,
 			)
 
 			if tt.wantErr {
@@ -1289,7 +1358,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			project: "my-project",
 		}
 
-		resp, err := b.createNeoTaskOnError(context.Background(), "", stackRef, display.Options{})
+		resp, err := b.createNeoTaskOnError(t.Context(), "", stackRef, display.Options{})
 		require.NoError(t, err)
 		assert.Nil(t, resp)
 	})
@@ -1301,7 +1370,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			client: &client.Client{},
 			d:      diagtest.LogSink(t),
 		}
-		resp, err := b.createNeoTaskOnError(context.Background(), "some error", nil, display.Options{})
+		resp, err := b.createNeoTaskOnError(t.Context(), "some error", nil, display.Options{})
 		require.Error(t, err)
 		assert.Nil(t, resp)
 	})
@@ -1327,7 +1396,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			},
 		}
 
-		apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+		apiClient := client.NewClient(client.PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
 		apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 		b := &cloudBackend{
 			client: apiClient,
@@ -1340,7 +1409,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			project: "my-project",
 		}
 
-		resp, err := b.createNeoTaskOnError(context.Background(), "resource failed to create", stackRef, display.Options{})
+		resp, err := b.createNeoTaskOnError(t.Context(), "resource failed to create", stackRef, display.Options{})
 		require.NoError(t, err)
 		require.NotNil(t, resp)
 		assert.Equal(t, "task_abc123", resp.TaskID)
@@ -1365,7 +1434,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			},
 		}
 
-		apiClient := client.NewClient(PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
+		apiClient := client.NewClient(client.PulumiCloudURL, "test-token", false, diagtest.LogSink(t))
 		apiClient.WithHTTPClient(&http.Client{Transport: mockTransport})
 		b := &cloudBackend{
 			client: apiClient,
@@ -1378,7 +1447,7 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 			project: "my-project",
 		}
 
-		resp, err := b.createNeoTaskOnError(context.Background(), "something broke", stackRef, display.Options{})
+		resp, err := b.createNeoTaskOnError(t.Context(), "something broke", stackRef, display.Options{})
 		require.Error(t, err)
 		assert.Nil(t, resp)
 	})

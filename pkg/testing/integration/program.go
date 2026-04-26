@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -266,6 +266,18 @@ type ProgramTestOptions struct {
 	// CLI invocations that can inadvertently overwrite the trace
 	// file.
 	Tracing string
+
+	// If non-empty, specifies the value of the `--otel-traces` flag to pass
+	// to Pulumi CLI. Supported endpoints:
+	//   - file:///path/to/traces.json  — writes OTLP JSON to a local file
+	//   - grpc://host:port             — sends via insecure gRPC
+	//   - grpcs://host:port            — sends via TLS-secured gRPC
+	//
+	// Template `{command}` syntax will be expanded to the current
+	// command name such as `pulumi-up`. This is useful for file-based
+	// tracing since `ProgramTest` performs multiple CLI invocations that
+	// would otherwise overwrite the same file.
+	OtelTraces string
 
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
@@ -603,6 +615,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.Tracing != "" {
 		opts.Tracing = overrides.Tracing
 	}
+	if overrides.OtelTraces != "" {
+		opts.OtelTraces = overrides.OtelTraces
+	}
 	if overrides.NoParallel {
 		opts.NoParallel = overrides.NoParallel
 	}
@@ -728,7 +743,7 @@ func GetLogs(
 	query operations.LogQuery,
 ) *[]operations.LogEntry {
 	snap, err := stack.DeserializeDeploymentV3(
-		context.Background(),
+		t.Context(),
 		*stackInfo.Deployment,
 		secrets.DefaultProvider)
 	require.NoError(t, err)
@@ -906,7 +921,7 @@ func newProgramTester(t *testing.T, opts *ProgramTestOptions) *ProgramTester {
 	return &ProgramTester{
 		t:              t,
 		opts:           opts,
-		updateEventLog: filepath.Join(os.TempDir(), string(stackName)+"-events.json"),
+		updateEventLog: filepath.Join(t.TempDir(), string(stackName)+"-events.json"),
 		maxStepTries:   maxStepTries,
 		pulumiHome:     home,
 	}
@@ -989,6 +1004,9 @@ func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error)
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
 		cmd = append(cmd, "--tracing", strings.ReplaceAll(tracing, "{command}", name))
+	}
+	if otelTraces := pt.opts.OtelTraces; otelTraces != "" {
+		cmd = append(cmd, "--otel-traces", strings.ReplaceAll(otelTraces, "{command}", name))
 	}
 	return cmd, nil
 }

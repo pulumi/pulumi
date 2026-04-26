@@ -160,7 +160,10 @@ jobs:
             --platform "${INTEGRATION_PLATFORMS[@]}" "${ACCEPTANCE_PLATFORMS[@]}" \
             --version-set current \
             --partition-module pkg "$PKG_UNIT_TEST_PARTITIONS" \
+            --partition-package github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language \
+                pkg/testing/pulumi-test-language 2 \
             --partition-module sdk 1 \
+            --partition-module sdk/go/pulumi-language-go 1 \
             --partition-module tests 8
           )
 
@@ -178,7 +181,7 @@ jobs:
             --partition-package github.com/pulumi/pulumi/sdk/pcl/v3/cmd/pulumi-language-pcl \
                 sdk/pcl/cmd/pulumi-language-pcl 2 \
             --partition-package github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs/v3 \
-                sdk/nodejs/cmd/pulumi-language-nodejs 2 \
+                sdk/nodejs/cmd/pulumi-language-nodejs 3 \
             --partition-package github.com/pulumi/pulumi/sdk/python/cmd/pulumi-language-python/v3 \
                 sdk/python/cmd/pulumi-language-python 4 \
             --partition-module tests 2 \

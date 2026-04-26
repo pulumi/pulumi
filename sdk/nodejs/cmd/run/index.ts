@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -129,7 +129,7 @@ process.on("beforeExit", () => {
 
 let hasSignaled = false;
 async function beforeExitHandler(code: number) {
-    // Signal and wait for shutdown means a succesful program execution, so
+    // Signal and wait for shutdown means a successful program execution, so
     // first check if there were any errors and bail out immediately if so.
     if (uncaughtErrors.size > 0) {
         return;

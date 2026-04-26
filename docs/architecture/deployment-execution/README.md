@@ -90,7 +90,7 @@ enable communication between the language host and the engine. Specifically:
   iterated over, so the deployment ends up being driven by the program
   evaluation.
 * [](codegen.Loader) provides methods for loading schemata.
-* [](pulumirpc.Engine) exposes auxilliary operations that are not specific to a
+* [](pulumirpc.Engine) exposes auxiliary operations that are not specific to a
   particular resource, such as [logging](pulumirpc.Engine.Log) and [state
   management](pulumirpc.Engine.SetRootResource).
 * [](pulumirpc.Callbacks) allows callers to [execute

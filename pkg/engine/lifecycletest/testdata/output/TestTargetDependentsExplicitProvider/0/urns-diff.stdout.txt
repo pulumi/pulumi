@@ -1,0 +1,13 @@
+<{%fg 2%}>+ urn:pulumi:test::test::pulumi:pulumi:Stack::test: (create)
+<{%reset%}><{%fg 2%}>+ urn:pulumi:test::test::pulumi:providers:pkgA::provider: (create)
+<{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resA: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provider::2]
+<{%reset%}><{%reset%}><{%reset%}>  urn:pulumi:test::test::pkgA:m:typA::resB: (same)
+<{%reset%}>    [id=1]
+<{%reset%}><{%reset%}>    [provider=urn:pulumi:test::test::pulumi:providers:pkgA::provider::2]
+<{%reset%}><{%reset%}><{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 2 created<{%reset%}>
+    2 unchanged
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s

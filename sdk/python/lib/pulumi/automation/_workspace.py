@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -390,6 +390,22 @@ class Workspace(ABC):
         Returns the currently authenticated user.
 
         :returns: WhoAmIResult
+        """
+
+    @abstractmethod
+    def org_get_default(self) -> str:
+        """
+        Returns the default organization for the current backend.
+
+        :returns: str
+        """
+
+    @abstractmethod
+    def org_set_default(self, org_name: str) -> None:
+        """
+        Sets the default organization for the current backend.
+
+        :param str org_name: The name of the organization to set as the default.
         """
 
     @abstractmethod

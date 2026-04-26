@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -182,10 +182,13 @@ func ArchiveValueGenerator(maxDepth int) *rapid.Generator[*structpb.Value] {
 // ResourceReferenceValueGenerator generates resource reference *structpb.Values.
 func ResourceReferenceValueGenerator() *rapid.Generator[*structpb.Value] {
 	return rapid.Custom(func(t *rapid.T) *structpb.Value {
+		referencedURN := resource_testing.URNGenerator().Draw(t, "referenced URN")
 		fields := map[string]*structpb.Value{
 			resource.SigKey: stringValue(resource.ResourceReferenceSig),
-			"urn":           stringValue(string(resource_testing.URNGenerator().Draw(t, "referenced URN"))),
+			"urn":           stringValue(string(referencedURN)),
 		}
+		fields["name"] = stringValue(referencedURN.Name())
+		fields["type"] = stringValue(string(referencedURN.Type()))
 
 		id := rapid.OneOf(UnknownValueGenerator(), StringValueGenerator()).Draw(t, "referenced ID")
 		if idstr := id.Kind.(*structpb.Value_StringValue).StringValue; idstr != "" && idstr != UnknownStringValue {

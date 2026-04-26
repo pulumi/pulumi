@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -333,6 +333,12 @@ func (mod *modContext) tokenToResource(tok string) string {
 
 	// Is it a provider resource?
 	if components[0] == "pulumi" && components[1] == "providers" {
+		// Inside the package that owns the provider, refer to it by its unqualified class name to
+		// avoid a self-import (`import pulumi_<pkg>` inside `pulumi_<pkg>/<module>.py`) that would
+		// fail at import time with a circular-import error.
+		if mod.pkg != nil && components[2] == mod.pkg.Name() {
+			return "Provider"
+		}
 		return fmt.Sprintf("pulumi_%s.Provider", components[2])
 	}
 
@@ -358,7 +364,7 @@ func tokenToName(tok string) string {
 	return title(components[2])
 }
 
-// tokenToPackage accepts a *Pulumi token* and returns name of the *Python module* that it
+// tokenToModule accepts a *Pulumi token* and returns name of the *Python module* that it
 // should be generated into.
 //
 // For example, it converts: "pkg:someModule:Resource" to "somemodule".
@@ -372,11 +378,14 @@ func tokenToModule(tok string, pkg schema.PackageReference, moduleNameOverrides 
 	return moduleToPythonModule(canonicalModName, moduleNameOverrides)
 }
 
-// tokenToPackage accepts a *Pulumi module* and returns name of the *Python module* that it
+// moduleToPythonModule accepts a *Pulumi module* and returns name of the *Python module* that it
 // should be generated into.
 //
 // For example, it converts: "someModule" to "somemodule".
 func moduleToPythonModule(canonicalModName string, moduleNameOverrides map[string]string) string {
+	if canonicalModName == "index" {
+		return ""
+	}
 	if override, ok := moduleNameOverrides[canonicalModName]; ok {
 		return override
 	}
@@ -686,6 +695,9 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		if r.IsProvider {
 			name = "provider"
 		}
+		if mod.conflictsWithChildModule(name) {
+			name = name + "_"
+		}
 		addFile(name+".py", res)
 	}
 
@@ -705,7 +717,11 @@ func (mod *modContext) gen(fs codegen.Fs) error {
 		if err != nil {
 			return err
 		}
-		addFile(PyName(tokenToName(f.Token))+".py", fun)
+		fnName := PyName(tokenToName(f.Token))
+		if mod.conflictsWithChildModule(fnName) {
+			fnName = fnName + "_"
+		}
+		addFile(fnName+".py", fun)
 	}
 
 	// Nested types
@@ -759,6 +775,18 @@ func (mod *modContext) isEmpty() bool {
 		}
 	}
 	return true
+}
+
+// conflictsWithChildModule returns true if the given file name (without extension)
+// would conflict with a child module directory name. In Python, a package directory
+// takes precedence over a module file with the same name.
+func (mod *modContext) conflictsWithChildModule(name string) bool {
+	for _, child := range mod.children {
+		if child.unqualifiedImportName() == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (mod *modContext) submodulesExist() bool {
@@ -966,9 +994,13 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	parts := strings.Split(tok, ":")
 	contract.Assertf(len(parts) == 3, "type token %q is not in the form '<pkg>:<mod>:<type>'", tok)
 
-	// If it's a provider resource, import the top-level package.
+	// If it's a provider resource, import the top-level package unless we're currently generating
+	// code inside that same package, in which case we fall through to the relative-import path to
+	// avoid a circular `import pulumi_<pkg>` inside `pulumi_<pkg>`.
 	if parts[0] == "pulumi" && parts[1] == "providers" {
-		return "import pulumi_" + parts[2]
+		if mod.pkg == nil || parts[2] != mod.pkg.Name() {
+			return "import pulumi_" + parts[2]
+		}
 	}
 
 	modName := mod.tokenToModule(tok)
@@ -984,6 +1016,9 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		}
 		if r.Resource != nil && r.Resource.IsProvider {
 			name = "provider"
+		}
+		if mod.conflictsWithChildModule(name) {
+			name = name + "_"
 		}
 
 		if strings.HasSuffix(importPath, ".") {
@@ -1233,7 +1268,14 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := PyName(prop.Name)
 		ptype := mod.pyType(prop.Type)
-		fmt.Fprintf(w, "        if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
+		isInstanceType := ptype
+		switch ptype {
+		case "bool", "int", "float", "str":
+			if pname == ptype {
+				isInstanceType = "_builtins." + ptype
+			}
+		}
+		fmt.Fprintf(w, "        if %s and not isinstance(%s, %s):\n", pname, pname, isInstanceType)
 		fmt.Fprintf(w, "            raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
 		// Now perform the assignment.
@@ -1702,7 +1744,14 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) s
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := PyName(prop.Name)
 		ptype := mod.pyType(prop.Type)
-		fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
+		isInstanceType := ptype
+		switch ptype {
+		case "bool", "int", "float", "str":
+			if pname == ptype {
+				isInstanceType = "_builtins." + ptype
+			}
+		}
+		fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, isInstanceType)
 		fmt.Fprintf(w, "                raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
 		// Now perform the assignment.

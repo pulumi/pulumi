@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -157,7 +157,7 @@ func (p *pip) ListPackages(ctx context.Context, transitive bool) ([]plugin.Depen
 
 	output, err := cmd.Output()
 	if err != nil {
-		return nil, fmt.Errorf("calling `python %s`: %w", strings.Join(cmd.Args, " "), err)
+		return nil, fmt.Errorf("calling `%s`: %w", strings.Join(cmd.Args, " "), err)
 	}
 
 	var raw []struct {
