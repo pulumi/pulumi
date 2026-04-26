@@ -51,7 +51,7 @@ func newPluginLsCmd() *cobra.Command {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
 			} else {
-				if plugins, err = workspace.GetPluginsWithMetadata(); err != nil {
+				if plugins, err = workspace.GetPlugins(); err != nil {
 					return fmt.Errorf("loading plugins: %w", err)
 				}
 			}
