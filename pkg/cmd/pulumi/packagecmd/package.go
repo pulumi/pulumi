@@ -28,14 +28,16 @@ func NewPackageCmd() *cobra.Command {
 Install and configure Pulumi packages and their plugins and SDKs.`
 
 	if metadata.DetectAIAgent(os.Getenv) != "" {
+		base := "/api/registry/packages/{source}/{publisher}/{name}/versions"
 		long += "\n\n[Agent guidance]\n" +
 			"  Use `pulumi cloud api` to query the registry. Common routes:\n" +
 			"    Search packages:    /api/registry/packages?search={query}\n" +
-			"    List versions:      /api/registry/packages/{source}/{publisher}/{name}/versions\n" +
-			"    Readme:             /api/registry/packages/{source}/{publisher}/{name}/versions/{version}/readme\n" +
-			"    Nav (tokens):       /api/registry/packages/{source}/{publisher}/{name}/versions/{version}/nav\n" +
-			"    Token docs:         /api/registry/packages/{source}/{publisher}/{name}/versions/{version}/docs/{percent-encoded-token}\n" +
-			"  Nav lists tokens for resources, functions, and other package members; pass one to the docs route (percent-encoded).\n" +
+			"    List versions:      " + base + "\n" +
+			"    Readme:             " + base + "/{version}/readme\n" +
+			"    Nav (tokens):       " + base + "/{version}/nav\n" +
+			"    Token docs:         " + base + "/{version}/docs/{percent-encoded-token}\n" +
+			"  Nav lists tokens for resources, functions, and other package members;\n" +
+			"  pass one (percent-encoded) to the docs route.\n" +
 			"  {version} can be `latest`. Set `Accept: text/markdown` or `application/json`."
 	}
 
