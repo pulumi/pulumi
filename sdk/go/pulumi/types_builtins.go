@@ -94,9 +94,11 @@ func (o ArchiveOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
 }
 
 func (o ArchiveOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
+
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v Archive) AssetOrArchive {
 		return (AssetOrArchive)(v)
 	}).(AssetOrArchiveOutput)
+
 }
 
 var archiveArrayType = reflect.TypeOf((*[]Archive)(nil)).Elem()
@@ -131,6 +133,14 @@ func (in ArchiveArray) ToArchiveArrayOutputWithContext(ctx context.Context) Arch
 	return ToOutputWithContext(ctx, in).(ArchiveArrayOutput)
 }
 
+func (in ArchiveArray) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
+	return in.ToAssetOrArchiveArrayOutputWithContext(context.Background())
+}
+
+func (in ArchiveArray) ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput {
+	return in.ToArchiveArrayOutputWithContext(ctx).ToAssetOrArchiveArrayOutputWithContext(ctx)
+}
+
 // ArchiveArrayOutput is an Output that returns []Archive values.
 type ArchiveArrayOutput struct{ *OutputState }
 
@@ -155,6 +165,23 @@ func (o ArchiveArrayOutput) ToArchiveArrayOutput() ArchiveArrayOutput {
 
 func (o ArchiveArrayOutput) ToArchiveArrayOutputWithContext(ctx context.Context) ArchiveArrayOutput {
 	return o
+}
+
+func (o ArchiveArrayOutput) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
+	return o.ToAssetOrArchiveArrayOutputWithContext(context.Background())
+}
+
+func (o ArchiveArrayOutput) ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []Archive) ([]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero []AssetOrArchive
+			return zero, err
+		}
+		return coerced.([]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -219,6 +246,14 @@ func (in ArchiveMap) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveM
 	return ToOutputWithContext(ctx, in).(ArchiveMapOutput)
 }
 
+func (in ArchiveMap) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
+	return in.ToAssetOrArchiveMapOutputWithContext(context.Background())
+}
+
+func (in ArchiveMap) ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput {
+	return in.ToArchiveMapOutputWithContext(ctx).ToAssetOrArchiveMapOutputWithContext(ctx)
+}
+
 // ArchiveMapOutput is an Output that returns map[string]Archive values.
 type ArchiveMapOutput struct{ *OutputState }
 
@@ -243,6 +278,23 @@ func (o ArchiveMapOutput) ToArchiveMapOutput() ArchiveMapOutput {
 
 func (o ArchiveMapOutput) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveMapOutput {
 	return o
+}
+
+func (o ArchiveMapOutput) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
+	return o.ToAssetOrArchiveMapOutputWithContext(context.Background())
+}
+
+func (o ArchiveMapOutput) ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]Archive) (map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -300,6 +352,14 @@ func (in ArchiveArrayMap) ToArchiveArrayMapOutputWithContext(ctx context.Context
 	return ToOutputWithContext(ctx, in).(ArchiveArrayMapOutput)
 }
 
+func (in ArchiveArrayMap) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
+	return in.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
+}
+
+func (in ArchiveArrayMap) ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput {
+	return in.ToArchiveArrayMapOutputWithContext(ctx).ToAssetOrArchiveArrayMapOutputWithContext(ctx)
+}
+
 // ArchiveArrayMapOutput is an Output that returns map[string][]Archive values.
 type ArchiveArrayMapOutput struct{ *OutputState }
 
@@ -324,6 +384,23 @@ func (o ArchiveArrayMapOutput) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
 
 func (o ArchiveArrayMapOutput) ToArchiveArrayMapOutputWithContext(ctx context.Context) ArchiveArrayMapOutput {
 	return o
+}
+
+func (o ArchiveArrayMapOutput) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
+	return o.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
+}
+
+func (o ArchiveArrayMapOutput) ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][]Archive) (map[string][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -381,6 +458,14 @@ func (in ArchiveMapArray) ToArchiveMapArrayOutputWithContext(ctx context.Context
 	return ToOutputWithContext(ctx, in).(ArchiveMapArrayOutput)
 }
 
+func (in ArchiveMapArray) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
+	return in.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
+}
+
+func (in ArchiveMapArray) ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput {
+	return in.ToArchiveMapArrayOutputWithContext(ctx).ToAssetOrArchiveMapArrayOutputWithContext(ctx)
+}
+
 // ArchiveMapArrayOutput is an Output that returns []map[string]Archive values.
 type ArchiveMapArrayOutput struct{ *OutputState }
 
@@ -405,6 +490,23 @@ func (o ArchiveMapArrayOutput) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
 
 func (o ArchiveMapArrayOutput) ToArchiveMapArrayOutputWithContext(ctx context.Context) ArchiveMapArrayOutput {
 	return o
+}
+
+func (o ArchiveMapArrayOutput) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
+	return o.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
+}
+
+func (o ArchiveMapArrayOutput) ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string]Archive) ([]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero []map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -469,6 +571,14 @@ func (in ArchiveMapMap) ToArchiveMapMapOutputWithContext(ctx context.Context) Ar
 	return ToOutputWithContext(ctx, in).(ArchiveMapMapOutput)
 }
 
+func (in ArchiveMapMap) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
+	return in.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
+}
+
+func (in ArchiveMapMap) ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput {
+	return in.ToArchiveMapMapOutputWithContext(ctx).ToAssetOrArchiveMapMapOutputWithContext(ctx)
+}
+
 // ArchiveMapMapOutput is an Output that returns map[string]map[string]Archive values.
 type ArchiveMapMapOutput struct{ *OutputState }
 
@@ -493,6 +603,23 @@ func (o ArchiveMapMapOutput) ToArchiveMapMapOutput() ArchiveMapMapOutput {
 
 func (o ArchiveMapMapOutput) ToArchiveMapMapOutputWithContext(ctx context.Context) ArchiveMapMapOutput {
 	return o
+}
+
+func (o ArchiveMapMapOutput) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
+	return o.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
+}
+
+func (o ArchiveMapMapOutput) ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string]Archive) (map[string]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -550,6 +677,14 @@ func (in ArchiveArrayArray) ToArchiveArrayArrayOutputWithContext(ctx context.Con
 	return ToOutputWithContext(ctx, in).(ArchiveArrayArrayOutput)
 }
 
+func (in ArchiveArrayArray) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
+	return in.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
+}
+
+func (in ArchiveArrayArray) ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput {
+	return in.ToArchiveArrayArrayOutputWithContext(ctx).ToAssetOrArchiveArrayArrayOutputWithContext(ctx)
+}
+
 // ArchiveArrayArrayOutput is an Output that returns [][]Archive values.
 type ArchiveArrayArrayOutput struct{ *OutputState }
 
@@ -574,6 +709,23 @@ func (o ArchiveArrayArrayOutput) ToArchiveArrayArrayOutput() ArchiveArrayArrayOu
 
 func (o ArchiveArrayArrayOutput) ToArchiveArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayOutput {
 	return o
+}
+
+func (o ArchiveArrayArrayOutput) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
+	return o.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
+}
+
+func (o ArchiveArrayArrayOutput) ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v [][]Archive) ([][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero [][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -638,6 +790,14 @@ func (in ArchiveArrayMapMap) ToArchiveArrayMapMapOutputWithContext(ctx context.C
 	return ToOutputWithContext(ctx, in).(ArchiveArrayMapMapOutput)
 }
 
+func (in ArchiveArrayMapMap) ToAssetOrArchiveArrayMapMapOutput() AssetOrArchiveArrayMapMapOutput {
+	return in.ToAssetOrArchiveArrayMapMapOutputWithContext(context.Background())
+}
+
+func (in ArchiveArrayMapMap) ToAssetOrArchiveArrayMapMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapMapOutput {
+	return in.ToArchiveArrayMapMapOutputWithContext(ctx).ToAssetOrArchiveArrayMapMapOutputWithContext(ctx)
+}
+
 // ArchiveArrayMapMapOutput is an Output that returns map[string]map[string][]Archive values.
 type ArchiveArrayMapMapOutput struct{ *OutputState }
 
@@ -662,6 +822,23 @@ func (o ArchiveArrayMapMapOutput) ToArchiveArrayMapMapOutput() ArchiveArrayMapMa
 
 func (o ArchiveArrayMapMapOutput) ToArchiveArrayMapMapOutputWithContext(ctx context.Context) ArchiveArrayMapMapOutput {
 	return o
+}
+
+func (o ArchiveArrayMapMapOutput) ToAssetOrArchiveArrayMapMapOutput() AssetOrArchiveArrayMapMapOutput {
+	return o.ToAssetOrArchiveArrayMapMapOutputWithContext(context.Background())
+}
+
+func (o ArchiveArrayMapMapOutput) ToAssetOrArchiveArrayMapMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string][]Archive) (map[string]map[string][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string]map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -719,6 +896,14 @@ func (in ArchiveMapArrayMap) ToArchiveMapArrayMapOutputWithContext(ctx context.C
 	return ToOutputWithContext(ctx, in).(ArchiveMapArrayMapOutput)
 }
 
+func (in ArchiveMapArrayMap) ToAssetOrArchiveMapArrayMapOutput() AssetOrArchiveMapArrayMapOutput {
+	return in.ToAssetOrArchiveMapArrayMapOutputWithContext(context.Background())
+}
+
+func (in ArchiveMapArrayMap) ToAssetOrArchiveMapArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayMapOutput {
+	return in.ToArchiveMapArrayMapOutputWithContext(ctx).ToAssetOrArchiveMapArrayMapOutputWithContext(ctx)
+}
+
 // ArchiveMapArrayMapOutput is an Output that returns map[string][]map[string]Archive values.
 type ArchiveMapArrayMapOutput struct{ *OutputState }
 
@@ -743,6 +928,23 @@ func (o ArchiveMapArrayMapOutput) ToArchiveMapArrayMapOutput() ArchiveMapArrayMa
 
 func (o ArchiveMapArrayMapOutput) ToArchiveMapArrayMapOutputWithContext(ctx context.Context) ArchiveMapArrayMapOutput {
 	return o
+}
+
+func (o ArchiveMapArrayMapOutput) ToAssetOrArchiveMapArrayMapOutput() AssetOrArchiveMapArrayMapOutput {
+	return o.ToAssetOrArchiveMapArrayMapOutputWithContext(context.Background())
+}
+
+func (o ArchiveMapArrayMapOutput) ToAssetOrArchiveMapArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][]map[string]Archive) (map[string][]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string][]map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string][]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -800,6 +1002,14 @@ func (in ArchiveMapMapArray) ToArchiveMapMapArrayOutputWithContext(ctx context.C
 	return ToOutputWithContext(ctx, in).(ArchiveMapMapArrayOutput)
 }
 
+func (in ArchiveMapMapArray) ToAssetOrArchiveMapMapArrayOutput() AssetOrArchiveMapMapArrayOutput {
+	return in.ToAssetOrArchiveMapMapArrayOutputWithContext(context.Background())
+}
+
+func (in ArchiveMapMapArray) ToAssetOrArchiveMapMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapMapArrayOutput {
+	return in.ToArchiveMapMapArrayOutputWithContext(ctx).ToAssetOrArchiveMapMapArrayOutputWithContext(ctx)
+}
+
 // ArchiveMapMapArrayOutput is an Output that returns []map[string]map[string]Archive values.
 type ArchiveMapMapArrayOutput struct{ *OutputState }
 
@@ -824,6 +1034,23 @@ func (o ArchiveMapMapArrayOutput) ToArchiveMapMapArrayOutput() ArchiveMapMapArra
 
 func (o ArchiveMapMapArrayOutput) ToArchiveMapMapArrayOutputWithContext(ctx context.Context) ArchiveMapMapArrayOutput {
 	return o
+}
+
+func (o ArchiveMapMapArrayOutput) ToAssetOrArchiveMapMapArrayOutput() AssetOrArchiveMapMapArrayOutput {
+	return o.ToAssetOrArchiveMapMapArrayOutputWithContext(context.Background())
+}
+
+func (o ArchiveMapMapArrayOutput) ToAssetOrArchiveMapMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string]map[string]Archive) ([]map[string]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero []map[string]map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([]map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -888,6 +1115,14 @@ func (in ArchiveArrayMapArray) ToArchiveArrayMapArrayOutputWithContext(ctx conte
 	return ToOutputWithContext(ctx, in).(ArchiveArrayMapArrayOutput)
 }
 
+func (in ArchiveArrayMapArray) ToAssetOrArchiveArrayMapArrayOutput() AssetOrArchiveArrayMapArrayOutput {
+	return in.ToAssetOrArchiveArrayMapArrayOutputWithContext(context.Background())
+}
+
+func (in ArchiveArrayMapArray) ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapArrayOutput {
+	return in.ToArchiveArrayMapArrayOutputWithContext(ctx).ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx)
+}
+
 // ArchiveArrayMapArrayOutput is an Output that returns []map[string][]Archive values.
 type ArchiveArrayMapArrayOutput struct{ *OutputState }
 
@@ -912,6 +1147,23 @@ func (o ArchiveArrayMapArrayOutput) ToArchiveArrayMapArrayOutput() ArchiveArrayM
 
 func (o ArchiveArrayMapArrayOutput) ToArchiveArrayMapArrayOutputWithContext(ctx context.Context) ArchiveArrayMapArrayOutput {
 	return o
+}
+
+func (o ArchiveArrayMapArrayOutput) ToAssetOrArchiveArrayMapArrayOutput() AssetOrArchiveArrayMapArrayOutput {
+	return o.ToAssetOrArchiveArrayMapArrayOutputWithContext(context.Background())
+}
+
+func (o ArchiveArrayMapArrayOutput) ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string][]Archive) ([]map[string][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero []map[string][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([]map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -976,6 +1228,14 @@ func (in ArchiveArrayArrayMap) ToArchiveArrayArrayMapOutputWithContext(ctx conte
 	return ToOutputWithContext(ctx, in).(ArchiveArrayArrayMapOutput)
 }
 
+func (in ArchiveArrayArrayMap) ToAssetOrArchiveArrayArrayMapOutput() AssetOrArchiveArrayArrayMapOutput {
+	return in.ToAssetOrArchiveArrayArrayMapOutputWithContext(context.Background())
+}
+
+func (in ArchiveArrayArrayMap) ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayMapOutput {
+	return in.ToArchiveArrayArrayMapOutputWithContext(ctx).ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx)
+}
+
 // ArchiveArrayArrayMapOutput is an Output that returns map[string][][]Archive values.
 type ArchiveArrayArrayMapOutput struct{ *OutputState }
 
@@ -1000,6 +1260,23 @@ func (o ArchiveArrayArrayMapOutput) ToArchiveArrayArrayMapOutput() ArchiveArrayA
 
 func (o ArchiveArrayArrayMapOutput) ToArchiveArrayArrayMapOutputWithContext(ctx context.Context) ArchiveArrayArrayMapOutput {
 	return o
+}
+
+func (o ArchiveArrayArrayMapOutput) ToAssetOrArchiveArrayArrayMapOutput() AssetOrArchiveArrayArrayMapOutput {
+	return o.ToAssetOrArchiveArrayArrayMapOutputWithContext(context.Background())
+}
+
+func (o ArchiveArrayArrayMapOutput) ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][][]Archive) (map[string][][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string][][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string][][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -1057,6 +1334,14 @@ func (in ArchiveArrayArrayArray) ToArchiveArrayArrayArrayOutputWithContext(ctx c
 	return ToOutputWithContext(ctx, in).(ArchiveArrayArrayArrayOutput)
 }
 
+func (in ArchiveArrayArrayArray) ToAssetOrArchiveArrayArrayArrayOutput() AssetOrArchiveArrayArrayArrayOutput {
+	return in.ToAssetOrArchiveArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (in ArchiveArrayArrayArray) ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayArrayOutput {
+	return in.ToArchiveArrayArrayArrayOutputWithContext(ctx).ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx)
+}
+
 // ArchiveArrayArrayArrayOutput is an Output that returns [][][]Archive values.
 type ArchiveArrayArrayArrayOutput struct{ *OutputState }
 
@@ -1081,6 +1366,23 @@ func (o ArchiveArrayArrayArrayOutput) ToArchiveArrayArrayArrayOutput() ArchiveAr
 
 func (o ArchiveArrayArrayArrayOutput) ToArchiveArrayArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayArrayOutput {
 	return o
+}
+
+func (o ArchiveArrayArrayArrayOutput) ToAssetOrArchiveArrayArrayArrayOutput() AssetOrArchiveArrayArrayArrayOutput {
+	return o.ToAssetOrArchiveArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (o ArchiveArrayArrayArrayOutput) ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v [][][]Archive) ([][][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[][][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero [][][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([][][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -1145,6 +1447,14 @@ func (in ArchiveMapMapMap) ToArchiveMapMapMapOutputWithContext(ctx context.Conte
 	return ToOutputWithContext(ctx, in).(ArchiveMapMapMapOutput)
 }
 
+func (in ArchiveMapMapMap) ToAssetOrArchiveMapMapMapOutput() AssetOrArchiveMapMapMapOutput {
+	return in.ToAssetOrArchiveMapMapMapOutputWithContext(context.Background())
+}
+
+func (in ArchiveMapMapMap) ToAssetOrArchiveMapMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapMapOutput {
+	return in.ToArchiveMapMapMapOutputWithContext(ctx).ToAssetOrArchiveMapMapMapOutputWithContext(ctx)
+}
+
 // ArchiveMapMapMapOutput is an Output that returns map[string]map[string]map[string]Archive values.
 type ArchiveMapMapMapOutput struct{ *OutputState }
 
@@ -1169,6 +1479,23 @@ func (o ArchiveMapMapMapOutput) ToArchiveMapMapMapOutput() ArchiveMapMapMapOutpu
 
 func (o ArchiveMapMapMapOutput) ToArchiveMapMapMapOutputWithContext(ctx context.Context) ArchiveMapMapMapOutput {
 	return o
+}
+
+func (o ArchiveMapMapMapOutput) ToAssetOrArchiveMapMapMapOutput() AssetOrArchiveMapMapMapOutput {
+	return o.ToAssetOrArchiveMapMapMapOutputWithContext(context.Background())
+}
+
+func (o ArchiveMapMapMapOutput) ToAssetOrArchiveMapMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string]map[string]Archive) (map[string]map[string]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string]map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string]map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -1262,9 +1589,11 @@ func (o AssetOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
 }
 
 func (o AssetOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
+
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v Asset) AssetOrArchive {
 		return (AssetOrArchive)(v)
 	}).(AssetOrArchiveOutput)
+
 }
 
 var assetArrayType = reflect.TypeOf((*[]Asset)(nil)).Elem()
@@ -1299,6 +1628,14 @@ func (in AssetArray) ToAssetArrayOutputWithContext(ctx context.Context) AssetArr
 	return ToOutputWithContext(ctx, in).(AssetArrayOutput)
 }
 
+func (in AssetArray) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
+	return in.ToAssetOrArchiveArrayOutputWithContext(context.Background())
+}
+
+func (in AssetArray) ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput {
+	return in.ToAssetArrayOutputWithContext(ctx).ToAssetOrArchiveArrayOutputWithContext(ctx)
+}
+
 // AssetArrayOutput is an Output that returns []Asset values.
 type AssetArrayOutput struct{ *OutputState }
 
@@ -1323,6 +1660,23 @@ func (o AssetArrayOutput) ToAssetArrayOutput() AssetArrayOutput {
 
 func (o AssetArrayOutput) ToAssetArrayOutputWithContext(ctx context.Context) AssetArrayOutput {
 	return o
+}
+
+func (o AssetArrayOutput) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
+	return o.ToAssetOrArchiveArrayOutputWithContext(context.Background())
+}
+
+func (o AssetArrayOutput) ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []Asset) ([]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero []AssetOrArchive
+			return zero, err
+		}
+		return coerced.([]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -1387,6 +1741,14 @@ func (in AssetMap) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutp
 	return ToOutputWithContext(ctx, in).(AssetMapOutput)
 }
 
+func (in AssetMap) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
+	return in.ToAssetOrArchiveMapOutputWithContext(context.Background())
+}
+
+func (in AssetMap) ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput {
+	return in.ToAssetMapOutputWithContext(ctx).ToAssetOrArchiveMapOutputWithContext(ctx)
+}
+
 // AssetMapOutput is an Output that returns map[string]Asset values.
 type AssetMapOutput struct{ *OutputState }
 
@@ -1411,6 +1773,23 @@ func (o AssetMapOutput) ToAssetMapOutput() AssetMapOutput {
 
 func (o AssetMapOutput) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutput {
 	return o
+}
+
+func (o AssetMapOutput) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
+	return o.ToAssetOrArchiveMapOutputWithContext(context.Background())
+}
+
+func (o AssetMapOutput) ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]Asset) (map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -1468,6 +1847,14 @@ func (in AssetArrayMap) ToAssetArrayMapOutputWithContext(ctx context.Context) As
 	return ToOutputWithContext(ctx, in).(AssetArrayMapOutput)
 }
 
+func (in AssetArrayMap) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
+	return in.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
+}
+
+func (in AssetArrayMap) ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput {
+	return in.ToAssetArrayMapOutputWithContext(ctx).ToAssetOrArchiveArrayMapOutputWithContext(ctx)
+}
+
 // AssetArrayMapOutput is an Output that returns map[string][]Asset values.
 type AssetArrayMapOutput struct{ *OutputState }
 
@@ -1492,6 +1879,23 @@ func (o AssetArrayMapOutput) ToAssetArrayMapOutput() AssetArrayMapOutput {
 
 func (o AssetArrayMapOutput) ToAssetArrayMapOutputWithContext(ctx context.Context) AssetArrayMapOutput {
 	return o
+}
+
+func (o AssetArrayMapOutput) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
+	return o.ToAssetOrArchiveArrayMapOutputWithContext(context.Background())
+}
+
+func (o AssetArrayMapOutput) ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][]Asset) (map[string][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -1549,6 +1953,14 @@ func (in AssetMapArray) ToAssetMapArrayOutputWithContext(ctx context.Context) As
 	return ToOutputWithContext(ctx, in).(AssetMapArrayOutput)
 }
 
+func (in AssetMapArray) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
+	return in.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
+}
+
+func (in AssetMapArray) ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput {
+	return in.ToAssetMapArrayOutputWithContext(ctx).ToAssetOrArchiveMapArrayOutputWithContext(ctx)
+}
+
 // AssetMapArrayOutput is an Output that returns []map[string]Asset values.
 type AssetMapArrayOutput struct{ *OutputState }
 
@@ -1573,6 +1985,23 @@ func (o AssetMapArrayOutput) ToAssetMapArrayOutput() AssetMapArrayOutput {
 
 func (o AssetMapArrayOutput) ToAssetMapArrayOutputWithContext(ctx context.Context) AssetMapArrayOutput {
 	return o
+}
+
+func (o AssetMapArrayOutput) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
+	return o.ToAssetOrArchiveMapArrayOutputWithContext(context.Background())
+}
+
+func (o AssetMapArrayOutput) ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string]Asset) ([]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero []map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -1637,6 +2066,14 @@ func (in AssetMapMap) ToAssetMapMapOutputWithContext(ctx context.Context) AssetM
 	return ToOutputWithContext(ctx, in).(AssetMapMapOutput)
 }
 
+func (in AssetMapMap) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
+	return in.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
+}
+
+func (in AssetMapMap) ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput {
+	return in.ToAssetMapMapOutputWithContext(ctx).ToAssetOrArchiveMapMapOutputWithContext(ctx)
+}
+
 // AssetMapMapOutput is an Output that returns map[string]map[string]Asset values.
 type AssetMapMapOutput struct{ *OutputState }
 
@@ -1661,6 +2098,23 @@ func (o AssetMapMapOutput) ToAssetMapMapOutput() AssetMapMapOutput {
 
 func (o AssetMapMapOutput) ToAssetMapMapOutputWithContext(ctx context.Context) AssetMapMapOutput {
 	return o
+}
+
+func (o AssetMapMapOutput) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
+	return o.ToAssetOrArchiveMapMapOutputWithContext(context.Background())
+}
+
+func (o AssetMapMapOutput) ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string]Asset) (map[string]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -1718,6 +2172,14 @@ func (in AssetArrayArray) ToAssetArrayArrayOutputWithContext(ctx context.Context
 	return ToOutputWithContext(ctx, in).(AssetArrayArrayOutput)
 }
 
+func (in AssetArrayArray) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
+	return in.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
+}
+
+func (in AssetArrayArray) ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput {
+	return in.ToAssetArrayArrayOutputWithContext(ctx).ToAssetOrArchiveArrayArrayOutputWithContext(ctx)
+}
+
 // AssetArrayArrayOutput is an Output that returns [][]Asset values.
 type AssetArrayArrayOutput struct{ *OutputState }
 
@@ -1742,6 +2204,23 @@ func (o AssetArrayArrayOutput) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
 
 func (o AssetArrayArrayOutput) ToAssetArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayOutput {
 	return o
+}
+
+func (o AssetArrayArrayOutput) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
+	return o.ToAssetOrArchiveArrayArrayOutputWithContext(context.Background())
+}
+
+func (o AssetArrayArrayOutput) ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v [][]Asset) ([][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero [][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -1806,6 +2285,14 @@ func (in AssetArrayMapMap) ToAssetArrayMapMapOutputWithContext(ctx context.Conte
 	return ToOutputWithContext(ctx, in).(AssetArrayMapMapOutput)
 }
 
+func (in AssetArrayMapMap) ToAssetOrArchiveArrayMapMapOutput() AssetOrArchiveArrayMapMapOutput {
+	return in.ToAssetOrArchiveArrayMapMapOutputWithContext(context.Background())
+}
+
+func (in AssetArrayMapMap) ToAssetOrArchiveArrayMapMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapMapOutput {
+	return in.ToAssetArrayMapMapOutputWithContext(ctx).ToAssetOrArchiveArrayMapMapOutputWithContext(ctx)
+}
+
 // AssetArrayMapMapOutput is an Output that returns map[string]map[string][]Asset values.
 type AssetArrayMapMapOutput struct{ *OutputState }
 
@@ -1830,6 +2317,23 @@ func (o AssetArrayMapMapOutput) ToAssetArrayMapMapOutput() AssetArrayMapMapOutpu
 
 func (o AssetArrayMapMapOutput) ToAssetArrayMapMapOutputWithContext(ctx context.Context) AssetArrayMapMapOutput {
 	return o
+}
+
+func (o AssetArrayMapMapOutput) ToAssetOrArchiveArrayMapMapOutput() AssetOrArchiveArrayMapMapOutput {
+	return o.ToAssetOrArchiveArrayMapMapOutputWithContext(context.Background())
+}
+
+func (o AssetArrayMapMapOutput) ToAssetOrArchiveArrayMapMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string][]Asset) (map[string]map[string][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string]map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -1887,6 +2391,14 @@ func (in AssetMapArrayMap) ToAssetMapArrayMapOutputWithContext(ctx context.Conte
 	return ToOutputWithContext(ctx, in).(AssetMapArrayMapOutput)
 }
 
+func (in AssetMapArrayMap) ToAssetOrArchiveMapArrayMapOutput() AssetOrArchiveMapArrayMapOutput {
+	return in.ToAssetOrArchiveMapArrayMapOutputWithContext(context.Background())
+}
+
+func (in AssetMapArrayMap) ToAssetOrArchiveMapArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayMapOutput {
+	return in.ToAssetMapArrayMapOutputWithContext(ctx).ToAssetOrArchiveMapArrayMapOutputWithContext(ctx)
+}
+
 // AssetMapArrayMapOutput is an Output that returns map[string][]map[string]Asset values.
 type AssetMapArrayMapOutput struct{ *OutputState }
 
@@ -1911,6 +2423,23 @@ func (o AssetMapArrayMapOutput) ToAssetMapArrayMapOutput() AssetMapArrayMapOutpu
 
 func (o AssetMapArrayMapOutput) ToAssetMapArrayMapOutputWithContext(ctx context.Context) AssetMapArrayMapOutput {
 	return o
+}
+
+func (o AssetMapArrayMapOutput) ToAssetOrArchiveMapArrayMapOutput() AssetOrArchiveMapArrayMapOutput {
+	return o.ToAssetOrArchiveMapArrayMapOutputWithContext(context.Background())
+}
+
+func (o AssetMapArrayMapOutput) ToAssetOrArchiveMapArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][]map[string]Asset) (map[string][]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string][]map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string][]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -1968,6 +2497,14 @@ func (in AssetMapMapArray) ToAssetMapMapArrayOutputWithContext(ctx context.Conte
 	return ToOutputWithContext(ctx, in).(AssetMapMapArrayOutput)
 }
 
+func (in AssetMapMapArray) ToAssetOrArchiveMapMapArrayOutput() AssetOrArchiveMapMapArrayOutput {
+	return in.ToAssetOrArchiveMapMapArrayOutputWithContext(context.Background())
+}
+
+func (in AssetMapMapArray) ToAssetOrArchiveMapMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapMapArrayOutput {
+	return in.ToAssetMapMapArrayOutputWithContext(ctx).ToAssetOrArchiveMapMapArrayOutputWithContext(ctx)
+}
+
 // AssetMapMapArrayOutput is an Output that returns []map[string]map[string]Asset values.
 type AssetMapMapArrayOutput struct{ *OutputState }
 
@@ -1992,6 +2529,23 @@ func (o AssetMapMapArrayOutput) ToAssetMapMapArrayOutput() AssetMapMapArrayOutpu
 
 func (o AssetMapMapArrayOutput) ToAssetMapMapArrayOutputWithContext(ctx context.Context) AssetMapMapArrayOutput {
 	return o
+}
+
+func (o AssetMapMapArrayOutput) ToAssetOrArchiveMapMapArrayOutput() AssetOrArchiveMapMapArrayOutput {
+	return o.ToAssetOrArchiveMapMapArrayOutputWithContext(context.Background())
+}
+
+func (o AssetMapMapArrayOutput) ToAssetOrArchiveMapMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string]map[string]Asset) ([]map[string]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero []map[string]map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([]map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -2056,6 +2610,14 @@ func (in AssetArrayMapArray) ToAssetArrayMapArrayOutputWithContext(ctx context.C
 	return ToOutputWithContext(ctx, in).(AssetArrayMapArrayOutput)
 }
 
+func (in AssetArrayMapArray) ToAssetOrArchiveArrayMapArrayOutput() AssetOrArchiveArrayMapArrayOutput {
+	return in.ToAssetOrArchiveArrayMapArrayOutputWithContext(context.Background())
+}
+
+func (in AssetArrayMapArray) ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapArrayOutput {
+	return in.ToAssetArrayMapArrayOutputWithContext(ctx).ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx)
+}
+
 // AssetArrayMapArrayOutput is an Output that returns []map[string][]Asset values.
 type AssetArrayMapArrayOutput struct{ *OutputState }
 
@@ -2080,6 +2642,23 @@ func (o AssetArrayMapArrayOutput) ToAssetArrayMapArrayOutput() AssetArrayMapArra
 
 func (o AssetArrayMapArrayOutput) ToAssetArrayMapArrayOutputWithContext(ctx context.Context) AssetArrayMapArrayOutput {
 	return o
+}
+
+func (o AssetArrayMapArrayOutput) ToAssetOrArchiveArrayMapArrayOutput() AssetOrArchiveArrayMapArrayOutput {
+	return o.ToAssetOrArchiveArrayMapArrayOutputWithContext(context.Background())
+}
+
+func (o AssetArrayMapArrayOutput) ToAssetOrArchiveArrayMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string][]Asset) ([]map[string][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero []map[string][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([]map[string][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -2144,6 +2723,14 @@ func (in AssetArrayArrayMap) ToAssetArrayArrayMapOutputWithContext(ctx context.C
 	return ToOutputWithContext(ctx, in).(AssetArrayArrayMapOutput)
 }
 
+func (in AssetArrayArrayMap) ToAssetOrArchiveArrayArrayMapOutput() AssetOrArchiveArrayArrayMapOutput {
+	return in.ToAssetOrArchiveArrayArrayMapOutputWithContext(context.Background())
+}
+
+func (in AssetArrayArrayMap) ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayMapOutput {
+	return in.ToAssetArrayArrayMapOutputWithContext(ctx).ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx)
+}
+
 // AssetArrayArrayMapOutput is an Output that returns map[string][][]Asset values.
 type AssetArrayArrayMapOutput struct{ *OutputState }
 
@@ -2168,6 +2755,23 @@ func (o AssetArrayArrayMapOutput) ToAssetArrayArrayMapOutput() AssetArrayArrayMa
 
 func (o AssetArrayArrayMapOutput) ToAssetArrayArrayMapOutputWithContext(ctx context.Context) AssetArrayArrayMapOutput {
 	return o
+}
+
+func (o AssetArrayArrayMapOutput) ToAssetOrArchiveArrayArrayMapOutput() AssetOrArchiveArrayArrayMapOutput {
+	return o.ToAssetOrArchiveArrayArrayMapOutputWithContext(context.Background())
+}
+
+func (o AssetArrayArrayMapOutput) ToAssetOrArchiveArrayArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][][]Asset) (map[string][][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string][][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string][][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -2225,6 +2829,14 @@ func (in AssetArrayArrayArray) ToAssetArrayArrayArrayOutputWithContext(ctx conte
 	return ToOutputWithContext(ctx, in).(AssetArrayArrayArrayOutput)
 }
 
+func (in AssetArrayArrayArray) ToAssetOrArchiveArrayArrayArrayOutput() AssetOrArchiveArrayArrayArrayOutput {
+	return in.ToAssetOrArchiveArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (in AssetArrayArrayArray) ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayArrayOutput {
+	return in.ToAssetArrayArrayArrayOutputWithContext(ctx).ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx)
+}
+
 // AssetArrayArrayArrayOutput is an Output that returns [][][]Asset values.
 type AssetArrayArrayArrayOutput struct{ *OutputState }
 
@@ -2249,6 +2861,23 @@ func (o AssetArrayArrayArrayOutput) ToAssetArrayArrayArrayOutput() AssetArrayArr
 
 func (o AssetArrayArrayArrayOutput) ToAssetArrayArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayArrayOutput {
 	return o
+}
+
+func (o AssetArrayArrayArrayOutput) ToAssetOrArchiveArrayArrayArrayOutput() AssetOrArchiveArrayArrayArrayOutput {
+	return o.ToAssetOrArchiveArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (o AssetArrayArrayArrayOutput) ToAssetOrArchiveArrayArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v [][][]Asset) ([][][]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[][][]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero [][][]AssetOrArchive
+			return zero, err
+		}
+		return coerced.([][][]AssetOrArchive), nil
+	}).(AssetOrArchiveArrayArrayArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -2313,6 +2942,14 @@ func (in AssetMapMapMap) ToAssetMapMapMapOutputWithContext(ctx context.Context) 
 	return ToOutputWithContext(ctx, in).(AssetMapMapMapOutput)
 }
 
+func (in AssetMapMapMap) ToAssetOrArchiveMapMapMapOutput() AssetOrArchiveMapMapMapOutput {
+	return in.ToAssetOrArchiveMapMapMapOutputWithContext(context.Background())
+}
+
+func (in AssetMapMapMap) ToAssetOrArchiveMapMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapMapOutput {
+	return in.ToAssetMapMapMapOutputWithContext(ctx).ToAssetOrArchiveMapMapMapOutputWithContext(ctx)
+}
+
 // AssetMapMapMapOutput is an Output that returns map[string]map[string]map[string]Asset values.
 type AssetMapMapMapOutput struct{ *OutputState }
 
@@ -2337,6 +2974,23 @@ func (o AssetMapMapMapOutput) ToAssetMapMapMapOutput() AssetMapMapMapOutput {
 
 func (o AssetMapMapMapOutput) ToAssetMapMapMapOutputWithContext(ctx context.Context) AssetMapMapMapOutput {
 	return o
+}
+
+func (o AssetMapMapMapOutput) ToAssetOrArchiveMapMapMapOutput() AssetOrArchiveMapMapMapOutput {
+	return o.ToAssetOrArchiveMapMapMapOutputWithContext(context.Background())
+}
+
+func (o AssetMapMapMapOutput) ToAssetOrArchiveMapMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string]map[string]Asset) (map[string]map[string]map[string]AssetOrArchive, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string]map[string]AssetOrArchive
+			return zero, err
+		}
+		return coerced.(map[string]map[string]map[string]AssetOrArchive), nil
+	}).(AssetOrArchiveMapMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -5872,9 +6526,11 @@ func (o IDOutput) ToStringOutput() StringOutput {
 }
 
 func (o IDOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
+
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) string {
 		return (string)(v)
 	}).(StringOutput)
+
 }
 
 func (o IDOutput) ToIDPtrOutput() IDPtrOutput {
@@ -5999,6 +6655,14 @@ func (in IDArray) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput 
 	return ToOutputWithContext(ctx, in).(IDArrayOutput)
 }
 
+func (in IDArray) ToStringArrayOutput() StringArrayOutput {
+	return in.ToStringArrayOutputWithContext(context.Background())
+}
+
+func (in IDArray) ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput {
+	return in.ToIDArrayOutputWithContext(ctx).ToStringArrayOutputWithContext(ctx)
+}
+
 // IDArrayOutput is an Output that returns []ID values.
 type IDArrayOutput struct{ *OutputState }
 
@@ -6023,6 +6687,23 @@ func (o IDArrayOutput) ToIDArrayOutput() IDArrayOutput {
 
 func (o IDArrayOutput) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput {
 	return o
+}
+
+func (o IDArrayOutput) ToStringArrayOutput() StringArrayOutput {
+	return o.ToStringArrayOutputWithContext(context.Background())
+}
+
+func (o IDArrayOutput) ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []ID) ([]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]string)(nil)).Elem())
+		if err != nil {
+			var zero []string
+			return zero, err
+		}
+		return coerced.([]string), nil
+	}).(StringArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -6087,6 +6768,14 @@ func (in IDMap) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 	return ToOutputWithContext(ctx, in).(IDMapOutput)
 }
 
+func (in IDMap) ToStringMapOutput() StringMapOutput {
+	return in.ToStringMapOutputWithContext(context.Background())
+}
+
+func (in IDMap) ToStringMapOutputWithContext(ctx context.Context) StringMapOutput {
+	return in.ToIDMapOutputWithContext(ctx).ToStringMapOutputWithContext(ctx)
+}
+
 // IDMapOutput is an Output that returns map[string]ID values.
 type IDMapOutput struct{ *OutputState }
 
@@ -6111,6 +6800,23 @@ func (o IDMapOutput) ToIDMapOutput() IDMapOutput {
 
 func (o IDMapOutput) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 	return o
+}
+
+func (o IDMapOutput) ToStringMapOutput() StringMapOutput {
+	return o.ToStringMapOutputWithContext(context.Background())
+}
+
+func (o IDMapOutput) ToStringMapOutputWithContext(ctx context.Context) StringMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]ID) (map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string]string
+			return zero, err
+		}
+		return coerced.(map[string]string), nil
+	}).(StringMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -6168,6 +6874,14 @@ func (in IDArrayMap) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayM
 	return ToOutputWithContext(ctx, in).(IDArrayMapOutput)
 }
 
+func (in IDArrayMap) ToStringArrayMapOutput() StringArrayMapOutput {
+	return in.ToStringArrayMapOutputWithContext(context.Background())
+}
+
+func (in IDArrayMap) ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput {
+	return in.ToIDArrayMapOutputWithContext(ctx).ToStringArrayMapOutputWithContext(ctx)
+}
+
 // IDArrayMapOutput is an Output that returns map[string][]ID values.
 type IDArrayMapOutput struct{ *OutputState }
 
@@ -6192,6 +6906,23 @@ func (o IDArrayMapOutput) ToIDArrayMapOutput() IDArrayMapOutput {
 
 func (o IDArrayMapOutput) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayMapOutput {
 	return o
+}
+
+func (o IDArrayMapOutput) ToStringArrayMapOutput() StringArrayMapOutput {
+	return o.ToStringArrayMapOutputWithContext(context.Background())
+}
+
+func (o IDArrayMapOutput) ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][]ID) (map[string][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string][]string
+			return zero, err
+		}
+		return coerced.(map[string][]string), nil
+	}).(StringArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -6249,6 +6980,14 @@ func (in IDMapArray) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArr
 	return ToOutputWithContext(ctx, in).(IDMapArrayOutput)
 }
 
+func (in IDMapArray) ToStringMapArrayOutput() StringMapArrayOutput {
+	return in.ToStringMapArrayOutputWithContext(context.Background())
+}
+
+func (in IDMapArray) ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput {
+	return in.ToIDMapArrayOutputWithContext(ctx).ToStringMapArrayOutputWithContext(ctx)
+}
+
 // IDMapArrayOutput is an Output that returns []map[string]ID values.
 type IDMapArrayOutput struct{ *OutputState }
 
@@ -6273,6 +7012,23 @@ func (o IDMapArrayOutput) ToIDMapArrayOutput() IDMapArrayOutput {
 
 func (o IDMapArrayOutput) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArrayOutput {
 	return o
+}
+
+func (o IDMapArrayOutput) ToStringMapArrayOutput() StringMapArrayOutput {
+	return o.ToStringMapArrayOutputWithContext(context.Background())
+}
+
+func (o IDMapArrayOutput) ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string]ID) ([]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero []map[string]string
+			return zero, err
+		}
+		return coerced.([]map[string]string), nil
+	}).(StringMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -6337,6 +7093,14 @@ func (in IDMapMap) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutp
 	return ToOutputWithContext(ctx, in).(IDMapMapOutput)
 }
 
+func (in IDMapMap) ToStringMapMapOutput() StringMapMapOutput {
+	return in.ToStringMapMapOutputWithContext(context.Background())
+}
+
+func (in IDMapMap) ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput {
+	return in.ToIDMapMapOutputWithContext(ctx).ToStringMapMapOutputWithContext(ctx)
+}
+
 // IDMapMapOutput is an Output that returns map[string]map[string]ID values.
 type IDMapMapOutput struct{ *OutputState }
 
@@ -6361,6 +7125,23 @@ func (o IDMapMapOutput) ToIDMapMapOutput() IDMapMapOutput {
 
 func (o IDMapMapOutput) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutput {
 	return o
+}
+
+func (o IDMapMapOutput) ToStringMapMapOutput() StringMapMapOutput {
+	return o.ToStringMapMapOutputWithContext(context.Background())
+}
+
+func (o IDMapMapOutput) ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string]ID) (map[string]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string]string
+			return zero, err
+		}
+		return coerced.(map[string]map[string]string), nil
+	}).(StringMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -6418,6 +7199,14 @@ func (in IDArrayArray) ToIDArrayArrayOutputWithContext(ctx context.Context) IDAr
 	return ToOutputWithContext(ctx, in).(IDArrayArrayOutput)
 }
 
+func (in IDArrayArray) ToStringArrayArrayOutput() StringArrayArrayOutput {
+	return in.ToStringArrayArrayOutputWithContext(context.Background())
+}
+
+func (in IDArrayArray) ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput {
+	return in.ToIDArrayArrayOutputWithContext(ctx).ToStringArrayArrayOutputWithContext(ctx)
+}
+
 // IDArrayArrayOutput is an Output that returns [][]ID values.
 type IDArrayArrayOutput struct{ *OutputState }
 
@@ -6442,6 +7231,23 @@ func (o IDArrayArrayOutput) ToIDArrayArrayOutput() IDArrayArrayOutput {
 
 func (o IDArrayArrayOutput) ToIDArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayOutput {
 	return o
+}
+
+func (o IDArrayArrayOutput) ToStringArrayArrayOutput() StringArrayArrayOutput {
+	return o.ToStringArrayArrayOutputWithContext(context.Background())
+}
+
+func (o IDArrayArrayOutput) ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v [][]ID) ([][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[][]string)(nil)).Elem())
+		if err != nil {
+			var zero [][]string
+			return zero, err
+		}
+		return coerced.([][]string), nil
+	}).(StringArrayArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -6506,6 +7312,14 @@ func (in IDArrayMapMap) ToIDArrayMapMapOutputWithContext(ctx context.Context) ID
 	return ToOutputWithContext(ctx, in).(IDArrayMapMapOutput)
 }
 
+func (in IDArrayMapMap) ToStringArrayMapMapOutput() StringArrayMapMapOutput {
+	return in.ToStringArrayMapMapOutputWithContext(context.Background())
+}
+
+func (in IDArrayMapMap) ToStringArrayMapMapOutputWithContext(ctx context.Context) StringArrayMapMapOutput {
+	return in.ToIDArrayMapMapOutputWithContext(ctx).ToStringArrayMapMapOutputWithContext(ctx)
+}
+
 // IDArrayMapMapOutput is an Output that returns map[string]map[string][]ID values.
 type IDArrayMapMapOutput struct{ *OutputState }
 
@@ -6530,6 +7344,23 @@ func (o IDArrayMapMapOutput) ToIDArrayMapMapOutput() IDArrayMapMapOutput {
 
 func (o IDArrayMapMapOutput) ToIDArrayMapMapOutputWithContext(ctx context.Context) IDArrayMapMapOutput {
 	return o
+}
+
+func (o IDArrayMapMapOutput) ToStringArrayMapMapOutput() StringArrayMapMapOutput {
+	return o.ToStringArrayMapMapOutputWithContext(context.Background())
+}
+
+func (o IDArrayMapMapOutput) ToStringArrayMapMapOutputWithContext(ctx context.Context) StringArrayMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string][]ID) (map[string]map[string][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string][]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string][]string
+			return zero, err
+		}
+		return coerced.(map[string]map[string][]string), nil
+	}).(StringArrayMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -6587,6 +7418,14 @@ func (in IDMapArrayMap) ToIDMapArrayMapOutputWithContext(ctx context.Context) ID
 	return ToOutputWithContext(ctx, in).(IDMapArrayMapOutput)
 }
 
+func (in IDMapArrayMap) ToStringMapArrayMapOutput() StringMapArrayMapOutput {
+	return in.ToStringMapArrayMapOutputWithContext(context.Background())
+}
+
+func (in IDMapArrayMap) ToStringMapArrayMapOutputWithContext(ctx context.Context) StringMapArrayMapOutput {
+	return in.ToIDMapArrayMapOutputWithContext(ctx).ToStringMapArrayMapOutputWithContext(ctx)
+}
+
 // IDMapArrayMapOutput is an Output that returns map[string][]map[string]ID values.
 type IDMapArrayMapOutput struct{ *OutputState }
 
@@ -6611,6 +7450,23 @@ func (o IDMapArrayMapOutput) ToIDMapArrayMapOutput() IDMapArrayMapOutput {
 
 func (o IDMapArrayMapOutput) ToIDMapArrayMapOutputWithContext(ctx context.Context) IDMapArrayMapOutput {
 	return o
+}
+
+func (o IDMapArrayMapOutput) ToStringMapArrayMapOutput() StringMapArrayMapOutput {
+	return o.ToStringMapArrayMapOutputWithContext(context.Background())
+}
+
+func (o IDMapArrayMapOutput) ToStringMapArrayMapOutputWithContext(ctx context.Context) StringMapArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][]map[string]ID) (map[string][]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string][]map[string]string
+			return zero, err
+		}
+		return coerced.(map[string][]map[string]string), nil
+	}).(StringMapArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -6668,6 +7524,14 @@ func (in IDMapMapArray) ToIDMapMapArrayOutputWithContext(ctx context.Context) ID
 	return ToOutputWithContext(ctx, in).(IDMapMapArrayOutput)
 }
 
+func (in IDMapMapArray) ToStringMapMapArrayOutput() StringMapMapArrayOutput {
+	return in.ToStringMapMapArrayOutputWithContext(context.Background())
+}
+
+func (in IDMapMapArray) ToStringMapMapArrayOutputWithContext(ctx context.Context) StringMapMapArrayOutput {
+	return in.ToIDMapMapArrayOutputWithContext(ctx).ToStringMapMapArrayOutputWithContext(ctx)
+}
+
 // IDMapMapArrayOutput is an Output that returns []map[string]map[string]ID values.
 type IDMapMapArrayOutput struct{ *OutputState }
 
@@ -6692,6 +7556,23 @@ func (o IDMapMapArrayOutput) ToIDMapMapArrayOutput() IDMapMapArrayOutput {
 
 func (o IDMapMapArrayOutput) ToIDMapMapArrayOutputWithContext(ctx context.Context) IDMapMapArrayOutput {
 	return o
+}
+
+func (o IDMapMapArrayOutput) ToStringMapMapArrayOutput() StringMapMapArrayOutput {
+	return o.ToStringMapMapArrayOutputWithContext(context.Background())
+}
+
+func (o IDMapMapArrayOutput) ToStringMapMapArrayOutputWithContext(ctx context.Context) StringMapMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string]map[string]ID) ([]map[string]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero []map[string]map[string]string
+			return zero, err
+		}
+		return coerced.([]map[string]map[string]string), nil
+	}).(StringMapMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -6756,6 +7637,14 @@ func (in IDArrayMapArray) ToIDArrayMapArrayOutputWithContext(ctx context.Context
 	return ToOutputWithContext(ctx, in).(IDArrayMapArrayOutput)
 }
 
+func (in IDArrayMapArray) ToStringArrayMapArrayOutput() StringArrayMapArrayOutput {
+	return in.ToStringArrayMapArrayOutputWithContext(context.Background())
+}
+
+func (in IDArrayMapArray) ToStringArrayMapArrayOutputWithContext(ctx context.Context) StringArrayMapArrayOutput {
+	return in.ToIDArrayMapArrayOutputWithContext(ctx).ToStringArrayMapArrayOutputWithContext(ctx)
+}
+
 // IDArrayMapArrayOutput is an Output that returns []map[string][]ID values.
 type IDArrayMapArrayOutput struct{ *OutputState }
 
@@ -6780,6 +7669,23 @@ func (o IDArrayMapArrayOutput) ToIDArrayMapArrayOutput() IDArrayMapArrayOutput {
 
 func (o IDArrayMapArrayOutput) ToIDArrayMapArrayOutputWithContext(ctx context.Context) IDArrayMapArrayOutput {
 	return o
+}
+
+func (o IDArrayMapArrayOutput) ToStringArrayMapArrayOutput() StringArrayMapArrayOutput {
+	return o.ToStringArrayMapArrayOutputWithContext(context.Background())
+}
+
+func (o IDArrayMapArrayOutput) ToStringArrayMapArrayOutputWithContext(ctx context.Context) StringArrayMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string][]ID) ([]map[string][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string][]string)(nil)).Elem())
+		if err != nil {
+			var zero []map[string][]string
+			return zero, err
+		}
+		return coerced.([]map[string][]string), nil
+	}).(StringArrayMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -6844,6 +7750,14 @@ func (in IDArrayArrayMap) ToIDArrayArrayMapOutputWithContext(ctx context.Context
 	return ToOutputWithContext(ctx, in).(IDArrayArrayMapOutput)
 }
 
+func (in IDArrayArrayMap) ToStringArrayArrayMapOutput() StringArrayArrayMapOutput {
+	return in.ToStringArrayArrayMapOutputWithContext(context.Background())
+}
+
+func (in IDArrayArrayMap) ToStringArrayArrayMapOutputWithContext(ctx context.Context) StringArrayArrayMapOutput {
+	return in.ToIDArrayArrayMapOutputWithContext(ctx).ToStringArrayArrayMapOutputWithContext(ctx)
+}
+
 // IDArrayArrayMapOutput is an Output that returns map[string][][]ID values.
 type IDArrayArrayMapOutput struct{ *OutputState }
 
@@ -6868,6 +7782,23 @@ func (o IDArrayArrayMapOutput) ToIDArrayArrayMapOutput() IDArrayArrayMapOutput {
 
 func (o IDArrayArrayMapOutput) ToIDArrayArrayMapOutputWithContext(ctx context.Context) IDArrayArrayMapOutput {
 	return o
+}
+
+func (o IDArrayArrayMapOutput) ToStringArrayArrayMapOutput() StringArrayArrayMapOutput {
+	return o.ToStringArrayArrayMapOutputWithContext(context.Background())
+}
+
+func (o IDArrayArrayMapOutput) ToStringArrayArrayMapOutputWithContext(ctx context.Context) StringArrayArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][][]ID) (map[string][][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][][]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string][][]string
+			return zero, err
+		}
+		return coerced.(map[string][][]string), nil
+	}).(StringArrayArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -6925,6 +7856,14 @@ func (in IDArrayArrayArray) ToIDArrayArrayArrayOutputWithContext(ctx context.Con
 	return ToOutputWithContext(ctx, in).(IDArrayArrayArrayOutput)
 }
 
+func (in IDArrayArrayArray) ToStringArrayArrayArrayOutput() StringArrayArrayArrayOutput {
+	return in.ToStringArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (in IDArrayArrayArray) ToStringArrayArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayArrayOutput {
+	return in.ToIDArrayArrayArrayOutputWithContext(ctx).ToStringArrayArrayArrayOutputWithContext(ctx)
+}
+
 // IDArrayArrayArrayOutput is an Output that returns [][][]ID values.
 type IDArrayArrayArrayOutput struct{ *OutputState }
 
@@ -6949,6 +7888,23 @@ func (o IDArrayArrayArrayOutput) ToIDArrayArrayArrayOutput() IDArrayArrayArrayOu
 
 func (o IDArrayArrayArrayOutput) ToIDArrayArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayArrayOutput {
 	return o
+}
+
+func (o IDArrayArrayArrayOutput) ToStringArrayArrayArrayOutput() StringArrayArrayArrayOutput {
+	return o.ToStringArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (o IDArrayArrayArrayOutput) ToStringArrayArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v [][][]ID) ([][][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[][][]string)(nil)).Elem())
+		if err != nil {
+			var zero [][][]string
+			return zero, err
+		}
+		return coerced.([][][]string), nil
+	}).(StringArrayArrayArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -7013,6 +7969,14 @@ func (in IDMapMapMap) ToIDMapMapMapOutputWithContext(ctx context.Context) IDMapM
 	return ToOutputWithContext(ctx, in).(IDMapMapMapOutput)
 }
 
+func (in IDMapMapMap) ToStringMapMapMapOutput() StringMapMapMapOutput {
+	return in.ToStringMapMapMapOutputWithContext(context.Background())
+}
+
+func (in IDMapMapMap) ToStringMapMapMapOutputWithContext(ctx context.Context) StringMapMapMapOutput {
+	return in.ToIDMapMapMapOutputWithContext(ctx).ToStringMapMapMapOutputWithContext(ctx)
+}
+
 // IDMapMapMapOutput is an Output that returns map[string]map[string]map[string]ID values.
 type IDMapMapMapOutput struct{ *OutputState }
 
@@ -7037,6 +8001,23 @@ func (o IDMapMapMapOutput) ToIDMapMapMapOutput() IDMapMapMapOutput {
 
 func (o IDMapMapMapOutput) ToIDMapMapMapOutputWithContext(ctx context.Context) IDMapMapMapOutput {
 	return o
+}
+
+func (o IDMapMapMapOutput) ToStringMapMapMapOutput() StringMapMapMapOutput {
+	return o.ToStringMapMapMapOutputWithContext(context.Background())
+}
+
+func (o IDMapMapMapOutput) ToStringMapMapMapOutputWithContext(ctx context.Context) StringMapMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string]map[string]ID) (map[string]map[string]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string]map[string]string
+			return zero, err
+		}
+		return coerced.(map[string]map[string]map[string]string), nil
+	}).(StringMapMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -10744,9 +11725,11 @@ func (o URNOutput) ToStringOutput() StringOutput {
 }
 
 func (o URNOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
+
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v URN) string {
 		return (string)(v)
 	}).(StringOutput)
+
 }
 
 func (o URNOutput) ToURNPtrOutput() URNPtrOutput {
@@ -10871,6 +11854,14 @@ func (in URNArray) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutp
 	return ToOutputWithContext(ctx, in).(URNArrayOutput)
 }
 
+func (in URNArray) ToStringArrayOutput() StringArrayOutput {
+	return in.ToStringArrayOutputWithContext(context.Background())
+}
+
+func (in URNArray) ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput {
+	return in.ToURNArrayOutputWithContext(ctx).ToStringArrayOutputWithContext(ctx)
+}
+
 // URNArrayOutput is an Output that returns []URN values.
 type URNArrayOutput struct{ *OutputState }
 
@@ -10895,6 +11886,23 @@ func (o URNArrayOutput) ToURNArrayOutput() URNArrayOutput {
 
 func (o URNArrayOutput) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutput {
 	return o
+}
+
+func (o URNArrayOutput) ToStringArrayOutput() StringArrayOutput {
+	return o.ToStringArrayOutputWithContext(context.Background())
+}
+
+func (o URNArrayOutput) ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []URN) ([]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]string)(nil)).Elem())
+		if err != nil {
+			var zero []string
+			return zero, err
+		}
+		return coerced.([]string), nil
+	}).(StringArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -10959,6 +11967,14 @@ func (in URNMap) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
 	return ToOutputWithContext(ctx, in).(URNMapOutput)
 }
 
+func (in URNMap) ToStringMapOutput() StringMapOutput {
+	return in.ToStringMapOutputWithContext(context.Background())
+}
+
+func (in URNMap) ToStringMapOutputWithContext(ctx context.Context) StringMapOutput {
+	return in.ToURNMapOutputWithContext(ctx).ToStringMapOutputWithContext(ctx)
+}
+
 // URNMapOutput is an Output that returns map[string]URN values.
 type URNMapOutput struct{ *OutputState }
 
@@ -10983,6 +11999,23 @@ func (o URNMapOutput) ToURNMapOutput() URNMapOutput {
 
 func (o URNMapOutput) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
 	return o
+}
+
+func (o URNMapOutput) ToStringMapOutput() StringMapOutput {
+	return o.ToStringMapOutputWithContext(context.Background())
+}
+
+func (o URNMapOutput) ToStringMapOutputWithContext(ctx context.Context) StringMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]URN) (map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string]string
+			return zero, err
+		}
+		return coerced.(map[string]string), nil
+	}).(StringMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -11040,6 +12073,14 @@ func (in URNArrayMap) ToURNArrayMapOutputWithContext(ctx context.Context) URNArr
 	return ToOutputWithContext(ctx, in).(URNArrayMapOutput)
 }
 
+func (in URNArrayMap) ToStringArrayMapOutput() StringArrayMapOutput {
+	return in.ToStringArrayMapOutputWithContext(context.Background())
+}
+
+func (in URNArrayMap) ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput {
+	return in.ToURNArrayMapOutputWithContext(ctx).ToStringArrayMapOutputWithContext(ctx)
+}
+
 // URNArrayMapOutput is an Output that returns map[string][]URN values.
 type URNArrayMapOutput struct{ *OutputState }
 
@@ -11064,6 +12105,23 @@ func (o URNArrayMapOutput) ToURNArrayMapOutput() URNArrayMapOutput {
 
 func (o URNArrayMapOutput) ToURNArrayMapOutputWithContext(ctx context.Context) URNArrayMapOutput {
 	return o
+}
+
+func (o URNArrayMapOutput) ToStringArrayMapOutput() StringArrayMapOutput {
+	return o.ToStringArrayMapOutputWithContext(context.Background())
+}
+
+func (o URNArrayMapOutput) ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][]URN) (map[string][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string][]string
+			return zero, err
+		}
+		return coerced.(map[string][]string), nil
+	}).(StringArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -11121,6 +12179,14 @@ func (in URNMapArray) ToURNMapArrayOutputWithContext(ctx context.Context) URNMap
 	return ToOutputWithContext(ctx, in).(URNMapArrayOutput)
 }
 
+func (in URNMapArray) ToStringMapArrayOutput() StringMapArrayOutput {
+	return in.ToStringMapArrayOutputWithContext(context.Background())
+}
+
+func (in URNMapArray) ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput {
+	return in.ToURNMapArrayOutputWithContext(ctx).ToStringMapArrayOutputWithContext(ctx)
+}
+
 // URNMapArrayOutput is an Output that returns []map[string]URN values.
 type URNMapArrayOutput struct{ *OutputState }
 
@@ -11145,6 +12211,23 @@ func (o URNMapArrayOutput) ToURNMapArrayOutput() URNMapArrayOutput {
 
 func (o URNMapArrayOutput) ToURNMapArrayOutputWithContext(ctx context.Context) URNMapArrayOutput {
 	return o
+}
+
+func (o URNMapArrayOutput) ToStringMapArrayOutput() StringMapArrayOutput {
+	return o.ToStringMapArrayOutputWithContext(context.Background())
+}
+
+func (o URNMapArrayOutput) ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string]URN) ([]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero []map[string]string
+			return zero, err
+		}
+		return coerced.([]map[string]string), nil
+	}).(StringMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -11209,6 +12292,14 @@ func (in URNMapMap) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapO
 	return ToOutputWithContext(ctx, in).(URNMapMapOutput)
 }
 
+func (in URNMapMap) ToStringMapMapOutput() StringMapMapOutput {
+	return in.ToStringMapMapOutputWithContext(context.Background())
+}
+
+func (in URNMapMap) ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput {
+	return in.ToURNMapMapOutputWithContext(ctx).ToStringMapMapOutputWithContext(ctx)
+}
+
 // URNMapMapOutput is an Output that returns map[string]map[string]URN values.
 type URNMapMapOutput struct{ *OutputState }
 
@@ -11233,6 +12324,23 @@ func (o URNMapMapOutput) ToURNMapMapOutput() URNMapMapOutput {
 
 func (o URNMapMapOutput) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapOutput {
 	return o
+}
+
+func (o URNMapMapOutput) ToStringMapMapOutput() StringMapMapOutput {
+	return o.ToStringMapMapOutputWithContext(context.Background())
+}
+
+func (o URNMapMapOutput) ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string]URN) (map[string]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string]string
+			return zero, err
+		}
+		return coerced.(map[string]map[string]string), nil
+	}).(StringMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -11290,6 +12398,14 @@ func (in URNArrayArray) ToURNArrayArrayOutputWithContext(ctx context.Context) UR
 	return ToOutputWithContext(ctx, in).(URNArrayArrayOutput)
 }
 
+func (in URNArrayArray) ToStringArrayArrayOutput() StringArrayArrayOutput {
+	return in.ToStringArrayArrayOutputWithContext(context.Background())
+}
+
+func (in URNArrayArray) ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput {
+	return in.ToURNArrayArrayOutputWithContext(ctx).ToStringArrayArrayOutputWithContext(ctx)
+}
+
 // URNArrayArrayOutput is an Output that returns [][]URN values.
 type URNArrayArrayOutput struct{ *OutputState }
 
@@ -11314,6 +12430,23 @@ func (o URNArrayArrayOutput) ToURNArrayArrayOutput() URNArrayArrayOutput {
 
 func (o URNArrayArrayOutput) ToURNArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayOutput {
 	return o
+}
+
+func (o URNArrayArrayOutput) ToStringArrayArrayOutput() StringArrayArrayOutput {
+	return o.ToStringArrayArrayOutputWithContext(context.Background())
+}
+
+func (o URNArrayArrayOutput) ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v [][]URN) ([][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[][]string)(nil)).Elem())
+		if err != nil {
+			var zero [][]string
+			return zero, err
+		}
+		return coerced.([][]string), nil
+	}).(StringArrayArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -11378,6 +12511,14 @@ func (in URNArrayMapMap) ToURNArrayMapMapOutputWithContext(ctx context.Context) 
 	return ToOutputWithContext(ctx, in).(URNArrayMapMapOutput)
 }
 
+func (in URNArrayMapMap) ToStringArrayMapMapOutput() StringArrayMapMapOutput {
+	return in.ToStringArrayMapMapOutputWithContext(context.Background())
+}
+
+func (in URNArrayMapMap) ToStringArrayMapMapOutputWithContext(ctx context.Context) StringArrayMapMapOutput {
+	return in.ToURNArrayMapMapOutputWithContext(ctx).ToStringArrayMapMapOutputWithContext(ctx)
+}
+
 // URNArrayMapMapOutput is an Output that returns map[string]map[string][]URN values.
 type URNArrayMapMapOutput struct{ *OutputState }
 
@@ -11402,6 +12543,23 @@ func (o URNArrayMapMapOutput) ToURNArrayMapMapOutput() URNArrayMapMapOutput {
 
 func (o URNArrayMapMapOutput) ToURNArrayMapMapOutputWithContext(ctx context.Context) URNArrayMapMapOutput {
 	return o
+}
+
+func (o URNArrayMapMapOutput) ToStringArrayMapMapOutput() StringArrayMapMapOutput {
+	return o.ToStringArrayMapMapOutputWithContext(context.Background())
+}
+
+func (o URNArrayMapMapOutput) ToStringArrayMapMapOutputWithContext(ctx context.Context) StringArrayMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string][]URN) (map[string]map[string][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string][]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string][]string
+			return zero, err
+		}
+		return coerced.(map[string]map[string][]string), nil
+	}).(StringArrayMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -11459,6 +12617,14 @@ func (in URNMapArrayMap) ToURNMapArrayMapOutputWithContext(ctx context.Context) 
 	return ToOutputWithContext(ctx, in).(URNMapArrayMapOutput)
 }
 
+func (in URNMapArrayMap) ToStringMapArrayMapOutput() StringMapArrayMapOutput {
+	return in.ToStringMapArrayMapOutputWithContext(context.Background())
+}
+
+func (in URNMapArrayMap) ToStringMapArrayMapOutputWithContext(ctx context.Context) StringMapArrayMapOutput {
+	return in.ToURNMapArrayMapOutputWithContext(ctx).ToStringMapArrayMapOutputWithContext(ctx)
+}
+
 // URNMapArrayMapOutput is an Output that returns map[string][]map[string]URN values.
 type URNMapArrayMapOutput struct{ *OutputState }
 
@@ -11483,6 +12649,23 @@ func (o URNMapArrayMapOutput) ToURNMapArrayMapOutput() URNMapArrayMapOutput {
 
 func (o URNMapArrayMapOutput) ToURNMapArrayMapOutputWithContext(ctx context.Context) URNMapArrayMapOutput {
 	return o
+}
+
+func (o URNMapArrayMapOutput) ToStringMapArrayMapOutput() StringMapArrayMapOutput {
+	return o.ToStringMapArrayMapOutputWithContext(context.Background())
+}
+
+func (o URNMapArrayMapOutput) ToStringMapArrayMapOutputWithContext(ctx context.Context) StringMapArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][]map[string]URN) (map[string][]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string][]map[string]string
+			return zero, err
+		}
+		return coerced.(map[string][]map[string]string), nil
+	}).(StringMapArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -11540,6 +12723,14 @@ func (in URNMapMapArray) ToURNMapMapArrayOutputWithContext(ctx context.Context) 
 	return ToOutputWithContext(ctx, in).(URNMapMapArrayOutput)
 }
 
+func (in URNMapMapArray) ToStringMapMapArrayOutput() StringMapMapArrayOutput {
+	return in.ToStringMapMapArrayOutputWithContext(context.Background())
+}
+
+func (in URNMapMapArray) ToStringMapMapArrayOutputWithContext(ctx context.Context) StringMapMapArrayOutput {
+	return in.ToURNMapMapArrayOutputWithContext(ctx).ToStringMapMapArrayOutputWithContext(ctx)
+}
+
 // URNMapMapArrayOutput is an Output that returns []map[string]map[string]URN values.
 type URNMapMapArrayOutput struct{ *OutputState }
 
@@ -11564,6 +12755,23 @@ func (o URNMapMapArrayOutput) ToURNMapMapArrayOutput() URNMapMapArrayOutput {
 
 func (o URNMapMapArrayOutput) ToURNMapMapArrayOutputWithContext(ctx context.Context) URNMapMapArrayOutput {
 	return o
+}
+
+func (o URNMapMapArrayOutput) ToStringMapMapArrayOutput() StringMapMapArrayOutput {
+	return o.ToStringMapMapArrayOutputWithContext(context.Background())
+}
+
+func (o URNMapMapArrayOutput) ToStringMapMapArrayOutputWithContext(ctx context.Context) StringMapMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string]map[string]URN) ([]map[string]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero []map[string]map[string]string
+			return zero, err
+		}
+		return coerced.([]map[string]map[string]string), nil
+	}).(StringMapMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -11628,6 +12836,14 @@ func (in URNArrayMapArray) ToURNArrayMapArrayOutputWithContext(ctx context.Conte
 	return ToOutputWithContext(ctx, in).(URNArrayMapArrayOutput)
 }
 
+func (in URNArrayMapArray) ToStringArrayMapArrayOutput() StringArrayMapArrayOutput {
+	return in.ToStringArrayMapArrayOutputWithContext(context.Background())
+}
+
+func (in URNArrayMapArray) ToStringArrayMapArrayOutputWithContext(ctx context.Context) StringArrayMapArrayOutput {
+	return in.ToURNArrayMapArrayOutputWithContext(ctx).ToStringArrayMapArrayOutputWithContext(ctx)
+}
+
 // URNArrayMapArrayOutput is an Output that returns []map[string][]URN values.
 type URNArrayMapArrayOutput struct{ *OutputState }
 
@@ -11652,6 +12868,23 @@ func (o URNArrayMapArrayOutput) ToURNArrayMapArrayOutput() URNArrayMapArrayOutpu
 
 func (o URNArrayMapArrayOutput) ToURNArrayMapArrayOutputWithContext(ctx context.Context) URNArrayMapArrayOutput {
 	return o
+}
+
+func (o URNArrayMapArrayOutput) ToStringArrayMapArrayOutput() StringArrayMapArrayOutput {
+	return o.ToStringArrayMapArrayOutputWithContext(context.Background())
+}
+
+func (o URNArrayMapArrayOutput) ToStringArrayMapArrayOutputWithContext(ctx context.Context) StringArrayMapArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v []map[string][]URN) ([]map[string][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[]map[string][]string)(nil)).Elem())
+		if err != nil {
+			var zero []map[string][]string
+			return zero, err
+		}
+		return coerced.([]map[string][]string), nil
+	}).(StringArrayMapArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -11716,6 +12949,14 @@ func (in URNArrayArrayMap) ToURNArrayArrayMapOutputWithContext(ctx context.Conte
 	return ToOutputWithContext(ctx, in).(URNArrayArrayMapOutput)
 }
 
+func (in URNArrayArrayMap) ToStringArrayArrayMapOutput() StringArrayArrayMapOutput {
+	return in.ToStringArrayArrayMapOutputWithContext(context.Background())
+}
+
+func (in URNArrayArrayMap) ToStringArrayArrayMapOutputWithContext(ctx context.Context) StringArrayArrayMapOutput {
+	return in.ToURNArrayArrayMapOutputWithContext(ctx).ToStringArrayArrayMapOutputWithContext(ctx)
+}
+
 // URNArrayArrayMapOutput is an Output that returns map[string][][]URN values.
 type URNArrayArrayMapOutput struct{ *OutputState }
 
@@ -11740,6 +12981,23 @@ func (o URNArrayArrayMapOutput) ToURNArrayArrayMapOutput() URNArrayArrayMapOutpu
 
 func (o URNArrayArrayMapOutput) ToURNArrayArrayMapOutputWithContext(ctx context.Context) URNArrayArrayMapOutput {
 	return o
+}
+
+func (o URNArrayArrayMapOutput) ToStringArrayArrayMapOutput() StringArrayArrayMapOutput {
+	return o.ToStringArrayArrayMapOutputWithContext(context.Background())
+}
+
+func (o URNArrayArrayMapOutput) ToStringArrayArrayMapOutputWithContext(ctx context.Context) StringArrayArrayMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string][][]URN) (map[string][][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string][][]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string][][]string
+			return zero, err
+		}
+		return coerced.(map[string][][]string), nil
+	}).(StringArrayArrayMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.
@@ -11797,6 +13055,14 @@ func (in URNArrayArrayArray) ToURNArrayArrayArrayOutputWithContext(ctx context.C
 	return ToOutputWithContext(ctx, in).(URNArrayArrayArrayOutput)
 }
 
+func (in URNArrayArrayArray) ToStringArrayArrayArrayOutput() StringArrayArrayArrayOutput {
+	return in.ToStringArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (in URNArrayArrayArray) ToStringArrayArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayArrayOutput {
+	return in.ToURNArrayArrayArrayOutputWithContext(ctx).ToStringArrayArrayArrayOutputWithContext(ctx)
+}
+
 // URNArrayArrayArrayOutput is an Output that returns [][][]URN values.
 type URNArrayArrayArrayOutput struct{ *OutputState }
 
@@ -11821,6 +13087,23 @@ func (o URNArrayArrayArrayOutput) ToURNArrayArrayArrayOutput() URNArrayArrayArra
 
 func (o URNArrayArrayArrayOutput) ToURNArrayArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayArrayOutput {
 	return o
+}
+
+func (o URNArrayArrayArrayOutput) ToStringArrayArrayArrayOutput() StringArrayArrayArrayOutput {
+	return o.ToStringArrayArrayArrayOutputWithContext(context.Background())
+}
+
+func (o URNArrayArrayArrayOutput) ToStringArrayArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayArrayOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v [][][]URN) ([][][]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*[][][]string)(nil)).Elem())
+		if err != nil {
+			var zero [][][]string
+			return zero, err
+		}
+		return coerced.([][][]string), nil
+	}).(StringArrayArrayArrayOutput)
+
 }
 
 // Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
@@ -11885,6 +13168,14 @@ func (in URNMapMapMap) ToURNMapMapMapOutputWithContext(ctx context.Context) URNM
 	return ToOutputWithContext(ctx, in).(URNMapMapMapOutput)
 }
 
+func (in URNMapMapMap) ToStringMapMapMapOutput() StringMapMapMapOutput {
+	return in.ToStringMapMapMapOutputWithContext(context.Background())
+}
+
+func (in URNMapMapMap) ToStringMapMapMapOutputWithContext(ctx context.Context) StringMapMapMapOutput {
+	return in.ToURNMapMapMapOutputWithContext(ctx).ToStringMapMapMapOutputWithContext(ctx)
+}
+
 // URNMapMapMapOutput is an Output that returns map[string]map[string]map[string]URN values.
 type URNMapMapMapOutput struct{ *OutputState }
 
@@ -11909,6 +13200,23 @@ func (o URNMapMapMapOutput) ToURNMapMapMapOutput() URNMapMapMapOutput {
 
 func (o URNMapMapMapOutput) ToURNMapMapMapOutputWithContext(ctx context.Context) URNMapMapMapOutput {
 	return o
+}
+
+func (o URNMapMapMapOutput) ToStringMapMapMapOutput() StringMapMapMapOutput {
+	return o.ToStringMapMapMapOutputWithContext(context.Background())
+}
+
+func (o URNMapMapMapOutput) ToStringMapMapMapOutputWithContext(ctx context.Context) StringMapMapMapOutput {
+
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v map[string]map[string]map[string]URN) (map[string]map[string]map[string]string, error) {
+		coerced, err := coerceTypeConversion(v, reflect.TypeOf((*map[string]map[string]map[string]string)(nil)).Elem())
+		if err != nil {
+			var zero map[string]map[string]map[string]string
+			return zero, err
+		}
+		return coerced.(map[string]map[string]map[string]string), nil
+	}).(StringMapMapMapOutput)
+
 }
 
 // MapIndex looks up the key k in the map.

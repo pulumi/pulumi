@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/go
+  description: Support more conversions between `ID` and `URN` types and string inputs

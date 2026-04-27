@@ -313,62 +313,35 @@ func TestTo{{.Name}}Output(t *testing.T) {
 // Test type-specific ToOutput methods for builtins that implement other builtin input types.
 func TestBuiltinConversions(t *testing.T) {
 	t.Parallel()
+{{range $source := .Builtins}}
+{{range $target := $source.Implements}}
+	t.Run("{{$source.Name}}To{{$target.Name}}", func(t *testing.T) {
+		sourceIn := {{$source.Example}}
 
-	archiveIn := NewFileArchive("foo.zip")
-	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
-	archiveV, known, _, _, err := await(assetOrArchiveOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, archiveIn, archiveV)
+		targetIn, ok := any(sourceIn).({{$target.Name}}Input)
+		require.True(t, ok)
 
-	archiveOut := archiveIn.ToArchiveOutput()
-	assetOrArchiveOut = archiveOut.ToAssetOrArchiveOutput()
-	archiveV, known, _, _, err = await(assetOrArchiveOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, archiveIn, archiveV)
+		targetOut := targetIn.To{{$target.Name}}Output()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
 
-	assetIn := NewFileAsset("foo.zip")
-	assetOrArchiveOut = assetIn.ToAssetOrArchiveOutput()
-	assetV, known, _, _, err := await(assetOrArchiveOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, assetIn, assetV)
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*{{$target.ElementType}})(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.({{$target.ElementType}}), actual)
 
-	assetOut := assetIn.ToAssetOutput()
-	assetOrArchiveOut = assetOut.ToAssetOrArchiveOutput()
-	assetV, known, _, _, err = await(assetOrArchiveOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, assetIn, assetV)
+		sourceOut := sourceIn.To{{$source.Name}}Output()
+		targetIn, ok = any(sourceOut).({{$target.Name}}Input)
+		require.True(t, ok)
 
-	idIn := ID("foo")
-	stringOut := idIn.ToStringOutput()
-	stringV, known, _, _, err := await(stringOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, string(idIn), stringV)
-
-	idOut := idIn.ToIDOutput()
-	stringOut = idOut.ToStringOutput()
-	stringV, known, _, _, err = await(stringOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, string(idIn), stringV)
-
-	urnIn := URN("foo")
-	stringOut = urnIn.ToStringOutput()
-	stringV, known, _, _, err = await(stringOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, string(urnIn), stringV)
-
-	urnOut := urnIn.ToURNOutput()
-	stringOut = urnOut.ToStringOutput()
-	stringV, known, _, _, err = await(stringOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, string(urnIn), stringV)
+		targetOut = targetIn.To{{$target.Name}}Output()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.({{$target.ElementType}}), actual)
+	})
+{{end}}
+{{end}}
 }
 
 // Test pointer types.

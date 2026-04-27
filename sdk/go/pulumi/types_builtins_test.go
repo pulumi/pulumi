@@ -8391,61 +8391,1462 @@ func TestToURNMapMapMapOutput(t *testing.T) {
 func TestBuiltinConversions(t *testing.T) {
 	t.Parallel()
 
-	archiveIn := NewFileArchive("foo.zip")
-	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
-	archiveV, known, _, _, err := await(assetOrArchiveOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, archiveIn, archiveV)
+	t.Run("ArchiveToAssetOrArchive", func(t *testing.T) {
+		sourceIn := NewFileArchive("foo.zip")
 
-	archiveOut := archiveIn.ToArchiveOutput()
-	assetOrArchiveOut = archiveOut.ToAssetOrArchiveOutput()
-	archiveV, known, _, _, err = await(assetOrArchiveOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, archiveIn, archiveV)
+		targetIn, ok := any(sourceIn).(AssetOrArchiveInput)
+		require.True(t, ok)
 
-	assetIn := NewFileAsset("foo.zip")
-	assetOrArchiveOut = assetIn.ToAssetOrArchiveOutput()
-	assetV, known, _, _, err := await(assetOrArchiveOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, assetIn, assetV)
+		targetOut := targetIn.ToAssetOrArchiveOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
 
-	assetOut := assetIn.ToAssetOutput()
-	assetOrArchiveOut = assetOut.ToAssetOrArchiveOutput()
-	assetV, known, _, _, err = await(assetOrArchiveOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, assetIn, assetV)
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(AssetOrArchive), actual)
 
-	idIn := ID("foo")
-	stringOut := idIn.ToStringOutput()
-	stringV, known, _, _, err := await(stringOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, string(idIn), stringV)
+		sourceOut := sourceIn.ToArchiveOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveInput)
+		require.True(t, ok)
 
-	idOut := idIn.ToIDOutput()
-	stringOut = idOut.ToStringOutput()
-	stringV, known, _, _, err = await(stringOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, string(idIn), stringV)
+		targetOut = targetIn.ToAssetOrArchiveOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(AssetOrArchive), actual)
+	})
 
-	urnIn := URN("foo")
-	stringOut = urnIn.ToStringOutput()
-	stringV, known, _, _, err = await(stringOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, string(urnIn), stringV)
+	t.Run("ArchiveArrayToAssetOrArchiveArray", func(t *testing.T) {
+		sourceIn := ArchiveArray{NewFileArchive("foo.zip")}
 
-	urnOut := urnIn.ToURNOutput()
-	stringOut = urnOut.ToStringOutput()
-	stringV, known, _, _, err = await(stringOut)
-	assert.True(t, known)
-	require.NoError(t, err)
-	assert.Equal(t, string(urnIn), stringV)
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveMapToAssetOrArchiveMap", func(t *testing.T) {
+		sourceIn := ArchiveMap{"baz": NewFileArchive("foo.zip")}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveArrayMapToAssetOrArchiveArrayMap", func(t *testing.T) {
+		sourceIn := ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveArrayMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveMapArrayToAssetOrArchiveMapArray", func(t *testing.T) {
+		sourceIn := ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveMapArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveMapMapToAssetOrArchiveMapMap", func(t *testing.T) {
+		sourceIn := ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveMapMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveArrayArrayToAssetOrArchiveArrayArray", func(t *testing.T) {
+		sourceIn := ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveArrayArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveArrayMapMapToAssetOrArchiveArrayMapMap", func(t *testing.T) {
+		sourceIn := ArchiveArrayMapMap{"baz": ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveArrayMapMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string][]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveMapArrayMapToAssetOrArchiveMapArrayMap", func(t *testing.T) {
+		sourceIn := ArchiveMapArrayMap{"baz": ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveMapArrayMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveMapMapArrayToAssetOrArchiveMapMapArray", func(t *testing.T) {
+		sourceIn := ArchiveMapMapArray{ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveMapMapArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveArrayMapArrayToAssetOrArchiveArrayMapArray", func(t *testing.T) {
+		sourceIn := ArchiveArrayMapArray{ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveArrayMapArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string][]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveArrayArrayMapToAssetOrArchiveArrayArrayMap", func(t *testing.T) {
+		sourceIn := ArchiveArrayArrayMap{"baz": ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveArrayArrayMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][][]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveArrayArrayArrayToAssetOrArchiveArrayArrayArray", func(t *testing.T) {
+		sourceIn := ArchiveArrayArrayArray{ArchiveArrayArray{ArchiveArray{NewFileArchive("foo.zip")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayArrayArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[][][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveArrayArrayArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayArrayArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][][]AssetOrArchive), actual)
+	})
+
+	t.Run("ArchiveMapMapMapToAssetOrArchiveMapMapMap", func(t *testing.T) {
+		sourceIn := ArchiveMapMapMap{"baz": ArchiveMapMap{"baz": ArchiveMap{"baz": NewFileArchive("foo.zip")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToArchiveMapMapMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetToAssetOrArchive", func(t *testing.T) {
+		sourceIn := NewFileAsset("foo.txt")
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(AssetOrArchive), actual)
+	})
+
+	t.Run("AssetArrayToAssetOrArchiveArray", func(t *testing.T) {
+		sourceIn := AssetArray{NewFileAsset("foo.txt")}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetMapToAssetOrArchiveMap", func(t *testing.T) {
+		sourceIn := AssetMap{"baz": NewFileAsset("foo.txt")}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetArrayMapToAssetOrArchiveArrayMap", func(t *testing.T) {
+		sourceIn := AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetArrayMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetMapArrayToAssetOrArchiveMapArray", func(t *testing.T) {
+		sourceIn := AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetMapArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetMapMapToAssetOrArchiveMapMap", func(t *testing.T) {
+		sourceIn := AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetMapMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetArrayArrayToAssetOrArchiveArrayArray", func(t *testing.T) {
+		sourceIn := AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetArrayArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetArrayMapMapToAssetOrArchiveArrayMapMap", func(t *testing.T) {
+		sourceIn := AssetArrayMapMap{"baz": AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetArrayMapMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string][]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetMapArrayMapToAssetOrArchiveMapArrayMap", func(t *testing.T) {
+		sourceIn := AssetMapArrayMap{"baz": AssetMapArray{AssetMap{"baz": NewFileAsset("foo.txt")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetMapArrayMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetMapMapArrayToAssetOrArchiveMapMapArray", func(t *testing.T) {
+		sourceIn := AssetMapMapArray{AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetMapMapArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetArrayMapArrayToAssetOrArchiveArrayMapArray", func(t *testing.T) {
+		sourceIn := AssetArrayMapArray{AssetArrayMap{"baz": AssetArray{NewFileAsset("foo.txt")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetArrayMapArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string][]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetArrayArrayMapToAssetOrArchiveArrayArrayMap", func(t *testing.T) {
+		sourceIn := AssetArrayArrayMap{"baz": AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetArrayArrayMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][][]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetArrayArrayArrayToAssetOrArchiveArrayArrayArray", func(t *testing.T) {
+		sourceIn := AssetArrayArrayArray{AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveArrayArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveArrayArrayArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[][][]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][][]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetArrayArrayArrayOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveArrayArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveArrayArrayArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][][]AssetOrArchive), actual)
+	})
+
+	t.Run("AssetMapMapMapToAssetOrArchiveMapMapMap", func(t *testing.T) {
+		sourceIn := AssetMapMapMap{"baz": AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}}
+
+		targetIn, ok := any(sourceIn).(AssetOrArchiveMapMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToAssetOrArchiveMapMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string]map[string]AssetOrArchive)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]map[string]AssetOrArchive), actual)
+
+		sourceOut := sourceIn.ToAssetMapMapMapOutput()
+		targetIn, ok = any(sourceOut).(AssetOrArchiveMapMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToAssetOrArchiveMapMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]map[string]AssetOrArchive), actual)
+	})
+
+	t.Run("IDToString", func(t *testing.T) {
+		sourceIn := ID("foo")
+
+		targetIn, ok := any(sourceIn).(StringInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(string), actual)
+
+		sourceOut := sourceIn.ToIDOutput()
+		targetIn, ok = any(sourceOut).(StringInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(string), actual)
+	})
+
+	t.Run("IDArrayToStringArray", func(t *testing.T) {
+		sourceIn := IDArray{ID("foo")}
+
+		targetIn, ok := any(sourceIn).(StringArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]string), actual)
+
+		sourceOut := sourceIn.ToIDArrayOutput()
+		targetIn, ok = any(sourceOut).(StringArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]string), actual)
+	})
+
+	t.Run("IDMapToStringMap", func(t *testing.T) {
+		sourceIn := IDMap{"baz": ID("foo")}
+
+		targetIn, ok := any(sourceIn).(StringMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]string), actual)
+
+		sourceOut := sourceIn.ToIDMapOutput()
+		targetIn, ok = any(sourceOut).(StringMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]string), actual)
+	})
+
+	t.Run("IDArrayMapToStringArrayMap", func(t *testing.T) {
+		sourceIn := IDArrayMap{"baz": IDArray{ID("foo")}}
+
+		targetIn, ok := any(sourceIn).(StringArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]string), actual)
+
+		sourceOut := sourceIn.ToIDArrayMapOutput()
+		targetIn, ok = any(sourceOut).(StringArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]string), actual)
+	})
+
+	t.Run("IDMapArrayToStringMapArray", func(t *testing.T) {
+		sourceIn := IDMapArray{IDMap{"baz": ID("foo")}}
+
+		targetIn, ok := any(sourceIn).(StringMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]string), actual)
+
+		sourceOut := sourceIn.ToIDMapArrayOutput()
+		targetIn, ok = any(sourceOut).(StringMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]string), actual)
+	})
+
+	t.Run("IDMapMapToStringMapMap", func(t *testing.T) {
+		sourceIn := IDMapMap{"baz": IDMap{"baz": ID("foo")}}
+
+		targetIn, ok := any(sourceIn).(StringMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]string), actual)
+
+		sourceOut := sourceIn.ToIDMapMapOutput()
+		targetIn, ok = any(sourceOut).(StringMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]string), actual)
+	})
+
+	t.Run("IDArrayArrayToStringArrayArray", func(t *testing.T) {
+		sourceIn := IDArrayArray{IDArray{ID("foo")}}
+
+		targetIn, ok := any(sourceIn).(StringArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][]string), actual)
+
+		sourceOut := sourceIn.ToIDArrayArrayOutput()
+		targetIn, ok = any(sourceOut).(StringArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][]string), actual)
+	})
+
+	t.Run("IDArrayMapMapToStringArrayMapMap", func(t *testing.T) {
+		sourceIn := IDArrayMapMap{"baz": IDArrayMap{"baz": IDArray{ID("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringArrayMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string][]string), actual)
+
+		sourceOut := sourceIn.ToIDArrayMapMapOutput()
+		targetIn, ok = any(sourceOut).(StringArrayMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string][]string), actual)
+	})
+
+	t.Run("IDMapArrayMapToStringMapArrayMap", func(t *testing.T) {
+		sourceIn := IDMapArrayMap{"baz": IDMapArray{IDMap{"baz": ID("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringMapArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]map[string]string), actual)
+
+		sourceOut := sourceIn.ToIDMapArrayMapOutput()
+		targetIn, ok = any(sourceOut).(StringMapArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]map[string]string), actual)
+	})
+
+	t.Run("IDMapMapArrayToStringMapMapArray", func(t *testing.T) {
+		sourceIn := IDMapMapArray{IDMapMap{"baz": IDMap{"baz": ID("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringMapMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]map[string]string), actual)
+
+		sourceOut := sourceIn.ToIDMapMapArrayOutput()
+		targetIn, ok = any(sourceOut).(StringMapMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]map[string]string), actual)
+	})
+
+	t.Run("IDArrayMapArrayToStringArrayMapArray", func(t *testing.T) {
+		sourceIn := IDArrayMapArray{IDArrayMap{"baz": IDArray{ID("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringArrayMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string][]string), actual)
+
+		sourceOut := sourceIn.ToIDArrayMapArrayOutput()
+		targetIn, ok = any(sourceOut).(StringArrayMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string][]string), actual)
+	})
+
+	t.Run("IDArrayArrayMapToStringArrayArrayMap", func(t *testing.T) {
+		sourceIn := IDArrayArrayMap{"baz": IDArrayArray{IDArray{ID("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringArrayArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][][]string), actual)
+
+		sourceOut := sourceIn.ToIDArrayArrayMapOutput()
+		targetIn, ok = any(sourceOut).(StringArrayArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][][]string), actual)
+	})
+
+	t.Run("IDArrayArrayArrayToStringArrayArrayArray", func(t *testing.T) {
+		sourceIn := IDArrayArrayArray{IDArrayArray{IDArray{ID("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringArrayArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayArrayArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[][][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][][]string), actual)
+
+		sourceOut := sourceIn.ToIDArrayArrayArrayOutput()
+		targetIn, ok = any(sourceOut).(StringArrayArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayArrayArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][][]string), actual)
+	})
+
+	t.Run("IDMapMapMapToStringMapMapMap", func(t *testing.T) {
+		sourceIn := IDMapMapMap{"baz": IDMapMap{"baz": IDMap{"baz": ID("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringMapMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]map[string]string), actual)
+
+		sourceOut := sourceIn.ToIDMapMapMapOutput()
+		targetIn, ok = any(sourceOut).(StringMapMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]map[string]string), actual)
+	})
+
+	t.Run("URNToString", func(t *testing.T) {
+		sourceIn := URN("foo")
+
+		targetIn, ok := any(sourceIn).(StringInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(string), actual)
+
+		sourceOut := sourceIn.ToURNOutput()
+		targetIn, ok = any(sourceOut).(StringInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(string), actual)
+	})
+
+	t.Run("URNArrayToStringArray", func(t *testing.T) {
+		sourceIn := URNArray{URN("foo")}
+
+		targetIn, ok := any(sourceIn).(StringArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]string), actual)
+
+		sourceOut := sourceIn.ToURNArrayOutput()
+		targetIn, ok = any(sourceOut).(StringArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]string), actual)
+	})
+
+	t.Run("URNMapToStringMap", func(t *testing.T) {
+		sourceIn := URNMap{"baz": URN("foo")}
+
+		targetIn, ok := any(sourceIn).(StringMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]string), actual)
+
+		sourceOut := sourceIn.ToURNMapOutput()
+		targetIn, ok = any(sourceOut).(StringMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]string), actual)
+	})
+
+	t.Run("URNArrayMapToStringArrayMap", func(t *testing.T) {
+		sourceIn := URNArrayMap{"baz": URNArray{URN("foo")}}
+
+		targetIn, ok := any(sourceIn).(StringArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]string), actual)
+
+		sourceOut := sourceIn.ToURNArrayMapOutput()
+		targetIn, ok = any(sourceOut).(StringArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]string), actual)
+	})
+
+	t.Run("URNMapArrayToStringMapArray", func(t *testing.T) {
+		sourceIn := URNMapArray{URNMap{"baz": URN("foo")}}
+
+		targetIn, ok := any(sourceIn).(StringMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]string), actual)
+
+		sourceOut := sourceIn.ToURNMapArrayOutput()
+		targetIn, ok = any(sourceOut).(StringMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]string), actual)
+	})
+
+	t.Run("URNMapMapToStringMapMap", func(t *testing.T) {
+		sourceIn := URNMapMap{"baz": URNMap{"baz": URN("foo")}}
+
+		targetIn, ok := any(sourceIn).(StringMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]string), actual)
+
+		sourceOut := sourceIn.ToURNMapMapOutput()
+		targetIn, ok = any(sourceOut).(StringMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]string), actual)
+	})
+
+	t.Run("URNArrayArrayToStringArrayArray", func(t *testing.T) {
+		sourceIn := URNArrayArray{URNArray{URN("foo")}}
+
+		targetIn, ok := any(sourceIn).(StringArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][]string), actual)
+
+		sourceOut := sourceIn.ToURNArrayArrayOutput()
+		targetIn, ok = any(sourceOut).(StringArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][]string), actual)
+	})
+
+	t.Run("URNArrayMapMapToStringArrayMapMap", func(t *testing.T) {
+		sourceIn := URNArrayMapMap{"baz": URNArrayMap{"baz": URNArray{URN("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringArrayMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string][]string), actual)
+
+		sourceOut := sourceIn.ToURNArrayMapMapOutput()
+		targetIn, ok = any(sourceOut).(StringArrayMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string][]string), actual)
+	})
+
+	t.Run("URNMapArrayMapToStringMapArrayMap", func(t *testing.T) {
+		sourceIn := URNMapArrayMap{"baz": URNMapArray{URNMap{"baz": URN("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringMapArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]map[string]string), actual)
+
+		sourceOut := sourceIn.ToURNMapArrayMapOutput()
+		targetIn, ok = any(sourceOut).(StringMapArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][]map[string]string), actual)
+	})
+
+	t.Run("URNMapMapArrayToStringMapMapArray", func(t *testing.T) {
+		sourceIn := URNMapMapArray{URNMapMap{"baz": URNMap{"baz": URN("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringMapMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]map[string]string), actual)
+
+		sourceOut := sourceIn.ToURNMapMapArrayOutput()
+		targetIn, ok = any(sourceOut).(StringMapMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string]map[string]string), actual)
+	})
+
+	t.Run("URNArrayMapArrayToStringArrayMapArray", func(t *testing.T) {
+		sourceIn := URNArrayMapArray{URNArrayMap{"baz": URNArray{URN("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringArrayMapArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayMapArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[]map[string][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string][]string), actual)
+
+		sourceOut := sourceIn.ToURNArrayMapArrayOutput()
+		targetIn, ok = any(sourceOut).(StringArrayMapArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayMapArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([]map[string][]string), actual)
+	})
+
+	t.Run("URNArrayArrayMapToStringArrayArrayMap", func(t *testing.T) {
+		sourceIn := URNArrayArrayMap{"baz": URNArrayArray{URNArray{URN("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringArrayArrayMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayArrayMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string][][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][][]string), actual)
+
+		sourceOut := sourceIn.ToURNArrayArrayMapOutput()
+		targetIn, ok = any(sourceOut).(StringArrayArrayMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayArrayMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string][][]string), actual)
+	})
+
+	t.Run("URNArrayArrayArrayToStringArrayArrayArray", func(t *testing.T) {
+		sourceIn := URNArrayArrayArray{URNArrayArray{URNArray{URN("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringArrayArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringArrayArrayArrayOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*[][][]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][][]string), actual)
+
+		sourceOut := sourceIn.ToURNArrayArrayArrayOutput()
+		targetIn, ok = any(sourceOut).(StringArrayArrayArrayInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringArrayArrayArrayOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.([][][]string), actual)
+	})
+
+	t.Run("URNMapMapMapToStringMapMapMap", func(t *testing.T) {
+		sourceIn := URNMapMapMap{"baz": URNMapMap{"baz": URNMap{"baz": URN("foo")}}}
+
+		targetIn, ok := any(sourceIn).(StringMapMapMapInput)
+		require.True(t, ok)
+
+		targetOut := targetIn.ToStringMapMapMapOutput()
+		actual, known, _, _, err := await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+
+		expectedAny, err := coerceTypeConversion(sourceIn, reflect.TypeOf((*map[string]map[string]map[string]string)(nil)).Elem())
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]map[string]string), actual)
+
+		sourceOut := sourceIn.ToURNMapMapMapOutput()
+		targetIn, ok = any(sourceOut).(StringMapMapMapInput)
+		require.True(t, ok)
+
+		targetOut = targetIn.ToStringMapMapMapOutput()
+		actual, known, _, _, err = await(targetOut)
+		assert.True(t, known)
+		require.NoError(t, err)
+		assert.Equal(t, expectedAny.(map[string]map[string]map[string]string), actual)
+	})
+
 }
 
 // Test pointer types.
