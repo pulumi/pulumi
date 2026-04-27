@@ -802,6 +802,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		var step Step
 		if !goal.Custom || sdkproviders.IsProviderType(goal.Type) {
 			step = NewInternalRefreshStep(sg.deployment, cts, old, oldViews, new)
+		} else if !sg.isIncludedInOperation(old) {
+			step = NewSameStep(sg.deployment, event, old, new)
 		} else {
 			step = NewRefreshStep(sg.deployment, cts, old, oldViews, new)
 		}
