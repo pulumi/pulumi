@@ -2182,13 +2182,7 @@ func getPluginInfoAndPath(
 	}
 
 	// Wasn't ambient, and wasn't bundled, so now check the plugin cache.
-	var plugins []PluginInfo
-	var err error
-	if skipMetadata {
-		plugins, err = GetPlugins()
-	} else {
-		plugins, err = GetPlugins()
-	}
+	plugins, err := GetPlugins()
 	if err != nil {
 		return nil, "", fmt.Errorf("loading plugin list: %w", err)
 	}
