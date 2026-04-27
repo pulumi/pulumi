@@ -46,6 +46,16 @@ func UpgradeCurrentLogger(ctx context.Context, stackName, updateID string, sm se
 	return currentLogger.UpgradeToEncrypted(ctx, stackName, updateID, sm)
 }
 
+// RenameCurrentLogger renames the current log file to include the given
+// stack name and update ID. This is useful when the update ID becomes
+// available after the logger has already been upgraded to encrypted mode.
+func RenameCurrentLogger(stackName, updateID string) error {
+	if currentLogger == nil {
+		return nil
+	}
+	return currentLogger.rename(stackName, updateID)
+}
+
 // Logger captures output to a log file on disk, optionally encrypted.
 type Logger struct {
 	mu        sync.Mutex
@@ -103,10 +113,10 @@ func StartLogging(
 	}
 
 	l.handler = slog.NewJSONHandler(l, &slog.HandlerOptions{
-		Level: logging.LevelTrace,
+		Level: slog.LevelDebug,
 	})
 
-	logging.SetSinkHandler(l.handler, 10)
+	logging.SetSinkHandler(l.handler)
 	currentLogger = l
 	return l, nil
 }
@@ -191,7 +201,7 @@ func (l *Logger) Close() error {
 	if l == nil {
 		return nil
 	}
-	logging.SetSinkHandler(nil, 0)
+	logging.SetSinkHandler(nil)
 	if currentLogger == l {
 		currentLogger = nil
 	}
@@ -212,6 +222,15 @@ func (l *Logger) FilePath() string {
 		return ""
 	}
 	return l.filePath
+}
+
+func (l *Logger) rename(stackName, updateID string) error {
+	if l == nil {
+		return nil
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.renameLocked(stackName, updateID)
 }
 
 // renameLocked renames the log file. Must be called with l.mu held.

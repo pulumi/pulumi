@@ -55,13 +55,12 @@ var (
 )
 
 var (
-	handlerMu    sync.RWMutex
-	primary      slog.Handler = discardHandler{} // regular log output (stderr / file)
-	sinkHandler  slog.Handler                    // encrypted log handler, nil when inactive
-	sinkMaxLevel int32        = 10
-	slogHandler  *slog.Logger
-	logFilePath  string
-	logFile      *os.File
+	handlerMu   sync.RWMutex
+	primary     slog.Handler = discardHandler{} // regular log output (stderr / file)
+	sinkHandler slog.Handler                    // encrypted log handler, nil when inactive
+	slogHandler *slog.Logger
+	logFilePath string
+	logFile     *os.File
 )
 
 func init() {
@@ -95,20 +94,21 @@ func rebuildLogger() {
 }
 
 // SetSinkHandler installs an additional slog.Handler that receives a
-// copy of every log record at or below maxLevel.  Pass nil to remove
-// the sink.  The handler must be safe for concurrent use.
-func SetSinkHandler(h slog.Handler, maxLevel int32) {
+// copy of every log record.  Pass nil to remove the sink.  The handler
+// must be safe for concurrent use.
+func SetSinkHandler(h slog.Handler) {
 	handlerMu.Lock()
 	defer handlerMu.Unlock()
 	sinkHandler = h
-	sinkMaxLevel = maxLevel
 	rebuildLogger()
 }
 
-func hasSinkHandler() bool {
+// sinkEnabled reports whether the sink handler exists and accepts
+// records at the given level.
+func sinkEnabled(level slog.Level) bool {
 	handlerMu.RLock()
 	defer handlerMu.RUnlock()
-	return sinkHandler != nil
+	return sinkHandler != nil && sinkHandler.Enabled(context.TODO(), level)
 }
 
 const LevelTrace = slog.LevelDebug - 4
@@ -119,7 +119,7 @@ type VerboseLogger struct{ level int32 }
 // Enabled returns true if either slog verbose logging or the sink handler
 // wants messages at this level.
 func (v VerboseLogger) Enabled() bool {
-	return v.slogEnabled() || (hasSinkHandler() && v.level <= sinkMaxLevel)
+	return v.slogEnabled() || sinkEnabled(v.slogLevel())
 }
 
 func (v VerboseLogger) slogEnabled() bool {
