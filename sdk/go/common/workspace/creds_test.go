@@ -15,23 +15,22 @@
 package workspace
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	goKeyring "github.com/zalando/go-keyring"
 )
 
 //nolint:paralleltest // mutates environment
 func TestConcurrentCredentialsWrites(t *testing.T) {
-	// save and remember to restore creds in ~/.pulumi/credentials
-	// as the test will be modifying them
-	oldCreds, err := GetStoredCredentials()
-	require.NoError(t, err)
-	defer func() {
-		err := StoreCredentials(oldCreds)
-		require.NoError(t, err)
-	}()
+	tempDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, tempDir)
+	goKeyring.MockInitWithError(errors.New("keyring unavailable"))
 
 	// use test creds that have at least 1 AccessToken to force a
 	// disk write and contention
@@ -49,7 +48,7 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 
 	// Store testCreds initially so asserts in
 	// GetStoredCredentials goroutines find the expected data
-	err = StoreCredentials(testCreds)
+	err := StoreCredentials(testCreds)
 	require.NoError(t, err)
 
 	for i := 0; i < n; i++ {
@@ -66,4 +65,110 @@ func TestConcurrentCredentialsWrites(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+//nolint:paralleltest // mutates environment
+func TestStoreCredentialsUsesKeyringAndWritesMetadataOnly(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, tempDir)
+	goKeyring.MockInit()
+
+	creds := Credentials{
+		Current: "https://api.pulumi.com",
+		Accounts: map[string]Account{
+			"https://api.pulumi.com": {
+				AccessToken: "token-value",
+				Username:    "alice",
+			},
+		},
+		AccessTokens: map[string]string{
+			"https://api.pulumi.com": "token-value",
+		},
+	}
+
+	err := StoreCredentials(creds)
+	require.NoError(t, err)
+
+	rawCreds, err := readCredentialsFile()
+	require.NoError(t, err)
+	assert.Equal(t, creds.Current, rawCreds.Current)
+	assert.Empty(t, rawCreds.AccessTokens["https://api.pulumi.com"])
+	assert.Empty(t, rawCreds.Accounts["https://api.pulumi.com"].AccessToken)
+
+	storedToken, err := goKeyring.Get(pulumiCredentialsKeyringService, keyringUser("https://api.pulumi.com"))
+	require.NoError(t, err)
+	assert.Equal(t, "token-value", storedToken)
+
+	hydratedCreds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "token-value", hydratedCreds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "token-value", hydratedCreds.Accounts["https://api.pulumi.com"].AccessToken)
+}
+
+//nolint:paralleltest // mutates environment
+func TestGetStoredCredentialsMigratesLegacyPlaintextTokens(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, tempDir)
+	goKeyring.MockInit()
+
+	legacyCreds := Credentials{
+		Current: "https://api.pulumi.com",
+		Accounts: map[string]Account{
+			"https://api.pulumi.com": {
+				AccessToken: "legacy-token",
+				Username:    "alice",
+			},
+		},
+		AccessTokens: map[string]string{
+			"https://api.pulumi.com": "legacy-token",
+		},
+	}
+
+	err := writeCredentialsFile(legacyCreds)
+	require.NoError(t, err)
+
+	creds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-token", creds.AccessTokens["https://api.pulumi.com"])
+	assert.Equal(t, "legacy-token", creds.Accounts["https://api.pulumi.com"].AccessToken)
+
+	rawCreds, err := readCredentialsFile()
+	require.NoError(t, err)
+	assert.Empty(t, rawCreds.AccessTokens["https://api.pulumi.com"])
+	assert.Empty(t, rawCreds.Accounts["https://api.pulumi.com"].AccessToken)
+
+	storedToken, err := goKeyring.Get(pulumiCredentialsKeyringService, keyringUser("https://api.pulumi.com"))
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-token", storedToken)
+}
+
+//nolint:paralleltest // mutates environment
+func TestStoreCredentialsFallsBackToPlaintextWhenKeyringUnavailable(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv(PulumiCredentialsPathEnvVar, tempDir)
+	goKeyring.MockInitWithError(errors.New("keyring unavailable"))
+
+	creds := Credentials{
+		Current: "https://api.pulumi.com",
+		Accounts: map[string]Account{
+			"https://api.pulumi.com": {
+				AccessToken: "token-value",
+			},
+		},
+		AccessTokens: map[string]string{
+			"https://api.pulumi.com": "token-value",
+		},
+	}
+
+	err := StoreCredentials(creds)
+	require.NoError(t, err)
+
+	credsPath := filepath.Join(tempDir, "credentials.json")
+	content, err := os.ReadFile(credsPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "token-value")
+
+	readCreds, err := GetStoredCredentials()
+	require.NoError(t, err)
+	assert.Equal(t, "token-value", readCreds.AccessTokens["https://api.pulumi.com"])
 }
