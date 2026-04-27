@@ -152,7 +152,7 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 		// provider subprocesses into later iterations and can eventually saturate the CI runner,
 		// surfacing as the opaque `panic: test timed out after 10m0s`
 		// (see https://github.com/pulumi/pulumi/issues/22719).
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		go func() {
 			defer close(done)
