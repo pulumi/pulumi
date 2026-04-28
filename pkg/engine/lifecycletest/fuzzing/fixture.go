@@ -193,15 +193,16 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 			// Test completed within the timeout.
 		case <-time.After(20 * time.Second):
 			cancel()
-			// Wait for the goroutine to observe cancellation and drain before this iteration
-			// returns. Otherwise the next rapid iteration starts on top of a live engine and the
-			// leak cascades.
+			// Wait briefly for the goroutine to observe cancellation and drain before this
+			// iteration returns. Otherwise the next rapid iteration starts on top of a live
+			// engine and the leak cascades. If the engine is genuinely hung it likely won't
+			// respond to cancellation at all, so keep this short to fail fast.
 			select {
 			case <-done:
-			case <-time.After(30 * time.Second):
+			case <-time.After(5 * time.Second):
 				reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
 				t.Fatalf(
-					"test timed out after 20 seconds and did not respond to cancellation within 30 more seconds\n%s",
+					"test timed out after 20 seconds and did not respond to cancellation within 5 more seconds\n%s",
 					reproMessage,
 				)
 				return
