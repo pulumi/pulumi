@@ -122,15 +122,9 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return err
 	}
 
-	// Allow tools to read/write under temp directories in addition to cwd. The agent
+	// Allow tools to read/write under temp directories in addition to cwd: the agent
 	// stages scratch files there (downloads, intermediate state) and the CLI sandbox
 	// would otherwise reject those paths. See pulumi/pulumi-service#42027.
-	//
-	// We pass both "/tmp" and os.TempDir(): on macOS the agent writes to /tmp (which
-	// canonicalizes to /private/tmp) while os.TempDir() returns the per-user TMPDIR
-	// under /var/folders/..., so they're distinct roots and both must be allowed.
-	// On Linux they collapse to the same canonical path and are deduped here. On
-	// Windows /tmp generally doesn't exist and is skipped.
 	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
 	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
 	if err != nil {
@@ -332,11 +326,10 @@ func resolveTaskTarget(
 	return org, projectName, stack, nil
 }
 
-// dedupeExistingRoots filters candidates down to those that resolve on the local
-// filesystem and returns them with duplicates removed by canonical path. Entries
-// that don't exist or fail to canonicalize (typical for "/tmp" on Windows) are
-// skipped silently. The original (pre-resolution) string is preserved so that
-// downstream error messages reference the path the caller passed in.
+// dedupeExistingRoots returns candidates with duplicates removed by canonical path,
+// dropping any that don't resolve on the local filesystem. This handles macOS where
+// /tmp and os.TempDir() are distinct canonical roots, Linux where they collapse to
+// the same one, and Windows where /tmp typically doesn't exist.
 func dedupeExistingRoots(candidates ...string) []string {
 	seen := make(map[string]bool, len(candidates))
 	var out []string

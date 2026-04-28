@@ -48,8 +48,7 @@ import (
 type Filesystem struct {
 	// Root is the user's working directory. Relative paths are joined against it.
 	Root string
-	// allowedRoots is Root followed by any extra roots passed to NewFilesystem. A path
-	// is permitted if it resolves under at least one entry.
+	// allowedRoots is Root followed by any extra roots passed to NewFilesystem.
 	allowedRoots []string
 }
 

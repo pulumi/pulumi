@@ -34,8 +34,7 @@ type Shell struct {
 	// Cwd is the default working directory used when the request omits cwd.
 	Cwd            string
 	DefaultTimeout time.Duration
-	// allowedRoots is Cwd followed by any extra roots passed to NewShell. A request's
-	// cwd must resolve under at least one entry.
+	// allowedRoots is Cwd followed by any extra roots passed to NewShell.
 	allowedRoots []string
 }
 

@@ -248,9 +248,6 @@ func TestNewNeoCmd_HiddenWhenNotExperimental(t *testing.T) {
 func TestDedupeExistingRoots(t *testing.T) {
 	t.Parallel()
 
-	// Empty / non-existent / duplicate canonical paths must all drop. We use the
-	// test temp dir and a sibling plus a known-bad path; the helper should keep
-	// the first occurrence of each canonical form and skip the rest.
 	tmp := t.TempDir()
 	missing := tmp + "/does-not-exist"
 
