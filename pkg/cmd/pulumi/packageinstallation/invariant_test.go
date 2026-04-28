@@ -297,6 +297,10 @@ func (w invariantWorkspace) GetStoredCredentials() (workspace.Credentials, error
 	return workspace.Credentials{}, nil
 }
 
+func (w invariantWorkspace) GetPlugins(context.Context) ([]workspace.PluginInfo, error) {
+	return nil, nil
+}
+
 func (w invariantWorkspace) GenerateLocalSDK(
 	ctx context.Context,
 	project *workspace.ProjectRuntimeInfo, projectDir string,

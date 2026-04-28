@@ -33,6 +33,7 @@ type Context interface {
 	HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool
 	HasPluginGTE(ctx context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error)
 	GetLatestVersion(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
+	GetPlugins(ctx context.Context) ([]workspace.PluginInfo, error)
 }
 
 type defaultContext struct{}
@@ -49,12 +50,17 @@ func (defaultContext) GetLatestVersion(ctx context.Context, spec workspace.Plugi
 	return spec.GetLatestVersion(ctx)
 }
 
+func (defaultContext) GetPlugins(_ context.Context) ([]workspace.PluginInfo, error) {
+	return workspace.GetPlugins()
+}
+
 var _ Context = MockContext{}
 
 type MockContext struct {
 	HasPluginF        func(ctx context.Context, spec workspace.PluginDescriptor) bool
 	HasPluginGTEF     func(ctx context.Context, spec workspace.PluginDescriptor) (bool, *semver.Version, error)
 	GetLatestVersionF func(ctx context.Context, spec workspace.PluginDescriptor) (*semver.Version, error)
+	GetPluginsF       func(ctx context.Context) ([]workspace.PluginInfo, error)
 }
 
 func (m MockContext) HasPlugin(ctx context.Context, spec workspace.PluginDescriptor) bool {
@@ -76,4 +82,11 @@ func (m MockContext) GetLatestVersion(ctx context.Context, spec workspace.Plugin
 		return m.GetLatestVersionF(ctx, spec)
 	}
 	return nil, workspace.ErrGetLatestVersionNotSupported
+}
+
+func (m MockContext) GetPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
+	if m.GetPluginsF != nil {
+		return m.GetPluginsF(ctx)
+	}
+	return nil, nil
 }
