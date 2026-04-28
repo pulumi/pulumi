@@ -3485,6 +3485,7 @@ func TestListStacksAllCorrectArgs(t *testing.T) {
 
 func TestInstallWithOptions(t *testing.T) {
 	t.Parallel()
+	t.Skip("Flaky: pip can emit cache deserialization warnings to stderr. See https://github.com/pulumi/pulumi/issues/22745")
 	ctx := t.Context()
 	pDir := filepath.Join(".", "test", "install")
 
