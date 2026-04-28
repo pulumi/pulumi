@@ -617,11 +617,6 @@ func TestReadStep(t *testing.T) {
 func TestRefreshStepPatterns(t *testing.T) {
 	t.Parallel()
 
-	path := func(s string) (p property.Path) {
-		require.NoError(t, p.UnmarshalText([]byte(s)))
-		return p
-	}
-
 	tests := []struct {
 		name                 string
 		inputs               resource.PropertyMap
@@ -669,11 +664,11 @@ func TestRefreshStepPatterns(t *testing.T) {
 				// Diff newInputs, newOutputs, oldInputs
 				Changes: plugin.DiffSome,
 				DetailedDiff: map[property.Path]plugin.PropertyDiff{
-					path("title"): {Kind: plugin.DiffUpdate},
+					property.MustParsePath("title"): {Kind: plugin.DiffUpdate},
 				},
 			},
 			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{
-				path("title"): {Kind: plugin.DiffUpdate},
+				property.MustParsePath("title"): {Kind: plugin.DiffUpdate},
 			},
 		},
 		{
@@ -720,11 +715,11 @@ func TestRefreshStepPatterns(t *testing.T) {
 				// Diff newInputs, newOutputs, oldInputs
 				Changes: plugin.DiffSome,
 				DetailedDiff: map[property.Path]plugin.PropertyDiff{
-					path("body"): {Kind: plugin.DiffDelete},
+					property.MustParsePath("body"): {Kind: plugin.DiffDelete},
 				},
 			},
 			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{
-				path("body"): {Kind: plugin.DiffAdd},
+				property.MustParsePath("body"): {Kind: plugin.DiffAdd},
 			},
 		},
 		{
@@ -767,13 +762,13 @@ func TestRefreshStepPatterns(t *testing.T) {
 				// Diff newInputs, newOutputs, oldInputs
 				Changes: plugin.DiffSome,
 				DetailedDiff: map[property.Path]plugin.PropertyDiff{
-					path("tags"):     {Kind: plugin.DiffUpdate},
-					path("tags.foo"): {Kind: plugin.DiffDelete},
+					property.MustParsePath("tags"):     {Kind: plugin.DiffUpdate},
+					property.MustParsePath("tags.foo"): {Kind: plugin.DiffDelete},
 				},
 			},
 			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{
-				path("tags"):     {Kind: plugin.DiffUpdate},
-				path("tags.foo"): {Kind: plugin.DiffAdd},
+				property.MustParsePath("tags"):     {Kind: plugin.DiffUpdate},
+				property.MustParsePath("tags.foo"): {Kind: plugin.DiffAdd},
 			},
 		},
 		{
@@ -802,11 +797,11 @@ func TestRefreshStepPatterns(t *testing.T) {
 				// Diff newInputs, newOutputs, oldInputs
 				Changes: plugin.DiffSome,
 				DetailedDiff: map[property.Path]plugin.PropertyDiff{
-					path("tags.foo"): {Kind: plugin.DiffUpdate},
+					property.MustParsePath("tags.foo"): {Kind: plugin.DiffUpdate},
 				},
 			},
 			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{
-				path("tags.foo"): {Kind: plugin.DiffUpdate},
+				property.MustParsePath("tags.foo"): {Kind: plugin.DiffUpdate},
 			},
 		},
 	}

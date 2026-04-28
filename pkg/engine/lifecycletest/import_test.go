@@ -67,7 +67,7 @@ func TestImportOption(t *testing.T) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 						DetailedDiff: map[property.Path]plugin.PropertyDiff{
-							property.PathFromSegments(property.NewSegment("foo")): {Kind: diffKind},
+							property.MustParsePath("foo"): {Kind: diffKind},
 						},
 					}, nil
 				},
@@ -386,7 +386,7 @@ func TestImportWithDifferingImportIdentifierFormat(t *testing.T) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 						DetailedDiff: map[property.Path]plugin.PropertyDiff{
-							property.PathFromSegments(property.NewSegment("foo")): {Kind: plugin.DiffUpdate},
+							property.MustParsePath("foo"): {Kind: plugin.DiffUpdate},
 						},
 					}, nil
 				},
@@ -576,10 +576,10 @@ func diffImportResource(
 
 	detailedDiff := make(map[property.Path]plugin.PropertyDiff)
 	if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
-		detailedDiff[property.PathFromSegments(property.NewSegment("foo"))] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
+		detailedDiff[property.MustParsePath("foo")] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
 	if !req.OldOutputs["frob"].DeepEquals(req.NewInputs["frob"]) {
-		detailedDiff[property.PathFromSegments(property.NewSegment("frob"))] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
+		detailedDiff[property.MustParsePath("frob")] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
 	}
 
 	return plugin.DiffResult{
@@ -1456,7 +1456,7 @@ func TestImportWithFailedUpdate(t *testing.T) {
 					return plugin.DiffResult{
 						Changes: plugin.DiffSome,
 						DetailedDiff: map[property.Path]plugin.PropertyDiff{
-							property.PathFromSegments(property.NewSegment("foo")): {Kind: diffKind},
+							property.MustParsePath("foo"): {Kind: diffKind},
 						},
 					}, nil
 				},

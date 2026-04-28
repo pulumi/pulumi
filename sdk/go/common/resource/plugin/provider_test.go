@@ -21,16 +21,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewDetailedDiff(t *testing.T) {
 	t.Parallel()
-
-	path := func(s string) (p property.Path) {
-		require.NoError(t, p.UnmarshalText([]byte(s)))
-		return p
-	}
 
 	cases := []struct {
 		name     string
@@ -53,10 +47,10 @@ func TestNewDetailedDiff(t *testing.T) {
 				},
 			})),
 			expected: map[property.Path]PropertyDiff{
-				path("a"): {
+				property.MustParsePath("a"): {
 					Kind: DiffUpdate,
 				},
-				path("b.c"): {
+				property.MustParsePath("b.c"): {
 					Kind: DiffUpdate,
 				},
 			},
@@ -75,10 +69,10 @@ func TestNewDetailedDiff(t *testing.T) {
 				},
 			})),
 			expected: map[property.Path]PropertyDiff{
-				path("a"): {
+				property.MustParsePath("a"): {
 					Kind: DiffAdd,
 				},
-				path("b.c"): {
+				property.MustParsePath("b.c"): {
 					Kind: DiffDelete,
 				},
 			},
@@ -108,13 +102,13 @@ func TestNewDetailedDiff(t *testing.T) {
 					},
 				})),
 			expected: map[property.Path]PropertyDiff{
-				path("a[0].a"): {
+				property.MustParsePath("a[0].a"): {
 					Kind: DiffUpdate,
 				},
-				path("a[0].b[1]"): {
+				property.MustParsePath("a[0].b[1]"): {
 					Kind: DiffDelete,
 				},
-				path("a[1]"): {
+				property.MustParsePath("a[1]"): {
 					Kind: DiffAdd,
 				},
 			},
@@ -144,11 +138,6 @@ var _ = Provider((*UnimplementedProvider)(nil))
 func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 	t.Parallel()
 
-	path := func(s string) (p property.Path) {
-		require.NoError(t, p.UnmarshalText([]byte(s)))
-		return p
-	}
-
 	cases := map[string]struct {
 		diff      *resource.ObjectDiff
 		inputDiff bool
@@ -161,7 +150,7 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				},
 			},
 			expected: map[property.Path]PropertyDiff{
-				path("a"): {Kind: DiffAdd},
+				property.MustParsePath("a"): {Kind: DiffAdd},
 			},
 		},
 		"simple update": {
@@ -171,7 +160,7 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				},
 			},
 			expected: map[property.Path]PropertyDiff{
-				path("a"): {Kind: DiffUpdate},
+				property.MustParsePath("a"): {Kind: DiffUpdate},
 			},
 		},
 		"nested update": {
@@ -185,7 +174,7 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				},
 			},
 			expected: map[property.Path]PropertyDiff{
-				path("a.b"): {Kind: DiffUpdate},
+				property.MustParsePath("a.b"): {Kind: DiffUpdate},
 			},
 		},
 		"nested update with quoted keys": {
@@ -201,8 +190,8 @@ func TestNewDetailedDiffFromObjectDiff(t *testing.T) {
 				},
 			},
 			expected: map[property.Path]PropertyDiff{
-				path(`a["\"quoted key\""]`): {Kind: DiffUpdate},
-				path(`a["b.c"]`):            {Kind: DiffUpdate},
+				property.MustParsePath(`a["\"quoted key\""]`): {Kind: DiffUpdate},
+				property.MustParsePath(`a["b.c"]`):            {Kind: DiffUpdate},
 			},
 		},
 	}

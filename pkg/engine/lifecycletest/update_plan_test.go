@@ -1700,7 +1700,7 @@ func TestPlannedUpdateWithDependentDelete(t *testing.T) {
 		ReplaceKeys: []resource.PropertyKey{"foo"},
 		StableKeys:  []resource.PropertyKey{"zed"},
 		DetailedDiff: map[property.Path]plugin.PropertyDiff{
-			property.PathFromSegments(property.NewSegment("foo")): {
+			property.MustParsePath("foo"): {
 				Kind:      plugin.DiffUpdateReplace,
 				InputDiff: true,
 			},
