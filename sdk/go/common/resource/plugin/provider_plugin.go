@@ -705,9 +705,17 @@ func decodeDetailedDiff(resp *pulumirpc.DiffResponse) map[property.Path]Property
 			d = DiffUpdate
 		}
 		var p property.Path
-		if err := p.UnmarshalText([]byte(k)); err != nil {
-			slog.Warn("invalid property path in detailed diff", slog.String("property path", k), slog.Any("error", err))
+		var pLoose resource.BackCompatPropertyPath
+		if err := pLoose.UnmarshalText([]byte(k)); err != nil {
+			slog.Warn("unable to unmarshal property path",
+				slog.String("property path", k), slog.String("error", err.Error()))
 			p = property.PathFromSegments(property.NewSegment(k))
+		} else if pTight, err := property.Glob(pLoose).AsPath(); err != nil {
+			slog.Warn("unable to unmarshal property path",
+				slog.String("property path", k), slog.String("error", err.Error()))
+			p = property.PathFromSegments(property.NewSegment(k))
+		} else {
+			p = pTight
 		}
 		detailedDiff[p] = PropertyDiff{
 			Kind:      d,

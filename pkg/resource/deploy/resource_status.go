@@ -408,10 +408,17 @@ func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) 
 			d = plugin.DiffUpdate
 		}
 		var p property.Path
-		if err := p.UnmarshalText([]byte(k)); err != nil {
+		var pLoose resource.BackCompatPropertyPath
+		if err := pLoose.UnmarshalText([]byte(k)); err != nil {
 			slog.Warn("unable to unmarshal property path",
 				slog.String("property path", k), slog.String("error", err.Error()))
 			p = property.PathFromSegments(property.NewSegment(k))
+		} else if pTight, err := property.Glob(pLoose).AsPath(); err != nil {
+			slog.Warn("unable to unmarshal property path",
+				slog.String("property path", k), slog.String("error", err.Error()))
+			p = property.PathFromSegments(property.NewSegment(k))
+		} else {
+			p = pTight
 		}
 		detailedDiff[p] = plugin.PropertyDiff{
 			Kind:      d,
