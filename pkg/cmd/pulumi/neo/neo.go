@@ -121,11 +121,15 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return err
 	}
 
-	fs, err := tools.NewFilesystem(cwdFlag)
+	// Allow tools to read/write under the OS temp dir in addition to cwd. The agent
+	// frequently stages scratch files there (downloads, intermediate state) and the
+	// CLI sandbox would otherwise reject those paths. See pulumi/pulumi-service#42027.
+	extraRoots := []string{os.TempDir()}
+	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
 	if err != nil {
 		return err
 	}
-	sh, err := tools.NewShell(cwdFlag)
+	sh, err := tools.NewShell(cwdFlag, extraRoots...)
 	if err != nil {
 		return err
 	}

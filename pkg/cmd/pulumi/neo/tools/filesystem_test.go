@@ -558,3 +558,58 @@ func TestFilesystem_EditReturnsUnifiedDiff(t *testing.T) {
 	assert.Contains(t, res, "@@")
 	assert.Contains(t, res, "```diff")
 }
+
+func TestFilesystem_ExtraRootAllowsWriteThenRead(t *testing.T) {
+	t.Parallel()
+
+	// Two unrelated directories: cwd is the primary root, scratch is an extra root
+	// outside of it. Without the extra root the agent can't touch scratch; with it,
+	// absolute paths under scratch round-trip just like paths under cwd.
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	fs, err := NewFilesystem(cwd, scratch)
+	require.NoError(t, err)
+
+	target := filepath.Join(scratch, "sub", "note.txt")
+	_, err = fs.Invoke(t.Context(), "write",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"content":"scratch ok"}`, target)))
+	require.NoError(t, err)
+
+	got, err := os.ReadFile(target)
+	require.NoError(t, err)
+	assert.Equal(t, "scratch ok", string(got))
+
+	res, err := fs.Invoke(t.Context(), "read",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
+	require.NoError(t, err)
+	assert.Equal(t, "scratch ok", res.(map[string]any)["content"])
+}
+
+func TestFilesystem_RejectsPathOutsideRootAndExtras(t *testing.T) {
+	t.Parallel()
+
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	fs, err := NewFilesystem(cwd, scratch)
+	require.NoError(t, err)
+
+	// Sibling temp dir that's neither cwd nor an extra root. Even with extras
+	// configured, paths outside every allowed root must still be rejected.
+	other := t.TempDir()
+	target := filepath.Join(other, "passwd")
+	require.NoError(t, os.WriteFile(target, nil, 0o600))
+
+	_, err = fs.Invoke(t.Context(), "read",
+		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the working directory")
+}
+
+func TestNewFilesystem_RejectsMissingExtraRoot(t *testing.T) {
+	t.Parallel()
+
+	missing := filepath.Join(t.TempDir(), "nope")
+	_, err := NewFilesystem(t.TempDir(), missing)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "extra root")
+}

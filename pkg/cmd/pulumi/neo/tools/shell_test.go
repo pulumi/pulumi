@@ -156,3 +156,50 @@ func TestShell_RejectsUnknownMethod(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown shell method")
 }
+
+func TestShell_AcceptsCwdUnderExtraRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	// Primary cwd and scratch are unrelated directories. Passing scratch as an
+	// extra root mirrors what neo.go does for /tmp: commands launched there must
+	// run successfully even though scratch is outside the primary cwd.
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	sh, err := NewShell(cwd, scratch)
+	require.NoError(t, err)
+
+	resolvedScratch, err := filepath.EvalSymlinks(scratch)
+	require.NoError(t, err)
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(fmt.Sprintf(`{"command":"pwd","cwd":%q}`, scratch)))
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), resolvedScratch))
+}
+
+func TestShell_RejectsCwdOutsideRootAndExtras(t *testing.T) {
+	t.Parallel()
+
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	sh, err := NewShell(cwd, scratch)
+	require.NoError(t, err)
+
+	// A third unrelated directory must still be rejected even with extras configured.
+	other := t.TempDir()
+	_, err = sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, other)))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the working directory")
+}
+
+func TestNewShell_RejectsMissingExtraRoot(t *testing.T) {
+	t.Parallel()
+
+	missing := filepath.Join(t.TempDir(), "nope")
+	_, err := NewShell(t.TempDir(), missing)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "extra root")
+}

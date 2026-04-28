@@ -41,6 +41,17 @@ func canonicalRoot(root string) (string, error) {
 // re-joined. This supports write targets where the destination directory does not yet
 // exist.
 func resolveUnderRoot(root, p string, allowMissing bool) (string, error) {
+	return resolveUnderRoots([]string{root}, p, allowMissing)
+}
+
+// resolveUnderRoots is the multi-root variant of resolveUnderRoot: p must resolve under
+// at least one of roots. Each entry in roots must already be the output of canonicalRoot.
+// The first root is treated as the primary working directory and is named in error
+// messages.
+func resolveUnderRoots(roots []string, p string, allowMissing bool) (string, error) {
+	if len(roots) == 0 {
+		return "", fmt.Errorf("resolving %q: no allowed roots configured", p)
+	}
 	abs, err := filepath.Abs(p)
 	if err != nil {
 		return "", fmt.Errorf("resolving %q: %w", p, err)
@@ -55,14 +66,16 @@ func resolveUnderRoot(root, p string, allowMissing bool) (string, error) {
 			return "", fmt.Errorf("resolving %q: %w", p, err)
 		}
 	}
-	rel, err := filepath.Rel(root, resolved)
-	if err != nil {
-		return "", fmt.Errorf("resolving %q: %w", p, err)
+	for _, root := range roots {
+		rel, err := filepath.Rel(root, resolved)
+		if err != nil {
+			continue
+		}
+		if rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return resolved, nil
+		}
 	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("path %q is outside the working directory %q", p, root)
-	}
-	return resolved, nil
+	return "", fmt.Errorf("path %q is outside the working directory %q", p, roots[0])
 }
 
 // evalClosestAncestor walks up from abs until it finds an existing directory, resolves

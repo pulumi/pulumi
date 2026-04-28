@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/neo
+  description: Allow Neo CLI tools to read, write, and run commands under the OS temp directory in addition to the working directory
