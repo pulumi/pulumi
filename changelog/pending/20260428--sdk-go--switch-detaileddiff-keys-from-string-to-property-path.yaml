@@ -1,0 +1,5 @@
+changes:
+- type: chore
+  scope: sdk/go
+  description: |
+    Switch `plugin.PropertyDiff` and related `DetailedDiff` maps in `sdk/go/common/resource/plugin` and `sdk/go/common/apitype` from `map[string]...` keyed by raw property path strings to `map[property.Path]...`. This is a breaking change to the public Go SDK surface for consumers that construct or inspect detailed diffs directly. Consumers that build keys themselves should construct the `property.Path` directly.
