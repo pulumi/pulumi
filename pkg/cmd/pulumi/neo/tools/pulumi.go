@@ -15,7 +15,6 @@
 package tools
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -88,18 +87,19 @@ type PulumiSink struct {
 	// OnStart opens a new block when the tool call starts. stackName is the
 	// short stack name from args; isPreview differentiates preview from up.
 	OnStart func(toolName, stackName string, isPreview bool)
-	// OnResource reports one resource the engine touched. status is one of
-	// "planned" (preview), "running" (up, pre-event), "done" (up, outputs),
-	// or "failed" (up, operation-failed). Duplicate URNs are accepted — the
-	// TUI dedupes and upgrades status in place.
-	OnResource func(toolName, op, urn, typ, status string)
+	// OnResource reports one resource the engine touched. op is the typed
+	// StepOp from the engine; status is one of "planned" (preview),
+	// "running" (up, pre-event), "done" (up, outputs), or "failed" (up,
+	// operation-failed). Duplicate URNs are accepted — the TUI dedupes
+	// and upgrades status in place.
+	OnResource func(toolName string, op display.StepOp, urn, typ, status string)
 	// OnDiag reports one engine diagnostic. urn may be empty for stack-level
 	// diagnostics.
 	OnDiag func(toolName, severity, message, urn string)
 	// OnEnd finalizes the block. err is empty on success, otherwise the
-	// wrapped engine error string. counts is the display.ResourceChanges map
-	// flattened to string keys.
-	OnEnd func(toolName, err string, counts map[string]int, elapsed string)
+	// wrapped engine error string. counts is the typed ResourceChanges map
+	// from the engine.
+	OnEnd func(toolName, err string, counts display.ResourceChanges, elapsed string)
 }
 
 // NewPulumi creates a Pulumi handler sandboxed under cwd. The workspace and backend
@@ -195,14 +195,6 @@ func (p *Pulumi) Invoke(ctx context.Context, method string, args json.RawMessage
 		return nil, fmt.Errorf("unknown pulumi method %q", method)
 	}
 }
-
-// maxLogsBytes caps the in-memory logs buffer we return in pulumiResult.Logs. Beyond
-// this point further events still go to the events file and to UIToolProgress, but
-// they stop being appended to the returned logs string.
-const maxLogsBytes = 256 * 1024
-
-// maxSummaryLines caps the number of {op urn type} entries we return in UpdateSummary.
-const maxSummaryLines = 50
 
 func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiResult, error) {
 	if a.StackName == "" {
@@ -329,11 +321,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 
 	eventsCh := make(chan engine.Event, 128)
-	var drainOut drainResult
+	var diagLines []string
 	drainDone := make(chan struct{})
 	go func() {
 		defer close(drainDone)
-		drainOut = p.drainEvents(toolName, isPreview, eventsCh, eventsFile)
+		diagLines = p.drainEvents(toolName, isPreview, eventsCh, eventsFile)
 		_ = eventsFile.Close()
 	}()
 
@@ -391,15 +383,15 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	}
 
 	elapsed := time.Since(startedAt)
-	res.Logs = drainOut.logs.String()
-	res.UpdateSummary = formatUpdateSummary(a.StackName, changes, drainOut.summary, elapsed)
+	res.Logs = formatLogs(changes, diagLines)
+	res.UpdateSummary = formatUpdateSummary(a.StackName, changes, elapsed)
 
 	if p.Sink != nil && p.Sink.OnEnd != nil {
 		errStr := ""
 		if runErr != nil {
 			errStr = runErr.Error()
 		}
-		p.Sink.OnEnd(toolName, errStr, flattenChanges(changes), elapsed.Round(time.Second).String())
+		p.Sink.OnEnd(toolName, errStr, changes, elapsed.Round(time.Second).String())
 	}
 
 	if runErr != nil {
@@ -412,40 +404,70 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	return res, nil
 }
 
-// flattenChanges converts display.ResourceChanges (keyed on StepOp) to a
-// string-keyed map for transport across the tools/neo boundary.
-func flattenChanges(c display.ResourceChanges) map[string]int {
-	if len(c) == 0 {
-		return nil
+// OpSortRank orders StepOps for human-readable output: creates first, then
+// updates, replaces, deletes, reads, refreshes, imports, then everything else.
+// Exported so the TUI side can sort UI-counts the same way the agent-facing
+// summary does.
+func OpSortRank(op display.StepOp) int {
+	switch op {
+	case deploy.OpCreate, deploy.OpCreateReplacement:
+		return 0
+	case deploy.OpUpdate:
+		return 1
+	case deploy.OpReplace:
+		return 2
+	case deploy.OpDelete, deploy.OpDeleteReplaced:
+		return 3
+	case deploy.OpRead, deploy.OpReadReplacement:
+		return 4
+	case deploy.OpRefresh:
+		return 5
+	case deploy.OpImport, deploy.OpImportReplacement:
+		return 6
+	case deploy.OpSame:
+		return 9
+	default:
+		return 7
 	}
-	out := make(map[string]int, len(c))
-	for op, n := range c {
-		out[string(op)] = n
+}
+
+// FormatChangeCounts produces a "3 create<joiner>1 update" string from a
+// ResourceChanges map. OpSame and zero entries are filtered. Returns "" when
+// no non-trivial changes remain.
+func FormatChangeCounts(changes display.ResourceChanges, joiner string) string {
+	if len(changes) == 0 {
+		return ""
 	}
-	return out
+	type kv struct {
+		op display.StepOp
+		n  int
+	}
+	kvs := make([]kv, 0, len(changes))
+	for op, n := range changes {
+		if op == deploy.OpSame || n == 0 {
+			continue
+		}
+		kvs = append(kvs, kv{op: op, n: n})
+	}
+	sort.Slice(kvs, func(i, j int) bool { return OpSortRank(kvs[i].op) < OpSortRank(kvs[j].op) })
+	parts := make([]string, 0, len(kvs))
+	for _, e := range kvs {
+		parts = append(parts, fmt.Sprintf("%d %s", e.n, e.op))
+	}
+	return strings.Join(parts, joiner)
 }
 
-// drainResult is what the event-drain goroutine produces.
-type drainResult struct {
-	logs    bytes.Buffer
-	summary []changeLine
-}
-
-type changeLine struct {
-	Op   string
-	URN  string
-	Type string
-}
-
-// drainEvents consumes the engine event channel: writes each event as one NDJSON
-// line to the events file, dispatches structured sink callbacks for the TUI's
-// live preview block, and accumulates the {op urn type} summary + logs buffer
-// that are returned to the agent in pulumiResult.
+// drainEvents consumes the engine event channel: writes each event as one
+// NDJSON line to the events file (the canonical record the agent reads via
+// the filesystem tool) and dispatches structured sink callbacks for the
+// TUI's live preview block. It returns the accumulated diagnostic lines so
+// they can be folded into pulumiResult.Logs at the end of the run; per-resource
+// lines are intentionally not duplicated in memory because the events file
+// already holds them.
 func (p *Pulumi) drainEvents(
 	toolName string, isPreview bool, events <-chan engine.Event, ndjson io.Writer,
-) drainResult {
-	var out drainResult
-	seenURN := map[string]struct{}{}
+) []string {
+	var diags []string
 
 	for e := range events {
 		// Best-effort: skip events that fail to convert.
@@ -471,16 +493,7 @@ func (p *Pulumi) drainEvents(
 				status = "planned"
 			}
 			if p.Sink != nil && p.Sink.OnResource != nil {
-				p.Sink.OnResource(toolName, string(op), string(urn), string(urn.Type()), status)
-			}
-			p.appendLog(fmt.Sprintf("%s %s (%s)", op, urn.Name(), urn.Type()), &out.logs)
-			if _, dup := seenURN[string(urn)]; !dup && len(out.summary) < maxSummaryLines {
-				seenURN[string(urn)] = struct{}{}
-				out.summary = append(out.summary, changeLine{
-					Op:   string(op),
-					URN:  string(urn),
-					Type: string(urn.Type()),
-				})
+				p.Sink.OnResource(toolName, op, string(urn), string(urn.Type()), status)
 			}
 		case engine.ResourceOutputsEventPayload:
 			if payload.Internal {
@@ -496,13 +509,13 @@ func (p *Pulumi) drainEvents(
 			}
 			urn := payload.Metadata.URN
 			if p.Sink != nil && p.Sink.OnResource != nil {
-				p.Sink.OnResource(toolName, string(payload.Metadata.Op),
+				p.Sink.OnResource(toolName, payload.Metadata.Op,
 					string(urn), string(urn.Type()), "done")
 			}
 		case engine.ResourceOperationFailedPayload:
 			urn := payload.Metadata.URN
 			if p.Sink != nil && p.Sink.OnResource != nil {
-				p.Sink.OnResource(toolName, string(payload.Metadata.Op),
+				p.Sink.OnResource(toolName, payload.Metadata.Op,
 					string(urn), string(urn.Type()), "failed")
 			}
 		case engine.DiagEventPayload:
@@ -520,72 +533,38 @@ func (p *Pulumi) drainEvents(
 			if p.Sink != nil && p.Sink.OnDiag != nil {
 				p.Sink.OnDiag(toolName, string(payload.Severity), msg, string(payload.URN))
 			}
-			p.appendLog(fmt.Sprintf("%s: %s", payload.Severity, msg), &out.logs)
-		case engine.SummaryEventPayload:
-			if counts := formatCountsFromChanges(payload.ResourceChanges); counts != "" {
-				p.appendLog("summary: "+counts, &out.logs)
-			}
+			diags = append(diags, fmt.Sprintf("%s: %s", payload.Severity, msg))
 		}
 	}
-	return out
+	return diags
 }
 
-// appendLog grows the logs buffer up to the cap. Past the cap, writes are
-// silently dropped so the returned pulumiResult.Logs stays bounded.
-func (p *Pulumi) appendLog(msg string, logs *bytes.Buffer) {
-	if logs.Len() >= maxLogsBytes {
-		return
+// formatLogs builds the agent-facing pulumiResult.Logs string: a counts line
+// followed by any non-ephemeral diagnostics. Full per-resource detail lives in
+// EventsFile.
+func formatLogs(changes display.ResourceChanges, diags []string) string {
+	var buf strings.Builder
+	if counts := FormatChangeCounts(changes, ", "); counts != "" {
+		buf.WriteString("summary: " + counts + "\n")
 	}
-	line := msg + "\n"
-	if remaining := maxLogsBytes - logs.Len(); len(line) > remaining {
-		line = line[:remaining]
+	for _, d := range diags {
+		buf.WriteString(d + "\n")
 	}
-	logs.WriteString(line)
-}
-
-// formatCountsFromChanges produces a compact "3 create, 1 update" style string,
-// excluding sames. Keys are sorted for deterministic output.
-func formatCountsFromChanges(changes display.ResourceChanges) string {
-	if len(changes) == 0 {
-		return ""
-	}
-	type kv struct {
-		op string
-		n  int
-	}
-	kvs := make([]kv, 0, len(changes))
-	for op, n := range changes {
-		if op == deploy.OpSame || n == 0 {
-			continue
-		}
-		kvs = append(kvs, kv{op: string(op), n: n})
-	}
-	sort.Slice(kvs, func(i, j int) bool { return kvs[i].op < kvs[j].op })
-	parts := make([]string, 0, len(kvs))
-	for _, e := range kvs {
-		parts = append(parts, fmt.Sprintf("%d %s", e.n, e.op))
-	}
-	return strings.Join(parts, ", ")
+	return buf.String()
 }
 
 // formatUpdateSummary renders the human-readable summary returned in
-// pulumiResult.UpdateSummary — one header line, the op counts, and up to
-// maxSummaryLines resource lines.
+// pulumiResult.UpdateSummary: stack + elapsed header followed by the op counts.
+// Per-resource detail is in EventsFile so we don't duplicate it here.
 func formatUpdateSummary(stackName string, changes display.ResourceChanges,
-	summary []changeLine, elapsed time.Duration,
+	elapsed time.Duration,
 ) string {
 	var buf strings.Builder
 	fmt.Fprintf(&buf, "stack: %s (%s)\n", stackName, elapsed.Round(time.Second))
-	if counts := formatCountsFromChanges(changes); counts != "" {
+	if counts := FormatChangeCounts(changes, ", "); counts != "" {
 		fmt.Fprintf(&buf, "changes: %s\n", counts)
 	} else {
 		buf.WriteString("changes: none\n")
-	}
-	if len(summary) > 0 {
-		buf.WriteString("resources:\n")
-		for _, l := range summary {
-			fmt.Fprintf(&buf, "  %s %s (%s)\n", l.Op, l.URN, l.Type)
-		}
 	}
 	return buf.String()
 }

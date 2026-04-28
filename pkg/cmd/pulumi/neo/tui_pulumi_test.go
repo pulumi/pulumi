@@ -20,6 +20,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 )
 
 // newTestModel returns a Model wide enough that the pulumi block's border
@@ -78,15 +81,15 @@ func TestRenderPulumiBlockWithResources(t *testing.T) {
 		resourceByURN: map[string]int{},
 		resources: []pulumiResourceRow{
 			{
-				op: "create", urn: "urn:pulumi:dev::p::aws:s3/Bucket:Bucket::my-bucket",
+				op: deploy.OpCreate, urn: "urn:pulumi:dev::p::aws:s3/Bucket:Bucket::my-bucket",
 				typ: "aws:s3/Bucket:Bucket", status: "planned",
 			},
 			{
-				op: "update", urn: "urn:pulumi:dev::p::aws:dynamodb/Table::my-table",
+				op: deploy.OpUpdate, urn: "urn:pulumi:dev::p::aws:dynamodb/Table::my-table",
 				typ: "aws:dynamodb/Table", status: "planned",
 			},
 			{
-				op: "delete", urn: "urn:pulumi:dev::p::aws:lambda/Function::old-fn",
+				op: deploy.OpDelete, urn: "urn:pulumi:dev::p::aws:lambda/Function::old-fn",
 				typ: "aws:lambda/Function", status: "planned",
 			},
 		},
@@ -131,7 +134,7 @@ func TestRenderPulumiBlockFinalState(t *testing.T) {
 		stackName:     "dev",
 		isPreview:     true,
 		resourceByURN: map[string]int{},
-		counts:        map[string]int{"create": 3, "update": 1, "same": 7},
+		counts:        display.ResourceChanges{deploy.OpCreate: 3, deploy.OpUpdate: 1, deploy.OpSame: 7},
 		elapsed:       "3s",
 		done:          true,
 	}
@@ -165,25 +168,25 @@ func TestRenderPulumiCounts(t *testing.T) {
 	t.Parallel()
 
 	assert.Equal(t, "no changes", renderPulumiCounts(nil))
-	assert.Equal(t, "no changes", renderPulumiCounts(map[string]int{"same": 5}))
+	assert.Equal(t, "no changes", renderPulumiCounts(display.ResourceChanges{deploy.OpSame: 5}))
 	assert.Equal(t, "2 create · 1 update",
-		renderPulumiCounts(map[string]int{"update": 1, "create": 2, "same": 10}))
+		renderPulumiCounts(display.ResourceChanges{deploy.OpUpdate: 1, deploy.OpCreate: 2, deploy.OpSame: 10}))
 	// Zero-count entries are filtered.
 	assert.Equal(t, "1 create",
-		renderPulumiCounts(map[string]int{"create": 1, "update": 0}))
+		renderPulumiCounts(display.ResourceChanges{deploy.OpCreate: 1, deploy.OpUpdate: 0}))
 }
 
 func TestPulumiOpGlyph(t *testing.T) {
 	t.Parallel()
 
-	cases := map[string]string{
-		"create":  "+",
-		"update":  "~",
-		"delete":  "-",
-		"replace": "+-",
-		"read":    "→",
-		"refresh": "↻",
-		"bogus":   "·",
+	cases := map[display.StepOp]string{
+		deploy.OpCreate:  "+",
+		deploy.OpUpdate:  "~",
+		deploy.OpDelete:  "-",
+		deploy.OpReplace: "+-",
+		deploy.OpRead:    "→",
+		deploy.OpRefresh: "↻",
+		"bogus":          "·",
 	}
 	for op, want := range cases {
 		got, _ := pulumiOpGlyph(op)
@@ -198,8 +201,8 @@ func TestPulumiStateDedupesURN(t *testing.T) {
 	// ResourceOutputs ("done") for the same URN. addResource must dedupe by
 	// URN and upgrade status in place.
 	st := &pulumiBlockState{resourceByURN: map[string]int{}}
-	st.addResource("create", "urn:1", "aws:s3/Bucket", "running")
-	st.addResource("create", "urn:1", "aws:s3/Bucket", "done")
+	st.addResource(deploy.OpCreate, "urn:1", "aws:s3/Bucket", "running")
+	st.addResource(deploy.OpCreate, "urn:1", "aws:s3/Bucket", "done")
 
 	require.Len(t, st.resources, 1)
 	assert.Equal(t, "done", st.resources[0].status)

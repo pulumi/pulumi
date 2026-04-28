@@ -14,7 +14,11 @@
 
 package neo
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/pulumi/pulumi/pkg/v3/display"
+)
 
 // UIEvent is the sealed interface for events sent from the Session event loop to the
 // bubbletea TUI. Each variant carries just enough information for the TUI to render.
@@ -158,8 +162,9 @@ func (UIPulumiStart) uiEvent() {}
 // (e.g. status transitions from "planned" to "running" to "done").
 type UIPulumiResource struct {
 	ToolName string
-	// Op is the StepOp string: create, update, delete, replace, read, refresh, etc.
-	Op   string
+	// Op is the typed StepOp from the engine: create, update, delete,
+	// replace, read, refresh, etc.
+	Op   display.StepOp
 	URN  string
 	Type string
 	// Status is "planned" (preview only), "running" (up, pre-event), "done"
@@ -181,12 +186,12 @@ type UIPulumiDiag struct {
 func (UIPulumiDiag) uiEvent() {}
 
 // UIPulumiEnd finalizes the open pulumi block. Err is empty on success. Counts
-// is the display.ResourceChanges map already flattened to string keys for
-// render-time transport without pulling display into this package.
+// is the engine's ResourceChanges map; the TUI consumes it as-is so we don't
+// pay a flatten/unflatten round-trip just to cross the package boundary.
 type UIPulumiEnd struct {
 	ToolName string
 	Err      string
-	Counts   map[string]int
+	Counts   display.ResourceChanges
 	// Elapsed is the duration the backend call took, pre-formatted so the TUI
 	// doesn't need to care about time types.
 	Elapsed string

@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
+	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -180,13 +181,13 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		OnStart: func(toolName, stackName string, isPreview bool) {
 			sendUI(uiCh, UIPulumiStart{ToolName: toolName, StackName: stackName, IsPreview: isPreview})
 		},
-		OnResource: func(toolName, op, urn, typ, status string) {
+		OnResource: func(toolName string, op displaytypes.StepOp, urn, typ, status string) {
 			sendUI(uiCh, UIPulumiResource{ToolName: toolName, Op: op, URN: urn, Type: typ, Status: status})
 		},
 		OnDiag: func(toolName, severity, message, urn string) {
 			sendUI(uiCh, UIPulumiDiag{ToolName: toolName, Severity: severity, Message: message, URN: urn})
 		},
-		OnEnd: func(toolName, errStr string, counts map[string]int, elapsed string) {
+		OnEnd: func(toolName, errStr string, counts displaytypes.ResourceChanges, elapsed string) {
 			sendUI(uiCh, UIPulumiEnd{ToolName: toolName, Err: errStr, Counts: counts, Elapsed: elapsed})
 		},
 	}

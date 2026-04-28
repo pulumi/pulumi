@@ -25,6 +25,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -82,14 +83,14 @@ type pulumiBlockState struct {
 	resources     []pulumiResourceRow
 	resourceByURN map[string]int
 	diags         []pulumiDiagRow
-	counts        map[string]int
+	counts        display.ResourceChanges
 	elapsed       string
 	err           string
 	done          bool
 }
 
 type pulumiResourceRow struct {
-	op     string
+	op     display.StepOp
 	urn    string
 	typ    string
 	status string

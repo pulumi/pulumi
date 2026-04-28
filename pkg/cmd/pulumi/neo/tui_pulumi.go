@@ -20,6 +20,10 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 )
 
 // Pulumi block styling. Colors follow the CLI's preview output: green for
@@ -60,7 +64,7 @@ var (
 // a URN is seen again, the op stays from the first event (the ResourcePre
 // that established what the engine is doing) and only the status is upgraded
 // in place — later events like ResourceOutputs may carry only a status change.
-func (s *pulumiBlockState) addResource(op, urn, typ, status string) {
+func (s *pulumiBlockState) addResource(op display.StepOp, urn, typ, status string) {
 	if existing, ok := s.resourceByURN[urn]; ok {
 		if status != "" {
 			s.resources[existing].status = status
@@ -130,7 +134,7 @@ func (m *Model) renderPulumiBlock(st *pulumiBlockState) string {
 		// so streaming doesn't shuffle earlier lines.
 		rows := append([]pulumiResourceRow(nil), st.resources...)
 		sort.SliceStable(rows, func(i, j int) bool {
-			return opSortRank(rows[i].op) < opSortRank(rows[j].op)
+			return tools.OpSortRank(rows[i].op) < tools.OpSortRank(rows[j].op)
 		})
 		for _, r := range rows {
 			body.WriteString(renderPulumiResourceLine(r) + "\n")
@@ -220,77 +224,36 @@ func renderPulumiDiagLine(d pulumiDiagRow) string {
 }
 
 // renderPulumiCounts prints a compact "3 create · 1 update" counts line with
-// deterministic ordering. Empty / all-same maps render as "no changes".
-func renderPulumiCounts(counts map[string]int) string {
-	if len(counts) == 0 {
+// deterministic ordering. Empty / all-same maps render as "no changes". The
+// underlying ordering and filtering live in tools.FormatChangeCounts so the
+// agent-facing UpdateSummary text and the live TUI footer stay in sync.
+func renderPulumiCounts(counts display.ResourceChanges) string {
+	out := tools.FormatChangeCounts(counts, " · ")
+	if out == "" {
 		return "no changes"
 	}
-	type kv struct {
-		op string
-		n  int
-	}
-	filtered := make([]kv, 0, len(counts))
-	for op, n := range counts {
-		if op == "same" || n == 0 {
-			continue
-		}
-		filtered = append(filtered, kv{op: op, n: n})
-	}
-	if len(filtered) == 0 {
-		return "no changes"
-	}
-	sort.Slice(filtered, func(i, j int) bool {
-		return opSortRank(filtered[i].op) < opSortRank(filtered[j].op)
-	})
-	parts := make([]string, 0, len(filtered))
-	for _, e := range filtered {
-		parts = append(parts, fmt.Sprintf("%d %s", e.n, e.op))
-	}
-	return strings.Join(parts, " · ")
-}
-
-// opSortRank orders operations in the output so related changes cluster: creates
-// first, then updates, replaces, deletes, reads, refreshes, and everything else.
-func opSortRank(op string) int {
-	switch op {
-	case "create", "create-replacement":
-		return 0
-	case "update":
-		return 1
-	case "replace":
-		return 2
-	case "delete", "delete-replaced":
-		return 3
-	case "read", "read-replacement":
-		return 4
-	case "refresh":
-		return 5
-	case "import", "import-replacement":
-		return 6
-	case "same":
-		return 9
-	default:
-		return 7
-	}
+	return out
 }
 
 // pulumiOpGlyph picks the symbol and color for each StepOp. Mirrors the Pulumi
-// CLI's diff display: + creates, - deletes, ~ updates, +- replaces.
-func pulumiOpGlyph(op string) (string, lipgloss.Style) {
+// CLI's diff display: + creates, - deletes, ~ updates, +- replaces. Uses the
+// typed StepOp constants from pkg/resource/deploy so adding a new op causes a
+// compiler-visible miss in the switch (it falls through to the "·" default).
+func pulumiOpGlyph(op display.StepOp) (string, lipgloss.Style) {
 	switch op {
-	case "create", "create-replacement":
+	case deploy.OpCreate, deploy.OpCreateReplacement:
 		return "+", pulumiOpCreate
-	case "update":
+	case deploy.OpUpdate:
 		return "~", pulumiOpUpdate
-	case "delete", "delete-replaced":
+	case deploy.OpDelete, deploy.OpDeleteReplaced:
 		return "-", pulumiOpDelete
-	case "replace":
+	case deploy.OpReplace:
 		return "+-", pulumiOpReplace
-	case "read", "read-replacement":
+	case deploy.OpRead, deploy.OpReadReplacement:
 		return "→", pulumiOpRead
-	case "refresh":
+	case deploy.OpRefresh:
 		return "↻", pulumiOpRefresh
-	case "import", "import-replacement":
+	case deploy.OpImport, deploy.OpImportReplacement:
 		return "⇒", pulumiOpCreate
 	default:
 		return "·", pulumiOpUnknown

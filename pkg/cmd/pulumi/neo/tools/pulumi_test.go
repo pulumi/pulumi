@@ -15,7 +15,6 @@
 package tools
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"testing"
@@ -195,24 +194,34 @@ func TestApplyEnvVarsNoopOnEmpty(t *testing.T) {
 	restore()
 }
 
-func TestFormatCountsFromChanges(t *testing.T) {
+func TestFormatChangeCounts(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "", formatCountsFromChanges(nil))
+	assert.Equal(t, "", FormatChangeCounts(nil, ", "))
 
 	// Same-only counts produce an empty summary.
-	assert.Equal(t, "", formatCountsFromChanges(display.ResourceChanges{
+	assert.Equal(t, "", FormatChangeCounts(display.ResourceChanges{
 		deploy.OpSame: 5,
-	}))
+	}, ", "))
 
-	// Zero-count ops are filtered; keys sort alphabetically.
-	got := formatCountsFromChanges(display.ResourceChanges{
-		deploy.OpUpdate: 2,
-		deploy.OpCreate: 3,
-		deploy.OpDelete: 0,
-		deploy.OpSame:   5,
-	})
-	assert.Equal(t, "3 create, 2 update", got)
+	// Zero-count ops are filtered; ordering is semantic (creates first, then
+	// updates, replaces, deletes…).
+	got := FormatChangeCounts(display.ResourceChanges{
+		deploy.OpUpdate:  2,
+		deploy.OpCreate:  3,
+		deploy.OpDelete:  0,
+		deploy.OpReplace: 1,
+		deploy.OpSame:    5,
+	}, ", ")
+	assert.Equal(t, "3 create, 2 update, 1 replace", got)
+
+	// Joiner is configurable so the TUI can use " · " and the agent-facing
+	// summary can use ", ".
+	dot := FormatChangeCounts(display.ResourceChanges{
+		deploy.OpCreate: 1,
+		deploy.OpDelete: 1,
+	}, " · ")
+	assert.Equal(t, "1 create · 1 delete", dot)
 }
 
 func TestFormatUpdateSummary(t *testing.T) {
@@ -221,46 +230,43 @@ func TestFormatUpdateSummary(t *testing.T) {
 	out := formatUpdateSummary(
 		"dev",
 		display.ResourceChanges{deploy.OpCreate: 1},
-		[]changeLine{{Op: "create", URN: "urn:a", Type: "aws:s3/Bucket:Bucket"}},
 		3*time.Second,
 	)
 	assert.Contains(t, out, "stack: dev (3s)")
 	assert.Contains(t, out, "changes: 1 create")
-	assert.Contains(t, out, "resources:")
-	assert.Contains(t, out, "create urn:a (aws:s3/Bucket:Bucket)")
 }
 
 func TestFormatUpdateSummaryNoChanges(t *testing.T) {
 	t.Parallel()
 
-	out := formatUpdateSummary("dev", nil, nil, time.Second)
+	out := formatUpdateSummary("dev", nil, time.Second)
 	assert.Contains(t, out, "changes: none")
-	assert.NotContains(t, out, "resources:")
 }
 
-func TestAppendLogRespectsCap(t *testing.T) {
+func TestFormatLogs(t *testing.T) {
 	t.Parallel()
 
-	p := &Pulumi{}
-	var logs bytes.Buffer
-	p.appendLog("hello", &logs)
-	assert.Equal(t, "hello\n", logs.String())
+	// Empty inputs produce an empty string.
+	assert.Equal(t, "", formatLogs(nil, nil))
 
-	// Fill the buffer to just under the cap, then ensure further writes cannot
-	// exceed the cap.
-	logs.Reset()
-	logs.WriteString(string(make([]byte, maxLogsBytes-1)))
-	p.appendLog("extra-that-wont-fit", &logs)
-	assert.LessOrEqual(t, logs.Len(), maxLogsBytes)
+	// Counts and diags compose; counts come first.
+	got := formatLogs(
+		display.ResourceChanges{deploy.OpCreate: 2, deploy.OpUpdate: 1},
+		[]string{"warning: deprecated foo", "error: bad config"},
+	)
+	assert.Equal(t,
+		"summary: 2 create, 1 update\nwarning: deprecated foo\nerror: bad config\n",
+		got)
 }
 
-func TestFlattenChanges(t *testing.T) {
+func TestOpSortRank(t *testing.T) {
 	t.Parallel()
 
-	assert.Nil(t, flattenChanges(nil))
-	got := flattenChanges(display.ResourceChanges{
-		deploy.OpCreate: 2,
-		deploy.OpDelete: 1,
-	})
-	assert.Equal(t, map[string]int{"create": 2, "delete": 1}, got)
+	// Creates sort before updates, replaces before deletes.
+	assert.Less(t, OpSortRank(deploy.OpCreate), OpSortRank(deploy.OpUpdate))
+	assert.Less(t, OpSortRank(deploy.OpReplace), OpSortRank(deploy.OpDelete))
+	// Same lands at the bottom; an unknown StepOp sits between the known set
+	// and same so the ordering stays stable when the engine adds new ops.
+	assert.Less(t, OpSortRank(deploy.OpRefresh), OpSortRank("bogus"))
+	assert.Less(t, OpSortRank("bogus"), OpSortRank(deploy.OpSame))
 }
