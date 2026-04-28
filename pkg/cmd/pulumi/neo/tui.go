@@ -140,6 +140,12 @@ type Model struct {
 	// can see their request is being acted on even if the agent is still
 	// mid-tool.
 	cancelling bool
+	// ctrlCArmed is true after the first Ctrl+C press, until any other key is
+	// seen. While armed the footer hint reads "Press Ctrl+C again to exit" and
+	// a second Ctrl+C quits. The first press also acts like ESC when busy:
+	// posts user_cancel upstream so users don't need to learn ESC to abort a
+	// turn. Any other keypress disarms.
+	ctrlCArmed bool
 }
 
 var (
@@ -254,8 +260,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if msg.Type == tea.KeyCtrlC {
-			return m, tea.Quit
+			if m.ctrlCArmed {
+				return m, tea.Quit
+			}
+			m.ctrlCArmed = true
+			// First press doubles as a cancel when the agent is mid-turn, so
+			// users who reach for Ctrl+C don't need to learn ESC to abort.
+			// Same guards as the ESC handler below.
+			if m.busy && !m.pendingApproval && !m.cancelling {
+				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
+				m.cancelling = true
+				cmd := m.showBusy("Cancelling...", shimmerVerb)
+				m.rebuildContent()
+				return m, cmd
+			}
+			m.rebuildContent()
+			return m, nil
 		}
+		// Any other key disarms the second-press-to-exit prompt. Keeps the
+		// "two Ctrl+C in a row" semantics tight: a stray keystroke between
+		// presses goes back to needing two presses again.
+		m.ctrlCArmed = false
 
 		// Shift+Tab toggles plan mode. The toggle must run before the approval
 		// and busy guards so users can flip the indicator at any point in the
@@ -545,14 +570,20 @@ func (m Model) View() string {
 	// code doesn't need to track hint-line count.
 	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
 	if m.busy {
-		hintText = "agent is working · enter disabled · ctrl+c to quit"
+		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
 	}
 	hint := "  "
 	if m.planMode {
 		hint += planAccentStyle.Render("⏸ plan mode")
 		hintText = " · " + hintText
 	}
-	hint += inputHintStyle.Render(hintText)
+	if m.ctrlCArmed {
+		// Override everything else: this is a transient prompt, the user just
+		// pressed Ctrl+C and needs to see what a second press will do.
+		hint = "  " + inputHintStyle.Render("Press Ctrl+C again to exit")
+	} else {
+		hint += inputHintStyle.Render(hintText)
+	}
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),

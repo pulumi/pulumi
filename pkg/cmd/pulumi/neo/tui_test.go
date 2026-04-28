@@ -307,16 +307,98 @@ func TestModel_Update_WindowSize_MinimumViewportHeight(t *testing.T) {
 	assert.GreaterOrEqual(t, um.viewport.Height, 1)
 }
 
-func TestModel_Update_KeyCtrlC_ReturnsQuit(t *testing.T) {
+func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
 	t.Parallel()
 
+	// First Ctrl+C arms the "press again to exit" prompt without quitting,
+	// matching the cancel-vs-quit semantics requested in pulumi-service#42029.
+	// Only a second Ctrl+C in a row produces tea.QuitMsg.
 	m := NewModel(ModelConfig{})
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
-	require.NotNil(t, cmd)
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	um := updated.(Model)
+	assert.True(t, um.ctrlCArmed, "first Ctrl+C must arm the second-press-to-exit prompt")
+	if cmd != nil {
+		if msg := cmd(); msg != nil {
+			_, isQuit := msg.(tea.QuitMsg)
+			assert.False(t, isQuit, "first Ctrl+C must not quit")
+		}
+	}
+	assert.Contains(t, um.View(), "Press Ctrl+C again to exit",
+		"footer must surface the second-press-to-exit hint")
 
-	// Running the returned Cmd should surface tea.QuitMsg.
+	// Second Ctrl+C in a row quits.
+	_, cmd = um.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	require.NotNil(t, cmd)
 	_, ok := cmd().(tea.QuitMsg)
-	assert.True(t, ok, "Ctrl-C must produce a tea.QuitMsg")
+	assert.True(t, ok, "second consecutive Ctrl+C must produce a tea.QuitMsg")
+}
+
+func TestModel_Update_KeyCtrlC_FirstPressCancelsWhenBusy(t *testing.T) {
+	t.Parallel()
+
+	// First Ctrl+C while the agent is mid-turn must mirror ESC: post a
+	// user_cancel upstream and flip the cancelling flag, while still arming
+	// the second-press-to-exit prompt.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	um := updated.(Model)
+	assert.True(t, um.ctrlCArmed, "Ctrl+C must arm the exit prompt")
+	assert.True(t, um.cancelling, "Ctrl+C while busy must trigger cancellation")
+	assert.True(t, um.busy, "spinner stays on until the backend confirms")
+
+	select {
+	case ev := <-outCh:
+		c, ok := ev.event.(apitype.AgentUserEventCancel)
+		require.True(t, ok, "Ctrl+C must post an AgentUserEventCancel, got %T", ev.event)
+		assert.Equal(t, userEventUserCancel, c.Type)
+	default:
+		t.Fatal("Ctrl+C while busy did not post a cancel event")
+	}
+
+	idx := um.findBlockKind(blockBusy)
+	require.NotEqual(t, -1, idx)
+	assert.Equal(t, "Cancelling...", um.blocks[idx].label)
+}
+
+func TestModel_Update_KeyCtrlC_OtherKeyDisarms(t *testing.T) {
+	t.Parallel()
+
+	// A keystroke between the two Ctrl+C presses resets the gate. Without
+	// this, an idle session could be exited by a Ctrl+C now and another one
+	// minutes later — the user would have lost the "press again" context.
+	m := NewModel(ModelConfig{})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	um := updated.(Model)
+	require.True(t, um.ctrlCArmed)
+
+	updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	um = updated.(Model)
+	assert.False(t, um.ctrlCArmed, "any other key must disarm the exit prompt")
+	assert.NotContains(t, um.View(), "Press Ctrl+C again to exit")
+
+	// Another Ctrl+C now arms again rather than quitting.
+	_, cmd := um.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd != nil {
+		if msg := cmd(); msg != nil {
+			_, isQuit := msg.(tea.QuitMsg)
+			assert.False(t, isQuit, "Ctrl+C after disarm must not quit")
+		}
+	}
+}
+
+func TestModel_View_BusyHintMentionsCancelKeys(t *testing.T) {
+	t.Parallel()
+
+	// Per pulumi-service#42029 the busy footer must surface both ways to
+	// abort a turn so the affordance isn't hidden behind a key the user has
+	// to discover.
+	busy := NewModel(ModelConfig{Busy: true})
+	view := busy.View()
+	assert.Contains(t, view, "esc")
+	assert.Contains(t, view, "ctrl+c")
+	assert.Contains(t, view, "cancel")
 }
 
 func TestModel_Update_KeyEnter_WhileBusy_SwallowsAndDoesNotSend(t *testing.T) {
