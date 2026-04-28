@@ -181,14 +181,11 @@ func NewModel(cfg ModelConfig) Model {
 	vp := viewport.New(80, 24-inputBarHeight)
 	// The default viewport KeyMap binds plain letters (u/d/f/b/j/k) and
 	// space to scroll actions, which collide with typing in the chat
-	// input. Restrict to keys that can't appear in normal text.
+	// input. Restrict to PgUp/PgDn so we don't shadow system or text-input
+	// shortcuts (arrows move the cursor, Ctrl+U/Ctrl+D have terminal meanings).
 	vp.KeyMap = viewport.KeyMap{
-		PageDown:     key.NewBinding(key.WithKeys("pgdown")),
-		PageUp:       key.NewBinding(key.WithKeys("pgup")),
-		HalfPageUp:   key.NewBinding(key.WithKeys("ctrl+u")),
-		HalfPageDown: key.NewBinding(key.WithKeys("ctrl+d")),
-		Up:           key.NewBinding(key.WithKeys("up")),
-		Down:         key.NewBinding(key.WithKeys("down")),
+		PageDown: key.NewBinding(key.WithKeys("pgdown")),
+		PageUp:   key.NewBinding(key.WithKeys("pgup")),
 	}
 
 	sp := spinner.New(

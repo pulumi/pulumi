@@ -4,5 +4,4 @@ changes:
   description: |
     `pulumi neo` no longer intercepts plain letters (`u`, `d`, `f`, `b`, `j`, `k`)
     and space as conversation scroll shortcuts; those keys now type into the input
-    as expected. PgUp/PgDn, arrow keys, Ctrl+U/Ctrl+D, and the mouse wheel still
-    scroll the conversation.
+    as expected. PgUp/PgDn and the mouse wheel still scroll the conversation.
