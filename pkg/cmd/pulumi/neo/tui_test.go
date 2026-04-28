@@ -278,7 +278,7 @@ func TestModel_Init_ReturnsBatch(t *testing.T) {
 	require.NotNil(t, busy.Init())
 }
 
-func TestModel_Update_WindowSize_ResizesViewportAndBuildsRenderer(t *testing.T) {
+func TestModel_Update_WindowSize_TracksDimensionsAndBuildsRenderer(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{})
@@ -287,24 +287,24 @@ func TestModel_Update_WindowSize_ResizesViewportAndBuildsRenderer(t *testing.T) 
 
 	assert.Equal(t, 100, um.width)
 	assert.Equal(t, 30, um.height)
-	assert.Equal(t, 100, um.welcome.termWidth)
-	assert.Equal(t, 100, um.viewport.Width)
-	assert.Equal(t, 30-inputBarHeight, um.viewport.Height)
+	// welcome.termWidth is the safe live-frame width: capped at 80 once the
+	// terminal exceeds 90 cols, so the banner stays at a stable 80 cols
+	// across drag-resizes through that range. See liveWidth() for rationale.
+	assert.Equal(t, 80, um.welcome.termWidth)
 	// The glamour renderer is lazily built on the first WindowSize so it can
 	// pick up the real terminal width for wrapping.
 	require.NotNil(t, um.mdRenderer)
+	assert.True(t, um.sizeReceived, "first WindowSize must flip sizeReceived")
 }
 
-func TestModel_Update_WindowSize_MinimumViewportHeight(t *testing.T) {
+func TestModel_Update_WindowSize_TinyTerminalDoesNotPanic(t *testing.T) {
 	t.Parallel()
 
-	// A terminal smaller than the input bar would give a negative viewport
-	// height; the clamp in Update guarantees at least 1 row so bubbletea
-	// doesn't panic.
+	// View must not panic on a tiny terminal.
 	m := NewModel(ModelConfig{})
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 1})
 	um := updated.(Model)
-	assert.GreaterOrEqual(t, um.viewport.Height, 1)
+	require.NotPanics(t, func() { _ = um.View() })
 }
 
 func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
@@ -574,29 +574,21 @@ func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 func TestModel_Update_KeyRune_TypesAndDoesNotScrollViewport(t *testing.T) {
 	t.Parallel()
 
-	// The bubbles viewport's default keymap binds plain letters (u/d/f/b/j/k)
-	// and space to scroll actions. Those collide with typing in the chat
-	// input, so the model overrides the keymap to keep only non-character
-	// navigation. Regression for pulumi/pulumi-service#42025: pressing 'u'
-	// or 'd' must type into the input and leave the viewport untouched.
+	// Regression for pulumi/pulumi-service#42025: pressing plain letters
+	// (u/d/f/b/j/k) or space must type into the input rather than getting
+	// intercepted as scroll keys.
 	for _, r := range []rune{'u', 'd', 'f', 'b', 'j', 'k', ' '} {
 		t.Run(string(r), func(t *testing.T) {
 			t.Parallel()
 
 			m := NewModel(ModelConfig{})
-			// Size the viewport and seed content tall enough that scroll
-			// actions would otherwise change YOffset.
 			updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
 			um := updated.(Model)
-			um.viewport.SetContent(strings.Repeat("line\n", 200))
-			um.viewport.ScrollDown(20) // scroll partway so both up- and down-style binds could move
-			startOffset := um.viewport.YOffset
 
 			updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 			um = updated.(Model)
 
 			assert.Equal(t, string(r), um.textInput.Value(), "rune must reach the text input")
-			assert.Equal(t, startOffset, um.viewport.YOffset, "rune must not move the viewport")
 		})
 	}
 }
@@ -684,7 +676,7 @@ func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 	m := newApprovalPendingModel(t, outCh)
 	m.textInput.SetValue("not on prod")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	um := updated.(Model)
 
 	select {
@@ -700,7 +692,6 @@ func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 
 	assert.False(t, um.pendingApproval)
 	assert.False(t, um.busy, "denial must NOT re-arm busy — the agent is not running")
-	assert.Nil(t, cmd, "denial must not return a spinner cmd")
 }
 
 func TestModel_Update_KeyEnter_Approval_DenyEmpty(t *testing.T) {
@@ -769,19 +760,6 @@ func TestModel_Update_KeyEnter_Approval_NotGatedByBusy(t *testing.T) {
 	default:
 		t.Fatal("approval Enter must not be gated by busy")
 	}
-}
-
-func TestModel_Update_MouseMsg_ForwardsToViewport(t *testing.T) {
-	t.Parallel()
-
-	// Mouse events are routed to the viewport for scrolling. We don't introspect
-	// the viewport's internal scroll state here (it's an external bubble), just
-	// verify the dispatch doesn't panic and returns a Model — the coverage of
-	// the MouseMsg arm is the goal.
-	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
-	_, ok := updated.(Model)
-	assert.True(t, ok)
 }
 
 func TestModel_Update_UnknownMessage_ForwardsToTextInput(t *testing.T) {
@@ -1401,29 +1379,35 @@ func TestRenderBlock_SkipsWidthIndependentBlocks(t *testing.T) {
 	assert.Equal(t, "  ⏺ Read(\"/x\")", b.rendered, "empty raw must be a no-op")
 }
 
-func TestModel_RebuildContent_HandlesMixedBlocksWithoutPanic(t *testing.T) {
+func TestModel_LiveView_OnlyShowsLiveBlocks(t *testing.T) {
 	t.Parallel()
 
-	// rebuildContent handles each blockKind plus the busy-block special case
-	// (which reads the spinner glyph at render time). Feed one of each kind so
-	// every branch of the per-block switch runs, and both the "was at bottom"
-	// and default paths get exercised across multiple invocations.
+	// In inline mode, View() draws only the live frame: the busy spinner, an
+	// in-flight streaming assistant, and an open pulumi op. Committed blocks
+	// (user messages, tool completions, finals, warnings) live in terminal
+	// scrollback and must not appear in View(). Render one of each kind so
+	// the filter is exercised, and check that committed kinds are absent
+	// from the visible View string.
 	m := NewModel(ModelConfig{})
 	m.blocks = []block{
-		{kind: blockUserMessage, rendered: "  user "},
-		{kind: blockToolComplete, rendered: "  tool ok"},
-		{kind: blockAssistantFinal, rendered: "  final"},
-		{kind: blockWarning, rendered: "  warn"},
+		{kind: blockUserMessage, rendered: "USERSCROLLBACK"},
+		{kind: blockToolComplete, rendered: "TOOLCOMPLETESCROLLBACK"},
+		{kind: blockAssistantFinal, rendered: "FINALSCROLLBACK"},
+		{kind: blockWarning, rendered: "WARNSCROLLBACK"},
+		{kind: blockAssistantStreaming, rendered: "STREAMING_LIVE", raw: "STREAMING_LIVE"},
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
-	// Must not panic and must not mangle the block slice.
-	require.NotPanics(t, func() { m.rebuildContent() })
-	// Second call exercises the "not at bottom" path once scrolled up and then
-	// back down (via GotoBottom internally); simply verifying it also doesn't
-	// panic is enough — we don't reach into the viewport internals here.
-	require.NotPanics(t, func() { m.rebuildContent() })
-	require.Len(t, m.blocks, 5, "blocks slice must be untouched")
+	view := m.View()
+	// Live blocks are visible.
+	assert.Contains(t, view, "STREAMING_LIVE", "in-flight streaming must appear in View")
+	assert.Contains(t, view, "Thinking", "busy label must appear in View")
+	// Committed blocks are NOT visible — they were emitted to scrollback.
+	assert.NotContains(t, view, "USERSCROLLBACK")
+	assert.NotContains(t, view, "TOOLCOMPLETESCROLLBACK")
+	assert.NotContains(t, view, "FINALSCROLLBACK")
+	assert.NotContains(t, view, "WARNSCROLLBACK")
+	require.Len(t, m.blocks, 6, "View must not mutate the blocks slice")
 }
 
 func TestApprovalGeneralWrapsToTerminalWidth(t *testing.T) {

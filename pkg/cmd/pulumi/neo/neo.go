@@ -189,10 +189,9 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		InitialPrompt: prompt,
 	})
 
-	p := tea.NewProgram(model,
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-	)
+	// Inline (non-alt-screen) so the transcript stays in the user's terminal
+	// scrollback after exit.
+	p := tea.NewProgram(model)
 
 	g, gctx := errgroup.WithContext(ctx)
 

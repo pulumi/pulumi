@@ -31,18 +31,10 @@ import (
 // Diagnostics reuse the existing warning/error styles for consistency with the
 // rest of the TUI's event feed.
 var (
-	pulumiBorderOpen = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("8")).
-				Padding(0, 1)
-	pulumiBorderDone = lipgloss.NewStyle().
-				Border(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("6")).
-				Padding(0, 1)
-	pulumiBorderErr = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("1")).
-			Padding(0, 1)
+	// Bracket border colors — see renderLeftBracket for why bracket-only.
+	pulumiBracketOpen  = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	pulumiBracketDone  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	pulumiBracketErr   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	pulumiHeaderStyle  = lipgloss.NewStyle().Bold(true)
 	pulumiSubHeader    = lipgloss.NewStyle().Faint(true)
 	pulumiMetaStyle    = lipgloss.NewStyle().Faint(true)
@@ -158,17 +150,14 @@ func (m *Model) renderPulumiBlock(st *pulumiBlockState) string {
 		body.WriteString(pulumiStatusFailed.Render("error: "+st.err) + "\n")
 	}
 
-	// Choose the border color based on terminal state. Pad the box to fit
-	// comfortably in the viewport — subtract 4 for the border+padding glyphs.
-	style := pulumiBorderOpen
+	style := pulumiBracketOpen
 	switch {
 	case st.err != "":
-		style = pulumiBorderErr
+		style = pulumiBracketErr
 	case st.done:
-		style = pulumiBorderDone
+		style = pulumiBracketDone
 	}
-	width := max(m.width-4, 20)
-	return style.Width(width).Render(strings.TrimRight(body.String(), "\n"))
+	return renderLeftBracket(style, body.String())
 }
 
 // renderPulumiResourceLine renders one resource row with an op-colored symbol,
