@@ -244,3 +244,17 @@ func TestNewNeoCmd_HiddenWhenNotExperimental(t *testing.T) {
 	cmd := NewNeoCmd()
 	assert.True(t, cmd.Hidden, "without PULUMI_EXPERIMENTAL the command must be hidden")
 }
+
+func TestDedupeExistingRoots(t *testing.T) {
+	t.Parallel()
+
+	// Empty / non-existent / duplicate canonical paths must all drop. We use the
+	// test temp dir and a sibling plus a known-bad path; the helper should keep
+	// the first occurrence of each canonical form and skip the rest.
+	tmp := t.TempDir()
+	missing := tmp + "/does-not-exist"
+
+	got := dedupeExistingRoots("", tmp, tmp, missing, t.TempDir())
+	require.Len(t, got, 2, "empties, missing paths, and duplicates must be dropped")
+	assert.Equal(t, tmp, got[0], "first occurrence of a canonical path is preserved verbatim")
+}

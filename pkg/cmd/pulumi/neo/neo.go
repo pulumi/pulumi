@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -121,10 +122,16 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return err
 	}
 
-	// Allow tools to read/write under the OS temp dir in addition to cwd. The agent
-	// frequently stages scratch files there (downloads, intermediate state) and the
-	// CLI sandbox would otherwise reject those paths. See pulumi/pulumi-service#42027.
-	extraRoots := []string{os.TempDir()}
+	// Allow tools to read/write under temp directories in addition to cwd. The agent
+	// stages scratch files there (downloads, intermediate state) and the CLI sandbox
+	// would otherwise reject those paths. See pulumi/pulumi-service#42027.
+	//
+	// We pass both "/tmp" and os.TempDir(): on macOS the agent writes to /tmp (which
+	// canonicalizes to /private/tmp) while os.TempDir() returns the per-user TMPDIR
+	// under /var/folders/..., so they're distinct roots and both must be allowed.
+	// On Linux they collapse to the same canonical path and are deduped here. On
+	// Windows /tmp generally doesn't exist and is skipped.
+	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
 	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
 	if err != nil {
 		return err
@@ -323,4 +330,29 @@ func resolveTaskTarget(
 		return "", "", "", errors.New("could not determine an organization for the Neo task; pass --org")
 	}
 	return org, projectName, stack, nil
+}
+
+// dedupeExistingRoots filters candidates down to those that resolve on the local
+// filesystem and returns them with duplicates removed by canonical path. Entries
+// that don't exist or fail to canonicalize (typical for "/tmp" on Windows) are
+// skipped silently. The original (pre-resolution) string is preserved so that
+// downstream error messages reference the path the caller passed in.
+func dedupeExistingRoots(candidates ...string) []string {
+	seen := make(map[string]bool, len(candidates))
+	var out []string
+	for _, c := range candidates {
+		if c == "" {
+			continue
+		}
+		canon, err := filepath.EvalSymlinks(c)
+		if err != nil {
+			continue
+		}
+		if seen[canon] {
+			continue
+		}
+		seen[canon] = true
+		out = append(out, c)
+	}
+	return out
 }
