@@ -17,6 +17,7 @@ package neo
 import (
 	"strings"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -178,6 +179,17 @@ func NewModel(cfg ModelConfig) Model {
 	ti.CharLimit = 4096
 
 	vp := viewport.New(80, 24-inputBarHeight)
+	// The default viewport KeyMap binds plain letters (u/d/f/b/j/k) and
+	// space to scroll actions, which collide with typing in the chat
+	// input. Restrict to keys that can't appear in normal text.
+	vp.KeyMap = viewport.KeyMap{
+		PageDown:     key.NewBinding(key.WithKeys("pgdown")),
+		PageUp:       key.NewBinding(key.WithKeys("pgup")),
+		HalfPageUp:   key.NewBinding(key.WithKeys("ctrl+u")),
+		HalfPageDown: key.NewBinding(key.WithKeys("ctrl+d")),
+		Up:           key.NewBinding(key.WithKeys("up")),
+		Down:         key.NewBinding(key.WithKeys("down")),
+	}
 
 	sp := spinner.New(
 		spinner.WithSpinner(spinner.MiniDot),
