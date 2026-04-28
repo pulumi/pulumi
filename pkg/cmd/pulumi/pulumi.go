@@ -48,6 +48,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/about"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ai"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/api"
+	// Register the interactive TUI with the api package so `pulumi cloud api`
+	// can dispatch to it. The tui subpackage imports api but not the other
+	// way around, so an init-time registration side-steps the import cycle.
+	_ "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/api/tui"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/auth"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"

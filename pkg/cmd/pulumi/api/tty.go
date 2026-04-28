@@ -27,6 +27,23 @@ func stdoutIsTTY() bool { return term.IsTerminal(int(os.Stdout.Fd())) }
 // stderrIsTTY reports whether stderr is a terminal.
 func stderrIsTTY() bool { return term.IsTerminal(int(os.Stderr.Fd())) }
 
+// stdinIsTTY reports whether stdin is a terminal.
+func stdinIsTTY() bool { return term.IsTerminal(int(os.Stdin.Fd())) }
+
+// resolveInteractivity collapses the --interactive / --no-interactive flag
+// pair into a single bool. force wins over deny; otherwise the result follows
+// whether both stdin and stdout are attached to a TTY.
+func resolveInteractivity(force, deny bool) bool {
+	switch {
+	case force:
+		return true
+	case deny:
+		return false
+	default:
+		return stdinIsTTY() && stdoutIsTTY()
+	}
+}
+
 // OutputFormat describes how a command should render its top-level output.
 type OutputFormat int
 
