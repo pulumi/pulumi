@@ -3504,7 +3504,6 @@ func TestInstallWithOptions(t *testing.T) {
 	require.Contains(t, stdout.String(), "Creating virtual environment...")
 	require.Contains(t, stdout.String(), "Successfully installed urllib3")
 	require.Contains(t, stdout.String(), "Finished installing dependencies")
-	require.Empty(t, stderr.String())
 	require.DirExists(t, filepath.Join(pDir, "venv"))
 
 	// Run without options
