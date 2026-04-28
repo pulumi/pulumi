@@ -147,11 +147,9 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 			)
 		}
 		done := make(chan struct{})
-		// Cancellable context so the 20s cap below can actually interrupt the engine. Without
-		// propagating cancellation, a timed-out iteration leaks its goroutine, plugin host, and
-		// provider subprocesses into later iterations and can eventually saturate the CI runner,
-		// surfacing as the opaque `panic: test timed out after 10m0s`
-		// (see https://github.com/pulumi/pulumi/issues/22719).
+		// Cancellable context so the 20s cap below can signal the engine to shut down.
+		// This is best-effort: a genuinely hung engine may not honor cancellation, in
+		// which case the post-cancel drain below escalates to a hard failure.
 		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		go func() {
@@ -193,16 +191,16 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 			// Test completed within the timeout.
 		case <-time.After(20 * time.Second):
 			cancel()
-			// Wait briefly for the goroutine to observe cancellation and drain before this
-			// iteration returns. Otherwise the next rapid iteration starts on top of a live
-			// engine and the leak cascades. If the engine is genuinely hung it likely won't
-			// respond to cancellation at all, so keep this short to fail fast.
+			// Give the engine a brief window to observe cancellation and drain. A
+			// genuinely hung engine likely won't respond at all, so keep this short and
+			// fail loudly below if it doesn't drain in time.
 			select {
 			case <-done:
 			case <-time.After(5 * time.Second):
 				reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
-				t.Fatalf(
-					"test timed out after 20 seconds and did not respond to cancellation within 5 more seconds\n%s",
+				assert.Failf(
+					t,
+					"test timed out after 20 seconds and did not respond to cancellation within 5 more seconds",
 					reproMessage,
 				)
 				return
