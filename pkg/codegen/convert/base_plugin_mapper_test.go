@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -660,12 +661,13 @@ func TestBasePluginMapper_InfiniteLoopRegression(t *testing.T) {
 	assert.Equal(t, []byte{}, data)
 }
 
-// testWorkspace implements the Workspace interface with a fixed set of plugins.
+// testWorkspace implements the pluginstorage.Context interface with a fixed set of plugins.
 type testWorkspace struct {
+	pluginstorage.MockContext
 	infos []workspace.PluginInfo
 }
 
-func (ws *testWorkspace) GetPlugins() ([]workspace.PluginInfo, error) {
+func (ws *testWorkspace) GetPlugins(_ context.Context) ([]workspace.PluginInfo, error) {
 	return ws.infos, nil
 }
 
