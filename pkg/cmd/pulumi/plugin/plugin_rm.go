@@ -30,12 +30,13 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginRmCmd() *cobra.Command {
+func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var all bool
 	var yes bool
 	cmd := &cobra.Command{
@@ -82,7 +83,7 @@ func newPluginRmCmd() *cobra.Command {
 
 			// Now build a list of plugins that match.
 			var deletes []workspace.PluginInfo
-			plugins, err := workspace.GetPlugins()
+			plugins, err := pluginContext.GetPlugins(cmd.Context())
 			if err != nil {
 				return fmt.Errorf("loading plugins: %w", err)
 			}
