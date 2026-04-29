@@ -332,7 +332,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	case *Resource:
 		token, tokenRange := r.GetToken()
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
-		if mod == "providers" {
+		if packageName == "pulumi" && mod == "providers" {
 			packageNames.Add(name)
 		} else {
 			packageNames.Add(packageName)
@@ -341,7 +341,7 @@ func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error
 	case *ReadResource:
 		token, tokenRange := r.GetToken()
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
-		if mod == "providers" {
+		if packageName == "pulumi" && mod == "providers" {
 			packageNames.Add(name)
 		} else {
 			packageNames.Add(packageName)
