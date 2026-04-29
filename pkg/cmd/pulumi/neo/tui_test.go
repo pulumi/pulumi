@@ -392,6 +392,36 @@ func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 	}
 }
 
+func TestModel_Update_KeyRune_TypesAndDoesNotScrollViewport(t *testing.T) {
+	t.Parallel()
+
+	// The bubbles viewport's default keymap binds plain letters (u/d/f/b/j/k)
+	// and space to scroll actions. Those collide with typing in the chat
+	// input, so the model overrides the keymap to keep only non-character
+	// navigation. Regression for pulumi/pulumi-service#42025: pressing 'u'
+	// or 'd' must type into the input and leave the viewport untouched.
+	for _, r := range []rune{'u', 'd', 'f', 'b', 'j', 'k', ' '} {
+		t.Run(string(r), func(t *testing.T) {
+			t.Parallel()
+
+			m := NewModel(ModelConfig{})
+			// Size the viewport and seed content tall enough that scroll
+			// actions would otherwise change YOffset.
+			updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+			um := updated.(Model)
+			um.viewport.SetContent(strings.Repeat("line\n", 200))
+			um.viewport.ScrollDown(20) // scroll partway so both up- and down-style binds could move
+			startOffset := um.viewport.YOffset
+
+			updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+			um = updated.(Model)
+
+			assert.Equal(t, string(r), um.textInput.Value(), "rune must reach the text input")
+			assert.Equal(t, startOffset, um.viewport.YOffset, "rune must not move the viewport")
+		})
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Approval flow
 // -----------------------------------------------------------------------------
