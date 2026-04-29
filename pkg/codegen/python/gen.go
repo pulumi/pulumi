@@ -548,33 +548,35 @@ def get_version():
 
 		_, err = fmt.Fprintf(buffer, `
 _package_lock = asyncio.Lock()
-_package_ref = ...
+_package_key = (%q, get_version(), %q, %q, %q)
 async def get_package():
-	global _package_ref
+	_package_ref = await pulumi.runtime.settings.get_package_ref(_package_key)
 	if _package_ref is ...:
-		if pulumi.runtime.settings._sync_monitor_supports_parameterization():
-			async with _package_lock:
-				if _package_ref is ...:
-					monitor = pulumi.runtime.settings.get_monitor()
-					parameterization = resource_pb2.Parameterization(
+		async with _package_lock:
+			_package_ref = await pulumi.runtime.settings.get_package_ref(_package_key)
+			if _package_ref is ...:
+				monitor = pulumi.runtime.settings.get_monitor()
+				parameterization = resource_pb2.Parameterization(
+					name=%q,
+					version=get_version(),
+					value=base64.b64decode(%q),
+				)
+				registerPackageResponse = monitor.RegisterPackage(
+					resource_pb2.RegisterPackageRequest(
 						name=%q,
-						version=get_version(),
-						value=base64.b64decode(%q),
-					)
-					registerPackageResponse = monitor.RegisterPackage(
-						resource_pb2.RegisterPackageRequest(
-							name=%q,
-							version=%q,
-							download_url=get_plugin_download_url(),
-							parameterization=parameterization,
-						))
-					_package_ref = registerPackageResponse.ref
+						version=%q,
+						download_url=get_plugin_download_url(),
+						parameterization=parameterization,
+					))
+				_package_ref = registerPackageResponse.ref
+				await pulumi.runtime.settings.set_package_ref(_package_key, _package_ref)
 	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
 	# using package with them.
 	if _package_ref is None or _package_ref is ...:
 		raise Exception("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI.")
 	return _package_ref
 	`,
+			pkg.Name, pkg.Parameterization.BaseProvider.Name, pkg.Parameterization.BaseProvider.Version, param,
 			pkg.Name, param, pkg.Parameterization.BaseProvider.Name, pkg.Parameterization.BaseProvider.Version)
 		if err != nil {
 			return nil, err
@@ -3430,6 +3432,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 
 // Require the SDK to fall within the same major version.
 var MinimumValidSDKVersion = ">=3.165.0,<4.0.0"
+var MinimumValidParameterizedSDKVersion = ">=3.227.0,<4.0.0"
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies
@@ -3443,16 +3446,20 @@ var MinimumValidSDKVersion = ">=3.165.0,<4.0.0"
 // validate.
 func ensureValidPulumiVersion(parameterized bool, requires map[string]string) (map[string]string, error) {
 	deps := map[string]string{}
+	minPulumiVersion := MinimumValidSDKVersion
+	if parameterized {
+		minPulumiVersion = MinimumValidParameterizedSDKVersion
+	}
 	// Special case: if the map is empty, we return just pulumi with the minimum version constraint.
 
 	if len(requires) == 0 {
 		result := map[string]string{
-			"pulumi": MinimumValidSDKVersion,
+			"pulumi": minPulumiVersion,
 		}
 		return result, nil
 	}
 	if pulumiDep, ok := requires["pulumi"]; !ok {
-		deps["pulumi"] = MinimumValidSDKVersion
+		deps["pulumi"] = minPulumiVersion
 	} else {
 		deps["pulumi"] = pulumiDep
 	}

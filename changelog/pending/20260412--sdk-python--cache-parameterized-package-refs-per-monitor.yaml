@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Generate parameterized Python SDKs that cache package refs in runtime settings and require the updated runtime SDK version
