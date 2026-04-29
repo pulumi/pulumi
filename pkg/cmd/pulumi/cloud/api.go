@@ -55,6 +55,7 @@ type apiCommand struct {
 	headers         []string
 	input           string
 	body            string
+	paginate        bool
 	include         bool
 	silent          bool
 	verbose         bool
@@ -87,6 +88,8 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 	pf.StringVar(&api.body, "body", "",
 		"Inline request body sent verbatim (default Content-Type: application/json). "+
 			"Mutually exclusive with --input")
+	pf.BoolVar(&api.paginate, "paginate", false,
+		"Follow pagination cursors and emit the combined result")
 	pf.BoolVarP(&api.include, "include", "i", false,
 		"Include HTTP status line and response headers in output")
 	pf.BoolVar(&api.silent, "silent", false,
@@ -174,6 +177,8 @@ func newAPICmd() *cobra.Command {
 			"  cat tag.json | pulumi cloud api UpdateStackTag --input -\n\n" +
 			"  # Filter the JSON response with jq.\n" +
 			"  pulumi cloud api /api/user --format=json | jq '.githubLogin'\n\n" +
+			"  # Follow pagination cursors and stream the combined result to jq.\n" +
+			"  pulumi cloud api ListStacks --paginate | jq '.stacks[].name'\n\n" +
 			"  # Extract just the status line + headers without the body.\n" +
 			"  pulumi cloud api /api/user --include --silent\n\n" +
 			"  # Preview the resolved request without sending it.\n" +
@@ -311,6 +316,19 @@ func executeLive(
 	if err != nil {
 		return NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
 			fmt.Sprintf("parsing query string %q: %v", query, err)).WithField("path")
+	}
+
+	if api.paginate {
+		return runPaginate(ctx, w, apiClient, paginateRequest{
+			Method:      method,
+			Path:        concretePath,
+			BaseQuery:   baseQuery,
+			Body:        body,
+			ContentType: contentType,
+			Accept:      accept,
+			Headers:     hdrs,
+			Op:          op,
+		}, api)
 	}
 
 	var bodyReader io.Reader

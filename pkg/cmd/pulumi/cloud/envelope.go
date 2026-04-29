@@ -21,7 +21,6 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -183,43 +182,6 @@ func writeErrorText(w io.Writer, d ErrorDetail) error {
 	}
 	_, err := io.WriteString(w, b.String())
 	return err
-}
-
-// Event envelopes for progress and cancellation. Streamed as JSONL on
-// stderr; each line is a complete JSON object.
-type Event struct {
-	SchemaVersion int    `json:"schemaVersion"`
-	Event         string `json:"event"` // e.g. "page", "complete", "partial_failure", "cancelled"
-	Timestamp     string `json:"timestamp"`
-	// Page-specific fields.
-	Page   int `json:"page,omitempty"`
-	Count  int `json:"count,omitempty"`
-	Cursor any `json:"cursor,omitempty"`
-	// Complete-specific fields.
-	TotalPages int `json:"totalPages,omitempty"`
-	TotalItems int `json:"totalItems,omitempty"`
-	// Partial-failure-specific fields.
-	PagesFetched int          `json:"pagesFetched,omitempty"`
-	FailedAt     int          `json:"failedAt,omitempty"`
-	ErrorDetail  *ErrorDetail `json:"error,omitempty"`
-	// Cancellation-specific fields.
-	Phase      string `json:"phase,omitempty"`
-	Completed  []int  `json:"completed,omitempty"`
-	InProgress []int  `json:"inProgress,omitempty"`
-}
-
-// NewEvent builds an event with schemaVersion and timestamp populated.
-func NewEvent(name string, ts time.Time) *Event {
-	return &Event{
-		SchemaVersion: SchemaVersion,
-		Event:         name,
-		Timestamp:     ts.UTC().Format(time.RFC3339Nano),
-	}
-}
-
-// WriteEvent writes a single JSONL event line to w.
-func WriteEvent(w io.Writer, ev *Event) error {
-	return WriteJSON(w, ev, false)
 }
 
 // Command-output envelopes. Each top-level `--format=json` payload gets a

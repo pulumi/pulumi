@@ -20,7 +20,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
@@ -89,27 +88,6 @@ func TestWriteErrorEnvelope_InteractiveHTTPStatus(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, WriteErrorEnvelope(&buf, apiErr, true))
 	assert.Contains(t, buf.String(), "HTTP 404")
-}
-
-func TestNewEvent_CarriesSchemaVersionAndTimestamp(t *testing.T) {
-	t.Parallel()
-	fixedTime, err := time.Parse(time.RFC3339, "2026-04-16T10:00:00Z")
-	require.NoError(t, err)
-
-	ev := NewEvent("page", fixedTime)
-	ev.Page = 3
-	ev.Count = 42
-
-	var buf bytes.Buffer
-	require.NoError(t, WriteEvent(&buf, ev))
-	var decoded Event
-	require.NoError(t, json.Unmarshal(buf.Bytes(), &decoded))
-
-	assert.Equal(t, SchemaVersion, decoded.SchemaVersion)
-	assert.Equal(t, "page", decoded.Event)
-	assert.Equal(t, "2026-04-16T10:00:00Z", decoded.Timestamp)
-	assert.Equal(t, 3, decoded.Page)
-	assert.Equal(t, 42, decoded.Count)
 }
 
 func TestWriteJSON_RoundTrip(t *testing.T) {

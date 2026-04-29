@@ -21,17 +21,12 @@ import (
 )
 
 // NewCloudCmd creates the top-level `pulumi cloud` command group.
-//
-// Hidden until the surface is feature-complete (the dispatcher and
-// `--paginate` land in follow-up PRs). The command still works when
-// invoked explicitly — Hidden only suppresses it from `pulumi --help`.
 func NewCloudCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cloud",
 		Short: "Interact with Pulumi Cloud",
 		Long: "Interact with Pulumi Cloud.\n\n" +
 			"The `api` subcommand calls any endpoint in the Pulumi Cloud REST API.",
-		Hidden: true,
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	cmd.AddCommand(newAPICmd())
