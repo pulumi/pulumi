@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -32,31 +33,37 @@ import (
 
 // ResolvedContext carries the resolved Pulumi Cloud context for an API call:
 // a Client (authenticated when LoggedIn is true, anonymous otherwise), the
-// cloud URL it targets, the resolved org name (empty when no --org flag was
-// passed and the user has no default), the current Pulumi project (nil
-// outside a project directory), and a LoggedIn flag callers can use to
-// decide whether to require credentials.
+// cloud URL it targets, the resolved default org (best-effort: from the
+// local default, the backend's opinion, or empty), the current Pulumi
+// project (nil outside a project directory), the (org, project, stack) of
+// the currently-selected stack (any/all empty when no stack is selected),
+// and a LoggedIn flag callers can use to decide whether to require
+// credentials.
 //
 // Always returns a usable Client + CloudURL so commands that hit public
 // endpoints (e.g. fetching the OpenAPI spec) work without a login.
 type ResolvedContext struct {
-	Client   *client.Client
-	CloudURL string
-	OrgName  string
-	Project  *workspace.Project
-	LoggedIn bool
+	Client    *client.Client
+	CloudURL  string
+	OrgName   string
+	Project   *workspace.Project
+	StackOrg  string
+	StackProj string
+	StackName string
+	LoggedIn  bool
 }
 
 // ResolveContext returns the Pulumi Cloud context for a `pulumi cloud api`
-// invocation. orgFlag is the user's --org value when set; when empty, the
-// org is resolved via pkgBackend.GetDefaultOrg (which prefers a
-// locally-configured default and falls back to the backend's opinion).
+// invocation. The resolved OrgName comes from pkgBackend.GetDefaultOrg
+// (which prefers a locally-configured default and falls back to the
+// backend's opinion) so {orgName} template vars resolve sensibly even
+// outside a project directory.
 //
 // Credential lookup is non-interactive: when no credentials are stored,
 // ResolveContext returns an anonymous Client + the resolved CloudURL with
 // LoggedIn=false rather than prompting or failing. Callers that require
 // authentication should check LoggedIn and surface their own error.
-func ResolveContext(ctx context.Context, orgFlag string) (*ResolvedContext, error) {
+func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 	ws := pkgWorkspace.Instance
 
 	project, _, err := ws.ReadProject()
@@ -86,7 +93,6 @@ func ResolveContext(ctx context.Context, orgFlag string) (*ResolvedContext, erro
 		return &ResolvedContext{
 			Client:   client.NewClient(cloudURL, "", false, cmdutil.Diag()),
 			CloudURL: cloudURL,
-			OrgName:  orgFlag,
 			Project:  project,
 			LoggedIn: false,
 		}, nil
@@ -106,19 +112,47 @@ func ResolveContext(ctx context.Context, orgFlag string) (*ResolvedContext, erro
 			"run `pulumi login`")
 	}
 
-	orgName := orgFlag
-	if orgName == "" {
-		orgName, err = pkgBackend.GetDefaultOrg(ctx, be, project)
-		if err != nil {
-			return nil, fmt.Errorf("resolving default org: %w", err)
-		}
+	orgName, err := pkgBackend.GetDefaultOrg(ctx, be, project)
+	if err != nil {
+		return nil, fmt.Errorf("resolving default org: %w", err)
 	}
 
+	stackOrg, stackProj, stackName := currentStackSelection(ctx, ws, be)
+
 	return &ResolvedContext{
-		Client:   cloudBe.Client(),
-		CloudURL: cloudBe.CloudURL(),
-		OrgName:  orgName,
-		Project:  project,
-		LoggedIn: true,
+		Client:    cloudBe.Client(),
+		CloudURL:  cloudBe.CloudURL(),
+		OrgName:   orgName,
+		Project:   project,
+		StackOrg:  stackOrg,
+		StackProj: stackProj,
+		StackName: stackName,
+		LoggedIn:  true,
 	}, nil
+}
+
+// currentStackSelection returns the (org, project, stack) of the user's
+// currently-selected stack via state.CurrentStack. Returns empty strings
+// when no stack is selected or the lookup fails (e.g. the ref points at
+// a deleted stack). Caller must have already verified be is an
+// httpstate.Backend; the stack is unwrapped to httpstate.Stack to read
+// OrgName.
+func currentStackSelection(
+	ctx context.Context, ws pkgWorkspace.Context, be pkgBackend.Backend,
+) (org, project, stack string) {
+	s, err := state.CurrentStack(ctx, ws, be)
+	if err != nil || s == nil {
+		return "", "", ""
+	}
+	cloudStack, ok := s.(httpstate.Stack)
+	if !ok {
+		return "", "", ""
+	}
+	ref := cloudStack.Ref()
+	stack = ref.Name().String()
+	if p, ok := ref.Project(); ok {
+		project = string(p)
+	}
+	org = cloudStack.OrgName()
+	return org, project, stack
 }

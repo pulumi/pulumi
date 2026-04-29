@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -287,6 +288,44 @@ type bodyJSON struct {
 type describeEnvelope struct {
 	SchemaVersion int         `json:"schemaVersion"`
 	Operation     describedOp `json:"operation"`
+}
+
+// DryRunPlan is the `dryRun.plan` sub-object emitted by --dry-run.
+type DryRunPlan struct {
+	Method  string            `json:"method"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
+	Body    json.RawMessage   `json:"body,omitempty"`
+}
+
+// dryRunEnvelope is the full stdout shape for --dry-run.
+type dryRunEnvelope struct {
+	SchemaVersion int `json:"schemaVersion"`
+	DryRun        struct {
+		Plan DryRunPlan `json:"plan"`
+	} `json:"dryRun"`
+}
+
+// httpErrorEnvelopeBytes turns a 4xx/5xx HTTP response into the standard
+// APIError envelope, classifying 401/403 as ExitAuthenticationError and
+// preserving a parsed body when it's valid JSON.
+func httpErrorEnvelopeBytes(resp *http.Response, body []byte) *APIError {
+	exit := cmdutil.ExitCodeError
+	code := ErrHTTP4xx
+	if resp.StatusCode >= 500 {
+		code = ErrHTTP5xx
+	} else if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		exit = cmdutil.ExitAuthenticationError
+	}
+	var parsed any
+	if json.Valid(body) {
+		_ = json.Unmarshal(body, &parsed)
+	} else {
+		parsed = string(body)
+	}
+	return NewAPIError(exit, code,
+		fmt.Sprintf("server returned HTTP %d", resp.StatusCode)).
+		WithHTTP(resp.StatusCode, parsed)
 }
 
 // errorDetailFromErr converts a generic error into a minimal ErrorDetail.

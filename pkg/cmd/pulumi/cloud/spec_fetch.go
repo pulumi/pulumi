@@ -46,7 +46,7 @@ var specCacheTTL = 24 * time.Hour
 // to the cached copy (if any) and writes a warning to warnW. When refresh
 // is true the fetch error is returned.
 func ensureSpec(ctx context.Context, warnW io.Writer, refresh bool) ([]byte, error) {
-	resolved, err := ResolveContext(ctx, "")
+	resolved, err := ResolveContext(ctx)
 	if err != nil {
 		return nil, NewAPIError(cmdutil.ExitInternalError, ErrToolError,
 			fmt.Sprintf("resolving cloud context: %v", err))

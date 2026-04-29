@@ -32,8 +32,8 @@ type Binding struct {
 	// a template placeholder instead.
 	Literal string
 	// Placeholder is the alias the user wrote (e.g. "org" from `{org}`)
-	// when they want the CLI to resolve the value from --org / context.
-	// Empty when Literal is set.
+	// when they want the CLI to resolve the value from -F or the current
+	// Pulumi context. Empty when Literal is set.
 	Placeholder string
 }
 
