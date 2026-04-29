@@ -40,6 +40,13 @@ func TestUIEventSealedInterface(t *testing.T) {
 		UITaskIdle{},
 		UISessionURL{URL: "https://example"},
 		UIUserMessage{Content: "hello"},
+		UIApprovalRequest{ApprovalID: "appr_1"},
+		UIAwaitingApprovals{},
+		UIContextCompression{},
+		UIPulumiStart{ToolName: "pulumi__pulumi_preview"},
+		UIPulumiResource{ToolName: "pulumi__pulumi_preview"},
+		UIPulumiDiag{ToolName: "pulumi__pulumi_preview"},
+		UIPulumiEnd{ToolName: "pulumi__pulumi_preview"},
 	}
 
 	// Calling uiEvent() through the interface dispatches to each concrete impl —
@@ -47,5 +54,5 @@ func TestUIEventSealedInterface(t *testing.T) {
 	for _, e := range events {
 		e.uiEvent()
 	}
-	require.Len(t, events, 10, "bumped this when adding a new UIEvent variant")
+	require.Len(t, events, 17, "bumped this when adding a new UIEvent variant")
 }

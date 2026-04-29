@@ -27,6 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -243,4 +245,102 @@ func TestNewNeoCmd_HiddenWhenNotExperimental(t *testing.T) {
 	t.Setenv("PULUMI_EXPERIMENTAL", "")
 	cmd := NewNeoCmd()
 	assert.True(t, cmd.Hidden, "without PULUMI_EXPERIMENTAL the command must be hidden")
+}
+
+// -----------------------------------------------------------------------------
+// newPulumiSinkForUI
+//
+// The sink is a thin translation layer between tools.PulumiSink callbacks and
+// the UIEvent channel that drives the TUI. Each callback maps to one UIEvent
+// variant; these tests exercise that mapping in isolation so the runNeo
+// errgroup plumbing doesn't have to be staged for a unit test.
+// -----------------------------------------------------------------------------
+
+func TestNewPulumiSinkForUI_OnStart(t *testing.T) {
+	t.Parallel()
+
+	uiCh := make(chan UIEvent, 1)
+	sink := newPulumiSinkForUI(uiCh)
+	require.NotNil(t, sink.OnStart)
+
+	sink.OnStart("pulumi__pulumi_preview", "dev", true)
+
+	got := <-uiCh
+	start, ok := got.(UIPulumiStart)
+	require.True(t, ok, "OnStart must emit UIPulumiStart, got %T", got)
+	assert.Equal(t, "pulumi__pulumi_preview", start.ToolName)
+	assert.Equal(t, "dev", start.StackName)
+	assert.True(t, start.IsPreview)
+}
+
+func TestNewPulumiSinkForUI_OnResource(t *testing.T) {
+	t.Parallel()
+
+	uiCh := make(chan UIEvent, 1)
+	sink := newPulumiSinkForUI(uiCh)
+	require.NotNil(t, sink.OnResource)
+
+	sink.OnResource("pulumi__pulumi_up", deploy.OpCreate,
+		"urn:pulumi:dev::p::aws:s3/Bucket::b", "aws:s3/Bucket", "running")
+
+	got := <-uiCh
+	res, ok := got.(UIPulumiResource)
+	require.True(t, ok, "OnResource must emit UIPulumiResource, got %T", got)
+	assert.Equal(t, "pulumi__pulumi_up", res.ToolName)
+	assert.Equal(t, deploy.OpCreate, res.Op)
+	assert.Equal(t, "urn:pulumi:dev::p::aws:s3/Bucket::b", res.URN)
+	assert.Equal(t, "aws:s3/Bucket", res.Type)
+	assert.Equal(t, "running", res.Status)
+}
+
+func TestNewPulumiSinkForUI_OnDiag(t *testing.T) {
+	t.Parallel()
+
+	uiCh := make(chan UIEvent, 1)
+	sink := newPulumiSinkForUI(uiCh)
+	require.NotNil(t, sink.OnDiag)
+
+	sink.OnDiag("pulumi__pulumi_up", "warning", "deprecated foo", "urn:x")
+
+	got := <-uiCh
+	d, ok := got.(UIPulumiDiag)
+	require.True(t, ok, "OnDiag must emit UIPulumiDiag, got %T", got)
+	assert.Equal(t, "pulumi__pulumi_up", d.ToolName)
+	assert.Equal(t, "warning", d.Severity)
+	assert.Equal(t, "deprecated foo", d.Message)
+	assert.Equal(t, "urn:x", d.URN)
+}
+
+func TestNewPulumiSinkForUI_OnEnd(t *testing.T) {
+	t.Parallel()
+
+	uiCh := make(chan UIEvent, 1)
+	sink := newPulumiSinkForUI(uiCh)
+	require.NotNil(t, sink.OnEnd)
+
+	counts := displaytypes.ResourceChanges{deploy.OpCreate: 2}
+	sink.OnEnd("pulumi__pulumi_up", "boom", counts, "5s")
+
+	got := <-uiCh
+	e, ok := got.(UIPulumiEnd)
+	require.True(t, ok, "OnEnd must emit UIPulumiEnd, got %T", got)
+	assert.Equal(t, "pulumi__pulumi_up", e.ToolName)
+	assert.Equal(t, "boom", e.Err)
+	assert.Equal(t, counts, e.Counts)
+	assert.Equal(t, "5s", e.Elapsed)
+}
+
+func TestNewPulumiSinkForUI_NonBlockingOnFullChannel(t *testing.T) {
+	t.Parallel()
+
+	// sendUI is a non-blocking send (buffered + default branch), so a full
+	// channel must drop the event rather than deadlock the engine drain
+	// goroutine. Verify by overflowing a 1-buffered channel.
+	uiCh := make(chan UIEvent, 1)
+	uiCh <- UIWarning{Message: "filler"}
+
+	sink := newPulumiSinkForUI(uiCh)
+	require.NotPanics(t, func() {
+		sink.OnStart("pulumi__pulumi_preview", "dev", true)
+	}, "OnStart must not block when the UI channel is full")
 }

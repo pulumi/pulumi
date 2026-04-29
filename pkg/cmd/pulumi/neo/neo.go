@@ -175,22 +175,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	uiCh := make(chan UIEvent, 64)
 	outCh := make(chan outboundEvent, 8)
 
-	// Translate each PulumiSink callback into the matching UIEvent on uiCh. The
-	// TUI builds a persistent preview/up block from these events.
-	pu.Sink = &tools.PulumiSink{
-		OnStart: func(toolName, stackName string, isPreview bool) {
-			sendUI(uiCh, UIPulumiStart{ToolName: toolName, StackName: stackName, IsPreview: isPreview})
-		},
-		OnResource: func(toolName string, op displaytypes.StepOp, urn, typ, status string) {
-			sendUI(uiCh, UIPulumiResource{ToolName: toolName, Op: op, URN: urn, Type: typ, Status: status})
-		},
-		OnDiag: func(toolName, severity, message, urn string) {
-			sendUI(uiCh, UIPulumiDiag{ToolName: toolName, Severity: severity, Message: message, URN: urn})
-		},
-		OnEnd: func(toolName, errStr string, counts displaytypes.ResourceChanges, elapsed string) {
-			sendUI(uiCh, UIPulumiEnd{ToolName: toolName, Err: errStr, Counts: counts, Elapsed: elapsed})
-		},
-	}
+	pu.Sink = newPulumiSinkForUI(uiCh)
 
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
@@ -345,4 +330,24 @@ func resolveTaskTarget(
 		return "", "", "", errors.New("could not determine an organization for the Neo task; pass --org")
 	}
 	return org, projectName, stack, nil
+}
+
+// newPulumiSinkForUI builds a tools.PulumiSink whose callbacks translate each
+// progress signal into the matching UIEvent on uiCh. Pure mechanical
+// translation
+func newPulumiSinkForUI(uiCh chan<- UIEvent) *tools.PulumiSink {
+	return &tools.PulumiSink{
+		OnStart: func(toolName, stackName string, isPreview bool) {
+			sendUI(uiCh, UIPulumiStart{ToolName: toolName, StackName: stackName, IsPreview: isPreview})
+		},
+		OnResource: func(toolName string, op displaytypes.StepOp, urn, typ, status string) {
+			sendUI(uiCh, UIPulumiResource{ToolName: toolName, Op: op, URN: urn, Type: typ, Status: status})
+		},
+		OnDiag: func(toolName, severity, message, urn string) {
+			sendUI(uiCh, UIPulumiDiag{ToolName: toolName, Severity: severity, Message: message, URN: urn})
+		},
+		OnEnd: func(toolName, errStr string, counts displaytypes.ResourceChanges, elapsed string) {
+			sendUI(uiCh, UIPulumiEnd{ToolName: toolName, Err: errStr, Counts: counts, Elapsed: elapsed})
+		},
+	}
 }

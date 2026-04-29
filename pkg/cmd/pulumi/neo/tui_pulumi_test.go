@@ -225,3 +225,247 @@ func TestRenderPulumiBlockNarrowWidth(t *testing.T) {
 	require.NotEmpty(t, out)
 	assert.Contains(t, strings.ToLower(out), "pulumipreview")
 }
+
+// -----------------------------------------------------------------------------
+// Model.Update tests for the UIPulumi* events. These exercise the four event
+// handlers added to tui.go in this PR. Pattern matches the other UI* Update
+// tests in tui_test.go (e.g. TestModel_Update_UIToolStarted_ShowsBusyBlock).
+// -----------------------------------------------------------------------------
+
+func TestModel_Update_UIPulumiStart_OpensBlock(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated, _ := m.Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_preview", StackName: "dev", IsPreview: true,
+	})
+	um := updated.(Model)
+
+	require.Len(t, um.blocks, 1, "Start opens exactly one block")
+	got := um.blocks[0]
+	assert.Equal(t, blockPulumiOp, got.kind)
+	require.NotNil(t, got.pulumi)
+	assert.Equal(t, "pulumi__pulumi_preview", got.pulumi.toolName)
+	assert.Equal(t, "dev", got.pulumi.stackName)
+	assert.True(t, got.pulumi.isPreview)
+	assert.False(t, got.pulumi.done, "block must start in the open state")
+	assert.NotEmpty(t, got.rendered, "Start must render the block immediately")
+}
+
+func TestModel_Update_UIPulumiStart_ReusesOpenBlock(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: if a UIPulumiStart arrives while another block for the same
+	// tool name is still open (e.g. agent retry), the existing block is
+	// reset rather than a duplicate appearing in the transcript.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.blocks = []block{{
+		kind: blockPulumiOp,
+		pulumi: &pulumiBlockState{
+			toolName:      "pulumi__pulumi_preview",
+			stackName:     "stale",
+			resourceByURN: map[string]int{"urn:x": 0},
+			resources:     []pulumiResourceRow{{urn: "urn:x"}},
+		},
+	}}
+
+	updated, _ := m.Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_preview", StackName: "fresh", IsPreview: true,
+	})
+	um := updated.(Model)
+
+	require.Len(t, um.blocks, 1, "must not append a second block for the same open tool")
+	st := um.blocks[0].pulumi
+	assert.Equal(t, "fresh", st.stackName, "state must be replaced, not merged")
+	assert.Empty(t, st.resources, "resources from the prior run must be cleared")
+	require.NotNil(t, st.resourceByURN)
+	assert.Empty(t, st.resourceByURN)
+}
+
+func TestModel_Update_UIPulumiStart_StartsFreshAfterDone(t *testing.T) {
+	t.Parallel()
+
+	// A finalized block (done=true) is no longer "open"; a subsequent Start
+	// for the same tool name must append a new block, not overwrite history.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.blocks = []block{{
+		kind: blockPulumiOp,
+		pulumi: &pulumiBlockState{
+			toolName:      "pulumi__pulumi_preview",
+			done:          true,
+			resourceByURN: map[string]int{},
+		},
+	}}
+
+	updated, _ := m.Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_preview", StackName: "second", IsPreview: true,
+	})
+	um := updated.(Model)
+
+	require.Len(t, um.blocks, 2, "a fresh Start after done must append a new block")
+	assert.True(t, um.blocks[0].pulumi.done, "old block stays finalized")
+	assert.False(t, um.blocks[1].pulumi.done, "new block is open")
+	assert.Equal(t, "second", um.blocks[1].pulumi.stackName)
+}
+
+func TestModel_Update_UIPulumiResource_AppendsRow(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated, _ := m.Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_preview", StackName: "dev", IsPreview: true,
+	})
+	updated, _ = updated.(Model).Update(UIPulumiResource{
+		ToolName: "pulumi__pulumi_preview",
+		Op:       deploy.OpCreate,
+		URN:      "urn:pulumi:dev::p::aws:s3/Bucket::b",
+		Type:     "aws:s3/Bucket",
+		Status:   "planned",
+	})
+	um := updated.(Model)
+
+	require.Len(t, um.blocks, 1)
+	require.Len(t, um.blocks[0].pulumi.resources, 1)
+	row := um.blocks[0].pulumi.resources[0]
+	assert.Equal(t, deploy.OpCreate, row.op)
+	assert.Equal(t, "planned", row.status)
+}
+
+func TestModel_Update_UIPulumiResource_NoBlockIsDefensiveNoOp(t *testing.T) {
+	t.Parallel()
+
+	// If a Resource event arrives without a preceding Start (e.g. event
+	// reordering on the wire), the handler must not panic and must not
+	// fabricate a block out of thin air.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	require.NotPanics(t, func() {
+		_, _ = m.Update(UIPulumiResource{
+			ToolName: "pulumi__pulumi_preview",
+			Op:       deploy.OpCreate,
+			URN:      "urn:x",
+		})
+	})
+	updated, _ := m.Update(UIPulumiResource{
+		ToolName: "pulumi__pulumi_preview", Op: deploy.OpCreate, URN: "urn:x",
+	})
+	um := updated.(Model)
+	assert.Empty(t, um.blocks, "no block must be created without a Start")
+}
+
+func TestModel_Update_UIPulumiDiag_AppendsRow(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated, _ := m.Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_up", StackName: "prod", IsPreview: false,
+	})
+	updated, _ = updated.(Model).Update(UIPulumiDiag{
+		ToolName: "pulumi__pulumi_up",
+		Severity: "warning",
+		Message:  "deprecated foo",
+		URN:      "urn:pulumi:prod::p::aws:s3/Bucket::b",
+	})
+	um := updated.(Model)
+
+	require.Len(t, um.blocks[0].pulumi.diags, 1)
+	d := um.blocks[0].pulumi.diags[0]
+	assert.Equal(t, "warning", d.severity)
+	assert.Equal(t, "deprecated foo", d.message)
+}
+
+func TestModel_Update_UIPulumiDiag_NoBlockIsDefensiveNoOp(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	require.NotPanics(t, func() {
+		_, _ = m.Update(UIPulumiDiag{
+			ToolName: "pulumi__pulumi_up", Severity: "error", Message: "x",
+		})
+	})
+}
+
+func TestModel_Update_UIPulumiEnd_FinalizesBlock(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated, _ := m.Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_preview", StackName: "dev", IsPreview: true,
+	})
+	updated, _ = updated.(Model).Update(UIPulumiEnd{
+		ToolName: "pulumi__pulumi_preview",
+		Counts:   display.ResourceChanges{deploy.OpCreate: 2, deploy.OpUpdate: 1},
+		Elapsed:  "5s",
+	})
+	um := updated.(Model)
+
+	require.Len(t, um.blocks, 1)
+	st := um.blocks[0].pulumi
+	assert.True(t, st.done, "End must mark the block done")
+	assert.Equal(t, "5s", st.elapsed)
+	assert.Equal(t, display.ResourceChanges{deploy.OpCreate: 2, deploy.OpUpdate: 1}, st.counts)
+	assert.Empty(t, st.err)
+
+	// A subsequent Start for the same tool name must open a new block, not
+	// reopen this one — proves done-flag gating works end-to-end.
+	updated, _ = um.Update(UIPulumiStart{ToolName: "pulumi__pulumi_preview"})
+	require.Len(t, updated.(Model).blocks, 2)
+}
+
+func TestModel_Update_UIPulumiEnd_CarriesError(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated, _ := m.Update(UIPulumiStart{ToolName: "pulumi__pulumi_up"})
+	updated, _ = updated.(Model).Update(UIPulumiEnd{
+		ToolName: "pulumi__pulumi_up",
+		Err:      "engine crash",
+		Elapsed:  "3s",
+	})
+	um := updated.(Model)
+
+	st := um.blocks[0].pulumi
+	assert.True(t, st.done)
+	assert.Equal(t, "engine crash", st.err)
+}
+
+func TestModel_Update_UIPulumiEnd_NoBlockIsDefensiveNoOp(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	require.NotPanics(t, func() {
+		_, _ = m.Update(UIPulumiEnd{ToolName: "pulumi__pulumi_up"})
+	})
+}
+
+func TestModel_Update_UIPulumi_LeavesBusyAlone(t *testing.T) {
+	t.Parallel()
+
+	// UIPulumi* are progress events for an in-flight tool call; they must
+	// neither end the busy state (the agent is still working through the
+	// tool) nor change the busy *label* (the parent UIToolStarted set
+	// "PulumiPreview ..." and that's the right label to keep showing).
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch, Busy: true})
+	require.True(t, m.busy)
+
+	for _, ev := range []UIEvent{
+		UIPulumiStart{ToolName: "pulumi__pulumi_preview", IsPreview: true},
+		UIPulumiResource{ToolName: "pulumi__pulumi_preview", Op: deploy.OpCreate, URN: "urn:x"},
+		UIPulumiDiag{ToolName: "pulumi__pulumi_preview", Severity: "warning", Message: "w"},
+		UIPulumiEnd{ToolName: "pulumi__pulumi_preview", Elapsed: "1s"},
+	} {
+		updated, _ := m.Update(ev)
+		m = updated.(Model)
+		assert.True(t, m.busy, "event %T must not end the busy state", ev)
+	}
+}
