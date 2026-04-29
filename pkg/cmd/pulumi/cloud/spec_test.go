@@ -99,7 +99,7 @@ func TestInternalOpsFiltered(t *testing.T) {
 
 // TestSuccessContentTypesCaptured asserts the parser records every content
 // type the spec declares on the primary 2xx response — the dispatcher uses
-// this list to drive --output-based content negotiation, so dropping
+// this list to drive --format-based content negotiation, so dropping
 // alternatives at parse time would silently defeat the feature.
 func TestSuccessContentTypesCaptured(t *testing.T) {
 	t.Parallel()

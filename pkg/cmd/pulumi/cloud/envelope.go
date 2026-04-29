@@ -221,14 +221,14 @@ func WriteEvent(w io.Writer, ev *Event) error {
 	return WriteJSON(w, ev, false)
 }
 
-// Command-output envelopes. Each top-level `--output=json` payload gets a
+// Command-output envelopes. Each top-level `--format=json` payload gets a
 // dedicated envelope type here so the wire format is reviewable in one place.
 
 // orderedByDesc describes the sort order `ls` commits to. Agents can key off
 // this so they skip defensive resorting.
 const orderedByDesc = "tag asc, path asc, method precedence (GET, POST, PUT, PATCH, DELETE, HEAD)"
 
-// lsOperation is the per-row shape of the `ls --output=json` payload.
+// lsOperation is the per-row shape of the `list --format=json` payload.
 // Summary and Description both appear: Pulumi's spec generator fills Summary
 // from the same Java annotation value as OperationID (so the two often match),
 // while Description holds the long-form prose. Both are emitted as "" when
@@ -246,13 +246,47 @@ type lsOperation struct {
 }
 
 // lsEnvelope is the top-level JSON shape emitted by `ls` on stdout when
-// piped or when --output=json is set.
+// piped or when --format=json is set.
 type lsEnvelope struct {
 	SchemaVersion int           `json:"schemaVersion"`
 	OrderedBy     string        `json:"orderedBy"`
 	SpecVersion   string        `json:"specVersion,omitempty"`
 	Count         int           `json:"count"`
 	Operations    []lsOperation `json:"operations"`
+}
+
+// describedOp is the per-operation payload emitted by `describe --format=json`.
+// It's a view over Operation with stable JSON names so the envelope remains
+// usable across CLI versions.
+type describedOp struct {
+	OperationID     string      `json:"operationId"`
+	Method          string      `json:"method"`
+	Path            string      `json:"path"`
+	Summary         string      `json:"summary"`
+	Description     string      `json:"description"`
+	Tag             string      `json:"tag,omitempty"`
+	Preview         bool        `json:"preview,omitempty"`
+	Deprecated      bool        `json:"deprecated,omitempty"`
+	SupersededBy    string      `json:"supersededBy,omitempty"`
+	Parameters      []ParamSpec `json:"parameters,omitempty"`
+	RequestBody     *bodyJSON   `json:"requestBody,omitempty"`
+	SuccessResponse *bodyJSON   `json:"successResponse,omitempty"`
+}
+
+// bodyJSON is the shape for request / response bodies in the describe
+// envelope. `schema` is the human-readable inline rendering; `jsonSchema`
+// is the raw OpenAPI schema with all $refs resolved, for agents that want
+// to walk the structure programmatically.
+type bodyJSON struct {
+	ContentType string          `json:"contentType,omitempty"`
+	Schema      string          `json:"schema,omitempty"`
+	JSONSchema  json.RawMessage `json:"jsonSchema,omitempty"`
+}
+
+// describeEnvelope is the top-level `describe --format=json` shape.
+type describeEnvelope struct {
+	SchemaVersion int         `json:"schemaVersion"`
+	Operation     describedOp `json:"operation"`
 }
 
 // errorDetailFromErr converts a generic error into a minimal ErrorDetail.

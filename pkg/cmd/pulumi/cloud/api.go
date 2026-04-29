@@ -37,9 +37,10 @@ func newAPICmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "api",
 		Short: "Call any Pulumi Cloud API endpoint",
-		Long: "Call any Pulumi Cloud API endpoint.\n\n" +
-			"The OpenAPI spec is cached locally for 24 hours; pass --refresh-spec " +
-			"on any subcommand to force a re-fetch.",
+		Long: "Call any Pulumi Cloud API endpoint.\n" +
+			"\n" +
+			"The OpenAPI spec is cached locally for 24 hours; pass --refresh-spec on any\n" +
+			"subcommand to force a re-fetch.",
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
@@ -47,6 +48,7 @@ func newAPICmd() *cobra.Command {
 		"Re-fetch the OpenAPI spec from Pulumi Cloud and overwrite the local cache")
 
 	cmd.AddCommand(newLsCmd(api))
+	cmd.AddCommand(newDescribeCmd(api))
 
 	return cmd
 }

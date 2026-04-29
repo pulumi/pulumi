@@ -40,15 +40,16 @@ func newLsCmd(api *apiCommand) *cobra.Command {
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "List every Pulumi Cloud API endpoint",
-		Long: "List every endpoint exposed by the Pulumi Cloud OpenAPI spec. " +
-			"Output is sorted by (tag asc, path asc, method precedence). The default " +
-			"is a human-readable table on a terminal; when stdout is piped to another " +
-			"process, list automatically switches to the JSON envelope so downstream " +
-			"parsers don't trip on the table's box-drawing characters. Pass " +
-			"--format=json to request JSON explicitly, or --format=table to keep the " +
-			"table even when piped.\n\n" +
-			"Preview endpoints are listed by default; deprecated endpoints are hidden. " +
-			"Use --include-preview=false or --include-deprecated to change that.",
+		Long: "List every endpoint exposed by the Pulumi Cloud OpenAPI spec.\n" +
+			"\n" +
+			"Output is sorted by (tag asc, path asc, method precedence). The default is a\n" +
+			"human-readable table when interactive; when non-interactive, list switches to\n" +
+			"the JSON envelope so downstream parsers don't have to deal with the table's\n" +
+			"box-drawing characters. Pass --format=json to request JSON explicitly, or\n" +
+			"--format=table to keep the table when redirecting.\n" +
+			"\n" +
+			"Preview endpoints are listed by default; deprecated endpoints are hidden. Use\n" +
+			"--include-preview=false or --include-deprecated to change that.",
 		Example: "  # Print the table of stable endpoints.\n" +
 			"  pulumi cloud api list\n\n" +
 			"  # Grab every operation as JSON (the default when piped).\n" +
