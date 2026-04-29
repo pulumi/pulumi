@@ -1273,7 +1273,7 @@ func TestPackageAddGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
 	randomVersion := getPluginVersion(e, "random")
 	assert.NotEmpty(t, randomVersion)
 	stdout, stderr := e.RunCommand("pulumi", "package", "add", "random")
@@ -1335,7 +1335,7 @@ func TestPackageAddGoParameterized(t *testing.T) {
 	require.NoError(t, err)
 
 	// Install terraform-provider and note its version
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	terraformProviderVersion := getPluginVersion(e, "terraform-provider")
 	assert.NotEmpty(t, terraformProviderVersion)
 	_, _ = e.RunCommand("pulumi", "package", "add", "terraform-provider", "NetApp/netapp-cloudmanager", "25.1.0")
@@ -1389,7 +1389,7 @@ func TestConvertTerraformProviderGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.2.4")
 	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
@@ -1422,8 +1422,8 @@ func TestConvertMultipleTerraformProviderGo(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.2.4")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "go", "--out", "godir")
 
 	assert.True(t, e.PathExists("godir/go.mod"))
