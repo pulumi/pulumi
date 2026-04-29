@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -203,6 +204,14 @@ func NewModel(cfg ModelConfig) Model {
 	ti.CharLimit = 4096
 
 	vp := viewport.New(80, 24-inputBarHeight)
+	// The default viewport KeyMap binds plain letters (u/d/f/b/j/k) and
+	// space to scroll actions, which collide with typing in the chat
+	// input. Restrict to PgUp/PgDn so we don't shadow system or text-input
+	// shortcuts (arrows move the cursor, Ctrl+U/Ctrl+D have terminal meanings).
+	vp.KeyMap = viewport.KeyMap{
+		PageDown: key.NewBinding(key.WithKeys("pgdown")),
+		PageUp:   key.NewBinding(key.WithKeys("pgup")),
+	}
 
 	sp := spinner.New(
 		spinner.WithSpinner(spinner.MiniDot),
@@ -235,7 +244,7 @@ func NewModel(cfg ModelConfig) Model {
 	if cfg.Busy {
 		m.blocks = append(m.blocks, block{
 			kind:    blockBusy,
-			label:   pickThinkingVerb() + "...",
+			label:   thinkingLabel,
 			shimmer: shimmerVerb,
 		})
 	}
@@ -394,7 +403,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					raw:      denialMsg,
 				})
 				if approved {
-					cmd := m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
+					cmd := m.showBusy(thinkingLabel, shimmerVerb)
 					m.rebuildContent()
 					return m, cmd
 				}
@@ -433,7 +442,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// committed to the dispatcher and any later Shift+Tab
 					// would be a no-op on the server.
 					m.messageSent = true
-					return m, m.showBusy(pickThinkingVerb()+"...", shimmerVerb)
+					return m, m.showBusy(thinkingLabel, shimmerVerb)
 				}
 			}
 			return m, nil
@@ -695,11 +704,11 @@ func (m *Model) labelForUIEvent(ev UIEvent) (string, shimmerKind, bool) {
 	case UIToolProgress:
 		return toolLabel(e.Name, nil) + ": " + truncate(e.Message, 60), shimmerWave, true
 	case UIToolCompleted:
-		return pickThinkingVerb() + "...", shimmerVerb, true
+		return thinkingLabel, shimmerVerb, true
 	case UIAssistantMessage:
 		// Only reached when non-final (streaming) or when IsFinal=true with
 		// pending CLI work — i.e. the agent is still working.
-		return pickThinkingVerb() + "...", shimmerVerb, true
+		return thinkingLabel, shimmerVerb, true
 	case UIAwaitingApprovals:
 		return "Awaiting approvals...", shimmerVerb, true
 	case UIContextCompression:

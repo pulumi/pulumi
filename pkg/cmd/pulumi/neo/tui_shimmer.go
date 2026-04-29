@@ -15,27 +15,14 @@
 package neo
 
 import (
-	"math/rand"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
-// thinkingVerbs contains Pulumi-themed verbs for the thinking indicator.
-var thinkingVerbs = []string{
-	"Puluminating", "Cloudforming", "Driftifying", "Ephemerizing",
-	"Stacking", "Reconcifying", "Planifesting", "Speculating",
-	"Dreamforming", "Outputting", "Resourcifying", "Providering",
-	"Previewizing", "Pipelining", "Summoning", "Materializing", "Crunching",
-}
-
-// pickThinkingVerb returns a thinking verb: 60% "Thinking", 40% random themed.
-func pickThinkingVerb() string {
-	if rand.Intn(5) < 3 { //nolint:gosec
-		return "Thinking"
-	}
-	return thinkingVerbs[rand.Intn(len(thinkingVerbs))] //nolint:gosec
-}
+// thinkingLabel is the label shown by the busy indicator while the agent is
+// thinking (i.e. between tools, after a streaming message, etc.).
+const thinkingLabel = "Thinking..."
 
 // shimmerKind selects how a busy block's label is animated.
 type shimmerKind int
