@@ -15,10 +15,13 @@
 package neo
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTimeOfDayKey(t *testing.T) {
@@ -140,4 +143,51 @@ func TestWelcomeView_NarrowTerminalTruncatesPath(t *testing.T) {
 	// The org suffix must always survive truncation — it's the load-bearing
 	// context (path can be abbreviated, org cannot).
 	assert.Contains(t, out, "acme")
+}
+
+func TestWelcomeView_TildeForHomePath(t *testing.T) {
+	t.Parallel()
+
+	// Paths under $HOME are presented as "~/<rel>" so the user sees the
+	// shorter, familiar shell form rather than a long absolute path. The
+	// banner has limited horizontal real estate (capped at liveWidth ≤ 80
+	// cols) and the absolute home path is the dominant chunk on most setups.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skipf("UserHomeDir unavailable: %v", err)
+	}
+	rel := filepath.Join("code", "neo")
+	w := welcomeModel{
+		workDir:   filepath.Join(home, rel),
+		termWidth: 120,
+		greeting:  "hi",
+	}
+	out := w.View()
+
+	require.Contains(t, out, "~/"+rel, "home-relative path must render with ~/ prefix")
+	assert.NotContains(t, out, home, "absolute home path must not appear when ~/ substitution succeeded")
+}
+
+func TestWelcomeView_NarrowTerminalTruncatesConsoleURL(t *testing.T) {
+	t.Parallel()
+
+	// Long task URLs on a narrow terminal must be ellipsized in the rendered
+	// link text. The OSC-8 hyperlink target stays the full URL — only the
+	// visible label gets truncated, so clicking still works. Without the
+	// guard, a 200-char URL would blow past the bracket gutter and ruin the
+	// banner's layout.
+	longURL := "https://app.pulumi.com/acme/neo/tasks/" + strings.Repeat("x", 200)
+	w := welcomeModel{
+		workDir:    "/tmp/proj",
+		termWidth:  60,
+		greeting:   "hi",
+		consoleURL: longURL,
+	}
+	out := w.View()
+
+	assert.Contains(t, out, "...", "long console URL must be truncated with an ellipsis")
+	assert.Contains(t, out, "\x1b]8;;", "OSC-8 hyperlink escape must still be present after truncation")
+	// The hyperlink target (escape ... URL ... ESC backslash) keeps the full URL
+	// even though the visible text is shortened — clicks land on the real task.
+	assert.Contains(t, out, longURL, "full URL must be preserved as the hyperlink target")
 }
