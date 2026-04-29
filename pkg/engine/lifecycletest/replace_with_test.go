@@ -17,6 +17,7 @@ package lifecycletest
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/blang/semver"
@@ -25,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -253,18 +255,18 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 
 	type testCase struct {
 		aDeleteBeforeReplace bool
-		bDeleteBeforeReplace *bool
+		bDeleteBeforeReplace bool
 		bDependsOnA          bool
 		addResC              bool // add a third resource C
 		transitiveChain      bool // C has deletedWith:B (transitive) vs depends on A (independent)
 	}
 
-	run := func(t *testing.T, tc testCase) {
+	run := func(t *testing.T, tc testCase, expectedOps []string) {
 		if tc.transitiveChain {
 			tc.addResC = true
 		}
 
-		var deleted []resource.URN
+		var steps []string
 		var createCount int
 
 		loaders := []*deploytest.ProviderLoader{
@@ -273,23 +275,24 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 					DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
 						if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
 							return plugin.DiffResult{
-								Changes:             plugin.DiffSome,
-								ReplaceKeys:         []resource.PropertyKey{"foo"},
-								DeleteBeforeReplace: tc.aDeleteBeforeReplace,
+								Changes:     plugin.DiffSome,
+								ReplaceKeys: []resource.PropertyKey{"foo"},
 							}, nil
 						}
 						return plugin.DiffResult{}, nil
 					},
 					CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
 						createCount++
+						id := fmt.Sprintf("%s-%d", req.Name, createCount)
+						steps = append(steps, "create("+req.Name+", "+id+")")
 						return plugin.CreateResponse{
-							ID:         resource.ID(fmt.Sprintf("created-id-%d", createCount)),
+							ID:         resource.ID(id),
 							Properties: req.Properties,
 							Status:     resource.StatusOK,
 						}, nil
 					},
 					DeleteF: func(_ context.Context, req plugin.DeleteRequest) (plugin.DeleteResponse, error) {
-						deleted = append(deleted, req.URN)
+						steps = append(steps, "delete("+req.Name+", "+string(req.ID)+")")
 						return plugin.DeleteResponse{}, nil
 					},
 				}, nil
@@ -300,20 +303,19 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 
 		programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
 			respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
-				Inputs: inputs,
+				Inputs:              inputs,
+				DeleteBeforeReplace: &tc.aDeleteBeforeReplace,
 			})
 			require.NoError(t, err)
 
-			bOpts := deploytest.ResourceOptions{
+			respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 				Inputs:              resource.NewPropertyMapFromMap(map[string]any{}),
 				ReplaceWith:         []resource.URN{respA.URN},
 				DeletedWith:         respA.URN,
-				DeleteBeforeReplace: tc.bDeleteBeforeReplace,
-			}
-			if tc.bDependsOnA {
-				bOpts.Dependencies = []resource.URN{respA.URN}
-			}
-			respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, bOpts)
+				DeleteBeforeReplace: &tc.bDeleteBeforeReplace,
+				Dependencies: slices.DeleteFunc([]resource.URN{respA.URN},
+					func(_ resource.URN) bool { return !tc.bDependsOnA }),
+			})
 			require.NoError(t, err)
 
 			if tc.addResC {
@@ -346,63 +348,86 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 
 		// Step 1: change resA's input to trigger replacement.
 		inputs["foo"] = resource.NewProperty("baz")
-		deleted = nil
+		steps = nil
 
 		snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 		require.NoError(t, err)
 		require.NotNil(t, snap)
 
-		// resB should never be deleted — deleted_with=resA skips its Delete.
-		deletedNames := make([]string, len(deleted))
-		for i, u := range deleted {
-			deletedNames[i] = u.Name()
-		}
-		require.NotContains(t, deletedNames, "resB",
-			"resB should skip provider Delete via deleted_with")
-		require.Contains(t, deletedNames, "resA")
-		if tc.addResC && !tc.transitiveChain {
-			require.Contains(t, deletedNames, "resC")
-		}
-		if tc.transitiveChain {
-			require.NotContains(t, deletedNames, "resC",
-				"resC should skip provider Delete via transitive deleted_with through resB")
-		}
+		assert.Equal(t, expectedOps, steps)
 	}
 
-	// A is CBR (default), B has deletedWith A.
+	// A{}, B{DeleteWith: A}
 	t.Run("A_CBR_B_deletedWith", func(t *testing.T) {
 		t.Parallel()
-		run(t, testCase{})
+		run(t, testCase{}, []string{
+			"create(resA, resA-3)",
+			"create(resB, resB-4)",
+			"delete(resA, resA-1)",
+		})
 	})
 
-	// A is DBR, B has deletedWith A.
+	// A{DeleteBeforeReplace: true}, B{DeleteWith: A}
 	t.Run("A_DBR_B_deletedWith", func(t *testing.T) {
 		t.Parallel()
-		run(t, testCase{aDeleteBeforeReplace: true})
+		run(t, testCase{aDeleteBeforeReplace: true}, []string{
+			"delete(resA, resA-1)",
+			"create(resA, resA-3)",
+			"create(resB, resB-4)",
+		})
 	})
 
-	// A is DBR, B has deletedWith A and is also DBR.
+	// A{DeleteBeforeReplace: true}, B{DeleteWith: A, DeleteBeforeReplace: true}
 	t.Run("A_DBR_B_deletedWith_DBR", func(t *testing.T) {
 		t.Parallel()
-		run(t, testCase{aDeleteBeforeReplace: true, bDeleteBeforeReplace: ptr(true)})
+		run(t, testCase{aDeleteBeforeReplace: true, bDeleteBeforeReplace: true}, []string{
+			"delete(resA, resA-1)",
+			"create(resA, resA-3)",
+			"create(resB, resB-4)",
+		})
 	})
 
-	// A is CBR, B has deletedWith A, DBR, and dependsOn A.
+	// A{}, B{DeleteWith: A, DeleteBeforeReplace: true}
+	t.Run("A_CBR_B_deletedWith_DBR", func(t *testing.T) {
+		t.Parallel()
+		run(t, testCase{bDeleteBeforeReplace: true}, []string{
+			"create(resA, resA-3)",
+			"delete(resA, resA-1)",
+			"create(resB, resB-4)",
+		})
+	})
+
+	// A{}, B{DeleteWith: A, DeleteBeforeReplace: true, DependsOn: A}
 	t.Run("A_CBR_B_deletedWith_DBR_dependsOn", func(t *testing.T) {
 		t.Parallel()
-		run(t, testCase{bDeleteBeforeReplace: ptr(true), bDependsOnA: true})
+		run(t, testCase{bDeleteBeforeReplace: true, bDependsOnA: true}, []string{
+			"create(resA, resA-3)",
+			"delete(resA, resA-1)",
+			"create(resB, resB-4)",
+		})
 	})
 
-	// A is CBR, B has deletedWith+DBR+dependsOn A, C depends on A (no deletedWith).
+	// A{}, B{DeleteWith: A, DeleteBeforeReplace: true, DependsOn: A}, C{DependsOn: A}
 	t.Run("A_CBR_B_deletedWith_DBR_dependsOn_C_dependsOn", func(t *testing.T) {
 		t.Parallel()
-		run(t, testCase{bDeleteBeforeReplace: ptr(true), bDependsOnA: true, addResC: true})
+		run(t, testCase{bDeleteBeforeReplace: true, bDependsOnA: true, addResC: true}, []string{
+			"create(resA, resA-4)",
+			"create(resC, resC-5)",
+			"delete(resC, resC-3)",
+			"delete(resA, resA-1)",
+			"create(resB, resB-6)",
+		})
 	})
 
-	// Transitive: A → B{deletedWith:A} → C{deletedWith:B}. Both B and C skip Delete.
+	// A{}, B{DeleteWith: A}, C{DeleteWith: B}
 	t.Run("transitive_deletedWith_chain", func(t *testing.T) {
 		t.Parallel()
-		run(t, testCase{transitiveChain: true})
+		run(t, testCase{transitiveChain: true}, []string{
+			"create(resA, resA-4)",
+			"create(resB, resB-5)",
+			"create(resC, resC-6)",
+			"delete(resA, resA-1)",
+		})
 	})
 }
 
