@@ -3864,7 +3864,8 @@ func (*ListResponse_Computed) Descriptor() ([]byte, []int) {
 // `Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call.
 type ListResponse_Result struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The ID of the resource.
+	// The ID of the resource. This should be an importable ID that can be passed to a
+	// [](pulumirpc.ResourceProvider.Read) call to read the resource.
 	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The resource name, if the provider can supply one. If empty no name was given.
 	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
