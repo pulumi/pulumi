@@ -583,7 +583,7 @@ func TestFilesystem_ExtraRootAllowsWriteThenRead(t *testing.T) {
 	res, err := fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
 	require.NoError(t, err)
-	assert.Equal(t, "scratch ok", res.(map[string]any)["content"])
+	assert.Equal(t, "scratch ok", res.(readResult).Content)
 }
 
 func TestFilesystem_RejectsPathOutsideRootAndExtras(t *testing.T) {
