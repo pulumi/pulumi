@@ -23,6 +23,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
@@ -399,6 +400,9 @@ type Resource struct {
 	Properties []*Property
 	// StateInputs is the set of inputs used to get an existing resource, if any.
 	StateInputs *ObjectType
+	// ListInputs is the set of inputs used to list existing resources, if any. If this is unset, the resource
+	// does not declare list support in the package schema.
+	ListInputs *ObjectType
 	// Aliases is the list of aliases for the resource.
 	Aliases []*Alias
 	// DeprecationMessage indicates whether or not the resource is deprecated.
@@ -663,6 +667,16 @@ type Package struct {
 	resourceTypeTable map[string]*ResourceType
 	functionTable     map[string]*Function
 	typeTable         map[string]Type
+
+	// aliases maps PCL-normalized tokens to their source-form keys in the tables above.
+	// Built lazily on first miss in a Get* call. See buildTokenAliases.
+	aliases struct {
+		once          sync.Once
+		resources     map[string]string
+		functions     map[string]string
+		types         map[string]string
+		resourceTypes map[string]string
+	}
 
 	importedLanguages map[string]struct{}
 }
@@ -944,23 +958,130 @@ func (pkg *Package) TokenToRuntimeModule(tok string) string {
 }
 
 func (pkg *Package) GetResource(token string) (*Resource, bool) {
-	r, ok := pkg.resourceTable[token]
-	return r, ok
+	return lookupToken(pkg.resourceTable, token, pkg.resourceAliases)
 }
 
 func (pkg *Package) GetFunction(token string) (*Function, bool) {
-	f, ok := pkg.functionTable[token]
-	return f, ok
+	return lookupToken(pkg.functionTable, token, pkg.functionAliases)
 }
 
 func (pkg *Package) GetResourceType(token string) (*ResourceType, bool) {
-	t, ok := pkg.resourceTypeTable[token]
-	return t, ok
+	return lookupToken(pkg.resourceTypeTable, token, pkg.resourceTypeAliases)
 }
 
 func (pkg *Package) GetType(token string) (Type, bool) {
-	t, ok := pkg.typeTable[token]
-	return t, ok
+	return lookupToken(pkg.typeTable, token, pkg.typeAliases)
+}
+
+func (pkg *Package) resourceAliases() map[string]string {
+	pkg.aliases.once.Do(pkg.buildAliases)
+	return pkg.aliases.resources
+}
+
+func (pkg *Package) functionAliases() map[string]string {
+	pkg.aliases.once.Do(pkg.buildAliases)
+	return pkg.aliases.functions
+}
+
+func (pkg *Package) typeAliases() map[string]string {
+	pkg.aliases.once.Do(pkg.buildAliases)
+	return pkg.aliases.types
+}
+
+func (pkg *Package) resourceTypeAliases() map[string]string {
+	pkg.aliases.once.Do(pkg.buildAliases)
+	return pkg.aliases.resourceTypes
+}
+
+func (pkg *Package) buildAliases() {
+	pkg.aliases.resources = buildTokenAliases(pkg.resourceTable, pkg.TokenToModule)
+	pkg.aliases.functions = buildTokenAliases(pkg.functionTable, pkg.TokenToModule)
+	pkg.aliases.types = buildTokenAliases(pkg.typeTable, pkg.TokenToModule)
+	pkg.aliases.resourceTypes = buildTokenAliases(pkg.resourceTypeTable, pkg.TokenToModule)
+}
+
+// decomposeToken splits a token of the form "pkg:mod:name", "pkg::name", or "pkg:name" into
+// its components. An empty module is returned as "index". Invalid tokens return ok=false.
+func decomposeToken(tok string) (pkg, mod, name string, ok bool) {
+	parts := strings.Split(tok, ":")
+	switch len(parts) {
+	case 2:
+		pkg, mod, name = parts[0], "index", parts[1]
+	case 3:
+		pkg, mod, name = parts[0], parts[1], parts[2]
+		if mod == "" {
+			mod = "index"
+		}
+	default:
+		return "", "", "", false
+	}
+	if pkg == "" || name == "" {
+		return "", "", "", false
+	}
+	return pkg, mod, name, true
+}
+
+// buildTokenAliases returns a map from normalized-form tokens to the source-form keys of m.
+//
+// PCL normalizes tokens before lookup in two ways that this map inverts:
+//   - module components are rewritten via tokenToModule (e.g. "pkg:mod/x:y" → "pkg:mod:y"
+//     when Meta.ModuleFormat is "(.*)(?:/[^/]*)"), and
+//   - the "index" module may be elided ("pkg:index:name" → "pkg:name" / "pkg::name").
+//
+// The shortening cannot be reversed in general — different source tokens may collide on the
+// same normalized form (e.g. both "pkg:mod/a:B" and "pkg:mod/b:B" normalize to "pkg:mod:B").
+// We drop colliding entries so an ambiguous query misses cleanly rather than silently
+// resolving to one of the candidates. Aliases also never shadow a real key in m.
+func buildTokenAliases[V any](m map[string]V, tokenToModule func(string) string) map[string]string {
+	aliases := make(map[string]string, len(m))
+	collisions := map[string]struct{}{}
+	add := func(alias, src string) {
+		if alias == "" || alias == src {
+			return
+		}
+		if _, exists := m[alias]; exists {
+			return
+		}
+		if _, ambiguous := collisions[alias]; ambiguous {
+			return
+		}
+		if existing, ok := aliases[alias]; ok && existing != src {
+			delete(aliases, alias)
+			collisions[alias] = struct{}{}
+			return
+		}
+		aliases[alias] = src
+	}
+	for tok := range m {
+		pkg, _, name, ok := decomposeToken(tok)
+		if !ok {
+			continue
+		}
+		mod := tokenToModule(tok)
+		if mod == "" {
+			mod = "index"
+		}
+		add(pkg+":"+mod+":"+name, tok)
+		if mod == "index" {
+			add(pkg+"::"+name, tok)
+			add(pkg+":"+name, tok)
+		}
+	}
+	return aliases
+}
+
+// lookupToken finds an entry in m by token, falling back to the prebuilt alias map for
+// PCL-normalized tokens.
+func lookupToken[V any](m map[string]V, token string, aliases func() map[string]string) (V, bool) {
+	v, ok := m[token]
+	if ok {
+		return v, true
+	}
+	if src, aOk := aliases()[token]; aOk {
+		v, ok = m[src]
+	}
+
+	return v, ok
 }
 
 func (pkg *Package) Reference() PackageReference {
@@ -1196,6 +1317,15 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		stateInputs = &o.ObjectTypeSpec
 	}
 
+	var listInputs *ObjectTypeSpec
+	if r.ListInputs != nil {
+		o, err := pkg.marshalObject(r.ListInputs, false)
+		if err != nil {
+			return ResourceSpec{}, fmt.Errorf("marshaling list inputs: %w", err)
+		}
+		listInputs = &o.ObjectTypeSpec
+	}
+
 	aliases := slice.Prealloc[AliasSpec](len(r.Aliases))
 	for _, a := range r.Aliases {
 		aliases = append(aliases, AliasSpec{
@@ -1217,6 +1347,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		InputProperties:    inputs,
 		RequiredInputs:     requiredInputs,
 		StateInputs:        stateInputs,
+		ListInputs:         listInputs,
 		Aliases:            aliases,
 		DeprecationMessage: r.DeprecationMessage,
 		IsComponent:        r.IsComponent,
@@ -1741,6 +1872,9 @@ type ResourceSpec struct {
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that may be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
 	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty" yaml:"stateInputs,omitempty"`
+	// ListInputs is an optional ObjectTypeSpec that describes inputs that may be supplied when listing resources of
+	// this type. If this is unset, the resource does not declare list support in the schema.
+	ListInputs *ObjectTypeSpec `json:"listInputs,omitempty" yaml:"listInputs,omitempty"`
 	// Aliases is the list of aliases for the resource. This can either be a list of strings or a list of objects with
 	// type fields.
 	Aliases []AliasSpec `json:"aliases,omitempty" yaml:"aliases,omitempty"`

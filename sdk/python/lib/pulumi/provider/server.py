@@ -479,6 +479,11 @@ class ProviderServicer(ResourceProviderServicer):
             acceptSecrets=True, acceptResources=True, acceptOutputs=True
         )
 
+    async def List(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("List is not implemented by the provider")
+        raise NotImplementedError("List is not implemented by the provider")
+
     async def Cancel(self, request, context):
         self.provider.cancel()
         return empty_pb2.Empty()

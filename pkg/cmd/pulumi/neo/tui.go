@@ -16,6 +16,7 @@ package neo
 
 import (
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -25,12 +26,27 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // inputBarHeight is the number of terminal lines reserved for the input area
 // (separator + input line + hint line).
 const inputBarHeight = 3
+
+// ctrlCArmTimeout is how long the "press Ctrl+C again to exit" gate stays
+// armed after the first press. Matches the cadence other agent CLIs use so
+// the second press still has to be deliberate but the gate doesn't silently
+// linger across long idle periods.
+const ctrlCArmTimeout = 1500 * time.Millisecond
+
+// ctrlCDisarmMsg is the deferred disarm signal scheduled when the user first
+// presses Ctrl+C. It carries the generation it was scheduled under; the
+// handler ignores it if the user has since re-armed (gen advanced) or
+// already disarmed by typing another key.
+type ctrlCDisarmMsg struct {
+	gen int
+}
 
 // blockKind identifies the type of rendered block in the output log.
 type blockKind int
@@ -47,6 +63,7 @@ const (
 	blockApprovalPlan
 	blockApprovalGeneral
 	blockApprovalChoice
+	blockPulumiOp
 )
 
 type block struct {
@@ -63,6 +80,41 @@ type block struct {
 	shimmer shimmerKind
 	// approved applies to blockApprovalChoice only.
 	approved bool
+	// pulumi carries per-block state for blockPulumiOp. It is mutated in place
+	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
+	// re-rendered by renderBlock on every update.
+	pulumi *pulumiBlockState
+}
+
+// pulumiBlockState accumulates the live state of a blockPulumiOp. Resources are
+// deduped by URN (the index into resources is stored in resourceByURN so late
+// events like ResourceOutputs can upgrade the status of an earlier
+// ResourcePre). Diags are append-only because they carry their own severity
+// and messages aren't keyed.
+type pulumiBlockState struct {
+	toolName      string
+	stackName     string
+	isPreview     bool
+	resources     []pulumiResourceRow
+	resourceByURN map[string]int
+	diags         []pulumiDiagRow
+	counts        display.ResourceChanges
+	elapsed       string
+	err           string
+	done          bool
+}
+
+type pulumiResourceRow struct {
+	op     display.StepOp
+	urn    string
+	typ    string
+	status string
+}
+
+type pulumiDiagRow struct {
+	severity string
+	message  string
+	urn      string
 }
 
 // ModelConfig holds the parameters needed to create a TUI Model.
@@ -141,6 +193,16 @@ type Model struct {
 	// can see their request is being acted on even if the agent is still
 	// mid-tool.
 	cancelling bool
+	// ctrlCArmed is true after the first Ctrl+C (or Ctrl+D) press, until any
+	// other key is seen or the timeout fires. While armed the footer hint
+	// reads "Press Ctrl+C again to exit" and a second press quits. The first
+	// press also acts like ESC when busy: posts user_cancel upstream so users
+	// don't need to learn ESC to abort a turn. Any other keypress disarms.
+	ctrlCArmed bool
+	// ctrlCArmGen increments each time ctrlCArmed flips on. Disarm ticks
+	// scheduled for an earlier arm carry the older gen, so a fresh arm racing
+	// with a stale tick is not silently disarmed.
+	ctrlCArmGen int
 }
 
 var (
@@ -261,10 +323,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.rebuildContent()
 
-	case tea.KeyMsg:
-		if msg.Type == tea.KeyCtrlC {
-			return m, tea.Quit
+	case ctrlCDisarmMsg:
+		// Stale tick: the user already pressed another key (gen still
+		// matches but ctrlCArmed=false) or re-armed (gen advanced). Either
+		// way, leave the current state alone.
+		if msg.gen == m.ctrlCArmGen && m.ctrlCArmed {
+			m.ctrlCArmed = false
+			m.rebuildContent()
 		}
+		return m, nil
+
+	case tea.KeyMsg:
+		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
+		// semantics. Two bindings is friendlier than picking one and forcing
+		// users to discover it.
+		if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyCtrlD {
+			if m.ctrlCArmed {
+				return m, tea.Quit
+			}
+			m.ctrlCArmed = true
+			m.ctrlCArmGen++
+			disarmCmd := m.scheduleCtrlCDisarm()
+			// First press doubles as a cancel when the agent is mid-turn, so
+			// users who reach for Ctrl+C don't need to learn ESC to abort.
+			// Same guards as the ESC handler below.
+			if m.busy && !m.pendingApproval && !m.cancelling {
+				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
+				m.cancelling = true
+				cancelCmd := m.showBusy("Cancelling...", shimmerVerb)
+				m.rebuildContent()
+				return m, tea.Batch(cancelCmd, disarmCmd)
+			}
+			m.rebuildContent()
+			return m, disarmCmd
+		}
+		// Any other key disarms the second-press-to-exit prompt. Keeps the
+		// "two presses in a row" semantics tight: a stray keystroke between
+		// presses goes back to needing two presses again. The pending tick
+		// will fire later but no-op because ctrlCArmed is already false.
+		m.ctrlCArmed = false
 
 		// Shift+Tab toggles plan mode. The toggle must run before the approval
 		// and busy guards so users can flip the indicator at any point in the
@@ -516,6 +613,70 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
+	case UIPulumiStart:
+		// Reuse an existing open block for the same tool name if one is present
+		// (shouldn't happen in practice — each tool call is serialized — but it
+		// guards against a stale block if the agent retries). An open block has
+		// done==false. On reuse we reset state so the new run starts clean.
+		idx := m.findOpenPulumiBlock(msg.ToolName)
+		if idx < 0 {
+			b := block{kind: blockPulumiOp, pulumi: &pulumiBlockState{
+				toolName:      msg.ToolName,
+				stackName:     msg.StackName,
+				isPreview:     msg.IsPreview,
+				resourceByURN: map[string]int{},
+			}}
+			m.renderBlock(&b)
+			m.appendBlock(b)
+		} else {
+			m.blocks[idx].pulumi = &pulumiBlockState{
+				toolName:      msg.ToolName,
+				stackName:     msg.StackName,
+				isPreview:     msg.IsPreview,
+				resourceByURN: map[string]int{},
+			}
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiResource:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			m.blocks[idx].pulumi.addResource(msg.Op, msg.URN, msg.Type, msg.Status)
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiDiag:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.diags = append(st.diags, pulumiDiagRow{
+				severity: msg.Severity,
+				message:  msg.Message,
+				urn:      msg.URN,
+			})
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiEnd:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.counts = msg.Counts
+			st.elapsed = msg.Elapsed
+			st.err = msg.Err
+			st.done = true
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
 	case UIApprovalRequest:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.pendingApproval = true
@@ -554,14 +715,20 @@ func (m Model) View() string {
 	// code doesn't need to track hint-line count.
 	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
 	if m.busy {
-		hintText = "agent is working · enter disabled · ctrl+c to quit"
+		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
 	}
 	hint := "  "
 	if m.planMode {
 		hint += planAccentStyle.Render("⏸ plan mode")
 		hintText = " · " + hintText
 	}
-	hint += inputHintStyle.Render(hintText)
+	if m.ctrlCArmed {
+		// Override everything else: this is a transient prompt, the user just
+		// pressed Ctrl+C and needs to see what a second press will do.
+		hint = "  " + inputHintStyle.Render("Press Ctrl+C again to exit")
+	} else {
+		hint += inputHintStyle.Render(hintText)
+	}
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
@@ -684,6 +851,17 @@ func (m *Model) appendBlock(b block) {
 	m.blocks = append(m.blocks, b)
 }
 
+// scheduleCtrlCDisarm returns a tea.Cmd that, after ctrlCArmTimeout, posts a
+// ctrlCDisarmMsg tagged with the current arm generation. The Update handler
+// ignores stale ticks (gen mismatch or already-disarmed state) so a rapid
+// arm → disarm → re-arm sequence remains correct.
+func (m *Model) scheduleCtrlCDisarm() tea.Cmd {
+	gen := m.ctrlCArmGen
+	return tea.Tick(ctrlCArmTimeout, func(time.Time) tea.Msg {
+		return ctrlCDisarmMsg{gen: gen}
+	})
+}
+
 // sendOut is a non-blocking send on the outbound channel. Returns true on
 // success. Safe when m.outCh is nil: select with default falls through,
 // since sending on a nil channel blocks forever.
@@ -733,6 +911,10 @@ func (m *Model) renderBlock(b *block) {
 		m.renderApprovalChoice(b)
 		return
 	}
+	if b.kind == blockPulumiOp {
+		b.rendered = m.renderPulumiBlock(b.pulumi)
+		return
+	}
 	if b.raw == "" {
 		return
 	}
@@ -758,8 +940,8 @@ func (m *Model) renderBlock(b *block) {
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.
-	case blockApprovalChoice:
-		// Unreachable; kept for exhaustive lint.
+	case blockApprovalChoice, blockPulumiOp:
+		// Unreachable: both are handled by early returns above.
 	}
 }
 

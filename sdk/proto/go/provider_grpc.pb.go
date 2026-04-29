@@ -46,6 +46,7 @@ const (
 	ResourceProvider_Diff_FullMethodName          = "/pulumirpc.ResourceProvider/Diff"
 	ResourceProvider_Create_FullMethodName        = "/pulumirpc.ResourceProvider/Create"
 	ResourceProvider_Read_FullMethodName          = "/pulumirpc.ResourceProvider/Read"
+	ResourceProvider_List_FullMethodName          = "/pulumirpc.ResourceProvider/List"
 	ResourceProvider_Update_FullMethodName        = "/pulumirpc.ResourceProvider/Update"
 	ResourceProvider_Delete_FullMethodName        = "/pulumirpc.ResourceProvider/Delete"
 	ResourceProvider_Construct_FullMethodName     = "/pulumirpc.ResourceProvider/Construct"
@@ -196,6 +197,9 @@ type ResourceProviderClient interface {
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
+	// `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+	// emit a continuation token indicating another page is available.
+	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListResponse], error)
 	// `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
 	// `Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
@@ -384,6 +388,25 @@ func (c *resourceProviderClient) Read(ctx context.Context, in *ReadRequest, opts
 	}
 	return out, nil
 }
+
+func (c *resourceProviderClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ListResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &ResourceProvider_ServiceDesc.Streams[0], ResourceProvider_List_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ListRequest, ListResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ResourceProvider_ListClient = grpc.ServerStreamingClient[ListResponse]
 
 func (c *resourceProviderClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -605,6 +628,9 @@ type ResourceProviderServer interface {
 	// must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
 	// include other properties.
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
+	// `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+	// emit a continuation token indicating another page is available.
+	List(*ListRequest, grpc.ServerStreamingServer[ListResponse]) error
 	// `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)
 	// `Delete` deprovisions an existing resource as specified by its ID. `Delete` should be transactional/atomic -- if
@@ -709,6 +735,9 @@ func (UnimplementedResourceProviderServer) Create(context.Context, *CreateReques
 }
 func (UnimplementedResourceProviderServer) Read(context.Context, *ReadRequest) (*ReadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
+}
+func (UnimplementedResourceProviderServer) List(*ListRequest, grpc.ServerStreamingServer[ListResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedResourceProviderServer) Update(context.Context, *UpdateRequest) (*UpdateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
@@ -971,6 +1000,17 @@ func _ResourceProvider_Read_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ResourceProvider_List_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ListRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(ResourceProviderServer).List(m, &grpc.GenericServerStream[ListRequest, ListResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type ResourceProvider_ListServer = grpc.ServerStreamingServer[ListResponse]
+
 func _ResourceProvider_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UpdateRequest)
 	if err := dec(in); err != nil {
@@ -1203,6 +1243,12 @@ var ResourceProvider_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ResourceProvider_GetMappings_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "List",
+			Handler:       _ResourceProvider_List_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "pulumi/provider.proto",
 }

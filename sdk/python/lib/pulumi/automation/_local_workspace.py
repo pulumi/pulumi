@@ -33,6 +33,7 @@ from ._project_settings import ProjectSettings
 from ._stack import _DATETIME_FORMAT, Stack
 from ._stack_settings import StackSettings
 from ._tag import TagMap
+from .interface import API
 from ._workspace import (
     Deployment,
     PluginInfo,
@@ -164,6 +165,7 @@ class LocalWorkspace(Workspace):
         self.pulumi_command = pulumi_command or PulumiCommand(
             skip_version_check=self._version_check_opt_out()
         )
+        self.cli_api = API(self.pulumi_command)
 
         if project_settings:
             self.save_project_settings(project_settings)
@@ -437,11 +439,24 @@ class LocalWorkspace(Workspace):
         return WhoAmIResult(user=result.stdout.strip())
 
     def org_get_default(self) -> str:
-        result = self._run_pulumi_cmd_sync(["org", "get-default"])
+        result = self.cli_api.org_get_default(**self._base_kwargs())
         return result.stdout.strip()
 
     def org_set_default(self, org_name: str) -> None:
-        self._run_pulumi_cmd_sync(["org", "set-default", org_name])
+        self.cli_api.org_set_default(org_name, **self._base_kwargs())
+
+    def _base_kwargs(self) -> dict:
+        """
+        Build the shared low-level CLI kwargs for workspace-level operations,
+        mirroring the environment setup done by ``_run_pulumi_cmd_sync``.
+        """
+        envs: dict[str, str] = {}
+        if self.pulumi_home is not None:
+            envs["PULUMI_HOME"] = self.pulumi_home
+        if self._remote:
+            envs["PULUMI_EXPERIMENTAL"] = "true"
+        envs = {**envs, **self.env_vars}
+        return {"cwd": self.work_dir, "additional_env": envs}
 
     def stack(self) -> Optional[StackSummary]:
         stacks = self.list_stacks()
@@ -597,44 +612,27 @@ class LocalWorkspace(Workspace):
         :param on_output: A callback that receives the standard output of the command.
         :returns: CommandResult
         """
-        args = ["new", "--yes"]
-        if ai is not None:
-            args.extend(["--ai", ai])
-        if config:
-            for item in config:
-                args.extend(["--config", item])
-        if config_path:
-            args.append("--config-path")
-        if description is not None:
-            args.extend(["--description", description])
-        if dir is not None:
-            args.extend(["--dir", dir])
-        if force:
-            args.append("--force")
-        if generate_only:
-            args.append("--generate-only")
-        if language is not None:
-            args.extend(["--language", language])
-        if list_templates:
-            args.append("--list-templates")
-        if name is not None:
-            args.extend(["--name", name])
-        if offline:
-            args.append("--offline")
-        if remote_stack_config:
-            args.append("--remote-stack-config")
-        if runtime_options:
-            for item in runtime_options:
-                args.extend(["--runtime-options", item])
-        if secrets_provider is not None:
-            args.extend(["--secrets-provider", secrets_provider])
-        if stack is not None:
-            args.extend(["--stack", stack])
-        if template_mode:
-            args.append("--template-mode")
-        if template_or_url is not None:
-            args.append(template_or_url)
-        return self._run_pulumi_cmd_sync(args, on_output=on_output)
+        return self.cli_api.new(
+            template_or_url,
+            ai=ai,
+            config=config,
+            config_path=config_path,
+            description=description,
+            dir=dir,
+            force=force,
+            generate_only=generate_only,
+            language=language,
+            list_templates=list_templates,
+            name=name,
+            offline=offline,
+            remote_stack_config=remote_stack_config,
+            runtime_options=runtime_options,
+            secrets_provider=secrets_provider,
+            stack=stack,
+            template_mode=template_mode,
+            on_output=on_output,
+            **self._base_kwargs(),
+        )
 
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])

@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/neo
+  description: Make `Ctrl+C` (and `Ctrl+D`) in `pulumi neo` cancel the current turn on the first press and exit on the second, surface both `Esc` and `Ctrl+C` as cancel keys in the busy footer, and disarm the second-press-to-exit gate after a short timeout.

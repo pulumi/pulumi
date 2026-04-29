@@ -624,7 +624,10 @@ async def serialize_property(
 
     if known_types.is_output(value):
         output = cast("Output", value)
-        value_resources: set[Resource] = await output.resources()
+        # Await _data once to read all output state, avoiding extra coroutine indirection through resources()/future()
+        # methods.
+        data = await output._data
+        value_resources: set[Resource] = data.resources
         if deps is not None:
             deps.extend(value_resources)
 
@@ -632,11 +635,11 @@ async def serialize_property(
         # "unknown value" sentinel. We will do the former for all outputs created directly by user
         # code (such outputs always resolve isKnown to true) and for any resource outputs that were
         # resolved with known values.
-        is_known = await output._is_known
-        is_secret = await output._is_secret
+        is_known = data.is_known
+        is_secret = data.is_secret
         promise_deps: list[Resource] = []
         value = await serialize_property(
-            output.future(),
+            None if contains_unknowns(data.value) else data.value,
             promise_deps,
             property_key,
             resource_obj,

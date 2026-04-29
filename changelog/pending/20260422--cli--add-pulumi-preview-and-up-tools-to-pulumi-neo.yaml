@@ -1,0 +1,8 @@
+changes:
+- type: feat
+  scope: cli
+  description: |
+    Add `pulumi_preview` and `pulumi_up` as local tools for the experimental `pulumi neo`
+    agent. The Neo TUI renders a persistent bordered block for each operation that
+    streams changed resources and diagnostics as the engine runs and finalizes with a
+    summary of the op counts. Hidden behind PULUMI_EXPERIMENTAL.

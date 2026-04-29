@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
+	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -139,6 +140,14 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		"shell":      sh,
 	}
 
+	// In non-interactive mode the sink stays nil and live events are dropped; the
+	// interactive path below sets pu.Sink to push UIEvents onto uiCh.
+	pu, err := tools.NewPulumi(cwdFlag, ws, cloudBe, nil)
+	if err != nil {
+		return err
+	}
+	handlers["pulumi"] = pu
+
 	// Non-interactive mode requires a prompt — there's no input mechanism.
 	if !cmdutil.Interactive() {
 		if prompt == "" {
@@ -170,6 +179,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 
 	uiCh := make(chan UIEvent, 64)
 	outCh := make(chan outboundEvent, 8)
+
+	pu.Sink = newPulumiSinkForUI(uiCh)
 
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
@@ -348,4 +359,24 @@ func dedupeExistingRoots(candidates ...string) []string {
 		out = append(out, c)
 	}
 	return out
+}
+
+// newPulumiSinkForUI builds a tools.PulumiSink whose callbacks translate each
+// progress signal into the matching UIEvent on uiCh. Pure mechanical
+// translation
+func newPulumiSinkForUI(uiCh chan<- UIEvent) *tools.PulumiSink {
+	return &tools.PulumiSink{
+		OnStart: func(toolName, stackName string, isPreview bool) {
+			sendUI(uiCh, UIPulumiStart{ToolName: toolName, StackName: stackName, IsPreview: isPreview})
+		},
+		OnResource: func(toolName string, op displaytypes.StepOp, urn, typ, status string) {
+			sendUI(uiCh, UIPulumiResource{ToolName: toolName, Op: op, URN: urn, Type: typ, Status: status})
+		},
+		OnDiag: func(toolName, severity, message, urn string) {
+			sendUI(uiCh, UIPulumiDiag{ToolName: toolName, Severity: severity, Message: message, URN: urn})
+		},
+		OnEnd: func(toolName, errStr string, counts displaytypes.ResourceChanges, elapsed string) {
+			sendUI(uiCh, UIPulumiEnd{ToolName: toolName, Err: errStr, Counts: counts, Elapsed: elapsed})
+		},
+	}
 }

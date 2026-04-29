@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Add `List` to the provider protocol and schema

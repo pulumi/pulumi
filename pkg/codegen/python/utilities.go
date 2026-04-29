@@ -128,7 +128,7 @@ var pypiPost = regexp.MustCompile("^post[0-9]+$")
 // versions.
 func normPypiVersion(v semver.Version) semver.Version {
 	s := v.String()
-	s = regexp.MustCompile(`(alpha|beta|rc)[.](\d+)`).ReplaceAllString(s, `$1$2`)
+	s = regexp.MustCompile(`(alpha|beta|rc|dev|post)[.](\d+)`).ReplaceAllString(s, `$1$2`)
 	return semver.MustParse(s)
 }
 

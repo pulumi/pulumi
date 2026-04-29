@@ -265,6 +265,28 @@ function deserialize_pulumirpc_InvokeResponse(buffer_arg) {
   return pulumi_provider_pb.InvokeResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ListRequest(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ListRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ListRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ListRequest(buffer_arg) {
+  return pulumi_provider_pb.ListRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ListResponse(arg) {
+  if (!(arg instanceof pulumi_provider_pb.ListResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ListResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ListResponse(buffer_arg) {
+  return pulumi_provider_pb.ListResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ParameterizeRequest(arg) {
   if (!(arg instanceof pulumi_provider_pb.ParameterizeRequest)) {
     throw new Error('Expected argument of type pulumirpc.ParameterizeRequest');
@@ -630,6 +652,19 @@ read: {
     requestDeserialize: deserialize_pulumirpc_ReadRequest,
     responseSerialize: serialize_pulumirpc_ReadResponse,
     responseDeserialize: deserialize_pulumirpc_ReadResponse,
+  },
+  // `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+// emit a continuation token indicating another page is available.
+list: {
+    path: '/pulumirpc.ResourceProvider/List',
+    requestStream: false,
+    responseStream: true,
+    requestType: pulumi_provider_pb.ListRequest,
+    responseType: pulumi_provider_pb.ListResponse,
+    requestSerialize: serialize_pulumirpc_ListRequest,
+    requestDeserialize: deserialize_pulumirpc_ListRequest,
+    responseSerialize: serialize_pulumirpc_ListResponse,
+    responseDeserialize: deserialize_pulumirpc_ListResponse,
   },
   // `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
 update: {

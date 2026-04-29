@@ -633,6 +633,11 @@ class ProviderServicer(ResourceProviderServicer):
             inputs=PropertyValue.marshal_map(resp.inputs),
         )
 
+    async def List(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("List is not implemented by the provider")
+        raise NotImplementedError("List is not implemented by the provider")
+
 
 def main(args: list[str], version: str, provider: provider.Provider) -> None:
     """For use as the `main` in programs that wrap a custom Provider

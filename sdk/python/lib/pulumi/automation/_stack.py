@@ -1448,7 +1448,51 @@ class Stack:
         Note that this operation is **very dangerous**, and may leave the stack in an inconsistent state
         if a resource operation was pending when the update was canceled.
         """
-        self._run_pulumi_cmd_sync(["cancel", "--yes"])
+        self._run_api(lambda api, **kwargs: api.cancel(stack=self.name, **kwargs))
+
+    def _base_kwargs(
+        self,
+        on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
+    ) -> dict[str, Any]:
+        """
+        Build the shared low-level CLI kwargs for this stack, mirroring the
+        environment setup done by ``_run_pulumi_cmd_sync``.
+        """
+        envs: dict[str, str] = {"PULUMI_DEBUG_COMMANDS": "true"}
+        if self._remote:
+            envs["PULUMI_EXPERIMENTAL"] = "true"
+        if self.workspace.pulumi_home is not None:
+            envs["PULUMI_HOME"] = self.workspace.pulumi_home
+        envs = {**envs, **self.workspace.env_vars}
+
+        kwargs: dict[str, Any] = {
+            "cwd": self.workspace.work_dir,
+            "additional_env": envs,
+        }
+        if on_output is not None:
+            kwargs["on_output"] = on_output
+        if on_error is not None:
+            kwargs["on_error"] = on_error
+        return kwargs
+
+    def _run_api(
+        self,
+        build: Callable[..., CommandResult],
+        on_output: Optional[OnOutput] = None,
+        on_error: Optional[OnOutput] = None,
+    ) -> CommandResult:
+        """
+        Invoke a low-level CLI operation with shared wiring and the
+        post-command callback. ``build`` receives the ``API`` along with the
+        base kwargs (``cwd``, ``additional_env``, optionally ``on_output`` and
+        ``on_error``) and is responsible for calling the right method with any
+        extra command-specific kwargs.
+        """
+        kwargs = self._base_kwargs(on_output, on_error)
+        result = build(self.workspace.cli_api, **kwargs)
+        self.workspace.post_command_callback(self.name)
+        return result
 
     def export_stack(self) -> Deployment:
         """

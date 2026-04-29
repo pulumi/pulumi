@@ -1945,19 +1945,6 @@ func GetPlugins() ([]PluginInfo, error) {
 	return GetPluginsFromDir(dir)
 }
 
-// GetPluginsWithMetadata returns a list of installed plugins with metadata about size,
-// and last access (POOR RUNTIME PERF). Plugin size requires recursively traversing the
-// plugin directory, which can be extremely expensive with the introduction of
-// nodejs multilang components that have deeply nested node_modules folders.
-func GetPluginsWithMetadata() ([]PluginInfo, error) {
-	// To get the list of plugins, simply scan the directory in the usual place.
-	dir, err := GetPluginDir()
-	if err != nil {
-		return nil, err
-	}
-	return GetPluginsFromDir(dir)
-}
-
 func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -2195,13 +2182,7 @@ func getPluginInfoAndPath(
 	}
 
 	// Wasn't ambient, and wasn't bundled, so now check the plugin cache.
-	var plugins []PluginInfo
-	var err error
-	if skipMetadata {
-		plugins, err = GetPlugins()
-	} else {
-		plugins, err = GetPluginsWithMetadata()
-	}
+	plugins, err := GetPlugins()
 	if err != nil {
 		return nil, "", fmt.Errorf("loading plugin list: %w", err)
 	}
