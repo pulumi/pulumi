@@ -415,15 +415,12 @@ def call(
     if typ and not _types.is_output_type(typ):
         raise TypeError("Expected typ to be decorated with @output_type")
 
-    # Setup the futures for the output.
-    resolve_value: asyncio.Future = asyncio.Future()
-    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
-    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
-    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
+    # Setup the future for the output data.
+    resolve_data: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
     from .. import Output
 
-    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
+    out = Output._from_data(resolve_data)
 
     async def do_call() -> None:
         try:
