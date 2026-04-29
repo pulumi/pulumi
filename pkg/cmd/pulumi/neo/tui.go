@@ -528,11 +528,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
-		// A truly-final message closes out any in-flight streaming block. The
-		// final-marker append is guarded because IsFinal=true can arrive with
-		// empty content (e.g. a hand-off that became final once the server
-		// reconciled pending tool calls) and we don't want a phantom marker.
-		if msg.IsFinal && !msg.HasPendingCLIWork {
+		// Any IsFinal=true assistant_message is a complete utterance and must be
+		// committed to scrollback — including hand-offs (HasPendingCLIWork=true),
+		// where the agent's commentary precedes a CLI tool call. HasPendingCLIWork
+		// only governs busy-state management (see applyBusyForEvent); it must not
+		// gate commit, otherwise hand-off commentary lives only in the live frame
+		// and is overwritten by the next hand-off / final message.
+		// The empty-content guard avoids a phantom marker for is_final=true
+		// messages that arrive with no text (e.g. a server-side hand-off finalized
+		// once tool calls were reconciled).
+		if msg.IsFinal {
 			m.removeBlockKind(blockAssistantStreaming)
 			if msg.Content != "" {
 				cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))

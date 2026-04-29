@@ -840,6 +840,50 @@ func TestModel_Update_UIAssistantMessage_Final_ReplacesStreaming(t *testing.T) {
 	assert.GreaterOrEqual(t, m2.findBlockKind(blockAssistantFinal), 0, "final msg must leave a final block")
 }
 
+// TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback is a
+// regression for a bug where hand-off messages (IsFinal=true,
+// HasPendingCLIWork=true) carrying assistant commentary were rendered as a
+// streaming live-frame block and then silently overwritten by the next
+// hand-off, so the commentary never reached scrollback. Each IsFinal=true
+// message — hand-off or terminal — must commit a final block.
+func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch, Busy: true})
+
+	// First hand-off: a complete utterance preceding a tool call.
+	updated, _ := m.Update(UIAssistantMessage{
+		IsFinal: true, HasPendingCLIWork: true, Content: "I'll read the file",
+	})
+	m1 := updated.(Model)
+
+	// The streaming block is the live-frame holding pen; a hand-off must
+	// flush it and append a committed final block instead. Otherwise the
+	// next hand-off's content overwrites the streaming raw and the prior
+	// commentary is lost from scrollback.
+	assert.Equal(t, -1, m1.findBlockKind(blockAssistantStreaming),
+		"hand-off must not leave a streaming block behind")
+	idx := m1.findBlockKind(blockAssistantFinal)
+	require.GreaterOrEqual(t, idx, 0, "hand-off must commit a final assistant block")
+	assert.Equal(t, "I'll read the file", m1.blocks[idx].raw)
+
+	// Second hand-off after the tool runs: must add a second committed block,
+	// not overwrite the first.
+	updated2, _ := m1.Update(UIAssistantMessage{
+		IsFinal: true, HasPendingCLIWork: true, Content: "Now editing it",
+	})
+	m2 := updated2.(Model)
+
+	finals := 0
+	for _, b := range m2.blocks {
+		if b.kind == blockAssistantFinal {
+			finals++
+		}
+	}
+	assert.Equal(t, 2, finals, "two hand-offs must produce two committed final blocks")
+}
+
 func TestModel_Update_UIToolStarted_ShowsBusyBlock(t *testing.T) {
 	t.Parallel()
 
