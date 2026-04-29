@@ -44,6 +44,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -199,8 +201,10 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		})
 	}
 
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
 	initPersister := func() *cloudSnapshotPersister {
-		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		backendGeneric, err := New(ctx, sink, server.URL, nil, false)
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
@@ -712,9 +716,11 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		})
 	}
 
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
-		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		backendGeneric, err := New(ctx, sink, server.URL, nil, false)
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
