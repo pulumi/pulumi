@@ -2068,6 +2068,14 @@ func (pc *Client) DeletePackageVersion(
 	return err
 }
 
+// GetCloudAPISpec fetches the Pulumi Cloud OpenAPI document as raw bytes.
+func (pc *Client) GetCloudAPISpec(ctx context.Context) ([]byte, error) {
+	var body []byte
+	err := pc.restCallWithOptions(ctx, "GET", "/api/openapi/pulumi-spec.json", nil, nil, &body,
+		httpCallOptions{Header: http.Header{"Accept": []string{"application/json"}}})
+	return body, err
+}
+
 func (pc *Client) GetTemplate(
 	ctx context.Context, source, publisher, name string, version *semver.Version,
 ) (apitype.TemplateMetadata, error) {

@@ -17,11 +17,13 @@ package cmd
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
 	"strings"
 
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -60,6 +62,15 @@ func processCmdErrors(err error) error {
 	// again.
 	if result.IsBail(err) {
 		return err
+	}
+
+	// `pulumi cloud api` errors have already had their structured envelope
+	// written to stderr by runWithEnvelope, so suppress the generic
+	// message print. ExitCodeFor still recovers the semantic exit code via
+	// errors.As.
+	var apiErr *cloud.APIError
+	if errors.As(err, &apiErr) && apiErr.Silent {
+		return result.BailError(err)
 	}
 
 	// Other type-specific error handling.
