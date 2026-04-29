@@ -128,6 +128,8 @@ type Resource struct {
 	Options *ResourceOptions
 }
 
+// GetToken returns the resource's token and its source range. If the resource has been successfully bound, the token is
+// canonical, else it's what was parsed from the source code.
 func (r *Resource) GetToken() (string, hcl.Range) {
 	token := r.token
 	if token == "" {
@@ -283,6 +285,8 @@ func (r *ReadResource) LogicalName() string {
 	return r.Name()
 }
 
+// GetToken returns the resource's token and its source range. If the resource has been successfully bound,
+// the token is canonical, else it's what was parsed from the source code.
 func (r *ReadResource) GetToken() (string, hcl.Range) {
 	token := r.token
 	if token == "" {
