@@ -1,0 +1,8 @@
+changes:
+- type: fix
+  scope: pkg
+  description: |
+    Schema lookups (Package.GetResource/GetFunction/GetType/GetResourceType and the
+    PackageReference variants) now accept PCL-normalized tokens in addition to source-form
+    tokens, so consumers no longer need to reconstruct the original token to find an entry
+    when Meta.ModuleFormat or the index-module shorthand has been applied.

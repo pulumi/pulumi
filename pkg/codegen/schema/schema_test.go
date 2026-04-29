@@ -2729,3 +2729,209 @@ func TestTokenToModuleIndexPrefix(t *testing.T) {
 	assert.Equal(t, "", formattedPkg.TokenToModule("test:index/getResource:getResource"))
 	assert.Equal(t, "indexMine", formattedPkg.TokenToModule("test:indexMine/getResource:getResource"))
 }
+
+// TestAliasBuildIsLazy verifies that the alias maps stay unbuilt when every Get* call
+// is satisfied by a direct table hit.
+func TestAliasBuildIsLazy(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:mod:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:mod:getThing": {},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:mod:ThingBlock": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+	}
+
+	t.Run("Package", func(t *testing.T) {
+		t.Parallel()
+
+		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+
+		_, ok := pkg.GetResource("test:mod:Thing")
+		require.True(t, ok)
+		_, ok = pkg.GetFunction("test:mod:getThing")
+		require.True(t, ok)
+		_, ok = pkg.GetType("test:mod:ThingBlock")
+		require.True(t, ok)
+		_, ok = pkg.GetResourceType("test:mod:Thing")
+		require.True(t, ok)
+
+		assert.Nil(t, pkg.aliases.resources)
+		assert.Nil(t, pkg.aliases.functions)
+		assert.Nil(t, pkg.aliases.types)
+		assert.Nil(t, pkg.aliases.resourceTypes)
+	})
+
+	t.Run("PartialPackage", func(t *testing.T) {
+		t.Parallel()
+
+		raw, err := json.Marshal(spec)
+		require.NoError(t, err)
+		var partial PartialPackageSpec
+		require.NoError(t, json.Unmarshal(raw, &partial))
+
+		pkg, err := ImportPartialSpec(partial, nil, nil)
+		require.NoError(t, err)
+
+		_, ok, err := pkg.Resources().Get("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		_, ok, err = pkg.Functions().Get("test:mod:getThing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		_, ok, err = pkg.Types().Get("test:mod:ThingBlock")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		assert.Nil(t, pkg.specAliases.resources)
+		assert.Nil(t, pkg.specAliases.functions)
+		assert.Nil(t, pkg.specAliases.types)
+	})
+}
+
+// TestGetWithCollidingAliases verifies that when two source-form tokens normalize to the
+// same alias, the alias is dropped (an ambiguous query misses cleanly) while direct
+// lookups of either source-form token still succeed.
+func TestGetWithCollidingAliases(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Meta:    &MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
+		Resources: map[string]ResourceSpec{
+			"test:mod/a:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			"test:mod/b:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+	}
+
+	pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+
+	a, ok := pkg.GetResource("test:mod/a:Thing")
+	require.True(t, ok)
+	assert.Equal(t, "test:mod/a:Thing", a.Token)
+
+	b, ok := pkg.GetResource("test:mod/b:Thing")
+	require.True(t, ok)
+	assert.Equal(t, "test:mod/b:Thing", b.Token)
+
+	_, ok = pkg.GetResource("test:mod:Thing")
+	assert.False(t, ok, "ambiguous alias must miss")
+}
+
+// TestGetWithIndexAliases verifies short-form aliases for tokens whose normalized module
+// is "index" — both "pkg:name" and "pkg::name" should resolve to the source token.
+func TestGetWithIndexAliases(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+	}
+
+	pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+
+	for _, query := range []string{"test:index:Thing", "test::Thing", "test:Thing"} {
+		r, ok := pkg.GetResource(query)
+		require.Truef(t, ok, "query %q should resolve", query)
+		assert.Equal(t, "test:index:Thing", r.Token)
+	}
+}
+
+// TestGetWithModuleFormat verifies that the schema's Get* methods accept tokens normalized
+// via Meta.ModuleFormat as well as the source-form token. PCL canonicalizes tokens before
+// lookup (e.g. "test:mod/getThing:getThing" → "test:mod:getThing"), so callers should not
+// have to reconstruct the source token themselves.
+func TestGetWithModuleFormat(t *testing.T) {
+	t.Parallel()
+
+	// A deliberately non-standard ModuleFormat: strip a "_v\d+" suffix from the module
+	// (e.g. source "mod_v2" → normalized "mod"). This exercises the actual regex rather
+	// than masquerading as the default format.
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+		Resources: map[string]ResourceSpec{
+			"test:mod_v2:Thing": {
+				ObjectTypeSpec: ObjectTypeSpec{Type: "object"},
+			},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:mod_v2:getThing": {},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:mod_v2:ThingBlock": {
+				ObjectTypeSpec: ObjectTypeSpec{Type: "object"},
+			},
+		},
+	}
+
+	t.Run("Package", func(t *testing.T) {
+		t.Parallel()
+
+		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+
+		r, ok := pkg.GetResource("test:mod:Thing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", r.Token)
+
+		f, ok := pkg.GetFunction("test:mod:getThing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:getThing", f.Token)
+
+		typ, ok := pkg.GetType("test:mod:ThingBlock")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:ThingBlock", typ.(*ObjectType).Token)
+
+		rt, ok := pkg.GetResourceType("test:mod:Thing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
+	})
+
+	t.Run("PartialPackage", func(t *testing.T) {
+		t.Parallel()
+
+		raw, err := json.Marshal(spec)
+		require.NoError(t, err)
+		var partial PartialPackageSpec
+		require.NoError(t, json.Unmarshal(raw, &partial))
+
+		pkg, err := ImportPartialSpec(partial, nil, nil)
+		require.NoError(t, err)
+
+		r, ok, err := pkg.Resources().Get("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", r.Token)
+
+		f, ok, err := pkg.Functions().Get("test:mod:getThing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:getThing", f.Token)
+
+		typ, ok, err := pkg.Types().Get("test:mod:ThingBlock")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:ThingBlock", typ.(*ObjectType).Token)
+
+		rt, ok, err := pkg.Resources().GetType("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
+	})
+}
