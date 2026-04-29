@@ -36,6 +36,33 @@ func TestResolveUnderRoots_InsideRoot(t *testing.T) {
 	assert.Equal(t, target, got)
 }
 
+func TestResolveUnderRoots_InsideExtraRoot(t *testing.T) {
+	t.Parallel()
+
+	// The path lives under the second root, not the primary one. resolveUnderRoots
+	// must accept it because containment succeeds against any allowed root.
+	primary, err := canonicalRoot(t.TempDir())
+	require.NoError(t, err)
+	extra, err := canonicalRoot(t.TempDir())
+	require.NoError(t, err)
+	target := filepath.Join(extra, "scratch.txt")
+	require.NoError(t, os.WriteFile(target, nil, 0o600))
+
+	got, err := resolveUnderRoots([]string{primary, extra}, target, false)
+	require.NoError(t, err)
+	assert.Equal(t, target, got)
+}
+
+func TestResolveUnderRoots_EmptyRootsRejected(t *testing.T) {
+	t.Parallel()
+
+	// Defensive guard: a caller mistakenly passing no roots should produce a clear
+	// error rather than indexing into roots[0].
+	_, err := resolveUnderRoots(nil, t.TempDir(), false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no allowed roots")
+}
+
 func TestResolveUnderRoots_RejectsEscapeOutsideRoot(t *testing.T) {
 	t.Parallel()
 
@@ -48,7 +75,7 @@ func TestResolveUnderRoots_RejectsEscapeOutsideRoot(t *testing.T) {
 
 	_, err = resolveUnderRoots([]string{root}, outside, false)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestResolveUnderRoots_RejectsSymlinkEscape(t *testing.T) {
@@ -65,7 +92,7 @@ func TestResolveUnderRoots_RejectsSymlinkEscape(t *testing.T) {
 
 	_, err = resolveUnderRoots([]string{root}, filepath.Join(link, "passwd"), false)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestResolveUnderRoots_MissingLeafAllowed(t *testing.T) {
@@ -105,7 +132,7 @@ func TestResolveUnderRoots_MissingLeafEscapeStillRejected(t *testing.T) {
 
 	_, err = resolveUnderRoots([]string{root}, filepath.Join(link, "new-file"), true)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestResolveUnderRoots_MissingChainOfAncestors(t *testing.T) {

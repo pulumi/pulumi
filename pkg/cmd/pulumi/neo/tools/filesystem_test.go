@@ -81,7 +81,7 @@ func TestFilesystem_RejectsAbsolutePathOutsideRoot(t *testing.T) {
 	_, err = fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestFilesystem_RejectsRelativeEscape(t *testing.T) {
@@ -92,7 +92,7 @@ func TestFilesystem_RejectsRelativeEscape(t *testing.T) {
 
 	_, err = fs.Invoke(t.Context(), "read", json.RawMessage(`{"file_path":"../etc/passwd"}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestFilesystem_RejectsSymlinkEscape(t *testing.T) {
@@ -111,7 +111,7 @@ func TestFilesystem_RejectsSymlinkEscape(t *testing.T) {
 	_, err = fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, filepath.Join(root, "escape", "passwd"))))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestFilesystem_ReadOffsetBeyondFileReturnsEmpty(t *testing.T) {
@@ -257,7 +257,7 @@ func TestFilesystem_WriteRejectsPathOutsideRoot(t *testing.T) {
 	_, err = fs.Invoke(t.Context(), "write",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q,"content":"x"}`, outside)))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 
 	_, statErr := os.Stat(outside)
 	assert.True(t, os.IsNotExist(statErr), "rejected write must not touch the filesystem")
@@ -533,7 +533,7 @@ func TestFilesystem_EditRejectsPathOutsideRoot(t *testing.T) {
 	_, err = fs.Invoke(t.Context(), "edit", json.RawMessage(fmt.Sprintf(
 		`{"file_path":%q,"old_string":"x","new_string":"y"}`, outside)))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 
 	// Sanity-check the untouched file so we know the sandbox caught it before the write.
 	got, err := os.ReadFile(outside)
@@ -602,7 +602,7 @@ func TestFilesystem_RejectsPathOutsideRootAndExtras(t *testing.T) {
 	_, err = fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, target)))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestNewFilesystem_RejectsMissingExtraRoot(t *testing.T) {
@@ -612,4 +612,17 @@ func TestNewFilesystem_RejectsMissingExtraRoot(t *testing.T) {
 	_, err := NewFilesystem(t.TempDir(), missing)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "extra root")
+}
+
+func TestNewFilesystem_RejectsExtraRootThatIsAFile(t *testing.T) {
+	t.Parallel()
+
+	// An extra root that points at a file (not a directory) must be rejected. Otherwise
+	// containment checks would treat the file's parent path as an allowed root.
+	notADir := filepath.Join(t.TempDir(), "regular-file")
+	require.NoError(t, os.WriteFile(notADir, nil, 0o600))
+
+	_, err := NewFilesystem(t.TempDir(), notADir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is not a directory")
 }

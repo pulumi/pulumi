@@ -73,6 +73,13 @@ func NewFilesystem(root string, extraRoots ...string) (*Filesystem, error) {
 		if err != nil {
 			return nil, fmt.Errorf("resolving filesystem extra root %q: %w", extra, err)
 		}
+		extraInfo, err := os.Stat(canonical)
+		if err != nil {
+			return nil, fmt.Errorf("filesystem extra root %q: %w", canonical, err)
+		}
+		if !extraInfo.IsDir() {
+			return nil, fmt.Errorf("filesystem extra root %q is not a directory", canonical)
+		}
 		allowed = append(allowed, canonical)
 	}
 	return &Filesystem{Root: abs, allowedRoots: allowed}, nil

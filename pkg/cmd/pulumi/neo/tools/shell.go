@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"time"
@@ -52,6 +53,13 @@ func NewShell(cwd string, extraRoots ...string) (*Shell, error) {
 		canonical, err := canonicalRoot(extra)
 		if err != nil {
 			return nil, fmt.Errorf("resolving shell extra root %q: %w", extra, err)
+		}
+		extraInfo, err := os.Stat(canonical)
+		if err != nil {
+			return nil, fmt.Errorf("shell extra root %q: %w", canonical, err)
+		}
+		if !extraInfo.IsDir() {
+			return nil, fmt.Errorf("shell extra root %q is not a directory", canonical)
 		}
 		allowed = append(allowed, canonical)
 	}

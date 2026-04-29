@@ -35,14 +35,16 @@ func canonicalRoot(root string) (string, error) {
 
 // resolveUnderRoots resolves p to an absolute, symlink-free path under one of roots,
 // or returns an error if p escapes them all. Each entry in roots must already be the
-// output of canonicalRoot. The first root is treated as the primary working directory
-// and is the one named in error messages.
+// output of canonicalRoot.
 //
 // When allowMissing is true, a missing leaf (or chain of missing intermediate directories)
 // is permitted: the closest existing ancestor is resolved and the missing tail is
 // re-joined. This supports write targets where the destination directory does not yet
 // exist.
 func resolveUnderRoots(roots []string, p string, allowMissing bool) (string, error) {
+	if len(roots) == 0 {
+		return "", fmt.Errorf("resolving %q: no allowed roots configured", p)
+	}
 	abs, err := filepath.Abs(p)
 	if err != nil {
 		return "", fmt.Errorf("resolving %q: %w", p, err)
@@ -66,7 +68,7 @@ func resolveUnderRoots(roots []string, p string, allowMissing bool) (string, err
 			return resolved, nil
 		}
 	}
-	return "", fmt.Errorf("path %q is outside the working directory %q", p, roots[0])
+	return "", fmt.Errorf("path %q is outside the allowed roots %v", p, roots)
 }
 
 // evalClosestAncestor walks up from abs until it finds an existing directory, resolves
