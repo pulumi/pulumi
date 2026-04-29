@@ -1,0 +1,8 @@
+changes:
+- type: fix
+  scope: pkg
+  description: |
+    Schema validation now rejects packages whose resource or function tokens collide after
+    applying Meta.ModuleFormat (e.g. "pkg:mod/a:T" and "pkg:mod/b:T" both normalizing to
+    "pkg:mod:T"). Such schemas previously bound silently but were unreachable through PCL,
+    which canonicalizes tokens before lookup.

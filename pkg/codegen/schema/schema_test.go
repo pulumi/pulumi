@@ -3056,3 +3056,129 @@ func TestGetWithModuleFormat(t *testing.T) {
 		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
 	})
 }
+
+// TestModuleFormatTokenCollisions verifies that schema validation rejects packages whose
+// resource or function tokens collide after applying Meta.ModuleFormat (and case folding).
+func TestModuleFormatTokenCollisions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ResourcesDifferingOnlyInModuleFormat", func(t *testing.T) {
+		t.Parallel()
+
+		// "(\w+)_v\d+" maps both "mod_v1" and "mod_v2" to "mod".
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v2:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:thing")
+	})
+
+	t.Run("ChainedModuleVersionsAdjacentLevelsCollide", func(t *testing.T) {
+		t.Parallel()
+
+		// mod_v1_v2_v3 → canonical mod_v1_v2; mod_v1_v2 is itself a literal source token.
+		// PCL's one-level canonicalization makes a query for "test:mod_v1_v2:A" ambiguous.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2_v3:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1_v2:A":    {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1_v2:a")
+	})
+
+	t.Run("ChainedModuleVersionsNonAdjacentLevelsDoNotCollide", func(t *testing.T) {
+		t.Parallel()
+
+		// mod_v1_v2_v3 (canonical mod_v1_v2) and mod_v1 (canonical mod) have disjoint
+		// literal and canonical forms. PCL's one-level canonicalization cannot reach one
+		// from a query for the other, so no collision.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2_v3:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:A":       {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+	})
+
+	t.Run("LiteralCollidesWithAnothersCanonical", func(t *testing.T) {
+		t.Parallel()
+
+		// With format "(\w+)_v\d+":
+		//   "test:mod_v1_v2:A" canonicalizes to "test:mod_v1:A"
+		//   "test:mod_v1:A"    canonicalizes to "test:mod:A"
+		// The two canonical forms are distinct, but the first source's canonical form
+		// equals the second source's literal form, so a query for "test:mod_v1:A" is
+		// ambiguous.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:A":    {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1:a")
+	})
+
+	t.Run("ModuleFormatPlusCaseFold", func(t *testing.T) {
+		t.Parallel()
+
+		// "pkg:mod/a:A" normalizes via the format to "pkg:mod:A", which case-folds to
+		// "pkg:mod:a" — colliding with the literal "pkg:mod:a".
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(.*)(?:/[^/]*)`},
+			Resources: map[string]ResourceSpec{
+				"test:mod/a:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod:a":   {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:a")
+	})
+
+	t.Run("NoCollisionPasses", func(t *testing.T) {
+		t.Parallel()
+
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:B": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+	})
+}
