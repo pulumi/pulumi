@@ -325,4 +325,4 @@ def get_plugin_download_url():
 	return None
 
 def get_version():
-    return "38.0.0"
+    return "39.0.0"
