@@ -208,19 +208,16 @@ class PulumiCommand:
 
         # All commands should be run in non-interactive mode.
         # This causes commands to fail rather than prompting for input (and thus hanging indefinitely).
-        # Insert before the "--" positional separator if present, so that
-        # cobra does not interpret --non-interactive as a positional argument.
+        # Insert at the front (before any subcommand) so that cobra does not
+        # mistake --non-interactive for a positional argument when args
+        # contain a "--" separator.
+        sep_index = len(args)
         try:
             sep_index = args.index("--")
-            flag_args = args[:sep_index]
         except ValueError:
-            sep_index = None
-            flag_args = args
-        if "--non-interactive" not in flag_args:
-            if sep_index is not None:
-                args.insert(sep_index, "--non-interactive")
-            else:
-                args.append("--non-interactive")
+            pass
+        if "--non-interactive" not in args[:sep_index]:
+            args.insert(0, "--non-interactive")
         env = {
             **os.environ,
             **additional_env,
