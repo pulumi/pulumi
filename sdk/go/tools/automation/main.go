@@ -418,7 +418,11 @@ func buildOptionHelpers(typeName, command string, fields []optionField) []ast.De
 		return nil
 	}
 
-	// All helpers in a package share the simple names Option / With<Field>.
+	// All helpers in a package share the simple names Option / <Field>. The
+	// helpers intentionally carry no prefix so they match the naming used by
+	// the existing hand-written optXxx packages (for example optup.Stack,
+	// optup.ContinueOnError). The integration PR can then replace those
+	// packages with the generated ones without churning call sites.
 	optionTypeName := "Option"
 
 	decls := make([]ast.Decl, 0, 1+len(fields))
@@ -447,11 +451,11 @@ func buildOptionHelpers(typeName, command string, fields []optionField) []ast.De
 		Specs: []ast.Spec{optionType},
 	})
 
-	// One With* helper per field.
+	// One helper per field, named after the field itself.
 	for _, f := range fields {
-		funcName := "With" + f.name
+		funcName := f.name
 
-		// func With<Field>(v <T>) Option
+		// func <Field>(v <T>) Option
 		fn := &ast.FuncDecl{
 			Doc: &ast.CommentGroup{
 				List: []*ast.Comment{{

@@ -84,12 +84,12 @@ func TestCancel_WithStackName(t *testing.T) {
 func TestCancel_WithStackFlag(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Cancel(t.Context(), nil, optcancel.WithStack("dev"))
+		r, err := api.Cancel(t.Context(), nil, optcancel.Stack("dev"))
 		return r.Stdout, err
 	})
 	want := "pulumi cancel --yes --stack dev"
 	if got != want {
-		t.Fatalf("Cancel(WithStack=dev) = %q, want %q", got, want)
+		t.Fatalf("Cancel(Stack=dev) = %q, want %q", got, want)
 	}
 }
 
@@ -133,8 +133,8 @@ func TestOrgSearch_RepeatableQuery(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearch(
-			t.Context(),
-			optorgsearch.WithQuery([]string{"foo", "bar"}),
+			t.Context()
+			optorgsearch.Query([]string{"foo", "bar"}),
 		)
 		return r.Stdout, err
 	})
@@ -148,8 +148,8 @@ func TestOrgSearchAi_SingleQuery(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearchAi(
-			t.Context(),
-			optorgsearchai.WithQuery("hello"),
+			t.Context()
+			optorgsearchai.Query("hello"),
 		)
 		return r.Stdout, err
 	})
@@ -189,7 +189,7 @@ func TestStateMove_WithBooleanFlag(t *testing.T) {
 		r, err := api.StateMove(
 			t.Context(),
 			[]string{"urn:1"},
-			optstatemove.WithIncludeParents(true),
+			optstatemove.IncludeParents(true),
 		)
 		return r.Stdout, err
 	})
@@ -205,8 +205,8 @@ func TestStateMove_WithSourceAndDest(t *testing.T) {
 		r, err := api.StateMove(
 			t.Context(),
 			[]string{"urn:1"},
-			optstatemove.WithSource("dev"),
-			optstatemove.WithDest("prod"),
+			optstatemove.Source("dev"),
+			optstatemove.Dest("prod"),
 		)
 		return r.Stdout, err
 	})
