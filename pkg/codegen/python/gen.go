@@ -333,6 +333,12 @@ func (mod *modContext) tokenToResource(tok string) string {
 
 	// Is it a provider resource?
 	if components[0] == "pulumi" && components[1] == "providers" {
+		// Inside the package that owns the provider, refer to it by its unqualified class name to
+		// avoid a self-import (`import pulumi_<pkg>` inside `pulumi_<pkg>/<module>.py`) that would
+		// fail at import time with a circular-import error.
+		if mod.pkg != nil && components[2] == mod.pkg.Name() {
+			return "Provider"
+		}
 		return fmt.Sprintf("pulumi_%s.Provider", components[2])
 	}
 
@@ -988,9 +994,13 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	parts := strings.Split(tok, ":")
 	contract.Assertf(len(parts) == 3, "type token %q is not in the form '<pkg>:<mod>:<type>'", tok)
 
-	// If it's a provider resource, import the top-level package.
+	// If it's a provider resource, import the top-level package unless we're currently generating
+	// code inside that same package, in which case we fall through to the relative-import path to
+	// avoid a circular `import pulumi_<pkg>` inside `pulumi_<pkg>`.
 	if parts[0] == "pulumi" && parts[1] == "providers" {
-		return "import pulumi_" + parts[2]
+		if mod.pkg == nil || parts[2] != mod.pkg.Name() {
+			return "import pulumi_" + parts[2]
+		}
 	}
 
 	modName := mod.tokenToModule(tok)

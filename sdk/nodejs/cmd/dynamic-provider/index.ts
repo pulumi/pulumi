@@ -298,6 +298,13 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
         }
     }
 
+    list(call: grpc.ServerWritableStream<provproto.ListRequest, provproto.ListResponse>): void {
+        call.emit("error", {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "List is not implemented by the dynamic provider",
+        });
+    }
+
     async update(call: any, callback: any): Promise<void> {
         try {
             const req: any = call.request;

@@ -356,26 +356,40 @@ type SecretValue struct {
 	Secret     bool
 }
 
-type secretWorkflowValue struct {
+// secretWireValue is the on-the-wire representation of a SecretValue. It covers two shapes:
+//
+//   - The legacy shape, where the secret-ness of a value is encoded structurally: a bare string
+//     is a non-secret plaintext value, and any object is a secret whose plaintext lives in the
+//     Secret field (or whose ciphertext lives in Ciphertext). Written by MarshalJSON today.
+//   - The explicit shape, where IsSecret is a present boolean and the plaintext lives in Value.
+//     Not written today, but accepted on unmarshal so CLI installs become new-format-tolerant
+//     before any server starts emitting it.
+//
+// Exactly one of Value or Secret should be set; senders should not populate both.
+type secretWireValue struct {
+	// Legacy fields.
 	Secret     string `json:"secret,omitempty" yaml:"secret,omitempty"`
 	Ciphertext string `json:"ciphertext,omitempty" yaml:"ciphertext,omitempty"`
+	// Explicit-form fields. IsSecret is a pointer so its presence distinguishes the two shapes.
+	IsSecret *bool  `json:"isSecret,omitempty" yaml:"isSecret,omitempty"`
+	Value    string `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
 func (v SecretValue) MarshalJSON() ([]byte, error) {
 	switch {
 	case len(v.Ciphertext) != 0:
-		return json.Marshal(secretWorkflowValue{Ciphertext: v.Ciphertext})
+		return json.Marshal(secretWireValue{Ciphertext: v.Ciphertext})
 	case v.Secret:
-		return json.Marshal(secretWorkflowValue{Secret: v.Value})
+		return json.Marshal(secretWireValue{Secret: v.Value})
 	default:
 		return json.Marshal(v.Value)
 	}
 }
 
 func (v *SecretValue) UnmarshalJSON(bytes []byte) error {
-	var secret secretWorkflowValue
-	if err := json.Unmarshal(bytes, &secret); err == nil {
-		v.Value, v.Ciphertext, v.Secret = secret.Secret, secret.Ciphertext, true
+	var w secretWireValue
+	if err := json.Unmarshal(bytes, &w); err == nil {
+		v.fromWire(w)
 		return nil
 	}
 
@@ -390,18 +404,18 @@ func (v *SecretValue) UnmarshalJSON(bytes []byte) error {
 func (v SecretValue) MarshalYAML() (any, error) {
 	switch {
 	case len(v.Ciphertext) != 0:
-		return secretWorkflowValue{Ciphertext: v.Ciphertext}, nil
+		return secretWireValue{Ciphertext: v.Ciphertext}, nil
 	case v.Secret:
-		return secretWorkflowValue{Secret: v.Value}, nil
+		return secretWireValue{Secret: v.Value}, nil
 	default:
 		return v.Value, nil
 	}
 }
 
 func (v *SecretValue) UnmarshalYAML(node *yaml.Node) error {
-	var secret secretWorkflowValue
-	if err := node.Decode(&secret); err == nil {
-		v.Value, v.Ciphertext, v.Secret = secret.Secret, secret.Ciphertext, true
+	var w secretWireValue
+	if err := node.Decode(&w); err == nil {
+		v.fromWire(w)
 		return nil
 	}
 
@@ -411,6 +425,18 @@ func (v *SecretValue) UnmarshalYAML(node *yaml.Node) error {
 	}
 	v.Value, v.Secret = plaintext, false
 	return nil
+}
+
+// fromWire populates v from a decoded secretWireValue. If IsSecret is present the wire is in the
+// new explicit form and Value carries the plaintext; otherwise the legacy form is assumed and any
+// object is treated as a secret.
+func (v *SecretValue) fromWire(w secretWireValue) {
+	v.Ciphertext = w.Ciphertext
+	if w.IsSecret != nil {
+		v.Value, v.Secret = w.Value, *w.IsSecret
+		return
+	}
+	v.Value, v.Secret = w.Secret, true
 }
 
 type GetDeploymentUpdatesUpdateInfo struct {

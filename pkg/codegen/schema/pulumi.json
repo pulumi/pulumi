@@ -596,6 +596,10 @@
                     "description": "An optional objectTypeSpec that describes additional inputs that may be necessary to get an existing resource. If this is unset, only an ID is necessary.",
                     "$ref": "#/$defs/objectTypeSpec"
                 },
+                "listInputs": {
+                    "description": "An optional objectTypeSpec that describes inputs that may be supplied when listing existing resources of this type. If this is unset, the resource does not declare list support in the schema.",
+                    "$ref": "#/$defs/objectTypeSpec"
+                },
                 "aliases": {
                     "description": "The list of aliases for the resource.",
                     "type": "array",

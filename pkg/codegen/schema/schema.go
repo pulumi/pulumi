@@ -399,6 +399,9 @@ type Resource struct {
 	Properties []*Property
 	// StateInputs is the set of inputs used to get an existing resource, if any.
 	StateInputs *ObjectType
+	// ListInputs is the set of inputs used to list existing resources, if any. If this is unset, the resource
+	// does not declare list support in the package schema.
+	ListInputs *ObjectType
 	// Aliases is the list of aliases for the resource.
 	Aliases []*Alias
 	// DeprecationMessage indicates whether or not the resource is deprecated.
@@ -1196,6 +1199,15 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		stateInputs = &o.ObjectTypeSpec
 	}
 
+	var listInputs *ObjectTypeSpec
+	if r.ListInputs != nil {
+		o, err := pkg.marshalObject(r.ListInputs, false)
+		if err != nil {
+			return ResourceSpec{}, fmt.Errorf("marshaling list inputs: %w", err)
+		}
+		listInputs = &o.ObjectTypeSpec
+	}
+
 	aliases := slice.Prealloc[AliasSpec](len(r.Aliases))
 	for _, a := range r.Aliases {
 		aliases = append(aliases, AliasSpec{
@@ -1217,6 +1229,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 		InputProperties:    inputs,
 		RequiredInputs:     requiredInputs,
 		StateInputs:        stateInputs,
+		ListInputs:         listInputs,
 		Aliases:            aliases,
 		DeprecationMessage: r.DeprecationMessage,
 		IsComponent:        r.IsComponent,
@@ -1741,6 +1754,9 @@ type ResourceSpec struct {
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that may be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
 	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty" yaml:"stateInputs,omitempty"`
+	// ListInputs is an optional ObjectTypeSpec that describes inputs that may be supplied when listing resources of
+	// this type. If this is unset, the resource does not declare list support in the schema.
+	ListInputs *ObjectTypeSpec `json:"listInputs,omitempty" yaml:"listInputs,omitempty"`
 	// Aliases is the list of aliases for the resource. This can either be a list of strings or a list of objects with
 	// type fields.
 	Aliases []AliasSpec `json:"aliases,omitempty" yaml:"aliases,omitempty"`

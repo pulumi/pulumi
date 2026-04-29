@@ -434,11 +434,7 @@ func TestUnprotect(t *testing.T) {
 
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
-	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 1")
-	} else {
-		assert.ErrorContains(t, err, "exit status 1")
-	}
+	assert.ErrorContains(t, err, "exit status 1")
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
@@ -461,22 +457,14 @@ func TestUnprotectProtect(t *testing.T) {
 
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
-	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 1")
-	} else {
-		assert.ErrorContains(t, err, "exit status 1")
-	}
+	assert.ErrorContains(t, err, "exit status 1")
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
 	e.RunCommand("pulumi", "state", "protect", "--all", "--yes")
 
 	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
-	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 1")
-	} else {
-		assert.ErrorContains(t, err, "exit status 1")
-	}
+	assert.ErrorContains(t, err, "exit status 1")
 }
 
 func TestInvalidPluginError(t *testing.T) {

@@ -53,3 +53,8 @@ resource "sink2" "primitive:index:Resource" {
 output "ids" {
   value = idMap
 }
+
+// test an id value can flow through a string function
+output "base64" { 
+  value = toBase64(sink2.id)
+}

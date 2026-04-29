@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // containsAllRunes returns true if every rune in want appears in s. Lipgloss
@@ -32,35 +31,6 @@ func containsAllRunes(s, want string) bool {
 		}
 	}
 	return true
-}
-
-func TestPickThinkingVerb(t *testing.T) {
-	t.Parallel()
-
-	// Every draw must be either "Thinking" or one of the curated themed verbs —
-	// the function must never leak an out-of-list string (e.g. from a slice
-	// index off-by-one after the list is edited). With the global math/rand
-	// auto-seeded, 200 draws are enough to hit both the 60% "Thinking" branch
-	// and the 40% themed branch with overwhelming probability; the allowlist
-	// check itself is deterministic regardless of the seed.
-	allowed := map[string]bool{"Thinking": true}
-	for _, v := range thinkingVerbs {
-		allowed[v] = true
-	}
-
-	sawThinking := false
-	sawThemed := false
-	for range 200 {
-		got := pickThinkingVerb()
-		require.True(t, allowed[got], "unexpected verb: %q", got)
-		if got == "Thinking" {
-			sawThinking = true
-		} else {
-			sawThemed = true
-		}
-	}
-	assert.True(t, sawThinking, "expected at least one \"Thinking\" draw in 200 iterations")
-	assert.True(t, sawThemed, "expected at least one themed-verb draw in 200 iterations")
 }
 
 func TestShimmerLabel_EmptyText(t *testing.T) {

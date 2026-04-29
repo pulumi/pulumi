@@ -15,13 +15,7 @@
 package ints
 
 import (
-	"bytes"
-	"fmt"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
@@ -154,64 +147,4 @@ func optsForConstructGo(
 			}
 		},
 	}
-}
-
-//nolint:paralleltest // Mutates environment variables.
-func TestConstructComponentConfigureProviderGo(t *testing.T) {
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows")
-	}
-
-	const testDir = "construct_component_configure_provider"
-	runComponentSetup(t, testDir)
-	pulumiRoot, err := filepath.Abs("../..")
-	require.NoError(t, err)
-	pulumiGoSDK := filepath.Join(pulumiRoot, "sdk")
-	sdkPkg := "github.com/pulumi/pulumi/tests/testdata/codegen/methods-return-plain-resource/go"
-
-	// The test relies on generated SDK sources from a codegen test. Run it with PULUMI_ACCEPT=1
-	// to regenerate them.
-	cmd := exec.Command("go", "test", "-test.v", "-run", "TestGeneratePackage/methods-return-plain-resource")
-	stdout := &bytes.Buffer{}
-	stderr := &bytes.Buffer{}
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	cmd.Dir = filepath.Join(pulumiRoot, "pkg", "codegen", "go")
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "PULUMI_ACCEPT=1")
-	err = cmd.Run()
-	require.NoErrorf(t, err, "Failed to ensure that methods-return-plain-resource codegen"+
-		" test has generated the Go SDK:\n%s\n%s\n",
-		stdout.String(), stderr.String())
-
-	// Copy the generated SDK sources into our own temp dir and turn them into a valid Go module.
-	// The codegen test runs in its own temp dir and does not leave go.mod behind.
-	componentSDKSrc := filepath.Join(pulumiRoot, "tests/testdata/codegen/methods-return-plain-resource/go")
-	componentSDK := t.TempDir()
-	require.NoError(t, fsutil.CopyFile(componentSDK, componentSDKSrc, nil), "copy generated SDK")
-
-	runGo := func(args ...string) {
-		c := exec.Command("go", args...)
-		c.Dir = componentSDK
-		var out bytes.Buffer
-		c.Stdout = &out
-		c.Stderr = &out
-		require.NoErrorf(t, c.Run(), "go %s:\n%s", strings.Join(args, " "), out.String())
-	}
-	runGo("mod", "init", sdkPkg)
-	runGo("mod", "edit", "-replace", "github.com/pulumi/pulumi/sdk/v3="+pulumiGoSDK)
-	runGo("mod", "tidy")
-
-	opts := testConstructComponentConfigureProviderCommonOptions()
-	opts = opts.With(integration.ProgramTestOptions{
-		Dir: filepath.Join(testDir, "go"),
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3=" + pulumiGoSDK,
-			fmt.Sprintf("%s=%s", sdkPkg, componentSDK),
-		},
-		NoParallel: true,
-	})
-	integration.ProgramTest(t, &opts)
 }

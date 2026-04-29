@@ -58,6 +58,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -2693,16 +2694,18 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	}
 
 	protect := opts.Protect
-	ignoreChanges := opts.IgnoreChanges
-	hiddenDiffs := slice.Prealloc[resource.PropertyPath](len(opts.GetHideDiff()))
-	for i, v := range opts.GetHideDiff() {
-		path, err := resource.ParsePropertyPath(v)
-		if err != nil {
-			return nil, fmt.Errorf("%d: %w", i, err)
-		}
-		hiddenDiffs = append(hiddenDiffs, path)
+	ignoreChanges, err := parsePropertyGlobs(opts.IgnoreChanges)
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid ignoreChanges path: %s", err))
 	}
-	replaceOnChanges := opts.ReplaceOnChanges
+	hiddenDiffs, err := parsePropertyGlobs(opts.GetHideDiff())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid hideDiffs path: %s", err))
+	}
+	replaceOnChanges, err := parsePropertyGlobs(opts.GetReplaceOnChanges())
+	if err != nil {
+		return nil, rpcerror.New(codes.InvalidArgument, fmt.Sprintf("invalid replaceOnChanges path: %s", err))
+	}
 
 	replacementTrigger := resource.NewNullProperty()
 	replacementTriggerValue := opts.GetReplacementTrigger()
@@ -2816,8 +2819,8 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			AdditionalSecretOutputs: additionalSecretOutputs,
 			DeletedWith:             deletedWith,
 			ReplaceWith:             replaceWith,
-			IgnoreChanges:           ignoreChanges,
-			ReplaceOnChanges:        replaceOnChanges,
+			IgnoreChanges:           globsToStrings(ignoreChanges),
+			ReplaceOnChanges:        globsToStrings(replaceOnChanges),
 			ReplacementTrigger:      replacementTrigger,
 			RetainOnDelete:          retainOnDelete,
 			ResourceHooks:           resourceHooks,
@@ -3252,6 +3255,22 @@ func (g *readResourceEvent) Done(result *ReadResult) {
 	g.done <- result
 }
 
+// parsePropertyGlobs parses a list of property path strings from user-facing RPC input into
+// [property.Glob]s. A nil input returns a nil slice. If any path is malformed, the index of the
+// first failing entry and the underlying parse error are returned.
+func parsePropertyGlobs(paths []string) ([]property.Glob, error) {
+	if len(paths) == 0 {
+		return nil, nil
+	}
+	globs := make([]property.Glob, len(paths))
+	for i, p := range paths {
+		if err := globs[i].UnmarshalText([]byte(p)); err != nil {
+			return nil, fmt.Errorf("%d: %w", i, err)
+		}
+	}
+	return globs, nil
+}
+
 func generateTimeoutInSeconds(timeout string) (float64, error) {
 	duration, err := time.ParseDuration(timeout)
 	if err != nil {
@@ -3402,4 +3421,17 @@ func addOutputDependencies(deps mapset.Set[resource.URN], v resource.PropertyVal
 	if v.IsSecret() {
 		addOutputDependencies(deps, v.SecretValue().Element)
 	}
+}
+
+// GlobsToStrings renders each [property.Glob] in globs to its canonical string form. The
+// zero-value glob is rendered as the empty string.
+func globsToStrings(globs []property.Glob) []string {
+	return slice.Map(globs, func(g property.Glob) string {
+		if g == (property.Glob{}) {
+			return ""
+		}
+		b, err := g.MarshalText()
+		contract.AssertNoErrorf(err, "non-empty glob should always marshal")
+		return string(b)
+	})
 }

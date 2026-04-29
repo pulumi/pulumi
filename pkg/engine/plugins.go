@@ -638,6 +638,52 @@ func installPlugin(
 	return nil
 }
 
+// samePluginSource reports whether two PackageDescriptors refer to the same
+// underlying plugin (matching binary Name and matching parameterization
+// origin). Two descriptors that differ only in version are the same source;
+// two descriptors with different plugin Names (for example, a native
+// "scaleway" provider and a "terraform-provider" bridge parameterized as
+// "scaleway") are not.
+func samePluginSource(a, b workspace.PackageDescriptor) bool {
+	return a.Name == b.Name &&
+		(a.Parameterization == nil) == (b.Parameterization == nil) &&
+		(a.Parameterization == nil || a.Parameterization.Name == b.Parameterization.Name)
+}
+
+// describePluginSource returns a human-readable description of a plugin that
+// distinguishes bridged (parameterized) packages from native ones. The output
+// of PackageDescriptor.String is insufficient here because it collapses both
+// forms onto the parameterized name, which hides the distinction users need
+// to resolve a conflict.
+func describePluginSource(p workspace.PackageDescriptor) string {
+	var pluginVer string
+	if p.Version != nil {
+		pluginVer = " v" + p.Version.String()
+	}
+	if p.Parameterization != nil {
+		return fmt.Sprintf("plugin %q%s parameterized as %q v%s",
+			p.Name, pluginVer, p.Parameterization.Name, p.Parameterization.Version.String())
+	}
+	return fmt.Sprintf("plugin %q%s", p.Name, pluginVer)
+}
+
+// ambigiousPluginSourceError is returned when two distinct plugins both claim
+// to provide the same default provider package name.
+type ambigiousPluginSourceError struct {
+	pkg  tokens.Package
+	a, b workspace.PackageDescriptor
+}
+
+func (err ambigiousPluginSourceError) Error() string {
+	return fmt.Sprintf(
+		"package %q is provided by more than one plugin:\n"+
+			"  %s\n"+
+			"  %s\n"+
+			"Remove one of the packages, or pass an explicit `provider` "+
+			"option on each resource to disambiguate.",
+		err.pkg, describePluginSource(err.a), describePluginSource(err.b))
+}
+
 // computeDefaultProviderPackages computes, for every package, a mapping from packages to semver versions reflecting the
 // version of a provider that should be used as the "default" resource when registering resources. This function takes
 // two sets of packages:
@@ -662,7 +708,7 @@ func installPlugin(
 func computeDefaultProviderPackages(
 	languagePackages PackageSet,
 	allPackages PackageSet,
-) map[tokens.Package]workspace.PackageDescriptor {
+) (map[tokens.Package]workspace.PackageDescriptor, error) {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -704,6 +750,10 @@ func computeDefaultProviderPackages(
 		name := tokens.Package(p.PackageName())
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
+			if !samePluginSource(seenPlugin, p) {
+				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
+			}
+
 			if seenPlugin.Version == nil {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
@@ -743,5 +793,5 @@ func computeDefaultProviderPackages(
 		defaultProviderInfo[name] = plugin
 	}
 
-	return defaultProviderInfo
+	return defaultProviderInfo, nil
 }

@@ -49,7 +49,7 @@ require (
 	google.golang.org/genproto v0.0.0-20240311173647-c811ad7063a7
 	google.golang.org/grpc v1.80.0
 	gopkg.in/yaml.v3 v3.0.1
-	pgregory.net/rapid v0.6.1
+	pgregory.net/rapid v1.2.0
 )
 
 require (

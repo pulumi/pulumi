@@ -1,0 +1,40 @@
+changes:
+- type: fix
+  scope: codegen/go
+  description: |
+    Generate unqualified `Provider` references for the package's own provider resource. Previously
+    the Go codegen always emitted `<pkg>.Provider` even when the reference appeared inside `<pkg>`
+    itself, producing identifiers that would not compile. Affects generated code for method return
+    types (and other schema positions) that reference `pulumi:providers:<pkg>`.
+- type: fix
+  scope: codegen/nodejs
+  description: |
+    Generate unqualified `Provider` references for the package's own provider resource when emitting
+    TypeScript code inside that package. Previously the generator always qualified the name as
+    `<pkg>.Provider`, which does not resolve when no `<pkg>` namespace import is in scope.
+- type: fix
+  scope: codegen/nodejs
+  description: |
+    Import the correct class name for a provider resource. Imports for `pulumi:providers:<pkg>` used
+    the title-cased package name instead of `Provider`, producing a phantom identifier that clashed
+    with the containing package's component/resource classes.
+- type: fix
+  scope: codegen/python
+  description: |
+    Avoid a self-import (`import pulumi_<pkg>` inside `pulumi_<pkg>/<module>.py`) when referencing
+    the package's own provider resource. Python referenced the Provider as `pulumi_<pkg>.Provider`
+    even inside that package, which caused a circular import at runtime.
+- type: fix
+  scope: programgen
+  description: |
+    Do not wrap a `call(...)` on a method whose return type is marked plain in an Output. Previously
+    PCL bound every method call's return type as `Output<T>`, which caused downstream program-gen
+    to emit broken `.apply(...)`/`.ApplyT(...)` traversals against plain struct returns (e.g.
+    methods with `liftSingleValueMethodReturns=true` or `ReturnTypePlain=true`).
+- type: fix
+  scope: programgen/nodejs
+  description: |
+    Emit `await` for `call(...)` invocations of methods whose return type is marked plain, and
+    force the generated program into an async `export = async () => ...` wrapper whenever such a
+    call is present. The Node SDK returns `Promise<T>` for plain methods; previously program-gen
+    used the result directly, which did not match its runtime type.

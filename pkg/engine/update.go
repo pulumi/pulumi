@@ -534,7 +534,10 @@ func installPlugins(
 	}
 
 	// Collect the version information for default providers.
-	defaultProviderVersions := computeDefaultProviderPackages(languagePackages, allPackages)
+	defaultProviderVersions, err := computeDefaultProviderPackages(languagePackages, allPackages)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	return allPlugins, defaultProviderVersions, nil
 }

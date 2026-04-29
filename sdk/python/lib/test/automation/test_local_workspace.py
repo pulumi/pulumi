@@ -1605,13 +1605,16 @@ class TestLocalWorkspace(unittest.TestCase):
         mock_cmd = MockCmd()
         ws = LocalWorkspace(pulumi_command=mock_cmd)
 
+        # The generated interface emits flags in alphabetical order and adds a
+        # ``--`` separator before positional arguments.
+        #
         # Basic call with no options.
         ws.new()
         self.assertEqual(mock_cmd.args[0], ["new", "--yes"])
 
         # With template.
         ws.new("typescript")
-        self.assertEqual(mock_cmd.args[0], ["new", "--yes", "typescript"])
+        self.assertEqual(mock_cmd.args[0], ["new", "--yes", "--", "typescript"])
 
         # With name and generate-only.
         ws.new(name="my-project", generate_only=True, force=True)
@@ -1642,6 +1645,7 @@ class TestLocalWorkspace(unittest.TestCase):
                 "A test project",
                 "--stack",
                 "dev",
+                "--",
                 "aws-typescript",
             ],
         )
@@ -1669,6 +1673,7 @@ class TestLocalWorkspace(unittest.TestCase):
                 "--offline",
                 "--remote-stack-config",
                 "--template-mode",
+                "--",
                 "yaml",
             ],
         )

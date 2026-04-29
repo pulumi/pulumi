@@ -48,3 +48,4 @@ const sink2 = new primitive.Resource("sink2", {
     },
 });
 export const ids = idMap;
+export const base64 = sink2.id.apply(id => Buffer.from(id).toString("base64"));

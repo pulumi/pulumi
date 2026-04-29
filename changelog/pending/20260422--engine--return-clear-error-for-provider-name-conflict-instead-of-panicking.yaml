@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Return a clear error when two installed plugins claim the same default provider package name (for example, a native `scaleway` provider alongside a `terraform-provider` bridge parameterized as `scaleway`) instead of panicking with "Should not have seen an older plugin if sorting is correct!"

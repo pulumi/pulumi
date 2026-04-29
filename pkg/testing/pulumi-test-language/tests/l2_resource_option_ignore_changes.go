@@ -17,6 +17,7 @@ package tests
 import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,13 +41,15 @@ func init() {
 					require.Len(l, snap.Resources, 5, "expected 5 resources in snapshot")
 
 					receiverIgnore := RequireSingleNamedResource(l, snap.Resources, "receiverIgnore")
-					assert.Equal(l, []string{"details[0].key"}, receiverIgnore.IgnoreChanges)
+					assert.Equal(l, []property.Glob{
+						property.MustParseGlob("details[0].key"),
+					}, receiverIgnore.IgnoreChanges)
 
 					mapIgnore := RequireSingleNamedResource(l, snap.Resources, "mapIgnore")
-					assert.Equal(l, []string{
-						`tags["env"]`,
-						`tags["with.dot"]`,
-						`tags["with escaped \""]`,
+					assert.Equal(l, []property.Glob{
+						property.MustParseGlob("tags.env"),
+						property.MustParseGlob(`tags["with.dot"]`),
+						property.MustParseGlob(`tags["with escaped \""]`),
 					}, mapIgnore.IgnoreChanges)
 
 					noIgnore := RequireSingleNamedResource(l, snap.Resources, "noIgnore")

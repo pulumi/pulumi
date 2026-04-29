@@ -246,11 +246,12 @@ func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDeta
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if strings.HasPrefix(r.Token, "pulumi:providers:") {
 		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
-		if pkgName != mod.pkg.Name() {
-			pkgName = externalModuleName(pkgName)
+		if pkgName == mod.pkg.Name() {
+			// Inside the package's own code, refer to the Provider type unqualified so it resolves
+			// against the local declaration rather than a (non-existent) namespace.
+			return "Provider"
 		}
-
-		return pkgName + ".Provider"
+		return externalModuleName(pkgName) + ".Provider"
 	}
 
 	pkg := mod.pkg
@@ -1465,7 +1466,14 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	seen.Add(t)
 
 	resourceOrTokenImport := func(tok string) bool {
-		modName, name, modPath := mod.pkg.TokenToModule(tok), tokenToName(tok), "./index"
+		// Provider tokens (pulumi:providers:<pkg>) correspond to a class named `Provider`, not the
+		// title-cased package name; importing the latter produces a phantom identifier that clashes
+		// with the containing package's component/resource classes.
+		name := tokenToName(tok)
+		if strings.HasPrefix(tok, "pulumi:providers:") {
+			name = "Provider"
+		}
+		modName, modPath := mod.pkg.TokenToModule(tok), "./index"
 		if override, ok := mod.modToPkg[modName]; ok {
 			modName = override
 		}

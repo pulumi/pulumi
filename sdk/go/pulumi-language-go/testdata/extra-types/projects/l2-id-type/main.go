@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/base64"
+
 	"example.com/pulumi-primitive/sdk/go/v7/primitive"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -58,7 +60,7 @@ func main() {
 		if err != nil {
 			return err
 		}
-		_, err = primitive.NewResource(ctx, "sink2", &primitive.ResourceArgs{
+		sink2, err := primitive.NewResource(ctx, "sink2", &primitive.ResourceArgs{
 			Boolean: idMap["source2Token"].(string),
 			Float:   pulumi.Float64(1),
 			Integer: pulumi.Int(2),
@@ -73,7 +75,10 @@ func main() {
 		if err != nil {
 			return err
 		}
-		ctx.Export("ids", pulumi.ToMap(idMap))
+		ctx.Export("ids", idMap)
+		ctx.Export("base64", sink2.ID().ApplyT(func(id string) (pulumi.String, error) {
+			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(id))), nil
+		}).(pulumi.StringOutput))
 		return nil
 	})
 }

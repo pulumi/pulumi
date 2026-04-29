@@ -18,6 +18,12 @@
             "flags": {}
         },
         {
+            "path": ["neo"],
+            "propagate": true,
+            "exclude": true,
+            "flags": {}
+        },
+        {
             "path": ["about"],
             "propagate": false,
             "exclude": true,

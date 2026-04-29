@@ -170,6 +170,10 @@ service ResourceProvider {
     // include other properties.
     rpc Read(ReadRequest) returns (ReadResponse) {}
 
+    // `List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    // emit a continuation token indicating another page is available.
+    rpc List(ListRequest) returns (stream ListResponse) {}
+
     // `Update` updates an existing resource according to a new set of inputs, returning a new set of output properties.
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
 
@@ -884,6 +888,63 @@ message ReadResponse {
 
     // Indicates that this resource should always be refreshed prior to updates.
     bool refresh_before_update = 4;
+}
+
+// `ListRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.List) call.
+message ListRequest {
+    // The resource token (type) to list.
+    string token = 1;
+
+    // An optional provider-defined filter over resource state. This is a property map and could contain
+    // unknown/computed values.
+    google.protobuf.Struct query = 2;
+
+    // The maximum number of resources to return. If less than 1 then no limit is applied.
+    int64 limit = 3;
+
+    // The requested page size for this streaming call. The provider is free to return less, but should not return more.
+    int64 page_size = 4;
+
+    // An opaque token indicating which page to fetch. Empty for the first page. If set `token`, `query`, and `limit`
+    // should be the values used to fetch the first page.
+    string continuation_token = 5;
+}
+
+// `ListResponse` is the streamed response type returned by [](pulumirpc.ResourceProvider.List). It must follow one of
+// the following orders. Either it returns a single [](pulumirpc.ListResponse.Computed) or it should return one or more
+// [](pulumirpc.ListResponse.Result) items followed optionally by a [](pulumirpc.ListResponse.Continuation).
+message ListResponse {
+    // `Computed` is returned if [](pulumirpc.ResourceProvider.List) can't compute the result due to unknown values in the query.
+    message Computed {
+
+    }
+
+    // `Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call.
+    message Result {
+        // The ID of the resource.
+        string id = 1;
+
+        // The resource name, if the provider can supply one. If empty no name was given.
+        string name = 2;
+    }
+
+    // `Continuation` indicates whether a [](pulumirpc.ResourceProvider.List) call has another page to fetch.
+    message Continuation {
+        // An opaque token that can be supplied to a subsequent `List` call to fetch the next page. If empty there are
+        // no more results.
+        string continuation_token = 1;
+    }
+
+    oneof response {
+        // A computed marker.
+        Computed computed = 1;
+
+        // A resource entry.
+        Result result = 2;
+
+        // A continuation marker.
+        Continuation continuation = 3;
+    }
 }
 
 // `UpdateRequest` is the type of requests sent as part of a [](pulumirpc.ResourceProvider.Update) call.

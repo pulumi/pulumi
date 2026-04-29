@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/neo
+  description: Simplify the busy indicator to always show "Thinking..." instead of occasionally rotating in Pulumi-themed verbs (Puluminating, Cloudforming, etc.).

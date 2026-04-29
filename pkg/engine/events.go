@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
@@ -552,7 +553,7 @@ func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets b
 		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
 		Provider:       state.Provider,
 		InitErrors:     state.InitErrors,
-		HideDiffs:      state.HideDiff,
+		HideDiffs:      slice.Map(state.HideDiff, resource.ToResourcePropertyPath),
 	}
 }
 

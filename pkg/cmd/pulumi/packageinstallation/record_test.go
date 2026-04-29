@@ -181,6 +181,13 @@ func (w *recordingWorkspace) GetStoredCredentials() (workspace.Credentials, erro
 	return creds, err
 }
 
+func (w *recordingWorkspace) GetPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
+	w.start("GetPlugins", ctx)
+	plugins, err := w.w.GetPlugins(ctx)
+	w.finish(plugins, err)
+	return plugins, err
+}
+
 func (w *recordingWorkspace) LoadPluginProjectAt(
 	ctx context.Context, path string,
 ) (*workspace.PluginProject, string, error) {

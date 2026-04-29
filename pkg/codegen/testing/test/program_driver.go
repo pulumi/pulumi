@@ -183,10 +183,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Secret",
 	},
 	{
-		Directory:   "functions",
-		Description: "Functions",
-	},
-	{
 		Directory:   "output-funcs-aws",
 		Description: "Output Versioned Functions",
 	},

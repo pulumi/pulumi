@@ -15,12 +15,15 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode/utf8"
@@ -34,13 +37,15 @@ import (
 //
 // Supported methods (this slice):
 //
-//	read           — args: {file_path, offset?, limit?}
-//	write          — args: {file_path, content}
-//	directory_tree — args: {path, depth?, include_filtered?}
-//	edit           — args: {file_path, old_string, new_string, expected_replacements?}
+//	read            — args: {file_path, offset?, limit?}
+//	write           — args: {file_path, content}
+//	directory_tree  — args: {path, depth?, include_filtered?}
+//	edit            — args: {file_path, old_string, new_string, expected_replacements?}
+//	grep            — args: {pattern, path?, include?}
+//	content_replace — args: {pattern, replacement, path, file_pattern?, dry_run?}
 //
-// The remaining filesystem methods (grep, grep_ast, content_replace) return a structured
-// "not yet implemented" error so the agent can degrade gracefully.
+// The remaining filesystem method (grep_ast) returns a structured "not yet implemented"
+// error so the agent can degrade gracefully.
 //
 // All paths in incoming requests are absolute (the cloud agent assumes a sandboxed VM).
 // We resolve them and reject anything that lands outside Root, so the agent can never read
@@ -102,7 +107,29 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 			return nil, fmt.Errorf("decoding edit args: %w", err)
 		}
 		return f.edit(p)
-	case "grep", "grep_ast", "content_replace":
+	case "grep":
+		var p struct {
+			Pattern string `json:"pattern"`
+			Path    string `json:"path,omitempty"`
+			Include string `json:"include,omitempty"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, fmt.Errorf("decoding grep args: %w", err)
+		}
+		return f.grep(p.Pattern, p.Path, p.Include)
+	case "content_replace":
+		var p struct {
+			Pattern     string `json:"pattern"`
+			Replacement string `json:"replacement"`
+			Path        string `json:"path"`
+			FilePattern string `json:"file_pattern,omitempty"`
+			DryRun      bool   `json:"dry_run,omitempty"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, fmt.Errorf("decoding content_replace args: %w", err)
+		}
+		return f.contentReplace(p.Pattern, p.Replacement, p.Path, p.FilePattern, p.DryRun)
+	case "grep_ast":
 		return nil, fmt.Errorf("filesystem method %q is not yet implemented in pulumi neo CLI mode", method)
 	default:
 		return nil, fmt.Errorf("unknown filesystem method %q", method)
@@ -123,14 +150,18 @@ func (f *Filesystem) resolve(p string) (string, error) {
 	return resolveUnderRoot(f.Root, target, true)
 }
 
-func (f *Filesystem) read(p string, offset, limit int) (any, error) {
+type readResult struct {
+	Content string `json:"content"`
+}
+
+func (f *Filesystem) read(p string, offset, limit int) (readResult, error) {
 	abs, err := f.resolve(p)
 	if err != nil {
-		return nil, err
+		return readResult{}, err
 	}
 	b, err := os.ReadFile(abs)
 	if err != nil {
-		return nil, err
+		return readResult{}, err
 	}
 	content := string(b)
 	if offset > 0 || limit > 0 {
@@ -148,21 +179,25 @@ func (f *Filesystem) read(p string, offset, limit int) (any, error) {
 			content = strings.Join(lines, "\n")
 		}
 	}
-	return map[string]any{"content": content}, nil
+	return readResult{Content: content}, nil
 }
 
-func (f *Filesystem) write(p, content string) (any, error) {
+type writeResult struct {
+	BytesWritten int `json:"bytes_written"`
+}
+
+func (f *Filesystem) write(p, content string) (writeResult, error) {
 	abs, err := f.resolve(p)
 	if err != nil {
-		return nil, err
+		return writeResult{}, err
 	}
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-		return nil, err
+		return writeResult{}, err
 	}
 	if err := os.WriteFile(abs, []byte(content), 0o600); err != nil {
-		return nil, err
+		return writeResult{}, err
 	}
-	return map[string]any{"bytes_written": len(content)}, nil
+	return writeResult{BytesWritten: len(content)}, nil
 }
 
 // editArgs is the JSON shape for the `edit` tool. ExpectedReplacements is a pointer so
@@ -178,10 +213,10 @@ type editArgs struct {
 // edit performs a single exact-string replacement. The response string and error wording
 // are deliberately kept byte-identical to the upstream mcp-claude-code `edit` tool so the
 // agent sees the same output whether the call ran on Cloud or CLI.
-func (f *Filesystem) edit(p editArgs) (any, error) {
+func (f *Filesystem) edit(p editArgs) (string, error) {
 	abs, err := f.resolve(p.FilePath)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	expected := 1
@@ -195,25 +230,25 @@ func (f *Filesystem) edit(p editArgs) (any, error) {
 	info, statErr := os.Stat(abs)
 	fileExists := statErr == nil
 	if statErr != nil && !os.IsNotExist(statErr) {
-		return nil, statErr
+		return "", statErr
 	}
 
 	// Creation mode: file doesn't exist and old_string is empty.
 	if !fileExists && p.OldString == "" {
 		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
-			return nil, err
+			return "", err
 		}
 		if err := os.WriteFile(abs, []byte(p.NewString), 0o600); err != nil {
-			return nil, err
+			return "", err
 		}
 		return fmt.Sprintf("Successfully created file: %s (%d bytes)", p.FilePath, len(p.NewString)), nil
 	}
 
 	if !fileExists {
-		return nil, statErr
+		return "", statErr
 	}
 	if info.IsDir() {
-		return nil, fmt.Errorf("path %q is a directory, not a file", p.FilePath)
+		return "", fmt.Errorf("path %q is a directory, not a file", p.FilePath)
 	}
 
 	// Whitespace-only old_string on an existing file is ambiguous — reject it rather
@@ -224,7 +259,7 @@ func (f *Filesystem) edit(p editArgs) (any, error) {
 
 	raw, err := os.ReadFile(abs)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if !utf8.Valid(raw) {
 		return "Error: Cannot edit binary file: " + p.FilePath, nil
@@ -248,14 +283,14 @@ func (f *Filesystem) edit(p editArgs) (any, error) {
 
 	diff, err := renderUnifiedDiff(p.FilePath, original, modified)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if diff == "" {
 		return "No changes made to file: " + p.FilePath, nil
 	}
 
 	if err := os.WriteFile(abs, []byte(modified), 0o600); err != nil {
-		return nil, err
+		return "", err
 	}
 	return fmt.Sprintf(
 		"Successfully edited file: %s (%d replacements applied)\n\n%s",
@@ -265,8 +300,8 @@ func (f *Filesystem) edit(p editArgs) (any, error) {
 
 // renderUnifiedDiff produces a unified diff formatted the same way as the upstream Python
 // tool: `--- <path> (original)` / `+++ <path> (modified)` headers, 3 lines of context,
-// and the body fenced with the smallest backtick run that doesn't collide with the diff
-// contents. Returns an empty string when the two inputs are identical.
+// and the body wrapped in a ```diff fenced block. Returns an empty string when the two
+// inputs are identical.
 func renderUnifiedDiff(path, original, modified string) (string, error) {
 	if original == modified {
 		return "", nil
@@ -284,25 +319,44 @@ func renderUnifiedDiff(path, original, modified string) (string, error) {
 	if body == "" {
 		return "", nil
 	}
-	ticks := 3
-	for strings.Contains(body, strings.Repeat("`", ticks)) {
-		ticks++
+	return "```diff\n" + body + "```\n", nil
+}
+
+// isBinary heuristically decides if a byte slice is a text file. A NUL byte is how grep,
+// git, and most Unix tools detect binary content; it's good enough here to steer the
+// agent away from corrupting compiled artefacts.
+func isBinary(b []byte) bool {
+	return bytes.IndexByte(b, 0) != -1
+}
+
+// capString truncates s to limit bytes, reporting whether truncation happened.
+func capString(s string, limit int) (string, bool) {
+	if len(s) <= limit {
+		return s, false
 	}
-	fence := strings.Repeat("`", ticks)
-	return fmt.Sprintf("%sdiff\n%s%s\n", fence, body, fence), nil
+	return s[:limit], true
+}
+
+type directoryEntry struct {
+	Name  string `json:"name"`
+	IsDir bool   `json:"is_dir"`
+}
+
+type directoryTreeResult struct {
+	Entries []directoryEntry `json:"entries"`
 }
 
 // directoryTree returns a flat listing of the directory at p, optionally bounded by depth.
 // Depth 0 (or unset) defaults to 1 (immediate children only).
-func (f *Filesystem) directoryTree(p string, depth int) (any, error) {
+func (f *Filesystem) directoryTree(p string, depth int) (directoryTreeResult, error) {
 	abs, err := f.resolve(p)
 	if err != nil {
-		return nil, err
+		return directoryTreeResult{}, err
 	}
 	if depth <= 0 {
 		depth = 1
 	}
-	var entries []map[string]any
+	var entries []directoryEntry
 	err = filepath.Walk(abs, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -317,14 +371,241 @@ func (f *Filesystem) directoryTree(p string, depth int) (any, error) {
 			}
 			return nil
 		}
-		entries = append(entries, map[string]any{"name": rel, "is_dir": info.IsDir()})
+		entries = append(entries, directoryEntry{Name: rel, IsDir: info.IsDir()})
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return directoryTreeResult{}, err
 	}
 	sort.Slice(entries, func(i, j int) bool {
-		return entries[i]["name"].(string) < entries[j]["name"].(string)
+		return entries[i].Name < entries[j].Name
 	})
-	return map[string]any{"entries": entries}, nil
+	return directoryTreeResult{Entries: entries}, nil
+}
+
+// walkMatching invokes fn for every regular file under abs whose basename matches glob.
+// If abs is itself a file, fn is called directly when its basename matches. Hidden
+// directories and node_modules are skipped below the starting path — if the caller
+// explicitly names such a directory as abs, its contents are traversed.
+//
+// glob is assumed valid; callers validate it up front with filepath.Match.
+func walkMatching(abs, glob string, fn func(path string) error) error {
+	info, err := os.Stat(abs)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		if ok, _ := filepath.Match(glob, filepath.Base(abs)); ok {
+			return fn(abs)
+		}
+		return nil
+	}
+	return filepath.WalkDir(abs, func(p string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			return werr
+		}
+		name := d.Name()
+		if d.IsDir() {
+			// Skip hidden directories and node_modules below the starting path. An
+			// explicit abs that names a hidden dir is traversed.
+			if p != abs && (strings.HasPrefix(name, ".") || name == "node_modules") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if ok, _ := filepath.Match(glob, name); ok {
+			return fn(p)
+		}
+		return nil
+	})
+}
+
+type grepResult struct {
+	Content   string `json:"content"`
+	Truncated bool   `json:"truncated,omitempty"`
+}
+
+// grep scans files under searchPath line-by-line for regex matches, restricting to files
+// whose basename matches the include glob. Output mirrors the upstream mcp-claude-code
+// grep tool: `<abs-path>:<lineno>: <line>` entries grouped under a count header. Binary
+// files, hidden directories, and node_modules are skipped.
+func (f *Filesystem) grep(pattern, searchPath, include string) (grepResult, error) {
+	if pattern == "" {
+		return grepResult{}, errors.New("pattern is required")
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return grepResult{}, fmt.Errorf("invalid regex %q: %w", pattern, err)
+	}
+	if include == "" {
+		include = "*"
+	}
+	// Validate the glob early so callers get a clear error instead of silent zero-match.
+	if _, err := filepath.Match(include, "x"); err != nil {
+		return grepResult{}, fmt.Errorf("invalid include glob %q: %w", include, err)
+	}
+	if searchPath == "" {
+		searchPath = "."
+	}
+	abs, err := f.resolve(searchPath)
+	if err != nil {
+		return grepResult{}, err
+	}
+
+	type match struct {
+		path    string
+		lineno  int
+		content string
+	}
+	var matches []match
+
+	scanFile := func(path string) error {
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return nil //nolint:nilerr // skip unreadable files, don't halt the scan
+		}
+		if isBinary(b) {
+			return nil
+		}
+		lineno := 0
+		for len(b) > 0 {
+			lineno++
+			var line []byte
+			line, b, _ = bytes.Cut(b, []byte{'\n'})
+			// Match bufio.Scanner's line semantics: strip a trailing \r so regexes
+			// with $ behave the same on Windows-formatted files.
+			if len(line) > 0 && line[len(line)-1] == '\r' {
+				line = line[:len(line)-1]
+			}
+			if re.Match(line) {
+				matches = append(matches, match{path: path, lineno: lineno, content: string(line)})
+			}
+		}
+		return nil
+	}
+
+	if err := walkMatching(abs, include, scanFile); err != nil {
+		return grepResult{}, err
+	}
+
+	if len(matches) == 0 {
+		return grepResult{Content: "No matches found."}, nil
+	}
+
+	// Sort by path, then by line number, so output is deterministic across filesystems.
+	sort.SliceStable(matches, func(i, j int) bool {
+		if matches[i].path != matches[j].path {
+			return matches[i].path < matches[j].path
+		}
+		return matches[i].lineno < matches[j].lineno
+	})
+
+	uniqueFiles := 0
+	var prev string
+	for _, m := range matches {
+		if m.path != prev {
+			uniqueFiles++
+			prev = m.path
+		}
+	}
+
+	var buf strings.Builder
+	fmt.Fprintf(&buf, "Found %d matches in %d file(s):\n\n", len(matches), uniqueFiles)
+	for _, m := range matches {
+		fmt.Fprintf(&buf, "%s:%d: %s\n", m.path, m.lineno, m.content)
+	}
+	body, truncated := capString(buf.String(), maxOutputBytes)
+	return grepResult{Content: body, Truncated: truncated}, nil
+}
+
+type contentReplaceResult struct {
+	Content          string `json:"content"`
+	ReplacementsMade int    `json:"replacements_made"`
+	FilesModified    int    `json:"files_modified"`
+	DryRun           bool   `json:"dry_run"`
+	Truncated        bool   `json:"truncated,omitempty"`
+}
+
+// contentReplace performs a literal (not regex) search-and-replace across every file under
+// searchPath whose basename matches filePattern. In dry-run mode no files are written; the
+// output summarizes what would change. Mirrors the upstream mcp-claude-code
+// `content_replace` tool.
+func (f *Filesystem) contentReplace(
+	pattern, replacement, searchPath, filePattern string, dryRun bool,
+) (contentReplaceResult, error) {
+	if pattern == "" {
+		return contentReplaceResult{}, errors.New("pattern is required")
+	}
+	if searchPath == "" {
+		return contentReplaceResult{}, errors.New("path is required")
+	}
+	if filePattern == "" {
+		filePattern = "*"
+	}
+	if _, err := filepath.Match(filePattern, "x"); err != nil {
+		return contentReplaceResult{}, fmt.Errorf("invalid file_pattern %q: %w", filePattern, err)
+	}
+	abs, err := f.resolve(searchPath)
+	if err != nil {
+		return contentReplaceResult{}, err
+	}
+
+	type fileResult struct {
+		path  string
+		count int
+	}
+	var results []fileResult
+	totalReplacements := 0
+
+	processFile := func(path string) error {
+		b, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil //nolint:nilerr // skip unreadable files (same stance as grep)
+		}
+		if isBinary(b) {
+			return nil
+		}
+		before := string(b)
+		count := strings.Count(before, pattern)
+		if count == 0 {
+			return nil
+		}
+		results = append(results, fileResult{path: path, count: count})
+		totalReplacements += count
+		if dryRun {
+			return nil
+		}
+		after := strings.ReplaceAll(before, pattern, replacement)
+		return os.WriteFile(path, []byte(after), 0o600)
+	}
+
+	if err := walkMatching(abs, filePattern, processFile); err != nil {
+		return contentReplaceResult{}, err
+	}
+
+	if totalReplacements == 0 {
+		return contentReplaceResult{}, fmt.Errorf("pattern %q not found in any matching file", pattern)
+	}
+
+	sort.Slice(results, func(i, j int) bool { return results[i].path < results[j].path })
+
+	var buf strings.Builder
+	if dryRun {
+		fmt.Fprintf(&buf, "Dry run: %d replacements of '%s' with '%s' would be made in %d files:\n\n",
+			totalReplacements, pattern, replacement, len(results))
+	} else {
+		fmt.Fprintf(&buf, "Made %d replacements of '%s' with '%s' in %d files:\n\n",
+			totalReplacements, pattern, replacement, len(results))
+	}
+	for _, r := range results {
+		fmt.Fprintf(&buf, "%s: %d replacements\n", r.path, r.count)
+	}
+	body, truncated := capString(buf.String(), maxOutputBytes)
+	return contentReplaceResult{
+		Content:          body,
+		ReplacementsMade: totalReplacements,
+		FilesModified:    len(results),
+		DryRun:           dryRun,
+		Truncated:        truncated,
+	}, nil
 }

@@ -519,7 +519,25 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("unmarshal invoke result: %w", err)
 			}
-			resultPV := resource.NewProperty(resultPM)
+			// Methods declared with ReturnTypePlain but no object return type carry the single value in a
+			// property map with exactly one entry, whose key may be any name. Unwrap it so callers get the
+			// value directly.
+			var resultPV resource.PropertyValue
+			if fun.ReturnTypePlain {
+				if _, isObject := fun.ReturnType.(*schema.ObjectType); !isObject {
+					if len(resultPM) != 1 {
+						return cty.NilVal, fmt.Errorf(
+							"invoke %q: expected a single return value, got %d", fun.Token, len(resultPM))
+					}
+					for _, v := range resultPM {
+						resultPV = v
+					}
+				} else {
+					resultPV = resource.NewProperty(resultPM)
+				}
+			} else {
+				resultPV = resource.NewProperty(resultPM)
+			}
 			if len(dependsOn) > 0 {
 				resultPV = resource.NewProperty(resource.Output{
 					Element:      resultPV,

@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
@@ -502,14 +501,6 @@ func (r *Registry) setProviderLocked(ref providers.Reference, provider plugin.Pr
 	}
 }
 
-func (r *Registry) cancelAndCloseProvider(provider plugin.Provider) {
-	cancelCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	contract.IgnoreError(provider.SignalCancellation(cancelCtx))
-	contract.IgnoreClose(provider)
-}
-
 // setProviderAndCloseOld sets the provider at ref and closes any previously registered provider at that ref.
 // This should be used when overwriting is expected (e.g., Update) to avoid leaking the old provider instance.
 func (r *Registry) setProviderAndCloseOld(ref providers.Reference, provider plugin.Provider) {
@@ -520,7 +511,7 @@ func (r *Registry) setProviderAndCloseOld(ref providers.Reference, provider plug
 
 	if hadOld && oldProvider != provider {
 		logging.V(7).Infof("setProviderAndCloseOld(%v): closing old provider", ref)
-		r.cancelAndCloseProvider(oldProvider)
+		contract.IgnoreClose(oldProvider)
 	}
 }
 
@@ -689,7 +680,7 @@ func (r *Registry) Check(ctx context.Context, req plugin.CheckRequest) (plugin.C
 		AllowUnknowns: true,
 	})
 	if len(resp.Failures) != 0 || err != nil {
-		r.cancelAndCloseProvider(provider)
+		contract.IgnoreClose(provider)
 		return plugin.CheckResponse{Failures: resp.Failures}, err
 	}
 
@@ -783,7 +774,7 @@ func (r *Registry) Diff(ctx context.Context, req plugin.DiffRequest) (plugin.Dif
 
 	// If the diff requires replacement, unload the provider: the engine will reload it during its replacememnt Check.
 	if diff.Replace() {
-		r.cancelAndCloseProvider(provider)
+		contract.IgnoreClose(provider)
 	}
 
 	logging.V(7).Infof("%s: executed (%#v, %#v)", label, diff.Changes, diff.ReplaceKeys)
@@ -878,7 +869,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool
 		ID:     &res.ID,
 		Inputs: FilterProviderConfig(res.Inputs),
 	}); err != nil {
-		r.cancelAndCloseProvider(provider)
+		contract.IgnoreClose(provider)
 		return fmt.Errorf("configure provider '%v': %w", urn, err)
 	}
 
@@ -892,7 +883,7 @@ func (r *Registry) Same(ctx context.Context, res *resource.State, fromCheck bool
 	} else {
 		if !r.setProviderIfNotExists(ref, provider) {
 			// A provider was already registered (likely by a concurrent Update). Close ours to avoid leaks.
-			r.cancelAndCloseProvider(provider)
+			contract.IgnoreClose(provider)
 		}
 	}
 
@@ -1037,7 +1028,7 @@ func (r *Registry) Delete(_ context.Context, req plugin.DeleteRequest) (plugin.D
 		return plugin.DeleteResponse{}, nil
 	}
 
-	r.cancelAndCloseProvider(provider)
+	contract.IgnoreClose(provider)
 	return plugin.DeleteResponse{}, nil
 }
 

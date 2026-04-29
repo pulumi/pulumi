@@ -1084,11 +1084,11 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 func (i *Interpreter) registerResourceWith(
 	ctx context.Context, res *pcl.Resource, evalCtx *hcl.EvalContext, logicalName string,
 ) (cty.Value, error) {
-	schemaResource, err := i.lookupResource(ctx, res.Token)
+	token, _ := res.GetToken()
+	schemaResource, err := i.lookupResource(ctx, token)
 	if err != nil {
-		return cty.NilVal, fmt.Errorf("lookup resource schema for token %s: %w", res.Token, err)
+		return cty.NilVal, fmt.Errorf("lookup resource schema for token %s: %w", token, err)
 	}
-	token := res.Token
 	if schemaResource != nil {
 		token = schemaResource.Token
 	}
