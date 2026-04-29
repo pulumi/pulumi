@@ -249,9 +249,7 @@ class ProviderServicer(ResourceProviderServicer):
                 is_secret=is_secret,
             )
         )
-        return pulumi.Output._from_data(
-            data_future
-        )
+        return pulumi.Output._from_data(data_future)
 
     @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:

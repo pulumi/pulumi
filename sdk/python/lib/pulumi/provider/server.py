@@ -242,9 +242,7 @@ class ProviderServicer(ResourceProviderServicer):
                 is_secret=is_secret,
             )
         )
-        return pulumi.Output._from_data(
-            data_future
-        )
+        return pulumi.Output._from_data(data_future)
 
     @staticmethod
     def _alias_from_proto(alias: alias_pb2.Alias) -> Union[str | pulumi.Alias]:

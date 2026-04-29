@@ -541,7 +541,9 @@ def resource_output(
             data_future.set_exception(exn)
         else:
             data_future.set_result(
-                _OutputData(resources={res}, value=value, is_known=known, is_secret=secret)
+                _OutputData(
+                    resources={res}, value=value, is_known=known, is_secret=secret
+                )
             )
 
     return resolve, Output._from_data(data_future)
