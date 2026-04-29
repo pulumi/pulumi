@@ -21,6 +21,7 @@ import (
 	"github.com/blang/semver"
 	pconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -66,7 +67,7 @@ func createPluginRPCServer(
 	installPlugin := newInstallPluginFunc(pctx)
 
 	baseMapper, err := pconvert.NewBasePluginMapper(
-		pconvert.DefaultWorkspace(),
+		pluginstorage.Instance,
 		"terraform",
 		pconvert.ProviderFactoryFromHost(ctx, pctx.Host),
 		installPlugin,

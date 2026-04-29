@@ -48,6 +48,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	resourcestack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -769,7 +770,7 @@ func NewImportCmd() *cobra.Command {
 				}
 
 				baseMapper, err := convert.NewBasePluginMapper(
-					convert.DefaultWorkspace(),
+					pluginstorage.Instance,
 					from, /*conversionKey*/
 					convert.ProviderFactoryFromHost(ctx, pCtx.Host),
 					installPlugin,

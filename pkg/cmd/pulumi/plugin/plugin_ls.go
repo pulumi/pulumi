@@ -25,12 +25,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginLsCmd() *cobra.Command {
+func newPluginLsCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var projectOnly bool
 	var jsonOut bool
 	cmd := &cobra.Command{
@@ -51,7 +52,7 @@ func newPluginLsCmd() *cobra.Command {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
 			} else {
-				if plugins, err = workspace.GetPluginsWithMetadata(); err != nil {
+				if plugins, err = pluginContext.GetPlugins(cmd.Context()); err != nil {
 					return fmt.Errorf("loading plugins: %w", err)
 				}
 			}

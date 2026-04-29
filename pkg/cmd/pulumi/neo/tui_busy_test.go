@@ -85,7 +85,7 @@ func TestBusy_NoFlickerOnCLIToolHandoff(t *testing.T) {
 	model, _ = model.Update(UIToolProgress{Name: "filesystem__read", Message: "reading"})
 	assert.True(t, model.(Model).busy)
 
-	// Step 4: first tool completes; inter-tool gap uses a thinking verb.
+	// Step 4: first tool completes; inter-tool gap shows the thinking label.
 	model, _ = model.Update(UIToolCompleted{Name: "filesystem__read", Args: json.RawMessage(`{"file_path":"/x"}`)})
 	assert.True(t, model.(Model).busy)
 
@@ -164,8 +164,8 @@ func TestBusy_CancellingSubstate(t *testing.T) {
 	require.NotEqual(t, -1, idx)
 	assert.Equal(t, "Cancelling...", m.blocks[idx].label)
 
-	// Any non-final event while cancelling keeps the cancelling label, not a
-	// fresh thinking verb or tool label.
+	// Any non-final event while cancelling keeps the cancelling label, not the
+	// thinking label or a tool label.
 	model, _ = model.Update(UIToolStarted{Name: "filesystem__read"})
 	m = model.(Model)
 	idx = m.findBlockKind(blockBusy)
