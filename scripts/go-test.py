@@ -128,7 +128,8 @@ if not dryrun:
                     for msg in build_errors:
                         print(msg, end='', file=sys.stderr)
                     print("=== End build errors ===", file=sys.stderr)
-            except Exception:
+            except Exception as e:
+                print(e, file=sys.stderr)
                 pass  # Don't mask the original error
         raise e
 else:
