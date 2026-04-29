@@ -72,6 +72,7 @@ class Settings:
         self.dry_run = dry_run
         self.legacy_apply_enabled = legacy_apply_enabled
         self.feature_support = {}
+        self.package_refs = {}
         self.organization = organization
 
         if self.legacy_apply_enabled is None:
@@ -141,6 +142,9 @@ class Settings:
 
     @contextproperty
     def feature_support(self) -> Optional[dict]: ...
+
+    @contextproperty
+    def package_refs(self) -> Optional[dict]: ...
 
     @contextproperty
     def callbacks(self) -> Optional[_CallbackServicer]: ...
@@ -380,8 +384,16 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
     return SETTINGS.feature_support.get("invokeTransforms", False)
 
 
-def _sync_monitor_supports_parameterization() -> bool:
-    return SETTINGS.feature_support.get("parameterization", False)
+async def get_package_ref(key: tuple) -> Any:
+    if not await monitor_supports_feature("parameterization"):
+        return None
+    return SETTINGS.package_refs.get(key, ...)
+
+
+async def set_package_ref(key: tuple, ref: str):
+    if not await monitor_supports_feature("parameterization"):
+        return
+    SETTINGS.package_refs[key] = ref
 
 
 async def monitor_supports_resource_hooks() -> bool:
