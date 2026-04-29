@@ -388,6 +388,103 @@ func TestModel_Update_KeyCtrlC_OtherKeyDisarms(t *testing.T) {
 	}
 }
 
+func TestModel_Update_KeyCtrlC_TimeoutDisarms(t *testing.T) {
+	t.Parallel()
+
+	// The "press again to exit" gate must auto-disarm after a brief window so
+	// it doesn't silently linger across a long idle. The first press schedules
+	// a ctrlCDisarmMsg tagged with the current arm gen; receiving that msg
+	// while still armed at the same gen flips ctrlCArmed back off.
+	m := NewModel(ModelConfig{})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	um := updated.(Model)
+	require.True(t, um.ctrlCArmed)
+	gen := um.ctrlCArmGen
+
+	updated2, _ := um.Update(ctrlCDisarmMsg{gen: gen})
+	um2 := updated2.(Model)
+	assert.False(t, um2.ctrlCArmed, "disarm tick at the current gen must clear the arm")
+	assert.NotContains(t, um2.View(), "Press Ctrl+C again to exit")
+}
+
+func TestModel_Update_KeyCtrlC_StaleDisarmIgnored(t *testing.T) {
+	t.Parallel()
+
+	// A disarm tick from an earlier arm cycle must not clear a fresh arm.
+	// Mechanism: arm, type a key (disarms locally and leaves the old tick
+	// in flight), arm again (gen advances). Delivering the old tick now
+	// must be a no-op because its gen no longer matches.
+	m := NewModel(ModelConfig{})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	um := updated.(Model)
+	staleGen := um.ctrlCArmGen
+
+	updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	um = updated.(Model)
+	require.False(t, um.ctrlCArmed)
+
+	updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	um = updated.(Model)
+	require.True(t, um.ctrlCArmed)
+	require.Greater(t, um.ctrlCArmGen, staleGen, "re-arm must advance the generation")
+
+	updated, _ = um.Update(ctrlCDisarmMsg{gen: staleGen})
+	um = updated.(Model)
+	assert.True(t, um.ctrlCArmed, "stale-gen disarm tick must not clear a fresh arm")
+}
+
+func TestModel_Update_KeyCtrlD_BehavesLikeCtrlC(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+D is wired as an alias for Ctrl+C — same two-press quit gate, same
+	// cancel-when-busy semantics — so users who reach for either binding to
+	// exit get the same behaviour.
+	m := NewModel(ModelConfig{})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	um := updated.(Model)
+	assert.True(t, um.ctrlCArmed, "first Ctrl+D must arm the second-press-to-exit prompt")
+	assert.Contains(t, um.View(), "Press Ctrl+C again to exit",
+		"footer hint must surface even when the first press was Ctrl+D")
+
+	_, cmd := um.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	require.NotNil(t, cmd)
+	_, ok := cmd().(tea.QuitMsg)
+	assert.True(t, ok, "second consecutive Ctrl+D must produce a tea.QuitMsg")
+
+	// Also verify the cross-binding case: Ctrl+C followed by Ctrl+D quits.
+	m2 := NewModel(ModelConfig{})
+	updated2, _ := m2.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	um2 := updated2.(Model)
+	require.True(t, um2.ctrlCArmed)
+	_, cmd2 := um2.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	require.NotNil(t, cmd2)
+	_, ok = cmd2().(tea.QuitMsg)
+	assert.True(t, ok, "Ctrl+C then Ctrl+D must quit just like two Ctrl+Cs")
+}
+
+func TestModel_Update_KeyCtrlD_FirstPressCancelsWhenBusy(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+D while busy mirrors Ctrl+C: post a user_cancel upstream, flip
+	// the cancelling flag, and arm the second-press-to-exit prompt.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	um := updated.(Model)
+	assert.True(t, um.ctrlCArmed)
+	assert.True(t, um.cancelling, "Ctrl+D while busy must trigger cancellation")
+
+	select {
+	case ev := <-outCh:
+		c, ok := ev.event.(apitype.AgentUserEventCancel)
+		require.True(t, ok, "Ctrl+D must post an AgentUserEventCancel, got %T", ev.event)
+		assert.Equal(t, userEventUserCancel, c.Type)
+	default:
+		t.Fatal("Ctrl+D while busy did not post a cancel event")
+	}
+}
+
 func TestModel_View_BusyHintMentionsCancelKeys(t *testing.T) {
 	t.Parallel()
 
