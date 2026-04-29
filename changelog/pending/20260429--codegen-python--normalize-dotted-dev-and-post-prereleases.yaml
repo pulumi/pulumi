@@ -1,0 +1,4 @@
+changes:
+  - type: fix
+    scope: codegen/python
+    description: Translate `X.Y.Z-dev.N` and `X.Y.Z-post.N` semver prereleases to PEP 440 `X.Y.Z.devN` / `X.Y.Z.postN` releases
