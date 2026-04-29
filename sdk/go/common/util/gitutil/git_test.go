@@ -128,7 +128,9 @@ func TestParseGitRepoURL(t *testing.T) {
 	pre = "https://user1:12345@gitlab.com/proj/finally"
 	exp = pre + ".git"
 	test(exp, "", pre)
-	test(exp, "foobar", pre+"/foobar")
+	// GitLab URLs with more than two path segments require an explicit ".git"
+	// marker to disambiguate the repository boundary from a subgroup path.
+	test(exp, "foobar", pre+".git/foobar")
 
 	// SSH URLs.
 	pre = "git@github.com:acmecorp/templates"
@@ -176,6 +178,27 @@ func TestParseGitRepoURL(t *testing.T) {
 	// Not HTTPS.
 	testError("http://github.com/pulumi/templates.git", "invalid URL scheme: http")
 	testError("http://github.com/pulumi/templates", "invalid URL scheme: http")
+
+	// GitLab subgroup URLs without an explicit .git marker are ambiguous and rejected.
+	const gitlabAmbiguousErr = "ambiguous GitLab URL: paths with more than two segments must include " +
+		"a .git marker to indicate the repository boundary " +
+		"(e.g. https://gitlab.com/group/subgroup/repo.git or " +
+		"https://gitlab.com/group/repo.git/subpath)"
+	testError("https://gitlab.com/group/subgroup/repo", gitlabAmbiguousErr)
+	testError("https://gitlab.com/group/subgroup/nested/repo", gitlabAmbiguousErr)
+	// Two-segment GitLab URLs are unambiguous and continue to work (covered above
+	// via "https://user1:12345@gitlab.com/proj/finally"). Adding a .git marker
+	// disambiguates >2-segment URLs in either direction:
+	test(
+		"https://gitlab.com/group/subgroup/repo.git",
+		"",
+		"https://gitlab.com/group/subgroup/repo.git",
+	)
+	test(
+		"https://gitlab.com/group/repo.git",
+		"templates/javascript",
+		"https://gitlab.com/group/repo.git/templates/javascript",
+	)
 }
 
 func TestGetGitReferenceNameOrHashAndSubDirectory(t *testing.T) {

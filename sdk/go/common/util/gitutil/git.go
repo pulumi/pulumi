@@ -863,6 +863,21 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 		}, nil
 	}
 
+	// GitLab supports arbitrarily nested subgroups, so a bare path with more than
+	// two segments is ambiguous: "group/subgroup/repo" could be the project
+	// "group/subgroup" with subpath "repo", or the project "group/subgroup/repo"
+	// with no subpath. We can't disambiguate statically without calling the
+	// GitLab API, so require an explicit ".git" marker in this case. (Other
+	// hosts in this function -- GitHub, Bitbucket -- don't support nested groups,
+	// so the first two segments are unambiguously owner/repo.)
+	if hostname == GitLabHostName && len(paths) > 2 {
+		return gitRepoURLParts{}, errors.New(
+			"ambiguous GitLab URL: paths with more than two segments must include " +
+				"a .git marker to indicate the repository boundary " +
+				"(e.g. https://gitlab.com/group/subgroup/repo.git or " +
+				"https://gitlab.com/group/repo.git/subpath)")
+	}
+
 	owner := paths[0]
 	if owner == "" {
 		return gitRepoURLParts{}, errors.New("invalid Git URL; no owner")
@@ -893,6 +908,12 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 // Additionally, it supports nested git projects, as used by GitLab.
 // For example, "https://github.com/pulumi/platform-team/templates.git/templates/javascript"
 // returns "https://github.com/pulumi/platform-team/templates.git" and "templates/javascript"
+//
+// For GitLab URLs (gitlab.com), paths with more than two segments require an
+// explicit ".git" marker to indicate the repository boundary, since GitLab
+// supports arbitrarily nested subgroups and the boundary is otherwise ambiguous.
+// For example, "https://gitlab.com/group/subgroup/repo" returns an error;
+// use "https://gitlab.com/group/subgroup/repo.git" instead.
 //
 // Note: URL with a hostname of `dev.azure.com`, are currently treated as a raw git clone url
 // and currently do not support subpaths.

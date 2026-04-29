@@ -1,0 +1,10 @@
+changes:
+  - type: fix
+    scope: sdk/go
+    description: |
+      Require an explicit `.git` marker when parsing GitLab URLs with more than two
+      path segments. GitLab supports nested subgroups, which made bare URLs like
+      `gitlab.com/group/subgroup/repo` ambiguous: the parser previously assumed the
+      first two segments were `owner/repo`, which fails to clone subgroup projects.
+      Such URLs now return a clear error pointing at the fix; URLs with a `.git`
+      marker (e.g. `gitlab.com/group/subgroup/repo.git`) work as before.
