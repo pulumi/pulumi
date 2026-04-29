@@ -1014,20 +1014,14 @@ def deserialize_resource(
 
 def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
     is_known = "value" in ref_struct
-    is_known_future: asyncio.Future = asyncio.Future()
-    is_known_future.set_result(is_known)
 
     value = None
     if is_known:
         value = deserialize_property(ref_struct["value"])
-    value_future: asyncio.Future = asyncio.Future()
-    value_future.set_result(value)
 
     is_secret = False
     if "secret" in ref_struct:
         is_secret = deserialize_property(ref_struct["secret"]) is True
-    is_secret_future: asyncio.Future = asyncio.Future()
-    is_secret_future.set_result(is_secret)
 
     resources: set[Resource] = set()
     if "dependencies" in ref_struct:
@@ -1039,9 +1033,15 @@ def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
         for urn in dependencies:
             resources.add(DependencyResource(urn))
 
-    from .. import Output
+    from ..output import Output, _OutputData
 
-    return Output(resources, value_future, is_known_future, is_secret_future)
+    data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
+    data_future.set_result(
+        _OutputData(
+            resources=resources, value=value, is_known=is_known, is_secret=is_secret
+        )
+    )
+    return Output._from_data(data_future)
 
 
 def is_rpc_secret(value: Any) -> bool:
