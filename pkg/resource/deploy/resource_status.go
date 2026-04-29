@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"sync"
 
 	"github.com/gofrs/uuid"
@@ -30,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	interceptors "github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/rpcdebug"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -380,12 +382,12 @@ func (rs *resourceStatusServer) unmarshalViewStep(
 }
 
 // unmarshalDetailedDiff unmarshals the detailed diff from a ViewStep.
-func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) map[string]plugin.PropertyDiff {
+func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) map[property.Path]plugin.PropertyDiff {
 	if !step.GetHasDetailedDiff() {
 		return nil
 	}
 
-	detailedDiff := make(map[string]plugin.PropertyDiff)
+	detailedDiff := make(map[property.Path]plugin.PropertyDiff)
 	for k, v := range step.GetDetailedDiff() {
 		var d plugin.DiffKind
 		switch v.GetKind() {
@@ -405,7 +407,20 @@ func (rs *resourceStatusServer) unmarshalDetailedDiff(step *pulumirpc.ViewStep) 
 			// Consider unknown diff kinds to be simple updates.
 			d = plugin.DiffUpdate
 		}
-		detailedDiff[k] = plugin.PropertyDiff{
+		var p property.Path
+		var pLoose resource.BackCompatPropertyPath
+		if err := pLoose.UnmarshalText([]byte(k)); err != nil {
+			slog.Warn("unable to unmarshal property path",
+				slog.String("property path", k), slog.String("error", err.Error()))
+			p = property.PathFromSegments(property.NewSegment(k))
+		} else if pTight, err := property.Glob(pLoose).AsPath(); err != nil {
+			slog.Warn("unable to unmarshal property path",
+				slog.String("property path", k), slog.String("error", err.Error()))
+			p = property.PathFromSegments(property.NewSegment(k))
+		} else {
+			p = pTight
+		}
+		detailedDiff[p] = plugin.PropertyDiff{
 			Kind:      d,
 			InputDiff: v.GetInputDiff(),
 		}

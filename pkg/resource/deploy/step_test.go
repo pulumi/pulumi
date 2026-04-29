@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -623,7 +624,7 @@ func TestRefreshStepPatterns(t *testing.T) {
 		readInputs           resource.PropertyMap
 		readOutputs          resource.PropertyMap
 		diffResult           plugin.DiffResult
-		expectedDetailedDiff map[string]plugin.PropertyDiff
+		expectedDetailedDiff map[property.Path]plugin.PropertyDiff
 		ignoreChanges        []string
 	}{
 		{
@@ -639,9 +640,9 @@ func TestRefreshStepPatterns(t *testing.T) {
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
 				Changes:      plugin.DiffNone,
-				DetailedDiff: map[string]plugin.PropertyDiff{},
+				DetailedDiff: map[property.Path]plugin.PropertyDiff{},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{},
 		},
 		{
 			// Note: this is probably a case where the TF provider has a bug, a pure in property
@@ -662,12 +663,12 @@ func TestRefreshStepPatterns(t *testing.T) {
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
 				Changes: plugin.DiffSome,
-				DetailedDiff: map[string]plugin.PropertyDiff{
-					"title": {Kind: plugin.DiffUpdate},
+				DetailedDiff: map[property.Path]plugin.PropertyDiff{
+					property.MustParsePath("title"): {Kind: plugin.DiffUpdate},
 				},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{
-				"title": {Kind: plugin.DiffUpdate},
+			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{
+				property.MustParsePath("title"): {Kind: plugin.DiffUpdate},
 			},
 		},
 		{
@@ -690,9 +691,9 @@ func TestRefreshStepPatterns(t *testing.T) {
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
 				Changes:      plugin.DiffNone,
-				DetailedDiff: map[string]plugin.PropertyDiff{},
+				DetailedDiff: map[property.Path]plugin.PropertyDiff{},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{},
 		},
 		{
 			// Note: this is probably a case where the TF provider has a bug, a pure in property
@@ -713,12 +714,12 @@ func TestRefreshStepPatterns(t *testing.T) {
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
 				Changes: plugin.DiffSome,
-				DetailedDiff: map[string]plugin.PropertyDiff{
-					"body": {Kind: plugin.DiffDelete},
+				DetailedDiff: map[property.Path]plugin.PropertyDiff{
+					property.MustParsePath("body"): {Kind: plugin.DiffDelete},
 				},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{
-				"body": {Kind: plugin.DiffAdd},
+			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{
+				property.MustParsePath("body"): {Kind: plugin.DiffAdd},
 			},
 		},
 		{
@@ -741,9 +742,9 @@ func TestRefreshStepPatterns(t *testing.T) {
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
 				Changes:      plugin.DiffNone,
-				DetailedDiff: map[string]plugin.PropertyDiff{},
+				DetailedDiff: map[property.Path]plugin.PropertyDiff{},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{},
+			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{},
 		},
 		{
 			name:   "tfbridge 'optional+computed' property element added",
@@ -760,14 +761,14 @@ func TestRefreshStepPatterns(t *testing.T) {
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
 				Changes: plugin.DiffSome,
-				DetailedDiff: map[string]plugin.PropertyDiff{
-					"tags":     {Kind: plugin.DiffUpdate},
-					"tags.foo": {Kind: plugin.DiffDelete},
+				DetailedDiff: map[property.Path]plugin.PropertyDiff{
+					property.MustParsePath("tags"):     {Kind: plugin.DiffUpdate},
+					property.MustParsePath("tags.foo"): {Kind: plugin.DiffDelete},
 				},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{
-				"tags":     {Kind: plugin.DiffUpdate},
-				"tags.foo": {Kind: plugin.DiffAdd},
+			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{
+				property.MustParsePath("tags"):     {Kind: plugin.DiffUpdate},
+				property.MustParsePath("tags.foo"): {Kind: plugin.DiffAdd},
 			},
 		},
 		{
@@ -795,12 +796,12 @@ func TestRefreshStepPatterns(t *testing.T) {
 			diffResult: plugin.DiffResult{
 				// Diff newInputs, newOutputs, oldInputs
 				Changes: plugin.DiffSome,
-				DetailedDiff: map[string]plugin.PropertyDiff{
-					"tags.foo": {Kind: plugin.DiffUpdate},
+				DetailedDiff: map[property.Path]plugin.PropertyDiff{
+					property.MustParsePath("tags.foo"): {Kind: plugin.DiffUpdate},
 				},
 			},
-			expectedDetailedDiff: map[string]plugin.PropertyDiff{
-				"tags.foo": {Kind: plugin.DiffUpdate},
+			expectedDetailedDiff: map[property.Path]plugin.PropertyDiff{
+				property.MustParsePath("tags.foo"): {Kind: plugin.DiffUpdate},
 			},
 		},
 	}

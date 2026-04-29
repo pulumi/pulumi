@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/stretchr/testify/assert"
@@ -56,7 +57,7 @@ func TestEmptyDetailedDiff(t *testing.T) {
 				Op:           deploy.OpImport,
 				URN:          "urn:pul:resource:type::name",
 				Type:         "urn:pul:resource:type",
-				DetailedDiff: map[string]plugin.PropertyDiff{},
+				DetailedDiff: map[property.Path]plugin.PropertyDiff{},
 			},
 		},
 	)

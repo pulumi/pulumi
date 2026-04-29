@@ -2870,6 +2870,8 @@ func (sg *stepGenerator) getProviderResource(urn resource.URN, provider string) 
 // diff between old and new states.
 const initErrorSpecialKey = "#initerror"
 
+var initErrorPath = property.PathFromSegments(property.NewSegment(initErrorSpecialKey))
+
 // applyReplaceOnChanges adjusts a DiffResult returned from a provider to apply the ReplaceOnChange
 // settings in the desired state and init errors from the previous state.
 func applyReplaceOnChanges(diff plugin.DiffResult,
@@ -2886,17 +2888,13 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 	}
 
 	// Calculate the new DetailedDiff
-	var modifiedDiff map[string]plugin.PropertyDiff
+	var modifiedDiff map[property.Path]plugin.PropertyDiff
 	if diff.DetailedDiff != nil {
-		modifiedDiff = map[string]plugin.PropertyDiff{}
+		modifiedDiff = map[property.Path]plugin.PropertyDiff{}
 		for p, v := range diff.DetailedDiff {
-			diffPath, err := resource.ParsePropertyPath(p)
-			if err != nil {
-				return diff, err
-			}
 			changeToReplace := false
-			for _, replaceOnChangePath := range replaceOnChangePaths {
-				if replaceOnChangePath.Contains(diffPath) {
+			for _, replaceOnChangePath := range replaceOnChanges {
+				if replaceOnChangePath.Matches(p) {
 					changeToReplace = true
 					break
 				}
@@ -2932,15 +2930,11 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 	// Add init errors to modified diff results
 	modifiedChanges := diff.Changes
 	if hasInitErrors {
-		for _, replaceOnChangePath := range replaceOnChangePaths {
-			initErrPath, err := resource.ParsePropertyPath(initErrorSpecialKey)
-			if err != nil {
-				continue
-			}
-			if replaceOnChangePath.Contains(initErrPath) {
+		for _, replaceOnChangePath := range replaceOnChanges {
+			if replaceOnChangePath.Matches(initErrorPath) {
 				modifiedReplaceKeys = append(modifiedReplaceKeys, initErrorSpecialKey)
 				if modifiedDiff != nil {
-					modifiedDiff[initErrorSpecialKey] = plugin.PropertyDiff{
+					modifiedDiff[initErrorPath] = plugin.PropertyDiff{
 						Kind:      plugin.DiffUpdateReplace,
 						InputDiff: false,
 					}

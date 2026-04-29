@@ -337,6 +337,18 @@ func (s IndexSegment) globApply(v Value) ([]Value, PathApplyFailure) {
 
 func (s Path) AsGlob() Glob { return Glob{s.pathRepr} }
 
+// Convert a Glob to a [Path].
+//
+// The conversion errors if the receiver has any [Splat] segments.
+func (g Glob) AsPath() (Path, error) {
+	for s := range g.segments {
+		if s == Splat {
+			return Path{}, errors.New("path contains splat")
+		}
+	}
+	return Path{pathRepr: g.pathRepr, _isPath: struct{}{}}, nil
+}
+
 // Matches returns true if the receiver glob matches the beginning of the given path.
 //
 // For example, the glob `foo["bar"][1]` matches `foo.bar[1].baz`. The glob segment
@@ -378,4 +390,11 @@ func (g Glob) Segments(yield func(GlobSegment) bool) {
 			return
 		}
 	}
+}
+
+func (g Glob) Append(segments ...GlobSegment) Glob {
+	for _, s := range segments {
+		g.pathRepr = g.appendGlobSegment(s)
+	}
+	return g
 }
