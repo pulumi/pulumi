@@ -133,7 +133,7 @@ func TestOrgSearch_RepeatableQuery(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearch(
-			t.Context()
+			t.Context(),
 			optorgsearch.Query([]string{"foo", "bar"}),
 		)
 		return r.Stdout, err
