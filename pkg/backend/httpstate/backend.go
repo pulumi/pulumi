@@ -224,7 +224,7 @@ var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 func New(ctx context.Context, d diag.Sink,
 	cloudURL string, project *workspace.Project, insecure bool,
 ) (Backend, error) {
-	contract.Assertf(d != nil, "expected a non-nil diag.Sink")
+	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
