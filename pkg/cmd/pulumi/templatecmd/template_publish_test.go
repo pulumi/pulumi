@@ -253,15 +253,12 @@ runtime: nodejs
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return mockCloudRegistry, nil
 				},
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return tt.mockOrg, tt.mockOrgErr
+				},
 			})
 
-			defaultOrg := func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-				return tt.mockOrg, tt.mockOrgErr
-			}
-
-			cmd := &templatePublishCmd{
-				defaultOrg: defaultOrg,
-			}
+			cmd := &templatePublishCmd{}
 
 			mockCmd := &cobra.Command{}
 			err := cmd.Run(t.Context(), mockCmd, tt.args, templateDir)
@@ -305,11 +302,7 @@ runtime: nodejs
 
 			tt.setupBackend(t)
 
-			cmd := &templatePublishCmd{
-				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-					return "default-org", nil
-				},
-			}
+			cmd := &templatePublishCmd{}
 
 			mockCmd := &cobra.Command{}
 			err = cmd.Run(t.Context(), mockCmd, publishTemplateArgs{
@@ -335,11 +328,7 @@ func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 
 //nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
 func TestTemplatePublishCmd_Run_ReadProjectError(t *testing.T) {
-	cmd := templatePublishCmd{
-		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-			return "", nil
-		},
-	}
+	cmd := templatePublishCmd{}
 
 	customErr := errors.New("custom project read error")
 	originalWorkspace := pkgWorkspace.Instance
@@ -402,11 +391,10 @@ func TestTemplatePublishCmd_RelativePathBug(t *testing.T) {
 
 	testutil.MockBackendInstance(t, &backend.MockBackend{
 		GetCloudRegistryF: func() (backend.CloudRegistry, error) { return mockCloudRegistry, nil },
+		GetDefaultOrgF:    func(ctx context.Context) (string, error) { return "org", nil },
 	})
 
-	cmd := &templatePublishCmd{
-		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) { return "org", nil },
-	}
+	cmd := &templatePublishCmd{}
 
 	err := cmd.Run(t.Context(), &cobra.Command{}, publishTemplateArgs{
 		publisher: "test", name: "test", version: "1.0.0",
@@ -530,13 +518,12 @@ dist/
 				GetCloudRegistryF: func() (backend.CloudRegistry, error) {
 					return mockCloudRegistry, nil
 				},
-			})
-
-			cmd := &templatePublishCmd{
-				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
 					return "default-org", nil
 				},
-			}
+			})
+
+			cmd := &templatePublishCmd{}
 
 			mockCmd := &cobra.Command{}
 			err := cmd.Run(t.Context(), mockCmd, publishTemplateArgs{
