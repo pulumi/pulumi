@@ -898,7 +898,7 @@ func NewImportCmd() *cobra.Command {
 			// Fetch the current stack.
 			s, err := cmdStack.RequireStack(
 				ctx,
-				cmdutil.Diag(),
+				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
@@ -909,7 +909,7 @@ func NewImportCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, sm, err := config.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
+			cfg, sm, err := config.GetStackConfiguration(ctx, sink, ssml, s, proj)
 			if err != nil {
 				return fmt.Errorf("getting stack configuration: %w", err)
 			}

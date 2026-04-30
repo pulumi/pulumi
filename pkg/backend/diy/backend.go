@@ -1367,7 +1367,7 @@ func (b *diyBackend) apply(
 				// printing a statefile perma link happens after all the providers have finished
 				// deploying the infrastructure, failing the pulumi update because there was a
 				// problem printing a statefile perma link can be missleading in automated CI environments.
-				cmdutil.Diag().Warningf(diag.Message("", "Unable to create signed url for current backend to "+
+				b.d.Warningf(diag.Message("", "Unable to create signed url for current backend to "+
 					"create a Permalink. Please visit https://www.pulumi.com/docs/troubleshooting/ "+
 					"for more information\n"))
 			}
