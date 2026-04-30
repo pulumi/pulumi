@@ -71,8 +71,6 @@ type Logger struct {
 // falls back to gzip until UpgradeToEncrypted is called.
 func StartLogging(
 	ctx context.Context,
-	stackName string,
-	updateID string,
 	sm secrets.Manager,
 ) (*Logger, error) {
 	logsDir, err := workspace.GetPulumiPath("logs")
@@ -86,12 +84,7 @@ func StartLogging(
 	RotateLogs(logsDir)
 
 	ts := time.Now().Format("20060102T150405")
-	safeName := strings.ReplaceAll(stackName, "/", "+")
-	name := safeName + "-" + ts
-	if updateID != "" {
-		name += "-" + updateID
-	}
-	name += ".log"
+	name := "pulumi-" + ts + ".log"
 	filePath := filepath.Join(logsDir, name)
 
 	f, err := os.Create(filePath)

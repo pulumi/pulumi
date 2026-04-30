@@ -292,7 +292,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			if env.EnableAutomaticLogging.Value() {
 				var logErr error
 				autoLogger, logErr = backendlogging.StartLogging(
-					cmd.Context(), "pulumi", "" /* updateID */, nil /* sm */)
+					cmd.Context(), nil /* sm */)
 				if logErr != nil {
 					logging.V(3).Infof("automatic logging unavailable: %v", logErr)
 				}
