@@ -482,32 +482,44 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 	runPipInstall := func(errorMsg string, arg ...string) error {
 		args := append([]string{"-m", "pip", "install"}, arg...)
 
-		var pipCmd *exec.Cmd
-		if venvDir == "" {
-			var err error
-			pipCmd, err = Command(ctx, args...)
-			if err != nil {
-				return err
+		// Retry up to 3 times to handle transient PyPI issues (e.g. CDN
+		// returning unexpected Content-Type responses).
+		const maxAttempts = 3
+		var lastErr error
+		for attempt := range maxAttempts {
+			var pipCmd *exec.Cmd
+			if venvDir == "" {
+				var err error
+				pipCmd, err = Command(ctx, args...)
+				if err != nil {
+					return err
+				}
+			} else {
+				pipCmd = VirtualEnvCommand(venvDir, "python", args...)
 			}
-		} else {
-			pipCmd = VirtualEnvCommand(venvDir, "python", args...)
-		}
-		pipCmd.Dir = cwd
-		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
+			pipCmd.Dir = cwd
+			pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
-		if showOutput {
-			// Show stdout/stderr output.
-			pipCmd.Stdout = infoWriter
-			pipCmd.Stderr = errorWriter
-			if err := pipCmd.Run(); err != nil {
-				return fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
+			if showOutput {
+				// Show stdout/stderr output.
+				pipCmd.Stdout = infoWriter
+				pipCmd.Stderr = errorWriter
+				if err := pipCmd.Run(); err != nil {
+					lastErr = fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
+					if attempt < maxAttempts-1 {
+						fmt.Fprintf(errorWriter, "Retrying (%d/%d)...\n", attempt+1, maxAttempts)
+					}
+					continue
+				}
+			} else {
+				if _, err := pipCmd.Output(); err != nil {
+					lastErr = errutil.ErrorWithStderr(err, strings.Join(pipCmd.Args, " "))
+					continue
+				}
 			}
-		} else {
-			if _, err := pipCmd.Output(); err != nil {
-				return errutil.ErrorWithStderr(err, strings.Join(pipCmd.Args, " "))
-			}
+			return nil
 		}
-		return nil
+		return lastErr
 	}
 
 	printmsg("Updating pip, setuptools, and wheel in virtual environment...")
