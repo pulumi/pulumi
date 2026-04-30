@@ -148,7 +148,7 @@ func TestOrgSearchAi_SingleQuery(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearchAi(
-			t.Context()
+			t.Context(),
 			optorgsearchai.Query("hello"),
 		)
 		return r.Stdout, err
