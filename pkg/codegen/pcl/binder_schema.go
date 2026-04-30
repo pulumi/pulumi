@@ -227,7 +227,7 @@ func canonicalizeToken(tok string, pkg schema.PackageReference) string {
 // getPkgOpts gets the package options from an unbound resource node.
 func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	node.VariableType = model.NewObjectType(map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
+		"id":  model.NewOutputType(model.IDType),
 		"urn": model.NewOutputType(model.StringType),
 	})
 	var rangeKey, rangeValue model.Type

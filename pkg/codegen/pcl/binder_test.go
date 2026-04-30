@@ -491,7 +491,7 @@ output "knownId" {
 		}
 
 		if output.Name() == "knownId" {
-			assert.Equal(t, model.StringType, outputType)
+			assert.Equal(t, model.IDType, outputType)
 		}
 	}
 

@@ -295,7 +295,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					scalarType = cns.Type
 				}
 				switch scalarType {
-				case model.StringType, model.IntType, model.NumberType, model.BoolType, model.DynamicType:
+				case model.StringType, model.IntType, model.NumberType, model.BoolType, model.DynamicType, model.IDType:
 					if typeName := g.argumentTypeName(to, isOutput); typeName != "" {
 						g.Fgenf(w, "%s(", typeName)
 						g.genScopeTraversalExpression(w, arg, expr.Type())
@@ -331,19 +331,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 			} else {
 				typeName := g.argumentTypeName(to, isOutput)
 				// IDOutput has a special case where it can be converted to a string
-				var isID bool
-				switch expr := from.(type) {
-				case *model.ScopeTraversalExpression:
-					last := expr.Traversal[len(expr.Traversal)-1]
-					if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
-						isID = true
-					}
-				case *model.RelativeTraversalExpression:
-					last := expr.Traversal[len(expr.Traversal)-1]
-					if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
-						isID = true
-					}
-				}
+				isID := model.ResolveOutputs(fromType).Equals(model.IDType)
 
 				if typeName == "" {
 					g.Fgenf(w, "%.v", from)
@@ -993,9 +981,14 @@ func (g *generator) genScopeTraversalExpression(
 				defer g.Fgenf(w, ")")
 			}
 		} else {
-			// Wrap the emitted expression in a type conversion.
-			g.Fgenf(w, "%s(", g.argumentTypeName(expr.Type(), isInput))
-			defer g.Fgenf(w, ")")
+			// skip wrapping ID in pulumi.String
+			to := model.ResolveOutputs(destType)
+			from := model.ResolveOutputs(expr.Type())
+			if !to.Equals(model.IDType) || !from.Equals(model.StringType) {
+				// Wrap the emitted expression in a type conversion.
+				g.Fgenf(w, "%s(", g.argumentTypeName(expr.Type(), isInput))
+				defer g.Fgenf(w, ")")
+			}
 		}
 	}
 
@@ -1217,6 +1210,11 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 				return "pulumi.String"
 			}
 			return "string"
+		case *model.IDType:
+			if isInput {
+				return "pulumi.IDInput"
+			}
+			return "pulumi.ID"
 		case *model.BoolType:
 			if isInput {
 				return "pulumi.Bool"
@@ -1264,6 +1262,9 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			if argTypeName == "pulumi.Any" {
 				return "pulumi.Array"
 			}
+			if argTypeName == "pulumi.IDInput" {
+				return "pulumi.IDArray"
+			}
 			return argTypeName + "Array"
 		}
 		return "[]" + argTypeName
@@ -1292,6 +1293,9 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			if strings.HasPrefix(argTypeName, "pulumi.") && !isResourceTypeName {
 				if argTypeName == "pulumi.Any" {
 					return "pulumi.Array"
+				}
+				if argTypeName == "pulumi.IDInput" {
+					return "pulumi.IDArray"
 				}
 				return argTypeName + "Array"
 			}

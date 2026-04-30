@@ -464,7 +464,14 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				genMaybeOutputConversion(func(v string) {
 					g.Fgenf(w, `%s === "true"`, v)
 				})
-			case model.StringType.AssignableFrom(to) && !model.StringType.AssignableFrom(fromType):
+			// ids and strings are treated interchangeably in JavaScript, so if we are casting to id but
+			// already have string _or_ id that's fine. Same for casting to string.
+			case model.StringType.AssignableFrom(to) &&
+				!model.StringType.AssignableFrom(fromType) &&
+				!model.IDType.AssignableFrom(fromType),
+				model.IDType.AssignableFrom(to) &&
+					!model.StringType.AssignableFrom(fromType) &&
+					!model.IDType.AssignableFrom(fromType):
 				genMaybeOutputConversion(func(v string) {
 					g.Fgenf(w, "String(%s)", v)
 				})

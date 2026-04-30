@@ -710,7 +710,7 @@ func componentElementType(pclType model.Type) string {
 		return "boolean"
 	case model.IntType, model.NumberType:
 		return "number"
-	case model.StringType:
+	case model.IDType, model.StringType:
 		return "string"
 	default:
 		switch pclType := pclType.(type) {
@@ -1679,7 +1679,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 
 func computeConfigTypeParam(configType model.Type) string {
 	switch pcl.UnwrapOption(configType) {
-	case model.StringType:
+	case model.IDType, model.StringType:
 		return "string"
 	case model.NumberType, model.IntType:
 		return "number"

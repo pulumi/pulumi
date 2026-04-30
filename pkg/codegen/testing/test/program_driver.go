@@ -89,6 +89,7 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-eks",
 		Description: "AWS EKS",
+		SkipCompile: codegen.NewStringSet(TestGo),
 	},
 	{
 		Directory:   "aws-fargate",

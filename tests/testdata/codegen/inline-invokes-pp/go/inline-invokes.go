@@ -14,7 +14,7 @@ func main() {
 			return err
 		}
 		_, err = ec2.NewSecurityGroup(ctx, "webSecurityGroup", &ec2.SecurityGroupArgs{
-			VpcId: invokeLookupVpc.Id,
+			VpcId: pulumi.String(invokeLookupVpc.Id),
 		})
 		if err != nil {
 			return err

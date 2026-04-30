@@ -247,6 +247,8 @@ func componentInputElementType(pclType model.Type) string {
 		return "pulumi.Float64Input"
 	case model.StringType:
 		return "pulumi.StringInput"
+	case model.IDType:
+		return "pulumi.IDInput"
 	default:
 		switch pclType := pclType.(type) {
 		case *model.ListType, *model.MapType:
@@ -1158,6 +1160,9 @@ func (g *generator) genPostamble(w io.Writer, nodes []pcl.Node) {
 func (g *generator) genHelpers(w io.Writer) {
 	for _, v := range g.arrayHelpers {
 		inputType := strings.TrimSuffix(v.destType, "Array")
+		if inputType == "pulumi.IDArray" {
+			inputType = "pulumi.IDInput"
+		}
 		parts := strings.Split(inputType, ".")
 		contract.Assertf(len(parts) == 2, "genHelpers inputType expected to have two parts.")
 		typ := parts[1]
@@ -1722,6 +1727,8 @@ func deferredOutputTypeParameter(outputType model.Type) string {
 		return "float64"
 	case model.StringType:
 		return "string"
+	case model.IDType:
+		return "pulumi.ID"
 	default:
 		switch exprType := unwrapped.(type) {
 		case *model.ListType:
@@ -1748,6 +1755,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 		return "pulumi.Float64Output"
 	case model.StringType:
 		return "pulumi.StringOutput"
+	case model.IDType:
+		return "pulumi.IDOutput"
 	default:
 		switch exprType := unwrapped.(type) {
 		case *model.ListType:
@@ -1760,6 +1769,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 				return "pulumi.Float64ArrayOutput"
 			case model.StringType:
 				return "pulumi.StringArrayOutput"
+			case model.IDType:
+				return "pulumi.IDArrayOutput"
 			}
 			return "pulumi.ArrayOutput"
 		case *model.MapType:
@@ -1772,6 +1783,8 @@ func deferredOutputCastTypeParameter(outputType model.Type) string {
 				return "pulumi.Float64MapOutput"
 			case model.StringType:
 				return "pulumi.StringMapOutput"
+			case model.IDType:
+				return "pulumi.IDMapOutput"
 			}
 			return "pulumi.MapOutput"
 		case *model.OutputType:
@@ -2069,6 +2082,9 @@ func (g *generator) genTempsMultiReturn(w io.Writer, temps []any, zeroValueType 
 		case *splatTemp:
 			argTyp := g.argumentTypeName(t.Value.Each.Type(), false)
 			if strings.Contains(argTyp, ".") {
+				if argTyp == "pulumi.IDInput" {
+					argTyp = "pulumi.ID"
+				}
 				g.Fgenf(w, "var %s %sArray\n", t.Name, argTyp)
 			} else {
 				g.Fgenf(w, "var %s []%s\n", t.Name, argTyp)

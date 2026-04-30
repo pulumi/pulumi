@@ -47,11 +47,11 @@ func main() {
 		}
 		_, err = primitive.NewResource(ctx, "sink1", &primitive.ResourceArgs{
 			Boolean: pulumi.Bool(false),
-			Float:   idMap["source1Token"].(string),
-			Integer: idMap["source1Token"].(string),
-			String:  idMap["source1Token"].(string),
+			Float:   idMap["source1Token"].(pulumi.ID),
+			Integer: idMap["source1Token"].(pulumi.ID),
+			String:  idMap["source1Token"].(pulumi.ID),
 			NumberArray: pulumi.Float64Array{
-				idMap["source1Token"].(string),
+				idMap["source1Token"].(pulumi.ID),
 			},
 			BooleanMap: pulumi.BoolMap{
 				"sink": pulumi.Bool(false),
@@ -61,7 +61,7 @@ func main() {
 			return err
 		}
 		sink2, err := primitive.NewResource(ctx, "sink2", &primitive.ResourceArgs{
-			Boolean: idMap["source2Token"].(string),
+			Boolean: idMap["source2Token"].(pulumi.ID),
 			Float:   pulumi.Float64(1),
 			Integer: pulumi.Int(2),
 			String:  pulumi.String("abc"),
@@ -69,15 +69,15 @@ func main() {
 				pulumi.Float64(3),
 			},
 			BooleanMap: pulumi.BoolMap{
-				"sink": idMap["source2Token"].(string),
+				"sink": idMap["source2Token"].(pulumi.ID),
 			},
 		})
 		if err != nil {
 			return err
 		}
 		ctx.Export("ids", idMap)
-		ctx.Export("base64", sink2.ID().ApplyT(func(id string) (pulumi.String, error) {
-			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(id))), nil
+		ctx.Export("base64", sink2.ID().ApplyT(func(id pulumi.ID) (pulumi.String, error) {
+			return pulumi.String(base64.StdEncoding.EncodeToString([]byte(pulumi.String(id)))), nil
 		}).(pulumi.StringOutput))
 		return nil
 	})
