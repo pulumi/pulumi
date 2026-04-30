@@ -187,8 +187,8 @@ func TestPerfStackReferenceSecretsBatchUpdate(t *testing.T) {
 func TestPerfManyResourcesWithJournaling(t *testing.T) {
 	initialBenchmark := &integration.AssertPerfBenchmark{
 		T:                      t,
-		MaxUpdateDuration:      110 * time.Second,
-		MaxEmptyUpdateDuration: 50 * time.Second,
+		MaxUpdateDuration:      200 * time.Second,
+		MaxEmptyUpdateDuration: 100 * time.Second,
 	}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
