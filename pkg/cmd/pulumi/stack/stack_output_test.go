@@ -111,7 +111,7 @@ func TestStackOutputCmd_plainText(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, LoadOption, display.Options,
+				string, string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -222,7 +222,7 @@ func TestStackOutputCmd_json(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, LoadOption, display.Options,
+				string, string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -343,7 +343,7 @@ func TestStackOutputCmd_shell(t *testing.T) {
 				},
 			}
 			requireStack := func(context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
-				string, LoadOption, display.Options,
+				string, string, LoadOption, display.Options,
 			) (backend.Stack, error) {
 				return &backend.MockStack{
 					SnapshotF: func(_ context.Context, _ secrets.Provider) (*deploy.Snapshot, error) {
@@ -381,7 +381,8 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 
 	cmd := stackOutputCmd{
 		requireStack: func(
-			context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager, string, LoadOption, display.Options,
+			context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
+			string, string, LoadOption, display.Options,
 		) (backend.Stack, error) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")

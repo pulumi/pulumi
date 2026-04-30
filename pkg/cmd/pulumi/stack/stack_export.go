@@ -56,12 +56,13 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack and export its deployment
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
+				getStackOrg(cmd),
 				LoadOnly,
 				opts,
 			)

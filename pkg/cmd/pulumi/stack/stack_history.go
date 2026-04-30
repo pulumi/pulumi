@@ -62,12 +62,13 @@ This command displays data about previous updates for a stack.`,
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				cmdutil.Diag(),
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stack,
+				getStackOrg(cmd),
 				LoadOnly,
 				opts,
 			)
