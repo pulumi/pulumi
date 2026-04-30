@@ -1120,36 +1120,17 @@ func (i *Interpreter) registerResourceWith(
 		token = schemaResource.Token
 	}
 
-	inputs := resource.PropertyMap{}
-	for _, attr := range res.Inputs {
-		targetType := attr.Value.Type()
-		if obj, ok := res.InputType.(*model.ObjectType); ok {
-			if prop, ok := obj.Properties[attr.Name]; ok {
-				targetType = prop
-			}
-		}
-
-		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
-		if diags.HasErrors() {
-			return cty.NilVal, diags
-		}
-
-		val, poison, diags := evalCtx.Evaluate(expr)
-		if poison != nil {
-			return makePoisonValue(*poison), nil
-		}
-		if diags.HasErrors() {
-			return cty.NilVal, diags
-		}
-		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
+	var properties []*schema.Property
+	if schemaResource != nil {
+		properties = schemaResource.InputProperties
 	}
 
-	if schemaResource != nil {
-		converted, err := applySchemaInputs(inputs, schemaResource.InputProperties)
-		if err != nil {
-			return cty.NilVal, err
-		}
-		inputs = converted
+	inputs, poison, diags := evalCtx.EvaluateObject(res.Inputs, res.InputType, properties)
+	if poison != nil {
+		return makePoisonValue(*poison), nil
+	}
+	if diags.HasErrors() {
+		return cty.NilVal, diags
 	}
 
 	marshalOpts := plugin.MarshalOptions{
@@ -1820,29 +1801,13 @@ func (i *Interpreter) registerResourceWith(
 }
 
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
-	inputs := resource.PropertyMap{}
-	for _, attr := range component.Inputs {
-		targetType := attr.Value.Type()
-		if obj, ok := component.InputType.(*model.ObjectType); ok {
-			if prop, ok := obj.Properties[attr.Name]; ok {
-				targetType = prop
-			}
-		}
-
-		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
-		if diags.HasErrors() {
-			return diags
-		}
-
-		val, poison, diags := i.evalContext.Evaluate(expr)
-		if poison != nil {
-			i.evalContext.SetVariable(component.Name(), makePoisonValue(*poison))
-			return nil
-		}
-		if diags.HasErrors() {
-			return diags
-		}
-		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
+	inputs, poison, diags := i.evalContext.EvaluateObject(component.Inputs, component.InputType, nil)
+	if poison != nil {
+		i.evalContext.SetVariable(component.Name(), makePoisonValue(*poison))
+		return nil
+	}
+	if diags.HasErrors() {
+		return diags
 	}
 
 	marshalOpts := plugin.MarshalOptions{

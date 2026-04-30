@@ -99,11 +99,16 @@ func tryExpressions(
 }
 
 func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
-	literalStringFn := func(value string) function.Function {
+	// If errorName is set and value is empty, the function will return an error with the given name. This is used for
+	// functions that are only supported in some contexts, like rootDirectory not always being available in `pulumi do`.
+	literalStringFn := func(value, errorName string) function.Function {
 		return function.New(&function.Spec{
 			Params: []function.Parameter{},
 			Type:   function.StaticReturnType(cty.String),
 			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				if errorName != "" && value == "" {
+					return cty.NilVal, fmt.Errorf("%s is not supported", errorName)
+				}
 				return cty.StringVal(value), nil
 			},
 		})
@@ -1018,11 +1023,11 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 	})
 
 	return map[string]function.Function{
-		"cwd":                literalStringFn(ectx.workingDirectory),
-		"rootDirectory":      literalStringFn(ectx.rootDirectory),
-		"project":            literalStringFn(ectx.project),
-		"stack":              literalStringFn(ectx.stack),
-		"organization":       literalStringFn(ectx.organization),
+		"cwd":                literalStringFn(ectx.workingDirectory, ""),
+		"rootDirectory":      literalStringFn(ectx.rootDirectory, "rootDirectory"),
+		"project":            literalStringFn(ectx.project, "project"),
+		"stack":              literalStringFn(ectx.stack, "stack"),
+		"organization":       literalStringFn(ectx.organization, "organization"),
 		"secret":             secretFn,
 		"unsecret":           unsecretFn,
 		"try":                tryFn,

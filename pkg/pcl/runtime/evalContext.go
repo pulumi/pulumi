@@ -17,10 +17,12 @@ package runtime
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -126,4 +128,71 @@ func (ectx *EvalContext) Evaluate(expr model.Expression) (resource.PropertyValue
 		return resource.PropertyValue{}, nil, diags
 	}
 	return pv, nil, diags
+}
+
+// EvaluateObject evaluates a list of bound attributes against a target input type and schema. If any attribute
+// evaluates to a poisoned value (e.g. an upstream resource that failed to create) the poison name is returned in the
+// second result and evaluation stops early. Callers decide whether to propagate the poison (the interpreter, so that
+// dependents are skipped) or surface it as an error (one-shot callers like `pulumi do`).
+func (ectx *EvalContext) EvaluateObject(
+	attrs []*model.Attribute, inputType model.Type, properties []*schema.Property,
+) (resource.PropertyMap, *string, hcl.Diagnostics) {
+	values := resource.PropertyMap{}
+	var diagnostics hcl.Diagnostics
+
+	// Look up the per-attribute target type from inputType once, unwrapping any optional wrapper. We want the same
+	// model.Type instances the binder built so that RewriteConversions can use pointer identity where it matters.
+	var inputProperties map[string]model.Type
+	inputType = pcl.UnwrapOption(inputType)
+	if obj, ok := inputType.(*model.ObjectType); ok {
+		inputProperties = obj.Properties
+	}
+
+	for _, attr := range attrs {
+		targetType := attr.Value.Type()
+		if t, ok := inputProperties[attr.Name]; ok {
+			targetType = t
+		}
+
+		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
+		diagnostics = append(diagnostics, diags...)
+		if diags.HasErrors() {
+			continue
+		}
+
+		value, poison, diags := ectx.Evaluate(expr)
+		diagnostics = append(diagnostics, diags...)
+		if diags.HasErrors() {
+			continue
+		}
+		if poison != nil {
+			// Stop evaluating further attributes — the caller will decide what to do with the poison.
+			return nil, poison, diagnostics
+		}
+		values[resource.PropertyKey(attr.Name)] = collapseResourceReferences(value)
+	}
+
+	values, err := applySchemaInputs(values, properties)
+	if err != nil {
+		// Subject is the start and end of the attributes
+		var rng hcl.Range
+		for _, attr := range attrs {
+			attrRng := attr.Syntax.Range()
+			if attrRng.Start.Byte < rng.Start.Byte {
+				rng.Start = attrRng.Start
+			}
+			if attrRng.End.Byte > rng.End.Byte {
+				rng.End = attrRng.End
+			}
+		}
+		diag := &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Subject:  &rng,
+			Summary:  fmt.Sprintf("apply schema inputs: %v", err),
+		}
+		diagnostics = append(diagnostics, diag)
+		return nil, nil, diagnostics
+	}
+
+	return values, nil, diagnostics
 }

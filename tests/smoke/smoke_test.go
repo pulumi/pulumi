@@ -1244,3 +1244,23 @@ func TestTerraformUp(t *testing.T) {
 		"please see the documentation at "+
 		"https://www.pulumi.com/docs/iac/guides/migration/migrating-to-pulumi/from-terraform/")
 }
+
+// Test that `pulumi do` can invoke a real provider function end-to-end. We use the command provider's local:run
+// function because it's small, well-behaved, and exercises both an input file and a structured JSON output.
+func TestDoCommandLocalRun(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Allow auto-acquiring the command plugin.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n")
+
+	stdout, _ := e.RunCommand("pulumi", "do", "command", "local", "run", "--input-file", "inputs.pcl")
+
+	var result map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "expected JSON output, got: %s", stdout)
+	assert.Equal(t, "hello", strings.TrimSpace(fmt.Sprint(result["stdout"])))
+}
