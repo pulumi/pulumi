@@ -154,7 +154,7 @@ func writeCachedSpec(path string, data []byte) error {
 	}
 	defer func() { _ = mutex.Unlock() }()
 
-	//nolint:forbidigo // We acquire a mutex to avoid concurrent writes, so we can use os.Rename for atomicity guarantees.
+	//nolint:forbidigo // We acquire a mutex to avoid concurrent writes
 	if err := os.Rename(tmpPath, path); err != nil {
 		return fmt.Errorf("renaming temp file: %w", err)
 	}
