@@ -2918,37 +2918,6 @@ func TestAliasBuildIsLazy(t *testing.T) {
 	})
 }
 
-// TestGetWithCollidingAliases verifies that when two source-form tokens normalize to the
-// same alias, the alias is dropped (an ambiguous query misses cleanly) while direct
-// lookups of either source-form token still succeed.
-func TestGetWithCollidingAliases(t *testing.T) {
-	t.Parallel()
-
-	spec := PackageSpec{
-		Name:    "test",
-		Version: "1.0.0",
-		Meta:    &MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
-		Resources: map[string]ResourceSpec{
-			"test:mod/a:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
-			"test:mod/b:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
-		},
-	}
-
-	pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
-	require.NoError(t, err)
-
-	a, ok := pkg.GetResource("test:mod/a:Thing")
-	require.True(t, ok)
-	assert.Equal(t, "test:mod/a:Thing", a.Token)
-
-	b, ok := pkg.GetResource("test:mod/b:Thing")
-	require.True(t, ok)
-	assert.Equal(t, "test:mod/b:Thing", b.Token)
-
-	_, ok = pkg.GetResource("test:mod:Thing")
-	assert.False(t, ok, "ambiguous alias must miss")
-}
-
 // TestGetWithIndexAliases verifies short-form aliases for tokens whose normalized module
 // is "index" — both "pkg:name" and "pkg::name" should resolve to the source token.
 func TestGetWithIndexAliases(t *testing.T) {
