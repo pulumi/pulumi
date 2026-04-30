@@ -152,6 +152,26 @@ func ResolveToolchain(options PythonOptions) (Toolchain, error) {
 			logging.V(9).Infof("Python toolchain: detected poetry (found poetry.lock)")
 			return newPoetry(options.ProgramDir)
 		}
+		if dir, err := searchup(options.ProgramDir, "pyproject.toml"); err == nil {
+			tc, inferErr := inferToolchainFromPyproject(filepath.Join(dir, "pyproject.toml"))
+			if inferErr != nil {
+				return nil, fmt.Errorf("inferring toolchain from pyproject.toml: %w", inferErr)
+			}
+			switch tc {
+			case Poetry:
+				logging.V(9).Infof("Python toolchain: detected poetry (found [tool.poetry] in pyproject.toml)")
+				return newPoetry(options.ProgramDir)
+			case Uv:
+				logging.V(9).Infof("Python toolchain: detected uv (found pyproject.toml)")
+				virtualenv := options.Virtualenv
+				if virtualenv != "" && !filepath.IsAbs(virtualenv) {
+					virtualenv = filepath.Join(options.Root, virtualenv)
+				}
+				return newUv(options.ProgramDir, virtualenv)
+			case Auto, Pip:
+				// inferToolchainFromPyproject only returns Poetry or Uv; fall through.
+			}
+		}
 		logging.V(9).Infof("Python toolchain: defaulting to pip")
 		return newPip(options.Root, options.Virtualenv)
 	case Poetry:
@@ -266,6 +286,20 @@ func installPython(ctx context.Context, cwd string, showOutput bool, infoWriter,
 		return errutil.ErrorWithStderr(err, "error while running pyenv install")
 	}
 	return nil
+}
+
+func inferToolchainFromPyproject(path string) (toolchain, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Auto, err
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "[tool.poetry]" || strings.HasPrefix(trimmed, "[tool.poetry.") {
+			return Poetry, nil
+		}
+	}
+	return Uv, nil
 }
 
 func searchup(currentDir, fileToFind string) (string, error) {

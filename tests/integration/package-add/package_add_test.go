@@ -83,6 +83,7 @@ func TestPackageAddStandaloneLanguage(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
+		name             string
 		runtime          string
 		expectedMessage  string
 		filepath         string
@@ -92,6 +93,7 @@ func TestPackageAddStandaloneLanguage(t *testing.T) {
 
 	testCases := []testCase{
 		{
+			name:             "nodejs",
 			runtime:          "nodejs",
 			expectedMessage:  "You can import the SDK in your TypeScript code with:\n\n  import * as mypkg from \"@my-namespace/mypkg\"", //nolint:lll
 			filepath:         filepath.Join("sdks", "my-namespace-mypkg", "index.ts"),
@@ -99,6 +101,15 @@ func TestPackageAddStandaloneLanguage(t *testing.T) {
 			manifestContains: `"@my-namespace/mypkg"`,
 		},
 		{
+			name:             "python-uv",
+			runtime:          "python",
+			expectedMessage:  "You can import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg",
+			filepath:         filepath.Join("sdks", "my-namespace-mypkg", "my_namespace_mypkg"),
+			manifestPath:     "pyproject.toml",
+			manifestContains: "my-namespace-mypkg",
+		},
+		{
+			name:             "python-pip",
 			runtime:          "python",
 			expectedMessage:  "You can import the SDK in your Python code with:\n\n  import my_namespace_mypkg as mypkg",
 			filepath:         filepath.Join("sdks", "my-namespace-mypkg", "my_namespace_mypkg"),
@@ -106,6 +117,7 @@ func TestPackageAddStandaloneLanguage(t *testing.T) {
 			manifestContains: "my-namespace-mypkg",
 		},
 		{
+			name:             "go",
 			runtime:          "go",
 			expectedMessage:  "You can import the SDK in your Go code with:\n\n  import (\n    \"github.com/my-namespace/pulumi-mypkg/sdk/go/mypkg\"\n  )", //nolint:lll
 			filepath:         filepath.Join("sdks", "my-namespace-mypkg", "go.mod"),
@@ -115,12 +127,12 @@ func TestPackageAddStandaloneLanguage(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.runtime, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			e := ptesting.NewEnvironment(t)
 			defer e.DeleteIfNotFailed()
 			e.ImportDirectory(filepath.Join("standalone"))
-			e.CWD = filepath.Join(e.RootPath, tc.runtime)
+			e.CWD = filepath.Join(e.RootPath, tc.name)
 
 			stdout, _ := e.RunCommand("pulumi", "package", "add",
 				"--language", tc.runtime, "../provider/schema.json")

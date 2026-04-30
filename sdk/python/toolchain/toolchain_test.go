@@ -613,27 +613,70 @@ func TestResolveToolchainAuto(t *testing.T) {
 	t.Parallel()
 
 	for _, tt := range []struct {
-		name      string
-		tc        toolchain
-		lockFiles []string
-		expected  string
+		name     string
+		tc       toolchain
+		files    map[string]string
+		expected string
 	}{
-		{"Auto defaults to pip", Auto, []string{}, "Pip"},
-		{"Auto picks pip with requirements.txt only", Auto, []string{"requirements.txt"}, "Pip"},
-		{"Auto detects uv from uv.lock", Auto, []string{"uv.lock"}, "Uv"},
-		{"Auto detects poetry from poetry.lock", Auto, []string{"poetry.lock"}, "Poetry"},
-		{"Auto uv takes priority over poetry", Auto, []string{"uv.lock", "poetry.lock"}, "Uv"},
-		{"Auto uv takes priority over requirements.txt", Auto, []string{"uv.lock", "requirements.txt"}, "Uv"},
-		{"Auto poetry takes priority over requirements.txt", Auto, []string{"poetry.lock", "requirements.txt"}, "Poetry"},
-		{"explicit Pip ignores lockfiles", Pip, []string{"uv.lock", "poetry.lock"}, "Pip"},
+		{name: "Auto defaults to pip", tc: Auto, expected: "Pip"},
+		{
+			name: "Auto picks pip with requirements.txt only", tc: Auto,
+			files: map[string]string{"requirements.txt": ""}, expected: "Pip",
+		},
+		{
+			name: "Auto detects uv from uv.lock", tc: Auto,
+			files: map[string]string{"uv.lock": ""}, expected: "Uv",
+		},
+		{
+			name: "Auto detects poetry from poetry.lock", tc: Auto,
+			files: map[string]string{"poetry.lock": ""}, expected: "Poetry",
+		},
+		{
+			name: "Auto uv takes priority over poetry", tc: Auto,
+			files: map[string]string{"uv.lock": "", "poetry.lock": ""}, expected: "Uv",
+		},
+		{
+			name: "Auto uv takes priority over requirements.txt", tc: Auto,
+			files: map[string]string{"uv.lock": "", "requirements.txt": ""}, expected: "Uv",
+		},
+		{
+			name: "Auto poetry takes priority over requirements.txt", tc: Auto,
+			files: map[string]string{"poetry.lock": "", "requirements.txt": ""}, expected: "Poetry",
+		},
+		{
+			name: "explicit Pip ignores lockfiles", tc: Pip,
+			files: map[string]string{"uv.lock": "", "poetry.lock": ""}, expected: "Pip",
+		},
+		{
+			name:     "Auto detects uv from PEP 621 pyproject.toml",
+			tc:       Auto,
+			files:    map[string]string{"pyproject.toml": "[project]\nname = \"x\"\n"},
+			expected: "Uv",
+		},
+		{
+			name:     "Auto detects poetry from [tool.poetry] in pyproject.toml",
+			tc:       Auto,
+			files:    map[string]string{"pyproject.toml": "[tool.poetry]\nname = \"x\"\n"},
+			expected: "Poetry",
+		},
+		{
+			name:     "Auto uv.lock takes priority over pyproject.toml",
+			tc:       Auto,
+			files:    map[string]string{"uv.lock": "", "pyproject.toml": "[tool.poetry]\nname = \"x\"\n"},
+			expected: "Uv",
+		},
+		{
+			name:     "Auto poetry.lock takes priority over PEP 621 pyproject.toml",
+			tc:       Auto,
+			files:    map[string]string{"poetry.lock": "", "pyproject.toml": "[project]\nname = \"x\"\n"},
+			expected: "Poetry",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
-			for _, lockFile := range tt.lockFiles {
-				f, err := os.Create(filepath.Join(dir, lockFile))
-				require.NoError(t, err)
-				require.NoError(t, f.Close())
+			for name, content := range tt.files {
+				require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600))
 			}
 			tc, err := ResolveToolchain(PythonOptions{
 				Toolchain:  tt.tc,
@@ -655,6 +698,40 @@ func TestResolveToolchainAuto(t *testing.T) {
 			require.Equal(t, tt.expected, got)
 		})
 	}
+}
+
+func TestInferToolchainFromPyproject(t *testing.T) {
+	t.Parallel()
+
+	for _, tt := range []struct {
+		name     string
+		content  string
+		expected toolchain
+	}{
+		{"empty", "", Uv},
+		{"PEP 621 only", "[project]\nname = \"x\"\n", Uv},
+		{"tool.uv only", "[tool.uv]\nlink-mode = \"copy\"\n", Uv},
+		{"tool.poetry only", "[tool.poetry]\nname = \"x\"\n", Poetry},
+		{"tool.poetry.dependencies", "[tool.poetry.dependencies]\npython = \"^3.10\"\n", Poetry},
+		{"tool.poetry leading whitespace", "  [tool.poetry]\n", Poetry},
+		{"PEP 621 with tool.poetry", "[project]\nname = \"x\"\n[tool.poetry]\n", Poetry},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			path := filepath.Join(dir, "pyproject.toml")
+			require.NoError(t, os.WriteFile(path, []byte(tt.content), 0o600))
+			got, err := inferToolchainFromPyproject(path)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, got)
+		})
+	}
+
+	t.Run("nonexistent", func(t *testing.T) {
+		t.Parallel()
+		_, err := inferToolchainFromPyproject(filepath.Join(t.TempDir(), "missing.toml"))
+		require.Error(t, err)
+	})
 }
 
 func TestErrorWithStderr(t *testing.T) {

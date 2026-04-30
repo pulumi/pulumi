@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: language/python
+  description: Auto-detect the Python toolchain from `pyproject.toml` when no lockfile is present

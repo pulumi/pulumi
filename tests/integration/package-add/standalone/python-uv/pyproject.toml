@@ -1,0 +1,6 @@
+[project]
+name = "package-add-standalone-python"
+version = "0.1.0"
+dependencies = [
+    "pulumi>=3.0.0,<4.0.0",
+]
