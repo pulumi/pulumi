@@ -384,15 +384,15 @@ def _sync_monitor_supports_invoke_transforms() -> bool:
     return SETTINGS.feature_support.get("invokeTransforms", False)
 
 
+def _sync_monitor_supports_parameterization() -> bool:
+    return SETTINGS.feature_support.get("parameterization", False)
+
+
 async def get_package_ref(key: tuple) -> Any:
-    if not await monitor_supports_feature("parameterization"):
-        return None
     return SETTINGS.package_refs.get(key, ...)
 
 
 async def set_package_ref(key: tuple, ref: str):
-    if not await monitor_supports_feature("parameterization"):
-        return
     SETTINGS.package_refs[key] = ref
 
 

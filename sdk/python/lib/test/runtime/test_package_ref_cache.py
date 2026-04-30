@@ -107,14 +107,14 @@ def test_generated_package_refs_are_reset_per_deployment_settings(first_ref, sec
         settings.configure(old_settings)
 
 
-def test_public_package_ref_apis_return_none_without_parameterization_support():
+def test_public_package_ref_apis_are_independent_of_parameterization_support():
     old_settings = deepcopy(settings.SETTINGS)
     package_key = ("parameterized", "1.0.0")
 
     try:
         settings.configure(Settings("project", "stack"))
-        assert asyncio.run(settings.get_package_ref(package_key)) is None
+        assert asyncio.run(settings.get_package_ref(package_key)) is ...
         asyncio.run(settings.set_package_ref(package_key, "ref-1"))
-        assert asyncio.run(settings.get_package_ref(package_key)) is None
+        assert asyncio.run(settings.get_package_ref(package_key)) == "ref-1"
     finally:
         settings.configure(old_settings)
