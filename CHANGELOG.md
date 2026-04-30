@@ -1,5 +1,96 @@
 # Changelog
 
+## 3.233.0 (2026-04-30)
+
+
+### Features
+
+- [auto/python] Expose the auto-generated Pulumi CLI interface as `workspace.cli_api`
+  [#22638](https://github.com/pulumi/pulumi/pull/22638)
+
+- [cli] Add encrypted logging to ~/.pulumi/logs; use the PULUMI_ENABLE_AUTOMATIC_LOGGING feature flag to turn it on
+  [#22494](https://github.com/pulumi/pulumi/pull/22494)
+
+- [cli] Implement the `filesystem__grep` and `filesystem__content_replace` local tools
+for `pulumi neo`. `grep` runs a regex search across files in the project root
+with an optional `include` glob filter and returns results in `path:lineno: line`
+form. `content_replace` performs a literal multi-file search-and-replace with a
+`file_pattern` glob and `dry_run` preview mode. Both tools skip binary files,
+hidden directories, and `node_modules`, and reject paths outside the project
+root. Their input schemas match the cloud-side tool definitions.
+
+  [#22655](https://github.com/pulumi/pulumi/pull/22655)
+
+- [cli] Add `pulumi_preview` and `pulumi_up` as local tools for the experimental `pulumi neo`
+agent. The Neo TUI renders a persistent bordered block for each operation that
+streams changed resources and diagnostics as the engine runs and finalizes with a
+summary of the op counts. Hidden behind PULUMI_EXPERIMENTAL.
+
+  [#22697](https://github.com/pulumi/pulumi/pull/22697)
+
+- [engine] Add `List` to the provider protocol and schema
+  [#22693](https://github.com/pulumi/pulumi/pull/22693)
+
+
+### Bug Fixes
+
+- [engine] Return a clear error when two installed plugins claim the same default provider package name (for example, a native `scaleway` provider alongside a `terraform-provider` bridge parameterized as `scaleway`) instead of panicking with "Should not have seen an older plugin if sorting is correct!"
+  [#22679](https://github.com/pulumi/pulumi/pull/22679)
+
+- [programgen] Do not wrap a `call(...)` on a method whose return type is marked plain in an Output. Previously
+PCL bound every method call's return type as `Output<T>`, which caused downstream program-gen
+to emit broken `.apply(...)`/`.ApplyT(...)` traversals against plain struct returns (e.g.
+methods with `liftSingleValueMethodReturns=true` or `ReturnTypePlain=true`).
+
+  [#22696](https://github.com/pulumi/pulumi/pull/22696)
+
+- [backend/diy] When using a backend url containing creds (e.g. PostgreSQL conn string), mask user:pass as in lock-related error messages
+  [#22701](https://github.com/pulumi/pulumi/pull/22701)
+
+- [codegen/go] Generate unqualified `Provider` references for the package's own provider resource. Previously
+the Go codegen always emitted `<pkg>.Provider` even when the reference appeared inside `<pkg>`
+itself, producing identifiers that would not compile. Affects generated code for method return
+types (and other schema positions) that reference `pulumi:providers:<pkg>`.
+
+  [#22696](https://github.com/pulumi/pulumi/pull/22696)
+
+- [codegen/nodejs] Generate unqualified `Provider` references for the package's own provider resource when emitting
+TypeScript code inside that package. Previously the generator always qualified the name as
+`<pkg>.Provider`, which does not resolve when no `<pkg>` namespace import is in scope.
+
+  [#22696](https://github.com/pulumi/pulumi/pull/22696)
+
+- [codegen/nodejs] Import the correct class name for a provider resource. Imports for `pulumi:providers:<pkg>` used
+the title-cased package name instead of `Provider`, producing a phantom identifier that clashed
+with the containing package's component/resource classes.
+
+  [#22696](https://github.com/pulumi/pulumi/pull/22696)
+
+- [programgen/nodejs] Emit `await` for `call(...)` invocations of methods whose return type is marked plain, and
+force the generated program into an async `export = async () => ...` wrapper whenever such a
+call is present. The Node SDK returns `Promise<T>` for plain methods; previously program-gen
+used the result directly, which did not match its runtime type.
+
+  [#22696](https://github.com/pulumi/pulumi/pull/22696)
+
+- [codegen/python] Avoid a self-import (`import pulumi_<pkg>` inside `pulumi_<pkg>/<module>.py`) when referencing
+the package's own provider resource. Python referenced the Provider as `pulumi_<pkg>.Provider`
+even inside that package, which caused a circular import at runtime.
+
+  [#22696](https://github.com/pulumi/pulumi/pull/22696)
+
+- [sdk/python] Reduce internal `Output[T]` data to a single `asyncio.Future`
+  [#22661](https://github.com/pulumi/pulumi/pull/22661)
+
+- [sdkgen/{nodejs,python}] Generate optional input types that accept undefined/None values
+  [#22552](https://github.com/pulumi/pulumi/pull/22552)
+
+
+### Miscellaneous
+
+- [auto/go] Drop the "With" prefix from generated option helpers so they match the naming of the existing optXxx packages
+  [#22682](https://github.com/pulumi/pulumi/pull/22682)
+
 ## 3.232.0 (2026-04-22)
 
 
