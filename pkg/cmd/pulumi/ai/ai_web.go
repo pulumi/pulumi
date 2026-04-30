@@ -24,13 +24,8 @@ import (
 	"strings"
 
 	"github.com/pkg/browser"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
-	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -79,12 +74,6 @@ type aiWebCmd struct {
 	language          PulumiAILanguage
 
 	Stdout io.Writer // defaults to os.Stdout
-
-	// currentBackend is a reference to the top-level currentBackend function.
-	// This is used to override the default implementation for testing purposes.
-	currentBackend func(
-		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
-	) (backend.Backend, error)
 }
 
 func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
@@ -92,9 +81,6 @@ func (cmd *aiWebCmd) Run(ctx context.Context, args []string) error {
 		cmd.Stdout = os.Stdout
 	}
 
-	if cmd.currentBackend == nil {
-		cmd.currentBackend = cmdBackend.CurrentBackend
-	}
 	requestURL, err := url.Parse(cmd.appURL)
 	if err != nil {
 		return err

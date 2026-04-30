@@ -381,7 +381,8 @@ func TestStackOutputCmd_jsonAndShellConflict(t *testing.T) {
 
 	cmd := stackOutputCmd{
 		requireStack: func(
-			context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager, string, LoadOption, display.Options,
+			context.Context, diag.Sink, pkgWorkspace.Context, cmdBackend.LoginManager,
+			string, LoadOption, display.Options,
 		) (backend.Stack, error) {
 			t.Fatal("This function should not be called")
 			return nil, errors.New("should not be called")

@@ -148,7 +148,7 @@ func runNew(ctx context.Context, args newArgs) error {
 	var b backend.Backend
 	if !args.generateOnly {
 		// There is no current project at this point to pass into currentBackend
-		b, err = cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, opts)
+		b, err = cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, "", opts)
 		if err != nil {
 			return err
 		}
@@ -441,8 +441,12 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
+		org, err := pkgWorkspace.GetBackendConfigDefaultOrg(proj)
+		if err != nil {
+			return fmt.Errorf("get default org: %w", err)
+		}
 		if err := InstallPackagesFromProject(ctx, proj, root,
-			cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
+			cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, proj, org, cmdutil.Diag(), env.Global()),
 			-1, false, os.Stderr, os.Stderr, env.Global()); err != nil {
 			return err
 		}
@@ -798,7 +802,7 @@ func promptForAIProjectURL(ctx context.Context, ws pkgWorkspace.Context, args ne
 		return "", err
 	}
 
-	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	b, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, "", opts)
 	if err != nil {
 		return "", err
 	}

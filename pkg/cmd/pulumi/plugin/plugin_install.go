@@ -134,7 +134,7 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.installPluginSpec = installPluginSpec
 	}
 	if cmd.registry == nil {
-		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
+		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, "", cmd.diag, cmd.env)
 	}
 
 	// Parse the kind, name, and version, if specified.

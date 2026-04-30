@@ -109,7 +109,7 @@ func initializeDeploymentSettingsCmd(
 		return nil, err
 	}
 
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
+	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, "", displayOpts)
 	if err != nil {
 		return nil, err
 	}

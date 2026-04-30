@@ -149,9 +149,14 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 		return err
 	}
 
+	org, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return fmt.Errorf("get default org: %w", err)
+	}
+
 	// Get the current backend.
 	b, err := cmdBackend.CurrentBackend(
-		ctx, ws, cmdBackend.DefaultLoginManager, project,
+		ctx, ws, cmdBackend.DefaultLoginManager, project, org,
 		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err

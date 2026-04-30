@@ -49,7 +49,9 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
-			currentBackend, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+			currentBackend, err := cmdBackend.CurrentBackend(
+				ctx, ws, cmdBackend.DefaultLoginManager, project, "", opts,
+			)
 			if err != nil {
 				return err
 			}

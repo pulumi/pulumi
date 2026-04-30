@@ -187,7 +187,12 @@ func getSummaryAbout(
 	}
 
 	var backend backend.Backend
-	backend, err = cmdBackend.NonInteractiveCurrentBackend(ctx, ws, lm, proj)
+	org, err := pkgWorkspace.GetBackendConfigDefaultOrg(proj)
+	if err != nil {
+		addError(err, "Could not determine the default organization")
+	} else {
+		backend, err = cmdBackend.NonInteractiveCurrentBackend(ctx, ws, lm, proj, org)
+	}
 	if err != nil {
 		addError(err, "Could not access the backend")
 	} else if backend != nil {

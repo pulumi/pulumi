@@ -303,13 +303,18 @@ func runConvert(
 				return diags, fmt.Errorf("error parsing pcl: %w", err)
 			}
 
+			org, err := pkgWorkspace.GetBackendConfigDefaultOrg(proj)
+			if err != nil {
+				return diags, fmt.Errorf("get default org: %w", err)
+			}
+
 			err = generateAndLinkSdksForPackages(
 				pCtx,
 				language,
 				targetDirectory,
 				packageBlockDescriptors,
 				generateOnly,
-				cmdCmd.NewDefaultRegistry(ctx, ws, proj, cmdutil.Diag(), e),
+				cmdCmd.NewDefaultRegistry(ctx, ws, proj, org, cmdutil.Diag(), e),
 			)
 			if err != nil {
 				return diags, fmt.Errorf("error generating packages: %w", err)

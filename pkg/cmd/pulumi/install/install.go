@@ -99,7 +99,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 					// Cloud registry is linked to a backend, but we don't have one available in a
 					// plugin. Use the global default registry.
-					reg := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+					reg := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, "", cmdutil.Diag(), env.Global())
 					if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, cwd, reg, parallel,
 						useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global()); err != nil {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
@@ -136,8 +136,12 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			// Process packages section from Pulumi.yaml. Do so before installing language-specific dependencies,
 			// so that the SDKs folder is present and references to it from package.json etc are valid.
+			org, err := pkgWorkspace.GetBackendConfigDefaultOrg(proj)
+			if err != nil {
+				return fmt.Errorf("get default org: %w", err)
+			}
 			if err := newcmd.InstallPackagesFromProject(cmd.Context(), proj, root,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
+				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, proj, org, cmdutil.Diag(), env.Global()),
 				parallel, useLanguageVersionTools, cmd.OutOrStdout(), cmd.ErrOrStderr(), env.Global(),
 			); err != nil {
 				return fmt.Errorf("installing `packages` from Pulumi.yaml: %w", err)

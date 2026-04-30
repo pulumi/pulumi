@@ -110,7 +110,7 @@ func (tplCmd *templatePublishCmd) Run(
 	}
 
 	b, err := cmdBackend.CurrentBackend(
-		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project,
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project, "",
 		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return err

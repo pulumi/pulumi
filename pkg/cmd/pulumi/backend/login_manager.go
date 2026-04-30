@@ -39,6 +39,7 @@ type LoginManager interface {
 		sink diag.Sink,
 		url string,
 		project *workspace.Project,
+		org string,
 		setCurrent bool,
 	) (backend.Backend, error)
 
@@ -49,6 +50,7 @@ type LoginManager interface {
 		sink diag.Sink,
 		url string,
 		project *workspace.Project,
+		org string,
 		setCurrent bool,
 		insecure bool,
 		color colors.Colorization,
@@ -59,6 +61,7 @@ type LoginManager interface {
 		sink diag.Sink,
 		url string,
 		project *workspace.Project,
+		org string,
 		setCurrent bool,
 		insecure bool,
 		authContext workspace.AuthContext,
@@ -70,7 +73,8 @@ var DefaultLoginManager LoginManager = &lm{}
 type lm struct{}
 
 func (f *lm) Current(
-	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
+	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project,
+	org string, setCurrent bool,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
 		return diy.New(ctx, sink, url, project)
@@ -82,12 +86,12 @@ func (f *lm) Current(
 	if err != nil || account == nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.New(ctx, sink, url, project, org, insecure)
 }
 
 func (f *lm) Login(
-	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
-	insecure bool, color colors.Colorization,
+	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, org string,
+	setCurrent bool, insecure bool, color colors.Colorization,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
@@ -106,7 +110,7 @@ func (f *lm) Login(
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.New(ctx, sink, url, project, org, insecure)
 }
 
 // LoginFromAuthContext logs in to a backend using the provided authentication context.
@@ -117,6 +121,7 @@ func (f *lm) LoginFromAuthContext(
 	sink diag.Sink,
 	url string,
 	project *workspace.Project,
+	org string,
 	setCurrent bool,
 	insecure bool,
 	authContext workspace.AuthContext,
@@ -129,7 +134,7 @@ func (f *lm) LoginFromAuthContext(
 		if err != nil {
 			return nil, err
 		}
-		return httpstate.New(ctx, sink, url, project, insecure)
+		return httpstate.New(ctx, sink, url, project, org, insecure)
 	}
 	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
 }
@@ -174,6 +179,7 @@ func (lm *MockLoginManager) Login(
 	sink diag.Sink,
 	url string,
 	project *workspace.Project,
+	org string,
 	setCurrent bool,
 	insecure bool,
 	color colors.Colorization,
@@ -189,6 +195,7 @@ func (lm *MockLoginManager) LoginFromAuthContext(
 	sink diag.Sink,
 	url string,
 	project *workspace.Project,
+	org string,
 	setCurrent bool,
 	insecure bool,
 	authContext workspace.AuthContext,
@@ -205,6 +212,7 @@ func (lm *MockLoginManager) Current(
 	sink diag.Sink,
 	url string,
 	project *workspace.Project,
+	org string,
 	setCurrent bool,
 ) (backend.Backend, error) {
 	if lm.CurrentF != nil {

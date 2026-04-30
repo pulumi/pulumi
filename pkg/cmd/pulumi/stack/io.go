@@ -129,7 +129,12 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 		return nil, err
 	}
 
-	b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+	org, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return nil, fmt.Errorf("get default org: %w", err)
+	}
+
+	b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, org, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -173,8 +178,13 @@ func requireCurrentStack(
 		return nil, err
 	}
 
+	org, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return nil, fmt.Errorf("get default org: %w", err)
+	}
+
 	// Search for the current stack.
-	b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+	b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, org, opts)
 	if err != nil {
 		return nil, err
 	}

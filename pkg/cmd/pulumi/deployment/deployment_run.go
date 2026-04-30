@@ -68,7 +68,7 @@ func newDeploymentRunCmd(ws pkgWorkspace.Context) *cobra.Command {
 				return err
 			}
 
-			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, display)
+			currentBe, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, "", display)
 			if err != nil {
 				return err
 			}

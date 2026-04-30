@@ -116,7 +116,7 @@ func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []stri
 
 	parameters := &plugin.ParameterizeArgs{Args: extraArgs}
 	spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-		cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+		cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, "", cmdutil.Diag(), env.Global()),
 		env.Global(), 0 /* unbounded concurrency */)
 	if err != nil {
 		return nil, err

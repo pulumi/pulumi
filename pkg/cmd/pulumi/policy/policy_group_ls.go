@@ -63,7 +63,7 @@ func newPolicyGroupLsCmd() *cobra.Command {
 
 			// Get backend.
 			b, err := cmdBackend.CurrentBackend(
-				ctx, ws, cmdBackend.DefaultLoginManager, project,
+				ctx, ws, cmdBackend.DefaultLoginManager, project, "",
 				display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return fmt.Errorf("failed to get current backend: %w", err)

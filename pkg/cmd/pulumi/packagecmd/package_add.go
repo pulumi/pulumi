@@ -213,11 +213,18 @@ func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrPro
 
 	switch baseProject := baseProject.(type) {
 	case *workspace.Project:
+		org, err := pkgWorkspace.GetBackendConfigDefaultOrg(baseProject)
+		if err != nil {
+			return pluginOrProject{}, fmt.Errorf("get default org: %w", err)
+		}
+
 		return pluginOrProject{
 			installRoot:     filepath.Dir(filePath),
 			projectFilePath: filePath,
-			reg:             cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
-			proj:            baseProject,
+			reg: cmdCmd.NewDefaultRegistry(
+				ctx, pkgWorkspace.Instance, baseProject, org, cmdutil.Diag(), env.Global(),
+			),
+			proj: baseProject,
 		}, nil
 	case *workspace.PluginProject:
 		return pluginOrProject{
@@ -226,7 +233,7 @@ func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrPro
 			proj:            baseProject,
 			// Cloud registry is linked to a backend, but we don't have one
 			// available in a plugin. Use the default backend.
-			reg: cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+			reg: cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, "", cmdutil.Diag(), env.Global()),
 		}, nil
 	default:
 		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+

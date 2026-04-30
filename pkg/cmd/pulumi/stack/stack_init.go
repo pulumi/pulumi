@@ -122,10 +122,7 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	if cmd.secretsProvider == "" {
 		cmd.secretsProvider = "default"
 	}
-	if cmd.currentBackend == nil {
-		cmd.currentBackend = cmdBackend.CurrentBackend
-	}
-	currentBackend := cmd.currentBackend // shadow the top-level function
+	useDefaultCurrentBackend := cmd.currentBackend == nil
 
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
@@ -140,7 +137,16 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	b, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	var b backend.Backend
+	if useDefaultCurrentBackend {
+		org, orgErr := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+		if orgErr != nil {
+			return fmt.Errorf("get default org: %w", orgErr)
+		}
+		b, err = cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, org, opts)
+	} else {
+		b, err = cmd.currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	}
 	if err != nil {
 		return err
 	}

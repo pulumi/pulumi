@@ -201,10 +201,12 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 					return fmt.Errorf("problem logging in: %w", innerErr)
 				}
 				be, err = lm.LoginFromAuthContext(
-					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext)
+					ctx, cmdutil.Diag(), cloudURL, project, defaultOrg, true /* setCurrent */, insecure, authContext)
 			} else {
 				be, err = lm.Login(
-					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
+					ctx, ws, cmdutil.Diag(), cloudURL, project, defaultOrg, true /* setCurrent */, insecure,
+					displayOptions.Color,
+				)
 			}
 
 			if err != nil {

@@ -57,7 +57,7 @@ func NewWhoAmICmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Co
 				return err
 			}
 
-			b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+			b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, "", opts)
 			if err != nil {
 				return err
 			}

@@ -70,7 +70,7 @@ func newProjectLsCmd() *cobra.Command {
 			}
 
 			// Get the current backend.
-			b, err := cmdbackend.CurrentBackend(ctx, ws, cmdbackend.DefaultLoginManager, currentProject, displayOpts)
+			b, err := cmdbackend.CurrentBackend(ctx, ws, cmdbackend.DefaultLoginManager, currentProject, "", displayOpts)
 			if err != nil {
 				return err
 			}

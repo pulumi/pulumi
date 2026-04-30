@@ -177,7 +177,7 @@ func loginToCloudBackend(
 		return nil, fmt.Errorf("`pulumi policy` command requires the user to be logged into the Pulumi Cloud: %w", err)
 	}
 
-	return lm.Current(ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent*/)
+	return lm.Current(ctx, ws, cmdutil.Diag(), cloudURL, project, "", true /* setCurrent */)
 }
 
 // requirePolicyPack attempts to log into the cloud backend and retrieves the requested policy

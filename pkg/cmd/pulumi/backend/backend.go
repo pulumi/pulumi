@@ -53,6 +53,7 @@ func IsDIYBackend(ws pkgWorkspace.Context, opts display.Options) (bool, error) {
 
 func NonInteractiveCurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
+	org string,
 ) (backend.Backend, error) {
 	if BackendInstance != nil {
 		return BackendInstance, nil
@@ -64,13 +65,18 @@ func NonInteractiveCurrentBackend(
 	}
 	logging.V(7).Infof("Current cloud URL: %q", url)
 
+	org, err = resolveDefaultOrg(project, org)
+	if err != nil {
+		return nil, err
+	}
+
 	// Only set current if we don't currently have a cloud URL set.
-	return lm.Current(ctx, ws, cmdutil.Diag(), url, project, url == "")
+	return lm.Current(ctx, ws, cmdutil.Diag(), url, project, org, url == "")
 }
 
 func CurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
-	opts display.Options,
+	org string, opts display.Options,
 ) (backend.Backend, error) {
 	if BackendInstance != nil {
 		return BackendInstance, nil
@@ -83,6 +89,24 @@ func CurrentBackend(
 	logging.V(7).Infof("Current cloud URL: %q", url)
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 
+	org, err = resolveDefaultOrg(project, org)
+	if err != nil {
+		return nil, err
+	}
+
 	// Only set current if we don't currently have a cloud URL set.
-	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color)
+	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, org, url == "", insecure, opts.Color)
+}
+
+func resolveDefaultOrg(project *workspace.Project, org string) (string, error) {
+	if org != "" {
+		return org, nil
+	}
+
+	org, err := pkgWorkspace.GetBackendConfigDefaultOrg(project)
+	if err != nil {
+		return "", fmt.Errorf("get default org: %w", err)
+	}
+
+	return org, nil
 }

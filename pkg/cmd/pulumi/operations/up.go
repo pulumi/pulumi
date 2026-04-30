@@ -346,7 +346,7 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		// There is no current project at this point to pass into currentBackend
-		b, err := cmdBackend.CurrentBackend(ctx, ws, lm, nil, opts.Display)
+		b, err := cmdBackend.CurrentBackend(ctx, ws, lm, nil, "", opts.Display)
 		if err != nil {
 			return err
 		}

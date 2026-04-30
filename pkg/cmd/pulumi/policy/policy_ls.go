@@ -51,7 +51,7 @@ func newPolicyLsCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.
 
 			// Get backend.
 			b, err := cmdBackend.CurrentBackend(
-				ctx, ws, lm, project,
+				ctx, ws, lm, project, "",
 				display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err

@@ -280,7 +280,7 @@ func (cmd *packagePublishCmd) Run(
 
 func login(ctx context.Context, project *workspace.Project) (backend.Backend, error) {
 	b, err := cmdBackend.CurrentBackend(
-		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project,
+		ctx, pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, project, "",
 		display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
 		return nil, err

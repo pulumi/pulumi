@@ -222,7 +222,7 @@ var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
 func New(ctx context.Context, d diag.Sink,
-	cloudURL string, project *workspace.Project, insecure bool,
+	cloudURL string, project *workspace.Project, org string, insecure bool,
 ) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
@@ -234,6 +234,24 @@ func New(ctx context.Context, d diag.Sink,
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
+	// If we've been given an over-ridden default org then prefer that, don't even ask the cloud api what the default
+	// is.
+	var defaultOrg *promise.Promise[string]
+	if org == "" {
+		defaultOrg = promise.Run(func() (string, error) {
+			resp, err := apiClient.GetDefaultOrg(ctx)
+			if err != nil {
+				logging.V(1).Infof("failed to get default org: %v", err)
+				return "", err
+			}
+			return resp.GitHubLogin, nil
+		})
+	} else {
+		cts := &promise.CompletionSource[string]{}
+		cts.MustFulfill(org)
+		defaultOrg = cts.Promise()
+	}
+
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
@@ -241,7 +259,7 @@ func New(ctx context.Context, d diag.Sink,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(ctx, d, apiClient),
 		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
-		defaultOrg:     detectDefaultOrg(ctx, d, apiClient),
+		defaultOrg:     defaultOrg,
 		currentProject: project,
 	}, nil
 }
@@ -2662,18 +2680,6 @@ func detectUserInfo(
 			organizations: orgs,
 			tokenInfo:     tokenInfo,
 		}, nil
-	})
-}
-
-// Builds a lazy wrapper around fetching default org.
-func detectDefaultOrg(ctx context.Context, d diag.Sink, client *client.Client) *promise.Promise[string] {
-	return promise.Run(func() (string, error) {
-		resp, err := client.GetDefaultOrg(ctx)
-		if err != nil {
-			logging.V(1).Infof("failed to get default org: %v", err)
-			return "", err
-		}
-		return resp.GitHubLogin, nil
 	})
 }
 

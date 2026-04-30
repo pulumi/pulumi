@@ -196,7 +196,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 	ctx := t.Context()
 
-	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
+	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, "", display.Options{})
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
 
@@ -229,7 +229,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 		backendDir, workspace.BookkeepingDir, workspace.StackDir, defaultProjectName, stackName+".json"))
 	require.NoError(t, err)
 
-	b, err = backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
+	b, err = backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, "", display.Options{})
 	require.NoError(t, err)
 	assert.Equal(t, backendURL, b.URL())
 }
@@ -335,7 +335,7 @@ func loadProject(t *testing.T, dir string) *workspace.Project {
 
 func currentUser(t *testing.T) string {
 	ctx := t.Context()
-	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, display.Options{})
+	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, nil, "", display.Options{})
 	require.NoError(t, err)
 	currentUser, _, _, err := b.CurrentUser()
 	require.NoError(t, err)
@@ -351,7 +351,9 @@ func loadStackName(t *testing.T) string {
 func removeStack(t *testing.T, dir, name string) {
 	project := loadProject(t, dir)
 	ctx := t.Context()
-	b, err := backend.CurrentBackend(ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, project, display.Options{})
+	b, err := backend.CurrentBackend(
+		ctx, pkgWorkspace.Instance, backend.DefaultLoginManager, project, "", display.Options{},
+	)
 	require.NoError(t, err)
 	ref, err := b.ParseStackReference(name)
 	require.NoError(t, err)

@@ -50,7 +50,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	}
 
 	if cmd.currentBackend == nil {
-		cmd.currentBackend = cmdBackend.CurrentBackend
+		cmd.currentBackend = defaultCurrentBackend
 	}
 	currentBackend := cmd.currentBackend // shadow the top-level function
 

@@ -108,7 +108,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return err
 	}
 
-	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, "", opts)
 	if err != nil {
 		return err
 	}

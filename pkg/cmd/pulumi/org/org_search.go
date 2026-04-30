@@ -74,6 +74,16 @@ const (
 	outputFormatCSV   outputFormat = "csv"
 )
 
+func defaultCurrentBackend(
+	ctx context.Context,
+	ws pkgWorkspace.Context,
+	lm cmdBackend.LoginManager,
+	project *workspace.Project,
+	opts display.Options,
+) (backend.Backend, error) {
+	return cmdBackend.CurrentBackend(ctx, ws, lm, project, "", opts)
+}
+
 // String is used both by fmt.Print and by Cobra in help text
 func (o *outputFormat) String() string {
 	return string(*o)
@@ -127,7 +137,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	if cmd.currentBackend == nil {
-		cmd.currentBackend = cmdBackend.CurrentBackend
+		cmd.currentBackend = defaultCurrentBackend
 	}
 	currentBackend := cmd.currentBackend // shadow the top-level function
 
