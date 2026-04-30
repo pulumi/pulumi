@@ -1306,6 +1306,25 @@ def translate_output_properties(
                 }
                 return _types.output_type_from_dict(typ, translated_values)
 
+            elif _types.is_input_type(typ):
+                # If typ is an input type, construct it via __new__ + pulumi.set() to avoid
+                # triggering deprecation warnings that fire from __init__ for user-supplied values.
+                types = _types.input_type_types(typ)
+                get_type = types.get
+
+                translated_values = {
+                    k: translate_output_properties(
+                        v,
+                        output_transformer,
+                        get_type(k),
+                        transform_using_type_metadata,
+                        _Path(k, parent=path),
+                        return_none_on_dict_type_mismatch,
+                    )
+                    for k, v in output.items()
+                }
+                return _types.input_type_from_dict(typ, translated_values)
+
             # If typ is a dict, get the type for its values, to pass along for each key.
             origin = get_origin(typ)
             if typ is dict or origin in [
