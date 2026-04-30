@@ -1,9 +1,4 @@
 changes:
 - type: fix
   scope: sdk/python
-  description: >
-    Deprecated optional input type properties no longer fire spurious deprecation
-    warnings when provider-returned values (including empty strings or non-empty
-    deprecated field values) flow through input type constructors during
-    deserialization. Warnings still fire correctly when user code explicitly
-    assigns a deprecated value via the constructor or property setter.
+  description: Deprecated optional input type properties no longer fire spurious deprecation warnings
