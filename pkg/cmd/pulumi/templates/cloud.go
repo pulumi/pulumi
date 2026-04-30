@@ -265,7 +265,7 @@ func (s *Source) getOrgTemplates(
 		return
 	}
 
-	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false)
+	b, err := cmdBackend.DefaultLoginManager.Current(ctx, ws, cmdutil.Diag(), url, project, false, "")
 	if err != nil {
 		if !errors.Is(err, backenderr.MissingEnvVarForNonInteractiveError{}) {
 			s.addError(fmt.Errorf("could not get the current backend: %w", err))

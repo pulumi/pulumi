@@ -214,6 +214,7 @@ type cloudBackend struct {
 
 	// The current project, if any.
 	currentProject              *workspace.Project
+	defaultOrgOverride          string
 	neoEnabledForCurrentProject *bool
 }
 
@@ -222,7 +223,7 @@ var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 
 // New creates a new Pulumi backend for the given cloud API URL and token.
 func New(ctx context.Context, d diag.Sink,
-	cloudURL string, project *workspace.Project, insecure bool,
+	cloudURL string, project *workspace.Project, insecure bool, defaultOrg string,
 ) (Backend, error) {
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
@@ -235,14 +236,15 @@ func New(ctx context.Context, d diag.Sink,
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
 	return &cloudBackend{
-		d:              d,
-		url:            cloudURL,
-		client:         apiClient,
-		escClient:      escClient,
-		capabilities:   detectCapabilities(ctx, d, apiClient),
-		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
-		defaultOrg:     detectDefaultOrg(ctx, d, apiClient),
-		currentProject: project,
+		d:                  d,
+		url:                cloudURL,
+		client:             apiClient,
+		escClient:          escClient,
+		capabilities:       detectCapabilities(ctx, d, apiClient),
+		userInfo:           detectUserInfo(ctx, d, cloudURL, apiClient),
+		defaultOrg:         detectDefaultOrg(ctx, d, apiClient),
+		currentProject:     project,
+		defaultOrgOverride: defaultOrg,
 	}, nil
 }
 
@@ -2565,6 +2567,10 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 }
 
 func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
+	if b.defaultOrgOverride != "" {
+		return b.defaultOrgOverride, nil
+	}
+
 	org, err := b.defaultOrg.Result(ctx)
 	if err != nil {
 		return "", err

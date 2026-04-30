@@ -73,6 +73,7 @@ func newStackInitCmd() *cobra.Command {
 			"* `pulumi stack init --copy-config-from dev`",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			sicmd.orgName = getStackOrg(cmd)
 			return sicmd.Run(ctx, args)
 		},
 	}
@@ -110,6 +111,7 @@ type stackInitCmd struct {
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	orgName         string
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
@@ -122,10 +124,10 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	if cmd.secretsProvider == "" {
 		cmd.secretsProvider = "default"
 	}
+	useDefaultCurrentBackend := cmd.currentBackend == nil
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
-	currentBackend := cmd.currentBackend // shadow the top-level function
 
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
@@ -140,7 +142,12 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
-	b, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	var b backend.Backend
+	if useDefaultCurrentBackend {
+		b, err = currentBackendWithOrg(ctx, ws, cmdBackend.DefaultLoginManager, project, opts, cmd.orgName)
+	} else {
+		b, err = cmd.currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, opts)
+	}
 	if err != nil {
 		return err
 	}
@@ -207,12 +214,13 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		}
 
 		// load the old stack and its project
-		copyStack, err := RequireStack(
+		copyStack, err := RequireStackWithOrg(
 			ctx,
 			cmdutil.Diag(),
 			ws,
 			cmdBackend.DefaultLoginManager,
 			cmd.stackToCopy,
+			cmd.orgName,
 			LoadOnly,
 			opts,
 		)

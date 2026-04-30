@@ -200,7 +200,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	}
 
 	initPersister := func() *cloudSnapshotPersister {
-		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		backendGeneric, err := New(ctx, nil, server.URL, nil, false, "")
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
@@ -714,7 +714,7 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
-		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		backendGeneric, err := New(ctx, nil, server.URL, nil, false, "")
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{

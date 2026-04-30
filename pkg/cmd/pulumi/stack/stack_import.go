@@ -55,12 +55,13 @@ func newStackImportCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager, sp s
 			diag := cmdutil.Diag()
 
 			// Fetch the current stack and import a deployment.
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				diag,
 				ws,
 				lm,
 				stackName,
+				getStackOrg(cmd),
 				LoadOnly,
 				opts,
 			)

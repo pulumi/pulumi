@@ -204,7 +204,9 @@ func NewLoginCmd(ws pkgWorkspace.Context, lm backend.LoginManager) *cobra.Comman
 					ctx, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, authContext)
 			} else {
 				be, err = lm.Login(
-					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color)
+					ctx, ws, cmdutil.Diag(), cloudURL, project, true /* setCurrent */, insecure, displayOptions.Color,
+					defaultOrg,
+				)
 			}
 
 			if err != nil {

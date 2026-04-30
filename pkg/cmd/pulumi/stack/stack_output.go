@@ -53,6 +53,7 @@ func newStackOutputCmd() *cobra.Command {
 			"By default, this command lists all output properties exported from a stack.\n" +
 			"If a specific property-name is supplied, just that property's value is shown.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			socmd.orgName = getStackOrg(cmd)
 			return socmd.Run(cmd.Context(), args)
 		},
 	}
@@ -78,6 +79,7 @@ func newStackOutputCmd() *cobra.Command {
 
 type stackOutputCmd struct {
 	stackName   string
+	orgName     string
 	showSecrets bool
 	jsonOut     bool
 	shellOut    bool
@@ -90,7 +92,7 @@ type stackOutputCmd struct {
 	// from tests.
 	requireStack func(
 		ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
-		name string, lopt LoadOption, opts display.Options,
+		name string, defaultOrg string, lopt LoadOption, opts display.Options,
 	) (backend.Stack, error)
 
 	Stdout io.Writer // defaults to os.Stdout
@@ -101,7 +103,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	requireStack := RequireStack
+	requireStack := RequireStackWithOrg
 	if cmd.requireStack != nil {
 		requireStack = cmd.requireStack
 	}
@@ -138,6 +140,7 @@ func (cmd *stackOutputCmd) Run(ctx context.Context, args []string) error {
 		cmd.ws,
 		cmdBackend.DefaultLoginManager,
 		cmd.stackName,
+		cmd.orgName,
 		LoadOnly,
 		opts,
 	)

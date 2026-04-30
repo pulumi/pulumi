@@ -59,7 +59,7 @@ func newStackSelectCmd() *cobra.Command {
 				return err
 			}
 
-			b, err := backend.CurrentBackend(ctx, ws, backend.DefaultLoginManager, project, opts)
+			b, err := currentBackendWithOrg(ctx, ws, backend.DefaultLoginManager, project, opts, getStackOrg(cmd))
 			if err != nil {
 				return err
 			}

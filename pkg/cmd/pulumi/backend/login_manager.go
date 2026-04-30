@@ -40,6 +40,7 @@ type LoginManager interface {
 		url string,
 		project *workspace.Project,
 		setCurrent bool,
+		defaultOrg string,
 	) (backend.Backend, error)
 
 	// Login starts the login process for the given URL. If there is already a logged-in backend, this is returned as-is.
@@ -52,6 +53,7 @@ type LoginManager interface {
 		setCurrent bool,
 		insecure bool,
 		color colors.Colorization,
+		defaultOrg string,
 	) (backend.Backend, error)
 
 	LoginFromAuthContext(
@@ -70,7 +72,8 @@ var DefaultLoginManager LoginManager = &lm{}
 type lm struct{}
 
 func (f *lm) Current(
-	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
+	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project,
+	setCurrent bool, defaultOrg string,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
 		return diy.New(ctx, sink, url, project)
@@ -82,12 +85,12 @@ func (f *lm) Current(
 	if err != nil || account == nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.New(ctx, sink, url, project, insecure, defaultOrg)
 }
 
 func (f *lm) Login(
 	ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string, project *workspace.Project, setCurrent bool,
-	insecure bool, color colors.Colorization,
+	insecure bool, color colors.Colorization, defaultOrg string,
 ) (backend.Backend, error) {
 	if diy.IsDIYBackendURL(url) {
 		if setCurrent {
@@ -106,7 +109,7 @@ func (f *lm) Login(
 	if err != nil {
 		return nil, err
 	}
-	return httpstate.New(ctx, sink, url, project, insecure)
+	return httpstate.New(ctx, sink, url, project, insecure, defaultOrg)
 }
 
 // LoginFromAuthContext logs in to a backend using the provided authentication context.
@@ -129,7 +132,7 @@ func (f *lm) LoginFromAuthContext(
 		if err != nil {
 			return nil, err
 		}
-		return httpstate.New(ctx, sink, url, project, insecure)
+		return httpstate.New(ctx, sink, url, project, insecure, "")
 	}
 	return nil, fmt.Errorf("unknown auth context grant type: %s", authContext.GrantType)
 }
@@ -177,8 +180,10 @@ func (lm *MockLoginManager) Login(
 	setCurrent bool,
 	insecure bool,
 	color colors.Colorization,
+	defaultOrg string,
 ) (backend.Backend, error) {
 	if lm.LoginF != nil {
+		_ = defaultOrg
 		return lm.LoginF(ctx, ws, sink, url, project, setCurrent, insecure, color)
 	}
 	panic("not implemented")
@@ -206,8 +211,10 @@ func (lm *MockLoginManager) Current(
 	url string,
 	project *workspace.Project,
 	setCurrent bool,
+	defaultOrg string,
 ) (backend.Backend, error) {
 	if lm.CurrentF != nil {
+		_ = defaultOrg
 		return lm.CurrentF(ctx, ws, sink, url, project, setCurrent)
 	}
 	panic("not implemented")

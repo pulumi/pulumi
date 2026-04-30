@@ -51,6 +51,7 @@ type stackArgs struct {
 
 func NewStackCmd() *cobra.Command {
 	var stackName string
+	var orgName string
 	args := stackArgs{}
 
 	cmd := &cobra.Command{
@@ -69,12 +70,13 @@ func NewStackCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				stackName,
+				orgName,
 				OfferNew,
 				opts,
 			)
@@ -92,6 +94,9 @@ func NewStackCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.PersistentFlags().StringVar(
+		&orgName, stackOrgFlagName, "",
+		"Override the currently selected organization")
 	cmd.Flags().BoolVarP(
 		&args.showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.Flags().BoolVarP(

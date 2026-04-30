@@ -39,7 +39,8 @@ import (
 type stackChangeSecretsProviderCmd struct {
 	stdout io.Writer
 
-	stack string
+	stack   string
+	orgName string
 
 	secretsProvider secrets.Provider
 }
@@ -69,6 +70,7 @@ func newStackChangeSecretsProviderCmd() *cobra.Command {
 			"* `pulumi stack change-secrets-provider \"hashivault://mykey\"`",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			scspcmd.orgName = getStackOrg(cmd)
 			return scspcmd.Run(ctx, args)
 		},
 	}
@@ -115,12 +117,13 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 	}
 
 	// Get the current stack and its project
-	currentStack, err := RequireStack(
+	currentStack, err := RequireStackWithOrg(
 		ctx,
 		cmdutil.Diag(),
 		ws,
 		cmdBackend.DefaultLoginManager,
 		cmd.stack,
+		cmd.orgName,
 		LoadOnly,
 		opts,
 	)

@@ -71,12 +71,13 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
+				getStackOrg(cmd),
 				LoadOnly,
 				opts,
 			)
@@ -117,12 +118,13 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
+				getStackOrg(cmd),
 				SetCurrent,
 				opts,
 			)
@@ -180,12 +182,13 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
+				getStackOrg(cmd),
 				SetCurrent,
 				opts,
 			)
@@ -224,12 +227,13 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				sink,
 				ws,
 				cmdBackend.DefaultLoginManager,
 				*stack,
+				getStackOrg(cmd),
 				SetCurrent,
 				opts,
 			)

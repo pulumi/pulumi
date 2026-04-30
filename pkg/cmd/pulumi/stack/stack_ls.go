@@ -65,11 +65,12 @@ func newStackLsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := cmd.Context()
 			cmdArgs := stackLSArgs{
-				jsonOut:    jsonOut,
-				allStacks:  allStacks,
-				orgFilter:  orgFilter,
-				projFilter: projFilter,
-				tagFilter:  tagFilter,
+				jsonOut:     jsonOut,
+				allStacks:   allStacks,
+				orgOverride: getStackOrg(cmd),
+				orgFilter:   orgFilter,
+				projFilter:  projFilter,
+				tagFilter:   tagFilter,
 			}
 			return runStackLS(ctx, cmdArgs)
 		},
@@ -94,12 +95,13 @@ func newStackLsCmd() *cobra.Command {
 }
 
 type stackLSArgs struct {
-	jsonOut    bool
-	allStacks  bool
-	orgFilter  string
-	projFilter string
-	tagFilter  string
-	stdout     io.Writer
+	jsonOut     bool
+	allStacks   bool
+	orgOverride string
+	orgFilter   string
+	projFilter  string
+	tagFilter   string
+	stdout      io.Writer
 }
 
 func runStackLS(ctx context.Context, args stackLSArgs) error {
@@ -150,9 +152,9 @@ func runStackLS(ctx context.Context, args stackLSArgs) error {
 	}
 
 	// Get the current backend.
-	b, err := cmdBackend.CurrentBackend(
+	b, err := currentBackendWithOrg(
 		ctx, ws, cmdBackend.DefaultLoginManager, project,
-		display.Options{Color: cmdutil.GetGlobalColorization()})
+		display.Options{Color: cmdutil.GetGlobalColorization()}, args.orgOverride)
 	if err != nil {
 		return err
 	}

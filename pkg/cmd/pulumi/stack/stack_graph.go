@@ -75,12 +75,13 @@ func newStackGraphCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := RequireStack(
+			s, err := RequireStackWithOrg(
 				ctx,
 				cmdutil.Diag(),
 				ws,
 				backend.DefaultLoginManager,
 				cmdOpts.stackName,
+				getStackOrg(cmd),
 				LoadOnly,
 				opts,
 			)

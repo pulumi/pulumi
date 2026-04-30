@@ -119,8 +119,14 @@ func (o LoadOption) SetCurrent() bool {
 func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
 	stackName string, lopt LoadOption, opts display.Options,
 ) (backend.Stack, error) {
+	return RequireStackWithOrg(ctx, sink, ws, lm, stackName, "", lopt, opts)
+}
+
+func RequireStackWithOrg(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+	stackName string, defaultOrg string, lopt LoadOption, opts display.Options,
+) (backend.Stack, error) {
 	if stackName == "" {
-		return requireCurrentStack(ctx, sink, ws, lm, lopt, opts)
+		return requireCurrentStack(ctx, sink, ws, lm, defaultOrg, lopt, opts)
 	}
 
 	// Try to read the current project
@@ -129,7 +135,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 		return nil, err
 	}
 
-	b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+	b, err := currentBackendWithOrg(ctx, ws, lm, project, opts, defaultOrg)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +171,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 
 func requireCurrentStack(
 	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
-	lm cmdBackend.LoginManager, lopt LoadOption, opts display.Options,
+	lm cmdBackend.LoginManager, defaultOrg string, lopt LoadOption, opts display.Options,
 ) (backend.Stack, error) {
 	// Try to read the current project
 	project, _, err := ws.ReadProject()
@@ -174,7 +180,7 @@ func requireCurrentStack(
 	}
 
 	// Search for the current stack.
-	b, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, opts)
+	b, err := currentBackendWithOrg(ctx, ws, lm, project, opts, defaultOrg)
 	if err != nil {
 		return nil, err
 	}

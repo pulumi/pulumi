@@ -65,12 +65,19 @@ func NonInteractiveCurrentBackend(
 	logging.V(7).Infof("Current cloud URL: %q", url)
 
 	// Only set current if we don't currently have a cloud URL set.
-	return lm.Current(ctx, ws, cmdutil.Diag(), url, project, url == "")
+	return lm.Current(ctx, ws, cmdutil.Diag(), url, project, url == "", "")
 }
 
 func CurrentBackend(
 	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
 	opts display.Options,
+) (backend.Backend, error) {
+	return CurrentBackendWithOrg(ctx, ws, lm, project, opts, "")
+}
+
+func CurrentBackendWithOrg(
+	ctx context.Context, ws pkgWorkspace.Context, lm LoginManager, project *workspace.Project,
+	opts display.Options, defaultOrg string,
 ) (backend.Backend, error) {
 	if BackendInstance != nil {
 		return BackendInstance, nil
@@ -84,5 +91,5 @@ func CurrentBackend(
 	insecure := pkgWorkspace.GetCloudInsecure(ws, url)
 
 	// Only set current if we don't currently have a cloud URL set.
-	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color)
+	return lm.Login(ctx, ws, cmdutil.Diag(), url, project, url == "", insecure, opts.Color, defaultOrg)
 }
