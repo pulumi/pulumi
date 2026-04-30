@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk/python
+  description: Store parameterized provider package refs in deployment-scoped Python runtime settings

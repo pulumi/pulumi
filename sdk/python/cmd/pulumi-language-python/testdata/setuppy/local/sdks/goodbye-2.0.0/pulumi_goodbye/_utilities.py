@@ -328,27 +328,28 @@ def get_version():
     return "2.0.0"
 
 _package_lock = asyncio.Lock()
-_package_ref = ...
+_package_key = ("goodbye", get_version(), "parameterized", "1.2.3", "R29vZGJ5ZQ==")
 async def get_package():
-	global _package_ref
+	_package_ref = await pulumi.runtime.settings.get_package_ref(_package_key)
 	if _package_ref is ...:
-		if pulumi.runtime.settings._sync_monitor_supports_parameterization():
-			async with _package_lock:
-				if _package_ref is ...:
-					monitor = pulumi.runtime.settings.get_monitor()
-					parameterization = resource_pb2.Parameterization(
-						name="goodbye",
-						version=get_version(),
-						value=base64.b64decode("R29vZGJ5ZQ=="),
+		async with _package_lock:
+			_package_ref = await pulumi.runtime.settings.get_package_ref(_package_key)
+			if _package_ref is ...:
+				monitor = pulumi.runtime.settings.get_monitor()
+				parameterization = resource_pb2.Parameterization(
+					name="goodbye",
+					version=get_version(),
+					value=base64.b64decode("R29vZGJ5ZQ=="),
 					)
-					registerPackageResponse = monitor.RegisterPackage(
+				registerPackageResponse = monitor.RegisterPackage(
 						resource_pb2.RegisterPackageRequest(
-							name="parameterized",
-							version="1.2.3",
-							download_url=get_plugin_download_url(),
-							parameterization=parameterization,
-						))
-					_package_ref = registerPackageResponse.ref
+						name="parameterized",
+						version="1.2.3",
+						download_url=get_plugin_download_url(),
+						parameterization=parameterization,
+					))
+				_package_ref = registerPackageResponse.ref
+				await pulumi.runtime.settings.set_package_ref(_package_key, _package_ref)
 	# TODO: This check is only needed for parameterized providers, normal providers can return None for get_package when we start
 	# using package with them.
 	if _package_ref is None or _package_ref is ...:

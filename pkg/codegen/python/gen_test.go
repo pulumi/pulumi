@@ -26,6 +26,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -106,6 +107,40 @@ func TestGeneratePackage(t *testing.T) {
 		},
 		TestCases: test.PulumiPulumiSDKTests,
 	})
+}
+
+func TestGeneratePackageCachesPackageRefInRuntimeSettings(t *testing.T) {
+	t.Parallel()
+
+	version := semver.MustParse("1.0.0")
+	baseVersion := semver.MustParse("1.1.0")
+	pkg := &schema.Package{
+		Name:    "parameterized",
+		Version: &version,
+		Parameterization: &schema.Parameterization{
+			BaseProvider: schema.BaseProvider{
+				Name:    "terraform-provider",
+				Version: baseVersion,
+			},
+			Parameter: []byte("example"),
+		},
+	}
+	mod := &modContext{
+		pkg:  pkg.Reference(),
+		tool: "test",
+	}
+
+	utilities, err := mod.genUtilitiesFile()
+	require.NoError(t, err)
+
+	text := string(utilities)
+	assert.Contains(t, text, `_package_key = ("parameterized", get_version(), "terraform-provider", "1.1.0", "ZXhhbXBsZQ==")`)
+	assert.Contains(t, text, "_package_ref = await pulumi.runtime.settings.get_package_ref(_package_key)")
+	assert.Contains(t, text, "await pulumi.runtime.settings.set_package_ref(_package_key, _package_ref)")
+	assert.NotContains(t, text, "_package_refs = {}")
+	assert.NotContains(t, text, "_package_ref = ...")
+	assert.NotContains(t, text, "global _package_ref")
+	assert.NotContains(t, text, "_sync_monitor_supports_parameterization")
 }
 
 func absTestsPath() (string, error) {
@@ -302,6 +337,7 @@ Here \\\\N slashes should be escaped but not N
 func TestCalculateDeps(t *testing.T) {
 	t.Parallel()
 	type TestCase struct {
+		parameterized bool
 		// This is the input to the calculate deps function, a list of
 		// deps provided in the schema.
 		inputDeps map[string]string
@@ -313,6 +349,7 @@ func TestCalculateDeps(t *testing.T) {
 	}
 	cases := []TestCase{{
 		// Test 1: Give no explicit deps.
+		parameterized: false,
 		inputDeps: map[string]string{},
 		expected: [][2]string{
 			// We expect three alphabetized deps,
@@ -325,6 +362,7 @@ func TestCalculateDeps(t *testing.T) {
 	}, {
 		// Test 2: If you only one dep, we expect Pulumi to have a narrower
 		//         constraint than if you had provided no deps.
+		parameterized: false,
 		inputDeps: map[string]string{
 			"foobar": "7.10.8",
 		},
@@ -337,6 +375,7 @@ func TestCalculateDeps(t *testing.T) {
 	}, {
 		// Test 3: If you provide pulumi, we expect the constraint to
 		// be respected.
+		parameterized: false,
 		inputDeps: map[string]string{
 			"pulumi": ">=3.0.0,<3.50.0",
 		},
@@ -347,13 +386,23 @@ func TestCalculateDeps(t *testing.T) {
 			{"pulumi", ">=3.0.0,<3.50.0"},
 			{"semver>=2.8.1"},
 		},
+	}, {
+		// Test 4: Parameterized packages must depend on the runtime
+		// version that includes deployment-scoped package ref caching.
+		parameterized: true,
+		inputDeps:     map[string]string{},
+		expected: [][2]string{
+			{"parver>=0.2.1", ""},
+			{"pulumi", ">=3.227.0,<4.0.0"},
+			{"semver>=2.8.1"},
+		},
 	}}
 
 	for i, tc := range cases {
 		name := fmt.Sprintf("CalculateDeps #%d", i+1)
 		t.Run(name, func(tt *testing.T) {
 			tt.Parallel()
-			observedDeps, err := calculateDeps(false, tc.inputDeps)
+			observedDeps, err := calculateDeps(tc.parameterized, tc.inputDeps)
 			assert.Equal(tt, tc.expectedErr, err)
 			for index := range observedDeps {
 				observedDep := observedDeps[index]
