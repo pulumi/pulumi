@@ -117,7 +117,6 @@ function main(args: string[]): void {
                 programRunning = true;
             },
             reportLoggedError: (err: Error) => loggedErrors.add(err),
-            runInStack: false,
             typeScript: !process.versions.bun, // bun handles TypeScript natively
         });
 
