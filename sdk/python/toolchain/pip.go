@@ -33,7 +33,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/errutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -500,24 +499,30 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 			pipCmd.Dir = cwd
 			pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
 
+			var stderrBuf bytes.Buffer
 			if showOutput {
 				// Show stdout/stderr output.
 				pipCmd.Stdout = infoWriter
-				pipCmd.Stderr = errorWriter
-				if err := pipCmd.Run(); err != nil {
-					lastErr = fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
-					if attempt < maxAttempts-1 {
-						fmt.Fprintf(errorWriter, "Retrying (%d/%d)...\n", attempt+1, maxAttempts)
-					}
-					continue
-				}
+				pipCmd.Stderr = io.MultiWriter(errorWriter, &stderrBuf)
 			} else {
-				if _, err := pipCmd.Output(); err != nil {
-					lastErr = errutil.ErrorWithStderr(err, strings.Join(pipCmd.Args, " "))
-					continue
+				pipCmd.Stderr = &stderrBuf
+			}
+			if err := pipCmd.Run(); err != nil {
+				stderr := strings.TrimSpace(stderrBuf.String())
+				if stderr != "" {
+					lastErr = fmt.Errorf("%s via '%s': %w: %s", errorMsg, strings.Join(pipCmd.Args, " "), err, stderr)
+				} else {
+					lastErr = fmt.Errorf("%s via '%s': %w", errorMsg, strings.Join(pipCmd.Args, " "), err)
 				}
 			}
-			return nil
+			if lastErr == nil {
+				return nil
+			}
+			if attempt < maxAttempts-1 && pipErrorIsTransient(stderrBuf.String()) {
+				fmt.Fprintf(errorWriter, "Retrying (%d/%d)...\n", attempt+1, maxAttempts)
+				continue
+			}
+			return lastErr
 		}
 		return lastErr
 	}
@@ -549,6 +554,20 @@ func InstallDependencies(ctx context.Context, cwd, venvDir string, useLanguageVe
 	printmsg("Finished installing dependencies")
 
 	return nil
+}
+
+// pipErrorIsTransient returns true if pip's stderr output suggests a transient
+// upstream issue that is worth retrying.
+func pipErrorIsTransient(stderr string) bool {
+	transientPatterns := []string{
+		"because the GET request got Content-Type",
+	}
+	for _, pattern := range transientPatterns {
+		if strings.Contains(stderr, pattern) {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *pip) PrepareProject(
