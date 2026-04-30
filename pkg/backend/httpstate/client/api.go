@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"runtime"
 	"strings"
 	"time"
@@ -140,6 +141,12 @@ type httpCallOptions struct {
 
 	// ErrorResponse is an optional response body for errors.
 	ErrorResponse any
+
+	// ReturnRawResponse, when true, makes pulumiAPICall skip the 4xx/5xx
+	// typed-error classification (apitype.ErrorResponse, ErrLoginRequired,
+	// ForbiddenError, rate-limit) and return the response as-is. The caller
+	// is responsible for inspecting the status code and decoding the body.
+	ReturnRawResponse bool
 }
 
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
@@ -396,6 +403,10 @@ func pulumiAPICall(ctx context.Context,
 		}
 	}
 
+	if opts.ReturnRawResponse {
+		return url, resp, nil
+	}
+
 	// Provide a better error if using an authenticated call without having logged in first.
 	if resp.StatusCode == 401 && tok.Kind() == accessTokenKindAPIToken && creds == "" {
 		return "", nil, backenderr.ErrLoginRequired
@@ -481,10 +492,12 @@ func (c *defaultRESTClient) HTTPClient() httpClient {
 	return c.client
 }
 
-// Call calls the Pulumi REST API marshalling reqObj to JSON and using that as
-// the request body (use nil for GETs), and if successful, marshalling the responseObj
-// as JSON and storing it in respObj (use nil for NoContent). The error return type might
-// be an instance of apitype.ErrorResponse, in which case will have the response code.
+// Call calls the Pulumi REST API marshalling reqObj to JSON and using that as the request body (use nil for GETs), and
+// if successful, marshalling the responseObj as JSON and storing it in respObj (use nil for NoContent). The error
+// return type might be an instance of apitype.ErrorResponse, in which case will have the response code. if
+// opts.ReturnRawResponse is true, the raw *http.Response will be returned in respObj (which must be of type
+// **http.Response) and no error classification will be done - the caller is expected to inspect the status code and
+// body of the response.
 func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, method, path string, queryObj, reqObj,
 	respObj any, tok accessToken, opts httpCallOptions,
 ) error {
@@ -508,9 +521,13 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	// Compute query string from query object
 	querystring := ""
 	if queryObj != nil {
-		queryValues, err := query.Values(queryObj)
-		if err != nil {
-			return fmt.Errorf("marshalling query object as JSON: %w", err)
+		queryValues, ok := queryObj.(url.Values)
+		if !ok {
+			var err error
+			queryValues, err = query.Values(queryObj)
+			if err != nil {
+				return fmt.Errorf("marshalling query object as JSON: %w", err)
+			}
 		}
 		query := queryValues.Encode()
 		if len(query) > 0 {
@@ -526,6 +543,11 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		// important when sending indented JSON is needed.
 		if raw, ok := reqObj.(json.RawMessage); ok {
 			reqBody = []byte(raw)
+		} else if str, ok := reqObj.(io.Reader); ok {
+			reqBody, err = io.ReadAll(str)
+			if err != nil {
+				return fmt.Errorf("reading request body: %w", err)
+			}
 		} else {
 			reqBody, err = json.Marshal(reqObj)
 			if err != nil {
@@ -550,8 +572,27 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 		otelSpan.SetStatus(codes.Ok, "")
 	}
 
+	if opts.ReturnRawResponse {
+		_, ok := respObj.(**http.Response)
+		contract.Assertf(ok,
+			"if opts.ReturnRawResponse is true, respObj must be of type **http.Response (got %T)", respObj)
+	}
+
 	switch respObj := respObj.(type) {
 	case **http.Response:
+		// Transparently decompress gzip responses. Content-Encoding and
+		// Content-Length apply to the compressed bytes and would mislead any
+		// consumer that inspects them after decompression, so strip both.
+		if ce := resp.Header.Get("Content-Encoding"); ce == "gzip" || ce == "x-gzip" {
+			wrapped, err := newGzipReadCloser(resp.Body)
+			if err != nil {
+				resp.Body.Close()
+				return fmt.Errorf("decompressing gzip response: %w", err)
+			}
+			resp.Body = wrapped
+			resp.Header.Del("Content-Encoding")
+			resp.Header.Del("Content-Length")
+		}
 		*respObj = resp
 		return nil
 	case *io.ReadCloser:
@@ -586,6 +627,32 @@ func (c *defaultRESTClient) Call(ctx context.Context, diag diag.Sink, cloudAPI, 
 	return nil
 }
 
+// gzipReadCloser wraps a gzip reader and the underlying body so closing the
+// wrapper closes both.
+type gzipReadCloser struct {
+	gzip *gzip.Reader
+	body io.ReadCloser
+}
+
+// newGzipReadCloser builds a gzipReadCloser over body. Used by both the raw
+// response decompression in Call and bodyIntoReader's gzip path.
+func newGzipReadCloser(body io.ReadCloser) (*gzipReadCloser, error) {
+	gr, err := gzip.NewReader(body)
+	if err != nil {
+		return nil, err
+	}
+	return &gzipReadCloser{gzip: gr, body: body}, nil
+}
+
+func (g *gzipReadCloser) Read(p []byte) (int, error) {
+	return g.gzip.Read(p)
+}
+
+func (g *gzipReadCloser) Close() error {
+	g.gzip.Close()
+	return g.body.Close()
+}
+
 // readBody reads the contents of an http.Response into a byte array, returning an error if one occurred while in the
 // process of doing so. readBody uses the Content-Encoding of the response to pick the correct reader to use.
 func readBody(resp *http.Response) ([]byte, error) {
@@ -615,14 +682,10 @@ func bodyIntoReader(resp *http.Response) (io.ReadCloser, error) {
 		fallthrough
 	case "gzip":
 		logging.V(apiRequestDetailLogLevel).Infoln("decompressing gzipped response from service")
-		reader, err := gzip.NewReader(resp.Body)
-		if reader != nil {
-			defer contract.IgnoreClose(reader)
-		}
+		reader, err := newGzipReadCloser(resp.Body)
 		if err != nil {
 			return nil, fmt.Errorf("reading gzip-compressed body: %w", err)
 		}
-
 		return reader, nil
 	default:
 		return nil, fmt.Errorf("unrecognized encoding %s", contentEncoding[0])

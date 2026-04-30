@@ -264,3 +264,40 @@ func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 		assert.True(t, errors.Is(err, backenderr.LoginRequiredError{}))
 	})
 }
+
+func TestRESTCall_ReturnRawResponseRequiresHTTPResponsePointer(t *testing.T) {
+	t.Parallel()
+
+	restClient := &defaultRESTClient{
+		client: &defaultHTTPClient{
+			&http.Client{
+				Transport: &errorTransport{
+					roundTripFunc: func(req *http.Request) (*http.Response, error) {
+						return &http.Response{
+							StatusCode: http.StatusOK,
+							Status:     "200 OK",
+							Header:     http.Header{},
+							Body:       io.NopCloser(bytes.NewReader([]byte(`{"ok":true}`))),
+						}, nil
+					},
+				},
+			},
+		},
+	}
+
+	var wrongRespObj map[string]any
+	require.Panics(t, func() {
+		_ = restClient.Call(
+			t.Context(),
+			diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+			"https://api.pulumi.com",
+			http.MethodGet,
+			"/api/test",
+			nil,
+			nil,
+			&wrongRespObj,
+			apiAccessToken("token"),
+			httpCallOptions{ReturnRawResponse: true},
+		)
+	})
+}
