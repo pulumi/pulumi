@@ -37,7 +37,7 @@ func (p pathRepr) appendGlobSegment(segment GlobSegment) pathRepr {
 		return p.appendKey(segment.string)
 	case IndexSegment:
 		return p.appendIndex(segment.i)
-	case SplatSegment:
+	case splat:
 		return p.appendSplat()
 	default:
 		contract.Failf("unexpected glob segment %T", segment)
@@ -74,7 +74,7 @@ func pathReprFromSegments[S any](segments []S) (ret pathRepr) {
 			ret = ret.appendKey(s.string)
 		case IndexSegment:
 			ret = ret.appendIndex(s.i)
-		case SplatSegment:
+		case splat:
 			ret = ret.appendSplat()
 		default:
 			contract.Failf("unknown segment type %T", s)

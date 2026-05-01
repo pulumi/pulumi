@@ -16,7 +16,6 @@ package resource
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // Goal is a desired state for a resource object. Normally it represents a subset of the resource's state expressed by
@@ -33,13 +32,13 @@ type Goal struct {
 	InitErrors              []string              // errors encountered as we attempted to initialize the resource.
 	PropertyDependencies    map[PropertyKey][]URN // the set of dependencies that affect each property.
 	DeleteBeforeReplace     *bool                 // true if this resource should be deleted prior to replacement.
-	IgnoreChanges           []property.Glob       // a list of property paths to ignore when diffing.
-	HideDiff                []property.Glob       // a list of property paths to hide the diffs of.
+	IgnoreChanges           []string              // a list of property paths to ignore when diffing.
+	HideDiff                []PropertyPath        // a list of property paths to hide the diffs of.
 	AdditionalSecretOutputs []PropertyKey         // outputs that should always be treated as secrets.
 	Aliases                 []Alias               // additional structured Aliases that should be assigned.
 	ID                      ID                    // the expected ID of the resource, if any.
 	CustomTimeouts          CustomTimeouts        // an optional config object for resource options
-	ReplaceOnChanges        []property.Glob       // a list of property paths that if changed should force a replacement.
+	ReplaceOnChanges        []string              // a list of property paths that if changed should force a replacement.
 	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	ReplacementTrigger PropertyValue
 	// if set to True, the providers Delete method will not be called for this resource.
@@ -91,7 +90,7 @@ type NewGoal struct {
 	DeleteBeforeReplace *bool // required
 
 	// a list of property paths to ignore when diffing.
-	IgnoreChanges []property.Glob // required
+	IgnoreChanges []string // required
 
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []PropertyKey // required
@@ -106,7 +105,7 @@ type NewGoal struct {
 	CustomTimeouts *CustomTimeouts // required
 
 	// a list of property paths that if changed should force a replacement.
-	ReplaceOnChanges []property.Glob // required
+	ReplaceOnChanges []string // required
 
 	// if set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	ReplacementTrigger PropertyValue // required
@@ -132,7 +131,7 @@ type NewGoal struct {
 	ResourceHooks map[HookType][]string // required
 
 	// If set, the list of property paths to hide the diff output of.
-	HideDiff []property.Glob // required
+	HideDiff []PropertyPath // required
 }
 
 // Make consumes the NewGoal to create a *Goal.

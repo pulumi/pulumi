@@ -118,7 +118,7 @@ func SerializeResourcePlan(
 			Provider:                plan.Goal.Provider,
 			PropertyDependencies:    plan.Goal.PropertyDependencies,
 			DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
-			IgnoreChanges:           resource.BackCompatPropertyPathList(plan.Goal.IgnoreChanges),
+			IgnoreChanges:           plan.Goal.IgnoreChanges,
 			AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
 			Aliases:                 plan.Goal.Aliases,
 			ID:                      plan.Goal.ID,

@@ -487,11 +487,11 @@ type ResourceV3 struct {
 	// StackTrace records the stack at the time this resource was registered
 	StackTrace []StackFrameV1 `json:"stackTrace,omitempty" yaml:"stackTrace,omitempty"`
 	// IgnoreChanges is a list of properties to ignore changes for.
-	IgnoreChanges resource.BackCompatPropertyPathList `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
+	IgnoreChanges []string `json:"ignoreChanges,omitempty" yaml:"ignoreChanges,omitempty"`
 	// HideDiff is a list of properties to hide the diff for.
-	HideDiff []resource.BackCompatPropertyPath `json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
+	HideDiff []resource.PropertyPath `json:"hideDiff,omitempty" yaml:"hideDiff,omitempty"`
 	// ReplaceOnChanges is a list of properties that if changed trigger a replace.
-	ReplaceOnChanges resource.BackCompatPropertyPathList `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
+	ReplaceOnChanges []string `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 	// If set, the engine will diff this with the last recorded value, and trigger a replace if they are not equal.
 	ReplacementTrigger any `json:"replacementTrigger,omitempty" yaml:"replacementTrigger,omitempty"`
 	// RefreshBeforeUpdate indicates that this resource should always be refreshed prior to updates.
