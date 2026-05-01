@@ -228,8 +228,10 @@ func TestCompareOps_PerSegmentStaticFirst(t *testing.T) {
 		{"lexical_among_templates", "/api/{a}", "/api/{b}", -1},
 		{"shorter_before_longer_same_prefix", "/api/users", "/api/users/me", -1},
 		{"equal", "/api/user", "/api/user", 0},
-		{"literal_branch_wins_over_template_branch_at_root",
-			"/api/foo/{a}", "/api/{x}/bar", -1},
+		{
+			"literal_branch_wins_over_template_branch_at_root",
+			"/api/foo/{a}", "/api/{x}/bar", -1,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

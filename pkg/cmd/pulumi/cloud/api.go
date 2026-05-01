@@ -49,18 +49,18 @@ type apiCommand struct {
 
 	// Local api for the dispatcher path. Flag names are a stable contract
 	// matching `gh api`.
-	method        string
-	fields        []string
-	rawFields     []string
-	headers       []string
-	input         string
-	body          string
-	include       bool
-	silent        bool
-	verbose       bool
-	dryRun        bool
-	format        string
-	schemaVersion int
+	method          string
+	fields          []string
+	rawFields       []string
+	headers         []string
+	input           string
+	body            string
+	include         bool
+	silent          bool
+	verbose         bool
+	dryRun          bool
+	format          string
+	envelopeVersion int
 }
 
 // bindFlags attaches the full flag set to cmd, binding each flag to a field
@@ -100,12 +100,12 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 			"response content type (usually JSON). `json` or `markdown` request that "+
 			"format via the Accept header — rejected if the op's spec doesn't declare it. "+
 			"`raw` keeps the op's default Accept and writes the body through unchanged.")
-	pf.IntVar(&api.schemaVersion, "schema-version", SchemaVersion,
-		"Pin the envelope schema version the caller expects")
+	pf.IntVar(&api.envelopeVersion, "envelope-version", SchemaVersion,
+		"Pin the JSON envelope version the caller expects")
 }
 
 func newAPICmd() *cobra.Command {
-	api := &apiCommand{schemaVersion: SchemaVersion}
+	api := &apiCommand{envelopeVersion: SchemaVersion}
 
 	cmd := &cobra.Command{
 		Use:   "api",
@@ -135,6 +135,11 @@ func newAPICmd() *cobra.Command {
 			"`{poolId}`) fills that variable and is not forwarded as a query or body parameter.\n" +
 			"This is the way to supply non-context path parameters when calling by operation\n" +
 			"ID.\n" +
+			"\n" +
+			"When a path template and the request body share a parameter name, the first\n" +
+			"matching -F is consumed for the path and any subsequent -F with the same key is\n" +
+			"sent in the body. Pass -F twice to fill both, or use --body / --input to supply\n" +
+			"the body separately.\n" +
 			"\n" +
 			"The OpenAPI spec is cached locally for 24 hours; pass --refresh-spec on any\n" +
 			"subcommand to force a re-fetch.\n" +
@@ -313,7 +318,7 @@ func executeLive(
 		bodyReader = bytes.NewReader(body)
 	}
 	resp, err := apiClient.RawCall(ctx, method, concretePath, baseQuery, bodyReader,
-		buildAPIHeaders(contentType, accept, hdrs), len(body) > 0, true)
+		buildAPIHeaders(contentType, accept, hdrs), len(body) > 0)
 	if err != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
 			return &APIError{ExitCode: cmdutil.ExitCancelled, Silent: true}
@@ -495,12 +500,12 @@ func renderBody(w io.Writer, contentType string, body []byte) error {
 
 // validateFlagCombos enforces flag-set invariants before we do any work.
 func validateFlagCombos(api *apiCommand) error {
-	if api.schemaVersion != SchemaVersion {
+	if api.envelopeVersion != SchemaVersion {
 		return NewAPIError(cmdutil.ExitCodeError, ErrUnsupportedSchemaVersion,
-			fmt.Sprintf("schemaVersion %d is not supported; this CLI speaks schemaVersion %d",
-				api.schemaVersion, SchemaVersion)).
-			WithField("schema-version").
-			WithSuggestions("omit --schema-version to use the current version")
+			fmt.Sprintf("envelope version %d is not supported; this CLI speaks envelope version %d",
+				api.envelopeVersion, SchemaVersion)).
+			WithField("envelope-version").
+			WithSuggestions("omit --envelope-version to use the current version")
 	}
 	if api.body != "" && api.input != "" {
 		return NewAPIError(cmdutil.ExitConfigurationError, ErrInvalidFlags,
@@ -582,6 +587,10 @@ func resolveAPIArg(idx *Index, arg string, api *apiCommand, methodExplicit bool)
 // Precedence per var: path literal > matching -F/-f field (consumed) > context
 // auto-resolution from the current Pulumi project / selected stack.
 //
+// When the user wrote a placeholder alias in the path (e.g. `{foo}` for a
+// spec param named `orgName`), the alias is the lookup key for the matching
+// -F field — Otherwise the spec param name is the lookup key.
+//
 // A field whose key matches a path template variable is consumed — it is
 // removed from the returned slice so encodeFields won't re-route it to the
 // query string or request body.
@@ -590,6 +599,7 @@ func resolveBindings(
 ) (map[string]string, []ParsedField, error) {
 	out := make(map[string]string, len(mr.Bindings))
 	remaining := fields
+	ctxValues := contextPathValues(rctx)
 	// Iterate bindings in a deterministic order so error messages and the
 	// remaining-fields slice stay stable across runs.
 	for name, b := range fxmaps.Sorted(mr.Bindings) {
@@ -597,7 +607,11 @@ func resolveBindings(
 			out[name] = b.Literal
 			continue
 		}
-		idx := findFieldIndex(remaining, name)
+		lookupKey := name
+		if b.Placeholder != "" {
+			lookupKey = b.Placeholder
+		}
+		idx := findFieldIndex(remaining, lookupKey)
 		if idx >= 0 {
 			val, err := stringifyFieldForPath(remaining[idx])
 			if err != nil {
@@ -607,13 +621,45 @@ func resolveBindings(
 			remaining = append(remaining[:idx], remaining[idx+1:]...)
 			continue
 		}
-		val, err := resolveTemplateVar(name, b.Placeholder, rctx)
-		if err != nil {
-			return nil, nil, err
+		if v, ok := ctxValues[lookupKey]; ok {
+			out[name] = v
+			continue
 		}
-		out[name] = val
+		return nil, nil, NewAPIError(cmdutil.ExitCodeError, ErrMissingContext,
+			"template var {"+name+"} is unresolved").
+			WithField(name).
+			WithSuggestions(
+				"pass -F "+lookupKey+"=<value>",
+				"or include the value literally in the path",
+			)
 	}
 	return out, remaining, nil
+}
+
+// contextPathValues pre-fills the path values that the dispatcher can derive
+// from the current Pulumi context (selected stack, project file, default
+// org). Keyed by the OpenAPI spec name only. Returns nil when rctx is nil.
+func contextPathValues(rctx *ResolvedContext) map[string]string {
+	if rctx == nil {
+		return nil
+	}
+	out := make(map[string]string, 3)
+	switch {
+	case rctx.StackOrg != "":
+		out["orgName"] = rctx.StackOrg
+	case rctx.OrgName != "":
+		out["orgName"] = rctx.OrgName
+	}
+	switch {
+	case rctx.Project != nil && rctx.Project.Name != "":
+		out["projectName"] = string(rctx.Project.Name)
+	case rctx.StackProj != "":
+		out["projectName"] = rctx.StackProj
+	}
+	if rctx.StackName != "" {
+		out["stackName"] = rctx.StackName
+	}
+	return out
 }
 
 // findFieldIndex returns the index of the first field whose key matches name,
@@ -645,94 +691,6 @@ func stringifyFieldForPath(f ParsedField) (string, error) {
 			WithField(f.Key)
 	default:
 		return fmt.Sprintf("%v", v), nil
-	}
-}
-
-type templateKind int
-
-const (
-	kindNone templateKind = iota
-	kindOrg
-	kindProject
-	kindStack
-)
-
-func templateVarKind(name string) templateKind {
-	switch name {
-	case "orgName", "org":
-		return kindOrg
-	case "projectName", "project":
-		return kindProject
-	case "stackName", "stack":
-		return kindStack
-	}
-	return kindNone
-}
-
-// resolveTemplateVar resolves a single unbound template variable from the
-// current Pulumi context. Org/project/stack template vars auto-fill from
-// rctx (selected stack ref, project, default org); everything else must be
-// supplied with -F. rctx may be nil — in that case all kinds fall through
-// to the missing-context error with a -F suggestion.
-func resolveTemplateVar(specName, alias string, rctx *ResolvedContext) (string, error) {
-	kind := templateVarKind(specName)
-	if kind == kindNone {
-		kind = templateVarKind(alias)
-	}
-
-	switch kind {
-	case kindOrg:
-		if rctx != nil {
-			if rctx.StackOrg != "" {
-				return rctx.StackOrg, nil
-			}
-			if rctx.OrgName != "" {
-				return rctx.OrgName, nil
-			}
-		}
-		return "", NewAPIError(cmdutil.ExitCodeError, ErrMissingContext,
-			"template var {"+specName+"} is unresolved").
-			WithField(specName).
-			WithSuggestions(
-				"pass -F "+specName+"=<name>",
-				"select a stack with `pulumi stack select <org>/<project>/<stack>`",
-				"set a default with `pulumi org set-default <name>`",
-			)
-	case kindProject:
-		if rctx != nil && rctx.Project != nil && rctx.Project.Name != "" {
-			return string(rctx.Project.Name), nil
-		}
-		if rctx != nil && rctx.StackProj != "" {
-			return rctx.StackProj, nil
-		}
-		return "", NewAPIError(cmdutil.ExitCodeError, ErrMissingContext,
-			"template var {"+specName+"} is unresolved").
-			WithField(specName).
-			WithSuggestions(
-				"pass -F "+specName+"=<name>",
-				"run from a directory containing Pulumi.yaml",
-			)
-	case kindStack:
-		if rctx != nil && rctx.StackName != "" {
-			return rctx.StackName, nil
-		}
-		return "", NewAPIError(cmdutil.ExitCodeError, ErrMissingContext,
-			"template var {"+specName+"} is unresolved").
-			WithField(specName).
-			WithSuggestions(
-				"pass -F "+specName+"=<name>",
-				"select a stack with `pulumi stack select <name>` first",
-			)
-	case kindNone:
-		fallthrough
-	default:
-		return "", NewAPIError(cmdutil.ExitCodeError, ErrMissingContext,
-			"template var {"+specName+"} is unresolved").
-			WithField(specName).
-			WithSuggestions(
-				"pass -F "+specName+"=<value>",
-				"include the value literally in the path",
-			)
 	}
 }
 

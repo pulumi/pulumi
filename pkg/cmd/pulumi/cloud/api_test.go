@@ -78,6 +78,28 @@ func TestResolveBindings_NonMatchingFieldPassesThrough(t *testing.T) {
 	assert.Equal(t, "foo", remaining[0].Value)
 }
 
+// TestResolveBindings_AliasFieldFillsPath verifies that when the user
+// writes their own alias for a path template variable (e.g. `{foobar}`
+// for a spec param named `orgName`), a -F field whose key matches the
+// alias fills the path — not the spec param name. Without this, an
+// aliased path silently resolves from context instead.
+func TestResolveBindings_AliasFieldFillsPath(t *testing.T) {
+	t.Parallel()
+	mr := &MatchResult{
+		Op: &Operation{Method: "POST", Path: "/api/orgs/{orgName}/hooks"},
+		Bindings: map[string]Binding{
+			"orgName": {Placeholder: "foo"},
+		},
+	}
+	fields := []ParsedField{
+		{Key: "foo", Value: "bar"},
+	}
+	resolved, remaining, err := resolveBindings(mr, fields, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "bar", resolved["orgName"])
+	assert.Empty(t, remaining, "aliased -F should be consumed by the path")
+}
+
 // TestResolveBindings_FieldOverridesContextAutoResolve verifies that a
 // -F field takes precedence over context auto-resolution for a
 // context-kind param (orgName/projectName/stackName).
@@ -270,7 +292,7 @@ func TestRawCall_ForwardsUserHeaders(t *testing.T) {
 		{Name: "Authorization", Value: "token attacker"},
 	}
 	resp, err := apiClient.RawCall(t.Context(), http.MethodGet, "/echo", nil, nil,
-		buildAPIHeaders("application/json", "application/json", hdrs), false, true)
+		buildAPIHeaders("application/json", "application/json", hdrs), false)
 	require.NoError(t, err)
 	resp.Body.Close()
 
@@ -287,9 +309,9 @@ func TestRawCall_ForwardsUserHeaders(t *testing.T) {
 func TestValidateFlagCombos_BodyAndInputMutuallyExclusive(t *testing.T) {
 	t.Parallel()
 	err := validateFlagCombos(&apiCommand{
-		schemaVersion: SchemaVersion,
-		body:          `{"a":1}`,
-		input:         "payload.json",
+		envelopeVersion: SchemaVersion,
+		body:            `{"a":1}`,
+		input:           "payload.json",
 	})
 	require.Error(t, err)
 	var apiErr *APIError
@@ -305,9 +327,9 @@ func TestValidateFlagCombos_BodyAndInputMutuallyExclusive(t *testing.T) {
 func TestValidateFlagCombos_SilentAndVerboseMutuallyExclusive(t *testing.T) {
 	t.Parallel()
 	err := validateFlagCombos(&apiCommand{
-		schemaVersion: SchemaVersion,
-		silent:        true,
-		verbose:       true,
+		envelopeVersion: SchemaVersion,
+		silent:          true,
+		verbose:         true,
 	})
 	require.Error(t, err)
 	var apiErr *APIError

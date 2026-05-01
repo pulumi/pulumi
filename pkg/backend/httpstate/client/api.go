@@ -142,7 +142,7 @@ type httpCallOptions struct {
 	ErrorResponse any
 
 	// SkipDecodeErrors, when true, makes pulumiAPICall skip the 401/429/4xx/5xx
-	// typed-error classification and hand the *http.Response back unchanged.
+	// typed-error classification.
 	// The caller is responsible for inspecting status, reading the body, and
 	// closing it. The body read/decode/close is still handled by passing
 	// **http.Response to Call's respObj — this only controls error decoding.

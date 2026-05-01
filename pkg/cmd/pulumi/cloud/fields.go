@@ -20,7 +20,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -34,18 +33,12 @@ type ParsedField struct {
 	Raw   bool // from -f: always emit as string
 }
 
-// parseField parses a single `key=value` spec into a ParsedField.
-// typed=true uses gh-style type inference:
-//   - "true"/"false" → bool
-//   - "null" → nil
-//   - integer literal → int64
-//   - float literal → float64
-//   - JSON object (`{...}`) or array (`[...]`) → parsed into map/slice so
-//     callers can build nested request bodies inline
-//   - "@path" → file contents as string (or stdin when path=="-")
-//   - everything else → string
-//
-// typed=false always emits a string value (for `-f`).
+// parseField parses a single `key=value` spec into a ParsedField. typed=true
+// runs the value through json.Unmarshal so JSON literals decode to their
+// native Go types; anything that fails to parse, including bare unquoted strings,
+// falls through as a plain string, which is the gh-style ergonomic for `-F note=hello`.
+// `@path` (or `@-` for stdin) is honoured for both typed and raw fields.
+// typed=false always emits the value verbatim as a string (for `-f`).
 func parseField(spec string, typed bool, stdin io.Reader) (ParsedField, error) {
 	eq := strings.IndexByte(spec, '=')
 	if eq < 0 {
@@ -70,29 +63,9 @@ func parseField(spec string, typed bool, stdin io.Reader) (ParsedField, error) {
 	if !typed {
 		return ParsedField{Key: key, Value: val, Raw: true}, nil
 	}
-	// Type inference.
-	switch val {
-	case "true":
-		return ParsedField{Key: key, Value: true}, nil
-	case "false":
-		return ParsedField{Key: key, Value: false}, nil
-	case "null":
-		return ParsedField{Key: key, Value: nil}, nil
-	}
-	// Numbers — only bare decimal, no hex/octal/exp to avoid surprises.
-	if n, err := strconv.ParseInt(val, 10, 64); err == nil {
-		return ParsedField{Key: key, Value: n}, nil
-	}
-	if f, err := strconv.ParseFloat(val, 64); err == nil {
-		return ParsedField{Key: key, Value: f}, nil
-	}
-	// JSON object/array literal: parse so nested bodies work without a file.
-	// Only triggers on `{` or `[` prefixes — bare strings are never ambiguous.
-	if len(val) > 0 && (val[0] == '{' || val[0] == '[') {
-		var parsed any
-		if err := json.Unmarshal([]byte(val), &parsed); err == nil {
-			return ParsedField{Key: key, Value: parsed}, nil
-		}
+	var parsed any
+	if err := json.Unmarshal([]byte(val), &parsed); err == nil {
+		return ParsedField{Key: key, Value: parsed}, nil
 	}
 	return ParsedField{Key: key, Value: val}, nil
 }

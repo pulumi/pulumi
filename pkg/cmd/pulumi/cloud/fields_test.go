@@ -29,7 +29,7 @@ func TestParseField_TypeInference(t *testing.T) {
 		want any
 	}{
 		{"name=pulumi", "pulumi"},
-		{"count=42", int64(42)},
+		{"count=42", float64(42)},
 		{"rate=3.14", 3.14},
 		{"enabled=true", true},
 		{"enabled=false", false},

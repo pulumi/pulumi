@@ -2072,9 +2072,8 @@ func (pc *Client) DeletePackageVersion(
 // RawCall issues an arbitrary Pulumi API request and returns the raw
 // *http.Response. Unlike the typed Call methods, RawCall does not
 // deserialize the response body and does not classify 4xx/5xx into typed
-// errors; the caller inspects status, headers, and body. When
-// gzipDecompressResponse is true and the server returns a gzip-encoded
-// body, the body is transparently decompressed; the Content-Encoding and
+// errors; the caller inspects status, headers, and body. Gzip-encoded
+// responses are transparently decompressed; the Content-Encoding and
 // Content-Length response headers are left intact so the caller can still
 // see what the server sent.
 func (pc *Client) RawCall(
@@ -2084,7 +2083,6 @@ func (pc *Client) RawCall(
 	body io.Reader,
 	header http.Header,
 	gzipCompressBody bool,
-	gzipDecompressResponse bool,
 ) (*http.Response, error) {
 	fullPath := path
 	if len(query) > 0 {
@@ -2114,16 +2112,14 @@ func (pc *Client) RawCall(
 		return nil, err
 	}
 
-	if gzipDecompressResponse {
-		if encs, ok := resp.Header["Content-Encoding"]; ok && len(encs) == 1 &&
-			(encs[0] == "gzip" || encs[0] == "x-gzip") {
-			gr, gzerr := gzip.NewReader(resp.Body)
-			if gzerr != nil {
-				resp.Body.Close()
-				return nil, fmt.Errorf("decompressing gzipped response: %w", gzerr)
-			}
-			resp.Body = &gzipReadCloser{gzip: gr, body: resp.Body}
+	if encs, ok := resp.Header["Content-Encoding"]; ok && len(encs) == 1 &&
+		(encs[0] == "gzip" || encs[0] == "x-gzip") {
+		gr, gzerr := gzip.NewReader(resp.Body)
+		if gzerr != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("decompressing gzipped response: %w", gzerr)
 		}
+		resp.Body = &gzipReadCloser{gzip: gr, body: resp.Body}
 	}
 	return resp, nil
 }
