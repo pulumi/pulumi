@@ -565,7 +565,12 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		g.Fgen(w, ")")
 	case "length":
-		g.Fgenf(w, "len(%.v)", expr.Args[0])
+		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
+		if model.StringType.AssignableFrom(argType) {
+			g.Fgenf(w, "grapheme_length(%.v)", expr.Args[0])
+		} else {
+			g.Fgenf(w, "len(%.v)", expr.Args[0])
+		}
 	case "lookup":
 		g.Fgenf(w, "%.16v.get(%.v, %.v)",
 			expr.Args[0], expr.Args[1], expr.Args[2])
