@@ -60,7 +60,7 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[_builtins.bool]] = None,
+                 value: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -92,7 +92,7 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[_builtins.bool]] = None,
+                 value: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -116,7 +116,7 @@ class Resource(pulumi.CustomResource):
     def get(resource_name: str,
             id: pulumi.Input[str],
             opts: Optional[pulumi.ResourceOptions] = None,
-            lookup: Optional[pulumi.Input[_builtins.str]] = None) -> 'Resource':
+            lookup: pulumi.Input[Optional[_builtins.str]] = None) -> 'Resource':
         """
         Get an existing Resource resource's state with the given name, id, and optional extra
         properties used to qualify the lookup.
