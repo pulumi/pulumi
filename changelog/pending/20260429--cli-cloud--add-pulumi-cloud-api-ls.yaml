@@ -1,6 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: |
-    Add `pulumi cloud api list` for browsing every endpoint exposed by the Pulumi
-    Cloud OpenAPI spec, with table and JSON output

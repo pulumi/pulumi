@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.234.0 (2026-05-01)
+
+
+### Features
+
+- [cli/cloud] Add `pulumi cloud api describe` for inspecting the parameters, request
+body, and response schema of any Pulumi Cloud API operation, with
+text, markdown, and JSON output
+
+  [#22770](https://github.com/pulumi/pulumi/pull/22770)
+
+- [cli/cloud] Add `pulumi cloud api list` for browsing every endpoint exposed by the Pulumi
+Cloud OpenAPI spec, with table and JSON output
+
+  [#22769](https://github.com/pulumi/pulumi/pull/22769)
+
+
+### Bug Fixes
+
+- [engine] Revert changes to property path parsing that resulted in errors for currently valid paths
+
 ## 3.233.0 (2026-04-30)
 
 
