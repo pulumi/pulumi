@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // StepCompleteFunc is the type of functions returned from Step.Apply. These
@@ -875,7 +876,7 @@ type UpdateStep struct {
 	stables       []resource.PropertyKey         // an optional list of properties that won't change during this update.
 	diffs         []resource.PropertyKey         // the keys causing a diff.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured diff.
-	ignoreChanges []string                       // a list of property paths to ignore when updating.
+	ignoreChanges []property.Glob                // a list of property paths to ignore when updating.
 	provider      plugin.Provider                // the optional provider to use.
 	oldViews      []plugin.View                  // the old views for this resource.
 }
@@ -884,7 +885,7 @@ var _ Step = (*UpdateStep)(nil)
 
 func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
 	stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
-	ignoreChanges []string, oldViews []plugin.View,
+	ignoreChanges []property.Glob, oldViews []plugin.View,
 ) Step {
 	contract.Requiref(old != nil, "old", "must not be nil")
 	contract.Requiref(old.URN != "", "old", "must have a URN")
@@ -986,7 +987,7 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 					OldOutputs:            s.old.Outputs,
 					NewInputs:             s.new.Inputs,
 					Timeout:               s.new.CustomTimeouts.Update,
-					IgnoreChanges:         s.ignoreChanges,
+					IgnoreChanges:         globsToStrings(s.ignoreChanges),
 					Preview:               s.deployment.opts.DryRun,
 					ResourceStatusAddress: resourceStatusAddress,
 					ResourceStatusToken:   resourceStatusToken,
@@ -1709,7 +1710,7 @@ type ImportStep struct {
 	old           *resource.State       // the state of the resource fetched from the provider.
 	new           *resource.State       // the newly computed state of the resource after importing.
 	replacing     bool                  // true if we are replacing a Pulumi-managed resource.
-	ignoreChanges []string              // a list of property paths to ignore when updating.
+	ignoreChanges []property.Glob       // a list of property paths to ignore when updating.
 	randomSeed    []byte                // the random seed to use for Check.
 	provider      plugin.Provider       // the optional provider to use.
 
@@ -1721,7 +1722,7 @@ type ImportStep struct {
 }
 
 func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
-	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
+	ignoreChanges []property.Glob, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
 ) Step {
 	contract.Requiref(new != nil, "new", "must not be nil")
 	contract.Requiref(new.URN != "", "new", "must have a URN")
@@ -1745,7 +1746,7 @@ func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resou
 }
 
 func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *resource.State,
-	ignoreChanges []string, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
+	ignoreChanges []property.Glob, randomSeed []byte, cts *promise.CompletionSource[*resource.State],
 ) Step {
 	contract.Requiref(original != nil, "original", "must not be nil")
 
@@ -2277,12 +2278,12 @@ type DiffStep struct {
 	pcs           *promise.CompletionSource[plugin.DiffResult] // the completion source for this diff
 	old           *resource.State                              // the old resource state
 	new           *resource.State                              // the new resource state
-	ignoreChanges []string                                     // a list of property paths to ignore when diffing
+	ignoreChanges []property.Glob                              // a list of property paths to ignore when diffing
 }
 
 func NewDiffStep(
 	deployment *Deployment, pcs *promise.CompletionSource[plugin.DiffResult], old, new *resource.State,
-	ignoreChanges []string,
+	ignoreChanges []property.Glob,
 ) Step {
 	return &DiffStep{
 		deployment:    deployment,

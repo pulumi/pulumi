@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // A Plan is a mapping from URNs to ResourcePlans. The plan defines an expected set of resources and the expected
@@ -157,7 +158,7 @@ type GoalPlan struct {
 	// true if this resource should be deleted prior to replacement.
 	DeleteBeforeReplace *bool
 	// a list of property names to ignore during changes.
-	IgnoreChanges []string
+	IgnoreChanges []property.Glob
 	// outputs that should always be treated as secrets.
 	AdditionalSecretOutputs []resource.PropertyKey
 	// Structured Alias objects to be assigned to this resource
@@ -632,7 +633,10 @@ func (rp *ResourcePlan) checkGoal(
 	}
 
 	// Check that the ignoreChanges sets are identical.
-	if message, changed := rp.diffStringSets(rp.Goal.IgnoreChanges, programGoal.IgnoreChanges); changed {
+	if message, changed := rp.diffStringSets(
+		globsToStrings(rp.Goal.IgnoreChanges),
+		globsToStrings(programGoal.IgnoreChanges),
+	); changed {
 		return fmt.Errorf("ignoreChanges changed: %v", message)
 	}
 
