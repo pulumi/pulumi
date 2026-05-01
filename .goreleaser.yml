@@ -77,6 +77,19 @@ builds:
     - grpcnotrace
   tool: ../../../../scripts/go-wrapper.sh
 - <<: *pulumibin
+  id: pulumi-language-pcl
+  binary: pulumi-language-pcl
+  dir: sdk/pcl
+  main: ./cmd/pulumi-language-pcl
+  tags:
+    # Enforce the pure Go implementation of os/user, even when cgo is available.
+    # See https://pkg.go.dev/os/user#pkg-overview.
+    - osusergo
+    # google.golang.org/grpc has a build tag `grpcnotrace` which builds the package without x/net/trace. This avoids
+    # dead code elimation from being disabled by the compiler, see https://github.com/pulumi/pulumi/pull/22012.
+    - grpcnotrace
+  tool: ../../scripts/go-wrapper.sh
+- <<: *pulumibin
   id: pulumi-display-wasm
   binary: pulumi-display
   dir: pkg
