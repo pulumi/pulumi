@@ -16,9 +16,11 @@ package cloud
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,9 +30,16 @@ func buildTestIndex(ops ...*Operation) *Index {
 	idx := &Index{
 		Operations: ops,
 		ByKey:      make(map[string]*Operation, len(ops)),
+		router:     mux.NewRouter(),
 	}
+	// Same per-segment static-first ordering as parseIndex.
+	sortedOps := append([]*Operation(nil), ops...)
+	slices.SortStableFunc(sortedOps, compareOps)
 	for _, op := range ops {
 		idx.ByKey[op.Key()] = op
+	}
+	for _, op := range sortedOps {
+		idx.router.Path(op.Path).Methods(op.Method).Name(op.Key())
 	}
 	return idx
 }
@@ -121,13 +130,6 @@ func TestMatchPath_UserTemplateAgainstLiteralSegmentFails(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestCountTemplateParams(t *testing.T) {
-	t.Parallel()
-	assert.Equal(t, 0, countTemplateParams("/api/user"))
-	assert.Equal(t, 2, countTemplateParams("/api/stacks/{org}/{project}"))
-	assert.Equal(t, 1, countTemplateParams("/api/orgs/{orgName}/members"))
-}
-
 func TestMatchByOperationID_Exact(t *testing.T) {
 	t.Parallel()
 	idx := buildTestIndex(
@@ -206,6 +208,129 @@ func TestSplitLeadingHTTPMethod(t *testing.T) {
 			assert.Equal(t, tc.wantRest, r)
 		})
 	}
+}
+
+// TestCompareOps_PerSegmentStaticFirst pins the routing-order contract
+// that powers PrefersMoreSpecific: at each depth, literal segments sort
+// before {template} segments; equal-kind segments fall back to lexical
+// compare; shorter paths sort before longer ones with the same prefix.
+// Mirrors pulumi-service's cmd/pulumi-codegen/cmd/go.go operationTree.walk.
+func TestCompareOps_PerSegmentStaticFirst(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name     string
+		a, b     string
+		wantSign int // -1 a<b, 0 equal, +1 a>b
+	}{
+		{"literal_before_template_at_depth_2", "/api/users/me", "/api/users/{login}", -1},
+		{"literal_before_template_at_depth_3", "/api/{org}/me", "/api/{org}/{login}", -1},
+		{"lexical_among_literals", "/api/orgs", "/api/users", -1},
+		{"lexical_among_templates", "/api/{a}", "/api/{b}", -1},
+		{"shorter_before_longer_same_prefix", "/api/users", "/api/users/me", -1},
+		{"equal", "/api/user", "/api/user", 0},
+		{"literal_branch_wins_over_template_branch_at_root",
+			"/api/foo/{a}", "/api/{x}/bar", -1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a := &Operation{Method: "GET", Path: tc.a}
+			b := &Operation{Method: "GET", Path: tc.b}
+			got := compareOps(a, b)
+			switch {
+			case tc.wantSign < 0:
+				assert.Less(t, got, 0, "expected %s < %s", tc.a, tc.b)
+			case tc.wantSign > 0:
+				assert.Greater(t, got, 0, "expected %s > %s", tc.a, tc.b)
+			default:
+				assert.Equal(t, 0, got, "expected %s == %s", tc.a, tc.b)
+			}
+		})
+	}
+}
+
+// TestMatchPath_DeepSpecificity exercises a 3-level template tree to
+// verify that the per-segment static-first ordering still picks the
+// most-specific match when literals and templates interleave deeper than
+// the simpler PrefersMoreSpecific case.
+func TestMatchPath_DeepSpecificity(t *testing.T) {
+	t.Parallel()
+	idx := buildTestIndex(
+		&Operation{Method: "GET", Path: "/api/orgs/{orgName}/members"},
+		&Operation{Method: "GET", Path: "/api/orgs/{orgName}/{otherName}"},
+	)
+	// User input "members" should hit the literal-segment route, not the
+	// pure-template one — even though the template route would also match.
+	mr, err := MatchPath(idx, "GET", "/api/orgs/acme/members")
+	require.NoError(t, err)
+	assert.Equal(t, "/api/orgs/{orgName}/members", mr.Op.Path)
+	assert.Equal(t, Binding{Literal: "acme"}, mr.Bindings["orgName"])
+	// And conversely a non-"members" tail falls through to the template route.
+	mr, err = MatchPath(idx, "GET", "/api/orgs/acme/teams")
+	require.NoError(t, err)
+	assert.Equal(t, "/api/orgs/{orgName}/{otherName}", mr.Op.Path)
+	assert.Equal(t, Binding{Literal: "teams"}, mr.Bindings["otherName"])
+}
+
+// TestMatchPath_SamePathDifferentMethods verifies that two operations
+// sharing a path but differing in HTTP method both register and route
+// correctly; gorilla's per-route .Methods filter handles the dispatch.
+func TestMatchPath_SamePathDifferentMethods(t *testing.T) {
+	t.Parallel()
+	idx := buildTestIndex(
+		&Operation{Method: "GET", Path: "/api/stacks/{orgName}", OperationID: "GetStack"},
+		&Operation{Method: "POST", Path: "/api/stacks/{orgName}", OperationID: "CreateStack"},
+	)
+	mr, err := MatchPath(idx, "GET", "/api/stacks/acme")
+	require.NoError(t, err)
+	assert.Equal(t, "GetStack", mr.Op.OperationID)
+	mr, err = MatchPath(idx, "POST", "/api/stacks/acme")
+	require.NoError(t, err)
+	assert.Equal(t, "CreateStack", mr.Op.OperationID)
+}
+
+// TestMatchByOperationID_PopulatesPlaceholderBindings verifies the
+// MatchByOperationID symmetry trick: a templated op looked up by ID gets
+// Bindings populated with one Placeholder per {var} in its path, so the
+// dispatcher can hand them to resolveTemplateVar.
+func TestMatchByOperationID_PopulatesPlaceholderBindings(t *testing.T) {
+	t.Parallel()
+	idx := buildTestIndex(
+		&Operation{
+			Method: "GET", Path: "/api/orgs/{orgName}/teams/{teamName}/members",
+			OperationID: "ListTeamMembers",
+		},
+	)
+	mr, err := MatchByOperationID(idx, "ListTeamMembers")
+	require.NoError(t, err)
+	assert.Equal(t, Binding{Placeholder: "orgName"}, mr.Bindings["orgName"])
+	assert.Equal(t, Binding{Placeholder: "teamName"}, mr.Bindings["teamName"])
+}
+
+// TestMatchByOperationID_LiteralPathHasNoBindings verifies that an op
+// with no template segments returns an empty (non-nil) Bindings map.
+func TestMatchByOperationID_LiteralPathHasNoBindings(t *testing.T) {
+	t.Parallel()
+	idx := buildTestIndex(
+		&Operation{Method: "GET", Path: "/api/user", OperationID: "GetCurrentUser"},
+	)
+	mr, err := MatchByOperationID(idx, "GetCurrentUser")
+	require.NoError(t, err)
+	require.NotNil(t, mr.Bindings)
+	assert.Empty(t, mr.Bindings)
+}
+
+// TestMatchPath_PathNormalization verifies that user input with extra
+// slashes is normalised via path.Clean before matching, so /api//user
+// resolves to the same op as /api/user.
+func TestMatchPath_PathNormalization(t *testing.T) {
+	t.Parallel()
+	idx := buildTestIndex(
+		&Operation{Method: "GET", Path: "/api/user"},
+	)
+	mr, err := MatchPath(idx, "GET", "/api//user")
+	require.NoError(t, err)
+	assert.Equal(t, "/api/user", mr.Op.Path)
 }
 
 func TestMatchPath_SuggestsOperationIDWhenInputLooksLikeOne(t *testing.T) {

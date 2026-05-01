@@ -15,10 +15,13 @@
 package cloud
 
 import (
+	"net/http"
+	"net/url"
 	"path"
 	"slices"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/pgavlin/fx/v2"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -55,18 +58,6 @@ func splitSegments(p string) []string {
 	return strings.Split(path.Clean(p), "/")
 }
 
-// countTemplateParams returns the number of {param} segments in a spec path.
-// More-specific paths (fewer params) win ties when multiple operations match.
-func countTemplateParams(p string) int {
-	n := 0
-	for _, seg := range splitSegments(p) {
-		if isTemplateSegment(seg) {
-			n++
-		}
-	}
-	return n
-}
-
 // MatchResult is the outcome of matching a user-provided path against the
 // parsed spec.
 type MatchResult struct {
@@ -99,7 +90,14 @@ func MatchByOperationID(idx *Index, id string) (*MatchResult, error) {
 			"operation ID "+id+" matches multiple operations").
 			WithSuggestions(paths...)
 	}
-	return &MatchResult{Op: matches[0], Bindings: map[string]Binding{}}, nil
+	// Populate placeholder-style bindings by feeding the op's own templated
+	// path back through MatchPath.
+	op := matches[0]
+	mr, err := MatchPath(idx, op.Method, op.Path)
+	if err != nil {
+		return &MatchResult{Op: op, Bindings: map[string]Binding{}}, nil
+	}
+	return mr, nil
 }
 
 // looksLikeOperationID reports whether s looks like an operation identifier
@@ -126,101 +124,89 @@ func splitLeadingHTTPMethod(s string) (verb, rest string, ok bool) {
 
 // MatchPath finds the Operation in idx whose template best matches userPath
 // for the given HTTP method. Returns a structured APIError on no match.
-// Ties between equally-specific templates produce an "ambiguous" error.
 //
-// Matching rules, segment by segment:
-//   - spec literal must equal user literal (case-sensitive)
-//   - spec {param} captures either a user literal value, or a user {alias}
-//     placeholder that the caller will resolve later
-//   - a user {alias} cannot align with a spec literal — that means the user
-//     typed the wrong path
-//
-// Specificity preference: among matches, pick the one with the fewest
-// template parameters. If two are equally specific, return an error so the
-// agent has to disambiguate explicitly.
+// Routing is delegated to gorilla/mux. The captured vars are post-processed
+// so that a captured value of the form `{alias}` is treated as a
+// placeholder the caller will resolve later (org/project/stack auto-
+// resolve, or -F field).
 func MatchPath(idx *Index, method, userPath string) (*MatchResult, error) {
-	userSegs := splitSegments(userPath)
+	// Synthesize a request for gorilla.Match. URL.Path is set directly so we
+	// don't use url.Parse — `{}` characters in user input are valid here.
+	req := &http.Request{
+		Method: method,
+		URL:    &url.URL{Path: path.Clean(userPath)},
+	}
 
-	var matches []*MatchResult
-	for _, op := range idx.Operations {
-		if op.Method != method {
-			continue
-		}
-		specSegs := splitSegments(op.Path)
-		if len(specSegs) != len(userSegs) {
-			continue
-		}
-
-		bindings := make(map[string]Binding)
-		ok := true
-		for i, spec := range specSegs {
-			user := userSegs[i]
-			specIsParam := isTemplateSegment(spec)
-			userIsParam := isTemplateSegment(user)
-
-			switch {
-			case specIsParam && userIsParam:
-				bindings[trimBraces(spec)] = Binding{Placeholder: trimBraces(user)}
-			case specIsParam && !userIsParam:
-				bindings[trimBraces(spec)] = Binding{Literal: user}
-			case !specIsParam && userIsParam:
-				ok = false // can't parametrize a literal segment
-			default:
-				if spec != user {
-					ok = false
-				}
-			}
-			if !ok {
-				break
+	if idx.router != nil {
+		var rm mux.RouteMatch
+		if idx.router.Match(req, &rm) {
+			op := idx.ByKey[rm.Route.GetName()]
+			if op != nil {
+				return &MatchResult{Op: op, Bindings: varsToBindings(rm.Vars)}, nil
 			}
 		}
-		if ok {
-			matches = append(matches, &MatchResult{Op: op, Bindings: bindings})
-		}
 	}
 
-	if len(matches) == 0 {
-		suggestions := []string{
-			"run 'pulumi cloud api list' to see available endpoints",
-			"check the method with -X / --method",
-		}
-		if looksLikeOperationID(userPath) {
-			suggestions = append([]string{
-				"if you meant an operation ID, try 'pulumi cloud api describe " + userPath + "'",
-			}, suggestions...)
-		}
-		return nil, NewAPIError(cmdutil.ExitCodeError, ErrNoMatch,
-			"no operation matches "+method+" "+userPath).
-			WithSuggestions(suggestions...)
+	suggestions := []string{
+		"run 'pulumi cloud api list' to see available endpoints",
+		"check the method with -X / --method",
 	}
+	if looksLikeOperationID(userPath) {
+		suggestions = append([]string{
+			"if you meant an operation ID, try 'pulumi cloud api describe " + userPath + "'",
+		}, suggestions...)
+	}
+	return nil, NewAPIError(cmdutil.ExitCodeError, ErrNoMatch,
+		"no operation matches "+method+" "+userPath).
+		WithSuggestions(suggestions...)
+}
 
-	// Prefer the most specific (fewest param segments) match.
-	best := matches[0]
-	bestCount := countTemplateParams(best.Op.Path)
-	tied := false
-	for _, m := range matches[1:] {
-		c := countTemplateParams(m.Op.Path)
-		switch {
-		case c < bestCount:
-			best = m
-			bestCount = c
-			tied = false
-		case c == bestCount:
-			tied = true
-		}
+// compareOps orders two operations for router registration: per-segment
+// static-first — at each path position a literal sorts before a {template},
+// otherwise lexical. Mirrors the pulumi-service codegen ordering
+// Returns -1, 0, or +1.
+func compareOps(a, b *Operation) int {
+	asegs := splitSegments(a.Path)
+	bsegs := splitSegments(b.Path)
+	n := len(asegs)
+	if len(bsegs) < n {
+		n = len(bsegs)
 	}
-	if tied {
-		paths := make([]string, 0, len(matches))
-		for _, m := range matches {
-			if countTemplateParams(m.Op.Path) == bestCount {
-				paths = append(paths, m.Op.Method+" "+m.Op.Path)
+	for i := 0; i < n; i++ {
+		ah, bh := isTemplateSegment(asegs[i]), isTemplateSegment(bsegs[i])
+		if ah != bh {
+			if !ah {
+				return -1
 			}
+			return 1
 		}
-		return nil, NewAPIError(cmdutil.ExitCodeError, ErrNoMatch,
-			"path matches multiple operations with equal specificity").
-			WithSuggestions(paths...)
+		if c := strings.Compare(asegs[i], bsegs[i]); c != 0 {
+			return c
+		}
 	}
-	return best, nil
+	switch {
+	case len(asegs) < len(bsegs):
+		return -1
+	case len(asegs) > len(bsegs):
+		return 1
+	}
+	return 0
+}
+
+// varsToBindings converts gorilla mux's captured path variables into our
+// Binding form. A captured value wrapped in {braces} is treated as the
+// user's placeholder alias (resolved later from -F or context); a bare
+// value is taken as a literal.
+func varsToBindings(vars map[string]string) map[string]Binding {
+	bindings := make(map[string]Binding, len(vars))
+	for name, val := range vars {
+		if isTemplateSegment(val) {
+			bindings[name] = Binding{Placeholder: trimBraces(val)}
+		} else {
+			bindings[name] = Binding{Literal: val}
+		}
+	}
+	return bindings
 }
 
 // splitPathQuery separates `?...` from a user-supplied path. Used by both

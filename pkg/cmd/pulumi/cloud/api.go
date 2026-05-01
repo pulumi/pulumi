@@ -553,7 +553,6 @@ func resolveAPIArg(idx *Index, arg string, api *apiCommand, methodExplicit bool)
 					mr.Op.OperationID, mr.Op.Method, api.method)).
 				WithField("method")
 		}
-		mr.Bindings = bindingsForTemplate(mr.Op.Path)
 		return mr.Op.Method, mr, rawQuery, nil
 	}
 
@@ -577,21 +576,6 @@ func resolveAPIArg(idx *Index, arg string, api *apiCommand, methodExplicit bool)
 		return "", nil, "", err
 	}
 	return method, mr, rawQuery, nil
-}
-
-// bindingsForTemplate synthesizes placeholder-style bindings for each
-// {param} in specPath — the form resolveBindings feeds into context
-// resolution. Used when an operation is looked up by ID rather than by
-// a user-supplied concrete path.
-func bindingsForTemplate(specPath string) map[string]Binding {
-	bindings := map[string]Binding{}
-	for _, seg := range splitSegments(specPath) {
-		if isTemplateSegment(seg) {
-			name := trimBraces(seg)
-			bindings[name] = Binding{Placeholder: name}
-		}
-	}
-	return bindings
 }
 
 // resolveBindings resolves every path-parameter binding to a concrete string.

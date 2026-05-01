@@ -19,9 +19,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -111,6 +113,10 @@ type Index struct {
 	Operations  []*Operation
 	ByKey       map[string]*Operation // "GET /api/user" -> op
 	SpecVersion string                // the spec's own info.version, surfaced in `list --format=json`
+	// router is a gorilla/mux router with one named route per operation
+	// (route name == op.Key()). Routes are registered in specificity order
+	// consistent with the pulumi-service codegen
+	router *mux.Router
 }
 
 // methodPrecedence defines the method order used for stable sorting of operations.
@@ -184,6 +190,13 @@ func parseIndex(data []byte) (*Index, error) {
 		byKey[op.Key()] = op
 	}
 
+	router := mux.NewRouter()
+	sortedOps := append([]*Operation(nil), ops...)
+	slices.SortStableFunc(sortedOps, compareOps)
+	for _, op := range sortedOps {
+		router.Path(op.Path).Methods(op.Method).Name(op.Key())
+	}
+
 	specVersion := ""
 	if model.Info != nil {
 		specVersion = model.Info.Version
@@ -193,6 +206,7 @@ func parseIndex(data []byte) (*Index, error) {
 		Operations:  ops,
 		ByKey:       byKey,
 		SpecVersion: specVersion,
+		router:      router,
 	}, nil
 }
 
