@@ -761,12 +761,7 @@ func (r *schemaRenderer) writePropertyMarkdown(
 
 	if typ == "array" {
 		if child.Items != nil && child.Items.IsA() && child.Items.A != nil {
-			it := child.Items.A.Schema()
-			itTyp := ""
-			if it != nil {
-				itTyp = schemaType(it)
-			}
-			if itTyp == "object" || orderedmap.Len(nonNil(it).Properties) > 0 || len(nonNil(it).OneOf) > 0 {
+			if it := child.Items.A.Schema(); it != nil {
 				r.writeSchemaMarkdown(b, it, depth+1, nextSt)
 			}
 		}
@@ -908,6 +903,9 @@ func (r *schemaRenderer) markdownTypeName(s *base.Schema) string {
 	case "":
 		if len(s.OneOf) > 0 || len(s.AnyOf) > 0 {
 			return "union"
+		}
+		if len(s.AllOf) > 0 || orderedmap.Len(s.Properties) > 0 {
+			return "object"
 		}
 		return "any"
 	}

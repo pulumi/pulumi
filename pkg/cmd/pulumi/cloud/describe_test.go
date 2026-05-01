@@ -99,6 +99,7 @@ func describeGoldenCases(t *testing.T) []struct {
 	}{
 		{"list_org_tokens", loadMarkdownOp(t, "ListOrgTokens")},
 		{"create_org_token", loadMarkdownOp(t, "CreateOrgToken")},
+		{"nested_arrays", loadMarkdownOp(t, "GetNestedArrays")},
 		{"preview_op", &Operation{
 			Method:      "GET",
 			Path:        "/api/preview/things/{id}",

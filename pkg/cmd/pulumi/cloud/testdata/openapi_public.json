@@ -1194,6 +1194,86 @@
           "AccessTokens"
         ]
       }
+    },
+    "/api/test/nested-arrays/{id}": {
+      "get": {
+        "operationId": "GetNestedArrays",
+        "tags": [
+          "TestNested"
+        ],
+        "summary": "GetNestedArrays",
+        "description": "Regression coverage: response has both an array of allOf-wrapped objects and an array of string-enum primitives. Exercises markdown renderer paths that were silently dropping nested model fields and inline enum values.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Synthetic id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nested-array fixture response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "owners",
+                    "statuses"
+                  ],
+                  "properties": {
+                    "owners": {
+                      "type": "array",
+                      "description": "Owners list — items use allOf to merge in the OwnerSummary shape.",
+                      "items": {
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "name"
+                            ],
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "Owner display name."
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Owner role.",
+                                "enum": [
+                                  "admin",
+                                  "member",
+                                  "viewer"
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "statuses": {
+                      "type": "array",
+                      "description": "Allowed status values for the thing.",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "pending",
+                          "active",
+                          "archived"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
