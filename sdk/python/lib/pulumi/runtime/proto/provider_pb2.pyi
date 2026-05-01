@@ -1468,7 +1468,9 @@ class ListResponse(google.protobuf.message.Message):
         ID_FIELD_NUMBER: builtins.int
         NAME_FIELD_NUMBER: builtins.int
         id: builtins.str
-        """The ID of the resource."""
+        """The ID of the resource. This should be an importable ID that can be passed to a
+        [](pulumirpc.ResourceProvider.Read) call to read the resource.
+        """
         name: builtins.str
         """The resource name, if the provider can supply one. If empty no name was given."""
         def __init__(

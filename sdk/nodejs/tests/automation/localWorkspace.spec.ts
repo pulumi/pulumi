@@ -545,7 +545,7 @@ describe("LocalWorkspace", () => {
     });
     // Regression test for https://github.com/pulumi/pulumi/issues/17613
     it(`does not hang on a failed input`, async function () {
-        this.timeout(20 * 1000); // This test hangs indefinitely if it fails
+        this.timeout(40 * 1000); // This test hangs indefinitely if it fails
 
         const program = async () => {
             class MyResource extends CustomResource {

@@ -2554,15 +2554,34 @@ type typeStringOpts struct {
 func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		// Rewrite Optional(Input(T)) to Input(Optional(T)) so that it accepts Output(Optional(T))
+		if lifted := codegen.PushOptionalIntoInput(t); lifted != t {
+			// Clear forDict so the inner Optional renders as Optional, not NotRequired.
+			innerOpts := opts
+			innerOpts.forDict = false
+			result := mod.typeString(lifted, innerOpts)
+			if opts.forDict {
+				return fmt.Sprintf("NotRequired[%s]", result)
+			}
+			return result
+		}
 		typ := mod.typeString(t.ElementType, opts)
 		if opts.forDict {
 			return fmt.Sprintf("NotRequired[%s]", typ)
 		}
 		return fmt.Sprintf("Optional[%s]", typ)
 	case *schema.InputType:
-		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), opts)
+		elem := codegen.SimplifyInputUnion(t.ElementType)
+		typ := mod.typeString(elem, opts)
 		if typ == "Any" {
 			return typ
+		}
+		// When the element is Optional(T) where T renders as "Any", we can drop the Input wrapper
+		// since Any already accepts inputs.
+		if opt, ok := elem.(*schema.OptionalType); ok {
+			if inner := mod.typeString(opt.ElementType, opts); inner == "Any" {
+				return "Optional[Any]"
+			}
 		}
 		return fmt.Sprintf("pulumi.Input[%s]", typ)
 	case *schema.EnumType:
@@ -3478,7 +3497,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 }
 
 // Require the SDK to fall within the same major version.
-var MinimumValidSDKVersion = ">=3.165.0,<4.0.0"
+var MinimumValidSDKVersion = ">=3.231.0,<4.0.0"
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies

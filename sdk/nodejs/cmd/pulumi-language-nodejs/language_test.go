@@ -98,7 +98,6 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-resource-optional":               "optional outputs are not assignable to optional inputs",
 	"l3-deferred-outputs":                "Cannot find name '_arg0_'.",
 	"l3-range-ref":                       "Property 'k1' does not exist on type 'Target[]'",
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll

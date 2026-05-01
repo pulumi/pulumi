@@ -17,7 +17,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Optional, TypeVar, Any, cast
+from typing import Optional, Any, cast
 import argparse
 import asyncio
 import sys
@@ -50,6 +50,7 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi.output import _OutputData
 from pulumi.runtime._grpc_settings import _GRPC_CHANNEL_OPTIONS
 from pulumi.errors import (
     InputPropertiesError,
@@ -239,12 +240,16 @@ class ProviderServicer(ResourceProviderServicer):
         # and/or track dependencies.
         # Note: If the value is or contains an unknown value, the Output will mark its value as
         # unknown automatically, so we just pass true for is_known here.
-        return pulumi.Output(
-            resources={DependencyResource(urn) for urn in deps},
-            future=_as_future(rpc.unwrap_rpc_secret(the_input)),
-            is_known=_as_future(True),
-            is_secret=_as_future(is_secret),
+        data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
+        data_future.set_result(
+            _OutputData(
+                resources={DependencyResource(urn) for urn in deps},
+                value=rpc.unwrap_rpc_secret(the_input),
+                is_known=True,
+                is_secret=is_secret,
+            )
         )
+        return pulumi.Output._from_data(data_future)
 
     @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
@@ -673,15 +678,6 @@ def main(args: list[str], version: str, provider: provider.Provider) -> None:
         asyncio.run(serve())
     except KeyboardInterrupt:
         pass
-
-
-T = TypeVar("T")
-
-
-def _as_future(value: T) -> "asyncio.Future[T]":
-    fut: asyncio.Future[T] = asyncio.Future()
-    fut.set_result(value)
-    return fut
 
 
 def _empty_as_none(text: str) -> Optional[str]:

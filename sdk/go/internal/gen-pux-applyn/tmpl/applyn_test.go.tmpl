@@ -61,7 +61,7 @@ func Test{{ $name }}_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -92,7 +92,7 @@ func Test{{ $name }}_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -110,7 +110,7 @@ func Test{{ $name }}Err_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -139,7 +139,7 @@ func Test{{ $name }}_failedOutput(t *testing.T) {
 	{{/* Because the outputs past the first are not filled,
 	     awaiting on them will hang forever if the test fails.
 	     Prevent that with a timeout. */}}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)

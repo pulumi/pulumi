@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Revert changes to property path parsing that resulted in errors for currently valid paths

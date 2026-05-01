@@ -19,10 +19,10 @@ __all__ = ['ConfigGroupArgs', 'ConfigGroup']
 @pulumi.input_type
 class ConfigGroupArgs:
     def __init__(__self__, *,
-                 files: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
-                 objs: Optional[pulumi.Input[Union[Any, Sequence[Any]]]] = None,
-                 resource_prefix: Optional[pulumi.Input[_builtins.str]] = None,
-                 yaml: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None):
+                 files: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
+                 objs: pulumi.Input[Optional[Union[Any, Sequence[Any]]]] = None,
+                 resource_prefix: pulumi.Input[Optional[_builtins.str]] = None,
+                 yaml: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None):
         """
         The set of arguments for constructing a ConfigGroup resource.
 
@@ -42,50 +42,50 @@ class ConfigGroupArgs:
 
     @_builtins.property
     @pulumi.getter
-    def files(self) -> Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]:
+    def files(self) -> pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]:
         """
         Set of paths or a URLs that uniquely identify files.
         """
         return pulumi.get(self, "files")
 
     @files.setter
-    def files(self, value: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]):
+    def files(self, value: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]):
         pulumi.set(self, "files", value)
 
     @_builtins.property
     @pulumi.getter
-    def objs(self) -> Optional[pulumi.Input[Union[Any, Sequence[Any]]]]:
+    def objs(self) -> pulumi.Input[Optional[Union[Any, Sequence[Any]]]]:
         """
         Objects representing Kubernetes resources.
         """
         return pulumi.get(self, "objs")
 
     @objs.setter
-    def objs(self, value: Optional[pulumi.Input[Union[Any, Sequence[Any]]]]):
+    def objs(self, value: pulumi.Input[Optional[Union[Any, Sequence[Any]]]]):
         pulumi.set(self, "objs", value)
 
     @_builtins.property
     @pulumi.getter(name="resourcePrefix")
-    def resource_prefix(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def resource_prefix(self) -> pulumi.Input[Optional[_builtins.str]]:
         """
         An optional prefix for the auto-generated resource names. Example: A resource created with resourcePrefix="foo" would produce a resource named "foo-resourceName".
         """
         return pulumi.get(self, "resource_prefix")
 
     @resource_prefix.setter
-    def resource_prefix(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def resource_prefix(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "resource_prefix", value)
 
     @_builtins.property
     @pulumi.getter
-    def yaml(self) -> Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]:
+    def yaml(self) -> pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]:
         """
         YAML text containing Kubernetes resource definitions.
         """
         return pulumi.get(self, "yaml")
 
     @yaml.setter
-    def yaml(self, value: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]):
+    def yaml(self, value: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]]):
         pulumi.set(self, "yaml", value)
 
 
@@ -95,10 +95,10 @@ class ConfigGroup(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 files: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
-                 objs: Optional[pulumi.Input[Union[Any, Sequence[Any]]]] = None,
-                 resource_prefix: Optional[pulumi.Input[_builtins.str]] = None,
-                 yaml: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
+                 files: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
+                 objs: pulumi.Input[Optional[Union[Any, Sequence[Any]]]] = None,
+                 resource_prefix: pulumi.Input[Optional[_builtins.str]] = None,
+                 yaml: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
                  __props__=None):
         """
         A non-overlay component resource.
@@ -136,10 +136,10 @@ class ConfigGroup(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 files: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
-                 objs: Optional[pulumi.Input[Union[Any, Sequence[Any]]]] = None,
-                 resource_prefix: Optional[pulumi.Input[_builtins.str]] = None,
-                 yaml: Optional[pulumi.Input[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
+                 files: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
+                 objs: pulumi.Input[Optional[Union[Any, Sequence[Any]]]] = None,
+                 resource_prefix: pulumi.Input[Optional[_builtins.str]] = None,
+                 yaml: pulumi.Input[Optional[Union[_builtins.str, Sequence[pulumi.Input[_builtins.str]]]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

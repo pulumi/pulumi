@@ -47,6 +47,7 @@ import (
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -224,6 +225,7 @@ var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 func New(ctx context.Context, d diag.Sink,
 	cloudURL string, project *workspace.Project, insecure bool,
 ) (Backend, error) {
+	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
@@ -1742,6 +1744,10 @@ func (b *cloudBackend) runEngineAction(
 		ctx, tokenSource, update,
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
+
+	if err := pkgLogging.RenameCurrentLogger(string(stackRef.FullyQualifiedName()), update.UpdateID); err != nil {
+		return nil, nil, err
+	}
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
 	// channels for actual processing. (displayEvents and callerEventsOpt.)

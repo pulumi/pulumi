@@ -904,7 +904,7 @@ func (g *generator) collectImports(program *pcl.Program) (helpers codegen.String
 				if mod == "providers" {
 					pkg = name
 					mod = ""
-				} else if mod == "" {
+				} else if mod == "" || mod == "pulumi" {
 					continue
 				}
 			} else {
@@ -1533,6 +1533,9 @@ func (g *generator) genResource(w io.Writer, r *pcl.Resource) {
 		pkg = typ
 		mod = ""
 		typ = "Provider"
+	}
+	if pkg == "pulumi" && mod == "pulumi" {
+		mod = ""
 	}
 	if mod == "" || strings.HasPrefix(mod, "/") || mod == IndexToken {
 		originalMod = mod

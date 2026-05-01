@@ -70,8 +70,8 @@ def my_function(my_type: Optional[Union['MyType', 'MyTypeDict']] = None,
     return AwaitableMyFunctionResult(
         my_output=pulumi.get(__ret__, 'my_output'),
         simple_output=pulumi.get(__ret__, 'simple_output'))
-def my_function_output(my_type: Optional[pulumi.Input[Union['MyType', 'MyTypeDict']]] = None,
-                       simple_prop: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
+def my_function_output(my_type: pulumi.Input[Optional[Union['MyType', 'MyTypeDict']]] = None,
+                       simple_prop: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                        opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[MyFunctionResult]:
     """
     Use this data source to access information about an existing resource.

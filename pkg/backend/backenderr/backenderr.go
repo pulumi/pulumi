@@ -247,3 +247,12 @@ func (LoginRequiredError) Is(other error) bool {
 		return false
 	}
 }
+
+// IsAuthError reports whether err represents an authentication or
+// authorization failure (login required, forbidden, or a missing env var
+// required for non-interactive auth).
+func IsAuthError(err error) bool {
+	return errors.As(err, &LoginRequiredError{}) ||
+		errors.As(err, &ForbiddenError{}) ||
+		errors.As(err, &MissingEnvVarForNonInteractiveError{})
+}

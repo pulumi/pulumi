@@ -228,9 +228,7 @@ func TestIgnoreChanges(t *testing.T) {
 			d := &diag.MockSink{}
 			urn := resource.URN("urn:pulumi:dev::test::test:resource:Resource::my-resource")
 
-			ignoreChangesGlobs, err := parsePropertyGlobs(c.ignoreChanges)
-			require.NoError(t, err)
-			processed := processIgnoreChanges(d, urn, news, olds, ignoreChangesGlobs)
+			processed := processIgnoreChanges(d, urn, news, olds, c.ignoreChanges)
 			assert.Equal(t, expected, processed)
 			if c.expectMessage {
 				infomsgs := d.Messages[diag.Info]
@@ -336,9 +334,7 @@ func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			replaceOnChangesGlobs, err := parsePropertyGlobs(c.replaceOnChanges)
-			require.NoError(t, err)
-			newdiff, err := applyReplaceOnChanges(c.diff, replaceOnChangesGlobs, c.hasInitErrors)
+			newdiff, err := applyReplaceOnChanges(c.diff, c.replaceOnChanges, c.hasInitErrors)
 			require.NoError(t, err)
 			assert.Equal(t, c.expected, newdiff)
 		})
@@ -429,10 +425,8 @@ func TestEngineDiff(t *testing.T) {
 			t.Parallel()
 
 			d := &diag.MockSink{}
-			ignoreChangesGlobs, err := parsePropertyGlobs(c.ignoreChanges)
-			require.NoError(t, err)
 			diff, err := diffResource(
-				d, urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, ignoreChangesGlobs)
+				d, urn, id, c.oldInputs, oldOutputs, c.newInputs, &provider, allowUnknowns, c.ignoreChanges)
 			t.Logf("diff.ChangedKeys = %v", diff.ChangedKeys)
 			t.Logf("diff.StableKeys = %v", diff.StableKeys)
 			t.Logf("diff.ReplaceKeys = %v", diff.ReplaceKeys)

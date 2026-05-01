@@ -62,8 +62,8 @@ def func_with_all_optional_inputs(a: Optional[Union['HelmReleaseSettings', 'Helm
 
     return AwaitableFuncWithAllOptionalInputsResult(
         r=pulumi.get(__ret__, 'r'))
-def func_with_all_optional_inputs_output(a: Optional[pulumi.Input[Optional[Union['HelmReleaseSettings', 'HelmReleaseSettingsDict']]]] = None,
-                                         b: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
+def func_with_all_optional_inputs_output(a: pulumi.Input[Optional[Optional[Union['HelmReleaseSettings', 'HelmReleaseSettingsDict']]]] = None,
+                                         b: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                                          opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FuncWithAllOptionalInputsResult]:
     """
     Check codegen of functions with all optional inputs.

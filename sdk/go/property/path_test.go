@@ -307,21 +307,3 @@ func TestAlter(t *testing.T) {
 		})
 	}
 }
-
-func TestMustParsePath(t *testing.T) {
-	t.Parallel()
-
-	t.Run("parses", func(t *testing.T) {
-		t.Parallel()
-		assert.Equal(t,
-			property.PathFromSegments(property.NewSegment("x"), property.NewSegment(0)),
-			property.MustParsePath("x[0]"))
-	})
-
-	t.Run("panics", func(t *testing.T) {
-		t.Parallel()
-		assert.PanicsWithError(t, "splat not allowed in non-glob paths", func() {
-			property.MustParsePath("x.*")
-		})
-	})
-}

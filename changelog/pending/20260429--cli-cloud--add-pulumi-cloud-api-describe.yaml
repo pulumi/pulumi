@@ -1,0 +1,7 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: |
+    Add `pulumi cloud api describe` for inspecting the parameters, request
+    body, and response schema of any Pulumi Cloud API operation, with
+    text, markdown, and JSON output

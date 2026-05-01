@@ -43,7 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 // The mode in which the step generator is running.
@@ -802,6 +801,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		var step Step
 		if !goal.Custom || sdkproviders.IsProviderType(goal.Type) {
 			step = NewInternalRefreshStep(sg.deployment, cts, old, oldViews, new)
+		} else if !sg.isIncludedInOperation(old) {
+			step = NewSameStep(sg.deployment, event, old, new)
 		} else {
 			step = NewRefreshStep(sg.deployment, cts, old, oldViews, new)
 		}
@@ -1286,7 +1287,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 			Properties: inputs,
 			Options: plugin.AnalyzerResourceOptions{
 				Protect:                 new.Protect,
-				IgnoreChanges:           globsToStrings(goal.IgnoreChanges),
+				IgnoreChanges:           goal.IgnoreChanges,
 				DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 				AdditionalSecretOutputs: new.AdditionalSecretOutputs,
 				Aliases:                 new.GetAliases(),
@@ -2738,7 +2739,7 @@ func (sg *stepGenerator) diff(
 // diffResource invokes the Diff function for the given custom resource's provider and returns the result.
 func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldOutputs,
 	newInputs resource.PropertyMap, prov plugin.Provider, allowUnknowns bool,
-	ignoreChanges []property.Glob,
+	ignoreChanges []string,
 ) (plugin.DiffResult, error) {
 	contract.Requiref(prov != nil, "prov", "must not be nil")
 
@@ -2753,7 +2754,7 @@ func diffResource(d diag.Sink, urn resource.URN, id resource.ID, oldInputs, oldO
 		OldOutputs:    oldOutputs,
 		NewInputs:     newInputs,
 		AllowUnknowns: allowUnknowns,
-		IgnoreChanges: globsToStrings(ignoreChanges),
+		IgnoreChanges: ignoreChanges,
 	})
 	if err != nil {
 		return diff, err
@@ -2802,16 +2803,18 @@ func issueCheckFailures(printf func(*diag.Diag, ...any), new *resource.State, ur
 // processIgnoreChanges sets the value for each ignoreChanges property in inputs to the value from oldInputs.  This has
 // the effect of ensuring that no changes will be made for the corresponding property.
 func processIgnoreChanges(d diag.Sink, urn resource.URN, inputs, oldInputs resource.PropertyMap,
-	ignoreChanges []property.Glob,
+	ignoreChanges []string,
 ) resource.PropertyMap {
 	ignoredInputs := inputs.Copy()
 	var invalidPaths []string
 	for _, ignoreChange := range ignoreChanges {
-		path := resource.ToResourcePropertyPath(ignoreChange)
+		path, err := resource.ParsePropertyPath(ignoreChange)
+		if err != nil {
+			continue
+		}
 		ok := path.Reset(oldInputs, ignoredInputs)
 		if !ok {
-			text, _ := ignoreChange.MarshalText()
-			invalidPaths = append(invalidPaths, string(text))
+			invalidPaths = append(invalidPaths, ignoreChange)
 		}
 	}
 	if len(invalidPaths) != 0 {
@@ -2873,7 +2876,7 @@ const initErrorSpecialKey = "#initerror"
 // applyReplaceOnChanges adjusts a DiffResult returned from a provider to apply the ReplaceOnChange
 // settings in the desired state and init errors from the previous state.
 func applyReplaceOnChanges(diff plugin.DiffResult,
-	replaceOnChanges []property.Glob, hasInitErrors bool,
+	replaceOnChanges []string, hasInitErrors bool,
 ) (plugin.DiffResult, error) {
 	// No further work is necessary for DiffNone unless init errors are present.
 	if diff.Changes != plugin.DiffSome && !hasInitErrors {
@@ -2882,7 +2885,11 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 
 	replaceOnChangePaths := slice.Prealloc[resource.PropertyPath](len(replaceOnChanges))
 	for _, p := range replaceOnChanges {
-		replaceOnChangePaths = append(replaceOnChangePaths, resource.ToResourcePropertyPath(p))
+		path, err := resource.ParsePropertyPath(p)
+		if err != nil {
+			return diff, err
+		}
+		replaceOnChangePaths = append(replaceOnChangePaths, path)
 	}
 
 	// Calculate the new DetailedDiff
@@ -3155,7 +3162,7 @@ func (sg *stepGenerator) analyzeAll(
 		Properties: inputs,
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 new.Protect,
-			IgnoreChanges:           globsToStrings(goal.IgnoreChanges),
+			IgnoreChanges:           goal.IgnoreChanges,
 			DeleteBeforeReplace:     goal.DeleteBeforeReplace,
 			AdditionalSecretOutputs: new.AdditionalSecretOutputs,
 			Aliases:                 new.GetAliases(),
@@ -3210,7 +3217,7 @@ func (sg *stepGenerator) AnalyzeResources() error {
 					Properties: v.Outputs,
 					Options: plugin.AnalyzerResourceOptions{
 						Protect:                 v.Protect,
-						IgnoreChanges:           globsToStrings(v.IgnoreChanges),
+						IgnoreChanges:           v.IgnoreChanges,
 						DeleteBeforeReplace:     deleteBeforeReplace,
 						AdditionalSecretOutputs: v.AdditionalSecretOutputs,
 						Aliases:                 v.GetAliases(),

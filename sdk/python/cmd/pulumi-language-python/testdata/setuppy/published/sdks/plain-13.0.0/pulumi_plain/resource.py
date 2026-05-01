@@ -23,7 +23,7 @@ class ResourceArgs:
     def __init__(__self__, *,
                  data: 'DataArgs',
                  data_list: Optional[Sequence['InnerDataArgs']] = None,
-                 non_plain_data: Optional[pulumi.Input['DataArgs']] = None):
+                 non_plain_data: pulumi.Input[Optional['DataArgs']] = None):
         """
         The set of arguments for constructing a Resource resource.
 
@@ -55,14 +55,14 @@ class ResourceArgs:
 
     @_builtins.property
     @pulumi.getter(name="nonPlainData")
-    def non_plain_data(self) -> Optional[pulumi.Input['DataArgs']]:
+    def non_plain_data(self) -> pulumi.Input[Optional['DataArgs']]:
         """
         A non plain input to compare against the plain inputs, as well as testing plain/non-plain nesting.
         """
         return pulumi.get(self, "non_plain_data")
 
     @non_plain_data.setter
-    def non_plain_data(self, value: Optional[pulumi.Input['DataArgs']]):
+    def non_plain_data(self, value: pulumi.Input[Optional['DataArgs']]):
         pulumi.set(self, "non_plain_data", value)
 
 
@@ -74,7 +74,7 @@ class Resource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  data: Optional[Union['DataArgs', 'DataArgsDict']] = None,
                  data_list: Optional[Sequence[Union['InnerDataArgs', 'InnerDataArgsDict']]] = None,
-                 non_plain_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
+                 non_plain_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict']]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -109,7 +109,7 @@ class Resource(pulumi.CustomResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  data: Optional[Union['DataArgs', 'DataArgsDict']] = None,
                  data_list: Optional[Sequence[Union['InnerDataArgs', 'InnerDataArgsDict']]] = None,
-                 non_plain_data: Optional[pulumi.Input[Union['DataArgs', 'DataArgsDict']]] = None,
+                 non_plain_data: pulumi.Input[Optional[Union['DataArgs', 'DataArgsDict']]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

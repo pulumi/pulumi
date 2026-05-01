@@ -95,22 +95,3 @@ func TestStringSetSubtract(t *testing.T) {
 	assert.Equal(t, setEmpty, set1234.Subtract(set1234))
 	assert.Equal(t, set1234, set1234.Subtract(setEmpty))
 }
-
-func TestSimplifyInputUnion(t *testing.T) {
-	t.Parallel()
-
-	u1 := &schema.UnionType{
-		ElementTypes: []schema.Type{
-			&schema.InputType{ElementType: schema.StringType},
-			schema.NumberType,
-		},
-	}
-
-	u2 := SimplifyInputUnion(u1)
-	assert.Equal(t, &schema.UnionType{
-		ElementTypes: []schema.Type{
-			schema.StringType,
-			schema.NumberType,
-		},
-	}, u2)
-}

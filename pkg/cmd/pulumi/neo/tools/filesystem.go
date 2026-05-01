@@ -48,14 +48,19 @@ import (
 // error so the agent can degrade gracefully.
 //
 // All paths in incoming requests are absolute (the cloud agent assumes a sandboxed VM).
-// We resolve them and reject anything that lands outside Root, so the agent can never read
-// or write files outside the user's working directory.
+// We resolve them and reject anything that lands outside the allowed roots, so the agent
+// can never read or write files outside Root or the configured extras (e.g. /tmp).
 type Filesystem struct {
+	// Root is the user's working directory. Relative paths are joined against it.
 	Root string
+	// allowedRoots is Root followed by any extra roots passed to NewFilesystem.
+	allowedRoots []string
 }
 
 // NewFilesystem creates a Filesystem handler rooted at the given absolute directory.
-func NewFilesystem(root string) (*Filesystem, error) {
+// extraRoots are additional directories the agent may read or write under (e.g. /tmp);
+// each must exist and is canonicalized the same way as root.
+func NewFilesystem(root string, extraRoots ...string) (*Filesystem, error) {
 	abs, err := canonicalRoot(root)
 	if err != nil {
 		return nil, fmt.Errorf("resolving filesystem root: %w", err)
@@ -67,7 +72,22 @@ func NewFilesystem(root string) (*Filesystem, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("filesystem root %q is not a directory", abs)
 	}
-	return &Filesystem{Root: abs}, nil
+	allowed := []string{abs}
+	for _, extra := range extraRoots {
+		canonical, err := canonicalRoot(extra)
+		if err != nil {
+			return nil, fmt.Errorf("resolving filesystem extra root %q: %w", extra, err)
+		}
+		extraInfo, err := os.Stat(canonical)
+		if err != nil {
+			return nil, fmt.Errorf("filesystem extra root %q: %w", canonical, err)
+		}
+		if !extraInfo.IsDir() {
+			return nil, fmt.Errorf("filesystem extra root %q is not a directory", canonical)
+		}
+		allowed = append(allowed, canonical)
+	}
+	return &Filesystem{Root: abs, allowedRoots: allowed}, nil
 }
 
 // Invoke dispatches a single filesystem method call.
@@ -138,7 +158,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 
 // resolve safely interprets a path supplied by the agent. The agent sends absolute paths
 // (they were absolute inside its sandboxed VM); we accept those but require they resolve
-// to a location under Root. Relative paths are resolved against Root.
+// to a location under one of the allowed roots. Relative paths are resolved against Root.
 func (f *Filesystem) resolve(p string) (string, error) {
 	if p == "" {
 		return "", errors.New("path is required")
@@ -147,7 +167,7 @@ func (f *Filesystem) resolve(p string) (string, error) {
 	if !filepath.IsAbs(target) {
 		target = filepath.Join(f.Root, target)
 	}
-	return resolveUnderRoot(f.Root, target, true)
+	return resolveUnderRoots(f.allowedRoots, target, true)
 }
 
 type readResult struct {

@@ -87,9 +87,9 @@ def list_configurations(configuration_filters: Optional[Sequence[Union['Configur
     return AwaitableListConfigurationsResult(
         next_link=pulumi.get(__ret__, 'next_link'),
         value=pulumi.get(__ret__, 'value'))
-def list_configurations_output(configuration_filters: Optional[pulumi.Input[Sequence[Union['ConfigurationFilters', 'ConfigurationFiltersDict']]]] = None,
-                               customer_subscription_details: Optional[pulumi.Input[Optional[Union['CustomerSubscriptionDetails', 'CustomerSubscriptionDetailsDict']]]] = None,
-                               skip_token: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
+def list_configurations_output(configuration_filters: pulumi.Input[Optional[Sequence[Union['ConfigurationFilters', 'ConfigurationFiltersDict']]]] = None,
+                               customer_subscription_details: pulumi.Input[Optional[Optional[Union['CustomerSubscriptionDetails', 'CustomerSubscriptionDetailsDict']]]] = None,
+                               skip_token: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                                opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[ListConfigurationsResult]:
     """
     The list of configurations.

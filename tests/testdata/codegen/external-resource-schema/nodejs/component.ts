@@ -81,9 +81,9 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    metadata?: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>;
-    metadataArray?: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>[]>;
-    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>}>;
+    metadata?: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta | undefined>;
+    metadataArray?: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>[] | undefined>;
+    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>} | undefined>;
     requiredMetadata: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>;
     requiredMetadataArray: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>[]>;
     requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMeta>}>;

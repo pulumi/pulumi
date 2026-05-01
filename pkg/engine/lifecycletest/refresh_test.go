@@ -3657,9 +3657,6 @@ func TestRefreshV2IncludeTarget(t *testing.T) {
 func TestRefreshV2DeletedWithOrdering(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#22481]: Fix the underlying issue and remove the skip.
-	t.Skip("Skipping test due to snapshot integrity error with DeletedWith during refreshV2")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",

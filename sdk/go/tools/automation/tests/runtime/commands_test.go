@@ -29,7 +29,6 @@
 package runtime_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation"
@@ -61,7 +60,7 @@ func runStdout(t *testing.T, fn func() (stdout string, err error)) string {
 func TestCancel_Empty(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Cancel(context.Background(), nil)
+		r, err := api.Cancel(t.Context(), nil)
 		return r.Stdout, err
 	})
 	want := "pulumi cancel --yes"
@@ -73,7 +72,7 @@ func TestCancel_Empty(t *testing.T) {
 func TestCancel_WithStackName(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Cancel(context.Background(), strPtr("my-stack"))
+		r, err := api.Cancel(t.Context(), strPtr("my-stack"))
 		return r.Stdout, err
 	})
 	want := "pulumi cancel --yes -- my-stack"
@@ -85,19 +84,19 @@ func TestCancel_WithStackName(t *testing.T) {
 func TestCancel_WithStackFlag(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Cancel(context.Background(), nil, optcancel.WithStack("dev"))
+		r, err := api.Cancel(t.Context(), nil, optcancel.Stack("dev"))
 		return r.Stdout, err
 	})
 	want := "pulumi cancel --yes --stack dev"
 	if got != want {
-		t.Fatalf("Cancel(WithStack=dev) = %q, want %q", got, want)
+		t.Fatalf("Cancel(Stack=dev) = %q, want %q", got, want)
 	}
 }
 
 func TestOrg_ExecutableMenu(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.Org(context.Background())
+		r, err := api.Org(t.Context())
 		return r.Stdout, err
 	})
 	want := "pulumi org"
@@ -109,7 +108,7 @@ func TestOrg_ExecutableMenu(t *testing.T) {
 func TestOrgGetDefault(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.OrgGetDefault(context.Background())
+		r, err := api.OrgGetDefault(t.Context())
 		return r.Stdout, err
 	})
 	want := "pulumi org get-default"
@@ -121,7 +120,7 @@ func TestOrgGetDefault(t *testing.T) {
 func TestOrgSetDefault(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.OrgSetDefault(context.Background(), "my-org")
+		r, err := api.OrgSetDefault(t.Context(), "my-org")
 		return r.Stdout, err
 	})
 	want := "pulumi org set-default -- my-org"
@@ -134,8 +133,8 @@ func TestOrgSearch_RepeatableQuery(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearch(
-			context.Background(),
-			optorgsearch.WithQuery([]string{"foo", "bar"}),
+			t.Context(),
+			optorgsearch.Query([]string{"foo", "bar"}),
 		)
 		return r.Stdout, err
 	})
@@ -149,8 +148,8 @@ func TestOrgSearchAi_SingleQuery(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.OrgSearchAi(
-			context.Background(),
-			optorgsearchai.WithQuery("hello"),
+			t.Context(),
+			optorgsearchai.Query("hello"),
 		)
 		return r.Stdout, err
 	})
@@ -163,7 +162,7 @@ func TestOrgSearchAi_SingleQuery(t *testing.T) {
 func TestStateMove_VariadicOnly(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.StateMove(context.Background(), []string{"urn:1", "urn:2"})
+		r, err := api.StateMove(t.Context(), []string{"urn:1", "urn:2"})
 		return r.Stdout, err
 	})
 	want := "pulumi state move --yes -- urn:1 urn:2"
@@ -175,7 +174,7 @@ func TestStateMove_VariadicOnly(t *testing.T) {
 func TestStateMove_EmptyVariadic(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.StateMove(context.Background(), nil)
+		r, err := api.StateMove(t.Context(), nil)
 		return r.Stdout, err
 	})
 	want := "pulumi state move --yes"
@@ -188,9 +187,9 @@ func TestStateMove_WithBooleanFlag(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.StateMove(
-			context.Background(),
+			t.Context(),
 			[]string{"urn:1"},
-			optstatemove.WithIncludeParents(true),
+			optstatemove.IncludeParents(true),
 		)
 		return r.Stdout, err
 	})
@@ -204,10 +203,10 @@ func TestStateMove_WithSourceAndDest(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
 		r, err := api.StateMove(
-			context.Background(),
+			t.Context(),
 			[]string{"urn:1"},
-			optstatemove.WithSource("dev"),
-			optstatemove.WithDest("prod"),
+			optstatemove.Source("dev"),
+			optstatemove.Dest("prod"),
 		)
 		return r.Stdout, err
 	})

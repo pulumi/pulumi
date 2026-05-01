@@ -66,8 +66,8 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
-    boolean?: pulumi.Input<boolean>;
-    float?: pulumi.Input<number>;
-    integer?: pulumi.Input<number>;
-    string?: pulumi.Input<string>;
+    boolean?: pulumi.Input<boolean | undefined>;
+    float?: pulumi.Input<number | undefined>;
+    integer?: pulumi.Input<number | undefined>;
+    string?: pulumi.Input<string | undefined>;
 }

@@ -28,8 +28,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 func TestHideDiffs_Plain(t *testing.T) {
@@ -158,9 +156,11 @@ func testHideDiffs(t *testing.T, detailedDiff bool) {
 	}
 
 	created := p.Run(t, &deploy.Snapshot{})
-	assert.Equal(t,
-		slice.Map([]string{"array", "map", "scalar"}, property.MustParseGlob),
-		created.Resources[1].HideDiff)
+	assert.Equal(t, created.Resources[1].HideDiff, []resource.PropertyPath{
+		{"array"},
+		{"map"},
+		{"scalar"},
+	})
 	propValue = resource.NewProperty("b")
 	p.Run(t, created) // Update
 }

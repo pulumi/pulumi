@@ -16,8 +16,10 @@ package neo
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -25,8 +27,58 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
+
+// collectPrintln walks a tea.Cmd (potentially a Batch) and returns the bodies
+// of every tea.Println-produced message inside. tea.Println builds an
+// unexported printLineMessage{messageBody string}, so we identify it by type
+// name and read the field via reflection. This is the only way to assert
+// "what would have been written to terminal scrollback" from a unit test.
+//
+// Update arms typically bundle tea.Println cmds with a waitForEvent cmd that
+// blocks forever on the event channel — running each leaf with a short
+// timeout in a goroutine sidesteps that without the test having to know
+// which cmds are "safe" to invoke.
+func collectPrintln(cmd tea.Cmd) []string {
+	if cmd == nil {
+		return nil
+	}
+	msg, ok := runCmd(cmd)
+	if !ok {
+		return nil
+	}
+	if batch, ok := msg.(tea.BatchMsg); ok {
+		var out []string
+		for _, c := range batch {
+			out = append(out, collectPrintln(c)...)
+		}
+		return out
+	}
+	v := reflect.ValueOf(msg)
+	if v.Kind() == reflect.Struct && v.Type().Name() == "printLineMessage" {
+		if f := v.FieldByName("messageBody"); f.IsValid() && f.Kind() == reflect.String {
+			return []string{f.String()}
+		}
+	}
+	return nil
+}
+
+// runCmd invokes cmd in a goroutine and returns its result if it produces one
+// within a short window. waitForEvent and similar blocking cmds time out and
+// are reported as "no message" — collectPrintln then ignores them.
+func runCmd(cmd tea.Cmd) (tea.Msg, bool) {
+	done := make(chan tea.Msg, 1)
+	go func() { done <- cmd() }()
+	select {
+	case m := <-done:
+		return m, true
+	case <-time.After(50 * time.Millisecond):
+		return nil, false
+	}
+}
 
 // -----------------------------------------------------------------------------
 // Pure helpers
@@ -278,7 +330,7 @@ func TestModel_Init_ReturnsBatch(t *testing.T) {
 	require.NotNil(t, busy.Init())
 }
 
-func TestModel_Update_WindowSize_ResizesViewportAndBuildsRenderer(t *testing.T) {
+func TestModel_Update_WindowSize_TracksDimensionsAndBuildsRenderer(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{})
@@ -287,24 +339,24 @@ func TestModel_Update_WindowSize_ResizesViewportAndBuildsRenderer(t *testing.T) 
 
 	assert.Equal(t, 100, um.width)
 	assert.Equal(t, 30, um.height)
-	assert.Equal(t, 100, um.welcome.termWidth)
-	assert.Equal(t, 100, um.viewport.Width)
-	assert.Equal(t, 30-inputBarHeight, um.viewport.Height)
+	// welcome.termWidth is the safe live-frame width: capped at 80 once the
+	// terminal exceeds 90 cols, so the banner stays at a stable 80 cols
+	// across drag-resizes through that range. See liveWidth() for rationale.
+	assert.Equal(t, 80, um.welcome.termWidth)
 	// The glamour renderer is lazily built on the first WindowSize so it can
 	// pick up the real terminal width for wrapping.
 	require.NotNil(t, um.mdRenderer)
+	assert.True(t, um.sizeReceived, "first WindowSize must flip sizeReceived")
 }
 
-func TestModel_Update_WindowSize_MinimumViewportHeight(t *testing.T) {
+func TestModel_Update_WindowSize_TinyTerminalDoesNotPanic(t *testing.T) {
 	t.Parallel()
 
-	// A terminal smaller than the input bar would give a negative viewport
-	// height; the clamp in Update guarantees at least 1 row so bubbletea
-	// doesn't panic.
+	// View must not panic on a tiny terminal.
 	m := NewModel(ModelConfig{})
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 1})
 	um := updated.(Model)
-	assert.GreaterOrEqual(t, um.viewport.Height, 1)
+	require.NotPanics(t, func() { _ = um.View() })
 }
 
 func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
@@ -574,29 +626,21 @@ func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 func TestModel_Update_KeyRune_TypesAndDoesNotScrollViewport(t *testing.T) {
 	t.Parallel()
 
-	// The bubbles viewport's default keymap binds plain letters (u/d/f/b/j/k)
-	// and space to scroll actions. Those collide with typing in the chat
-	// input, so the model overrides the keymap to keep only non-character
-	// navigation. Regression for pulumi/pulumi-service#42025: pressing 'u'
-	// or 'd' must type into the input and leave the viewport untouched.
+	// Regression for pulumi/pulumi-service#42025: pressing plain letters
+	// (u/d/f/b/j/k) or space must type into the input rather than getting
+	// intercepted as scroll keys.
 	for _, r := range []rune{'u', 'd', 'f', 'b', 'j', 'k', ' '} {
 		t.Run(string(r), func(t *testing.T) {
 			t.Parallel()
 
 			m := NewModel(ModelConfig{})
-			// Size the viewport and seed content tall enough that scroll
-			// actions would otherwise change YOffset.
 			updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
 			um := updated.(Model)
-			um.viewport.SetContent(strings.Repeat("line\n", 200))
-			um.viewport.ScrollDown(20) // scroll partway so both up- and down-style binds could move
-			startOffset := um.viewport.YOffset
 
 			updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 			um = updated.(Model)
 
 			assert.Equal(t, string(r), um.textInput.Value(), "rune must reach the text input")
-			assert.Equal(t, startOffset, um.viewport.YOffset, "rune must not move the viewport")
 		})
 	}
 }
@@ -684,7 +728,7 @@ func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 	m := newApprovalPendingModel(t, outCh)
 	m.textInput.SetValue("not on prod")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	um := updated.(Model)
 
 	select {
@@ -700,7 +744,6 @@ func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 
 	assert.False(t, um.pendingApproval)
 	assert.False(t, um.busy, "denial must NOT re-arm busy — the agent is not running")
-	assert.Nil(t, cmd, "denial must not return a spinner cmd")
 }
 
 func TestModel_Update_KeyEnter_Approval_DenyEmpty(t *testing.T) {
@@ -769,19 +812,6 @@ func TestModel_Update_KeyEnter_Approval_NotGatedByBusy(t *testing.T) {
 	default:
 		t.Fatal("approval Enter must not be gated by busy")
 	}
-}
-
-func TestModel_Update_MouseMsg_ForwardsToViewport(t *testing.T) {
-	t.Parallel()
-
-	// Mouse events are routed to the viewport for scrolling. We don't introspect
-	// the viewport's internal scroll state here (it's an external bubble), just
-	// verify the dispatch doesn't panic and returns a Model — the coverage of
-	// the MouseMsg arm is the goal.
-	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.MouseMsg{Action: tea.MouseActionPress, Button: tea.MouseButtonWheelDown})
-	_, ok := updated.(Model)
-	assert.True(t, ok)
 }
 
 func TestModel_Update_UnknownMessage_ForwardsToTextInput(t *testing.T) {
@@ -860,6 +890,50 @@ func TestModel_Update_UIAssistantMessage_Final_ReplacesStreaming(t *testing.T) {
 
 	assert.Equal(t, -1, m2.findBlockKind(blockAssistantStreaming), "final msg must drop any streaming block")
 	assert.GreaterOrEqual(t, m2.findBlockKind(blockAssistantFinal), 0, "final msg must leave a final block")
+}
+
+// TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback is a
+// regression for a bug where hand-off messages (IsFinal=true,
+// HasPendingCLIWork=true) carrying assistant commentary were rendered as a
+// streaming live-frame block and then silently overwritten by the next
+// hand-off, so the commentary never reached scrollback. Each IsFinal=true
+// message — hand-off or terminal — must commit a final block.
+func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch, Busy: true})
+
+	// First hand-off: a complete utterance preceding a tool call.
+	updated, _ := m.Update(UIAssistantMessage{
+		IsFinal: true, HasPendingCLIWork: true, Content: "I'll read the file",
+	})
+	m1 := updated.(Model)
+
+	// The streaming block is the live-frame holding pen; a hand-off must
+	// flush it and append a committed final block instead. Otherwise the
+	// next hand-off's content overwrites the streaming raw and the prior
+	// commentary is lost from scrollback.
+	assert.Equal(t, -1, m1.findBlockKind(blockAssistantStreaming),
+		"hand-off must not leave a streaming block behind")
+	idx := m1.findBlockKind(blockAssistantFinal)
+	require.GreaterOrEqual(t, idx, 0, "hand-off must commit a final assistant block")
+	assert.Equal(t, "I'll read the file", m1.blocks[idx].raw)
+
+	// Second hand-off after the tool runs: must add a second committed block,
+	// not overwrite the first.
+	updated2, _ := m1.Update(UIAssistantMessage{
+		IsFinal: true, HasPendingCLIWork: true, Content: "Now editing it",
+	})
+	m2 := updated2.(Model)
+
+	finals := 0
+	for _, b := range m2.blocks {
+		if b.kind == blockAssistantFinal {
+			finals++
+		}
+	}
+	assert.Equal(t, 2, finals, "two hand-offs must produce two committed final blocks")
 }
 
 func TestModel_Update_UIToolStarted_ShowsBusyBlock(t *testing.T) {
@@ -1401,29 +1475,35 @@ func TestRenderBlock_SkipsWidthIndependentBlocks(t *testing.T) {
 	assert.Equal(t, "  ⏺ Read(\"/x\")", b.rendered, "empty raw must be a no-op")
 }
 
-func TestModel_RebuildContent_HandlesMixedBlocksWithoutPanic(t *testing.T) {
+func TestModel_LiveView_OnlyShowsLiveBlocks(t *testing.T) {
 	t.Parallel()
 
-	// rebuildContent handles each blockKind plus the busy-block special case
-	// (which reads the spinner glyph at render time). Feed one of each kind so
-	// every branch of the per-block switch runs, and both the "was at bottom"
-	// and default paths get exercised across multiple invocations.
+	// In inline mode, View() draws only the live frame: the busy spinner, an
+	// in-flight streaming assistant, and an open pulumi op. Committed blocks
+	// (user messages, tool completions, finals, warnings) live in terminal
+	// scrollback and must not appear in View(). Render one of each kind so
+	// the filter is exercised, and check that committed kinds are absent
+	// from the visible View string.
 	m := NewModel(ModelConfig{})
 	m.blocks = []block{
-		{kind: blockUserMessage, rendered: "  user "},
-		{kind: blockToolComplete, rendered: "  tool ok"},
-		{kind: blockAssistantFinal, rendered: "  final"},
-		{kind: blockWarning, rendered: "  warn"},
+		{kind: blockUserMessage, rendered: "USERSCROLLBACK"},
+		{kind: blockToolComplete, rendered: "TOOLCOMPLETESCROLLBACK"},
+		{kind: blockAssistantFinal, rendered: "FINALSCROLLBACK"},
+		{kind: blockWarning, rendered: "WARNSCROLLBACK"},
+		{kind: blockAssistantStreaming, rendered: "STREAMING_LIVE", raw: "STREAMING_LIVE"},
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
-	// Must not panic and must not mangle the block slice.
-	require.NotPanics(t, func() { m.rebuildContent() })
-	// Second call exercises the "not at bottom" path once scrolled up and then
-	// back down (via GotoBottom internally); simply verifying it also doesn't
-	// panic is enough — we don't reach into the viewport internals here.
-	require.NotPanics(t, func() { m.rebuildContent() })
-	require.Len(t, m.blocks, 5, "blocks slice must be untouched")
+	view := m.View()
+	// Live blocks are visible.
+	assert.Contains(t, view, "STREAMING_LIVE", "in-flight streaming must appear in View")
+	assert.Contains(t, view, "Thinking", "busy label must appear in View")
+	// Committed blocks are NOT visible — they were emitted to scrollback.
+	assert.NotContains(t, view, "USERSCROLLBACK")
+	assert.NotContains(t, view, "TOOLCOMPLETESCROLLBACK")
+	assert.NotContains(t, view, "FINALSCROLLBACK")
+	assert.NotContains(t, view, "WARNSCROLLBACK")
+	require.Len(t, m.blocks, 6, "View must not mutate the blocks slice")
 }
 
 func TestApprovalGeneralWrapsToTerminalWidth(t *testing.T) {
@@ -1529,4 +1609,130 @@ func TestApprovalChoiceApprovedStaysSingleLine(t *testing.T) {
 	widths := visibleLines(b.rendered)
 	require.Len(t, widths, 1, "approved verdict must render on a single line: %q", b.rendered)
 	assert.Contains(t, b.rendered, "Approved")
+}
+
+func TestModel_LiveView_PulumiOpLiveVsCommitted(t *testing.T) {
+	t.Parallel()
+
+	// In inline mode, an open pulumi op block (done==false) belongs in the
+	// live frame above the input. Once UIPulumiEnd fires it flips to done==true
+	// and its rendered string is committed to scrollback via tea.Println — at
+	// that point it must drop out of View(). A future refactor that flips
+	// isLiveKind's pulumi predicate would either double-print the block (live
+	// frame + scrollback) or drop the running summary entirely.
+	m := NewModel(ModelConfig{})
+	m.blocks = []block{
+		{kind: blockPulumiOp, rendered: "PULUMI_OPEN_LIVE", pulumi: &pulumiBlockState{done: false}},
+		{kind: blockPulumiOp, rendered: "PULUMI_DONE_SCROLLBACK", pulumi: &pulumiBlockState{done: true}},
+	}
+
+	view := m.View()
+	assert.Contains(t, view, "PULUMI_OPEN_LIVE",
+		"open pulumi op (done=false) must appear in the live frame")
+	assert.NotContains(t, view, "PULUMI_DONE_SCROLLBACK",
+		"finalized pulumi op (done=true) must not appear in View — it was committed to scrollback")
+}
+
+func TestModel_Update_FirstWindowSize_EmitsWelcomeAndInitialPromptToScrollback(t *testing.T) {
+	t.Parallel()
+
+	// NewModel queues an InitialPrompt as a committed user-message block but
+	// can't emit it yet — the welcome banner needs the real terminal width
+	// first. The first WindowSizeMsg is the moment we know the width, so it
+	// must (a) tea.Println the welcome banner and (b) tea.Println every
+	// pre-seeded committed block. Subsequent WindowSizeMsgs must NOT re-emit;
+	// otherwise resizing the terminal would stack duplicate banners into
+	// scrollback.
+	m := NewModel(ModelConfig{InitialPrompt: "deploy prod"})
+	require.False(t, m.sizeReceived, "fresh model has not received a size yet")
+
+	updated, cmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	um := updated.(Model)
+	assert.True(t, um.sizeReceived, "first WindowSize must flip sizeReceived")
+
+	printed := collectPrintln(cmd)
+	welcomeMatches := 0
+	promptMatches := 0
+	for _, line := range printed {
+		if strings.Contains(line, "Pulumi Neo") {
+			welcomeMatches++
+		}
+		if strings.Contains(line, "deploy prod") {
+			promptMatches++
+		}
+	}
+	assert.Equal(t, 1, welcomeMatches, "welcome banner must reach scrollback exactly once; got: %v", printed)
+	assert.Equal(t, 1, promptMatches, "InitialPrompt user block must reach scrollback exactly once; got: %v", printed)
+
+	// A subsequent WindowSizeMsg is just a resize — no new scrollback.
+	_, cmd2 := um.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	printed2 := collectPrintln(cmd2)
+	for _, line := range printed2 {
+		assert.NotContains(t, line, "Pulumi Neo", "second resize must not re-emit the welcome banner")
+		assert.NotContains(t, line, "deploy prod", "second resize must not re-emit the initial-prompt block")
+	}
+}
+
+func TestModel_Update_UIPulumiEnd_CommitsRenderedToScrollback(t *testing.T) {
+	t.Parallel()
+
+	// UIPulumiEnd flips the open pulumi op block to done==true (live →
+	// committed) and emits its rendered form via tea.Println so the final
+	// summary lives in terminal scrollback. Without this emission, a finished
+	// pulumi run would silently disappear from view (it leaves the live frame
+	// the moment done flips, but never gets printed above).
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = updated0.(Model)
+
+	updated1, _ := m.Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_preview", StackName: "dev", IsPreview: true,
+	})
+	m = updated1.(Model)
+	updated2, _ := m.Update(UIPulumiResource{
+		ToolName: "pulumi__pulumi_preview",
+		Op:       deploy.OpCreate,
+		URN:      "urn:pulumi:dev::p::aws:s3/Bucket::b",
+		Type:     "aws:s3/Bucket",
+		Status:   "planned",
+	})
+	m = updated2.(Model)
+
+	_, endCmd := m.Update(UIPulumiEnd{
+		ToolName: "pulumi__pulumi_preview",
+		Counts:   display.ResourceChanges{deploy.OpCreate: 1},
+		Elapsed:  "1.2s",
+	})
+
+	printed := collectPrintln(endCmd)
+	matches := 0
+	for _, line := range printed {
+		if strings.Contains(line, "PulumiPreview") {
+			matches++
+		}
+	}
+	assert.GreaterOrEqual(t, matches, 1,
+		"UIPulumiEnd must tea.Println the rendered pulumi block; got: %v", printed)
+}
+
+func TestModel_WrapPlain_TinyWidthShortCircuits(t *testing.T) {
+	t.Parallel()
+
+	// wrapPlain backs off to identity when liveWidth <= 4 — wordwrap.String
+	// with a non-positive boundary has historically panicked or produced
+	// off-by-one breakage in some reflow versions. The guard exists so a
+	// pathologically narrow terminal doesn't crash the TUI.
+	long := "a fairly long sentence that would otherwise wrap"
+
+	m := NewModel(ModelConfig{})
+	m.width = 1 // liveWidth returns m.width directly when below minUsableWidth
+	require.LessOrEqual(t, m.liveWidth(), 4, "test relies on tiny liveWidth path")
+	assert.Equal(t, long, m.wrapPlain(long), "tiny-width path must return input verbatim")
+
+	// Sanity: at a normal width, wrapPlain inserts at least one newline so
+	// we know the short-circuit isn't accidentally absorbing every input.
+	m.width = 100
+	wrapped := m.wrapPlain(strings.Repeat("word ", 30))
+	assert.Contains(t, wrapped, "\n", "normal-width path must wrap into multiple lines")
 }

@@ -55,13 +55,16 @@ var (
 )
 
 var (
+	handlerMu   sync.RWMutex
+	primary     slog.Handler = discardHandler{} // regular log output (stderr / file)
+	sinkHandler slog.Handler                    // encrypted log handler, nil when inactive
 	slogHandler *slog.Logger
 	logFilePath string
 	logFile     *os.File
 )
 
 func init() {
-	slogHandler = slog.New(discardHandler{})
+	rebuildLogger()
 
 	// Register the standard logging flags on flag.CommandLine, matching
 	// the behavior glog had via its own init(). Plugin binaries (language
@@ -80,13 +83,48 @@ func init() {
 	}
 }
 
+// rebuildLogger assembles the slog.Logger from the current primary and
+// sink handlers. Must be called with handlerMu held for writing.
+func rebuildLogger() {
+	var h slog.Handler = formattingHandler{inner: filteringHandler{inner: primary}}
+	if sinkHandler != nil {
+		h = &teeHandler{primary: h, sink: sinkHandler}
+	}
+	slogHandler = slog.New(h)
+}
+
+// SetSinkHandler installs an additional slog.Handler that receives a
+// copy of every log record.  Pass nil to remove the sink.  The handler
+// must be safe for concurrent use.
+func SetSinkHandler(h slog.Handler) {
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+	sinkHandler = h
+	rebuildLogger()
+}
+
+// sinkEnabled reports whether the sink handler exists and accepts
+// records at the given level.
+func sinkEnabled(level slog.Level) bool {
+	handlerMu.RLock()
+	defer handlerMu.RUnlock()
+	return sinkHandler != nil && sinkHandler.Enabled(context.TODO(), level)
+}
+
 const LevelTrace = slog.LevelDebug - 4
 
 // VerboseLogger logs messages only if verbosity matches the level it was built with.
-// The value is 0 when disabled, or the verbosity level when enabled.
 type VerboseLogger struct{ level int32 }
 
-func (v VerboseLogger) Enabled() bool { return Verbose >= int(v.level) && v.level > 0 }
+// Enabled returns true if either slog verbose logging or the sink handler
+// wants messages at this level.
+func (v VerboseLogger) Enabled() bool {
+	return v.slogEnabled() || sinkEnabled(v.slogLevel())
+}
+
+func (v VerboseLogger) slogEnabled() bool {
+	return Verbose >= int(v.level) && v.level > 0
+}
 
 // slogLevel maps the pulumi verbosity level to a slog level:
 //
@@ -116,9 +154,12 @@ func (v VerboseLogger) Infoln(args ...any) {
 }
 
 // Infof is equivalent to the global Infof function, guarded by the value of v.
+// The format string is stored as the slog message and each argument is
+// recorded as a separate "pulumi.log.argN" attribute so that the sink
+// handler can access them individually.
 func (v VerboseLogger) Infof(format string, args ...any) {
 	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprintf(format, args...), "v", int(v.level))
+		slogHandler.Log(context.TODO(), v.slogLevel(), format, fmtAttrs(args, "v", int(v.level))...)
 	}
 }
 
@@ -127,15 +168,26 @@ func V(level int32) VerboseLogger {
 }
 
 func Errorf(format string, args ...any) {
-	slogHandler.Error(fmt.Sprintf(format, args...))
+	slogHandler.Log(context.TODO(), slog.LevelError, format, fmtAttrs(args)...)
 }
 
 func Infof(format string, args ...any) {
-	slogHandler.Info(fmt.Sprintf(format, args...))
+	slogHandler.Log(context.TODO(), slog.LevelInfo, format, fmtAttrs(args)...)
 }
 
 func Warningf(format string, args ...any) {
-	slogHandler.Warn(fmt.Sprintf(format, args...))
+	slogHandler.Log(context.TODO(), slog.LevelWarn, format, fmtAttrs(args)...)
+}
+
+// fmtAttrs encodes format arguments as slog key-value pairs so that
+// downstream handlers can access each value individually.
+// Extra key-value pairs (e.g. "v", level) are appended.
+func fmtAttrs(args []any, extra ...any) []any {
+	out := make([]any, 0, len(args)*2+len(extra))
+	for i, a := range args {
+		out = append(out, fmt.Sprintf("pulumi.log.arg%d", i), a)
+	}
+	return append(out, extra...)
 }
 
 func InitLogging(logToStderr bool, verbose int, logFlow bool) {
@@ -163,20 +215,24 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 		fmt.Sscan(f.Value.String(), &Verbose) //nolint:errcheck
 	}
 
+	handlerMu.Lock()
+	defer handlerMu.Unlock()
+
 	if LogToStderr {
-		slogHandler = slog.New(filteringHandler{inner: slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		primary = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 			Level: LevelTrace,
-		})})
+		})
 	} else if Verbose > 0 {
 		f, err := os.Create(logFileName())
 		if err == nil {
 			logFilePath = f.Name()
 			logFile = f
-			slogHandler = slog.New(filteringHandler{inner: slog.NewJSONHandler(f, &slog.HandlerOptions{
+			primary = slog.NewJSONHandler(f, &slog.HandlerOptions{
 				Level: LevelTrace,
-			})})
+			})
 		}
 	}
+	rebuildLogger()
 }
 
 // logFileName returns a log file path matching the glog naming convention:
@@ -213,6 +269,79 @@ func GetLogfilePath() (string, error) {
 		return logFilePath, nil
 	}
 	return "", errors.New("no log files found")
+}
+
+// teeHandler fans out slog records to two handlers.
+type teeHandler struct {
+	primary slog.Handler
+	sink    slog.Handler
+}
+
+func (t *teeHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return t.primary.Enabled(ctx, level) || t.sink.Enabled(ctx, level)
+}
+
+func (t *teeHandler) Handle(ctx context.Context, r slog.Record) error {
+	if t.primary.Enabled(ctx, r.Level) {
+		_ = t.primary.Handle(ctx, r)
+	}
+	if t.sink.Enabled(ctx, r.Level) {
+		_ = t.sink.Handle(ctx, r)
+	}
+	return nil
+}
+
+func (t *teeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	p := t.primary.WithAttrs(attrs)
+	s := t.sink.WithAttrs(attrs)
+	return &teeHandler{primary: p, sink: s}
+}
+
+func (t *teeHandler) WithGroup(name string) slog.Handler {
+	return &teeHandler{primary: t.primary.WithGroup(name), sink: t.sink.WithGroup(name)}
+}
+
+// formattingHandler reconstructs the formatted message from
+// pulumi.log.argN attributes before forwarding to its inner handler.
+// This lets the primary log output show the fully formatted message
+// while the sink handler can access each argument individually.
+type formattingHandler struct {
+	inner slog.Handler
+}
+
+func (f formattingHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return f.inner.Enabled(ctx, level)
+}
+
+func (f formattingHandler) Handle(ctx context.Context, r slog.Record) error {
+	// Collect pulumi.log.argN values (in order) and all other attrs.
+	var fmtArgs []any
+	var other []slog.Attr
+	r.Attrs(func(a slog.Attr) bool {
+		if strings.HasPrefix(a.Key, "pulumi.log.arg") {
+			fmtArgs = append(fmtArgs, a.Value.Any())
+		} else {
+			other = append(other, a)
+		}
+		return true
+	})
+
+	msg := r.Message
+	if len(fmtArgs) > 0 {
+		msg = fmt.Sprintf(r.Message, fmtArgs...)
+	}
+
+	newRec := slog.NewRecord(r.Time, r.Level, msg, r.PC)
+	newRec.AddAttrs(other...)
+	return f.inner.Handle(ctx, newRec)
+}
+
+func (f formattingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return formattingHandler{inner: f.inner.WithAttrs(attrs)}
+}
+
+func (f formattingHandler) WithGroup(name string) slog.Handler {
+	return formattingHandler{inner: f.inner.WithGroup(name)}
 }
 
 type nopFilter struct{}

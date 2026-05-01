@@ -1761,7 +1761,7 @@ func TestPluginLs(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
 
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls", "--json")
 	plugins := []map[string]any{}

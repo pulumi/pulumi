@@ -50,7 +50,7 @@ def concat_world(value: Optional[_builtins.str] = None,
 
     return AwaitableConcatWorldResult(
         result=pulumi.get(__ret__, 'result'))
-def concat_world_output(value: Optional[pulumi.Input[_builtins.str]] = None,
+def concat_world_output(value: pulumi.Input[Optional[_builtins.str]] = None,
                         opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[ConcatWorldResult]:
     """
     Use this data source to access information about an existing resource.

@@ -19,10 +19,10 @@ __all__ = ['ResourceArgs', 'Resource']
 @pulumi.input_type
 class ResourceArgs:
     def __init__(__self__, *,
-                 boolean: Optional[pulumi.Input[_builtins.bool]] = None,
-                 float: Optional[pulumi.Input[_builtins.float]] = None,
-                 integer: Optional[pulumi.Input[_builtins.int]] = None,
-                 string: Optional[pulumi.Input[_builtins.str]] = None):
+                 boolean: pulumi.Input[Optional[_builtins.bool]] = None,
+                 float: pulumi.Input[Optional[_builtins.float]] = None,
+                 integer: pulumi.Input[Optional[_builtins.int]] = None,
+                 string: pulumi.Input[Optional[_builtins.str]] = None):
         """
         The set of arguments for constructing a Resource resource.
         """
@@ -45,38 +45,38 @@ class ResourceArgs:
 
     @_builtins.property
     @pulumi.getter
-    def boolean(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def boolean(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "boolean")
 
     @boolean.setter
-    def boolean(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def boolean(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "boolean", value)
 
     @_builtins.property
     @pulumi.getter
-    def float(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def float(self) -> pulumi.Input[Optional[_builtins.float]]:
         return pulumi.get(self, "float")
 
     @float.setter
-    def float(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def float(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "float", value)
 
     @_builtins.property
     @pulumi.getter
-    def integer(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def integer(self) -> pulumi.Input[Optional[_builtins.int]]:
         return pulumi.get(self, "integer")
 
     @integer.setter
-    def integer(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def integer(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "integer", value)
 
     @_builtins.property
     @pulumi.getter
-    def string(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def string(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "string")
 
     @string.setter
-    def string(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def string(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "string", value)
 
 
@@ -86,10 +86,10 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 boolean: Optional[pulumi.Input[_builtins.bool]] = None,
-                 float: Optional[pulumi.Input[_builtins.float]] = None,
-                 integer: Optional[pulumi.Input[_builtins.int]] = None,
-                 string: Optional[pulumi.Input[_builtins.str]] = None,
+                 boolean: pulumi.Input[Optional[_builtins.bool]] = None,
+                 float: pulumi.Input[Optional[_builtins.float]] = None,
+                 integer: pulumi.Input[Optional[_builtins.int]] = None,
+                 string: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -121,10 +121,10 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 boolean: Optional[pulumi.Input[_builtins.bool]] = None,
-                 float: Optional[pulumi.Input[_builtins.float]] = None,
-                 integer: Optional[pulumi.Input[_builtins.int]] = None,
-                 string: Optional[pulumi.Input[_builtins.str]] = None,
+                 boolean: pulumi.Input[Optional[_builtins.bool]] = None,
+                 float: pulumi.Input[Optional[_builtins.float]] = None,
+                 integer: pulumi.Input[Optional[_builtins.int]] = None,
+                 string: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -179,7 +179,7 @@ func TestTerminate_forceKill(t *testing.T) {
 			}
 
 			require.NoError(t,
-				waitPidDead(pid, 100*time.Millisecond),
+				waitPidDead(t, pid, 100*time.Millisecond),
 				"error waiting for process to die")
 		})
 	}
@@ -238,7 +238,7 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 
 	for _, pid := range []int{pid, childPid} {
 		require.NoError(t,
-			waitPidDead(pid, 100*time.Millisecond),
+			waitPidDead(t, pid, 100*time.Millisecond),
 			"error waiting for process to die")
 	}
 }
@@ -297,7 +297,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 			}
 
 			require.NoError(t,
-				waitPidDead(pid, 100*time.Millisecond),
+				waitPidDead(t, pid, 100*time.Millisecond),
 				"error waiting for process to die")
 		})
 	}
@@ -445,8 +445,8 @@ func (b *lockedBuffer) Len() int {
 // or the given timeout has elapsed.
 //
 // Returns an error if the timeout has elapsed.
-func waitPidDead(pid int, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func waitPidDead(t *testing.T, pid int, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	var (

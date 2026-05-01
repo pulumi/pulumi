@@ -932,9 +932,9 @@ func (m *packageRefMonitor) RegisterPackage(_ context.Context, _ *pulumirpc.Regi
 
 // newTestContextWithMonitor creates a minimal Context for testing with
 // the given monitor and supportsParameterization enabled.
-func newTestContextWithMonitor(monitor pulumirpc.ResourceMonitorClient) *Context {
+func newTestContextWithMonitor(t *testing.T, monitor pulumirpc.ResourceMonitorClient) *Context {
 	return &Context{
-		ctx: context.Background(),
+		ctx: t.Context(),
 		state: &contextState{
 			monitor:                  monitor,
 			supportsParameterization: true,
@@ -960,7 +960,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 	t.Run("returns registered ref", func(t *testing.T) {
 		t.Parallel()
 		mon := &packageRefMonitor{ref: "uuid-1"}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		ref, err := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
 
@@ -972,7 +972,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 	t.Run("caches ref for same key", func(t *testing.T) {
 		t.Parallel()
 		mon := &packageRefMonitor{ref: "uuid-1"}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		ref1, err := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
 		require.NoError(t, err)
@@ -986,7 +986,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 	t.Run("different keys register separately", func(t *testing.T) {
 		t.Parallel()
 		mon := &packageRefMonitor{ref: "uuid-1"}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		_, err := ctx.GetOrRegisterPackageRef("pkg-a:1.0", dummyRegisterReq)
 		require.NoError(t, err)
@@ -1000,7 +1000,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		t.Parallel()
 		expectedErr := errors.New("registration failed")
 		mon := &packageRefMonitor{err: expectedErr}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		_, err1 := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
 		_, err2 := ctx.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
@@ -1014,8 +1014,8 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 		t.Parallel()
 		monA := &packageRefMonitor{ref: "uuid-A"}
 		monB := &packageRefMonitor{ref: "uuid-B"}
-		ctxA := newTestContextWithMonitor(monA)
-		ctxB := newTestContextWithMonitor(monB)
+		ctxA := newTestContextWithMonitor(t, monA)
+		ctxB := newTestContextWithMonitor(t, monB)
 
 		refA, err := ctxA.GetOrRegisterPackageRef("pkg:1.0", dummyRegisterReq)
 		require.NoError(t, err)
@@ -1031,7 +1031,7 @@ func TestGetOrRegisterPackageRef(t *testing.T) {
 	t.Run("concurrent goroutines same key single registration", func(t *testing.T) {
 		t.Parallel()
 		mon := &packageRefMonitor{ref: "uuid-concurrent"}
-		ctx := newTestContextWithMonitor(mon)
+		ctx := newTestContextWithMonitor(t, mon)
 
 		const goroutines = 50
 		var wg sync.WaitGroup

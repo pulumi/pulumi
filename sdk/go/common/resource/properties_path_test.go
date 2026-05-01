@@ -19,40 +19,9 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestBackCompactPropertyPathMarshal(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		input    string
-		expected []property.GlobSegment
-	}{
-		{"foo", []property.GlobSegment{property.NewSegment("foo")}},
-		{"foo.bar", []property.GlobSegment{property.NewSegment("foo"), property.NewSegment("bar")}},
-		{"foo[\"bar\"]", []property.GlobSegment{property.NewSegment("foo"), property.NewSegment("bar")}},
-		{"foo.[\"bar\"]", []property.GlobSegment{property.NewSegment("foo"), property.NewSegment("bar")}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			t.Parallel()
-
-			var b BackCompatPropertyPath
-			require.NoError(t, b.UnmarshalText([]byte(tt.input)))
-			assert.Equal(t, property.GlobFromSegments(tt.expected...), property.Glob(b))
-
-			marshalled, err := b.MarshalText()
-			require.NoError(t, err)
-			var g property.Glob
-			require.NoError(t, g.UnmarshalText(marshalled))
-			assert.Equal(t, property.Glob(b), g)
-		})
-	}
-}
 
 func TestPropertyPathMarshal(t *testing.T) {
 	t.Parallel()

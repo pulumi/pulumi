@@ -183,7 +183,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 	var parent resource.URN
 	var providerRef string
 	var importID resource.ID
-	var ignoreChanges []property.Glob
+	var ignoreChanges []string
 	if r.Options != nil {
 		if r.Options.Protect != nil {
 			v, diags := r.Options.Protect.Evaluate(&hcl.EvalContext{})
@@ -215,9 +215,7 @@ func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
 			if assert.True(t, v.IsArray()) {
 				for _, item := range v.AsArray().All {
 					if assert.True(t, item.IsString()) {
-						var p property.Glob
-						require.NoError(t, p.UnmarshalText([]byte(item.AsString())))
-						ignoreChanges = append(ignoreChanges, p)
+						ignoreChanges = append(ignoreChanges, item.AsString())
 					}
 				}
 			}
@@ -282,7 +280,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:aws",
 					RetainOnDelete: true,
-					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
+					IgnoreChanges:  []string{"fooIgnore"},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 				},
@@ -292,7 +290,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:random",
 					RetainOnDelete: true,
-					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
+					IgnoreChanges:  []string{"fooIgnore"},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:random::default_123",
 				},
@@ -302,7 +300,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 					Custom:         true,
 					Type:           "pulumi:providers:pkg",
 					RetainOnDelete: true,
-					IgnoreChanges:  []property.Glob{property.MustParseGlob("fooIgnore")},
+					IgnoreChanges:  []string{"fooIgnore"},
 					DeletedWith:    "123",
 					URN:            "urn:pulumi:stack::project::pulumi:providers:pkg::provider",
 				},

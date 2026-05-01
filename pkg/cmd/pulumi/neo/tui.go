@@ -18,20 +18,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wordwrap"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
-
-// inputBarHeight is the number of terminal lines reserved for the input area
-// (separator + input line + hint line).
-const inputBarHeight = 3
 
 // ctrlCArmTimeout is how long the "press Ctrl+C again to exit" gate stays
 // armed after the first press. Matches the cadence other agent CLIs use so
@@ -62,6 +58,7 @@ const (
 	blockApprovalPlan
 	blockApprovalGeneral
 	blockApprovalChoice
+	blockPulumiOp
 )
 
 type block struct {
@@ -78,6 +75,41 @@ type block struct {
 	shimmer shimmerKind
 	// approved applies to blockApprovalChoice only.
 	approved bool
+	// pulumi carries per-block state for blockPulumiOp. It is mutated in place
+	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
+	// re-rendered by renderBlock on every update.
+	pulumi *pulumiBlockState
+}
+
+// pulumiBlockState accumulates the live state of a blockPulumiOp. Resources are
+// deduped by URN (the index into resources is stored in resourceByURN so late
+// events like ResourceOutputs can upgrade the status of an earlier
+// ResourcePre). Diags are append-only because they carry their own severity
+// and messages aren't keyed.
+type pulumiBlockState struct {
+	toolName      string
+	stackName     string
+	isPreview     bool
+	resources     []pulumiResourceRow
+	resourceByURN map[string]int
+	diags         []pulumiDiagRow
+	counts        display.ResourceChanges
+	elapsed       string
+	err           string
+	done          bool
+}
+
+type pulumiResourceRow struct {
+	op     display.StepOp
+	urn    string
+	typ    string
+	status string
+}
+
+type pulumiDiagRow struct {
+	severity string
+	message  string
+	urn      string
 }
 
 // ModelConfig holds the parameters needed to create a TUI Model.
@@ -108,13 +140,24 @@ type ModelConfig struct {
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
+//
+// The TUI runs inline (no alt-screen). Completed blocks (user messages, tool
+// completions, final assistant replies, errors, warnings, finished pulumi ops)
+// are committed to terminal scrollback via tea.Println as soon as they reach a
+// terminal state. Only "live" blocks render in the bubbletea frame above the
+// input bar: the busy spinner, an in-flight streaming assistant message, and
+// an in-flight pulumi op that hasn't received UIPulumiEnd yet.
 type Model struct {
 	welcome   welcomeModel
-	viewport  viewport.Model
 	textInput textinput.Model
 	blocks    []block
 	eventCh   <-chan UIEvent
 	outCh     chan<- outboundEvent
+	// sizeReceived flips on the first WindowSizeMsg. The first resize is also
+	// the moment we know the terminal width, so it's when we emit the welcome
+	// banner and any pre-seeded committed blocks (e.g. an InitialPrompt user
+	// message) to scrollback.
+	sizeReceived bool
 	// busy is true from the moment the user sends a message (or a prompt was
 	// provided up front) until the session emits UITaskIdle / UICancelled /
 	// UIError. While busy, Enter is swallowed so the user can't talk over
@@ -169,7 +212,6 @@ type Model struct {
 }
 
 var (
-	inputSepStyle  = lipgloss.NewStyle().Faint(true)
 	inputHintStyle = lipgloss.NewStyle().Faint(true)
 	promptStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 	errorStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
@@ -183,6 +225,32 @@ var (
 	// and the "Proposed plan" block header so they read as the same visual cue.
 	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 )
+
+// renderLeftBracket decorates content with a left-only bracket border: a
+// "╭─" tick above the first content line, a "│ " prefix on every content
+// line, and a "╰─" tick below the last line. The right edge and full
+// horizontal bars are intentionally omitted so no rendered line ever
+// stretches across the terminal width — that would wrap on resize-shrink
+// and corrupt bubbletea's inline-renderer line accounting (see View() for
+// context). All bracket glyphs are colored via borderStyle.
+//
+// Empty content collapses to two corner ticks ("╭─" / "╰─") with no body.
+func renderLeftBracket(borderStyle lipgloss.Style, content string) string {
+	bar := borderStyle.Render("│")
+	topTick := borderStyle.Render("╭─")
+	bottomTick := borderStyle.Render("╰─")
+
+	body := strings.TrimRight(content, "\n")
+	out := make([]string, 0, 2)
+	out = append(out, topTick)
+	if body != "" {
+		for line := range strings.SplitSeq(body, "\n") {
+			out = append(out, bar+" "+line)
+		}
+	}
+	out = append(out, bottomTick)
+	return strings.Join(out, "\n")
+}
 
 // renderIndented word-wraps content (ANSI-safe) to termWidth minus the
 // 2-space transcript gutter, or returns un-wrapped if the width is too
@@ -203,16 +271,6 @@ func NewModel(cfg ModelConfig) Model {
 	ti.Focus()
 	ti.CharLimit = 4096
 
-	vp := viewport.New(80, 24-inputBarHeight)
-	// The default viewport KeyMap binds plain letters (u/d/f/b/j/k) and
-	// space to scroll actions, which collide with typing in the chat
-	// input. Restrict to PgUp/PgDn so we don't shadow system or text-input
-	// shortcuts (arrows move the cursor, Ctrl+U/Ctrl+D have terminal meanings).
-	vp.KeyMap = viewport.KeyMap{
-		PageDown: key.NewBinding(key.WithKeys("pgdown")),
-		PageUp:   key.NewBinding(key.WithKeys("pgup")),
-	}
-
 	sp := spinner.New(
 		spinner.WithSpinner(spinner.MiniDot),
 		spinner.WithStyle(lipgloss.NewStyle().Foreground(lipgloss.Color("6"))),
@@ -226,7 +284,6 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		viewport:    vp,
 		textInput:   ti,
 		eventCh:     cfg.EventCh,
 		outCh:       cfg.OutCh,
@@ -236,8 +293,10 @@ func NewModel(cfg ModelConfig) Model {
 		height:      24,
 		messageSent: cfg.MessageSent,
 	}
-	m.viewport.SetContent(m.welcome.View())
 	if cfg.InitialPrompt != "" {
+		// Render the initial-prompt block now so tests can find it via
+		// findBlockKind. The actual scrollback emission happens on the first
+		// WindowSizeMsg, when we have the real terminal width.
 		m.appendUserMessageBlock(cfg.InitialPrompt)
 		m.pendingUserEchoes = append(m.pendingUserEchoes, cfg.InitialPrompt)
 	}
@@ -265,26 +324,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		firstSize := !m.sizeReceived
+		m.sizeReceived = true
 		m.width = msg.Width
 		m.height = msg.Height
-		m.welcome.termWidth = msg.Width
-
-		vpHeight := max(msg.Height-inputBarHeight, 1)
-		m.viewport.Width = msg.Width
-		m.viewport.Height = vpHeight
-		m.textInput.Width = msg.Width - lipgloss.Width(m.textInput.Prompt) - 1
+		safeWidth := m.liveWidth()
+		m.welcome.termWidth = safeWidth
+		m.textInput.Width = max(safeWidth-lipgloss.Width(m.textInput.Prompt)-1, 1)
 
 		// Glamour's wrap width is baked in at construction, so rebuild on resize.
+		// Wrap at liveWidth-4 so glamour-rendered output (assistant finals, plan
+		// markdown) stays inside the safe live-frame width.
 		if r, err := glamour.NewTermRenderer(
 			glamour.WithStylePath("dark"),
-			glamour.WithWordWrap(msg.Width-4),
+			glamour.WithWordWrap(safeWidth-4),
 		); err == nil {
 			m.mdRenderer = r
 		}
+		// Re-render every block at the new width. Live blocks (busy / streaming /
+		// open pulumi op) get reflected in View() on the next draw; committed
+		// blocks already in scrollback don't reflow — only the initial-prompt
+		// block, queued by NewModel before the width was known, is committed
+		// here for the first time below.
 		for i := range m.blocks {
 			m.renderBlock(&m.blocks[i])
 		}
-		m.rebuildContent()
+		if firstSize {
+			cmds = append(cmds, tea.Println(m.welcome.View()))
+			for _, b := range m.blocks {
+				if isCommittedKind(b) && b.rendered != "" {
+					cmds = append(cmds, tea.Println(b.rendered))
+				}
+			}
+		}
 
 	case ctrlCDisarmMsg:
 		// Stale tick: the user already pressed another key (gen still
@@ -292,7 +364,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// way, leave the current state alone.
 		if msg.gen == m.ctrlCArmGen && m.ctrlCArmed {
 			m.ctrlCArmed = false
-			m.rebuildContent()
 		}
 		return m, nil
 
@@ -314,10 +385,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
 				m.cancelling = true
 				cancelCmd := m.showBusy("Cancelling...", shimmerVerb)
-				m.rebuildContent()
 				return m, tea.Batch(cancelCmd, disarmCmd)
 			}
-			m.rebuildContent()
 			return m, disarmCmd
 		}
 		// Any other key disarms the second-press-to-exit prompt. Keeps the
@@ -336,13 +405,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Plan mode is task-level on the wire and gets snapshotted at
 				// the moment the first message is sent. A post-send toggle
 				// would be misleading — it could not affect the task.
-				m.appendWarningBlock(
+				return m, m.appendWarningBlock(
 					"Plan mode is task-level — start a new `pulumi neo` session to change it.")
-				m.rebuildContent()
-				return m, nil
 			}
 			m.planMode = !m.planMode
-			m.rebuildContent()
 			return m, nil
 		}
 
@@ -356,9 +422,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.busy && !m.pendingApproval && !m.cancelling {
 				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
 				m.cancelling = true
-				cmd := m.showBusy("Cancelling...", shimmerVerb)
-				m.rebuildContent()
-				return m, cmd
+				return m, m.showBusy("Cancelling...", shimmerVerb)
 			}
 			return m, nil
 		}
@@ -397,18 +461,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.textInput.PromptStyle = promptStyle
 				m.textInput.Placeholder = "Send a message..."
 				m.textInput.Reset()
-				m.appendRenderedBlock(block{
+				choiceCmd := m.commitBlock(block{
 					kind:     blockApprovalChoice,
 					approved: approved,
 					raw:      denialMsg,
 				})
 				if approved {
-					cmd := m.showBusy(thinkingLabel, shimmerVerb)
-					m.rebuildContent()
-					return m, cmd
+					return m, tea.Batch(choiceCmd, m.showBusy(thinkingLabel, shimmerVerb))
 				}
-				m.rebuildContent()
-				return m, nil
+				return m, choiceCmd
 			}
 			var tiCmd tea.Cmd
 			m.textInput, tiCmd = m.textInput.Update(msg)
@@ -436,32 +497,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// the transcript before the server echoes it back. The
 					// echo is reconciled against pendingUserEchoes in the
 					// UIUserMessage handler to avoid duplicates.
-					m.appendUserMessageBlock(text)
+					userCmd := m.appendUserMessageBlock(text)
 					m.pendingUserEchoes = append(m.pendingUserEchoes, text)
 					// Freeze the plan-mode affordance: planMode has now been
 					// committed to the dispatcher and any later Shift+Tab
 					// would be a no-op on the server.
 					m.messageSent = true
-					return m, m.showBusy(thinkingLabel, shimmerVerb)
+					return m, tea.Batch(userCmd, m.showBusy(thinkingLabel, shimmerVerb))
 				}
 			}
 			return m, nil
 		}
 
-		// Pass to text input first for typing.
+		// Pass to text input for typing. The terminal's own scrollback is
+		// what the user uses to look back, so pgup/pgdn aren't forwarded.
 		var tiCmd tea.Cmd
 		m.textInput, tiCmd = m.textInput.Update(msg)
 		cmds = append(cmds, tiCmd)
-
-		// Also pass to viewport for scrolling (pgup/pgdn/etc).
-		var vpCmd tea.Cmd
-		m.viewport, vpCmd = m.viewport.Update(msg)
-		cmds = append(cmds, vpCmd)
-
-	case tea.MouseMsg:
-		var cmd tea.Cmd
-		m.viewport, cmd = m.viewport.Update(msg)
-		cmds = append(cmds, cmd)
 
 	case spinner.TickMsg:
 		if !m.busy {
@@ -473,18 +525,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Modulo a large bound keeps the int from growing unbounded across
 		// long sessions; the value itself only matters mod label length.
 		m.frame = (m.frame + 1) & 0x3fffffff
-		m.rebuildContent()
 		return m, cmd
 
 	case UIAssistantMessage:
-		// A truly-final message closes out any in-flight streaming block. The
-		// final-marker append is guarded because IsFinal=true can arrive with
-		// empty content (e.g. a hand-off that became final once the server
-		// reconciled pending tool calls) and we don't want a phantom marker.
-		if msg.IsFinal && !msg.HasPendingCLIWork {
+		// Any IsFinal=true assistant_message is a complete utterance and must be
+		// committed to scrollback — including hand-offs (HasPendingCLIWork=true),
+		// where the agent's commentary precedes a CLI tool call. HasPendingCLIWork
+		// only governs busy-state management (see applyBusyForEvent); it must not
+		// gate commit, otherwise hand-off commentary lives only in the live frame
+		// and is overwritten by the next hand-off / final message.
+		// The empty-content guard avoids a phantom marker for is_final=true
+		// messages that arrive with no text (e.g. a server-side hand-off finalized
+		// once tool calls were reconciled).
+		if msg.IsFinal {
 			m.removeBlockKind(blockAssistantStreaming)
 			if msg.Content != "" {
-				m.appendRenderedBlock(block{kind: blockAssistantFinal, raw: msg.Content})
+				cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
 			}
 		} else if msg.Content != "" {
 			if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
@@ -495,17 +551,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolStarted:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolProgress:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolCompleted:
@@ -513,43 +566,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.IsError {
 			marker = toolErrMarker
 		}
-		m.appendBlock(block{
+		cmds = append(cmds, m.commitBlock(block{
 			kind:     blockToolComplete,
 			rendered: "  " + marker + " " + styledToolLabel(msg.Name, msg.Args),
-		})
+		}))
 		// Keep the busy block alive across the inter-tool gap so the spinner
 		// stays visible while the agent decides its next move.
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIError:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.appendRenderedBlock(block{kind: blockError, raw: msg.Message})
-		m.rebuildContent()
+		cmds = append(cmds, m.commitBlock(block{kind: blockError, raw: msg.Message}))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIWarning:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.appendWarningBlock(msg.Message)
-		m.rebuildContent()
+		cmds = append(cmds, m.appendWarningBlock(msg.Message))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UICancelled:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.appendRenderedBlock(block{kind: blockCancelled, raw: "Session cancelled."})
-		m.rebuildContent()
+		cmds = append(cmds, m.commitBlock(block{kind: blockCancelled, raw: "Session cancelled."}))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UITaskIdle:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UISessionURL:
-		// Informational metadata for the welcome box — has no opinion on busy state.
+		// The welcome banner is already in scrollback by the time the task URL
+		// arrives, so emit the URL as its own line rather than re-rendering.
 		m.welcome.consoleURL = msg.URL
-		m.rebuildContent()
+		cmds = append(cmds, tea.Println("  "+inputHintStyle.Render("⟡ "+msg.URL)))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIUserMessage:
@@ -560,20 +609,81 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.pendingUserEchoes) > 0 && m.pendingUserEchoes[0] == msg.Content {
 			m.pendingUserEchoes = m.pendingUserEchoes[1:]
 		} else {
-			m.appendUserMessageBlock(msg.Content)
+			cmds = append(cmds, m.appendUserMessageBlock(msg.Content))
 		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIAwaitingApprovals:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIContextCompression:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
-		m.rebuildContent()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiStart:
+		// Reuse an existing open block for the same tool name if one is present
+		// (shouldn't happen in practice — each tool call is serialized — but it
+		// guards against a stale block if the agent retries). An open block has
+		// done==false. On reuse we reset state so the new run starts clean.
+		idx := m.findOpenPulumiBlock(msg.ToolName)
+		if idx < 0 {
+			b := block{kind: blockPulumiOp, pulumi: &pulumiBlockState{
+				toolName:      msg.ToolName,
+				stackName:     msg.StackName,
+				isPreview:     msg.IsPreview,
+				resourceByURN: map[string]int{},
+			}}
+			m.renderBlock(&b)
+			m.appendBlock(b)
+		} else {
+			m.blocks[idx].pulumi = &pulumiBlockState{
+				toolName:      msg.ToolName,
+				stackName:     msg.StackName,
+				isPreview:     msg.IsPreview,
+				resourceByURN: map[string]int{},
+			}
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiResource:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			m.blocks[idx].pulumi.addResource(msg.Op, msg.URN, msg.Type, msg.Status)
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiDiag:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.diags = append(st.diags, pulumiDiagRow{
+				severity: msg.Severity,
+				message:  msg.Message,
+				urn:      msg.URN,
+			})
+			m.renderBlock(&m.blocks[idx])
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIPulumiEnd:
+		if idx := m.findOpenPulumiBlock(msg.ToolName); idx >= 0 {
+			st := m.blocks[idx].pulumi
+			st.counts = msg.Counts
+			st.elapsed = msg.Elapsed
+			st.err = msg.Err
+			st.done = true
+			m.renderBlock(&m.blocks[idx])
+			// done==true flips it from live to committed; emit to scrollback.
+			if rendered := m.blocks[idx].rendered; rendered != "" {
+				cmds = append(cmds, tea.Println(rendered))
+			}
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIApprovalRequest:
@@ -584,16 +694,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.pendingApprovalType == approvalTypePlanExit {
 			// The plan body is authored as markdown and lives in
 			// PlanDescription; msg.Message is just a generic intro.
-			m.appendRenderedBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription})
+			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription}))
 			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
 		} else {
-			m.appendRenderedBlock(block{kind: blockApprovalGeneral, raw: msg.Message})
+			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalGeneral, raw: msg.Message}))
 			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
 		}
 		m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 		m.textInput.Placeholder = ""
 		m.textInput.Reset()
-		m.rebuildContent()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	default:
@@ -606,12 +715,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// View returns the rendered TUI: viewport on top, input bar at the bottom.
+// View returns the rendered live frame: live blocks (busy spinner, in-flight
+// streaming, in-flight pulumi op) above the input bar. Completed blocks aren't
+// drawn here — they were committed to terminal scrollback via tea.Println as
+// soon as they reached a terminal state.
 func (m Model) View() string {
-	sep := inputSepStyle.Render(strings.Repeat("─", m.width))
-	// The hint stays on a single line to keep inputBarHeight constant; the
-	// plan-mode indicator is prepended inline when active so the viewport sizing
-	// code doesn't need to track hint-line count.
 	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
 	if m.busy {
 		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
@@ -629,32 +737,107 @@ func (m Model) View() string {
 		hint += inputHintStyle.Render(hintText)
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Left,
-		m.viewport.View(),
-		sep,
-		m.textInput.View(),
-		hint,
-	)
+	parts := make([]string, 0, 3)
+	if live := m.liveView(); live != "" {
+		parts = append(parts, live)
+	}
+	parts = append(parts, m.textInput.View(), hint)
+	return strings.Join(parts, "\n")
 }
 
-// rebuildContent concatenates the welcome box and all blocks into the viewport.
-// The busy block's spinner glyph is read from m.spinner.View() at render time
-// so the animation tracks the current frame without re-caching per block.
-func (m *Model) rebuildContent() {
-	parts := []string{m.welcome.View()}
+// liveWidth returns the width to use when rendering live-frame content. We
+// cap at 80 cols (book-readable column count) and otherwise back off the
+// real terminal width by 10 cols.
+//
+// bubbletea's inline renderer (v1.3.10 standard_renderer.go) uses logical
+// line counts, not visual rows, when issuing CursorUp(linesRendered-1)
+// before each frame. Any content that wraps to two visual rows on the new
+// terminal width — a lipgloss border at width-4, a glamour-wrapped paragraph
+// at width-4, a width-padded textinput — desyncs the cursor and stacks
+// stale frame fragments into scrollback during drag-resize.
+//
+// The 80-col cap matters because it makes resize a non-event for the
+// common case: any terminal ≥ 90 cols renders content at the same constant
+// 80 cols regardless of actual width, so dragging through that range
+// doesn't change what's on screen and the renderer never sees a wrap.
+// Below 90 cols liveWidth follows the terminal (with a 10-col cushion) so
+// content stays inside the viewport.
+func (m *Model) liveWidth() int {
+	const (
+		maxLiveWidth   = 80
+		margin         = 10
+		minUsableWidth = 40 // below this, give up the cushion to keep something visible
+	)
+	w := m.width
+	if w > maxLiveWidth+margin {
+		return maxLiveWidth
+	}
+	if w > minUsableWidth {
+		return w - margin
+	}
+	return w
+}
+
+// liveView renders only the in-flight blocks that should occupy the live
+// frame: busy spinner (always pinned at the bottom of the live region), an
+// in-flight streaming assistant message, and an open pulumi op block. The
+// busy block's spinner glyph is read from m.spinner.View() at render time so
+// the animation tracks the current frame without re-caching per block.
+//
+// We deliberately use strings.Join instead of lipgloss.JoinVertical.
+// JoinVertical pads every constituent block to the widest one's column count
+// with trailing spaces, which pins every line in the frame to the longest
+// one. On a resize-shrink those wide lines wrap, bubbletea's inline renderer
+// (v1.3.10) issues CursorUp(linesRendered-1) using the logical count instead
+// of the wrapped visual rows, and stale frame fragments leak into scrollback.
+// strings.Join keeps each line at its natural length so only genuinely-wide
+// content is at risk.
+func (m *Model) liveView() string {
+	var parts []string
 	for _, b := range m.blocks {
+		if !isLiveKind(b) {
+			continue
+		}
 		if b.kind == blockBusy {
 			parts = append(parts, "  "+m.spinner.View()+" "+shimmerLabel(b.label, b.shimmer, m.frame))
 		} else {
 			parts = append(parts, b.rendered)
 		}
 	}
-
-	wasAtBottom := m.viewport.AtBottom()
-	m.viewport.SetContent(lipgloss.JoinVertical(lipgloss.Left, parts...))
-	if wasAtBottom {
-		m.viewport.GotoBottom()
+	if len(parts) == 0 {
+		return ""
 	}
+	return strings.Join(parts, "\n")
+}
+
+// isLiveKind reports whether a block belongs in the live frame (true) or has
+// been committed to terminal scrollback (false).
+func isLiveKind(b block) bool {
+	switch b.kind {
+	case blockBusy, blockAssistantStreaming:
+		return true
+	case blockPulumiOp:
+		return b.pulumi != nil && !b.pulumi.done
+	case blockToolComplete, blockAssistantFinal, blockError, blockWarning,
+		blockCancelled, blockUserMessage, blockApprovalPlan,
+		blockApprovalGeneral, blockApprovalChoice:
+		return false
+	}
+	return false
+}
+
+func isCommittedKind(b block) bool { return !isLiveKind(b) }
+
+// commitBlock renders b, appends it to m.blocks, and returns a tea.Cmd that
+// prints the rendered string as new terminal scrollback. Returns nil when the
+// block renders empty (e.g. an empty assistant final from a hand-off).
+func (m *Model) commitBlock(b block) tea.Cmd {
+	m.renderBlock(&b)
+	m.appendBlock(b)
+	if b.rendered == "" {
+		return nil
+	}
+	return tea.Println(b.rendered)
 }
 
 // applyBusyForEvent is the single point that decides whether the busy
@@ -732,12 +915,12 @@ func (m *Model) showBusy(label string, shimmer shimmerKind) tea.Cmd {
 	return m.spinner.Tick
 }
 
-func (m *Model) appendWarningBlock(msg string) {
-	m.appendRenderedBlock(block{kind: blockWarning, raw: msg})
+func (m *Model) appendWarningBlock(msg string) tea.Cmd {
+	return m.commitBlock(block{kind: blockWarning, raw: msg})
 }
 
-func (m *Model) appendUserMessageBlock(content string) {
-	m.appendRenderedBlock(block{kind: blockUserMessage, raw: content})
+func (m *Model) appendUserMessageBlock(content string) tea.Cmd {
+	return m.commitBlock(block{kind: blockUserMessage, raw: content})
 }
 
 // appendBlock appends a non-busy block, keeping any existing blockBusy
@@ -810,6 +993,10 @@ func (m *Model) renderBlock(b *block) {
 		m.renderApprovalChoice(b)
 		return
 	}
+	if b.kind == blockPulumiOp {
+		b.rendered = m.renderPulumiBlock(b.pulumi)
+		return
+	}
 	if b.raw == "" {
 		return
 	}
@@ -835,8 +1022,8 @@ func (m *Model) renderBlock(b *block) {
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.
-	case blockApprovalChoice:
-		// Unreachable; kept for exhaustive lint.
+	case blockApprovalChoice, blockPulumiOp:
+		// Unreachable: both are handled by early returns above.
 	}
 }
 
@@ -867,12 +1054,18 @@ func (m *Model) renderUserBubble(content string) string {
 	return prefix + style.Render(padded)
 }
 
-// wrapPlain word-wraps non-markdown text to the terminal width.
+// wrapPlain word-wraps non-markdown text to the safe live width (m.liveWidth)
+// so streaming text never sits at the terminal wrap boundary. We use
+// reflow's wordwrap (which only inserts \n at word boundaries) instead of
+// lipgloss.Style.Width(W).Render which also pads each line with trailing
+// spaces to W. Padding produces full-width lines that wrap on resize-shrink
+// and corrupt bubbletea's inline-renderer line accounting.
 func (m *Model) wrapPlain(text string) string {
-	if m.width <= 4 {
+	w := m.liveWidth()
+	if w <= 4 {
 		return text
 	}
-	return lipgloss.NewStyle().Width(m.width - 4).Render(text)
+	return wordwrap.String(text, w-4)
 }
 
 func (m *Model) appendRenderedBlock(b block) {

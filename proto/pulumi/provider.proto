@@ -921,7 +921,8 @@ message ListResponse {
 
     // `Result` is a resource returned by a [](pulumirpc.ResourceProvider.List) call.
     message Result {
-        // The ID of the resource.
+        // The ID of the resource. This should be an importable ID that can be passed to a
+        // [](pulumirpc.ResourceProvider.Read) call to read the resource.
         string id = 1;
 
         // The resource name, if the provider can supply one. If empty no name was given.
@@ -1196,7 +1197,7 @@ message ConstructRequest {
 
     // a list of additional aliases that should be considered the same.
     repeated Alias aliases = 29;
-    
+
     // If set, the engine will diff this value with the last recorded value, and trigger a replace if they are not
     // equal.
     google.protobuf.Value replacement_trigger = 30;

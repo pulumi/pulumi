@@ -2491,7 +2491,7 @@ func TestPackageAddNode(t *testing.T) {
 			err = fsutil.CopyFile(e.CWD, templatePath, nil)
 			require.NoError(t, err)
 
-			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+			_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
 			_, _ = e.RunCommand("pulumi", "package", "add", "random")
 			assert.True(t, e.PathExists(filepath.Join("sdks", "random")))
 
@@ -2535,8 +2535,8 @@ func TestConvertTerraformProviderNode(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.2.4")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand("pulumi", "convert", "--from", "terraform", "--language", "typescript", "--out", "nodedir")
 
 	packagesJSONBytes, err := os.ReadFile(filepath.Join(e.CWD, "nodedir", "package.json"))
@@ -2571,8 +2571,8 @@ func TestConvertTerraformProviderNodeGenerateOnly(t *testing.T) {
 	err = fsutil.CopyFile(e.CWD, templatePath, nil)
 	require.NoError(t, err)
 
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform")
-	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "converter", "terraform", "v1.2.4")
+	_, _ = e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "0.8.0")
 	_, _ = e.RunCommand(
 		"pulumi", "convert",
 		"--from", "terraform",
@@ -3154,20 +3154,33 @@ func TestNodejsComponentProviderRun(t *testing.T) {
 	//nolint:paralleltest // t.Parallel is called by integration.ProgramTest
 	for _, runtime := range []string{"yaml", "python", "nodejs-pnpm", "nodejs-npm"} {
 		t.Run(runtime, func(t *testing.T) {
+			// Each subtest needs its own PULUMI_HOME to avoid race conditions when
+			// multiple subtests concurrently download and install the same provider
+			// plugins.
+			// TODO[pulumi/pulumi#22784]: Make sure plugin installation can be run from multiple
+			// processes in parallel.
+			pulumiHome := t.TempDir()
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				PulumiHomeDir: pulumiHome,
 				PrepareProject: func(info *engine.Projinfo) error {
 					providerPath := filepath.Join(info.Root, "..", "provider")
 					installNodejsProviderDependencies(t, providerPath)
 
 					cmd := exec.Command("pulumi", "package", "add", providerPath)
 					cmd.Dir = info.Root
-					cmd.Env = append(os.Environ(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+					cmd.Env = append(os.Environ(),
+						"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",
+						"PULUMI_HOME="+pulumiHome,
+					)
 					out, err := cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 
 					cmd = exec.Command("pulumi", "install")
 					cmd.Dir = info.Root
-					cmd.Env = append(os.Environ(), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+					cmd.Env = append(os.Environ(),
+						"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false",
+						"PULUMI_HOME="+pulumiHome,
+					)
 					out, err = cmd.CombinedOutput()
 					require.NoError(t, err, "%s failed with: %s", cmd.String(), string(out))
 

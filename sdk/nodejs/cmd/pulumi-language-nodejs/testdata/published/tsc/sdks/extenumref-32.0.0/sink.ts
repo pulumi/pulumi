@@ -59,5 +59,5 @@ export class Sink extends pulumi.CustomResource {
  * The set of arguments for constructing a Sink resource.
  */
 export interface SinkArgs {
-    stringEnum?: pulumi.Input<pulumiEnum.StringEnum>;
+    stringEnum?: pulumi.Input<pulumiEnum.StringEnum | undefined>;
 }

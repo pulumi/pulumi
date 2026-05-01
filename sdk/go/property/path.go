@@ -38,17 +38,6 @@ func PathFromSegments(segments ...PathSegment) Path {
 	return Path{pathReprFromSegments(segments), struct{}{}}
 }
 
-// MustParsePath parses text into a [Path], panicking on parse errors.
-//
-// It is intended for tests and other contexts where the input is a known-good literal.
-func MustParsePath(text string) Path {
-	var p Path
-	if err := p.UnmarshalText([]byte(text)); err != nil {
-		panic(err)
-	}
-	return p
-}
-
 var (
 	_ encoding.TextMarshaler   = Path{}
 	_ encoding.TextUnmarshaler = &Path{}
@@ -65,7 +54,7 @@ func (p *Path) UnmarshalText(text []byte) error {
 	}
 	*p = Path{}
 	for v := range g.segments {
-		if _, ok := v.(SplatSegment); ok {
+		if _, ok := v.(splat); ok {
 			return errors.New("splat not allowed in non-glob paths")
 		}
 	}

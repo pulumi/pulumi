@@ -90,9 +90,10 @@ func pickGreeting(name string) string {
 	return fmt.Sprintf(templates[rand.Intn(len(templates))], boldName) //nolint:gosec
 }
 
-// View renders the welcome box with the Pulumipus mascot art.
+// View renders the welcome banner with the Pulumipus mascot art.
 func (w welcomeModel) View() string {
 	magenta := lipgloss.Color("5")
+	bracketStyle := lipgloss.NewStyle().Foreground(magenta)
 	dim := lipgloss.NewStyle().Faint(true)
 
 	displayDir := w.workDir
@@ -102,16 +103,12 @@ func (w welcomeModel) View() string {
 		}
 	}
 
-	// Total box width (incl. border) = termWidth - 2 outer indent.
-	// contentWidth = total - 2 border - 4 horizontal padding.
-	totalWidth := max(w.termWidth, 30)
-	contentWidth := max(totalWidth-2-2-4, 20)
+	// Content width caps how aggressively the info line gets truncated when
+	// path + org won't fit. The bracket gutter ("│ ") is 2 cols, and we leave
+	// another small cushion so nothing ends at the wrap boundary.
+	contentWidth := max(w.termWidth-4, 20)
 
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(magenta).
-		Width(contentWidth).
-		Align(lipgloss.Center)
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(magenta)
 
 	infoText := displayDir
 	if w.org != "" {
@@ -149,11 +146,5 @@ func (w welcomeModel) View() string {
 		parts = append(parts, dim.Render("⟡ "+hyperlink))
 	}
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(magenta).
-		Padding(1, 2).
-		Margin(1, 0, 1, 2).
-		Width(contentWidth).
-		Render(lipgloss.JoinVertical(lipgloss.Left, parts...))
+	return renderLeftBracket(bracketStyle, strings.Join(parts, "\n"))
 }

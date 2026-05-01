@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"time"
@@ -27,22 +28,42 @@ import (
 
 // Shell is the local handler for the Neo `shell` tool. The cloud agent exposes a single
 // method named `shell_execute` (see pulumi-service:cmd/agents/src/agents_py/mcp/shell_mcp.py)
-// with arguments `{command: string, cwd?: string}`. If cwd is supplied it must resolve to a
-// subdirectory of Cwd; otherwise the request is rejected.
+// with arguments `{command: string, cwd?: string}`. If cwd is supplied it must resolve
+// under one of the allowed roots (Cwd or any extras passed to NewShell, e.g. /tmp);
+// otherwise the request is rejected.
 type Shell struct {
+	// Cwd is the default working directory used when the request omits cwd.
 	Cwd            string
 	DefaultTimeout time.Duration
+	// allowedRoots is Cwd followed by any extra roots passed to NewShell.
+	allowedRoots []string
 }
 
 // NewShell creates a Shell handler with sensible defaults. The working directory is
 // resolved to its canonical path (following symlinks) so that the containment check
-// in resolveDir cannot be bypassed via symlinks.
-func NewShell(cwd string) (*Shell, error) {
+// in resolveDir cannot be bypassed via symlinks. extraRoots are additional directories
+// the agent may run commands under (e.g. /tmp).
+func NewShell(cwd string, extraRoots ...string) (*Shell, error) {
 	abs, err := canonicalRoot(cwd)
 	if err != nil {
 		return nil, fmt.Errorf("resolving shell cwd: %w", err)
 	}
-	return &Shell{Cwd: abs, DefaultTimeout: 2 * time.Minute}, nil
+	allowed := []string{abs}
+	for _, extra := range extraRoots {
+		canonical, err := canonicalRoot(extra)
+		if err != nil {
+			return nil, fmt.Errorf("resolving shell extra root %q: %w", extra, err)
+		}
+		extraInfo, err := os.Stat(canonical)
+		if err != nil {
+			return nil, fmt.Errorf("shell extra root %q: %w", canonical, err)
+		}
+		if !extraInfo.IsDir() {
+			return nil, fmt.Errorf("shell extra root %q is not a directory", canonical)
+		}
+		allowed = append(allowed, canonical)
+	}
+	return &Shell{Cwd: abs, DefaultTimeout: 2 * time.Minute, allowedRoots: allowed}, nil
 }
 
 // Invoke dispatches a single shell method call.
@@ -67,13 +88,13 @@ func (s *Shell) Invoke(ctx context.Context, method string, args json.RawMessage)
 	return s.run(ctx, p.Command, dir)
 }
 
-// resolveDir validates that dir is under s.Cwd. An empty dir defaults to s.Cwd.
-// Symlinks are resolved to prevent symlink-based directory traversal.
+// resolveDir validates that dir is under one of the allowed roots. An empty dir
+// defaults to s.Cwd. Symlinks are resolved to prevent symlink-based directory traversal.
 func (s *Shell) resolveDir(dir string) (string, error) {
 	if dir == "" {
 		return s.Cwd, nil
 	}
-	return resolveUnderRoot(s.Cwd, dir, false)
+	return resolveUnderRoots(s.allowedRoots, dir, false)
 }
 
 // maxOutputBytes is the maximum number of bytes captured from stdout or stderr.

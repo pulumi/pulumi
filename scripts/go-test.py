@@ -6,6 +6,7 @@ Wraps `go test`.
 from datetime import datetime
 from typing import List
 from integration_test_subsets import INTEGRATION_TESTS
+import json
 import os
 import pathlib
 import platform
@@ -79,6 +80,7 @@ timer.daemon = True
 timer.start()
 
 
+json_file = None
 if shutil.which('gotestsum') is not None:
     test_run = str(uuid.uuid4())
 
@@ -105,6 +107,30 @@ if not dryrun:
         print("Completed: " + ' '.join(args))
     except sp.CalledProcessError as e:
         print("Failed: " + ' '.join(args))
+        # When gotestsum reports "[setup failed]", the actual build errors
+        # (e.g. network failures downloading modules) are only in the JSON
+        # file, not in the console output. Extract and print them so they're
+        # visible in CI logs.
+        if json_file is not None and os.path.isfile(json_file):
+            try:
+                build_errors = []
+                with open(json_file, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        event = json.loads(line)
+                        if event.get('Action') == 'build-output':
+                            output = event.get('Output', '')
+                            build_errors.append(output)
+                if build_errors:
+                    print("\n=== Build errors (from gotestsum JSON) ===", file=sys.stderr)
+                    for msg in build_errors:
+                        print(msg, end='', file=sys.stderr)
+                    print("=== End build errors ===", file=sys.stderr)
+            except Exception as e:
+                print(e, file=sys.stderr)
+                pass  # Don't mask the original error
         raise e
 else:
     print("Would have run: " + ' '.join(args))

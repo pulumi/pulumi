@@ -22,17 +22,17 @@ __all__ = [
 
 class ContainerArgsDict(TypedDict):
     size: pulumi.Input['ContainerSize']
-    brightness: NotRequired[pulumi.Input['ContainerBrightness']]
-    color: NotRequired[pulumi.Input[Union['ContainerColor', _builtins.str]]]
-    material: NotRequired[pulumi.Input[_builtins.str]]
+    brightness: NotRequired[pulumi.Input[Optional['ContainerBrightness']]]
+    color: NotRequired[pulumi.Input[Optional[Union['ContainerColor', _builtins.str]]]]
+    material: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class ContainerArgs:
     def __init__(__self__, *,
-                 size: Optional[pulumi.Input['ContainerSize']] = None,
-                 brightness: Optional[pulumi.Input['ContainerBrightness']] = None,
-                 color: Optional[pulumi.Input[Union['ContainerColor', _builtins.str]]] = None,
-                 material: Optional[pulumi.Input[_builtins.str]] = None):
+                 size: pulumi.Input[Optional['ContainerSize']] = None,
+                 brightness: pulumi.Input[Optional['ContainerBrightness']] = None,
+                 color: pulumi.Input[Optional[Union['ContainerColor', _builtins.str]]] = None,
+                 material: pulumi.Input[Optional[_builtins.str]] = None):
         if size is None:
             size = 4
         pulumi.set(__self__, "size", size)
@@ -56,29 +56,29 @@ class ContainerArgs:
 
     @_builtins.property
     @pulumi.getter
-    def brightness(self) -> Optional[pulumi.Input['ContainerBrightness']]:
+    def brightness(self) -> pulumi.Input[Optional['ContainerBrightness']]:
         return pulumi.get(self, "brightness")
 
     @brightness.setter
-    def brightness(self, value: Optional[pulumi.Input['ContainerBrightness']]):
+    def brightness(self, value: pulumi.Input[Optional['ContainerBrightness']]):
         pulumi.set(self, "brightness", value)
 
     @_builtins.property
     @pulumi.getter
-    def color(self) -> Optional[pulumi.Input[Union['ContainerColor', _builtins.str]]]:
+    def color(self) -> pulumi.Input[Optional[Union['ContainerColor', _builtins.str]]]:
         return pulumi.get(self, "color")
 
     @color.setter
-    def color(self, value: Optional[pulumi.Input[Union['ContainerColor', _builtins.str]]]):
+    def color(self, value: pulumi.Input[Optional[Union['ContainerColor', _builtins.str]]]):
         pulumi.set(self, "color", value)
 
     @_builtins.property
     @pulumi.getter
-    def material(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def material(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "material")
 
     @material.setter
-    def material(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def material(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "material", value)
 
 

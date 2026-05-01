@@ -80,17 +80,17 @@ class Tbool1:
 @pulumi.input_type
 class Tbool1Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.bool]] = None):
+                 x: pulumi.Input[Optional[_builtins.bool]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "x", value)
 
 
@@ -114,17 +114,17 @@ class Tbool2:
 @pulumi.input_type
 class Tbool2Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.bool]] = None):
+                 x: pulumi.Input[Optional[_builtins.bool]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "x", value)
 
 
@@ -148,17 +148,17 @@ class Tbool3:
 @pulumi.input_type
 class Tbool3Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.bool]] = None):
+                 x: pulumi.Input[Optional[_builtins.bool]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "x", value)
 
 
@@ -182,17 +182,17 @@ class Tint1:
 @pulumi.input_type
 class Tint1Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.int]] = None):
+                 x: pulumi.Input[Optional[_builtins.int]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.int]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "x", value)
 
 
@@ -216,17 +216,17 @@ class Tint2:
 @pulumi.input_type
 class Tint2Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.int]] = None):
+                 x: pulumi.Input[Optional[_builtins.int]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.int]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "x", value)
 
 
@@ -250,17 +250,17 @@ class Tint3:
 @pulumi.input_type
 class Tint3Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.int]] = None):
+                 x: pulumi.Input[Optional[_builtins.int]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.int]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "x", value)
 
 
@@ -284,17 +284,17 @@ class Tnum1:
 @pulumi.input_type
 class Tnum1Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.float]] = None):
+                 x: pulumi.Input[Optional[_builtins.float]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.float]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "x", value)
 
 
@@ -318,17 +318,17 @@ class Tnum2:
 @pulumi.input_type
 class Tnum2Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.float]] = None):
+                 x: pulumi.Input[Optional[_builtins.float]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.float]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "x", value)
 
 
@@ -352,17 +352,17 @@ class Tnum3:
 @pulumi.input_type
 class Tnum3Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.float]] = None):
+                 x: pulumi.Input[Optional[_builtins.float]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.float]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "x", value)
 
 
@@ -386,17 +386,17 @@ class TsecretBool1:
 @pulumi.input_type
 class TsecretBool1Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.bool]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.bool]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -420,17 +420,17 @@ class TsecretBool2:
 @pulumi.input_type
 class TsecretBool2Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.bool]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.bool]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -454,17 +454,17 @@ class TsecretBool3:
 @pulumi.input_type
 class TsecretBool3Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.bool]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.bool]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -488,17 +488,17 @@ class TsecretInt1:
 @pulumi.input_type
 class TsecretInt1Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.int]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.int]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.int]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -522,17 +522,17 @@ class TsecretInt2:
 @pulumi.input_type
 class TsecretInt2Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.int]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.int]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.int]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -556,17 +556,17 @@ class TsecretInt3:
 @pulumi.input_type
 class TsecretInt3Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.int]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.int]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.int]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -590,17 +590,17 @@ class TsecretNum1:
 @pulumi.input_type
 class TsecretNum1Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.float]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.float]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.float]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -624,17 +624,17 @@ class TsecretNum2:
 @pulumi.input_type
 class TsecretNum2Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.float]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.float]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.float]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -658,17 +658,17 @@ class TsecretNum3:
 @pulumi.input_type
 class TsecretNum3Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.float]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.float]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.float]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -692,17 +692,17 @@ class TsecretString1:
 @pulumi.input_type
 class TsecretString1Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.str]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.str]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -726,17 +726,17 @@ class TsecretString2:
 @pulumi.input_type
 class TsecretString2Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.str]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.str]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -760,17 +760,17 @@ class TsecretString3:
 @pulumi.input_type
 class TsecretString3Args:
     def __init__(__self__, *,
-                 secret_x: Optional[pulumi.Input[_builtins.str]] = None):
+                 secret_x: pulumi.Input[Optional[_builtins.str]] = None):
         if secret_x is not None:
             pulumi.set(__self__, "secret_x", secret_x)
 
     @_builtins.property
     @pulumi.getter(name="secretX")
-    def secret_x(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def secret_x(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "secret_x")
 
     @secret_x.setter
-    def secret_x(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def secret_x(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "secret_x", value)
 
 
@@ -794,17 +794,17 @@ class Tstring1:
 @pulumi.input_type
 class Tstring1Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.str]] = None):
+                 x: pulumi.Input[Optional[_builtins.str]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "x", value)
 
 
@@ -828,17 +828,17 @@ class Tstring2:
 @pulumi.input_type
 class Tstring2Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.str]] = None):
+                 x: pulumi.Input[Optional[_builtins.str]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "x", value)
 
 
@@ -862,17 +862,17 @@ class Tstring3:
 @pulumi.input_type
 class Tstring3Args:
     def __init__(__self__, *,
-                 x: Optional[pulumi.Input[_builtins.str]] = None):
+                 x: pulumi.Input[Optional[_builtins.str]] = None):
         if x is not None:
             pulumi.set(__self__, "x", x)
 
     @_builtins.property
     @pulumi.getter
-    def x(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def x(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "x")
 
     @x.setter
-    def x(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def x(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "x", value)
 
 

@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -149,6 +150,27 @@ func TestAPIVersionResponses(t *testing.T) {
 	assert.Equal(t, latestVersion.String(), "1.0.0")
 	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
 	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
+}
+
+func TestAcceptAPIVersionHeader(t *testing.T) {
+	t.Parallel()
+
+	// This test pins the Accept header value the CLI sends. If this fails
+	// because you bumped `currentAPIVersion`, also append a row to the version
+	// history table in api.go (and update the matching version block in
+	// pulumi-service `cmd/service/api/rest/request.go`).
+	var handled atomic.Bool
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		handled.Store(true)
+		assert.Equal(t, "application/vnd.pulumi+9", req.Header.Get("Accept"))
+		return `{"latestVersion": "1.0.0", "oldestWithoutWarning": "0.1.0", "latestDevVersion": "1.0.0"}`
+	})
+	defer server.Close()
+	client := newMockClient(server)
+
+	_, _, _, err := client.GetCLIVersionInfo(t.Context(), nil)
+	require.NoError(t, err)
+	assert.True(t, handled.Load(), "mock server handler did not run")
 }
 
 func TestAPIVersionMetadataHeaders(t *testing.T) {

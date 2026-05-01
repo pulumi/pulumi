@@ -113,10 +113,10 @@ def get_config(base64_encode: Optional[_builtins.bool] = None,
         id=pulumi.get(__ret__, 'id'),
         parts=pulumi.get(__ret__, 'parts'),
         rendered=pulumi.get(__ret__, 'rendered'))
-def get_config_output(base64_encode: Optional[pulumi.Input[Optional[_builtins.bool]]] = None,
-                      boundary: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
-                      gzip: Optional[pulumi.Input[Optional[_builtins.bool]]] = None,
-                      parts: Optional[pulumi.Input[Optional[Sequence[Union['GetConfigPartArgs', 'GetConfigPartArgsDict']]]]] = None,
+def get_config_output(base64_encode: pulumi.Input[Optional[Optional[_builtins.bool]]] = None,
+                      boundary: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
+                      gzip: pulumi.Input[Optional[Optional[_builtins.bool]]] = None,
+                      parts: pulumi.Input[Optional[Optional[Sequence[Union['GetConfigPartArgs', 'GetConfigPartArgsDict']]]]] = None,
                       opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetConfigResult]:
     """
     Use this data source to access information about an existing resource.

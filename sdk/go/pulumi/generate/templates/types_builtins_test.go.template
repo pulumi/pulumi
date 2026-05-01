@@ -18,7 +18,6 @@
 package pulumi
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -296,13 +295,13 @@ func TestTo{{.Name}}Output(t *testing.T) {
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = in.To{{.Name}}OutputWithContext(context.Background())
+	out = in.To{{.Name}}OutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
 	require.NoError(t, err)
 
-	out = out.To{{.Name}}OutputWithContext(context.Background())
+	out = out.To{{.Name}}OutputWithContext(t.Context())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)

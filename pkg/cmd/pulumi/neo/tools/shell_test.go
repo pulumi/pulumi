@@ -101,7 +101,7 @@ func TestShell_ExecuteRejectsCwdOutsideRoot(t *testing.T) {
 	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, outside)))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestShell_ExecuteRejectsEmptyCommand(t *testing.T) {
@@ -127,7 +127,7 @@ func TestShell_RejectsCwdSymlinkEscape(t *testing.T) {
 	_, err = sh.Invoke(t.Context(), "shell_execute",
 		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, link)))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside the working directory")
+	assert.Contains(t, err.Error(), "outside the allowed roots")
 }
 
 func TestShell_TruncatesLargeOutput(t *testing.T) {
@@ -155,4 +155,63 @@ func TestShell_RejectsUnknownMethod(t *testing.T) {
 	_, err = sh.Invoke(t.Context(), "run", json.RawMessage(`{"command":"echo"}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown shell method")
+}
+
+func TestShell_AcceptsCwdUnderExtraRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	// Primary cwd and scratch are unrelated directories. Passing scratch as an
+	// extra root mirrors what neo.go does for /tmp: commands launched there must
+	// run successfully even though scratch is outside the primary cwd.
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	sh, err := NewShell(cwd, scratch)
+	require.NoError(t, err)
+
+	resolvedScratch, err := filepath.EvalSymlinks(scratch)
+	require.NoError(t, err)
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(fmt.Sprintf(`{"command":"pwd","cwd":%q}`, scratch)))
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), resolvedScratch))
+}
+
+func TestShell_RejectsCwdOutsideRootAndExtras(t *testing.T) {
+	t.Parallel()
+
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	sh, err := NewShell(cwd, scratch)
+	require.NoError(t, err)
+
+	// A third unrelated directory must still be rejected even with extras configured.
+	other := t.TempDir()
+	_, err = sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, other)))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the allowed roots")
+}
+
+func TestNewShell_RejectsMissingExtraRoot(t *testing.T) {
+	t.Parallel()
+
+	missing := filepath.Join(t.TempDir(), "nope")
+	_, err := NewShell(t.TempDir(), missing)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "extra root")
+}
+
+func TestNewShell_RejectsExtraRootThatIsAFile(t *testing.T) {
+	t.Parallel()
+
+	// An extra root that points at a file (not a directory) must be rejected.
+	notADir := filepath.Join(t.TempDir(), "regular-file")
+	require.NoError(t, os.WriteFile(notADir, nil, 0o600))
+
+	_, err := NewShell(t.TempDir(), notADir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is not a directory")
 }

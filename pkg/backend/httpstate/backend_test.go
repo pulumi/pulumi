@@ -739,7 +739,8 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	}))
 	defer server.Client()
 
-	b, err := New(ctx, nil, server.URL, nil, false)
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -773,7 +774,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, nil, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
@@ -843,7 +844,8 @@ func TestCreateStackDisplaysBackendMessages(t *testing.T) {
 	}))
 	t.Cleanup(server.Close)
 
-	b, err := New(ctx, nil, server.URL, nil, false)
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -946,7 +948,8 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	}))
 	defer server.Client()
 
-	b, err := New(ctx, nil, server.URL, nil, false)
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -983,7 +986,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, nil, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{

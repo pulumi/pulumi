@@ -256,7 +256,7 @@ describe("LocalWorkspace - Config", () => {
         assert.strictEqual(list.secret, false);
         assert.strictEqual(list.value, '["one","two","three"]');
 
-        await stack.workspace.removeStack(stackName);
+        // This test uses a static stack name.  Do not remove it at the end to prevent flakes in CI due to missing stack.
     });
     // TODO[https://github.com/pulumi/pulumi/issues/7127]: Re-enabled the warning.
     // Temporarily skipping test until we've re-enabled the warning.

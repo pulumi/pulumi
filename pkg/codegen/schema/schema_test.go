@@ -2389,7 +2389,7 @@ func debugProvidersHelperHost(t *testing.T) plugin.Host {
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	//nolint:usetesting // plugin.NewContext manages the lifecycle of gRPC providers; t.Context cancels before they shut down
-	pluginCtx, err := plugin.NewContext(context.Background(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
+	pluginCtx, err := plugin.NewContext(t.Context(), sink, sink, nil, nil, cwd, nil, true, nil, NewLoaderServerFromHost)
 	require.NoError(t, err)
 	return pluginCtx.Host
 }
@@ -2849,4 +2849,305 @@ func TestTokenToModuleIndexPrefix(t *testing.T) {
 	}
 	assert.Equal(t, "", formattedPkg.TokenToModule("test:index/getResource:getResource"))
 	assert.Equal(t, "indexMine", formattedPkg.TokenToModule("test:indexMine/getResource:getResource"))
+}
+
+// TestAliasBuildIsLazy verifies that the alias maps stay unbuilt when every Get* call
+// is satisfied by a direct table hit.
+func TestAliasBuildIsLazy(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:mod:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:mod:getThing": {},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:mod:ThingBlock": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+	}
+
+	t.Run("Package", func(t *testing.T) {
+		t.Parallel()
+
+		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+
+		_, ok := pkg.GetResource("test:mod:Thing")
+		require.True(t, ok)
+		_, ok = pkg.GetFunction("test:mod:getThing")
+		require.True(t, ok)
+		_, ok = pkg.GetType("test:mod:ThingBlock")
+		require.True(t, ok)
+		_, ok = pkg.GetResourceType("test:mod:Thing")
+		require.True(t, ok)
+
+		assert.Nil(t, pkg.aliases.resources)
+		assert.Nil(t, pkg.aliases.functions)
+		assert.Nil(t, pkg.aliases.types)
+		assert.Nil(t, pkg.aliases.resourceTypes)
+	})
+
+	t.Run("PartialPackage", func(t *testing.T) {
+		t.Parallel()
+
+		raw, err := json.Marshal(spec)
+		require.NoError(t, err)
+		var partial PartialPackageSpec
+		require.NoError(t, json.Unmarshal(raw, &partial))
+
+		pkg, err := ImportPartialSpec(partial, nil, nil)
+		require.NoError(t, err)
+
+		_, ok, err := pkg.Resources().Get("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		_, ok, err = pkg.Functions().Get("test:mod:getThing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		_, ok, err = pkg.Types().Get("test:mod:ThingBlock")
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		assert.Nil(t, pkg.specAliases.resources)
+		assert.Nil(t, pkg.specAliases.functions)
+		assert.Nil(t, pkg.specAliases.types)
+	})
+}
+
+// TestGetWithIndexAliases verifies short-form aliases for tokens whose normalized module
+// is "index" — both "pkg:name" and "pkg::name" should resolve to the source token.
+func TestGetWithIndexAliases(t *testing.T) {
+	t.Parallel()
+
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]ResourceSpec{
+			"test:index:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+		},
+	}
+
+	pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+	require.NoError(t, err)
+
+	for _, query := range []string{"test:index:Thing", "test::Thing", "test:Thing"} {
+		r, ok := pkg.GetResource(query)
+		require.Truef(t, ok, "query %q should resolve", query)
+		assert.Equal(t, "test:index:Thing", r.Token)
+	}
+}
+
+// TestGetWithModuleFormat verifies that the schema's Get* methods accept tokens normalized
+// via Meta.ModuleFormat as well as the source-form token. PCL canonicalizes tokens before
+// lookup (e.g. "test:mod/getThing:getThing" → "test:mod:getThing"), so callers should not
+// have to reconstruct the source token themselves.
+func TestGetWithModuleFormat(t *testing.T) {
+	t.Parallel()
+
+	// A deliberately non-standard ModuleFormat: strip a "_v\d+" suffix from the module
+	// (e.g. source "mod_v2" → normalized "mod"). This exercises the actual regex rather
+	// than masquerading as the default format.
+	spec := PackageSpec{
+		Name:    "test",
+		Version: "1.0.0",
+		Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+		Resources: map[string]ResourceSpec{
+			"test:mod_v2:Thing": {
+				ObjectTypeSpec: ObjectTypeSpec{Type: "object"},
+			},
+		},
+		Functions: map[string]FunctionSpec{
+			"test:mod_v2:getThing": {},
+		},
+		Types: map[string]ComplexTypeSpec{
+			"test:mod_v2:ThingBlock": {
+				ObjectTypeSpec: ObjectTypeSpec{Type: "object"},
+			},
+		},
+	}
+
+	t.Run("Package", func(t *testing.T) {
+		t.Parallel()
+
+		pkg, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+
+		r, ok := pkg.GetResource("test:mod:Thing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", r.Token)
+
+		f, ok := pkg.GetFunction("test:mod:getThing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:getThing", f.Token)
+
+		typ, ok := pkg.GetType("test:mod:ThingBlock")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:ThingBlock", typ.(*ObjectType).Token)
+
+		rt, ok := pkg.GetResourceType("test:mod:Thing")
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
+	})
+
+	t.Run("PartialPackage", func(t *testing.T) {
+		t.Parallel()
+
+		raw, err := json.Marshal(spec)
+		require.NoError(t, err)
+		var partial PartialPackageSpec
+		require.NoError(t, json.Unmarshal(raw, &partial))
+
+		pkg, err := ImportPartialSpec(partial, nil, nil)
+		require.NoError(t, err)
+
+		r, ok, err := pkg.Resources().Get("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", r.Token)
+
+		f, ok, err := pkg.Functions().Get("test:mod:getThing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:getThing", f.Token)
+
+		typ, ok, err := pkg.Types().Get("test:mod:ThingBlock")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:ThingBlock", typ.(*ObjectType).Token)
+
+		rt, ok, err := pkg.Resources().GetType("test:mod:Thing")
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "test:mod_v2:Thing", rt.Token)
+	})
+}
+
+// TestModuleFormatTokenCollisions verifies that schema validation rejects packages whose
+// resource or function tokens collide after applying Meta.ModuleFormat (and case folding).
+func TestModuleFormatTokenCollisions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ResourcesDifferingOnlyInModuleFormat", func(t *testing.T) {
+		t.Parallel()
+
+		// "(\w+)_v\d+" maps both "mod_v1" and "mod_v2" to "mod".
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v2:Thing": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:thing")
+	})
+
+	t.Run("ChainedModuleVersionsAdjacentLevelsCollide", func(t *testing.T) {
+		t.Parallel()
+
+		// mod_v1_v2_v3 → canonical mod_v1_v2; mod_v1_v2 is itself a literal source token.
+		// PCL's one-level canonicalization makes a query for "test:mod_v1_v2:A" ambiguous.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2_v3:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1_v2:A":    {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1_v2:a")
+	})
+
+	t.Run("ChainedModuleVersionsNonAdjacentLevelsDoNotCollide", func(t *testing.T) {
+		t.Parallel()
+
+		// mod_v1_v2_v3 (canonical mod_v1_v2) and mod_v1 (canonical mod) have disjoint
+		// literal and canonical forms. PCL's one-level canonicalization cannot reach one
+		// from a query for the other, so no collision.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2_v3:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:A":       {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+	})
+
+	t.Run("LiteralCollidesWithAnothersCanonical", func(t *testing.T) {
+		t.Parallel()
+
+		// With format "(\w+)_v\d+":
+		//   "test:mod_v1_v2:A" canonicalizes to "test:mod_v1:A"
+		//   "test:mod_v1:A"    canonicalizes to "test:mod:A"
+		// The two canonical forms are distinct, but the first source's canonical form
+		// equals the second source's literal form, so a query for "test:mod_v1:A" is
+		// ambiguous.
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1_v2:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:A":    {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod_v1:a")
+	})
+
+	t.Run("ModuleFormatPlusCaseFold", func(t *testing.T) {
+		t.Parallel()
+
+		// "pkg:mod/a:A" normalizes via the format to "pkg:mod:A", which case-folds to
+		// "pkg:mod:a" — colliding with the literal "pkg:mod:a".
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(.*)(?:/[^/]*)`},
+			Resources: map[string]ResourceSpec{
+				"test:mod/a:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod:a":   {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "multiple tokens map to test:mod:a")
+	})
+
+	t.Run("NoCollisionPasses", func(t *testing.T) {
+		t.Parallel()
+
+		spec := PackageSpec{
+			Name:    "test",
+			Version: "1.0.0",
+			Meta:    &MetadataSpec{ModuleFormat: `(\w+)_v\d+`},
+			Resources: map[string]ResourceSpec{
+				"test:mod_v1:A": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+				"test:mod_v1:B": {ObjectTypeSpec: ObjectTypeSpec{Type: "object"}},
+			},
+		}
+
+		_, err := ImportSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+	})
 }

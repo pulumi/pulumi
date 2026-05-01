@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -32,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
+	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -121,11 +123,15 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return err
 	}
 
-	fs, err := tools.NewFilesystem(cwdFlag)
+	// Allow tools to read/write under temp directories in addition to cwd: the agent
+	// stages scratch files there (downloads, intermediate state) and the CLI sandbox
+	// would otherwise reject those paths. See pulumi/pulumi-service#42027.
+	extraRoots := dedupeExistingRoots("/tmp", os.TempDir())
+	fs, err := tools.NewFilesystem(cwdFlag, extraRoots...)
 	if err != nil {
 		return err
 	}
-	sh, err := tools.NewShell(cwdFlag)
+	sh, err := tools.NewShell(cwdFlag, extraRoots...)
 	if err != nil {
 		return err
 	}
@@ -133,6 +139,14 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		"filesystem": fs,
 		"shell":      sh,
 	}
+
+	// In non-interactive mode the sink stays nil and live events are dropped; the
+	// interactive path below sets pu.Sink to push UIEvents onto uiCh.
+	pu, err := tools.NewPulumi(cwdFlag, ws, cloudBe, nil)
+	if err != nil {
+		return err
+	}
+	handlers["pulumi"] = pu
 
 	// Non-interactive mode requires a prompt — there's no input mechanism.
 	if !cmdutil.Interactive() {
@@ -166,6 +180,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	uiCh := make(chan UIEvent, 64)
 	outCh := make(chan outboundEvent, 8)
 
+	pu.Sink = newPulumiSinkForUI(uiCh)
+
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
 	model := NewModel(ModelConfig{
@@ -178,10 +194,9 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		InitialPrompt: prompt,
 	})
 
-	p := tea.NewProgram(model,
-		tea.WithAltScreen(),
-		tea.WithMouseCellMotion(),
-	)
+	// Inline (non-alt-screen) so the transcript stays in the user's terminal
+	// scrollback after exit.
+	p := tea.NewProgram(model)
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -319,4 +334,48 @@ func resolveTaskTarget(
 		return "", "", "", errors.New("could not determine an organization for the Neo task; pass --org")
 	}
 	return org, projectName, stack, nil
+}
+
+// dedupeExistingRoots returns candidates with duplicates removed by canonical path,
+// dropping any that don't resolve on the local filesystem. This handles macOS where
+// /tmp and os.TempDir() are distinct canonical roots, Linux where they collapse to
+// the same one, and Windows where /tmp typically doesn't exist.
+func dedupeExistingRoots(candidates ...string) []string {
+	seen := make(map[string]bool, len(candidates))
+	var out []string
+	for _, c := range candidates {
+		if c == "" {
+			continue
+		}
+		canon, err := filepath.EvalSymlinks(c)
+		if err != nil {
+			continue
+		}
+		if seen[canon] {
+			continue
+		}
+		seen[canon] = true
+		out = append(out, c)
+	}
+	return out
+}
+
+// newPulumiSinkForUI builds a tools.PulumiSink whose callbacks translate each
+// progress signal into the matching UIEvent on uiCh. Pure mechanical
+// translation
+func newPulumiSinkForUI(uiCh chan<- UIEvent) *tools.PulumiSink {
+	return &tools.PulumiSink{
+		OnStart: func(toolName, stackName string, isPreview bool) {
+			sendUI(uiCh, UIPulumiStart{ToolName: toolName, StackName: stackName, IsPreview: isPreview})
+		},
+		OnResource: func(toolName string, op displaytypes.StepOp, urn, typ, status string) {
+			sendUI(uiCh, UIPulumiResource{ToolName: toolName, Op: op, URN: urn, Type: typ, Status: status})
+		},
+		OnDiag: func(toolName, severity, message, urn string) {
+			sendUI(uiCh, UIPulumiDiag{ToolName: toolName, Severity: severity, Message: message, URN: urn})
+		},
+		OnEnd: func(toolName, errStr string, counts displaytypes.ResourceChanges, elapsed string) {
+			sendUI(uiCh, UIPulumiEnd{ToolName: toolName, Err: errStr, Counts: counts, Elapsed: elapsed})
+		},
+	}
 }

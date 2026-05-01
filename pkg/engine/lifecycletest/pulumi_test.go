@@ -1447,7 +1447,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				"h": "bar",
 			},
 		},
-	}), []string{"a", "b.c", "d", "e[0]", "f.g.h"}, []display.StepOp{deploy.OpCreate}, "initial")
+	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpCreate}, "initial")
 
 	// Ensure that a change to an ignored property results in an OpSame
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{
@@ -1462,7 +1462,7 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 				"h": "baz",
 			},
 		},
-	}), []string{"a", "b.c", "d", "e[0]", "f.g.h"}, []display.StepOp{deploy.OpSame}, "ignored-property")
+	}), []string{"a", "b.c", "d", "e[0]", "f.g[\"h\"]"}, []display.StepOp{deploy.OpSame}, "ignored-property")
 
 	// Ensure that a change to an un-ignored property results in an OpUpdate
 	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]any{

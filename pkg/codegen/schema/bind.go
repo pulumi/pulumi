@@ -193,7 +193,7 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
-	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions))
+	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
 
 	pkg := types.pkg
 	pkg.Config = config
@@ -1444,12 +1444,28 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 }
 
 func checkDuplicates(
-	resources map[string]ResourceSpec, functions map[string]FunctionSpec,
+	resources map[string]ResourceSpec,
+	functions map[string]FunctionSpec,
+	tokenToModule func(string) string,
 ) hcl.Diagnostics {
 	type schemaPath = string
 	type token = string
 	names := make(map[token][]schemaPath, len(resources)+len(functions))
 	duplicates := map[token]struct{}{}
+
+	// normalize folds tok to its case-insensitive canonical form, applying Meta.ModuleFormat
+	// to the module component. PCL canonicalizes tokens before lookup, so two source tokens
+	// that share a normalized form are unreachable through any external reference.
+	normalize := func(tok string) string {
+		parts := strings.Split(tok, ":")
+		if len(parts) != 3 {
+			return tok // Token is invalid, and will error later.
+		}
+		if p1 := tokenToModule(tok); p1 != "" {
+			parts[1] = p1
+		}
+		return strings.ToLower(strings.Join(parts, ":"))
+	}
 
 	process := func(token token, schemaPath schemaPath) {
 		v := append(names[token], schemaPath)
@@ -1459,11 +1475,28 @@ func checkDuplicates(
 		}
 	}
 
+	// Each source token contributes both its lowercased literal form and its canonical
+	// (moduleFormat-applied) form. Collisions across either dimension are ambiguous: a
+	// query for X may match a source whose literal is X *or* a source whose canonical
+	// form is X, and PCL has no way to disambiguate. For example, with ModuleFormat
+	// "(\w+)_v\d+", the source tokens "test:mod_v1_v2:A" (canonical "test:mod_v1:A")
+	// and "test:mod_v1:A" (canonical "test:mod:A") have disjoint canonicals but the
+	// first's canonical equals the second's literal — querying "test:mod_v1:A" is
+	// ambiguous.
+	processSource := func(tok, schemaPath string) {
+		lit := strings.ToLower(tok)
+		canon := normalize(tok)
+		process(lit, schemaPath)
+		if canon != lit {
+			process(canon, schemaPath)
+		}
+	}
+
 	for r := range resources {
-		process(strings.ToLower(r), memberPath("resources", r))
+		processSource(r, memberPath("resources", r))
 	}
 	for f := range functions {
-		process(strings.ToLower(f), memberPath("functions", f))
+		processSource(f, memberPath("functions", f))
 	}
 
 	diags := slice.Prealloc[*hcl.Diagnostic](len(duplicates))

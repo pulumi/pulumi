@@ -36,7 +36,7 @@ class AssetResource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]] = None,
+                 value: pulumi.Input[Optional[Union[pulumi.Asset, pulumi.Archive]]] = None,
                  __props__=None):
         """
         Create a AssetResource resource with the given unique name, props, and options.
@@ -68,7 +68,7 @@ class AssetResource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 value: Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]] = None,
+                 value: pulumi.Input[Optional[Union[pulumi.Asset, pulumi.Archive]]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -34,7 +34,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 var matchAnsiControlCodes = regexp.MustCompile(`\x1b\[[0-9;]*[mK]`)
@@ -362,9 +361,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
-		HideDiffs: slice.Map(md.HideDiffs, func(p resource.PropertyPath) resource.BackCompatPropertyPath {
-			return resource.BackCompatPropertyPath(resource.FromResourcePropertyPath(p))
-		}),
+		HideDiffs:      md.HideDiffs,
 	}
 }
 
@@ -634,8 +631,6 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Inputs:         inputs,
 		Outputs:        outputs,
 		InitErrors:     md.InitErrors,
-		HideDiffs: slice.Map(md.HideDiffs, func(p resource.BackCompatPropertyPath) resource.PropertyPath {
-			return resource.ToResourcePropertyPath(property.Glob(p))
-		}),
+		HideDiffs:      md.HideDiffs,
 	}
 }

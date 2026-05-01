@@ -28,12 +28,12 @@ func resourceOptionsFromState(state *resource.State) *pulumirpc.ResourceOptions 
 
 	resourceOptions := &pulumirpc.ResourceOptions{
 		DependsOn:        urnsToStrings(state.Dependencies),
-		IgnoreChanges:    globsToStrings(state.IgnoreChanges),
-		ReplaceOnChanges: globsToStrings(state.ReplaceOnChanges),
+		IgnoreChanges:    append([]string(nil), state.IgnoreChanges...),
+		ReplaceOnChanges: append([]string(nil), state.ReplaceOnChanges...),
 		Provider:         state.Provider,
 		DeletedWith:      string(state.DeletedWith),
 		Import:           string(state.ImportID),
-		HideDiff:         globsToStrings(state.HideDiff),
+		HideDiff:         propertyPathsToStrings(state.HideDiff),
 		ReplaceWith:      urnsToStrings(state.ReplaceWith),
 		Hooks:            hookBindingsToProto(state.ResourceHooks),
 		Parent:           string(state.Parent),
@@ -93,6 +93,17 @@ func urnsToStrings(urns []resource.URN) []string {
 	values := make([]string, 0, len(urns))
 	for _, urn := range urns {
 		values = append(values, string(urn))
+	}
+	return values
+}
+
+func propertyPathsToStrings(paths []resource.PropertyPath) []string {
+	if len(paths) == 0 {
+		return nil
+	}
+	values := make([]string, 0, len(paths))
+	for _, path := range paths {
+		values = append(values, path.String())
 	}
 	return values
 }

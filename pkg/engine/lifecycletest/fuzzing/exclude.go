@@ -62,8 +62,6 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeDependenciesOnPendingReplacementRefreshV2,
 		// TODO[pulumi/pulumi#21700]
 		ExcludePendingReplacementRegisteredInUpdate,
-		// TODO[pulumi/pulumi#22481]
-		ExcludeDeletedWithRefreshV2,
 		// TODO[pulumi/pulumi#22511]
 		ExcludeTargetedUpdateRefreshWithChildProvider,
 	}
