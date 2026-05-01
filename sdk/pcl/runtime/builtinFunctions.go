@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -231,30 +230,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("get function from package for token %s: %w", token, err)
 			}
-			if !ok {
-				// Didn't find the function via a direct lookup, we now need to iterate _all_ the functions and use
-				// TokenToModule to see if any of the match the token we have.
-				iter := functions.Range()
-				for iter.Next() {
-					fnToken := iter.Token()
-					// Canonicalize the functions token via TokenToModule
-					mod := pkgref.TokenToModule(fnToken)
-					if mod == "" {
-						mod = "index"
-					}
-					pkg, _, member, diags := pcl.DecomposeToken(fnToken, hcl.Range{})
-					contract.Assertf(!diags.HasErrors(), "invalid token format in package %s: %s", pkg, fnToken)
-					fnToken = fmt.Sprintf("%s:%s:%s", pkg, mod, member)
-					if token == fnToken {
-						var err error
-						fun, err = iter.Function()
-						if err != nil {
-							return cty.NilVal, fmt.Errorf("get function from package for token %s: %w", token, err)
-						}
-						token = iter.Token()
-						break
-					}
-				}
+			if ok {
+				// Use the canonical schema token (the alias lookup in Get may have resolved a
+				// normalized form like "pkg:index:name" to the source-form "pkg:index_name:name").
+				token = fun.Token
 			}
 
 			argsPV, err := ctyToPropertyValue(args[1])

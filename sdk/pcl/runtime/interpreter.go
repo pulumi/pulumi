@@ -527,31 +527,6 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
 	}
 	if !ok {
-		// Didn't find the resource via a direct lookup, we now need to iterate _all_ the resources and use
-		// TokenToModule to see if any of the match the token we have.
-		iter := resources.Range()
-		for iter.Next() {
-			resToken := iter.Token()
-			// Canonicalize the resources token via TokenToModule
-			mod := pkgref.TokenToModule(resToken)
-			if mod == "" {
-				mod = "index"
-			}
-			pkg, _, typ, diags := pcl.DecomposeToken(resToken, hcl.Range{})
-			contract.Assertf(!diags.HasErrors(), "invalid token format in package %s: %s", pkg, resToken)
-			resToken = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
-			if token == resToken {
-				token = iter.Token()
-				var err error
-				schemaResource, err = iter.Resource()
-				if err != nil {
-					return nil, fmt.Errorf("get resource from package for token %s: %w", token, err)
-				}
-				break
-			}
-		}
-	}
-	if schemaResource == nil {
 		return nil, fmt.Errorf("get resource from package for token %s", token)
 	}
 	return schemaResource, nil
