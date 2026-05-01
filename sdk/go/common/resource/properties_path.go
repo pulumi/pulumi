@@ -43,6 +43,10 @@ type PropertyPath []any
 //	propertyAccessor := ( ( '.' propertyName ) |  propertyIndex )
 //	path := rootProperty { propertyAccessor }
 //
+// NOTE: The grammar above is aspirational and does not match the actual implementation. The propertyName production is
+// not enforced: any sequence of characters up to the next '.' or '[' is accepted as a bare property name, even in
+// strict mode (see ParsePropertyPathStrict). For example, "foo-bar" parses as the single key "foo-bar".
+//
 // Examples of valid paths:
 // - root
 // - root.nested
