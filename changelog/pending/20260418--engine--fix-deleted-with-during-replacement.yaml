@@ -1,4 +1,8 @@
 changes:
 - type: fix
   scope: engine
-  description: Fix deleted_with not firing during resource replacement
+  description: |
+    Fix deleted_with not firing during resource replacement: the child's provider Delete is
+    now skipped when its deleted_with target is being replaced, not just deleted. When the
+    child also has delete_before_replace, its create-replacement is deferred until after the
+    target's old is deleted so the delete-before-replace contract is honored.

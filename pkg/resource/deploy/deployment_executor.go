@@ -544,6 +544,22 @@ func (ex *deploymentExecutor) performPostSteps(
 			tok.Wait(ctx)
 			logging.V(4).Infof("deploymentExecutor.Execute(...): antichain complete")
 		}
+
+		// Run create-replacements deferred past the delete phase (DeleteBeforeReplace + DeletedWith at a
+		// replaced target). Skip on any prior step error — the cascade delete may not have run, and
+		// creating over a still-present old resource typically conflicts.
+		if deferredCreateSteps := ex.stepGen.DeferredCreateSteps(); len(deferredCreateSteps) > 0 {
+			if errored := ex.stepExec.GetErroredSteps(); len(errored) > 0 {
+				logging.V(4).Infof(
+					"deploymentExecutor.Execute(...): skipping %d deferred create(s) due to prior errors",
+					len(deferredCreateSteps))
+			} else {
+				logging.V(4).Infof("deploymentExecutor.Execute(...): running %d deferred create(s)",
+					len(deferredCreateSteps))
+				tok := ex.stepExec.ExecuteParallel(deferredCreateSteps)
+				tok.Wait(ctx)
+			}
+		}
 	}
 
 	return nil

@@ -16,16 +16,21 @@ package lifecycletest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/blang/semver"
 	. "github.com/pulumi/pulumi/pkg/v3/engine" //nolint:revive
 	lt "github.com/pulumi/pulumi/pkg/v3/engine/lifecycletest/framework"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -257,15 +262,12 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 		aDeleteBeforeReplace bool
 		bDeleteBeforeReplace bool
 		bDependsOnA          bool
-		addResC              bool // add a third resource C
-		transitiveChain      bool // C has deletedWith:B (transitive) vs depends on A (independent)
+		addResC              bool     // add a third resource C
+		transitiveChain      bool     // C has deletedWith:B (transitive) vs depends on A (independent)
+		targets              []string // resource names to pass to p.Options.Targets (nil = no --target)
 	}
 
 	run := func(t *testing.T, tc testCase, expectedOps []string) {
-		if tc.transitiveChain {
-			tc.addResC = true
-		}
-
 		var steps []string
 		var createCount int
 
@@ -350,6 +352,14 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 		inputs["foo"] = resource.NewProperty("baz")
 		steps = nil
 
+		if len(tc.targets) > 0 {
+			urns := make([]string, len(tc.targets))
+			for i, name := range tc.targets {
+				urns[i] = string(p.NewURN("pkgA:m:typA", name, ""))
+			}
+			p.Options.Targets = deploy.NewUrnTargets(urns)
+		}
+
 		snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
 		require.NoError(t, err)
 		require.NotNil(t, snap)
@@ -422,13 +432,288 @@ func TestDeletedWithDuringReplacement(t *testing.T) {
 	// A{}, B{DeleteWith: A}, C{DeleteWith: B}
 	t.Run("transitive_deletedWith_chain", func(t *testing.T) {
 		t.Parallel()
-		run(t, testCase{transitiveChain: true}, []string{
+		run(t, testCase{addResC: true, transitiveChain: true}, []string{
 			"create(resA, resA-4)",
 			"create(resB, resB-5)",
 			"create(resC, resC-6)",
 			"delete(resA, resA-1)",
 		})
 	})
+
+	// A{}, B{DeleteWith: A, DeleteBeforeReplace: true} with --target A,B — defer path must
+	// still produce the correct order when running under a targeted update.
+	t.Run("A_CBR_B_deletedWith_DBR_targeted_both", func(t *testing.T) {
+		t.Parallel()
+		run(t, testCase{
+			bDeleteBeforeReplace: true,
+			targets:              []string{"resA", "resB"},
+		}, []string{
+			"create(resA, resA-3)",
+			"delete(resA, resA-1)",
+			"create(resB, resB-4)",
+		})
+	})
+}
+
+// newDeferredTestProvider returns a pkgA provider loader used by the TestDeferredCreate_* tests. The
+// shared DiffF triggers a replacement when the "foo" input changes; createF and deleteF may be nil to use
+// defaults (createF echoes inputs back as outputs; deleteF is a no-op).
+func newDeferredTestProvider(
+	createF func(context.Context, plugin.CreateRequest) (plugin.CreateResponse, error),
+	deleteF func(context.Context, plugin.DeleteRequest) (plugin.DeleteResponse, error),
+) []*deploytest.ProviderLoader {
+	if createF == nil {
+		createF = func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+			return plugin.CreateResponse{
+				ID:         resource.ID(req.Name + "-id"),
+				Properties: req.Properties,
+				Status:     resource.StatusOK,
+			}, nil
+		}
+	}
+	return []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(_ context.Context, req plugin.DiffRequest) (plugin.DiffResult, error) {
+					if !req.OldOutputs["foo"].DeepEquals(req.NewInputs["foo"]) {
+						return plugin.DiffResult{
+							Changes:     plugin.DiffSome,
+							ReplaceKeys: []resource.PropertyKey{"foo"},
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				CreateF: createF,
+				DeleteF: deleteF,
+			}, nil
+		}, deploytest.WithoutGrpc),
+	}
+}
+
+// TestDeferredCreate_Preview pins that preview mode still emits a create-replacement event for the
+// deferred resource — a regression in preview semantics would surface here.
+func TestDeferredCreate_Preview(t *testing.T) {
+	t.Parallel()
+
+	loaders := newDeferredTestProvider(nil, nil)
+
+	inputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+	bDBR := true
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{Inputs: inputs})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs:              resource.NewPropertyMapFromMap(map[string]any{}),
+			ReplaceWith:         []resource.URN{respA.URN},
+			DeletedWith:         respA.URN,
+			DeleteBeforeReplace: &bDBR,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	// Preview doesn't populate JournalEntries, so we inspect the fired events to check the plan shape.
+	inputs["foo"] = resource.NewProperty("baz")
+	resBCreateReplacements := 0
+	deferredWarnings := 0
+	validate := func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
+		events []Event, err error,
+	) error {
+		require.NoError(t, err)
+		for _, event := range events {
+			//nolint:exhaustive // Only ResourcePreEvent and DiagEvent are relevant here.
+			switch event.Type {
+			case ResourcePreEvent:
+				meta := event.Payload().(ResourcePreEventPayload).Metadata
+				if meta.URN.Name() == "resB" && meta.Op == deploy.OpCreateReplacement {
+					resBCreateReplacements++
+				}
+			case DiagEvent:
+				d := event.Payload().(DiagEventPayload)
+				if d.Severity == diag.Warning && d.URN.Name() == "resB" &&
+					strings.Contains(d.Message, "deferred") {
+					deferredWarnings++
+				}
+			}
+		}
+		return nil
+	}
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, true, p.BackendClient, validate, "1")
+	require.NoError(t, err)
+	assert.Positive(t, resBCreateReplacements,
+		"preview plan should include a create-replacement step for resB")
+	assert.Positive(t, deferredWarnings,
+		"preview should warn that resB's create is deferred and its outputs will be empty")
+}
+
+// TestDeferredCreate_DownstreamDepIsRejected verifies that when a resource depends on a deferred
+// replacement, the engine rejects the update with a clear error rather than silently handing back empty
+// outputs. The dependent's real outputs aren't available yet, so any downstream consumer would be built
+// with empty values.
+func TestDeferredCreate_DownstreamDepIsRejected(t *testing.T) {
+	t.Parallel()
+
+	loaders := newDeferredTestProvider(nil, nil)
+
+	inputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+	bDBR := true
+	registerC := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{Inputs: inputs})
+		require.NoError(t, err)
+
+		respB, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs:              resource.NewPropertyMapFromMap(map[string]any{}),
+			ReplaceWith:         []resource.URN{respA.URN},
+			DeletedWith:         respA.URN,
+			DeleteBeforeReplace: &bDBR,
+		})
+		require.NoError(t, err)
+
+		if registerC {
+			_, err = monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
+				Inputs:       resource.NewPropertyMapFromMap(map[string]any{}),
+				Dependencies: []resource.URN{respB.URN},
+			})
+			require.Error(t, err, "registration of resC should fail: its dep resB is deferred")
+		}
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	// Flip to a program that also registers resC depending on resB, then trigger the replacement.
+	registerC = true
+	inputs["foo"] = resource.NewProperty("baz")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot depend on")
+	assert.Contains(t, err.Error(), "deferred until after")
+}
+
+// TestDeferredCreate_ProviderError verifies that when the deferred provider Create fails, the deployment
+// reports an error and the resulting snapshot is in a recoverable state (old resources are gone, new is
+// absent) so a follow-up update can complete normally.
+func TestDeferredCreate_ProviderError(t *testing.T) {
+	t.Parallel()
+
+	failCreateB := false
+
+	loaders := newDeferredTestProvider(
+		func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+			if req.Name == "resB" && failCreateB {
+				return plugin.CreateResponse{Status: resource.StatusOK}, errors.New("boom: resB create failed")
+			}
+			return plugin.CreateResponse{
+				ID:         resource.ID(req.Name + "-id"),
+				Properties: req.Properties,
+				Status:     resource.StatusOK,
+			}, nil
+		},
+		nil,
+	)
+
+	inputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+	bDBR := true
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		respA, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{Inputs: inputs})
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs:              resource.NewPropertyMapFromMap(map[string]any{}),
+			ReplaceWith:         []resource.URN{respA.URN},
+			DeletedWith:         respA.URN,
+			DeleteBeforeReplace: &bDBR,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+
+	// Flip the provider to fail on resB's deferred create, then run the replacement.
+	failCreateB = true
+	inputs["foo"] = resource.NewProperty("baz")
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.Error(t, err)
+
+	failCreateB = false
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "2")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	names := map[string]bool{}
+	for _, r := range snap.Resources {
+		names[r.URN.Name()] = true
+	}
+	assert.True(t, names["resA"], "resA should be present after recovery")
+	assert.True(t, names["resB"], "resB should be present after recovery")
+}
+
+// TestDeferredCreate_SkipsOnPriorError verifies a prior delete-phase error causes deferred creates to be
+// skipped rather than run against broken state.
+func TestDeferredCreate_SkipsOnPriorError(t *testing.T) {
+	t.Parallel()
+	var resBCreates int
+	bDBR := true
+	inputs := resource.NewPropertyMapFromMap(map[string]any{"foo": "bar"})
+	loaders := newDeferredTestProvider(
+		func(_ context.Context, r plugin.CreateRequest) (plugin.CreateResponse, error) {
+			if r.Name == "resB" {
+				resBCreates++
+			}
+			return plugin.CreateResponse{ID: resource.ID(r.Name + "-id"), Properties: r.Properties}, nil
+		},
+		func(_ context.Context, r plugin.DeleteRequest) (plugin.DeleteResponse, error) {
+			if r.Name == "resA" {
+				return plugin.DeleteResponse{}, errors.New("boom")
+			}
+			return plugin.DeleteResponse{}, nil
+		})
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, m *deploytest.ResourceMonitor) error {
+		a, err := m.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{Inputs: inputs})
+		require.NoError(t, err)
+		_, err = m.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.PropertyMap{}, DeletedWith: a.URN, DeleteBeforeReplace: &bDBR,
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{
+		T: t, HostF: deploytest.NewPluginHostF(nil, nil, programF, loaders...), SkipDisplayTests: true,
+	}}
+	project := p.GetProject()
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.Equal(t, 1, resBCreates)
+	inputs["foo"] = resource.NewProperty("baz")
+	_, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.Error(t, err)
+	assert.Equal(t, 1, resBCreates, "deferred create must be skipped when a prior delete errored")
 }
 
 func TestReplaceWithDeleteBeforeReplace(t *testing.T) {

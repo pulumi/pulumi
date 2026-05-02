@@ -101,6 +101,11 @@ type stepGenerator struct {
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
 
+	// CreateReplacement steps whose provider Create must run after the deferred-delete phase
+	// (DeleteBeforeReplace meets DeletedWith at a replaced target). generateSteps rejects later
+	// registrations that depend on one of these, since the real outputs aren't available yet.
+	deferredCreateSteps []Step
+
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
 	dependentReplaceKeys map[resource.URN][]resource.PropertyKey
@@ -752,6 +757,23 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, boo
 		}
 	}
 
+	// Reject registrations that depend on a deferred create — its real outputs aren't available yet.
+	blocking, err := sg.blockingDeferredCreates(new)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(blocking) > 0 {
+		names := make([]string, len(blocking))
+		for i, u := range blocking {
+			names[i] = string(u)
+		}
+		return nil, false, fmt.Errorf(
+			"resource %v cannot depend on %s: deferred until after the delete-before-replace cascade, "+
+				"so outputs are not yet available. Break the dependency, or remove DeleteBeforeReplace "+
+				"from the deferred resource(s) if you can tolerate briefly existing duplicates",
+			urn, strings.Join(names, ", "))
+	}
+
 	// If we're doing refreshes then this is the point where we need to fire off a refresh step for this
 	// resource, to call back into GenerateSteps later.
 	//
@@ -819,6 +841,41 @@ func (sg *stepGenerator) ContinueStepsFromRefresh(event ContinueResourceRefreshE
 
 	steps, err = sg.validateSteps(steps)
 	return steps, false, err
+}
+
+// isDeferredCreate reports whether urn names a resource whose create-replacement has been deferred
+// past the delete phase.
+func (sg *stepGenerator) isDeferredCreate(urn resource.URN) bool {
+	return slices.ContainsFunc(sg.deferredCreateSteps, func(s Step) bool { return s.URN() == urn })
+}
+
+// blockingDeferredCreates returns URNs of deferred create-replacements that `new` reads for
+// ordering or input values. DeletedWith/ReplaceWith edges are ignored — they don't expose the
+// target's outputs.
+func (sg *stepGenerator) blockingDeferredCreates(new *resource.State) ([]resource.URN, error) {
+	if len(sg.deferredCreateSteps) == 0 {
+		return nil, nil
+	}
+	provider, allDeps := new.GetAllDependencies()
+	var blocking []resource.URN
+	for _, dep := range allDeps {
+		if dep.Type == resource.ResourceDeletedWith || dep.Type == resource.ResourceReplaceWith {
+			continue
+		}
+		if sg.isDeferredCreate(dep.URN) {
+			blocking = append(blocking, dep.URN)
+		}
+	}
+	if provider != "" {
+		prov, err := sdkproviders.ParseReference(provider)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse provider reference %s for %s: %w", provider, new.URN, err)
+		}
+		if sg.isDeferredCreate(prov.URN()) {
+			blocking = append(blocking, prov.URN())
+		}
+	}
+	return blocking, nil
 }
 
 func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, error) {
@@ -1867,6 +1924,53 @@ func (sg *stepGenerator) continueStepsFromDiff(diffEvent ContinueResourceDiffEve
 			if goal.DeleteBeforeReplace != nil {
 				deleteBeforeReplace = *goal.DeleteBeforeReplace
 			}
+			// Without deferral, provider Create for the new would run inline while the provider still
+			// holds the old (the cascade only fires during the deferred-delete phase), silently
+			// violating DBR. Custom-only: components have no provider Create.
+			if deleteBeforeReplace && new.Custom && sg.replaces[new.DeletedWith] {
+				logging.V(7).Infof(
+					"Planner deferring create-replacement of '%v' until after replacement of delete-with target '%v'",
+					urn, new.DeletedWith)
+				sg.deployment.ctx.Diag.Warningf(diag.StreamMessage(urn, fmt.Sprintf(
+					"resource %v: Create is deferred until after %v's delete-before-replace cascade. "+
+						"Reads of %v's outputs outside downstream registrations (apply callbacks, stack "+
+						"exports) will see empty values this update.",
+					urn, new.DeletedWith, urn), 0))
+
+				sg.deferredCreateSteps = append(sg.deferredCreateSteps, NewDeferredCreateReplacementStep(
+					sg.deployment, old, new, diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff))
+
+				// The deferred CreateReplacementStep runs from performPostSteps, never passing through
+				// validateSteps. Handle its plan accounting here so --save-plan records both Ops for this
+				// resource and a replayed plan consumes both. The DeferredReplaceStep's OpReplace is
+				// handled by the normal validateSteps path after we return.
+				if sg.deployment.plan != nil {
+					if resourcePlan, ok := sg.deployment.plan.ResourcePlans[urn]; ok {
+						if len(resourcePlan.Ops) == 0 {
+							return nil, fmt.Errorf(
+								"%v is not allowed by the plan: no more steps were expected for this resource",
+								OpCreateReplacement)
+						}
+						constraint := resourcePlan.Ops[0]
+						resourcePlan.Ops = resourcePlan.Ops[1:]
+						if !ConstrainedTo(OpCreateReplacement, constraint) {
+							return nil, fmt.Errorf(
+								"%v is not allowed by the plan: this resource is constrained to %v",
+								OpCreateReplacement, constraint)
+						}
+					}
+				}
+				if sg.deployment.opts.GeneratePlan {
+					if resourcePlan, ok := sg.deployment.newPlans.get(urn); ok {
+						resourcePlan.Ops = append(resourcePlan.Ops, OpCreateReplacement)
+					}
+				}
+
+				return []Step{
+					NewDeferredReplaceStep(sg.deployment, event, old, new,
+						diff.ReplaceKeys, diff.ChangedKeys, diff.DetailedDiff),
+				}, nil
+			}
 			if deleteBeforeReplace {
 				logging.V(7).Infof("Planner decided to delete-before-replacement for resource '%v'", urn)
 				contract.Assertf(sg.deployment.depGraph != nil,
@@ -2476,6 +2580,11 @@ func (sg *stepGenerator) getDepgraphForScheduling() *graph.DependencyGraph {
 		dg.Alias(new, old)
 	}
 	return dg
+}
+
+// DeferredCreateSteps returns CreateReplacement steps collected by continueStepsFromDiff for late execution.
+func (sg *stepGenerator) DeferredCreateSteps() []Step {
+	return sg.deferredCreateSteps
 }
 
 // ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
