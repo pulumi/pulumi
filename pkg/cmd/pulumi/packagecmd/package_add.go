@@ -43,8 +43,8 @@ func newPackageAddCmd() *cobra.Command {
 	var language string
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add a package to your Pulumi project, plugin, or single-language library",
-		Long: `Add a package to your Pulumi project, plugin, or single-language library.
+		Short: "Add a package to your Pulumi project, plugin, or or current directory.",
+		Long: `Add a package to your Pulumi project, plugin, or or current directory.
 
 This command locally generates an SDK in the selected Pulumi language and
 prints instructions on how to use it. The SDK is based on a Pulumi package
@@ -95,16 +95,21 @@ from the parameters, as in:
 				return err
 			}
 
-			var target addTarget
-			if language != "" {
-				existing, loadErr := loadEnclosingTarget(cmd.Context(), wd)
-				if loadErr == nil {
-					return fmt.Errorf("--language is for use outside a Pulumi project or "+
-						"plugin, but %s was found; remove the flag, or run from a "+
-						"directory outside the project", *existing.projectFilePath)
-				}
-				if !errors.Is(loadErr, workspace.ErrBaseProjectNotFound) {
-					return loadErr
+			target, err := loadEnclosingTarget(cmd.Context(), wd)
+			if err != nil && !errors.Is(err, workspace.ErrBaseProjectNotFound) {
+				return err
+			}
+			foundProject := err == nil
+
+			if foundProject && language != "" {
+				return fmt.Errorf("--language is for use outside a Pulumi project or "+
+					"plugin, but %s was found; remove the flag, or run from a "+
+					"directory outside the project", *target.projectFilePath)
+			}
+			if !foundProject {
+				if language == "" {
+					return fmt.Errorf("%w; pass --language LANG to run "+
+						"outside a Pulumi project or plugin", err)
 				}
 				target = addTarget{
 					installRoot: wd,
@@ -113,15 +118,6 @@ from the parameters, as in:
 					},
 					reg: cmdCmd.NewDefaultRegistry(
 						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				}
-			} else {
-				target, err = loadEnclosingTarget(cmd.Context(), wd)
-				if err != nil {
-					if errors.Is(err, workspace.ErrBaseProjectNotFound) {
-						return fmt.Errorf("%w; pass --language LANG to run "+
-							"outside a Pulumi project or plugin", err)
-					}
-					return err
 				}
 			}
 
