@@ -26,7 +26,9 @@ import (
 
 var mmapedFiles = make(map[string]mmap.MMap)
 
-func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime time.Time) ([]byte, bool) {
+// loadCachedSchemaBytes returns the cached schema at path if the cache file is newer than
+// pluginInstallTime (i.e. the schema was written after the plugin was last installed).
+func (l *pluginLoader) loadCachedSchemaBytes(path string, pluginInstallTime time.Time) ([]byte, bool) {
 	if l.cacheOptions.disableFileCache {
 		return nil, false
 	}
@@ -50,9 +52,8 @@ func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime
 	if err != nil {
 		return nil, success
 	}
-	cachedAt := stat.ModTime()
 
-	if schemaTime.After(cachedAt) {
+	if pluginInstallTime.After(stat.ModTime()) {
 		return nil, success
 	}
 

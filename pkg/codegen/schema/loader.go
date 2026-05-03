@@ -17,8 +17,12 @@ package schema
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/natefinch/atomic"
 
@@ -360,6 +364,33 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 	)
 }
 
+// schemaFilePath returns the path to the schema cache file for the given package descriptor.
+// Schemas are cached in ~/.pulumi/schemas/ with a filename encoding name, version, and
+// hashes of the download URL and parameterization so different sources remain distinct.
+func schemaFilePath(
+	name string,
+	version *semver.Version,
+	downloadURL string,
+	parameterization *ParameterizationDescriptor,
+) (string, error) {
+	fileName := name
+	if version != nil {
+		fileName += "-" + version.String()
+	}
+	if downloadURL != "" {
+		h := sha256.Sum256([]byte(downloadURL))
+		fileName += "-" + hex.EncodeToString(h[:6])
+	}
+	if parameterization != nil {
+		paramBytes, err := json.Marshal(parameterization)
+		contract.AssertNoErrorf(err, "ParameterizationDescriptor should be marshalable to JSON")
+		h := sha256.Sum256(paramBytes)
+		fileName += "-" + hex.EncodeToString(h[:6])
+	}
+	fileName += ".json"
+	return workspace.GetPulumiPath("schemas", fileName)
+}
+
 func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginDescriptor {
 	return workspace.PluginDescriptor{
 		Name:              descriptor.Name,
@@ -433,10 +464,20 @@ func (l *pluginLoader) loadSchemaBytes(
 		pluginVersion = pluginInfo.Version
 	}
 
-	canCache := pluginInfo.SchemaPath != "" && pluginVersion != nil && descriptor.Parameterization == nil
+	var schemaPath string
+	// Only cache versioned plugins
+	if pluginVersion != nil {
+		var pathErr error
+		schemaPath, pathErr = schemaFilePath(
+			descriptor.Name, pluginVersion, descriptor.DownloadURL, descriptor.Parameterization)
+		if pathErr != nil {
+			// Non-fatal: log and proceed without file caching.
+			schemaPath = ""
+		}
+	}
 
-	if canCache {
-		schemaBytes, ok := l.loadCachedSchemaBytes(descriptor.Name, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
+	if schemaPath != "" {
+		schemaBytes, ok := l.loadCachedSchemaBytes(schemaPath, pluginInfo.InstallTime)
 		if ok {
 			return schemaBytes, nil, nil
 		}
@@ -447,10 +488,12 @@ func (l *pluginLoader) loadSchemaBytes(
 		return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 	}
 
-	if canCache {
-		err = atomic.WriteFile(pluginInfo.SchemaPath, bytes.NewReader(schemaBytes))
-		if err != nil {
-			return nil, nil, fmt.Errorf("Error writing schema from plugin to cache: %w", err)
+	if schemaPath != "" {
+		if mkdirErr := os.MkdirAll(filepath.Dir(schemaPath), 0o700); mkdirErr == nil {
+			err = atomic.WriteFile(schemaPath, bytes.NewReader(schemaBytes))
+			if err != nil {
+				return nil, nil, fmt.Errorf("Error writing schema from plugin to cache: %w", err)
+			}
 		}
 	}
 

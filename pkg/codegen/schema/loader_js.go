@@ -16,10 +16,8 @@
 
 package schema
 
-import (
-	"time"
-)
+import "time"
 
-func (l *pluginLoader) loadCachedSchemaBytes(pkg string, path string, schemaTime time.Time) ([]byte, bool) {
+func (l *pluginLoader) loadCachedSchemaBytes(path string, pluginInstallTime time.Time) ([]byte, bool) {
 	return nil, false
 }

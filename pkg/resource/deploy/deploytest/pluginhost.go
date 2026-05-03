@@ -564,8 +564,8 @@ func (host *pluginHost) ResolvePlugin(
 			Kind:    v.kind,
 			Name:    v.name,
 			Version: &v.version,
-			// Path and SchemaPath not set as these plugins aren't actually on disk.
-			// SchemaTime not set as caching is indefinite.
+			// Path not set as these plugins aren't actually on disk.
+			// InstallTime not set as caching is indefinite.
 		}
 		plugins = append(plugins, p)
 	}

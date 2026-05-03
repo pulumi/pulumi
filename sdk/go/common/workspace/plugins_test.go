@@ -1776,9 +1776,6 @@ func TestPluginInfoShimless(t *testing.T) {
 	assert.Equal(t, pluginPath, info.Path)
 	assert.Equal(t, uint64(23), info.Size())
 	assert.Equal(t, stat.ModTime(), info.InstallTime)
-	assert.Equal(t, stat.ModTime(), info.SchemaTime)
-	// schemaPaths are odd, they're one directory up from the plugin directory
-	assert.Equal(t, filepath.Join(filepath.Dir(pluginPath), "schema-mock.json"), info.SchemaPath)
 }
 
 func TestProjectPluginsWithUncleanPath(t *testing.T) {
