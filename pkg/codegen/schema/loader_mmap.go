@@ -40,7 +40,10 @@ func (l *pluginLoader) loadCachedSchemaBytes(path string, pluginInstallTime time
 	success := false
 	schemaFile, err := os.OpenFile(path, os.O_RDONLY, 0o644)
 	defer func() {
-		if !success {
+		// Close on failure, or on a plain read where the data has already been
+		// copied. For mmap, the file must remain open while the mapping is active
+		// (required on Windows), so we leave it open in that case.
+		if !success || l.cacheOptions.disableMmap {
 			schemaFile.Close()
 		}
 	}()
