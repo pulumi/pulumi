@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -58,7 +59,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
-func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
+func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.Command {
 	var outDir string
 	var from string
 	var language string
@@ -96,6 +97,7 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			return runConvert(
 				cmd.Context(),
+				lm,
 				ws,
 				env.Global(),
 				args,
@@ -181,6 +183,7 @@ type projectGeneratorFunction func(
 
 func runConvert(
 	ctx context.Context,
+	lm cmdBackend.LoginManager,
 	ws pkgWorkspace.Context,
 	e env.Env,
 	args []string,
@@ -309,7 +312,7 @@ func runConvert(
 				targetDirectory,
 				packageBlockDescriptors,
 				generateOnly,
-				cmdCmd.NewDefaultRegistry(ctx, ws, proj, cmdutil.Diag(), e),
+				cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), e),
 			)
 			if err != nil {
 				return diags, fmt.Errorf("error generating packages: %w", err)

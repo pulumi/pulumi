@@ -23,6 +23,7 @@ import (
 	"slices"
 	"strings"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
@@ -68,9 +69,10 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			}
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
 			spec, _, err := packages.SchemaFromSchemaSource(pctx, args[0], parameters,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global(), 0 /* unbounded concurrency */)
+				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}
