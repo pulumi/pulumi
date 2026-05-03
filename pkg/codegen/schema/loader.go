@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -490,9 +491,12 @@ func (l *pluginLoader) loadSchemaBytes(
 
 	if schemaPath != "" {
 		if mkdirErr := os.MkdirAll(filepath.Dir(schemaPath), 0o700); mkdirErr == nil {
-			err = atomic.WriteFile(schemaPath, bytes.NewReader(schemaBytes))
-			if err != nil {
-				return nil, nil, fmt.Errorf("Error writing schema from plugin to cache: %w", err)
+			if writeErr := atomic.WriteFile(schemaPath, bytes.NewReader(schemaBytes)); writeErr != nil {
+				// Cache writes are best-effort. On Windows, os.Rename (used internally
+				// by atomic.WriteFile) fails with "Access Denied" when a concurrent
+				// loader has already written and memory-mapped the same file. The
+				// schema bytes are still valid — we just lost the race to cache them.
+				logging.V(3).Infof("failed to cache schema at %s: %v", schemaPath, writeErr)
 			}
 		}
 	}
