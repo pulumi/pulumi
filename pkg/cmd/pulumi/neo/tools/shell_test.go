@@ -53,8 +53,78 @@ func TestShell_ExecuteHonorsTimeout(t *testing.T) {
 	require.NoError(t, err)
 	sh.DefaultTimeout = 50 * time.Millisecond
 	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"sleep 5"}`))
-	require.NoError(t, err)
+	require.Error(t, err, "timeout must surface as a non-nil error so the TUI marks the call failed")
+	assert.Contains(t, err.Error(), "timed out")
+	require.NotNil(t, res, "partial result must still be returned alongside the timeout error")
 	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+}
+
+func TestShell_ExecuteHonorsAgentTimeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	start := time.Now()
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"sleep 5","timeout":0.1}`))
+	require.Error(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	assert.Less(t, time.Since(start), 5*time.Second, "agent-supplied timeout was ignored")
+}
+
+func TestShell_ExecuteAgentTimeoutOverridesDefault(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	sh.DefaultTimeout = time.Hour // way longer than the agent value below
+	start := time.Now()
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"sleep 5","timeout":0.1}`))
+	require.Error(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	assert.Less(t, time.Since(start), 5*time.Second, "agent timeout did not override DefaultTimeout")
+}
+
+func TestShell_ExecuteUnblocksOnOrphanedChild(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	// `sleep 30 &; wait` keeps a grandchild holding the inherited stdout/stderr
+	// pipes open well past the deadline. Without process-group kill +
+	// WaitDelay, cmd.Run() blocks for the full 30s instead of returning when
+	// the timeout fires.
+	start := time.Now()
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"sleep 30 & wait","timeout":0.2}`))
+	require.Error(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	// Allow generous slack for the WaitDelay grace period (5s) plus CI noise.
+	assert.Less(t, time.Since(start), 15*time.Second, "shell hung on orphaned child")
+}
+
+func TestShell_ExecuteRejectsNegativeTimeout(t *testing.T) {
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"echo hi","timeout":-1}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "non-negative")
 }
 
 func TestShell_ExecuteCapturesNonZeroExit(t *testing.T) {

@@ -24,11 +24,14 @@ import (
 	"os/exec"
 	"runtime"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Shell is the local handler for the Neo `shell` tool. The cloud agent exposes a single
 // method named `shell_execute` (see pulumi-service:cmd/agents/src/agents_py/mcp/shell_mcp.py)
-// with arguments `{command: string, cwd?: string}`. If cwd is supplied it must resolve
+// with arguments `{command: string, cwd?: string, timeout?: number}`. timeout is in
+// seconds; 0 or omitted falls back to DefaultTimeout. If cwd is supplied it must resolve
 // under one of the allowed roots (Cwd or any extras passed to NewShell, e.g. /tmp);
 // otherwise the request is rejected.
 type Shell struct {
@@ -72,8 +75,9 @@ func (s *Shell) Invoke(ctx context.Context, method string, args json.RawMessage)
 		return nil, fmt.Errorf("unknown shell method %q", method)
 	}
 	var p struct {
-		Command string `json:"command"`
-		Cwd     string `json:"cwd,omitempty"`
+		Command string  `json:"command"`
+		Cwd     string  `json:"cwd,omitempty"`
+		Timeout float64 `json:"timeout,omitempty"` // seconds; 0 or omitted = DefaultTimeout
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("decoding shell_execute args: %w", err)
@@ -81,11 +85,18 @@ func (s *Shell) Invoke(ctx context.Context, method string, args json.RawMessage)
 	if p.Command == "" {
 		return nil, errors.New("shell_execute requires a non-empty command")
 	}
+	if p.Timeout < 0 {
+		return nil, fmt.Errorf("shell_execute timeout must be non-negative, got %g", p.Timeout)
+	}
+	timeout := s.DefaultTimeout
+	if p.Timeout > 0 {
+		timeout = time.Duration(p.Timeout * float64(time.Second))
+	}
 	dir, err := s.resolveDir(p.Cwd)
 	if err != nil {
 		return nil, err
 	}
-	return s.run(ctx, p.Command, dir)
+	return s.run(ctx, p.Command, dir, timeout)
 }
 
 // resolveDir validates that dir is under one of the allowed roots. An empty dir
@@ -121,8 +132,8 @@ func (c *cappedBuffer) Write(p []byte) (int, error) {
 	return c.buf.Write(p)
 }
 
-func (s *Shell) run(ctx context.Context, command string, dir string) (any, error) {
-	runCtx, cancel := context.WithTimeout(ctx, s.DefaultTimeout)
+func (s *Shell) run(ctx context.Context, command string, dir string, timeout time.Duration) (any, error) {
+	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	var cmd *exec.Cmd
@@ -132,6 +143,23 @@ func (s *Shell) run(ctx context.Context, command string, dir string) (any, error
 		cmd = exec.CommandContext(runCtx, "sh", "-c", command)
 	}
 	cmd.Dir = dir
+
+	// Run the command in its own process group so we can SIGKILL the whole tree
+	// (and not just sh) when the deadline fires; without this, long-running
+	// children like `kubectl logs -f` outlive sh and keep the inherited stdout
+	// pipe open, hanging cmd.Wait() indefinitely.
+	cmdutil.RegisterProcessGroup(cmd)
+	cmd.Cancel = func() error {
+		// On Unix this sends SIGKILL to the whole process group (including the
+		// leader); on Windows it kills direct children. The trailing
+		// Process.Kill covers the Windows root and is a harmless no-op on Unix.
+		_ = cmdutil.KillChildren(cmd.Process.Pid)
+		return cmd.Process.Kill()
+	}
+	// Even after the tree is killed, a grandchild that inherited stdout/stderr
+	// may keep the pipes open. WaitDelay forces cmd.Wait to return after this
+	// grace period instead of blocking forever on the inherited pipes.
+	cmd.WaitDelay = 5 * time.Second
 
 	stdout := &cappedBuffer{limit: maxOutputBytes}
 	stderr := &cappedBuffer{limit: maxOutputBytes}
@@ -153,11 +181,19 @@ func (s *Shell) run(ctx context.Context, command string, dir string) (any, error
 			result["error"] = err.Error()
 		}
 	}
-	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+	timedOut := errors.Is(runCtx.Err(), context.DeadlineExceeded)
+	if timedOut {
 		result["timed_out"] = true
 	}
 	if stdout.truncated || stderr.truncated {
 		result["truncated"] = true
+	}
+	if timedOut {
+		// Returning a non-nil error alongside the partial result lets the session
+		// dispatch layer mark the tool call as failed (IsError=true → red dot in
+		// the TUI, retry signal to the agent) while still surfacing the captured
+		// stdout/stderr and exit_code in Content.
+		return result, fmt.Errorf("shell command timed out after %s", timeout)
 	}
 	return result, nil
 }
