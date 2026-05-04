@@ -894,6 +894,15 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 // For example, "https://github.com/pulumi/platform-team/templates.git/templates/javascript"
 // returns "https://github.com/pulumi/platform-team/templates.git" and "templates/javascript"
 //
+// GitLab convention: GitLab supports arbitrarily nested subgroups, so a path
+// with more than two segments is ambiguous between "group/subgroup" + subpath
+// "repo" and the project "group/subgroup/repo". Without an explicit ".git"
+// marker this function takes the first interpretation, treating the first
+// two segments as owner/repo. To target a subgroup project, include a ".git"
+// suffix on the repo name (e.g. "https://gitlab.com/group/subgroup/repo.git").
+// Subpaths within a subgroup project work the same way:
+// "https://gitlab.com/group/subgroup/repo.git/templates/app".
+//
 // Note: URL with a hostname of `dev.azure.com`, are currently treated as a raw git clone url
 // and currently do not support subpaths.
 func ParseGitRepoURL(rawurl string) (string, string, error) {

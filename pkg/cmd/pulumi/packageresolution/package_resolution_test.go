@@ -810,3 +810,35 @@ func TestResolvePackage(t *testing.T) {
 		})
 	}
 }
+
+func TestGitlabSubgroupHint(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name      string
+		source    string
+		expectHas bool
+	}{
+		{name: "non-gitlab host", source: "https://github.com/owner/repo/sub", expectHas: false},
+		{name: "two-segment gitlab", source: "https://gitlab.com/owner/repo", expectHas: false},
+		{name: "gitlab with .git suffix", source: "https://gitlab.com/group/sub/repo.git", expectHas: false},
+		{name: "gitlab with .git boundary", source: "https://gitlab.com/group/repo.git/sub", expectHas: false},
+		{name: "ambiguous subgroup", source: "https://gitlab.com/group/sub/repo", expectHas: true},
+		{name: "ambiguous deep subgroup", source: "https://gitlab.com/a/b/c/d/repo", expectHas: true},
+		{name: "ambiguous with www prefix", source: "https://www.gitlab.com/g/sg/repo", expectHas: true},
+		{name: "empty", source: "", expectHas: false},
+		{name: "garbage", source: "://not-a-url", expectHas: false},
+	}
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			hint := gitlabSubgroupHint(tt.source)
+			if tt.expectHas {
+				assert.NotEmpty(t, hint)
+				assert.Contains(t, hint, ".git")
+			} else {
+				assert.Empty(t, hint)
+			}
+		})
+	}
+}

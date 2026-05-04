@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"path"
 	"strings"
 
@@ -35,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -278,7 +280,7 @@ func Resolve(
 
 	naivePackageDescriptor, err := naivePackageDescriptor(ctx, spec)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse spec: %w", err)
+		return nil, fmt.Errorf("unable to parse spec: %w%s", err, gitlabSubgroupHint(spec.Source))
 	}
 
 	if options.AllowNonInvertableLocalWorkspaceResolution {
@@ -422,4 +424,38 @@ func Resolve(
 		Version:     spec.Version,
 		OriginalErr: registryNotFoundErr,
 	}
+}
+
+// gitlabSubgroupHint returns a human-readable suffix to append to a package
+// resolution error message when the source URL looks like a GitLab subgroup
+// project written without an explicit ".git" marker. Such URLs parse as
+// owner/repo + subpath, so a real subgroup project ("group/subgroup/repo")
+// is silently mis-parsed and the clone fails far from the cause. The hint
+// surfaces the most likely fix without requiring the user to know the
+// gitutil convention. Returns "" when the URL doesn't match the pattern,
+// so callers can unconditionally concatenate.
+func gitlabSubgroupHint(source string) string {
+	u, err := url.Parse(source)
+	if err != nil || u == nil {
+		return ""
+	}
+	if strings.TrimPrefix(u.Host, "www.") != gitutil.GitLabHostName {
+		return ""
+	}
+	p := strings.Trim(u.Path, "/")
+	if p == "" {
+		return ""
+	}
+	if strings.HasSuffix(p, ".git") || strings.Contains(p, ".git/") {
+		return ""
+	}
+	if strings.Count(p, "/") < 2 {
+		return ""
+	}
+	return fmt.Sprintf(
+		"\n\nhint: GitLab URL %q has more than two path segments without a .git marker. "+
+			"For a subgroup project use %q; for an owner/repo with a subdirectory use a .git "+
+			"boundary after the repo name (e.g. https://gitlab.com/owner/repo.git/subdir).",
+		source, source+".git",
+	)
 }
