@@ -251,6 +251,51 @@ async def test_invoke_input_dependency() -> None:
     assert k == False
 
 
+_INTERNAL_KEYS_PAYLOAD: dict = {
+    "__type": "PermissionDescriptorGroup",
+    "items": [
+        {
+            "__type": "PermissionDescriptorCondition",
+            "__provider": "test",
+            "name": "child",
+        }
+    ],
+    "name": "root",
+}
+
+
+class MocksWithInternalKeys(pulumi.runtime.Mocks):
+    def new_resource(
+        self, args: pulumi.runtime.MockResourceArgs
+    ) -> tuple[Optional[str], dict]:
+        return (args.name + "_id", args.inputs)
+
+    def call(
+        self, args: pulumi.runtime.MockCallArgs
+    ) -> tuple[dict, Optional[list[tuple[str, str]]]]:
+        return (_INTERNAL_KEYS_PAYLOAD, [])
+
+
+@pulumi.runtime.test
+def test_invoke_preserves_internal_keys() -> None:
+    # Provider-defined invokes may use `__`-prefixed keys (e.g. `__type`) as
+    # discriminators in their return shape. The Python SDK must preserve
+    # them so that the result can be passed back as input to a resource.
+    pulumi.runtime.mocks.set_mocks(MocksWithInternalKeys())
+
+    result = pulumi.runtime.invoke("test:index:MyFunction", {}).value
+    assert result == _INTERNAL_KEYS_PAYLOAD
+
+
+@pulumi.runtime.test
+async def test_invoke_async_preserves_internal_keys() -> None:
+    pulumi.runtime.mocks.set_mocks(MocksWithInternalKeys())
+
+    o = pulumi.runtime.invoke_output("test:index:MyFunction", {})
+    value = await o.future()
+    assert value == _INTERNAL_KEYS_PAYLOAD
+
+
 @pytest.mark.parametrize(
     "a,b,expected",
     [

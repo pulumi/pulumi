@@ -354,7 +354,13 @@ def _invoke(
             log.debug(f"Returning None for empty result for invoke of {tok}")
             return InvokeResult(value=None, is_secret=False), None
 
-        deserialized, is_secret = rpc.deserialize_properties_unwrap_secrets(ret_obj)
+        # Pass `keep_internal=True` because invoke return shapes are defined by
+        # the provider's schema, not the engine. Some providers use `__`-prefixed
+        # keys (e.g. `__type`) as discriminators in the returned payload, and
+        # stripping them silently breaks values that get passed back as inputs.
+        deserialized, is_secret = rpc.deserialize_properties_unwrap_secrets(
+            ret_obj, keep_internal=True
+        )
         # If typ is not None, call translate_output_properties to instantiate any output types.
         result = deserialized
         if typ:
@@ -511,7 +517,9 @@ def call(
             deps: set[Resource] = set()
             ret_obj = getattr(resp, "return")
             if ret_obj:
-                deserialized = rpc.deserialize_properties(ret_obj)
+                # Same rationale as the invoke path above: provider-defined call
+                # return shapes can legitimately use `__`-prefixed discriminators.
+                deserialized = rpc.deserialize_properties(ret_obj, keep_internal=True)
                 is_known = not rpc.contains_unknowns(deserialized)
 
                 # Keep track of whether we need to mark the resulting output a secret,

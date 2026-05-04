@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk-python
+  description: Preserve `__`-prefixed keys (e.g. `__type` discriminators) in invoke and call return values, matching the behavior of the other language SDKs
