@@ -31,11 +31,13 @@ Install and configure Pulumi packages and their plugins and SDKs.`
 		base := "/api/registry/packages/{source}/{publisher}/{name}/versions"
 		long += "\n\n[Agent guidance]\n" +
 			"  Use `pulumi cloud api` to query the registry. Common routes:\n" +
-			"    Search packages:    /api/registry/packages?search={query}\n" +
-			"    List versions:      " + base + "\n" +
-			"    Readme:             " + base + "/{version}/readme\n" +
-			"    Nav (tokens):       " + base + "/{version}/nav\n" +
-			"    Token docs:         " + base + "/{version}/docs/{percent-encoded-token}\n" +
+			"    Search packages:            /api/registry/packages?search={query}\n" +
+			"    List versions:              " + base + "\n" +
+			"    Readme:                     " + base + "/{version}/readme\n" +
+			"    Installation/Configuration: " + base + "/{version}/installation\n" +
+			"    Nav (tokens):               " + base + "/{version}/nav\n" +
+			"    Token docs:                 " + base + "/{version}/docs/{percent-encoded-token}\n" +
+			"    Code examples:              " + base + "/{version}/examples\n" +
 			"  Nav lists tokens for resources, functions, and other package members;\n" +
 			"  pass one (percent-encoded) to the docs route.\n" +
 			"  {version} can be `latest`. Set `Accept: text/markdown` or `application/json`."
