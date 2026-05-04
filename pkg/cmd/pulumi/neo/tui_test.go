@@ -339,10 +339,9 @@ func TestModel_Update_WindowSize_TracksDimensionsAndBuildsRenderer(t *testing.T)
 
 	assert.Equal(t, 100, um.width)
 	assert.Equal(t, 30, um.height)
-	// welcome.termWidth is the safe live-frame width: capped at 80 once the
-	// terminal exceeds 90 cols, so the banner stays at a stable 80 cols
-	// across drag-resizes through that range. See liveWidth() for rationale.
-	assert.Equal(t, 80, um.welcome.termWidth)
+	// welcome.termWidth tracks liveWidth() = terminal width minus a 4-col
+	// margin so the banner fills the available width.
+	assert.Equal(t, 96, um.welcome.termWidth)
 	// The glamour renderer is lazily built on the first WindowSize so it can
 	// pick up the real terminal width for wrapping.
 	require.NotNil(t, um.mdRenderer)
@@ -1726,7 +1725,7 @@ func TestModel_WrapPlain_TinyWidthShortCircuits(t *testing.T) {
 	long := "a fairly long sentence that would otherwise wrap"
 
 	m := NewModel(ModelConfig{})
-	m.width = 1 // liveWidth returns m.width directly when below minUsableWidth
+	m.width = 1 // liveWidth returns m.width directly when at or below minUsableWidth
 	require.LessOrEqual(t, m.liveWidth(), 4, "test relies on tiny liveWidth path")
 	assert.Equal(t, long, m.wrapPlain(long), "tiny-width path must return input verbatim")
 

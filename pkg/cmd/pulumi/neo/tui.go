@@ -745,37 +745,25 @@ func (m Model) View() string {
 	return strings.Join(parts, "\n")
 }
 
-// liveWidth returns the width to use when rendering live-frame content. We
-// cap at 80 cols (book-readable column count) and otherwise back off the
-// real terminal width by 10 cols.
+// liveWidth returns the width to use when rendering live-frame content:
+// the terminal width minus a small cushion that keeps glamour, lipgloss,
+// and the textinput off the wrap column. Tracks the terminal so wide
+// windows actually fill.
 //
-// bubbletea's inline renderer (v1.3.10 standard_renderer.go) uses logical
-// line counts, not visual rows, when issuing CursorUp(linesRendered-1)
-// before each frame. Any content that wraps to two visual rows on the new
-// terminal width — a lipgloss border at width-4, a glamour-wrapped paragraph
-// at width-4, a width-padded textinput — desyncs the cursor and stacks
-// stale frame fragments into scrollback during drag-resize.
-//
-// The 80-col cap matters because it makes resize a non-event for the
-// common case: any terminal ≥ 90 cols renders content at the same constant
-// 80 cols regardless of actual width, so dragging through that range
-// doesn't change what's on screen and the renderer never sees a wrap.
-// Below 90 cols liveWidth follows the terminal (with a 10-col cushion) so
-// content stays inside the viewport.
+// Resize-during-stream caveat: bubbletea v1.3.10's inline renderer uses
+// logical line counts, not visual rows, in CursorUp before each frame, so
+// drag-resizing while a live frame is in flight can stack stale fragments
+// into scrollback. Tracked separately; will be addressed via a bubbletea
+// upgrade or upstream fix.
 func (m *Model) liveWidth() int {
 	const (
-		maxLiveWidth   = 80
-		margin         = 10
+		margin         = 4  // small cushion so content doesn't end at the wrap column
 		minUsableWidth = 40 // below this, give up the cushion to keep something visible
 	)
-	w := m.width
-	if w > maxLiveWidth+margin {
-		return maxLiveWidth
+	if m.width > minUsableWidth {
+		return m.width - margin
 	}
-	if w > minUsableWidth {
-		return w - margin
-	}
-	return w
+	return m.width
 }
 
 // liveView renders only the in-flight blocks that should occupy the live
@@ -1046,7 +1034,7 @@ func (m *Model) renderApprovalChoice(b *block) {
 func (m *Model) renderUserBubble(content string) string {
 	prefix := promptStyle.Render("❯") + " " // visible width 2
 	padded := " " + content + " "
-	bubbleWidth := max(m.width-2, 8)
+	bubbleWidth := max(m.liveWidth()-2, 8)
 	style := userMsgBubble
 	if m.width > 4 && lipgloss.Width(padded) > bubbleWidth {
 		style = style.Width(bubbleWidth)
