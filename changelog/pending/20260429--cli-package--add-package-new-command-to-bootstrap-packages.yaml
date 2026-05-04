@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Add `pulumi package new` to bootstrap a Pulumi package from a template
