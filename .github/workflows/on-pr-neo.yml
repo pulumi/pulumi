@@ -36,7 +36,9 @@ jobs:
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     outputs:
-      version-set: ${{ steps.gen.outputs.version-set }}
+      # set-output JSON-encodes the value, so consumers must fromJSON-unwrap it
+      # here for downstream `fromJson(inputs.version-set).<key>` lookups to work.
+      version-set: ${{ fromJSON(steps.gen.outputs.version-set) }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
