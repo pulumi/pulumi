@@ -12,6 +12,8 @@ on:
   pull_request:
     paths-ignore:
       - "sdk/.version"
+      - "pkg/cmd/pulumi/neo/**"
+      - "changelog/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}
