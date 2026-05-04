@@ -11,15 +11,14 @@ on:
   pull_request:
     paths-ignore:
       - "**" # Skip all files…
-      - "!sdk/.version" # …except if only these paths change and nothing else.
-      - "!changelog/**"
+      - "!sdk/.version" # …except if only this file changes and nothing else.
 jobs:
   no-op:
-    name: Skip CI on no-op changes
+    name: Skip CI on .version changes
     runs-on: ubuntu-latest
     steps:
-      - name: Skip CI on no-op changes
-        run: echo 'No need to run CI tests when only .version or changelog files change'
+      - name: Skip CI on .version changes
+        run: echo 'No need to run CI tests when only .version changes'
 
   ci-ok:
     name: ci-ok
