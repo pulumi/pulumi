@@ -803,11 +803,18 @@ async def serialize_property(
 def deserialize_properties(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
 ) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
     Python types.
+
+    `__`-prefixed keys are preserved by default. Pass `keep_internal=False` to opt into the
+    legacy behavior of stripping engine-managed bookkeeping like `__defaults`. Most callers
+    should leave this alone — provider schemas can use `__`-prefixed names as discriminators,
+    and stripping them silently breaks any value that gets passed back as input to a resource
+    (see https://github.com/pulumi/pulumi/issues/22738). `__provider` is always preserved
+    because it's reserved by Python dynamic providers.
     """
     # Check out this link for details on what sort of types Protobuf is going to generate:
     # https://developers.google.com/protocol-buffers/docs/reference/python-generated
@@ -861,12 +868,10 @@ def deserialize_properties(
     # since we can only set secret outputs on top level properties.
     output = {}
     for k, v in list(props_struct.items()):
-        # Unilaterally skip properties considered internal by the Pulumi engine.
-        # These don't actually contribute to the exposed shape of the object, do
-        # not need to be passed back to the engine, and often will not match the
-        # expected type we are deserializing into.
-        # Keep "__provider" as it's the property name used by Python dynamic providers.
-        if not keep_internal and k.startswith("__") and k != "__provider":
+        # Skip properties considered internal by the Pulumi engine when the caller has
+        # explicitly opted out. `__provider` is always preserved because it's the
+        # property name reserved for Python dynamic providers.
+        if keep_internal is False and k.startswith("__") and k != "__provider":
             continue
 
         value = deserialize_property(v, keep_unknowns, keep_internal)
@@ -958,7 +963,7 @@ def _unwrap_rpc_secret_struct_properties(value: Any) -> tuple[Any, bool]:
 def deserialize_properties_unwrap_secrets(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
 ) -> tuple[Any, bool]:
     """
     Similar to deserialize_properties except that it unwraps secrets and returns a boolean
@@ -1102,7 +1107,7 @@ def unwrap_rpc_secret(value: Any) -> Any:
 def deserialize_property(
     value: Any,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
 ) -> Any:
     """
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic

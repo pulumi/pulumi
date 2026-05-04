@@ -1304,7 +1304,11 @@ class DeserializationTests(unittest.TestCase):
         self.assertEqual(normalized["array"][0]["secret"], "a secret")
         self.assertEqual(normalized["array"][0]["mixed"][0]["secret"], "a secret")
 
-    def test_internal_property(self):
+    def test_internal_property_default_preserves(self):
+        # By default, deserialize_properties preserves `__`-prefixed keys.
+        # Provider schemas can use them as discriminators (e.g. `__type`), and
+        # stripping silently breaks any value that gets passed back as input
+        # to a resource. See https://github.com/pulumi/pulumi/issues/22738.
         all_props = struct_pb2.Struct()
         all_props["a"] = "b"
         all_props["__defaults"] = []
@@ -1313,6 +1317,28 @@ class DeserializationTests(unittest.TestCase):
         all_props["__other"] = "baz"
 
         val = rpc.deserialize_properties(all_props)
+        self.assertEqual(
+            {
+                "a": "b",
+                "__defaults": [],
+                "c": {"foo": "bar", "__defaults": []},
+                "__provider": "serialized_dynamic_provider",
+                "__other": "baz",
+            },
+            val,
+        )
+
+    def test_internal_property_explicit_strip(self):
+        # `keep_internal=False` opts into the legacy strip-bookkeeping behavior.
+        # `__provider` is always preserved.
+        all_props = struct_pb2.Struct()
+        all_props["a"] = "b"
+        all_props["__defaults"] = []
+        all_props["c"] = {"foo": "bar", "__defaults": []}
+        all_props["__provider"] = "serialized_dynamic_provider"
+        all_props["__other"] = "baz"
+
+        val = rpc.deserialize_properties(all_props, keep_internal=False)
         self.assertEqual(
             {
                 "a": "b",
