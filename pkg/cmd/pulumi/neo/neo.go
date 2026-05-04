@@ -50,8 +50,8 @@ type outboundEvent struct {
 	planMode bool
 }
 
-// NewNeoCmd creates the `pulumi neo` command. This first slice of the command starts a
-// Neo task in `cli` tool execution mode, prints a console URL the user can open in a
+// NewNeoCmd creates the `pulumi neo` command. This first iteration of the command starts
+// a Neo task in `cli` tool execution mode, prints a console URL the user can open in a
 // browser, and runs the local tool-execution loop in the foreground until the task ends.
 // There is no interactive UI yet — the chat happens in the web console.
 func NewNeoCmd() *cobra.Command {
