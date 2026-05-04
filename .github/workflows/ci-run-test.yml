@@ -42,6 +42,11 @@ on:
         default: false
         required: false
         type: boolean
+      enable-race-detection:
+        description: "Enable race detection in test runs"
+        default: false
+        required: false
+        type: boolean
       test-retries:
         description: "How often tests are retried"
         default: 0
@@ -147,10 +152,12 @@ jobs:
           {
             echo "GO_TEST_PARALLELISM=4"
             echo "GO_TEST_PKG_PARALLELISM=1"
-            echo "GO_TEST_RACE=false"
           } >> "$GITHUB_ENV"
           # For debugging:
           ps aux
+      - name: Disable race detection
+        if: ${{ !inputs.enable-race-detection }}
+        run: echo "GO_TEST_RACE=false" >> "$GITHUB_ENV"
       - name: Install tsc on windows and macos
         if: ${{ runner.os == 'windows' || runner.os == 'macOS' }}
         run: |

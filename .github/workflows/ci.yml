@@ -50,6 +50,11 @@ on:
         default: 0
         description: "Retry tests n times if there are failures"
         type: number
+      enable-race-detection:
+        required: false
+        default: false
+        description: "Enable race detection in test builds and test runs"
+        type: boolean
       fuzz-test-optional:
         required: false
         default: false
@@ -309,7 +314,7 @@ jobs:
       version-set: ${{ needs.matrix.outputs.version-set }}
       enable-coverage: ${{ inputs.enable-coverage }}
       # Windows and Linux need CGO and cross compile support to support -race. So for now only enable it for darwin and amd64 linux.
-      enable-race-detection: ${{ matrix.target.os == 'darwin' || (matrix.target.os == 'linux' && matrix.target.arch == 'amd64') }}
+      enable-race-detection: ${{ inputs.enable-race-detection && (matrix.target.os == 'darwin' || (matrix.target.os == 'linux' && matrix.target.arch == 'amd64')) }}
       artifact-suffix: '-integration'
     secrets: inherit
 
@@ -364,6 +369,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: false
       enable-coverage: ${{ inputs.enable-coverage }}
+      enable-race-detection: ${{ inputs.enable-race-detection }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -390,6 +396,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: ${{ inputs.enable-coverage }}
+      enable-race-detection: ${{ inputs.enable-race-detection }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -417,6 +424,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
+      enable-race-detection: ${{ inputs.enable-race-detection }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
@@ -444,6 +452,7 @@ jobs:
       test-command: ${{ matrix.test-suite.command }}
       is-integration-test: true
       enable-coverage: false
+      enable-race-detection: ${{ inputs.enable-race-detection }}
       test-retries: ${{ inputs.test-retries }}
       # require-build: false # TODO, remove ${{ matrix.require-build || false }}
 
