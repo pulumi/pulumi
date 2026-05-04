@@ -278,9 +278,6 @@ class MocksWithInternalKeys(pulumi.runtime.Mocks):
 
 @pulumi.runtime.test
 def test_invoke_preserves_internal_keys() -> None:
-    # Provider-defined invokes may use `__`-prefixed keys (e.g. `__type`) as
-    # discriminators in their return shape. The Python SDK must preserve
-    # them so that the result can be passed back as input to a resource.
     pulumi.runtime.mocks.set_mocks(MocksWithInternalKeys())
 
     result = pulumi.runtime.invoke("test:index:MyFunction", {}).value
@@ -338,7 +335,6 @@ class ResourceWithPermissions(pulumi.CustomResource):
 async def test_invoke_result_passed_to_resource_preserves_internal_keys() -> None:
     # Round-trip test: an invoke that returns `__type`-prefixed discriminators
     # should be usable as input to a downstream resource without losing them.
-    # This is the user-visible failure described in #22738.
     mocks = CapturingMocks()
     pulumi.runtime.mocks.set_mocks(mocks)
 

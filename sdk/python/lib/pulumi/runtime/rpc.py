@@ -808,13 +808,6 @@ def deserialize_properties(
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
     Python types.
-
-    `__`-prefixed keys are preserved by default. Pass `keep_internal=False` to opt into the
-    legacy behavior of stripping engine-managed bookkeeping like `__defaults`. Most callers
-    should leave this alone — provider schemas can use `__`-prefixed names as discriminators,
-    and stripping them silently breaks any value that gets passed back as input to a resource
-    (see https://github.com/pulumi/pulumi/issues/22738). `__provider` is always preserved
-    because it's reserved by Python dynamic providers.
     """
     # Check out this link for details on what sort of types Protobuf is going to generate:
     # https://developers.google.com/protocol-buffers/docs/reference/python-generated
