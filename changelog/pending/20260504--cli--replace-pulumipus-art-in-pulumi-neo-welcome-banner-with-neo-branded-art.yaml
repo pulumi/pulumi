@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli
+  description: Replace the Pulumipus mascot in the `pulumi neo` welcome banner with new Neo-branded ASCII art.
