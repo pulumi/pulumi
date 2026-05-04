@@ -43,8 +43,8 @@ func newPackageAddCmd() *cobra.Command {
 	var language string
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add a package to your Pulumi project, plugin, or or current directory.",
-		Long: `Add a package to your Pulumi project, plugin, or or current directory.
+		Short: "Add a package to your Pulumi project, plugin, or current directory.",
+		Long: `Add a package to your Pulumi project, plugin, or current directory.
 
 This command locally generates an SDK in the selected Pulumi language and
 prints instructions on how to use it. The SDK is based on a Pulumi package
