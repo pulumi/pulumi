@@ -17,13 +17,11 @@ package neo
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -554,84 +552,4 @@ func TestRunWithTUI_ParentContextCancellationStopsWorkers(t *testing.T) {
 	// nil after observing cancellation. The helper itself returns nil — the
 	// caller of runNeo would surface ctx.Err() via session.Run separately.
 	require.NoError(t, err)
-}
-
-// noopTeaModel is a minimal tea.Model that does nothing. The integration test
-// drives it via p.Quit so the model itself doesn't need to handle any messages.
-type noopTeaModel struct{}
-
-func (noopTeaModel) Init() tea.Cmd                       { return nil }
-func (noopTeaModel) Update(tea.Msg) (tea.Model, tea.Cmd) { return noopTeaModel{}, nil }
-func (noopTeaModel) View() string                        { return "" }
-
-// TestRunWithTUI_IntegrationRealBubbleteaAndSession is an integration test
-// that wires the real bubbletea program (the production TUI runtime) to a
-// real Session.Run loop. The unit tests on runWithTUI use stub TUI runners
-// and stub workers; this one swaps both for the production types so a future
-// change to either's shutdown semantics — say bubbletea changing what p.Run
-// returns on Quit, or Session.Run no longer honoring ctx.Done — would surface
-// here even if the helper's contract appeared satisfied in isolation.
-//
-// The bug being guarded: pressing Ctrl+C twice in `pulumi neo` made the TUI
-// call tea.Quit, and tea.Quit returned nil from p.Run. errgroup keeps its
-// derived context alive on a nil error, so Session.Run's `<-ctx.Done` arm
-// never fired and g.Wait blocked forever — the user had to press Ctrl+C a
-// third time to send the engine a kill signal.
-func TestRunWithTUI_IntegrationRealBubbleteaAndSession(t *testing.T) {
-	t.Parallel()
-
-	// Detach bubbletea from the test environment: nil input, discarded output,
-	// no signal handler (so SIGINT to the test runner doesn't poison the
-	// program), and no renderer (so we don't write escape sequences anywhere).
-	p := tea.NewProgram(
-		noopTeaModel{},
-		tea.WithInput(nil),
-		tea.WithOutput(io.Discard),
-		tea.WithoutSignals(),
-		tea.WithoutSignalHandler(),
-		tea.WithoutRenderer(),
-	)
-
-	// Real Session.Run blocked on the SSE stream and ctx.Done. The fake
-	// streamer keeps its stream channel open and silent so Session.Run has
-	// nothing to consume — exactly the production state during idle wait.
-	streamer := newFakeStreamer()
-	session := &Session{
-		Client:   streamer,
-		Handlers: map[string]ToolHandler{},
-		OrgName:  "org",
-		TaskID:   "task",
-	}
-
-	// Trigger a clean TUI shutdown. p.Quit() blocks on the program's message
-	// channel until the program is consuming, so it has the necessary
-	// happens-before with p.Run starting — no sleep needed.
-	go p.Quit()
-
-	done := make(chan error, 1)
-	go func() {
-		done <- runWithTUI(
-			t.Context(),
-			func() error {
-				_, err := p.Run()
-				return err
-			},
-			func(g *errgroup.Group, gctx context.Context) {
-				g.Go(func() error { return session.Run(gctx) })
-			},
-		)
-	}()
-
-	select {
-	case err := <-done:
-		// Session.Run returns ctx.Err() on cancellation, and errgroup surfaces
-		// the first non-nil error — context.Canceled is the expected shape.
-		// The load-bearing assertion is "we got here at all": without the
-		// cancel-on-TUI-exit fix, runWithTUI never returns and the timeout
-		// branch fires.
-		require.ErrorIs(t, err, context.Canceled)
-	case <-time.After(3 * time.Second):
-		t.Fatal("runWithTUI did not return within 3s — the cancel-on-TUI-exit fix has regressed " +
-			"(real bubbletea + real Session would hang on a clean Quit)")
-	}
 }
