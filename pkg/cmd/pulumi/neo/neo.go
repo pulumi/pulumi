@@ -197,6 +197,12 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	// scrollback after exit.
 	p := tea.NewProgram(model)
 
+	// errgroup.WithContext only cancels gctx on a non-nil error or parent
+	// cancellation; tea.Quit returns nil, so without an explicit cancel the
+	// session and dispatcher goroutines keep running and g.Wait() blocks.
+	ctx, cancelAll := context.WithCancel(ctx)
+	defer cancelAll()
+
 	g, gctx := errgroup.WithContext(ctx)
 
 	// taskState tracks the task ID once created (may be deferred if no prompt).
@@ -249,6 +255,10 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 
 	g.Go(func() error {
 		_, err := p.Run()
+		// Cancel the shared context so session.Run and the outbound
+		// dispatcher exit and g.Wait() can return; otherwise the process
+		// would hang after the TUI tears down the terminal.
+		cancelAll()
 		return err
 	})
 
