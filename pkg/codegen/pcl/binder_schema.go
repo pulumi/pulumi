@@ -276,20 +276,77 @@ func (b *binder) getPkgOpts(node *Resource) packageOpts {
 	return pkgOpts
 }
 
+func (b *binder) getReadPkgOpts(node *ReadResource) packageOpts {
+	node.VariableType = model.NewObjectType(map[string]model.Type{
+		"id":  model.NewOutputType(model.StringType),
+		"urn": model.NewOutputType(model.StringType),
+	})
+	var rangeKey, rangeValue model.Type
+	for _, block := range node.syntax.Body.Blocks {
+		if block.Type == "options" {
+			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
+				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
+				typ := model.ResolveOutputs(expr.Type())
+				strict := !b.options.skipRangeTypecheck
+				rk, rv, _ := model.GetCollectionTypes(typ, rng.Range(), strict)
+				rangeKey, rangeValue = rk, rv
+			}
+		}
+	}
+
+	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
+	block, _ := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+
+	var options *model.Block
+	for _, item := range block.Body.Items {
+		if item, ok := item.(*model.Block); ok && item.Type == "options" {
+			options = item
+			break
+		}
+	}
+
+	pkgOpts := packageOpts{}
+	if options != nil {
+		for _, item := range options.Body.Items {
+			switch item := item.(type) {
+			case *model.Attribute:
+				switch item.Name {
+				case "version":
+					pkgOpts.version = modelExprToString(&item.Value)
+				case "pluginDownloadURL":
+					pkgOpts.pluginDownloadURL = modelExprToString(&item.Value)
+				}
+			}
+		}
+	}
+
+	return pkgOpts
+}
+
 // loadReferencedPackageSchemas loads the schemas for any packages referenced by a given node.
 func (b *binder) loadReferencedPackageSchemas(ctx context.Context, n Node) error {
 	var pkgOpts packageOpts
 	packageNames := codegen.StringSet{}
 
-	if r, ok := n.(*Resource); ok {
+	switch r := n.(type) {
+	case *Resource:
 		token, tokenRange := r.GetToken()
 		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
-		if mod == "providers" {
+		if packageName == "pulumi" && mod == "providers" {
 			packageNames.Add(name)
 		} else {
 			packageNames.Add(packageName)
 		}
 		pkgOpts = b.getPkgOpts(r)
+	case *ReadResource:
+		token, tokenRange := r.GetToken()
+		packageName, mod, name, _ := DecomposeToken(token, tokenRange)
+		if packageName == "pulumi" && mod == "providers" {
+			packageNames.Add(name)
+		} else {
+			packageNames.Add(packageName)
+		}
+		pkgOpts = b.getReadPkgOpts(r)
 	}
 
 	diags := hclsyntax.VisitAll(n.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {

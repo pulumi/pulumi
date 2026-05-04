@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: auto/go
-  description: Drop the "With" prefix from generated option helpers so they match the naming of the existing optXxx packages

@@ -1,0 +1,3 @@
+# Goldens are compared byte-for-byte; force LF so Windows checkouts don't
+# flip them to CRLF and break `assertGolden`.
+* text eol=lf

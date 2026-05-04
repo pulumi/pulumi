@@ -39,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -554,14 +553,12 @@ func SerializeResource(
 		Modified:                res.Modified,
 		SourcePosition:          res.SourcePosition,
 		StackTrace:              stackTrace,
-		HideDiff: slice.Map(res.HideDiff, func(g property.Glob) resource.BackCompatPropertyPath {
-			return resource.BackCompatPropertyPath(g)
-		}),
-		IgnoreChanges:       resource.BackCompatPropertyPathList(res.IgnoreChanges),
-		ReplaceOnChanges:    resource.BackCompatPropertyPathList(res.ReplaceOnChanges),
-		RefreshBeforeUpdate: res.RefreshBeforeUpdate,
-		ViewOf:              res.ViewOf,
-		ResourceHooks:       res.ResourceHooks,
+		HideDiff:                res.HideDiff,
+		IgnoreChanges:           res.IgnoreChanges,
+		ReplaceOnChanges:        res.ReplaceOnChanges,
+		RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
+		ViewOf:                  res.ViewOf,
+		ResourceHooks:           res.ResourceHooks,
 	}
 
 	if res.CustomTimeouts.IsNotEmpty() {
@@ -786,15 +783,13 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter) (*resourc
 			Modified:                res.Modified,
 			SourcePosition:          res.SourcePosition,
 			StackTrace:              stackTrace,
-			IgnoreChanges:           []property.Glob(res.IgnoreChanges),
-			HideDiff: slice.Map(res.HideDiff, func(p resource.BackCompatPropertyPath) property.Glob {
-				return property.Glob(p)
-			}),
-			ReplaceOnChanges:    []property.Glob(res.ReplaceOnChanges),
-			ReplacementTrigger:  trigger,
-			RefreshBeforeUpdate: res.RefreshBeforeUpdate,
-			ViewOf:              res.ViewOf,
-			ResourceHooks:       res.ResourceHooks,
+			IgnoreChanges:           res.IgnoreChanges,
+			HideDiff:                res.HideDiff,
+			ReplaceOnChanges:        res.ReplaceOnChanges,
+			ReplacementTrigger:      trigger,
+			RefreshBeforeUpdate:     res.RefreshBeforeUpdate,
+			ViewOf:                  res.ViewOf,
+			ResourceHooks:           res.ResourceHooks,
 		}.Make(),
 		nil
 }

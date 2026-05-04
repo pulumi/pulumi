@@ -1,0 +1,7 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: |
+    Add `pulumi cloud api <op-or-path>` for calling any Pulumi Cloud API
+    endpoint, with `--field`/`--header`/`--input`/`--body` flag handling, path
+    template binding, content negotiation via `--format`, and `--dry-run`

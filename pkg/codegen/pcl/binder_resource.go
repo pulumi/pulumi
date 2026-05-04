@@ -27,10 +27,23 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
+
+func baseResourceSyntax(node BaseResource) *hclsyntax.Block {
+	switch node := node.(type) {
+	case *Resource:
+		return node.syntax
+	case *ReadResource:
+		return node.syntax
+	default:
+		contract.Failf("unexpected base resource type %T", node)
+		return nil
+	}
+}
 
 func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
@@ -42,6 +55,135 @@ func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnosti
 	diagnostics = append(diagnostics, bodyDiags...)
 
 	return diagnostics
+}
+
+func (b *binder) resolveSchemaResourceForBind(
+	ctx context.Context,
+	token string,
+	tokenRange hcl.Range,
+	allowProviderToken bool,
+	allowComponent bool,
+	makeResourceDynamic func(),
+) (*schema.Resource, string, hcl.Diagnostics) {
+	pkg, module, name, diagnostics := DecomposeToken(token, tokenRange)
+	if diagnostics.HasErrors() {
+		return nil, token, diagnostics
+	}
+
+	isProvider := false
+	if pkg == "pulumi" && module == "providers" {
+		if !allowProviderToken {
+			return nil, token, hcl.Diagnostics{errorf(tokenRange, "provider resources cannot be read: '%s'", token)}
+		}
+		pkg, isProvider = name, true
+	}
+
+	var pkgSchema *packageSchema
+	var err error
+	// It is important that we call `loadPackageSchema`/`loadPackageSchemaFromDescriptor`
+	// instead of `getPackageSchema` here  because the version may be wrong. When the version should not be empty,
+	// `loadPackageSchema` will load the default version while `getPackageSchema` will
+	// simply fail. We can't give a populated version field since we have not processed
+	// the body, and thus the version yet.
+	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
+		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
+	} else {
+		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
+	}
+	if err != nil {
+		e := unknownPackage(pkg, tokenRange)
+		e.Detail = err.Error()
+
+		if b.options.skipResourceTypecheck {
+			makeResourceDynamic()
+			return nil, token, hcl.Diagnostics{asWarningDiagnostic(e)}
+		}
+
+		return nil, token, hcl.Diagnostics{e}
+	}
+
+	var res *schema.Resource
+	if isProvider {
+		r, err := pkgSchema.schema.Provider()
+		if err != nil {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return nil, token, diagnostics
+			}
+			return nil, token, hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+		}
+		res = r
+	} else {
+		r, tk, ok, err := pkgSchema.LookupResource(token)
+		if err != nil {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return nil, token, diagnostics
+			}
+
+			return nil, token, hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
+		} else if !ok {
+			if b.options.skipResourceTypecheck {
+				makeResourceDynamic()
+				return nil, token, diagnostics
+			}
+
+			return nil, token, hcl.Diagnostics{unknownResourceType(token, tokenRange)}
+		}
+		res = r
+		// For pulumi built-in resources (e.g. pulumi:pulumi:StackReference), canonicalizeToken
+		// strips the module to produce "pulumi::StackReference" because TokenToModule returns ""
+		// for the pulumi:pulumi module. Reconstruct the full token from the decomposed parts.
+		if pkg == pulumiPackage {
+			token = fmt.Sprintf("%s:%s:%s", pkg, module, name)
+		} else {
+			token = tk
+		}
+	}
+
+	if !allowComponent && res.IsComponent {
+		return nil, token, hcl.Diagnostics{componentResourceCannotBeRead(token, tokenRange)}
+	}
+
+	return res, token, diagnostics
+}
+
+func (b *binder) computeBaseResourceInputOutputTypes(
+	node BaseResource,
+	inputProperties []*schema.Property,
+	properties []*schema.Property,
+) (model.Type, model.Type, []*schema.Property) {
+	// Create input and output types for the schema.
+	// first reduce property types which are unions of objects into just an object when possible
+	reducedInputProperties := b.resolveBaseResourceInputUnionTypes(node, inputProperties)
+	inputObjectType := &schema.ObjectType{Properties: reducedInputProperties}
+	inputType := b.schemaTypeToType(inputObjectType)
+
+	outputProperties := map[string]model.Type{
+		"id":  model.NewOutputType(model.StringType),
+		"urn": model.NewOutputType(model.StringType),
+	}
+	for _, prop := range properties {
+		outputProperties[prop.Name] = model.NewOutputType(b.schemaTypeToType(prop.Type))
+	}
+	outputType := model.NewObjectType(
+		outputProperties,
+		&ResourceAnnotation{node},
+		&schema.ObjectType{Properties: properties},
+	)
+
+	findTransitivePackageReferences := func(schemaType schema.Type) {
+		if objectType, ok := schemaType.(*schema.ObjectType); ok && objectType.PackageReference != nil {
+			ref := objectType.PackageReference
+			if _, found := b.referencedPackages[ref.Name()]; !found {
+				b.referencedPackages[ref.Name()] = ref
+			}
+		}
+	}
+	codegen.VisitTypeClosure(reducedInputProperties, findTransitivePackageReferences)
+	codegen.VisitTypeClosure(properties, findTransitivePackageReferences)
+
+	return inputType, outputType, reducedInputProperties
 }
 
 func annotateAttributeValue(expr model.Expression, attributeType schema.Type) model.Expression {
@@ -237,13 +379,13 @@ func (b *binder) resolveInputUnions(
 	return resolvedProperties
 }
 
-// rawResourceInputs returns the raw inputs for a resource. This is useful when we need to resolve unions of objects
-// and reduce them to just an object when possible. The inputs of a resource contain the discriminator field of which
-// the value is used to determine which object type to use and thus reduce unions into objects.
-func (b *binder) rawResourceInputs(node *Resource) map[string]model.Expression {
+// bindRawBaseResourceInputs returns the raw inputs for a resource-like block. This is useful when we need to resolve
+// unions of objects and reduce them to just an object when possible. The inputs contain the discriminator field whose
+// value is used to determine which object type to use and thus reduce unions into objects.
+func (b *binder) bindRawBaseResourceInputs(node BaseResource) map[string]model.Expression {
 	inputs := map[string]model.Expression{}
 	scopes := newResourceScopes(b.root, node, nil, nil)
-	block, _ := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
+	block, _ := model.BindBlock(baseResourceSyntax(node), scopes, b.tokens, b.options.modelOptions()...)
 	for _, item := range block.Body.Items {
 		switch item := item.(type) {
 		case *model.Attribute:
@@ -254,12 +396,228 @@ func (b *binder) rawResourceInputs(node *Resource) map[string]model.Expression {
 	return inputs
 }
 
-// reduceInputUnionTypes reduces the input types of a resource which are unions of objects
-// into just an object when possible. We use the actual inputs of the resource to determine which type object we should
-// use because objects in a union have a discriminator field which is used to determine which object type to use.
-func (b *binder) reduceInputUnionTypes(node *Resource, inputProperties []*schema.Property) []*schema.Property {
-	inputs := b.rawResourceInputs(node)
+// resolveBaseResourceInputUnionTypes reduces input types that are unions of objects into just an object when possible.
+// We use the actual input expressions to determine which object type we should use based on discriminator fields.
+func (b *binder) resolveBaseResourceInputUnionTypes(
+	node BaseResource, inputProperties []*schema.Property,
+) []*schema.Property {
+	inputs := b.bindRawBaseResourceInputs(node)
 	return b.resolveInputUnions(inputs, inputProperties)
+}
+
+func (b *binder) computeBaseResourceVariableTypeFromRange(
+	node BaseResource, variableType model.Type,
+) (model.Type, model.Type, model.Type, hcl.Diagnostics) {
+	var diagnostics hcl.Diagnostics
+
+	var rangeKey, rangeValue model.Type
+	for _, block := range baseResourceSyntax(node).Body.Blocks {
+		if block.Type != "options" {
+			continue
+		}
+		rng, hasRange := block.Body.Attributes["range"]
+		if !hasRange {
+			continue
+		}
+
+		expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
+		typ := model.ResolveOutputs(expr.Type())
+		if model.IsOptionalType(typ) {
+			// if the range expression type is wrapped as an optional type
+			// due to the range expression being a conditional.
+			// unwrap it to get the actual type
+			typ = unwrapOptionalType(typ)
+		}
+
+		resourceVar := &model.Variable{
+			Name:         "r",
+			VariableType: variableType,
+		}
+
+		switch {
+		case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
+			condExpr := &model.ConditionalExpression{
+				Condition:  expr,
+				TrueResult: model.VariableReference(resourceVar),
+				FalseResult: model.ConstantReference(&model.Constant{
+					Name:          "null",
+					ConstantValue: cty.NullVal(cty.DynamicPseudoType),
+				}),
+			}
+			diags := condExpr.Typecheck(false)
+			checkDiagnostics := len(diags) == 0
+			if b.options.skipResourceTypecheck {
+				checkDiagnostics = !diags.HasErrors()
+			}
+			contract.Assertf(checkDiagnostics, "failed to typecheck conditional expression: %v", diags)
+
+			variableType = condExpr.Type()
+		case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
+			functions := pulumiBuiltins(b.options)
+			rangeArgs := []model.Expression{expr}
+			rangeSig, _ := functions["range"].GetSignature(rangeArgs)
+
+			rangeExpr := &model.ForExpression{
+				ValueVariable: &model.Variable{
+					Name:         "_",
+					VariableType: model.NumberType,
+				},
+				Collection: &model.FunctionCallExpression{
+					Name:      "range",
+					Signature: rangeSig,
+					Args:      rangeArgs,
+				},
+				Value: model.VariableReference(resourceVar),
+			}
+			diags := rangeExpr.Typecheck(false)
+			checkDiagnostics := len(diags) == 0
+			if b.options.skipResourceTypecheck {
+				checkDiagnostics = !diags.HasErrors()
+			}
+			contract.Assertf(checkDiagnostics, "failed to typecheck range expression: %v", diags)
+
+			rangeValue = model.IntType
+			variableType = rangeExpr.Type()
+		default:
+			strictCollectionType := !b.options.skipRangeTypecheck
+			rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
+			rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
+			keyVariable := &model.Variable{
+				Name:         "__key",
+				VariableType: rangeKey,
+			}
+			iterationExpr := &model.ForExpression{
+				KeyVariable: keyVariable,
+				ValueVariable: &model.Variable{
+					Name:         "_",
+					VariableType: rangeValue,
+				},
+				Collection:                   expr,
+				Value:                        model.VariableReference(resourceVar),
+				StrictCollectionTypechecking: strictCollectionType,
+			}
+			// When iterating over a map or object, preserve the key so the
+			// resulting collection is a map indexed by string rather than a
+			// list indexed by number.
+			if rangeKey == model.StringType {
+				iterationExpr.Key = model.VariableReference(keyVariable)
+			}
+			diags = iterationExpr.Typecheck(false)
+			contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.
+
+			variableType = iterationExpr.Type()
+		}
+	}
+
+	return variableType, rangeKey, rangeValue, diagnostics
+}
+
+func (b *binder) bindAndCollectBaseResourceBlock(
+	node BaseResource, rangeKey, rangeValue model.Type,
+) (*model.Block, []*model.Attribute, *model.Block, string, hcl.Diagnostics) {
+	var diagnostics hcl.Diagnostics
+
+	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
+	block, blockDiags := model.BindBlock(baseResourceSyntax(node), scopes, b.tokens, b.options.modelOptions()...)
+	for _, diag := range blockDiags {
+		if b.options.skipResourceTypecheck && diag.Severity == hcl.DiagError {
+			// If we are skipping resource type-checking, convert errors to warnings.
+			diag.Severity = hcl.DiagWarning
+		}
+	}
+	diagnostics = append(diagnostics, blockDiags...)
+
+	var logicalName string
+	var options *model.Block
+	inputs := slice.Prealloc[*model.Attribute](len(block.Body.Items))
+	for _, item := range block.Body.Items {
+		switch item := item.(type) {
+		case *model.Attribute:
+			if item.Name == LogicalNamePropertyKey {
+				name, lDiags := getStringAttrValue(item)
+				if lDiags != nil {
+					diagnostics = diagnostics.Append(lDiags)
+				} else {
+					logicalName = name
+				}
+				continue
+			}
+			inputs = append(inputs, item)
+		case *model.Block:
+			switch item.Type {
+			case "options":
+				if options != nil {
+					diagnostics = append(diagnostics, duplicateBlock(item.Type, item.Syntax.TypeRange))
+				} else {
+					options = item
+				}
+			default:
+				diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
+			}
+		}
+	}
+
+	return block, inputs, options, logicalName, diagnostics
+}
+
+func (b *binder) typecheckBaseResourceAttributes(
+	inputType model.Type,
+	inputs []*model.Attribute,
+	resourceProperties map[string]schema.Type,
+	token string,
+	block *model.Block,
+) hcl.Diagnostics {
+	var diagnostics hcl.Diagnostics
+
+	objectType, ok := inputType.(*model.ObjectType)
+	if !ok {
+		return diagnostics
+	}
+
+	diag := func(d *hcl.Diagnostic) {
+		if b.options.skipResourceTypecheck && d.Severity == hcl.DiagError {
+			d.Severity = hcl.DiagWarning
+		}
+		diagnostics = append(diagnostics, d)
+	}
+	attrNames := codegen.StringSet{}
+	for _, attr := range inputs {
+		attrNames.Add(attr.Name)
+
+		if typ, ok := objectType.Properties[attr.Name]; ok {
+			conversion := typ.ConversionFrom(attr.Value.Type())
+			if !conversion.Exists() {
+				if propertyType, ok := resourceProperties[attr.Name]; ok {
+					attributeRange := attr.Value.SyntaxNode().Range()
+					diag(&hcl.Diagnostic{
+						Severity: hcl.DiagError,
+						Subject:  &attributeRange,
+						Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for resource %q",
+							attr.Value.Type().Pretty().String(),
+							propertyType.String(),
+							token),
+					})
+				}
+			}
+		} else {
+			diag(unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
+		}
+	}
+
+	for _, k := range maputil.SortedKeys(objectType.Properties) {
+		typ := objectType.Properties[k]
+		if model.IsOptionalType(typ) || attrNames.Has(k) {
+			// The type is present or optional. No error.
+			continue
+		}
+		if model.IsConstType(objectType.Properties[k]) {
+			// The type is const, so the value is implied. No error.
+			continue
+		}
+		diag(missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
+	}
+
+	return diagnostics
 }
 
 // bindResourceTypes binds the input and output types for a resource.
@@ -267,12 +625,7 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 	// Set the input and output types to dynamic by default.
 	node.InputType, node.OutputType = model.DynamicType, model.DynamicType
 
-	// Find the resource's schema.
 	token, tokenRange := node.GetToken()
-	pkg, module, name, diagnostics := DecomposeToken(token, tokenRange)
-	if diagnostics.HasErrors() {
-		return diagnostics
-	}
 
 	makeResourceDynamic := func() {
 		// make the inputs and outputs of the resource dynamic
@@ -285,109 +638,15 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 		node.InputType = model.NewObjectType(inferredInputProperties)
 	}
 
-	isProvider := false
-	if pkg == "pulumi" && module == "providers" {
-		pkg, isProvider = name, true
-	}
-	var pkgSchema *packageSchema
-	var err error
-	// It is important that we call `loadPackageSchema`/`loadPackageSchemaFromDescriptor`
-	// instead of `getPackageSchema` here  because the version may be wrong. When the version should not be empty,
-	// `loadPackageSchema` will load the default version while `getPackageSchema` will
-	// simply fail. We can't give a populated version field since we have not processed
-	// the body, and thus the version yet.
-	if packageDescriptor, ok := b.packageDescriptors[pkg]; ok {
-		pkgSchema, err = b.options.packageCache.loadPackageSchemaFromDescriptor(b.options.loader, packageDescriptor)
-	} else {
-		pkgSchema, err = b.options.packageCache.loadPackageSchema(ctx, b.options.loader, pkg, "", "")
+	res, resolvedToken, diagnostics := b.resolveSchemaResourceForBind(
+		ctx, token, tokenRange, true, true, makeResourceDynamic)
+	if diagnostics.HasErrors() || res == nil {
+		return diagnostics
 	}
 
-	if err != nil {
-		e := unknownPackage(pkg, tokenRange)
-		e.Detail = err.Error()
-
-		if b.options.skipResourceTypecheck {
-			makeResourceDynamic()
-			return hcl.Diagnostics{asWarningDiagnostic(e)}
-		}
-
-		return hcl.Diagnostics{e}
-	}
-
-	var res *schema.Resource
-	var inputProperties, properties []*schema.Property
-	if isProvider {
-		r, err := pkgSchema.schema.Provider()
-		if err != nil {
-			if b.options.skipResourceTypecheck {
-				makeResourceDynamic()
-				return diagnostics
-			}
-			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
-		}
-		res = r
-	} else {
-		r, tk, ok, err := pkgSchema.LookupResource(token)
-		if err != nil {
-			if b.options.skipResourceTypecheck {
-				makeResourceDynamic()
-				return diagnostics
-			}
-
-			return hcl.Diagnostics{resourceLoadError(token, err, tokenRange)}
-		} else if !ok {
-			if b.options.skipResourceTypecheck {
-				makeResourceDynamic()
-				return diagnostics
-			}
-
-			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
-		}
-		res = r
-		// For pulumi built-in resources (e.g. pulumi:pulumi:StackReference), canonicalizeToken
-		// strips the module to produce "pulumi::StackReference" because TokenToModule returns ""
-		// for the pulumi:pulumi module. Reconstruct the full token from the decomposed parts.
-		if pkg == pulumiPackage {
-			token = fmt.Sprintf("%s:%s:%s", pkg, module, name)
-		} else {
-			token = tk
-		}
-	}
 	node.Schema = res
-	inputProperties, properties = res.InputProperties, res.Properties
-	node.token = token
-
-	// Create input and output types for the schema.
-	// first reduce property types which are unions of objects into just an object when possible
-	inputObjectType := &schema.ObjectType{Properties: b.reduceInputUnionTypes(node, inputProperties)}
-	inputType := b.schemaTypeToType(inputObjectType)
-
-	outputProperties := map[string]model.Type{
-		"id":  model.NewOutputType(model.StringType),
-		"urn": model.NewOutputType(model.StringType),
-	}
-	for _, prop := range properties {
-		outputProperties[prop.Name] = model.NewOutputType(b.schemaTypeToType(prop.Type))
-	}
-	outputType := model.NewObjectType(
-		outputProperties,
-		&ResourceAnnotation{node},
-		&schema.ObjectType{Properties: properties},
-	)
-
-	node.InputType, node.OutputType = inputType, outputType
-
-	findTransitivePackageReferences := func(schemaType schema.Type) {
-		if objectType, ok := schemaType.(*schema.ObjectType); ok && objectType.PackageReference != nil {
-			ref := objectType.PackageReference
-			if _, found := b.referencedPackages[ref.Name()]; !found {
-				b.referencedPackages[ref.Name()] = ref
-			}
-		}
-	}
-
-	codegen.VisitTypeClosure(inputProperties, findTransitivePackageReferences)
-	codegen.VisitTypeClosure(properties, findTransitivePackageReferences)
+	node.token = resolvedToken
+	node.InputType, node.OutputType, _ = b.computeBaseResourceInputOutputTypes(node, res.InputProperties, res.Properties)
 
 	return diagnostics
 }
@@ -396,16 +655,16 @@ func (b *binder) bindResourceTypes(ctx context.Context, node *Resource) hcl.Diag
 // corresponding Resource node. We define a wrapper type that does not implement any interfaces so as to reduce the
 // chance of the annotation being plucked out by an interface-type query by accident.
 type ResourceAnnotation struct {
-	Node *Resource
+	Node BaseResource
 }
 
 type resourceScopes struct {
 	root      *model.Scope
 	withRange *model.Scope
-	resource  *Resource
+	resource  BaseResource
 }
 
-func newResourceScopes(root *model.Scope, resource *Resource, rangeKey, rangeValue model.Type) model.Scopes {
+func newResourceScopes(root *model.Scope, resource BaseResource, rangeKey, rangeValue model.Type) model.Scopes {
 	scopes := &resourceScopes{
 		root:      root,
 		withRange: root,
@@ -430,7 +689,10 @@ func newResourceScopes(root *model.Scope, resource *Resource, rangeKey, rangeVal
 
 func (s *resourceScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
 	if block.Type == "options" {
-		return &optionsScopes{root: s.root, resource: s.resource}, nil
+		return &optionsScopes{
+			root:     s.root,
+			resource: s.resource,
+		}, nil
 	}
 	return model.StaticScope(s.withRange), nil
 }
@@ -441,7 +703,7 @@ func (s *resourceScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model
 
 type optionsScopes struct {
 	root     *model.Scope
-	resource *Resource
+	resource BaseResource
 }
 
 func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes, hcl.Diagnostics) {
@@ -451,7 +713,10 @@ func (s *optionsScopes) GetScopesForBlock(block *hclsyntax.Block) (model.Scopes,
 func (s *optionsScopes) GetScopeForAttribute(attr *hclsyntax.Attribute) (*model.Scope, hcl.Diagnostics) {
 	switch attr.Name {
 	case "ignoreChanges", "hideDiffs", "replaceOnChanges", "additionalSecretOutputs":
-		obj, ok := model.ResolveOutputs(s.resource.InputType).(*model.ObjectType)
+		if s.resource == nil {
+			return s.root, nil
+		}
+		obj, ok := model.ResolveOutputs(s.resource.GetInputType()).(*model.ObjectType)
 		if !ok {
 			return nil, nil
 		}
@@ -613,142 +878,16 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 
 	// Allow for lenient traversal when we choose to skip resource type-checking.
 	node.LenientTraversal = b.options.skipResourceTypecheck
-	node.VariableType = node.OutputType
-	// If the resource has a range option, we need to know the type of the collection being ranged over. Pre-bind the
-	// range expression now, but ignore the diagnostics.
 	var rangeKey, rangeValue model.Type
-	for _, block := range node.syntax.Body.Blocks {
-		if block.Type == "options" {
-			if rng, hasRange := block.Body.Attributes["range"]; hasRange {
-				expr, _ := model.BindExpression(rng.Expr, b.root, b.tokens, b.options.modelOptions()...)
-				typ := model.ResolveOutputs(expr.Type())
-				if model.IsOptionalType(typ) {
-					// if the range expression type is wrapped as an optional type
-					// due to the range expression being a conditional.
-					// unwrap it to get the actual type
-					typ = unwrapOptionalType(typ)
-				}
+	node.VariableType, rangeKey, rangeValue, diagnostics = b.computeBaseResourceVariableTypeFromRange(
+		node, node.OutputType,
+	)
 
-				resourceVar := &model.Variable{
-					Name:         "r",
-					VariableType: node.VariableType,
-				}
-
-				switch {
-				case model.InputType(model.BoolType).ConversionFrom(typ) == model.SafeConversion:
-					condExpr := &model.ConditionalExpression{
-						Condition:  expr,
-						TrueResult: model.VariableReference(resourceVar),
-						FalseResult: model.ConstantReference(&model.Constant{
-							Name:          "null",
-							ConstantValue: cty.NullVal(cty.DynamicPseudoType),
-						}),
-					}
-					diags := condExpr.Typecheck(false)
-					checkDiagnostics := len(diags) == 0
-					if b.options.skipResourceTypecheck {
-						checkDiagnostics = !diags.HasErrors()
-					}
-					contract.Assertf(checkDiagnostics, "failed to typecheck conditional expression: %v", diags)
-
-					node.VariableType = condExpr.Type()
-				case model.InputType(model.NumberType).ConversionFrom(typ) == model.SafeConversion:
-					functions := pulumiBuiltins(b.options)
-					rangeArgs := []model.Expression{expr}
-					rangeSig, _ := functions["range"].GetSignature(rangeArgs)
-
-					rangeExpr := &model.ForExpression{
-						ValueVariable: &model.Variable{
-							Name:         "_",
-							VariableType: model.NumberType,
-						},
-						Collection: &model.FunctionCallExpression{
-							Name:      "range",
-							Signature: rangeSig,
-							Args:      rangeArgs,
-						},
-						Value: model.VariableReference(resourceVar),
-					}
-					diags := rangeExpr.Typecheck(false)
-					checkDiagnostics := len(diags) == 0
-					if b.options.skipResourceTypecheck {
-						checkDiagnostics = !diags.HasErrors()
-					}
-					contract.Assertf(checkDiagnostics, "failed to typecheck range expression: %v", diags)
-
-					rangeValue = model.IntType
-
-					node.VariableType = rangeExpr.Type()
-				default:
-					strictCollectionType := !b.options.skipRangeTypecheck
-					rk, rv, diags := model.GetCollectionTypes(typ, rng.Range(), strictCollectionType)
-					rangeKey, rangeValue, diagnostics = rk, rv, append(diagnostics, diags...)
-					keyVariable := &model.Variable{
-						Name:         "__key",
-						VariableType: rangeKey,
-					}
-					iterationExpr := &model.ForExpression{
-						KeyVariable: keyVariable,
-						ValueVariable: &model.Variable{
-							Name:         "_",
-							VariableType: rangeValue,
-						},
-						Collection:                   expr,
-						Value:                        model.VariableReference(resourceVar),
-						StrictCollectionTypechecking: strictCollectionType,
-					}
-					// When iterating over a map or object, preserve the key so the
-					// resulting collection is a map indexed by string rather than a
-					// list indexed by number.
-					if rangeKey == model.StringType {
-						iterationExpr.Key = model.VariableReference(keyVariable)
-					}
-					diags = iterationExpr.Typecheck(false)
-					contract.Ignore(diags) // Any relevant diagnostics were reported by GetCollectionTypes.
-
-					node.VariableType = iterationExpr.Type()
-				}
-			}
-		}
-	}
-
-	// Bind the resource's body.
-	scopes := newResourceScopes(b.root, node, rangeKey, rangeValue)
-	block, blockDiags := model.BindBlock(node.syntax, scopes, b.tokens, b.options.modelOptions()...)
-	for _, diag := range blockDiags {
-		if b.options.skipResourceTypecheck && diag.Severity == hcl.DiagError {
-			// If we are skipping resource type-checking, convert errors to warnings.
-			diag.Severity = hcl.DiagWarning
-		}
-	}
-	diagnostics = append(diagnostics, blockDiags...)
-
-	var options *model.Block
-	for _, item := range block.Body.Items {
-		switch item := item.(type) {
-		case *model.Attribute:
-			if item.Name == LogicalNamePropertyKey {
-				logicalName, lDiags := getStringAttrValue(item)
-				if lDiags != nil {
-					diagnostics = diagnostics.Append(lDiags)
-				} else {
-					node.logicalName = logicalName
-				}
-				continue
-			}
-			node.Inputs = append(node.Inputs, item)
-		case *model.Block:
-			switch item.Type {
-			case "options":
-				if options != nil {
-					diagnostics = append(diagnostics, duplicateBlock(item.Type, item.Syntax.TypeRange))
-				} else {
-					options = item
-				}
-			default:
-				diagnostics = append(diagnostics, unsupportedBlock(item.Type, item.Syntax.TypeRange))
-			}
-		}
+	block, inputs, options, logicalName, bindDiags := b.bindAndCollectBaseResourceBlock(node, rangeKey, rangeValue)
+	diagnostics = append(diagnostics, bindDiags...)
+	node.Inputs = inputs
+	if logicalName != "" {
+		node.logicalName = logicalName
 	}
 
 	resourceProperties := make(map[string]schema.Type)
@@ -758,51 +897,8 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 		}
 	}
 
-	// Typecheck the attributes.
-	if objectType, ok := node.InputType.(*model.ObjectType); ok {
-		diag := func(d *hcl.Diagnostic) {
-			if b.options.skipResourceTypecheck && d.Severity == hcl.DiagError {
-				d.Severity = hcl.DiagWarning
-			}
-			diagnostics = append(diagnostics, d)
-		}
-		attrNames := codegen.StringSet{}
-		for _, attr := range node.Inputs {
-			attrNames.Add(attr.Name)
-
-			if typ, ok := objectType.Properties[attr.Name]; ok {
-				conversion := typ.ConversionFrom(attr.Value.Type())
-				if !conversion.Exists() {
-					if propertyType, ok := resourceProperties[attr.Name]; ok {
-						attributeRange := attr.Value.SyntaxNode().Range()
-						diag(&hcl.Diagnostic{
-							Severity: hcl.DiagError,
-							Subject:  &attributeRange,
-							Detail: fmt.Sprintf("Cannot assign value %s to attribute of type %q for resource %q",
-								attr.Value.Type().Pretty().String(),
-								propertyType.String(),
-								node.token),
-						})
-					}
-				}
-			} else {
-				diag(unsupportedAttribute(attr.Name, attr.Syntax.NameRange))
-			}
-		}
-
-		for _, k := range maputil.SortedKeys(objectType.Properties) {
-			typ := objectType.Properties[k]
-			if model.IsOptionalType(typ) || attrNames.Has(k) {
-				// The type is present or optional. No error.
-				continue
-			}
-			if model.IsConstType(objectType.Properties[k]) {
-				// The type is const, so the value is implied. No error.
-				continue
-			}
-			diag(missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
-		}
-	}
+	diagnostics = append(diagnostics,
+		b.typecheckBaseResourceAttributes(node.InputType, node.Inputs, resourceProperties, node.token, block)...)
 
 	// Typecheck the options block.
 	if options != nil {

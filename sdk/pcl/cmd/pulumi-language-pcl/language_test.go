@@ -96,6 +96,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 var expectedFailures = map[string]string{
 	"l3-deferred-outputs": "incorrectly detects cycle",
 	"l3-component-nested": "nested component outputs are not propagated correctly",
+	"l2-resource-read":    "need to update pkg",
 	"l1-builtin-min-max":  "cannot pin the current commit",
 }
 

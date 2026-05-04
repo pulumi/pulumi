@@ -164,6 +164,161 @@ func TestBindResourceOptions(t *testing.T) {
 	}
 }
 
+func TestBindReadResourceOptions(t *testing.T) {
+	t.Parallel()
+
+	fooPkg := schema.Package{
+		Name: "foo",
+		Provider: &schema.Resource{
+			Token: "foo:index:Foo",
+			InputProperties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+			Properties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+		},
+		Resources: []*schema.Resource{
+			{
+				Token: "foo:index:Foo",
+				InputProperties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+				Properties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name string // ResourceOptions field name
+		src  string // line in options block
+		want cty.Value
+	}{
+		{
+			name: "Protect",
+			src:  "protect = true",
+			want: cty.True,
+		},
+		{
+			name: "RetainOnDelete",
+			src:  "retainOnDelete = true",
+			want: cty.True,
+		},
+		{
+			name: "ImportID",
+			src:  `import = "abc123"`,
+			want: cty.StringVal("abc123"),
+		},
+		{
+			name: "CustomTimeouts",
+			src:  `customTimeouts = { create = "5m" }`,
+			want: cty.ObjectVal(map[string]cty.Value{
+				"create": cty.StringVal("5m"),
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var sb strings.Builder
+			fmt.Fprintln(&sb, `read foo "foo:index:Foo" {`)
+			fmt.Fprintln(&sb, `	id = "42"`)
+			fmt.Fprintln(&sb, "	options {")
+			fmt.Fprintln(&sb, "		"+tt.src)
+			fmt.Fprintln(&sb, "	}")
+			fmt.Fprintln(&sb, `}`)
+			src := sb.String()
+			defer func() {
+				if t.Failed() {
+					t.Logf("source:\n%s", src)
+				}
+			}()
+
+			parser := syntax.NewParser()
+			require.NoError(t,
+				parser.ParseFile(strings.NewReader(src), "test.pcl"),
+				"parse failed")
+
+			prog, diag, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+				Package: &fooPkg,
+			}))
+			require.NoError(t, err, "bind failed")
+			require.Empty(t, diag, "bind failed")
+
+			require.Len(t, prog.Nodes, 1, "expected one node")
+			require.IsType(t, &ReadResource{}, prog.Nodes[0], "expected a read resource")
+			res := prog.Nodes[0].(*ReadResource)
+
+			expr := reflect.ValueOf(res.Options).Elem().
+				FieldByName(tt.name).Interface().(model.Expression)
+
+			v, diag := expr.Evaluate(&hcl.EvalContext{})
+			require.Empty(t, diag, "evaluation failed")
+
+			if !v.RawEquals(tt.want) {
+				t.Errorf("unexpected value: %#v != %#v", tt.want, v)
+			}
+		})
+	}
+}
+
+func TestBindReadComponentResourceFails(t *testing.T) {
+	t.Parallel()
+
+	fooPkgSpec := schema.PackageSpec{
+		Name:    "foo",
+		Version: "1.0.0",
+		Provider: schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Type: "object",
+			},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"foo:index:Component": {
+				IsComponent: true,
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"id": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+				StateInputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"lookup": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+	}
+	fooPkg, diags, err := schema.BindSpec(fooPkgSpec, nil, schema.ValidationOptions{})
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	src := `read comp "foo:index:Component" {
+	id = "existing-id"
+	lookup = "existing-key"
+}`
+
+	parser := syntax.NewParser()
+	require.NoError(t,
+		parser.ParseFile(strings.NewReader(src), "test.pcl"),
+		"parse failed")
+
+	prog, diags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+		Package: fooPkg,
+	}))
+	require.Error(t, err, "bind should fail")
+	require.True(t, diags.HasErrors(), "expected bind diagnostics")
+	require.Nil(t, prog)
+	require.Contains(t, diags.Error(), "component resources cannot be read")
+	require.Contains(t, diags.Error(), "Component")
+}
+
 type stubSchemaLoader struct {
 	Package *schema.Package
 }

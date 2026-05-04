@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -46,16 +47,23 @@ func ExitCodeFor(err error) int {
 		return ExitSuccess
 	}
 
+	// `pulumi cloud api` carries its own semantic exit code on the error so
+	// the taxonomy (ExitCodeError / ExitAuthenticationError / ExitCancelled
+	// / etc.) reaches the shell instead of collapsing to the generic bail
+	// default. Checked before the bail branch because processCmdErrors
+	// wraps these in a BailError to suppress double-printing the message.
+	var apiErr *cloud.APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.ExitCode
+	}
+
 	// Respect bail semantics first – still a failure, but don't print anything.
 	if result.IsBail(err) {
 		return ExitCodeError
 	}
 
 	// Authentication / authorization problems.
-	switch {
-	case errors.As(err, &backenderr.LoginRequiredError{}),
-		errors.As(err, &backenderr.ForbiddenError{}),
-		errors.As(err, &backenderr.MissingEnvVarForNonInteractiveError{}):
+	if backenderr.IsAuthError(err) {
 		return ExitAuthenticationError
 	}
 

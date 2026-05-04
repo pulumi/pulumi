@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Bundle the `hcl` language host (from pulumi-labs/pulumi-hcl)

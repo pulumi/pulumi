@@ -140,6 +140,13 @@ type httpCallOptions struct {
 
 	// ErrorResponse is an optional response body for errors.
 	ErrorResponse any
+
+	// SkipDecodeErrors, when true, makes pulumiAPICall skip the 401/429/4xx/5xx
+	// typed-error classification.
+	// The caller is responsible for inspecting status, reading the body, and
+	// closing it. The body read/decode/close is still handled by passing
+	// **http.Response to Call's respObj — this only controls error decoding.
+	SkipDecodeErrors bool
 }
 
 // apiAccessToken is an implementation of accessToken for Pulumi API tokens (i.e. tokens of kind
@@ -390,6 +397,10 @@ func pulumiAPICall(ctx context.Context,
 
 	requestSpan.SetTag("responseCode", resp.Status)
 
+	if opts.SkipDecodeErrors {
+		return url, resp, nil
+	}
+
 	if warningHeader, ok := resp.Header["X-Pulumi-Warning"]; ok {
 		for _, warning := range warningHeader {
 			d.Warningf(diag.RawMessage("", warning))
@@ -627,4 +638,26 @@ func bodyIntoReader(resp *http.Response) (io.ReadCloser, error) {
 	default:
 		return nil, fmt.Errorf("unrecognized encoding %s", contentEncoding[0])
 	}
+}
+
+// gzipReadCloser wraps a gzip.Reader so closing the wrapper closes both the
+// gzip stream and the underlying response body. Used by Call when the caller
+// passes a **http.Response — the body needs to outlive Call's stack frame, so
+// bodyIntoReader's defer-close pattern doesn't apply.
+type gzipReadCloser struct {
+	gzip *gzip.Reader
+	body io.ReadCloser
+}
+
+func (g *gzipReadCloser) Read(p []byte) (int, error) {
+	return g.gzip.Read(p)
+}
+
+func (g *gzipReadCloser) Close() error {
+	gzipErr := g.gzip.Close()
+	bodyErr := g.body.Close()
+	if gzipErr != nil {
+		return gzipErr
+	}
+	return bodyErr
 }

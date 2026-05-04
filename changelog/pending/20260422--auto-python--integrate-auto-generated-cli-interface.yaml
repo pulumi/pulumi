@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: auto/python
-  description: Expose the auto-generated Pulumi CLI interface as `workspace.cli_api`

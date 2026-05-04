@@ -19,40 +19,9 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestBackCompactPropertyPathMarshal(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		input    string
-		expected []property.GlobSegment
-	}{
-		{"foo", []property.GlobSegment{property.NewSegment("foo")}},
-		{"foo.bar", []property.GlobSegment{property.NewSegment("foo"), property.NewSegment("bar")}},
-		{"foo[\"bar\"]", []property.GlobSegment{property.NewSegment("foo"), property.NewSegment("bar")}},
-		{"foo.[\"bar\"]", []property.GlobSegment{property.NewSegment("foo"), property.NewSegment("bar")}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			t.Parallel()
-
-			var b BackCompatPropertyPath
-			require.NoError(t, b.UnmarshalText([]byte(tt.input)))
-			assert.Equal(t, property.GlobFromSegments(tt.expected...), property.Glob(b))
-
-			marshalled, err := b.MarshalText()
-			require.NoError(t, err)
-			var g property.Glob
-			require.NoError(t, g.UnmarshalText(marshalled))
-			assert.Equal(t, property.Glob(b), g)
-		})
-	}
-}
 
 func TestPropertyPathMarshal(t *testing.T) {
 	t.Parallel()
@@ -332,6 +301,36 @@ func TestPropertyPath(t *testing.T) {
 
 			_, err := ParsePropertyPathStrict(c)
 			require.NotNil(t, err)
+		})
+	}
+}
+
+// TestParsePropertyPathStrictAcceptsBareSpecialChars documents that the strict parser is looser than the grammar
+// comment on parsePropertyPath claims: characters outside [a-zA-Z0-9_$] (such as '-', ':', '/', '@', and even
+// non-ASCII letters) are accepted as bare property name characters because the parser only stops at '.' or '['.
+func TestParsePropertyPathStrictAcceptsBareSpecialChars(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input    string
+		expected PropertyPath
+	}{
+		{"foo-bar", PropertyPath{"foo-bar"}},
+		{"root.foo-bar", PropertyPath{"root", "foo-bar"}},
+		{"foo:bar", PropertyPath{"foo:bar"}},
+		{"foo/bar", PropertyPath{"foo/bar"}},
+		{"foo@bar", PropertyPath{"foo@bar"}},
+		{"foo bar", PropertyPath{"foo bar"}},
+		{"naïve", PropertyPath{"naïve"}},
+		{"root.foo-bar[0]", PropertyPath{"root", "foo-bar", 0}},
+	}
+	for _, c := range cases {
+		t.Run(c.input, func(t *testing.T) {
+			t.Parallel()
+
+			parsed, err := ParsePropertyPathStrict(c.input)
+			require.NoError(t, err)
+			assert.Equal(t, c.expected, parsed)
 		})
 	}
 }

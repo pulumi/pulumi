@@ -121,7 +121,7 @@ func stateToAnalyzerResource(
 		Properties: properties,
 		Options: plugin.AnalyzerResourceOptions{
 			Protect:                 res.Protect,
-			IgnoreChanges:           globsToStrings(res.IgnoreChanges),
+			IgnoreChanges:           res.IgnoreChanges,
 			AdditionalSecretOutputs: res.AdditionalSecretOutputs,
 			Aliases:                 res.GetAliases(),
 			CustomTimeouts:          res.CustomTimeouts,

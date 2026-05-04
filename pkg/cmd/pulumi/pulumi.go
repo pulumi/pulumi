@@ -51,6 +51,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/clispec"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
@@ -475,6 +476,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
+				cloud.NewCloudCmd(),
 			},
 		},
 		{

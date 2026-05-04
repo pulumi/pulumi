@@ -16,8 +16,8 @@ package tests
 
 import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +41,7 @@ func init() {
 					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					hideDiffs := RequireSingleNamedResource(l, snap.Resources, "hideDiffs")
-					assert.Equal(l, []property.Glob{property.MustParseGlob("value")}, hideDiffs.HideDiff)
+					assert.Equal(l, []resource.PropertyPath{{"value"}}, hideDiffs.HideDiff)
 
 					notHideDiffs := RequireSingleNamedResource(l, snap.Resources, "notHideDiffs")
 					assert.Empty(l, notHideDiffs.HideDiff)

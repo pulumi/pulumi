@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: pcl
+  description: Add `read` blocks to PCL to read resources via ID and query instead of registering them

@@ -1,9 +1,0 @@
-changes:
-- type: improvement
-  scope: cli/neo
-  description: |
-    Run the experimental `pulumi neo` TUI inline instead of in an alt-screen.
-    Completed blocks (user messages, tool results, assistant replies, pulumi
-    ops, errors, warnings) are committed to terminal scrollback as they
-    finish, and the full transcript remains visible in the terminal after
-    the session exits.

@@ -18,6 +18,7 @@ import (
 	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -2066,6 +2067,69 @@ func (pc *Client) DeletePackageVersion(
 	url := deletePackageVersionPath(source, publisher, name, version.String())
 	err := pc.restCall(ctx, "DELETE", url, nil, nil, nil)
 	return err
+}
+
+// RawCall issues an arbitrary Pulumi API request and returns the raw
+// *http.Response. Unlike the typed Call methods, RawCall does not
+// deserialize the response body and does not classify 4xx/5xx into typed
+// errors; the caller inspects status, headers, and body. Gzip-encoded
+// responses are transparently decompressed; the Content-Encoding and
+// Content-Length response headers are left intact so the caller can still
+// see what the server sent.
+func (pc *Client) RawCall(
+	ctx context.Context,
+	method, path string,
+	query url.Values,
+	body io.Reader,
+	header http.Header,
+	gzipCompressBody bool,
+) (*http.Response, error) {
+	fullPath := path
+	if len(query) > 0 {
+		fullPath += "?" + query.Encode()
+	}
+
+	var reqObj any
+	if body != nil {
+		bodyBytes, err := io.ReadAll(body)
+		if err != nil {
+			return nil, fmt.Errorf("reading request body: %w", err)
+		}
+		if len(bodyBytes) > 0 {
+			// json.RawMessage is sent verbatim by the rest-call path — works
+			// for non-JSON content too
+			reqObj = json.RawMessage(bodyBytes)
+		}
+	}
+
+	var resp *http.Response
+	err := pc.restCallWithOptions(ctx, method, fullPath, nil, reqObj, &resp, httpCallOptions{
+		SkipDecodeErrors: true,
+		Header:           header,
+		GzipCompress:     gzipCompressBody,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if encs, ok := resp.Header["Content-Encoding"]; ok && len(encs) == 1 &&
+		(encs[0] == "gzip" || encs[0] == "x-gzip") {
+		gr, gzerr := gzip.NewReader(resp.Body)
+		if gzerr != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("decompressing gzipped response: %w", gzerr)
+		}
+		resp.Body = &gzipReadCloser{gzip: gr, body: resp.Body}
+	}
+	return resp, nil
+}
+
+// GetCloudAPISpec fetches the Pulumi Cloud OpenAPI document as raw bytes.
+func (pc *Client) GetCloudAPISpec(ctx context.Context) ([]byte, error) {
+	var body []byte
+	err := pc.restCallWithOptions(ctx, "GET", "/api/openapi/pulumi-spec.json", nil, nil, &body,
+		httpCallOptions{Header: http.Header{"Accept": []string{"application/json"}}})
+	return body, err
 }
 
 func (pc *Client) GetTemplate(

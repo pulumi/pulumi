@@ -405,18 +405,23 @@ func (b *binder) declareNodes(ctx context.Context, file *syntax.File) (hcl.Diagn
 		switch item := item.(type) {
 		case *hclsyntax.Block:
 			switch item.Type {
-			case "resource":
+			case "resource", "read":
 				if len(item.Labels) != 2 {
-					diagnostics = append(diagnostics, labelsErrorf(item, "resource variables must have exactly two labels"))
+					diagnostics = append(diagnostics, labelsErrorf(item, "%s variables must have exactly two labels", item.Type))
 				}
 
-				resource := &Resource{
-					syntax: item,
+				var node Node
+				switch item.Type {
+				case "resource":
+					node = &Resource{syntax: item}
+				case "read":
+					node = &ReadResource{syntax: item}
 				}
-				declareDiags := b.declareNode(item.Labels[0], resource)
+
+				declareDiags := b.declareNode(item.Labels[0], node)
 				diagnostics = append(diagnostics, declareDiags...)
 
-				if err := b.loadReferencedPackageSchemas(ctx, resource); err != nil {
+				if err := b.loadReferencedPackageSchemas(ctx, node); err != nil {
 					return nil, err
 				}
 			}

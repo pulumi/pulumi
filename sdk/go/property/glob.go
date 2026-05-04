@@ -32,17 +32,6 @@ func GlobFromSegments(segments ...GlobSegment) Glob {
 	return Glob{pathReprFromSegments(segments)}
 }
 
-// MustParseGlob parses text into a [Glob], panicking on parse errors.
-//
-// It is intended for tests and other contexts where the input is a known-good literal.
-func MustParseGlob(text string) Glob {
-	var g Glob
-	if err := g.UnmarshalText([]byte(text)); err != nil {
-		panic(err)
-	}
-	return g
-}
-
 var (
 	_ encoding.TextMarshaler   = Glob{}
 	_ encoding.TextUnmarshaler = &Glob{}
@@ -231,7 +220,7 @@ func (g Glob) Get(v Value) (map[Path]Value, error) {
 			e := stack[i]
 			var expansion []entry
 			switch segment := segment.(type) {
-			case SplatSegment:
+			case splat:
 				switch {
 				case e.val.IsMap():
 					for k, v := range e.val.AsMap().AllStable {
@@ -296,15 +285,15 @@ var (
 	_ GlobSegment = IndexSegment{}
 )
 
-var Splat SplatSegment
+var Splat splat
 
-type SplatSegment struct{}
+type splat struct{}
 
-func (SplatSegment) GoString() string   { return "property.Splat" }
+func (splat) GoString() string          { return "property.Splat" }
 func (s KeySegment) GoString() string   { return fmt.Sprintf("property.NewSegment(%q)", s.string) }
 func (i IndexSegment) GoString() string { return fmt.Sprintf("property.NewSegment(%d)", i.i) }
 
-func (SplatSegment) globApply(v Value) ([]Value, PathApplyFailure) {
+func (splat) globApply(v Value) ([]Value, PathApplyFailure) {
 	switch {
 	case v.IsMap():
 		values := make([]Value, 0, v.AsMap().Len())
@@ -363,7 +352,7 @@ func (g Glob) Matches(p Path) bool {
 				continue
 			}
 			return false
-		case SplatSegment:
+		case splat:
 			continue
 		default:
 			contract.Failf("invalid glob segment %T", gp)

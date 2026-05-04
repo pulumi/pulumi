@@ -563,11 +563,11 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 		mod = pkg
 	}
 	var resourceName string
-	if res.Schema != nil {
+	if res.GetSchema() != nil {
 		if pkgCtx := g.contexts[pkg][mod]; pkgCtx != nil {
-			resourceName = disambiguatedResourceName(res.Schema, pkgCtx)
+			resourceName = disambiguatedResourceName(res.GetSchema(), pkgCtx)
 		} else {
-			resourceName = rawResourceName(res.Schema)
+			resourceName = rawResourceName(res.GetSchema())
 		}
 	} else {
 		resourceName = tokenToName(token)
@@ -606,7 +606,7 @@ func (g *generator) genMethodCall(w io.Writer, expr *model.FunctionCallExpressio
 
 	// Check whether the method's schema signature accepts an args parameter.
 	// Methods with no inputs (other than __self__) don't take an args parameter at all.
-	methodHasArgs := methodSchemaHasArgs(res.Schema, method)
+	methodHasArgs := methodSchemaHasArgs(res.GetSchema(), method)
 
 	// Generate: self.Method(ctx, &mod.ResourceMethodArgs{...})
 	// or:       self.Method(ctx) when the method has no args parameter.
@@ -906,7 +906,8 @@ func (g *generator) GenRelativeTraversalExpression(w io.Writer, expr *model.Rela
 	typedStructRoot := false
 	if ie, ok := expr.Source.(*model.IndexExpression); ok {
 		if se, ok := ie.Collection.(*model.ScopeTraversalExpression); ok {
-			if _, ok := se.Parts[0].(*pcl.Resource); ok {
+			switch se.Parts[0].(type) {
+			case *pcl.Resource, *pcl.ReadResource:
 				isRootResource = true
 			}
 			typedStructRoot = g.isTypedStructRoot(se.Parts[0])
@@ -929,6 +930,7 @@ func (g *generator) genScopeTraversalExpression(
 	}
 
 	genIDCall := false
+	genURNCall := false
 
 	isInput := false
 	if schemaType, ok := pcl.GetSchemaForType(destType); ok {
@@ -940,11 +942,32 @@ func (g *generator) genScopeTraversalExpression(
 	case *pcl.Resource:
 		isInput = false
 		if _, ok := pcl.GetSchemaForType(root.InputType); ok {
-			// convert .id into .ID()
+			// convert .id into .ID() and .urn into .URN()
 			last := expr.Traversal[len(expr.Traversal)-1]
-			if attr, ok := last.(hcl.TraverseAttr); ok && attr.Name == "id" {
-				genIDCall = true
-				expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
+			if attr, ok := last.(hcl.TraverseAttr); ok {
+				switch attr.Name {
+				case "id":
+					genIDCall = true
+					expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
+				case "urn":
+					genURNCall = true
+					expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
+				}
+			}
+		}
+	case *pcl.ReadResource:
+		isInput = false
+		if _, ok := pcl.GetSchemaForType(root.InputType); ok {
+			last := expr.Traversal[len(expr.Traversal)-1]
+			if attr, ok := last.(hcl.TraverseAttr); ok {
+				switch attr.Name {
+				case "id":
+					genIDCall = true
+					expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
+				case "urn":
+					genURNCall = true
+					expr.Traversal = expr.Traversal[:len(expr.Traversal)-1]
+				}
 			}
 		}
 	case *pcl.LocalVariable:
@@ -1052,6 +1075,9 @@ func (g *generator) genScopeTraversalExpression(
 
 	if genIDCall {
 		g.Fgenf(w, ".ID()")
+	}
+	if genURNCall {
+		g.Fgenf(w, ".URN()")
 	}
 }
 
@@ -1423,6 +1449,8 @@ func (g *generator) secretOutputTypeName(expr *model.FunctionCallExpression) str
 func (g *generator) isTypedStructRoot(t model.Traversable) bool {
 	switch t := t.(type) {
 	case *pcl.Resource:
+		return true
+	case *pcl.ReadResource:
 		return true
 	case *pcl.Component:
 		return true

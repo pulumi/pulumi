@@ -612,7 +612,7 @@ func newResourceFunction(functionName string) *model.Function {
 			}
 
 			arg := args[0]
-			var res *Resource
+			var res BaseResource
 			if objectType, ok := arg.Type().(*model.ObjectType); ok {
 				if annotation, ok := model.GetObjectTypeAnnotation[*ResourceAnnotation](objectType); ok {
 					res = annotation.Node
