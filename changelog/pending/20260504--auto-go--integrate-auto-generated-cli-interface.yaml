@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: auto/go
+  description: Route `Stack.Cancel`, `LocalWorkspace.OrgGetDefault`, `LocalWorkspace.OrgSetDefault` and `LocalWorkspace.New` through the auto-generated CLI interface

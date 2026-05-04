@@ -115,6 +115,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/automation/optcancel"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
@@ -1324,16 +1327,55 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 // Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
 // if a resource operation was pending when the update was canceled.
 func (s *Stack) Cancel(ctx context.Context) error {
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(
-		ctx,
-		nil, /* additionalOutput */
-		nil, /* additionalErrorOutput */
-		"cancel", "--yes")
-	if err != nil {
-		return newAutoError(fmt.Errorf("failed to cancel update: %w", err), stdout, stderr, errCode)
+	bo := s.cliBaseOptions()
+	stack := s.Name()
+	api, ok := s.cliAPI()
+	if !ok {
+		return errors.New("Stack.Cancel requires a *LocalWorkspace; the workspace does not expose a generated CLI API")
 	}
-
+	result, err := api.Cancel(ctx, nil, func(o *optcancel.Options) {
+		o.BaseOptions = bo
+		o.Stack = stack
+	})
+	if err != nil {
+		return newAutoError(fmt.Errorf("failed to cancel update: %w", err),
+			result.Stdout, result.Stderr, result.ExitCode)
+	}
+	if cbErr := s.Workspace().PostCommandCallback(ctx, stack); cbErr != nil {
+		return fmt.Errorf("command ran successfully, but error running PostCommandCallback: %w", cbErr)
+	}
 	return nil
+}
+
+// cliAPI returns the workspace's auto-generated CLI API. The second
+// return is false when the workspace is not a *LocalWorkspace.
+func (s *Stack) cliAPI() (*automation.API, bool) {
+	lws, ok := s.workspace.(*LocalWorkspace)
+	if !ok || lws == nil {
+		return nil, false
+	}
+	return lws.cliAPI, lws.cliAPI != nil
+}
+
+// cliBaseOptions returns the base.BaseOptions used by stack-scoped CLI
+// calls. Mirrors the env wiring of (*Stack).runPulumiCmdSync.
+func (s *Stack) cliBaseOptions() base.BaseOptions {
+	env := map[string]string{
+		"PULUMI_DEBUG_COMMANDS": "true",
+	}
+	if s.isRemote() {
+		env["PULUMI_EXPERIMENTAL"] = "true"
+	}
+	if home := s.Workspace().PulumiHome(); home != "" {
+		env[pulumiHomeEnv] = home
+	}
+	for k, v := range s.Workspace().GetEnvVars() {
+		env[k] = v
+	}
+	return base.BaseOptions{
+		Cwd:           s.Workspace().WorkDir(),
+		AdditionalEnv: env,
+	}
 }
 
 // Export exports the deployment state of the stack.
