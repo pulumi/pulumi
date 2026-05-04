@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/pulumi/pulumi/master/pkg/codegen/schema/pulumi.json",
+  "name": "extensionref",
+  "version": "1.0.0",
+  "//": ["Minimal schema with top-level extensionParameterization"],
+  "resources": {
+    "extensionref:index:Root": {
+      "properties": {
+        "data": { "type": "string" }
+      },
+      "type": "object"
+    }
+  },
+  "extensionParameterization": {
+    "baseProvider": { "name": "test-base", "version": "1.0.0" },
+    "parameter": "dGVzdA=="
+  }
+}

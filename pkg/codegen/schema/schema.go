@@ -663,6 +663,9 @@ type Package struct {
 	// Parameterization is the optional parameterization for the package, if any.
 	Parameterization *Parameterization
 
+	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
+	ExtensionParameterization *Parameterization
+
 	resourceTable     map[string]*Resource
 	resourceTypeTable map[string]*ResourceType
 	functionTable     map[string]*Function
@@ -1133,9 +1136,9 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 	}
 
 	var metadata *MetadataSpec
-	// Don't set support pack in meta spec if Parameterization is present because that implictly sets
-	// SupportPack when reading back in anyway.
-	supportPack := pkg.SupportPack && pkg.Parameterization == nil
+	// Don't set support pack in meta spec if Parameterization or ExtensionParameterization is present because that
+	// implictly sets SupportPack when reading back in anyway.
+	supportPack := pkg.SupportPack && pkg.Parameterization == nil && pkg.ExtensionParameterization == nil
 	if pkg.moduleFormat != nil || supportPack {
 		metadata = &MetadataSpec{SupportPack: supportPack}
 		if pkg.moduleFormat != nil {
@@ -1153,28 +1156,39 @@ func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
 			Parameter: pkg.Parameterization.Parameter,
 		}
 	}
+	var extensionParameterization *ParameterizationSpec
+	if pkg.ExtensionParameterization != nil {
+		extensionParameterization = &ParameterizationSpec{
+			BaseProvider: BaseProviderSpec{
+				Name:    pkg.ExtensionParameterization.BaseProvider.Name,
+				Version: pkg.ExtensionParameterization.BaseProvider.Version.String(),
+			},
+			Parameter: pkg.ExtensionParameterization.Parameter,
+		}
+	}
 
 	spec = &PackageSpec{
-		Name:                pkg.Name,
-		Version:             version,
-		DisplayName:         pkg.DisplayName,
-		Publisher:           pkg.Publisher,
-		Namespace:           pkg.Namespace,
-		Description:         pkg.Description,
-		Keywords:            pkg.Keywords,
-		Homepage:            pkg.Homepage,
-		License:             pkg.License,
-		Attribution:         pkg.Attribution,
-		Repository:          pkg.Repository,
-		LogoURL:             pkg.LogoURL,
-		PluginDownloadURL:   pkg.PluginDownloadURL,
-		Meta:                metadata,
-		Dependencies:        pkg.Dependencies,
-		Types:               map[string]ComplexTypeSpec{},
-		Resources:           map[string]ResourceSpec{},
-		Functions:           map[string]FunctionSpec{},
-		AllowedPackageNames: pkg.AllowedPackageNames,
-		Parameterization:    parameterization,
+		Name:                      pkg.Name,
+		Version:                   version,
+		DisplayName:               pkg.DisplayName,
+		Publisher:                 pkg.Publisher,
+		Namespace:                 pkg.Namespace,
+		Description:               pkg.Description,
+		Keywords:                  pkg.Keywords,
+		Homepage:                  pkg.Homepage,
+		License:                   pkg.License,
+		Attribution:               pkg.Attribution,
+		Repository:                pkg.Repository,
+		LogoURL:                   pkg.LogoURL,
+		PluginDownloadURL:         pkg.PluginDownloadURL,
+		Meta:                      metadata,
+		Dependencies:              pkg.Dependencies,
+		Types:                     map[string]ComplexTypeSpec{},
+		Resources:                 map[string]ResourceSpec{},
+		Functions:                 map[string]FunctionSpec{},
+		AllowedPackageNames:       pkg.AllowedPackageNames,
+		Parameterization:          parameterization,
+		ExtensionParameterization: extensionParameterization,
 	}
 
 	lang, err := marshalLanguage(pkg.Language)
@@ -2260,6 +2274,9 @@ type PackageInfoSpec struct {
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+
+	// ExtensionParameterization is the optional extension parameterization for this package.
+	ExtensionParameterization *ParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"`
 }
 
 // BaseProviderSpec is the serializable description of a Pulumi base provider.
@@ -2338,28 +2355,32 @@ type PackageSpec struct {
 
 	// Parameterization is the optional parameterization for this package.
 	Parameterization *ParameterizationSpec `json:"parameterization,omitempty" yaml:"parameterization,omitempty"`
+
+	// ExtensionParameterization is the optional extension-parameterization for the package, if any.
+	ExtensionParameterization *ParameterizationSpec `json:"extensionParameterization,omitempty" yaml:"extensionParameterization,omitempty"`
 }
 
 func (p *PackageSpec) Info() PackageInfoSpec {
 	return PackageInfoSpec{
-		Name:                p.Name,
-		DisplayName:         p.DisplayName,
-		Version:             p.Version,
-		Description:         p.Description,
-		Keywords:            p.Keywords,
-		Homepage:            p.Homepage,
-		License:             p.License,
-		Attribution:         p.Attribution,
-		Repository:          p.Repository,
-		LogoURL:             p.LogoURL,
-		PluginDownloadURL:   p.PluginDownloadURL,
-		Publisher:           p.Publisher,
-		Namespace:           p.Namespace,
-		Dependencies:        p.Dependencies,
-		Meta:                p.Meta,
-		AllowedPackageNames: p.AllowedPackageNames,
-		Language:            p.Language,
-		Parameterization:    p.Parameterization,
+		Name:                      p.Name,
+		DisplayName:               p.DisplayName,
+		Version:                   p.Version,
+		Description:               p.Description,
+		Keywords:                  p.Keywords,
+		Homepage:                  p.Homepage,
+		License:                   p.License,
+		Attribution:               p.Attribution,
+		Repository:                p.Repository,
+		LogoURL:                   p.LogoURL,
+		PluginDownloadURL:         p.PluginDownloadURL,
+		Publisher:                 p.Publisher,
+		Namespace:                 p.Namespace,
+		Dependencies:              p.Dependencies,
+		Meta:                      p.Meta,
+		AllowedPackageNames:       p.AllowedPackageNames,
+		Language:                  p.Language,
+		Parameterization:          p.Parameterization,
+		ExtensionParameterization: p.ExtensionParameterization,
 	}
 }
 

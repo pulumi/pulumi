@@ -2165,6 +2165,53 @@ packages:
 	})
 }
 
+func TestPackageValueSerializationExtension(t *testing.T) {
+	t.Parallel()
+
+	proj := func() *Project {
+		return &Project{
+			Name:    "test-project",
+			Runtime: NewProjectRuntimeInfo("nodejs", nil),
+			Packages: map[string]PackageSpec{
+				"extension-string-base": {
+					Base:       &PackageSpec{Source: "kubernetes"},
+					Extensions: []string{"-c", "crds.yaml"},
+				},
+				"extension-inline-base": {
+					Base: &PackageSpec{
+						Source:     "kubernetes",
+						Version:    "4.29.0",
+						Parameters: []string{"some-param"},
+					},
+					Extensions: []string{"-c", "crds.yaml"},
+				},
+			},
+		}
+	}
+
+	test := func(
+		t *testing.T,
+		marshal func(any) ([]byte, error),
+		unmarshal func([]byte, any) error,
+	) {
+		bytes, err := marshal(proj())
+		require.NoError(t, err)
+
+		newProj := new(Project)
+		require.NoError(t, unmarshal(bytes, newProj))
+		assert.EqualExportedValues(t, proj(), newProj)
+	}
+
+	t.Run("JSON", func(t *testing.T) {
+		t.Parallel()
+		test(t, json.Marshal, json.Unmarshal)
+	})
+	t.Run("YAML", func(t *testing.T) {
+		t.Parallel()
+		test(t, yaml.Marshal, yaml.Unmarshal)
+	})
+}
+
 func TestWorkspaceSpecString(t *testing.T) {
 	t.Parallel()
 
