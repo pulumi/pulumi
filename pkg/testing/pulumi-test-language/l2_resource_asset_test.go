@@ -207,7 +207,7 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 
 	monitor := pulumirpc.NewResourceMonitorClient(conn)
 
-	_, err = monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+	stackResp, err := monitor.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
 		Type: string(resource.RootStackType),
 		Name: req.Stack,
 	})
@@ -363,6 +363,51 @@ func (h *L2ResourceAssetArchiveLanguageHost) Run(
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not register resource: %w", err)
+	}
+
+	stringAsset, err := plugin.MarshalAsset(&resource.Asset{
+		Text: "file contents",
+	}, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal string asset: %w", err)
+	}
+	folderArchive, err := plugin.MarshalArchive(&resource.Archive{
+		Path: "../folder",
+	}, plugin.MarshalOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal folder archive: %w", err)
+	}
+
+	outputs := &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			"assetOutput":   asset,
+			"archiveOutput": archive,
+			"assetList": structpb.NewListValue(&structpb.ListValue{
+				Values: []*structpb.Value{asset, stringAsset},
+			}),
+			"archiveList": structpb.NewListValue(&structpb.ListValue{
+				Values: []*structpb.Value{archive, folderArchive},
+			}),
+			"assetMap": structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"file":   asset,
+					"string": stringAsset,
+				},
+			}),
+			"archiveMap": structpb.NewStructValue(&structpb.Struct{
+				Fields: map[string]*structpb.Value{
+					"tar":    archive,
+					"folder": folderArchive,
+				},
+			}),
+		},
+	}
+	_, err = monitor.RegisterResourceOutputs(ctx, &pulumirpc.RegisterResourceOutputsRequest{
+		Urn:     stackResp.Urn,
+		Outputs: outputs,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not register stack outputs: %w", err)
 	}
 
 	return &pulumirpc.RunResponse{}, nil

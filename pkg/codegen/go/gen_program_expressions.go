@@ -349,6 +349,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 					g.Fgenf(w, "%.v", from)
 				} else if typeName == "pulumi.String" && isID {
 					g.Fgenf(w, "%.v", from)
+				} else if typeName == "pulumi.Asset" ||
+					typeName == "pulumi.Archive" ||
+					typeName == "pulumi.AssetOrArchive" {
+					// Asset/Archive are interface types in the SDK; the values
+					// returned by NewFileAsset/etc. already implement the
+					// corresponding *Input interface. Wrapping with the
+					// interface type strips those methods and breaks use in
+					// pulumi.AssetOrArchiveArray, etc.
+					g.Fgenf(w, "%.v", from)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
 				}
@@ -1223,6 +1232,13 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 			pkg:              (&schema.Package{Name: "main"}).Reference(),
 			externalPackages: g.externalCache,
 		}).argsType(schemaType)
+	}
+
+	switch destType {
+	case pcl.AssetType:
+		return "pulumi.AssetOrArchive"
+	case pcl.ArchiveType:
+		return "pulumi.Archive"
 	}
 
 	switch destType := destType.(type) {

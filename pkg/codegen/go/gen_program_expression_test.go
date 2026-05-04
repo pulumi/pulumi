@@ -210,6 +210,19 @@ func TestArgumentTypeName(t *testing.T) {
 	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
 	assert.Equal(t, "pulumi.Array", inputDynamicListType)
 
+	// Asset and Archive opaque types must be qualified with the pulumi package, otherwise nested compositions
+	// render bare names like []AssetMap which is invalid Go.
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, false /*isInput*/))
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, true /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, false /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, true /*isInput*/))
+	assert.Equal(t,
+		"pulumi.AssetOrArchiveArrayMap",
+		g.argumentTypeName(
+			model.NewObjectType(map[string]model.Type{"k": model.NewListType(pcl.AssetType)}),
+			true, /*isInput*/
+		))
+
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
 	assert.Equal(t,

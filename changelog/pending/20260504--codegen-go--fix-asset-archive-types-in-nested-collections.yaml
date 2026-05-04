@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: codegen/go
+  description: Correctly generate `[]pulumi.Asset` & `[]pulumi.Archive`
