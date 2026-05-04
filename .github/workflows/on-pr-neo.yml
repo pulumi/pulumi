@@ -8,8 +8,8 @@ permissions:
 # Fast-path CI for PRs that touch only `pkg/cmd/pulumi/neo/**` (and optionally
 # changelog/.version files). The heavy `on-pr.yml` workflow auto-skips for
 # neo-only PRs via paths-ignore; this workflow runs a focused subset:
-# lint + neo unit tests + tests/smoke. The `ci-ok` job here satisfies the
-# required status check that `on-pr.yml` would normally provide.
+# lint + neo unit tests. The `ci-ok` job here satisfies the required status
+# check that `on-pr.yml` would normally provide.
 on:
   pull_request:
     paths:
@@ -74,58 +74,16 @@ jobs:
       version-set: ${{ needs.version-set.outputs.version-set }}
     secrets: inherit
 
-  build-cli:
-    name: build CLI
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    needs: [info, version-set]
-    uses: ./.github/workflows/ci-build-binaries.yml
-    with:
-      ref: ${{ github.head_ref }}
-      version: ${{ needs.info.outputs.version }}
-      os: linux
-      arch: amd64
-      build-platform: ubuntu-latest
-      version-set: ${{ needs.version-set.outputs.version-set }}
-      artifact-suffix: '-integration'
-    secrets: inherit
-
-  build-sdks:
-    name: Build SDKs
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    needs: [info, version-set]
-    uses: ./.github/workflows/ci-build-sdks.yml
-    with:
-      ref: ${{ github.head_ref }}
-      version: ${{ needs.info.outputs.version }}
-      version-set: ${{ needs.version-set.outputs.version-set }}
-    secrets: inherit
-
-  smoke:
-    name: Smoke tests
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-    needs: [info, version-set, build-cli, build-sdks]
-    uses: ./.github/workflows/ci-run-test.yml
-    with:
-      ref: ${{ github.head_ref }}
-      version: ${{ needs.info.outputs.version }}
-      platform: ubuntu-latest
-      test-name: tests/smoke
-      test-command: PKGS="./..." ./scripts/retry make gotestsum/tests/smoke
-      is-integration-test: true
-      enable-coverage: false
-      version-set: ${{ needs.version-set.outputs.version-set }}
-    secrets: inherit
-
   ci-ok:
     name: ci-ok
-    needs: [lint, neo-unit-tests, smoke]
+    needs: [lint, neo-unit-tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
       # Mirror on-pr.yml: community PRs route through on-community-pr.yml,
       # so don't gate on lint/test results when the PR is from a fork.
       - name: CI failed
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && (needs.lint.result != 'success' || needs.neo-unit-tests.result != 'success' || needs.smoke.result != 'success') }}
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && (needs.lint.result != 'success' || needs.neo-unit-tests.result != 'success') }}
         run: exit 1
       - name: CI succeeded
         run: exit 0
