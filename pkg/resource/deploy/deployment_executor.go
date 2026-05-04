@@ -412,6 +412,16 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 			}
 			return nil, result.BailErrorf("failed to analyze resources: %v", err)
 		}
+
+		if !ex.deployment.opts.DryRun && ex.deployment.backendClient != nil {
+			if pending := ex.deployment.annotations.PendingWrites(); len(pending) > 0 {
+				if flushErr := ex.deployment.backendClient.FlushAnnotations(
+					ex.deployment.ctx.Base(), pending,
+				); flushErr != nil {
+					logging.V(4).Infof("deploymentExecutor.Execute(...): failed to flush policy annotations: %v", flushErr)
+				}
+			}
+		}
 	}
 
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.

@@ -90,6 +90,15 @@ find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -0777 -pe \
     's/^var global\s*=.*?Function\(.*?this.*?\)\(\);/var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;/ms' {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -pe "s|require\('../pulumi/|require('./|g" {} \;
 find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -pe "s|require\('../../pulumi/|require('../|g" {} \;
+# After the global -> local-proto rewrite above, references like `proto.google.protobuf.Struct`
+# from generated map fields (e.g. map<string, google.protobuf.Struct>) no longer resolve, because
+# google_protobuf_*_pb modules export their inner classes flat (Struct, Value, ...) rather than
+# under a google.protobuf namespace. Re-attach each `google_protobuf_*_pb` module's exports under
+# `proto.google.protobuf` so the generated references work at runtime. Note: we deliberately avoid
+# `{}` literals in the replacement because `find -exec` on BSD substitutes `{}` with the filename
+# everywhere it appears, including inside arg strings; `new Object()` is equivalent.
+find "$TEMP_DIR_NODE/pulumi" -type f -name "*.js" -exec perl -i -pe \
+    's/^(goog\.object\.extend\(proto, (google_protobuf_\w+_pb)\);)$/$1\n(proto.google = proto.google || new Object()).protobuf = Object.assign(proto.google.protobuf || new Object(), $2);/' {} \;
 
 rm -rf "${JS_PULUMIRPC:?}"/*
 cp "$TEMP_DIR_NODE"/google/protobuf/*.js "$JS_PULUMIRPC"

@@ -18,6 +18,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -59,7 +60,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -73,6 +76,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 var ErrUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
@@ -1735,6 +1739,9 @@ func (b *cloudBackend) runEngineAction(
 		return nil, nil, err
 	}
 
+	// Seed annotation cache from the service for policy read support.
+	b.fetchAnnotationsForTarget(ctx, update.StackIdentifier, u.Target)
+
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
 	// will signal all events have been proceed when a value is written to the displayDone channel.
 	displayEvents := make(chan engine.Event)
@@ -1815,9 +1822,13 @@ func (b *cloudBackend) runEngineAction(
 	cancellationScope := op.Scopes.NewScope(ctx, engineEvents, dryRun)
 	snapshotManagerClosed := false
 	engineCtx := &engine.Context{
-		Cancel:        cancellationScope.Context(),
-		Events:        engineEvents,
-		BackendClient: httpstateBackendClient{backend: backend.NewBackendClient(b, op.SecretsProvider)},
+		Cancel: cancellationScope.Context(),
+		Events: engineEvents,
+		BackendClient: httpstateBackendClient{
+			backend: backend.NewBackendClient(b, op.SecretsProvider),
+			client:  b.client,
+			stack:   update.StackIdentifier,
+		},
 		FinalizeUpdateFunc: func() {
 			if snapshotManager == nil || journalPersister == nil {
 				return
@@ -2580,6 +2591,8 @@ func (b *cloudBackend) GetDefaultOrg(ctx context.Context) (string, error) {
 
 type httpstateBackendClient struct {
 	backend deploy.BackendClient
+	client  *client.Client
+	stack   client.StackIdentifier
 }
 
 func (c httpstateBackendClient) GetStackOutputs(
@@ -2603,6 +2616,106 @@ func (c httpstateBackendClient) GetStackResourceOutputs(
 	ctx context.Context, name string,
 ) (property.Map, error) {
 	return c.backend.GetStackResourceOutputs(ctx, name)
+}
+
+func (c httpstateBackendClient) FlushAnnotations(
+	ctx context.Context, writes []plugin.AnalyzeAnnotationChange,
+) error {
+	if c.client == nil {
+		return nil
+	}
+	ops := make([]apitype.BatchAnnotationOperation, 0, len(writes))
+	for _, w := range writes {
+		// Keys are validated as "user:api/{kind}" upstream by AnnotationStore.ApplyPolicyWrites,
+		// but defensively split here to extract the kind suffix the batch API expects.
+		idx := strings.IndexByte(w.Key, '/')
+		if idx <= 0 || idx == len(w.Key)-1 {
+			logging.V(4).Infof("skipping annotation flush for %s: malformed key %q", w.URN, w.Key)
+			continue
+		}
+		data, err := marshalAnnotationData(w.Data)
+		if err != nil {
+			return err
+		}
+		ops = append(ops, apitype.BatchAnnotationOperation{
+			Urn:  string(w.URN),
+			Kind: w.Key[idx+1:],
+			Data: data,
+		})
+	}
+	const batchSize = 100
+	for i := 0; i < len(ops); i += batchSize {
+		end := min(i+batchSize, len(ops))
+		if err := c.client.BatchWriteStackResourceAnnotations(ctx, c.stack,
+			apitype.BatchWriteAnnotationsRequest{Operations: ops[i:end]}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func marshalAnnotationData(data resource.PropertyMap) (json.RawMessage, error) {
+	if data == nil {
+		return nil, nil
+	}
+	s, err := plugin.MarshalProperties(data, plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	if err != nil {
+		return nil, err
+	}
+	b, err := json.Marshal(s.AsMap())
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(b), nil
+}
+
+func unmarshalAnnotationData(raw json.RawMessage) resource.PropertyMap {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	s, err := structpb.NewStruct(m)
+	if err != nil {
+		return nil
+	}
+	props, err := plugin.UnmarshalProperties(s, plugin.MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+	if err != nil {
+		return nil
+	}
+	return props
+}
+
+func (b *cloudBackend) fetchAnnotationsForTarget(
+	ctx context.Context, stackID client.StackIdentifier, target *deploy.Target,
+) {
+	grouped := make(map[resource.URN]map[string]resource.PropertyMap)
+	var token *string
+	for {
+		resp, err := b.client.ListStackResourceAnnotations(ctx, stackID, token)
+		if err != nil {
+			logging.V(4).Infof("failed to fetch annotations for cache seeding: %v", err)
+			return
+		}
+		for _, a := range resp.Annotations {
+			urn := resource.URN(a.Urn)
+			byKey, ok := grouped[urn]
+			if !ok {
+				byKey = make(map[string]resource.PropertyMap)
+				grouped[urn] = byKey
+			}
+			byKey[a.Source+"/"+a.Kind] = unmarshalAnnotationData(a.Data)
+		}
+		token = resp.ContinuationToken
+		if token == nil {
+			break
+		}
+	}
+	if len(grouped) > 0 {
+		target.Annotations = grouped
+	}
 }
 
 // Builds a lazy wrapper around doDetectCapabilities.

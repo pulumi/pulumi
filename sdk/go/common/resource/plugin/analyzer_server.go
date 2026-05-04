@@ -69,6 +69,7 @@ func (a *analyzerServer) Analyze(
 	return &pulumirpc.AnalyzeResponse{
 		Diagnostics:   marshalAnalyzeDiagnostics(res.Diagnostics),
 		NotApplicable: marshalPolicyNotApplicables(res.NotApplicable),
+		Annotations:   marshalAnalyzeAnnotationChanges(res.Annotations),
 	}, nil
 }
 
@@ -129,6 +130,7 @@ func (a *analyzerServer) AnalyzeStack(
 	return &pulumirpc.AnalyzeResponse{
 		Diagnostics:   marshalAnalyzeDiagnostics(res.Diagnostics),
 		NotApplicable: marshalPolicyNotApplicables(res.NotApplicable),
+		Annotations:   marshalAnalyzeAnnotationChanges(res.Annotations),
 	}, nil
 }
 
@@ -426,5 +428,6 @@ func convertResourceOptions(opts *pulumirpc.AnalyzerResourceOptions) AnalyzerRes
 		}),
 		CustomTimeouts: customTimeouts,
 		Parent:         resource.URN(opts.GetParent()),
+		Annotations:    convertAnnotationsMap(opts.GetAnnotations()),
 	}
 }

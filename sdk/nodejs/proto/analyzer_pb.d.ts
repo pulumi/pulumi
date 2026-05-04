@@ -247,6 +247,9 @@ export class AnalyzerResourceOptions extends jspb.Message {
     getParent(): string;
     setParent(value: string): AnalyzerResourceOptions;
 
+    getAnnotationsMap(): jspb.Map<string, google_protobuf_struct_pb.Struct>;
+    clearAnnotationsMap(): void;
+
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzerResourceOptions.AsObject;
     static toObject(includeInstance: boolean, msg: AnalyzerResourceOptions): AnalyzerResourceOptions.AsObject;
@@ -267,6 +270,8 @@ export namespace AnalyzerResourceOptions {
         aliasesList: Array<string>,
         customtimeouts?: AnalyzerResourceOptions.CustomTimeouts.AsObject,
         parent: string,
+
+        annotationsMap: Array<[string, google_protobuf_struct_pb.Struct.AsObject]>,
     }
 
 
@@ -352,6 +357,35 @@ export namespace AnalyzerPropertyDependencies {
     }
 }
 
+export class AnalyzeAnnotationChange extends jspb.Message { 
+    getUrn(): string;
+    setUrn(value: string): AnalyzeAnnotationChange;
+    getKey(): string;
+    setKey(value: string): AnalyzeAnnotationChange;
+
+    hasData(): boolean;
+    clearData(): void;
+    getData(): google_protobuf_struct_pb.Struct | undefined;
+    setData(value?: google_protobuf_struct_pb.Struct): AnalyzeAnnotationChange;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): AnalyzeAnnotationChange.AsObject;
+    static toObject(includeInstance: boolean, msg: AnalyzeAnnotationChange): AnalyzeAnnotationChange.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: AnalyzeAnnotationChange, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): AnalyzeAnnotationChange;
+    static deserializeBinaryFromReader(message: AnalyzeAnnotationChange, reader: jspb.BinaryReader): AnalyzeAnnotationChange;
+}
+
+export namespace AnalyzeAnnotationChange {
+    export type AsObject = {
+        urn: string,
+        key: string,
+        data?: google_protobuf_struct_pb.Struct.AsObject,
+    }
+}
+
 export class AnalyzeStackRequest extends jspb.Message { 
     clearResourcesList(): void;
     getResourcesList(): Array<AnalyzerResource>;
@@ -383,6 +417,10 @@ export class AnalyzeResponse extends jspb.Message {
     getNotApplicableList(): Array<PolicyNotApplicable>;
     setNotApplicableList(value: Array<PolicyNotApplicable>): AnalyzeResponse;
     addNotApplicable(value?: PolicyNotApplicable, index?: number): PolicyNotApplicable;
+    clearAnnotationsList(): void;
+    getAnnotationsList(): Array<AnalyzeAnnotationChange>;
+    setAnnotationsList(value: Array<AnalyzeAnnotationChange>): AnalyzeResponse;
+    addAnnotations(value?: AnalyzeAnnotationChange, index?: number): AnalyzeAnnotationChange;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): AnalyzeResponse.AsObject;
@@ -398,6 +436,7 @@ export namespace AnalyzeResponse {
     export type AsObject = {
         diagnosticsList: Array<AnalyzeDiagnostic.AsObject>,
         notApplicableList: Array<PolicyNotApplicable.AsObject>,
+        annotationsList: Array<AnalyzeAnnotationChange.AsObject>,
     }
 }
 

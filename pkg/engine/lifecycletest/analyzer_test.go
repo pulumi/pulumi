@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
@@ -33,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1318,4 +1320,160 @@ func TestPolicyPackInstallFailureReturnsError(t *testing.T) {
 	project := p.GetProject()
 	_, err := lt.TestOp(Update).Run(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil)
 	require.ErrorContains(t, err, "policy pack install failed")
+}
+
+// TestAnnotationsPassedToAnalyzer verifies that annotations seeded on the Target are delivered
+// to the analyzer's Analyze and AnalyzeStack calls via the resource's options, that annotation
+// writes returned from those calls are collected and flushed via BackendClient.FlushAnnotations,
+// and that policy writes whose key is not "user:api/{kind}" are dropped.
+func TestAnnotationsPassedToAnalyzer(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	var analyzeAnnotations []map[string]resource.PropertyMap
+	var stackAnnotations []map[string]resource.PropertyMap
+	var flushedWrites []plugin.AnalyzeAnnotationChange
+
+	loaders := []*deploytest.PluginLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewAnalyzerLoader("annotationAnalyzer", func(_ *plugin.PolicyAnalyzerOptions) (plugin.Analyzer, error) {
+			return &deploytest.Analyzer{
+				Info: plugin.AnalyzerInfo{
+					Name: "annotationAnalyzer",
+					Policies: []plugin.AnalyzerPolicyInfo{
+						{
+							Name:             "check-annotations",
+							EnforcementLevel: apitype.Advisory,
+						},
+					},
+				},
+				AnalyzeF: func(r plugin.AnalyzerResource) (plugin.AnalyzeResponse, error) {
+					if r.Type == "pkgA:m:typA" {
+						mu.Lock()
+						analyzeAnnotations = append(analyzeAnnotations, r.Options.Annotations)
+						mu.Unlock()
+
+						// Return one valid write and one with a non-user:api source that should be dropped.
+						return plugin.AnalyzeResponse{
+							Annotations: []plugin.AnalyzeAnnotationChange{
+								{URN: r.URN, Key: "user:api/cost", Data: resource.PropertyMap{
+									"monthly": resource.NewProperty(50.0),
+								}},
+								{URN: r.URN, Key: "agent:neo/foo", Data: resource.PropertyMap{
+									"x": resource.NewProperty("y"),
+								}},
+							},
+						}, nil
+					}
+					return plugin.AnalyzeResponse{}, nil
+				},
+				AnalyzeStackF: func(resources []plugin.AnalyzerStackResource) (plugin.AnalyzeResponse, error) {
+					mu.Lock()
+					for _, r := range resources {
+						stackAnnotations = append(stackAnnotations, r.Options.Annotations)
+					}
+					mu.Unlock()
+
+					// Return a stack-level annotation write.
+					if len(resources) > 0 {
+						return plugin.AnalyzeResponse{
+							Annotations: []plugin.AnalyzeAnnotationChange{
+								{URN: resources[0].URN, Key: "user:api/stack-reviewed", Data: resource.PropertyMap{
+									"passed": resource.NewProperty(true),
+								}},
+							},
+						}, nil
+					}
+					return plugin.AnalyzeResponse{}, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			UpdateOptions: UpdateOptions{
+				RequiredPolicies: []RequiredPolicy{NewRequiredPolicy("annotationAnalyzer", "", nil)},
+			},
+			HostF: hostF,
+		},
+		BackendClient: &deploytest.BackendClient{
+			GetStackOutputsF: func(ctx context.Context, name string, onDecryptError func(error) error) (property.Map, error) {
+				return property.Map{}, nil
+			},
+			GetStackResourceOutputsF: func(ctx context.Context, name string) (property.Map, error) {
+				return property.Map{}, nil
+			},
+			FlushAnnotationsF: func(ctx context.Context, writes []plugin.AnalyzeAnnotationChange) error {
+				mu.Lock()
+				flushedWrites = append(flushedWrites, writes...)
+				mu.Unlock()
+				return nil
+			},
+		},
+	}
+
+	// Seed annotations on the target so the analyzer receives them via options.
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+	target := p.GetTarget(t, nil)
+	target.Annotations = map[resource.URN]map[string]resource.PropertyMap{
+		resURN: {
+			"user:api/tags":  {"env": resource.NewProperty("prod")},
+			"agent:neo/cost": {"monthly": resource.NewProperty(42.0)},
+		},
+	}
+
+	project := p.GetProject()
+	_, err := lt.TestOp(Update).RunStep(project, target, p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Analyzer should have seen both the user:api and agent:neo seeded annotations on options.
+	require.NotEmpty(t, analyzeAnnotations, "analyzer should have received seeded annotations")
+	combined := analyzeAnnotations[0]
+	require.Contains(t, combined, "user:api/tags")
+	assert.Equal(t, resource.NewProperty("prod"), combined["user:api/tags"]["env"])
+	require.Contains(t, combined, "agent:neo/cost")
+
+	// Stack analyzer should have seen the user:api/cost write applied during per-resource analyze
+	// reflected on at least one of the stack resources (the policy-targeted pkgA:m:typA resource).
+	require.NotEmpty(t, stackAnnotations)
+	stackSawCost := false
+	for _, anns := range stackAnnotations {
+		if _, ok := anns["user:api/cost"]; ok {
+			stackSawCost = true
+			break
+		}
+	}
+	assert.True(t, stackSawCost, "stack analyzer should see policy-written cost annotation on some resource")
+
+	// Only user:api/* writes should have been flushed; the agent:neo/foo write must be dropped.
+	require.NotEmpty(t, flushedWrites, "annotation writes should have been flushed")
+	foundCost := false
+	foundStackReviewed := false
+	for _, w := range flushedWrites {
+		assert.NotEqual(t, "agent:neo/foo", w.Key, "non-user:api writes must be dropped before flush")
+		switch w.Key {
+		case "user:api/cost":
+			foundCost = true
+			assert.Equal(t, resource.NewProperty(50.0), w.Data["monthly"])
+		case "user:api/stack-reviewed":
+			foundStackReviewed = true
+			assert.Equal(t, resource.NewProperty(true), w.Data["passed"])
+		}
+	}
+	assert.True(t, foundCost, "should have flushed per-resource 'user:api/cost' annotation write")
+	assert.True(t, foundStackReviewed, "should have flushed stack-level 'user:api/stack-reviewed' annotation write")
 }

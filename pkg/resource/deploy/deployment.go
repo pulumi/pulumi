@@ -60,6 +60,10 @@ type BackendClient interface {
 	// `property.Map` with members `type` (containing the Pulumi type ID for the resource) and
 	// `outputs` (containing the resource outputs themselves).
 	GetStackResourceOutputs(ctx context.Context, stackName string) (property.Map, error)
+
+	// FlushAnnotations writes pending annotation changes to the backend after a successful update.
+	// Implementations that do not support annotations should return nil.
+	FlushAnnotations(ctx context.Context, writes []plugin.AnalyzeAnnotationChange) error
 }
 
 // Options controls the deployment process.
@@ -347,6 +351,10 @@ type Deployment struct {
 	resourceStatus *resourceStatusServer
 	// the resource hook registry for this deployment
 	resourceHooks *ResourceHooks
+	// the annotation store for policy reads/writes during this deployment.
+	annotations *AnnotationStore
+	// the backend client for flushing annotation writes post-deployment.
+	backendClient BackendClient
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -573,6 +581,11 @@ func NewDeployment(
 	// so we just pass all of the old resources.
 	reg := providers.NewRegistry(ctx.Host, opts.DryRun, builtins)
 
+	annotations := NewAnnotationStore()
+	if target.Annotations != nil {
+		annotations.SeedAll(target.Annotations)
+	}
+
 	deployment := &Deployment{
 		ctx:                             ctx,
 		opts:                            opts,
@@ -594,6 +607,8 @@ func NewDeployment(
 		newPlans:                        newResourcePlan(target.Config),
 		reads:                           reads,
 		resourceHooks:                   resourceHooks,
+		annotations:                     annotations,
+		backendClient:                   backendClient,
 	}
 
 	// Create a new resource status server for this deployment.
@@ -611,6 +626,7 @@ func (d *Deployment) Diag() diag.Sink                        { return d.ctx.Diag
 func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
+func (d *Deployment) Annotations() *AnnotationStore          { return d.annotations }
 
 // SameProvider configures a provider from state without changes.
 // If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.

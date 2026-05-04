@@ -27,6 +27,7 @@ import (
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // analyzeResource runs all analyzers against a single resource in parallel, emitting
@@ -40,6 +41,7 @@ func analyzeResource(
 	r plugin.AnalyzerResource,
 	events PolicyEvents,
 	dryRun bool,
+	annotationStore *AnnotationStore,
 ) (invalid bool, sawError bool, err error) {
 	if len(analyzers) == 0 {
 		return false, false, nil
@@ -79,6 +81,21 @@ func analyzeResource(
 					sawErrorAtomic.Store(true)
 				}
 				events.OnPolicyViolation(r.URN, d)
+			}
+
+			if annotationStore != nil && len(response.Annotations) > 0 {
+				var valid []plugin.AnalyzeAnnotationChange
+				for _, a := range response.Annotations {
+					if a.URN != r.URN {
+						logging.V(5).Infof(
+							"dropping annotation write: target URN %s != resource URN %s", a.URN, r.URN)
+						continue
+					}
+					valid = append(valid, a)
+				}
+				if len(valid) > 0 {
+					annotationStore.ApplyPolicyWrites(valid)
+				}
 			}
 
 			summary := resourceanalyzer.NewAnalyzePolicySummary(r.URN, response, info)
@@ -208,7 +225,7 @@ func AnalyzeSnapshot(
 
 		// Second pass: run analysis in parallel. We use dryRun=true because we're not
 		// executing a deployment; violations are reported but do not fail the resource.
-		_, sawError, err := analyzeResource(analyzers, analyzerRes, events, true /*dryRun*/)
+		_, sawError, err := analyzeResource(analyzers, analyzerRes, events, true /*dryRun*/, nil)
 		if err != nil {
 			return false, err
 		}

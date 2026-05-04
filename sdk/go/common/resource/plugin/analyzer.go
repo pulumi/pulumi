@@ -64,6 +64,14 @@ type Analyzer interface {
 	Cancel(ctx context.Context) error
 }
 
+// AnalyzeAnnotationChange represents a single annotation write that a policy wants to make.
+// Key follows the form "{source}/{kind}" and must use source "user:api".
+type AnalyzeAnnotationChange struct {
+	URN  resource.URN
+	Key  string
+	Data resource.PropertyMap
+}
+
 // AnalyzerResource mirrors a resource that is passed to `Analyze`.
 type AnalyzerResource struct {
 	URN        resource.URN
@@ -92,6 +100,8 @@ type AnalyzerResourceOptions struct {
 	Aliases                 []resource.Alias        // additional URNs that should be aliased to this resource.
 	CustomTimeouts          resource.CustomTimeouts // an optional config object for resource options
 	Parent                  resource.URN            // an optional parent URN for this resource.
+	// Annotations are resource annotations keyed by "{source}/{kind}".
+	Annotations map[string]resource.PropertyMap
 }
 
 // AnalyzerProviderResource mirrors a resource's provider sent to the analyzer.
@@ -117,10 +127,9 @@ type AnalyzeDiagnostic struct {
 
 // AnalyzeResponse is the response from the Analyze method, containing violations.
 type AnalyzeResponse struct {
-	// Information about policy violations.
-	Diagnostics []AnalyzeDiagnostic
-	// Information about policies that were not applicable.
+	Diagnostics   []AnalyzeDiagnostic
 	NotApplicable []PolicyNotApplicable
+	Annotations   []AnalyzeAnnotationChange
 }
 
 // Remediation indicates that a resource remediation took place, and contains the resulting

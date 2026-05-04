@@ -1293,6 +1293,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 				Aliases:                 new.GetAliases(),
 				CustomTimeouts:          new.CustomTimeouts,
 				Parent:                  new.Parent,
+				Annotations:             sg.deployment.annotations.Get(new.URN),
 			},
 		}
 		providerResource := sg.getProviderResource(new.URN, new.Provider)
@@ -3168,6 +3169,7 @@ func (sg *stepGenerator) analyzeAll(
 			Aliases:                 new.GetAliases(),
 			CustomTimeouts:          new.CustomTimeouts,
 			Parent:                  new.Parent,
+			Annotations:             sg.deployment.annotations.Get(new.URN),
 		},
 	}
 	providerResource := sg.getProviderResource(new.URN, new.Provider)
@@ -3180,7 +3182,8 @@ func (sg *stepGenerator) analyzeAll(
 		}
 	}
 
-	invalid, sawError, err := analyzeResource(analyzers, r, sg.deployment.events, sg.deployment.opts.DryRun)
+	invalid, sawError, err := analyzeResource(
+		analyzers, r, sg.deployment.events, sg.deployment.opts.DryRun, sg.deployment.annotations)
 	if err != nil {
 		return false, err
 	}
@@ -3223,6 +3226,7 @@ func (sg *stepGenerator) AnalyzeResources() error {
 						Aliases:                 v.GetAliases(),
 						CustomTimeouts:          v.CustomTimeouts,
 						Parent:                  v.Parent,
+						Annotations:             sg.deployment.annotations.Get(v.URN),
 					},
 				},
 				Parent:               v.Parent,
@@ -3319,6 +3323,10 @@ func (sg *stepGenerator) AnalyzeResources() error {
 					urn = resource.DefaultRootStackURN(sg.deployment.Target().Name.Q(), sg.deployment.source.Project())
 				}
 				sg.deployment.events.OnPolicyViolation(urn, d)
+			}
+
+			if len(response.Annotations) > 0 {
+				sg.deployment.annotations.ApplyPolicyWrites(response.Annotations)
 			}
 
 			summary := resourceanalyzer.NewAnalyzeStackPolicySummary(response, info)
