@@ -1,17 +1,17 @@
 config "aString" "string" {}
 
-output "lengthOutput" {
+output "lengthResult" {
   value = length(aString)
 }
 
-output "splitOutput" {
+output "splitResult" {
   value = split("-", aString)
 }
 
-output "joinOutput" {
+output "joinResult" {
   value = join("|", split("-", aString))
 }
 
-output "interpolateOutput" {
+output "interpolateResult" {
   value = "prefix-${aString}"
 }

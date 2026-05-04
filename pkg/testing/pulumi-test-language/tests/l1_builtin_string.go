@@ -27,9 +27,9 @@ import (
 func init() {
 	addTest := func(input string) TestRun {
 		parts := strings.Split(input, "-")
-		splitOutput := make([]resource.PropertyValue, len(parts))
+		splitResult := make([]resource.PropertyValue, len(parts))
 		for i, p := range parts {
-			splitOutput[i] = resource.NewProperty(p)
+			splitResult[i] = resource.NewProperty(p)
 		}
 
 		return TestRun{
@@ -42,11 +42,11 @@ func init() {
 				assert.Equal(l, resource.PropertyMap{
 					// GraphemeClusterCount returns the number of Unicode grapheme clusters in s, matching the behavior
 					// of PCL's length() on strings.
-					"lengthOutput": resource.NewProperty(
+					"lengthResult": resource.NewProperty(
 						float64(uniseg.GraphemeClusterCount(input))),
-					"splitOutput":       resource.NewProperty(splitOutput),
-					"joinOutput":        resource.NewProperty(strings.Join(parts, "|")),
-					"interpolateOutput": resource.NewProperty("prefix-" + input),
+					"splitResult":       resource.NewProperty(splitResult),
+					"joinResult":        resource.NewProperty(strings.Join(parts, "|")),
+					"interpolateResult": resource.NewProperty("prefix-" + input),
 				}, stack.Outputs)
 			},
 		}

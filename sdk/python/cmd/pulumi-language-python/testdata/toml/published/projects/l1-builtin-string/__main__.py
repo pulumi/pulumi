@@ -17,7 +17,7 @@ def grapheme_length(s):
 
 config = pulumi.Config()
 a_string = config.require("aString")
-pulumi.export("lengthOutput", grapheme_length(a_string))
-pulumi.export("splitOutput", a_string.split("-"))
-pulumi.export("joinOutput", "|".join(a_string.split("-")))
-pulumi.export("interpolateOutput", f"prefix-{a_string}")
+pulumi.export("lengthResult", grapheme_length(a_string))
+pulumi.export("splitResult", a_string.split("-"))
+pulumi.export("joinResult", "|".join(a_string.split("-")))
+pulumi.export("interpolateResult", f"prefix-{a_string}")
