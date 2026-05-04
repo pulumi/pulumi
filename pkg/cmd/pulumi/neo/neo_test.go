@@ -18,10 +18,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -354,4 +357,199 @@ func TestNewPulumiSinkForUI_NonBlockingOnFullChannel(t *testing.T) {
 	require.NotPanics(t, func() {
 		sink.OnStart("pulumi__pulumi_preview", "dev", true)
 	}, "OnStart must not block when the UI channel is full")
+}
+
+// -----------------------------------------------------------------------------
+// runWithTUI
+//
+// Regression tests for the Ctrl+C double-press hang: when the bubbletea program
+// exits, the shared errgroup context must be cancelled so the dispatcher and
+// any active session.Run unblock. errgroup itself only cancels its derived
+// context on a non-nil error, but tea.Quit returns nil from p.Run, so without
+// the explicit cancel inside runWithTUI the helper would hang on g.Wait.
+// -----------------------------------------------------------------------------
+
+// awaitClose returns once ch is closed or the deadline elapses, failing the
+// test if the channel never closes. Tests use it to assert that worker
+// goroutines actually exit instead of relying on test-timeout to catch a hang.
+func awaitClose(t *testing.T, ch <-chan struct{}, msg string) {
+	t.Helper()
+	select {
+	case <-ch:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("timed out waiting: %s", msg)
+	}
+}
+
+func TestRunWithTUI_CleanTUIExitCancelsWorkers(t *testing.T) {
+	t.Parallel()
+
+	// The bug: tea.Quit returns nil from p.Run, errgroup keeps gctx alive on
+	// nil errors, so workers blocked on gctx.Done would never exit. Simulate
+	// the clean exit and verify the worker is unblocked.
+	workerExited := make(chan struct{})
+
+	err := runWithTUI(
+		t.Context(),
+		func() error { return nil }, // tea.Quit-style clean exit
+		func(g *errgroup.Group, gctx context.Context) {
+			g.Go(func() error {
+				<-gctx.Done()
+				close(workerExited)
+				return nil
+			})
+		},
+	)
+	require.NoError(t, err)
+	awaitClose(t, workerExited, "worker should unblock when TUI exits cleanly")
+}
+
+func TestRunWithTUI_PropagatesTUIError(t *testing.T) {
+	t.Parallel()
+
+	// A non-nil error from runTUI must surface through g.Wait, and workers
+	// must still get cancelled on the way out so g.Wait can return.
+	boom := errors.New("tui boom")
+	workerExited := make(chan struct{})
+
+	err := runWithTUI(
+		t.Context(),
+		func() error { return boom },
+		func(g *errgroup.Group, gctx context.Context) {
+			g.Go(func() error {
+				<-gctx.Done()
+				close(workerExited)
+				return nil
+			})
+		},
+	)
+	require.ErrorIs(t, err, boom)
+	awaitClose(t, workerExited, "worker should unblock when TUI exits with error")
+}
+
+func TestRunWithTUI_PropagatesWorkerError(t *testing.T) {
+	t.Parallel()
+
+	// Worker errors must propagate; the TUI goroutine should still complete
+	// (errgroup cancels gctx on the worker's non-nil return, but runTUI is
+	// not bound to gctx in production — here we make it watch ctx so the
+	// test terminates without relying on the test-timeout).
+	boom := errors.New("worker boom")
+
+	err := runWithTUI(
+		t.Context(),
+		func() error {
+			// Real bubbletea programs aren't ctx-aware; in production the
+			// errgroup waits for tea.Quit. For the test we just exit
+			// immediately so g.Wait can collect the worker's error.
+			return nil
+		},
+		func(g *errgroup.Group, _ context.Context) {
+			g.Go(func() error { return boom })
+		},
+	)
+	require.ErrorIs(t, err, boom)
+}
+
+func TestRunWithTUI_RegisterRunsBeforeTUI(t *testing.T) {
+	t.Parallel()
+
+	// register must run synchronously before the TUI goroutine starts so the
+	// dispatcher (which the register callback installs) is already listening
+	// on outCh by the time the TUI begins emitting events. If runWithTUI ever
+	// inverted the order, an early TUI message could race past the dispatcher.
+	var registerDone atomic.Bool
+	tuiStarted := make(chan struct{})
+
+	err := runWithTUI(
+		t.Context(),
+		func() error {
+			close(tuiStarted)
+			// Assert the ordering invariant from inside the TUI goroutine.
+			assert.True(t, registerDone.Load(), "register must complete before runTUI starts")
+			return nil
+		},
+		func(g *errgroup.Group, gctx context.Context) {
+			g.Go(func() error {
+				<-gctx.Done()
+				return nil
+			})
+			registerDone.Store(true)
+		},
+	)
+	require.NoError(t, err)
+	awaitClose(t, tuiStarted, "TUI goroutine should run")
+}
+
+func TestRunWithTUI_LazilySpawnedWorkersJoin(t *testing.T) {
+	t.Parallel()
+
+	// The dispatcher captures g and calls g.Go from inside its loop when the
+	// first user message arrives (lazy task creation). g.Wait must include
+	// those late-spawned goroutines, so the helper can't return until they
+	// also finish. Verify by spawning a delayed worker and checking it ran.
+	var lateWorkerRan atomic.Bool
+
+	err := runWithTUI(
+		t.Context(),
+		func() error { return nil },
+		func(g *errgroup.Group, gctx context.Context) {
+			g.Go(func() error {
+				// Spawn a sibling after this worker starts. In production this
+				// is the dispatcher reacting to its first outbound user_message.
+				g.Go(func() error {
+					lateWorkerRan.Store(true)
+					return nil
+				})
+				<-gctx.Done()
+				return nil
+			})
+		},
+	)
+	require.NoError(t, err)
+	assert.True(t, lateWorkerRan.Load(), "late-spawned worker must run before runWithTUI returns")
+}
+
+func TestRunWithTUI_ParentContextCancellationStopsWorkers(t *testing.T) {
+	t.Parallel()
+
+	// External cancellation (Ctrl+C delivered to the parent ctx) must
+	// propagate to workers via gctx. The TUI is not ctx-aware in production
+	// — we simulate that by having it block until the test releases it via
+	// tuiRelease, mimicking a TUI that exits in response to its own input.
+	parentCtx, cancelParent := context.WithCancel(t.Context())
+	tuiRelease := make(chan struct{})
+	workerExited := make(chan struct{})
+
+	go func() {
+		// Cancel the parent shortly after starting; the worker should observe
+		// it via gctx.Done and exit, after which we release the TUI so the
+		// helper can return.
+		time.Sleep(20 * time.Millisecond)
+		cancelParent()
+	}()
+
+	go func() {
+		<-workerExited
+		close(tuiRelease)
+	}()
+
+	err := runWithTUI(
+		parentCtx,
+		func() error {
+			<-tuiRelease
+			return nil
+		},
+		func(g *errgroup.Group, gctx context.Context) {
+			g.Go(func() error {
+				<-gctx.Done()
+				close(workerExited)
+				return nil
+			})
+		},
+	)
+	// errgroup returns the first non-nil worker error, but workers here return
+	// nil after observing cancellation. The helper itself returns nil — the
+	// caller of runNeo would surface ctx.Err() via session.Run separately.
+	require.NoError(t, err)
 }
