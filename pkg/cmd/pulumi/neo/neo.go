@@ -50,6 +50,16 @@ type outboundEvent struct {
 	planMode bool
 }
 
+// Indirection points for the integration test in neo_integration_test.go.
+// Production behavior is unchanged: newTeaProgram defers to tea.NewProgram and
+// isInteractive defers to cmdutil.Interactive. The test swaps both so it can
+// run the interactive code path under `go test` (no TTY, no terminal renderer)
+// and capture the bubbletea program reference to drive a clean shutdown.
+var (
+	newTeaProgram = func(m tea.Model) *tea.Program { return tea.NewProgram(m) }
+	isInteractive = cmdutil.Interactive
+)
+
 // NewNeoCmd creates the `pulumi neo` command. This first slice of the command starts a
 // Neo task in `cli` tool execution mode, prints a console URL the user can open in a
 // browser, and runs the local tool-execution loop in the foreground until the task ends.
@@ -148,7 +158,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	handlers["pulumi"] = pu
 
 	// Non-interactive mode requires a prompt — there's no input mechanism.
-	if !cmdutil.Interactive() {
+	if !isInteractive() {
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
@@ -195,7 +205,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 
 	// Inline (non-alt-screen) so the transcript stays in the user's terminal
 	// scrollback after exit.
-	p := tea.NewProgram(model)
+	p := newTeaProgram(model)
 
 	return runWithTUI(
 		ctx,

@@ -44,11 +44,14 @@ import (
 // cloud-only hooks are no-ops.
 type fakeHTTPBackend struct {
 	*backend.MockBackend
+	// ClientV is returned from Client(); leave nil for tests that don't need a
+	// live client (the integration test wires a real *client.Client here).
+	ClientV *client.Client
 }
 
 func (f *fakeHTTPBackend) CloudURL() string                                       { return "" }
 func (f *fakeHTTPBackend) StackConsoleURL(backend.StackReference) (string, error) { return "", nil }
-func (f *fakeHTTPBackend) Client() *client.Client                                 { return nil }
+func (f *fakeHTTPBackend) Client() *client.Client                                 { return f.ClientV }
 
 func (f *fakeHTTPBackend) RunDeployment(
 	context.Context, backend.StackReference, apitype.CreateDeploymentRequest,
