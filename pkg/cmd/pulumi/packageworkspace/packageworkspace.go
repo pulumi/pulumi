@@ -166,7 +166,6 @@ func (w Workspace) DownloadPlugin(
 	defer span.End()
 
 	util.SetKnownPluginDownloadURL(&pluginSpec)
-	util.SetKnownPluginVersion(&pluginSpec)
 	if pluginSpec.Version == nil {
 		var err error
 		pluginSpec.Version, err = pluginstorage.Instance.GetLatestVersion(ctx, pluginSpec)
