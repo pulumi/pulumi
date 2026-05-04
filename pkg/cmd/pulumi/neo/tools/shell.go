@@ -77,7 +77,7 @@ func (s *Shell) Invoke(ctx context.Context, method string, args json.RawMessage)
 	var p struct {
 		Command string  `json:"command"`
 		Cwd     string  `json:"cwd,omitempty"`
-		Timeout float64 `json:"timeout,omitempty"` // seconds; 0 or omitted = DefaultTimeout
+		Timeout float64 `json:"timeout,omitempty"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("decoding shell_execute args: %w", err)
@@ -150,9 +150,6 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 	// pipe open, hanging cmd.Wait() indefinitely.
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Cancel = func() error {
-		// On Unix this sends SIGKILL to the whole process group (including the
-		// leader); on Windows it kills direct children. The trailing
-		// Process.Kill covers the Windows root and is a harmless no-op on Unix.
 		_ = cmdutil.KillChildren(cmd.Process.Pid)
 		return cmd.Process.Kill()
 	}
@@ -181,18 +178,11 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 			result["error"] = err.Error()
 		}
 	}
-	timedOut := errors.Is(runCtx.Err(), context.DeadlineExceeded)
-	if timedOut {
-		result["timed_out"] = true
-	}
 	if stdout.truncated || stderr.truncated {
 		result["truncated"] = true
 	}
-	if timedOut {
-		// Returning a non-nil error alongside the partial result lets the session
-		// dispatch layer mark the tool call as failed (IsError=true → red dot in
-		// the TUI, retry signal to the agent) while still surfacing the captured
-		// stdout/stderr and exit_code in Content.
+	if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+		result["timed_out"] = true
 		return result, fmt.Errorf("shell command timed out after %s", timeout)
 	}
 	return result, nil
