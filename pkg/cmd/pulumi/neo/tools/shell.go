@@ -150,8 +150,7 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 	// pipe open, hanging cmd.Wait() indefinitely.
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Cancel = func() error {
-		_ = cmdutil.KillChildren(cmd.Process.Pid)
-		return cmd.Process.Kill()
+		return errors.Join(cmdutil.KillChildren(cmd.Process.Pid), cmd.Process.Kill())
 	}
 	// Even after the tree is killed, a grandchild that inherited stdout/stderr
 	// may keep the pipes open. WaitDelay forces cmd.Wait to return after this
