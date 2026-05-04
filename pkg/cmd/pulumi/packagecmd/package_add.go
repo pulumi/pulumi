@@ -114,7 +114,7 @@ from the parameters, as in:
 				target = addTarget{
 					installRoot: wd,
 					proj: &workspace.PluginProject{
-						Runtime: workspace.NewProjectRuntimeInfo(normalizeRuntimeName(language), nil),
+						Runtime: workspace.NewProjectRuntimeInfo(cmdCmd.NormalizeRuntimeName(language), nil),
 					},
 					reg: cmdCmd.NewDefaultRegistry(
 						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
@@ -224,16 +224,6 @@ type addTarget struct {
 	projectFilePath *string
 	reg             registry.Registry
 	proj            workspace.BaseProject
-}
-
-func normalizeRuntimeName(name string) string {
-	switch name {
-	case "csharp", "c#":
-		return "dotnet"
-	case "typescript":
-		return "nodejs"
-	}
-	return name
 }
 
 func schemaDisplayName(schema *schema.Package) string {

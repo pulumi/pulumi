@@ -88,7 +88,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				}
 				pkg.Version = &pkgVersion
 			}
-			language = normalizeRuntimeName(language)
+			language = cmdCmd.NormalizeRuntimeName(language)
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
