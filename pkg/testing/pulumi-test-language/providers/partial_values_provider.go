@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
 type PartialValuesProvider struct {
@@ -49,9 +50,8 @@ func (p *PartialValuesProvider) Pkg() tokens.Package {
 }
 
 func (p *PartialValuesProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
-	ver := semver.MustParse("1.0.0")
 	return plugin.PluginInfo{
-		Version: &ver,
+		Version: &semver.Version{Major: 40},
 	}, nil
 }
 
@@ -94,7 +94,7 @@ func (p *PartialValuesProvider) GetSchema(
 
 	pkg := schema.PackageSpec{
 		Name:    "partial",
-		Version: "1.0.0",
+		Version: "40.0.0",
 		Types: map[string]schema.ComplexTypeSpec{
 			"partial:index:DataObject": {
 				ObjectTypeSpec: dataObjectSpec,
@@ -174,9 +174,9 @@ func (p *PartialValuesProvider) CheckConfig(
 			Failures: makeCheckFailure("version", "version is not a string"),
 		}, nil
 	}
-	if version.StringValue() != "1.0.0" {
+	if version.StringValue() != "40.0.0" {
 		return plugin.CheckConfigResponse{
-			Failures: makeCheckFailure("version", "version is not 1.0.0"),
+			Failures: makeCheckFailure("version", "version is not 40.0.0"),
 		}, nil
 	}
 
@@ -205,15 +205,16 @@ func (p *PartialValuesProvider) Check(
 func (p *PartialValuesProvider) Create(
 	_ context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	if req.URN.Type() == "partial:index:Source" {
+	switch req.URN.Type() { //nolint:exhaustive // Default covers the other case
+	case "partial:index:Source":
 		return p.createSource(req)
-	} else if req.URN.Type() == "partial:index:Consumer" {
+	case "partial:index:Consumer":
 		return p.createConsumer(req)
+	default:
+		return plugin.CreateResponse{
+			Status: resource.StatusUnknown,
+		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
-
-	return plugin.CreateResponse{
-		Status: resource.StatusUnknown,
-	}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 }
 
 func (p *PartialValuesProvider) createSource(req plugin.CreateRequest) (plugin.CreateResponse, error) {
@@ -294,84 +295,43 @@ func (p *PartialValuesProvider) createConsumer(req plugin.CreateRequest) (plugin
 			Status: resource.StatusUnknown,
 		}, errors.New("createConsumer: missing or non-object 'values' input")
 	}
-	values := valuesProp.ObjectValue()
-
+	actual := resource.FromResourcePropertyMap(valuesProp.ObjectValue())
+	var expected property.Map
 	if req.Preview {
-		// During preview, known values should be present; unknown values should be computed.
-		if err := assertStringValue(values, "dataKnownField", "known-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "dataKnownSecretField", "known-secret-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertComputed(values, "dataUnknownField"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretComputed(values, "dataUnknownSecretField"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertStringValue(values, "listKnown", "known-item-0"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "listKnownSecret", "known-secret-item-1"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertComputed(values, "listUnknown"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretComputed(values, "listUnknownSecret"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertStringValue(values, "mapKnown", "known-map-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "mapKnownSecret", "known-secret-map-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertComputed(values, "mapUnknown"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretComputed(values, "mapUnknownSecret"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
+		expected = property.NewMap(map[string]property.Value{
+			"dataKnownField":         property.New("known-value"),
+			"dataKnownSecretField":   property.New("known-secret-value").WithSecret(true),
+			"dataUnknownField":       property.New(property.Computed),
+			"dataUnknownSecretField": property.New(property.Computed).WithSecret(true),
+			"listKnown":              property.New("known-item-0"),
+			"listKnownSecret":        property.New("known-secret-item-1").WithSecret(true),
+			"listUnknown":            property.New(property.Computed),
+			"listUnknownSecret":      property.New(property.Computed).WithSecret(true),
+			"mapKnown":               property.New("known-map-value"),
+			"mapKnownSecret":         property.New("known-secret-map-value").WithSecret(true),
+			"mapUnknown":             property.New(property.Computed),
+			"mapUnknownSecret":       property.New(property.Computed).WithSecret(true),
+		})
 	} else {
-		// During actual execution, all values should be concrete.
-		if err := assertStringValue(values, "dataKnownField", "known-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "dataKnownSecretField", "known-secret-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertStringValue(values, "dataUnknownField", "computed-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "dataUnknownSecretField", "computed-secret-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertStringValue(values, "listKnown", "known-item-0"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "listKnownSecret", "known-secret-item-1"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertStringValue(values, "listUnknown", "computed-item-2"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "listUnknownSecret", "computed-secret-item-3"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertStringValue(values, "mapKnown", "known-map-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "mapKnownSecret", "known-secret-map-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertStringValue(values, "mapUnknown", "computed-map-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
-		if err := assertSecretStringValue(values, "mapUnknownSecret", "computed-secret-map-value"); err != nil {
-			return plugin.CreateResponse{Status: resource.StatusUnknown}, err
-		}
+		expected = property.NewMap(map[string]property.Value{
+			"dataKnownField":         property.New("known-value"),
+			"dataKnownSecretField":   property.New("known-secret-value").WithSecret(true),
+			"dataUnknownField":       property.New("computed-value"),
+			"dataUnknownSecretField": property.New("computed-secret-value").WithSecret(true),
+			"listKnown":              property.New("known-item-0"),
+			"listKnownSecret":        property.New("known-secret-item-1").WithSecret(true),
+			"listUnknown":            property.New("computed-item-2"),
+			"listUnknownSecret":      property.New("computed-secret-item-3").WithSecret(true),
+			"mapKnown":               property.New("known-map-value"),
+			"mapKnownSecret":         property.New("known-secret-map-value").WithSecret(true),
+			"mapUnknown":             property.New("computed-map-value"),
+			"mapUnknownSecret":       property.New("computed-secret-map-value").WithSecret(true),
+		})
+	}
+
+	if !property.New(expected).Equals(property.New(actual)) {
+		return plugin.CreateResponse{Status: resource.StatusUnknown},
+			fmt.Errorf("mismatch: expected: %#v, actual: %#v", expected, actual)
 	}
 
 	return plugin.CreateResponse{
@@ -379,69 +339,6 @@ func (p *PartialValuesProvider) createConsumer(req plugin.CreateRequest) (plugin
 		Properties: resource.PropertyMap{},
 		Status:     resource.StatusOK,
 	}, nil
-}
-
-func assertStringValue(m resource.PropertyMap, key string, expected string) error {
-	v, ok := m[resource.PropertyKey(key)]
-	if !ok {
-		return fmt.Errorf("assertStringValue: key %q not found in values", key)
-	}
-	if v.IsSecret() {
-		return fmt.Errorf("assertStringValue: key %q: expected non-secret, got secret", key)
-	}
-	if !v.IsString() {
-		return fmt.Errorf("assertStringValue: key %q: expected string, got %v", key, v)
-	}
-	if v.StringValue() != expected {
-		return fmt.Errorf("assertStringValue: key %q: expected %q, got %q", key, expected, v.StringValue())
-	}
-	return nil
-}
-
-func assertSecretStringValue(m resource.PropertyMap, key string, expected string) error {
-	v, ok := m[resource.PropertyKey(key)]
-	if !ok {
-		return fmt.Errorf("assertSecretStringValue: key %q not found in values", key)
-	}
-	if !v.IsSecret() {
-		return fmt.Errorf("assertSecretStringValue: key %q: expected secret, got %v", key, v)
-	}
-	inner := v.SecretValue().Element
-	if !inner.IsString() {
-		return fmt.Errorf("assertSecretStringValue: key %q: expected secret string, got %v", key, inner)
-	}
-	if inner.StringValue() != expected {
-		return fmt.Errorf("assertSecretStringValue: key %q: expected %q, got %q", key, expected, inner.StringValue())
-	}
-	return nil
-}
-
-func assertComputed(m resource.PropertyMap, key string) error {
-	v, ok := m[resource.PropertyKey(key)]
-	if !ok {
-		return fmt.Errorf("assertComputed: key %q not found in values", key)
-	}
-	if v.IsSecret() {
-		return fmt.Errorf("assertComputed: key %q: expected non-secret, got secret", key)
-	}
-	if !v.IsComputed() {
-		return fmt.Errorf("assertComputed: key %q: expected computed, got %v", key, v)
-	}
-	return nil
-}
-
-func assertSecretComputed(m resource.PropertyMap, key string) error {
-	v, ok := m[resource.PropertyKey(key)]
-	if !ok {
-		return fmt.Errorf("assertSecretComputed: key %q not found in values", key)
-	}
-	if !v.IsSecret() {
-		return fmt.Errorf("assertSecretComputed: key %q: expected secret, got %v", key, v)
-	}
-	if !v.SecretValue().Element.IsComputed() {
-		return fmt.Errorf("assertSecretComputed: key %q: expected secret computed, got %v", key, v.SecretValue().Element)
-	}
-	return nil
 }
 
 func (p *PartialValuesProvider) SignalCancellation(context.Context) error {

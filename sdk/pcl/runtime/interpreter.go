@@ -1160,6 +1160,7 @@ func (i *Interpreter) registerResourceWith(
 		AcceptSecrets:           true,
 		AcceptResources:         true,
 		SupportsResultReporting: true,
+		SupportsPartialValues:   true,
 	}
 	packageRef, err := i.getPackageRefFromToken(token)
 	if err != nil {

@@ -34,7 +34,7 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					require.Len(l, snap.Resources, 3, "expected 3 resources in snapshot")
+					require.Len(l, snap.Resources, 4, "expected 4 resources in snapshot")
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:partial")
 					RequireSingleResource(l, snap.Resources, "partial:index:Source")

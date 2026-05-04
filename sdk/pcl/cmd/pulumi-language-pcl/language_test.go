@@ -94,14 +94,10 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l3-deferred-outputs":        "incorrectly detects cycle",
-	"l3-component-nested":        "nested component outputs are not propagated correctly",
-	"l1-builtin-min-max":         "cannot pin the current commit",
-	"l3-deferred-outputs":        "incorrectly detects cycle",
-	"l3-component-nested":        "nested component outputs are not propagated correctly",
-	"l2-resource-read":           "need to update pkg",
-	"l1-builtin-min-max":         "cannot pin the current commit",
-	"l2-resource-partial-values": "assertStringValue: key \"dataKnownField\": expected string, got output<string>{}",
+	"l3-deferred-outputs": "incorrectly detects cycle",
+	"l3-component-nested": "nested component outputs are not propagated correctly",
+	"l1-builtin-min-max":  "cannot pin the current commit",
+	"l2-resource-read":    "need to update pkg",
 }
 
 func TestLanguage(t *testing.T) {
