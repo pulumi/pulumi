@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -880,10 +879,11 @@ func generateValue(
 			}
 
 			for k, v := range obj.AllStable {
-				// Ignore internal properties.
-				if strings.HasPrefix(k, "__") {
-					continue
-				}
+				// Provider schemas are free to use `__`-prefixed keys as
+				// discriminators (e.g. `__type`) inside freeform map payloads,
+				// so we preserve them here. Stripping silently dropped values
+				// that were then required as inputs to dependent resources;
+				// see https://github.com/pulumi/pulumi/issues/22738.
 
 				x, err := generateValue(elementType, v, importState, onReferenceFound)
 				if err != nil {
