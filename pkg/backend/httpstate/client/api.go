@@ -280,6 +280,8 @@ func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 		span.SetAttributes(attribute.Int("http.status_code", resp.StatusCode))
 		if resp.StatusCode >= 400 {
 			span.SetStatus(codes.Error, resp.Status)
+		} else {
+			span.SetStatus(codes.Ok, "")
 		}
 	}
 	return resp, err
