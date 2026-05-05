@@ -1111,6 +1111,39 @@ func TestStructuralTypeChecks(t *testing.T) {
 	})
 }
 
+// TestGenerateValuePreservesProviderDiscriminators verifies that values destined for a
+// freeform map-typed (or untyped) property keep their `__`-prefixed keys. Some providers
+// use `__type` (or similar) as discriminators inside such payloads; stripping them is a
+// silent data-loss bug at import time. See https://github.com/pulumi/pulumi/issues/22738.
+func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {
+	t.Parallel()
+
+	value := property.New(map[string]property.Value{
+		"__type": property.New("PermissionDescriptorGroup"),
+		"name":   property.New("root"),
+		"items": property.New([]property.Value{
+			property.New(map[string]property.Value{
+				"__type": property.New("PermissionDescriptorCondition"),
+				"name":   property.New("child"),
+			}),
+		}),
+	})
+
+	expr, err := generateValue(
+		&schema.MapType{ElementType: schema.AnyType},
+		value,
+		ImportState{},
+		func(string) {},
+	)
+	require.NoError(t, err)
+
+	// Generated HCL renders map keys quoted (`fmt.Sprintf("%q", k)`) so they survive
+	// non-identifier characters; the test asserts on the formatted text directly.
+	formatted := fmt.Sprintf("%v", expr)
+	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorGroup"`)
+	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorCondition"`)
+}
+
 func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {
 	t.Parallel()
 	value := property.New("hello")
