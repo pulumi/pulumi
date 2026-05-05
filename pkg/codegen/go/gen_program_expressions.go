@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -858,7 +859,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	for _, item := range expr.Items {
 		if lit, ok := g.literalKey(item.Key); ok {
 			if isMap || strings.HasSuffix(typeName, "Map") {
-				g.Fgenf(w, "\"%s\"", lit)
+				g.Fgenf(w, "%s", strconv.Quote(lit))
 			} else {
 				g.Fgenf(w, "%s", Title(lit))
 			}
@@ -1679,30 +1680,7 @@ func (g *generator) genStringLiteral(w io.Writer, v string, allowRaw bool) {
 		return
 	}
 
-	g.Fgen(w, "\"")
-	g.Fgen(w, g.escapeString(v))
-	g.Fgen(w, "\"")
-}
-
-func (g *generator) escapeString(v string) string {
-	builder := strings.Builder{}
-	for _, c := range v {
-		if c == '\x00' {
-			// escape NUL bytes
-			builder.WriteString(fmt.Sprintf("\\u%04x", c))
-			continue
-		}
-		if c == '"' || c == '\\' {
-			builder.WriteRune('\\')
-		}
-		if c == '\n' {
-			builder.WriteRune('\\')
-			builder.WriteRune('n')
-			continue
-		}
-		builder.WriteRune(c)
-	}
-	return builder.String()
+	g.Fgen(w, strconv.Quote(v))
 }
 
 //nolint:lll
