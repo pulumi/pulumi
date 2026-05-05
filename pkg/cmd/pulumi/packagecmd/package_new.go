@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -102,7 +103,7 @@ func newPackageNewCmd() *cobra.Command {
 			if len(cliArgs) > 0 {
 				args.templateNameOrURL = cliArgs[0]
 			}
-			return runNewPackage(ctx, args)
+			return runNewPackage(ctx, cmd.OutOrStdout(), args)
 		},
 	}
 
@@ -121,7 +122,7 @@ func newPackageNewCmd() *cobra.Command {
 		"The location to place the generated package; if not specified, the current directory is used")
 	cmd.PersistentFlags().BoolVarP(
 		&args.force, "force", "f", false,
-		"Forces content to be generated even if it would change existing files")
+		"Forces content to be generated in a non-empty directory")
 	cmd.PersistentFlags().BoolVarP(
 		&args.generateOnly, "generate-only", "g", false,
 		"Generate the package only; do not install dependencies")
@@ -138,7 +139,7 @@ func newPackageNewCmd() *cobra.Command {
 	return cmd
 }
 
-func runNewPackage(ctx context.Context, args newPackageArgs) error {
+func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) error {
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),
 		IsInteractive: cmdutil.Interactive(),
@@ -217,16 +218,16 @@ func runNewPackage(ctx context.Context, args newPackageArgs) error {
 
 	hasAtLeastOnePrompt := args.name == "" || args.description == ""
 	if !args.yes && hasAtLeastOnePrompt {
-		fmt.Println("This command will walk you through creating a new Pulumi package.")
-		fmt.Println()
-		fmt.Println(
+		fmt.Fprintln(out, "This command will walk you through creating a new Pulumi package.")
+		fmt.Fprintln(out)
+		fmt.Fprintln(out,
 			opts.Color.Colorize(
 				colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
 					"<ENTER>", colors.BrightCyan+colors.Bold)))
-		fmt.Println(
+		fmt.Fprintln(out,
 			opts.Color.Colorize(
 				colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold)))
-		fmt.Println()
+		fmt.Fprintln(out)
 	}
 
 	if args.name == "" {
@@ -253,8 +254,8 @@ func runNewPackage(ctx context.Context, args newPackageArgs) error {
 		return err
 	}
 
-	fmt.Printf("Created package '%s'\n", args.name)
-	fmt.Println()
+	fmt.Fprintf(out, "Created package '%s'\n", args.name)
+	fmt.Fprintln(out)
 
 	pluginPath, err := workspace.DetectPluginPathAt(cwd)
 	if err != nil {
@@ -275,11 +276,11 @@ func runNewPackage(ctx context.Context, args newPackageArgs) error {
 		}
 	}
 
-	fmt.Println(
+	fmt.Fprintln(out,
 		opts.Color.Colorize(
-			colors.BrightGreen+colors.Bold+"Your new package is ready to go!"+colors.Reset) +
-			" " + cmdutil.EmojiOr("✨", ""))
-	fmt.Println()
+			colors.BrightGreen+colors.Bold+"Your new package is ready to go!"+colors.Reset)+
+			" "+cmdutil.EmojiOr("✨", ""))
+	fmt.Fprintln(out)
 
 	var commands []string
 	if originalCwd != cwd {
@@ -293,17 +294,17 @@ func runNewPackage(ctx context.Context, args newPackageArgs) error {
 		commands = append(commands, "pulumi install")
 	}
 	if len(commands) > 0 {
-		fmt.Println("To get started, run:")
-		fmt.Println()
+		fmt.Fprintln(out, "To get started, run:")
+		fmt.Fprintln(out)
 		for i, c := range commands {
 			cmdColors := colors.BrightBlue + colors.Bold + c + colors.Reset
-			fmt.Printf("   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
+			fmt.Fprintf(out, "   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
 		}
-		fmt.Println()
+		fmt.Fprintln(out)
 	}
 
 	if template.Quickstart != "" {
-		fmt.Println(template.Quickstart)
+		fmt.Fprintln(out, template.Quickstart)
 	}
 
 	return nil

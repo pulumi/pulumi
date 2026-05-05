@@ -15,6 +15,8 @@
 package packagecmd
 
 import (
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,7 +83,12 @@ func TestPackageNew_GenerateOnly(t *testing.T) {
 		yes:               true,
 		generateOnly:      true,
 	}
-	require.NoError(t, runNewPackage(t.Context(), args))
+	var out bytes.Buffer
+	require.NoError(t, runNewPackage(t.Context(), &out, args))
+
+	output := out.String()
+	assert.Contains(t, output, "Created package 'my-component'")
+	assert.Contains(t, output, "pulumi install")
 
 	pluginPath := filepath.Join(dest, "PulumiPlugin.yaml")
 	assert.FileExists(t, pluginPath)
@@ -124,7 +131,7 @@ func TestPackageNew_DefaultsNameAndDescription(t *testing.T) {
 		yes:          true,
 		generateOnly: true,
 	}
-	require.NoError(t, runNewPackage(t.Context(), args))
+	require.NoError(t, runNewPackage(t.Context(), io.Discard, args))
 
 	pkgJSON, err := os.ReadFile(filepath.Join(dest, "package.json"))
 	require.NoError(t, err)
@@ -157,13 +164,13 @@ func TestPackageNew_NonEmptyDirRequiresForce(t *testing.T) {
 		yes:               true,
 		generateOnly:      true,
 	}
-	err = runNewPackage(t.Context(), args)
+	err = runNewPackage(t.Context(), io.Discard, args)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "is not empty")
 
 	// With --force, the same call should succeed.
 	args.force = true
-	require.NoError(t, runNewPackage(t.Context(), args))
+	require.NoError(t, runNewPackage(t.Context(), io.Discard, args))
 	assert.FileExists(t, filepath.Join(dest, "PulumiPlugin.yaml"))
 	assert.FileExists(t, filepath.Join(dest, "preexisting.txt"))
 }
@@ -182,7 +189,7 @@ func TestPackageNew_BrokenTemplate(t *testing.T) {
 		yes:               true,
 		generateOnly:      true,
 	}
-	err = runNewPackage(t.Context(), args)
+	err = runNewPackage(t.Context(), io.Discard, args)
 	require.Error(t, err)
 }
 
@@ -202,7 +209,7 @@ func TestPackageNew_DirFlagCreatesAndUsesDir(t *testing.T) {
 		yes:               true,
 		generateOnly:      true,
 	}
-	require.NoError(t, runNewPackage(t.Context(), args))
+	require.NoError(t, runNewPackage(t.Context(), io.Discard, args))
 	assert.FileExists(t, filepath.Join(target, "PulumiPlugin.yaml"))
 }
 
@@ -223,7 +230,7 @@ func TestPackageNew_InvalidName(t *testing.T) {
 				yes:               true,
 				generateOnly:      true,
 			}
-			err := runNewPackage(t.Context(), args)
+			err := runNewPackage(t.Context(), io.Discard, args)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "not a valid package name")
 		})
