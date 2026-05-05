@@ -951,7 +951,15 @@ type PluginProject struct {
 	// Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
 	RequiredPulumiVersion string `json:"requiredPulumiVersion,omitempty" yaml:"requiredPulumiVersion,omitempty"`
 	// Template is an optional template manifest, if this directory is a package template.
-	Template *ProjectTemplate `json:"template,omitempty" yaml:"template,omitempty"`
+	Template *PluginTemplate `json:"template,omitempty" yaml:"template,omitempty"`
+}
+
+// PluginTemplate is a manifest describing a package template, embedded in PulumiPlugin.yaml.
+type PluginTemplate struct {
+	// Description is an optional description of the template.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Quickstart contains optional text to be displayed after template creation.
+	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)
