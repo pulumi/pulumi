@@ -269,6 +269,8 @@ def massage(attr: Any, seen: list[Any]):
 
 
 def massage_complex(attr: Any, seen: list[Any]) -> Any:
+    from .. import Asset, Archive
+
     def is_public_key(key: str) -> bool:
         return not key.startswith("_")
 
@@ -278,6 +280,13 @@ def massage_complex(attr: Any, seen: list[Any]) -> Any:
             if include(key):
                 plain_object[key] = massage(attr.__dict__[key], seen)
         return plain_object
+
+    # Preserve Asset / Archive instances so subsequent gRPC serialization
+    # tags them with the special signature key; without that, the engine
+    # deserializes them as weakly-typed dicts and assets in stack outputs
+    # lose their identity. See pulumi/pulumi#16384.
+    if isinstance(attr, (Asset, Archive)):
+        return attr
 
     if isinstance(attr, Resource):
         serialized_attr = serialize_all_keys(is_public_key)

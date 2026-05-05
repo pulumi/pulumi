@@ -637,7 +637,13 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		g.Fgen(w, ")")
 	case "length":
-		g.Fgenf(w, "%.20v.length", expr.Args[0])
+		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
+		if model.StringType.AssignableFrom(argType) {
+			// Use Intl.Segmenter to count Unicode grapheme clusters, matching PCL's length() semantics.
+			g.Fgenf(w, "[...new Intl.Segmenter().segment(%.20v)].length", expr.Args[0])
+		} else {
+			g.Fgenf(w, "%.20v.length", expr.Args[0])
+		}
 	case "lookup":
 		argType := pcl.UnwrapOption(model.ResolveOutputs(expr.Args[0].Type()))
 		switch argType.(type) {

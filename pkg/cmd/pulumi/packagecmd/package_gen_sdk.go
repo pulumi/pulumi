@@ -67,7 +67,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 			registry := cmdCmd.NewDefaultRegistry(
-				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
 				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {

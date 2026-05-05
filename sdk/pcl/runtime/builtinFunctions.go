@@ -960,6 +960,22 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	lengthFunc := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "value",
+				Type: cty.DynamicPseudoType,
+			},
+		},
+		Type: function.StaticReturnType(cty.Number),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if args[0].Type() == cty.String {
+				return stdlib.Strlen(args[0])
+			}
+			return stdlib.Length(args[0])
+		},
+	})
+
 	return map[string]function.Function{
 		"cwd":                literalStringFn(i.info.WorkingDir),
 		"rootDirectory":      literalStringFn(i.info.RootDirectory),
@@ -985,7 +1001,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"split":              stdlib.SplitFunc,
 		"element":            stdlib.ElementFunc,
 		"join":               stdlib.JoinFunc,
-		"length":             stdlib.LengthFunc,
+		"length":             lengthFunc,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
 		"lookup":             stdlib.LookupFunc,

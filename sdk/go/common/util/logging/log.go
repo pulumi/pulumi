@@ -36,6 +36,9 @@ import (
 	"sync"
 	"time"
 
+	// We need to re-use glogs flags otherwise we'd get conflicts if another dependency pulled in glog later.
+	_ "github.com/golang/glog"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 )
 
@@ -65,22 +68,6 @@ var (
 
 func init() {
 	rebuildLogger()
-
-	// Register the standard logging flags on flag.CommandLine, matching
-	// the behavior glog had via its own init(). Plugin binaries (language
-	// hosts) use the standard flag package and receive these flags from
-	// the CLI when --logflow is enabled.
-	//
-	// Guard with Lookup so we don't panic if a transitive dependency
-	// (e.g. glog) has already registered the same flag name.
-	if flag.CommandLine.Lookup("logtostderr") == nil {
-		flag.BoolVar(&LogToStderr, "logtostderr", false,
-			"Log to stderr instead of to files")
-	}
-	if flag.CommandLine.Lookup("v") == nil {
-		flag.IntVar(&Verbose, "v", 0,
-			"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
-	}
 }
 
 // rebuildLogger assembles the slog.Logger from the current primary and

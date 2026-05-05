@@ -62,7 +62,7 @@ func newPolicyLsCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.
 			if len(cliArgs) > 0 {
 				orgName = cliArgs[0]
 			} else {
-				orgName, err = backend.GetDefaultOrg(ctx, b, project)
+				orgName, err = b.GetDefaultOrg(ctx)
 				if err != nil {
 					return err
 				}

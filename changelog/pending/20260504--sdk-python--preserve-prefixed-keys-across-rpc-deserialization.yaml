@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk-python
+  description: Preserve `__`-prefixed keys (e.g. `__type` discriminators) across RPC deserialization, matching the behavior of the other language SDKs

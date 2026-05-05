@@ -696,6 +696,13 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name, g.Indent); ok {
 					preambleHelperMethods.Add(helperMethodBody)
 				}
+				if call.Name == "length" && len(call.Args) > 0 {
+					argType := pcl.UnwrapOption(model.ResolveOutputs(call.Args[0].Type()))
+					if model.StringType.AssignableFrom(argType) {
+						importSet["unicodedata"] = Import{ImportAs: false}
+						preambleHelperMethods.Add(graphemeLengthHelper(g.Indent))
+					}
+				}
 			}
 			return n, nil
 		})

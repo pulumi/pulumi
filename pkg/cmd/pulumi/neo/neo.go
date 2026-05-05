@@ -26,7 +26,6 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
-	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -50,6 +49,16 @@ type outboundEvent struct {
 	event    apitype.AgentUserEvent
 	planMode bool
 }
+
+// Indirection points for the integration test in neo_integration_test.go.
+// Production behavior is unchanged: newTeaProgram defers to tea.NewProgram and
+// isInteractive defers to cmdutil.Interactive. The test swaps both so it can
+// run the interactive code path under `go test` (no TTY, no terminal renderer)
+// and capture the bubbletea program reference to drive a clean shutdown.
+var (
+	newTeaProgram = func(m tea.Model) *tea.Program { return tea.NewProgram(m) }
+	isInteractive = cmdutil.Interactive
+)
 
 // NewNeoCmd creates the `pulumi neo` command. This first slice of the command starts a
 // Neo task in `cli` tool execution mode, prints a console URL the user can open in a
@@ -149,7 +158,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	handlers["pulumi"] = pu
 
 	// Non-interactive mode requires a prompt — there's no input mechanism.
-	if !cmdutil.Interactive() {
+	if !isInteractive() {
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
@@ -196,103 +205,173 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 
 	// Inline (non-alt-screen) so the transcript stays in the user's terminal
 	// scrollback after exit.
-	p := tea.NewProgram(model)
+	p := newTeaProgram(model)
+
+	return runWithTUI(
+		ctx,
+		func() error {
+			_, err := p.Run()
+			return err
+		},
+		func(g *errgroup.Group, gctx context.Context) {
+			// taskState tracks the task ID once created (may be deferred if no prompt).
+			type taskState struct {
+				mu     sync.Mutex
+				taskID string
+			}
+			ts := &taskState{}
+
+			// createTask creates the Neo task with the given prompt and starts the session.
+			// Called immediately if a prompt was provided, or on the first user message.
+			// planMode is the value the TUI captured at the moment the first message was
+			// sent; the CLI-prompt path always passes false.
+			createTask := func(initialPrompt string, planMode bool) error {
+				resp, err := pc.CreateNeoTask(
+					gctx, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+						ToolExecutionMode: "cli",
+						ApprovalMode:      client.NeoApprovalModeManual,
+						PlanMode:          planMode,
+					})
+				if err != nil {
+					return err
+				}
+
+				ts.mu.Lock()
+				ts.taskID = resp.TaskID
+				ts.mu.Unlock()
+
+				consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+				if consoleURL != "" {
+					sendUI(uiCh, UISessionURL{URL: consoleURL})
+				}
+
+				session := &Session{
+					Client:   pc,
+					Handlers: handlers,
+					OrgName:  orgName,
+					TaskID:   resp.TaskID,
+					UIEvents: uiCh,
+				}
+				return session.Run(gctx)
+			}
+
+			if prompt != "" {
+				// The command-line prompt path always passes false for planMode.
+				g.Go(func() error {
+					return createTask(prompt, false)
+				})
+			}
+
+			// Post TUI-originated user events to the API. Chat messages may arrive before
+			// any task exists — the first one creates it. Other event types (approvals
+			// and anything we add later) only make sense once a task is live.
+			g.Go(func() error {
+				return dispatchUserEvents(
+					gctx, outCh, uiCh,
+					prompt != "",
+					func() string {
+						ts.mu.Lock()
+						defer ts.mu.Unlock()
+						return ts.taskID
+					},
+					func(message string, planMode bool) {
+						g.Go(func() error {
+							return createTask(message, planMode)
+						})
+					},
+					func(ctx context.Context, taskID string, body any) error {
+						return pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
+					},
+				)
+			})
+		},
+	)
+}
+
+// runWithTUI runs the bubbletea program alongside caller-registered worker
+// goroutines under a shared errgroup. When runTUI returns the shared context
+// is cancelled, so any worker watching gctx.Done can unblock and return.
+//
+// errgroup only cancels its derived context on a non-nil error, but tea.Quit
+// returns nil from p.Run — without this explicit cancellation, the dispatcher
+// and any active session.Run loop would block on gctx.Done forever, g.Wait
+// would never return, and `pulumi neo` would require a third Ctrl+C to exit.
+//
+// register is invoked synchronously before the TUI goroutine starts so callers
+// can stage their workers; it may also retain g to spawn additional workers
+// later (the dispatcher does this when the first user message arrives).
+func runWithTUI(
+	ctx context.Context,
+	runTUI func() error,
+	register func(g *errgroup.Group, gctx context.Context),
+) error {
+	ctx, cancelAll := context.WithCancel(ctx)
+	defer cancelAll()
 
 	g, gctx := errgroup.WithContext(ctx)
 
-	// taskState tracks the task ID once created (may be deferred if no prompt).
-	type taskState struct {
-		mu     sync.Mutex
-		taskID string
-	}
-	ts := &taskState{}
-
-	// createTask creates the Neo task with the given prompt and starts the session.
-	// Called immediately if a prompt was provided, or on the first user message.
-	// planMode is the value the TUI captured at the moment the first message was
-	// sent; the CLI-prompt path always passes false.
-	createTask := func(initialPrompt string, planMode bool) error {
-		resp, err := pc.CreateNeoTask(
-			gctx, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
-				ToolExecutionMode: "cli",
-				ApprovalMode:      client.NeoApprovalModeManual,
-				PlanMode:          planMode,
-			})
-		if err != nil {
-			return err
-		}
-
-		ts.mu.Lock()
-		ts.taskID = resp.TaskID
-		ts.mu.Unlock()
-
-		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
-		if consoleURL != "" {
-			sendUI(uiCh, UISessionURL{URL: consoleURL})
-		}
-
-		session := &Session{
-			Client:   pc,
-			Handlers: handlers,
-			OrgName:  orgName,
-			TaskID:   resp.TaskID,
-			UIEvents: uiCh,
-		}
-		return session.Run(gctx)
-	}
-
-	if prompt != "" {
-		// The command-line prompt path always passes false for planMode.
-		g.Go(func() error {
-			return createTask(prompt, false)
-		})
-	}
+	register(g, gctx)
 
 	g.Go(func() error {
-		_, err := p.Run()
+		err := runTUI()
+		cancelAll()
 		return err
 	})
 
-	// Post TUI-originated user events to the API. Chat messages may arrive before
-	// any task exists — the first one creates it. Other event types (approvals
-	// and anything we add later) only make sense once a task is live.
-	g.Go(func() error {
-		taskCreated := prompt != ""
-		for {
-			select {
-			case <-gctx.Done():
+	return g.Wait()
+}
+
+// dispatchUserEvents drives the runNeo dispatcher loop: it reads TUI-originated
+// user events from outCh, posts them to the backend once a task exists, and
+// lazily creates the task on the first user_message when no initial prompt was
+// provided. The function returns when ctx is cancelled or outCh is closed.
+//
+// Extracted from runNeo so each branch (lazy creation, taskID-not-ready
+// warning, post error) can be unit-tested without standing up the full
+// interactive machinery.
+//
+// initialTaskCreated reflects whether the caller has already kicked off
+// CreateNeoTask (true when runNeo was given a CLI prompt, false when it must
+// wait for the user's first chat message). spawnCreateTask is invoked when the
+// lazy path triggers; the caller wires it to its own goroutine orchestration
+// (the production caller spawns into the runWithTUI errgroup).
+func dispatchUserEvents(
+	ctx context.Context,
+	outCh <-chan outboundEvent,
+	uiCh chan<- UIEvent,
+	initialTaskCreated bool,
+	getTaskID func() string,
+	spawnCreateTask func(message string, planMode bool),
+	postEvent func(ctx context.Context, taskID string, body any) error,
+) error {
+	taskCreated := initialTaskCreated
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case ob, ok := <-outCh:
+			if !ok {
 				return nil
-			case ob, ok := <-outCh:
-				if !ok {
-					return nil
-				}
-				if msg, isMsg := ob.event.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
-					taskCreated = true
-					planMode := ob.planMode
-					g.Go(func() error {
-						return createTask(msg.Content, planMode)
-					})
-					continue
-				}
-				ts.mu.Lock()
-				taskID := ts.taskID
-				ts.mu.Unlock()
-				if taskID == "" {
-					// Unreachable in normal use: the TUI gates Enter on busy state
-					// until UITaskIdle, and approvals only fire in response to backend
-					// events that imply the task exists. Surface instead of silently
-					// dropping.
-					sendUI(uiCh, UIWarning{Message: "dropped event: task not ready"})
-					continue
-				}
-				if err := pc.PostNeoTaskUserEvent(gctx, orgName, taskID, ob.event); err != nil {
-					sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
-				}
+			}
+			if msg, isMsg := ob.event.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
+				taskCreated = true
+				spawnCreateTask(msg.Content, ob.planMode)
+				continue
+			}
+			taskID := getTaskID()
+			if taskID == "" {
+				// Unreachable in normal use: the TUI gates Enter on busy state
+				// until UITaskIdle, and approvals only fire in response to backend
+				// events that imply the task exists. Surface instead of silently
+				// dropping.
+				sendUI(uiCh, UIWarning{Message: "dropped event: task not ready"})
+				continue
+			}
+			if err := postEvent(ctx, taskID, ob.event); err != nil {
+				sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
 			}
 		}
-	})
-
-	return g.Wait()
+	}
 }
 
 // resolveTaskTarget figures out the org, project, and stack name to attach to the new Neo
@@ -325,7 +404,7 @@ func resolveTaskTarget(
 	if orgFlag != "" {
 		org = orgFlag
 	} else {
-		org, err = pkgBackend.GetDefaultOrg(ctx, be, project)
+		org, err = be.GetDefaultOrg(ctx)
 		if err != nil {
 			return "", "", "", fmt.Errorf("determining default organization: %w", err)
 		}

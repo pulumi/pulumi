@@ -472,9 +472,7 @@ class ProviderServicer(ResourceProviderServicer):
     async def Invoke(
         self, request: proto.InvokeRequest, context
     ) -> proto.InvokeResponse:
-        args = rpc.deserialize_properties(
-            request.args, keep_unknowns=False, keep_internal=False
-        )
+        args = rpc.deserialize_properties(request.args, keep_unknowns=False)
         result = self.provider.invoke(token=request.tok, args=args)
         response = await self._invoke_response(result)
         return response

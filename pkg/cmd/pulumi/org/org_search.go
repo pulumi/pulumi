@@ -150,7 +150,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
-	defaultOrg, err := backend.GetDefaultOrg(ctx, cloudBackend, project)
+	defaultOrg, err := cloudBackend.GetDefaultOrg(ctx)
 	if err != nil {
 		return err
 	}

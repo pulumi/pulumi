@@ -26,8 +26,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-//go:embed pulumipus.ans
-var pulumipusArt string
+//go:embed neo.ans
+var neoArt string
 
 // welcomeModel holds the data needed to render the startup banner.
 type welcomeModel struct {
@@ -90,7 +90,7 @@ func pickGreeting(name string) string {
 	return fmt.Sprintf(templates[rand.Intn(len(templates))], boldName) //nolint:gosec
 }
 
-// View renders the welcome banner with the Pulumipus mascot art.
+// View renders the welcome banner with the Neo art.
 func (w welcomeModel) View() string {
 	magenta := lipgloss.Color("5")
 	bracketStyle := lipgloss.NewStyle().Foreground(magenta)
@@ -131,7 +131,7 @@ func (w welcomeModel) View() string {
 		"",
 		w.greeting,
 		"",
-		strings.TrimRight(pulumipusArt, "\n"),
+		strings.TrimRight(neoArt, "\n"),
 		"",
 		dim.Render(infoText),
 	}

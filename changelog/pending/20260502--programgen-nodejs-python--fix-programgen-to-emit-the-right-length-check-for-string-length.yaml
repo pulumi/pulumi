@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: programgen/nodejs,python
+  description: Fix programgen to emit the right `length` check for string length

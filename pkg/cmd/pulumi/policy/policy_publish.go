@@ -60,16 +60,12 @@ func newPolicyPublishCmd() *cobra.Command {
 }
 
 type policyPublishCmd struct {
-	getwd      func() (string, error)
-	defaultOrg func(context.Context, backend.Backend, *workspace.Project) (string, error)
+	getwd func() (string, error)
 }
 
 func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager, args []string) error {
 	if cmd.getwd == nil {
 		cmd.getwd = os.Getwd
-	}
-	if cmd.defaultOrg == nil {
-		cmd.defaultOrg = backend.GetDefaultOrg
 	}
 
 	b, err := loginToCloudBackend(ctx, lm)
@@ -81,11 +77,7 @@ func (cmd *policyPublishCmd) Run(ctx context.Context, lm cmdBackend.LoginManager
 	if len(args) > 0 {
 		orgName = args[0]
 	} else if len(args) == 0 {
-		project, _, err := pkgWorkspace.Instance.ReadProject()
-		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
-			return err
-		}
-		org, err := cmd.defaultOrg(ctx, b, project)
+		org, err := b.GetDefaultOrg(ctx)
 		if err != nil {
 			return err
 		}

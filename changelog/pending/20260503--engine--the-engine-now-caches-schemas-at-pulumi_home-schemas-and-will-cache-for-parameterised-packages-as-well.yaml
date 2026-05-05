@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: The engine now caches schemas at `PULUMI_HOME/schemas`, and will cache for parameterised packages as well

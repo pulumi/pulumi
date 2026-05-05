@@ -42,7 +42,7 @@ All commands assume you're at the repo root.
 - **Tidy fix:** `mise exec -- make tidy_fix`
 - **Proto generation:** `mise exec -- make build_proto`
 - **Proto check:** `mise exec -- make check_proto`
-- **Changelog entry:** `mise exec -- make changelog` (interactive)
+- **Changelog entry:** `mise exec -- make changelog` (interactive) (See also the changelog messages guidelines in CONTRIBUTING.md)
 - **Go workspace:** `mise exec -- make work`
 
 ## Key invariants

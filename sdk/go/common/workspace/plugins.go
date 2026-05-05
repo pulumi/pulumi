@@ -1369,8 +1369,6 @@ type PluginInfo struct {
 	Version      *semver.Version    // the plugin's semantic version, if present.
 	InstallTime  time.Time          // the time the plugin was installed.
 	LastUsedTime time.Time          // the last time the plugin was used.
-	SchemaPath   string             // if set, used as the path for loading and caching the schema
-	SchemaTime   time.Time          // if set and newer than the file at SchemaPath, used to invalidate a cached schema
 
 	size uint64 // cached plugin size in bytes
 }
@@ -1434,15 +1432,6 @@ func (info *PluginInfo) setFileMetadata(path string) error {
 	}
 
 	info.LastUsedTime = tinfo.AccessTime()
-
-	if info.Kind == apitype.ResourcePlugin {
-		var v string
-		if info.Version != nil {
-			v = "-" + info.Version.String() + "-"
-		}
-		info.SchemaPath = filepath.Join(filepath.Dir(path), "schema-"+info.Name+v+".json")
-		info.SchemaTime = tinfo.ModTime()
-	}
 
 	return nil
 }

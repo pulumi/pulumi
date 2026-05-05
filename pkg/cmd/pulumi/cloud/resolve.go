@@ -112,7 +112,7 @@ func ResolveContext(ctx context.Context) (*ResolvedContext, error) {
 			"run `pulumi login`")
 	}
 
-	orgName, err := pkgBackend.GetDefaultOrg(ctx, be, project)
+	orgName, err := be.GetDefaultOrg(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("resolving default org: %w", err)
 	}

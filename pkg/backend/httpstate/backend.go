@@ -236,6 +236,33 @@ func New(ctx context.Context, d diag.Sink,
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
+	config, err := workspace.GetPulumiConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("get Pulumi config: %w", err)
+	}
+	var org string
+	if beConfig, ok := config.BackendConfig[cloudURL]; ok {
+		if beConfig.DefaultOrg != "" {
+			org = beConfig.DefaultOrg
+		}
+	}
+
+	var defaultOrg *promise.Promise[string]
+	if org == "" {
+		defaultOrg = promise.Run(func() (string, error) {
+			resp, err := apiClient.GetDefaultOrg(ctx)
+			if err != nil {
+				logging.V(1).Infof("failed to get default org: %v", err)
+				return "", err
+			}
+			return resp.GitHubLogin, nil
+		})
+	} else {
+		cts := &promise.CompletionSource[string]{}
+		cts.MustFulfill(org)
+		defaultOrg = cts.Promise()
+	}
+
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
@@ -243,7 +270,7 @@ func New(ctx context.Context, d diag.Sink,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(ctx, d, apiClient),
 		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
-		defaultOrg:     detectDefaultOrg(ctx, d, apiClient),
+		defaultOrg:     defaultOrg,
 		currentProject: project,
 	}, nil
 }
@@ -864,7 +891,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		return nil, err
 	}
 
-	defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
+	defaultOrg, err := b.defaultOrg.Result(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -1010,7 +1037,7 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 	}
 
 	getDefaultOrg := func() (string, error) {
-		return backend.GetDefaultOrg(ctx, b, nil)
+		return b.defaultOrg.Result(ctx)
 	}
 	getUserOrg := func() (string, error) {
 		orgName, _, _, err := b.currentUser(ctx)
@@ -1131,7 +1158,7 @@ func (b *cloudBackend) ListStacks(
 	// Since ListStacks is also a potentially long-running operation for power users with many stacks,
 	// this has the added benefit of ensuring that the default org is consistent for the duration of the
 	// operation, even if the user changes their default org mid-process.
-	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
+	defaultOrg, err := b.defaultOrg.Result(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -2668,18 +2695,6 @@ func detectUserInfo(
 			organizations: orgs,
 			tokenInfo:     tokenInfo,
 		}, nil
-	})
-}
-
-// Builds a lazy wrapper around fetching default org.
-func detectDefaultOrg(ctx context.Context, d diag.Sink, client *client.Client) *promise.Promise[string] {
-	return promise.Run(func() (string, error) {
-		resp, err := client.GetDefaultOrg(ctx)
-		if err != nil {
-			logging.V(1).Infof("failed to get default org: %v", err)
-			return "", err
-		}
-		return resp.GitHubLogin, nil
 	})
 }
 

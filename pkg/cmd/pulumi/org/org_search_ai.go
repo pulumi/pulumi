@@ -21,7 +21,6 @@ import (
 	"os"
 
 	"github.com/pkg/browser"
-	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -73,7 +72,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if !isCloud {
 		return errors.New("Pulumi AI search is only supported for the Pulumi Cloud")
 	}
-	defaultOrg, err := backend.GetDefaultOrg(ctx, cloudBackend, project)
+	defaultOrg, err := cloudBackend.GetDefaultOrg(ctx)
 	if err != nil {
 		return err
 	}

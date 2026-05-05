@@ -50,11 +50,11 @@ download_release() {
 # Each entry is "lang tag [owner]". The owner defaults to "pulumi" when omitted.
 LANGUAGES=(
   # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
-  "dotnet v3.103.1"
+  "dotnet v3.105.0"
   # renovate: datasource=github-releases depName=pulumi/pulumi-java
-  "java v1.25.0"
+  "java v1.26.0"
   # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
-  "yaml v1.32.0"
+  "yaml v1.33.0"
   # renovate: datasource=github-releases depName=pulumi-labs/pulumi-hcl
   "hcl v0.0.2 pulumi-labs"
 )

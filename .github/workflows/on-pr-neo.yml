@@ -1,0 +1,106 @@
+name: Pull Request
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+# Fast-path CI for PRs that touch only `pkg/cmd/pulumi/neo/**`. The heavy
+# `on-pr.yml` workflow auto-skips for neo-only PRs via paths-ignore; this
+# workflow runs a focused subset: lint + neo unit tests + a Linux/amd64 CLI
+# build. The `ci-ok` job here satisfies the required status check that
+# `on-pr.yml` would normally provide.
+on:
+  pull_request:
+    paths:
+      - "pkg/cmd/pulumi/neo/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  info:
+    name: info
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    uses: ./.github/workflows/ci-info.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.head_ref }}
+      is-snapshot: true
+    secrets: inherit
+
+  version-set:
+    name: version-set
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    outputs:
+      # set-output JSON-encodes the value, so consumers must fromJSON-unwrap it
+      # here for downstream `fromJson(inputs.version-set).<key>` lookups to work.
+      version-set: ${{ fromJSON(steps.gen.outputs.version-set) }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - id: gen
+        run: |
+          VERSION_SET=$(./scripts/get-job-matrix.py generate-version-set --version-set current)
+          ./.github/scripts/set-output version-set "${VERSION_SET}"
+
+  lint:
+    name: Lint
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: [version-set]
+    uses: ./.github/workflows/ci-lint.yml
+    with:
+      ref: ${{ github.head_ref }}
+      version-set: ${{ needs.version-set.outputs.version-set }}
+
+  neo-unit-tests:
+    name: Neo unit tests
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: [info, version-set]
+    uses: ./.github/workflows/ci-run-test.yml
+    with:
+      ref: ${{ github.head_ref }}
+      version: ${{ needs.info.outputs.version }}
+      platform: ubuntu-latest
+      test-name: neo unit tests
+      test-command: PKGS="./cmd/pulumi/neo/..." make gotestsum/pkg
+      is-integration-test: false
+      enable-coverage: false
+      version-set: ${{ needs.version-set.outputs.version-set }}
+    secrets: inherit
+
+  build-cli:
+    name: build CLI
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    needs: [info, version-set]
+    uses: ./.github/workflows/ci-build-binaries.yml
+    with:
+      ref: ${{ github.head_ref }}
+      version: ${{ needs.info.outputs.version }}
+      os: linux
+      arch: amd64
+      build-platform: ubuntu-latest
+      version-set: ${{ needs.version-set.outputs.version-set }}
+      artifact-suffix: '-integration'
+    secrets: inherit
+
+  ci-ok:
+    name: ci-ok
+    needs: [lint, neo-unit-tests, build-cli]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      # Mirror on-pr.yml: community PRs route through on-community-pr.yml,
+      # so don't gate on lint/test results when the PR is from a fork.
+      - name: CI failed
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && (needs.lint.result != 'success' || needs.neo-unit-tests.result != 'success' || needs.build-cli.result != 'success') }}
+        run: exit 1
+      - name: CI succeeded
+        run: exit 0

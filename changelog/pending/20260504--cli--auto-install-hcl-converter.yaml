@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Automatically install the `hcl` converter from pulumi-labs/pulumi-hcl when running `pulumi convert --from hcl`

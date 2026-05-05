@@ -272,6 +272,81 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates PULUMI_HOME-backed credentials/config
+func TestNewDefaultOrgResolution(t *testing.T) {
+	ctx := t.Context()
+
+	tests := []struct {
+		name                 string
+		configuredOrg        string
+		serviceOrg           string
+		expectedOrg          string
+		expectedDefaultCalls int
+	}{
+		{
+			name:                 "prefers configured default org",
+			configuredOrg:        "configured-org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "configured-org",
+			expectedDefaultCalls: 0,
+		},
+		{
+			name:                 "falls back to service default org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "service-org",
+			expectedDefaultCalls: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_HOME", t.TempDir())
+
+			defaultOrgCalls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				switch req.URL.Path {
+				case "/api/capabilities":
+					err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+					require.NoError(t, err)
+				case "/api/user":
+					err := json.NewEncoder(rw).Encode(map[string]any{
+						"githubLogin":   "test-user",
+						"organizations": []map[string]string{},
+					})
+					require.NoError(t, err)
+				case "/api/user/organizations/default":
+					defaultOrgCalls++
+					err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
+						GitHubLogin: tt.serviceOrg,
+					})
+					require.NoError(t, err)
+				default:
+					panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			err := workspace.StoreAccount(server.URL, workspace.Account{
+				AccessToken: testJWT,
+			}, true)
+			require.NoError(t, err)
+
+			if tt.configuredOrg != "" {
+				err = workspace.SetBackendConfigDefaultOrg(server.URL, tt.configuredOrg)
+				require.NoError(t, err)
+			}
+
+			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
+			require.NoError(t, err)
+
+			org, err := b.GetDefaultOrg(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedOrg, org)
+			assert.Equal(t, tt.expectedDefaultCalls, defaultOrgCalls)
+		})
+	}
+}
+
 //nolint:paralleltest // mutates global state
 func TestDisableIntegrityChecking(t *testing.T) {
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {

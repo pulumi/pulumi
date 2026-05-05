@@ -127,7 +127,7 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 	stackName, err := tokens.ParseStackName(apistack.StackName.String())
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
 
-	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
+	defaultOrg, err := b.defaultOrg.Result(ctx)
 	if err != nil {
 		return &cloudStack{}, fmt.Errorf("unable to lookup default org: %w", err)
 	}
