@@ -284,11 +284,14 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 
 	var commands []string
 	if originalCwd != cwd {
-		rel, err := filepath.Rel(originalCwd, cwd)
+		cd, err := filepath.Rel(originalCwd, cwd)
 		if err != nil {
-			rel = cwd
+			cd = cwd
 		}
-		commands = append(commands, "cd "+rel)
+		if ui.ContainsWhiteSpace(cd) {
+			cd = fmt.Sprintf("%q", cd)
+		}
+		commands = append(commands, "cd "+cd)
 	}
 	if args.generateOnly {
 		commands = append(commands, "pulumi install")

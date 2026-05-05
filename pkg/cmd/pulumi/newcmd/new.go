@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"unicode"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -868,7 +867,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 		}
 
 		// Surround the path with double quotes if it contains whitespace.
-		if containsWhiteSpace(cd) {
+		if ui.ContainsWhiteSpace(cd) {
 			cd = fmt.Sprintf("\"%s\"", cd)
 		}
 
@@ -912,16 +911,6 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	upMsg := colors.Highlight("Then, run `pulumi up`", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Color.Colorize(upMsg))
 	fmt.Println()
-}
-
-// containsWhiteSpace returns true if the string contains whitespace.
-func containsWhiteSpace(value string) bool {
-	for _, c := range value {
-		if unicode.IsSpace(c) {
-			return true
-		}
-	}
-	return false
 }
 
 // compareStackProjectName takes a stack name and a project name and returns an error if they are not the same.

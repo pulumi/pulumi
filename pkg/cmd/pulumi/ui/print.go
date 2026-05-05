@@ -17,6 +17,7 @@ package ui
 import (
 	"fmt"
 	"io"
+	"unicode"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -25,4 +26,14 @@ import (
 func Fprintf(writer io.Writer, msg string, args ...any) {
 	_, err := fmt.Fprintf(writer, msg, args...)
 	contract.IgnoreError(err)
+}
+
+// ContainsWhiteSpace returns true if the string contains whitespace.
+func ContainsWhiteSpace(value string) bool {
+	for _, c := range value {
+		if unicode.IsSpace(c) {
+			return true
+		}
+	}
+	return false
 }
