@@ -1856,3 +1856,155 @@ func TestModel_WrapPlain_TinyWidthShortCircuits(t *testing.T) {
 	wrapped := m.wrapPlain(strings.Repeat("word ", 30))
 	assert.Contains(t, wrapped, "\n", "normal-width path must wrap into multiple lines")
 }
+
+// -----------------------------------------------------------------------------
+// Conversation spacing (issue #42472)
+// -----------------------------------------------------------------------------
+
+// TestPrintlnBlock_FirstEmissionIsBare guards the welcome-banner case: the
+// first scrollback emission ever must NOT carry a leading blank line, so the
+// session opens with the banner pinned to the top of the transcript.
+func TestPrintlnBlock_FirstEmissionIsBare(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	cmd := m.printlnBlock("hello")
+	require.True(t, m.hasEmittedScrollback, "first call must flip the latch")
+
+	got := collectPrintln(cmd)
+	require.Len(t, got, 1)
+	assert.Equal(t, "hello", got[0], "first emission must be exactly the body, no leading newline")
+}
+
+// TestPrintlnBlock_SubsequentEmissionsLeadByNewline pins the spacing rule for
+// every block after the first: a single leading "\n" so each block is
+// visually separated from whatever sits above it in scrollback.
+func TestPrintlnBlock_SubsequentEmissionsLeadByNewline(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	_ = m.printlnBlock("welcome") // burn the first-emission slot
+
+	cmd := m.printlnBlock("hello")
+	got := collectPrintln(cmd)
+	require.Len(t, got, 1)
+	assert.Equal(t, "\nhello", got[0],
+		"subsequent emissions must start with a single \\n so blocks have a blank-line gap")
+}
+
+// TestTranscriptSpacing_FullSequence drives a representative session through
+// the model and asserts every committed scrollback emission after the welcome
+// carries exactly one leading "\n". This is the regression test for #42472:
+// without per-block spacing, blocks render directly under each other.
+func TestTranscriptSpacing_FullSequence(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 16)
+	m := tea.Model(NewModel(ModelConfig{EventCh: ch}))
+
+	// First WindowSize flushes the welcome banner.
+	var welcomeCmd tea.Cmd
+	m, welcomeCmd = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	welcomePrinted := collectPrintln(welcomeCmd)
+	require.NotEmpty(t, welcomePrinted, "first WindowSize must emit the welcome banner")
+	assert.False(t, strings.HasPrefix(welcomePrinted[0], "\n"),
+		"welcome banner must be the bare first emission, with no leading blank line")
+
+	// Drive a sequence of events that each commit a block to scrollback.
+	// UIUserMessage is a foreign message (no matching pendingUserEcho) so it
+	// renders. UIAssistantMessage with IsFinal=true commits a final block.
+	// UIWarning and UIError commit warning and error blocks. The combined
+	// transcript must have a blank line between every consecutive pair.
+	events := []UIEvent{
+		UIUserMessage{Content: "hello from web ui"},
+		UIAssistantMessage{Content: "hi back", IsFinal: true},
+		UIToolStarted{Name: "shell__exec"},
+		UIToolCompleted{Name: "shell__exec"},
+		UIWarning{Message: "watch out"},
+		UIError{Message: "boom"},
+	}
+
+	followUpPrinted := make([]string, 0, len(events))
+	for _, ev := range events {
+		var cmd tea.Cmd
+		m, cmd = m.Update(ev)
+		followUpPrinted = append(followUpPrinted, collectPrintln(cmd)...)
+	}
+
+	require.NotEmpty(t, followUpPrinted, "events should have produced at least one Println")
+	for i, body := range followUpPrinted {
+		assert.True(t, strings.HasPrefix(body, "\n"),
+			"emission #%d after the welcome must start with \\n; got %q", i, body)
+		assert.False(t, strings.HasPrefix(body, "\n\n"),
+			"emission #%d must not double up the gap (only one leading \\n); got %q", i, body)
+	}
+}
+
+// TestView_BlankLineBeforePromptWhenLive locks in the #42316 fix: when the
+// live frame contains anything (busy spinner, streaming, in-flight pulumi op),
+// View() must put a blank line between it and the prompt input.
+func TestView_BlankLineBeforePromptWhenLive(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.width = 80
+	m.height = 24
+	m.blocks = []block{{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb}}
+
+	view := m.View()
+	idx := strings.Index(view, m.textInput.Prompt) // "❯ "
+	require.Greater(t, idx, 0, "prompt must appear in View when live frame is non-empty")
+	above := view[:idx]
+	assert.True(t, strings.HasSuffix(above, "\n\n"),
+		"there must be a blank line between the live frame and the prompt; got: %q", above)
+}
+
+// TestView_NoLeadingBlankLineWhenIdle covers the inverse: with no live blocks,
+// View() must not waste a row on a phantom gap above the prompt.
+func TestView_NoLeadingBlankLineWhenIdle(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.width = 80
+	m.height = 24
+	require.Empty(t, m.blocks, "test relies on an idle model with no blocks")
+
+	view := m.View()
+	assert.False(t, strings.HasPrefix(view, "\n"),
+		"idle View() must not start with a blank line; got: %q", view)
+	assert.True(t, strings.HasPrefix(view, m.textInput.Prompt),
+		"idle View() must start directly with the prompt; got: %q", view)
+}
+
+// TestLiveView_BlankBetweenLiveBlocks pins the inter-block gap inside the live
+// frame, for the rare case where a streaming assistant message and an open
+// pulumi op are both pending under the busy spinner.
+func TestLiveView_BlankBetweenLiveBlocks(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.width = 80
+	m.blocks = []block{
+		{kind: blockAssistantStreaming, rendered: "STREAM_LIVE", raw: "STREAM_LIVE"},
+		{kind: blockPulumiOp, rendered: "PULUMI_LIVE", pulumi: &pulumiBlockState{done: false}},
+		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
+	}
+
+	live := m.liveView()
+	require.Contains(t, live, "STREAM_LIVE")
+	require.Contains(t, live, "PULUMI_LIVE")
+	require.Contains(t, live, "Thinking")
+
+	// Each adjacent pair must be separated by a blank line. We can't anchor
+	// on exact line counts (the busy line and rendered strings may wrap or
+	// embed ANSI), so check that "\n\n" appears between each pair in order.
+	streamIdx := strings.Index(live, "STREAM_LIVE")
+	pulumiIdx := strings.Index(live, "PULUMI_LIVE")
+	thinkingIdx := strings.Index(live, "Thinking")
+	require.Less(t, streamIdx, pulumiIdx)
+	require.Less(t, pulumiIdx, thinkingIdx)
+	assert.Contains(t, live[streamIdx:pulumiIdx], "\n\n",
+		"streaming → pulumi-op gap must be a full blank line")
+	assert.Contains(t, live[pulumiIdx:thinkingIdx], "\n\n",
+		"pulumi-op → busy gap must be a full blank line")
+}

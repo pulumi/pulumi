@@ -212,6 +212,10 @@ type Model struct {
 	// scheduled for an earlier arm carry the older gen, so a fresh arm racing
 	// with a stale tick is not silently disarmed.
 	ctrlCArmGen int
+	// hasEmittedScrollback flips on the first call to printlnBlock. Subsequent
+	// emissions prepend a blank line so each committed block has visual
+	// breathing room from whatever came before.
+	hasEmittedScrollback bool
 }
 
 var (
@@ -357,10 +361,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderBlock(&m.blocks[i])
 		}
 		if firstSize {
-			cmds = append(cmds, tea.Println(m.welcome.View()))
+			cmds = append(cmds, m.printlnBlock(m.welcome.View()))
 			for _, b := range m.blocks {
 				if isCommittedKind(b) && b.rendered != "" {
-					cmds = append(cmds, tea.Println(b.rendered))
+					cmds = append(cmds, m.printlnBlock(b.rendered))
 				}
 			}
 		}
@@ -613,7 +617,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// arrives, so emit the URL as its own line rather than re-rendering.
 		// OSC 8 wraps the URL so supporting terminals render it as clickable.
 		m.welcome.consoleURL = msg.URL
-		cmds = append(cmds, tea.Println("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
+		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIUserMessage:
@@ -695,7 +699,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderBlock(&m.blocks[idx])
 			// done==true flips it from live to committed; emit to scrollback.
 			if rendered := m.blocks[idx].rendered; rendered != "" {
-				cmds = append(cmds, tea.Println(rendered))
+				cmds = append(cmds, m.printlnBlock(rendered))
 			}
 		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
@@ -752,9 +756,13 @@ func (m Model) View() string {
 		hint += inputHintStyle.Render(hintText)
 	}
 
-	parts := make([]string, 0, 3)
+	parts := make([]string, 0, 4)
 	if live := m.liveView(); live != "" {
-		parts = append(parts, live)
+		// Empty string between live frame and prompt produces a blank gap line
+		// after strings.Join below, so the prompt doesn't sit directly under
+		// the spinner / streaming output. The prompt and hint stay adjacent
+		// because they read as one input unit.
+		parts = append(parts, live, "")
 	}
 	parts = append(parts, m.textInput.View(), hint)
 	return strings.Join(parts, "\n")
@@ -800,7 +808,12 @@ func (m *Model) liveView() string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return strings.Join(parts, "\n")
+	// "\n\n" separator gives one blank line between live blocks (e.g. an
+	// in-flight pulumi op stack and the busy spinner pinned beneath it) so
+	// the live frame matches the breathing room used between committed blocks
+	// in scrollback. Empty separator lines are safe under the inline-renderer
+	// width constraint above — only wide lines wrap on resize.
+	return strings.Join(parts, "\n\n")
 }
 
 // isLiveKind reports whether a block belongs in the live frame (true) or has
@@ -830,7 +843,21 @@ func (m *Model) commitBlock(b block) tea.Cmd {
 	if b.rendered == "" {
 		return nil
 	}
-	return tea.Println(b.rendered)
+	return m.printlnBlock(b.rendered)
+}
+
+// printlnBlock emits rendered to scrollback, prepending a blank line so each
+// committed block has visual breathing room from whatever came before. The
+// very first emission (the welcome banner) skips the leading newline so the
+// session doesn't open with empty space above the banner. Every other
+// scrollback emission in the TUI must go through this helper rather than
+// calling tea.Println directly so spacing stays uniform across block kinds.
+func (m *Model) printlnBlock(rendered string) tea.Cmd {
+	if !m.hasEmittedScrollback {
+		m.hasEmittedScrollback = true
+		return tea.Println(rendered)
+	}
+	return tea.Println("\n" + rendered)
 }
 
 // applyBusyForEvent is the single point that decides whether the busy
