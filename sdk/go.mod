@@ -43,6 +43,7 @@ require (
 	github.com/git-pkgs/manifests v0.4.1
 	github.com/go-git/go-git/v5 v5.18.0
 	github.com/go-test/deep v1.1.1
+	github.com/golang/glog v1.2.5
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/iancoleman/strcase v0.2.0
