@@ -56,8 +56,9 @@ type Session struct {
 	UIEvents chan<- UIEvent
 }
 
-// Run drives the loop. It blocks until ctx is cancelled or the SSE stream errors out.
-// If UIEvents is set, it is closed when Run returns.
+// Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil)
+// or the SSE stream errors out (returns the error). If UIEvents is set, it is closed
+// when Run returns.
 func (s *Session) Run(ctx context.Context) error {
 	if s.UIEvents != nil {
 		defer close(s.UIEvents)
@@ -71,7 +72,9 @@ func (s *Session) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			// Caller-initiated shutdown (e.g. TUI quit) is not an error — surfacing
+			// context.Canceled here would print "error: context canceled" on a normal exit.
+			return nil
 		case evt, ok := <-stream:
 			if !ok {
 				return nil
