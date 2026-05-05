@@ -1,0 +1,6 @@
+kind: fix
+body: Fix runtime flag conflict with `glog`
+custom:
+  Scope: sdk/go
+  PR: ''
+time: '2026-05-05T00:00:00Z'

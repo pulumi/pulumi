@@ -1,0 +1,7 @@
+kind: fix
+body: Exit cleanly when the user presses Ctrl+C twice in `pulumi neo` instead of hanging
+  until a third press
+custom:
+  Scope: cli/neo
+  PR: ''
+time: '2026-05-04T00:00:00Z'

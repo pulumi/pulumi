@@ -1,0 +1,6 @@
+kind: feat
+body: Add `pulumi logs decrypt` command for viewing logs
+custom:
+  Scope: cli
+  PR: ''
+time: '2026-04-09T00:00:00Z'

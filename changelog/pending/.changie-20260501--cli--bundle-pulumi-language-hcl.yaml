@@ -1,0 +1,6 @@
+kind: feat
+body: Bundle the `hcl` language host (from pulumi-labs/pulumi-hcl)
+custom:
+  Scope: cli
+  PR: ''
+time: '2026-05-01T00:00:00Z'

@@ -1,0 +1,8 @@
+kind: feat
+body: Add `pulumi cloud api <op-or-path>` for calling any Pulumi Cloud API endpoint,
+  with `--field`/`--header`/`--input`/`--body` flag handling, path template binding,
+  content negotiation via `--format`, and `--dry-run`
+custom:
+  Scope: cli/cloud
+  PR: ''
+time: '2026-04-29T00:00:00Z'

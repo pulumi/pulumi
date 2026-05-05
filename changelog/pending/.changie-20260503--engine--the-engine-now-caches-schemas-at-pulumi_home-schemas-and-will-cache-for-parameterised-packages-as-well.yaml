@@ -1,0 +1,7 @@
+kind: fix
+body: The engine now caches schemas at `PULUMI_HOME/schemas`, and will cache for parameterised
+  packages as well
+custom:
+  Scope: engine
+  PR: ''
+time: '2026-05-03T00:00:00Z'

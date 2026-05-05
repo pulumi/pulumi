@@ -1,0 +1,7 @@
+kind: feat
+body: Add `read` blocks to PCL to read resources via ID and query instead of registering
+  them
+custom:
+  Scope: pcl
+  PR: ''
+time: '2026-04-29T00:00:00Z'

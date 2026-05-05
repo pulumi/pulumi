@@ -1,0 +1,6 @@
+kind: fix
+body: Fix programgen to emit the right `length` check for string length
+custom:
+  Scope: programgen/nodejs,python
+  PR: ''
+time: '2026-05-02T00:00:00Z'
