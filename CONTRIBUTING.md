@@ -82,7 +82,7 @@ Here's some examples of what we're trying to avoid:
 - Adds a feature
 - Feature now does something
 
-Keep changelog messages short and to the point, one sentence is usually enough. Don't overdescribe a feature in the changelog, to keep the whole log scanneable quickly by end users.
+Keep changelog messages short and to the point, one sentence is usually enough. Don't overdescribe a feature in the changelog, to keep the whole log scannable quickly by end users.
 
 ### Downloading Pulumi from contributed pull requests
 
