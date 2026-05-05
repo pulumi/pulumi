@@ -81,10 +81,6 @@ func (host *testPluginHost) PolicyAnalyzer(name tokens.QName, path string,
 	return nil, errors.New("unsupported")
 }
 
-func (host *testPluginHost) ListAnalyzers() []plugin.Analyzer {
-	return nil
-}
-
 func (host *testPluginHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	return host.provider(descriptor)
 }

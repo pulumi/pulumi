@@ -33,7 +33,6 @@ type MockHost struct {
 	LogStatusF          func(sev diag.Severity, urn resource.URN, msg string, streamID int32)
 	AnalyzerF           func(nm tokens.QName) (Analyzer, error)
 	PolicyAnalyzerF     func(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
-	ListAnalyzersF      func() []Analyzer
 	ProviderF           func(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error)
 	LanguageRuntimeF    func(runtime string) (LanguageRuntime, error)
 	EnsurePluginsF      func(plugins []workspace.PluginDescriptor, kinds Flags) error
@@ -85,13 +84,6 @@ func (m *MockHost) PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAn
 		return m.PolicyAnalyzerF(name, path, opts)
 	}
 	return nil, errors.New("PolicyAnalyzer not implemented")
-}
-
-func (m *MockHost) ListAnalyzers() []Analyzer {
-	if m.ListAnalyzersF != nil {
-		return m.ListAnalyzersF()
-	}
-	return nil
 }
 
 func (m *MockHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {

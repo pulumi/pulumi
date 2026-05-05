@@ -121,10 +121,6 @@ func (h *testHost) PolicyAnalyzer(
 	return analyzer, nil
 }
 
-func (h *testHost) ListAnalyzers() []plugin.Analyzer {
-	return h.policies
-}
-
 func (h *testHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (plugin.Provider, error) {
 	// If we've not been given a version, we'll try and find the provider by name alone, picking the latest if there are
 	// multiple versions of the named provider. Otherwise, we can attempt to find an exact match.
