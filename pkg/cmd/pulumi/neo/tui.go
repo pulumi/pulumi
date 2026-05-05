@@ -231,8 +231,8 @@ var (
 // line, and a "╰─" tick below the last line. The right edge and full
 // horizontal bars are intentionally omitted so no rendered line ever
 // stretches across the terminal width — that would wrap on resize-shrink
-// and corrupt bubbletea's inline-renderer line accounting (see View() for
-// context). All bracket glyphs are colored via borderStyle.
+// and desync the inline-renderer line accounting. All bracket glyphs are
+// colored via borderStyle.
 //
 // Empty content collapses to two corner ticks ("╭─" / "╰─") with no body.
 func renderLeftBracket(borderStyle lipgloss.Style, content string) string {
@@ -747,17 +747,10 @@ func (m Model) View() string {
 
 // liveWidth returns the width to use when rendering live-frame content:
 // the terminal width minus a small cushion that keeps glamour, lipgloss,
-// and the textinput off the wrap column. Tracks the terminal so wide
-// windows actually fill.
-//
-// Resize-during-stream caveat: bubbletea v1.3.10's inline renderer uses
-// logical line counts, not visual rows, in CursorUp before each frame, so
-// drag-resizing while a live frame is in flight can stack stale fragments
-// into scrollback. Tracked separately; will be addressed via a bubbletea
-// upgrade or upstream fix.
+// and the textinput off the wrap column.
 func (m *Model) liveWidth() int {
 	const (
-		margin         = 4  // small cushion so content doesn't end at the wrap column
+		margin         = 4
 		minUsableWidth = 40 // below this, give up the cushion to keep something visible
 	)
 	if m.width > minUsableWidth {
@@ -772,14 +765,11 @@ func (m *Model) liveWidth() int {
 // busy block's spinner glyph is read from m.spinner.View() at render time so
 // the animation tracks the current frame without re-caching per block.
 //
-// We deliberately use strings.Join instead of lipgloss.JoinVertical.
-// JoinVertical pads every constituent block to the widest one's column count
-// with trailing spaces, which pins every line in the frame to the longest
-// one. On a resize-shrink those wide lines wrap, bubbletea's inline renderer
-// (v1.3.10) issues CursorUp(linesRendered-1) using the logical count instead
-// of the wrapped visual rows, and stale frame fragments leak into scrollback.
-// strings.Join keeps each line at its natural length so only genuinely-wide
-// content is at risk.
+// We deliberately use strings.Join instead of lipgloss.JoinVertical:
+// JoinVertical pads every line to the widest constituent's column count with
+// trailing spaces, which makes resize-shrink wrap every line and desync the
+// inline-renderer line accounting. strings.Join keeps each line at its
+// natural length so only genuinely-wide content is at risk.
 func (m *Model) liveView() string {
 	var parts []string
 	for _, b := range m.blocks {
@@ -1045,9 +1035,9 @@ func (m *Model) renderUserBubble(content string) string {
 // wrapPlain word-wraps non-markdown text to the safe live width (m.liveWidth)
 // so streaming text never sits at the terminal wrap boundary. We use
 // reflow's wordwrap (which only inserts \n at word boundaries) instead of
-// lipgloss.Style.Width(W).Render which also pads each line with trailing
-// spaces to W. Padding produces full-width lines that wrap on resize-shrink
-// and corrupt bubbletea's inline-renderer line accounting.
+// lipgloss.Style.Width(W).Render, which also pads every line to W with
+// trailing spaces — those full-width lines wrap on resize-shrink and desync
+// the inline-renderer line accounting.
 func (m *Model) wrapPlain(text string) string {
 	w := m.liveWidth()
 	if w <= 4 {
