@@ -1940,28 +1940,11 @@ func TestTranscriptSpacing_FullSequence(t *testing.T) {
 	}
 }
 
-// TestView_BlankLineBeforePromptWhenLive locks in the #42316 fix: when the
-// live frame contains anything (busy spinner, streaming, in-flight pulumi op),
-// View() must put a blank line between it and the prompt input.
-func TestView_BlankLineBeforePromptWhenLive(t *testing.T) {
-	t.Parallel()
-
-	m := NewModel(ModelConfig{})
-	m.width = 80
-	m.height = 24
-	m.blocks = []block{{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb}}
-
-	view := m.View()
-	idx := strings.Index(view, m.textInput.Prompt) // "❯ "
-	require.Greater(t, idx, 0, "prompt must appear in View when live frame is non-empty")
-	above := view[:idx]
-	assert.True(t, strings.HasSuffix(above, "\n\n"),
-		"there must be a blank line between the live frame and the prompt; got: %q", above)
-}
-
-// TestView_NoLeadingBlankLineWhenIdle covers the inverse: with no live blocks,
-// View() must not waste a row on a phantom gap above the prompt.
-func TestView_NoLeadingBlankLineWhenIdle(t *testing.T) {
+// TestView_LeadingBlankLine_Idle and _Busy both lock in the spacing rule: a
+// blank gap line sits above the live frame so the last committed block in
+// scrollback is separated from the input zone, but the spinner and the
+// prompt stay flush so the busy indicator reads as part of the input.
+func TestView_LeadingBlankLine_Idle(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{})
@@ -1970,10 +1953,35 @@ func TestView_NoLeadingBlankLineWhenIdle(t *testing.T) {
 	require.Empty(t, m.blocks, "test relies on an idle model with no blocks")
 
 	view := m.View()
-	assert.False(t, strings.HasPrefix(view, "\n"),
-		"idle View() must not start with a blank line; got: %q", view)
-	assert.True(t, strings.HasPrefix(view, m.textInput.Prompt),
-		"idle View() must start directly with the prompt; got: %q", view)
+	assert.True(t, strings.HasPrefix(view, "\n"),
+		"View() must start with a blank line so the prompt is separated from the last scrollback block; got: %q", view)
+	// After the leading blank, the next thing must be the prompt — not a
+	// second blank line. (The prompt itself starts with "❯ ".)
+	assert.True(t, strings.HasPrefix(view, "\n"+m.textInput.Prompt),
+		"idle View() must put the prompt immediately after the leading blank; got: %q", view)
+}
+
+func TestView_LeadingBlankLine_Busy_SpinnerFlushWithPrompt(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.width = 80
+	m.height = 24
+	m.blocks = []block{{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb}}
+
+	view := m.View()
+	require.True(t, strings.HasPrefix(view, "\n"),
+		"View() must start with a blank line above the live frame; got: %q", view)
+
+	// Spinner appears in the live frame, prompt below it, with NO blank line
+	// between them — the spinner reads as part of the input zone.
+	idx := strings.Index(view, m.textInput.Prompt) // "❯ "
+	require.Greater(t, idx, 0, "prompt must appear after the live frame")
+	above := view[:idx]
+	assert.False(t, strings.HasSuffix(above, "\n\n"),
+		"there must be NO blank line between the busy spinner and the prompt — they read as one zone; got: %q", above)
+	assert.Contains(t, above, "Thinking",
+		"busy spinner label must appear above the prompt")
 }
 
 // TestLiveView_BlankBetweenLiveBlocks pins the inter-block gap inside the live

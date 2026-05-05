@@ -756,13 +756,17 @@ func (m Model) View() string {
 		hint += inputHintStyle.Render(hintText)
 	}
 
+	// Lead with an empty line so the live frame (or, when idle, the prompt
+	// itself) is always separated from the last block in scrollback by a
+	// blank gap line. The busy spinner / streaming reply / in-flight pulumi
+	// op deliberately sit directly above the prompt with no gap — they read
+	// as part of the same input zone, and a chat-style spinner pinned to the
+	// prompt is what users expect. The prompt and hint stay adjacent for
+	// the same reason.
 	parts := make([]string, 0, 4)
+	parts = append(parts, "")
 	if live := m.liveView(); live != "" {
-		// Empty string between live frame and prompt produces a blank gap line
-		// after strings.Join below, so the prompt doesn't sit directly under
-		// the spinner / streaming output. The prompt and hint stay adjacent
-		// because they read as one input unit.
-		parts = append(parts, live, "")
+		parts = append(parts, live)
 	}
 	parts = append(parts, m.textInput.View(), hint)
 	return strings.Join(parts, "\n")
