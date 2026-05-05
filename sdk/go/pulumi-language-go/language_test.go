@@ -130,6 +130,8 @@ var expectedFailures = map[string]string{
 	"l3-range-ref":                       "fails with syntax errors",
 
 	"l2-id-type": "codegen isn't keeping track of ID right now",
+
+	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.

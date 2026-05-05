@@ -64,3 +64,22 @@ func getHelperMethodIfNeeded(functionName string, indent string) (string, bool) 
 		return "", false
 	}
 }
+
+// graphemeLengthHelper returns the body of a grapheme_length helper function that counts
+// Unicode grapheme clusters, matching PCL's length() semantics for strings.
+func graphemeLengthHelper(indent string) string {
+	return fmt.Sprintf(
+		`%[1]sdef grapheme_length(s):
+%[1]s    count, prev_zwj = 0, False
+%[1]s    for c in s:
+%[1]s        if prev_zwj:
+%[1]s            prev_zwj = False
+%[1]s            continue
+%[1]s        if c == '\u200d':
+%[1]s            prev_zwj = True
+%[1]s            continue
+%[1]s        if unicodedata.category(c)[0] != 'M':
+%[1]s            count += 1
+%[1]s    return count
+`, indent)
+}
