@@ -604,4 +604,3 @@ func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
 	}
 	return plug.(plugin.Analyzer), nil
 }
-

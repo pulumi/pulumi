@@ -611,8 +611,8 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 	}
 
 	var (
-		wg           sync.WaitGroup
-		analyzersMu  sync.Mutex
+		wg              sync.WaitGroup
+		analyzersMu     sync.Mutex
 		loadedAnalyzers []plugin.Analyzer
 	)
 	addAnalyzer := func(a plugin.Analyzer) {
