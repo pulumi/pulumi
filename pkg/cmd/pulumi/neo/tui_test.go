@@ -339,10 +339,9 @@ func TestModel_Update_WindowSize_TracksDimensionsAndBuildsRenderer(t *testing.T)
 
 	assert.Equal(t, 100, um.width)
 	assert.Equal(t, 30, um.height)
-	// welcome.termWidth is the safe live-frame width: capped at 80 once the
-	// terminal exceeds 90 cols, so the banner stays at a stable 80 cols
-	// across drag-resizes through that range. See liveWidth() for rationale.
-	assert.Equal(t, 80, um.welcome.termWidth)
+	// welcome.termWidth tracks liveWidth() = terminal width minus a 4-col
+	// margin so the banner fills the available width.
+	assert.Equal(t, 96, um.welcome.termWidth)
 	// The glamour renderer is lazily built on the first WindowSize so it can
 	// pick up the real terminal width for wrapping.
 	require.NotNil(t, um.mdRenderer)
@@ -1430,6 +1429,49 @@ func TestUserBubbleDoesNotPadShortMessages(t *testing.T) {
 	assert.Less(t, widths[0], 20, "short bubble line should hug content, not fill terminal; got width=%d", widths[0])
 }
 
+func TestUserBubbleWrapsAtWideTerminal(t *testing.T) {
+	t.Parallel()
+
+	// At a wide terminal the bubble must wrap against liveWidth (m.width-4),
+	// not raw m.width — otherwise wrapped lines sit on the terminal wrap
+	// column and desync the inline-renderer line accounting.
+	const termWidth = 200
+	m := &Model{width: termWidth}
+	long := strings.Repeat("word ", 60) // ~300 chars, forces wrap
+	got := m.renderUserBubble(long)
+
+	widths := visibleLines(got)
+	require.Greater(t, len(widths), 1, "long bubble at wide terminal must wrap; got: %q", got)
+	for i, w := range widths {
+		assert.LessOrEqual(t, w, m.liveWidth(), "bubble line %d sits past liveWidth: width=%d", i, w)
+	}
+}
+
+func TestLiveWidth_Boundaries(t *testing.T) {
+	t.Parallel()
+
+	// liveWidth contract: wide terminals back off by a 4-col cushion so
+	// rendered content stays inside the wrap column; at or below the
+	// minUsableWidth threshold (40) we hand back the raw width so something
+	// still renders on a degenerate terminal.
+	cases := []struct {
+		width int
+		want  int
+	}{
+		{width: 0, want: 0},
+		{width: 1, want: 1},
+		{width: 40, want: 40},  // boundary: not > minUsableWidth, no cushion
+		{width: 41, want: 37},  // first width that gets the cushion
+		{width: 80, want: 76},  // typical narrow terminal
+		{width: 100, want: 96}, // matches the welcome.termWidth assertion
+		{width: 200, want: 196},
+	}
+	for _, tc := range cases {
+		m := &Model{width: tc.width}
+		assert.Equal(t, tc.want, m.liveWidth(), "liveWidth(width=%d)", tc.width)
+	}
+}
+
 func TestResizeReRendersWidthDependentBlocks(t *testing.T) {
 	t.Parallel()
 
@@ -1726,7 +1768,7 @@ func TestModel_WrapPlain_TinyWidthShortCircuits(t *testing.T) {
 	long := "a fairly long sentence that would otherwise wrap"
 
 	m := NewModel(ModelConfig{})
-	m.width = 1 // liveWidth returns m.width directly when below minUsableWidth
+	m.width = 1 // liveWidth returns m.width directly when at or below minUsableWidth
 	require.LessOrEqual(t, m.liveWidth(), 4, "test relies on tiny liveWidth path")
 	assert.Equal(t, long, m.wrapPlain(long), "tiny-width path must return input verbatim")
 

@@ -150,8 +150,8 @@ func TestWelcomeView_TildeForHomePath(t *testing.T) {
 
 	// Paths under $HOME are presented as "~/<rel>" so the user sees the
 	// shorter, familiar shell form rather than a long absolute path. The
-	// banner has limited horizontal real estate (capped at liveWidth ≤ 80
-	// cols) and the absolute home path is the dominant chunk on most setups.
+	// banner has limited horizontal real estate and the absolute home path
+	// is the dominant chunk on most setups.
 	home, err := os.UserHomeDir()
 	if err != nil {
 		t.Skipf("UserHomeDir unavailable: %v", err)
