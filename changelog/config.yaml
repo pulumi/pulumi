@@ -15,6 +15,7 @@ scopes:
     - env
     - import
     - install
+    - neo
     - new
     - plugin
     - package
