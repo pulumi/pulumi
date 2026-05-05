@@ -879,12 +879,6 @@ func generateValue(
 			}
 
 			for k, v := range obj.AllStable {
-				// Provider schemas are free to use `__`-prefixed keys as
-				// discriminators (e.g. `__type`) inside freeform map payloads,
-				// so we preserve them here. Stripping silently dropped values
-				// that were then required as inputs to dependent resources;
-				// see https://github.com/pulumi/pulumi/issues/22738.
-
 				x, err := generateValue(elementType, v, importState, onReferenceFound)
 				if err != nil {
 					return nil, err
