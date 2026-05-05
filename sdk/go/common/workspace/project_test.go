@@ -64,7 +64,7 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	doTest(json.Marshal, json.Unmarshal)
 }
 
-func TestProjectValidationForNameAndRuntime(t *testing.T) {
+func TestProjectValidationForName(t *testing.T) {
 	t.Parallel()
 	var err error
 
@@ -72,12 +72,22 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	proj := Project{}
 	err = proj.Validate()
 	assert.EqualError(t, err, "project is missing a 'name' attribute")
-	// Test lack of runtime
+	// Test success
 	proj.Name = "a project"
 	err = proj.Validate()
-	assert.EqualError(t, err, "project is missing a 'runtime' attribute")
+	require.NoError(t, err)
+}
 
-	// Test success
+func TestProjectValidationForRuntime(t *testing.T) {
+	t.Parallel()
+	var err error
+
+	// Test lack of runtime
+	proj := Project{Name: "a project"}
+	err = proj.Validate()
+	require.NoError(t, err)
+
+	// Test with runtime
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)
 	err = proj.Validate()
 	require.NoError(t, err)

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add new `pulumi init` command to make a minimal project file
