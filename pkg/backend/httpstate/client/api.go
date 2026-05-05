@@ -251,6 +251,40 @@ type httpClient interface {
 	Do(req *http.Request, policy retryPolicy) (*http.Response, error)
 }
 
+// tracingTransport wraps an http.RoundTripper to create a span for each individual HTTP attempt,
+// making retries visible in traces.
+type tracingTransport struct {
+	base    http.RoundTripper
+	attempt int
+}
+
+func (t *tracingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	t.attempt++
+	ctx := req.Context()
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "HTTP attempt",
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(
+			attribute.Int("http.attempt", t.attempt),
+			attribute.String("http.method", req.Method),
+			attribute.String("http.url", req.URL.String()),
+		))
+	defer span.End()
+
+	req = req.WithContext(ctx)
+	resp, err := t.base.RoundTrip(req)
+	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
+		span.RecordError(err)
+	} else {
+		span.SetAttributes(attribute.Int("http.status_code", resp.StatusCode))
+		if resp.StatusCode >= 400 {
+			span.SetStatus(codes.Error, resp.Status)
+		}
+	}
+	return resp, err
+}
+
 // defaultHTTPClient is an implementation of httpClient that provides a basic implementation of Do
 // using the specified *http.Client, with retry support.
 type defaultHTTPClient struct {
@@ -282,6 +316,14 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	// Add a User-Agent header to distinguish the pulumi CLI from other clients.
 	req.Header.Set("User-Agent", UserAgent())
 
+	// Wrap the transport to get per-attempt spans.
+	transport := c.client.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	tracingClient := *c.client
+	tracingClient.Transport = &tracingTransport{base: transport}
+
 	// Wait 1s before retrying on failure. Then increase by 2x until the
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made.
@@ -293,7 +335,7 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 		MaxRetryCount:         intPtr(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
 	}
-	return httputil.DoWithRetryOpts(req, c.client, opts)
+	return httputil.DoWithRetryOpts(req, &tracingClient, opts)
 }
 
 // pulumiAPICall makes an HTTP request to the Pulumi API.
