@@ -457,6 +457,30 @@ func TestSession_InvokeToolCallHandlerError(t *testing.T) {
 	assert.Equal(t, "boom", item.Content.(map[string]string)["error"])
 }
 
+func TestSession_InvokeToolCallHandlerErrorWithPartialValue(t *testing.T) {
+	t.Parallel()
+
+	// Mirrors the shell-timeout case: the handler returns a partial result map
+	// AND a non-nil error. The dispatch layer must flip IsError (so the TUI
+	// shows the failure marker) but keep the partial result as Content so the
+	// agent can still read whatever stdout/stderr was captured before the
+	// deadline fired.
+	partial := map[string]any{"stdout": "hi\n", "timed_out": true, "exit_code": -1}
+	s := &Session{
+		Handlers: map[string]ToolHandler{
+			"shell": &fakeHandler{
+				wantMethod: "shell_execute",
+				result:     partial,
+				err:        errors.New("shell command timed out after 100ms"),
+			},
+		},
+	}
+	item := s.invokeToolCall(t.Context(), apitype.AgentBackendEventToolCall{ToolCallID: "c", Name: "shell__shell_execute"})
+
+	assert.True(t, item.IsError)
+	assert.Equal(t, partial, item.Content)
+}
+
 // errStreamer fails at StreamNeoTaskEvents so the Run loop returns immediately.
 type errStreamer struct{ err error }
 

@@ -200,7 +200,13 @@ func (s *Session) invokeToolCall(
 	value, err := handler.Invoke(ctx, method, call.Args)
 	if err != nil {
 		res.IsError = true
-		res.Content = map[string]string{"error": err.Error()}
+		// Handlers may return a partial value alongside an error (e.g. shell
+		// timeout). Prefer that value so the agent sees what was captured.
+		if value != nil {
+			res.Content = value
+		} else {
+			res.Content = map[string]string{"error": err.Error()}
+		}
 		return res
 	}
 	res.Content = value
