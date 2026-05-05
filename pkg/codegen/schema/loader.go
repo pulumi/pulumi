@@ -478,9 +478,15 @@ func (l *pluginLoader) loadSchemaBytes(
 	}
 
 	if schemaPath != "" {
-		schemaBytes, ok := l.loadCachedSchemaBytes(schemaPath, pluginInfo.InstallTime)
-		if ok {
-			return schemaBytes, nil, nil
+		installTime := pluginInfo.InstallTime()
+		if installTime.IsZero() {
+			// Non-fatal: log and proceed without file caching.
+			logging.V(3).Infof("failed to get install time for plugin %s@%v: %v", descriptor.Name, pluginVersion, err)
+		} else {
+			schemaBytes, ok := l.loadCachedSchemaBytes(schemaPath, installTime)
+			if ok {
+				return schemaBytes, nil, nil
+			}
 		}
 	}
 
