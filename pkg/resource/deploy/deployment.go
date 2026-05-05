@@ -109,6 +109,8 @@ type Options struct {
 	Autonamer autonaming.Autonamer
 	// true if the engine should display secrets in diagnostic messages.
 	ShowSecrets bool
+	// Analyzers is the list of policy analyzers to run during this deployment.
+	Analyzers []plugin.Analyzer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -329,8 +331,8 @@ type Deployment struct {
 	schemaLoader schema.Loader
 	// the source of new resources.
 	source Source
-	// the policy packs to run during this deployment's generation.
-	localPolicyPackPaths []string
+	// the policy analyzers to run during this deployment.
+	analyzers []plugin.Analyzer
 	// the dependency graph of the old snapshot.
 	depGraph *graph.DependencyGraph
 	// the provider registry for this deployment.
@@ -532,7 +534,6 @@ func NewDeployment(
 	prev *Snapshot,
 	plan *Plan,
 	source Source,
-	localPolicyPackPaths []string,
 	backendClient BackendClient,
 	resourceHooks *ResourceHooks,
 ) (*Deployment, error) {
@@ -586,7 +587,7 @@ func NewDeployment(
 		allOlds:                         allOlds,
 		oldViews:                        oldViews,
 		source:                          source,
-		localPolicyPackPaths:            localPolicyPackPaths,
+		analyzers:                       opts.Analyzers,
 		depGraph:                        depGraph,
 		providers:                       reg,
 		goals:                           newGoals,

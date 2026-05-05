@@ -610,7 +610,16 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		}
 	}
 
-	var wg sync.WaitGroup
+	var (
+		wg           sync.WaitGroup
+		analyzersMu  sync.Mutex
+		loadedAnalyzers []plugin.Analyzer
+	)
+	addAnalyzer := func(a plugin.Analyzer) {
+		analyzersMu.Lock()
+		loadedAnalyzers = append(loadedAnalyzers, a)
+		analyzersMu.Unlock()
+	}
 	errs := make(chan error, len(deployOpts.RequiredPolicies)+len(deployOpts.LocalPolicyPacks))
 
 	// Load required policy packs (installation already completed above).
@@ -670,6 +679,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				if len(mergedConfig) > 0 {
 					logging.V(7).Infof("policy pack %q does not support config; skipping configure", analyzerInfo.Name)
 				}
+				addAnalyzer(analyzer)
 				return
 			}
 			configFromAPI, err := resourceanalyzer.ParsePolicyPackConfigFromAPI(mergedConfig)
@@ -688,6 +698,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				errs <- fmt.Errorf("configuring policy pack %q: %w", analyzerInfo.Name, err)
 				return
 			}
+			addAnalyzer(analyzer)
 		}(policy)
 	}
 
@@ -768,6 +779,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 					errs <- fmt.Errorf("policy pack %q at %q does not support config", analyzerInfo.Name, pack.Path)
 					return
 				}
+				addAnalyzer(analyzer)
 				return
 			}
 
@@ -797,6 +809,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 				errs <- fmt.Errorf("configuring policy pack %q at %q: %w", analyzerInfo.Name, pack.Path, err)
 				return
 			}
+			addAnalyzer(analyzer)
 		}(i, pack)
 	}
 
@@ -817,6 +830,7 @@ func loadPolicyPlugins(plugctx *plugin.Context,
 		return errors.New("validating policy config")
 	}
 
+	deployOpts.LoadedAnalyzers = loadedAnalyzers
 	return nil
 }
 
