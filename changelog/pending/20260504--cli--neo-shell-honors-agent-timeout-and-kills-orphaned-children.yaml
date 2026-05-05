@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Fix the `pulumi neo` shell tool to honor the agent-supplied `timeout` and to terminate the whole process tree (and unblock cmd.Wait) when the deadline fires, so commands like `kubectl logs -f` no longer hang Neo indefinitely.

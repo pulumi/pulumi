@@ -1,4 +1,0 @@
-changes:
-- type: improvement
-  scope: cli/neo
-  description: Widen the `pulumi neo` TUI to track the terminal width instead of capping conversation rendering at 80 columns
