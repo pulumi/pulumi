@@ -82,5 +82,6 @@ All commands assume you're at the repo root.
 - `proto/*.proto` → `mise exec -- make build_proto && mise exec -- make check_proto` and commit generated files
 - `go.mod` or `go.sum` in any module → `mise exec -- make tidy`
 - `pkg/codegen/schema/pulumi.json` → `mise exec -- make lint_pulumi_json`
+- Anything under `pkg/cmd/pulumi/neo/` (the `pulumi neo` TUI/agent) → use the `cli/neo` changelog scope.
 
 See subdirectory `AGENTS.md` files (`pkg/`, `sdk/nodejs/`, `sdk/python/`, `sdk/go/`) for package-specific instructions.
