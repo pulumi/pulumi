@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix `pulumi neo` printing `error: context canceled` when the user quits the TUI
