@@ -266,39 +266,23 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 			// any task exists — the first one creates it. Other event types (approvals
 			// and anything we add later) only make sense once a task is live.
 			g.Go(func() error {
-				taskCreated := prompt != ""
-				for {
-					select {
-					case <-gctx.Done():
-						return nil
-					case ob, ok := <-outCh:
-						if !ok {
-							return nil
-						}
-						if msg, isMsg := ob.event.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
-							taskCreated = true
-							planMode := ob.planMode
-							g.Go(func() error {
-								return createTask(msg.Content, planMode)
-							})
-							continue
-						}
+				return dispatchUserEvents(
+					gctx, outCh, uiCh,
+					prompt != "",
+					func() string {
 						ts.mu.Lock()
-						taskID := ts.taskID
-						ts.mu.Unlock()
-						if taskID == "" {
-							// Unreachable in normal use: the TUI gates Enter on busy state
-							// until UITaskIdle, and approvals only fire in response to backend
-							// events that imply the task exists. Surface instead of silently
-							// dropping.
-							sendUI(uiCh, UIWarning{Message: "dropped event: task not ready"})
-							continue
-						}
-						if err := pc.PostNeoTaskUserEvent(gctx, orgName, taskID, ob.event); err != nil {
-							sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
-						}
-					}
-				}
+						defer ts.mu.Unlock()
+						return ts.taskID
+					},
+					func(message string, planMode bool) {
+						g.Go(func() error {
+							return createTask(message, planMode)
+						})
+					},
+					func(ctx context.Context, taskID string, body any) error {
+						return pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
+					},
+				)
 			})
 		},
 	)
@@ -335,6 +319,59 @@ func runWithTUI(
 	})
 
 	return g.Wait()
+}
+
+// dispatchUserEvents drives the runNeo dispatcher loop: it reads TUI-originated
+// user events from outCh, posts them to the backend once a task exists, and
+// lazily creates the task on the first user_message when no initial prompt was
+// provided. The function returns when ctx is cancelled or outCh is closed.
+//
+// Extracted from runNeo so each branch (lazy creation, taskID-not-ready
+// warning, post error) can be unit-tested without standing up the full
+// interactive machinery.
+//
+// initialTaskCreated reflects whether the caller has already kicked off
+// CreateNeoTask (true when runNeo was given a CLI prompt, false when it must
+// wait for the user's first chat message). spawnCreateTask is invoked when the
+// lazy path triggers; the caller wires it to its own goroutine orchestration
+// (the production caller spawns into the runWithTUI errgroup).
+func dispatchUserEvents(
+	ctx context.Context,
+	outCh <-chan outboundEvent,
+	uiCh chan<- UIEvent,
+	initialTaskCreated bool,
+	getTaskID func() string,
+	spawnCreateTask func(message string, planMode bool),
+	postEvent func(ctx context.Context, taskID string, body any) error,
+) error {
+	taskCreated := initialTaskCreated
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case ob, ok := <-outCh:
+			if !ok {
+				return nil
+			}
+			if msg, isMsg := ob.event.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
+				taskCreated = true
+				spawnCreateTask(msg.Content, ob.planMode)
+				continue
+			}
+			taskID := getTaskID()
+			if taskID == "" {
+				// Unreachable in normal use: the TUI gates Enter on busy state
+				// until UITaskIdle, and approvals only fire in response to backend
+				// events that imply the task exists. Surface instead of silently
+				// dropping.
+				sendUI(uiCh, UIWarning{Message: "dropped event: task not ready"})
+				continue
+			}
+			if err := postEvent(ctx, taskID, ob.event); err != nil {
+				sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
+			}
+		}
+	}
 }
 
 // resolveTaskTarget figures out the org, project, and stack name to attach to the new Neo

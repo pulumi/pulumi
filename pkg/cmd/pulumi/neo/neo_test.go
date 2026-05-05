@@ -556,3 +556,196 @@ func TestRunWithTUI_ParentContextCancellationStopsWorkers(t *testing.T) {
 	// caller of runNeo would surface ctx.Err() via session.Run separately.
 	require.NoError(t, err)
 }
+
+// -----------------------------------------------------------------------------
+// dispatchUserEvents
+//
+// The dispatcher used to live as an inline goroutine inside runNeo, where its
+// branches couldn't be exercised without driving the bubbletea model. It was
+// extracted so each branch (context cancel, channel close, lazy task
+// creation, taskID-not-ready warning, post-event success and failure) is
+// directly testable.
+// -----------------------------------------------------------------------------
+
+// noopPostEvent is the postEvent stub for dispatcher tests that aren't
+// exercising the post path. Always succeeds; receiving a call here means the
+// test reached the post branch when it shouldn't have.
+func noopPostEvent(context.Context, string, any) error { return nil }
+
+func TestDispatchUserEvents_ContextCancelExits(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	out := make(chan outboundEvent)
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(ctx, out, nil, true,
+			func() string { return "task-1" },
+			func(string, bool) {}, noopPostEvent)
+	}()
+
+	cancel()
+	select {
+	case err := <-done:
+		require.NoError(t, err, "ctx-cancel exit must return nil, not ctx.Err()")
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after ctx cancel")
+	}
+}
+
+func TestDispatchUserEvents_ChannelCloseExits(t *testing.T) {
+	t.Parallel()
+
+	out := make(chan outboundEvent)
+	done := make(chan error, 1)
+	go func() {
+		done <- dispatchUserEvents(t.Context(), out, nil, true,
+			func() string { return "task-1" },
+			func(string, bool) {}, noopPostEvent)
+	}()
+
+	close(out)
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("dispatcher did not exit after outCh close")
+	}
+}
+
+func TestDispatchUserEvents_LazyTaskCreationOnFirstUserMessage(t *testing.T) {
+	t.Parallel()
+
+	// initialTaskCreated=false: no CLI prompt was passed, so the first
+	// user_message must trigger CreateNeoTask via spawnCreateTask. Subsequent
+	// events should NOT spawn again — the dispatcher tracks taskCreated.
+	var spawned []string
+	var spawnedPlanMode []bool
+	spawn := func(msg string, planMode bool) {
+		spawned = append(spawned, msg)
+		spawnedPlanMode = append(spawnedPlanMode, planMode)
+	}
+
+	postCalls := 0
+	post := func(_ context.Context, _ string, _ any) error {
+		postCalls++
+		return nil
+	}
+
+	out := make(chan outboundEvent, 4)
+	out <- outboundEvent{
+		event:    apitype.AgentUserEventUserMessage{Type: userEventUserMessage, Content: "hello"},
+		planMode: true,
+	}
+	// Second event arrives after taskCreated is true and a taskID is set —
+	// must take the post branch, not the spawn branch.
+	out <- outboundEvent{
+		event: apitype.AgentUserEventCancel{Type: userEventUserCancel},
+	}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, nil, false,
+		func() string { return "task-1" },
+		spawn, post)
+	require.NoError(t, err)
+
+	require.Len(t, spawned, 1, "only the first user_message must trigger lazy task creation")
+	assert.Equal(t, "hello", spawned[0])
+	assert.Equal(t, []bool{true}, spawnedPlanMode,
+		"planMode must be forwarded from the outboundEvent envelope")
+	assert.Equal(t, 1, postCalls, "the second event must be posted to the live task")
+}
+
+func TestDispatchUserEvents_WarnsWhenTaskNotReady(t *testing.T) {
+	t.Parallel()
+
+	// Non-user_message event arrives before any task exists. The dispatcher
+	// must surface a UIWarning instead of silently dropping; the comment in
+	// runNeo notes this is unreachable in normal TUI flow but defends against
+	// future event types or bugs in the busy-state gate.
+	uiCh := make(chan UIEvent, 4)
+
+	out := make(chan outboundEvent, 1)
+	out <- outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, uiCh, false,
+		func() string { return "" }, // no task yet
+		func(string, bool) { t.Fatal("spawn must not fire for non-user_message") },
+		func(context.Context, string, any) error {
+			t.Fatal("post must not fire when taskID is empty")
+			return nil
+		})
+	require.NoError(t, err)
+
+	close(uiCh)
+	var got []UIWarning
+	for evt := range uiCh {
+		if w, ok := evt.(UIWarning); ok {
+			got = append(got, w)
+		}
+	}
+	require.Len(t, got, 1)
+	assert.Contains(t, got[0].Message, "task not ready")
+}
+
+func TestDispatchUserEvents_PostsEventToBackend(t *testing.T) {
+	t.Parallel()
+
+	// Once a task is live, non-user_message events flow through to postEvent.
+	type postCall struct {
+		taskID string
+		body   any
+	}
+	var calls []postCall
+
+	out := make(chan outboundEvent, 1)
+	out <- outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, nil, true,
+		func() string { return "task-1" },
+		func(string, bool) {},
+		func(_ context.Context, taskID string, body any) error {
+			calls = append(calls, postCall{taskID: taskID, body: body})
+			return nil
+		})
+	require.NoError(t, err)
+
+	require.Len(t, calls, 1)
+	assert.Equal(t, "task-1", calls[0].taskID)
+	cancelEvt, ok := calls[0].body.(apitype.AgentUserEventCancel)
+	require.True(t, ok, "body must round-trip the original AgentUserEvent type")
+	assert.Equal(t, userEventUserCancel, cancelEvt.Type)
+}
+
+func TestDispatchUserEvents_WarnsOnPostFailure(t *testing.T) {
+	t.Parallel()
+
+	// A backend error during PostNeoTaskUserEvent must surface as a UIWarning
+	// — losing a single user event shouldn't tear down the dispatcher loop.
+	uiCh := make(chan UIEvent, 4)
+
+	out := make(chan outboundEvent, 1)
+	out <- outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, uiCh, true,
+		func() string { return "task-1" },
+		func(string, bool) {},
+		func(context.Context, string, any) error {
+			return errors.New("network down")
+		})
+	require.NoError(t, err, "post errors must be reported via UIWarning, not propagated")
+
+	close(uiCh)
+	var got []UIWarning
+	for evt := range uiCh {
+		if w, ok := evt.(UIWarning); ok {
+			got = append(got, w)
+		}
+	}
+	require.Len(t, got, 1)
+	assert.Contains(t, got[0].Message, "failed to send event")
+	assert.Contains(t, got[0].Message, "network down")
+}

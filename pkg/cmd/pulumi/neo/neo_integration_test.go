@@ -17,6 +17,7 @@ package neo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,9 +30,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -49,8 +52,9 @@ type neoFakeServer struct {
 
 	// streamSend pushes raw event payloads (one JSON object per send) to the
 	// SSE handler, which frames them as `data: ...\n\n` and flushes. Closing
-	// it ends the stream cleanly.
+	// it via endStream ends the stream cleanly.
 	streamSend chan []byte
+	endOnce    sync.Once
 }
 
 type recordedPost struct {
@@ -137,10 +141,51 @@ func newNeoFakeServer(t *testing.T) *neoFakeServer {
 		// Closing streamSend lets any blocked SSE handler return promptly so
 		// httptest.Server.Close (also called below) doesn't have to wait on
 		// the request context cancellation path.
-		close(s.streamSend)
+		s.endStream()
 		s.server.Close()
 	})
 	return s
+}
+
+// endStream closes streamSend so the SSE handler returns. Idempotent so tests
+// can call it as part of their flow without conflicting with the cleanup.
+func (s *neoFakeServer) endStream() {
+	s.endOnce.Do(func() { close(s.streamSend) })
+}
+
+// sendFinalAssistantMessage pushes a final-turn assistant_message event to the
+// SSE stream. Session.Run treats a final message with no CLI tool calls as the
+// natural end of an agent turn — used by the non-interactive happy-path test
+// to drive the session to a clean shutdown after sendFinalAssistantMessage +
+// endStream.
+func (s *neoFakeServer) sendFinalAssistantMessage(t *testing.T) {
+	t.Helper()
+	body, err := json.Marshal(apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+	})
+	require.NoError(t, err)
+	env, err := json.Marshal(apitype.AgentConsoleEvent{
+		Type:      consoleEventAgentResponse,
+		ID:        "evt-1",
+		EventBody: body,
+	})
+	require.NoError(t, err)
+	s.streamSend <- env
+}
+
+// awaitStreamConnect polls until the SSE handler sees a request or the
+// deadline elapses. Returns whether the connect was observed.
+func (s *neoFakeServer) awaitStreamConnect(t *testing.T, timeout time.Duration) bool {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if s.sawStreamConnect() {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
 }
 
 func (s *neoFakeServer) recordedPosts() []recordedPost {
@@ -278,4 +323,284 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 		"CreateNeoTask body must include the prompt")
 	assert.True(t, srv.sawStreamConnect(),
 		"SSE stream was never opened — test did not exercise Session.Run")
+}
+
+// installNeoTestEnv wires the fake backend and workspace globals for an
+// integration test and registers cleanup to restore the originals. The
+// `interactive` flag selects which branch of runNeo the test exercises;
+// only the interactive path needs the tea.NewProgram override (the caller
+// installs that separately when needed).
+func installNeoTestEnv(t *testing.T, srv *neoFakeServer, interactive bool) {
+	t.Helper()
+
+	pc := client.NewClient(srv.server.URL, "", false, nil)
+
+	be := newFakeBackend()
+	be.ClientV = pc
+	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
+
+	prevBackend := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = be
+	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+
+	prevWorkspace := pkgWorkspace.Instance
+	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
+	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
+
+	prevInteractive := isInteractive
+	isInteractive = func() bool { return interactive }
+	t.Cleanup(func() { isInteractive = prevInteractive })
+}
+
+// TestRunNeoIntegration_NonInteractiveHappyPath drives the non-interactive
+// branch of runNeo: a prompt is supplied, no TUI is started, and the session
+// loop runs against the SSE stream until the server closes the connection.
+// Pre-this test, lines 161-186 of neo.go (the entire non-interactive block —
+// CreateNeoTask, console URL print, Session construction, session.Run) had no
+// coverage.
+//
+//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, isInteractive)
+func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
+	isolateWorkspace(t)
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	// Once Session.Run opens the SSE stream, push a final assistant_message
+	// and close the stream so Session.Run sees the channel close and returns
+	// nil. Without this nudge the handler would block forever on streamSend.
+	go func() {
+		if !srv.awaitStreamConnect(t, 2*time.Second) {
+			return
+		}
+		srv.sendFinalAssistantMessage(t)
+		srv.endStream()
+	}()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- runNeo(t.Context(), "do a thing", "" /*stack*/, "test-org", t.TempDir())
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("non-interactive runNeo did not return within 5s")
+	}
+
+	posts := srv.recordedPosts()
+	require.NotEmpty(t, posts, "server saw no requests")
+	assert.Equal(t, "/api/preview/agents/test-org/tasks", posts[0].path)
+	assert.Contains(t, string(posts[0].body), "do a thing",
+		"CreateNeoTask body must include the prompt")
+}
+
+// TestRunNeoIntegration_NonInteractiveRequiresPrompt covers the early-return
+// guard that rejects an empty prompt in non-interactive mode (there's no input
+// mechanism, so the agent has nothing to react to).
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
+	isolateWorkspace(t)
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	err := runNeo(t.Context(), "" /*prompt*/, "", "test-org", t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "prompt argument is required")
+
+	// The guard fires before any HTTP call — server must be untouched.
+	assert.Empty(t, srv.recordedPosts(), "no API calls should be made when the prompt guard fires")
+}
+
+// TestRunNeoIntegration_RequiresCloudBackend covers the type-assertion guard
+// that rejects backends not implementing httpstate.Backend (filestate, DIY,
+// etc. — only the Pulumi Cloud backend exposes the Neo API).
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
+	isolateWorkspace(t)
+
+	// A bare MockBackend deliberately doesn't implement httpstate.Backend.
+	prevBackend := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = &backend.MockBackend{}
+	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+
+	prevWorkspace := pkgWorkspace.Instance
+	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
+	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
+
+	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
+		"non-cloud backends must surface a clear error rather than panic on the type assertion")
+}
+
+// TestRunNeoIntegration_ResolvesCwdWhenEmpty covers the os.Getwd() fallback at
+// the top of runNeo: when the caller passes an empty cwdFlag, runNeo must
+// resolve the process working directory rather than handing the empty string
+// to the tools constructors (which would otherwise reject it).
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
+	isolateWorkspace(t)
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	go func() {
+		if !srv.awaitStreamConnect(t, 2*time.Second) {
+			return
+		}
+		srv.sendFinalAssistantMessage(t)
+		srv.endStream()
+	}()
+
+	done := make(chan error, 1)
+	go func() {
+		// cwdFlag empty → runNeo calls os.Getwd. The test's own working
+		// directory is always a real, readable path, so the tools constructors
+		// accept it and runNeo proceeds.
+		done <- runNeo(t.Context(), "do a thing", "", "test-org", "" /*cwd*/)
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("runNeo with empty cwd did not return within 5s")
+	}
+}
+
+// TestRunNeoIntegration_RejectsNonexistentCwd covers the tools.NewFilesystem
+// error path: when cwdFlag points at a directory that doesn't exist, runNeo
+// must surface the underlying os.Stat error rather than continuing to a half-
+// initialized session.
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
+	isolateWorkspace(t)
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	missing := t.TempDir() + "/does-not-exist"
+	err := runNeo(t.Context(), "do a thing", "", "test-org", missing)
+	require.Error(t, err)
+	// The exact wrapping is internal to tools.NewFilesystem, but the missing
+	// path should be referenced so the user can see what went wrong.
+	assert.Contains(t, err.Error(), "does-not-exist")
+
+	assert.Empty(t, srv.recordedPosts(),
+		"no API calls should be made when filesystem setup fails")
+}
+
+// TestRunNeoIntegration_PropagatesReadProjectError covers the ReadProject
+// error branch — any error other than ErrProjectNotFound must abort runNeo
+// before it touches the backend (otherwise we'd create a Neo task against a
+// half-loaded project).
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
+	isolateWorkspace(t)
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	// Override the workspace to surface a non-NotFound error from ReadProject.
+	pkgWorkspace.Instance = &pkgWorkspace.MockContext{
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return nil, "", errors.New("synthetic ReadProject failure")
+		},
+	}
+
+	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
+	assert.Empty(t, srv.recordedPosts(),
+		"no API calls should be made when project resolution fails")
+}
+
+// TestRunNeoIntegration_PropagatesCreateNeoTaskError covers the non-interactive
+// CreateNeoTask error branch: a server-side failure during task creation must
+// surface as the runNeo return value, with no session.Run started.
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
+	isolateWorkspace(t)
+
+	// Bespoke server: CreateNeoTask returns 500. We don't reuse newNeoFakeServer
+	// because here we want CreateNeoTask itself to fail.
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/preview/agents/test-org/tasks" {
+				http.Error(w, "synthetic 500", http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+	t.Cleanup(server.Close)
+
+	pc := client.NewClient(server.URL, "", false, nil)
+	be := newFakeBackend()
+	be.ClientV = pc
+	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
+
+	prevBackend := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = be
+	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+
+	prevWorkspace := pkgWorkspace.Instance
+	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
+	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
+
+	prevInteractive := isInteractive
+	isInteractive = func() bool { return false }
+	t.Cleanup(func() { isInteractive = prevInteractive })
+
+	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "creating Neo task")
+}
+
+// TestRunNeoIntegration_NewNeoCmdRunE covers the cobra RunE closure in
+// NewNeoCmd: it pulls the prompt from positional args, reads the flag values,
+// and forwards everything to runNeo. Without this test the entire RunE body
+// (lines 83-90 in neo.go) is uncovered — the flag-registration test in
+// neo_test.go only inspects cmd.Args, never invokes RunE.
+//
+//nolint:paralleltest // mutates package globals
+func TestRunNeoIntegration_NewNeoCmdRunE(t *testing.T) {
+	isolateWorkspace(t)
+	t.Setenv("PULUMI_EXPERIMENTAL", "true")
+
+	srv := newNeoFakeServer(t)
+	installNeoTestEnv(t, srv, false /*interactive*/)
+
+	go func() {
+		if !srv.awaitStreamConnect(t, 2*time.Second) {
+			return
+		}
+		srv.sendFinalAssistantMessage(t)
+		srv.endStream()
+	}()
+
+	cmd := NewNeoCmd()
+	cmd.SetContext(t.Context())
+	require.NoError(t, cmd.Flags().Set("org", "test-org"))
+	require.NoError(t, cmd.Flags().Set("cwd", t.TempDir()))
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.RunE(cmd, []string{"my prompt"})
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("cmd.RunE did not return within 5s")
+	}
+
+	posts := srv.recordedPosts()
+	require.NotEmpty(t, posts, "RunE did not reach CreateNeoTask")
+	assert.Contains(t, string(posts[0].body), "my prompt",
+		"prompt from positional args must reach CreateNeoTask")
 }
