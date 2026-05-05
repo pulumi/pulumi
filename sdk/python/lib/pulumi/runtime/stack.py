@@ -305,9 +305,7 @@ def massage_complex(attr: Any, seen: list[Any]) -> Any:
     # make sure this is a popo.
     if isinstance(attr, dict):
         # Don't use attr.items() here, as it will error in the case of outputs with an `items` property.
-        return {
-            key: massage(attr[key], seen) for key in attr if not key.startswith("_")
-        }
+        return {key: massage(attr[key], seen) for key in attr}
 
     if hasattr(attr, "__iter__"):
         return [massage(item, seen) for item in attr]
