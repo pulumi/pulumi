@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package initcmd
+package project
 
 import (
 	"bytes"
@@ -29,7 +29,7 @@ func TestInitCmdWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 	var output bytes.Buffer
-	cmd := NewInitCmd()
+	cmd := newInitCmd()
 	cmd.SetOut(&output)
 	cmd.SetArgs([]string{"my-project"})
 
@@ -47,7 +47,7 @@ func TestInitCmdUsesCurrentDirectoryNameByDefault(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "my-project")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	t.Chdir(dir)
-	cmd := NewInitCmd()
+	cmd := newInitCmd()
 
 	err := cmd.Execute()
 
@@ -62,7 +62,7 @@ func TestInitCmdSanitizesDefaultDirectoryName(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "my project!")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	t.Chdir(dir)
-	cmd := NewInitCmd()
+	cmd := newInitCmd()
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
@@ -77,7 +77,7 @@ func TestInitCmdSanitizesDefaultDirectoryName(t *testing.T) {
 func TestInitCmdRejectsInvalidExplicitName(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	cmd := NewInitCmd()
+	cmd := newInitCmd()
 	cmd.SetArgs([]string{"my project"})
 
 	err := cmd.Execute()
@@ -93,7 +93,7 @@ func TestInitCmdDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 	existing := filepath.Join(dir, "Pulumi.yaml")
 	require.NoError(t, os.WriteFile(existing, []byte("name: existing\n"), 0o600))
 	t.Chdir(dir)
-	cmd := NewInitCmd()
+	cmd := newInitCmd()
 
 	err := cmd.Execute()
 
@@ -106,7 +106,7 @@ func TestInitCmdDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 func TestInitCmdRejectsTooManyArgs(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewInitCmd()
+	cmd := newInitCmd()
 	cmd.SetArgs([]string{"one", "two"})
 
 	err := cmd.Execute()

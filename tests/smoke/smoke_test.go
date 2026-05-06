@@ -1310,7 +1310,7 @@ func TestInitOperations(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer e.DeleteIfNotFailed()
 
-	e.RunCommand("pulumi", "init")
+	e.RunCommand("pulumi", "project", "init")
 	e.RunCommand("pulumi", "stack", "init", "testing")
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 }
