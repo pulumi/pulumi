@@ -1275,7 +1275,7 @@ func (sg *stepGenerator) continueStepsFromImport(event ContinueResourceImportEve
 
 	// Send the resource off to any Analyzers before being operated on. We do two passes: first we perform
 	// remediations, and *then* we do analysis, since we want analyzers to run on the final resource states.
-	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
+	analyzers := sg.deployment.analyzers
 
 	// First pass: perform remediations sequentially. Each remediation can transform the resource
 	// properties, so subsequent analyzers must see the transformed state.
@@ -3191,7 +3191,7 @@ func (sg *stepGenerator) analyzeAll(
 }
 
 func (sg *stepGenerator) AnalyzeResources() error {
-	analyzers := sg.deployment.ctx.Host.ListAnalyzers()
+	analyzers := sg.deployment.analyzers
 
 	var resources []plugin.AnalyzerStackResource
 	// Don't bother building the resources slice if there are no analyzers.

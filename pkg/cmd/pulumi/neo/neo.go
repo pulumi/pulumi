@@ -233,6 +233,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 						PlanMode:          planMode,
 					})
 				if err != nil {
+					sendUI(uiCh, UIError{Message: "failed to create Neo task: " + err.Error()})
 					return err
 				}
 
@@ -261,6 +262,18 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 					return createTask(prompt, false)
 				})
 			}
+
+			// Tear the bubbletea program down when any errgroup goroutine fails.
+			// Without this, p.Run() blocks until the user manually quits, so a
+			// CreateNeoTask failure would leave the user staring at a TUI with
+			// no backing session. runWithTUI cancels gctx when runTUI itself
+			// returns, so this goroutine is a no-op on clean TUI exits and only
+			// fires p.Quit when a worker (createTask, dispatcher, session) errors.
+			g.Go(func() error {
+				<-gctx.Done()
+				p.Quit()
+				return nil
+			})
 
 			// Post TUI-originated user events to the API. Chat messages may arrive before
 			// any task exists — the first one creates it. Other event types (approvals

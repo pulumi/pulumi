@@ -515,9 +515,12 @@ func TestSession_RunReturnsStreamError(t *testing.T) {
 	require.EqualError(t, err, "stream died")
 }
 
-func TestSession_RunHonorsContextCancel(t *testing.T) {
+func TestSession_RunReturnsNilOnContextCancel(t *testing.T) {
 	t.Parallel()
 
+	// Caller-initiated cancellation (e.g. TUI quit) must be treated as a clean
+	// shutdown — returning context.Canceled here causes cobra to print
+	// "error: context canceled" on a normal `pulumi neo` quit.
 	streamer := newFakeStreamer() // stream is never closed, never fed
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -525,7 +528,7 @@ func TestSession_RunHonorsContextCancel(t *testing.T) {
 
 	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
 	err := s.Run(ctx)
-	assert.ErrorIs(t, err, context.Canceled)
+	require.NoError(t, err)
 }
 
 func TestSession_MalformedConsoleEventIsIgnored(t *testing.T) {

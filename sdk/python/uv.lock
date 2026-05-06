@@ -993,7 +993,7 @@ wheels = [
 
 [[package]]
 name = "pulumi"
-version = "3.235.0"
+version = "3.236.0"
 source = { editable = "." }
 dependencies = [
     { name = "debugpy" },

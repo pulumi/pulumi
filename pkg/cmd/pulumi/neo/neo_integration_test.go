@@ -560,6 +560,89 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
 
+// TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits covers the
+// interactive path's CreateNeoTask error handling. Two coupled behaviors must
+// hold:
+//
+//  1. createTask emits a UIError on uiCh so the user sees the failure in the
+//     TUI before it tears down (vs. an unexplained "Thinking…" hang).
+//  2. The errgroup goroutine that watches gctx.Done fires p.Quit() once the
+//     createTask worker returns the error, so runNeo returns instead of
+//     blocking on p.Run forever.
+//
+// Pre-fix, the test would time out: with no manual p.Quit and no auto-quit
+// goroutine, p.Run would block until the test deadline even though createTask
+// had already errored.
+//
+//nolint:paralleltest // mutates package globals (BackendInstance, pkgWorkspace.Instance, newTeaProgram, isInteractive)
+func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
+	isolateWorkspace(t)
+
+	// Server returns 500 on CreateNeoTask. Other endpoints 404 — they should
+	// never be hit, since the failure must abort before any session starts.
+	server := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/preview/agents/test-org/tasks" {
+				http.Error(w, "synthetic 500", http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		}))
+	t.Cleanup(server.Close)
+
+	pc := client.NewClient(server.URL, "", false, nil)
+	be := newFakeBackend()
+	be.ClientV = pc
+	be.GetDefaultOrgF = func(context.Context) (string, error) { return "test-org", nil }
+
+	prevBackend := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = be
+	t.Cleanup(func() { cmdBackend.BackendInstance = prevBackend })
+
+	prevWorkspace := pkgWorkspace.Instance
+	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
+	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
+
+	// Force the interactive branch — createTask only runs on the interactive
+	// path, where the new UIError + p.Quit goroutine live.
+	prevInteractive := isInteractive
+	isInteractive = func() bool { return true }
+	t.Cleanup(func() { isInteractive = prevInteractive })
+
+	// Headless tea.Program. Notably, the test does NOT call p.Quit anywhere —
+	// the only path to a clean exit is the new auto-quit goroutine reacting
+	// to the createTask worker's non-nil return.
+	prevProgram := newTeaProgram
+	newTeaProgram = func(m tea.Model) *tea.Program {
+		return tea.NewProgram(
+			m,
+			tea.WithInput(nil),
+			tea.WithOutput(io.Discard),
+			tea.WithoutSignals(),
+			tea.WithoutSignalHandler(),
+			tea.WithoutRenderer(),
+		)
+	}
+	t.Cleanup(func() { newTeaProgram = prevProgram })
+
+	done := make(chan error, 1)
+	go func() {
+		done <- runNeo(t.Context(), "do a thing", "" /*stack*/, "test-org", t.TempDir())
+	}()
+
+	select {
+	case err := <-done:
+		// CreateNeoTask's wrapped error must surface to the caller; the TUI
+		// tear-down path should not swallow it.
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "creating Neo task",
+			"CreateNeoTask error must propagate, not be replaced by tear-down state")
+	case <-time.After(5 * time.Second):
+		t.Fatal("runNeo did not return within 5s after CreateNeoTask failure — " +
+			"the gctx.Done → p.Quit goroutine must tear the TUI down on worker error")
+	}
+}
+
 // TestRunNeoIntegration_NewNeoCmdRunE covers the cobra RunE closure in
 // NewNeoCmd: it pulls the prompt from positional args, reads the flag values,
 // and forwards everything to runNeo. Without this test the entire RunE body
