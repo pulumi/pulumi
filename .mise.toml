@@ -34,3 +34,6 @@ gradle = "7.6"
 [tool_alias]
 protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
 
+[plugins]
+protoc = "https://github.com/paxosglobal/asdf-protoc"
+gradle = "https://github.com/rfrancis/asdf-gradle"
