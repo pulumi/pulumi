@@ -118,12 +118,14 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 			Size:    plugin.Size(),
 		}
 
-		if !plugin.InstallTime.IsZero() {
-			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(plugin.InstallTime.UTC()))
+		installTime := plugin.InstallTime()
+		if !installTime.IsZero() {
+			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(installTime.UTC()))
 		}
 
-		if !plugin.LastUsedTime.IsZero() {
-			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(plugin.LastUsedTime.UTC()))
+		lastUsedTime := plugin.LastUsedTime()
+		if !lastUsedTime.IsZero() {
+			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(lastUsedTime.UTC()))
 		}
 	}
 
@@ -146,21 +148,23 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 		} else {
 			bytes = humanize.Bytes(plugin.Size())
 		}
-		var installTime string
-		if plugin.InstallTime.IsZero() {
-			installTime = naString
+		var installTimeStr string
+		installTime := plugin.InstallTime()
+		if installTime.IsZero() {
+			installTimeStr = naString
 		} else {
-			installTime = humanize.Time(plugin.InstallTime)
+			installTimeStr = humanize.Time(installTime)
 		}
-		var lastUsedTime string
-		if plugin.LastUsedTime.IsZero() {
-			lastUsedTime = humanNeverTime
+		var lastUsedTimeStr string
+		lastUsedTime := plugin.LastUsedTime()
+		if lastUsedTime.IsZero() {
+			lastUsedTimeStr = humanNeverTime
 		} else {
-			lastUsedTime = humanize.Time(plugin.LastUsedTime)
+			lastUsedTimeStr = humanize.Time(lastUsedTime)
 		}
 
 		rows = append(rows, cmdutil.TableRow{
-			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
+			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTimeStr, lastUsedTimeStr},
 		})
 
 		totalSize += plugin.Size()
