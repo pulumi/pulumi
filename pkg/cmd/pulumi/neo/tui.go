@@ -83,10 +83,8 @@ type block struct {
 	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
 	// re-rendered by renderBlock on every update.
 	pulumi *pulumiBlockState
-	// todos is populated for blockTodoList (the standalone, working-mode
-	// rendering) and for blockApprovalPlan when the buffered list captured
-	// during plan mode is attached at plan_exit time so renderBlock can
-	// fold it into the plan body as a Tasks: subsection.
+	// todos is populated for blockTodoList and folded into blockApprovalPlan
+	// as a Tasks: subsection.
 	todos []UITodoItem
 }
 
@@ -230,10 +228,8 @@ type Model struct {
 	// emissions prepend a blank line so each committed block has visual
 	// breathing room from whatever came before.
 	hasEmittedScrollback bool
-	// pendingTodos buffers the latest UITodoList while planMode is true.
-	// It is drained and attached to the next blockApprovalPlan when the
-	// plan_exit approval arrives, so the user sees the task list and the
-	// plan as a single visual unit rather than two separate blocks.
+	// pendingTodos buffers the latest UITodoList while planMode is true so
+	// the list lands inside the same block as the Proposed plan, not above it.
 	pendingTodos []UITodoItem
 }
 
@@ -251,8 +247,7 @@ var (
 	// and the "Proposed plan" block header so they read as the same visual cue.
 	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 	// Styles for in-progress and completed todo items. Pending items render
-	// in the default style so the visually-loud markers (cyan/green) are
-	// reserved for the rows the user actually cares about.
+	// in the default style — no entry here.
 	todoActiveStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 	todoCompletedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Faint(true)
 	todoListHeader     = lipgloss.NewStyle().Bold(true).Render("⏺ TODO")
@@ -742,13 +737,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UITodoList:
-		// In plan mode, hold the list until plan_exit so the user sees the
-		// tasks alongside the plan in a single block. Outside plan mode we
-		// commit on every TodoWrite — the agent fires one per status change,
-		// which is exactly the "step completed / list edited" trigger.
+		// In plan mode, hold the list until plan_exit so the tasks land
+		// inside the same block as the plan. Outside plan mode commit
+		// immediately so status flips show up in scrollback.
 		if len(msg.Items) > 0 {
 			if m.planMode {
-				m.pendingTodos = append(m.pendingTodos[:0], msg.Items...)
+				m.pendingTodos = msg.Items
 			} else {
 				cmds = append(cmds, m.commitBlock(block{kind: blockTodoList, todos: msg.Items}))
 			}
@@ -768,9 +762,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case m.pendingApprovalType == approvalTypePlanExit:
 			// The plan body is authored as markdown and lives in
-			// PlanDescription; msg.Message is just a generic intro. Any
-			// TodoWrite buffered while in plan mode is folded into this
-			// same block as a Tasks: subsection by renderBlock below.
+			// PlanDescription; msg.Message is just a generic intro.
 			planBlock := block{kind: blockApprovalPlan, raw: msg.PlanDescription, todos: m.pendingTodos}
 			m.pendingTodos = nil
 			cmds = append(cmds, m.commitBlock(planBlock))
@@ -1148,9 +1140,6 @@ func (m *Model) renderBlock(b *block) {
 
 // renderTodoLines formats todos as one ASCII checkbox per line, sorted by
 // Index so the agent's intended ordering survives JSON round-tripping.
-// Pending items render in the default style; in_progress is bold cyan and
-// completed is faint green so a long list is scannable without dominating
-// the surrounding plan or transcript.
 func renderTodoLines(items []UITodoItem) string {
 	if len(items) == 0 {
 		return ""
