@@ -254,12 +254,15 @@ func renderLeftBracket(borderStyle lipgloss.Style, content string) string {
 
 // renderIndented word-wraps content (ANSI-safe) to termWidth minus the
 // 2-space transcript gutter, or returns un-wrapped if the width is too
-// small to wrap into.
+// small to wrap into. URLs in the post-wrap output are wrapped in OSC 8
+// escapes so terminals that support hyperlinks render them as clickable.
+// We linkify after wrapping so a URL split across lines simply stays
+// non-clickable rather than producing a broken escape sequence.
 func renderIndented(style lipgloss.Style, termWidth int, content string) string {
 	if termWidth <= 4 {
-		return "  " + style.Render(content)
+		return "  " + linkifyURLs(style.Render(content))
 	}
-	return "  " + style.Width(termWidth-2).Render(content)
+	return "  " + linkifyURLs(style.Width(termWidth-2).Render(content))
 }
 
 // NewModel creates a new TUI Model.
@@ -597,8 +600,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UISessionURL:
 		// The welcome banner is already in scrollback by the time the task URL
 		// arrives, so emit the URL as its own line rather than re-rendering.
+		// OSC 8 wraps the URL so supporting terminals render it as clickable.
 		m.welcome.consoleURL = msg.URL
-		cmds = append(cmds, tea.Println("  "+inputHintStyle.Render("⟡ "+msg.URL)))
+		cmds = append(cmds, tea.Println("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIUserMessage:
@@ -1041,9 +1045,9 @@ func (m *Model) renderUserBubble(content string) string {
 func (m *Model) wrapPlain(text string) string {
 	w := m.liveWidth()
 	if w <= 4 {
-		return text
+		return linkifyURLs(text)
 	}
-	return wordwrap.String(text, w-4)
+	return linkifyURLs(wordwrap.String(text, w-4))
 }
 
 func (m *Model) appendRenderedBlock(b block) {
@@ -1052,15 +1056,17 @@ func (m *Model) appendRenderedBlock(b block) {
 }
 
 // renderMarkdown renders text through glamour, falling back to plain text.
+// URLs in the rendered output are wrapped in OSC 8 escapes so terminals that
+// support hyperlinks render them as clickable.
 func (m *Model) renderMarkdown(text string) string {
 	if m.mdRenderer == nil {
-		return text
+		return linkifyURLs(text)
 	}
 	rendered, err := m.mdRenderer.Render(text)
 	if err != nil {
-		return text
+		return linkifyURLs(text)
 	}
-	return strings.TrimRight(rendered, "\n")
+	return linkifyURLs(strings.TrimRight(rendered, "\n"))
 }
 
 // renderHeaderedBlock renders "  header" followed by body indented by 4 spaces,
