@@ -137,11 +137,12 @@ func TestSchemaCacheMissWritesFile(t *testing.T) {
 		},
 	}
 
+	pluginDir := t.TempDir()
 	pluginInfo := &workspace.PluginInfo{
-		Name:        "aws",
-		Kind:        apitype.ResourcePlugin,
-		Version:     &version,
-		InstallTime: time.Now().Add(-time.Hour),
+		Name:    "aws",
+		Kind:    apitype.ResourcePlugin,
+		Version: &version,
+		Path:    pluginDir,
 	}
 
 	loader := fileCacheLoader(newCachingHost(provider, pluginInfo))
@@ -172,7 +173,10 @@ func TestSchemaCacheHitSkipsPlugin(t *testing.T) {
 	version := semver.MustParse("1.0.0")
 	schema := minimalSchemaJSON("aws", "1.0.0")
 
-	// Write the cache file before creating the loader.
+	// Create the plugin dir first so its ctime is older than the cache file written next.
+	pluginDir := t.TempDir()
+
+	// Write the cache file after the plugin dir exists so its mtime >= plugin dir ctime.
 	schemaPath, err := schemaFilePath("aws", &version, "", nil)
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(filepath.Dir(schemaPath), 0o700))
@@ -186,12 +190,12 @@ func TestSchemaCacheHitSkipsPlugin(t *testing.T) {
 		},
 	}
 
-	// Plugin install time is before the cache file was written.
+	// Plugin install time (derived from pluginDir ctime) is before the cache file was written.
 	pluginInfo := &workspace.PluginInfo{
-		Name:        "aws",
-		Kind:        apitype.ResourcePlugin,
-		Version:     &version,
-		InstallTime: time.Now().Add(-time.Hour),
+		Name:    "aws",
+		Kind:    apitype.ResourcePlugin,
+		Version: &version,
+		Path:    pluginDir,
 	}
 
 	loader := fileCacheLoader(newCachingHost(provider, pluginInfo))
@@ -222,7 +226,10 @@ func TestSchemaCacheStaleOnReinstall(t *testing.T) {
 	pastTime := time.Now().Add(-time.Hour)
 	require.NoError(t, os.Chtimes(schemaPath, pastTime, pastTime))
 
-	// Plugin was reinstalled after the cache was written.
+	// Plugin was reinstalled after the cache was written: create the plugin dir
+	// after backdating the cache so its ctime is newer than the cache mtime.
+	pluginDir := t.TempDir()
+
 	getCalled := 0
 	provider := &plugin.MockProvider{
 		GetSchemaF: func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
@@ -232,10 +239,10 @@ func TestSchemaCacheStaleOnReinstall(t *testing.T) {
 	}
 
 	pluginInfo := &workspace.PluginInfo{
-		Name:        "aws",
-		Kind:        apitype.ResourcePlugin,
-		Version:     &version,
-		InstallTime: time.Now(), // newer than the backdated cache file
+		Name:    "aws",
+		Kind:    apitype.ResourcePlugin,
+		Version: &version,
+		Path:    pluginDir, // ctime is newer than the backdated cache file
 	}
 
 	loader := fileCacheLoader(newCachingHost(provider, pluginInfo))
@@ -319,12 +326,14 @@ func TestSchemaCacheParameterized(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEqual(t, awsPath, azurePath, "different parameterizations must use distinct cache files")
 
-	installTime := time.Now().Add(-time.Hour)
+	// Create the plugin dir before priming the cache so its ctime is older than
+	// the cache files written by makeLoader below.
+	pluginDir := t.TempDir()
 	pluginInfo := &workspace.PluginInfo{
-		Name:        "terraform-bridge",
-		Kind:        apitype.ResourcePlugin,
-		Version:     &bridgeVersion,
-		InstallTime: installTime,
+		Name:    "terraform-bridge",
+		Kind:    apitype.ResourcePlugin,
+		Version: &bridgeVersion,
+		Path:    pluginDir,
 	}
 
 	// Helper: build a loader backed by a provider that always returns the given schema.
