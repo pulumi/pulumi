@@ -354,13 +354,53 @@ func drawProperties(
 	var required []string
 	for _, name := range names {
 		propLabel := fmt.Sprintf("%s:%s", label, name)
-		props[name] = drawPropertySpec(t, ctx, propLabel, depth)
-		if rapid.Bool().Draw(t, propLabel+":required") {
+		spec := drawPropertySpec(t, ctx, propLabel, depth)
+		props[name] = spec
+		// A required property whose top-level type forces another object of
+		// some type to be present (a direct ObjectType reference, or a union
+		// of such refs with no escape branch) would describe an
+		// infinite-size value.
+		if isSafeForRequired(spec.TypeSpec, ctx) && rapid.Bool().Draw(t, propLabel+":required") {
 			required = append(required, name)
 		}
 	}
 	sort.Strings(required)
 	return props, required
+}
+
+// isSafeForRequired reports whether spec admits at least one value that
+// terminates without forcing another object instance of the same kind to
+// exist. Arrays/Maps/Optionals always admit an empty/null value, primitives
+// terminate naturally, enum and built-in refs don't recurse. ObjectType
+// refs are unsafe (their value forces a nested object). Unions are safe iff
+// at least one branch is safe.
+func isSafeForRequired(spec schema.TypeSpec, ctx *pkgCtx) bool {
+	if len(spec.OneOf) > 0 {
+		for _, m := range spec.OneOf {
+			if isSafeForRequired(m, ctx) {
+				return true
+			}
+		}
+		return false
+	}
+	return !isDirectObjectRef(spec, ctx)
+}
+
+// isDirectObjectRef reports whether spec resolves at its top level to an
+// ObjectType already declared in ctx. Array/Map/Union members and primitives
+// (including pulumi.json#/Archive etc.) all return false.
+func isDirectObjectRef(spec schema.TypeSpec, ctx *pkgCtx) bool {
+	const prefix = "#/types/"
+	if len(spec.Ref) <= len(prefix) || spec.Ref[:len(prefix)] != prefix {
+		return false
+	}
+	tok := spec.Ref[len(prefix):]
+	for _, ot := range ctx.objectTokens {
+		if ot == tok {
+			return true
+		}
+	}
+	return false
 }
 
 func drawPropertySpec(t *rapid.T, ctx *pkgCtx, label string, depth int) schema.PropertySpec {

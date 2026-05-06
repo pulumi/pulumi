@@ -6,19 +6,16 @@ types:
     properties:
       foo:
         $ref: "#/types/example::DirectCycle"
-    required: [ foo ]
   example::IndirectCycleS:
     type: object
     properties:
       foo2:
         $ref: "#/types/example::IndirectCycleT"
-    required: [ foo2 ]
   example::IndirectCycleT:
     type: object
     properties:
       foo3:
         $ref: "#/types/example::IndirectCycleS"
-    required: [ foo3 ]
   example::AcyclicReferent:
     type: object
     properties:
