@@ -58,6 +58,8 @@ const (
 	blockApprovalPlan
 	blockApprovalGeneral
 	blockApprovalChoice
+	blockQuestion
+	blockAnswerSubmitted
 	blockPulumiOp
 )
 
@@ -193,6 +195,12 @@ type Model struct {
 	// pending approval (empty when none). The Enter handler checks for
 	// approvalTypePlanExit so it can auto-clear planMode on approval.
 	pendingApprovalType string
+	// pendingIsQuestion is true when the pending request is a question from
+	// the agent's ask-user tool (see isAskUserToolName). The Enter handler
+	// uses it to treat the typed text as a free-form answer instead of
+	// running the y/yes-or-deny parsing. Set when the request arrives,
+	// cleared on submit alongside pendingApproval.
+	pendingIsQuestion bool
 	// cancelling is true from the moment the user presses ESC (the TUI posts an
 	// AgentUserEventCancel upstream) until the next final event arrives. While
 	// it is true the busy label is overridden to "Cancelling..." so the user
@@ -432,6 +440,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.pendingApproval {
 			if msg.Type == tea.KeyEnter {
 				text := strings.TrimSpace(m.textInput.Value())
+				if m.pendingIsQuestion {
+					// Free-form answer to an ask-user question. Empty input is
+					// a no-op — questions can't be answered with nothing; ESC
+					// remains the abort path. The wire reply is
+					// Approved=false, Message=<answer> to match the backend's
+					// existing ask_user tool wrapper, which converts it into a
+					// tool_response delivering the answer to the agent.
+					if text == "" {
+						return m, nil
+					}
+					m.sendOut(outboundEvent{
+						event: apitype.AgentUserEventUserConfirmation{
+							Type:       userEventUserConfirmation,
+							ApprovalID: m.pendingApprovalID,
+							Approved:   false,
+							Message:    text,
+						},
+						planMode: m.planMode,
+					})
+					m.pendingApproval = false
+					m.pendingApprovalID = ""
+					m.pendingApprovalType = ""
+					m.pendingIsQuestion = false
+					m.textInput.Prompt = "❯ "
+					m.textInput.PromptStyle = promptStyle
+					m.textInput.Placeholder = "Send a message..."
+					m.textInput.Reset()
+					answerCmd := m.commitBlock(block{kind: blockAnswerSubmitted, raw: text})
+					return m, tea.Batch(answerCmd, m.showBusy(thinkingLabel, shimmerVerb))
+				}
 				approved := strings.EqualFold(text, "y") || strings.EqualFold(text, "yes")
 				var denialMsg string
 				if !approved {
@@ -691,16 +729,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pendingApproval = true
 		m.pendingApprovalID = msg.ApprovalID
 		m.pendingApprovalType = msg.ApprovalType
-		if m.pendingApprovalType == approvalTypePlanExit {
+		m.pendingIsQuestion = false
+		switch {
+		case m.pendingApprovalType == approvalTypePlanExit:
 			// The plan body is authored as markdown and lives in
 			// PlanDescription; msg.Message is just a generic intro.
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription}))
 			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
-		} else {
+			m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+		case isAskUserToolName(msg.ToolName):
+			// The agent's ask-user tool reuses user_approval_request to ask
+			// a clarifying question. Render as a question, not an approval —
+			// no warning header, free-form answer prompt.
+			m.pendingIsQuestion = true
+			cmds = append(cmds, m.commitBlock(block{kind: blockQuestion, raw: msg.Message}))
+			m.textInput.Prompt = "Your answer: "
+			m.textInput.PromptStyle = promptStyle
+		default:
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalGeneral, raw: msg.Message}))
 			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
+			m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 		}
-		m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 		m.textInput.Placeholder = ""
 		m.textInput.Reset()
 		cmds = append(cmds, waitForEvent(m.eventCh))
@@ -798,7 +847,8 @@ func isLiveKind(b block) bool {
 		return b.pulumi != nil && !b.pulumi.done
 	case blockToolComplete, blockAssistantFinal, blockError, blockWarning,
 		blockCancelled, blockUserMessage, blockApprovalPlan,
-		blockApprovalGeneral, blockApprovalChoice:
+		blockApprovalGeneral, blockApprovalChoice,
+		blockQuestion, blockAnswerSubmitted:
 		return false
 	}
 	return false
@@ -997,6 +1047,14 @@ func (m *Model) renderBlock(b *block) {
 	case blockApprovalGeneral:
 		header := warningStyle.Render("⚠ Approval required")
 		b.rendered = renderHeaderedBlock(header, m.wrapPlain(b.raw))
+	case blockQuestion:
+		// Cyan promptStyle (matches the ❯ input prompt) so the header reads
+		// as an input affordance, not a warning.
+		header := promptStyle.Render("◆ Question")
+		b.rendered = renderHeaderedBlock(header, m.wrapPlain(b.raw))
+	case blockAnswerSubmitted:
+		answered := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✎ Answered")
+		b.rendered = renderIndented(lipgloss.NewStyle(), m.width, answered+" — "+b.raw)
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.

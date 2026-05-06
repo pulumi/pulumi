@@ -290,6 +290,7 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 			Sensitivity:     req.Sensitivity,
 			ApprovalType:    req.ApprovalType,
 			PlanDescription: req.Context.PlanDescription,
+			ToolName:        req.Context.ToolName,
 		})
 	case backendEventAwaitingApprovals:
 		sendUI(s.UIEvents, UIAwaitingApprovals{})

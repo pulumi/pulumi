@@ -753,6 +753,27 @@ func TestSession_ForwardToUI_EmitsAllEventTypes(t *testing.T) {
 					m.Message == "Run pulumi up?" && m.Sensitivity == "high"
 			},
 		},
+		{
+			// context.tool_name must be forwarded so the TUI can recognize
+			// ask-user tools and render them as questions instead of
+			// approvals (see isAskUserToolName).
+			"user_approval_request_forwards_tool_name",
+			map[string]any{
+				"type":          backendEventUserApprovalRequest,
+				"id":            "appr_q",
+				"message":       "Which region?",
+				"approval_type": "general",
+				"context": map[string]any{
+					"tool_name":    "ux__ask_user",
+					"tool_call_id": "call_1",
+				},
+			},
+			func(e UIEvent) bool {
+				m, ok := e.(UIApprovalRequest)
+				return ok && m.ApprovalID == "appr_q" &&
+					m.ApprovalType == "general" && m.ToolName == "ux__ask_user"
+			},
+		},
 	}
 
 	for _, tc := range cases {

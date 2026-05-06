@@ -20,7 +20,11 @@
 // helpers that operate on those wire types.
 package neo
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+import (
+	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+)
 
 // Discriminator values for the AgentConsoleEvent envelope and the inner backend/user
 // events we care about.
@@ -66,7 +70,28 @@ const (
 	// exits in lockstep). Any other value (today: "general") takes the regular
 	// tool-approval rendering path.
 	approvalTypePlanExit = "plan_exit"
+
+	// toolNameAskUser is the suffix the CLI matches in context.tool_name to
+	// recognize the agent's ask-user tool — the agent isn't asking for
+	// approval, it's asking the user a clarifying question. Tool names on the
+	// wire are "<server>__<method>" (e.g. "ux__ask_user"); we match by suffix
+	// so the server prefix can change without a CLI rebuild. The agent uses
+	// approval_type "general" for these — there is no dedicated approval_type
+	// for ask_user, so the CLI dispatches on tool name alone.
+	toolNameAskUser = "ask_user"
 )
+
+// isAskUserToolName reports whether a tool name from
+// AgentBackendEventUserApprovalContext.ToolName identifies the ask-user tool.
+// Matches both the bare method ("ask_user") and the namespaced form
+// ("<server>__ask_user", e.g. "ux__ask_user").
+func isAskUserToolName(name string) bool {
+	if name == toolNameAskUser {
+		return true
+	}
+	_, suffix, ok := strings.Cut(name, "__")
+	return ok && suffix == toolNameAskUser
+}
 
 // hasPendingCLIToolCalls reports whether any tool call in the list has
 // execution_mode=="cli", meaning the CLI must run it locally before the agent
