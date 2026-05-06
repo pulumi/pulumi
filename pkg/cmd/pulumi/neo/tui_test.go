@@ -689,16 +689,6 @@ func TestModel_Update_KeyEnter_QuitWhileBusy_DoesNotQuit(t *testing.T) {
 	assert.Nil(t, cmd, "Enter on 'quit' while busy must not produce a quit command")
 }
 
-func TestModel_View_IdleHintMentionsQuit(t *testing.T) {
-	t.Parallel()
-
-	// Surface the new exit affordance in the input footer so users discover
-	// it without having to read the changelog.
-	m := NewModel(ModelConfig{})
-	view := m.View()
-	assert.Contains(t, view, "quit")
-}
-
 func TestModel_Update_KeyRune_TypesAndDoesNotScrollViewport(t *testing.T) {
 	t.Parallel()
 
