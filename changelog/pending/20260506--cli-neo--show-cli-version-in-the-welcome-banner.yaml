@@ -1,0 +1,4 @@
+changes:
+- type: improvement
+  scope: cli/neo
+  description: Show the active CLI version in the `pulumi neo` welcome banner
