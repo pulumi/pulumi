@@ -195,11 +195,10 @@ type Model struct {
 	// pending approval (empty when none). The Enter handler checks for
 	// approvalTypePlanExit so it can auto-clear planMode on approval.
 	pendingApprovalType string
-	// pendingIsQuestion is true when the pending request is a question from
-	// the agent's ask-user tool (see isAskUserToolName). The Enter handler
-	// uses it to treat the typed text as a free-form answer instead of
-	// running the y/yes-or-deny parsing. Set when the request arrives,
-	// cleared on submit alongside pendingApproval.
+	// pendingIsQuestion is true when the pending request is an ask-user
+	// question (see isAskUserToolName) rather than an approval. Tells the
+	// Enter handler to take the typed text as a free-form answer instead of
+	// running the y/yes-or-deny parsing.
 	pendingIsQuestion bool
 	// cancelling is true from the moment the user presses ESC (the TUI posts an
 	// AgentUserEventCancel upstream) until the next final event arrives. While
@@ -441,12 +440,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Type == tea.KeyEnter {
 				text := strings.TrimSpace(m.textInput.Value())
 				if m.pendingIsQuestion {
-					// Free-form answer to an ask-user question. Empty input is
-					// a no-op — questions can't be answered with nothing; ESC
-					// remains the abort path. The wire reply is
-					// Approved=false, Message=<answer> to match the backend's
-					// existing ask_user tool wrapper, which converts it into a
-					// tool_response delivering the answer to the agent.
+					// Empty input is a no-op — "no answer" is meaningless for
+					// a question; ESC remains the abort path.
 					if text == "" {
 						return m, nil
 					}
@@ -459,14 +454,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						},
 						planMode: m.planMode,
 					})
-					m.pendingApproval = false
-					m.pendingApprovalID = ""
-					m.pendingApprovalType = ""
-					m.pendingIsQuestion = false
-					m.textInput.Prompt = "❯ "
-					m.textInput.PromptStyle = promptStyle
-					m.textInput.Placeholder = "Send a message..."
-					m.textInput.Reset()
+					m.clearPendingPrompt()
 					answerCmd := m.commitBlock(block{kind: blockAnswerSubmitted, raw: text})
 					return m, tea.Batch(answerCmd, m.showBusy(thinkingLabel, shimmerVerb))
 				}
@@ -485,9 +473,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					},
 					planMode: m.planMode,
 				})
-				m.pendingApproval = false
-				m.pendingApprovalID = ""
-				m.pendingApprovalType = ""
 				// Approving a plan exits plan mode server-side (the PlanModeTracker
 				// stops gating writes), so mirror that locally. Denial leaves the
 				// mode on — the agent will re-plan and gate-out again on the next
@@ -495,10 +480,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if wasPlanApproval && approved {
 					m.planMode = false
 				}
-				m.textInput.Prompt = "❯ "
-				m.textInput.PromptStyle = promptStyle
-				m.textInput.Placeholder = "Send a message..."
-				m.textInput.Reset()
+				m.clearPendingPrompt()
 				choiceCmd := m.commitBlock(block{
 					kind:     blockApprovalChoice,
 					approved: approved,
@@ -730,17 +712,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pendingApprovalID = msg.ApprovalID
 		m.pendingApprovalType = msg.ApprovalType
 		m.pendingIsQuestion = false
+		m.textInput.PromptStyle = warningStyle
+		m.textInput.Placeholder = ""
+		m.textInput.Reset()
 		switch {
 		case m.pendingApprovalType == approvalTypePlanExit:
 			// The plan body is authored as markdown and lives in
 			// PlanDescription; msg.Message is just a generic intro.
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription}))
 			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
-			m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 		case isAskUserToolName(msg.ToolName):
-			// The agent's ask-user tool reuses user_approval_request to ask
-			// a clarifying question. Render as a question, not an approval —
-			// no warning header, free-form answer prompt.
+			// Render as a question, not an approval.
 			m.pendingIsQuestion = true
 			cmds = append(cmds, m.commitBlock(block{kind: blockQuestion, raw: msg.Message}))
 			m.textInput.Prompt = "Your answer: "
@@ -748,10 +730,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalGeneral, raw: msg.Message}))
 			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
-			m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 		}
-		m.textInput.Placeholder = ""
-		m.textInput.Reset()
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	default:
@@ -949,6 +928,20 @@ func (m *Model) appendWarningBlock(msg string) tea.Cmd {
 
 func (m *Model) appendUserMessageBlock(content string) tea.Cmd {
 	return m.commitBlock(block{kind: blockUserMessage, raw: content})
+}
+
+// clearPendingPrompt resets all pendingApproval/pendingIsQuestion state and
+// returns the text input to its default "send a message" appearance. Called
+// after the user submits a confirmation or an answer.
+func (m *Model) clearPendingPrompt() {
+	m.pendingApproval = false
+	m.pendingApprovalID = ""
+	m.pendingApprovalType = ""
+	m.pendingIsQuestion = false
+	m.textInput.Prompt = "❯ "
+	m.textInput.PromptStyle = promptStyle
+	m.textInput.Placeholder = "Send a message..."
+	m.textInput.Reset()
 }
 
 // appendBlock appends a non-busy block, keeping any existing blockBusy

@@ -1460,8 +1460,7 @@ func TestModel_Update_AnswerQuestion_SendsConfirmationWithAnswer(t *testing.T) {
 	// Pressing Enter on a question must send the typed text as the answer.
 	// Wire reply is Approved=false, Message=<answer> — the backend's
 	// ask_user tool wrapper converts ok=false+instructions into a
-	// tool_response delivering the answer to the agent. See captured
-	// events at /tmp/task-d390ca33-…events.json:584-619.
+	// tool_response delivering the answer to the agent.
 	outCh := make(chan outboundEvent, 1)
 	evCh := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
