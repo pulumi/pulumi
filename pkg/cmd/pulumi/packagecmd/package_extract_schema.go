@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
@@ -57,9 +58,10 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			defer contract.IgnoreClose(pctx)
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
 			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, sink, env.Global()),
-				env.Global(), 0 /* unbounded concurrency */)
+				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}

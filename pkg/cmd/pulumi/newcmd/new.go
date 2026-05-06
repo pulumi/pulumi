@@ -441,9 +441,10 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
+		registry := cmdCmd.NewDefaultRegistry(
+			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 		if err := InstallPackagesFromProject(ctx, proj, root,
-			cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
-			-1, false, os.Stderr, os.Stderr, env.Global()); err != nil {
+			registry, -1, false, os.Stderr, os.Stderr, env.Global()); err != nil {
 			return err
 		}
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {

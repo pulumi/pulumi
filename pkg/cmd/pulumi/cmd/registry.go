@@ -31,6 +31,7 @@ import (
 
 func NewDefaultRegistry(
 	ctx context.Context,
+	lm cmdBackend.LoginManager,
 	workspace pkgWorkspace.Context,
 	project *workspace.Project,
 	diag diag.Sink,
@@ -38,7 +39,7 @@ func NewDefaultRegistry(
 ) registry.Registry {
 	return registry.NewOnDemandRegistry(func() (registry.Registry, error) {
 		b, err := cmdBackend.NonInteractiveCurrentBackend(
-			ctx, workspace, cmdBackend.DefaultLoginManager, project,
+			ctx, workspace, lm, project,
 		)
 		if err == nil && b != nil {
 			return b.GetReadOnlyCloudRegistry(), nil
