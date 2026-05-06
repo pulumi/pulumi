@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli
-  description: Surface the error and exit when `pulumi neo` fails to create the underlying task, instead of leaving the TUI stuck in `Thinking…`

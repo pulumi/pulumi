@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/neo
-  description: Exit cleanly when the user presses Ctrl+C twice in `pulumi neo` instead of hanging until a third press
