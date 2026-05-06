@@ -201,3 +201,22 @@ type UIPulumiEnd struct {
 }
 
 func (UIPulumiEnd) uiEvent() {}
+
+// UITodoItem is one entry in the agent's task list. Index preserves the
+// agent's intended ordering; Priority is carried for forward compatibility
+// but the renderer ignores it today.
+type UITodoItem struct {
+	Content  string
+	Status   string // "pending" | "in_progress" | "completed"
+	Priority string // "low" | "medium" | "high"
+	Index    int
+}
+
+// UITodoList carries the agent's full task list. The TUI buffers it during
+// plan mode (rendering it as a Tasks: subsection of the next plan_exit
+// approval block) and renders it as its own block on every event otherwise.
+type UITodoList struct {
+	Items []UITodoItem
+}
+
+func (UITodoList) uiEvent() {}

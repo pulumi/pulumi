@@ -21,6 +21,7 @@
 package neo
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -76,6 +77,11 @@ const (
 	// approval_type "general" for these, so the TUI must dispatch on tool
 	// name rather than approval_type alone.
 	toolNameAskUser = "ask_user"
+
+	// toolNameTodoWrite is the cloud-side tool the agent uses to publish its
+	// task list. The TUI peeks at the args to render the list; the call itself
+	// runs server-side and never enters the CLI dispatch path.
+	toolNameTodoWrite = "todo__TodoWrite"
 )
 
 // isAskUserToolName matches by suffix so the server prefix can change
@@ -95,4 +101,38 @@ func hasPendingCLIToolCalls(calls []apitype.AgentBackendEventToolCall) bool {
 		}
 	}
 	return false
+}
+
+// parseTodoWriteArgs decodes the args object of a todo__TodoWrite tool call
+// into a UITodoList payload. Returns ok=false (and no items) for malformed
+// or empty payloads so callers can skip the UI emit cleanly. The wire shape
+// is { "todos": [{"content","index","priority","status"}] }.
+func parseTodoWriteArgs(args json.RawMessage) ([]UITodoItem, bool) {
+	if len(args) == 0 {
+		return nil, false
+	}
+	var payload struct {
+		Todos []struct {
+			Content  string `json:"content"`
+			Index    int    `json:"index"`
+			Priority string `json:"priority"`
+			Status   string `json:"status"`
+		} `json:"todos"`
+	}
+	if err := json.Unmarshal(args, &payload); err != nil {
+		return nil, false
+	}
+	if len(payload.Todos) == 0 {
+		return nil, false
+	}
+	items := make([]UITodoItem, 0, len(payload.Todos))
+	for _, t := range payload.Todos {
+		items = append(items, UITodoItem{
+			Content:  t.Content,
+			Status:   t.Status,
+			Priority: t.Priority,
+			Index:    t.Index,
+		})
+	}
+	return items, true
 }

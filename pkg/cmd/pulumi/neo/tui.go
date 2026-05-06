@@ -15,6 +15,7 @@
 package neo
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -61,6 +62,7 @@ const (
 	blockQuestion
 	blockAnswerSubmitted
 	blockPulumiOp
+	blockTodoList
 )
 
 type block struct {
@@ -81,6 +83,11 @@ type block struct {
 	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
 	// re-rendered by renderBlock on every update.
 	pulumi *pulumiBlockState
+	// todos is populated for blockTodoList (the standalone, working-mode
+	// rendering) and for blockApprovalPlan when the buffered list captured
+	// during plan mode is attached at plan_exit time so renderBlock can
+	// fold it into the plan body as a Tasks: subsection.
+	todos []UITodoItem
 }
 
 // pulumiBlockState accumulates the live state of a blockPulumiOp. Resources are
@@ -223,6 +230,11 @@ type Model struct {
 	// emissions prepend a blank line so each committed block has visual
 	// breathing room from whatever came before.
 	hasEmittedScrollback bool
+	// pendingTodos buffers the latest UITodoList while planMode is true.
+	// It is drained and attached to the next blockApprovalPlan when the
+	// plan_exit approval arrives, so the user sees the task list and the
+	// plan as a single visual unit rather than two separate blocks.
+	pendingTodos []UITodoItem
 }
 
 var (
@@ -238,6 +250,12 @@ var (
 	// planAccentStyle is a distinct cyan+bold used for both the footer banner
 	// and the "Proposed plan" block header so they read as the same visual cue.
 	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	// Styles for in-progress and completed todo items. Pending items render
+	// in the default style so the visually-loud markers (cyan/green) are
+	// reserved for the rows the user actually cares about.
+	todoActiveStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	todoCompletedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Faint(true)
+	todoListHeader     = lipgloss.NewStyle().Bold(true).Render("⏺ TODO")
 )
 
 // renderLeftBracket decorates content with a left-only bracket border: a
@@ -723,6 +741,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
+	case UITodoList:
+		// In plan mode, hold the list until plan_exit so the user sees the
+		// tasks alongside the plan in a single block. Outside plan mode we
+		// commit on every TodoWrite — the agent fires one per status change,
+		// which is exactly the "step completed / list edited" trigger.
+		if len(msg.Items) > 0 {
+			if m.planMode {
+				m.pendingTodos = append(m.pendingTodos[:0], msg.Items...)
+			} else {
+				cmds = append(cmds, m.commitBlock(block{kind: blockTodoList, todos: msg.Items}))
+			}
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
 	case UIApprovalRequest:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		m.pendingApproval = true
@@ -735,8 +768,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case m.pendingApprovalType == approvalTypePlanExit:
 			// The plan body is authored as markdown and lives in
-			// PlanDescription; msg.Message is just a generic intro.
-			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription}))
+			// PlanDescription; msg.Message is just a generic intro. Any
+			// TodoWrite buffered while in plan mode is folded into this
+			// same block as a Tasks: subsection by renderBlock below.
+			planBlock := block{kind: blockApprovalPlan, raw: msg.PlanDescription, todos: m.pendingTodos}
+			m.pendingTodos = nil
+			cmds = append(cmds, m.commitBlock(planBlock))
 			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
 		case isAskUserToolName(msg.ToolName):
 			m.pendingIsQuestion = true
@@ -855,7 +892,7 @@ func isLiveKind(b block) bool {
 		return b.pulumi != nil && !b.pulumi.done
 	case blockToolComplete, blockAssistantFinal, blockError, blockWarning,
 		blockCancelled, blockUserMessage, blockApprovalPlan,
-		blockApprovalGeneral, blockApprovalChoice,
+		blockApprovalGeneral, blockApprovalChoice, blockTodoList,
 		blockQuestion, blockAnswerSubmitted:
 		return false
 	}
@@ -1060,6 +1097,10 @@ func (m *Model) renderBlock(b *block) {
 		b.rendered = m.renderPulumiBlock(b.pulumi)
 		return
 	}
+	if b.kind == blockTodoList {
+		b.rendered = renderHeaderedBlock(todoListHeader, renderTodoLines(b.todos))
+		return
+	}
 	if b.raw == "" {
 		return
 	}
@@ -1078,7 +1119,14 @@ func (m *Model) renderBlock(b *block) {
 		b.rendered = renderAssistantFinal(m.renderMarkdown(b.raw))
 	case blockApprovalPlan:
 		header := planAccentStyle.Render("⏺ Proposed plan")
-		b.rendered = renderHeaderedBlock(header, m.renderMarkdown(b.raw))
+		body := m.renderMarkdown(b.raw)
+		// Fold any todos buffered during plan mode into the plan body. A
+		// blank line separates them from the plan markdown so glamour's
+		// last paragraph doesn't visually run into the Tasks header.
+		if len(b.todos) > 0 {
+			body = strings.TrimRight(body, "\n") + "\n\nTasks:\n" + renderTodoLines(b.todos)
+		}
+		b.rendered = renderHeaderedBlock(header, body)
 	case blockApprovalGeneral:
 		header := warningStyle.Render("⚠ Approval required")
 		b.rendered = renderHeaderedBlock(header, m.wrapPlain(b.raw))
@@ -1093,9 +1141,36 @@ func (m *Model) renderBlock(b *block) {
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.
-	case blockApprovalChoice, blockPulumiOp:
-		// Unreachable: both are handled by early returns above.
+	case blockApprovalChoice, blockPulumiOp, blockTodoList:
+		// Unreachable: handled by early returns above.
 	}
+}
+
+// renderTodoLines formats todos as one ASCII checkbox per line, sorted by
+// Index so the agent's intended ordering survives JSON round-tripping.
+// Pending items render in the default style; in_progress is bold cyan and
+// completed is faint green so a long list is scannable without dominating
+// the surrounding plan or transcript.
+func renderTodoLines(items []UITodoItem) string {
+	if len(items) == 0 {
+		return ""
+	}
+	sorted := append([]UITodoItem(nil), items...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Index < sorted[j].Index })
+	lines := make([]string, 0, len(sorted))
+	for _, it := range sorted {
+		var marker, content string
+		switch it.Status {
+		case "completed":
+			marker, content = "[x]", todoCompletedStyle.Render(it.Content)
+		case "in_progress":
+			marker, content = "[~]", todoActiveStyle.Render(it.Content)
+		default:
+			marker, content = "[ ]", it.Content
+		}
+		lines = append(lines, marker+" "+content)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m *Model) renderApprovalChoice(b *block) {

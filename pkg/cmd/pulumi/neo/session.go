@@ -256,6 +256,17 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 			IsFinal:           msg.IsFinal,
 			HasPendingCLIWork: msg.IsFinal && hasPendingCLIToolCalls(msg.ToolCalls),
 		})
+		// todo__TodoWrite is cloud-marked, so it never reaches runBatch / the
+		// UIToolStarted path; surface it directly as a UITodoList so the TUI
+		// can render the agent's task list without needing to execute the call.
+		for _, tc := range msg.ToolCalls {
+			if tc.Name != toolNameTodoWrite {
+				continue
+			}
+			if items, ok := parseTodoWriteArgs(tc.Args); ok {
+				sendUI(s.UIEvents, UITodoList{Items: items})
+			}
+		}
 	case backendEventExecToolCallProgress:
 		var p apitype.AgentBackendEventExecToolCallProgress
 		if err := json.Unmarshal(eventBody, &p); err != nil {
