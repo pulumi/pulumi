@@ -60,6 +60,7 @@ type apiCommand struct {
 	silent          bool
 	verbose         bool
 	dryRun          bool
+	interactive     bool
 	format          string
 	envelopeVersion int
 }
@@ -98,6 +99,8 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 		"Dump full request and response to stderr")
 	pf.BoolVar(&api.dryRun, "dry-run", false,
 		"Print the resolved request without sending it")
+	pf.BoolVar(&api.interactive, "interactive", false,
+		"Force the interactive endpoint picker even when stdin/stdout are not a TTY")
 	pf.StringVar(&api.format, "format", "",
 		"Drive content negotiation and rendering. Default uses the op's primary "+
 			"response content type (usually JSON). `json` or `markdown` request that "+
@@ -207,15 +210,19 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	}
 
 	if len(args) == 0 {
-		return NewAPIError(cmdutil.ExitCodeError, ErrRequiredInputMissing,
-			"no endpoint provided").
-			WithField("path").
-			WithSuggestions(
-				"pass a path, e.g. `pulumi cloud api /api/user`",
-				"or an operation ID, e.g. `pulumi cloud api ListAccounts`",
-				"run `pulumi cloud api list` to see available endpoints",
-				"run `pulumi cloud api describe <path-or-operation-id>` to inspect one",
-			)
+		if !api.interactive && !cmdutil.Interactive() {
+			return NewAPIError(cmdutil.ExitCodeError, ErrRequiredInputMissing,
+				"no endpoint provided").
+				WithField("path").
+				WithSuggestions(
+					"pass a path, e.g. `pulumi cloud api /api/user`",
+					"or an operation ID, e.g. `pulumi cloud api ListAccounts`",
+					"use --interactive to launch the endpoint picker",
+					"run `pulumi cloud api list` to see available endpoints",
+					"run `pulumi cloud api describe <path-or-operation-id>` to inspect one",
+				)
+		}
+		return runInteractive(cmd, api)
 	}
 	userArg := strings.TrimSpace(args[0])
 

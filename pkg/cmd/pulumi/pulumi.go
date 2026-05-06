@@ -52,6 +52,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/clispec"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
+	// Register the interactive TUI with the cloud package so `pulumi cloud api`
+	// can dispatch to it. The tui subpackage imports cloud but not the other
+	// way around, so an init-time registration side-steps the import cycle.
+	_ "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud/tui"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"

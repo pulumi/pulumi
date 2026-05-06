@@ -1,0 +1,10 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: |
+    Add an interactive TUI to `pulumi cloud api`. Running the command with no
+    positional argument on a TTY launches a three-tab Bubble Tea UI for
+    browsing endpoints, filling in request parameters, sending the request,
+    and inspecting the response. Pass `--interactive` to force the picker
+    when stdio is not a TTY; the global `--non-interactive` flag suppresses
+    it.
