@@ -16,13 +16,15 @@ package cloud
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
+	"os"
+	"unicode/utf8"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
-
-	autotable "go.pennock.tech/tabular/auto"
+	"golang.org/x/term"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -166,24 +168,68 @@ func emitLsJSON(w io.Writer, idx *Index) error {
 	}, cmdutil.Interactive())
 }
 
+// Column-sizing knobs for the list table.
+const (
+	lsMethodWidth  = 6  // every HTTP method we emit fits in 6 chars (DELETE).
+	lsBorderWidth  = 13 // StyleLight: 1 outer border + 3 chars (sep + 2 padding) per column × 4 cols.
+	lsMinPathWidth = 30 // floor for PATH so it stays legible in narrow terminals.
+	// ceiling for SUMMARY
+	lsSummaryHardMax = 60
+	lsFallbackCols   = 120 // used when stdout isn't a terminal (e.g. piped to a file) but the user asked for a table.
+)
+
 // emitLsTable writes a human-readable table to w, with TAG as the leading
 // column so operations visibly group by domain (matches the (tag, path,
 // method) sort). Preview/deprecated markers are only exposed in the JSON
 // envelope — keeping them out of the table avoids a column that's empty
 // for the vast majority of rows.
+//
+// Column widths are computed from the actual data and the terminal width:
+// TAG and SUMMARY get exactly what their longest value needs (no wasted
+// padding), PATH absorbs the leftover so it wraps only when there isn't
+// room to render it whole.
 func emitLsTable(w io.Writer, idx *Index) error {
-	table := autotable.New("utf8-heavy")
-	table.AddHeaders("TAG", "METHOD", "PATH", "SUMMARY")
+	maxTag, maxSummary, maxPath := 0, 0, 0
 	for _, op := range idx.Operations {
-		table.AddRowItems(op.Tag, op.Method, op.Path, op.Summary)
+		if n := utf8.RuneCountInString(op.Tag); n > maxTag {
+			maxTag = n
+		}
+		if n := utf8.RuneCountInString(op.Summary); n > maxSummary {
+			maxSummary = n
+		}
+		if n := utf8.RuneCountInString(op.Path); n > maxPath {
+			maxPath = n
+		}
 	}
-	if errs := table.Errors(); errs != nil {
-		return errors.Join(errs...)
+	summaryWidth := min(maxSummary, lsSummaryHardMax)
+	cols := stdoutWidth(lsFallbackCols)
+	pathWidth := max(lsMinPathWidth, min(maxPath, cols-maxTag-lsMethodWidth-summaryWidth-lsBorderWidth))
+
+	t := table.NewWriter()
+	t.SetOutputMirror(w)
+	t.SetStyle(table.StyleLight)
+	t.AppendHeader(table.Row{"TAG", "METHOD", "PATH", "SUMMARY"})
+	for _, op := range idx.Operations {
+		t.AppendRow(table.Row{op.Tag, op.Method, op.Path, op.Summary})
 	}
-	if err := table.RenderTo(w); err != nil {
-		return err
-	}
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Name: "METHOD", WidthMax: lsMethodWidth},
+		{Name: "PATH", WidthMax: pathWidth, WidthMaxEnforcer: text.WrapText},
+		{Name: "SUMMARY", WidthMax: summaryWidth, WidthMaxEnforcer: text.WrapText},
+	})
+	t.Render()
 	fmt.Fprintf(w, "\n%d operations. Pass --format=json for a stable, scriptable contract.\n",
 		len(idx.Operations))
 	return nil
+}
+
+// stdoutWidth reports the column count of stdout, falling back to fallback
+// when stdout isn't a terminal or the size can't be determined (e.g. when
+// the user piped --format=table to a file but still wants the table).
+func stdoutWidth(fallback int) int {
+	w, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || w <= 0 {
+		return fallback
+	}
+	return w
 }

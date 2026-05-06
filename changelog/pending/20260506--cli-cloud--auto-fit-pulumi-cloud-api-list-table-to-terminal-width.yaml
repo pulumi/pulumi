@@ -1,0 +1,6 @@
+changes:
+- type: chore
+  scope: cli/cloud
+  description: |
+    Auto-fit `pulumi cloud api list` table to terminal width and replace the
+    `tabular` table renderer with `go-pretty`
