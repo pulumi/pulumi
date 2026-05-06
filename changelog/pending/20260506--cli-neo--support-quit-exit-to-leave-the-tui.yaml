@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/neo
-  description: Typing `quit` or `exit` and pressing Enter cleanly closes the `pulumi neo` TUI, complementing Ctrl+C / Ctrl+D
+  description: Support `quit` and `exit` to leave the `pulumi neo` TUI
