@@ -2472,6 +2472,14 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 			return fmt.Errorf("saving project: %w", err)
 		}
 
+		// Upgrade pip in the venv before installing dependencies. The pip bundled with
+		// Python's ensurepip can be outdated and have bugs (e.g. Python 3.14.4 bundles
+		// pip 26.0.1 which has a Content-Type parsing bug that breaks package resolution).
+		upgradePip := []string{"python", "-m", "pip", "install", "--upgrade", "pip"}
+		if err := pt.runVirtualEnvCommand("virtualenv-pip-upgrade", upgradePip, cwd); err != nil {
+			return err
+		}
+
 		if pt.opts.InstallDevReleases {
 			command := []string{"python", "-m", "pip", "install", "--pre", "pulumi"}
 			if err := pt.runVirtualEnvCommand("virtualenv-pip-install", command, cwd); err != nil {

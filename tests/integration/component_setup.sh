@@ -55,6 +55,7 @@ setup_python() (
     if [[ ${OSTYPE} == "msys" ]]; then
         pythonBin=$(cygpath -u "./venv/Scripts/python.exe")
     fi
+    ${pythonBin} -m pip install --upgrade pip
     ${pythonBin} -m pip install -e ../../../../sdk/python
   fi
 )
