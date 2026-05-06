@@ -483,6 +483,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			text := strings.TrimSpace(m.textInput.Value())
+			// Typing `quit` or `exit` and pressing Enter cleanly closes the
+			// session, complementing Ctrl+C / Ctrl+D for users who reach for
+			// shell-style commands first. Strict whole-input match so messages
+			// that merely contain the word ("quit the deploy") still send.
+			if strings.EqualFold(text, "quit") || strings.EqualFold(text, "exit") {
+				return m, tea.Quit
+			}
 			if text != "" {
 				m.textInput.Reset()
 				sent := m.sendOut(outboundEvent{
@@ -720,7 +727,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // drawn here — they were committed to terminal scrollback via tea.Println as
 // soon as they reached a terminal state.
 func (m Model) View() string {
-	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
+	hintText := "enter to send · shift+tab to toggle plan mode · type quit/exit or ctrl+c to quit"
 	if m.busy {
 		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
 	}

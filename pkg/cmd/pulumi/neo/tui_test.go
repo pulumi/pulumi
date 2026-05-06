@@ -622,6 +622,83 @@ func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 	}
 }
 
+func TestModel_Update_KeyEnter_QuitOrExit_ClosesSession(t *testing.T) {
+	t.Parallel()
+
+	// Per pulumi-service#42477, typing `quit` or `exit` and pressing Enter
+	// must cleanly close the TUI, complementing Ctrl+C / Ctrl+D for users
+	// who reach for shell-style commands first. Match is case-insensitive
+	// and tolerates surrounding whitespace; nothing must be posted to outCh.
+	cases := []string{"quit", "exit", "QUIT", "Exit", "  quit  ", "  EXIT\t"}
+	for _, input := range cases {
+		t.Run(input, func(t *testing.T) {
+			t.Parallel()
+
+			outCh := make(chan outboundEvent, 1)
+			m := NewModel(ModelConfig{OutCh: outCh})
+			m.textInput.SetValue(input)
+
+			_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			require.NotNil(t, cmd, "quit/exit Enter must return a command")
+			_, ok := cmd().(tea.QuitMsg)
+			assert.True(t, ok, "quit/exit Enter must produce a tea.QuitMsg")
+
+			select {
+			case got := <-outCh:
+				t.Fatalf("quit/exit must not be posted as a chat message, got %+v", got)
+			default:
+			}
+		})
+	}
+}
+
+func TestModel_Update_KeyEnter_QuitSubstring_StillSends(t *testing.T) {
+	t.Parallel()
+
+	// Strict whole-input match: a message that merely contains the word
+	// "quit" must still be sent as a normal user message.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m.textInput.SetValue("quit the deploy")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	um := updated.(Model)
+
+	select {
+	case got := <-outCh:
+		msg, ok := got.event.(apitype.AgentUserEventUserMessage)
+		require.True(t, ok, "Enter must post a UserMessage event, got %T", got.event)
+		assert.Equal(t, "quit the deploy", msg.Content)
+	default:
+		t.Fatal("a message containing the word 'quit' must still be sent")
+	}
+	assert.True(t, um.busy, "sending must enter the busy state")
+}
+
+func TestModel_Update_KeyEnter_QuitWhileBusy_DoesNotQuit(t *testing.T) {
+	t.Parallel()
+
+	// While the agent is mid-turn, Enter is swallowed wholesale: the typed
+	// "quit" stays in the input and the session keeps running. Users who
+	// genuinely want to bail mid-turn use Ctrl+C (twice).
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+	m.textInput.SetValue("quit")
+
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	assert.Nil(t, cmd, "Enter on 'quit' while busy must not produce a quit command")
+}
+
+func TestModel_View_IdleHintMentionsQuit(t *testing.T) {
+	t.Parallel()
+
+	// Surface the new exit affordance in the input footer so users discover
+	// it without having to read the changelog.
+	m := NewModel(ModelConfig{})
+	view := m.View()
+	assert.Contains(t, view, "quit")
+}
+
 func TestModel_Update_KeyRune_TypesAndDoesNotScrollViewport(t *testing.T) {
 	t.Parallel()
 
