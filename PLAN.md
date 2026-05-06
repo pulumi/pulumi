@@ -12,7 +12,7 @@ This is a living document. Update it as steps complete or scope shifts.
 
 - [x] Step 1 — schema generator (`pkg/codegen/testing/utils/rapidschema`)
 - [x] Step 2 — schema-conforming value generators (`pkg/codegen/testing/utils/rapidresource`)
-- [ ] Step 3 — `resource.State` generator (`pkg/importer/rapid`)
+- [x] Step 3 — `resource.State` generator (`pkg/importer/rapid`)
 - [ ] Step 4 — driver: round-trip via `pcl.BindProgram` + `renderResource`, assert inputs (with TODO for full PCL evaluator)
 - [ ] Step 5 — known-failure filter (only added once a real failure motivates it)
 - [ ] Step 6 — assert `pcl.BindProgram` produces no diagnostics

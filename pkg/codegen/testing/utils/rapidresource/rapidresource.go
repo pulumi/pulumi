@@ -178,8 +178,15 @@ func rapidAsset() *rapid.Generator[*asset.Asset] {
 	})
 }
 
+// archivePathPattern restricts archive entry names to a safe alphabet.
+// asset.Archive serializes through tar, which rejects entries whose path is
+// a directory marker like "/" or that contain NUL bytes — neither of which
+// the importer round-trip needs to exercise.
+const archivePathPattern = `^[a-zA-Z0-9_-]{1,16}(/[a-zA-Z0-9_-]{1,16}){0,2}$`
+
 func rapidArchive() *rapid.Generator[*archive.Archive] {
-	return rapid.Map(rapid.MapOf(rapid.String(), rapidAsset()), func(m map[string]*asset.Asset) *archive.Archive {
+	keys := rapid.StringMatching(archivePathPattern)
+	return rapid.Map(rapid.MapOf(keys, rapidAsset()), func(m map[string]*asset.Asset) *archive.Archive {
 		assets := make(map[string]any, len(m))
 		for k, v := range m {
 			assets[k] = v
