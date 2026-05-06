@@ -373,6 +373,7 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 
 			cmd := &packagePublishCmd{
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
@@ -470,6 +471,7 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 
 			cmd := &packagePublishCmd{
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
@@ -529,6 +531,7 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 
 			cmd := &packagePublishCmd{
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
@@ -561,6 +564,7 @@ func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	cmd := packagePublishCmd{
 		extractSchema: func(
+			ws pkgWorkspace.Context,
 			pctx *plugin.Context,
 			packageSource string,
 			parameters plugin.ParameterizeParameters,

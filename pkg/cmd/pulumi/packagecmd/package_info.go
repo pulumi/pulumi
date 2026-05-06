@@ -71,7 +71,7 @@ The <provider> argument can be specified in the same way as in 'pulumi package a
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 			registry := cmdCmd.NewDefaultRegistry(
 				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
-			spec, _, err := packages.SchemaFromSchemaSource(pctx, args[0], parameters,
+			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, args[0], parameters,
 				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err

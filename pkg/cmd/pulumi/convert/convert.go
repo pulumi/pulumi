@@ -565,6 +565,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		pkgSpec, _, err := packages.SchemaFromSchemaSource(
+			pkgWorkspace.Instance,
 			pctx,
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},
