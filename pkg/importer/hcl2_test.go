@@ -1133,8 +1133,6 @@ func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	// Generated HCL renders map keys quoted (`fmt.Sprintf("%q", k)`) so they survive
-	// non-identifier characters; the test asserts on the formatted text directly.
 	formatted := fmt.Sprintf("%v", expr)
 	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorGroup"`)
 	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorCondition"`)
