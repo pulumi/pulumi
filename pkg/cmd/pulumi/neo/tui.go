@@ -117,7 +117,10 @@ type ModelConfig struct {
 	Org      string
 	WorkDir  string
 	Username string
-	EventCh  <-chan UIEvent
+	// Version is the Pulumi CLI version stamped at build time (e.g. "v3.235.0").
+	// Empty in dev builds — the welcome banner omits it when blank.
+	Version string
+	EventCh <-chan UIEvent
 	// OutCh carries every TUI-originated user event (chat messages, approval
 	// answers, …) to the dispatcher in runNeo. Each send also carries the
 	// TUI's current planMode, which the dispatcher reads on the first
@@ -281,6 +284,7 @@ func NewModel(cfg ModelConfig) Model {
 			org:       cfg.Org,
 			workDir:   cfg.WorkDir,
 			username:  cfg.Username,
+			version:   cfg.Version,
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
