@@ -1111,10 +1111,6 @@ func TestStructuralTypeChecks(t *testing.T) {
 	})
 }
 
-// TestGenerateValuePreservesProviderDiscriminators verifies that values destined for a
-// freeform map-typed (or untyped) property keep their `__`-prefixed keys. Some providers
-// use `__type` (or similar) as discriminators inside such payloads; stripping them is a
-// silent data-loss bug at import time. See https://github.com/pulumi/pulumi/issues/22738.
 func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {
 	t.Parallel()
 
