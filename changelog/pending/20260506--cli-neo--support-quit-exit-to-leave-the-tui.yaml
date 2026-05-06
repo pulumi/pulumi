@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/neo
+  description: Support `quit` and `exit` to leave the `pulumi neo` TUI

@@ -487,6 +487,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			text := strings.TrimSpace(m.textInput.Value())
+			// Typing `quit` or `exit` and pressing Enter cleanly closes the
+			// session, complementing Ctrl+C / Ctrl+D for users who reach for
+			// shell-style commands first. Strict whole-input match so messages
+			// that merely contain the word ("quit the deploy") still send.
+			if strings.EqualFold(text, "quit") || strings.EqualFold(text, "exit") {
+				return m, tea.Quit
+			}
 			if text != "" {
 				m.textInput.Reset()
 				sent := m.sendOut(outboundEvent{
