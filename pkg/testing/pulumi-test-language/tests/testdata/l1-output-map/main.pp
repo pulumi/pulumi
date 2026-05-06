@@ -9,6 +9,19 @@ output "strings" {
     }
 }
 
+output "adversarialStrings" {
+    value = {
+        "__type": "dunder type",
+        "__internal": "dunder internal",
+        "__provider": "dunder provider",
+        "__version": "dunder version",
+        "": "empty key",
+        "empty value": "",
+        "dunder value": "__dunder",
+        "Some $${common} \"characters\" 'that' need escaping: \\ (backslash), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)": "Some $${common} \"characters\" 'that' need escaping: \\ (backslash), \t (tab), \u001b (escape), \u0007 (bell), \u0000 (null), \U000e0021 (tag space)"
+    }
+}
+
 output "numbers" {
     value = {
         "1": 1,

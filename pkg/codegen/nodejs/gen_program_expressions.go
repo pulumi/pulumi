@@ -885,7 +885,9 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	if isLegalIdentifier(strKey) {
 		return strKey, true
 	}
-	return fmt.Sprintf("%q", strKey), true
+	var buf bytes.Buffer
+	g.genStringLiteral(&buf, strKey)
+	return buf.String(), true
 }
 
 func (g *generator) GenObjectConsExpression(w io.Writer, expr *model.ObjectConsExpression) {
