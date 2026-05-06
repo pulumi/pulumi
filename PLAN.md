@@ -13,10 +13,64 @@ This is a living document. Update it as steps complete or scope shifts.
 - [x] Step 1 — schema generator (`pkg/codegen/testing/utils/rapidschema`)
 - [x] Step 2 — schema-conforming value generators (`pkg/codegen/testing/utils/rapidresource`)
 - [x] Step 3 — `resource.State` generator (`pkg/importer/rapid`)
-- [ ] Step 4 — driver: round-trip via `pcl.BindProgram` + `renderResource`, assert inputs (with TODO for full PCL evaluator)
-- [ ] Step 5 — known-failure filter (only added once a real failure motivates it)
-- [ ] Step 6 — assert `pcl.BindProgram` produces no diagnostics
+- [x] Step 4 — driver: round-trip via `pcl.BindProgram` + `renderInputs`, assert inputs (with TODO for full PCL evaluator)
+- [x] Step 5 — known-failure filters (one per real failure observed during step 4; see list below)
+- [ ] Step 6 — assert `pcl.BindProgram` produces no diagnostics (folded into step 4 driver)
 - [ ] Step 7 — wire into normal CI (this is true for any test, and doesn't need to be a seperate step)
+
+### Step 5 filters added during step 4 (`pkg/importer/hcl2_rapid_test.go`)
+
+Each is a real production-side issue surfaced by the driver; the filter
+is keyed to the bug so the skip can be removed when the bug is fixed.
+
+1. **HCL formatter `\xNN` escape bug.** The model formatter writes
+   non-printable bytes as `\xNN`, but the HCL grammar only accepts
+   `\uNNNN`. Any input string or map key with a control byte fails
+   parse. Skipped at the parse-diagnostics check.
+2. **`NYI: archives` / `NYI: assets`.** `generateValue`
+   (`pkg/importer/hcl2.go:821`, `:842`) returns these errors instead of
+   emitting `fileArchive` / `fileAsset` calls. Skipped on
+   `GenerateHCL2Definition` error.
+3. **Optional-null normalization.** `generatePropertyValue`
+   (`pkg/importer/hcl2.go:588`) treats `null` as "no attribute"
+   (optional) or a typed zero (required), so `{a: null}` round-trips to
+   `{}` or to `{a: false}`. Recursive: applies inside ObjectType too.
+   Skipped via `hasNullInput`.
+4. **Unicode NFC normalization.** The HCL parser (or cty) normalizes
+   string literals to NFC, so `"À"` (decomposed bytes `41 cc 80`)
+   round-trips to `"À"` (precomposed bytes `c3 80`). Skipped via
+   `hasNonNFCString`.
+5. **`__`-prefixed map keys silently dropped.** `generateValue`'s
+   `MapType` / `Any` branch (`pkg/importer/hcl2.go:884`) drops every
+   key beginning with `__` when re-emitting a map. The schema does
+   not allow `ObjectType` property names to start with `__`, so this
+   only fires for `MapType` / `Any`-shaped values. Surfaced once the
+   map-key generator was biased to draw `__`-prefixed keys
+   (`mapKeyGenerator` in `rapidresource.go`); skipped via
+   `hasInternalMapKey`.
+6. **`ignoreChanges` emitted as bare identifier.**
+   `makeResourceOptions` (`pkg/importer/hcl2.go:322`) emits each entry
+   as a `LiteralValueExpression`, which the HCL formatter writes
+   verbatim (e.g. `[d]` instead of `["d"]`). The binder then treats
+   the entry as a variable reference, which can produce a "circular
+   reference" diagnostic when the property name collides with the
+   resource or another bound name. Skipped when
+   `state.IgnoreChanges` is non-empty. Fix is to emit a
+   `TemplateExpression` here like the `import` option does.
+
+### Other step 4 changes
+
+- `pkg/importer/rapid/rapid.go`: satellites are now drawn with a URN
+  distinct from the state's URN and the provider's URN (`taken` map
+  filter on the URN generator). Without this, a satellite could share
+  `state.URN`, producing both invalid snapshots (duplicate URN) and
+  self-referential envelopes (e.g. `replaceWith` pointing at the
+  resource itself, which the binder rejects as a circular reference).
+- `pkg/importer/hcl2_test.go`: `renderResource` and its `render*`
+  helpers now take `require.TestingT` instead of `*testing.T` so the
+  rapid driver (which receives `*rapid.T`) can call them.
+  `renderLiteralValue` learned to handle `cty` null literals (returned
+  by the production code as the bound form of `null`).
 
 Each step is self-contained: implement, run the build/lint/tests for the
 touched code, then check in with the user before starting the next step.

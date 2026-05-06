@@ -69,7 +69,7 @@ var names = NameTable{
 	logicalURN:  logicalName,
 }
 
-func renderExpr(t *testing.T, x model.Expression) property.Value {
+func renderExpr(t require.TestingT, x model.Expression) property.Value {
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
 		return renderLiteralValue(t, x)
@@ -89,7 +89,10 @@ func renderExpr(t *testing.T, x model.Expression) property.Value {
 	}
 }
 
-func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) property.Value {
+func renderLiteralValue(t require.TestingT, x *model.LiteralValueExpression) property.Value {
+	if x.Value.IsNull() {
+		return property.New(property.Null)
+	}
 	switch x.Value.Type() {
 	case cty.Bool:
 		return property.New(x.Value.True())
@@ -99,12 +102,12 @@ func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) property.
 	case cty.String:
 		return property.New(x.Value.AsString())
 	default:
-		assert.Failf(t, "", "unexpected literal of type %v", x.Value.Type())
+		assert.Failf(t, "", "unexpected literal of type %v (value %v)", x.Value.Type().FriendlyName(), x.Value.GoString())
 		return property.New(property.Null)
 	}
 }
 
-func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
+func renderTemplate(t require.TestingT, x *model.TemplateExpression) property.Value {
 	if len(x.Parts) == 1 {
 		return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
 	}
@@ -115,7 +118,7 @@ func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
 	return property.New(b.String())
 }
 
-func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Value {
+func renderObjectCons(t require.TestingT, x *model.ObjectConsExpression) property.Value {
 	obj := map[string]property.Value{}
 	for _, item := range x.Items {
 		kv := renderExpr(t, item.Key)
@@ -127,7 +130,7 @@ func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Valu
 	return property.New(obj)
 }
 
-func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) property.Value {
+func renderScopeTraversal(t require.TestingT, x *model.ScopeTraversalExpression) property.Value {
 	require.Len(t, x.Traversal, 1)
 
 	switch x.RootName {
@@ -140,7 +143,7 @@ func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) prope
 	}
 }
 
-func renderTupleCons(t *testing.T, x *model.TupleConsExpression) property.Value {
+func renderTupleCons(t require.TestingT, x *model.TupleConsExpression) property.Value {
 	arr := make([]property.Value, len(x.Expressions))
 	for i, x := range x.Expressions {
 		arr[i] = renderExpr(t, x)
@@ -148,7 +151,7 @@ func renderTupleCons(t *testing.T, x *model.TupleConsExpression) property.Value 
 	return property.New(arr)
 }
 
-func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) property.Value {
+func renderFunctionCall(t require.TestingT, x *model.FunctionCallExpression) property.Value {
 	switch x.Name {
 	case "fileArchive":
 		require.Len(t, x.Args, 1)
@@ -173,7 +176,7 @@ func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) property.
 	}
 }
 
-func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
+func renderResource(t require.TestingT, r *pcl.Resource) *resource.State {
 	inputs := map[string]property.Value{}
 	for _, attr := range r.Inputs {
 		inputs[attr.Name] = renderExpr(t, attr.Value)

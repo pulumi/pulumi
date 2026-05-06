@@ -112,9 +112,12 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 	}
 
 	satelliteCount := rapid.IntRange(0, 3).Draw(t, "satellite-count")
+	taken := map[resource.URN]bool{state.URN: true, provider.URN: true}
 	satellites := make([]*resource.State, 0, satelliteCount)
 	for i := 0; i < satelliteCount; i++ {
-		satellites = append(satellites, drawSatellite(t, pickable, provider, i))
+		s := drawSatellite(t, pickable, provider, taken, i)
+		taken[s.URN] = true
+		satellites = append(satellites, s)
 	}
 	snapshot := make([]*resource.State, 0, 1+len(satellites))
 	snapshot = append(snapshot, provider)
@@ -135,13 +138,20 @@ func drawSample(t *rapid.T, pkg *schema.Package, pickable []*schema.Resource) *S
 	return &Sample{State: state, Snapshot: snapshot}
 }
 
-func drawSatellite(t *rapid.T, pickable []*schema.Resource, provider *resource.State, i int) *resource.State {
+func drawSatellite(
+	t *rapid.T, pickable []*schema.Resource, provider *resource.State,
+	taken map[resource.URN]bool, i int,
+) *resource.State {
 	sR := pickable[rapid.IntRange(0, len(pickable)-1).Draw(t, fmt.Sprintf("satellite-%d-resource-idx", i))]
 	sTyp := tokens.Type(sR.Token)
-	sName := drawIdentifier(t, fmt.Sprintf("satellite-%d-name", i))
+	urn := rapid.Custom(func(t *rapid.T) resource.URN {
+		name := drawIdentifier(t, fmt.Sprintf("satellite-%d-name", i))
+		return resource.NewURN(stackName, projectName, "", sTyp, name)
+	}).Filter(func(u resource.URN) bool { return !taken[u] }).
+		Draw(t, fmt.Sprintf("satellite-%d-urn", i))
 	return &resource.State{
 		Type:     sTyp,
-		URN:      resource.NewURN(stackName, projectName, "", sTyp, sName),
+		URN:      urn,
 		Custom:   true,
 		ID:       drawResourceID(t, fmt.Sprintf("satellite-%d-id", i)),
 		Provider: providerRefString(provider),

@@ -147,7 +147,7 @@ func drawValue(t *rapid.T, typ schema.Type, label string, depth int) property.Va
 			return property.New(property.Map{})
 		}
 		n := rapid.IntRange(0, 4).Draw(t, label+":mlen")
-		keys := rapid.SliceOfNDistinct(rapid.String(), n, n, rapid.ID[string]).Draw(t, label+":mk")
+		keys := rapid.SliceOfNDistinct(mapKeyGenerator(), n, n, rapid.ID[string]).Draw(t, label+":mk")
 		m := map[string]property.Value{}
 		for _, k := range keys {
 			m[k] = drawValue(t, tt.ElementType, label+":"+k, depth-1)
@@ -168,6 +168,14 @@ func drawValue(t *rapid.T, typ schema.Type, label string, depth int) property.Va
 
 func drawString(t *rapid.T, label string) property.Value {
 	return property.New(rapid.String().Draw(t, label+":s"))
+}
+
+func mapKeyGenerator() *rapid.Generator[string] {
+	return rapid.OneOf(
+		rapid.String(),
+		// Make sure we sometimes start with __
+		rapid.StringMatching(`^__[a-zA-Z][a-zA-Z0-9_]{0,7}$`),
+	)
 }
 
 func rapidAsset() *rapid.Generator[*asset.Asset] {
@@ -216,7 +224,7 @@ func drawJSONLikeValue(t *rapid.T, label string, depth int) property.Value {
 		return property.New(elems)
 	case 5:
 		n := rapid.IntRange(0, 3).Draw(t, label+":jmn")
-		keys := rapid.SliceOfNDistinct(rapid.String(), n, n, rapid.ID[string]).Draw(t, label+":jmk")
+		keys := rapid.SliceOfNDistinct(mapKeyGenerator(), n, n, rapid.ID[string]).Draw(t, label+":jmk")
 		m := map[string]property.Value{}
 		for _, k := range keys {
 			m[k] = drawJSONLikeValue(t, label+":"+k, depth-1)
