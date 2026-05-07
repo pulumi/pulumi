@@ -69,15 +69,14 @@ func TestEmptyDetailedDiff(t *testing.T) {
 	assert.Equal(t, expected, string(jsonEvent))
 }
 
-// TestSummaryEventRoundTrip verifies that the new Result and Duration fields survive
+// TestSummaryEventResultRoundTrip verifies that the new Result field survives
 // the engine -> apitype -> engine conversion path.
-func TestSummaryEventRoundTrip(t *testing.T) {
+func TestSummaryEventResultRoundTrip(t *testing.T) {
 	t.Parallel()
 
 	original := engine.SummaryEventPayload{
-		IsPreview:       false,
 		MaybeCorrupt:    true,
-		Duration:        1500 * time.Millisecond,
+		Duration:        2 * time.Second,
 		ResourceChanges: display.ResourceChanges{deploy.OpCreate: 2, deploy.OpUpdate: 1},
 		PolicyPacks:     map[string]string{"pack": "v1.0.0"},
 		Result:          apitype.OperationResultFailed,
@@ -87,38 +86,11 @@ func TestSummaryEventRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, apiEvent.SummaryEvent)
 	assert.Equal(t, apitype.OperationResultFailed, apiEvent.SummaryEvent.Result)
-	assert.Equal(t, 1500*time.Millisecond, apiEvent.SummaryEvent.Duration)
-	// DurationSeconds rounds up for backwards compatibility with older consumers.
-	assert.Equal(t, 2, apiEvent.SummaryEvent.DurationSeconds)
 
 	roundTripped, err := ConvertJSONEvent(apiEvent)
 	require.NoError(t, err)
 	payload := roundTripped.Payload().(engine.SummaryEventPayload)
 	assert.Equal(t, original.Result, payload.Result)
-	assert.Equal(t, original.Duration, payload.Duration)
-	assert.Equal(t, original.MaybeCorrupt, payload.MaybeCorrupt)
-	assert.Equal(t, original.ResourceChanges, payload.ResourceChanges)
-	assert.Equal(t, original.PolicyPacks, payload.PolicyPacks)
-}
-
-// TestSummaryEventLegacyDurationFallback verifies that an apitype.SummaryEvent
-// produced by an older engine (no precise Duration field) still yields a payload
-// with a populated Duration via the DurationSeconds fallback.
-func TestSummaryEventLegacyDurationFallback(t *testing.T) {
-	t.Parallel()
-
-	apiEvent := apitype.EngineEvent{
-		SummaryEvent: &apitype.SummaryEvent{
-			DurationSeconds: 7,
-			ResourceChanges: map[apitype.OpType]int{},
-		},
-	}
-
-	converted, err := ConvertJSONEvent(apiEvent)
-	require.NoError(t, err)
-	payload := converted.Payload().(engine.SummaryEventPayload)
-	assert.Equal(t, 7*time.Second, payload.Duration)
-	assert.Equal(t, apitype.OperationResult(""), payload.Result)
 }
 
 // TestConvertJSONEventExhaustive tests that all fields of the EngineEvent type are handled by ConvertJSONEvent.

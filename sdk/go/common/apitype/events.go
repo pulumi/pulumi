@@ -14,11 +14,7 @@
 
 package apitype
 
-import (
-	"time"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-)
+import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 // OperationResult is the high-level outcome of a stack operation.
 type OperationResult string
@@ -154,12 +150,8 @@ type PreludeEvent struct {
 type SummaryEvent struct {
 	// MaybeCorrupt is set if one or more of the resources is in an invalid state.
 	MaybeCorrupt bool `json:"maybeCorrupt"`
-	// Duration is the number of seconds the update was executing. Truncated to whole
-	// seconds; prefer the Duration field below for full precision.
+	// Duration is the number of seconds the update was executing.
 	DurationSeconds int `json:"durationSeconds"`
-	// Duration is the wall-clock duration of the operation, in nanoseconds. Encodes
-	// the same value as DurationSeconds at higher precision.
-	Duration time.Duration `json:"duration,omitempty"`
 	// ResourceChanges contains the count for resource change by type.
 	ResourceChanges map[OpType]int `json:"resourceChanges"`
 	// PolicyPacks run during update. Maps PolicyPackName -> version.

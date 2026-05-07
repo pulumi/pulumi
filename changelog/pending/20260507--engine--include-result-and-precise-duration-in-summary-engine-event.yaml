@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: engine
-  description: Include `result` and a precise `duration` on the summary engine event

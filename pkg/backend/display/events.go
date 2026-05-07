@@ -202,7 +202,6 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 		apiEvent.SummaryEvent = &apitype.SummaryEvent{
 			MaybeCorrupt:    p.MaybeCorrupt,
 			DurationSeconds: int(math.Ceil(p.Duration.Seconds())),
-			Duration:        p.Duration,
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 			IsPreview:       p.IsPreview,
@@ -476,15 +475,9 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 		for op, count := range p.ResourceChanges {
 			changes[display.StepOp(op)] = count
 		}
-		// Prefer the precise Duration field when present; fall back to DurationSeconds
-		// for older payloads that predate it.
-		duration := p.Duration
-		if duration == 0 {
-			duration = time.Duration(p.DurationSeconds) * time.Second
-		}
 		event = engine.NewEvent(engine.SummaryEventPayload{
 			MaybeCorrupt:    p.MaybeCorrupt,
-			Duration:        duration,
+			Duration:        time.Duration(p.DurationSeconds) * time.Second,
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 			IsPreview:       p.IsPreview,
