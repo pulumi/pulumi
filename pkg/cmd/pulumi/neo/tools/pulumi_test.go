@@ -698,6 +698,25 @@ func TestPulumi_DrainEvents_NDJSONIsValidEngineEvent(t *testing.T) {
 	assert.Equal(t, "warning", apiEv.DiagnosticEvent.Severity)
 }
 
+func TestNewPulumiResultUsesParsedNames(t *testing.T) {
+	t.Parallel()
+
+	// Regression: pulumiResult must echo the canonical project name and the
+	// bare stack name back to callers, not the raw input strings. The Neo
+	// agent's entity extraction treats the returned stack_name as a bare
+	// name; if we returned the input verbatim a fully-qualified
+	// "<org>/<project>/<stack>" form would propagate into a malformed
+	// StackEntity.
+	proj := &workspace.Project{Name: tokens.PackageName("real-proj")}
+	stackRef := &backend.MockStackReference{NameV: tokens.MustParseStackName("dev")}
+
+	res := newPulumiResult(proj, stackRef, "/tmp/events.ndjson")
+
+	assert.Equal(t, "real-proj", res.ProjectName)
+	assert.Equal(t, "dev", res.StackName)
+	assert.Equal(t, "/tmp/events.ndjson", res.EventsFile)
+}
+
 func TestAutonamingStackContextFor_NonHTTPStateStack(t *testing.T) {
 	t.Parallel()
 
