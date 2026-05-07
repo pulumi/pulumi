@@ -638,11 +638,11 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		case *pcl.Hook:
 			importSet["subprocess"] = Import{ImportAs: false}
 		case *pcl.Resource:
-			if r.Options != nil && r.Options.Range != nil && model.ContainsOutputs(r.Options.Range.Type()) {
+			if r.Options != nil && r.Options.Range != nil {
 				needsTypingAny = true
 			}
 		case *pcl.ReadResource:
-			if r.Options != nil && r.Options.Range != nil && model.ContainsOutputs(r.Options.Range.Type()) {
+			if r.Options != nil && r.Options.Range != nil {
 				needsTypingAny = true
 			}
 		}
