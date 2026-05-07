@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/neo
+  description: Keep the agent's prior commentary visible when it emits a new streaming turn before finalizing the previous one

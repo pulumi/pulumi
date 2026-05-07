@@ -579,7 +579,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
 			}
 		} else if msg.Content != "" {
-			if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
+			idx := m.findBlockKind(blockAssistantStreaming)
+			if idx >= 0 && m.blocks[idx].raw != "" && !strings.HasPrefix(msg.Content, m.blocks[idx].raw) {
+				// New turn: the agent moved on without an is_final=true marker
+				// (it emits commentary before each tool call, and a tool call
+				// at is_final=false ends the turn implicitly). Commit the prior
+				// streaming text as a final block so it lands in scrollback —
+				// otherwise the next assignment to raw silently overwrites it.
+				prior := m.blocks[idx].raw
+				m.removeBlockKind(blockAssistantStreaming)
+				cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: prior}))
+				idx = -1
+			}
+			if idx >= 0 {
 				m.blocks[idx].raw = msg.Content
 				m.renderBlock(&m.blocks[idx])
 			} else {

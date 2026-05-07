@@ -1002,6 +1002,69 @@ func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T
 	assert.Equal(t, 2, finals, "two hand-offs must produce two committed final blocks")
 }
 
+// TestModel_Update_UIAssistantMessage_NewTurn_CommitsPriorStreaming guards
+// against the bug where a second is_final=false message with content that
+// is not an extension of the prior streaming text silently overwrote that
+// text — losing the agent's earlier commentary entirely. The fix detects
+// the turn boundary (no shared prefix) and commits the prior streaming
+// block to scrollback before starting the fresh streaming block.
+// Regression for pulumi-service#42775.
+func TestModel_Update_UIAssistantMessage_NewTurn_CommitsPriorStreaming(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	// Turn 1: streaming commentary that ends with a tool call (is_final=false).
+	updated, _ := m.Update(UIAssistantMessage{Content: "I've explored the project."})
+	m1 := updated.(Model)
+	require.NotEqual(t, -1, m1.findBlockKind(blockAssistantStreaming))
+
+	// Turn 2: brand-new commentary, not a prefix-extension of turn 1.
+	updated2, cmd := m1.Update(UIAssistantMessage{Content: "Got it — keep the existing bucket."})
+	m2 := updated2.(Model)
+
+	// The prior streaming text must have been committed as a final block,
+	// and a fresh streaming block must hold the new content.
+	idx := m2.findBlockKind(blockAssistantFinal)
+	require.GreaterOrEqual(t, idx, 0, "prior streaming text must be committed to scrollback")
+	assert.Equal(t, "I've explored the project.", m2.blocks[idx].raw)
+
+	streamIdx := m2.findBlockKind(blockAssistantStreaming)
+	require.NotEqual(t, -1, streamIdx, "new turn must seed a fresh streaming block")
+	assert.Equal(t, "Got it — keep the existing bucket.", m2.blocks[streamIdx].raw)
+
+	// And the committed text must reach the user via tea.Println, not just
+	// sit in m.blocks. collectPrintln walks the returned cmd batch.
+	printed := collectPrintln(cmd)
+	joined := strings.Join(printed, "\n")
+	assert.Contains(t, joined, "I've explored the project.",
+		"prior turn must reach scrollback via tea.Println")
+}
+
+// TestModel_Update_UIAssistantMessage_PrefixExtension_UpdatesInPlace pins the
+// other half of the contract: when the new content extends the existing
+// streaming text (the normal incremental-streaming case), the prior block
+// must be updated in place — not committed as a phantom final.
+func TestModel_Update_UIAssistantMessage_PrefixExtension_UpdatesInPlace(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIAssistantMessage{Content: "Hello"})
+	m1 := updated.(Model)
+
+	updated2, _ := m1.Update(UIAssistantMessage{Content: "Hello world"})
+	m2 := updated2.(Model)
+
+	assert.Equal(t, -1, m2.findBlockKind(blockAssistantFinal),
+		"prefix extension is one continuous turn, not a turn boundary")
+	streamIdx := m2.findBlockKind(blockAssistantStreaming)
+	require.NotEqual(t, -1, streamIdx)
+	assert.Equal(t, "Hello world", m2.blocks[streamIdx].raw)
+}
+
 func TestModel_Update_UIToolStarted_ShowsBusyBlock(t *testing.T) {
 	t.Parallel()
 
