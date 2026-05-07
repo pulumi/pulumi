@@ -14,9 +14,14 @@
 
 package apitype
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import (
+	"context"
+	"errors"
 
-// OperationResult is the high-level outcome of a stack operation.
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+)
+
+// OperationResult is the high-level outcome of an operation.
 type OperationResult string
 
 const (
@@ -27,6 +32,20 @@ const (
 	// OperationResultCanceled indicates the operation was canceled by the user.
 	OperationResultCanceled OperationResult = "canceled"
 )
+
+// OperationResultFromError maps an operation's terminal error to the high-level
+// OperationResult reported on the summary event. context.Canceled (including
+// wrapped) is treated as user cancellation; any other error is a failure.
+func OperationResultFromError(err error) OperationResult {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return OperationResultCanceled
+	case err != nil:
+		return OperationResultFailed
+	default:
+		return OperationResultSucceeded
+	}
+}
 
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
@@ -162,9 +181,8 @@ type SummaryEvent struct {
 	PolicyPacks map[string]string `json:"PolicyPacks"`
 	// IsPreview indicates whether this is a preview or an update.
 	IsPreview bool `json:"isPreview"`
-	// Result is the high-level outcome of the operation. Empty for events that do not
-	// represent a stack operation (e.g. policy analysis summaries reusing this type).
-	Result OperationResult `json:"result,omitempty"`
+	// Result is the high-level outcome of the operation.
+	Result OperationResult `json:"result"`
 }
 
 // ErrorEvent is emitted when an internal error occurs in the engine. This is not meant

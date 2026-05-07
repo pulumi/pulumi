@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -435,12 +436,10 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 		}
 	}
 
-	// Emit a summary event. Previews are reported as "succeeded" when they don't
-	// return an error, since they otherwise complete normally; consumers that need
-	// to distinguish previews can use IsPreview.
+	// Emit a summary event.
 	deployment.Options.Events.summaryEvent(
 		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies,
-		operationResultFromError(err))
+		apitype.OperationResultFromError(err))
 
 	close(deployment.panicErrs)
 

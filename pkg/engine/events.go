@@ -16,8 +16,6 @@ package engine
 
 import (
 	"bytes"
-	"context"
-	"errors"
 	"time"
 
 	codeasset "github.com/pulumi/pulumi/pkg/v3/asset"
@@ -636,21 +634,6 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 		PolicyPacks:     policyPacks,
 		Result:          result,
 	}))
-}
-
-// operationResultFromError maps the error returned by a deployment to the
-// high-level OperationResult reported on the summary event. context.Canceled
-// (including wrapped) is treated as user cancellation; any other error is a
-// failure.
-func operationResultFromError(err error) apitype.OperationResult {
-	switch {
-	case errors.Is(err, context.Canceled):
-		return apitype.OperationResultCanceled
-	case err != nil:
-		return apitype.OperationResultFailed
-	default:
-		return apitype.OperationResultSucceeded
-	}
 }
 
 func (e *eventEmitter) policyViolationEvent(urn resource.URN, d plugin.AnalyzeDiagnostic) {

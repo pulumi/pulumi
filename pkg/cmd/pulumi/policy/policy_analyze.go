@@ -133,11 +133,14 @@ func newPolicyAnalyzeCmd(
 				return fmt.Errorf("configuring analysis display: %w", err)
 			}
 			hasMandatory, err := deploy.AnalyzeSnapshot(ctx, snap, analyzers, events)
-			finish()
+			result := apitype.OperationResultFromError(err)
+			if err == nil && hasMandatory {
+				result = apitype.OperationResultFailed
+			}
+			finish(result)
 			if err != nil {
 				return fmt.Errorf("running policy analysis: %w", err)
 			}
-
 			if hasMandatory {
 				return errors.New("one or more mandatory policy violations were found")
 			}
@@ -182,7 +185,7 @@ func newAnalyzeEvents(
 	jsonDisplay bool,
 	stackRef backend.StackReference,
 	analyzers []plugin.Analyzer,
-) (*analyzeEvents, func(), error) {
+) (*analyzeEvents, func(apitype.OperationResult), error) {
 	if jsonDisplay {
 		policyPacks, err := policyPackVersions(analyzers)
 		if err != nil {
@@ -192,7 +195,7 @@ func newAnalyzeEvents(
 			out:  out,
 			json: json.NewEncoder(out),
 		}
-		return events, func() {
+		return events, func(result apitype.OperationResult) {
 			events.outLock.Lock()
 			defer events.outLock.Unlock()
 			events.writeEvent(engine.NewEvent(engine.SummaryEventPayload{
@@ -201,6 +204,7 @@ func newAnalyzeEvents(
 				Duration:        0 * time.Second,
 				ResourceChanges: nil,
 				PolicyPacks:     policyPacks,
+				Result:          result,
 			}))
 		}, nil
 	}
@@ -212,7 +216,7 @@ func newAnalyzeEvents(
 				Color: colorization,
 			},
 			seen: make(map[resource.URN]engine.StepEventMetadata),
-		}, func() {}, nil
+		}, func(apitype.OperationResult) {}, nil
 	}
 
 	policyPacks, err := policyPackVersions(analyzers)
@@ -240,13 +244,14 @@ func newAnalyzeEvents(
 
 	return &analyzeEvents{
 			events: events,
-		}, func() {
+		}, func(result apitype.OperationResult) {
 			events <- engine.NewEvent(engine.SummaryEventPayload{
 				IsPreview:       false,
 				MaybeCorrupt:    false,
 				Duration:        0 * time.Second,
 				ResourceChanges: nil,
 				PolicyPacks:     policyPacks,
+				Result:          result,
 			})
 			close(events)
 			<-done
