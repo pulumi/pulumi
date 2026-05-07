@@ -146,8 +146,7 @@ func (w welcomeModel) View() string {
 		if len([]rune(linkText)) > maxLink && maxLink > 3 {
 			linkText = string([]rune(linkText)[:maxLink-3]) + "..."
 		}
-		hyperlink := fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\", w.consoleURL, linkText)
-		parts = append(parts, dim.Render("⟡ "+hyperlink))
+		parts = append(parts, dim.Render("⟡ "+osc8Hyperlink(w.consoleURL, linkText)))
 	}
 
 	return renderLeftBracket(bracketStyle, strings.Join(parts, "\n"))

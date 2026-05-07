@@ -1090,10 +1090,21 @@ func TestModel_Update_UISessionURL_UpdatesWelcomeConsoleURL(t *testing.T) {
 
 	ch := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{EventCh: ch})
-	updated, _ := m.Update(UISessionURL{URL: "https://app.pulumi.com/x"})
+	updated, cmd := m.Update(UISessionURL{URL: "https://app.pulumi.com/x"})
 	um := updated.(Model)
 
 	assert.Equal(t, "https://app.pulumi.com/x", um.welcome.consoleURL)
+
+	// The session URL is also dropped to terminal scrollback so it survives
+	// re-renders. It must arrive wrapped in an OSC 8 hyperlink — without the
+	// escape, supporting terminals show plain text and the user can't click
+	// through to the task in the console.
+	prints := collectPrintln(cmd)
+	require.NotEmpty(t, prints, "UISessionURL must emit a tea.Println line")
+	joined := strings.Join(prints, "\n")
+	assert.Contains(t, joined, "\x1b]8;;https://app.pulumi.com/x\x1b\\",
+		"session URL must be wrapped in an OSC 8 hyperlink opener")
+	assert.Contains(t, joined, "https://app.pulumi.com/x")
 }
 
 func TestModel_Update_UIUserMessage_AppendsUserBlock(t *testing.T) {
