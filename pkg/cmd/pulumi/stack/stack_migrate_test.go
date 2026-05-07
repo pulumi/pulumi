@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -377,10 +378,8 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 		"source Pulumi.dev.yaml should be byte-for-byte restored after rollback")
 }
 
-// TestStackMigrate_RollsBackTargetConfigOnImportFailure exercises the rename branch of the
-// rollback: source and target stacks have different names, so they back distinct Pulumi files.
-// Migration creates Pulumi.dev-tgt.yaml mid-flight, then ImportDeployment fails and the rollback
-// must remove the freshly-created target file (not the source one) and not regress the source.
+// Rename branch of the rollback: source `dev`, target `dev-tgt`. Migration creates
+// Pulumi.dev-tgt.yaml mid-flight; rollback must remove that file and leave Pulumi.dev.yaml alone.
 func TestStackMigrate_RollsBackTargetConfigOnImportFailure(t *testing.T) { //nolint: paralleltest
 	wd := t.TempDir()
 	t.Chdir(wd)
@@ -521,6 +520,120 @@ func TestStackMigrate_RollsBackTargetConfigOnImportFailure(t *testing.T) { //nol
 	_, err = os.Stat("Pulumi.dev-tgt.yaml")
 	assert.True(t, os.IsNotExist(err),
 		"Pulumi.dev-tgt.yaml should have been removed by the rollback (got err=%v)", err)
+}
+
+// Regression for the CreateStack probe race: when CreateStack returns StackAlreadyExistsError,
+// the deferred rollback must NOT call RemoveStack on whatever existed at the target ref (it was
+// created by another process between our preflight and CreateStack and is not ours to clean up).
+func TestStackMigrate_DoesNotRollbackOnAlreadyExistsRace(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}"), 0o600))
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return &apitype.UntypedDeployment{Version: 3, Deployment: json.RawMessage(`{}`)}, nil
+		},
+	}
+
+	// On first GetStack(target): target absent (preflight passes). On the recovery probe after
+	// CreateStack fails, return a stack handle simulating the racer's stack -- the guard must NOT
+	// adopt and remove it.
+	var getStackCalls int
+	racerStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "dev",
+			}
+		},
+	}
+	var removeCalled bool
+	targetBE := &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			getStackCalls++
+			if getStackCalls == 1 {
+				return nil, nil
+			}
+			return racerStack, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return nil, &backenderr.StackAlreadyExistsError{StackName: ref.String()}
+		},
+		RemoveStackF: func(ctx context.Context, s backend.Stack, force, removeBackups bool) (bool, error) {
+			removeCalled = true
+			return false, nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	require.Error(t, err)
+	assert.False(t, removeCalled,
+		"RemoveStack must not be called when CreateStack reports StackAlreadyExistsError")
 }
 
 // TestStackMigrate_ReencryptsConfigSecret proves the migration re-encrypts secret config under

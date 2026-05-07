@@ -15,6 +15,8 @@
 package stack
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -111,6 +113,23 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 			"`pulumi stack import --force`.",
 	)
 	return cmd
+}
+
+// reusingSecretsProvider returns the cached manager when the deployment's secrets_providers
+// type matches, else delegates. Avoids a second passphrase prompt / KMS round trip during
+// deployment deserialization.
+type reusingSecretsProvider struct {
+	cached   secrets.Manager
+	fallback secrets.Provider
+}
+
+func (p *reusingSecretsProvider) OfType(
+	ctx context.Context, ty string, state json.RawMessage,
+) (secrets.Manager, error) {
+	if p.cached != nil && p.cached.Type() == ty {
+		return p.cached, nil
+	}
+	return p.fallback.OfType(ctx, ty, state)
 }
 
 // stackConfigPath returns the on-disk Pulumi.<stack>.yaml path for the given bare stack name,
@@ -272,13 +291,17 @@ func (cmd *stackMigrateCmd) Run(
 
 	// Env-aware loader honors PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER.
 	ssml := NewStackSecretsManagerLoaderFromEnv()
-	var oldDecrypter config.Decrypter
+	var (
+		oldDecrypter config.Decrypter
+		srcSM        secrets.Manager // cached so DeserializeUntypedDeployment can reuse it
+	)
 	if srcPS.Config.HasSecureValue() {
-		dec, _, derr := ssml.GetDecrypter(ctx, sourceStack, srcPS)
-		if derr != nil {
-			return fmt.Errorf("building decrypter for source stack: %w", derr)
+		sm, _, smErr := ssml.GetSecretsManager(ctx, sourceStack, srcPS)
+		if smErr != nil {
+			return fmt.Errorf("building decrypter for source stack: %w", smErr)
 		}
-		oldDecrypter = dec
+		srcSM = sm
+		oldDecrypter = sm.Decrypter()
 	} else {
 		oldDecrypter = config.NewPanicCrypter()
 	}
@@ -310,14 +333,15 @@ func (cmd *stackMigrateCmd) Run(
 		}
 	}
 
-	// `srcPS.RawValue()` preserves the original Pulumi.<stack>.yaml bytes for trivia-preserving
-	// rollback. We snapshot both source and target config paths because they may be the same file
-	// (same-name migration) or different files (--target rename); either may be created or
-	// mutated by CreateStack and the helpers below.
+	// Snapshot both Pulumi.<stack>.yaml paths for rollback (same-name migration collapses them
+	// into one). os.Stat-based detection is correct for empty files and remote-config stacks
+	// where srcPS.RawValue() would be empty/nil.
 	srcConfigPath := stackConfigPath(srcRef.Name().Q())
 	tgtConfigPath := stackConfigPath(targetRef.Name().Q())
-	srcConfigBytes := srcPS.RawValue()
-	srcConfigExisted := len(srcConfigBytes) > 0
+	srcConfigBytes, srcConfigExisted, err := snapshotConfigFile(srcConfigPath)
+	if err != nil {
+		return fmt.Errorf("snapshotting source stack config %s for rollback: %w", srcConfigPath, err)
+	}
 	sameConfigFile := tgtConfigPath != "" && tgtConfigPath == srcConfigPath
 	var tgtConfigBytes []byte
 	tgtConfigExisted := false
@@ -420,7 +444,8 @@ func (cmd *stackMigrateCmd) Run(
 
 	deploySP := cmd.deploymentSecretsProvider
 	if deploySP == nil {
-		deploySP = backend_secrets.DefaultProvider
+		// Reuse srcSM (built above for config decryption) so passphrase isn't prompted twice.
+		deploySP = &reusingSecretsProvider{cached: srcSM, fallback: backend_secrets.DefaultProvider}
 	}
 	// SaveSnapshot validates URNs match target name, runs integrity check, clears pending ops.
 	snap, err := stack.DeserializeUntypedDeployment(ctx, sourceDeployment, deploySP)
