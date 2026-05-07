@@ -1211,17 +1211,16 @@ func (pt *ProgramTester) runPythonCommand(name string, args []string, wd string)
 }
 
 func (pt *ProgramTester) runVirtualEnvCommand(name string, args []string, wd string) error {
-	// When installing with `pip install -e`, a PKG-INFO file is created. If two packages are being installed
-	// this way simultaneously (which happens often, when running tests), both installations will be writing the
-	// same file simultaneously. If one process catches "PKG-INFO" in a half-written state, the one process that
-	// observed the torn write will fail to install the package.
+	// Serialize all pip install operations using pipMutex. This avoids two problems:
+	// 1. When installing with `pip install -e`, a PKG-INFO file is created. Concurrent editable
+	//    installs of the same package can produce torn writes that corrupt the PKG-INFO file.
+	// 2. Concurrent pip installs share the same HTTP cache. Simultaneous writes to the cache can
+	//    corrupt entries (Content-Type: Unknown), causing pip to skip PyPI pages and fail to
+	//    resolve packages like setuptools.
 	//
-	// To avoid this problem, we use pipMutex to explicitly serialize installation operations. Doing so avoids
-	// the problem of multiple processes stomping on the same files in the source tree. Note that pipMutex is a
-	// file mutex, so this strategy works even if the go test runner chooses to split up text execution across
-	// multiple processes. (Furthermore, each test gets an instance of ProgramTester and thus the mutex, so we'd
-	// need to be sharing the mutex globally in each test process if we weren't using the file system to lock.)
-	if name == "virtualenv-pip-install-package" {
+	// pipMutex is a file mutex, so this strategy works even if the go test runner splits test
+	// execution across multiple processes.
+	if strings.HasPrefix(name, "virtualenv-pip-") {
 		if err := pipMutex.Lock(); err != nil {
 			panic(err)
 		}
