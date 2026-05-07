@@ -16,6 +16,7 @@ package convert
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -35,6 +36,9 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/importer"
+	resstack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -47,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -67,6 +72,7 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 	var mappings []string
 	var strict bool
 	var name string
+	var file string
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -75,13 +81,15 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 			"\n" +
 			"The source program to convert will default to the current working directory.\n" +
 			"\n" +
-			"Valid source languages: yaml, terraform, bicep, arm, kubernetes\n" +
+			"Valid source languages: yaml, terraform, bicep, arm, kubernetes, stack\n" +
 			"\n" +
 			"Valid target languages: typescript, python, csharp, go, java, yaml" +
 			"\n" +
 			"Example command usage:" +
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n" +
+			"\n" +
+			"    pulumi convert --from stack --file export.json --language typescript --out . \n" +
 			"\n\n" +
 			"Note that certain target languages may require additional arguments to be passed to this command.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -109,6 +117,7 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 				generateOnly,
 				strict,
 				name,
+				file,
 			)
 		},
 	}
@@ -138,6 +147,9 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 
 	cmd.PersistentFlags().StringVar(
 		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
+
+	cmd.PersistentFlags().StringVar(
+		&file, "file", "", "Input file path (required when --from stack)")
 
 	return cmd
 }
@@ -195,6 +207,7 @@ func runConvert(
 	generateOnly bool,
 	strict bool,
 	name string,
+	file string,
 ) error {
 	// Validate the supplied name if one was specified. If one was not supplied,
 	// default to the directory of the source project.
@@ -367,7 +380,49 @@ func runConvert(
 	defer os.RemoveAll(pclDirectory)
 
 	pCtx.Diag.Infof(diag.Message("", "Converting from %s..."), from)
-	if from == "pcl" {
+	if from == "stack" {
+		if file == "" {
+			return errors.New("--file is required when --from stack")
+		}
+
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("read stack file: %w", err)
+		}
+
+		var deployment apitype.UntypedDeployment
+		if err := json.Unmarshal(data, &deployment); err != nil {
+			return fmt.Errorf("parse stack file: %w", err)
+		}
+
+		snap, err := resstack.DeserializeUntypedDeployment(ctx, &deployment, b64.Base64SecretsProvider)
+		if err != nil {
+			return fmt.Errorf("deserialize stack: %w", err)
+		}
+
+		var states []*resource.State
+		for _, r := range snap.Resources {
+			if r.Delete || !r.Custom {
+				continue
+			}
+			if r.URN.Type() == "pulumi:pulumi:Stack" {
+				continue
+			}
+			if strings.HasPrefix(string(r.Type), "pulumi:providers:") {
+				continue
+			}
+			states = append(states, r)
+		}
+
+		pclBytes, err := importer.GeneratePCLText(loader, states, snap.Resources, importer.NameTable{})
+		if err != nil {
+			return fmt.Errorf("generate PCL from stack: %w", err)
+		}
+
+		if err := os.WriteFile(filepath.Join(pclDirectory, "program.pp"), pclBytes, 0o600); err != nil {
+			return fmt.Errorf("write PCL file: %w", err)
+		}
+	} else if from == "pcl" {
 		// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it, but
 		// remove the temp dir we just created first
 		err = os.RemoveAll(pclDirectory)

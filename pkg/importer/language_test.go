@@ -36,6 +36,66 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestGeneratePCLText(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+		},
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::myBucket",
+			ID:       "bucket-1",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
+			Inputs:   map[string]any{},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+		{
+			URN:    "urn:pulumi:stack::project::aws:s3/bucketObject:BucketObject::obj",
+			ID:     "bucket-object-1",
+			Custom: true,
+			Type:   "aws:s3/bucketObject:BucketObject",
+			Inputs: map[string]any{
+				"bucket": "bucket-1",
+			},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+	}
+
+	states := slice.Prealloc[*resource.State](len(resources))
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	pclBytes, err := GeneratePCLText(loader, states, snapshot, nil)
+	require.NoError(t, err)
+
+	pclText := string(pclBytes)
+	assert.Contains(t, pclText, `package aws {`)
+	assert.Contains(t, pclText, `baseProviderName`)
+	assert.Contains(t, pclText, `resource myBucket "aws:s3/bucket:Bucket"`)
+	assert.Contains(t, pclText, `resource obj "aws:s3/bucketObject:BucketObject"`)
+}
+
+func TestGeneratePCLTextEmptyStates(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	pclBytes, err := GeneratePCLText(loader, nil, nil, nil)
+	require.NoError(t, err)
+	assert.Empty(t, pclBytes)
+}
+
 func TestGenerateLanguageDefinition(t *testing.T) {
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
