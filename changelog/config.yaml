@@ -9,6 +9,7 @@ scopes:
   ci: []
   cli:
     - about
+    - cloud
     - config
     - display
     - engine
