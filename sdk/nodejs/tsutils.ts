@@ -42,24 +42,29 @@ export function loadTypeScriptCompilerOptions(tsConfigPath: string): object {
  * @internal
  */
 export function typeScriptRequireStrings(): { typescriptRequire: string; tsnodeRequire: string } {
-    let typescriptRequire = "typescript";
-    let tsnodeRequire = "ts-node";
+    let typescriptRequire: string;
+    let tsnodeRequire: string;
 
     try {
-        // Try loading typescript from node_modules
+        // Try loading typescript from node_modules.
+        // Use require.resolve to get the absolute path so that the same
+        // TypeScript installation is used regardless of which module later
+        // calls require(typescriptRequire) (e.g. the vendored ts-node
+        // resolves from a different directory than tsutils).
         const ts: typeof typescript = require("typescript");
-        const tsPath = require.resolve("typescript");
-        log.debug(`Found typescript version ${ts.version} at ${tsPath}`);
+        typescriptRequire = require.resolve("typescript");
+        log.debug(`Found typescript version ${ts.version} at ${typescriptRequire}`);
     } catch (error) {
         // Fallback to the vendored version
         typescriptRequire = path.join(__dirname, "vendor", "typescript@3.8.3", "typescript.js");
         log.debug(`Using vendored typescript@3.8.3`);
     }
     try {
-        // Try loading ts-node from node_modules
-        const tsn: typeof tsnode = require(tsnodeRequire);
-        const tsnPath = require.resolve("ts-node");
-        log.debug(`Found ts-node version: ${tsn.VERSION} at ${tsnPath}`);
+        // Try loading ts-node from node_modules.
+        // Use require.resolve for the same reason as above.
+        const tsn: typeof tsnode = require("ts-node");
+        tsnodeRequire = require.resolve("ts-node");
+        log.debug(`Found ts-node version: ${tsn.VERSION} at ${tsnodeRequire}`);
     } catch (error) {
         // Fallback to the vendored version
         tsnodeRequire = path.join(__dirname, "vendor", "ts-node@7.0.1");
