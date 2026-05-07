@@ -1308,12 +1308,12 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			} else {
-				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
 			localFuncName := "create_" + PyName(r.LogicalName())
 
 			// Generate a local definition which actually creates the resources
-			g.Fgenf(w, "def %s(range_body: Any):\n", localFuncName)
+			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
 			g.Indented(func() {
 				r.Options.Range = model.VariableReference(&model.Variable{
 					Name:         "range_body",
@@ -1411,7 +1411,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			})
 		} else {
 			if needsDefinition {
-				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
 
 			resKey := "key"
@@ -1528,10 +1528,10 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			} else {
-				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
 			localFuncName := "read_" + PyName(r.LogicalName())
-			g.Fgenf(w, "def %s(range_body: Any):\n", localFuncName)
+			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
 			g.Indented(func() {
 				r.Options.Range = model.VariableReference(&model.Variable{
 					Name:         "range_body",
@@ -1603,7 +1603,7 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 			})
 		} else {
 			if needsDefinition {
-				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
@@ -1729,7 +1729,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 				g.Fprint(w, "\n")
 			})
 		} else {
-			g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+			g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
