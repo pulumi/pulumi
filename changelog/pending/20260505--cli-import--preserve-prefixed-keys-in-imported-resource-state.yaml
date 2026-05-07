@@ -1,4 +1,4 @@
 changes:
 - type: fix
   scope: cli/import
-  description: Preserve `__`-prefixed keys (e.g. `__type` discriminators) when generating PCL for imported resource state, so provider-defined payloads round-trip correctly
+  description: Preserve `__`-prefixed keys when generating PCL for imported resource state, so provider-defined payloads round-trip correctly
