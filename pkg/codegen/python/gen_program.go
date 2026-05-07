@@ -645,6 +645,10 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 			if r.Options != nil && r.Options.Range != nil {
 				needsTypingAny = true
 			}
+		case *pcl.Component:
+			if r.Options != nil && r.Options.Range != nil {
+				needsTypingAny = true
+			}
 		}
 	}
 
