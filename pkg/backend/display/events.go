@@ -205,6 +205,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 			IsPreview:       p.IsPreview,
+			Result:          p.Result,
 		}
 
 	case engine.ResourcePreEvent:
@@ -480,6 +481,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 			IsPreview:       p.IsPreview,
+			Result:          p.Result,
 		})
 
 	case apiEvent.ResourcePreEvent != nil:
