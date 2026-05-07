@@ -15,8 +15,12 @@
 package engine
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,4 +38,30 @@ func TestTryCloseEventChan(t *testing.T) {
 	c := make(chan Event, 100)
 	assert.Equal(t, true, tryCloseEventChan(c))
 	assert.Equal(t, false, tryCloseEventChan(c))
+}
+
+func TestOperationResultFromError(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		err  error
+		want apitype.OperationResult
+	}{
+		{name: "nil", err: nil, want: apitype.OperationResultSucceeded},
+		{name: "canceled", err: context.Canceled, want: apitype.OperationResultCanceled},
+		{
+			name: "wrapped canceled",
+			err:  fmt.Errorf("op aborted: %w", context.Canceled),
+			want: apitype.OperationResultCanceled,
+		},
+		{name: "failed", err: errors.New("boom"), want: apitype.OperationResultFailed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, operationResultFromError(tt.err))
+		})
+	}
 }

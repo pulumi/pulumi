@@ -435,9 +435,12 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 		}
 	}
 
-	// Emit a summary event.
+	// Emit a summary event. Previews are reported as "succeeded" when they don't
+	// return an error, since they otherwise complete normally; consumers that need
+	// to distinguish previews can use IsPreview.
 	deployment.Options.Events.summaryEvent(
-		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies)
+		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies,
+		operationResultFromError(err))
 
 	close(deployment.panicErrs)
 

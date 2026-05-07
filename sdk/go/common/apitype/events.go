@@ -14,7 +14,23 @@
 
 package apitype
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import (
+	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+)
+
+// OperationResult is the high-level outcome of a stack operation.
+type OperationResult string
+
+const (
+	// OperationResultSucceeded indicates the operation completed without error.
+	OperationResultSucceeded OperationResult = "succeeded"
+	// OperationResultFailed indicates the operation returned an error.
+	OperationResultFailed OperationResult = "failed"
+	// OperationResultCanceled indicates the operation was canceled by the user.
+	OperationResultCanceled OperationResult = "canceled"
+)
 
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
@@ -138,8 +154,12 @@ type PreludeEvent struct {
 type SummaryEvent struct {
 	// MaybeCorrupt is set if one or more of the resources is in an invalid state.
 	MaybeCorrupt bool `json:"maybeCorrupt"`
-	// Duration is the number of seconds the update was executing.
+	// Duration is the number of seconds the update was executing. Truncated to whole
+	// seconds; prefer the Duration field below for full precision.
 	DurationSeconds int `json:"durationSeconds"`
+	// Duration is the wall-clock duration of the operation, in nanoseconds. Encodes
+	// the same value as DurationSeconds at higher precision.
+	Duration time.Duration `json:"duration,omitempty"`
 	// ResourceChanges contains the count for resource change by type.
 	ResourceChanges map[OpType]int `json:"resourceChanges"`
 	// PolicyPacks run during update. Maps PolicyPackName -> version.
@@ -150,6 +170,9 @@ type SummaryEvent struct {
 	PolicyPacks map[string]string `json:"PolicyPacks"`
 	// IsPreview indicates whether this is a preview or an update.
 	IsPreview bool `json:"isPreview"`
+	// Result is the high-level outcome of the operation. Empty for events that do not
+	// represent a stack operation (e.g. policy analysis summaries reusing this type).
+	Result OperationResult `json:"result,omitempty"`
 }
 
 // ErrorEvent is emitted when an internal error occurs in the engine. This is not meant
