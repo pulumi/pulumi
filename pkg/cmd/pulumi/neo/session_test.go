@@ -198,7 +198,7 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 }
 
 // collectUIEvents drains a UIEvents channel until it is closed, returning everything seen.
-// Use with a Session that sets s.UIEvents — Run closes the channel when it exits.
+// Tests own the channel and must close it after Run returns before calling this.
 func collectUIEvents(ch <-chan UIEvent) []UIEvent {
 	var out []UIEvent
 	for evt := range ch {
@@ -238,6 +238,7 @@ func TestSession_FinalAssistantMessageWithoutCliCallsEmitsTaskIdle(t *testing.T)
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.True(t, hasUIEvent[UITaskIdle](events), "expected UITaskIdle after final assistant_message with no cli calls")
@@ -264,6 +265,7 @@ func TestSession_StreamingAssistantMessageDoesNotEmitTaskIdle(t *testing.T) {
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.False(t, hasUIEvent[UITaskIdle](events), "streaming chunks must not emit UITaskIdle")
@@ -298,6 +300,7 @@ func TestSession_FinalAssistantMessageWithCliCallsDoesNotEmitTaskIdle(t *testing
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.False(t, hasUIEvent[UITaskIdle](events), "pending cli tool calls must not emit UITaskIdle")
@@ -889,7 +892,30 @@ func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) 
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	require.True(t, hasUIEvent[UIUserMessage](events), "userInput envelope must emit UIUserMessage")
+}
+
+// Regression test for pulumi/pulumi-service#42773.
+func TestSession_RunDoesNotCloseUIEvents(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 4)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	require.NotPanics(t, func() {
+		sendUI(uiCh, UIWarning{Message: "x"})
+	})
 }

@@ -188,6 +188,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	}
 
 	uiCh := make(chan UIEvent, 64)
+	defer close(uiCh)
 	outCh := make(chan outboundEvent, 8)
 
 	pu.Sink = newPulumiSinkForUI(uiCh)
