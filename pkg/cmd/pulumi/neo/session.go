@@ -52,10 +52,9 @@ type Session struct {
 	// likes (stderr today, a TUI tomorrow). nil disables logging.
 	Log io.Writer
 	// UIEvents, when non-nil, receives parsed events for the bubbletea TUI to display.
-	// The caller owns the channel's lifecycle — Session.Run never closes it. uiCh
-	// has multiple writers in production (dispatchUserEvents, createTask, the
-	// pulumi sink), so closing here would race with them and panic with
-	// "send on closed channel" during cancellation (pulumi/pulumi-service#42773).
+	// The caller owns the channel — Session.Run never closes it. The channel has
+	// other writers (dispatchUserEvents, createTask, the pulumi sink), and closing
+	// from here races them (pulumi/pulumi-service#42773).
 	UIEvents chan<- UIEvent
 }
 

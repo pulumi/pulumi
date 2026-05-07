@@ -198,8 +198,7 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 }
 
 // collectUIEvents drains a UIEvents channel until it is closed, returning everything seen.
-// Session.Run no longer closes UIEvents — tests own the channel and must close it
-// after Run returns before calling this helper.
+// Tests own the channel and must close it after Run returns before calling this.
 func collectUIEvents(ch <-chan UIEvent) []UIEvent {
 	var out []UIEvent
 	for evt := range ch {
@@ -899,11 +898,7 @@ func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) 
 	require.True(t, hasUIEvent[UIUserMessage](events), "userInput envelope must emit UIUserMessage")
 }
 
-// Regression test for pulumi/pulumi-service#42773: Session.Run must not close
-// UIEvents on exit. uiCh has multiple writers in production
-// (dispatchUserEvents, createTask, the pulumi sink); closing it from inside
-// Session.Run races with those writers and panics with "send on closed
-// channel" during cancellation. The caller owns the channel's lifecycle.
+// Regression test for pulumi/pulumi-service#42773.
 func TestSession_RunDoesNotCloseUIEvents(t *testing.T) {
 	t.Parallel()
 
@@ -921,6 +916,6 @@ func TestSession_RunDoesNotCloseUIEvents(t *testing.T) {
 	require.NoError(t, s.Run(t.Context()))
 
 	require.NotPanics(t, func() {
-		sendUI(uiCh, UIWarning{Message: "post-run write must not panic"})
-	}, "Session.Run must not close UIEvents — caller owns the channel")
+		sendUI(uiCh, UIWarning{Message: "x"})
+	})
 }
