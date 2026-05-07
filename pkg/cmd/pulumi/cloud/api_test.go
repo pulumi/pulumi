@@ -21,6 +21,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -29,6 +31,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // TestResolveBindings_FieldFillsPathParam covers the core bug fix:
@@ -232,6 +235,154 @@ func TestNegotiateAccept_InvalidValue(t *testing.T) {
 	var apiErr *APIError
 	require.True(t, errors.As(err, &apiErr))
 	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
+}
+
+func TestOpDeclaresQueryParam(t *testing.T) {
+	t.Parallel()
+	op := &Operation{Params: []ParamSpec{
+		{Name: "id", In: "path"},
+		{Name: "lang", In: "query"},
+		{Name: "os", In: "query"},
+	}}
+	assert.True(t, opDeclaresQueryParam(op, "lang"))
+	assert.True(t, opDeclaresQueryParam(op, "os"))
+	assert.False(t, opDeclaresQueryParam(op, "id"), "path param must not count")
+	assert.False(t, opDeclaresQueryParam(op, "unknown"))
+	assert.False(t, opDeclaresQueryParam(nil, "lang"))
+}
+
+func rctxWithRuntime(name string) *ResolvedContext {
+	return &ResolvedContext{
+		Project: &workspace.Project{
+			Runtime: workspace.NewProjectRuntimeInfo(name, nil),
+		},
+	}
+}
+
+func TestContextQueryValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil rctx returns nil", func(t *testing.T) {
+		t.Parallel()
+		assert.Nil(t, contextQueryValues(nil))
+	})
+
+	t.Run("nodejs runtime maps to typescript", func(t *testing.T) {
+		t.Parallel()
+		got := contextQueryValues(rctxWithRuntime("nodejs"))
+		assert.Equal(t, "typescript", got["lang"])
+	})
+
+	t.Run("dotnet runtime maps to csharp", func(t *testing.T) {
+		t.Parallel()
+		got := contextQueryValues(rctxWithRuntime("dotnet"))
+		assert.Equal(t, "csharp", got["lang"])
+	})
+
+	t.Run("go/python/yaml/java pass through", func(t *testing.T) {
+		t.Parallel()
+		for _, rt := range []string{"go", "python", "yaml", "java"} {
+			got := contextQueryValues(rctxWithRuntime(rt))
+			assert.Equal(t, rt, got["lang"], "runtime %q", rt)
+		}
+	})
+
+	t.Run("unknown runtime omits lang", func(t *testing.T) {
+		t.Parallel()
+		got := contextQueryValues(rctxWithRuntime("brainfuck"))
+		assert.NotContains(t, got, "lang")
+	})
+
+	t.Run("rctx without project omits lang", func(t *testing.T) {
+		t.Parallel()
+		got := contextQueryValues(&ResolvedContext{})
+		assert.NotContains(t, got, "lang")
+	})
+
+	t.Run("os reflects host platform", func(t *testing.T) {
+		t.Parallel()
+		got := contextQueryValues(&ResolvedContext{})
+		switch runtime.GOOS {
+		case "darwin":
+			assert.Equal(t, "macos", got["os"])
+		case "linux", "windows":
+			assert.Equal(t, runtime.GOOS, got["os"])
+		default:
+			assert.NotContains(t, got, "os", "unsupported OS should be omitted")
+		}
+	})
+}
+
+func TestInjectContextQueryParams(t *testing.T) {
+	t.Parallel()
+
+	rctx := rctxWithRuntime("nodejs")
+
+	t.Run("declared and unset is injected", func(t *testing.T) {
+		t.Parallel()
+		op := &Operation{Params: []ParamSpec{{Name: "lang", In: "query"}}}
+		extras := url.Values{}
+		injectContextQueryParams(op, "GET", "", rctx, extras)
+		assert.Equal(t, "typescript", extras.Get("lang"))
+	})
+
+	t.Run("not declared is skipped", func(t *testing.T) {
+		t.Parallel()
+		op := &Operation{}
+		extras := url.Values{}
+		injectContextQueryParams(op, "GET", "", rctx, extras)
+		assert.Empty(t, extras)
+	})
+
+	t.Run("value in extras wins over auto-inject", func(t *testing.T) {
+		t.Parallel()
+		op := &Operation{Params: []ParamSpec{{Name: "lang", In: "query"}}}
+		extras := url.Values{"lang": {"go"}}
+		injectContextQueryParams(op, "GET", "", rctx, extras)
+		assert.Equal(t, []string{"go"}, extras["lang"])
+	})
+
+	t.Run("value in raw query wins over auto-inject", func(t *testing.T) {
+		t.Parallel()
+		op := &Operation{Params: []ParamSpec{{Name: "lang", In: "query"}}}
+		extras := url.Values{}
+		injectContextQueryParams(op, "GET", "lang=go", rctx, extras)
+		assert.False(t, extras.Has("lang"), "must not duplicate when raw query already sets it")
+	})
+
+	t.Run("raw query with unrelated key does not block injection", func(t *testing.T) {
+		t.Parallel()
+		op := &Operation{Params: []ParamSpec{{Name: "lang", In: "query"}}}
+		extras := url.Values{}
+		injectContextQueryParams(op, "GET", "filter=foo", rctx, extras)
+		assert.Equal(t, "typescript", extras.Get("lang"))
+	})
+
+	t.Run("non-GET/HEAD methods are no-ops", func(t *testing.T) {
+		t.Parallel()
+		op := &Operation{Params: []ParamSpec{{Name: "lang", In: "query"}}}
+		for _, method := range []string{"POST", "PUT", "PATCH", "DELETE"} {
+			extras := url.Values{}
+			injectContextQueryParams(op, method, "", rctx, extras)
+			assert.Empty(t, extras, "method %s must not trigger injection", method)
+		}
+	})
+
+	t.Run("HEAD behaves like GET", func(t *testing.T) {
+		t.Parallel()
+		op := &Operation{Params: []ParamSpec{{Name: "lang", In: "query"}}}
+		extras := url.Values{}
+		injectContextQueryParams(op, "HEAD", "", rctx, extras)
+		assert.Equal(t, "typescript", extras.Get("lang"))
+	})
+
+	t.Run("nil rctx is a no-op", func(t *testing.T) {
+		t.Parallel()
+		op := &Operation{Params: []ParamSpec{{Name: "lang", In: "query"}}}
+		extras := url.Values{}
+		injectContextQueryParams(op, "GET", "", nil, extras)
+		assert.Empty(t, extras)
+	})
 }
 
 // TestResolveBindings_FieldValueStringification covers the non-string
