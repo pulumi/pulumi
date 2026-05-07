@@ -3151,3 +3151,183 @@ func TestModuleFormatTokenCollisions(t *testing.T) {
 		require.NoError(t, err)
 	})
 }
+
+// TestRequiredObjectCycles covers validateNoRequiredObjectCycles: object types
+// whose required-property graph reaches themselves through only direct object
+// references describe values of infinite size and must be rejected, while
+// cycles that pass through Array, Map, Union, or Optional are satisfiable and
+// must continue to bind.
+func TestRequiredObjectCycles(t *testing.T) {
+	t.Parallel()
+
+	stringSpec := TypeSpec{Type: "string"}
+	refSpec := func(token string) TypeSpec { return TypeSpec{Ref: "#/types/" + token} }
+	objType := func(props map[string]PropertySpec, required ...string) ComplexTypeSpec {
+		return ComplexTypeSpec{ObjectTypeSpec: ObjectTypeSpec{
+			Type:       "object",
+			Properties: props,
+			Required:   required,
+		}}
+	}
+	pkgWithTypes := func(types map[string]ComplexTypeSpec) PackageSpec {
+		return PackageSpec{Name: "test", Version: "1.0.0", Types: types}
+	}
+
+	t.Run("DirectRequiredCycleErrors", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: refSpec("test:index:A")},
+			}, "foo"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Equal(t, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary: "#/types/test:index:A: object type has unsatisfiable required-property cycle: " +
+				"test:index:A -> test:index:A",
+		}}, diags)
+	})
+
+	t.Run("IndirectRequiredCycleErrorsOncePerCycle", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"b": {TypeSpec: refSpec("test:index:B")},
+			}, "b"),
+			"test:index:B": objType(map[string]PropertySpec{
+				"a": {TypeSpec: refSpec("test:index:A")},
+			}, "a"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Equal(t, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary: "#/types/test:index:A: object type has unsatisfiable required-property cycle: " +
+				"test:index:A -> test:index:B -> test:index:A",
+		}}, diags)
+	})
+
+	t.Run("ThreeNodeRequiredCycleErrorsOncePerCycle", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"b": {TypeSpec: refSpec("test:index:B")},
+			}, "b"),
+			"test:index:B": objType(map[string]PropertySpec{
+				"c": {TypeSpec: refSpec("test:index:C")},
+			}, "c"),
+			"test:index:C": objType(map[string]PropertySpec{
+				"a": {TypeSpec: refSpec("test:index:A")},
+			}, "a"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Equal(t, hcl.Diagnostics{{
+			Severity: hcl.DiagError,
+			Summary: "#/types/test:index:A: object type has unsatisfiable required-property cycle: " +
+				"test:index:A -> test:index:B -> test:index:C -> test:index:A",
+		}}, diags)
+	})
+
+	t.Run("OptionalSelfReferenceIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: refSpec("test:index:A")},
+			}),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("RequiredSelfReferenceThroughArrayIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: TypeSpec{
+					Type:  "array",
+					Items: &TypeSpec{Ref: "#/types/test:index:A"},
+				}},
+			}, "foo"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("RequiredSelfReferenceThroughMapIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: TypeSpec{
+					Type:                 "object",
+					AdditionalProperties: &TypeSpec{Ref: "#/types/test:index:A"},
+				}},
+			}, "foo"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("RequiredSelfReferenceThroughUnionIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"foo": {TypeSpec: TypeSpec{
+					OneOf: []TypeSpec{stringSpec, refSpec("test:index:A")},
+				}},
+			}, "foo"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("AcyclicRequiredGraphIsAllowed", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:Leaf": objType(map[string]PropertySpec{
+				"name": {TypeSpec: stringSpec},
+			}, "name"),
+			"test:index:Branch": objType(map[string]PropertySpec{
+				"leaf": {TypeSpec: refSpec("test:index:Leaf")},
+			}, "leaf"),
+			"test:index:Root": objType(map[string]PropertySpec{
+				"branch": {TypeSpec: refSpec("test:index:Branch")},
+				"leaf":   {TypeSpec: refSpec("test:index:Leaf")},
+			}, "branch", "leaf"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+	})
+
+	t.Run("DisjointCyclesAreReportedSeparately", func(t *testing.T) {
+		t.Parallel()
+		spec := pkgWithTypes(map[string]ComplexTypeSpec{
+			"test:index:A": objType(map[string]PropertySpec{
+				"a": {TypeSpec: refSpec("test:index:A")},
+			}, "a"),
+			"test:index:B": objType(map[string]PropertySpec{
+				"b": {TypeSpec: refSpec("test:index:B")},
+			}, "b"),
+		})
+		_, diags, err := BindSpec(spec, nil, ValidationOptions{AllowDanglingReferences: true})
+		require.NoError(t, err)
+		assert.Equal(t, hcl.Diagnostics{
+			{
+				Severity: hcl.DiagError,
+				Summary: "#/types/test:index:A: object type has unsatisfiable required-property cycle: " +
+					"test:index:A -> test:index:A",
+			},
+			{
+				Severity: hcl.DiagError,
+				Summary: "#/types/test:index:B: object type has unsatisfiable required-property cycle: " +
+					"test:index:B -> test:index:B",
+			},
+		}, diags)
+	})
+}
