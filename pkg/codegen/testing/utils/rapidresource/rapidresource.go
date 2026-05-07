@@ -98,10 +98,9 @@ func drawPropertyMap(t *rapid.T, props []*schema.Property, depth int) property.M
 	return property.NewMap(out)
 }
 
-// drawValue emits a property.Value matching typ. The schema is required to
-// be free of required-recursive object cycles (enforced by
-// schema.ValidationOptions.RejectRequiredObjectCycles), but values may still
-// nest indefinitely through Array<T>/Map<T> chains; depth caps that.
+// drawValue emits a property.Value matching typ. The schema is free of
+// object cycles, but values may still nest indefinitely through
+// Array<T>/Map<T> chains; depth caps that.
 func drawValue(t *rapid.T, typ schema.Type, label string, depth int) property.Value {
 	if tok, ok := typ.(*schema.TokenType); ok {
 		if tok.UnderlyingType != nil {
@@ -170,12 +169,16 @@ func drawString(t *rapid.T, label string) property.Value {
 	return property.New(rapid.String().Draw(t, label+":s"))
 }
 
+// mapKeyGenerator draws an arbitrary string, prepending "__" some of the
+// time to exercise the importer's handling of keys that start with "__".
 func mapKeyGenerator() *rapid.Generator[string] {
-	return rapid.OneOf(
-		rapid.String(),
-		// Make sure we sometimes start with __
-		rapid.StringMatching(`^__[a-zA-Z][a-zA-Z0-9_]{0,7}$`),
-	)
+	return rapid.Custom(func(t *rapid.T) string {
+		s := rapid.String().Draw(t, "s")
+		if rapid.Bool().Draw(t, "prefix") {
+			return "__" + s
+		}
+		return s
+	})
 }
 
 func rapidAsset() *rapid.Generator[*asset.Asset] {
