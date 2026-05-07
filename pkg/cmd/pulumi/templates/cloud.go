@@ -157,7 +157,7 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 	if urlInfo != nil && urlInfo.Version() != nil {
 		// A version was specified - we need source/publisher/name to fetch directly
 		if urlInfo.Source() == "" || urlInfo.Publisher() == "" || urlInfo.Name() == "" {
-			s.addError(fmt.Errorf(
+			s.addError(errors.New(
 				"specific versions require a fully qualified template name: source/publisher/name@version"))
 			return
 		}
