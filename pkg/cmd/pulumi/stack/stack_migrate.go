@@ -17,6 +17,7 @@ package stack
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -31,6 +32,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -102,17 +104,51 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 	return cmd
 }
 
-// stackConfigFilePath mirrors LoadProjectStack's path resolution, honoring the package-level
-// ConfigFile override.
-func stackConfigFilePath(s backend.Stack) string {
+// stackConfigPath returns the on-disk Pulumi.<stack>.yaml path for the given bare stack name,
+// mirroring LoadProjectStack's resolution and honoring the package-level ConfigFile override.
+func stackConfigPath(name tokens.QName) string {
 	if ConfigFile != "" {
 		return ConfigFile
 	}
-	_, configPath, err := workspace.DetectProjectStackPath(s.Ref().Name().Q())
+	_, configPath, err := workspace.DetectProjectStackPath(name)
 	if err != nil {
 		return ""
 	}
 	return configPath
+}
+
+// snapshotConfigFile reads the current bytes at path. Returns (bytes, existed, err).
+// existed=false with err=nil means the path is absent. Caller should treat read errors as fatal.
+func snapshotConfigFile(path string) ([]byte, bool, error) {
+	if path == "" {
+		return nil, false, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	return data, true, nil
+}
+
+// restoreConfigFile writes orig back to path if existed, else removes path. Best-effort; logs to w.
+func restoreConfigFile(w io.Writer, path string, orig []byte, existed bool) {
+	if path == "" {
+		return
+	}
+	if existed {
+		if err := os.WriteFile(path, orig, 0o600); err != nil {
+			fmt.Fprintf(w, "Warning: failed to restore %s: %v\n", path, err)
+		} else {
+			fmt.Fprintf(w, "Restored %s to its pre-migration contents.\n", path)
+		}
+		return
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		fmt.Fprintf(w, "Warning: failed to remove %s: %v\n", path, err)
+	}
 }
 
 func (cmd *stackMigrateCmd) Run(
@@ -240,11 +276,20 @@ func (cmd *stackMigrateCmd) Run(
 	}
 
 	if !cmd.yes {
+		var sameNameWarn string
+		srcCfg := stackConfigPath(srcRef.Name().Q())
+		tgtCfg := stackConfigPath(targetRef.Name().Q())
+		if srcCfg != "" && srcCfg == tgtCfg {
+			sameNameWarn = fmt.Sprintf(
+				"Note: %s will be rewritten with the target's secrets configuration. The source\n"+
+					"stack's state on %s is unaffected, but the local config file will need to be\n"+
+					"restored from version control to keep using the source stack.\n",
+				srcCfg, sourceBE.Name(),
+			)
+		}
 		prompt := fmt.Sprintf(
-			"This will migrate stack %s from %s to %s as %s.\n"+
-				"The source stack will be left untouched.\n"+
-				"Continue?",
-			sourceStack.Ref(), sourceBE.Name(), targetBE.Name(), targetRef,
+			"This will migrate stack %s from %s to %s as %s.\n%sContinue?",
+			sourceStack.Ref(), sourceBE.Name(), targetBE.Name(), targetRef, sameNameWarn,
 		)
 		if !ui.ConfirmPrompt(prompt, "yes", dopts) {
 			fmt.Fprintln(stdout, "Migration cancelled")
@@ -253,28 +298,39 @@ func (cmd *stackMigrateCmd) Run(
 	}
 
 	// `srcPS.RawValue()` preserves the original Pulumi.<stack>.yaml bytes for trivia-preserving
-	// rollback. In the same-stack-name case the file is shared between source and target, so a
-	// partial failure could otherwise corrupt the local config that decrypts the source's secrets.
-	configPath := stackConfigFilePath(sourceStack)
-	origConfigBytes := srcPS.RawValue()
+	// rollback. We snapshot both source and target config paths because they may be the same file
+	// (same-name migration) or different files (--target rename); either may be created or
+	// mutated by CreateStack and the helpers below.
+	srcConfigPath := stackConfigPath(srcRef.Name().Q())
+	tgtConfigPath := stackConfigPath(targetRef.Name().Q())
+	srcConfigBytes := srcPS.RawValue()
+	srcConfigExisted := len(srcConfigBytes) > 0
+	sameConfigFile := tgtConfigPath != "" && tgtConfigPath == srcConfigPath
+	var tgtConfigBytes []byte
+	tgtConfigExisted := false
+	if !sameConfigFile {
+		bytes, existed, snapErr := snapshotConfigFile(tgtConfigPath)
+		if snapErr != nil {
+			return fmt.Errorf("snapshotting target stack config %s for rollback: %w", tgtConfigPath, snapErr)
+		}
+		tgtConfigBytes = bytes
+		tgtConfigExisted = existed
+	}
 
 	var (
 		committed     bool
 		targetStack   backend.Stack
 		targetCreated bool
-		mutatedConfig bool
 	)
 	defer func() {
 		if committed || retErr == nil {
 			return
 		}
 		// Best-effort rollback; surface failures without masking retErr.
-		if mutatedConfig && configPath != "" && len(origConfigBytes) > 0 {
-			if wErr := os.WriteFile(configPath, origConfigBytes, 0o600); wErr != nil {
-				fmt.Fprintf(stdout, "Warning: failed to restore %s: %v\n", configPath, wErr)
-			} else {
-				fmt.Fprintf(stdout, "Restored %s to its pre-migration contents.\n", configPath)
-			}
+		// Restore source first; in same-name migrations it's the only file we touched.
+		restoreConfigFile(stdout, srcConfigPath, srcConfigBytes, srcConfigExisted)
+		if !sameConfigFile {
+			restoreConfigFile(stdout, tgtConfigPath, tgtConfigBytes, tgtConfigExisted)
 		}
 		if targetCreated && targetStack != nil {
 			if _, rmErr := targetBE.RemoveStack(ctx, targetStack, true, false); rmErr != nil {
@@ -293,10 +349,15 @@ func (cmd *stackMigrateCmd) Run(
 		false,
 	)
 	if err != nil {
+		// CreateStack may have created the backend stack but then failed (e.g. saving local config
+		// after b.CreateStack succeeded). Recover the handle so the deferred rollback can clean up.
+		if probe, probeErr := targetBE.GetStack(ctx, targetRef); probeErr == nil && probe != nil {
+			targetStack = probe
+			targetCreated = true
+		}
 		return fmt.Errorf("creating target stack: %w", err)
 	}
 	targetCreated = true
-	mutatedConfig = true
 
 	// CreateStack short-circuits the Pulumi.<stack>.yaml rewrite when target=cloud and
 	// secrets-provider=default, so without this call the file would still carry the source's
@@ -350,7 +411,13 @@ func (cmd *stackMigrateCmd) Run(
 
 	fmt.Fprintf(stdout, "Migrated stack %s from %s to %s.\n",
 		sourceStack.Ref(), sourceBE.Name(), targetBE.Name())
-	fmt.Fprintf(stdout, "Source stack %s on %s was left untouched.\n",
-		sourceStack.Ref(), sourceBE.Name())
+	fmt.Fprintf(stdout, "Source stack state on %s is untouched.\n", sourceBE.Name())
+	if sameConfigFile && srcConfigPath != "" {
+		fmt.Fprintf(stdout,
+			"Note: %s was rewritten with the target's secrets configuration. To keep using the\n"+
+				"source stack locally, restore that file from version control before running pulumi\n"+
+				"against %s.\n",
+			srcConfigPath, sourceBE.Name())
+	}
 	return nil
 }
