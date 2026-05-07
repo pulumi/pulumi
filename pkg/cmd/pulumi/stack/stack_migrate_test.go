@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -30,6 +31,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -38,11 +42,57 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// fakeHTTPStateBackend is a minimal stub that satisfies httpstate.Backend so the
+// `targetBE.(httpstate.Backend)` assertion in shouldForceTargetSecretsRewrite resolves true.
+// Methods that aren't called by the gating logic panic if invoked; tests using this stub
+// should only exercise paths that don't reach them.
+type fakeHTTPStateBackend struct {
+	*backend.MockBackend
+}
+
+func (b *fakeHTTPStateBackend) CloudURL() string { return "https://api.pulumi.com" }
+
+func (b *fakeHTTPStateBackend) StackConsoleURL(_ backend.StackReference) (string, error) {
+	return "", nil
+}
+
+func (b *fakeHTTPStateBackend) Client() *client.Client { return nil }
+
+func (b *fakeHTTPStateBackend) Capabilities(_ context.Context) apitype.Capabilities {
+	return apitype.Capabilities{}
+}
+
+func (b *fakeHTTPStateBackend) RunDeployment(
+	_ context.Context, _ backend.StackReference, _ apitype.CreateDeploymentRequest,
+	_ display.Options, _ string, _ bool,
+) error {
+	panic("RunDeployment: not implemented in fakeHTTPStateBackend")
+}
+
+func (b *fakeHTTPStateBackend) Search(
+	_ context.Context, _ string, _ *apitype.PulumiQueryRequest,
+) (*apitype.ResourceSearchResponse, error) {
+	panic("Search: not implemented in fakeHTTPStateBackend")
+}
+
+func (b *fakeHTTPStateBackend) NaturalLanguageSearch(
+	_ context.Context, _ string, _ string,
+) (*apitype.ResourceSearchResponse, error) {
+	panic("NaturalLanguageSearch: not implemented in fakeHTTPStateBackend")
+}
+
+func (b *fakeHTTPStateBackend) PromptAI(
+	_ context.Context, _ httpstate.AIPromptRequestBody,
+) (*http.Response, error) {
+	panic("PromptAI: not implemented in fakeHTTPStateBackend")
+}
 
 // prefixCrypter is a test crypter that wraps plaintexts with a fixed tag so a test can assert
 // which crypter produced which ciphertext.
@@ -68,6 +118,37 @@ func (p prefixCrypter) BatchDecrypt(ctx context.Context, ciphertexts []string) (
 	return config.DefaultBatchDecrypt(ctx, p, ciphertexts)
 }
 
+// restoreConfigFile must return false when the underlying os write fails, so callers know to
+// preserve the redundant `.bak` rather than removing it (which could lose the only good copy
+// of the source config).
+func TestRestoreConfigFile_FailureKeepsCallerInformed(t *testing.T) { //nolint: paralleltest
+	dir := t.TempDir()
+	// Make `dir/sub` a file so writing under it fails ("not a directory").
+	blocker := dir + "/sub"
+	require.NoError(t, os.WriteFile(blocker, []byte("blocker"), 0o600))
+
+	var buf strings.Builder
+	ok := restoreConfigFile(&buf, blocker+"/cfg.yaml", []byte("orig"), 0o600, true /*existed*/)
+	assert.False(t, ok, "restore must report failure when WriteFile errors")
+	assert.Contains(t, buf.String(), "failed to restore",
+		"warning should mention the restore failure: %s", buf.String())
+}
+
+// restoreConfigFile happy path: returns true and writes "Restored ..." line.
+func TestRestoreConfigFile_SuccessReportsRestored(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := dir + "/Pulumi.dev.yaml"
+	require.NoError(t, os.WriteFile(path, []byte("mutated"), 0o600))
+
+	var buf strings.Builder
+	ok := restoreConfigFile(&buf, path, []byte("orig"), 0o600, true)
+	assert.True(t, ok)
+	got, _ := os.ReadFile(path)
+	assert.Equal(t, []byte("orig"), got)
+	assert.Contains(t, buf.String(), "Restored")
+}
+
 func runMigrate(
 	t *testing.T,
 	ws pkgWorkspace.Context,
@@ -82,6 +163,36 @@ func runMigrate(
 	cmd.SilenceUsage = true
 	cmd.SilenceErrors = true
 	return cmd.ExecuteContext(t.Context())
+}
+
+// shouldForceTargetSecretsRewrite gates the call to CreateSecretsManagerForExistingStack.
+// Cloud + default-provider must trigger; everything else must skip (otherwise non-cloud /
+// non-default flows re-prompt for passphrase).
+func TestShouldForceTargetSecretsRewrite(t *testing.T) {
+	t.Parallel()
+
+	cloud := &fakeHTTPStateBackend{MockBackend: &backend.MockBackend{}}
+	diy := &backend.MockBackend{}
+
+	tests := []struct {
+		name     string
+		backend  backend.Backend
+		provider string
+		want     bool
+	}{
+		{"cloud + default", cloud, "default", true},
+		{"cloud + empty (default)", cloud, "", true},
+		{"cloud + passphrase", cloud, "passphrase", false},
+		{"cloud + awskms", cloud, "awskms://alias/k", false},
+		{"diy + default", diy, "default", false},
+		{"diy + passphrase", diy, "passphrase", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, shouldForceTargetSecretsRewrite(tt.backend, tt.provider))
+		})
+	}
 }
 
 func TestStackMigrate_RequiresURLArg(t *testing.T) {
@@ -980,4 +1091,1261 @@ func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: parallelte
 		"resource secret should have been re-encrypted under the target crypter: %s", importedJSON)
 	assert.NotContains(t, importedJSON, `src:\"state-plaintext\"`,
 		"source ciphertext should have been replaced: %s", importedJSON)
+}
+
+// Same-name migration overwrites Pulumi.<stack>.yaml; the command should drop a `.bak` of the
+// pre-migration content next to it so the user can recover source-side secrets locally.
+func TestStackMigrate_BacksUpSameNameConfigFile(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	srcPSContent := []byte("config:\n  proj:plain: hello\n")
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", srcPSContent, 0o600))
+
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "passphrase" },
+		StateF:     func() json.RawMessage { return nil },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	srcDep := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(`{"manifest":{"time":"2026-01-01T00:00:00Z","magic":"","version":""}}`),
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, _ *apitype.UntypedDeployment) error {
+			return nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	require.NoError(t, err)
+
+	bakBytes, err := os.ReadFile("Pulumi.dev.yaml.bak")
+	require.NoError(t, err, "expected sibling .bak with pre-migration source ps content")
+	assert.Equal(t, srcPSContent, bakBytes, "backup must capture pre-migration bytes")
+}
+
+// When a previous migration already left a Pulumi.<stack>.yaml.bak in place, a re-run must NOT
+// clobber it. The new backup falls through to a numbered suffix so the original is preserved.
+func TestStackMigrate_BackupAvoidsClobberingExistingBak(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config:\n  proj:plain: now\n"), 0o600))
+	originalBak := []byte("preserved-original-backup")
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml.bak", originalBak, 0o600))
+
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "passphrase" },
+		StateF:     func() json.RawMessage { return nil },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	srcDep := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(`{"manifest":{"time":"2026-01-01T00:00:00Z","magic":"","version":""}}`),
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, _ *apitype.UntypedDeployment) error {
+			return nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	require.NoError(t, err)
+
+	// Original .bak preserved.
+	got, err := os.ReadFile("Pulumi.dev.yaml.bak")
+	require.NoError(t, err)
+	assert.Equal(t, originalBak, got, "pre-existing .bak must not be clobbered")
+
+	// New backup falls through to .bak.1 with the just-overwritten source ps.
+	bak1, err := os.ReadFile("Pulumi.dev.yaml.bak.1")
+	require.NoError(t, err, "expected new backup at .bak.1")
+	assert.Equal(t, []byte("config:\n  proj:plain: now\n"), bak1)
+}
+
+// Renaming via --target rewrites the source stack's URNs to the new name in the imported
+// deployment, so SaveSnapshot's per-resource URN check passes without requiring --force.
+func TestStackMigrate_RewritesURNsOnRename(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}"), 0o600))
+
+	ctx := t.Context()
+
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "test-prefix" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	customProvider := (&secrets.MockProvider{}).Add(
+		"test-prefix",
+		func(state json.RawMessage) (secrets.Manager, error) { return srcSM, nil },
+	)
+
+	// Build a real source snapshot with a Stack root + a child resource so we can verify both URN
+	// patterns get rewritten (root URN's name uses `<project>-<stack>`, others use the resource name).
+	rootURN := resource.NewURN("dev", "proj", "", resource.RootStackType, "proj-dev")
+	childURN := resource.NewURN("dev", "proj", resource.RootStackType, "random:index/randomPet:RandomPet", "pet")
+	snap := &deploy.Snapshot{
+		SecretsManager: srcSM,
+		Resources: []*resource.State{
+			{URN: rootURN, Type: resource.RootStackType},
+			{URN: childURN, Type: "random:index/randomPet:RandomPet", Parent: rootURN},
+		},
+	}
+	srcDep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev-renamed",
+				NameV:               tokens.MustParseStackName("dev-renamed"),
+				FullyQualifiedNameV: "dev-renamed",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+
+	var imported *apitype.UntypedDeployment
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+			imported = deployment
+			return nil
+		},
+		RemoveStackF: func(ctx context.Context, s backend.Stack, force, removeBackups bool) (bool, error) {
+			return false, nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	// Bypass newStackMigrateCmd so we can inject deploymentSecretsProvider; URN rewrite should
+	// make SaveSnapshot's per-resource URN check pass without --force.
+	smcmd := &stackMigrateCmd{
+		targetStack:               "dev-renamed",
+		secretsProvider:           "default",
+		yes:                       true,
+		deploymentSecretsProvider: customProvider,
+	}
+	cobraCmd := &cobra.Command{}
+	cobraCmd.SetContext(ctx)
+	cobraCmd.SetOut(io.Discard)
+	cobraCmd.SetErr(io.Discard)
+
+	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	require.NoError(t, err)
+	require.NotNil(t, imported)
+	importedJSON := string(imported.Deployment)
+	assert.Contains(t, importedJSON, `urn:pulumi:dev-renamed::proj::pulumi:pulumi:Stack::proj-dev-renamed`,
+		"root URN should reference the renamed stack: %s", importedJSON)
+	assert.Contains(t, importedJSON, `urn:pulumi:dev-renamed::proj::random:index/randomPet:RandomPet::pet`,
+		"child URN should reference the renamed stack: %s", importedJSON)
+	assert.NotContains(t, importedJSON, `urn:pulumi:dev::proj::`,
+		"no resource URN should still reference the source stack name: %s", importedJSON)
+}
+
+// Rename must rewrite URNs in every URN-bearing field of resource.State (Aliases, ViewOf), plus
+// ResourceReference URNs nested anywhere inside Inputs / Outputs / ReplacementTrigger property
+// trees. This test exercises a state with all of those simultaneously.
+func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}"), 0o600))
+
+	ctx := t.Context()
+
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "test-prefix" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	customProvider := (&secrets.MockProvider{}).Add(
+		"test-prefix",
+		func(state json.RawMessage) (secrets.Manager, error) { return srcSM, nil },
+	)
+
+	rootURN := resource.NewURN("dev", "proj", "", resource.RootStackType, "proj-dev")
+	parentURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Parent", "p")
+	siblingURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Sibling", "sib")
+	aliasURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Old", "old-name")
+	viewURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Owner", "owner")
+	depURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Dep", "d")
+	propDepURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:PropDep", "pd")
+	deletedWithURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Owner", "del")
+	replaceWithURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Trigger", "rw")
+	providerURN := resource.NewURN("dev", "proj", resource.RootStackType, "pulumi:providers:pkg", "default")
+	providerRef, perr := providers.NewReference(providerURN, "providerID")
+	require.NoError(t, perr)
+
+	// Inputs holds a ResourceReference; Outputs nests one inside an array+secret; ReplacementTrigger
+	// is a top-level ResourceReference. All must be rewritten.
+	inputs := resource.PropertyMap{
+		"ref": resource.NewProperty(resource.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"}),
+	}
+	outputs := resource.PropertyMap{
+		"refs": resource.NewProperty([]resource.PropertyValue{
+			resource.MakeSecret(resource.NewProperty(resource.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})),
+		}),
+	}
+	replacementTrigger := resource.NewProperty(resource.ResourceReference{URN: siblingURN, Type: "pkg:Sibling"})
+
+	snap := &deploy.Snapshot{
+		SecretsManager: srcSM,
+		Resources: []*resource.State{
+			{URN: rootURN, Type: resource.RootStackType},
+			// Provider resource referenced by parent.Provider so the snapshot integrity check
+			// resolves the reference to a known provider.
+			{URN: providerURN, Type: "pulumi:providers:pkg", Custom: true, ID: "providerID"},
+			{
+				URN:                  parentURN,
+				Type:                 "pkg:Parent",
+				Parent:               rootURN,
+				Aliases:              []resource.URN{aliasURN},
+				ViewOf:               viewURN,
+				Inputs:               inputs,
+				Outputs:              outputs,
+				Dependencies:         []resource.URN{depURN},
+				PropertyDependencies: map[resource.PropertyKey][]resource.URN{"k": {propDepURN}},
+				DeletedWith:          deletedWithURN,
+				ReplaceWith:          []resource.URN{replaceWithURN},
+				Provider:             providerRef.String(),
+			},
+			{
+				URN:                siblingURN,
+				Type:               "pkg:Sibling",
+				Parent:             rootURN,
+				ReplacementTrigger: replacementTrigger,
+			},
+		},
+	}
+	srcDep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev-renamed",
+				NameV:               tokens.MustParseStackName("dev-renamed"),
+				FullyQualifiedNameV: "dev-renamed",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+
+	var imported *apitype.UntypedDeployment
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+			imported = deployment
+			return nil
+		},
+		RemoveStackF: func(ctx context.Context, s backend.Stack, force, removeBackups bool) (bool, error) {
+			return false, nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	// --force lets the integrity check pass even though we didn't materialize every dependency
+	// resource above; the test cares only about URN rewriting.
+	smcmd := &stackMigrateCmd{
+		targetStack:               "dev-renamed",
+		secretsProvider:           "default",
+		yes:                       true,
+		force:                     true,
+		deploymentSecretsProvider: customProvider,
+	}
+	cobraCmd := &cobra.Command{}
+	cobraCmd.SetContext(ctx)
+	cobraCmd.SetOut(io.Discard)
+	cobraCmd.SetErr(io.Discard)
+
+	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	require.NoError(t, err)
+	require.NotNil(t, imported)
+	got := string(imported.Deployment)
+
+	// No URN with old "dev" stack should remain anywhere in the imported deployment.
+	assert.NotContains(t, got, `urn:pulumi:dev::proj::`,
+		"no URN should still reference the source stack: %s", got)
+
+	// Spot-check that each auxiliary field's URN got renamed.
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:Old::old-name`, "alias URN: %s", got)
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:Owner::owner`, "viewOf URN: %s", got)
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:Sibling::sib`,
+		"property-tree ResourceReference URNs (Inputs / Outputs / ReplacementTrigger): %s", got)
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:Dep::d`, "Dependencies URN: %s", got)
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:PropDep::pd`, "PropertyDependencies URN: %s", got)
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:Owner::del`, "DeletedWith URN: %s", got)
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:Trigger::rw`, "ReplaceWith URN: %s", got)
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pulumi:providers:pkg::default::providerID`,
+		"Provider reference URN: %s", got)
+}
+
+// --target org/different-proj/stack moves the stack to a new project. URNs in the imported
+// deployment must also have their project component rewritten (otherwise they keep referencing
+// the source project and stop matching the cloud stack identity).
+func TestStackMigrate_RewritesProjectOnTargetWithNewProject(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}"), 0o600))
+
+	ctx := t.Context()
+
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "test-prefix" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	customProvider := (&secrets.MockProvider{}).Add(
+		"test-prefix",
+		func(state json.RawMessage) (secrets.Manager, error) { return srcSM, nil },
+	)
+
+	rootURN := resource.NewURN("dev", "proj", "", resource.RootStackType, "proj-dev")
+	childURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Child", "c")
+	snap := &deploy.Snapshot{
+		SecretsManager: srcSM,
+		Resources: []*resource.State{
+			{URN: rootURN, Type: resource.RootStackType},
+			{URN: childURN, Type: "pkg:Child", Parent: rootURN},
+		},
+	}
+	srcDep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+				ProjectV: "proj",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+				ProjectV: "proj",
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "renamed-proj/dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				ProjectV:            "renamed-proj",
+				FullyQualifiedNameV: "renamed-proj/dev",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+
+	var imported *apitype.UntypedDeployment
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			// Parse "renamed-proj/dev" -> name=dev, project=renamed-proj.
+			parts := strings.Split(s, "/")
+			name := parts[len(parts)-1]
+			var proj tokens.Name
+			if len(parts) >= 2 {
+				proj = tokens.Name(parts[len(parts)-2])
+			}
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(name),
+				ProjectV:            proj,
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+			imported = deployment
+			return nil
+		},
+		RemoveStackF: func(ctx context.Context, s backend.Stack, force, removeBackups bool) (bool, error) {
+			return false, nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	// --target keeps stack name "dev" but moves to project "renamed-proj"; URNs must reflect that.
+	smcmd := &stackMigrateCmd{
+		targetStack:               "renamed-proj/dev",
+		secretsProvider:           "default",
+		yes:                       true,
+		deploymentSecretsProvider: customProvider,
+	}
+	cobraCmd := &cobra.Command{}
+	cobraCmd.SetContext(ctx)
+	cobraCmd.SetOut(io.Discard)
+	cobraCmd.SetErr(io.Discard)
+
+	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	require.NoError(t, err)
+	require.NotNil(t, imported)
+	got := string(imported.Deployment)
+
+	assert.Contains(t, got, `urn:pulumi:dev::renamed-proj::pulumi:pulumi:Stack::renamed-proj-dev`,
+		"root URN should reference the new project: %s", got)
+	assert.Contains(t, got, `urn:pulumi:dev::renamed-proj::pkg:Child::c`,
+		"child URN should reference the new project: %s", got)
+	assert.NotContains(t, got, `::proj::`,
+		"no URN should still reference the source project: %s", got)
+}
+
+// Positive ErrSaveStackConfig path: b.CreateStack succeeds but the post-create
+// SaveProjectStack fails, so CreateStack returns ErrSaveStackConfig. The migrate command must
+// adopt the orphaned backend stack and the deferred rollback must remove it.
+func TestStackMigrate_RollsBackOnSaveStackConfigError(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}"), 0o600))
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test-passphrase-for-test")
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+	}
+	srcDep := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(`{"manifest":{"time":"2026-01-01T00:00:00Z","magic":"","version":""}}`),
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+
+	// Target stack uses remote config storage so SaveProjectStack hits SaveRemoteConfig, which
+	// we make fail. Combined with --secrets-provider=passphrase (sets EncryptionSalt → needsSave
+	// = true), this is a clean way to trigger ErrSaveStackConfig from io.go's CreateStack.
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF:        func() backend.Backend { return targetBE },
+		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{IsRemote: true} },
+		LoadRemoteF: func(_ context.Context, _ *workspace.Project) (*workspace.ProjectStack, error) {
+			return &workspace.ProjectStack{}, nil
+		},
+		SaveRemoteF: func(_ context.Context, _ *workspace.ProjectStack) error {
+			return errors.New("simulated remote save failure")
+		},
+	}
+
+	var (
+		createCalls int
+		probedAfter bool
+		removeCalls int
+		removedRef  string
+	)
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			// First call is the preflight check: target absent. Subsequent calls are the
+			// recovery probe after CreateStack returns ErrSaveStackConfig: target present.
+			if createCalls == 0 {
+				return nil, nil
+			}
+			probedAfter = true
+			return tgtStack, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			createCalls++
+			return tgtStack, nil
+		},
+		RemoveStackF: func(ctx context.Context, s backend.Stack, force, removeBackups bool) (bool, error) {
+			removeCalls++
+			removedRef = s.Ref().String()
+			return false, nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	err := runMigrate(t, ws, lm, []string{
+		"file:///tmp/source", "dev",
+		"--secrets-provider", "passphrase",
+		"--yes",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "creating target stack")
+	assert.True(t, probedAfter, "recovery probe should have fired after ErrSaveStackConfig")
+	assert.Equal(t, 1, removeCalls, "rollback should call RemoveStack once on the adopted stack")
+	assert.Equal(t, "dev", removedRef)
+}
+
+// Legacy DIY refs return no Project(); the migrate command must fall back to the local
+// Pulumi.yaml's project name so foreign-project URNs sharing a stack name aren't rewritten.
+func TestStackMigrate_RenameLegacyRefFallsBackToLocalProject(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}"), 0o600))
+
+	ctx := t.Context()
+
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "test-prefix" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	customProvider := (&secrets.MockProvider{}).Add(
+		"test-prefix",
+		func(state json.RawMessage) (secrets.Manager, error) { return srcSM, nil },
+	)
+
+	// `proj` matches the local Pulumi.yaml; `foreign` is an unrelated project that just happens
+	// to share the stack name "dev". Without the fallback fix, the foreign URN would be clobbered.
+	rootURN := resource.NewURN("dev", "proj", "", resource.RootStackType, "proj-dev")
+	ourURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Mine", "m")
+	foreignURN := resource.NewURN("dev", "foreign", resource.RootStackType, "pkg:Foreign", "f")
+	snap := &deploy.Snapshot{
+		SecretsManager: srcSM,
+		Resources: []*resource.State{
+			{URN: rootURN, Type: resource.RootStackType},
+			{URN: ourURN, Type: "pkg:Mine", Parent: rootURN},
+			{URN: foreignURN, Type: "pkg:Foreign", Parent: rootURN},
+		},
+	}
+	srcDep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+
+	var sourceBE *backend.MockBackend
+	// MockStackReference with no ProjectV: Project() returns ("", false), simulating a legacy
+	// DIY ref. The migrate command must fall back to project.Name from ReadProject.
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev-renamed", NameV: tokens.MustParseStackName("dev-renamed"), FullyQualifiedNameV: "dev-renamed",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+
+	var imported *apitype.UntypedDeployment
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+			imported = deployment
+			return nil
+		},
+		RemoveStackF: func(ctx context.Context, s backend.Stack, force, removeBackups bool) (bool, error) {
+			return false, nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	smcmd := &stackMigrateCmd{
+		targetStack:               "dev-renamed",
+		secretsProvider:           "default",
+		yes:                       true,
+		force:                     true,
+		deploymentSecretsProvider: customProvider,
+	}
+	cobraCmd := &cobra.Command{}
+	cobraCmd.SetContext(ctx)
+	cobraCmd.SetOut(io.Discard)
+	cobraCmd.SetErr(io.Discard)
+
+	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	require.NoError(t, err)
+	require.NotNil(t, imported)
+	got := string(imported.Deployment)
+
+	// Local-project URN renamed.
+	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:Mine::m`,
+		"local-project URN should be rewritten: %s", got)
+	// Foreign-project URN preserved despite sharing the stack name.
+	assert.Contains(t, got, `urn:pulumi:dev::foreign::pkg:Foreign::f`,
+		"foreign-project URN must not be rewritten: %s", got)
+}
+
+// Pre-existing Pulumi.<target>.yaml may carry stale config. Migration must replace, not merge,
+// so target-only keys absent from the source are wiped.
+func TestStackMigrate_ReplacesPreExistingTargetConfig(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config:\n  proj:fromSource: A\n"), 0o600))
+	// Pre-existing target ps with stale config AND stale ESC environment imports.
+	require.NoError(t, os.WriteFile("Pulumi.dev-tgt.yaml",
+		[]byte("environment:\n  - org/zombie-env\nconfig:\n  proj:stale: zombie\n"), 0o600))
+
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "passphrase" },
+		StateF:     func() json.RawMessage { return nil },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev", NameV: tokens.MustParseStackName("dev"), FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	srcDep := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(`{"manifest":{"time":"2026-01-01T00:00:00Z","magic":"","version":""}}`),
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV: "dev-tgt", NameV: tokens.MustParseStackName("dev-tgt"), FullyQualifiedNameV: "dev-tgt",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV: s, NameV: tokens.MustParseStackName(s), FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, _ *apitype.UntypedDeployment) error {
+			return nil
+		},
+		RemoveStackF: func(ctx context.Context, s backend.Stack, force, removeBackups bool) (bool, error) {
+			return false, nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	err := runMigrate(t, ws, lm, []string{
+		"file:///tmp/source", "dev", "--target", "dev-tgt", "--yes",
+	})
+	require.NoError(t, err)
+
+	got, err := os.ReadFile("Pulumi.dev-tgt.yaml")
+	require.NoError(t, err)
+	gotStr := string(got)
+	assert.Contains(t, gotStr, "proj:fromSource: A",
+		"target ps should carry source-side config: %s", gotStr)
+	assert.NotContains(t, gotStr, "proj:stale",
+		"pre-existing target-only config must be wiped, not merged: %s", gotStr)
+	assert.NotContains(t, gotStr, "zombie",
+		"pre-existing target-only config or env imports must be wiped: %s", gotStr)
 }
