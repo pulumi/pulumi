@@ -48,6 +48,26 @@ from .util import camel_case
 
 _NoneType = type(None)  # Available as typing.NoneType in >= 3.10
 
+# NotRequired and Required were added to typing in 3.11, fallback to typing_extensions
+_NotRequiredTypes: tuple[Any, ...] = ()
+_RequiredTypes: tuple[Any, ...] = ()
+try:
+    from typing import NotRequired as _TypingNotRequired  # type: ignore[attr-defined,unused-ignore]
+    from typing import Required as _TypingRequired  # type: ignore[attr-defined,unused-ignore]
+
+    _NotRequiredTypes += (_TypingNotRequired,)
+    _RequiredTypes += (_TypingRequired,)
+except ImportError:
+    pass
+try:
+    from typing_extensions import NotRequired as _TypingExtNotRequired
+    from typing_extensions import Required as _TypingExtRequired
+
+    _NotRequiredTypes += (_TypingExtNotRequired,)
+    _RequiredTypes += (_TypingExtRequired,)
+except ImportError:
+    pass
+
 # Types for parameterized generics got a clean public API in 3.9 with
 # https://peps.python.org/pep-0585/.
 # The modern types like `dict[str, int]` use `GenericAlias`, but some
@@ -382,12 +402,17 @@ class Analyzer:
             )
         """
         # Walk the MRO to include annotations from base classes, filtering
-        # out private attributes and Pulumi SDK base classes.
+        # out private attributes and Pulumi SDK base classes. For TypedDicts
+        # we also collect the __optional_keys__, which combine `total=False` and
+        # `NotRequired[T]` markers across the inheritance chain.
         ann: dict[str, type] = {}
+        optional_keys: set[str] = set()
         for cls in reversed(typ.__mro__):
             if cls is object or cls is Resource or cls is ComponentResource:
                 continue
             ann.update(inspect.get_annotations(cls))
+            if typing.is_typeddict(cls):
+                optional_keys.update(getattr(cls, "__optional_keys__", ()))
         ann = {k: v for k, v in ann.items() if not k.startswith("_")}
         mapping: dict[str, str] = {camel_case(k): k for k in ann.keys()}
         return {
@@ -397,6 +422,7 @@ class Analyzer:
                 k,
                 can_be_plain=not is_component_output,
                 is_component_output=is_component_output,
+                optional=True if k in optional_keys else None,
             )
             for k, v in ann.items()
         }, mapping
@@ -462,6 +488,24 @@ class Analyzer:
                 can_be_plain=can_be_plain,
                 is_component_output=is_component_output,
                 optional=True,
+            )
+        elif is_not_required(arg):
+            return self.analyze_property(
+                unwrap_not_required(arg),
+                typ,
+                name,
+                can_be_plain=can_be_plain,
+                is_component_output=is_component_output,
+                optional=True,
+            )
+        elif is_required(arg):
+            return self.analyze_property(
+                unwrap_required(arg),
+                typ,
+                name,
+                can_be_plain=can_be_plain,
+                is_component_output=is_component_output,
+                optional=False,
             )
         elif is_any(arg):
             return PropertyDefinition(
@@ -835,6 +879,30 @@ def unwrap_optional(typ: type) -> type:
         if element is not _NoneType:
             return element
     raise ValueError("Optional type with no non-None elements")
+
+
+def is_not_required(typ: Any) -> bool:
+    if not _NotRequiredTypes:
+        return False
+    return get_origin(typ) in _NotRequiredTypes
+
+
+def unwrap_not_required(typ: Any) -> type:
+    if not is_not_required(typ):
+        raise ValueError(f"{typ} is not a NotRequired type")
+    return get_args(typ)[0]
+
+
+def is_required(typ: Any) -> bool:
+    if not _RequiredTypes:
+        return False
+    return get_origin(typ) in _RequiredTypes
+
+
+def unwrap_required(typ: Any) -> type:
+    if not is_required(typ):
+        raise ValueError(f"{typ} is not a Required type")
+    return get_args(typ)[0]
 
 
 def is_output(typ: type):
