@@ -15,37 +15,27 @@
 package stack
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"io"
-	"net/url"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
-	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type stackMigrateCmd struct {
-	stdout io.Writer
-
-	from            string
-	sourceStack     string
 	targetStack     string
 	secretsProvider string
 	yes             bool
@@ -55,7 +45,7 @@ type stackMigrateCmd struct {
 func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
 	var smcmd stackMigrateCmd
 	cmd := &cobra.Command{
-		Use:   "migrate",
+		Use:   "migrate <url> [stack-name]",
 		Short: "Migrate a stack from another backend to the currently logged-in backend",
 		Long: "Migrate a stack from another backend (e.g. a DIY backend) to the currently logged-in backend.\n" +
 			"\n" +
@@ -67,37 +57,31 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 			"To migrate a stack from a DIY backend (e.g. file://, s3://, azblob://, gs://) to the currently\n" +
 			"logged-in Pulumi Cloud backend:\n" +
 			"\n" +
-			"* `pulumi stack migrate --from file://~ my-app-production`\n" +
+			"* `pulumi stack migrate file://~ my-app-production`\n" +
 			"\n" +
 			"To target a specific organization on Pulumi Cloud, supply the fully qualified target stack name:\n" +
 			"\n" +
-			"* `pulumi stack migrate --from s3://my-bucket --target acmecorp/my-app/production production`\n" +
+			"* `pulumi stack migrate s3://my-bucket production --target acmecorp/my-app/production`\n" +
+			"\n" +
+			"If no stack name is given and the terminal is interactive, you will be prompted to choose one\n" +
+			"from the source backend, like `pulumi stack select`.\n" +
 			"\n" +
 			"To use a non-default secrets provider for the target stack, pass `--secrets-provider`. Valid\n" +
 			"values are the same as those accepted by `pulumi stack init`: `default`, `passphrase`, `awskms`,\n" +
 			"`azurekeyvault`, `gcpkms`, `hashivault`.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx := cmd.Context()
-			return smcmd.Run(ctx, ws, lm, args)
+			return smcmd.Run(cmd, ws, lm, args)
 		},
 	}
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "source-stack-name"},
+			{Name: "url"},
+			{Name: "stack-name"},
 		},
-		Required: 0,
+		Required: 1,
 	})
 
-	cmd.PersistentFlags().StringVar(
-		&smcmd.from, "from", "",
-		"The URL of the source backend to migrate from (e.g. file://~, s3://my-bucket, https://api.pulumi.com)",
-	)
-	cmd.PersistentFlags().StringVar(
-		&smcmd.sourceStack, "source-stack", "",
-		"The name of the stack to migrate from the source backend. "+
-			"Defaults to the positional argument or the currently selected stack",
-	)
 	cmd.PersistentFlags().StringVar(
 		&smcmd.targetStack, "target", "",
 		"The name of the stack to create in the target backend. Defaults to the source stack name. "+
@@ -118,28 +102,6 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 	return cmd
 }
 
-// normalizeBackendURL canonicalizes a backend URL so equivalent forms (e.g. `file://~` and
-// `file:///home/user`, trailing slashes) compare equal in the same-backend guard.
-func normalizeBackendURL(s string) string {
-	if s == "" {
-		return s
-	}
-	s = strings.TrimRight(s, "/")
-	if path, ok := strings.CutPrefix(s, "file://"); ok {
-		if rest, hasTilde := strings.CutPrefix(path, "~"); hasTilde {
-			if home, err := os.UserHomeDir(); err == nil {
-				path = home + rest
-			}
-		}
-		return "file://" + filepath.Clean(path)
-	}
-	if u, err := url.Parse(s); err == nil && u.Scheme != "" {
-		u.Path = strings.TrimRight(u.Path, "/")
-		return u.String()
-	}
-	return s
-}
-
 // stackConfigFilePath mirrors LoadProjectStack's path resolution, honoring the package-level
 // ConfigFile override.
 func stackConfigFilePath(s backend.Stack) string {
@@ -154,31 +116,28 @@ func stackConfigFilePath(s backend.Stack) string {
 }
 
 func (cmd *stackMigrateCmd) Run(
-	ctx context.Context, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, args []string,
+	cobraCmd *cobra.Command, ws pkgWorkspace.Context, lm cmdBackend.LoginManager, args []string,
 ) (retErr error) {
-	stdout := cmd.stdout
-	if stdout == nil {
-		stdout = os.Stdout
-	}
-	sink := cmdutil.Diag()
+	ctx := cobraCmd.Context()
+	stdout := cobraCmd.OutOrStdout()
+	stderr := cobraCmd.ErrOrStderr()
+	stdin := cobraCmd.InOrStdin()
+	color := cmdutil.GetGlobalColorization()
+	sink := diag.DefaultSink(stdout, stderr, diag.FormatOptions{Color: color})
 	dopts := display.Options{
-		Color: cmdutil.GetGlobalColorization(),
+		Color:  color,
+		Stdout: stdout,
+		Stdin:  stdin,
 	}
 
-	if cmd.from == "" {
-		return errors.New("--from is required: the URL of the source backend to migrate from")
+	sourceURL := args[0]
+	var sourceStackName string
+	if len(args) >= 2 {
+		sourceStackName = args[1]
 	}
 
 	if err := ValidateSecretsProvider(cmd.secretsProvider); err != nil {
 		return err
-	}
-
-	sourceStackName := cmd.sourceStack
-	if len(args) > 0 {
-		if sourceStackName != "" {
-			return errors.New("only one of --source-stack or the positional source stack name may be specified")
-		}
-		sourceStackName = args[0]
 	}
 
 	project, root, err := ws.ReadProject()
@@ -187,14 +146,13 @@ func (cmd *stackMigrateCmd) Run(
 	}
 
 	// setCurrent=false: open source without overwriting the saved current cloud URL.
-	sourceInsecure := pkgWorkspace.GetCloudInsecure(ws, cmd.from)
 	sourceBE, err := lm.Login(
-		ctx, ws, sink, cmd.from, project,
+		ctx, ws, sink, sourceURL, project,
 		false,
-		sourceInsecure, dopts.Color,
+		pkgWorkspace.GetCloudInsecure(ws, sourceURL), color,
 	)
 	if err != nil {
-		return fmt.Errorf("opening source backend %q: %w", cmd.from, err)
+		return fmt.Errorf("opening source backend %q: %w", sourceURL, err)
 	}
 
 	targetBE, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, dopts)
@@ -202,20 +160,20 @@ func (cmd *stackMigrateCmd) Run(
 		return fmt.Errorf("opening target backend: %w", err)
 	}
 
-	if normalizeBackendURL(targetBE.URL()) == normalizeBackendURL(sourceBE.URL()) {
+	if targetBE.URL() == sourceBE.URL() {
 		return fmt.Errorf("source and target backends are the same (%s); nothing to migrate", targetBE.URL())
 	}
 
 	var sourceStack backend.Stack
 	var srcRef backend.StackReference
 	if sourceStackName == "" {
-		s, err := state.CurrentStack(ctx, ws, sourceBE)
+		// Behave like `pulumi stack select`: in interactive mode prompt the user to pick a stack
+		// from the source backend; in non-interactive mode ChooseStack errors out.
+		// Passing SetCurrent here is XORed off inside ChooseStack so we don't change the
+		// workspace's currently-selected stack.
+		s, err := ChooseStack(ctx, sink, ws, sourceBE, SetCurrent, dopts)
 		if err != nil {
-			return fmt.Errorf("looking up currently selected stack on source backend: %w", err)
-		}
-		if s == nil {
-			return errors.New("no source stack: provide one as a positional argument, via --source-stack, " +
-				"or by selecting one with `pulumi stack select`")
+			return err
 		}
 		sourceStack = s
 		srcRef = s.Ref()
@@ -255,9 +213,9 @@ func (cmd *stackMigrateCmd) Run(
 			targetRef, targetBE.Name())
 	}
 
-	// We keep srcPS in memory rather than deep-copying because creating the target stack
-	// rewrites the shared Pulumi.<stack>.yaml on disk, and `deepcopy.Copy` zero-values
-	// `config.Key`/`config.Value` (unexported-only structs).
+	// Keep srcPS in memory rather than deep-copying: creating the target stack may rewrite the
+	// shared Pulumi.<stack>.yaml on disk, and `deepcopy.Copy` zero-values `config.Key` /
+	// `config.Value` (unexported-only structs).
 	srcPS, err := LoadProjectStack(ctx, sink, project, sourceStack)
 	if err != nil {
 		return fmt.Errorf("loading source stack config: %w", err)
@@ -294,19 +252,11 @@ func (cmd *stackMigrateCmd) Run(
 		}
 	}
 
-	// Same-name source and target share Pulumi.<stack>.yaml; snapshot it for rollback so
-	// a partial failure can't strand the source's secrets undecryptable.
+	// `srcPS.RawValue()` preserves the original Pulumi.<stack>.yaml bytes for trivia-preserving
+	// rollback. In the same-stack-name case the file is shared between source and target, so a
+	// partial failure could otherwise corrupt the local config that decrypts the source's secrets.
 	configPath := stackConfigFilePath(sourceStack)
-	var origConfigBytes []byte
-	configExisted := false
-	if configPath != "" {
-		if data, readErr := os.ReadFile(configPath); readErr == nil {
-			origConfigBytes = data
-			configExisted = true
-		} else if !os.IsNotExist(readErr) {
-			return fmt.Errorf("snapshotting stack config %s for rollback: %w", configPath, readErr)
-		}
-	}
+	origConfigBytes := srcPS.RawValue()
 
 	var (
 		committed     bool
@@ -319,21 +269,15 @@ func (cmd *stackMigrateCmd) Run(
 			return
 		}
 		// Best-effort rollback; surface failures without masking retErr.
-		if mutatedConfig && configPath != "" {
-			if configExisted {
-				if wErr := os.WriteFile(configPath, origConfigBytes, 0o600); wErr != nil {
-					fmt.Fprintf(stdout, "Warning: failed to restore %s: %v\n", configPath, wErr)
-				} else {
-					fmt.Fprintf(stdout, "Restored %s to its pre-migration contents.\n", configPath)
-				}
+		if mutatedConfig && configPath != "" && len(origConfigBytes) > 0 {
+			if wErr := os.WriteFile(configPath, origConfigBytes, 0o600); wErr != nil {
+				fmt.Fprintf(stdout, "Warning: failed to restore %s: %v\n", configPath, wErr)
 			} else {
-				if rErr := os.Remove(configPath); rErr != nil && !os.IsNotExist(rErr) {
-					fmt.Fprintf(stdout, "Warning: failed to remove %s: %v\n", configPath, rErr)
-				}
+				fmt.Fprintf(stdout, "Restored %s to its pre-migration contents.\n", configPath)
 			}
 		}
 		if targetCreated && targetStack != nil {
-			if _, rmErr := targetBE.RemoveStack(ctx, targetStack, true /*force*/, false /*removeBackups*/); rmErr != nil {
+			if _, rmErr := targetBE.RemoveStack(ctx, targetStack, true, false); rmErr != nil {
 				fmt.Fprintf(stdout, "Warning: failed to roll back created target stack %s: %v\n", targetRef, rmErr)
 				fmt.Fprintf(stdout, "Run `pulumi stack rm %s --yes --force` to clean it up manually.\n", targetRef)
 			} else {
@@ -360,8 +304,7 @@ func (cmd *stackMigrateCmd) Run(
 	// creatingStack=false bypasses the same cloud-default short-circuit inside the helper.
 	if err := CreateSecretsManagerForExistingStack(
 		ctx, sink, ws, targetStack, cmd.secretsProvider,
-		false,
-		false,
+		false, false,
 	); err != nil {
 		return fmt.Errorf("configuring target secrets provider: %w", err)
 	}
@@ -398,7 +341,6 @@ func (cmd *stackMigrateCmd) Run(
 	if err != nil {
 		return stack.FormatDeploymentDeserializationError(err, sourceStack.Ref().Name().String())
 	}
-	contract.Assertf(snap != nil, "deserialized snapshot must not be nil")
 	snap.SecretsManager = newSM
 	if err := SaveSnapshot(ctx, targetStack, snap, cmd.force); err != nil {
 		return fmt.Errorf("importing deployment into target stack: %w", err)

@@ -18,8 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,34 +37,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func TestNormalizeBackendURL(t *testing.T) {
-	t.Parallel()
-
-	home, err := os.UserHomeDir()
-	require.NoError(t, err)
-
-	tests := []struct {
-		name string
-		in   string
-		want string
-	}{
-		{"empty", "", ""},
-		{"file with tilde", "file://~", "file://" + home},
-		{"file tilde subdir", "file://~/state", "file://" + filepath.Clean(home+"/state")},
-		{"file absolute trailing slash", "file:///var/state/", "file:///var/state"},
-		{"file absolute clean", "file:///var/./state", "file:///var/state"},
-		{"https trailing slash", "https://api.pulumi.com/", "https://api.pulumi.com"},
-		{"https no slash", "https://api.pulumi.com", "https://api.pulumi.com"},
-		{"s3 trailing slash", "s3://my-bucket/", "s3://my-bucket"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tt.want, normalizeBackendURL(tt.in))
-		})
-	}
-}
-
 func runMigrate(
 	t *testing.T,
 	ws pkgWorkspace.Context,
@@ -74,12 +46,14 @@ func runMigrate(
 	t.Helper()
 	cmd := newStackMigrateCmd(ws, lm)
 	cmd.SetArgs(args)
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
 	cmd.SilenceUsage = true
 	cmd.SilenceErrors = true
 	return cmd.ExecuteContext(t.Context())
 }
 
-func TestStackMigrate_RequiresFromFlag(t *testing.T) {
+func TestStackMigrate_RequiresURLArg(t *testing.T) {
 	t.Parallel()
 
 	ws := &pkgWorkspace.MockContext{
@@ -89,9 +63,9 @@ func TestStackMigrate_RequiresFromFlag(t *testing.T) {
 	}
 	lm := &cmdBackend.MockLoginManager{}
 
-	err := runMigrate(t, ws, lm, []string{"some-stack"})
+	err := runMigrate(t, ws, lm, []string{})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "--from is required")
+	assert.Contains(t, err.Error(), "requires at least 1 arg")
 }
 
 func TestStackMigrate_RejectsInvalidSecretsProvider(t *testing.T) {
@@ -105,44 +79,21 @@ func TestStackMigrate_RejectsInvalidSecretsProvider(t *testing.T) {
 	lm := &cmdBackend.MockLoginManager{}
 
 	err := runMigrate(t, ws, lm, []string{
-		"--from", "file:///tmp/diy",
-		"--secrets-provider", "totally-bogus-provider",
+		"file:///tmp/diy",
 		"some-stack",
+		"--secrets-provider", "totally-bogus-provider",
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown secrets provider")
 }
 
-func TestStackMigrate_RejectsBothPositionalAndFlag(t *testing.T) {
-	t.Parallel()
-
-	ws := &pkgWorkspace.MockContext{
-		ReadProjectF: func() (*workspace.Project, string, error) {
-			return nil, "", workspace.ErrProjectNotFound
-		},
-	}
-	lm := &cmdBackend.MockLoginManager{}
-
-	err := runMigrate(t, ws, lm, []string{
-		"--from", "file:///tmp/diy",
-		"--source-stack", "from-flag",
-		"from-positional",
-	})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "only one of --source-stack")
-}
-
 func TestStackMigrate_RejectsSameBackend(t *testing.T) {
 	t.Parallel()
 
-	home, err := os.UserHomeDir()
-	require.NoError(t, err)
-
-	sourceURL := "file://~"
-	targetURL := "file://" + home
+	url := "file:///var/state"
 
 	be := &backend.MockBackend{
-		URLF:  func() string { return targetURL },
+		URLF:  func() string { return url },
 		NameF: func() string { return "diy" },
 	}
 	cmdBackend.BackendInstance = be
@@ -154,20 +105,17 @@ func TestStackMigrate_RejectsSameBackend(t *testing.T) {
 		},
 	}
 	lm := &cmdBackend.MockLoginManager{
-		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, loginURL string,
 			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
 			return &backend.MockBackend{
-				URLF:  func() string { return sourceURL },
+				URLF:  func() string { return url },
 				NameF: func() string { return "diy" },
 			}, nil
 		},
 	}
 
-	err = runMigrate(t, ws, lm, []string{
-		"--from", sourceURL,
-		"some-stack",
-	})
+	err := runMigrate(t, ws, lm, []string{url, "some-stack"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "source and target backends are the same")
 }
@@ -217,7 +165,6 @@ func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paral
 			}, nil
 		},
 		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
-			// Pretend the target stack already exists.
 			return &backend.MockStack{
 				RefF: func() backend.StackReference { return ref },
 			}, nil
@@ -246,11 +193,7 @@ func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paral
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{
-		"--from", "file:///tmp/source",
-		"--yes",
-		"dev",
-	})
+	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already exists")
 }
@@ -386,11 +329,7 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{
-		"--from", "file:///tmp/source",
-		"--yes",
-		"dev",
-	})
+	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
 	require.Error(t, err)
 	assert.True(t, tgtCreated, "target stack should have been created before the failure")
 	assert.True(t, tgtRemoved, "rollback should have removed the partially-created target stack")
