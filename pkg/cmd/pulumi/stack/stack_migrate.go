@@ -23,12 +23,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -42,6 +44,11 @@ type stackMigrateCmd struct {
 	secretsProvider string
 	yes             bool
 	force           bool
+
+	// deploymentSecretsProvider, if non-nil, is used in place of backend_secrets.DefaultProvider
+	// when deserializing the source deployment. Tests use this to inject crypters whose ciphertext
+	// is observable, so they can verify state secrets are re-encrypted under the target manager.
+	deploymentSecretsProvider secrets.Provider
 }
 
 func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.Command {
@@ -54,7 +61,9 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 			"This command exports the source stack's checkpoint, creates a new stack with the same name on\n" +
 			"the currently logged-in backend, re-encrypts any encrypted configuration values and stack\n" +
 			"secrets with the target stack's secrets provider, and imports the checkpoint into the new stack.\n" +
-			"The source stack is left untouched.\n" +
+			"The source stack's backend state is left untouched. Note: if the source and target stacks share\n" +
+			"a name, the local Pulumi.<stack>.yaml file is rewritten with the target's secrets configuration\n" +
+			"and would need to be restored from version control to keep using the source stack locally.\n" +
 			"\n" +
 			"To migrate a stack from a DIY backend (e.g. file://, s3://, azblob://, gs://) to the currently\n" +
 			"logged-in Pulumi Cloud backend:\n" +
@@ -196,6 +205,10 @@ func (cmd *stackMigrateCmd) Run(
 		return fmt.Errorf("opening target backend: %w", err)
 	}
 
+	// Backend URLs are assumed pre-normalized at login (httpstate / s3:// / azblob:// / gs://).
+	// DIY `file://` URLs preserve the raw input on `b.URL()`, so equivalent forms (e.g. `file://~`
+	// vs `file:///home/user`) won't match here; we accept this edge case rather than carry a
+	// dedicated normalizer.
 	if targetBE.URL() == sourceBE.URL() {
 		return fmt.Errorf("source and target backends are the same (%s); nothing to migrate", targetBE.URL())
 	}
@@ -351,9 +364,17 @@ func (cmd *stackMigrateCmd) Run(
 	if err != nil {
 		// CreateStack may have created the backend stack but then failed (e.g. saving local config
 		// after b.CreateStack succeeded). Recover the handle so the deferred rollback can clean up.
-		if probe, probeErr := targetBE.GetStack(ctx, targetRef); probeErr == nil && probe != nil {
-			targetStack = probe
-			targetCreated = true
+		// We must NOT do this when the failure is "stack already exists" or "over stack limit":
+		// in those cases the existing target stack belongs to someone else (or was created by a
+		// concurrent process between our preflight check and CreateStack), and force-removing it
+		// would clobber unrelated work.
+		var alreadyExists *backenderr.StackAlreadyExistsError
+		var overLimit *backenderr.OverStackLimitError
+		if !errors.As(err, &alreadyExists) && !errors.As(err, &overLimit) {
+			if probe, probeErr := targetBE.GetStack(ctx, targetRef); probeErr == nil && probe != nil {
+				targetStack = probe
+				targetCreated = true
+			}
 		}
 		return fmt.Errorf("creating target stack: %w", err)
 	}
@@ -397,8 +418,12 @@ func (cmd *stackMigrateCmd) Run(
 		return fmt.Errorf("saving target stack config: %w", err)
 	}
 
+	deploySP := cmd.deploymentSecretsProvider
+	if deploySP == nil {
+		deploySP = backend_secrets.DefaultProvider
+	}
 	// SaveSnapshot validates URNs match target name, runs integrity check, clears pending ops.
-	snap, err := stack.DeserializeUntypedDeployment(ctx, sourceDeployment, backend_secrets.DefaultProvider)
+	snap, err := stack.DeserializeUntypedDeployment(ctx, sourceDeployment, deploySP)
 	if err != nil {
 		return stack.FormatDeploymentDeserializationError(err, sourceStack.Ref().Name().String())
 	}

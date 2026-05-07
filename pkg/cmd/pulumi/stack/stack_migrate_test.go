@@ -24,16 +24,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -357,10 +361,166 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 		},
 	}
 
-	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
+	srcConfigBefore, err := os.ReadFile("Pulumi.dev.yaml")
+	require.NoError(t, err)
+
+	err = runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
 	require.Error(t, err)
 	assert.True(t, tgtCreated, "target stack should have been created before the failure")
 	assert.True(t, tgtRemoved, "rollback should have removed the partially-created target stack")
+
+	// Same-name migration: source and target share Pulumi.dev.yaml. Confirm rollback restored the
+	// file byte-for-byte rather than leaving partial target writes behind.
+	srcConfigAfter, err := os.ReadFile("Pulumi.dev.yaml")
+	require.NoError(t, err)
+	assert.Equal(t, srcConfigBefore, srcConfigAfter,
+		"source Pulumi.dev.yaml should be byte-for-byte restored after rollback")
+}
+
+// TestStackMigrate_RollsBackTargetConfigOnImportFailure exercises the rename branch of the
+// rollback: source and target stacks have different names, so they back distinct Pulumi files.
+// Migration creates Pulumi.dev-tgt.yaml mid-flight, then ImportDeployment fails and the rollback
+// must remove the freshly-created target file (not the source one) and not regress the source.
+func TestStackMigrate_RollsBackTargetConfigOnImportFailure(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	srcPSContent := []byte("config:\n  proj:plain: source-only\n")
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", srcPSContent, 0o600))
+
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "passphrase" },
+		StateF:     func() json.RawMessage { return nil },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	srcSnapshot := &apitype.UntypedDeployment{
+		Version:    3,
+		Deployment: json.RawMessage(`{"manifest":{"time":"2026-01-01T00:00:00Z","magic":"","version":""}}`),
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcSnapshot, nil
+		},
+	}
+
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
+		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
+	}
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev-tgt",
+				NameV:               tokens.MustParseStackName("dev-tgt"),
+				FullyQualifiedNameV: "dev-tgt",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, _ *apitype.UntypedDeployment) error {
+			return errors.New("simulated import failure")
+		},
+		RemoveStackF: func(ctx context.Context, s backend.Stack, force, removeBackups bool) (bool, error) {
+			return false, nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	err := runMigrate(t, ws, lm, []string{
+		"file:///tmp/source", "dev",
+		"--target", "dev-tgt",
+		"--yes",
+	})
+	require.Error(t, err)
+
+	// Source ps untouched.
+	srcAfter, err := os.ReadFile("Pulumi.dev.yaml")
+	require.NoError(t, err)
+	assert.Equal(t, srcPSContent, srcAfter, "source Pulumi.dev.yaml must not be modified")
+
+	// Target ps file was created mid-migration; rollback must remove it.
+	_, err = os.Stat("Pulumi.dev-tgt.yaml")
+	assert.True(t, os.IsNotExist(err),
+		"Pulumi.dev-tgt.yaml should have been removed by the rollback (got err=%v)", err)
 }
 
 // TestStackMigrate_ReencryptsConfigSecret proves the migration re-encrypts secret config under
@@ -527,4 +687,184 @@ func stackUnmarshal(d *apitype.UntypedDeployment) (*apitype.DeploymentV3, error)
 		return nil, err
 	}
 	return &v3, nil
+}
+
+// TestStackMigrate_ReencryptsStateSecret proves that resource-level secrets in the source
+// deployment are re-encrypted under the target's secrets manager. We do this by serializing
+// a real snapshot with a `prefixCrypter{src}` so the source deployment carries `src:`-tagged
+// ciphertext, then asserting that the deployment imported into the target carries `tgt:`-tagged
+// ciphertext (the prefixCrypter the target manager wraps).
+func TestStackMigrate_ReencryptsStateSecret(t *testing.T) { //nolint: paralleltest
+	wd := t.TempDir()
+	t.Chdir(wd)
+	require.NoError(t, os.WriteFile("Pulumi.yaml", []byte("name: proj\nruntime: mock"), 0o600))
+	require.NoError(t, os.WriteFile("Pulumi.dev.yaml", []byte("config: {}"), 0o600))
+
+	ctx := t.Context()
+
+	srcCrypter := prefixCrypter{prefix: "src"}
+	tgtCrypter := prefixCrypter{prefix: "tgt"}
+
+	// "test-prefix" is a fake secrets-manager type registered with the custom provider below so
+	// DeserializeUntypedDeployment can find a manager for it; the real backend_secrets.DefaultProvider
+	// only knows passphrase / service / cloud.
+	srcSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "test-prefix" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return srcCrypter },
+		EncrypterF: func() config.Encrypter { return srcCrypter },
+	}
+	tgtSM := &secrets.MockSecretsManager{
+		TypeF:      func() string { return "service" },
+		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
+		DecrypterF: func() config.Decrypter { return tgtCrypter },
+		EncrypterF: func() config.Encrypter { return tgtCrypter },
+	}
+
+	// Build the source deployment by serializing a snapshot that contains a state secret using
+	// srcSM. The resulting JSON contains `src:\"state-plaintext\"` inside the secret's `ciphertext`.
+	snap := &deploy.Snapshot{
+		SecretsManager: srcSM,
+		Resources: []*resource.State{
+			{
+				URN:  resource.NewURN("dev", "proj", "", resource.RootStackType, "dev"),
+				Type: resource.RootStackType,
+				Outputs: resource.PropertyMap{
+					"stateSecret": resource.MakeSecret(resource.NewProperty("state-plaintext")),
+				},
+			},
+		},
+	}
+	srcDep, err := stack.SerializeUntypedDeployment(ctx, snap, nil)
+	require.NoError(t, err)
+	require.Contains(t, string(srcDep.Deployment), `src:\"state-plaintext\"`,
+		"sanity check: source deployment should carry the src-tagged ciphertext")
+
+	// Provider that hands out srcSM whenever DeserializeUntypedDeployment asks for "test-prefix".
+	customProvider := (&secrets.MockProvider{}).Add(
+		"test-prefix",
+		func(state json.RawMessage) (secrets.Manager, error) { return srcSM, nil },
+	)
+
+	var sourceBE *backend.MockBackend
+	srcStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return sourceBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return srcSM, nil
+		},
+	}
+	sourceBE = &backend.MockBackend{
+		URLF:  func() string { return "file:///tmp/source" },
+		NameF: func() string { return "source" },
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return srcStack, nil
+		},
+		ExportDeploymentF: func(ctx context.Context, s backend.Stack) (*apitype.UntypedDeployment, error) {
+			return srcDep, nil
+		},
+	}
+
+	var targetBE *backend.MockBackend
+	tgtStack := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{
+				StringV:             "dev",
+				NameV:               tokens.MustParseStackName("dev"),
+				FullyQualifiedNameV: "dev",
+			}
+		},
+		BackendF: func() backend.Backend { return targetBE },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return tgtSM, nil
+		},
+	}
+
+	var imported *apitype.UntypedDeployment
+	targetBE = &backend.MockBackend{
+		URLF:               func() string { return "https://api.pulumi.com" },
+		NameF:              func() string { return "pulumi.com" },
+		ValidateStackNameF: func(s string) error { return nil },
+		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
+			return nil, nil
+		},
+		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
+			return &backend.MockStackReference{
+				StringV:             s,
+				NameV:               tokens.MustParseStackName(s),
+				FullyQualifiedNameV: tokens.QName(s),
+			}, nil
+		},
+		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
+			return nil, nil
+		},
+		CreateStackF: func(
+			ctx context.Context, ref backend.StackReference, root string,
+			initialState *apitype.UntypedDeployment, opts *backend.CreateStackOptions,
+		) (backend.Stack, error) {
+			return tgtStack, nil
+		},
+		ImportDeploymentF: func(ctx context.Context, s backend.Stack, deployment *apitype.UntypedDeployment) error {
+			imported = deployment
+			return nil
+		},
+	}
+	oldBE := cmdBackend.BackendInstance
+	cmdBackend.BackendInstance = targetBE
+	t.Cleanup(func() { cmdBackend.BackendInstance = oldBE })
+
+	ws := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "dev"}
+				},
+			}, nil
+		},
+		ReadProjectF: func() (*workspace.Project, string, error) {
+			return &workspace.Project{Name: "proj"}, "Pulumi.yaml", nil
+		},
+	}
+	lm := &cmdBackend.MockLoginManager{
+		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
+			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
+		) (backend.Backend, error) {
+			return sourceBE, nil
+		},
+	}
+
+	// Bypass newStackMigrateCmd because the deploymentSecretsProvider field isn't reachable through
+	// the cobra closure. Construct the cobra.Command manually so the Run path still has streams.
+	smcmd := &stackMigrateCmd{
+		secretsProvider:           "default",
+		yes:                       true,
+		deploymentSecretsProvider: customProvider,
+	}
+	cobraCmd := &cobra.Command{}
+	cobraCmd.SetContext(ctx)
+	cobraCmd.SetOut(io.Discard)
+	cobraCmd.SetErr(io.Discard)
+
+	err = smcmd.Run(cobraCmd, ws, lm, []string{"file:///tmp/source", "dev"})
+	require.NoError(t, err)
+
+	require.NotNil(t, imported, "ImportDeployment should have been called")
+	importedJSON := string(imported.Deployment)
+	assert.Contains(t, importedJSON, `tgt:\"state-plaintext\"`,
+		"resource secret should have been re-encrypted under the target crypter: %s", importedJSON)
+	assert.NotContains(t, importedJSON, `src:\"state-plaintext\"`,
+		"source ciphertext should have been replaced: %s", importedJSON)
 }
