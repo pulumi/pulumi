@@ -1,4 +1,4 @@
 changes:
-- type: improvement
-  scope: cli/cloud
+- type: feat
+  scope: cli
   description: Recommend `pulumi cloud api describe` in `pulumi cloud api --help` to verify operation parameters before calling
