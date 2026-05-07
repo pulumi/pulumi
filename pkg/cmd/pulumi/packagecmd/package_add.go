@@ -27,6 +27,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -147,7 +148,7 @@ from the parameters, as in:
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
-				if errors.Is(err, registry.ErrNotFound) {
+				if errors.Is(err, registry.ErrNotFound) && metadata.DetectAIAgent(os.Getenv) != "" {
 					return fmt.Errorf("%w\nSearch: pulumi cloud api '/api/registry/packages?search=<term>'", err)
 				}
 				return err
@@ -232,6 +233,9 @@ type addTarget struct {
 }
 
 func printRegistryDocsHint(w io.Writer, ctx context.Context, reg registry.Registry, pkg *schema.Package) {
+	if metadata.DetectAIAgent(os.Getenv) == "" {
+		return
+	}
 	if pkg == nil || pkg.Name == "" || pkg.Version == nil || reg == nil {
 		return
 	}

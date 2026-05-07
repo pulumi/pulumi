@@ -241,8 +241,9 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 	}
 }
 
-// DetectAIAgent returns the AI agent driving the CLI, inferred from AI_AGENT
-// or well-known agent-specific environment variables, or "" if none is found.
+// DetectAIAgent returns a normalized name for the AI coding agent driving
+// the CLI (e.g. "claude", "cursor", "codex"), or "" if none is detected.
+// Detection is based on environment variables.
 func DetectAIAgent(getEnv func(string) string) string {
 	normalized := func(agent string) string {
 		agent = strings.TrimSpace(strings.ToLower(agent))

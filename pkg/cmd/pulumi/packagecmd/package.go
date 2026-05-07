@@ -25,9 +25,7 @@ func NewPackageCmd() *cobra.Command {
 		Short: "Work with Pulumi packages",
 		Long: `Work with Pulumi packages
 
-Install and configure Pulumi packages and their plugins and SDKs.
-
-Browse the registry: pulumi cloud api '/api/registry/packages'`,
+Install and configure Pulumi packages and their plugins and SDKs.`,
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
