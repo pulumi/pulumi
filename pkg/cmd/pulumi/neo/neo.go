@@ -188,6 +188,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	}
 
 	uiCh := make(chan UIEvent, 64)
+	defer close(uiCh)
 	outCh := make(chan outboundEvent, 8)
 
 	pu.Sink = newPulumiSinkForUI(uiCh)
@@ -209,10 +210,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	// scrollback after exit.
 	p := newTeaProgram(model)
 
-	// runNeo owns uiCh: runWithTUI's g.Wait() joins every writer before
-	// returning, so closing afterward is safe and lets bubbletea's leftover
-	// waitForEvent goroutines exit instead of leaking.
-	err = runWithTUI(
+	return runWithTUI(
 		ctx,
 		func() error {
 			_, err := p.Run()
@@ -304,8 +302,6 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 			})
 		},
 	)
-	close(uiCh)
-	return err
 }
 
 // runWithTUI runs the bubbletea program alongside caller-registered worker
