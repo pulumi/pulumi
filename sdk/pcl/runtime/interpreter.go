@@ -209,6 +209,19 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 		}
 	}
 
+	ignoreErrors := false
+	if h.IgnoreErrors != nil {
+		ieVal, _, diags := i.evalExpression(h.IgnoreErrors)
+		if diags.HasErrors() {
+			return diags
+		}
+		if ieVal.IsBool() {
+			ignoreErrors = ieVal.BoolValue()
+		} else {
+			return fmt.Errorf("hook %s: ignoreErrors must be a boolean", h.Name())
+		}
+	}
+
 	hookName := i.effectiveName(h.LogicalName())
 	cmdExpr := h.Command
 
@@ -319,9 +332,10 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 	}
 
 	_, err = i.monitor.RegisterResourceHook(ctx, &pulumirpc.RegisterResourceHookRequest{
-		Name:     hookName,
-		Callback: cb,
-		OnDryRun: onDryRun,
+		Name:         hookName,
+		Callback:     cb,
+		OnDryRun:     onDryRun,
+		IgnoreErrors: ignoreErrors,
 	})
 	if err != nil {
 		return fmt.Errorf("registering resource hook %s: %w", hookName, err)

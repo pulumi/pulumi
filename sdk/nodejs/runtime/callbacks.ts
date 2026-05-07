@@ -617,6 +617,7 @@ export class CallbackServer implements ICallbackServer {
         req.setCallback(callback);
         req.setName(hook.name);
         req.setOnDryRun(hook.opts?.onDryRun ?? false);
+        req.setIgnoreErrors(hook.opts?.ignoreErrors ?? false);
 
         const done = rpcKeepAlive();
         return debuggablePromise(

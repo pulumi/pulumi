@@ -151,7 +151,7 @@ hook "foo" {
 	require.Len(t, diags, 1)
 	assert.Equal(t, &hcl.Diagnostic{
 		Severity: hcl.DiagError,
-		Summary:  "unknown property 'what' among [command onDryRun]",
+		Summary:  "unknown property 'what' among [command ignoreErrors onDryRun]",
 		Subject: &hcl.Range{
 			Filename: "program.pp",
 			Start: hcl.Pos{

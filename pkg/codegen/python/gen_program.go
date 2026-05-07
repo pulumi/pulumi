@@ -1196,13 +1196,23 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 			}
 			g.genPyStringArg(w, arg)
 		}
-		g.Fgenf(w, "])\n")
+		g.Fgenf(w, "], check=True)\n")
 	})
 
-	if h.OnDryRun != nil {
-		g.Fgenf(w, "%s%s = pulumi.ResourceHook(%q, %s,"+
-			" opts=pulumi.ResourceHookOptions(on_dry_run=", g.Indent, pyName, hookName, fnName)
-		g.Fgenf(w, "%v", h.OnDryRun)
+	if h.OnDryRun != nil || h.IgnoreErrors != nil {
+		g.Fgenf(w, "%s%s = pulumi.ResourceHook(%q, %s, opts=pulumi.ResourceHookOptions(",
+			g.Indent, pyName, hookName, fnName)
+		first := true
+		if h.OnDryRun != nil {
+			g.Fgenf(w, "on_dry_run=%v", h.OnDryRun)
+			first = false
+		}
+		if h.IgnoreErrors != nil {
+			if !first {
+				g.Fgenf(w, ", ")
+			}
+			g.Fgenf(w, "ignore_errors=%v", h.IgnoreErrors)
+		}
 		g.Fgenf(w, "))\n")
 	} else {
 		g.Fgenf(w, "%s%s = pulumi.ResourceHook(%q, %s)\n", g.Indent, pyName, hookName, fnName)

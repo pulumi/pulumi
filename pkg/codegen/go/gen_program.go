@@ -1249,8 +1249,20 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 			g.Fgenf(w, "%sreturn nil\n", g.Indent)
 		}
 	})
-	if h.OnDryRun != nil {
-		g.Fgenf(w, "%s}, &pulumi.ResourceHookOptions{OnDryRun: %v})\n", g.Indent, h.OnDryRun)
+	if h.OnDryRun != nil || h.IgnoreErrors != nil {
+		g.Fgenf(w, "%s}, &pulumi.ResourceHookOptions{", g.Indent)
+		first := true
+		if h.OnDryRun != nil {
+			g.Fgenf(w, "OnDryRun: %v", h.OnDryRun)
+			first = false
+		}
+		if h.IgnoreErrors != nil {
+			if !first {
+				g.Fgenf(w, ", ")
+			}
+			g.Fgenf(w, "IgnoreErrors: %v", h.IgnoreErrors)
+		}
+		g.Fgenf(w, "})\n")
 	} else {
 		g.Fgenf(w, "%s}, nil)\n", g.Indent)
 	}

@@ -70,7 +70,7 @@ func TestResourceHookDryRun(t *testing.T) {
 			}
 			return nil
 		}
-		myHookTrue, err := deploytest.NewHook(monitor, callbacks, "myHookTrue", funTrue, true)
+		myHookTrue, err := deploytest.NewHook(monitor, callbacks, "myHookTrue", funTrue, true, false)
 		require.NoError(t, err)
 
 		// Create hook that does not run on a dry run
@@ -89,7 +89,7 @@ func TestResourceHookDryRun(t *testing.T) {
 			}
 			return nil
 		}
-		myHookFalse, err := deploytest.NewHook(monitor, callbacks, "myHookFalse", funFalse, false)
+		myHookFalse, err := deploytest.NewHook(monitor, callbacks, "myHookFalse", funFalse, false, false)
 		require.NoError(t, err)
 
 		// Register a resource with both hooks
@@ -173,7 +173,7 @@ func TestResourceHooksAfterCreate(t *testing.T) {
 			require.Nil(t, oldOutputs, "there are no old outputs for creates")
 			return nil
 		}
-		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -256,6 +256,7 @@ func TestResourceHooks_OptionsAreSent(t *testing.T) {
 				return nil
 			},
 			true,
+			false,
 		)
 		require.NoError(t, err)
 
@@ -322,6 +323,7 @@ func TestResourceHooks_OldAndNewOptionsAreSentOnUpdate(t *testing.T) {
 				return nil
 			},
 			true,
+			false,
 		)
 		require.NoError(t, err)
 
@@ -396,7 +398,7 @@ func TestResourceHookBeforeCreateError(t *testing.T) {
 			require.Nil(t, newOutputs)
 			return errors.New("Oh no")
 		}
-		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -485,7 +487,7 @@ func TestResourceHookAfterDelete(t *testing.T) {
 			require.Equal(t, map[string]any{"a": "A"}, oldOutputs.Mappable(), "receives the old outputs")
 			return nil
 		}
-		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		if createResource {
@@ -600,7 +602,7 @@ func TestResourceHookComponentAfterDelete(t *testing.T) {
 			require.Equal(t, map[string]any{"outA": "outA"}, oldOutputs.Mappable(), "receives the old outputs")
 			return nil
 		}
-		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		if createResource {
@@ -689,7 +691,7 @@ func TestResourceHookBeforeDeleteError(t *testing.T) {
 			require.Equal(t, map[string]any{"a": "A"}, oldOutputs.Mappable(), "receives old outputs")
 			return errors.New("Oh no")
 		}
-		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		if createResource {
@@ -797,7 +799,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 			require.Fail(t, "Hook should not be called")
 			return nil
 		}
-		shouldNotBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldNotBeCalled", shouldNotBeCalled, true)
+		shouldNotBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldNotBeCalled", shouldNotBeCalled, true, false)
 		require.NoError(t, err)
 
 		shouldBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
@@ -825,7 +827,7 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 			require.Nil(t, newOutputs, "there are no new outputs for before update hooks")
 			return nil
 		}
-		shouldBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldBeCalled", shouldBeCalled, true)
+		shouldBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldBeCalled", shouldBeCalled, true, false)
 		require.NoError(t, err)
 
 		// On the first run through the program, we'll register `shouldNotBeCalledHook` as a BeforeUpdate hook
@@ -933,7 +935,7 @@ func TestResourceHookBeforeUpdateError(t *testing.T) {
 			require.Nil(t, newOutputs, "there are no new outputs")
 			return errors.New("this hook returns an error")
 		}
-		hook, err := deploytest.NewHook(monitor, callbacks, "hook", hookFun, true)
+		hook, err := deploytest.NewHook(monitor, callbacks, "hook", hookFun, true, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1014,7 +1016,7 @@ func TestResourceHookDeleteCalledOnDestroyRunProgram(t *testing.T) {
 			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
 			return nil
 		}
-		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1080,7 +1082,7 @@ func TestResourceHookDeleteErrorWhenNoRunProgram(t *testing.T) {
 			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
 			return nil
 		}
-		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
@@ -1183,7 +1185,7 @@ func TestResourceHookComponent(t *testing.T) {
 			hookCalled = true
 			return nil
 		}
-		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
@@ -1244,7 +1246,7 @@ func TestResourceHookTransform(t *testing.T) {
 			return nil
 		}
 
-		_, err = deploytest.NewHook(monitor, callbacks, "myHook", fun, true)
+		_, err = deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
 		// Setup a transform that adds a `BeforeCreate` hook to the resource.
@@ -1282,4 +1284,353 @@ func TestResourceHookTransform(t *testing.T) {
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 	require.True(t, hookCalled)
+}
+
+// After hooks that return an error should cause the step to fail.
+func TestResourceHookAfterCreateError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, name, "resA")
+			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
+			require.Equal(t, map[string]any{"a": "A"}, newInputs.Mappable())
+			require.Nil(t, oldInputs)
+			require.Equal(t, map[string]any{"a": "A"}, newOutputs.Mappable())
+			require.Nil(t, oldOutputs)
+			return errors.New("Oh no")
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
+		require.NoError(t, err)
+
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				AfterCreate: []*deploytest.ResourceHook{myHook},
+			},
+		})
+		require.Fail(t, "RegisterResource should not return")
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	p.Steps = []lt.TestStep{{
+		Op:            Update,
+		SkipPreview:   true,
+		ExpectFailure: true,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			evts []Event, err error,
+		) error {
+			sawFailure := false
+			for _, evt := range evts {
+				if evt.Type == DiagEvent {
+					e := evt.Payload().(DiagEventPayload)
+					sawFailure = strings.Contains(e.Message, "hook \"myHook\" failed: Oh no") &&
+						e.Severity == diag.Error && e.URN.Name() == "resA"
+					if sawFailure {
+						break
+					}
+				}
+			}
+
+			require.True(t, sawFailure, "There should be an error diagnostic for resA")
+			return err
+		},
+	}}
+	snap := p.Run(t, nil)
+	require.True(t, hookCalled)
+	// Only the provider is in the snapshot; the resource's create step failed
+	// (due to the after hook error) so it is not saved to state.
+	require.Len(t, snap.Resources, 1)
+}
+
+func TestResourceHookAfterDeleteError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
+					return plugin.CreateResponse{
+						ID: id,
+						Properties: resource.NewPropertyMapFromMap(map[string]any{
+							"a": "A",
+						}),
+						Status: resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	createResource := true
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			require.Equal(t, urn, resource.URN("urn:pulumi:test::test::pkgA:m:typA::resA"))
+			require.Equal(t, name, "resA")
+			require.Equal(t, typ, tokens.Type("pkgA:m:typA"))
+			require.Nil(t, newInputs, "deletes have no new inputs")
+			require.Equal(t, map[string]any{"a": "A"}, oldInputs.Mappable(), "receives old inputs")
+			require.Nil(t, newOutputs, "deletes have no new outputs")
+			require.Equal(t, map[string]any{"a": "A"}, oldOutputs.Mappable(), "receives old outputs")
+			return errors.New("Oh no")
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
+		require.NoError(t, err)
+
+		if createResource {
+			_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+				ResourceHookBindings: deploytest.ResourceHookBindings{
+					AfterDelete: []*deploytest.ResourceHook{myHook},
+				},
+			})
+			require.NoError(t, err)
+		}
+
+		err = monitor.SignalAndWaitForShutdown(context.Background()) //nolint:usetesting // the engine outlives t.Context
+		require.NoError(t, err)
+		return nil
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	project := p.GetProject()
+
+	// Run an update to create the resource
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	require.False(t, hookCalled)
+
+	// Now run an update without the resource, the afterDelete hook should be called and fail
+	createResource = false
+	snap, err = lt.TestOp(Update).RunStep(project, p.GetTarget(t, snap), p.Options, false, p.BackendClient, nil, "1")
+	require.True(t, result.IsBail(err))
+	require.ErrorContains(t, err, "hook \"myHook\" failed: Oh no")
+	require.True(t, hookCalled)
+	// The resource should still be in the snapshot because the step failed
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+}
+
+func TestResourceHookAfterCreateErrorContinueOnError(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			return errors.New("hook failed")
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
+		require.NoError(t, err)
+
+		// resA has a failing after hook. With ContinueOnError, the engine
+		// continues but RegisterResource returns an error to the SDK.
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				AfterCreate: []*deploytest.ResourceHook{myHook},
+			},
+		})
+		// The SDK receives an error because the step failed.
+		require.Error(t, err)
+
+		// resB has no hooks, should still be created because ContinueOnError
+		// does not cancel the context.
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"b": "B"}),
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{
+			T: t,
+			// Skip display tests because different ordering makes the colouring different.
+			SkipDisplayTests: true,
+			UpdateOptions: UpdateOptions{
+				ContinueOnError: true,
+			},
+			HostF: hostF,
+		},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	// The operation should fail overall due to the hook error
+	require.ErrorContains(t, err, "hook failed")
+	require.True(t, hookCalled)
+	// resB should still be created despite resA's hook failure (continue-on-error).
+	// resA is not in the snapshot because its create step failed.
+	require.NotNil(t, snap)
+	require.Len(t, snap.Resources, 2) // provider + resB
+}
+
+// An after hook with IgnoreErrors set to true should only log a warning, not fail the program.
+func TestResourceHookAfterCreateErrorIgnoreErrors(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			return errors.New("Oh no")
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				AfterCreate: []*deploytest.ResourceHook{myHook},
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	p.Steps = []lt.TestStep{{
+		Op:          Update,
+		SkipPreview: true,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			evts []Event, err error,
+		) error {
+			sawWarning := false
+			for _, evt := range evts {
+				if evt.Type == DiagEvent {
+					e := evt.Payload().(DiagEventPayload)
+					sawWarning = strings.Contains(e.Message, "hook \"myHook\" failed: Oh no") &&
+						e.Severity == diag.Warning && e.URN.Name() == "resA"
+					if sawWarning {
+						break
+					}
+				}
+			}
+			require.True(t, sawWarning, "There should be a warning diagnostic for resA")
+			return err
+		},
+	}}
+	snap := p.Run(t, nil)
+	require.True(t, hookCalled)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }

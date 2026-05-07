@@ -469,7 +469,7 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.Outputs,
 			nil, /* oldOutputs */
 		); err != nil {
-			return resourceStatus, complete, err
+			return resourceStatus, nil, err
 		}
 	}
 

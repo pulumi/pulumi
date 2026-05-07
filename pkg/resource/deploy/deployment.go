@@ -736,8 +736,8 @@ func (d *Deployment) Close() error {
 	return nil
 }
 
-// RunHooks runs all the before/after hooks on the given state. If `hookType` is an after hook, a hook that returns an
-// error will only generate a warning. Otherwise, it will cause an error return.
+// RunHooks runs all the before/after hooks on the given state. A hook that returns an error will cause an error return,
+// unless the hook has IgnoreErrors set, in which case the error is logged as a warning.
 func (d *Deployment) RunHooks(
 	hooks []string, hookType resource.HookType, id resource.ID, urn resource.URN,
 	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
@@ -760,16 +760,18 @@ func (d *Deployment) RunHooks(
 			newInputs, oldInputs, newOutputs, oldOutputs,
 		)
 		if err != nil {
+			if hook.IgnoreErrors {
+				d.Diag().Warningf(&diag.Diag{
+					URN:     urn,
+					Message: fmt.Sprintf("%s hook %q failed: %s", hookType, hookName, err),
+				})
+				continue
+			}
 			switch {
 			case resource.IsBeforeHook(hookType):
 				return fmt.Errorf("before hook %q failed: %w", hookName, err)
 			case resource.IsAfterHook(hookType):
-				// Errors on after hooks report a diagnostic, but do not fail the step.
-				d.Diag().Warningf(&diag.Diag{
-					URN:     urn,
-					Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
-				})
-				continue
+				return fmt.Errorf("after hook %q failed: %w", hookName, err)
 			default:
 				return fmt.Errorf("unknown hook type %q: %w", hookType, err)
 			}
