@@ -209,7 +209,12 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	// scrollback after exit.
 	p := newTeaProgram(model)
 
-	return runWithTUI(
+	// runNeo owns uiCh's lifecycle. runWithTUI's g.Wait() joins every worker
+	// (Session.Run, dispatchUserEvents, createTask, the gctx→p.Quit watcher,
+	// and the TUI goroutine) before returning, so by the time we close here
+	// no writer is live. Closing also unblocks any leftover waitForEvent
+	// goroutines spawned by bubbletea so they don't leak.
+	err = runWithTUI(
 		ctx,
 		func() error {
 			_, err := p.Run()
@@ -301,6 +306,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 			})
 		},
 	)
+	close(uiCh)
+	return err
 }
 
 // runWithTUI runs the bubbletea program alongside caller-registered worker

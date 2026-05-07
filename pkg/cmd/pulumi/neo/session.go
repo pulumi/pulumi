@@ -52,18 +52,16 @@ type Session struct {
 	// likes (stderr today, a TUI tomorrow). nil disables logging.
 	Log io.Writer
 	// UIEvents, when non-nil, receives parsed events for the bubbletea TUI to display.
-	// The Session closes this channel when Run() exits.
+	// The caller owns the channel's lifecycle — Session.Run never closes it. uiCh
+	// has multiple writers in production (dispatchUserEvents, createTask, the
+	// pulumi sink), so closing here would race with them and panic with
+	// "send on closed channel" during cancellation (pulumi/pulumi-service#42773).
 	UIEvents chan<- UIEvent
 }
 
 // Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil)
-// or the SSE stream errors out (returns the error). If UIEvents is set, it is closed
-// when Run returns.
+// or the SSE stream errors out (returns the error).
 func (s *Session) Run(ctx context.Context) error {
-	if s.UIEvents != nil {
-		defer close(s.UIEvents)
-	}
-
 	stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID)
 	if err != nil {
 		return fmt.Errorf("opening event stream: %w", err)
