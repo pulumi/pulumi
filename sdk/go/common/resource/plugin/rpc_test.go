@@ -289,6 +289,9 @@ func TestUnknownSig(t *testing.T) {
 	assert.EqualError(t, err, "unrecognized signature 'foobar' in property map for \"pk\"")
 }
 
+// We only skip internal keys at the top level, this isn't perfect, but its a pragmatic solution to allow providers to
+// return map keys prefixed with "__" without them being stripped out by the RPC layer. It's unusual for a provider to
+// actual internal values anywhere but top level.
 func TestSkipInternalKeys(t *testing.T) {
 	t.Parallel()
 
@@ -298,7 +301,13 @@ func TestSkipInternalKeys(t *testing.T) {
 			"keepers": {
 				Kind: &structpb.Value_StructValue{
 					StructValue: &structpb.Struct{
-						Fields: map[string]*structpb.Value{},
+						Fields: map[string]*structpb.Value{
+							"__defaults": {
+								Kind: &structpb.Value_ListValue{
+									ListValue: &structpb.ListValue{},
+								},
+							},
+						},
 					},
 				},
 			},
