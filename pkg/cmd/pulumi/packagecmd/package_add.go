@@ -235,10 +235,12 @@ func printRegistryDocsHint(w io.Writer, ctx context.Context, reg registry.Regist
 	if pkg == nil || pkg.Name == "" || pkg.Version == nil || reg == nil {
 		return
 	}
-	if _, err := reg.GetPackage(ctx, "pulumi", "pulumi", pkg.Name, pkg.Version); err != nil {
+	meta, err := registry.ResolvePackageFromName(ctx, reg, pkg.Name, pkg.Version)
+	if err != nil {
 		return
 	}
-	base := fmt.Sprintf("/api/registry/packages/pulumi/pulumi/%s/versions/%s", pkg.Name, pkg.Version.String())
+	base := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s",
+		meta.Source, meta.Publisher, meta.Name, pkg.Version.String())
 	fmt.Fprintf(w, "Docs: pulumi cloud api --format=markdown '%s/readme'\n", base)
 	fmt.Fprintln(w, "      (or /nav for the doc tree, /docs/<token> for a specific resource)")
 }
