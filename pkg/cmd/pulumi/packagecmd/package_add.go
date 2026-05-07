@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -146,6 +147,9 @@ from the parameters, as in:
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
+				if errors.Is(err, registry.ErrNotFound) {
+					return fmt.Errorf("%w\nSearch: pulumi cloud api '/api/registry/packages?search=<term>'", err)
+				}
 				return err
 			}
 
@@ -196,6 +200,7 @@ from the parameters, as in:
 			}
 
 			fmt.Fprintf(cmd.ErrOrStderr(), "Added package %s\n", schemaDisplayName(pkg))
+			printRegistryDocsHint(cmd.ErrOrStderr(), cmd.Context(), pluginOrProject.reg, pkg)
 			return nil
 		},
 	}
@@ -224,6 +229,18 @@ type addTarget struct {
 	projectFilePath *string
 	reg             registry.Registry
 	proj            workspace.BaseProject
+}
+
+func printRegistryDocsHint(w io.Writer, ctx context.Context, reg registry.Registry, pkg *schema.Package) {
+	if pkg == nil || pkg.Name == "" || pkg.Version == nil || reg == nil {
+		return
+	}
+	if _, err := reg.GetPackage(ctx, "pulumi", "pulumi", pkg.Name, pkg.Version); err != nil {
+		return
+	}
+	base := fmt.Sprintf("/api/registry/packages/pulumi/pulumi/%s/versions/%s", pkg.Name, pkg.Version.String())
+	fmt.Fprintf(w, "Docs: pulumi cloud api --format=markdown '%s/readme'\n", base)
+	fmt.Fprintln(w, "      (or /nav for the doc tree, /docs/<token> for a specific resource)")
 }
 
 func schemaDisplayName(schema *schema.Package) string {

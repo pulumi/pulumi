@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/package
+  description: Print `pulumi cloud api` pointers to the version-pinned readme, doc tree, and per-resource docs after `pulumi package add` and `pulumi package gen-sdk`
