@@ -632,10 +632,19 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 	importSet := map[string]Import{}
 	// Add subprocess import if the program contains hook blocks.
+	needsTypingAny := false
 	for _, n := range program.Nodes {
-		switch n.(type) {
+		switch r := n.(type) {
 		case *pcl.Hook:
 			importSet["subprocess"] = Import{ImportAs: false}
+		case *pcl.Resource:
+			if r.Options != nil && r.Options.Range != nil && model.ContainsOutputs(r.Options.Range.Type()) {
+				needsTypingAny = true
+			}
+		case *pcl.ReadResource:
+			if r.Options != nil && r.Options.Range != nil && model.ContainsOutputs(r.Options.Range.Type()) {
+				needsTypingAny = true
+			}
 		}
 	}
 
@@ -730,6 +739,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		// add typing information
 		imports = append(imports, "from typing import Optional, Dict, TypedDict, Any")
 		imports = append(imports, "from pulumi import Input")
+	} else if needsTypingAny {
+		imports = append(imports, "from typing import Any")
 	}
 
 	seenComponentImports := map[string]bool{}
@@ -1302,7 +1313,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			localFuncName := "create_" + PyName(r.LogicalName())
 
 			// Generate a local definition which actually creates the resources
-			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
+			g.Fgenf(w, "def %s(range_body: Any):\n", localFuncName)
 			g.Indented(func() {
 				r.Options.Range = model.VariableReference(&model.Variable{
 					Name:         "range_body",
@@ -1520,7 +1531,7 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
 			}
 			localFuncName := "read_" + PyName(r.LogicalName())
-			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
+			g.Fgenf(w, "def %s(range_body: Any):\n", localFuncName)
 			g.Indented(func() {
 				r.Options.Range = model.VariableReference(&model.Variable{
 					Name:         "range_body",
