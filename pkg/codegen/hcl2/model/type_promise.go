@@ -110,15 +110,11 @@ func (t *PromiseType) conversionFrom(
 		if src, ok := src.(*PromiseType); ok {
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		}
-		if src, ok := src.(*OutputType); ok {
+		if _, ok := src.(*OutputType); ok {
 			// An Output may carry unknowns or dependencies that a Promise cannot represent,
-			// so converting from output(U) to promise(T) is at best unsafe even when U is
-			// safely convertible to T.
-			kind, why := t.ElementType.conversionFrom(src.ElementType, unifying, seen)
-			if kind == SafeConversion {
-				kind = UnsafeConversion
-			}
-			return kind, why
+			// and there is no SDK-level operation that recovers a Promise from an Output, so
+			// there is no valid conversion from output(U) to promise(T).
+			return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 		}
 		return t.ElementType.conversionFrom(src, unifying, seen)
 	})
