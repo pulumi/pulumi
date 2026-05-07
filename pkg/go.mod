@@ -17,7 +17,7 @@ require (
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-querystring v1.1.0
-	github.com/google/pprof v0.0.0-20230406165453-00490a63f317
+	github.com/google/pprof v0.0.0-20240227163752-401108e1b7e7
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.1.1
@@ -83,6 +83,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hexops/gotextdiff v1.0.3
 	github.com/hinshun/vt10x v0.0.0-20220301184237-5011da428d02
+	github.com/jedib0t/go-pretty/v6 v6.7.10
 	github.com/jonboulle/clockwork v0.4.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/lib/pq v1.10.9
@@ -107,7 +108,6 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
-	go.pennock.tech/tabular v1.1.3
 	go.uber.org/automaxprocs v1.6.0
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
 	golang.org/x/mod v0.34.0
