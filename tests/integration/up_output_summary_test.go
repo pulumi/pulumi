@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -27,6 +26,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// scopedWriter captures writes only while it is active. Used by the integration
+// test below so that we record stdout from `pulumi up` and nothing else.
 type scopedWriter struct {
 	buf    *bytes.Buffer
 	active bool
@@ -45,9 +46,10 @@ func (w *scopedWriter) SetActive(active bool) {
 
 //nolint:paralleltest // ProgramTest calls t.Parallel()
 func TestUp_OutputJSONSummary(t *testing.T) {
-	// Avoid capturing output from commands other than `pulumi up`.
-	var upOut bytes.Buffer
-	writer := &scopedWriter{buf: &upOut}
+	// Capture only `pulumi up`'s stdout. We expect it to consist solely of the
+	// summary JSON object — see Frassle's review comment on #22870.
+	var upStdout bytes.Buffer
+	writer := &scopedWriter{buf: &upStdout}
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                    "single_resource",
@@ -55,7 +57,7 @@ func TestUp_OutputJSONSummary(t *testing.T) {
 		Quick:                  true,
 		Verbose:                true,
 		Stdout:                 writer,
-		Stderr:                 writer,
+		Stderr:                 io.Discard, // human-readable progress goes here; we don't assert on it
 		UpdateCommandlineFlags: []string{"--output", "json"},
 		PrePulumiCommand: func(verb string) (func(err error) error, error) {
 			if verb != "up" {
@@ -74,25 +76,15 @@ func TestUp_OutputJSONSummary(t *testing.T) {
 		},
 	})
 
-	// Find the JSON summary object inside the captured `pulumi up --output json` output.
-	for line := range strings.SplitSeq(upOut.String(), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
+	// The whole of stdout should be a single JSON object — no progress, no
+	// permalink, no banner. If parsing fails or fields are missing, the report
+	// includes the captured stdout to make debugging easy.
+	raw := bytes.TrimSpace(upStdout.Bytes())
 
-		var summary display.SummaryJSON
-		if err := json.Unmarshal([]byte(line), &summary); err != nil {
-			continue
-		}
-		if summary.Result != "" && len(summary.Summary) > 0 {
-			require.Equal(t, apitype.OperationResultSucceeded, summary.Result)
-			require.NotEmpty(t, summary.Summary)
-			return
-		}
-	}
+	var summary display.SummaryJSON
+	require.NoErrorf(t, json.Unmarshal(raw, &summary),
+		"expected stdout to be exactly one JSON summary object, got:\n%s", raw)
 
-	t.Fatal("expected to find operation summary JSON in pulumi up output")
+	require.Equal(t, apitype.OperationResultSucceeded, summary.Result)
+	require.NotEmpty(t, summary.Summary, "summary should record the resource changes")
 }
-
-var _ io.Writer = (*scopedWriter)(nil)

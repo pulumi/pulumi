@@ -122,9 +122,6 @@ func ShowEvents(
 			close(ch)
 		}()
 		rawEvents = ch
-		if opts.SummaryJSON {
-			rawEvents = tapSummaryJSON(rawEvents, opts)
-		}
 	}
 
 	if opts.JSONDisplay {
@@ -133,6 +130,20 @@ func ShowEvents(
 		} else {
 			ShowJSONEvents(stampedEvents, done, opts)
 		}
+		return
+	}
+
+	if opts.SummaryJSON {
+		// `--output json` mode: stdout must contain only the summary JSON line.
+		// Suppress all human-readable output (permalinks, progress, diffs); the
+		// tap drains the event stream and emits the summary on stdout when the
+		// SummaryEvent arrives.
+		tapped := tapSummaryJSON(rawEvents, opts)
+		go func() {
+			defer close(done)
+			for range tapped { //nolint:revive // intentional drain
+			}
+		}()
 		return
 	}
 
