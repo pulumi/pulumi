@@ -1111,6 +1111,33 @@ func TestStructuralTypeChecks(t *testing.T) {
 	})
 }
 
+func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {
+	t.Parallel()
+
+	value := property.New(map[string]property.Value{
+		"__type": property.New("PermissionDescriptorGroup"),
+		"name":   property.New("root"),
+		"items": property.New([]property.Value{
+			property.New(map[string]property.Value{
+				"__type": property.New("PermissionDescriptorCondition"),
+				"name":   property.New("child"),
+			}),
+		}),
+	})
+
+	expr, err := generateValue(
+		&schema.MapType{ElementType: schema.AnyType},
+		value,
+		ImportState{},
+		func(string) {},
+	)
+	require.NoError(t, err)
+
+	formatted := fmt.Sprintf("%v", expr)
+	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorGroup"`)
+	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorCondition"`)
+}
+
 func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {
 	t.Parallel()
 	value := property.New("hello")
