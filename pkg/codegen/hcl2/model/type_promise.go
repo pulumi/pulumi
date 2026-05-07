@@ -110,6 +110,16 @@ func (t *PromiseType) conversionFrom(
 		if src, ok := src.(*PromiseType); ok {
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		}
+		if src, ok := src.(*OutputType); ok {
+			// An Output may carry unknowns or dependencies that a Promise cannot represent,
+			// so converting from output(U) to promise(T) is at best unsafe even when U is
+			// safely convertible to T.
+			kind, why := t.ElementType.conversionFrom(src.ElementType, unifying, seen)
+			if kind == SafeConversion {
+				kind = UnsafeConversion
+			}
+			return kind, why
+		}
 		return t.ElementType.conversionFrom(src, unifying, seen)
 	})
 }
@@ -130,8 +140,8 @@ func (t *PromiseType) unify(other Type) (Type, ConversionKind) {
 			elementType, conversionKind := t.ElementType.unify(other.ElementType)
 			return NewPromiseType(elementType), conversionKind
 		case *OutputType:
-			// If the other type is an output type, prefer the optional type, but unify the element type.
-			elementType, conversionKind := t.unify(other.ElementType)
+			// If the other type is an output type, prefer the output type, but unify the element types.
+			elementType, conversionKind := t.ElementType.unify(other.ElementType)
 			return NewOutputType(elementType), conversionKind
 		default:
 			// Prefer the promise type.

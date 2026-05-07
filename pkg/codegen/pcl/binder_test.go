@@ -1459,6 +1459,22 @@ output "result" {
 	require.Nil(t, program)
 }
 
+// Test binding a conditional whose branches mix a promise-typed value (from an
+// invoke().result) with a try() expression.
+func TestBindConditionalMixingPromiseWithTry(t *testing.T) {
+	t.Parallel()
+	source := `
+config "x" "any" {}
+isOne = invoke("std:index:Abs", {a = 1, b = 1}).result == 1
+a = isOne ? x : null
+b = true ? a : try(x, null)
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "binding should not panic or error: %v", diags)
+	require.NotNil(t, program)
+}
+
 func TestStackReferenceGetToken(t *testing.T) {
 	t.Parallel()
 	source := `
