@@ -126,3 +126,120 @@ func TestLinkifyURLs_EmptyString(t *testing.T) {
 
 	assert.Equal(t, "", linkifyURLs(""))
 }
+
+// hyperlink is a test helper that builds the exact OSC 8 envelope we expect
+// linkifyURLs to emit for a given target URL and display text. Pinning the
+// full byte sequence in each assertion catches regressions where one of the
+// escape terminators gets dropped — a common refactor mistake that produces
+// visible garbage rather than a silent wrong-link bug.
+func hyperlink(target, display string) string {
+	return "\x1b]8;;" + target + "\x1b\\" + display + "\x1b]8;;\x1b\\"
+}
+
+func TestLinkifyURLs_PreservesBalancedTrailingParens(t *testing.T) {
+	t.Parallel()
+
+	// Wikipedia disambiguation URLs end in a real ")" that closes a "(" inside
+	// the URL. Stripping it would point clicks at a 404 — the bracket-balance
+	// logic must keep balanced closers as part of the link target.
+	const url = "https://en.wikipedia.org/wiki/Foo_(bar)"
+	got := linkifyURLs("see " + url + " for more")
+	assert.Contains(t, got, hyperlink(url, url))
+}
+
+func TestLinkifyURLs_PreservesParensInMiddleOfURL(t *testing.T) {
+	t.Parallel()
+
+	// Mid-URL parens have nothing to do with trailing-punct stripping, but
+	// pin the case so a future change can't accidentally consume them while
+	// scanning the tail.
+	const url = "https://example.com/path(with)parens/more"
+	assert.Equal(t, hyperlink(url, url), linkifyURLs(url))
+}
+
+func TestLinkifyURLs_PreservesMultipleBalancedGroups(t *testing.T) {
+	t.Parallel()
+
+	// Two balanced "()" groups: opens=2, closes=2, so the trailing ")" is
+	// balanced and must stay in the URL.
+	const url = "https://example.com/(a)/(b)"
+	assert.Equal(t, hyperlink(url, url), linkifyURLs(url))
+}
+
+func TestLinkifyURLs_PreservesBalancedBracketsInURL(t *testing.T) {
+	t.Parallel()
+
+	// Same balance rule applies to "[]" — square brackets are rarer in URLs
+	// (mostly IPv6 hosts in literal form) but the trim logic treats them
+	// uniformly with parens, so pin the behavior.
+	const url = "https://example.com/x[y]"
+	assert.Equal(t, hyperlink(url, url), linkifyURLs(url))
+}
+
+func TestLinkifyURLs_StripsUnbalancedTrailingParen(t *testing.T) {
+	t.Parallel()
+
+	// The inner "(bar)" is balanced inside the URL and stays put; only the
+	// outer ")" — opened by the prose's leading "(" — gets pushed back out.
+	const url = "https://en.wikipedia.org/wiki/Foo_(bar)"
+	got := linkifyURLs("(see " + url + ")")
+	assert.Contains(t, got, hyperlink(url, url)+")")
+	assert.NotContains(t, got, url+")\x1b\\", "outer paren must not be inside the link target")
+}
+
+func TestLinkifyURLs_StripsMultipleUnbalancedCloses(t *testing.T) {
+	t.Parallel()
+
+	// No "(" inside the URL means both trailing ")"s are unmatched and peel
+	// off into the prose one at a time.
+	got := linkifyURLs("https://example.com/foo))")
+	assert.Contains(t, got, hyperlink("https://example.com/foo", "https://example.com/foo")+"))")
+}
+
+func TestLinkifyURLs_StripsCombinedTrailingPunct_PeriodInside(t *testing.T) {
+	t.Parallel()
+
+	// Strip order matters: outer ")" is unbalanced and goes first, then the
+	// "." that's now exposed at the tail. Both end up in the trailing prose
+	// in their original order.
+	got := linkifyURLs("(https://example.com.)")
+	assert.Contains(t, got, hyperlink("https://example.com", "https://example.com")+".)")
+}
+
+func TestLinkifyURLs_StripsCombinedTrailingPunct_PeriodAfterParen(t *testing.T) {
+	t.Parallel()
+
+	// "." strips first (always-strip punct), exposing a balanced ")" that
+	// must stay in the URL. Naive "strip every trailing punct char" logic
+	// would peel the ")" off here and break the link.
+	const url = "https://example.com/(foo)"
+	got := linkifyURLs(url + ".")
+	assert.Contains(t, got, hyperlink(url, url)+".")
+}
+
+func TestLinkifyURLs_HandlesMixedPunctWithBalancedInner(t *testing.T) {
+	t.Parallel()
+
+	// Combined case: outer ")" peels first (closes=2 > opens=1), then ".",
+	// leaving the inner "(foo)" balanced and intact. Exercises the loop's
+	// recount-after-each-strip behavior.
+	const url = "https://example.com/(foo)"
+	got := linkifyURLs("(" + url + ".)")
+	assert.Contains(t, got, hyperlink(url, url)+".)")
+}
+
+func TestLinkifyURLs_MultipleURLsBalanceIndependently(t *testing.T) {
+	t.Parallel()
+
+	// Two URLs in one line: the first must keep its balanced trailing ")",
+	// the second must drop its trailing ".". This guards against a future
+	// refactor that accidentally hoists trim state across matches.
+	const wiki = "https://en.wikipedia.org/wiki/Foo_(bar)"
+	const ex = "https://example.com"
+	got := linkifyURLs("Compare " + wiki + " and " + ex + ".")
+	assert.Contains(t, got, hyperlink(wiki, wiki))
+	assert.Contains(t, got, hyperlink(ex, ex)+".")
+	// 2 hyperlinks * (opener + closer) = 4 OSC 8 marker sequences. More
+	// would mean a URL got double-wrapped; fewer would mean one got dropped.
+	assert.Equal(t, 4, strings.Count(got, "\x1b]8;;"))
+}

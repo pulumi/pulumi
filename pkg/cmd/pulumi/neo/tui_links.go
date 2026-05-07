@@ -43,10 +43,21 @@ var urlPattern = regexp.MustCompile(`https?://[^\s\x1b<>"']+`)
 // clickable.
 var osc8Pattern = regexp.MustCompile(`\x1b\]8;;[^\x1b]*\x1b\\[^\x1b]*\x1b\]8;;\x1b\\`)
 
-// urlTrailingPunct lists characters we strip from the tail of a matched URL.
-// These almost always belong to the surrounding sentence rather than the URL
-// itself (e.g. "see https://example.com." or "(see https://example.com)").
-const urlTrailingPunct = ".,:;!?)]}"
+// urlAlwaysStripPunct lists characters we unconditionally strip from the tail
+// of a matched URL — they're sentence punctuation that practically never
+// appears at the end of a real URL (e.g. "see https://example.com.").
+const urlAlwaysStripPunct = ".,:;!?"
+
+// urlTrailingBrackets maps each closing bracket we may need to peel off the
+// tail of a matched URL to its matching opener. We only strip a trailing
+// closer when it's unmatched inside the URL — that way "(see https://x.com)"
+// loses the outer ")" but "https://en.wikipedia.org/wiki/Foo_(bar)" keeps
+// the balanced one.
+var urlTrailingBrackets = map[byte]byte{
+	')': '(',
+	']': '[',
+	'}': '{',
+}
 
 // linkifyURLs scans text for bare http/https URLs and wraps each one in an
 // OSC 8 hyperlink so terminals that support it render the URL as clickable.
@@ -76,14 +87,40 @@ func linkifyURLs(text string) string {
 // "https://example.com." doesn't try to open "example.com.".
 func linkifyPlain(s string) string {
 	return urlPattern.ReplaceAllStringFunc(s, func(match string) string {
-		trail := ""
-		for len(match) > 0 && strings.ContainsRune(urlTrailingPunct, rune(match[len(match)-1])) {
-			trail = string(match[len(match)-1]) + trail
-			match = match[:len(match)-1]
-		}
+		match, trail := trimURLTail(match)
 		if match == "" {
 			return trail
 		}
 		return osc8Hyperlink(match, match) + trail
 	})
+}
+
+// trimURLTail peels sentence punctuation off the end of a URL match. Plain
+// punctuation (.,:;!?) always strips. A closing bracket only strips if it's
+// unmatched inside what remains of the URL — so balanced brackets stay part
+// of the link target (e.g. Wikipedia disambiguation URLs like
+// "https://en.wikipedia.org/wiki/Foo_(bar)") while orphan closers from the
+// surrounding prose ("(see https://x.com)") get pushed back out.
+func trimURLTail(url string) (link, trail string) {
+	for len(url) > 0 {
+		last := url[len(url)-1]
+		if strings.IndexByte(urlAlwaysStripPunct, last) >= 0 {
+			trail = string(last) + trail
+			url = url[:len(url)-1]
+			continue
+		}
+		if opener, ok := urlTrailingBrackets[last]; ok {
+			// Count both brackets in the full current match (which still
+			// includes the trailing closer). closes > opens means the closer
+			// at the end has no partner inside the URL, so it belongs to the
+			// surrounding text.
+			if strings.Count(url, string(last)) > strings.Count(url, string(opener)) {
+				trail = string(last) + trail
+				url = url[:len(url)-1]
+				continue
+			}
+		}
+		break
+	}
+	return url, trail
 }
