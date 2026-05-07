@@ -118,14 +118,12 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 	return cmd
 }
 
-// normalizeBackendURL normalizes a backend URL so that visually different but equivalent forms
-// (`file://~` and `file:///home/user`, `https://api.pulumi.com` and `https://api.pulumi.com/`,
-// etc.) compare equal. This is used to detect attempts to migrate between identical backends.
+// normalizeBackendURL canonicalizes a backend URL so equivalent forms (e.g. `file://~` and
+// `file:///home/user`, trailing slashes) compare equal in the same-backend guard.
 func normalizeBackendURL(s string) string {
 	if s == "" {
 		return s
 	}
-	// Strip trailing slashes; they are not significant for backend URLs.
 	s = strings.TrimRight(s, "/")
 	if path, ok := strings.CutPrefix(s, "file://"); ok {
 		if rest, hasTilde := strings.CutPrefix(path, "~"); hasTilde {
@@ -133,22 +131,17 @@ func normalizeBackendURL(s string) string {
 				path = home + rest
 			}
 		}
-		// Resolve symlinks/relative segments where possible. filepath.Clean is a syntactic clean
-		// (no IO), which is sufficient and avoids surprising behaviour on missing dirs.
-		path = filepath.Clean(path)
-		return "file://" + path
+		return "file://" + filepath.Clean(path)
 	}
 	if u, err := url.Parse(s); err == nil && u.Scheme != "" {
-		// Re-serialize via url.URL.String() to canonicalize percent-encoding and host case.
 		u.Path = strings.TrimRight(u.Path, "/")
 		return u.String()
 	}
 	return s
 }
 
-// stackConfigFilePath returns the on-disk path of the Pulumi.<stack>.yaml file for the given
-// stack. It reflects the same resolution `LoadProjectStack` uses, including the package-level
-// `ConfigFile` override. Returns "" if the path cannot be determined.
+// stackConfigFilePath mirrors LoadProjectStack's path resolution, honoring the package-level
+// ConfigFile override.
 func stackConfigFilePath(s backend.Stack) string {
 	if ConfigFile != "" {
 		return ConfigFile
@@ -193,30 +186,26 @@ func (cmd *stackMigrateCmd) Run(
 		return err
 	}
 
-	// Open the source backend without changing the saved current cloud URL.
+	// setCurrent=false: open source without overwriting the saved current cloud URL.
 	sourceInsecure := pkgWorkspace.GetCloudInsecure(ws, cmd.from)
 	sourceBE, err := lm.Login(
 		ctx, ws, sink, cmd.from, project,
-		false, /* setCurrent */
+		false,
 		sourceInsecure, dopts.Color,
 	)
 	if err != nil {
 		return fmt.Errorf("opening source backend %q: %w", cmd.from, err)
 	}
 
-	// Open the target backend (the currently logged-in one).
 	targetBE, err := cmdBackend.CurrentBackend(ctx, ws, lm, project, dopts)
 	if err != nil {
 		return fmt.Errorf("opening target backend: %w", err)
 	}
 
-	// Reject same-backend migration after normalizing both URLs so that equivalent forms
-	// (trailing slash, ~ expansion, etc.) are not treated as different backends.
 	if normalizeBackendURL(targetBE.URL()) == normalizeBackendURL(sourceBE.URL()) {
 		return fmt.Errorf("source and target backends are the same (%s); nothing to migrate", targetBE.URL())
 	}
 
-	// If no source stack was provided, fall back to the currently selected stack on the source backend.
 	var sourceStack backend.Stack
 	var srcRef backend.StackReference
 	if sourceStackName == "" {
@@ -246,10 +235,8 @@ func (cmd *stackMigrateCmd) Run(
 		srcRef = ref
 	}
 
-	// Resolve the target stack reference and verify nothing already exists with that name on the
-	// target backend. We do this BEFORE the more expensive source-side work (loading the project
-	// stack config, building a decrypter, exporting the deployment) so that obvious mistakes fail
-	// fast and don't, for example, prompt the user for a passphrase only to error afterwards.
+	// Resolve target ref + check it does not exist before any source-side work, so we don't
+	// prompt for a passphrase only to error afterwards.
 	targetStackName := cmd.targetStack
 	if targetStackName == "" {
 		targetStackName = srcRef.Name().String()
@@ -268,19 +255,15 @@ func (cmd *stackMigrateCmd) Run(
 			targetRef, targetBE.Name())
 	}
 
-	// Load the source stack's project configuration. We hold this in-memory reference for the rest of
-	// the migration: creating the target stack below may overwrite the shared `Pulumi.<stack>.yaml`
-	// file on disk with the target's secrets configuration, but our in-memory copy retains the
-	// source's config and its original (passphrase or KMS) secrets provider so we can re-encrypt
-	// values afterwards. We avoid `deepcopy.Copy` here because `config.Key` and `config.Value` are
-	// composed entirely of unexported fields, which the reflection-based deep-copy would zero out.
+	// We keep srcPS in memory rather than deep-copying because creating the target stack
+	// rewrites the shared Pulumi.<stack>.yaml on disk, and `deepcopy.Copy` zero-values
+	// `config.Key`/`config.Value` (unexported-only structs).
 	srcPS, err := LoadProjectStack(ctx, sink, project, sourceStack)
 	if err != nil {
 		return fmt.Errorf("loading source stack config: %w", err)
 	}
 
-	// Use the env-aware loader so that stacks whose secrets configuration must be recovered from the
-	// state file (PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER=true) still decrypt correctly.
+	// Env-aware loader honors PULUMI_FALLBACK_TO_STATE_SECRETS_MANAGER.
 	ssml := NewStackSecretsManagerLoaderFromEnv()
 	var oldDecrypter config.Decrypter
 	if srcPS.Config.HasSecureValue() {
@@ -311,9 +294,8 @@ func (cmd *stackMigrateCmd) Run(
 		}
 	}
 
-	// Snapshot the on-disk stack config file so we can roll it back if any later step fails.
-	// In the same-stack-name case this file is shared between source and target, so a partial
-	// failure could otherwise corrupt the local config that decrypts the source's secrets.
+	// Same-name source and target share Pulumi.<stack>.yaml; snapshot it for rollback so
+	// a partial failure can't strand the source's secrets undecryptable.
 	configPath := stackConfigFilePath(sourceStack)
 	var origConfigBytes []byte
 	configExisted := false
@@ -326,7 +308,6 @@ func (cmd *stackMigrateCmd) Run(
 		}
 	}
 
-	// Track whether we have committed; when committed=true the deferred rollback is a no-op.
 	var (
 		committed     bool
 		targetStack   backend.Stack
@@ -337,7 +318,7 @@ func (cmd *stackMigrateCmd) Run(
 		if committed || retErr == nil {
 			return
 		}
-		// Best-effort rollback. Report failures but do not mask the original error.
+		// Best-effort rollback; surface failures without masking retErr.
 		if mutatedConfig && configPath != "" {
 			if configExisted {
 				if wErr := os.WriteFile(configPath, origConfigBytes, 0o600); wErr != nil {
@@ -361,33 +342,30 @@ func (cmd *stackMigrateCmd) Run(
 		}
 	}()
 
-	// Create the target stack. From this point on the deferred rollback is responsible for cleanup
-	// on any failure.
 	targetStack, err = CreateStack(
 		ctx, sink, ws, targetBE, targetRef, root, nil,
-		false, /* setCurrent */
+		false,
 		cmd.secretsProvider,
-		false, /* useRemoteConfig */
+		false,
 	)
 	if err != nil {
 		return fmt.Errorf("creating target stack: %w", err)
 	}
 	targetCreated = true
-	mutatedConfig = true // CreateStack may have rewritten Pulumi.<stack>.yaml.
+	mutatedConfig = true
 
-	// CreateStack may not rewrite Pulumi.<stack>.yaml (e.g. when the target backend is the cloud and
-	// the chosen secrets provider is the default service one): in that case the file still has the
-	// source's secrets configuration. Force the target's secrets provider onto the stack config so
-	// that the encrypter we build below corresponds to the target, not the source.
+	// CreateStack short-circuits the Pulumi.<stack>.yaml rewrite when target=cloud and
+	// secrets-provider=default, so without this call the file would still carry the source's
+	// secrets config and GetSecretsManager below would build a source-flavored encrypter.
+	// creatingStack=false bypasses the same cloud-default short-circuit inside the helper.
 	if err := CreateSecretsManagerForExistingStack(
 		ctx, sink, ws, targetStack, cmd.secretsProvider,
-		false, /* rotateSecretsProvider */
-		false, /* creatingStack */
+		false,
+		false,
 	); err != nil {
 		return fmt.Errorf("configuring target secrets provider: %w", err)
 	}
 
-	// Reload the target's project stack config (it may now have the new secrets provider configured).
 	targetPS, err := LoadProjectStack(ctx, sink, project, targetStack)
 	if err != nil {
 		return fmt.Errorf("loading target stack config: %w", err)
@@ -399,7 +377,6 @@ func (cmd *stackMigrateCmd) Run(
 	}
 	newEncrypter := newSM.Encrypter()
 
-	// Re-encrypt the source's config map under the target's secrets provider and merge into target config.
 	newConfig, err := srcPS.Config.Copy(oldDecrypter, newEncrypter)
 	if err != nil {
 		return fmt.Errorf("re-encrypting stack config: %w", err)
@@ -416,9 +393,7 @@ func (cmd *stackMigrateCmd) Run(
 		return fmt.Errorf("saving target stack config: %w", err)
 	}
 
-	// Replace the deployment's secrets manager and import into the target stack via SaveSnapshot,
-	// which validates resource URNs against the target stack name, runs an integrity check, and
-	// drops any pending operations carried over from the source.
+	// SaveSnapshot validates URNs match target name, runs integrity check, clears pending ops.
 	snap, err := stack.DeserializeUntypedDeployment(ctx, sourceDeployment, backend_secrets.DefaultProvider)
 	if err != nil {
 		return stack.FormatDeploymentDeserializationError(err, sourceStack.Ref().Name().String())

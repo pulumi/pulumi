@@ -65,8 +65,6 @@ func TestNormalizeBackendURL(t *testing.T) {
 	}
 }
 
-// runMigrate is a small helper that wires a stackMigrateCmd through cobra exactly the way
-// production uses it, so tests exercise the full RunE path including flag parsing.
 func runMigrate(
 	t *testing.T,
 	ws pkgWorkspace.Context,
@@ -134,9 +132,6 @@ func TestStackMigrate_RejectsBothPositionalAndFlag(t *testing.T) {
 	assert.Contains(t, err.Error(), "only one of --source-stack")
 }
 
-// TestStackMigrate_RejectsSameBackend exercises the URL normalization guard: even though
-// `file://~` and the home-expanded form are textually different, they refer to the same
-// backend and the migration must be rejected.
 func TestStackMigrate_RejectsSameBackend(t *testing.T) {
 	t.Parallel()
 
@@ -162,8 +157,6 @@ func TestStackMigrate_RejectsSameBackend(t *testing.T) {
 		LoginF: func(ctx context.Context, ws pkgWorkspace.Context, sink diag.Sink, url string,
 			project *workspace.Project, setCurrent, insecure bool, color colors.Colorization,
 		) (backend.Backend, error) {
-			// Return a backend with the literal source URL: normalization should still
-			// recognize it as the same as the target's expanded URL.
 			return &backend.MockBackend{
 				URLF:  func() string { return sourceURL },
 				NameF: func() string { return "diy" },
@@ -179,8 +172,6 @@ func TestStackMigrate_RejectsSameBackend(t *testing.T) {
 	assert.Contains(t, err.Error(), "source and target backends are the same")
 }
 
-// TestStackMigrate_RejectsExistingTargetStack ensures we fail before touching anything if the
-// target backend already has a stack with the chosen name.
 func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paralleltest
 	wd := t.TempDir()
 	t.Chdir(wd)
@@ -264,8 +255,6 @@ func TestStackMigrate_RejectsExistingTargetStack(t *testing.T) { //nolint: paral
 	assert.Contains(t, err.Error(), "already exists")
 }
 
-// TestStackMigrate_RollsBackOnImportFailure verifies that when the deployment import fails the
-// command removes the partially-created target stack rather than leaving it dangling.
 func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralleltest
 	wd := t.TempDir()
 	t.Chdir(wd)
@@ -345,8 +334,8 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 		URLF:               func() string { return "https://api.pulumi.com" },
 		NameF:              func() string { return "pulumi.com" },
 		ValidateStackNameF: func(s string) error { return nil },
+		// Backend default returns nil so stack-level default is consulted (mirrors cloud).
 		DefaultSecretManagerF: func(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
-			// Backend-level default returns nil so the stack-level default is consulted (mirrors cloud).
 			return nil, nil
 		},
 		ParseStackReferenceF: func(s string) (backend.StackReference, error) {
@@ -357,7 +346,6 @@ func TestStackMigrate_RollsBackOnImportFailure(t *testing.T) { //nolint: paralle
 			}, nil
 		},
 		GetStackF: func(ctx context.Context, ref backend.StackReference) (backend.Stack, error) {
-			// Target does not yet exist when the migrate command first checks for it.
 			return nil, nil
 		},
 		CreateStackF: func(
