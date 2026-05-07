@@ -364,14 +364,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	close(eventsCh)
 	<-drainDone
 
-	res := pulumiResult{
-		ProjectName: a.ProjectName,
-		StackName:   a.StackName,
-		EventsFile:  eventsPath,
-	}
-	if res.ProjectName == "" {
-		res.ProjectName = proj.Name.String()
-	}
+	res := newPulumiResult(proj, s.Ref(), eventsPath)
 
 	switch {
 	case runErr != nil && errors.Is(ctx.Err(), context.Canceled):
@@ -634,6 +627,22 @@ func silenceStd() func() {
 	return func() {
 		os.Stdout, os.Stderr = origStdout, origStderr
 		_ = null.Close()
+	}
+}
+
+// newPulumiResult returns a pulumiResult populated with the canonical project
+// name and bare stack name from the parsed StackReference. ParseStackReference
+// accepts both bare names and fully-qualified "<org>/<project>/<stack>" forms,
+// but downstream consumers (the Neo agent's entity extraction in particular)
+// treat the returned stack_name as a bare name. Echoing the raw input back
+// would cause the agent to construct entities with malformed names whenever
+// the LLM passes an FQSN — a phrasing the CLI itself encourages via some of
+// its own error messages.
+func newPulumiResult(proj *workspace.Project, stackRef backend.StackReference, eventsPath string) pulumiResult {
+	return pulumiResult{
+		ProjectName: proj.Name.String(),
+		StackName:   stackRef.Name().String(),
+		EventsFile:  eventsPath,
 	}
 }
 
