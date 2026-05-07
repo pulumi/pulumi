@@ -754,9 +754,8 @@ func TestSession_ForwardToUI_EmitsAllEventTypes(t *testing.T) {
 			},
 		},
 		{
-			// context.tool_name must be forwarded so the TUI can recognize
-			// ask-user tools and render them as questions instead of
-			// approvals (see isAskUserToolName).
+			// context.tool_name must reach the TUI so it can dispatch
+			// ask-user tools to question rendering.
 			"user_approval_request_forwards_tool_name",
 			map[string]any{
 				"type":          backendEventUserApprovalRequest,

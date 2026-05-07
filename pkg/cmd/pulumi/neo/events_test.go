@@ -46,18 +46,14 @@ func TestHasPendingCLIToolCalls(t *testing.T) {
 func TestIsAskUserToolName(t *testing.T) {
 	t.Parallel()
 
-	// Bare method form and the namespaced "<server>__<method>" form must
-	// both match — server prefixes can change without a CLI rebuild.
 	assert.True(t, isAskUserToolName("ask_user"))
 	assert.True(t, isAskUserToolName("ux__ask_user"))
 	assert.True(t, isAskUserToolName("anything__ask_user"))
 
-	// Unrelated tool names must not match.
 	assert.False(t, isAskUserToolName(""))
 	assert.False(t, isAskUserToolName("ask_user_other"))
 	assert.False(t, isAskUserToolName("filesystem__read"))
 	assert.False(t, isAskUserToolName("ux__notify"))
-	// A tool whose method merely contains "ask_user" must not match —
-	// suffix means the full method, not a substring.
+	// Suffix means the full method, not a substring.
 	assert.False(t, isAskUserToolName("ux__ask_user_v2"))
 }

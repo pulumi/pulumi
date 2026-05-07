@@ -72,15 +72,14 @@ const (
 	approvalTypePlanExit = "plan_exit"
 
 	// toolNameAskUser is the method name (the `<method>` half of
-	// `<server>__<method>`) for the agent's ask-user tool. The CLI matches
-	// by suffix so the server prefix can change without a CLI rebuild. The
-	// agent emits approval_type "general" for these, so the TUI must
-	// dispatch on tool name rather than approval_type alone.
+	// `<server>__<method>`) for the agent's ask-user tool. The agent emits
+	// approval_type "general" for these, so the TUI must dispatch on tool
+	// name rather than approval_type alone.
 	toolNameAskUser = "ask_user"
 )
 
-// isAskUserToolName reports whether `name` identifies the agent's ask-user
-// tool, in either bare ("ask_user") or namespaced ("ux__ask_user") form.
+// isAskUserToolName matches by suffix so the server prefix can change
+// without a CLI rebuild ("ask_user" or "<server>__ask_user").
 func isAskUserToolName(name string) bool {
 	return name == toolNameAskUser || strings.HasSuffix(name, "__"+toolNameAskUser)
 }

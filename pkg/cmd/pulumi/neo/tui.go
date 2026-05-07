@@ -440,8 +440,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Type == tea.KeyEnter {
 				text := strings.TrimSpace(m.textInput.Value())
 				if m.pendingIsQuestion {
-					// Empty input is a no-op — "no answer" is meaningless for
-					// a question; ESC remains the abort path.
 					if text == "" {
 						return m, nil
 					}
@@ -722,7 +720,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription}))
 			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
 		case isAskUserToolName(msg.ToolName):
-			// Render as a question, not an approval.
 			m.pendingIsQuestion = true
 			cmds = append(cmds, m.commitBlock(block{kind: blockQuestion, raw: msg.Message}))
 			m.textInput.Prompt = "Your answer: "
@@ -931,8 +928,7 @@ func (m *Model) appendUserMessageBlock(content string) tea.Cmd {
 }
 
 // clearPendingPrompt resets all pendingApproval/pendingIsQuestion state and
-// returns the text input to its default "send a message" appearance. Called
-// after the user submits a confirmation or an answer.
+// returns the text input to its default "send a message" appearance.
 func (m *Model) clearPendingPrompt() {
 	m.pendingApproval = false
 	m.pendingApprovalID = ""

@@ -1353,8 +1353,7 @@ func TestModel_Update_UIApprovalRequest_AskUser_RendersAsQuestion(t *testing.T) 
 
 	// The agent's ux__ask_user tool reuses user_approval_request to ask
 	// clarifying questions. The TUI must NOT render this as an approval —
-	// no warning header, no "Approve?" prompt. Discriminator is the wire
-	// tool_name (the agent emits approval_type "general" for these too).
+	// no warning header, no "Approve?" prompt.
 	ch := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{EventCh: ch})
 
@@ -1389,9 +1388,6 @@ func TestModel_Update_UIApprovalRequest_AskUser_RendersAsQuestion(t *testing.T) 
 func TestModel_Update_UIApprovalRequest_AskUser_BareToolName(t *testing.T) {
 	t.Parallel()
 
-	// Tool names on the wire are "<server>__<method>"; the suffix matcher
-	// must also recognize the bare method form so a server rename doesn't
-	// require a CLI rebuild.
 	ch := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{EventCh: ch})
 
@@ -1511,9 +1507,7 @@ func TestModel_Update_AnswerQuestion_EmptyInputIsNoOp(t *testing.T) {
 	t.Parallel()
 
 	// Empty input + Enter must not produce an outbound event and must
-	// leave the question pending. (For real approvals, empty Enter is a
-	// denial with empty reason — we deliberately diverge here because
-	// "no answer" is meaningless for a question.)
+	// leave the question pending.
 	outCh := make(chan outboundEvent, 1)
 	evCh := make(chan UIEvent, 4)
 	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
