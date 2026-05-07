@@ -50,9 +50,17 @@ type TemplateMatchable interface {
 	GetPublisher() string
 }
 
-func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, error) {
+// TemplateMatchResult contains both the matcher function and parsed URL info.
+type TemplateMatchResult struct {
+	Matcher func(TemplateMatchable) bool
+	URLInfo *registry.URLInfo
+}
+
+func NewTemplateMatcher(templateName string) (TemplateMatchResult, error) {
 	if templateName == "" {
-		return func(TemplateMatchable) bool { return true }, nil
+		return TemplateMatchResult{
+			Matcher: func(TemplateMatchable) bool { return true },
+		}, nil
 	}
 
 	var urlInfo *registry.URLInfo
@@ -67,14 +75,14 @@ func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, erro
 				// Wrap this particular error reason because formats other than the
 				// full registry:// URL format are supported by `pulumi new`.
 				if strings.Contains(invalidRegistryURL.Reason, "expected format") {
-					return nil, errors.New("Expected: registry://templates/source/publisher/name[@version], " +
+					return TemplateMatchResult{}, errors.New("Expected: registry://templates/source/publisher/name[@version], " +
 						"source/publisher/name[@version], publisher/name[@version], or name[@version]")
 				}
 			}
-			return nil, err
+			return TemplateMatchResult{}, err
 		}
 		if urlInfo.ResourceType() != "templates" {
-			return nil, fmt.Errorf("resource type '%s' is not valid for templates", urlInfo.ResourceType())
+			return TemplateMatchResult{}, fmt.Errorf("resource type '%s' is not valid for templates", urlInfo.ResourceType())
 		}
 	} else {
 		// 2. Try parsing as a partial registry URL
@@ -82,7 +90,7 @@ func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, erro
 		if err != nil {
 			var missingVersion *registry.MissingVersionAfterAtSignError
 			if errors.As(err, &missingVersion) {
-				return nil, err
+				return TemplateMatchResult{}, err
 			}
 
 			// Structural errors: fall back to name matching
@@ -90,13 +98,10 @@ func NewTemplateMatcher(templateName string) (func(TemplateMatchable) bool, erro
 		}
 	}
 
-	// Validation: versions other than "latest" are not yet supported because the
-	// list endpoint used by `pulumi new` only returns the latest version.
-	if urlInfo != nil && urlInfo.Version() != nil {
-		return nil, &registry.UnsupportedVersionError{Version: urlInfo.Version().String()}
-	}
-
-	return matcherFromURLInfo(urlInfo, templateName), nil
+	return TemplateMatchResult{
+		Matcher: matcherFromURLInfo(urlInfo, templateName),
+		URLInfo: urlInfo,
+	}, nil
 }
 
 func matcherFromURLInfo(urlInfo *registry.URLInfo, templateName string) func(TemplateMatchable) bool {
@@ -140,9 +145,23 @@ func (s *Source) getCloudTemplates(
 func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
 	r := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
 
-	matches, err := NewTemplateMatcher(templateName)
+	matchResult, err := NewTemplateMatcher(templateName)
 	if err != nil {
 		s.addError(err)
+		return
+	}
+
+	// If we have a fully qualified template with a specific version, fetch directly using GetTemplate.
+	// This bypasses ListTemplates which only returns the latest version.
+	urlInfo := matchResult.URLInfo
+	if urlInfo != nil && urlInfo.Version() != nil {
+		// A version was specified - we need source/publisher/name to fetch directly
+		if urlInfo.Source() == "" || urlInfo.Publisher() == "" || urlInfo.Name() == "" {
+			s.addError(fmt.Errorf(
+				"specific versions require a fully qualified template name: source/publisher/name@version"))
+			return
+		}
+		s.getRegistryTemplateByVersion(ctx, r, urlInfo)
 		return
 	}
 
@@ -160,12 +179,41 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 		}
 
 		t := registryTemplate{template, r, s}
-		if !matches(t) {
+		if !matchResult.Matcher(t) {
 			continue
 		}
 
 		s.addTemplate(t)
 	}
+}
+
+// getRegistryTemplateByVersion fetches a specific version of a template directly using GetTemplate.
+func (s *Source) getRegistryTemplateByVersion(
+	ctx context.Context,
+	r registry.Registry,
+	urlInfo *registry.URLInfo,
+) {
+	template, err := r.GetTemplate(ctx, urlInfo.Source(), urlInfo.Publisher(), urlInfo.Name(), urlInfo.Version())
+	if err != nil {
+		var notFoundErr backenderr.NotFoundError
+		if errors.As(err, &notFoundErr) {
+			s.addError(fmt.Errorf("template '%s/%s/%s' version '%s' not found",
+				urlInfo.Source(), urlInfo.Publisher(), urlInfo.Name(), urlInfo.Version().String()))
+			return
+		}
+		s.addError(fmt.Errorf("could not get template: %w", err))
+		return
+	}
+
+	if template.Source == "github" && strings.HasPrefix(template.Name, "pulumi/templates/") {
+		// These templates are maintained using https://github.com/pulumi/templates, and are
+		// ingested without going through the Pulumi Cloud.
+		s.addError(fmt.Errorf("template '%s/%s/%s' version '%s' not found",
+			urlInfo.Source(), urlInfo.Publisher(), urlInfo.Name(), urlInfo.Version().String()))
+		return
+	}
+
+	s.addTemplate(registryTemplate{template, r, s})
 }
 
 type registryTemplate struct {

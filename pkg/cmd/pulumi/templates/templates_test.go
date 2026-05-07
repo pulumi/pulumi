@@ -27,7 +27,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -966,6 +968,148 @@ func TestRegistryTemplateResolution(t *testing.T) {
 				} else {
 					var templateNotFound workspace.TemplateNotFoundError
 					assert.ErrorAs(t, err, &templateNotFound)
+				}
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestVersionedTemplateResolution(t *testing.T) {
+	ctx := testContext(t)
+
+	// Track which methods were called and with what parameters
+	var getTemplateCalls []struct {
+		source, publisher, name string
+		version                 *semver.Version
+	}
+
+	mockRegistry := &backend.MockCloudRegistry{
+		Mock: registry.Mock{
+			GetTemplateF: func(
+				ctx context.Context, source, publisher, name string, version *semver.Version,
+			) (apitype.TemplateMetadata, error) {
+				getTemplateCalls = append(getTemplateCalls, struct {
+					source, publisher, name string
+					version                 *semver.Version
+				}{source, publisher, name, version})
+
+				// Return a template if version is 1.0.0
+				if version != nil && version.String() == "1.0.0" {
+					return apitype.TemplateMetadata{
+						Name:        name,
+						Source:      source,
+						Publisher:   publisher,
+						Description: ref("A versioned template"),
+					}, nil
+				}
+				// Return not found for other versions
+				return apitype.TemplateMetadata{}, backenderr.NotFoundError{}
+			},
+			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					yield(apitype.TemplateMetadata{
+						Name:        "my-template",
+						Source:      "private",
+						Publisher:   "my-org",
+						Description: ref("Latest version"),
+					}, nil)
+				}
+			},
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+
+	testCases := []struct {
+		name                string
+		templateURL         string
+		shouldMatch         bool
+		expectedName        string
+		expectedDisplayName string
+		description         string
+		expectSpecificError string
+		expectGetTemplate   bool
+	}{
+		{
+			name:                "versioned template with full URL",
+			templateURL:         "private/my-org/my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "A versioned template",
+			expectGetTemplate:   true,
+		},
+		{
+			name:                "versioned template with registry URL",
+			templateURL:         "registry://templates/private/my-org/my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "A versioned template",
+			expectGetTemplate:   true,
+		},
+		{
+			name:                "versioned template not found",
+			templateURL:         "private/my-org/my-template@2.0.0",
+			shouldMatch:         false,
+			expectSpecificError: "version '2.0.0' not found",
+			expectGetTemplate:   true,
+		},
+		{
+			name:                "partial URL with version requires full qualification",
+			templateURL:         "my-template@1.0.0",
+			shouldMatch:         false,
+			expectSpecificError: "specific versions require a fully qualified template name",
+			expectGetTemplate:   false,
+		},
+		{
+			name:                "without version uses ListTemplates",
+			templateURL:         "private/my-org/my-template",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "Latest version",
+			expectGetTemplate:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Reset call tracking
+			getTemplateCalls = nil
+
+			source := newImpl(ctx, tc.templateURL, ScopeAll, workspace.TemplateKindPulumiProject,
+				templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+				env.NewEnv(env.MapStore{
+					"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
+					"PULUMI_EXPERIMENTAL":             "true",
+				}))
+
+			templates, err := source.Templates()
+
+			// Check if GetTemplate was called as expected
+			if tc.expectGetTemplate {
+				assert.NotEmpty(t, getTemplateCalls, "expected GetTemplate to be called")
+			} else {
+				assert.Empty(t, getTemplateCalls, "expected GetTemplate not to be called")
+			}
+
+			if tc.shouldMatch {
+				require.NoError(t, err)
+				require.Len(t, templates, 1)
+				assert.Equal(t, tc.expectedName, templates[0].Name())
+				assert.Equal(t, tc.expectedDisplayName, templates[0].DisplayName())
+				if tc.description != "" {
+					assert.Equal(t, tc.description, templates[0].Description())
+				}
+			} else {
+				require.Error(t, err)
+				if tc.expectSpecificError != "" {
+					assert.Contains(t, err.Error(), tc.expectSpecificError)
 				}
 			}
 		})
