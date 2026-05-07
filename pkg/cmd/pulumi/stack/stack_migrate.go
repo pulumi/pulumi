@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -133,6 +134,8 @@ func shouldForceTargetSecretsRewrite(b backend.Backend, secretsProvider string) 
 	return isCloud
 }
 
+var backupPathCollisionCounter uint64
+
 // reusingSecretsProvider returns cached when type+state match, else delegates. Avoids a second
 // passphrase prompt / KMS round trip. State match guards against same-type-different-key cases.
 type reusingSecretsProvider struct {
@@ -173,8 +176,38 @@ func nextBackupPath(path string) string {
 			return candidate
 		}
 	}
-	// Pathological case: thousand backups already on disk. Suffix with nanos to stay unique.
-	return fmt.Sprintf("%s.bak.%d", path, time.Now().UnixNano())
+	// Pathological case: thousand backups already on disk. Add time+pid+counter to lower collisions.
+	return fmt.Sprintf(
+		"%s.bak.%d.%d.%d",
+		path,
+		time.Now().UnixNano(),
+		os.Getpid(),
+		atomic.AddUint64(&backupPathCollisionCounter, 1),
+	)
+}
+
+// writeBackupFile creates a sibling backup without clobbering an existing `.bak` / `.bak.N`.
+func writeBackupFile(path string, data []byte, mode os.FileMode) (string, error) {
+	for {
+		candidate := nextBackupPath(path)
+		f, err := os.OpenFile(candidate, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+		if err != nil {
+			if os.IsExist(err) {
+				continue
+			}
+			return "", err
+		}
+		if _, err := f.Write(data); err != nil {
+			_ = f.Close()
+			_ = os.Remove(candidate)
+			return "", err
+		}
+		if err := f.Close(); err != nil {
+			_ = os.Remove(candidate)
+			return "", err
+		}
+		return candidate, nil
+	}
 }
 
 // snapshotConfigFile reads bytes+mode at path. existed=false with no err means absent.
@@ -222,10 +255,10 @@ func renameSnapshotStack(
 		if newProject != "" {
 			proj = newProject
 		}
-		// Root URN's name is `<project>-<stack>`; rebuild instead of URN.RenameStack.
+		// Root stack URN names conventionally use `<project>-<stack>`; preserve that shape.
 		if u.QualifiedType() == resource.RootStackType {
 			return resource.NewURN(newName.Q(), proj, "", u.QualifiedType(),
-				string(tokens.QName(proj)+"-"+newName.Q()))
+				string(proj)+"-"+string(newName.Q()))
 		}
 		return resource.NewURN(newName.Q(), proj, "", u.QualifiedType(), u.Name())
 	}
@@ -296,7 +329,12 @@ func rewriteProviderRef(
 		}
 		return fmt.Errorf("parsing provider reference for %q: %w", res.URN, err)
 	}
-	newRef, err := providers.NewReference(rewrite(ref.URN()), ref.ID())
+	newURN := rewrite(ref.URN())
+	// Preserve byte-for-byte provider refs when unchanged. NewReference normalizes empty IDs.
+	if newURN == ref.URN() {
+		return nil
+	}
+	newRef, err := providers.NewReference(newURN, ref.ID())
 	if err != nil {
 		if force {
 			fmt.Fprintf(w, "Warning: rebuilding provider reference for %q: %v\n", res.URN, err)
@@ -548,9 +586,9 @@ func (cmd *stackMigrateCmd) Run(
 	// avoids clobbering an earlier .bak. Failure here is fatal: prompt promised the backup.
 	var bakPath string
 	if sameConfigFile && srcConfigExisted {
-		bakPath = nextBackupPath(srcConfigPath)
-		if err := os.WriteFile(bakPath, srcConfigBytes, srcConfigMode); err != nil {
-			return fmt.Errorf("writing backup %s: %w", bakPath, err)
+		bakPath, err = writeBackupFile(srcConfigPath, srcConfigBytes, srcConfigMode)
+		if err != nil {
+			return fmt.Errorf("writing backup for %s: %w", srcConfigPath, err)
 		}
 		fmt.Fprintf(stdout, "Backed up %s to %s\n", srcConfigPath, bakPath)
 	}
@@ -620,6 +658,15 @@ func (cmd *stackMigrateCmd) Run(
 			if probe, probeErr := targetBE.GetStack(ctx, targetRef); probeErr == nil && probe != nil {
 				targetStack = probe
 				targetCreated = true
+			} else {
+				probeStatus := "cleanup probe could not confirm it"
+				if probeErr != nil {
+					probeStatus = fmt.Sprintf("cleanup probe failed: %v", probeErr)
+				}
+				fmt.Fprintf(stdout,
+					"Warning: target stack %s may have been created before stack config setup failed, but %s.\n",
+					targetRef, probeStatus)
+				fmt.Fprintf(stdout, "Run `pulumi stack rm %s --yes --force` to clean it up manually if it exists.\n", targetRef)
 			}
 		}
 		return fmt.Errorf("creating target stack: %w", err)
@@ -679,7 +726,8 @@ func (cmd *stackMigrateCmd) Run(
 	// pass through. Legacy DIY StackReferences don't expose Project(), so fall back to the
 	// local Pulumi.yaml project name when the backend doesn't carry one.
 	var oldProject, newProject tokens.PackageName
-	if srcProj, ok := srcRef.Project(); ok {
+	srcProj, srcRefHasProject := srcRef.Project()
+	if srcRefHasProject {
 		oldProject = tokens.PackageName(srcProj)
 	} else if project != nil {
 		oldProject = project.Name
@@ -689,6 +737,16 @@ func (cmd *stackMigrateCmd) Run(
 		if oldProject == "" || oldProject != tokens.PackageName(tgtProj) {
 			newProject = tokens.PackageName(tgtProj)
 		}
+	}
+	needsURNRewrite := srcRef.Name() != tgtStackRef.Name() || newProject != ""
+	if needsURNRewrite && !srcRefHasProject && project == nil {
+		return fmt.Errorf(
+			"rewriting URNs for target stack %s requires a source project name, but source "+
+				"stack %q does not expose one. Run this command from a directory containing "+
+				"the source project's Pulumi.yaml, or use a stack reference that includes "+
+				"the project, like <project>/<stack> or <org>/<project>/<stack>",
+			targetRef, srcRef,
+		)
 	}
 	if err := renameSnapshotStack(
 		snap, srcRef.Name(), tgtStackRef.Name(), oldProject, newProject, cmd.force, stdout,
