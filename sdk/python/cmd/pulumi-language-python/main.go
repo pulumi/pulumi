@@ -1112,8 +1112,9 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		if err != nil {
 			return nil, err
 		}
-		typecheckerCmd.Stdout = os.Stdout
-		typecheckerCmd.Stderr = os.Stderr
+		var typecheckerOutput bytes.Buffer
+		typecheckerCmd.Stdout = io.MultiWriter(os.Stdout, &typecheckerOutput)
+		typecheckerCmd.Stderr = io.MultiWriter(os.Stderr, &typecheckerOutput)
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
@@ -1126,9 +1127,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
-			var exiterr *exec.ExitError
-			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
-				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+			if output := typecheckerOutput.String(); output != "" {
+				return nil, fmt.Errorf("%s failed: %w\n%s", typechecker, err, output)
 			}
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}

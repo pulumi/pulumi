@@ -632,10 +632,23 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 	}
 	importSet := map[string]Import{}
 	// Add subprocess import if the program contains hook blocks.
+	needsTypingAny := false
 	for _, n := range program.Nodes {
-		switch n.(type) {
+		switch r := n.(type) {
 		case *pcl.Hook:
 			importSet["subprocess"] = Import{ImportAs: false}
+		case *pcl.Resource:
+			if r.Options != nil && r.Options.Range != nil {
+				needsTypingAny = true
+			}
+		case *pcl.ReadResource:
+			if r.Options != nil && r.Options.Range != nil {
+				needsTypingAny = true
+			}
+		case *pcl.Component:
+			if r.Options != nil && r.Options.Range != nil {
+				needsTypingAny = true
+			}
 		}
 	}
 
@@ -730,6 +743,8 @@ func (g *generator) genPreamble(w io.Writer, program *pcl.Program, preambleHelpe
 		// add typing information
 		imports = append(imports, "from typing import Optional, Dict, TypedDict, Any")
 		imports = append(imports, "from pulumi import Input")
+	} else if needsTypingAny {
+		imports = append(imports, "from typing import Any")
 	}
 
 	seenComponentImports := map[string]bool{}
@@ -1297,7 +1312,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			} else {
-				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
 			localFuncName := "create_" + PyName(r.LogicalName())
 
@@ -1400,7 +1415,7 @@ func (g *generator) genResourceDeclaration(w io.Writer, r *pcl.Resource, needsDe
 			})
 		} else {
 			if needsDefinition {
-				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
 
 			resKey := "key"
@@ -1517,7 +1532,7 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 			if model.InputType(model.BoolType).ConversionFrom(r.Options.Range.Type()) == model.SafeConversion {
 				g.Fgenf(w, "%s%s = None\n", g.Indent, nameVar)
 			} else {
-				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
 			localFuncName := "read_" + PyName(r.LogicalName())
 			g.Fgenf(w, "def %s(range_body):\n", localFuncName)
@@ -1592,7 +1607,7 @@ func (g *generator) genReadResourceDeclaration(w io.Writer, r *pcl.ReadResource,
 			})
 		} else {
 			if needsDefinition {
-				g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+				g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 			}
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {
@@ -1718,7 +1733,7 @@ func (g *generator) genComponent(w io.Writer, r *pcl.Component) {
 				g.Fprint(w, "\n")
 			})
 		} else {
-			g.Fgenf(w, "%s%s = []\n", g.Indent, nameVar)
+			g.Fgenf(w, "%s%s: list[Any] = []\n", g.Indent, nameVar)
 
 			resKey := "key"
 			if model.InputType(model.NumberType).ConversionFrom(rangeExpr.Type()) != model.NoConversion {

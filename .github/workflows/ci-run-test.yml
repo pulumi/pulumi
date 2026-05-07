@@ -249,7 +249,7 @@ jobs:
           fi
       - name: Install yarn and pnpm
         run: |
-          npm install -g yarn pnpm
+          npm install -g yarn pnpm@10
       - name: Install bun
         uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76 # v2
       - name: Install Python deps
