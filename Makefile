@@ -130,7 +130,10 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
+lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json lint_changelog
+
+lint_changelog::
+	uv run scripts/check-changelog.py
 
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but
