@@ -563,10 +563,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
-		// Each assistant_message carries the full content for one agent turn —
-		// the backend never chunks a turn across multiple events. Commit any
-		// non-empty payload to scrollback; IsFinal feeds only the busy-state
-		// rule via applyBusyForEvent.
 		if msg.Content != "" {
 			cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
 		}
