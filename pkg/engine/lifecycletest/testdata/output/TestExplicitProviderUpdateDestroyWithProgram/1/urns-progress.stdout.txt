@@ -5,9 +5,9 @@
  <{%fg 3%}>~ <{%reset%}> urn:pulumi:test::test::pulumi:providers:pkgA::prov <{%fg 3%}>updated<{%reset%}> [diff: <{%fg 3%}>~version<{%reset%}><{%reset%}>]
  <{%bold%}><{%reset%}>  <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%reset%}><{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
+ <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%fg 1%}>deleted<{%reset%}> 
- <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resB <{%fg 1%}>deleted<{%reset%}> 
  <{%bold%}><{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pulumi:providers:pkgA::prov <{%bold%}><{%fg 1%}>deleting<{%reset%}> 
  <{%fg 1%}>- <{%reset%}> urn:pulumi:test::test::pulumi:providers:pkgA::prov <{%fg 1%}>deleted<{%reset%}> 
  <{%reset%}>  <{%reset%}> urn:pulumi:stack::project::pulumi:pulumi:Stack::project-stack <{%reset%}><{%reset%}> 
