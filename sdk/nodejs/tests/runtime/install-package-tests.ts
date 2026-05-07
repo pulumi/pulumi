@@ -124,7 +124,8 @@ async function main() {
             // },
             {
                 name: "pnpm",
-                version: "latest",
+                // Pin to pnpm 10 to avoid ERR_PNPM_IGNORED_BUILDS in pnpm 11+.
+                version: "^10.0.0",
             },
             // Bun is not yet supported by corepack
             // {
