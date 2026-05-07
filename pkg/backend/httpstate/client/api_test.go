@@ -159,8 +159,6 @@ func TestHTTPClientUserAgent(t *testing.T) {
 
 //nolint:paralleltest // mutates the package-level userAgentExtras state observed by UserAgent()
 func TestUserAgentExtras(t *testing.T) {
-	// Snapshot whatever the current state is and restore it on exit so this
-	// test cannot leak into others.
 	t.Cleanup(func() {
 		SetUserAgentCommand("")
 		SetUserAgentAIAgent("")
@@ -169,15 +167,13 @@ func TestUserAgentExtras(t *testing.T) {
 	SetUserAgentCommand("")
 	SetUserAgentAIAgent("")
 	base := UserAgent()
-	assert.Regexp(t, `^pulumi-cli/1 \([^()]*\)$`, base,
-		"baseline UserAgent should be a single comment with no cmd=/agent= fields")
+	assert.Regexp(t, `^pulumi-cli/1 \([^()]*\)$`, base)
 	assert.NotContains(t, base, "cmd=")
 	assert.NotContains(t, base, "agent=")
 
 	SetUserAgentCommand("stack ls")
 	withCmd := UserAgent()
-	assert.Contains(t, withCmd, "; cmd=stack-ls)",
-		"command names with spaces are normalized to dashes")
+	assert.Contains(t, withCmd, "; cmd=stack-ls)")
 	assert.NotContains(t, withCmd, "agent=")
 
 	SetUserAgentAIAgent("claude")
@@ -190,8 +186,6 @@ func TestUserAgentExtras(t *testing.T) {
 	assert.NotContains(t, withAgentOnly, "cmd=")
 	assert.Contains(t, withAgentOnly, "; agent=claude)")
 
-	// Sanitization strips characters that would break the User-Agent comment
-	// grammar.
 	SetUserAgentCommand("weird (cmd; with) bits")
 	assert.Contains(t, UserAgent(), "; cmd=weird-cmd-with-bits;")
 }

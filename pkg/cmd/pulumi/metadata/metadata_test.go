@@ -479,10 +479,7 @@ func TestDetectAIAgent(t *testing.T) {
 }
 
 func TestAddExecutionMetadataToEnvironmentDetectsAgent(t *testing.T) {
-	// Clear any inherited agent-detection env vars so the test only sees the
-	// signal it sets explicitly. AI_AGENT in particular is checked first by
-	// DetectAIAgent and would otherwise mask the CODEX_THREAD_ID we want to
-	// detect.
+	// Don't let agent-detection env vars from the host shell mask CODEX_THREAD_ID.
 	for _, key := range []string{
 		"AI_AGENT",
 		"CURSOR_TRACE_ID", "CURSOR_AGENT",

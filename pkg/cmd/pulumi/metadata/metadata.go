@@ -241,10 +241,8 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgen
 	}
 }
 
-// DetectAIAgent returns the name of the AI agent invoking the CLI, if one can
-// be inferred from the environment, or "" otherwise. It first honors the
-// explicit AI_AGENT environment variable, then falls back to a list of
-// well-known agent-specific environment variables.
+// DetectAIAgent returns the AI agent driving the CLI, inferred from AI_AGENT
+// or well-known agent-specific environment variables, or "" if none is found.
 func DetectAIAgent(getEnv func(string) string) string {
 	normalized := func(agent string) string {
 		agent = strings.TrimSpace(strings.ToLower(agent))

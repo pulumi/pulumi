@@ -268,11 +268,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}
 			}()
 
-			// Record which command is running and whether an AI agent is driving
-			// the CLI so that subsequent Pulumi Cloud API requests carry that
-			// information in the User-Agent header. Drop the "pulumi " prefix
-			// from CommandPath so the value is just the subcommand path
-			// (e.g. "stack ls" → "stack-ls").
 			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
 			client.SetUserAgentCommand(commandPath)
 			client.SetUserAgentAIAgent(cmdMetadata.DetectAIAgent(os.Getenv))

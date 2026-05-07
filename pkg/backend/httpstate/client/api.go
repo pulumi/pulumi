@@ -87,36 +87,26 @@ const currentAPIVersion = 9
 // request to the Pulumi service. See `currentAPIVersion`.
 var acceptAPIVersionHeader = fmt.Sprintf("application/vnd.pulumi+%d", currentAPIVersion)
 
-// userAgentExtras carries optional fields that the CLI populates once it has
-// figured out which command the user invoked and whether an AI agent is
-// driving it. Both fields are appended to the User-Agent comment when set,
-// allowing Pulumi Cloud to attribute API traffic to specific commands and
-// agents.
 var userAgentExtras struct {
 	mu      sync.RWMutex
 	command string
 	agent   string
 }
 
-// SetUserAgentCommand records the cobra command that the CLI is executing
-// (e.g. "stack-ls", "up"), so that subsequent UserAgent calls include it. The
-// argument should be a single token — spaces are normalized to dashes.
+// SetUserAgentCommand sets the running CLI command appended to UserAgent as `cmd=...`.
 func SetUserAgentCommand(command string) {
 	userAgentExtras.mu.Lock()
 	defer userAgentExtras.mu.Unlock()
 	userAgentExtras.command = sanitizeUserAgentToken(command)
 }
 
-// SetUserAgentAIAgent records the AI agent name driving the CLI, if any
-// (e.g. "claude", "cursor"). Pass "" to clear.
+// SetUserAgentAIAgent sets the detected AI agent appended to UserAgent as `agent=...`.
 func SetUserAgentAIAgent(agent string) {
 	userAgentExtras.mu.Lock()
 	defer userAgentExtras.mu.Unlock()
 	userAgentExtras.agent = sanitizeUserAgentToken(agent)
 }
 
-// sanitizeUserAgentToken replaces whitespace with dashes and strips characters
-// that would break the User-Agent comment grammar (parentheses, semicolons).
 func sanitizeUserAgentToken(s string) string {
 	s = strings.TrimSpace(s)
 	if s == "" {
