@@ -908,10 +908,8 @@ func TestModel_Update_SpinnerTick_IgnoredWhenIdle(t *testing.T) {
 }
 
 // TestModel_Update_UIAssistantMessage_CommitsEachContentMessage pins the
-// "no chunking" assumption: every assistant_message with non-empty content,
-// final or not, commits its own blockAssistantFinal to scrollback. The
-// backend does not split a single turn into multiple events, so each
-// payload is a complete utterance.
+// "no chunking" assumption: every assistant_message with non-empty content
+// — final or not — commits its own blockAssistantFinal to scrollback.
 func TestModel_Update_UIAssistantMessage_CommitsEachContentMessage(t *testing.T) {
 	t.Parallel()
 
@@ -949,9 +947,8 @@ func TestModel_Update_UIAssistantMessage_EmptyContentSkipsCommit(t *testing.T) {
 
 // TestModel_Update_UIAssistantMessage_NewTurn_CommitsPriorTurn is a
 // regression for pulumi-service#42775: two consecutive non-final messages
-// (a multi-turn flow where the agent comments before each tool call) must
-// each reach scrollback. Previously the second silently overwrote the
-// first.
+// must each reach scrollback. Previously the second silently overwrote
+// the first.
 func TestModel_Update_UIAssistantMessage_NewTurn_CommitsPriorTurn(t *testing.T) {
 	t.Parallel()
 

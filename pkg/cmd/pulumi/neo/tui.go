@@ -563,12 +563,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
-		// Every assistant_message with text content is a complete utterance
-		// for that turn and must be committed to scrollback. The backend does
-		// not chunk a single turn into multiple messages, so each non-empty
-		// payload — final, hand-off (HasPendingCLIWork=true), or non-final
-		// commentary preceding a tool call — gets its own final block.
-		// IsFinal only feeds the busy-state rule via applyBusyForEvent.
+		// Each assistant_message carries the full content for one agent turn —
+		// the backend never chunks a turn across multiple events. Commit any
+		// non-empty payload to scrollback; IsFinal feeds only the busy-state
+		// rule via applyBusyForEvent.
 		if msg.Content != "" {
 			cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
 		}
