@@ -49,7 +49,6 @@ type blockKind int
 const (
 	blockBusy blockKind = iota
 	blockToolComplete
-	blockAssistantStreaming
 	blockAssistantFinal
 	blockError
 	blockWarning
@@ -564,39 +563,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
-		// Any IsFinal=true assistant_message is a complete utterance and must be
-		// committed to scrollback — including hand-offs (HasPendingCLIWork=true),
-		// where the agent's commentary precedes a CLI tool call. HasPendingCLIWork
-		// only governs busy-state management (see applyBusyForEvent); it must not
-		// gate commit, otherwise hand-off commentary lives only in the live frame
-		// and is overwritten by the next hand-off / final message.
-		// The empty-content guard avoids a phantom marker for is_final=true
-		// messages that arrive with no text (e.g. a server-side hand-off finalized
-		// once tool calls were reconciled).
-		if msg.IsFinal {
-			m.removeBlockKind(blockAssistantStreaming)
-			if msg.Content != "" {
-				cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
-			}
-		} else if msg.Content != "" {
-			idx := m.findBlockKind(blockAssistantStreaming)
-			if idx >= 0 && m.blocks[idx].raw != "" && !strings.HasPrefix(msg.Content, m.blocks[idx].raw) {
-				// New turn: the agent moved on without an is_final=true marker
-				// (it emits commentary before each tool call, and a tool call
-				// at is_final=false ends the turn implicitly). Commit the prior
-				// streaming text as a final block so it lands in scrollback —
-				// otherwise the next assignment to raw silently overwrites it.
-				prior := m.blocks[idx].raw
-				m.removeBlockKind(blockAssistantStreaming)
-				cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: prior}))
-				idx = -1
-			}
-			if idx >= 0 {
-				m.blocks[idx].raw = msg.Content
-				m.renderBlock(&m.blocks[idx])
-			} else {
-				m.appendRenderedBlock(block{kind: blockAssistantStreaming, raw: msg.Content})
-			}
+		// Every assistant_message with text content is a complete utterance
+		// for that turn and must be committed to scrollback. The backend does
+		// not chunk a single turn into multiple messages, so each non-empty
+		// payload — final, hand-off (HasPendingCLIWork=true), or non-final
+		// commentary preceding a tool call — gets its own final block.
+		// IsFinal only feeds the busy-state rule via applyBusyForEvent.
+		if msg.Content != "" {
+			cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
 		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
@@ -861,7 +835,7 @@ func (m *Model) liveView() string {
 // been committed to terminal scrollback (false).
 func isLiveKind(b block) bool {
 	switch b.kind {
-	case blockBusy, blockAssistantStreaming:
+	case blockBusy:
 		return true
 	case blockPulumiOp:
 		return b.pulumi != nil && !b.pulumi.done
@@ -1084,8 +1058,6 @@ func (m *Model) renderBlock(b *block) {
 		b.rendered = renderIndented(cancelledStyle, m.width, b.raw)
 	case blockUserMessage:
 		b.rendered = m.renderUserBubble(b.raw)
-	case blockAssistantStreaming:
-		b.rendered = renderAssistantStreaming(m.wrapPlain(b.raw))
 	case blockAssistantFinal:
 		b.rendered = renderAssistantFinal(m.renderMarkdown(b.raw))
 	case blockApprovalPlan:
@@ -1151,11 +1123,6 @@ func (m *Model) wrapPlain(text string) string {
 	return linkifyURLs(wordwrap.String(text, w-4))
 }
 
-func (m *Model) appendRenderedBlock(b block) {
-	m.renderBlock(&b)
-	m.appendBlock(b)
-}
-
 // renderMarkdown renders text through glamour, falling back to plain text.
 // URLs in the rendered output are wrapped in OSC 8 escapes so terminals that
 // support hyperlinks render them as clickable.
@@ -1191,14 +1158,6 @@ func renderAssistantFinal(rendered string) string {
 	}
 	firstLine, rest, _ := strings.Cut(trimmed, "\n")
 	return renderHeaderedBlock(finalMarker+" "+firstLine, rest)
-}
-
-// renderAssistantStreaming renders streaming text with a dim indicator.
-func renderAssistantStreaming(text string) string {
-	if text == "" {
-		return ""
-	}
-	return "  " + text
 }
 
 // waitForEvent returns a tea.Cmd that reads from the UIEvent channel.
