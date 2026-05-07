@@ -62,6 +62,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
+	cmdMetadata "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
@@ -266,6 +267,15 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					close(updateCheckResult)
 				}
 			}()
+
+			// Record which command is running and whether an AI agent is driving
+			// the CLI so that subsequent Pulumi Cloud API requests carry that
+			// information in the User-Agent header. Drop the "pulumi " prefix
+			// from CommandPath so the value is just the subcommand path
+			// (e.g. "stack ls" → "stack-ls").
+			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
+			client.SetUserAgentCommand(commandPath)
+			client.SetUserAgentAIAgent(cmdMetadata.DetectAIAgent(os.Getenv))
 
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't

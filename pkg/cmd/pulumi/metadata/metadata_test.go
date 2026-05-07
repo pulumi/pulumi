@@ -473,12 +473,32 @@ func TestDetectAIAgent(t *testing.T) {
 			getEnv := func(key string) string {
 				return tt.env[key]
 			}
-			assert.Equal(t, tt.want, detectAIAgent(getEnv))
+			assert.Equal(t, tt.want, DetectAIAgent(getEnv))
 		})
 	}
 }
 
 func TestAddExecutionMetadataToEnvironmentDetectsAgent(t *testing.T) {
+	// Clear any inherited agent-detection env vars so the test only sees the
+	// signal it sets explicitly. AI_AGENT in particular is checked first by
+	// DetectAIAgent and would otherwise mask the CODEX_THREAD_ID we want to
+	// detect.
+	for _, key := range []string{
+		"AI_AGENT",
+		"CURSOR_TRACE_ID", "CURSOR_AGENT",
+		"GEMINI_CLI",
+		"CODEX_SANDBOX", "CODEX_CI", "CODEX_THREAD_ID",
+		"ANTIGRAVITY_AGENT",
+		"AUGMENT_AGENT",
+		"OPENCODE", "OPENCODE_CALLER", "OPENCODE_CLIENT",
+		"CLAUDE_CODE_IS_COWORK",
+		"CLAUDECODE", "CLAUDE_CODE",
+		"REPL_ID",
+		"COPILOT_MODEL", "COPILOT_ALLOW_ALL", "COPILOT_GITHUB_TOKEN",
+		"GOOSE_PROVIDER",
+	} {
+		t.Setenv(key, "")
+	}
 	t.Setenv("CODEX_THREAD_ID", "thread")
 	env := map[string]string{}
 	addExecutionMetadataToEnvironment(env, "unknown", "")

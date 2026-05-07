@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -86,8 +87,66 @@ const currentAPIVersion = 9
 // request to the Pulumi service. See `currentAPIVersion`.
 var acceptAPIVersionHeader = fmt.Sprintf("application/vnd.pulumi+%d", currentAPIVersion)
 
+// userAgentExtras carries optional fields that the CLI populates once it has
+// figured out which command the user invoked and whether an AI agent is
+// driving it. Both fields are appended to the User-Agent comment when set,
+// allowing Pulumi Cloud to attribute API traffic to specific commands and
+// agents.
+var userAgentExtras struct {
+	mu      sync.RWMutex
+	command string
+	agent   string
+}
+
+// SetUserAgentCommand records the cobra command that the CLI is executing
+// (e.g. "stack-ls", "up"), so that subsequent UserAgent calls include it. The
+// argument should be a single token — spaces are normalized to dashes.
+func SetUserAgentCommand(command string) {
+	userAgentExtras.mu.Lock()
+	defer userAgentExtras.mu.Unlock()
+	userAgentExtras.command = sanitizeUserAgentToken(command)
+}
+
+// SetUserAgentAIAgent records the AI agent name driving the CLI, if any
+// (e.g. "claude", "cursor"). Pass "" to clear.
+func SetUserAgentAIAgent(agent string) {
+	userAgentExtras.mu.Lock()
+	defer userAgentExtras.mu.Unlock()
+	userAgentExtras.agent = sanitizeUserAgentToken(agent)
+}
+
+// sanitizeUserAgentToken replaces whitespace with dashes and strips characters
+// that would break the User-Agent comment grammar (parentheses, semicolons).
+func sanitizeUserAgentToken(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	replacer := strings.NewReplacer(
+		" ", "-",
+		"\t", "-",
+		"(", "",
+		")", "",
+		";", "",
+	)
+	return replacer.Replace(s)
+}
+
 func UserAgent() string {
-	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
+	userAgentExtras.mu.RLock()
+	command, agent := userAgentExtras.command, userAgentExtras.agent
+	userAgentExtras.mu.RUnlock()
+
+	var extras strings.Builder
+	if command != "" {
+		extras.WriteString("; cmd=")
+		extras.WriteString(command)
+	}
+	if agent != "" {
+		extras.WriteString("; agent=")
+		extras.WriteString(agent)
+	}
+	return fmt.Sprintf("pulumi-cli/1 (%s; %s%s)", version.Version, runtime.GOOS, extras.String())
 }
 
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
