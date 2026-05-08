@@ -134,16 +134,6 @@ func TestRenderAssistantFinal(t *testing.T) {
 	assert.Contains(t, multi, "\n")
 }
 
-func TestRenderAssistantStreaming(t *testing.T) {
-	t.Parallel()
-
-	assert.Empty(t, renderAssistantStreaming(""))
-	// The streaming indent is two spaces — matches the marker column in the
-	// final render so tokens don't visually jump when streaming transitions to
-	// final.
-	assert.Equal(t, "  hi", renderAssistantStreaming("hi"))
-}
-
 func TestWaitForEvent_DeliversEvent(t *testing.T) {
 	t.Parallel()
 
@@ -257,13 +247,13 @@ func TestFindBlockKind(t *testing.T) {
 
 	m := &Model{blocks: []block{
 		{kind: blockUserMessage},
-		{kind: blockAssistantStreaming},
+		{kind: blockAssistantFinal},
 		{kind: blockUserMessage},
 	}}
-	// Returns the *last* index — matters for streaming: we need to update the
-	// latest assistant bubble, not an earlier one.
+	// Returns the *last* index — matters when multiple blocks of the same
+	// kind exist and we need to act on the most recent one.
 	assert.Equal(t, 2, m.findBlockKind(blockUserMessage))
-	assert.Equal(t, 1, m.findBlockKind(blockAssistantStreaming))
+	assert.Equal(t, 1, m.findBlockKind(blockAssistantFinal))
 	assert.Equal(t, -1, m.findBlockKind(blockError))
 }
 
@@ -917,53 +907,79 @@ func TestModel_Update_SpinnerTick_IgnoredWhenIdle(t *testing.T) {
 	assert.Nil(t, cmd, "idle TickMsg must not schedule another tick")
 }
 
-func TestModel_Update_UIAssistantMessage_Streaming_AppendsThenUpdates(t *testing.T) {
+// TestModel_Update_UIAssistantMessage_CommitsEachContentMessage pins the
+// "no chunking" assumption: every assistant_message with non-empty content
+// — final or not — commits its own blockAssistantFinal to scrollback.
+func TestModel_Update_UIAssistantMessage_CommitsEachContentMessage(t *testing.T) {
 	t.Parallel()
 
-	ch := make(chan UIEvent, 4)
-	m := NewModel(ModelConfig{EventCh: ch})
+	m := NewModel(ModelConfig{})
 
-	// First streaming chunk: must append a new blockAssistantStreaming.
-	updated, _ := m.Update(UIAssistantMessage{Content: "one"})
+	updated, _ := m.Update(UIAssistantMessage{Content: "first turn"})
 	m1 := updated.(Model)
-	idx := m1.findBlockKind(blockAssistantStreaming)
-	require.NotEqual(t, -1, idx, "first streaming msg must append a streaming block")
-
-	// Second streaming chunk: same block kind; the rendered text must change
-	// but the number of streaming blocks must not grow.
-	updated2, _ := m1.Update(UIAssistantMessage{Content: "one two"})
+	updated2, _ := m1.Update(UIAssistantMessage{Content: "second turn"})
 	m2 := updated2.(Model)
-	count := 0
-	for _, b := range m2.blocks {
-		if b.kind == blockAssistantStreaming {
-			count++
+	updated3, _ := m2.Update(UIAssistantMessage{Content: "final reply", IsFinal: true})
+	m3 := updated3.(Model)
+
+	finals := 0
+	for _, b := range m3.blocks {
+		if b.kind == blockAssistantFinal {
+			finals++
 		}
 	}
-	assert.Equal(t, 1, count, "second streaming msg must update in place, not append")
+	assert.Equal(t, 3, finals, "three messages with content must produce three final blocks")
 }
 
-func TestModel_Update_UIAssistantMessage_Final_ReplacesStreaming(t *testing.T) {
+// TestModel_Update_UIAssistantMessage_EmptyContentSkipsCommit guards the
+// empty-content branch: a tool-call-only message (no text) must not produce
+// a phantom final block.
+func TestModel_Update_UIAssistantMessage_EmptyContentSkipsCommit(t *testing.T) {
 	t.Parallel()
 
-	ch := make(chan UIEvent, 4)
-	m := NewModel(ModelConfig{EventCh: ch})
-	// Seed a streaming block so the final msg has something to replace.
-	updated, _ := m.Update(UIAssistantMessage{Content: "streaming"})
-	m1 := updated.(Model)
+	m := NewModel(ModelConfig{})
+	updated, _ := m.Update(UIAssistantMessage{Content: "", IsFinal: true})
+	um := updated.(Model)
 
-	updated2, _ := m1.Update(UIAssistantMessage{Content: "done", IsFinal: true})
+	assert.Equal(t, -1, um.findBlockKind(blockAssistantFinal),
+		"empty content must not commit a final block")
+}
+
+// TestModel_Update_UIAssistantMessage_NewTurn_CommitsPriorTurn is a
+// regression for pulumi-service#42775: two consecutive non-final messages
+// must each reach scrollback. Previously the second silently overwrote
+// the first.
+func TestModel_Update_UIAssistantMessage_NewTurn_CommitsPriorTurn(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+
+	updated, _ := m.Update(UIAssistantMessage{Content: "I've explored the project."})
+	m1 := updated.(Model)
+	updated2, cmd := m1.Update(UIAssistantMessage{Content: "Got it — keep the existing bucket."})
 	m2 := updated2.(Model)
 
-	assert.Equal(t, -1, m2.findBlockKind(blockAssistantStreaming), "final msg must drop any streaming block")
-	assert.GreaterOrEqual(t, m2.findBlockKind(blockAssistantFinal), 0, "final msg must leave a final block")
+	var raws []string
+	for _, b := range m2.blocks {
+		if b.kind == blockAssistantFinal {
+			raws = append(raws, b.raw)
+		}
+	}
+	assert.Equal(t, []string{
+		"I've explored the project.",
+		"Got it — keep the existing bucket.",
+	}, raws, "each non-final turn with content must commit its own final block")
+
+	// And both must reach the user via tea.Println, not just sit in m.blocks.
+	printed := strings.Join(collectPrintln(cmd), "\n")
+	assert.Contains(t, printed, "Got it — keep the existing bucket.",
+		"second turn must reach scrollback via tea.Println")
 }
 
 // TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback is a
 // regression for a bug where hand-off messages (IsFinal=true,
-// HasPendingCLIWork=true) carrying assistant commentary were rendered as a
-// streaming live-frame block and then silently overwritten by the next
-// hand-off, so the commentary never reached scrollback. Each IsFinal=true
-// message — hand-off or terminal — must commit a final block.
+// HasPendingCLIWork=true) carrying assistant commentary were dropped before
+// reaching scrollback. Each hand-off must commit its own final block.
 func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T) {
 	t.Parallel()
 
@@ -976,12 +992,6 @@ func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T
 	})
 	m1 := updated.(Model)
 
-	// The streaming block is the live-frame holding pen; a hand-off must
-	// flush it and append a committed final block instead. Otherwise the
-	// next hand-off's content overwrites the streaming raw and the prior
-	// commentary is lost from scrollback.
-	assert.Equal(t, -1, m1.findBlockKind(blockAssistantStreaming),
-		"hand-off must not leave a streaming block behind")
 	idx := m1.findBlockKind(blockAssistantFinal)
 	require.GreaterOrEqual(t, idx, 0, "hand-off must commit a final assistant block")
 	assert.Equal(t, "I'll read the file", m1.blocks[idx].raw)
@@ -1823,20 +1833,18 @@ func TestModel_LiveView_OnlyShowsLiveBlocks(t *testing.T) {
 		{kind: blockToolComplete, rendered: "TOOLCOMPLETESCROLLBACK"},
 		{kind: blockAssistantFinal, rendered: "FINALSCROLLBACK"},
 		{kind: blockWarning, rendered: "WARNSCROLLBACK"},
-		{kind: blockAssistantStreaming, rendered: "STREAMING_LIVE", raw: "STREAMING_LIVE"},
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
 	view := m.View()
 	// Live blocks are visible.
-	assert.Contains(t, view, "STREAMING_LIVE", "in-flight streaming must appear in View")
 	assert.Contains(t, view, "Thinking", "busy label must appear in View")
 	// Committed blocks are NOT visible — they were emitted to scrollback.
 	assert.NotContains(t, view, "USERSCROLLBACK")
 	assert.NotContains(t, view, "TOOLCOMPLETESCROLLBACK")
 	assert.NotContains(t, view, "FINALSCROLLBACK")
 	assert.NotContains(t, view, "WARNSCROLLBACK")
-	require.Len(t, m.blocks, 6, "View must not mutate the blocks slice")
+	require.Len(t, m.blocks, 5, "View must not mutate the blocks slice")
 }
 
 func TestApprovalGeneralWrapsToTerminalWidth(t *testing.T) {
@@ -2198,34 +2206,27 @@ func TestView_LeadingBlankLine_Busy_SpinnerFlushWithPrompt(t *testing.T) {
 }
 
 // TestLiveView_BlankBetweenLiveBlocks pins the inter-block gap inside the live
-// frame, for the rare case where a streaming assistant message and an open
-// pulumi op are both pending under the busy spinner.
+// frame when an open pulumi op is pending under the busy spinner.
 func TestLiveView_BlankBetweenLiveBlocks(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{})
 	m.width = 80
 	m.blocks = []block{
-		{kind: blockAssistantStreaming, rendered: "STREAM_LIVE", raw: "STREAM_LIVE"},
 		{kind: blockPulumiOp, rendered: "PULUMI_LIVE", pulumi: &pulumiBlockState{done: false}},
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
 	live := m.liveView()
-	require.Contains(t, live, "STREAM_LIVE")
 	require.Contains(t, live, "PULUMI_LIVE")
 	require.Contains(t, live, "Thinking")
 
-	// Each adjacent pair must be separated by a blank line. We can't anchor
-	// on exact line counts (the busy line and rendered strings may wrap or
-	// embed ANSI), so check that "\n\n" appears between each pair in order.
-	streamIdx := strings.Index(live, "STREAM_LIVE")
+	// The pulumi-op → busy pair must be separated by a blank line. We can't
+	// anchor on exact line counts (the busy line and rendered string may wrap
+	// or embed ANSI), so check that "\n\n" appears between them.
 	pulumiIdx := strings.Index(live, "PULUMI_LIVE")
 	thinkingIdx := strings.Index(live, "Thinking")
-	require.Less(t, streamIdx, pulumiIdx)
 	require.Less(t, pulumiIdx, thinkingIdx)
-	assert.Contains(t, live[streamIdx:pulumiIdx], "\n\n",
-		"streaming → pulumi-op gap must be a full blank line")
 	assert.Contains(t, live[pulumiIdx:thinkingIdx], "\n\n",
 		"pulumi-op → busy gap must be a full blank line")
 }

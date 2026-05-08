@@ -107,28 +107,29 @@ func TestBusy_NoFlickerOnCLIToolHandoff(t *testing.T) {
 	assert.GreaterOrEqual(t, m.findBlockKind(blockAssistantFinal), 0)
 }
 
-// TestBusy_NonFinalStreamingKeepsSpinnerOn — under the old rule, a non-final
+// TestBusy_NonFinalKeepsSpinnerOn — under the old rule, a non-final
 // assistant_message explicitly removed the busy block. The declarative rule
-// keeps the spinner on throughout streaming so there is no gap before the
-// next tool or the truly-final message.
-func TestBusy_NonFinalStreamingKeepsSpinnerOn(t *testing.T) {
+// keeps the spinner on across non-final messages so there is no gap before
+// the next tool or the truly-final message.
+func TestBusy_NonFinalKeepsSpinnerOn(t *testing.T) {
 	t.Parallel()
 
 	ch := make(chan UIEvent, 4)
 	model := tea.Model(NewModel(ModelConfig{EventCh: ch, Busy: true}))
 
-	model, _ = model.Update(UIAssistantMessage{Content: "thinking...", IsFinal: false})
+	model, _ = model.Update(UIAssistantMessage{Content: "first turn", IsFinal: false})
 	assert.True(t, model.(Model).busy, "non-final assistant_message must leave spinner on")
 	m := model.(Model)
-	assert.GreaterOrEqual(t, m.findBlockKind(blockAssistantStreaming), 0, "streaming content renders as a streaming block")
+	assert.GreaterOrEqual(t, m.findBlockKind(blockAssistantFinal), 0,
+		"non-final content commits as a final block")
 	assert.GreaterOrEqual(t, m.findBlockKind(blockBusy), 0, "spinner block is still present")
 
-	// More streaming text — still non-final, still busy.
-	model, _ = model.Update(UIAssistantMessage{Content: "thinking harder", IsFinal: false})
+	// Another non-final turn — still busy.
+	model, _ = model.Update(UIAssistantMessage{Content: "second turn", IsFinal: false})
 	assert.True(t, model.(Model).busy)
 
 	// Truly final — spinner off.
-	model, _ = model.Update(UIAssistantMessage{Content: "thinking harder. Done.", IsFinal: true})
+	model, _ = model.Update(UIAssistantMessage{Content: "Done.", IsFinal: true})
 	assert.False(t, model.(Model).busy)
 }
 

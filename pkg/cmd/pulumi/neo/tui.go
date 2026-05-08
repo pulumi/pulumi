@@ -49,7 +49,6 @@ type blockKind int
 const (
 	blockBusy blockKind = iota
 	blockToolComplete
-	blockAssistantStreaming
 	blockAssistantFinal
 	blockError
 	blockWarning
@@ -564,27 +563,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
-		// Any IsFinal=true assistant_message is a complete utterance and must be
-		// committed to scrollback — including hand-offs (HasPendingCLIWork=true),
-		// where the agent's commentary precedes a CLI tool call. HasPendingCLIWork
-		// only governs busy-state management (see applyBusyForEvent); it must not
-		// gate commit, otherwise hand-off commentary lives only in the live frame
-		// and is overwritten by the next hand-off / final message.
-		// The empty-content guard avoids a phantom marker for is_final=true
-		// messages that arrive with no text (e.g. a server-side hand-off finalized
-		// once tool calls were reconciled).
-		if msg.IsFinal {
-			m.removeBlockKind(blockAssistantStreaming)
-			if msg.Content != "" {
-				cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
-			}
-		} else if msg.Content != "" {
-			if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
-				m.blocks[idx].raw = msg.Content
-				m.renderBlock(&m.blocks[idx])
-			} else {
-				m.appendRenderedBlock(block{kind: blockAssistantStreaming, raw: msg.Content})
-			}
+		if msg.Content != "" {
+			cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
 		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
@@ -812,10 +792,10 @@ func (m *Model) liveWidth() int {
 }
 
 // liveView renders only the in-flight blocks that should occupy the live
-// frame: busy spinner (always pinned at the bottom of the live region), an
-// in-flight streaming assistant message, and an open pulumi op block. The
-// busy block's spinner glyph is read from m.spinner.View() at render time so
-// the animation tracks the current frame without re-caching per block.
+// frame: busy spinner (always pinned at the bottom of the live region) and
+// an open pulumi op block. The busy block's spinner glyph is read from
+// m.spinner.View() at render time so the animation tracks the current frame
+// without re-caching per block.
 //
 // We deliberately use strings.Join instead of lipgloss.JoinVertical:
 // JoinVertical pads every line to the widest constituent's column count with
@@ -849,7 +829,7 @@ func (m *Model) liveView() string {
 // been committed to terminal scrollback (false).
 func isLiveKind(b block) bool {
 	switch b.kind {
-	case blockBusy, blockAssistantStreaming:
+	case blockBusy:
 		return true
 	case blockPulumiOp:
 		return b.pulumi != nil && !b.pulumi.done
@@ -1072,8 +1052,6 @@ func (m *Model) renderBlock(b *block) {
 		b.rendered = renderIndented(cancelledStyle, m.width, b.raw)
 	case blockUserMessage:
 		b.rendered = m.renderUserBubble(b.raw)
-	case blockAssistantStreaming:
-		b.rendered = renderAssistantStreaming(m.wrapPlain(b.raw))
 	case blockAssistantFinal:
 		b.rendered = renderAssistantFinal(m.renderMarkdown(b.raw))
 	case blockApprovalPlan:
@@ -1139,11 +1117,6 @@ func (m *Model) wrapPlain(text string) string {
 	return linkifyURLs(wordwrap.String(text, w-4))
 }
 
-func (m *Model) appendRenderedBlock(b block) {
-	m.renderBlock(&b)
-	m.appendBlock(b)
-}
-
 // renderMarkdown renders text through glamour, falling back to plain text.
 // URLs in the rendered output are wrapped in OSC 8 escapes so terminals that
 // support hyperlinks render them as clickable.
@@ -1179,14 +1152,6 @@ func renderAssistantFinal(rendered string) string {
 	}
 	firstLine, rest, _ := strings.Cut(trimmed, "\n")
 	return renderHeaderedBlock(finalMarker+" "+firstLine, rest)
-}
-
-// renderAssistantStreaming renders streaming text with a dim indicator.
-func renderAssistantStreaming(text string) string {
-	if text == "" {
-		return ""
-	}
-	return "  " + text
 }
 
 // waitForEvent returns a tea.Cmd that reads from the UIEvent channel.
