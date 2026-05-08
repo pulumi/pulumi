@@ -1,0 +1,6 @@
+body: Add blank-line gaps between `pulumi neo` TUI conversation blocks
+custom:
+  PR: ''
+  Scope: cli
+kind: ''
+time: '2026-01-01T00:00:00Z'

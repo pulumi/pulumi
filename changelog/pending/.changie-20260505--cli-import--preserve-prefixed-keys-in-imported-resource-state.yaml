@@ -1,0 +1,7 @@
+body: Preserve `__`-prefixed keys when generating PCL for imported resource state,
+  so provider-defined payloads round-trip correctly
+custom:
+  PR: ''
+  Scope: cli/import
+kind: ''
+time: '2026-01-01T00:00:00Z'

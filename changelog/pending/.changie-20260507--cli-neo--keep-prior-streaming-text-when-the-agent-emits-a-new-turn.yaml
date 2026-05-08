@@ -1,0 +1,7 @@
+body: Render every assistant message in the TUI scrollback so multi-turn commentary
+  no longer disappears between tool calls
+custom:
+  PR: ''
+  Scope: cli/neo
+kind: ''
+time: '2026-01-01T00:00:00Z'

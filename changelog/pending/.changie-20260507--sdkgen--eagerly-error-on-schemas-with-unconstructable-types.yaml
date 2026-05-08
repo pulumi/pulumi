@@ -1,0 +1,6 @@
+body: Eagerly error on schemas with unconstructable types
+custom:
+  PR: ''
+  Scope: sdkgen
+kind: ''
+time: '2026-01-01T00:00:00Z'

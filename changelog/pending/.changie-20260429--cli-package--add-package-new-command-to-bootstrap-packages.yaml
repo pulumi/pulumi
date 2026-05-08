@@ -1,0 +1,6 @@
+body: Add `pulumi package new` to bootstrap a Pulumi package from a template
+custom:
+  PR: ''
+  Scope: cli/package
+kind: ''
+time: '2026-01-01T00:00:00Z'

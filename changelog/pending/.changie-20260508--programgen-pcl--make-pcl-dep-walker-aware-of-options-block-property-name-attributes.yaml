@@ -1,0 +1,8 @@
+body: Stop reporting spurious circular references when an `ignoreChanges`, `hideDiffs`,
+  `replaceOnChanges`, or `additionalSecretOutputs` entry shares a name with a top-level
+  node
+custom:
+  PR: ''
+  Scope: programgen/pcl
+kind: ''
+time: '2026-01-01T00:00:00Z'

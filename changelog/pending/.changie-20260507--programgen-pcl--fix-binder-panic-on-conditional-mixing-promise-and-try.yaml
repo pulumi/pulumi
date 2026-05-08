@@ -1,0 +1,7 @@
+body: Fix PCL binder panic when a conditional mixes a Promise-typed branch with a
+  try() branch
+custom:
+  PR: ''
+  Scope: programgen/pcl
+kind: ''
+time: '2026-01-01T00:00:00Z'
