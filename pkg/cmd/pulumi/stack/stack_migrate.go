@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
@@ -70,7 +71,7 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 			"\n" +
 			"Note: if the source and target stacks share a name, the local Pulumi.<stack>.yaml file is\n" +
 			"rewritten with the target's secrets configuration. The pre-migration content is saved as\n" +
-			"`Pulumi.<stack>.yaml.bak` so you can recover the source's secrets metadata if needed.\n" +
+			"a sibling `Pulumi.<stack>.yaml.bak.*` backup so you can recover the source's secrets metadata if needed.\n" +
 			"\n" +
 			"To migrate a stack from a DIY backend (e.g. file://, s3://, azblob://, gs://) to the currently\n" +
 			"logged-in Pulumi Cloud backend:\n" +
@@ -159,31 +160,28 @@ func stackConfigPath(name tokens.QName) (string, error) {
 	return configPath, nil
 }
 
-// writeBackupFile creates a sibling backup without clobbering an existing `.bak` / `.bak.N`.
+// writeBackupFile creates a sibling backup without clobbering an existing file.
 func writeBackupFile(path string, data []byte, mode os.FileMode) (string, error) {
-	for i := 0; ; i++ {
-		candidate := path + ".bak"
-		if i > 0 {
-			candidate = fmt.Sprintf("%s.bak.%d", path, i)
-		}
-		f, err := os.OpenFile(candidate, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
-		if err != nil {
-			if os.IsExist(err) {
-				continue
-			}
-			return "", err
-		}
-		if _, err := f.Write(data); err != nil {
-			_ = f.Close()
-			_ = os.Remove(candidate)
-			return "", err
-		}
-		if err := f.Close(); err != nil {
-			_ = os.Remove(candidate)
-			return "", err
-		}
-		return candidate, nil
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".bak.*")
+	if err != nil {
+		return "", err
 	}
+	candidate := f.Name()
+	if err := f.Chmod(mode); err != nil {
+		_ = f.Close()
+		_ = os.Remove(candidate)
+		return "", err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(candidate)
+		return "", err
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(candidate)
+		return "", err
+	}
+	return candidate, nil
 }
 
 // snapshotConfigFile reads bytes+mode at path. existed=false with no err means absent.
@@ -365,8 +363,7 @@ func rewritePropertyValue(v resource.PropertyValue, rewrite func(resource.URN) r
 }
 
 // restoreConfigFile writes orig back at mode if existed, else removes path. Best-effort.
-// Returns true on success so callers can decide whether redundant artifacts (e.g. a `.bak`)
-// are safe to clean up.
+// Returns true on success so callers can decide whether redundant backup artifacts are safe to clean up.
 func restoreConfigFile(w io.Writer, path string, orig []byte, mode os.FileMode, existed bool) bool {
 	if path == "" {
 		return true
@@ -514,7 +511,7 @@ func (cmd *stackMigrateCmd) Run(
 			if srcConfigExisted {
 				sameNameWarn = fmt.Sprintf(
 					"Note: %s will be rewritten with the target's secrets configuration. A copy of\n"+
-						"the current file is saved as a sibling `.bak` so you can keep using the source\n"+
+						"the current file is saved as a sibling backup so you can keep using the source\n"+
 						"stack locally. The source stack's state on %s is unaffected.\n",
 					srcConfigPath, sourceBE.Name(),
 				)
@@ -558,8 +555,8 @@ func (cmd *stackMigrateCmd) Run(
 		return fmt.Errorf("exporting source stack deployment: %w", err)
 	}
 
-	// Same-name migration overwrites Pulumi.<stack>.yaml; drop a `.bak` first. writeBackupFile
-	// avoids clobbering an earlier .bak. Failure here is fatal: prompt promised the backup.
+	// Same-name migration overwrites Pulumi.<stack>.yaml; drop a backup first.
+	// Failure here is fatal: prompt promised the backup.
 	var bakPath string
 	if sameConfigFile && srcConfigExisted {
 		bakPath, err = writeBackupFile(srcConfigPath, srcConfigBytes, srcConfigMode)
@@ -598,7 +595,7 @@ func (cmd *stackMigrateCmd) Run(
 		if !sameConfigFile {
 			restoreConfigFile(stdout, tgtConfigPath, tgtConfigBytes, tgtConfigMode, tgtConfigExisted)
 		}
-		// `.bak` is the only off-disk copy of the source config, so only remove it once we've
+		// bakPath is the only off-disk copy of the source config, so only remove it once we've
 		// confirmed the source ps file was restored successfully. Otherwise leave it as the
 		// recoverable copy and tell the user where it lives.
 		if bakPath != "" {

@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -149,7 +150,7 @@ func TestRestoreConfigFile_SuccessReportsRestored(t *testing.T) {
 	assert.Contains(t, buf.String(), "Restored")
 }
 
-func TestWriteBackupFile_PicksNextSuffixWithoutClobbering(t *testing.T) {
+func TestWriteBackupFile_CreatesTempBackupWithoutClobbering(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	path := dir + "/Pulumi.dev.yaml"
@@ -158,15 +159,15 @@ func TestWriteBackupFile_PicksNextSuffixWithoutClobbering(t *testing.T) {
 
 	bakPath, err := writeBackupFile(path, []byte("new-backup"), 0o600)
 	require.NoError(t, err)
-	assert.Equal(t, path+".bak.1", bakPath)
+	assert.True(t, strings.HasPrefix(bakPath, path+".bak."), bakPath)
 
 	gotBak, err := os.ReadFile(path + ".bak")
 	require.NoError(t, err)
 	assert.Equal(t, []byte("existing-backup"), gotBak)
 
-	gotBak1, err := os.ReadFile(path + ".bak.1")
+	gotBackup, err := os.ReadFile(bakPath)
 	require.NoError(t, err)
-	assert.Equal(t, []byte("new-backup"), gotBak1)
+	assert.Equal(t, []byte("new-backup"), gotBackup)
 }
 
 func runMigrate(
@@ -1279,13 +1280,16 @@ func TestStackMigrate_BacksUpSameNameConfigFile(t *testing.T) { //nolint: parall
 	err := runMigrate(t, ws, lm, []string{"file:///tmp/source", "dev", "--yes"})
 	require.NoError(t, err)
 
-	bakBytes, err := os.ReadFile("Pulumi.dev.yaml.bak")
-	require.NoError(t, err, "expected sibling .bak with pre-migration source ps content")
+	matches, err := filepath.Glob("Pulumi.dev.yaml.bak.*")
+	require.NoError(t, err)
+	require.Len(t, matches, 1, "expected one sibling backup with pre-migration source ps content")
+	bakBytes, err := os.ReadFile(matches[0])
+	require.NoError(t, err)
 	assert.Equal(t, srcPSContent, bakBytes, "backup must capture pre-migration bytes")
 }
 
 // When a previous migration already left a Pulumi.<stack>.yaml.bak in place, a re-run must NOT
-// clobber it. The new backup falls through to a numbered suffix so the original is preserved.
+// clobber it. The new backup uses a temp suffix so the original is preserved.
 func TestStackMigrate_BackupAvoidsClobberingExistingBak(t *testing.T) { //nolint: paralleltest
 	wd := t.TempDir()
 	t.Chdir(wd)
@@ -1406,10 +1410,13 @@ func TestStackMigrate_BackupAvoidsClobberingExistingBak(t *testing.T) { //nolint
 	require.NoError(t, err)
 	assert.Equal(t, originalBak, got, "pre-existing .bak must not be clobbered")
 
-	// New backup falls through to .bak.1 with the just-overwritten source ps.
-	bak1, err := os.ReadFile("Pulumi.dev.yaml.bak.1")
-	require.NoError(t, err, "expected new backup at .bak.1")
-	assert.Equal(t, []byte("config:\n  proj:plain: now\n"), bak1)
+	// New backup uses a temp suffix with the just-overwritten source ps.
+	matches, err := filepath.Glob("Pulumi.dev.yaml.bak.*")
+	require.NoError(t, err)
+	require.Len(t, matches, 1, "expected new backup with temp suffix")
+	bakBytes, err := os.ReadFile(matches[0])
+	require.NoError(t, err)
+	assert.Equal(t, []byte("config:\n  proj:plain: now\n"), bakBytes)
 }
 
 // Renaming via --target rewrites the source stack's URNs to the new name in the imported
