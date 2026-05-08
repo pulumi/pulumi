@@ -1,4 +1,4 @@
 changes:
 - type: fix
-  scope: codegen/pcl
+  scope: programgen/pcl
   description: Stop reporting spurious circular references when an `ignoreChanges`, `hideDiffs`, `replaceOnChanges`, or `additionalSecretOutputs` entry shares a name with a top-level node
