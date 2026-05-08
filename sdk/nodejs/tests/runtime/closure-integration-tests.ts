@@ -34,10 +34,10 @@ async function writePackageJSON(
         license: "Apache-2.0",
         dependencies: {
             "@pulumi/pulumi": pulumiPackagePath,
-            "@types/mocha": "^9.0.0",
+            "@types/mocha": "^10.0.0",
             "@types/node": nodeTypesVersion,
             "@types/semver": "^7.5.6",
-            mocha: "^9.0.0",
+            mocha: "^11.0.0",
             "mocha-suppress-logs": "^0.5.1",
             mockpackage: "file:mockpackage-src",
             semver: "^7.5.4",
