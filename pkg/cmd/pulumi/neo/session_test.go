@@ -337,6 +337,7 @@ func TestSession_ForwardsTodoWriteToolCallAsUITodoList(t *testing.T) {
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	require.True(t, hasUIEvent[UITodoList](events), "todo__TodoWrite must emit UITodoList")
@@ -385,6 +386,7 @@ func TestSession_TodoWriteWithMalformedArgsEmitsNoTodoList(t *testing.T) {
 	uiCh := make(chan UIEvent, 16)
 	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t", UIEvents: uiCh}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.False(t, hasUIEvent[UITodoList](events), "malformed todos payload must not emit UITodoList")
