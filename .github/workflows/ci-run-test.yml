@@ -402,6 +402,7 @@ jobs:
           fi
       - name: Merge integration test code coverage
         if: ${{ inputs.enable-coverage }}
+        continue-on-error: true
         run: |
           # Merge coverage data from coverage-instrumented binaries
           # if available.
