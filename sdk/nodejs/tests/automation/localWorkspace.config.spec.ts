@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import assert from "assert";
+import * as fs from "fs";
 import * as upath from "upath";
 
 import {
@@ -227,36 +228,46 @@ describe("LocalWorkspace - Config", () => {
 
         await ws.removeStack(stackName);
     });
-    // This test requires the existence of a Pulumi.dev.yaml file because we are reading the nested
-    // config from the file. This means we can't remove the stack at the end of the test.
-    // We should also not include secrets in this config, because the secret encryption is only valid within
+    // This test verifies that nested config (maps and lists) can be read from a Pulumi.<stack>.yaml file.
+    // We should not include secrets in this config, because the secret encryption is only valid within
     // the context of a stack and org, and running this test in different orgs will fail if there are secrets.
     it(`nested_config`, async () => {
-        const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
+        const sName = `int_test${getTestSuffix()}`;
+        const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", sName);
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
+
+        // Copy Pulumi.dev.yaml to a stack-specific config file so we use a unique stack name
+        // and avoid conflicts when multiple CI runs execute this test concurrently.
+        const srcConfig = upath.joinSafe(workDir, "Pulumi.dev.yaml");
+        const dstConfig = upath.joinSafe(workDir, `Pulumi.${sName}.yaml`);
+        fs.copyFileSync(srcConfig, dstConfig);
+
         const stack = await LocalWorkspace.createOrSelectStack(
             { stackName, workDir },
             withTestBackend({}, "nested_config"),
         );
 
-        const allConfig = await stack.getAllConfig();
-        const outerVal = allConfig["nested_config:outer"];
-        assert.strictEqual(outerVal.secret, false);
-        assert.strictEqual(outerVal.value, '{"inner":"my_value","other":"something_else"}');
+        try {
+            const allConfig = await stack.getAllConfig();
+            const outerVal = allConfig["nested_config:outer"];
+            assert.strictEqual(outerVal.secret, false);
+            assert.strictEqual(outerVal.value, '{"inner":"my_value","other":"something_else"}');
 
-        const listVal = allConfig["nested_config:myList"];
-        assert.strictEqual(listVal.secret, false);
-        assert.strictEqual(listVal.value, '["one","two","three"]');
+            const listVal = allConfig["nested_config:myList"];
+            assert.strictEqual(listVal.secret, false);
+            assert.strictEqual(listVal.value, '["one","two","three"]');
 
-        const outer = await stack.getConfig("outer");
-        assert.strictEqual(outer.secret, false);
-        assert.strictEqual(outer.value, '{"inner":"my_value","other":"something_else"}');
+            const outer = await stack.getConfig("outer");
+            assert.strictEqual(outer.secret, false);
+            assert.strictEqual(outer.value, '{"inner":"my_value","other":"something_else"}');
 
-        const list = await stack.getConfig("myList");
-        assert.strictEqual(list.secret, false);
-        assert.strictEqual(list.value, '["one","two","three"]');
-
-        // This test uses a static stack name.  Do not remove it at the end to prevent flakes in CI due to missing stack.
+            const list = await stack.getConfig("myList");
+            assert.strictEqual(list.secret, false);
+            assert.strictEqual(list.value, '["one","two","three"]');
+        } finally {
+            fs.unlinkSync(dstConfig);
+            await stack.workspace.removeStack(stackName);
+        }
     });
     // TODO[https://github.com/pulumi/pulumi/issues/7127]: Re-enabled the warning.
     // Temporarily skipping test until we've re-enabled the warning.
