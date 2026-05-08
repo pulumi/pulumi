@@ -190,6 +190,8 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, diags, err
 	}
 
+	diags = diags.Extend(validateNoRequiredObjectCycles(typeList))
+
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
@@ -1397,6 +1399,89 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 		Comment:          spec.Description,
 		IsOverlay:        spec.IsOverlay,
 	}, diags
+}
+
+// validateNoRequiredObjectCycles reports a diagnostic for every object type
+// whose required-property graph contains a cycle returning to itself. Such a
+// schema describes a value of infinite size and so cannot be satisfied.
+//
+// Only direct ObjectType references count: Array, Map, and Union members all
+// have a finite empty form (or a non-recursive branch), so they break the
+// cycle. Optional properties also break the cycle.
+func validateNoRequiredObjectCycles(typeList []Type) hcl.Diagnostics {
+	// Each object is bound twice in typeList — once as a plain shape and once
+	// as an input shape — so dedupe by Token to report each logical cycle once.
+	// Visit objects in lexicographic Token order so that the chosen DFS root,
+	// and therefore the cycle text and diagnostic order, are deterministic.
+	objects := make([]*ObjectType, 0, len(typeList))
+	for _, t := range typeList {
+		if obj, ok := t.(*ObjectType); ok {
+			objects = append(objects, obj)
+		}
+	}
+	sort.Slice(objects, func(i, j int) bool { return objects[i].Token < objects[j].Token })
+
+	var diags hcl.Diagnostics
+	reported := map[string]bool{}
+	for _, obj := range objects {
+		if reported[obj.Token] {
+			continue
+		}
+		if cycle := findRequiredObjectCycle(obj, nil, map[*ObjectType]bool{}); cycle != nil {
+			tokens := make([]string, len(cycle))
+			for i, c := range cycle {
+				tokens[i] = c.Token
+				reported[c.Token] = true
+			}
+			diags = diags.Append(errorf(memberPath("types", obj.Token),
+				"object type has unsatisfiable required-property cycle: %s",
+				strings.Join(tokens, " -> ")))
+		}
+	}
+	return diags
+}
+
+// findRequiredObjectCycle DFSes the required-property graph rooted at obj.
+// If a cycle is found, it returns the slice of object types on that cycle,
+// starting at the first repeated node and ending with the same node again.
+func findRequiredObjectCycle(obj *ObjectType, path []*ObjectType, onPath map[*ObjectType]bool) []*ObjectType {
+	// walkRequiredType strips non-cycling wrappers (InputType) and recurses into
+	// ObjectType refs. Array, Map, Union, and Optional are not followed because
+	// they admit a non-recursive value. TokenType is also a leaf: it stands for
+	// a reference into another schema, which we treat as opaque — cycles cannot
+	// span schemas, and other schemas are assumed to have been validated.
+	var walkRequiredType func(typ Type, path []*ObjectType) []*ObjectType
+	walkRequiredType = func(typ Type, path []*ObjectType) []*ObjectType {
+		switch t := typ.(type) {
+		case *InputType:
+			return walkRequiredType(t.ElementType, path)
+		case *ObjectType:
+			return findRequiredObjectCycle(t, path, onPath)
+		}
+		return nil
+	}
+
+	if onPath[obj] {
+		idx := 0
+		for i, c := range path {
+			if c == obj {
+				idx = i
+				break
+			}
+		}
+		return append(append([]*ObjectType{}, path[idx:]...), obj)
+	}
+	onPath[obj] = true
+	defer delete(onPath, obj)
+	for _, p := range obj.Properties {
+		if !p.IsRequired() {
+			continue
+		}
+		if cycle := walkRequiredType(p.Type, append(path, obj)); cycle != nil {
+			return cycle
+		}
+	}
+	return nil
 }
 
 func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type, hcl.Diagnostics, error) {
