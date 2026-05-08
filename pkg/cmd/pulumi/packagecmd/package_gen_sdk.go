@@ -26,6 +26,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -52,6 +53,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
+			agent := metadata.DetectAIAgent(os.Getenv)
 
 			wd, err := os.Getwd()
 			if err != nil {
@@ -99,7 +101,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 					}
 				}
 				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
-				printRegistryDocsHint(os.Stderr, cmd.Context(), registry, pkg)
+				printRegistryDocsHint(os.Stderr, agent, cmd.Context(), registry, pkg)
 				return nil
 			}
 			diags, err := packages.GenSDK(cmd.Context(), language, out, pkg, overlays, local)
@@ -108,7 +110,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			fmt.Fprintf(os.Stderr, "SDK has been written to %s\n", filepath.Join(out, language))
-			printRegistryDocsHint(os.Stderr, cmd.Context(), registry, pkg)
+			printRegistryDocsHint(os.Stderr, agent, cmd.Context(), registry, pkg)
 			return nil
 		},
 	}

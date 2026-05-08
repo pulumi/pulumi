@@ -92,6 +92,8 @@ from the parameters, as in:
   pulumi package add <provider> -- --provider-parameter-flag value
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			agent := metadata.DetectAIAgent(os.Getenv)
+
 			wd, err := os.Getwd()
 			if err != nil {
 				return err
@@ -148,7 +150,7 @@ from the parameters, as in:
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
-				if errors.Is(err, registry.ErrNotFound) && metadata.DetectAIAgent(os.Getenv) != "" {
+				if errors.Is(err, registry.ErrNotFound) && agent != "" {
 					return fmt.Errorf("%w\nSearch: pulumi cloud api '/api/registry/packages?search=<term>'", err)
 				}
 				return err
@@ -201,7 +203,7 @@ from the parameters, as in:
 			}
 
 			fmt.Fprintf(cmd.ErrOrStderr(), "Added package %s\n", schemaDisplayName(pkg))
-			printRegistryDocsHint(cmd.ErrOrStderr(), cmd.Context(), pluginOrProject.reg, pkg)
+			printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), pluginOrProject.reg, pkg)
 			return nil
 		},
 	}
@@ -232,11 +234,10 @@ type addTarget struct {
 	proj            workspace.BaseProject
 }
 
-func printRegistryDocsHint(w io.Writer, ctx context.Context, reg registry.Registry, pkg *schema.Package) {
-	if metadata.DetectAIAgent(os.Getenv) == "" {
-		return
-	}
-	if pkg == nil || pkg.Name == "" || pkg.Version == nil || reg == nil {
+func printRegistryDocsHint(
+	w io.Writer, agent string, ctx context.Context, reg registry.Registry, pkg *schema.Package,
+) {
+	if agent == "" || pkg == nil || pkg.Name == "" || pkg.Version == nil || reg == nil {
 		return
 	}
 	meta, err := registry.ResolvePackageFromName(ctx, reg, pkg.Name, pkg.Version)
@@ -245,8 +246,16 @@ func printRegistryDocsHint(w io.Writer, ctx context.Context, reg registry.Regist
 	}
 	base := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s",
 		meta.Source, meta.Publisher, meta.Name, pkg.Version.String())
-	fmt.Fprintf(w, "Docs: pulumi cloud api --format=markdown '%s/readme'\n", base)
-	fmt.Fprintln(w, "      (or /nav for the doc tree, /docs/<token> for a specific resource)")
+	hints := []struct{ suffix, comment string }{
+		{"/readme", "                    # package readme"},
+		{"/nav", "                       # doc tree (modules)"},
+		{"/nav?q=<term>&depth=full", "   # search for resources/functions"},
+		{"/docs/<token>", "              # one resource or function (token from /nav)"},
+	}
+	fmt.Fprintln(w, "Documentation:")
+	for _, h := range hints {
+		fmt.Fprintf(w, "  pulumi cloud api --format=markdown '%s%s'%s\n", base, h.suffix, h.comment)
+	}
 }
 
 func schemaDisplayName(schema *schema.Package) string {
