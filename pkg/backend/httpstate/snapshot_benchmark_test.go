@@ -81,6 +81,12 @@ func (snapshotBackendClient) GetStackResourceOutputs(
 	return property.Map{}, nil
 }
 
+func (snapshotBackendClient) FlushAnnotations(
+	ctx context.Context, writes []plugin.AnalyzeAnnotationChange,
+) error {
+	return nil
+}
+
 // The snapshotBenchProvider implements plugin.Provider by mapping resource URNs to preloaded data. This allows test
 // programs to use arbitrary custom resources without the need to implement providers.
 type snapshotBenchProvider struct {

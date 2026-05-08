@@ -17,8 +17,10 @@ var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 goog.object.extend(proto, google_protobuf_empty_pb);
+(proto.google = proto.google || new Object()).protobuf = Object.assign(proto.google.protobuf || new Object(), google_protobuf_empty_pb);
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
+(proto.google = proto.google || new Object()).protobuf = Object.assign(proto.google.protobuf || new Object(), google_protobuf_struct_pb);
 var pulumi_provider_pb = require('./provider_pb.js');
 goog.object.extend(proto, pulumi_provider_pb);
 var pulumi_alias_pb = require('./alias_pb.js');

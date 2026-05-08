@@ -17,6 +17,7 @@ var proto = { pulumirpc: { codegen: { }, testing: { } } }, global = proto;
 
 var google_protobuf_struct_pb = require('google-protobuf/google/protobuf/struct_pb.js');
 goog.object.extend(proto, google_protobuf_struct_pb);
+(proto.google = proto.google || new Object()).protobuf = Object.assign(proto.google.protobuf || new Object(), google_protobuf_struct_pb);
 var pulumi_provider_pb = require('./provider_pb.js');
 goog.object.extend(proto, pulumi_provider_pb);
 goog.exportSymbol('proto.pulumirpc.PublishViewStepsRequest', null, global);

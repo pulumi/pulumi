@@ -416,6 +416,24 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
         ) -> None: ...
         def ClearField(self, field_name: typing.Literal["create", b"create", "delete", b"delete", "update", b"update"]) -> None: ...
 
+    @typing.final
+    class AnnotationsEntry(google.protobuf.message.Message):
+        DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+        KEY_FIELD_NUMBER: builtins.int
+        VALUE_FIELD_NUMBER: builtins.int
+        key: builtins.str
+        @property
+        def value(self) -> google.protobuf.struct_pb2.Struct: ...
+        def __init__(
+            self,
+            *,
+            key: builtins.str = ...,
+            value: google.protobuf.struct_pb2.Struct | None = ...,
+        ) -> None: ...
+        def HasField(self, field_name: typing.Literal["value", b"value"]) -> builtins.bool: ...
+        def ClearField(self, field_name: typing.Literal["key", b"key", "value", b"value"]) -> None: ...
+
     PROTECT_FIELD_NUMBER: builtins.int
     IGNORECHANGES_FIELD_NUMBER: builtins.int
     DELETEBEFOREREPLACE_FIELD_NUMBER: builtins.int
@@ -424,6 +442,7 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
     ALIASES_FIELD_NUMBER: builtins.int
     CUSTOMTIMEOUTS_FIELD_NUMBER: builtins.int
     PARENT_FIELD_NUMBER: builtins.int
+    ANNOTATIONS_FIELD_NUMBER: builtins.int
     protect: builtins.bool
     """true if the resource should be marked protected."""
     deleteBeforeReplace: builtins.bool
@@ -448,6 +467,10 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
     def customTimeouts(self) -> global___AnalyzerResourceOptions.CustomTimeouts:
         """a config block that will be used to configure timeouts for CRUD operations."""
 
+    @property
+    def annotations(self) -> google.protobuf.internal.containers.MessageMap[builtins.str, google.protobuf.struct_pb2.Struct]:
+        """resource annotations keyed by "{source}/{kind}"."""
+
     def __init__(
         self,
         *,
@@ -459,9 +482,10 @@ class AnalyzerResourceOptions(google.protobuf.message.Message):
         aliases: collections.abc.Iterable[builtins.str] | None = ...,
         customTimeouts: global___AnalyzerResourceOptions.CustomTimeouts | None = ...,
         parent: builtins.str = ...,
+        annotations: collections.abc.Mapping[builtins.str, google.protobuf.struct_pb2.Struct] | None = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["customTimeouts", b"customTimeouts"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "ignoreChanges", b"ignoreChanges", "parent", b"parent", "protect", b"protect"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["additionalSecretOutputs", b"additionalSecretOutputs", "aliases", b"aliases", "annotations", b"annotations", "customTimeouts", b"customTimeouts", "deleteBeforeReplace", b"deleteBeforeReplace", "deleteBeforeReplaceDefined", b"deleteBeforeReplaceDefined", "ignoreChanges", b"ignoreChanges", "parent", b"parent", "protect", b"protect"]) -> None: ...
 
 global___AnalyzerResourceOptions = AnalyzerResourceOptions
 
@@ -519,6 +543,37 @@ class AnalyzerPropertyDependencies(google.protobuf.message.Message):
 global___AnalyzerPropertyDependencies = AnalyzerPropertyDependencies
 
 @typing.final
+class AnalyzeAnnotationChange(google.protobuf.message.Message):
+    """AnalyzeAnnotationChange represents a single annotation write that a policy wants to make.
+    The key follows the form "{source}/{kind}" and must use source "user:api".
+    """
+
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    URN_FIELD_NUMBER: builtins.int
+    KEY_FIELD_NUMBER: builtins.int
+    DATA_FIELD_NUMBER: builtins.int
+    urn: builtins.str
+    """target resource URN."""
+    key: builtins.str
+    """annotation key, "{source}/{kind}"."""
+    @property
+    def data(self) -> google.protobuf.struct_pb2.Struct:
+        """annotation value."""
+
+    def __init__(
+        self,
+        *,
+        urn: builtins.str = ...,
+        key: builtins.str = ...,
+        data: google.protobuf.struct_pb2.Struct | None = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["data", b"data"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["data", b"data", "key", b"key", "urn", b"urn"]) -> None: ...
+
+global___AnalyzeAnnotationChange = AnalyzeAnnotationChange
+
+@typing.final
 class AnalyzeStackRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
@@ -540,6 +595,7 @@ class AnalyzeResponse(google.protobuf.message.Message):
 
     DIAGNOSTICS_FIELD_NUMBER: builtins.int
     NOT_APPLICABLE_FIELD_NUMBER: builtins.int
+    ANNOTATIONS_FIELD_NUMBER: builtins.int
     @property
     def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___AnalyzeDiagnostic]:
         """information about policy violations."""
@@ -548,13 +604,18 @@ class AnalyzeResponse(google.protobuf.message.Message):
     def not_applicable(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___PolicyNotApplicable]:
         """information about policies that were not applicable."""
 
+    @property
+    def annotations(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[global___AnalyzeAnnotationChange]:
+        """annotation writes that the policy wants to apply."""
+
     def __init__(
         self,
         *,
         diagnostics: collections.abc.Iterable[global___AnalyzeDiagnostic] | None = ...,
         not_applicable: collections.abc.Iterable[global___PolicyNotApplicable] | None = ...,
+        annotations: collections.abc.Iterable[global___AnalyzeAnnotationChange] | None = ...,
     ) -> None: ...
-    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "not_applicable", b"not_applicable"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["annotations", b"annotations", "diagnostics", b"diagnostics", "not_applicable", b"not_applicable"]) -> None: ...
 
 global___AnalyzeResponse = AnalyzeResponse
 

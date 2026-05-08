@@ -2262,3 +2262,27 @@ func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[api
 		}
 	}
 }
+
+// ListStackResourceAnnotations fetches resource annotations for a stack (paginated).
+func (pc *Client) ListStackResourceAnnotations(
+	ctx context.Context, stack StackIdentifier, continuationToken *string,
+) (apitype.ListBulkResourceAnnotationsResponse, error) {
+	path := getStackPath(stack, "resources", "latest", "annotations")
+	var queryObj struct {
+		ContinuationToken *string `url:"continuationToken,omitempty"`
+	}
+	queryObj.ContinuationToken = continuationToken
+	var resp apitype.ListBulkResourceAnnotationsResponse
+	if err := pc.restCall(ctx, "GET", path, queryObj, nil, &resp); err != nil {
+		return apitype.ListBulkResourceAnnotationsResponse{}, err
+	}
+	return resp, nil
+}
+
+// BatchWriteStackResourceAnnotations writes annotation changes for a stack.
+func (pc *Client) BatchWriteStackResourceAnnotations(
+	ctx context.Context, stack StackIdentifier, req apitype.BatchWriteAnnotationsRequest,
+) error {
+	path := getStackPath(stack, "resources", "latest", "annotations")
+	return pc.restCall(ctx, "PATCH", path, nil, &req, nil)
+}

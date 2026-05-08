@@ -349,6 +349,7 @@ func (a *analyzer) Analyze(r AnalyzerResource) (AnalyzeResponse, error) {
 	return AnalyzeResponse{
 		Diagnostics:   diags,
 		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
+		Annotations:   convertAnalyzeAnnotationChanges(resp.GetAnnotations()),
 	}, nil
 }
 
@@ -425,6 +426,7 @@ func (a *analyzer) AnalyzeStack(resources []AnalyzerStackResource) (AnalyzeRespo
 	return AnalyzeResponse{
 		Diagnostics:   diags,
 		NotApplicable: convertNotApplicable(resp.GetNotApplicable()),
+		Annotations:   convertAnalyzeAnnotationChanges(resp.GetAnnotations()),
 	}, nil
 }
 
@@ -745,6 +747,85 @@ func analyzerPluginDialOptions(ctx *Context, name string) []grpc.DialOption {
 	return dialOpts
 }
 
+func marshalAnnotationsMap(entries map[string]resource.PropertyMap) map[string]*structpb.Struct {
+	if len(entries) == 0 {
+		return nil
+	}
+	result := make(map[string]*structpb.Struct, len(entries))
+	for k, data := range entries {
+		mdata, err := MarshalProperties(data,
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		if err != nil {
+			logging.V(7).Infof("failed to marshal annotation data for %q: %v", k, err)
+			continue
+		}
+		result[k] = mdata
+	}
+	return result
+}
+
+func convertAnnotationsMap(protos map[string]*structpb.Struct) map[string]resource.PropertyMap {
+	if len(protos) == 0 {
+		return nil
+	}
+	result := make(map[string]resource.PropertyMap, len(protos))
+	for k, mdata := range protos {
+		data, err := UnmarshalProperties(mdata,
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+		if err != nil {
+			logging.V(7).Infof("failed to unmarshal annotation data for %q: %v", k, err)
+			continue
+		}
+		result[k] = data
+	}
+	return result
+}
+
+func convertAnalyzeAnnotationChanges(protos []*pulumirpc.AnalyzeAnnotationChange) []AnalyzeAnnotationChange {
+	if len(protos) == 0 {
+		return nil
+	}
+	result := make([]AnalyzeAnnotationChange, 0, len(protos))
+	for _, p := range protos {
+		if p == nil {
+			continue
+		}
+		data, err := UnmarshalProperties(p.GetData(),
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true})
+		if err != nil {
+			logging.V(7).Infof("failed to unmarshal annotation write data: %v", err)
+			continue
+		}
+		result = append(result, AnalyzeAnnotationChange{
+			URN:  resource.URN(p.GetUrn()),
+			Key:  p.GetKey(),
+			Data: data,
+		})
+	}
+	return result
+}
+
+func marshalAnalyzeAnnotationChanges(changes []AnalyzeAnnotationChange) []*pulumirpc.AnalyzeAnnotationChange {
+	if len(changes) == 0 {
+		return nil
+	}
+	result := make([]*pulumirpc.AnalyzeAnnotationChange, 0, len(changes))
+	for _, c := range changes {
+		data, err := MarshalProperties(c.Data,
+			MarshalOptions{KeepUnknowns: true, KeepSecrets: true, SkipInternalKeys: true})
+		if err != nil {
+			logging.V(7).Infof("failed to marshal annotation write data: %v", err)
+			continue
+		}
+		result = append(result, &pulumirpc.AnalyzeAnnotationChange{
+			Urn:  string(c.URN),
+			Key:  c.Key,
+			Data: data,
+		})
+	}
+	return result
+}
+
 func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerResourceOptions {
 	secs := make([]string, len(opts.AdditionalSecretOutputs))
 	for idx := range opts.AdditionalSecretOutputs {
@@ -768,7 +849,8 @@ func marshalResourceOptions(opts AnalyzerResourceOptions) *pulumirpc.AnalyzerRes
 			Update: opts.CustomTimeouts.Update,
 			Delete: opts.CustomTimeouts.Delete,
 		},
-		Parent: string(opts.Parent),
+		Parent:      string(opts.Parent),
+		Annotations: marshalAnnotationsMap(opts.Annotations),
 	}
 	return result
 }

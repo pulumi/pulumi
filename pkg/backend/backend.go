@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -453,6 +454,10 @@ func (c *backendClient) GetStackResourceOutputs(
 		pm[string(r.URN)] = property.New(resc)
 	}
 	return property.NewMap(pm), nil
+}
+
+func (c *backendClient) FlushAnnotations(ctx context.Context, writes []plugin.AnalyzeAnnotationChange) error {
+	return nil
 }
 
 var (

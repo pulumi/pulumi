@@ -28,6 +28,10 @@ type Target struct {
 	Decrypter    config.Decrypter  // decrypter for secret configuration values.
 	Snapshot     *Snapshot         // the last snapshot deployed to the target.
 	Tags         map[string]string // tags for the current stack.
+
+	// Annotations are the pre-fetched annotations for the stack, keyed first by resource URN and then
+	// by "{source}/{kind}". Used to seed the AnnotationStore at the start of an update.
+	Annotations map[resource.URN]map[string]resource.PropertyMap
 }
 
 const (

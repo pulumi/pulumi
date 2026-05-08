@@ -150,6 +150,7 @@ message AnalyzerResourceOptions {
     repeated string aliases = 6;                 // a list of additional URNs that shoud be considered the same.
     CustomTimeouts customTimeouts = 7;           // a config block that will be used to configure timeouts for CRUD operations.
     string parent = 8;                           // an optional parent URN that this child resource belongs to.
+    map<string, google.protobuf.Struct> annotations = 9; // resource annotations keyed by "{source}/{kind}".
 }
 
 // AnalyzerProviderResource provides information about a resource's provider.
@@ -165,13 +166,22 @@ message AnalyzerPropertyDependencies {
     repeated string urns = 1; // A list of URNs this property depends on.
 }
 
+// AnalyzeAnnotationChange represents a single annotation write that a policy wants to make.
+// The key follows the form "{source}/{kind}" and must use source "user:api".
+message AnalyzeAnnotationChange {
+    string urn = 1;                        // target resource URN.
+    string key = 2;                        // annotation key, "{source}/{kind}".
+    google.protobuf.Struct data = 3;       // annotation value.
+}
+
 message AnalyzeStackRequest {
     repeated AnalyzerResource resources = 1;
 }
 
 message AnalyzeResponse {
-    repeated AnalyzeDiagnostic diagnostics = 2;      // information about policy violations.
-    repeated PolicyNotApplicable not_applicable = 3; // information about policies that were not applicable.
+    repeated AnalyzeDiagnostic diagnostics = 2;        // information about policy violations.
+    repeated PolicyNotApplicable not_applicable = 3;   // information about policies that were not applicable.
+    repeated AnalyzeAnnotationChange annotations = 4;  // annotation writes that the policy wants to apply.
 }
 
 // EnforcementLevel indicates the severity of a policy violation.

@@ -17,6 +17,7 @@ package deploytest
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 )
 
@@ -29,6 +30,8 @@ type BackendClient struct {
 	) (property.Map, error)
 
 	GetStackResourceOutputsF func(ctx context.Context, name string) (property.Map, error)
+
+	FlushAnnotationsF func(ctx context.Context, writes []plugin.AnalyzeAnnotationChange) error
 }
 
 // GetStackOutputs returns the outputs (if any) for the named stack, returning an error if the stack cannot be found or
@@ -51,4 +54,11 @@ func (b *BackendClient) GetStackResourceOutputs(
 	ctx context.Context, name string,
 ) (property.Map, error) {
 	return b.GetStackResourceOutputsF(ctx, name)
+}
+
+func (b *BackendClient) FlushAnnotations(ctx context.Context, writes []plugin.AnalyzeAnnotationChange) error {
+	if b.FlushAnnotationsF != nil {
+		return b.FlushAnnotationsF(ctx, writes)
+	}
+	return nil
 }
