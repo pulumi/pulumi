@@ -1,5 +1,65 @@
 # Changelog
 
+## 3.237.0 (2026-05-08)
+
+
+### Features
+
+- [cli] Include the running command name and detected AI agent (when present) in the User-Agent header on Pulumi Cloud API requests
+  [#22908](https://github.com/pulumi/pulumi/pull/22908)
+
+- [engine] Include `result` on the summary engine event
+  [#22883](https://github.com/pulumi/pulumi/pull/22883)
+
+- [sdkgen] Eagerly error on schemas with unconstructable types
+  [#22890](https://github.com/pulumi/pulumi/pull/22890)
+
+- [cli/cloud] Auto-fill `lang` and `os` query parameters on `pulumi cloud api` GET/HEAD requests when the matched OpenAPI operation declares them and the caller hasn't supplied them
+  [#22726](https://github.com/pulumi/pulumi/pull/22726)
+
+- [cli/package] Add `pulumi package new` to bootstrap a Pulumi package from a template
+  [#22837](https://github.com/pulumi/pulumi/pull/22837)
+
+
+### Bug Fixes
+
+- [cli] Add blank-line gaps between `pulumi neo` TUI conversation blocks
+  [#22846](https://github.com/pulumi/pulumi/pull/22846)
+
+- [cli/import] Preserve `__`-prefixed keys when generating PCL for imported resource state, so provider-defined payloads round-trip correctly
+  [#22856](https://github.com/pulumi/pulumi/pull/22856)
+
+- [cli/neo] Render `ux__ask_user` clarifying questions as questions instead of approval prompts
+  [#22862](https://github.com/pulumi/pulumi/pull/22862)
+
+- [cli/neo] Fix a panic when cancelling a `pulumi neo` session
+  [#22898](https://github.com/pulumi/pulumi/pull/22898)
+
+- [cli/neo] Render every assistant message in the TUI scrollback so multi-turn commentary no longer disappears between tool calls
+
+- [cli/neo] Return the bare stack name and canonical project name from `pulumi_preview` and `pulumi_up` tool results instead of echoing the raw input
+  [#22891](https://github.com/pulumi/pulumi/pull/22891)
+
+- [codegen/pcl] Stop reporting spurious circular references when an `ignoreChanges`, `hideDiffs`, `replaceOnChanges`, or `additionalSecretOutputs` entry shares a name with a top-level node
+  [#22916](https://github.com/pulumi/pulumi/pull/22916)
+
+- [programgen/pcl] Fix PCL binder panic when a conditional mixes a Promise-typed branch with a try() branch
+  [#22907](https://github.com/pulumi/pulumi/pull/22907)
+
+- [sdk/python] Support `NotRequired`, `Required` and `total=False` in TypedDicts for component resource arg types
+  [#22858](https://github.com/pulumi/pulumi/pull/22858)
+
+
+### Miscellaneous
+
+- [cli/cloud] Auto-fit `pulumi cloud api list` table to terminal width and replace the
+`tabular` table renderer with `go-pretty`
+
+  [#22874](https://github.com/pulumi/pulumi/pull/22874)
+
+- [sdk/nodejs] Test on Node.js 26 and drop 20
+  [#22872](https://github.com/pulumi/pulumi/pull/22872)
+
 ## 3.236.0 (2026-05-06)
 
 

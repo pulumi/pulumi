@@ -1,4 +1,0 @@
-changes:
-- type: improvement
-  scope: cli/neo
-  description: Render URLs in `pulumi neo` output as clickable OSC 8 hyperlinks in terminals that support them

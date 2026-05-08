@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/neo
-  description: Render every assistant message in the TUI scrollback so multi-turn commentary no longer disappears between tool calls

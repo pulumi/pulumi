@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/neo
-  description: Fix a panic when cancelling a `pulumi neo` session

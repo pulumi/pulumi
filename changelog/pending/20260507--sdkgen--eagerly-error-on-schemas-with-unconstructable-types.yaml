@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: sdkgen
-  description: Eagerly error on schemas with unconstructable types
