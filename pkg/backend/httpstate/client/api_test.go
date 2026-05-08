@@ -157,6 +157,39 @@ func TestHTTPClientUserAgent(t *testing.T) {
 	assert.Equal(t, UserAgent(), inReq.Header.Get("User-Agent"))
 }
 
+//nolint:paralleltest // mutates the package-level state observed by UserAgent()
+func TestUserAgentExtras(t *testing.T) {
+	t.Cleanup(func() {
+		SetUserAgentCommand("")
+		SetUserAgentAIAgent("")
+	})
+
+	SetUserAgentCommand("")
+	SetUserAgentAIAgent("")
+	base := UserAgent()
+	assert.Regexp(t, `^pulumi-cli/1 \([^()]*\)$`, base)
+	assert.NotContains(t, base, "cmd=")
+	assert.NotContains(t, base, "agent=")
+
+	SetUserAgentCommand("stack ls")
+	withCmd := UserAgent()
+	assert.Contains(t, withCmd, "; cmd=stack-ls)")
+	assert.NotContains(t, withCmd, "agent=")
+
+	SetUserAgentAIAgent("claude")
+	withBoth := UserAgent()
+	assert.Contains(t, withBoth, "; cmd=stack-ls;")
+	assert.Contains(t, withBoth, "; agent=claude)")
+
+	SetUserAgentCommand("")
+	withAgentOnly := UserAgent()
+	assert.NotContains(t, withAgentOnly, "cmd=")
+	assert.Contains(t, withAgentOnly, "; agent=claude)")
+
+	SetUserAgentCommand("weird (cmd; with) bits")
+	assert.Contains(t, UserAgent(), "; cmd=weird-cmd-with-bits;")
+}
+
 func TestPulumiAPICall_401_LoginRequired(t *testing.T) {
 	t.Parallel()
 

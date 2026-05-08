@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Include the running command name and detected AI agent (when present) in the User-Agent header on Pulumi Cloud API requests

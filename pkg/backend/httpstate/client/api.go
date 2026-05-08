@@ -86,8 +86,51 @@ const currentAPIVersion = 9
 // request to the Pulumi service. See `currentAPIVersion`.
 var acceptAPIVersionHeader = fmt.Sprintf("application/vnd.pulumi+%d", currentAPIVersion)
 
+// userAgentCommand and userAgentAIAgent are written once in the cobra root's
+// PersistentPreRunE before any HTTP-issuing goroutine is spawned, then read
+// from any goroutine making an API request. The single-writer-before-readers
+// pattern means no synchronization is needed.
+var (
+	userAgentCommand string
+	userAgentAIAgent string
+)
+
+// SetUserAgentCommand sets the running CLI command appended to UserAgent as `cmd=...`.
+func SetUserAgentCommand(command string) {
+	userAgentCommand = sanitizeUserAgentToken(command)
+}
+
+// SetUserAgentAIAgent sets the detected AI agent appended to UserAgent as `agent=...`.
+func SetUserAgentAIAgent(agent string) {
+	userAgentAIAgent = sanitizeUserAgentToken(agent)
+}
+
+func sanitizeUserAgentToken(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	replacer := strings.NewReplacer(
+		" ", "-",
+		"\t", "-",
+		"(", "",
+		")", "",
+		";", "",
+	)
+	return replacer.Replace(s)
+}
+
 func UserAgent() string {
-	return fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
+	var extras strings.Builder
+	if userAgentCommand != "" {
+		extras.WriteString("; cmd=")
+		extras.WriteString(userAgentCommand)
+	}
+	if userAgentAIAgent != "" {
+		extras.WriteString("; agent=")
+		extras.WriteString(userAgentAIAgent)
+	}
+	return fmt.Sprintf("pulumi-cli/1 (%s; %s%s)", version.Version, runtime.GOOS, extras.String())
 }
 
 // StackIdentifier is the set of data needed to identify a Pulumi Cloud stack.
