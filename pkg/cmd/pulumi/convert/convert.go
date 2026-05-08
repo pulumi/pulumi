@@ -32,11 +32,11 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	resstack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -156,7 +156,8 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 		&file, "file", "", "Input file path (required when --from stack)")
 
 	cmd.PersistentFlags().BoolVar(
-		&showSecrets, "show-secrets", false, "Show secret values in plaintext when converting (requires access to the secrets provider)")
+		&showSecrets, "show-secrets", false,
+		"Show secret values in plaintext when converting (requires access to the secrets provider)")
 
 	return cmd
 }
