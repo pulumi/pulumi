@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -260,6 +261,8 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 	if err != nil {
 		return err
 	}
+
+	injectContextQueryParams(mr.Op, method, rawQuery, resolvedCtx, queryExtras)
 
 	query := mergeQuery(rawQuery, queryExtras)
 
@@ -709,6 +712,66 @@ func stringifyFieldForPath(f ParsedField) (string, error) {
 			WithField(f.Key)
 	default:
 		return fmt.Sprintf("%v", v), nil
+	}
+}
+
+var runtimeToLang = map[string]string{
+	"nodejs": "typescript",
+	"dotnet": "csharp",
+	"go":     "go",
+	"python": "python",
+	"yaml":   "yaml",
+	"java":   "java",
+}
+
+func opDeclaresQueryParam(op *Operation, name string) bool {
+	if op == nil {
+		return false
+	}
+	for _, p := range op.Params {
+		if p.In == "query" && p.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func contextQueryValues(rctx *ResolvedContext) map[string]string {
+	if rctx == nil {
+		return nil
+	}
+	out := make(map[string]string, 2)
+	if rctx.Project != nil {
+		if lang, ok := runtimeToLang[rctx.Project.Runtime.Name()]; ok {
+			out["lang"] = lang
+		}
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		out["os"] = "macos"
+	case "linux", "windows":
+		out["os"] = runtime.GOOS
+	}
+	return out
+}
+
+func injectContextQueryParams(op *Operation, method, rawQuery string, rctx *ResolvedContext, extras url.Values) {
+	if method != "GET" && method != "HEAD" {
+		return
+	}
+	values := contextQueryValues(rctx)
+	if len(values) == 0 {
+		return
+	}
+	rawVals, _ := url.ParseQuery(rawQuery)
+	for name, val := range values {
+		if !opDeclaresQueryParam(op, name) {
+			continue
+		}
+		if extras.Has(name) || rawVals.Has(name) {
+			continue
+		}
+		extras.Add(name, val)
 	}
 }
 
