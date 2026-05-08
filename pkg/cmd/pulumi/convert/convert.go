@@ -38,7 +38,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	resstack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -52,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -395,7 +396,7 @@ func runConvert(
 			return fmt.Errorf("parse stack file: %w", err)
 		}
 
-		snap, err := resstack.DeserializeUntypedDeployment(ctx, &deployment, b64.Base64SecretsProvider)
+		snap, err := resstack.DeserializeUntypedDeployment(ctx, &deployment, &nopSecretsProvider{})
 		if err != nil {
 			return fmt.Errorf("deserialize stack: %w", err)
 		}
@@ -676,3 +677,18 @@ func generateAndLinkSdksForPackages(
 
 	return nil
 }
+
+// nopSecretsProvider accepts any secrets provider type and returns a nopSecretsManager.
+// Used when deserializing a stack export for conversion, where we don't need to decrypt values.
+type nopSecretsProvider struct{}
+
+func (p *nopSecretsProvider) OfType(_ context.Context, ty string, _ json.RawMessage) (secrets.Manager, error) {
+	return &nopSecretsManager{ty: ty}, nil
+}
+
+type nopSecretsManager struct{ ty string }
+
+func (m *nopSecretsManager) Type() string                { return m.ty }
+func (m *nopSecretsManager) State() json.RawMessage      { return nil }
+func (m *nopSecretsManager) Encrypter() config.Encrypter { return config.NopEncrypter }
+func (m *nopSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
