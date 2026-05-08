@@ -799,7 +799,8 @@ func TestResourceHookBeforeUpdate(t *testing.T) {
 			require.Fail(t, "Hook should not be called")
 			return nil
 		}
-		shouldNotBeCalledHook, err := deploytest.NewHook(monitor, callbacks, "shouldNotBeCalled", shouldNotBeCalled, true, false)
+		shouldNotBeCalledHook, err := deploytest.NewHook(
+			monitor, callbacks, "shouldNotBeCalled", shouldNotBeCalled, true, false)
 		require.NoError(t, err)
 
 		shouldBeCalled := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
@@ -1333,13 +1334,13 @@ func TestResourceHookAfterCreateError(t *testing.T) {
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
-		_, _ = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				AfterCreate: []*deploytest.ResourceHook{myHook},
 			},
 		})
-		require.Fail(t, "RegisterResource should not return")
+		require.NoError(t, err)
 		return nil
 	})
 	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
@@ -1367,14 +1368,100 @@ func TestResourceHookAfterCreateError(t *testing.T) {
 			}
 
 			require.True(t, sawFailure, "There should be an error diagnostic for resA")
+			require.True(t, result.IsBail(err), "expected a bail result")
+			require.ErrorContains(t, err, "hook \"myHook\" failed: Oh no")
 			return err
 		},
 	}}
 	snap := p.Run(t, nil)
 	require.True(t, hookCalled)
-	// Only the provider is in the snapshot; the resource's create step failed
-	// (due to the after hook error) so it is not saved to state.
-	require.Len(t, snap.Resources, 1)
+	// The resource is in state because the create step itself succeeded, but the after-hook failed.
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, "resA", snap.Resources[1].URN.Name())
+}
+
+// When an after hook fails, the deployment should fail fast: the current step's snapshot commits, but no further steps
+// run.
+func TestResourceHookAfterCreateErrorFailsFast(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: req.Properties,
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			return errors.New("hook failed")
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
+		require.NoError(t, err)
+
+		// resA's after-hook fails. The step itself succeeds so the resource is committed to state.
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				AfterCreate: []*deploytest.ResourceHook{myHook},
+			},
+		})
+		require.NoError(t, err)
+
+		// Try to register resB after the failing hook. With fail-fast, the step executor has been cancelled and this
+		// registration should not produce a resource in state.
+		_, _ = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"b": "B"}),
+		})
+
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true},
+	}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.True(t, result.IsBail(err), "expected a bail result")
+	require.ErrorContains(t, err, "hook failed")
+	require.True(t, hookCalled)
+	require.NotNil(t, snap)
+
+	hasA, hasB := false, false
+	for _, r := range snap.Resources {
+		switch r.URN.Name() {
+		case "resA":
+			hasA = true
+		case "resB":
+			hasB = true
+		}
+	}
+	require.True(t, hasA, "resA should be in state")
+	require.False(t, hasB, "resB should not be in state")
 }
 
 func TestResourceHookAfterDeleteError(t *testing.T) {
@@ -1463,10 +1550,9 @@ func TestResourceHookAfterDeleteError(t *testing.T) {
 	require.True(t, result.IsBail(err))
 	require.ErrorContains(t, err, "hook \"myHook\" failed: Oh no")
 	require.True(t, hookCalled)
-	// The resource should still be in the snapshot because the step failed
-	require.Len(t, snap.Resources, 2)
-	require.Equal(t, snap.Resources[0].URN.Name(), "default")
-	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+	// The cloud resource was deleted successfully (state matches cloud).
+	require.Len(t, snap.Resources, 1)
+	require.Equal(t, "default", snap.Resources[0].URN.Name())
 }
 
 func TestResourceHookAfterCreateErrorContinueOnError(t *testing.T) {
@@ -1508,19 +1594,14 @@ func TestResourceHookAfterCreateErrorContinueOnError(t *testing.T) {
 		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, false)
 		require.NoError(t, err)
 
-		// resA has a failing after hook. With ContinueOnError, the engine
-		// continues but RegisterResource returns an error to the SDK.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
 			ResourceHookBindings: deploytest.ResourceHookBindings{
 				AfterCreate: []*deploytest.ResourceHook{myHook},
 			},
 		})
-		// The SDK receives an error because the step failed.
-		require.Error(t, err)
+		require.NoError(t, err)
 
-		// resB has no hooks, should still be created because ContinueOnError
-		// does not cancel the context.
 		_, err = monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: resource.NewPropertyMapFromMap(map[string]any{"b": "B"}),
 		})
@@ -1532,8 +1613,7 @@ func TestResourceHookAfterCreateErrorContinueOnError(t *testing.T) {
 
 	p := &lt.TestPlan{
 		Options: lt.TestUpdateOptions{
-			T: t,
-			// Skip display tests because different ordering makes the colouring different.
+			T:                t,
 			SkipDisplayTests: true,
 			UpdateOptions: UpdateOptions{
 				ContinueOnError: true,
@@ -1544,13 +1624,11 @@ func TestResourceHookAfterCreateErrorContinueOnError(t *testing.T) {
 	project := p.GetProject()
 
 	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
-	// The operation should fail overall due to the hook error
+	require.True(t, result.IsBail(err), "expected a bail result")
 	require.ErrorContains(t, err, "hook failed")
 	require.True(t, hookCalled)
-	// resB should still be created despite resA's hook failure (continue-on-error).
-	// resA is not in the snapshot because its create step failed.
 	require.NotNil(t, snap)
-	require.Len(t, snap.Resources, 2) // provider + resB
+	require.Len(t, snap.Resources, 3) // provider + resA + resB
 }
 
 // An after hook with IgnoreErrors set to true should only log a warning, not fail the program.

@@ -306,7 +306,10 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.new.Outputs,
 				nil, /* oldOutputs */
 			); err != nil {
-				return err
+				// Component was registered successfully; only the after-hook failed. Surface the error and record it as
+				// a deployment-level failure, but let the step succeed.
+				s.Deployment().Diag().Errorf(diag.RawMessage(s.new.URN, err.Error()))
+				s.Deployment().RecordPostStepError(err)
 			}
 		} else if s, ok := reg.(*UpdateStep); ok {
 			if err := s.Deployment().RunHooks(
@@ -323,7 +326,10 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 				s.new.Outputs,
 				s.old.Outputs,
 			); err != nil {
-				return err
+				// Component was registered successfully; only the after-hook failed. Surface the error and record it as
+				// a deployment-level failure, but let the step succeed.
+				s.Deployment().Diag().Errorf(diag.RawMessage(s.new.URN, err.Error()))
+				s.Deployment().RecordPostStepError(err)
 			}
 		}
 	}
@@ -346,6 +352,12 @@ func (se *stepExecutor) executeRegisterResourceOutputs(
 			return nil
 		}
 	}
+
+	// If a component after-hook recorded a post-step error, fail fast, unless ContinueOnError is set.
+	if !se.deployment.opts.ContinueOnError && se.deployment.PostStepError() != nil {
+		se.cancel()
+	}
+
 	if !finalizingStackOutputs {
 		e.Done()
 	}
@@ -622,6 +634,12 @@ func (se *stepExecutor) continueExecuteStep(payload any, workerID int, step Step
 	if err != nil {
 		se.log(workerID, "step %v on %v failed with an error: %v", step.Op(), step.URN(), err)
 		return StepApplyFailed{err}
+	}
+
+	// If the step succeeded but recorded a post-step error (e.g. a failing after-hook), cancel further execution to
+	// fail fast, unless ContinueOnError is set.
+	if !se.deployment.opts.ContinueOnError && se.deployment.PostStepError() != nil {
+		se.cancel()
 	}
 
 	return nil
