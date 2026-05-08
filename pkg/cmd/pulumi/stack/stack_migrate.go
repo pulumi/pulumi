@@ -115,8 +115,7 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 	)
 	cmd.PersistentFlags().BoolVarP(
 		&smcmd.force, "force", "f", false,
-		"Force the migration to proceed even if the source state fails integrity checks or "+
-			"contains resources from a foreign stack. Mirrors `pulumi stack import --force`.",
+		"Force the migration to proceed even if the source state fails integrity checks."
 	)
 	return cmd
 }
