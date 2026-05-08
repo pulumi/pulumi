@@ -792,10 +792,10 @@ func (m *Model) liveWidth() int {
 }
 
 // liveView renders only the in-flight blocks that should occupy the live
-// frame: busy spinner (always pinned at the bottom of the live region), an
-// in-flight streaming assistant message, and an open pulumi op block. The
-// busy block's spinner glyph is read from m.spinner.View() at render time so
-// the animation tracks the current frame without re-caching per block.
+// frame: busy spinner (always pinned at the bottom of the live region) and
+// an open pulumi op block. The busy block's spinner glyph is read from
+// m.spinner.View() at render time so the animation tracks the current frame
+// without re-caching per block.
 //
 // We deliberately use strings.Join instead of lipgloss.JoinVertical:
 // JoinVertical pads every line to the widest constituent's column count with

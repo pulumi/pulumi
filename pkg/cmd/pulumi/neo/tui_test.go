@@ -2206,34 +2206,27 @@ func TestView_LeadingBlankLine_Busy_SpinnerFlushWithPrompt(t *testing.T) {
 }
 
 // TestLiveView_BlankBetweenLiveBlocks pins the inter-block gap inside the live
-// frame, for the rare case where a streaming assistant message and an open
-// pulumi op are both pending under the busy spinner.
+// frame when an open pulumi op is pending under the busy spinner.
 func TestLiveView_BlankBetweenLiveBlocks(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{})
 	m.width = 80
 	m.blocks = []block{
-		{kind: blockAssistantStreaming, rendered: "STREAM_LIVE", raw: "STREAM_LIVE"},
 		{kind: blockPulumiOp, rendered: "PULUMI_LIVE", pulumi: &pulumiBlockState{done: false}},
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
 	live := m.liveView()
-	require.Contains(t, live, "STREAM_LIVE")
 	require.Contains(t, live, "PULUMI_LIVE")
 	require.Contains(t, live, "Thinking")
 
-	// Each adjacent pair must be separated by a blank line. We can't anchor
-	// on exact line counts (the busy line and rendered strings may wrap or
-	// embed ANSI), so check that "\n\n" appears between each pair in order.
-	streamIdx := strings.Index(live, "STREAM_LIVE")
+	// The pulumi-op → busy pair must be separated by a blank line. We can't
+	// anchor on exact line counts (the busy line and rendered string may wrap
+	// or embed ANSI), so check that "\n\n" appears between them.
 	pulumiIdx := strings.Index(live, "PULUMI_LIVE")
 	thinkingIdx := strings.Index(live, "Thinking")
-	require.Less(t, streamIdx, pulumiIdx)
 	require.Less(t, pulumiIdx, thinkingIdx)
-	assert.Contains(t, live[streamIdx:pulumiIdx], "\n\n",
-		"streaming → pulumi-op gap must be a full blank line")
 	assert.Contains(t, live[pulumiIdx:thinkingIdx], "\n\n",
 		"pulumi-op → busy gap must be a full blank line")
 }
