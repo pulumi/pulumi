@@ -1459,6 +1459,69 @@ output "result" {
 	require.Nil(t, program)
 }
 
+func TestBindInvokePicksOutputForm(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name: "resource output at property",
+			source: `
+resource "rng" "random:index/randomInteger:RandomInteger" {
+	min = 0
+	max = 100
+}
+result = invoke("std:index:Abs", {a = rng.result, b = 1})
+`,
+		},
+		{
+			name: "resource output mixed with dynamic",
+			source: `
+config "y" "any" {}
+resource "rng" "random:index/randomInteger:RandomInteger" {
+	min = 0
+	max = 100
+}
+result = invoke("std:index:Abs", {a = rng.result, b = y})
+`,
+		},
+		{
+			name: "whole-output args",
+			source: `
+args = secret({a = 1, b = 2})
+result = invoke("std:index:Abs", args)
+`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			program, diags, err := ParseAndBindProgram(t, tc.source, "program.pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "binding should not error: %v", diags)
+			require.NotNil(t, program)
+
+			var call *model.FunctionCallExpression
+			for _, n := range program.Nodes {
+				lv, ok := n.(*pcl.LocalVariable)
+				if !ok || lv.Name() != "result" {
+					continue
+				}
+				call, _ = lv.Definition.Value.(*model.FunctionCallExpression)
+			}
+			require.NotNil(t, call, "expected 'result' bound to an invoke call")
+			require.GreaterOrEqual(t, len(call.Signature.Parameters), 2)
+			assert.True(t, model.ContainsOutputs(call.Signature.Parameters[1].Type),
+				"args param type should be the Input<T>-shaped output form; got %v",
+				call.Signature.Parameters[1].Type)
+		})
+	}
+}
+
 // Test binding a conditional whose branches mix a promise-typed value (from an
 // invoke().result) with a try() expression.
 func TestBindConditionalMixingPromiseWithTry(t *testing.T) {
