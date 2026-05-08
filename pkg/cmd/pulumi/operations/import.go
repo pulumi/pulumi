@@ -618,6 +618,7 @@ func NewImportCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var outputFormat string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int32
@@ -697,6 +698,16 @@ func NewImportCmd() *cobra.Command {
 			"resource IDs.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch outputFormat {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", outputFormat, "default", "json")
+			}
 
 			ws := pkgWorkspace.Instance
 
@@ -874,6 +885,7 @@ func NewImportCmd() *cobra.Command {
 				EventLogPath:     eventLogPath,
 				Debug:            debug,
 				JSONDisplay:      jsonDisplay,
+				SummaryJSON:      outputFormat == "json",
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -1021,7 +1033,7 @@ func NewImportCmd() *cobra.Command {
 					// in a codegen call
 					// It's a little bit more memory but is a better experience that writing to stdout and then an error
 					// occurring
-					if outputFilePath == "" && !jsonDisplay {
+					if outputFilePath == "" && !jsonDisplay && outputFormat != "json" {
 						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
 							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
 						if protectResources {
@@ -1112,6 +1124,12 @@ func NewImportCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the import diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&outputFormat, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations.
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
