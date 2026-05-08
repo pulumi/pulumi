@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sync/atomic"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -115,7 +113,7 @@ func newStackMigrateCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *co
 	)
 	cmd.PersistentFlags().BoolVarP(
 		&smcmd.force, "force", "f", false,
-		"Force the migration to proceed even if the source state fails integrity checks."
+		"Force the migration to proceed even if the source state fails integrity checks.",
 	)
 	return cmd
 }
@@ -132,8 +130,6 @@ func shouldForceTargetSecretsRewrite(b backend.Backend, secretsProvider string) 
 	_, isCloud := b.(httpstate.Backend)
 	return isCloud
 }
-
-var backupPathCollisionCounter uint64
 
 // reusingSecretsProvider returns cached when type+state match, else delegates. Avoids a second
 // passphrase prompt / KMS round trip. State match guards against same-type-different-key cases.
@@ -163,32 +159,13 @@ func stackConfigPath(name tokens.QName) (string, error) {
 	return configPath, nil
 }
 
-// nextBackupPath returns the first `<path>.bak` / `.bak.N` that does not yet exist.
-func nextBackupPath(path string) string {
-	candidate := path + ".bak"
-	if _, err := os.Stat(candidate); os.IsNotExist(err) {
-		return candidate
-	}
-	for i := 1; i < 1000; i++ {
-		candidate = fmt.Sprintf("%s.bak.%d", path, i)
-		if _, err := os.Stat(candidate); os.IsNotExist(err) {
-			return candidate
-		}
-	}
-	// Pathological case: thousand backups already on disk. Add time+pid+counter to lower collisions.
-	return fmt.Sprintf(
-		"%s.bak.%d.%d.%d",
-		path,
-		time.Now().UnixNano(),
-		os.Getpid(),
-		atomic.AddUint64(&backupPathCollisionCounter, 1),
-	)
-}
-
 // writeBackupFile creates a sibling backup without clobbering an existing `.bak` / `.bak.N`.
 func writeBackupFile(path string, data []byte, mode os.FileMode) (string, error) {
-	for {
-		candidate := nextBackupPath(path)
+	for i := 0; ; i++ {
+		candidate := path + ".bak"
+		if i > 0 {
+			candidate = fmt.Sprintf("%s.bak.%d", path, i)
+		}
 		f, err := os.OpenFile(candidate, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 		if err != nil {
 			if os.IsExist(err) {
@@ -581,7 +558,7 @@ func (cmd *stackMigrateCmd) Run(
 		return fmt.Errorf("exporting source stack deployment: %w", err)
 	}
 
-	// Same-name migration overwrites Pulumi.<stack>.yaml; drop a `.bak` first. nextBackupPath
+	// Same-name migration overwrites Pulumi.<stack>.yaml; drop a `.bak` first. writeBackupFile
 	// avoids clobbering an earlier .bak. Failure here is fatal: prompt promised the backup.
 	var bakPath string
 	if sameConfigFile && srcConfigExisted {
