@@ -39,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -1429,12 +1430,7 @@ func TestStackMigrate_RewritesURNsOnRename(t *testing.T) { //nolint: paralleltes
 
 	ctx := t.Context()
 
-	srcSM := &secrets.MockSecretsManager{
-		TypeF:      func() string { return "test-prefix" },
-		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
-		DecrypterF: func() config.Decrypter { return config.NopDecrypter },
-		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
-	}
+	srcSM := b64.NewBase64SecretsManager()
 	tgtSM := &secrets.MockSecretsManager{
 		TypeF:      func() string { return "service" },
 		StateF:     func() json.RawMessage { return json.RawMessage(`{}`) },
@@ -1442,7 +1438,7 @@ func TestStackMigrate_RewritesURNsOnRename(t *testing.T) { //nolint: paralleltes
 		EncrypterF: func() config.Encrypter { return config.NopEncrypter },
 	}
 	customProvider := (&secrets.MockProvider{}).Add(
-		"test-prefix",
+		b64.Type,
 		func(state json.RawMessage) (secrets.Manager, error) { return srcSM, nil },
 	)
 
@@ -1804,60 +1800,6 @@ func TestStackMigrate_RewritesURNsInAuxiliaryFields(t *testing.T) { //nolint: pa
 	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pkg:Trigger::rw`, "ReplaceWith URN: %s", got)
 	assert.Contains(t, got, `urn:pulumi:dev-renamed::proj::pulumi:providers:pkg::default::providerID`,
 		"Provider reference URN: %s", got)
-}
-
-func TestStackMigrate_RewritesOutputDependencies(t *testing.T) {
-	t.Parallel()
-
-	depURN := resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Dep", "d")
-	res := &resource.State{
-		URN: resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Mine", "mine"),
-		Outputs: resource.PropertyMap{
-			"output": resource.NewProperty(resource.Output{
-				Element:      resource.NewProperty("resolved"),
-				Known:        true,
-				Dependencies: []resource.URN{depURN},
-			}),
-		},
-	}
-	snap := &deploy.Snapshot{Resources: []*resource.State{res}}
-
-	err := renameSnapshotStack(
-		snap,
-		tokens.MustParseStackName("dev"),
-		tokens.MustParseStackName("dev-renamed"),
-		"proj",
-		"",
-		false,
-		io.Discard,
-	)
-	require.NoError(t, err)
-
-	got := snap.Resources[0].Outputs["output"].OutputValue().Dependencies
-	assert.Equal(t, []resource.URN{
-		resource.NewURN("dev-renamed", "proj", resource.RootStackType, "pkg:Dep", "d"),
-	}, got)
-}
-
-func TestStackMigrate_ProviderRefForeignProjectUnchanged(t *testing.T) {
-	t.Parallel()
-
-	foreignProviderURN := resource.NewURN("dev", "foreign", resource.RootStackType, "pulumi:providers:pkg", "default")
-	res := &resource.State{
-		URN:      resource.NewURN("dev", "proj", resource.RootStackType, "pkg:Mine", "mine"),
-		Provider: string(foreignProviderURN) + "::",
-	}
-	var warnings strings.Builder
-
-	err := rewriteProviderRef(res, func(u resource.URN) resource.URN {
-		if u.Project() != "proj" {
-			return u
-		}
-		return resource.NewURN("dev-renamed", "proj", resource.RootStackType, u.Type(), u.Name())
-	}, false, &warnings)
-	require.NoError(t, err)
-	assert.Equal(t, string(foreignProviderURN)+"::", res.Provider)
-	assert.Empty(t, warnings.String())
 }
 
 // --target org/different-proj/stack moves the stack to a new project. URNs in the imported

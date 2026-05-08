@@ -33,13 +33,11 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
-	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -201,165 +199,6 @@ func snapshotConfigFile(path string) ([]byte, os.FileMode, bool, error) {
 		return nil, 0, false, err
 	}
 	return data, info.Mode().Perm(), true, nil
-}
-
-// renameSnapshotStack rewrites URNs in snap to point at newName (+newProject if set). Covers
-// every URN-bearing field on resource.State and ResourceReferences nested in Inputs/Outputs/
-// ReplacementTrigger. When oldProject is non-empty, only URNs whose project matches it are
-// rewritten (so foreign-project URNs sharing a stack name pass through untouched). force=true
-// degrades provider-reference rewrite errors to warnings on w, mirroring SaveSnapshot's --force.
-func renameSnapshotStack(
-	snap *deploy.Snapshot,
-	oldName, newName tokens.StackName,
-	oldProject, newProject tokens.PackageName,
-	force bool,
-	w io.Writer,
-) error {
-	if snap == nil || (oldName == newName && newProject == "") {
-		return nil
-	}
-	rewrite := func(u resource.URN) resource.URN {
-		if u == "" || u.Stack() != oldName.Q() {
-			return u
-		}
-		if oldProject != "" && u.Project() != oldProject {
-			return u
-		}
-		proj := u.Project()
-		if newProject != "" {
-			proj = newProject
-		}
-		// Root stack URN names conventionally use `<project>-<stack>`; preserve that shape.
-		if u.QualifiedType() == resource.RootStackType {
-			return resource.NewURN(newName.Q(), proj, "", u.QualifiedType(),
-				string(proj)+"-"+string(newName.Q()))
-		}
-		return resource.NewURN(newName.Q(), proj, "", u.QualifiedType(), u.Name())
-	}
-	rewriteState := func(res *resource.State) error {
-		if res == nil {
-			return nil
-		}
-		res.URN = rewrite(res.URN)
-		if res.Parent != "" {
-			res.Parent = rewrite(res.Parent)
-		}
-		for i := range res.Dependencies {
-			res.Dependencies[i] = rewrite(res.Dependencies[i])
-		}
-		for _, deps := range res.PropertyDependencies {
-			for i := range deps {
-				deps[i] = rewrite(deps[i])
-			}
-		}
-		if res.DeletedWith != "" {
-			res.DeletedWith = rewrite(res.DeletedWith)
-		}
-		for i := range res.ReplaceWith {
-			res.ReplaceWith[i] = rewrite(res.ReplaceWith[i])
-		}
-		for i := range res.Aliases {
-			res.Aliases[i] = rewrite(res.Aliases[i])
-		}
-		if res.ViewOf != "" {
-			res.ViewOf = rewrite(res.ViewOf)
-		}
-		if res.Provider != "" {
-			if err := rewriteProviderRef(res, rewrite, force, w); err != nil {
-				return err
-			}
-		}
-		rewritePropertyMap(res.Inputs, rewrite)
-		rewritePropertyMap(res.Outputs, rewrite)
-		res.ReplacementTrigger = rewritePropertyValue(res.ReplacementTrigger, rewrite)
-		return nil
-	}
-	for _, res := range snap.Resources {
-		if err := rewriteState(res); err != nil {
-			return err
-		}
-	}
-	for i := range snap.PendingOperations {
-		if err := rewriteState(snap.PendingOperations[i].Resource); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// rewriteProviderRef parses + reissues res.Provider with a rewritten URN. With force=true,
-// parse/rebuild failures become warnings on w (consistent with SaveSnapshot --force).
-func rewriteProviderRef(
-	res *resource.State,
-	rewrite func(resource.URN) resource.URN,
-	force bool,
-	w io.Writer,
-) error {
-	ref, err := providers.ParseReference(res.Provider)
-	if err != nil {
-		if force {
-			fmt.Fprintf(w, "Warning: parsing provider reference for %q: %v\n", res.URN, err)
-			return nil
-		}
-		return fmt.Errorf("parsing provider reference for %q: %w", res.URN, err)
-	}
-	newURN := rewrite(ref.URN())
-	// Preserve byte-for-byte provider refs when unchanged. NewReference normalizes empty IDs.
-	if newURN == ref.URN() {
-		return nil
-	}
-	newRef, err := providers.NewReference(newURN, ref.ID())
-	if err != nil {
-		if force {
-			fmt.Fprintf(w, "Warning: rebuilding provider reference for %q: %v\n", res.URN, err)
-			return nil
-		}
-		return fmt.Errorf("rebuilding provider reference for %q: %w", res.URN, err)
-	}
-	res.Provider = newRef.String()
-	return nil
-}
-
-// rewritePropertyMap walks m, rewriting any nested ResourceReference URNs.
-func rewritePropertyMap(m resource.PropertyMap, rewrite func(resource.URN) resource.URN) {
-	if m == nil {
-		return
-	}
-	for k, v := range m {
-		m[k] = rewritePropertyValue(v, rewrite)
-	}
-}
-
-// rewritePropertyValue rewrites ResourceReference URNs, recursing into arrays/objects/secrets/outputs.
-func rewritePropertyValue(v resource.PropertyValue, rewrite func(resource.URN) resource.URN) resource.PropertyValue {
-	switch {
-	case v.IsResourceReference():
-		ref := v.ResourceReferenceValue()
-		ref.URN = rewrite(ref.URN)
-		return resource.NewProperty(ref)
-	case v.IsArray():
-		arr := v.ArrayValue()
-		for i := range arr {
-			arr[i] = rewritePropertyValue(arr[i], rewrite)
-		}
-		return v
-	case v.IsObject():
-		rewritePropertyMap(v.ObjectValue(), rewrite)
-		return v
-	case v.IsSecret():
-		s := v.SecretValue()
-		s.Element = rewritePropertyValue(s.Element, rewrite)
-		return v
-	case v.IsOutput():
-		o := v.OutputValue()
-		o.Element = rewritePropertyValue(o.Element, rewrite)
-		for i := range o.Dependencies {
-			o.Dependencies[i] = rewrite(o.Dependencies[i])
-		}
-		return resource.NewProperty(o)
-	default:
-		return v
-	}
 }
 
 // restoreConfigFile writes orig back at mode if existed, else removes path. Best-effort.
@@ -687,7 +526,7 @@ func (cmd *stackMigrateCmd) Run(
 		// Reuse srcSM (built above for config decryption) so passphrase isn't prompted twice.
 		deploySP = &reusingSecretsProvider{cached: srcSM, fallback: backend_secrets.DefaultProvider}
 	}
-	// SaveSnapshot validates URNs, runs integrity check, clears pending ops.
+	// Deserialize before rename so encrypted secrets are available to the shared rename path below.
 	snap, err := stack.DeserializeUntypedDeployment(ctx, sourceDeployment, deploySP)
 	if err != nil {
 		return stack.FormatDeploymentDeserializationError(err, sourceStack.Ref().Name().String())
@@ -721,11 +560,28 @@ func (cmd *stackMigrateCmd) Run(
 			targetRef, srcRef,
 		)
 	}
-	if err := renameSnapshotStack(
-		snap, srcRef.Name(), tgtStackRef.Name(), oldProject, newProject, cmd.force, stdout,
-	); err != nil {
-		return fmt.Errorf("rewriting URNs for target stack: %w", err)
+	if needsURNRewrite {
+		// Serialize with plaintext secrets, then use the same DeploymentV3 rename path as stack rename.
+		// SaveSnapshot below re-encrypts with the target stack's secrets manager.
+		renameDeployment, err := stack.SerializeDeployment(ctx, snap, true /*showSecrets*/)
+		if err != nil {
+			return fmt.Errorf("serializing deployment for URN rewrite: %w", err)
+		}
+		if err := edit.RenameStack(renameDeployment, tgtStackRef.Name(), newProject, edit.RenameStackOptions{
+			OldName:       srcRef.Name(),
+			OldProject:    oldProject,
+			Force:         cmd.force,
+			WarningWriter: stdout,
+		}); err != nil {
+			return fmt.Errorf("rewriting URNs for target stack: %w", err)
+		}
+		snap, err = stack.DeserializeDeploymentV3(ctx, *renameDeployment, deploySP)
+		if err != nil {
+			return fmt.Errorf("deserializing renamed deployment: %w", err)
+		}
 	}
+
+	// SaveSnapshot validates URNs, runs integrity check, clears pending ops.
 	snap.SecretsManager = newSM
 	if err := SaveSnapshot(ctx, targetStack, snap, cmd.force); err != nil {
 		return fmt.Errorf("importing deployment into target stack: %w", err)
