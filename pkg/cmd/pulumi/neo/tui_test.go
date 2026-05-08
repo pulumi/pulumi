@@ -1426,6 +1426,219 @@ func TestModel_Update_DenyPlan_LeavesPlanModeOn(t *testing.T) {
 	assert.True(t, m.planMode, "denied plan must leave planMode on")
 }
 
+func TestModel_Update_UIApprovalRequest_AskUser_RendersAsQuestion(t *testing.T) {
+	t.Parallel()
+
+	// The agent's ux__ask_user tool reuses user_approval_request to ask
+	// clarifying questions. The TUI must NOT render this as an approval —
+	// no warning header, no "Approve?" prompt.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q",
+		Message:      "Which region should I deploy to?",
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	um := updated.(Model)
+
+	assert.True(t, um.pendingIsQuestion, "ask_user must set pendingIsQuestion")
+	assert.Equal(t, -1, um.findBlockKind(blockApprovalGeneral),
+		"ask_user must NOT route to the general-approval block")
+	idx := um.findBlockKind(blockQuestion)
+	require.NotEqual(t, -1, idx, "ask_user must commit a blockQuestion")
+	rendered := um.blocks[idx].rendered
+	assert.NotContains(t, rendered, "Approval required",
+		"question rendering must not use the approval-required header")
+	assert.NotContains(t, rendered, "⚠",
+		"question rendering must not use the warning glyph")
+	assert.Contains(t, rendered, "Question",
+		"question rendering must include a question header")
+	assert.Contains(t, rendered, "Which region should I deploy to?",
+		"question body must be rendered verbatim")
+	assert.Contains(t, um.textInput.Prompt, "Your answer",
+		"prompt must invite a free-form answer, not an approval")
+	assert.NotContains(t, um.textInput.Prompt, "Approve",
+		"prompt must not say 'Approve?' for a question")
+}
+
+func TestModel_Update_UIApprovalRequest_AskUser_BareToolName(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q2",
+		Message:      "Pick a runtime.",
+		ApprovalType: "general",
+		ToolName:     "ask_user",
+	})
+	um := updated.(Model)
+
+	assert.True(t, um.pendingIsQuestion)
+	assert.NotEqual(t, -1, um.findBlockKind(blockQuestion))
+}
+
+func TestModel_Update_UIApprovalRequest_AskUser_PlanExitWinsOverToolName(t *testing.T) {
+	t.Parallel()
+
+	// approval_type "plan_exit" is the highest-priority discriminator: a
+	// hypothetical plan_exit request that also carries a ux__ask_user tool
+	// name must render as a plan, never a question.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_p",
+		Message:         "intro",
+		ApprovalType:    approvalTypePlanExit,
+		ToolName:        "ux__ask_user", // ignored when approval_type is plan_exit
+		PlanDescription: "# Plan\n\n- step",
+	})
+	um := updated.(Model)
+
+	assert.False(t, um.pendingIsQuestion, "plan_exit must not be treated as a question")
+	assert.Equal(t, -1, um.findBlockKind(blockQuestion),
+		"plan_exit must not produce a blockQuestion")
+	assert.NotEqual(t, -1, um.findBlockKind(blockApprovalPlan),
+		"plan_exit must produce a blockApprovalPlan")
+}
+
+func TestModel_Update_UIApprovalRequest_GeneralWithoutAskUser_StillApproval(t *testing.T) {
+	t.Parallel()
+
+	// Sanity check that real "general" approvals (no ask_user tool name)
+	// still take the existing approval path. Guards against a regression
+	// where the new branch over-matches.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_real",
+		Message:      "Run pulumi up?",
+		ApprovalType: "general",
+		// no ToolName at all — represents a real approval-gated tool
+	})
+	um := updated.(Model)
+
+	assert.False(t, um.pendingIsQuestion)
+	assert.NotEqual(t, -1, um.findBlockKind(blockApprovalGeneral))
+	assert.Contains(t, um.textInput.Prompt, "Approve?")
+}
+
+func TestModel_Update_AnswerQuestion_SendsConfirmationWithAnswer(t *testing.T) {
+	t.Parallel()
+
+	// Pressing Enter on a question must send the typed text as the answer.
+	// Wire reply is Approved=false, Message=<answer> — the backend's
+	// ask_user tool wrapper converts ok=false+instructions into a
+	// tool_response delivering the answer to the agent.
+	outCh := make(chan outboundEvent, 1)
+	evCh := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q3",
+		Message:      "Which region?",
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	m = updated.(Model)
+	require.True(t, m.pendingIsQuestion)
+
+	answer := "us-west-2 with a hot spare in eu-central-1"
+	m.textInput.SetValue(answer)
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected AgentUserEventUserConfirmation, got %T", got.event)
+		assert.False(t, conf.Approved,
+			"answer is sent with Approved=false to match the backend ask_user wrapper contract")
+		assert.Equal(t, "appr_q3", conf.ApprovalID)
+		assert.Equal(t, answer, conf.Message,
+			"the typed text must be sent verbatim as instructions")
+	default:
+		t.Fatal("answering a question must post a confirmation event")
+	}
+
+	assert.False(t, m.pendingApproval, "submitting an answer must clear pendingApproval")
+	assert.False(t, m.pendingIsQuestion, "pendingIsQuestion must be cleared on submit")
+	assert.Empty(t, m.pendingApprovalType)
+
+	idx := m.findBlockKind(blockAnswerSubmitted)
+	require.NotEqual(t, -1, idx, "submitting must commit a blockAnswerSubmitted")
+	rendered := m.blocks[idx].rendered
+	assert.Contains(t, rendered, "Answered",
+		"the post-submit block must read 'Answered', not 'Denied'")
+	assert.NotContains(t, rendered, "Denied",
+		"the post-submit block must NOT read 'Denied' for a question answer")
+	assert.Contains(t, rendered, answer)
+}
+
+func TestModel_Update_AnswerQuestion_EmptyInputIsNoOp(t *testing.T) {
+	t.Parallel()
+
+	// Empty input + Enter must not produce an outbound event and must
+	// leave the question pending.
+	outCh := make(chan outboundEvent, 1)
+	evCh := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q4",
+		Message:      "Pick a region.",
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	m = updated.(Model)
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+
+	select {
+	case got := <-outCh:
+		t.Fatalf("empty Enter must not post a confirmation event; got %#v", got.event)
+	default:
+	}
+
+	assert.True(t, m.pendingApproval, "empty Enter must leave the question pending")
+	assert.True(t, m.pendingIsQuestion, "pendingIsQuestion must remain set")
+}
+
+func TestQuestionWrapsToTerminalWidth(t *testing.T) {
+	t.Parallel()
+
+	// Long question bodies wrap rather than clipping at the viewport edge.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 24})
+	m = updated0.(Model)
+
+	long := strings.Repeat("word ", 25) // ~125 chars
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q5",
+		Message:      long,
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	um := updated.(Model)
+
+	idx := um.findBlockKind(blockQuestion)
+	require.NotEqual(t, -1, idx)
+	widths := visibleLines(um.blocks[idx].rendered)
+	require.Greater(t, len(widths), 1,
+		"long question body must wrap; got: %q", um.blocks[idx].rendered)
+	for i, w := range widths {
+		assert.LessOrEqual(t, w, 40, "line %d exceeds terminal width: width=%d", i, w)
+	}
+}
+
 func TestModel_RenderMarkdown_FallsBackWhenRendererNil(t *testing.T) {
 	t.Parallel()
 

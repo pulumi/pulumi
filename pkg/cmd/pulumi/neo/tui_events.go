@@ -117,6 +117,9 @@ type UIApprovalRequest struct {
 	// PlanDescription is the markdown plan body, populated only for plan_exit
 	// approvals. The TUI renders it through the glamour markdown renderer.
 	PlanDescription string
+	// ToolName is context.tool_name from the wire. Used by the TUI to route
+	// ask-user calls to the question rendering (see isAskUserToolName).
+	ToolName string
 }
 
 func (UIApprovalRequest) uiEvent() {}

@@ -20,7 +20,11 @@
 // helpers that operate on those wire types.
 package neo
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+import (
+	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+)
 
 // Discriminator values for the AgentConsoleEvent envelope and the inner backend/user
 // events we care about.
@@ -66,7 +70,19 @@ const (
 	// exits in lockstep). Any other value (today: "general") takes the regular
 	// tool-approval rendering path.
 	approvalTypePlanExit = "plan_exit"
+
+	// toolNameAskUser is the method name (the `<method>` half of
+	// `<server>__<method>`) for the agent's ask-user tool. The agent emits
+	// approval_type "general" for these, so the TUI must dispatch on tool
+	// name rather than approval_type alone.
+	toolNameAskUser = "ask_user"
 )
+
+// isAskUserToolName matches by suffix so the server prefix can change
+// without a CLI rebuild ("ask_user" or "<server>__ask_user").
+func isAskUserToolName(name string) bool {
+	return name == toolNameAskUser || strings.HasSuffix(name, "__"+toolNameAskUser)
+}
 
 // hasPendingCLIToolCalls reports whether any tool call in the list has
 // execution_mode=="cli", meaning the CLI must run it locally before the agent

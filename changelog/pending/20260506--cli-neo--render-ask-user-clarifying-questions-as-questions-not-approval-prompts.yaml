@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/neo
+  description: Render `ux__ask_user` clarifying questions as questions instead of approval prompts
