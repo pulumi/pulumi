@@ -81,7 +81,8 @@ func TestStackConvertRequiresFile(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		"", /*file — intentionally omitted*/
+		"",    /*file — intentionally omitted*/
+		false, /*showSecrets*/
 	)
 	require.ErrorContains(t, err, "--file is required when --from stack")
 }
@@ -111,6 +112,7 @@ func TestStackConvertInvalidJSON(t *testing.T) {
 		false, /*strict*/
 		"myproject",
 		badFile,
+		false, /*showSecrets*/
 	)
 	require.ErrorContains(t, err, "parse stack file")
 }
@@ -140,6 +142,7 @@ func TestStackConvertEmptyStack(t *testing.T) {
 		false, /*strict*/
 		"myproject",
 		stackFile,
+		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
 
@@ -175,7 +178,7 @@ func TestYamlConvert(t *testing.T) {
 
 	result := runConvert(
 		t.Context(), &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
-		"yaml", "go", "testdata/go", true, true, "", "")
+		"yaml", "go", "testdata/go", true, true, "", "", false)
 	require.Nil(t, result, "convert failed: %v", result)
 }
 
@@ -190,7 +193,7 @@ func TestPclConvert(t *testing.T) {
 
 	result := runConvert(
 		t.Context(), &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance, env.Global(), []string{}, cwd,
-		[]string{}, "pcl", "pcl", tmp, true, true, "", "")
+		[]string{}, "pcl", "pcl", tmp, true, true, "", "", false)
 	assert.Nil(t, result)
 
 	// Check that we made one file
@@ -232,10 +235,11 @@ func TestProjectNameDefaults(t *testing.T) {
 		"pcl",      /*from*/
 		"yaml",     /*language*/
 		outDir,
-		true, /*generateOnly*/
-		true, /*strict*/
-		"",   /*name*/
-		"",   /*file*/
+		true,  /*generateOnly*/
+		true,  /*strict*/
+		"",    /*name*/
+		"",    /*file*/
+		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
 
@@ -268,10 +272,11 @@ func TestProjectNameOverrides(t *testing.T) {
 		"pcl",      /*from*/
 		"yaml",     /*language*/
 		outDir,
-		true, /*generateOnly*/
-		true, /*strict*/
+		true,  /*generateOnly*/
+		true,  /*strict*/
 		name,
-		"", /*file*/
+		"",    /*file*/
+		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
 

@@ -36,6 +36,7 @@ import (
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/importer"
 	resstack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -74,6 +75,7 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 	var strict bool
 	var name string
 	var file string
+	var showSecrets bool
 
 	cmd := &cobra.Command{
 		Use:   "convert",
@@ -119,6 +121,7 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 				strict,
 				name,
 				file,
+				showSecrets,
 			)
 		},
 	}
@@ -151,6 +154,9 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 
 	cmd.PersistentFlags().StringVar(
 		&file, "file", "", "Input file path (required when --from stack)")
+
+	cmd.PersistentFlags().BoolVar(
+		&showSecrets, "show-secrets", false, "Show secret values in plaintext when converting (requires access to the secrets provider)")
 
 	return cmd
 }
@@ -209,6 +215,7 @@ func runConvert(
 	strict bool,
 	name string,
 	file string,
+	showSecrets bool,
 ) error {
 	// Validate the supplied name if one was specified. If one was not supplied,
 	// default to the directory of the source project.
@@ -396,7 +403,11 @@ func runConvert(
 			return fmt.Errorf("parse stack file: %w", err)
 		}
 
-		snap, err := resstack.DeserializeUntypedDeployment(ctx, &deployment, &nopSecretsProvider{})
+		secretsProv := secrets.Provider(&nopSecretsProvider{})
+		if showSecrets {
+			secretsProv = backendsecrets.DefaultProvider
+		}
+		snap, err := resstack.DeserializeUntypedDeployment(ctx, &deployment, secretsProv)
 		if err != nil {
 			return fmt.Errorf("deserialize stack: %w", err)
 		}
