@@ -157,7 +157,7 @@ func TestHTTPClientUserAgent(t *testing.T) {
 	assert.Equal(t, UserAgent(), inReq.Header.Get("User-Agent"))
 }
 
-//nolint:paralleltest // mutates the package-level userAgentExtras state observed by UserAgent()
+//nolint:paralleltest // mutates the package-level state observed by UserAgent()
 func TestUserAgentExtras(t *testing.T) {
 	t.Cleanup(func() {
 		SetUserAgentCommand("")

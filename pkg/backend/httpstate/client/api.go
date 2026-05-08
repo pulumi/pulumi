@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/google/go-querystring/query"
@@ -87,24 +86,23 @@ const currentAPIVersion = 9
 // request to the Pulumi service. See `currentAPIVersion`.
 var acceptAPIVersionHeader = fmt.Sprintf("application/vnd.pulumi+%d", currentAPIVersion)
 
-var userAgentExtras struct {
-	mu      sync.RWMutex
-	command string
-	agent   string
-}
+// userAgentCommand and userAgentAIAgent are written once in the cobra root's
+// PersistentPreRunE before any HTTP-issuing goroutine is spawned, then read
+// from any goroutine making an API request. The single-writer-before-readers
+// pattern means no synchronization is needed.
+var (
+	userAgentCommand string
+	userAgentAIAgent string
+)
 
 // SetUserAgentCommand sets the running CLI command appended to UserAgent as `cmd=...`.
 func SetUserAgentCommand(command string) {
-	userAgentExtras.mu.Lock()
-	defer userAgentExtras.mu.Unlock()
-	userAgentExtras.command = sanitizeUserAgentToken(command)
+	userAgentCommand = sanitizeUserAgentToken(command)
 }
 
 // SetUserAgentAIAgent sets the detected AI agent appended to UserAgent as `agent=...`.
 func SetUserAgentAIAgent(agent string) {
-	userAgentExtras.mu.Lock()
-	defer userAgentExtras.mu.Unlock()
-	userAgentExtras.agent = sanitizeUserAgentToken(agent)
+	userAgentAIAgent = sanitizeUserAgentToken(agent)
 }
 
 func sanitizeUserAgentToken(s string) string {
@@ -123,18 +121,14 @@ func sanitizeUserAgentToken(s string) string {
 }
 
 func UserAgent() string {
-	userAgentExtras.mu.RLock()
-	command, agent := userAgentExtras.command, userAgentExtras.agent
-	userAgentExtras.mu.RUnlock()
-
 	var extras strings.Builder
-	if command != "" {
+	if userAgentCommand != "" {
 		extras.WriteString("; cmd=")
-		extras.WriteString(command)
+		extras.WriteString(userAgentCommand)
 	}
-	if agent != "" {
+	if userAgentAIAgent != "" {
 		extras.WriteString("; agent=")
-		extras.WriteString(agent)
+		extras.WriteString(userAgentAIAgent)
 	}
 	return fmt.Sprintf("pulumi-cli/1 (%s; %s%s)", version.Version, runtime.GOOS, extras.String())
 }
