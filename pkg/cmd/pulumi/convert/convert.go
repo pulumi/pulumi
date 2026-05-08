@@ -691,4 +691,20 @@ type nopSecretsManager struct{ ty string }
 func (m *nopSecretsManager) Type() string                { return m.ty }
 func (m *nopSecretsManager) State() json.RawMessage      { return nil }
 func (m *nopSecretsManager) Encrypter() config.Encrypter { return config.NopEncrypter }
-func (m *nopSecretsManager) Decrypter() config.Decrypter { return config.NopDecrypter }
+func (m *nopSecretsManager) Decrypter() config.Decrypter { return nullDecrypter{} }
+
+// nullDecrypter returns JSON null for any ciphertext. The deserialization pipeline calls
+// json.Unmarshal on the decrypted result, so it must be valid JSON; the raw ciphertext is not.
+type nullDecrypter struct{}
+
+func (nullDecrypter) DecryptValue(_ context.Context, _ string) (string, error) {
+	return "null", nil
+}
+
+func (nullDecrypter) BatchDecrypt(_ context.Context, ciphertexts []string) ([]string, error) {
+	results := make([]string, len(ciphertexts))
+	for i := range ciphertexts {
+		results[i] = "null"
+	}
+	return results, nil
+}
