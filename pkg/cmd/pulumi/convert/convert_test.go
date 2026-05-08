@@ -272,8 +272,8 @@ func TestProjectNameOverrides(t *testing.T) {
 		"pcl",      /*from*/
 		"yaml",     /*language*/
 		outDir,
-		true,  /*generateOnly*/
-		true,  /*strict*/
+		true, /*generateOnly*/
+		true, /*strict*/
 		name,
 		"",    /*file*/
 		false, /*showSecrets*/
