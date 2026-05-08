@@ -4,5 +4,5 @@ body: 'Auto-fit `pulumi cloud api list` table to terminal width and replace the
 custom:
   PR: ''
   Scope: cli/cloud
-kind: ''
+kind: chore
 time: '2026-01-01T00:00:00Z'

@@ -3,5 +3,5 @@ body: Render every assistant message in the TUI scrollback so multi-turn comment
 custom:
   PR: ''
   Scope: cli/neo
-kind: ''
+kind: fix
 time: '2026-01-01T00:00:00Z'

@@ -3,5 +3,5 @@ body: Support `NotRequired`, `Required` and `total=False` in TypedDicts for comp
 custom:
   PR: ''
   Scope: sdk/python
-kind: ''
+kind: fix
 time: '2026-01-01T00:00:00Z'

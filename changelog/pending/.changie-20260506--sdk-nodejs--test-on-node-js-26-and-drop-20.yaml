@@ -2,5 +2,5 @@ body: Test on Node.js 26 and drop 20
 custom:
   PR: ''
   Scope: sdk/nodejs
-kind: ''
+kind: chore
 time: '2026-01-01T00:00:00Z'

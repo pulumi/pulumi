@@ -2,5 +2,5 @@ body: Fix a panic when cancelling a `pulumi neo` session
 custom:
   PR: ''
   Scope: cli/neo
-kind: ''
+kind: fix
 time: '2026-01-01T00:00:00Z'

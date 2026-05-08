@@ -3,5 +3,5 @@ body: Preserve `__`-prefixed keys when generating PCL for imported resource stat
 custom:
   PR: ''
   Scope: cli/import
-kind: ''
+kind: fix
 time: '2026-01-01T00:00:00Z'

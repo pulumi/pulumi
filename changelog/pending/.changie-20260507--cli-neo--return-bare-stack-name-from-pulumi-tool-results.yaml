@@ -3,5 +3,5 @@ body: Return the bare stack name and canonical project name from `pulumi_preview
 custom:
   PR: ''
   Scope: cli/neo
-kind: ''
+kind: fix
 time: '2026-01-01T00:00:00Z'
