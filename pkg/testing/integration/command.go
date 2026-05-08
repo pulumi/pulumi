@@ -52,12 +52,6 @@ func RunCommandPulumiHome(
 	env = append(env, "PULUMI_DEBUG_COMMANDS=true")
 	env = append(env, "PULUMI_RETAIN_CHECKPOINTS=true")
 	env = append(env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
-	// Disable pip's HTTP cache to work around pypa/pip#13979: pip 26.1's upgraded urllib3
-	// advertises zstd encoding, changing the Vary header. Cache entries written by one pip
-	// version (e.g. the system pip upgraded in CI setup) become unreadable by another (e.g.
-	// the venv pip), causing "Cache entry deserialization failed" → "Content-Type: Unknown"
-	// → package resolution failures.
-	env = append(env, "PIP_NO_CACHE_DIR=1")
 	if coverdir := os.Getenv("PULUMI_GOCOVERDIR"); coverdir != "" {
 		env = append(env, "GOCOVERDIR="+coverdir)
 	}
