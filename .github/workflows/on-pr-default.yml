@@ -12,14 +12,14 @@ on:
     paths-ignore:
       - "**" # Skip all files…
       - "!sdk/.version" # …except if only this file changes and nothing else.
-      - "!changelog/**" # or if only files in this directory changed
+      - "!changelog/config.yaml" # or if only this file changes.
 jobs:
   no-op:
     name: Skip CI on .version changes
     runs-on: ubuntu-latest
     steps:
       - name: Skip CI on .version changes
-        run: echo 'No need to run CI tests when only .version changes'
+        run: echo 'No need to run CI tests when only .version or changelog/config.yaml changes'
 
   ci-ok:
     name: ci-ok
