@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Support `NotRequired`, `Required` and `total=False` in TypedDicts for component resource arg types

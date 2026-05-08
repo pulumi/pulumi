@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/neo
-  description: Return the bare stack name and canonical project name from `pulumi_preview` and `pulumi_up` tool results instead of echoing the raw input
