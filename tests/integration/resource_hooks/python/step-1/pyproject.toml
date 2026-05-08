@@ -1,0 +1,4 @@
+[project]
+name = "resource_hooks_python"
+version = "0.0.0"
+dependencies = []

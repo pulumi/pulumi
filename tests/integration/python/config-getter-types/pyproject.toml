@@ -1,0 +1,6 @@
+[project]
+name = "pulumi-python-pyright"
+version = "0.0.0"
+dependencies = [
+    "pyright",
+]

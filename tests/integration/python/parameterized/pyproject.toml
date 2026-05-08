@@ -1,0 +1,6 @@
+[project]
+name = "parameterized"
+version = "0.0.0"
+dependencies = [
+    "pulumi",
+]

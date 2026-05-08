@@ -2447,6 +2447,8 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
 			return err
 		}
+	} else if pythonToolchainIsUv(projinfo) {
+		return pt.preparePythonProjectWithUv(projinfo, cwd)
 	} else {
 		venvPath := "venv"
 		if cwd != projinfo.Root {
@@ -2490,6 +2492,55 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
+	return nil
+}
+
+func pythonToolchainIsUv(projinfo *engine.Projinfo) bool {
+	if projinfo == nil || projinfo.Proj == nil || projinfo.Proj.Runtime.Options() == nil {
+		return false
+	}
+	tc, _ := projinfo.Proj.Runtime.Options()["toolchain"].(string)
+	return tc == "uv"
+}
+
+// preparePythonProjectWithUv prepares a Python project that declares `toolchain: uv` in its Pulumi.yaml.
+// It runs `uv sync` against the fixture's pyproject.toml to create a `.venv` and a `uv.lock`, then
+// editable-installs any `Dependencies` (typically the local sdk/python) on top.
+func (pt *ProgramTester) preparePythonProjectWithUv(projinfo *engine.Projinfo, cwd string) error {
+	venvDir := ".venv"
+	venvPath := filepath.Join(cwd, venvDir)
+
+	syncArgs := []string{"uv", "sync"}
+	if pt.opts.InstallDevReleases {
+		syncArgs = append(syncArgs, "--prerelease=allow")
+	}
+	if err := pt.runCommand("uv-sync", syncArgs, cwd); err != nil {
+		return err
+	}
+
+	pt.opts.virtualEnvDir = venvDir
+	projinfo.Proj.Runtime.SetOption("virtualenv", venvPath)
+	projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
+	if err := projinfo.Proj.Save(projfile); err != nil {
+		return fmt.Errorf("saving project: %w", err)
+	}
+
+	if pt.opts.RunUpdateTest {
+		return nil
+	}
+
+	for _, dep := range pt.opts.Dependencies {
+		if !filepath.IsAbs(dep) {
+			abs, err := filepath.Abs(dep)
+			if err != nil {
+				return err
+			}
+			dep = abs
+		}
+		if err := pt.runCommand("uv-add", []string{"uv", "add", "--editable", dep}, cwd); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
