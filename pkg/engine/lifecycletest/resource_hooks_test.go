@@ -1287,7 +1287,6 @@ func TestResourceHookTransform(t *testing.T) {
 	require.True(t, hookCalled)
 }
 
-// After hooks that return an error should cause the step to fail.
 func TestResourceHookAfterCreateError(t *testing.T) {
 	t.Parallel()
 

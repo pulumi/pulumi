@@ -353,24 +353,22 @@ type Deployment struct {
 
 	// postStepErrors collects errors reported by phases that run after a step's primary cloud operation has succeeded
 	// (e.g. an after-hook callback). The step itself is still treated as successful and its state is committed to the
-	// snapshot, but the deployment a whole will be reported as failed.
+	// snapshot, but the deployment as a whole will be cancelled.
 	postStepErrors []error
 	// postStepErrorsLock guards postStepErrors.
 	postStepErrorsLock sync.Mutex
 }
 
-// RecordPostStepError records an error that occurred after a step's cloud operation completed
-// successfully (currently used by failing after-hooks). The step's snapshot commit is allowed to
-// proceed normally so state matches cloud reality, but the overall deployment is reported as
-// failed.
+// RecordPostStepError records an error that occurred after a step's cloud operation completed successfully. The step's
+// snapshot commit is allowed to proceed normally so state matches cloud reality, but the overall deployment is reported
+// as failed.
 func (d *Deployment) RecordPostStepError(err error) {
 	d.postStepErrorsLock.Lock()
 	defer d.postStepErrorsLock.Unlock()
 	d.postStepErrors = append(d.postStepErrors, err)
 }
 
-// PostStepError returns the joined post-step errors collected during the deployment, or nil if
-// none were recorded.
+// PostStepError returns the joined post-step errors collected during the deployment, or nil if none were recorded.
 func (d *Deployment) PostStepError() error {
 	d.postStepErrorsLock.Lock()
 	defer d.postStepErrorsLock.Unlock()
