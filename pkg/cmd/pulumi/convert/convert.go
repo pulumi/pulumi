@@ -710,13 +710,13 @@ func (m *nopSecretsManager) Decrypter() config.Decrypter { return nullDecrypter{
 type nullDecrypter struct{}
 
 func (nullDecrypter) DecryptValue(_ context.Context, _ string) (string, error) {
-	return "null", nil
+	return `"[secret]"`, nil
 }
 
 func (nullDecrypter) BatchDecrypt(_ context.Context, ciphertexts []string) ([]string, error) {
 	results := make([]string, len(ciphertexts))
 	for i := range ciphertexts {
-		results[i] = "null"
+		results[i] = `"[secret]"`
 	}
 	return results, nil
 }
