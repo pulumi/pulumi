@@ -15,7 +15,6 @@
 package stack
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -111,17 +110,12 @@ func MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
 ) (*apitype.VersionedCheckpoint, error) {
 	contract.Requiref(deployment != nil, "deployment", "must not be nil")
 
-	latest, err := marshalRawCheckpointMessage(m, deployment.Deployment)
-	if err != nil {
-		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
-	}
-
 	chk := struct {
 		Stack  tokens.QName    `json:"stack,omitempty"`
 		Latest json.RawMessage `json:"latest,omitempty"`
 	}{
 		Stack:  stack,
-		Latest: latest,
+		Latest: deployment.Deployment,
 	}
 
 	bytes, err := m.Marshal(chk)
@@ -134,24 +128,6 @@ func MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
 		Features:   deployment.Features,
 		Checkpoint: bytes,
 	}, nil
-}
-
-func marshalRawCheckpointMessage(m encoding.Marshaler, raw json.RawMessage) (json.RawMessage, error) {
-	if len(raw) == 0 {
-		return nil, nil
-	}
-
-	var value any
-	if err := json.Unmarshal(raw, &value); err != nil {
-		return nil, err
-	}
-
-	encoded, err := m.Marshal(value)
-	if err != nil {
-		return nil, err
-	}
-
-	return append(json.RawMessage(nil), bytes.TrimSpace(encoded)...), nil
 }
 
 // SerializeCheckpoint turns a snapshot into a data structure suitable for serialization.

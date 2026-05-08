@@ -219,7 +219,7 @@ func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
 	if err := enc.Encode(v); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return bytes.TrimSpace(buf.Bytes()), nil
 }
 
 func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {

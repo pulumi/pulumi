@@ -388,10 +388,9 @@ func TestStackTagsJSONFormat(t *testing.T) {
 	assert.Equal(t, stackTagsVersion, tagsFile.Version)
 	assert.Equal(t, testTags, tagsFile.Tags)
 
-	trimmed := bytes.TrimSpace(rawData)
 	var compact bytes.Buffer
-	require.NoError(t, json.Compact(&compact, trimmed))
-	assert.Equal(t, compact.String(), string(trimmed))
+	require.NoError(t, json.Compact(&compact, rawData))
+	assert.Equal(t, compact.String(), string(rawData))
 }
 
 func TestInvalidStackReference(t *testing.T) {

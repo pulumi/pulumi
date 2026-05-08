@@ -2137,8 +2137,7 @@ func TestJSONCheckpointIsCompact(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &checkpoint))
 	assert.Equal(t, deployment.Version, checkpoint.Version)
 
-	trimmed := bytes.TrimSpace(data)
 	var compact bytes.Buffer
-	require.NoError(t, json.Compact(&compact, trimmed))
-	assert.Equal(t, compact.String(), string(trimmed))
+	require.NoError(t, json.Compact(&compact, data))
+	assert.Equal(t, compact.String(), string(data))
 }

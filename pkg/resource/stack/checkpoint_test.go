@@ -37,7 +37,7 @@ func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
 	if err := enc.Encode(v); err != nil {
 		return nil, err
 	}
-	return buf.Bytes(), nil
+	return bytes.TrimSpace(buf.Bytes()), nil
 }
 
 func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {
@@ -212,9 +212,9 @@ func TestMarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(t *testing.T
 			"refreshBeforeUpdate",
 		},
 		Deployment: json.RawMessage(`{
-			"manifest": {
-				"time": "2026-03-18T00:00:00Z"
-			},
+			"big": 100000000000000000000000000000000000000000,
+			"duplicate": 1,
+			"duplicate": 2,
 			"resources": []
 		}`),
 	}
@@ -227,11 +227,10 @@ func TestMarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, deployment.Version, checkpoint.Version)
 	require.Equal(t, deployment.Features, checkpoint.Features)
-
-	trimmed := bytes.TrimSpace(checkpoint.Checkpoint)
-	var compact bytes.Buffer
-	require.NoError(t, json.Compact(&compact, trimmed))
-	require.Equal(t, compact.String(), string(trimmed))
+	require.Equal(t,
+		`{"stack":"stack","latest":{"big":100000000000000000000000000000000000000000,`+
+			`"duplicate":1,"duplicate":2,"resources":[]}}`,
+		string(checkpoint.Checkpoint))
 }
 
 // TestRoundtripCheckpoint tests that various values survive a roundtrip of serialization
