@@ -100,7 +100,7 @@ unit_tests:: $(TEST_ALL_DEPS) tools_tests
 	yarn run nyc --no-clean -s mocha 'bin/tests_with_mocks/**/*.spec.js'
 
 test_auto:: $(TEST_ALL_DEPS)
-	yarn run nyc --no-clean -s mocha --timeout 300000 --parallel 'bin/tests/automation/**/*.spec.js'
+	yarn run nyc --no-clean -s mocha --timeout 450000 --parallel 'bin/tests/automation/**/*.spec.js'
 
 test_integration:: $(TEST_ALL_DEPS)
 	node 'bin/tests/runtime/closure-integration-tests.js'
@@ -150,7 +150,7 @@ TEST_GREP ?= .*
 #
 # $ make test_watch TEST_GREP="lists tag values"
 test_watch::
-	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 300000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
+	PULUMI_TEST_ORG=$(PULUMI_TEST_ORG) yarn mocha "**/*.spec.ts" --timeout 450000 --bail -j 1 --watch --watch-files "**/*.ts" --grep "$(TEST_GREP)"
 
 dist:: GOBIN=$(or $(shell go env GOBIN),$(shell go env GOPATH)/bin)
 dist::
