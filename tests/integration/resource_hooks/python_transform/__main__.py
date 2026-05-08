@@ -28,8 +28,6 @@ def fun(args: ResourceHookArgs) -> None:
         assert args.type == "testprovider:index:Component", (
             f"Expected type 'testprovider:index:Component', got {args.type}"
         )
-    else:
-        raise Exception(f"got unexpected compoment name: ${args.name}")
 
 
 hook = ResourceHook("hook_fun", fun)

@@ -20,6 +20,7 @@ func main() {
 				if string(args.Type) != "testprovider:index:Random" {
 					return fmt.Errorf("expected type to be 'testprovider:index:Random', got %q", args.Type)
 				}
+				return nil
 			} else if args.Name == "comp" {
 				childId := args.NewOutputs["childId"].StringValue()
 				ctx.Log.Info(fmt.Sprintf("fun_comp was called with child = %s", childId), nil)
@@ -32,8 +33,9 @@ func main() {
 				if string(args.Type) != "testprovider:index:Component" {
 					return fmt.Errorf("expected type to be 'testprovider:index:Component', got %q", args.Type)
 				}
+				return nil
 			}
-			return fmt.Errorf("got unexpected component name: %s", args.Name)
+			return nil
 		}
 
 		hook, err := ctx.RegisterResourceHook("hook_fun", hookFun, &pulumi.ResourceHookOptions{

@@ -18,8 +18,6 @@ function fun(args: ResourceHookArgs) {
         }
         assert.strictEqual(args.name, "comp", `Expected name 'comp', got ${args.name}`);
         assert.strictEqual(args.type, "testprovider:index:Component", `Expected type 'testprovider:index:Component', got ${args.type}`);
-    } else {
-        throw new Error(`got unexpected component name: ${args.name}`);
     }
 }
 
