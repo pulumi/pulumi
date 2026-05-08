@@ -396,7 +396,8 @@ resource other "foo:index:Foo" {
 		},
 		{
 			name: "all four shadowing attributes are suppressed",
-			src: `resource property "foo:index:Foo" {
+			src: `
+resource property "foo:index:Foo" {
 	property = "p"
 	options {
 		ignoreChanges           = [property]
@@ -411,7 +412,8 @@ resource other "foo:index:Foo" {
 			// Top-level "ignoreChanges" is a user property, not the options
 			// attribute, so its references must still resolve at root scope.
 			name: "user attribute named ignoreChanges still tracks deps",
-			src: `target = "t"
+			src: `
+target = "t"
 resource bar "foo:index:Bar" {
 	ignoreChanges = target
 }`,
@@ -422,7 +424,8 @@ resource bar "foo:index:Bar" {
 			// Guards against an over-broad fix that would suppress every
 			// options-block lookup; dependsOn is not a property-name attribute.
 			name: "options.dependsOn still registers root references",
-			src: `resource target "foo:index:Foo" {
+			src: `
+resource target "foo:index:Foo" {
 	property = "t"
 }
 resource property "foo:index:Foo" {
