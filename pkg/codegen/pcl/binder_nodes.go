@@ -133,7 +133,7 @@ func (b *binder) bindNode(ctx context.Context, node Node) hcl.Diagnostics {
 func (b *binder) getDependencies(node Node) []Node {
 	depSet := codegen.Set{}
 	var deps []Node
-	diags := hclsyntax.VisitAll(node.SyntaxNode(), func(node hclsyntax.Node) hcl.Diagnostics {
+	visit := func(node hclsyntax.Node) hcl.Diagnostics {
 		var depName string
 		switch node := node.(type) {
 		case *hclsyntax.FunctionCallExpr:
@@ -152,9 +152,59 @@ func (b *binder) getDependencies(node Node) []Node {
 			deps = append(deps, node)
 		}
 		return nil
-	})
-	contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+	}
+
+	if body := resourceSyntaxBody(node); body != nil {
+		walkResourceBodyForDeps(body, visit)
+	} else {
+		diags := hclsyntax.VisitAll(node.SyntaxNode(), visit)
+		contract.Assertf(len(diags) == 0, "unexpected diagnostics: %v", diags)
+	}
 	return SourceOrderNodes(deps)
+}
+
+func resourceSyntaxBody(node Node) *hclsyntax.Body {
+	switch n := node.(type) {
+	case *Resource:
+		if n.syntax != nil {
+			return n.syntax.Body
+		}
+	case *ReadResource:
+		if n.syntax != nil {
+			return n.syntax.Body
+		}
+	}
+	return nil
+}
+
+// walkResourceBodyForDeps mirrors optionsScopes.GetScopeForAttribute: the
+// property-name attributes resolve identifiers against the resource's own
+// inputs, not the root scope, so the dep walker must skip them or it will
+// report spurious circular references.
+func walkResourceBodyForDeps(body *hclsyntax.Body, visit hclsyntax.VisitFunc) {
+	for _, attr := range body.Attributes {
+		_ = hclsyntax.VisitAll(attr.Expr, visit)
+	}
+	for _, block := range body.Blocks {
+		if block.Type == "options" {
+			walkOptionsBlockForDeps(block.Body, visit)
+			continue
+		}
+		_ = hclsyntax.VisitAll(block, visit)
+	}
+}
+
+func walkOptionsBlockForDeps(body *hclsyntax.Body, visit hclsyntax.VisitFunc) {
+	for _, attr := range body.Attributes {
+		switch attr.Name {
+		case "ignoreChanges", "hideDiffs", "replaceOnChanges", "additionalSecretOutputs":
+			continue
+		}
+		_ = hclsyntax.VisitAll(attr.Expr, visit)
+	}
+	for _, block := range body.Blocks {
+		_ = hclsyntax.VisitAll(block, visit)
+	}
 }
 
 func expressionIsLiteralNull(expr model.Expression) bool {

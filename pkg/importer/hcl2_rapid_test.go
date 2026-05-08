@@ -110,21 +110,6 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 		loader := &stubSchemaLoader{pkg: pkg}
 		importState := buildImportState(sample)
 
-		if ignoreChangesShadowsBoundName(sample, importState) {
-			// PCL binder bug: getDependencies (pkg/codegen/pcl/binder_nodes.go:133)
-			// walks the AST and resolves every identifier against the program's
-			// root scope, ignoring the per-attribute scope override that
-			// optionsScopes.GetScopeForAttribute installs for `ignoreChanges`
-			// (and friends). When an entry's bare-identifier name happens to
-			// match a top-level node (the resource itself or a snapshot
-			// resource), the walker registers a spurious dependency that
-			// bindNode then reports as "circular reference". Until the binder
-			// is fixed (see TestBindIgnoreChangesNameCollision when restored),
-			// skip cases the rapid generator constructs but a hand-written
-			// program would never produce.
-			t.Skip("ignoreChanges entry shadows a bound node name; PCL dep walker reports a spurious cycle")
-		}
-
 		block, _, err := GenerateHCL2Definition(loader, sample.State, importState)
 		require.NoError(t, err)
 
@@ -204,27 +189,6 @@ func renderInputs(t require.TestingT, r *pcl.Resource) resource.PropertyMap {
 func hasSelectableResource(pkg *schema.Package) bool {
 	for _, r := range pkg.Resources {
 		if !r.IsProvider && !r.IsComponent {
-			return true
-		}
-	}
-	return false
-}
-
-// ignoreChangesShadowsBoundName reports whether any entry in
-// state.IgnoreChanges names a top-level bound node — either the state's own
-// resource or any snapshot resource that lives in the names table. Such
-// names are exactly the ones the PCL dep walker would resolve in the root
-// scope and turn into a spurious dependency edge.
-func ignoreChangesShadowsBoundName(sample *rapidimporter.Sample, importState ImportState) bool {
-	if len(sample.State.IgnoreChanges) == 0 {
-		return false
-	}
-	bound := map[string]bool{sample.State.URN.Name(): true}
-	for _, n := range importState.Names {
-		bound[n] = true
-	}
-	for _, c := range sample.State.IgnoreChanges {
-		if bound[c] {
 			return true
 		}
 	}
