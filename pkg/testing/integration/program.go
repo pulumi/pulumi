@@ -897,6 +897,7 @@ type ProgramTester struct {
 	goBin          string              // the `go` binary we are using.
 	pythonBin      string              // the `python` binary we are using.
 	pipenvBin      string              // The `pipenv` binary we are using.
+	uvBin          string              // the `uv` binary we are using.
 	dotNetBin      string              // the `dotnet` binary we are using.
 	updateEventLog string              // The path to the engine event log for `pulumi up` in this test.
 	maxStepTries   int                 // The maximum number of times to retry a failed pulumi step.
@@ -986,6 +987,11 @@ func (pt *ProgramTester) getPythonBin() (string, error) {
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
 func (pt *ProgramTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
+}
+
+// getUvBin returns a path to the currently-installed `uv` tool, or an error if the tool could not be found.
+func (pt *ProgramTester) getUvBin() (string, error) {
+	return getCmdBin(&pt.uvBin, "uv", "")
 }
 
 func (pt *ProgramTester) getDotNetBin() (string, error) {
@@ -2507,10 +2513,15 @@ func pythonToolchainIsUv(projinfo *engine.Projinfo) bool {
 // It runs `uv sync` against the fixture's pyproject.toml to create a `.venv` and a `uv.lock`, then
 // editable-installs any `Dependencies` (typically the local sdk/python) on top.
 func (pt *ProgramTester) preparePythonProjectWithUv(projinfo *engine.Projinfo, cwd string) error {
+	uvBin, err := pt.getUvBin()
+	if err != nil {
+		return err
+	}
+
 	venvDir := ".venv"
 	venvPath := filepath.Join(cwd, venvDir)
 
-	syncArgs := []string{"uv", "sync"}
+	syncArgs := []string{uvBin, "sync"}
 	if pt.opts.InstallDevReleases {
 		syncArgs = append(syncArgs, "--prerelease=allow")
 	}
@@ -2537,7 +2548,7 @@ func (pt *ProgramTester) preparePythonProjectWithUv(projinfo *engine.Projinfo, c
 			}
 			dep = abs
 		}
-		if err := pt.runCommand("uv-add", []string{"uv", "add", "--editable", dep}, cwd); err != nil {
+		if err := pt.runCommand("uv-add", []string{uvBin, "add", "--editable", dep}, cwd); err != nil {
 			return err
 		}
 	}
