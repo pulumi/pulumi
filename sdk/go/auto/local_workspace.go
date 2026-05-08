@@ -813,7 +813,7 @@ func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (Ou
 		"stack", "output", "--json", "--show-secrets", "--stack", stackName,
 	)
 	if err != nil {
-		return nil, newAutoError(fmt.Errorf("could not get secret outputs: %w", err), outStdout, outStderr, code)
+		return nil, newAutoError(fmt.Errorf("could not get secret outputs: %w", err), secretStdout, secretStderr, code)
 	}
 
 	var outputs map[string]any
