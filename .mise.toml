@@ -14,16 +14,26 @@ node = "20"
 bun = "latest"
 python = '3.11'
 uv = "0.10.0"
-"go:github.com/mitranim/gow" = "latest"
+# This is a dev only dependency that fails to install on windows
+"go:github.com/mitranim/gow" = { version = "latest", os = ["linux", "macos"] }
 protoc = "29.5"
 "go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.6"
 "go:google.golang.org/grpc/cmd/protoc-gen-go-grpc" = "v1.5.1"
 "npm:grpc-tools" = "1.13.0"
 "npm:grpc_tools_node_protoc_ts" = "5.3.3"
-"npm:protoc-gen-js" = "3.21.4"
+# This is a dev only dependency that fails to install on windows
+"npm:protoc-gen-js" = { version = "3.21.4", os = ["linux", "macos"] }
 "go:go.abhg.dev/requiredfield/cmd/requiredfield" = "0.8.0"
 "github:WebAssembly/wabt" = "1.0.37"
 dotnet = "8"
+java = "temurin-11"
+gradle = "7.6"
+"github:gotestyourself/gotestsum" = "1.8.1"
+"github:pulumi/goteststats" = "0.0.7"
 
 [tool_alias]
 protoc = "asdf:https://github.com/paxosglobal/asdf-protoc"
+
+[plugins]
+protoc = "https://github.com/paxosglobal/asdf-protoc"
+gradle = "https://github.com/rfrancis/asdf-gradle"
