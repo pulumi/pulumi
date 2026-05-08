@@ -1060,11 +1060,13 @@ func TestVersionedTemplateResolution(t *testing.T) {
 			expectGetTemplate:   true,
 		},
 		{
-			name:                "partial URL with version requires full qualification",
+			name:                "partial URL with version discovers source from list",
 			templateURL:         "my-template@1.0.0",
-			shouldMatch:         false,
-			expectSpecificError: "specific versions require a fully qualified template name",
-			expectGetTemplate:   false,
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "A versioned template",
+			expectGetTemplate:   true,
 		},
 		{
 			name:                "without version uses ListTemplates",
