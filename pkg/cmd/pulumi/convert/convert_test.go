@@ -241,8 +241,8 @@ func TestNopSecretsProvider(t *testing.T) {
 
 	assert.Equal(t, "passphrase", mgr.Type())
 	assert.Nil(t, mgr.State())
-	assert.NotNil(t, mgr.Encrypter())
-	assert.NotNil(t, mgr.Decrypter())
+	require.NotNil(t, mgr.Encrypter())
+	require.NotNil(t, mgr.Decrypter())
 }
 
 // TestNullDecrypter verifies that nullDecrypter returns "[secret]" for any ciphertext and that
