@@ -242,6 +242,8 @@ type ProgramTestOptions struct {
 	UpdateCommandlineFlags []string
 	// DestroyCommandlineFlags specifies flags to add to the `pulumi destroy` command line (e.g. "--output=json")
 	DestroyCommandlineFlags []string
+	// RefreshCommandlineFlags specifies flags to add to the `pulumi refresh` command line (e.g. "--output=json")
+	RefreshCommandlineFlags []string
 	// QueryCommandlineFlags specifies flags to add to the `pulumi query` command line (e.g. "--color=raw")
 	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
@@ -600,6 +602,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.DestroyCommandlineFlags != nil {
 		opts.DestroyCommandlineFlags = append(opts.DestroyCommandlineFlags, overrides.DestroyCommandlineFlags...)
+	}
+	if overrides.RefreshCommandlineFlags != nil {
+		opts.RefreshCommandlineFlags = append(opts.RefreshCommandlineFlags, overrides.RefreshCommandlineFlags...)
 	}
 	if overrides.QueryCommandlineFlags != nil {
 		opts.QueryCommandlineFlags = append(opts.QueryCommandlineFlags, overrides.QueryCommandlineFlags...)
@@ -1661,6 +1666,9 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		}
 		if !pt.opts.ExpectRefreshChanges {
 			refresh = append(refresh, "--expect-no-changes")
+		}
+		if pt.opts.RefreshCommandlineFlags != nil {
+			refresh = append(refresh, pt.opts.RefreshCommandlineFlags...)
 		}
 		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir, false); err != nil {
 			return err
