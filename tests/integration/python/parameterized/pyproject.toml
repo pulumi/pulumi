@@ -3,4 +3,8 @@ name = "parameterized"
 version = "0.0.0"
 dependencies = [
     "pulumi",
+    "pulumi-pkg",
 ]
+
+[tool.uv.sources]
+pulumi-pkg = { path = "./sdk/python", editable = true }
