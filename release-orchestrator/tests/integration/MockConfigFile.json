@@ -1,0 +1,74 @@
+{
+  "StateMachines": {
+    "release-orchestrator": {
+      "TestCases": {
+        "happy-path-no-language-bumps": {
+          "SurveyUpstream": "AllUpToDate",
+          "ResurveyUpstream": "AllUpToDate",
+          "ComputeBumpVersions": "NoBumps",
+          "OpenFreezePR": "FreezeOpened",
+          "WaitForFreezeMerged": "FreezeMerged",
+          "WaitForDraftReady": "DraftReady",
+          "PublishRelease": "Published",
+          "WaitForReleaseFanOut": "FanOutComplete",
+          "WaitForPostReleasePR": "PostReleaseOpened",
+          "ApprovePostReleasePR": "Approved",
+          "WaitForPkgTag": "PkgTagged"
+        },
+
+        "happy-path-with-yaml-bump": {
+          "SurveyUpstream": "YamlNeedsRelease",
+          "ReleaseHosts": "YamlReleased",
+          "ResurveyUpstream": "AllUpToDate",
+          "ComputeBumpVersions": "YamlBump",
+          "OpenBumpPR": "BumpOpened",
+          "WaitForBumpMerged": "BumpMerged",
+          "OpenFreezePR": "FreezeOpened",
+          "WaitForFreezeMerged": "FreezeMerged",
+          "WaitForDraftReady": "DraftReady",
+          "PublishRelease": "Published",
+          "WaitForReleaseFanOut": "FanOutComplete",
+          "WaitForPostReleasePR": "PostReleaseOpened",
+          "ApprovePostReleasePR": "Approved",
+          "WaitForPkgTag": "PkgTagged"
+        }
+      }
+    }
+  },
+
+  "MockedResponses": {
+    "AllUpToDate": {
+      "0": {"Return": {"Payload": {"language_hosts": [
+        {"name": "dotnet", "repo": "pulumi/pulumi-dotnet", "latest_tag": "v3.105.0", "latest_tag_sha": "a", "master_sha": "a", "has_unreleased_commits": false, "next_version": "v3.106.0"},
+        {"name": "java",   "repo": "pulumi/pulumi-java",   "latest_tag": "v1.26.0", "latest_tag_sha": "b", "master_sha": "b", "has_unreleased_commits": false, "next_version": "v1.27.0"},
+        {"name": "yaml",   "repo": "pulumi/pulumi-yaml",   "latest_tag": "v1.33.0", "latest_tag_sha": "c", "master_sha": "c", "has_unreleased_commits": false, "next_version": "v1.34.0"},
+        {"name": "hcl",    "repo": "pulumi-labs/pulumi-hcl","latest_tag": "v0.2.0", "latest_tag_sha": "d", "master_sha": "d", "has_unreleased_commits": false, "next_version": "v0.3.0"}
+      ]}}}
+    },
+    "YamlNeedsRelease": {
+      "0": {"Return": {"Payload": {"language_hosts": [
+        {"name": "dotnet", "repo": "pulumi/pulumi-dotnet", "latest_tag": "v3.105.0", "has_unreleased_commits": false, "next_version": "v3.106.0"},
+        {"name": "java",   "repo": "pulumi/pulumi-java",   "latest_tag": "v1.26.0", "has_unreleased_commits": false, "next_version": "v1.27.0"},
+        {"name": "yaml",   "repo": "pulumi/pulumi-yaml",   "latest_tag": "v1.33.0", "has_unreleased_commits": true,  "next_version": "v1.34.0"},
+        {"name": "hcl",    "repo": "pulumi-labs/pulumi-hcl","latest_tag": "v0.2.0", "has_unreleased_commits": false, "next_version": "v0.3.0"}
+      ]}}}
+    },
+    "YamlReleased": {
+      "0": {"Return": {"Payload": [{"name": "yaml", "released": true}]}}
+    },
+    "NoBumps":  {"0": {"Return": {"Payload": {"bumps": []}}}},
+    "YamlBump": {"0": {"Return": {"Payload": {"bumps": [
+      {"name": "yaml", "repo": "pulumi/pulumi-yaml", "current_pin": "v1.33.0", "new_version": "v1.34.0"}
+    ]}}}},
+    "BumpOpened":   {"0": {"Return": {"Payload": {"pr_number": 22833, "branch": "automation/bump-language-providers"}}}},
+    "BumpMerged":   {"0": {"Return": {"Payload": {"merged": true, "head_sha": "feedface"}}}},
+    "FreezeOpened": {"0": {"Return": {"Payload": {"pr_number": 22850, "version": "3.235.0", "branch": "freeze-v3.235.0"}}}},
+    "FreezeMerged": {"0": {"Return": {"Payload": {"merged": true, "head_sha": "cafebabe"}}}},
+    "DraftReady":   {"0": {"Return": {"Payload": {"conclusion": "success", "head_sha": "cafebabe"}}}},
+    "Published":    {"0": {"Return": {"Payload": {"release_id": 12345, "html_url": "https://github.com/pulumi/pulumi/releases/tag/v3.235.0"}}}},
+    "FanOutComplete":{"0":{"Return": {"Payload": {"conclusion": "success"}}}},
+    "PostReleaseOpened": {"0": {"Return": {"Payload": {"pr_number": 22853, "title": "Changelog and go.mod updates for v3.235.0"}}}},
+    "Approved":     {"0": {"Return": {"Payload": {"approved": true}}}},
+    "PkgTagged":    {"0": {"Return": {"Payload": {"ref": "pkg/v3.235.0"}}}}
+  }
+}

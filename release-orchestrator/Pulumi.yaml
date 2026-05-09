@@ -1,0 +1,10 @@
+name: release-orchestrator
+description: AWS Step Functions workflow that drives the pulumi/pulumi release end-to-end.
+runtime:
+  name: python
+  options:
+    virtualenv: venv
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-python
