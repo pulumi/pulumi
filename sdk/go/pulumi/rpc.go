@@ -942,9 +942,6 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		result := reflect.MakeMap(dest.Type())
 		secret := false
 		for k, e := range v.ObjectValue() {
-			if resource.IsInternalPropertyKey(k) {
-				continue
-			}
 			elem := reflect.New(elemType).Elem()
 			esecret, err := unmarshalOutput(ctx, e, elem)
 			if err != nil {

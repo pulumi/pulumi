@@ -1609,12 +1609,19 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	case "[]string":
 		typeAssertion = ".(pulumi.StringArrayOutput)"
 	default:
-		if strings.HasPrefix(retType, "*") {
-			retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
-		}
-		typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
-		if !strings.Contains(retType, ".") {
-			typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+		// For map types the string form (e.g. "map[string]bool") cannot be turned into
+		// a valid pulumi output type via simple string manipulation, so use
+		// deferredOutputCastTypeParameter which already knows the correct names.
+		if _, isMap := pcl.UnwrapOption(then.Signature.ReturnType).(*model.MapType); isMap {
+			typeAssertion = ".(" + deferredOutputCastTypeParameter(then.Signature.ReturnType) + ")"
+		} else {
+			if strings.HasPrefix(retType, "*") {
+				retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
+			}
+			typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
+			if !strings.Contains(retType, ".") {
+				typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+			}
 		}
 	}
 
