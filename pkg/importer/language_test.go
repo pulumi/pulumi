@@ -96,6 +96,93 @@ func TestGeneratePCLTextEmptyStates(t *testing.T) {
 	assert.Empty(t, pclBytes)
 }
 
+func TestGeneratePCLTextWithProviderVersion(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	// Setting "version" directly on provider inputs causes pkgDesc.Version to be populated,
+	// exercising the baseProviderVersion block in GeneratePCLText.
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Inputs: resource.PropertyMap{
+				"version": resource.NewStringProperty("5.4.0"),
+			},
+		},
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::myBucket",
+			ID:       "bucket-1",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
+			Inputs:   map[string]any{},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+	}
+
+	states := slice.Prealloc[*resource.State](len(resources))
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	pclBytes, err := GeneratePCLText(loader, states, snapshot, nil)
+	require.NoError(t, err)
+	pclText := string(pclBytes)
+	assert.Contains(t, pclText, `baseProviderVersion`)
+	assert.Contains(t, pclText, `5.4.0`)
+}
+
+func TestGeneratePCLTextWithProviderDownloadURL(t *testing.T) {
+	t.Parallel()
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
+
+	// pluginDownloadURL is stored inside the "__internal" property of provider inputs.
+	snapshot := []*resource.State{
+		{
+			ID:     "123",
+			Custom: true,
+			Type:   "pulumi:providers:aws",
+			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
+			Inputs: resource.PropertyMap{
+				"__internal": resource.NewObjectProperty(resource.PropertyMap{
+					"pluginDownloadURL": resource.NewStringProperty("https://example.com/downloads"),
+				}),
+			},
+		},
+	}
+
+	resources := []apitype.ResourceV3{
+		{
+			URN:      "urn:pulumi:stack::project::aws:s3/bucket:Bucket::myBucket",
+			ID:       "bucket-1",
+			Custom:   true,
+			Type:     "aws:s3/bucket:Bucket",
+			Inputs:   map[string]any{},
+			Provider: fmt.Sprintf("%s::%s", snapshot[0].URN, snapshot[0].ID),
+		},
+	}
+
+	states := slice.Prealloc[*resource.State](len(resources))
+	for _, r := range resources {
+		state, err := stack.DeserializeResource(r, config.NopDecrypter)
+		require.NoError(t, err)
+		states = append(states, state)
+	}
+
+	pclBytes, err := GeneratePCLText(loader, states, snapshot, nil)
+	require.NoError(t, err)
+	pclText := string(pclBytes)
+	assert.Contains(t, pclText, `baseProviderDownloadUrl`)
+	assert.Contains(t, pclText, `https://example.com/downloads`)
+}
+
 func TestGenerateLanguageDefinition(t *testing.T) {
 	t.Parallel()
 	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))

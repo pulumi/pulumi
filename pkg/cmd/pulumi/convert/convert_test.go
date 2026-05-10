@@ -230,6 +230,67 @@ func TestStackConvertWithSecretsProvider(t *testing.T) {
 	assert.Empty(t, pclBytes)
 }
 
+// TestStackConvertShowSecrets verifies that --show-secrets uses the real secrets provider.
+// This test uses a stack with no secrets_providers, so the DefaultProvider is selected but
+// never actually invoked for decryption, making the test credential-free.
+func TestStackConvertShowSecrets(t *testing.T) {
+	t.Parallel()
+
+	outDir := t.TempDir()
+	cwd, err := filepath.Abs(".")
+	require.NoError(t, err)
+
+	stackFile := filepath.Join(t.TempDir(), "stack.json")
+	require.NoError(t, os.WriteFile(stackFile, []byte(minimalStackJSON()), 0o600))
+
+	err = runConvert(
+		t.Context(),
+		&cmdBackend.MockLoginManager{},
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{},
+		cwd,
+		[]string{},
+		"stack",
+		"pcl",
+		outDir,
+		true,  /*generateOnly*/
+		false, /*strict*/
+		"myproject",
+		stackFile,
+		true, /*showSecrets*/
+	)
+	require.NoError(t, err)
+}
+
+// TestStackConvertFileNotFound verifies the error when the stack file cannot be read.
+func TestStackConvertFileNotFound(t *testing.T) {
+	t.Parallel()
+
+	outDir := t.TempDir()
+	cwd, err := filepath.Abs(".")
+	require.NoError(t, err)
+
+	err = runConvert(
+		t.Context(),
+		&cmdBackend.MockLoginManager{},
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{},
+		cwd,
+		[]string{},
+		"stack",
+		"pcl",
+		outDir,
+		true,  /*generateOnly*/
+		false, /*strict*/
+		"myproject",
+		filepath.Join(t.TempDir(), "nonexistent.json"),
+		false, /*showSecrets*/
+	)
+	require.ErrorContains(t, err, "read stack file")
+}
+
 // TestNopSecretsProvider verifies that nopSecretsProvider accepts any secrets type and that
 // the resulting manager's methods return sensible zero values.
 func TestNopSecretsProvider(t *testing.T) {
