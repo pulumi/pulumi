@@ -1,0 +1,4 @@
+[project]
+name = "aliases_rename_component_and_child"
+version = "0.0.0"
+dependencies = []

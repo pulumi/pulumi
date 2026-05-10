@@ -897,6 +897,7 @@ type ProgramTester struct {
 	goBin          string              // the `go` binary we are using.
 	pythonBin      string              // the `python` binary we are using.
 	pipenvBin      string              // The `pipenv` binary we are using.
+	uvBin          string              // the `uv` binary we are using.
 	dotNetBin      string              // the `dotnet` binary we are using.
 	updateEventLog string              // The path to the engine event log for `pulumi up` in this test.
 	maxStepTries   int                 // The maximum number of times to retry a failed pulumi step.
@@ -986,6 +987,11 @@ func (pt *ProgramTester) getPythonBin() (string, error) {
 // getPipenvBin returns a path to the currently-installed Pipenv tool, or an error if the tool could not be found.
 func (pt *ProgramTester) getPipenvBin() (string, error) {
 	return getCmdBin(&pt.pipenvBin, "pipenv", pt.opts.PipenvBin)
+}
+
+// getUvBin returns a path to the currently-installed `uv` tool, or an error if the tool could not be found.
+func (pt *ProgramTester) getUvBin() (string, error) {
+	return getCmdBin(&pt.uvBin, "uv", "")
 }
 
 func (pt *ProgramTester) getDotNetBin() (string, error) {
@@ -2447,6 +2453,8 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
 			return err
 		}
+	} else if pythonToolchainIsUv(projinfo) {
+		return pt.preparePythonProjectWithUv(projinfo, cwd)
 	} else {
 		venvPath := "venv"
 		if cwd != projinfo.Root {
@@ -2490,6 +2498,60 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
+	return nil
+}
+
+func pythonToolchainIsUv(projinfo *engine.Projinfo) bool {
+	if projinfo == nil || projinfo.Proj == nil || projinfo.Proj.Runtime.Options() == nil {
+		return false
+	}
+	tc, _ := projinfo.Proj.Runtime.Options()["toolchain"].(string)
+	return tc == "uv"
+}
+
+// preparePythonProjectWithUv prepares a Python project that declares `toolchain: uv` in its Pulumi.yaml.
+// It runs `uv sync` against the fixture's pyproject.toml to create a `.venv` and a `uv.lock`, then
+// editable-installs any `Dependencies` (typically the local sdk/python) on top.
+func (pt *ProgramTester) preparePythonProjectWithUv(projinfo *engine.Projinfo, cwd string) error {
+	uvBin, err := pt.getUvBin()
+	if err != nil {
+		return err
+	}
+
+	venvDir := ".venv"
+	venvPath := filepath.Join(cwd, venvDir)
+
+	syncArgs := []string{uvBin, "sync"}
+	if pt.opts.InstallDevReleases {
+		syncArgs = append(syncArgs, "--prerelease=allow")
+	}
+	if err := pt.runCommand("uv-sync", syncArgs, cwd); err != nil {
+		return err
+	}
+
+	pt.opts.virtualEnvDir = venvDir
+	projinfo.Proj.Runtime.SetOption("virtualenv", venvPath)
+	projfile := filepath.Join(projinfo.Root, workspace.ProjectFile+".yaml")
+	if err := projinfo.Proj.Save(projfile); err != nil {
+		return fmt.Errorf("saving project: %w", err)
+	}
+
+	if pt.opts.RunUpdateTest {
+		return nil
+	}
+
+	for _, dep := range pt.opts.Dependencies {
+		if !filepath.IsAbs(dep) {
+			abs, err := filepath.Abs(dep)
+			if err != nil {
+				return err
+			}
+			dep = abs
+		}
+		if err := pt.runCommand("uv-add", []string{uvBin, "add", "--editable", dep}, cwd); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
