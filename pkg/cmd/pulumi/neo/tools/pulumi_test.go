@@ -17,6 +17,7 @@ package tools
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -98,34 +99,44 @@ func TestPulumi_InvokeRejectsBadJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "decoding")
 }
 
+// assertFailedResult checks that the handler's returned value is a pulumiResult
+// that self-describes the failure — Status="failed" plus the error text in Logs.
+func assertFailedResult(t *testing.T, value any, errSubstr string) {
+	t.Helper()
+	res, ok := value.(pulumiResult)
+	require.True(t, ok, "expected pulumiResult, got %T", value)
+	assert.Equal(t, "failed", res.Status)
+	assert.Contains(t, res.Logs, errSubstr)
+}
+
 func TestPulumi_RunRejectsMissingStackName(t *testing.T) {
 	t.Parallel()
 
 	p := &Pulumi{Cwd: t.TempDir()}
-	_, err := p.Invoke(t.Context(), "pulumi_preview",
+	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","local_pulumi_dir":"/tmp"}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "stack_name is required")
+	assertFailedResult(t, value, "stack_name is required")
 }
 
 func TestPulumi_RunRejectsMissingLocalDir(t *testing.T) {
 	t.Parallel()
 
 	p := &Pulumi{Cwd: t.TempDir()}
-	_, err := p.Invoke(t.Context(), "pulumi_preview",
+	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","stack_name":"dev"}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "local_pulumi_dir is required")
+	assertFailedResult(t, value, "local_pulumi_dir is required")
 }
 
 func TestPulumi_RunRejectsRelativeLocalDir(t *testing.T) {
 	t.Parallel()
 
 	p := &Pulumi{Cwd: t.TempDir()}
-	_, err := p.Invoke(t.Context(), "pulumi_preview",
+	value, err := p.Invoke(t.Context(), "pulumi_preview",
 		json.RawMessage(`{"project_name":"p","stack_name":"dev","local_pulumi_dir":"relative/path"}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "must be an absolute path")
+	assertFailedResult(t, value, "must be an absolute path")
 }
 
 func TestPulumi_RunRejectsEscapingLocalDir(t *testing.T) {
@@ -144,9 +155,9 @@ func TestPulumi_RunRejectsEscapingLocalDir(t *testing.T) {
 		"local_pulumi_dir": outside,
 	})
 	require.NoError(t, err)
-	_, err = p.Invoke(t.Context(), "pulumi_preview", args)
+	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "outside")
+	assertFailedResult(t, value, "outside")
 }
 
 func TestPulumi_RunRejectsMissingPulumiYaml(t *testing.T) {
@@ -162,9 +173,25 @@ func TestPulumi_RunRejectsMissingPulumiYaml(t *testing.T) {
 		"local_pulumi_dir": root,
 	})
 	require.NoError(t, err)
-	_, err = p.Invoke(t.Context(), "pulumi_preview", args)
+	value, err := p.Invoke(t.Context(), "pulumi_preview", args)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Pulumi.yaml not found")
+	assertFailedResult(t, value, "Pulumi.yaml not found")
+}
+
+func TestFailedResult(t *testing.T) {
+	t.Parallel()
+
+	res, err := failedResult(
+		pulumiArgs{ProjectName: "proj", StackName: "dev"},
+		"/tmp/events.ndjson",
+		errors.New("kaboom"),
+	)
+	require.ErrorIs(t, err, errToolFailed)
+	assert.Equal(t, "failed", res.Status)
+	assert.Equal(t, "proj", res.ProjectName)
+	assert.Equal(t, "dev", res.StackName)
+	assert.Equal(t, "/tmp/events.ndjson", res.EventsFile)
+	assert.Equal(t, "error: kaboom\n", res.Logs)
 }
 
 func TestEnvValUnmarshal(t *testing.T) {
@@ -317,10 +344,9 @@ func TestOpSortRank(t *testing.T) {
 }
 
 // TestPulumi_InvokeRoutesPreviewAndUp confirms the method dispatch in Invoke
-// reaches both run() entry points. Both methods get past JSON decoding and
-// hit the same arg-validation rule (`local_pulumi_dir is required`) — the
-// fact that both succeed at decoding and produce that same downstream error
-// proves the switch wires both arms, not a single method via a fallthrough.
+// reaches both run() entry points. Observing the same downstream
+// arg-validation failure from each arm proves the switch wires both, not a
+// single method via a fallthrough.
 func TestPulumi_InvokeRoutesPreviewAndUp(t *testing.T) {
 	t.Parallel()
 
@@ -328,10 +354,10 @@ func TestPulumi_InvokeRoutesPreviewAndUp(t *testing.T) {
 		t.Run(method, func(t *testing.T) {
 			t.Parallel()
 			p := &Pulumi{Cwd: t.TempDir()}
-			_, err := p.Invoke(t.Context(), method,
+			value, err := p.Invoke(t.Context(), method,
 				json.RawMessage(`{"project_name":"p","stack_name":"dev"}`))
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "local_pulumi_dir is required")
+			assertFailedResult(t, value, "local_pulumi_dir is required")
 		})
 	}
 }
