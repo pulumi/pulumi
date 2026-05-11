@@ -332,6 +332,88 @@ func buildOptionsImports() *ast.GenDecl {
 // over to the real sdk/go/auto address.
 const basePackageImportPath = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
 
+// commonInitialisms mirrors the list golint uses to enforce idiomatic Go
+// naming for acronyms. `strcase.ToCamel` only knows one-word-at-a-time
+// PascalCase, so a flag like `--url` becomes `Url` instead of `URL`.
+// `toGoCamel` post-processes its output by uppercasing any word whose
+// lowercase form appears here.
+var commonInitialisms = map[string]struct{}{
+	"ACL":   {},
+	"AI":    {},
+	"API":   {},
+	"ASCII": {},
+	"CPU":   {},
+	"CSS":   {},
+	"DNS":   {},
+	"EOF":   {},
+	"GUID":  {},
+	"HTML":  {},
+	"HTTP":  {},
+	"HTTPS": {},
+	"ID":    {},
+	"IP":    {},
+	"JSON":  {},
+	"LHS":   {},
+	"OS":    {},
+	"QPS":   {},
+	"RAM":   {},
+	"RHS":   {},
+	"RPC":   {},
+	"SLA":   {},
+	"SMTP":  {},
+	"SQL":   {},
+	"SSH":   {},
+	"TCP":   {},
+	"TLS":   {},
+	"TTL":   {},
+	"UDP":   {},
+	"UI":    {},
+	"UID":   {},
+	"UUID":  {},
+	"URI":   {},
+	"URL":   {},
+	"UTF8":  {},
+	"VM":    {},
+	"XML":   {},
+	"XMPP":  {},
+	"XSRF":  {},
+	"XSS":   {},
+}
+
+// toGoCamel converts a hyphen/underscore-separated flag name to a
+// PascalCase Go identifier, uppercasing any word that matches an entry in
+// `commonInitialisms`. For example "ai" becomes "AI", "secrets-provider"
+// becomes "SecretsProvider", and "template-or-url" becomes "TemplateOrURL".
+func toGoCamel(name string) string {
+	camel := strcase.ToCamel(name)
+	if camel == "" {
+		return camel
+	}
+	// Walk the camel-cased string and identify word boundaries: each one
+	// starts at an uppercase ASCII letter. We rebuild the result word by
+	// word, swapping in the all-uppercase form for any word whose
+	// uppercased value appears in commonInitialisms.
+	var b strings.Builder
+	b.Grow(len(camel))
+	runes := []rune(camel)
+	for i := 0; i < len(runes); {
+		// Find the end of the current word: next uppercase letter or end.
+		j := i + 1
+		for j < len(runes) && (runes[j] < 'A' || runes[j] > 'Z') {
+			j++
+		}
+		word := string(runes[i:j])
+		upper := strings.ToUpper(word)
+		if _, ok := commonInitialisms[upper]; ok {
+			b.WriteString(upper)
+		} else {
+			b.WriteString(word)
+		}
+		i = j
+	}
+	return b.String()
+}
+
 // copyrightHeader is prepended to every file written by the generator. The
 // repository's lint setup checks for it via `goheader`.
 const copyrightHeader = `// Copyright 2026, Pulumi Corporation.
@@ -393,7 +475,7 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, []
 			return nil, nil, err
 		}
 
-		fieldName := strcase.ToCamel(flag.Name)
+		fieldName := toGoCamel(flag.Name)
 		field := &ast.Field{
 			Names: []*ast.Ident{{Name: fieldName}},
 			Type:  goType,
@@ -844,7 +926,7 @@ func buildCommandMethod(node Structure, breadcrumbs []string, flags map[string]F
 // methodNameFor converts CLI breadcrumbs to a Go method name. For example:
 // [] → "Pulumi" (unused — we never emit a root method), ["cancel"] →
 // "Cancel", ["stack", "rm"] → "StackRm", ["org", "search", "ai"] →
-// "OrgSearchAi".
+// "OrgSearchAI" (acronyms uppercased per the Go style golint enforces).
 func methodNameFor(breadcrumbs []string) string {
 	if len(breadcrumbs) == 0 {
 		return "Pulumi"
@@ -853,7 +935,7 @@ func methodNameFor(breadcrumbs []string) string {
 	// Normalise separators strcase.ToCamel doesn't touch on its own.
 	joined = strings.ReplaceAll(joined, "-", "_")
 	joined = strings.ReplaceAll(joined, "/", "_")
-	return strcase.ToCamel(joined)
+	return toGoCamel(joined)
 }
 
 // argToMethodArg turns a spec Argument into a template-ready methodArg.
@@ -882,7 +964,7 @@ func argToMethodArg(a Argument) (methodArg, error) {
 // distinguish the zero value from "unset" should mark the flag required
 // or extend the spec.
 func renderFlag(flag Flag) (string, error) {
-	fieldName := strcase.ToCamel(flag.Name)
+	fieldName := toGoCamel(flag.Name)
 	cliName := "--" + flag.Name
 	switch {
 	case flag.Repeatable:
@@ -922,7 +1004,7 @@ func renderPreset(flag Flag) (string, error) {
 		return valueSnippet, nil
 	}
 	// Guard on zero value of the exposed field.
-	fieldName := strcase.ToCamel(flag.Name)
+	fieldName := toGoCamel(flag.Name)
 	var cond string
 	switch {
 	case flag.Repeatable:
