@@ -390,9 +390,24 @@ func dispatchUserEvents(
 	}
 }
 
+// stackRefWithOrg is the subset of backend.StackReference that carries the
+// owning organization. cloud/diy/mock stack references all implement it; we
+// type-assert to it so the Neo task is created in the same org as the
+// resolved stack rather than silently retargeting to the user's default org.
+type stackRefWithOrg interface {
+	Organization() (string, bool)
+}
+
 // resolveTaskTarget figures out the org, project, and stack name to attach to the new Neo
 // task. The stack flag is optional — if it's empty we try the currently selected stack and
 // fall back to a project-only attachment if there isn't one.
+//
+// Org resolution mirrors `pulumi preview`: if a stack reference carries an
+// owner (e.g. `otherorg/proj/dev` from the CLI or from the workspace's
+// selected stack), that owner wins. The --org flag overrides; if it
+// disagrees with the stack's owner we error rather than create the task
+// against the wrong org. Only when no stack reference is in play do we fall
+// back to the backend's default org.
 func resolveTaskTarget(
 	ctx context.Context,
 	ws pkgWorkspace.Context,
@@ -404,22 +419,39 @@ func resolveTaskTarget(
 		projectName = string(project.Name)
 	}
 
+	var stackOwner string
 	if stackName != "" {
 		ref, err := be.ParseStackReference(stackName)
 		if err != nil {
 			return "", "", "", err
 		}
 		stack = ref.Name().String()
+		if owned, ok := ref.(stackRefWithOrg); ok {
+			if o, has := owned.Organization(); has {
+				stackOwner = o
+			}
+		}
 	} else {
 		s, err := state.CurrentStack(ctx, ws, be)
 		if err == nil && s != nil {
 			stack = s.Ref().Name().String()
+			if owned, ok := s.Ref().(stackRefWithOrg); ok {
+				if o, has := owned.Organization(); has {
+					stackOwner = o
+				}
+			}
 		}
 	}
 
-	if orgFlag != "" {
+	switch {
+	case orgFlag != "" && stackOwner != "" && orgFlag != stackOwner:
+		return "", "", "", fmt.Errorf(
+			"--org %q does not match the stack's organization %q", orgFlag, stackOwner)
+	case orgFlag != "":
 		org = orgFlag
-	} else {
+	case stackOwner != "":
+		org = stackOwner
+	default:
 		org, err = be.GetDefaultOrg(ctx)
 		if err != nil {
 			return "", "", "", fmt.Errorf("determining default organization: %w", err)
