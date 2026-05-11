@@ -109,7 +109,7 @@ func TestGeneratePCLTextWithProviderVersion(t *testing.T) {
 			Type:   "pulumi:providers:aws",
 			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 			Inputs: resource.PropertyMap{
-				"version": resource.NewStringProperty("5.4.0"),
+				"version": resource.NewProperty("5.4.0"),
 			},
 		},
 	}
@@ -151,8 +151,8 @@ func TestGeneratePCLTextWithProviderDownloadURL(t *testing.T) {
 			Type:   "pulumi:providers:aws",
 			URN:    "urn:pulumi:stack::project::pulumi:providers:aws::default_123",
 			Inputs: resource.PropertyMap{
-				"__internal": resource.NewObjectProperty(resource.PropertyMap{
-					"pluginDownloadURL": resource.NewStringProperty("https://example.com/downloads"),
+				"__internal": resource.NewProperty(resource.PropertyMap{
+					"pluginDownloadURL": resource.NewProperty("https://example.com/downloads"),
 				}),
 			},
 		},
