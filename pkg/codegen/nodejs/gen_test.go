@@ -220,6 +220,20 @@ func TestPascalCases(t *testing.T) {
 	}
 }
 
+func TestPrintSubmoduleExportsAliasesCommonJSGlobals(t *testing.T) {
+	t.Parallel()
+
+	var buffer bytes.Buffer
+	printSubmoduleExports(&buffer, []string{"lambda", "module"})
+
+	require.Equal(t, `
+export {
+    lambda,
+    module_ as module,
+};
+`, buffer.String())
+}
+
 func Test_isStringType(t *testing.T) {
 	t.Parallel()
 

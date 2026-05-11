@@ -2255,10 +2255,10 @@ func (mod *modContext) genIndex(exports []fileInfo) string {
 		sorted := directChildren.SortedValues()
 
 		for _, mod := range sorted {
-			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
+			fmt.Fprintf(w, "import * as %s from \"./%s\";\n", submoduleImportIdentifier(mod), mod)
 		}
 
-		printExports(w, sorted)
+		printSubmoduleExports(w, sorted)
 	}
 
 	// If there are resources in this module, register the module with the runtime.
@@ -2339,11 +2339,26 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	}
 }
 
-func printExports(w io.Writer, exports []string) {
+func submoduleImportIdentifier(name string) string {
+	ident := makeValidIdentifier(name)
+	switch ident {
+	case "module", "exports", "require", "__dirname", "__filename":
+		return ident + "_"
+	default:
+		return ident
+	}
+}
+
+func printSubmoduleExports(w io.Writer, exports []string) {
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "export {\n")
 	for _, mod := range exports {
-		fmt.Fprintf(w, "    %s,\n", mod)
+		ident := submoduleImportIdentifier(mod)
+		if ident == mod {
+			fmt.Fprintf(w, "    %s,\n", mod)
+		} else {
+			fmt.Fprintf(w, "    %s as %s,\n", ident, mod)
+		}
 	}
 	fmt.Fprintf(w, "};\n")
 }
@@ -2384,9 +2399,9 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 			sorted := directChildren.SortedValues()
 
 			for _, mod := range sorted {
-				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
+				fmt.Fprintf(buffer, "import * as %s from \"./%s\";\n", submoduleImportIdentifier(mod), mod)
 			}
-			printExports(buffer, sorted)
+			printSubmoduleExports(buffer, sorted)
 		}
 	}
 	if len(enums) > 0 {

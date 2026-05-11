@@ -50,9 +50,9 @@ func (p *KeywordsProvider) properties() []string {
 
 func (p *KeywordsProvider) resourceTypes() []string {
 	return []string{
-		"keywords:index:Lambda",
 		"keywords:index:SomeResource",
 		"keywords:lambda:SomeResource",
+		"keywords:module:Lambda",
 	}
 }
 
