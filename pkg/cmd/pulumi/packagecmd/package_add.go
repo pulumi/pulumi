@@ -134,7 +134,7 @@ from the parameters, as in:
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
 				pkgWorkspace.Instance,
-				pluginOrProject.proj,
+				target.proj,
 				pctx,
 				target.proj.RuntimeInfo().Name(),
 				target.installRoot,
