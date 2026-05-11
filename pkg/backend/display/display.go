@@ -141,7 +141,10 @@ func ShowEvents(
 		tapped := tapSummaryJSON(rawEvents, opts)
 		go func() {
 			defer close(done)
-			for range tapped { //nolint:revive // intentional drain
+			for e := range tapped {
+				if e.Type == engine.CancelEvent {
+					return
+				}
 			}
 		}()
 		return

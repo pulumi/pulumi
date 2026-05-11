@@ -87,6 +87,9 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 				}
 			}
 			out <- e
+			if e.Type == engine.CancelEvent {
+				return
+			}
 		}
 	}()
 	return out

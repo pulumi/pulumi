@@ -17,6 +17,7 @@ package display
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -96,4 +97,29 @@ func TestTapSummaryJSON_EmitsOnSummaryEvent(t *testing.T) {
 	assert.Equal(t, apitype.OperationResultSucceeded, summary.Result)
 	assert.Equal(t, 1*time.Second, summary.Duration)
 	assert.Equal(t, 5, summary.Summary["same"])
+}
+
+func TestTapSummaryJSON_ReturnsOnCancelEvent(t *testing.T) {
+	t.Parallel()
+
+	// The input channel is intentionally never closed: the tap must terminate
+	// on CancelEvent alone. startEventLogger never closes its output channel,
+	// so a tap that waits for closure deadlocks the whole display pipeline.
+	in := make(chan engine.Event, 1)
+	in <- engine.NewCancelEvent()
+
+	out := tapSummaryJSON(in, Options{Stdout: io.Discard})
+
+	done := make(chan struct{})
+	go func() {
+		for range out { //nolint:revive // intentional drain
+		}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("tap did not return after CancelEvent")
+	}
 }
