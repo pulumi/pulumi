@@ -151,18 +151,18 @@ class Output(Generic[T_co]):
     def _track(self) -> None:
         """Register _data with SETTINGS.outputs for lifecycle tracking."""
         with SETTINGS.lock:
-            SETTINGS.outputs.append(self._data)
+            SETTINGS.outputs.add(self._data)
 
         def cleanup(fut: "asyncio.Future[_OutputData[T_co]]") -> None:
             if fut.cancelled() or (fut.exception() is not None):
-                # if cancelled or error'd leave it in the deque to pick up at program exit
+                # if cancelled or error'd leave it in the set to pick up at program exit
                 return
-            # else remove it from the deque
+            # else remove it from the set
             with SETTINGS.lock:
                 try:
                     SETTINGS.outputs.remove(fut)
-                except ValueError:
-                    # if it's not in the deque then it's already been removed in wait_for_rpcs
+                except KeyError:
+                    # if it's not in the set then it's already been removed in wait_for_rpcs
                     pass
 
         self._data.add_done_callback(cleanup)
