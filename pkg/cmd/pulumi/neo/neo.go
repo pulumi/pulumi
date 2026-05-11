@@ -44,8 +44,7 @@ import (
 
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
-// once without the stack so the task is still created. The `--neo-task-on-failure`
-// path skips this — there the stack link is the whole point of the task.
+// once without the stack so the task is still created.
 func createNeoTaskWithEntityRetry(
 	ctx context.Context,
 	pc *client.Client,
