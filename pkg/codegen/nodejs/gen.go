@@ -2342,7 +2342,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 func submoduleImportIdentifier(name string) string {
 	ident := makeValidIdentifier(name)
 	switch ident {
-	case "module", "exports", "require", "__dirname", "__filename":
+	case "module", "exports", "require":
 		return ident + "_"
 	default:
 		return ident
