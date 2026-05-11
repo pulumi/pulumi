@@ -228,6 +228,7 @@ func startEventLogger(
 				logging.V(7).Infof("failed to close event stream: %v", err)
 			}
 
+			close(outEvents)
 			<-outDone
 		}()
 
@@ -262,6 +263,7 @@ func startEventLogger(
 			}
 		}
 
+		close(outEvents)
 		<-outDone
 	}()
 

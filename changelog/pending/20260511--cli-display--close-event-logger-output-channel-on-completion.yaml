@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/display
+  description: Close the event logger's output channel once the input stream ends, so consumers that drain via `range` terminate instead of deadlocking
