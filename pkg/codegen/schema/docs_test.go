@@ -27,7 +27,9 @@ import (
 	"github.com/pgavlin/goldmark/testutil"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/testing/utils"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // Note to future engineers: keep each file tested as a single test, do not use `t.Run` in the inner
@@ -197,7 +199,7 @@ func TestRefParser(t *testing.T) {
 	// collectRefs walks a parsed doc AST and returns all Ref nodes found.
 	collectRefs := func(node ast.Node) []*Ref {
 		var refs []*Ref
-		ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 			if entering {
 				if ref, ok := n.(*Ref); ok {
 					refs = append(refs, ref)
@@ -205,6 +207,7 @@ func TestRefParser(t *testing.T) {
 			}
 			return ast.WalkContinue, nil
 		})
+		contract.AssertNoErrorf(err, "collectRefs walk should not error")
 		return refs
 	}
 
@@ -212,7 +215,7 @@ func TestRefParser(t *testing.T) {
 		t.Parallel()
 		doc := ParseDocs([]byte("{{% ref #/resources/aws:s3:bucket %}}"))
 		refs := collectRefs(doc)
-		assert.Len(t, refs, 1)
+		require.Len(t, refs, 1)
 		if len(refs) == 1 {
 			assert.Equal(t, "#/resources/aws:s3:bucket", refs[0].Destination)
 		}
@@ -222,7 +225,7 @@ func TestRefParser(t *testing.T) {
 		t.Parallel()
 		doc := ParseDocs([]byte("{{% ref   #/resources/aws:s3:bucket   %}}"))
 		refs := collectRefs(doc)
-		assert.Len(t, refs, 1)
+		require.Len(t, refs, 1)
 		if len(refs) == 1 {
 			assert.Equal(t, "#/resources/aws:s3:bucket", refs[0].Destination)
 		}
