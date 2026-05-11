@@ -1044,6 +1044,65 @@ func TestCreateNeoTask(t *testing.T) {
 		assert.Equal(t, true, gotBody["planMode"], "planMode=true must be sent as planMode:true")
 	})
 
+	t.Run("RetriesWithoutEntityOnInvalidEntities", func(t *testing.T) {
+		t.Parallel()
+
+		// When the backend rejects the stack entity (e.g. caller lacks access),
+		// the client should retry once without entity_diff so the task is still
+		// created. Anchors both call shapes so a refactor can't drop the retry.
+		var calls []map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
+			calls = append(calls, body)
+			if len(calls) == 1 {
+				rw.WriteHeader(http.StatusBadRequest)
+				_, _ = rw.Write([]byte(`{"code":400,"message":"invalid entities: unable to access stack"}`))
+				return
+			}
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_retry"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		resp, err := client.CreateNeoTask(
+			t.Context(), "my-org", "hello", "my-stack", "my-project", CreateNeoTaskOptions{
+				ToolExecutionMode: "cli",
+			})
+		require.NoError(t, err)
+		assert.Equal(t, "t_retry", resp.TaskID)
+		require.Len(t, calls, 2, "client must retry once after invalid entities")
+
+		firstMsg, _ := calls[0]["message"].(map[string]any)
+		require.NotNil(t, firstMsg)
+		assert.Contains(t, firstMsg, "entity_diff", "first request must include entity_diff")
+
+		retryMsg, _ := calls[1]["message"].(map[string]any)
+		require.NotNil(t, retryMsg)
+		assert.NotContains(t, retryMsg, "entity_diff", "retry must drop entity_diff")
+	})
+
+	t.Run("DoesNotRetryOnUnrelatedError", func(t *testing.T) {
+		t.Parallel()
+
+		// Only "invalid entities" rejections should trigger the retry — other 4xx
+		// responses must surface to the caller without a second POST.
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			calls++
+			rw.WriteHeader(http.StatusForbidden)
+			_, _ = rw.Write([]byte(`{"code":403,"message":"forbidden"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(
+			t.Context(), "my-org", "hello", "my-stack", "my-project", CreateNeoTaskOptions{})
+		require.Error(t, err)
+		assert.Equal(t, 1, calls, "non-entity errors must not trigger a retry")
+	})
+
 	t.Run("PlanModeOmittedWhenFalse", func(t *testing.T) {
 		t.Parallel()
 

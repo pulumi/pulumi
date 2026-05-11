@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/neo
+  description: Retry `pulumi neo` task creation without the stack entity when the backend rejects it with an "invalid entities" error
