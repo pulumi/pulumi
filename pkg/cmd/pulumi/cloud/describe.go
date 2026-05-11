@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// newDescribeCmd builds `pulumi cloud api describe <path>`. api carries the
+// newDescribeCmd builds `pulumi api describe <path>`. api carries the
 // parent command's persistent flags (--refresh-spec).
 func newDescribeCmd(api *apiCommand) *cobra.Command {
 	var method string
@@ -45,15 +45,15 @@ func newDescribeCmd(api *apiCommand) *cobra.Command {
 			"Default output is a human-readable schema render. Pass --format=json for the\n" +
 			"stable agent envelope, including the inlined JSON schema.",
 		Example: "  # Describe an operation by its ID.\n" +
-			"  pulumi cloud api describe ListOrgMembers\n\n" +
+			"  pulumi api describe ListOrgMembers\n\n" +
 			"  # Describe by path — use --method when the same path maps to multiple ops.\n" +
-			"  pulumi cloud api describe /api/orgs/{orgName}/members --method=POST\n\n" +
+			"  pulumi api describe /api/orgs/{orgName}/members --method=POST\n\n" +
 			"  # Paste-friendly: copy a METHOD + path row from `list` verbatim.\n" +
-			"  pulumi cloud api describe 'GET /api/user'\n\n" +
+			"  pulumi api describe 'GET /api/user'\n\n" +
 			"  # Extract just the request body schema.\n" +
-			"  pulumi cloud api describe CreateStackTag --format=json | jq '.operation.requestBody.jsonSchema'\n\n" +
+			"  pulumi api describe CreateStackTag --format=json | jq '.operation.requestBody.jsonSchema'\n\n" +
 			"  # Pull the parameter list for scripting.\n" +
-			"  pulumi cloud api describe GetStack --format=json | jq '.operation.parameters[] | {name, in, required}'",
+			"  pulumi api describe GetStack --format=json | jq '.operation.parameters[] | {name, in, required}'",
 	}
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "path-or-operation-id"}},
