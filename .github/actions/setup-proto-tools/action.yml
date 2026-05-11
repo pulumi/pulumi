@@ -8,13 +8,14 @@ runs:
   using: composite
   steps:
     - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-    - name: Cache Nix store
-      uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+      uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command flakes
     - name: Add proto tools to PATH
       shell: bash
       run: |
-        echo "$(nix build .#ci-proto-tools --print-out-paths --extra-experimental-features 'nix-command flakes')/bin" >> "$GITHUB_PATH"
+        echo "$(nix build .#ci-proto-tools --print-out-paths)/bin" >> "$GITHUB_PATH"
     - name: Install npm-based gRPC tools
       shell: bash
       run: |
