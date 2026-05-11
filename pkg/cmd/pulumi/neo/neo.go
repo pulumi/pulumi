@@ -42,11 +42,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// createNeoTaskWithEntityRetry calls pc.CreateNeoTask with the stack attached as an
-// involved entity. If the backend rejects the attachment with "invalid entities" —
-// usually because the caller can't access the stack — it retries once with no entity
-// so the task is still created. The `--neo-task-on-failure` path deliberately skips
-// this fallback: there the stack link is the whole point of the task.
+// createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
+// attached stack with "invalid entities" (typically a permissions issue) it retries
+// once without the stack so the task is still created. The `--neo-task-on-failure`
+// path skips this — there the stack link is the whole point of the task.
 func createNeoTaskWithEntityRetry(
 	ctx context.Context,
 	pc *client.Client,
@@ -61,8 +60,8 @@ func createNeoTaskWithEntityRetry(
 }
 
 // isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
-// rejection. Matched on the response message because the service doesn't expose a
-// stable error code for this case.
+// rejection. Matched on the message because the service doesn't expose a stable
+// error code for this case.
 func isInvalidEntitiesError(err error) bool {
 	var errResp *apitype.ErrorResponse
 	if !errors.As(err, &errResp) {
