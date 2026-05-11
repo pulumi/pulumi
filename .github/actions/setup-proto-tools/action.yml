@@ -1,0 +1,21 @@
+name: Setup Proto Tools
+description: >
+  Installs protobuf toolchain (protoc, protoc-gen-go, protoc-gen-go-grpc, jq)
+  via Nix, and npm-based gRPC tools (grpc-tools, grpc_tools_node_protoc_ts,
+  protoc-gen-js) via npm.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Nix
+      uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+    - name: Cache Nix store
+      uses: DeterminateSystems/magic-nix-cache-action@565684385bcd71bad329742eefe8d12f2e765b39 # v13
+    - name: Add proto tools to PATH
+      shell: bash
+      run: |
+        echo "$(nix build .#ci-proto-tools --print-out-paths --extra-experimental-features 'nix-command flakes')/bin" >> "$GITHUB_PATH"
+    - name: Install npm-based gRPC tools
+      shell: bash
+      run: |
+        npm install -g grpc-tools@1.13.0 grpc_tools_node_protoc_ts@5.3.3 protoc-gen-js@3.21.4

@@ -6,8 +6,9 @@
 # might choose to automate this process as part of the overall build so that it's less manual and
 # hence error prone.
 #
-# This script requires mise-managed tools: protoc, protoc-gen-go, protoc-gen-go-grpc,
-# grpc-tools, grpc_tools_node_protoc_ts, protoc-gen-js.
+# This script requires protoc, protoc-gen-go, protoc-gen-go-grpc,
+# grpc-tools, grpc_tools_node_protoc_ts, protoc-gen-js on PATH.
+# Use `nix develop` or `mise` to get these tools.
 # Python tools are invoked via uv run --with.
 
 set -o errexit
@@ -17,7 +18,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROTO_DIR="$REPO_ROOT/proto"
 cd "$PROTO_DIR"
 
-PROTOC_DIR="$(mise where protoc)"
+PROTOC_DIR="$(dirname "$(dirname "$(command -v protoc)")")"
 PROTOC_INCLUDE="$PROTOC_DIR/include"
 
 PROTOC_VERSION=$(protoc --version | head -n1 | tr -d '\n\r')

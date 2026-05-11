@@ -43,9 +43,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
-      - uses: jdx/mise-action@v2
-        with:
-          experimental: true
       - id: gen
         run: |
           VERSION_SET=$(./scripts/get-job-matrix.py generate-version-set --version-set current)
