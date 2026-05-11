@@ -189,16 +189,15 @@ func startEventLogger(
 
 		client := pulumirpc.NewEventsClient(conn)
 
+		stream, err := client.StreamEvents(context.TODO())
+		if err != nil {
+			logging.V(7).Infof("failed to start event stream: %v", err)
+			return events, done
+		}
+
 		outEvents, outDone := make(chan engine.StampedEvent), make(chan bool)
 		go func() {
 			defer close(done)
-
-			stream, err := client.StreamEvents(context.TODO())
-			if err != nil {
-				logging.V(7).Infof("failed to start event stream: %v", err)
-				<-outDone
-				return
-			}
 
 			for e := range events {
 				var buf bytes.Buffer
