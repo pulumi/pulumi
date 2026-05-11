@@ -1560,13 +1560,23 @@ func checkDuplicates(
 	addModule := func(tok string) {
 		module := tokenToModule(tok)
 		if module != "" {
-			modules[module] = struct{}{}
+			// Also add all prefix modules (i.e. "a/b" adds "a" and "a/b")
+			parts := strings.Split(module, "/")
+			for i := 1; i <= len(parts); i++ {
+				prefix := strings.Join(parts[:i], "/")
+				modules[prefix] = struct{}{}
+			}
 		}
+
 		// We check full and normalized module names here for conflicts.
 		tok = normalize(tok)
 		module = tokenToModule(tok)
 		if module != "" {
-			modules[module] = struct{}{}
+			parts := strings.Split(module, "/")
+			for i := 1; i <= len(parts); i++ {
+				prefix := strings.Join(parts[:i], "/")
+				modules[prefix] = struct{}{}
+			}
 		}
 	}
 	for r := range resources {

@@ -629,6 +629,22 @@ func TestRejectDuplicateNames(t *testing.T) {
 				},
 			},
 		},
+		{
+			"type conflicts with non-leaf module",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:A": {},
+					"test:a/b:C":   {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:A: token collides with module a",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
