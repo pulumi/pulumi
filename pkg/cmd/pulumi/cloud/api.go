@@ -150,7 +150,9 @@ func newAPICmd() *cobra.Command {
 			"\n" +
 			"Exit codes: 0 success; 1 caller error; 2 invalid flags; 3 auth; 8 cancelled;\n" +
 			"255 internal.",
-		Example: "  # Inspect the currently authenticated user.\n" +
+		Example: "  # Verify an op's parameters and schemas with `describe` before calling it.\n" +
+			"  pulumi cloud api describe CreateStackTag\n\n" +
+			"  # Inspect the currently authenticated user.\n" +
 			"  pulumi cloud api /api/user\n\n" +
 			"  # Call by raw path with template variables filled from -F.\n" +
 			"  pulumi cloud api /api/orgs/{orgName}/members -F orgName=acme\n\n" +
