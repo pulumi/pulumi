@@ -297,34 +297,19 @@ func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
 }
 
 //nolint:paralleltest // uses t.Setenv
-func TestResolveTaskTarget_OrgFlagConflictsWithStackOwner(t *testing.T) {
+func TestResolveTaskTarget_OrgFlagOverridesStackOwner(t *testing.T) {
 	isolateWorkspace(t)
 
-	// `pulumi preview` would just fail to find the stack in this case. We
-	// surface it as an explicit error rather than silently dropping one side.
+	// --org is an explicit override — when both are present it wins over the
+	// stack reference's owner. The stack name is still taken from --stack;
+	// the caller is responsible for ensuring the named stack exists in the
+	// org they pass.
 	be := newFakeBackend()
 	be.ParseStackReferenceF = parseQualifiedStackRefF
 
-	_, _, _, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "myorg")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "does not match")
-	assert.Contains(t, err.Error(), "otherorg")
-	assert.Contains(t, err.Error(), "myorg")
-}
-
-//nolint:paralleltest // uses t.Setenv
-func TestResolveTaskTarget_OrgFlagMatchesStackOwner(t *testing.T) {
-	isolateWorkspace(t)
-
-	// Passing --org that matches the stack's owner is redundant but explicit
-	// — accept it rather than rejecting (the user may be scripting against
-	// older neo behavior where --org was load-bearing).
-	be := newFakeBackend()
-	be.ParseStackReferenceF = parseQualifiedStackRefF
-
-	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "otherorg")
+	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "explicit")
 	require.NoError(t, err)
-	assert.Equal(t, "otherorg", org)
+	assert.Equal(t, "explicit", org)
 	assert.Equal(t, "dev", stack)
 }
 

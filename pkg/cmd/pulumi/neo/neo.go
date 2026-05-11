@@ -402,12 +402,11 @@ type stackRefWithOrg interface {
 // task. The stack flag is optional — if it's empty we try the currently selected stack and
 // fall back to a project-only attachment if there isn't one.
 //
-// Org resolution mirrors `pulumi preview`: if a stack reference carries an
-// owner (e.g. `otherorg/proj/dev` from the CLI or from the workspace's
-// selected stack), that owner wins. The --org flag overrides; if it
-// disagrees with the stack's owner we error rather than create the task
-// against the wrong org. Only when no stack reference is in play do we fall
-// back to the backend's default org.
+// Org resolution: --org wins if provided; otherwise we use the owner carried
+// by the stack reference (so a workspace-selected `otherorg/proj/dev` keeps
+// `otherorg` instead of silently retargeting to the user's default org, the
+// way `pulumi preview` would); only when neither is set do we fall back to
+// the backend's default org.
 func resolveTaskTarget(
 	ctx context.Context,
 	ws pkgWorkspace.Context,
@@ -444,9 +443,6 @@ func resolveTaskTarget(
 	}
 
 	switch {
-	case orgFlag != "" && stackOwner != "" && orgFlag != stackOwner:
-		return "", "", "", fmt.Errorf(
-			"--org %q does not match the stack's organization %q", orgFlag, stackOwner)
 	case orgFlag != "":
 		org = orgFlag
 	case stackOwner != "":
