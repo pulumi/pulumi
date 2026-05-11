@@ -15,16 +15,20 @@
 package deploy
 
 import (
+	"context"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func newResource(name string) *resource.State {
@@ -123,4 +127,51 @@ func TestGlobUrn(t *testing.T) {
 			}
 		})
 	}
+}
+
+func makeProviderRef(t *testing.T, name string) sdkproviders.Reference {
+	t.Helper()
+	providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:" + name + "::default")
+	ref, err := sdkproviders.NewReference(providerURN, resource.ID("id-"+name))
+	require.NoError(t, err)
+	return ref
+}
+
+func TestLookupOrRegisterExtension(t *testing.T) {
+	t.Parallel()
+
+	d := &Deployment{
+		extensions: map[sdkproviders.Reference][]inFlightExtension{},
+	}
+	provA := makeProviderRef(t, "k8s")
+	provB := makeProviderRef(t, "azure")
+	extensionA := apitype.ExtensionRef("extension-a")
+	extensionB := apitype.ExtensionRef("extension-b")
+
+	// First call: nothing registered yet -> we get a CompletionSource to fulfill.
+	existing1, created1 := d.LookupOrRegisterExtension(provA, extensionA)
+	require.Nil(t, existing1, "first call should not return an existing promise")
+	require.NotNil(t, created1, "first call should return a fresh CompletionSource")
+
+	// Second call for the same (provider, ref): we get the existing promise to wait on.
+	// The CompletionSource is nil because we are NOT the one doing the work.
+	existing2, created2 := d.LookupOrRegisterExtension(provA, extensionA)
+	require.Nil(t, created2, "duplicate registration must not mint a second CompletionSource")
+	require.NotNil(t, existing2, "duplicate registration must hand back the in-flight promise")
+
+	// Verify the returned promise is the one tied to our original CompletionSource:
+	// fulfilling created should make existing2 resolve.
+	created1.MustFulfill(struct{}{})
+	_, err := existing2.Result(context.Background())
+	require.NoError(t, err, "existing promise should resolve after the first caller fulfills")
+
+	// Different ref under the same provider -> separate entry, new CompletionSource.
+	existingY, createdY := d.LookupOrRegisterExtension(provA, extensionB)
+	require.Nil(t, existingY)
+	require.NotNil(t, createdY, "different ref under same provider must be tracked independently")
+
+	// Same ref under a different provider -> separate entry, new CompletionSource.
+	existingB, createdB := d.LookupOrRegisterExtension(provB, extensionA)
+	require.Nil(t, existingB)
+	require.NotNil(t, createdB, "same ref under a different provider must be tracked independently")
 }

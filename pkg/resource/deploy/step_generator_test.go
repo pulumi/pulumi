@@ -15,18 +15,27 @@
 package deploy
 
 import (
+	"context"
+	"errors"
 	"runtime"
 	"testing"
+	"time"
+
+	"github.com/blang/semver"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func TestIgnoreChanges(t *testing.T) {
@@ -986,4 +995,171 @@ func TestStepGenerator(t *testing.T) {
 			assert.ErrorContains(t, err, "failed to resolve provider reference")
 		})
 	})
+
+	t.Run("generateSteps emits ParameterizeStep for an extension event", func(t *testing.T) {
+		t.Parallel()
+
+		// Pre-load a fake provider into the registry so GetProvider(ref)
+		// returns it later. The registry's plugin map is unexported, so we
+		// can't insert directly — but Registry.Same() will load a plugin
+		// via host.Provider() and store it. By making the host return our
+		// fake, the registry ends up holding the fake.
+		fakeProvider := &deploytest.Provider{}
+		host := &plugin.MockHost{
+			ProviderF: func(workspace.PluginDescriptor, env.Env) (plugin.Provider, error) {
+				return fakeProvider, nil
+			},
+		}
+		registry := providers.NewRegistry(host, false, nil)
+
+		providerURN := resource.URN("urn:pulumi:stack::project::pulumi:providers:k8s::default")
+		err := registry.Same(context.Background(), &resource.State{
+			URN:    providerURN,
+			Custom: true,
+			Type:   tokens.Type("pulumi:providers:k8s"),
+			ID:     "id-1",
+			Inputs: resource.PropertyMap{"version": resource.NewProperty("1.0.0")},
+		}, false)
+		require.NoError(t, err)
+
+		providerRef, err := sdkproviders.NewReference(providerURN, "id-1")
+		require.NoError(t, err)
+
+		eventsChan := make(chan SourceEvent, 1)
+		sg := &stepGenerator{
+			deployment: &Deployment{
+				opts:       &Options{},
+				target:     &Target{Name: tokens.MustParseStackName("stack")},
+				source:     NewNullSource("project"),
+				extensions: map[sdkproviders.Reference][]inFlightExtension{},
+				providers:  registry,
+				panicErrs:  make(chan error, 1),
+			},
+			urns:   map[resource.URN]bool{},
+			events: eventsChan,
+		}
+
+		event := &testRegEvent{
+			goal: &resource.Goal{
+				Type:     "k8s:apiextensions.k8s.io/v1:CustomResource",
+				Name:     "my-cr",
+				Provider: providerRef.String(),
+			},
+			extension:    &apitype.Extension{Name: "gateway-api", Version: "1.0.0", Value: []byte("blob")},
+			extensionRef: apitype.ExtensionRef("extension-a"),
+		}
+
+		steps, async, err := sg.generateSteps(event)
+		require.NoError(t, err)
+		assert.True(t, async)
+		require.Len(t, steps, 1)
+		ps, ok := steps[0].(*ParameterizeStep)
+		require.True(t, ok, "got %T", steps[0])
+
+		// Simulate ParameterizeStep.Apply succeeding so the spawned
+		// goroutine produces its continue-event.
+		ps.cts.MustFulfill(struct{}{})
+
+		select {
+		case ev := <-eventsChan:
+			cev, ok := ev.(*continueExtensionEvent)
+			require.True(t, ok, "got %T", ev)
+			expectedURN := resource.NewURN(
+				"stack", "project", "",
+				"k8s:apiextensions.k8s.io/v1:CustomResource", "my-cr",
+			)
+			assert.Equal(t, expectedURN, cev.URN())
+			assert.NoError(t, cev.Error())
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for continueExtensionEvent")
+		}
+	})
+}
+
+func TestParameterizeStepApply_Success(t *testing.T) {
+	t.Parallel()
+
+	extension := apitype.Extension{
+		Name:    "gateway-api",
+		Version: "1.2.3",
+		Value:   []byte(`{"crd":"Gateway"}`),
+	}
+
+	var capturedRequest plugin.ParameterizeRequest
+	prov := &deploytest.Provider{
+		ParameterizeF: func(_ context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			capturedRequest = req
+			return plugin.ParameterizeResponse{Name: extension.Name}, nil
+		},
+	}
+
+	completionSource := &promise.CompletionSource[struct{}]{}
+	step := NewParameterizeStep(&Deployment{}, prov, extension, completionSource)
+
+	status, _, err := step.Apply()
+	require.NoError(t, err)
+	assert.Equal(t, resource.StatusOK, status)
+
+	// Provider was called with the blob's contents, parsed into semver.
+	val, ok := capturedRequest.Parameters.(*plugin.ParameterizeValue)
+	require.True(t, ok, "expected ParameterizeValue (not ParameterizeArgs)")
+	assert.Equal(t, extension.Name, val.Name)
+	assert.Equal(t, semver.MustParse("1.2.3"), val.Version)
+	assert.Equal(t, extension.Value, val.Value)
+
+	// Waiters on this CompletionSource should now see a fulfilled promise.
+	_, err = completionSource.Promise().Result(context.Background())
+	assert.NoError(t, err, "successful parameterize should fulfill the CompletionSource")
+}
+
+func TestParameterizeStepApply_ProviderError(t *testing.T) {
+	t.Parallel()
+
+	want := errors.New("provider blew up")
+	prov := &deploytest.Provider{
+		ParameterizeF: func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			return plugin.ParameterizeResponse{}, want
+		},
+	}
+
+	completionSource := &promise.CompletionSource[struct{}]{}
+	step := NewParameterizeStep(
+		&Deployment{},
+		prov,
+		apitype.Extension{Name: "x", Version: "1.0.0", Value: []byte{}},
+		completionSource,
+	)
+
+	_, _, err := step.Apply()
+	assert.ErrorIs(t, err, want, "Apply must surface the provider error")
+
+	_, err = completionSource.Promise().Result(context.Background())
+	assert.ErrorIs(t, err, want, "failed parameterize must reject the CompletionSource")
+}
+
+func TestParameterizeStepApply_MalformedVersion(t *testing.T) {
+	t.Parallel()
+
+	var called bool
+	prov := &deploytest.Provider{
+		ParameterizeF: func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			called = true
+			return plugin.ParameterizeResponse{}, nil
+		},
+	}
+
+	completionSource := &promise.CompletionSource[struct{}]{}
+	step := NewParameterizeStep(
+		&Deployment{},
+		prov,
+		apitype.Extension{Name: "x", Version: "not-a-version", Value: nil},
+		completionSource,
+	)
+
+	_, _, err := step.Apply()
+	require.Error(t, err, "malformed version must fail Apply")
+	assert.False(t, called, "Apply must reject the blob without calling the provider")
+
+	_, err = completionSource.Promise().Result(context.Background())
+	assert.Error(t, err, "malformed version must reject the CompletionSource")
 }

@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
 	"math"
 	"regexp"
 	"strings"
@@ -295,6 +297,14 @@ func (m *resourcePlans) plan() *Plan {
 	return &m.plans
 }
 
+// inFlightExtension tracks an extension applied (or being applied) to a provider.
+// The done promise resolves once the provider's Parameterize call for this
+// extension finishes (successfully or not).
+type inFlightExtension struct {
+	ref  apitype.ExtensionRef
+	done *promise.CompletionSource[struct{}]
+}
+
 // A Deployment manages the iterative computation and execution of a deployment based on a stream of goal states.
 // A running deployment emits events that indicate its progress. These events must be used to record the new state
 // of the deployment target.
@@ -357,6 +367,10 @@ type Deployment struct {
 	postStepErrors []error
 	// postStepErrorsLock guards postStepErrors.
 	postStepErrorsLock sync.Mutex
+
+	// the in-flight extension parameterizations, by reference
+	extensions  map[sdkproviders.Reference][]inFlightExtension
+	extensionsM sync.Mutex
 }
 
 // RecordPostStepError records an error that occurred after a step's cloud operation completed successfully. The step's
@@ -376,6 +390,33 @@ func (d *Deployment) PostStepError() error {
 		return nil
 	}
 	return errors.Join(d.postStepErrors...)
+}
+
+// LookupOrRegisterExtension is the atomic dedup point for extension parameterization.
+// If the (provider, ref) pair is already in flight or done, returns the existing Promise
+// (caller should wait on it) and a nil CompletionSource.
+// If the pair is not yet registered, atomically records a new in-flight entry and returns
+// the CompletionSource. The caller MUST eventually call Fulfill or Reject on it — the
+// caller is now responsible for performing the parameterize work and signaling completion.
+// Exactly one of the returned values is non-nil.
+func (d *Deployment) LookupOrRegisterExtension(
+	provider sdkproviders.Reference, ref apitype.ExtensionRef,
+) (existing *promise.Promise[struct{}], created *promise.CompletionSource[struct{}]) {
+	d.extensionsM.Lock()
+	defer d.extensionsM.Unlock()
+	// if the extension is already registered, return Done
+	for _, e := range d.extensions[provider] {
+		if e.ref == ref {
+			return e.done.Promise(), nil
+		}
+	}
+	// if it is not registered,  record a new in-flight entry and return its CompletionSource.
+	completionSource := &promise.CompletionSource[struct{}]{}
+	d.extensions[provider] = append(d.extensions[provider], inFlightExtension{
+		ref:  ref,
+		done: completionSource,
+	})
+	return nil, completionSource
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -622,6 +663,7 @@ func NewDeployment(
 		newPlans:                        newResourcePlan(target.Config),
 		reads:                           reads,
 		resourceHooks:                   resourceHooks,
+		extensions:                      map[sdkproviders.Reference][]inFlightExtension{},
 	}
 
 	// Create a new resource status server for this deployment.

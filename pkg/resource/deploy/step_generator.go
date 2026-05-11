@@ -672,7 +672,6 @@ func (sg *stepGenerator) getOldResource(
 }
 
 func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResourceEvent) ([]Step, bool, error) {
-	var invalid bool // will be set to true if this object fails validation.
 	goal := event.Goal()
 
 	// Some goal settings are based on the parent settings so make sure our parent is correct.
@@ -687,6 +686,49 @@ func (sg *stepGenerator) generateSteps(ctx context.Context, event RegisterResour
 		return nil, false, err
 	}
 
+	// Register any extensions
+
+	if event.Extension() != nil {
+		providerName := goal.Provider
+		if providerName != "" {
+			providerRef, err := sdkproviders.ParseReference(providerName)
+			if err != nil {
+				return nil, false, fmt.Errorf("could not parse provider reference %s for extension: %w", providerName, err)
+			}
+			existing, created := sg.deployment.LookupOrRegisterExtension(providerRef, event.ExtensionRef())
+			provider, ok := sg.deployment.providers.GetProvider(providerRef)
+			if !ok {
+				return nil, false, fmt.Errorf("provider %s not registered", providerRef)
+			}
+			if created != nil {
+				// We're the first — emit the parameterize step.
+				go PanicRecovery(sg.deployment.panicErrs, func() {
+					_, err := created.Promise().Result(context.Background())
+					sg.events <- &continueExtensionEvent{
+						RegisterResourceEvent: event,
+						urn:                   urn,
+						err:                   err,
+					}
+				})
+				return []Step{NewParameterizeStep(sg.deployment, provider, *event.Extension(), created)}, true, nil
+			}
+			// Already in flight — wait, don't re-emit.
+			go PanicRecovery(sg.deployment.panicErrs, func() {
+				_, err := existing.Result(context.Background())
+				sg.events <- &continueExtensionEvent{
+					RegisterResourceEvent: event,
+					urn:                   urn,
+					err:                   err,
+				}
+			})
+			return nil, true, nil
+		}
+	}
+	return sg.generateResourceSteps(event, urn)
+}
+
+func (sg *stepGenerator) generateResourceSteps(event RegisterResourceEvent, urn resource.URN) ([]Step, bool, error) {
+	goal := event.Goal()
 	old, invalid, alias := sg.getOldResource(urn, goal.Name, goal.Type, goal.Parent, goal.Aliases)
 
 	var aliasUrns []resource.URN
@@ -843,6 +885,25 @@ func (sg *stepGenerator) ContinueStepsFromRefresh(
 	return steps, false, err
 }
 
+// ContinueStepsFromExtension is called by the deployment executor after a provider has been parameterized with an
+// extension. It produces the resource's normal lifecycle steps that GenerateSteps deferred while parameterization was
+// in flight.
+func (sg *stepGenerator) ContinueStepsFromExtension(event ContinueExtensionEvent) ([]Step, bool, error) {
+
+	steps, async, err := sg.continueStepsFromExtension(event)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if async {
+		// only validate real steps
+		return steps, true, nil
+	}
+
+	steps, err = sg.validateSteps(steps)
+	return steps, false, err
+}
+
 func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, error) {
 	provider, allDeps := new.GetAllDependencies()
 	allDepURNs := make([]resource.URN, len(allDeps))
@@ -866,6 +927,13 @@ func (sg *stepGenerator) hasSkippedDependencies(new *resource.State) (bool, erro
 		}
 	}
 	return false, nil
+}
+
+func (sg *stepGenerator) continueStepsFromExtension(
+	_ context.Context, event ContinueExtensionEvent,
+) ([]Step, bool, error) {
+	urn := event.URN()
+	return sg.generateResourceSteps(event, urn)
 }
 
 func (sg *stepGenerator) continueStepsFromRefresh(

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"net/url"
 	"path/filepath"
 	"reflect"
@@ -442,6 +443,10 @@ type resmon struct {
 	// A map of UUIDs to the description of a provider package they correspond to
 	packageRefMap map[string]providers.ProviderRequest
 
+	extensionRefLock sync.RWMutex
+	// A map of UUIDs to the provider extension they respond to
+	extensionRefMap map[string]apitype.Extension
+
 	// the organization name for the deployment.
 	organization string
 }
@@ -500,6 +505,7 @@ func newResourceMonitor(
 		resourceHooks:       src.resourceHooks,
 		resourceTransforms:  map[resource.URN][]TransformFunction{},
 		packageRefMap:       map[string]providers.ProviderRequest{},
+		extensionRefMap:     map[string]apitype.Extension{},
 		grpcDialOptions:     src.plugctx.DialOptions,
 	}
 
@@ -739,6 +745,18 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 	// Wasn't found add it to the map
 	uuid := uuid.New().String()
 	rm.packageRefMap[uuid] = pi
+	// TODO: make sure to look up if we already registered this extension.
+	if req.Extension != nil {
+		extension := apitype.Extension{
+			Name:    req.Extension.Name,
+			Version: req.Extension.Version,
+			Value:   req.Extension.Value,
+		}
+
+		rm.extensionRefLock.Lock()
+		rm.extensionRefMap[uuid] = extension
+		rm.extensionRefLock.Unlock()
+	}
 	logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, uuid)
 	return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
 }
@@ -2669,10 +2687,21 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			StackTrace:              stackTrace,
 			ResourceHooks:           resourceHooks,
 		}.Make()
+
+		var ext *apitype.Extension
+		if packageRef := req.GetPackageRef(); packageRef != "" {
+			rm.extensionRefLock.RLock()
+			if e, has := rm.extensionRefMap[packageRef]; has {
+				ext = &e
+			}
+			rm.extensionRefLock.RUnlock()
+		}
 		// Send the goal state to the engine.
 		step := &registerResourceEvent{
-			goal: goal,
-			done: make(chan *RegisterResult),
+			goal:         goal,
+			done:         make(chan *RegisterResult),
+			extension:    ext,
+			extensionRef: apitype.ExtensionRef(req.GetPackageRef()),
 		}
 
 		select {
@@ -2891,8 +2920,10 @@ func (rm *resmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type registerResourceEvent struct {
-	goal *resource.Goal       // the resource goal state produced by the iterator.
-	done chan *RegisterResult // the channel to communicate with after the resource state is available.
+	goal         *resource.Goal       // the resource goal state produced by the iterator.
+	done         chan *RegisterResult // the channel to communicate with after the resource state is available.
+	extension    *apitype.Extension   // optional extension data if this came from an extension package
+	extensionRef apitype.ExtensionRef // extension reference
 }
 
 var _ RegisterResourceEvent = (*registerResourceEvent)(nil)
@@ -2901,6 +2932,13 @@ func (g *registerResourceEvent) event() {}
 
 func (g *registerResourceEvent) Goal() *resource.Goal {
 	return g.goal
+}
+
+func (g *registerResourceEvent) Extension() *apitype.Extension {
+	return g.extension
+}
+func (g *registerResourceEvent) ExtensionRef() apitype.ExtensionRef {
+	return g.extensionRef
 }
 
 func (g *registerResourceEvent) Done(result *RegisterResult) {

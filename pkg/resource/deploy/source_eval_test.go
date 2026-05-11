@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"reflect"
 	"strings"
 	"sync"
@@ -146,8 +147,10 @@ func (rm *mockResmon) RegisterResourceOutputs(ctx context.Context,
 }
 
 type testRegEvent struct {
-	goal   *resource.Goal
-	result *RegisterResult
+	goal         *resource.Goal
+	result       *RegisterResult
+	extension    *apitype.Extension
+	extensionRef apitype.ExtensionRef
 }
 
 var _ RegisterResourceEvent = (*testRegEvent)(nil)
@@ -162,6 +165,9 @@ func (g *testRegEvent) Done(result *RegisterResult) {
 	contract.Assertf(g.result == nil, "Attempt to invoke testRegEvent.Done more than once")
 	g.result = result
 }
+
+func (g *testRegEvent) Extension() *apitype.Extension      { return g.extension }
+func (g *testRegEvent) ExtensionRef() apitype.ExtensionRef { return g.extensionRef }
 
 func fixedProgram(steps []RegisterResourceEvent) deploytest.ProgramFunc {
 	return func(_ plugin.RunInfo, resmon *deploytest.ResourceMonitor) error {
