@@ -1649,6 +1649,162 @@ func TestQuestionWrapsToTerminalWidth(t *testing.T) {
 	}
 }
 
+func TestModel_Update_UITodoList_OutsidePlanModeCommitsBlock(t *testing.T) {
+	t.Parallel()
+
+	// Outside plan mode every TodoWrite is rendered immediately so the user
+	// sees status flips ("step completed") and edits land in scrollback.
+	m := NewModel(ModelConfig{})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated, cmd := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "set up project", Index: 0, Status: "completed"},
+		{Content: "add lambda", Index: 1, Status: "in_progress"},
+		{Content: "run preview", Index: 2, Status: "pending"},
+	}})
+	um := updated.(Model)
+
+	idx := um.findBlockKind(blockTodoList)
+	require.NotEqual(t, -1, idx, "TodoWrite outside plan mode must commit a blockTodoList")
+	rendered := um.blocks[idx].rendered
+	assert.Contains(t, rendered, "TODO")
+	assert.Contains(t, rendered, "[x] ")
+	assert.Contains(t, rendered, "[~] ")
+	assert.Contains(t, rendered, "[ ] ")
+	// Index ordering is load-bearing: the agent communicates "next step"
+	// implicitly via priority order.
+	assert.Less(t, strings.Index(rendered, "set up project"), strings.Index(rendered, "add lambda"))
+	assert.Less(t, strings.Index(rendered, "add lambda"), strings.Index(rendered, "run preview"))
+
+	printed := collectPrintln(cmd)
+	require.Len(t, printed, 1, "outside plan mode the TODO block must be printed to scrollback")
+	assert.Contains(t, printed[0], "set up project")
+}
+
+func TestModel_Update_UITodoList_InPlanModeBuffersAndDoesNotCommit(t *testing.T) {
+	t.Parallel()
+
+	// In plan mode the list is held back so it can be folded into the
+	// upcoming Proposed plan block — committing now would split the visual
+	// unit the user picked the embedded layout for.
+	m := NewModel(ModelConfig{})
+	m.planMode = true
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated, cmd := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "draft plan", Index: 0, Status: "pending"},
+	}})
+	um := updated.(Model)
+
+	assert.Equal(t, -1, um.findBlockKind(blockTodoList),
+		"plan-mode TodoWrite must not commit a standalone block")
+	require.Len(t, um.pendingTodos, 1)
+	assert.Equal(t, "draft plan", um.pendingTodos[0].Content)
+	assert.Empty(t, collectPrintln(cmd), "plan-mode TodoWrite must not write to scrollback yet")
+}
+
+func TestModel_Update_PlanExitFoldsBufferedTodosIntoPlanBlock(t *testing.T) {
+	t.Parallel()
+
+	// The buffered list must surface as a Tasks: subsection inside the
+	// single Proposed plan block — that's the layout the user chose so the
+	// plan and the tasks read as one unit in scrollback.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.planMode = true
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated1, _ := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "alpha task", Index: 0, Status: "pending"},
+		{Content: "beta task", Index: 1, Status: "pending"},
+	}})
+	m = updated1.(Model)
+
+	updated2, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_plan",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n- step one",
+	})
+	um := updated2.(Model)
+
+	assert.Empty(t, um.pendingTodos, "buffered todos must be drained on plan_exit")
+	idx := um.findBlockKind(blockApprovalPlan)
+	require.NotEqual(t, -1, idx)
+	rendered := um.blocks[idx].rendered
+	assert.Contains(t, rendered, "Proposed plan")
+	assert.Contains(t, rendered, "Tasks:")
+	assert.Contains(t, rendered, "alpha task")
+	assert.Contains(t, rendered, "beta task")
+	// Single block — no separate blockTodoList ever materialized.
+	assert.Equal(t, -1, um.findBlockKind(blockTodoList),
+		"plan-exit must not produce a separate TODO block")
+}
+
+func TestModel_Update_PlanModeUITodoList_OnlyLatestSnapshotIsRendered(t *testing.T) {
+	t.Parallel()
+
+	// Several TodoWrites can arrive in plan mode (the agent drafts and
+	// revises). The plan_exit block must reflect only the most recent
+	// snapshot so users don't see superseded work.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.planMode = true
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated1, _ := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "stale entry", Index: 0, Status: "pending"},
+	}})
+	m = updated1.(Model)
+	updated2, _ := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "latest entry", Index: 0, Status: "pending"},
+	}})
+	m = updated2.(Model)
+
+	updated3, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_plan2",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "Plan body.",
+	})
+	um := updated3.(Model)
+
+	idx := um.findBlockKind(blockApprovalPlan)
+	require.NotEqual(t, -1, idx)
+	rendered := um.blocks[idx].rendered
+	assert.Contains(t, rendered, "latest entry")
+	assert.NotContains(t, rendered, "stale entry",
+		"superseded list entries must not leak into the plan block")
+}
+
+func TestModel_Update_PlanExitWithoutBufferedTodosRendersCleanPlan(t *testing.T) {
+	t.Parallel()
+
+	// When no TodoWrite has fired during plan mode, the plan block must
+	// render exactly as before — no spurious Tasks: header attached.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.planMode = true
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_plan3",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\nbody only",
+	})
+	um := updated.(Model)
+
+	idx := um.findBlockKind(blockApprovalPlan)
+	require.NotEqual(t, -1, idx)
+	rendered := um.blocks[idx].rendered
+	assert.Contains(t, rendered, "Proposed plan")
+	assert.NotContains(t, rendered, "Tasks:",
+		"a plan with no buffered todos must not advertise an empty Tasks: section")
+}
+
 func TestModel_RenderMarkdown_FallsBackWhenRendererNil(t *testing.T) {
 	t.Parallel()
 

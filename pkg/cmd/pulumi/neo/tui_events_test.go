@@ -47,6 +47,7 @@ func TestUIEventSealedInterface(t *testing.T) {
 		UIPulumiResource{ToolName: "pulumi__pulumi_preview"},
 		UIPulumiDiag{ToolName: "pulumi__pulumi_preview"},
 		UIPulumiEnd{ToolName: "pulumi__pulumi_preview"},
+		UITodoList{Items: []UITodoItem{{Content: "do thing", Status: "pending"}}},
 	}
 
 	// Calling uiEvent() through the interface dispatches to each concrete impl —
@@ -54,5 +55,5 @@ func TestUIEventSealedInterface(t *testing.T) {
 	for _, e := range events {
 		e.uiEvent()
 	}
-	require.Len(t, events, 17, "bumped this when adding a new UIEvent variant")
+	require.Len(t, events, 18, "bumped this when adding a new UIEvent variant")
 }

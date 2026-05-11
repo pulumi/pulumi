@@ -201,3 +201,21 @@ type UIPulumiEnd struct {
 }
 
 func (UIPulumiEnd) uiEvent() {}
+
+// UITodoItem is one entry in the agent's task list. Index preserves the
+// agent's intended ordering; Priority is carried for forward compatibility
+// but the renderer ignores it today. Field tags also let the wire decoder
+// in events.go unmarshal todo__TodoWrite args directly into this type.
+type UITodoItem struct {
+	Content  string `json:"content"`
+	Status   string `json:"status"`   // "pending" | "in_progress" | "completed"
+	Priority string `json:"priority"` // "low" | "medium" | "high"
+	Index    int    `json:"index"`
+}
+
+// UITodoList carries the agent's full task list.
+type UITodoList struct {
+	Items []UITodoItem
+}
+
+func (UITodoList) uiEvent() {}

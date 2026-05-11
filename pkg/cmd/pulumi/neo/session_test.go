@@ -306,6 +306,92 @@ func TestSession_FinalAssistantMessageWithCliCallsDoesNotEmitTaskIdle(t *testing
 	assert.False(t, hasUIEvent[UITaskIdle](events), "pending cli tool calls must not emit UITaskIdle")
 }
 
+func TestSession_ForwardsTodoWriteToolCallAsUITodoList(t *testing.T) {
+	t.Parallel()
+
+	// todo__TodoWrite is cloud-marked: the agent runs it server-side, so it
+	// must never reach the CLI dispatch loop. It does, however, carry the
+	// task list the TUI wants to render — forwardToUI peeks at the args and
+	// emits a UITodoList alongside the regular UIAssistantMessage.
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{{
+			ToolCallID: "tc1",
+			Name:       toolNameTodoWrite,
+			Args: json.RawMessage(`{"todos":[
+				{"content":"first","index":0,"priority":"high","status":"pending"},
+				{"content":"second","index":1,"priority":"medium","status":"in_progress"},
+				{"content":"third","index":2,"priority":"low","status":"completed"}
+			]}`),
+		}},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	require.True(t, hasUIEvent[UITodoList](events), "todo__TodoWrite must emit UITodoList")
+
+	// Verify the parsed payload preserves the wire content, ordering, and
+	// status strings so the renderer has everything it needs.
+	var got UITodoList
+	for _, e := range events {
+		if list, ok := e.(UITodoList); ok {
+			got = list
+			break
+		}
+	}
+	require.Len(t, got.Items, 3)
+	assert.Equal(t, "first", got.Items[0].Content)
+	assert.Equal(t, "pending", got.Items[0].Status)
+	assert.Equal(t, "high", got.Items[0].Priority)
+	assert.Equal(t, 0, got.Items[0].Index)
+	assert.Equal(t, "in_progress", got.Items[1].Status)
+	assert.Equal(t, "completed", got.Items[2].Status)
+
+	// Cloud-marked TodoWrite must never trigger CLI dispatch — no exec or
+	// tool_result posts should leave the session.
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Empty(t, streamer.posted, "cloud-marked todo__TodoWrite must not produce CLI posts")
+}
+
+func TestSession_TodoWriteWithMalformedArgsEmitsNoTodoList(t *testing.T) {
+	t.Parallel()
+
+	// A malformed args payload must be silently skipped rather than crashing
+	// the forwarder. The session must keep going and process subsequent
+	// events normally.
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{{
+			ToolCallID: "tc1",
+			Name:       toolNameTodoWrite,
+			Args:       json.RawMessage(`{"todos":"not-an-array"}`),
+		}},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t", UIEvents: uiCh}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	assert.False(t, hasUIEvent[UITodoList](events), "malformed todos payload must not emit UITodoList")
+}
+
 func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing.T) {
 	t.Parallel()
 
