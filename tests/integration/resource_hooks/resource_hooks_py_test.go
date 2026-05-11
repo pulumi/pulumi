@@ -69,6 +69,8 @@ func TestPythonResourceHooksTransform(t *testing.T) {
 			found := false
 			textComp := "fun_comp was called with child"
 			foundComp := false
+			textChild := "fun_child was called with length = 7"
+			foundChild := false
 			for _, event := range stackInfo.Events {
 				if event.DiagnosticEvent != nil {
 					if strings.Contains(event.DiagnosticEvent.Message, text) {
@@ -77,12 +79,16 @@ func TestPythonResourceHooksTransform(t *testing.T) {
 					if strings.Contains(event.DiagnosticEvent.Message, textComp) {
 						foundComp = true
 					}
+					if strings.Contains(event.DiagnosticEvent.Message, textChild) {
+						foundChild = true
+					}
 				}
 			}
 			b, err := json.Marshal(stackInfo.Events)
 			require.NoError(t, err)
 			require.True(t, found, "expected hook to print a message for the resource, got: %s", b)
 			require.True(t, foundComp, "expected hook to print a message for the component, got: %s", b)
+			require.True(t, foundChild, "expected hook to print a message for the component's child, got: %s", b)
 		},
 	})
 }

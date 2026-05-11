@@ -8,7 +8,6 @@ import { Random, Component } from "./random";
 function fun(args: ResourceHookArgs) {
     if (args.name === "res") {
         log.info(`fun was called with length = ${args.newInputs["length"]}`);
-        assert.strictEqual(args.name, "res", `Expected name 'res', got ${args.name}`);
         assert.strictEqual(args.type, "testprovider:index:Random", `Expected type 'testprovider:index:Random', got ${args.type}`);
     } else if (args.name === "comp") {
         const childId = args.newOutputs["childId"];
@@ -16,8 +15,12 @@ function fun(args: ResourceHookArgs) {
         if (!childId) {
             throw new Error(`expected non empty childId, got '${childId}'`);
         }
-        assert.strictEqual(args.name, "comp", `Expected name 'comp', got ${args.name}`);
         assert.strictEqual(args.type, "testprovider:index:Component", `Expected type 'testprovider:index:Component', got ${args.type}`);
+    } else if (args.name === "child-comp") {
+        log.info(`fun_child was called with length = ${args.newInputs["length"]}`);
+        assert.strictEqual(args.type, "testprovider:index:Random", `Expected type 'testprovider:index:Random', got ${args.type}`);
+    } else {
+        throw new Error(`got unexpected component name: ${args.name}`);
     }
 }
 
