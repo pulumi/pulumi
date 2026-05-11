@@ -181,6 +181,13 @@ func (w *recordingWorkspace) GetStoredCredentials() (workspace.Credentials, erro
 	return creds, err
 }
 
+func (w *recordingWorkspace) GetPlugins(ctx context.Context) ([]workspace.PluginInfo, error) {
+	w.start("GetPlugins", ctx)
+	plugins, err := w.w.GetPlugins(ctx)
+	w.finish(plugins, err)
+	return plugins, err
+}
+
 func (w *recordingWorkspace) LoadPluginProjectAt(
 	ctx context.Context, path string,
 ) (*workspace.PluginProject, string, error) {
@@ -219,6 +226,15 @@ func (w *recordingWorkspace) LinkIntoProject(
 	err := w.w.LinkIntoProject(ctx, project, projectDir, packageDescriptors)
 	w.finish(err)
 	return err
+}
+
+func (w *recordingWorkspace) GetRequiredPackages(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, error) {
+	w.start("GetRequiredPackages", ctx, dirPath, project)
+	packages, err := w.w.GetRequiredPackages(ctx, dirPath, project)
+	w.finish(packages, err)
+	return packages, err
 }
 
 func (w *recordingWorkspace) RunPackage(

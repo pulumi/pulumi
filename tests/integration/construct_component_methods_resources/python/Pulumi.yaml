@@ -1,6 +1,9 @@
 name: construct_component_methods_resources_py
 description: A program that constructs remote component resources with methods that create resources.
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv
 plugins:
   providers:
     - name: testprovider

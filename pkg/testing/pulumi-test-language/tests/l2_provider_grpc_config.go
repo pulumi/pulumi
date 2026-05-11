@@ -110,7 +110,10 @@ func init() {
 					assert.Equal(l, "{}", v["config-grpc:config:string3"], "string3")
 					assert.Equal(l, "0", v["config-grpc:config:int1"], "int1")
 					assert.Equal(l, "42", v["config-grpc:config:int2"], "int2")
-					assert.Equal(l, "0", v["config-grpc:config:num1"], "num1")
+					// Some SDKs will send 0 for this, some will send 0.0 as its a number
+					if v["config-grpc:config:num1"] != "0" && v["config-grpc:config:num1"] != "0.0" {
+						l.Errorf("unexpected value for num1: %s", v["config-grpc:config:num1"])
+					}
 					assert.Equal(l, "42.42", v["config-grpc:config:num2"], "num2")
 					assert.Equal(l, "true", v["config-grpc:config:bool1"], "bool1")
 					assert.Equal(l, "false", v["config-grpc:config:bool2"], "bool2")

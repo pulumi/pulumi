@@ -15,6 +15,7 @@
 package fuzzing
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
@@ -146,10 +147,23 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 			)
 		}
 		done := make(chan struct{})
+		// Cancellable context so the 20s cap below can signal the engine to shut down.
+		// This is best-effort: a genuinely hung engine may not honor cancellation, in
+		// which case the post-cancel drain below escalates to a hard failure.
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
 		go func() {
+			defer close(done)
 			// Operations may fail for legitimate reasons -- e.g. we have configured a provider operation to fail, aborting
 			// execution. We thus only fail if we encounter an actual snapshot integrity error.
-			outSnap, err := op.RunStep(project, p.GetTarget(t, inSnap), opOpts, false, p.BackendClient, nil, "0")
+			outSnap, err := op.RunWithContextStep(
+				ctx, project, p.GetTarget(t, inSnap), opOpts, false, p.BackendClient, nil, "0")
+			// If the outer select cancelled us after the 20s cap, skip all post-op checks — the
+			// outer goroutine is responsible for reporting the timeout, and any error we observe
+			// here is cancellation noise, not a bug.
+			if ctx.Err() != nil {
+				return
+			}
 			if _, isSIE := snapshot.AsSnapshotIntegrityError(err); isSIE {
 				failWithError(err)
 			}
@@ -171,14 +185,28 @@ func GeneratedFixture(fo FixtureOptions) func(t *rapid.T) {
 
 			// In all other cases, we expect errors to be "expected", or "bails" in our terminology.
 			assert.True(t, err == nil || result.IsBail(err), "unexpected error: %v", err)
-			close(done)
 		}()
 		select {
-		case <-time.After(20 * time.Second):
-			reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
-			assert.Failf(t, "test timed out after 20 seconds", reproMessage)
 		case <-done:
 			// Test completed within the timeout.
+		case <-time.After(20 * time.Second):
+			cancel()
+			// Give the engine a brief window to observe cancellation and drain. A
+			// genuinely hung engine likely won't respond at all, so keep this short and
+			// fail loudly below if it doesn't drain in time.
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
+				assert.Failf(
+					t,
+					"test timed out after 20 seconds and did not respond to cancellation within 5 more seconds",
+					reproMessage,
+				)
+				return
+			}
+			reproMessage := generateAndWriteRepro(t, fo.StackSpecOptions, snapSpec, progSpec, provSpec, planSpec)
+			assert.Failf(t, "test timed out after 20 seconds", reproMessage)
 		}
 	}
 }

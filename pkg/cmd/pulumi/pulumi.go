@@ -51,6 +51,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cancel"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/clispec"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/completion"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/config"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/console"
@@ -61,6 +62,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
+	cmdMetadata "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/org"
@@ -75,6 +78,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/trace"
 	cmdVersion "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/version"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/whoami"
+	backendlogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -89,6 +93,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
@@ -192,10 +197,17 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	var color string
 	var memProfileRate int
 	var rootSpan oteltrace.Span
+	var autoLogger *backendlogging.Logger
+
+	processStartTime := time.Now()
 
 	updateCheckResult := make(chan *updateCheckResult)
 
 	cleanup := func() {
+		// Logger.Close is a no-op when autoLogger is nil.
+		if err := autoLogger.Close(); err != nil {
+			logging.V(3).Infof("automatic log close error: %v", err)
+		}
 		logging.Flush()
 		cmdutil.CloseTracing()
 
@@ -256,6 +268,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				}
 			}()
 
+			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
+			client.SetUserAgentCommand(commandPath)
+			client.SetUserAgentAIAgent(cmdMetadata.DetectAIAgent(os.Getenv))
+
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
 			// get DisplayOptions passed in.
@@ -274,6 +290,20 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
+
+			// Start automatic logging. At this point we don't have a stack
+			// or secrets manager, so logs will be gzip-compressed (not
+			// encrypted). Engine operations may upgrade to encrypted logging
+			// when a secrets manager becomes available.
+			if env.EnableAutomaticLogging.Value() {
+				var logErr error
+				autoLogger, logErr = backendlogging.StartLogging(
+					cmd.Context(), nil /* sm */)
+				if logErr != nil {
+					logging.V(3).Infof("automatic logging unavailable: %v", logErr)
+				}
+			}
+
 			cmdutil.InitTracing("pulumi-cli", "pulumi", tracingFlag)
 
 			if err := cmdutil.InitOtelReceiver(otelTracesFlag); err != nil {
@@ -304,7 +334,14 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 			if cmdutil.IsOTelEnabled() {
 				tracer := otel.Tracer("pulumi-cli")
-				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi")
+
+				if traceparent := os.Getenv("TRACEPARENT"); traceparent != "" {
+					carrier := propagation.MapCarrier{"traceparent": traceparent}
+					ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
+				}
+
+				ctx, rootSpan = cmdutil.StartSpan(ctx, tracer, "pulumi",
+					oteltrace.WithTimestamp(processStartTime))
 
 				for k, v := range metadata {
 					rootSpan.SetAttributes(attribute.String("cli."+strings.ToLower(k), v))
@@ -314,6 +351,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				sc := rootSpan.SpanContext()
 				cmdutil.SetAppDashTraceParent(sc.TraceID(), sc.SpanID())
 			}
+			ctx = cmdutil.ContextWithProcessStartTime(ctx, processStartTime)
 			cmd.SetContext(ctx)
 
 			cmdutil.InitPprofServer(ctx)
@@ -443,6 +481,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
+				cloud.NewCloudCmd(),
 			},
 		},
 		{
@@ -482,7 +521,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				convert.NewConvertCmd(pkgWorkspace.Instance),
+				convert.NewConvertCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
 				logs.NewLogsCmd(pkgWorkspace.Instance),
 			},
@@ -495,6 +534,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				trace.NewViewTraceCmd(),
 				trace.NewConvertTraceCmd(),
 				events.NewReplayEventsCmd(),
+				events.NewEventsCmd(),
 				clispec.NewGenCLISpecCmd(cmd),
 			},
 		},
@@ -504,6 +544,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "AI Commands",
 			Commands: []*cobra.Command{
 				ai.NewAICommand(),
+				neo.NewNeoCmd(),
 			},
 		},
 	})

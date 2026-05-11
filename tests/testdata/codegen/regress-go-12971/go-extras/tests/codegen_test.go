@@ -235,7 +235,7 @@ func waitForOutput[T any](t testing.TB, o pulumi.Output) T {
 		return x
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	select {

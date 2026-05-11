@@ -69,6 +69,19 @@ func TestLockURLForError(t *testing.T) {
 			lockPath: "lock/file",
 			expected: ":bad:url/lock/file",
 		},
+		{
+			name:     "URL with password",
+			baseURL:  "https://user:password@example.com",
+			lockPath: "/.pulumi/locks/organization/proj/stack/18262c43-124d-4f19-b90f-24db3c0a22a3.json",
+			expected: "https://****:****@example.com/.pulumi/locks/organization/proj/stack/" +
+				"18262c43-124d-4f19-b90f-24db3c0a22a3.json",
+		},
+		{
+			name:     "URL without password",
+			baseURL:  "https://example.com",
+			lockPath: "/.pulumi/locks/organization/proj/stack/18262c43-124d-4f19-b90f-24db3c0a22a3.json",
+			expected: "https://example.com/.pulumi/locks/organization/proj/stack/18262c43-124d-4f19-b90f-24db3c0a22a3.json",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

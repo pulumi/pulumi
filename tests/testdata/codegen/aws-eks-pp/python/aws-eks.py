@@ -1,4 +1,5 @@
 import pulumi
+from typing import Any
 import json
 import pulumi_aws as aws
 
@@ -27,7 +28,7 @@ eks_route_table = aws.ec2.RouteTable("eksRouteTable",
     })
 # Subnets, one for each AZ in a region
 zones = aws.get_availability_zones()
-vpc_subnet = []
+vpc_subnet: list[Any] = []
 for range in [{"key": k, "value": v} for [k, v] in enumerate(zones.names)]:
     vpc_subnet.append(aws.ec2.Subnet(f"vpcSubnet-{range['key']}",
         assign_ipv6_address_on_creation=False,
@@ -38,7 +39,7 @@ for range in [{"key": k, "value": v} for [k, v] in enumerate(zones.names)]:
         tags={
             "Name": f"pulumi-sn-{range['value']}",
         }))
-rta = []
+rta: list[Any] = []
 for range in [{"key": k, "value": v} for [k, v] in enumerate(zones.names)]:
     rta.append(aws.ec2.RouteTableAssociation(f"rta-{range['key']}",
         route_table_id=eks_route_table.id,

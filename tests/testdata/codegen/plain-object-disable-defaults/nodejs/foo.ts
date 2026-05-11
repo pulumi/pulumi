@@ -56,9 +56,9 @@ export class Foo extends pulumi.CustomResource {
                 throw new Error("Missing required property 'backupKubeClientSettings'");
             }
             resourceInputs["argument"] = args?.argument;
-            resourceInputs["backupKubeClientSettings"] = args ? (args.backupKubeClientSettings ? pulumi.output(args.backupKubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined) : undefined;
-            resourceInputs["kubeClientSettings"] = args ? (args.kubeClientSettings ? pulumi.output(args.kubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined) : undefined;
-            resourceInputs["settings"] = args ? (args.settings ? pulumi.output(args.settings).apply(inputs.layeredTypeArgsProvideDefaults) : undefined) : undefined;
+            resourceInputs["backupKubeClientSettings"] = args ? pulumi.output(args.backupKubeClientSettings).apply(inputs.kubeClientSettingsArgsProvideDefaults) : undefined;
+            resourceInputs["kubeClientSettings"] = args ? pulumi.output(args.kubeClientSettings).apply(v => v === undefined ? undefined : inputs.kubeClientSettingsArgsProvideDefaults(v)) : undefined;
+            resourceInputs["settings"] = args ? pulumi.output(args.settings).apply(v => v === undefined ? undefined : inputs.layeredTypeArgsProvideDefaults(v)) : undefined;
             resourceInputs["defaultKubeClientSettings"] = undefined /*out*/;
         } else {
             resourceInputs["defaultKubeClientSettings"] = undefined /*out*/;
@@ -80,9 +80,9 @@ export interface FooArgs {
     /**
      * Options for tuning the Kubernetes client used by a Provider.
      */
-    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettingsArgs>;
+    kubeClientSettings?: pulumi.Input<inputs.KubeClientSettingsArgs | undefined>;
     /**
      * describing things
      */
-    settings?: pulumi.Input<inputs.LayeredTypeArgs>;
+    settings?: pulumi.Input<inputs.LayeredTypeArgs | undefined>;
 }

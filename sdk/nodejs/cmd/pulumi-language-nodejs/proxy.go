@@ -230,6 +230,12 @@ func (p *monitorProxy) SupportsFeature(
 	return p.target.SupportsFeature(ctx, req)
 }
 
+func (p *monitorProxy) GetDeploymentInfo(
+	ctx context.Context, req *emptypb.Empty,
+) (*pulumirpc.DeploymentInfo, error) {
+	return p.target.GetDeploymentInfo(ctx, req)
+}
+
 func (p *monitorProxy) RegisterStackTransform(
 	ctx context.Context, req *pulumirpc.Callback,
 ) (*emptypb.Empty, error) {

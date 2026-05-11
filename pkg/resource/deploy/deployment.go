@@ -40,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi-internal/gsync"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // BackendClient is used to retrieve information about stacks from a backend.
@@ -106,6 +107,10 @@ type Options struct {
 	ContinueOnError bool
 	// Autonamer can resolve user's preference for custom autonaming options for a given resource.
 	Autonamer autonaming.Autonamer
+	// true if the engine should display secrets in diagnostic messages.
+	ShowSecrets bool
+	// Analyzers is the list of policy analyzers to run during this deployment.
+	Analyzers []plugin.Analyzer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -326,8 +331,8 @@ type Deployment struct {
 	schemaLoader schema.Loader
 	// the source of new resources.
 	source Source
-	// the policy packs to run during this deployment's generation.
-	localPolicyPackPaths []string
+	// the policy analyzers to run during this deployment.
+	analyzers []plugin.Analyzer
 	// the dependency graph of the old snapshot.
 	depGraph *graph.DependencyGraph
 	// the provider registry for this deployment.
@@ -529,7 +534,6 @@ func NewDeployment(
 	prev *Snapshot,
 	plan *Plan,
 	source Source,
-	localPolicyPackPaths []string,
 	backendClient BackendClient,
 	resourceHooks *ResourceHooks,
 ) (*Deployment, error) {
@@ -583,7 +587,7 @@ func NewDeployment(
 		allOlds:                         allOlds,
 		oldViews:                        oldViews,
 		source:                          source,
-		localPolicyPackPaths:            localPolicyPackPaths,
+		analyzers:                       opts.Analyzers,
 		depGraph:                        depGraph,
 		providers:                       reg,
 		goals:                           newGoals,
@@ -609,14 +613,17 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
-func (d *Deployment) SameProvider(res *resource.State) error {
+// SameProvider configures a provider from state without changes.
+// If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.
+// If fromCheck is false (e.g., from EnsureProvider), we load fresh and don't touch UnconfiguredID.
+func (d *Deployment) SameProvider(res *resource.State, fromCheck bool) error {
 	var ctx context.Context
 	if d.ctx == nil {
 		ctx = context.Background()
 	} else {
 		ctx = d.ctx.Base()
 	}
-	return d.providers.Same(ctx, res)
+	return d.providers.Same(ctx, res, fromCheck)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes
@@ -644,7 +651,9 @@ func (d *Deployment) EnsureProvider(provider string) error {
 			return fmt.Errorf("could not find provider %v", providerRef)
 		}
 
-		err := d.SameProvider(providerResource)
+		// fromCheck=false because we're loading from state for dependency diffing,
+		// not from a Check/Diff flow. We must not touch the UnconfiguredID entry.
+		err := d.SameProvider(providerResource, false)
 		if err != nil {
 			return fmt.Errorf("could not create provider %v: %w", providerRef, err)
 		}
@@ -731,7 +740,8 @@ func (d *Deployment) Close() error {
 // error will only generate a warning. Otherwise, it will cause an error return.
 func (d *Deployment) RunHooks(
 	hooks []string, hookType resource.HookType, id resource.ID, urn resource.URN,
-	name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+	newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 ) error {
 	for _, hookName := range hooks {
 		hook, err := d.resourceHooks.GetResourceHook(hookName)
@@ -745,6 +755,8 @@ func (d *Deployment) RunHooks(
 		err = hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,
+			oldOptions,
+			newOptions,
 			newInputs, oldInputs, newOutputs, oldOutputs,
 		)
 		if err != nil {
@@ -769,7 +781,8 @@ func (d *Deployment) RunHooks(
 // RunErrorHooks runs all error hooks on the given state. A hook that returns an error will cause an error return.
 func (d *Deployment) RunErrorHooks(
 	hooks []string, id resource.ID, urn resource.URN,
-	name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
+	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+	newInputs, oldInputs, oldOutputs resource.PropertyMap,
 	failedOperation string, errors []string,
 ) (bool, error) {
 	shouldRetry := false
@@ -783,6 +796,8 @@ func (d *Deployment) RunErrorHooks(
 		retry, err := hook.Callback(
 			d.Ctx().Base(),
 			urn, id, name, typ,
+			oldOptions,
+			newOptions,
 			newInputs, oldInputs, oldOutputs,
 			failedOperation,
 			errors,

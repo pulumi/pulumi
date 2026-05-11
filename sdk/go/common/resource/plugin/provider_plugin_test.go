@@ -666,6 +666,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 			// and are not affected by ConstructOptions.
 			tt.want.Project = "project"
 			tt.want.Stack = "stack"
+			tt.want.Organization = "organization"
 			tt.want.Type = "type"
 			tt.want.Name = "name"
 			tt.want.Config = make(map[string]string)
@@ -705,7 +706,7 @@ func TestProvider_ConstructOptions(t *testing.T) {
 
 			_, err = p.Construct(t.Context(),
 				ConstructRequest{
-					Info:    ConstructInfo{Project: "project", Stack: "stack"},
+					Info:    ConstructInfo{Project: "project", Stack: "stack", Organization: "organization"},
 					Type:    "type",
 					Name:    "name",
 					Parent:  tt.parent,

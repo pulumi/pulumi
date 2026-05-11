@@ -134,3 +134,6 @@ class Provider:
         """
 
         raise Exception(f"Unknown function {token}")
+
+    def cancel(self) -> None:
+        """Cancel signals the provider to gracefully shut down and abort any ongoing operations."""

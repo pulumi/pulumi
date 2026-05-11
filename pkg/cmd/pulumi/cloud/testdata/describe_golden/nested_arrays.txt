@@ -1,0 +1,24 @@
+GET /api/test/nested-arrays/{id}
+Tag: TestNested
+Operation: GetNestedArrays
+
+GetNestedArrays
+
+Regression coverage: response has both an array of allOf-wrapped objects and an array of string-enum primitives. Exercises markdown renderer paths that were silently dropping nested model fields and inline enum values.
+
+Parameters:
+  [path] id* (string) — Synthetic id.
+
+Success response (application/json):
+  Response:
+    {
+      owners*: Owners list — items use allOf to merge in the OwnerSummary shape. [
+        {
+          name*: (string) Owner display name.
+          role: (string) one of: admin, member, viewer Owner role.
+        }
+      ]
+      statuses*: Allowed status values for the thing. [
+        (string) one of: pending, active, archived
+      ]
+    }

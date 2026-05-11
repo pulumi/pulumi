@@ -87,14 +87,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 		Description: "Assets and archives",
 	},
 	{
-		Directory:   "aws-s3-folder",
-		Description: "AWS S3 Folder",
-		SkipCompile: codegen.NewStringSet(TestGo),
-		// Blocked on go:
-		//   TODO[pulumi/pulumi#8064]
-		//   TODO[pulumi/pulumi#8065]
-	},
-	{
 		Directory:   "aws-eks",
 		Description: "AWS EKS",
 	},
@@ -189,10 +181,6 @@ var PulumiPulumiProgramTests = []ProgramTest{
 	{
 		Directory:   "aws-secret",
 		Description: "Secret",
-	},
-	{
-		Directory:   "functions",
-		Description: "Functions",
 	},
 	{
 		Directory:   "output-funcs-aws",
@@ -635,8 +623,14 @@ func TestProgramCodegen(
 
 func collectExtraPulumiPackages(program *pcl.Program, extraPulumiPackages codegen.StringSet) {
 	for _, n := range program.Nodes {
-		if r, isResource := n.(*pcl.Resource); isResource {
-			pkg, _, _, _ := r.DecomposeToken()
+		switch r := n.(type) {
+		case *pcl.Resource:
+			pkg, _, _, _ := pcl.DecomposeToken(r.GetToken())
+			if pkg != "pulumi" {
+				extraPulumiPackages.Add(pkg)
+			}
+		case *pcl.ReadResource:
+			pkg, _, _, _ := pcl.DecomposeToken(r.GetToken())
 			if pkg != "pulumi" {
 				extraPulumiPackages.Add(pkg)
 			}

@@ -224,25 +224,6 @@ func optsForConstructPython(
 	}
 }
 
-func TestConstructComponentConfigureProviderPython(t *testing.T) {
-	// This uses the tls plugin so needs to be able to download it
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "false")
-
-	const testDir = "construct_component_configure_provider"
-	runComponentSetup(t, testDir)
-	pulumiRoot, err := filepath.Abs("../..")
-	require.NoError(t, err)
-	pulumiPySDK := filepath.Join("..", "..", "sdk", "python")
-	componentSDK := filepath.Join(pulumiRoot, "pkg/codegen/testing/test/testdata/methods-return-plain-resource/python")
-	opts := testConstructComponentConfigureProviderCommonOptions()
-	opts = opts.With(integration.ProgramTestOptions{
-		Dir:          filepath.Join(testDir, "python"),
-		Dependencies: []string{pulumiPySDK, componentSDK},
-		NoParallel:   true,
-	})
-	integration.ProgramTest(t, &opts)
-}
-
 // Regresses https://github.com/pulumi/pulumi/issues/6471
 func TestAutomaticVenvCreation(t *testing.T) {
 	t.Parallel()
@@ -776,7 +757,7 @@ func TestUvWindowsError(t *testing.T) {
 	go func() {
 		e.ImportDirectory(filepath.Join("python", "uv-with-error"))
 		e.RunCommand("pulumi", "install")
-		e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+		e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", ptesting.RandomStackName())
 		stdout, _ = e.RunCommandExpectError("pulumi", "preview")

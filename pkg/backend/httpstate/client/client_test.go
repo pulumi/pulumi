@@ -17,11 +17,13 @@ package client
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -148,6 +150,27 @@ func TestAPIVersionResponses(t *testing.T) {
 	assert.Equal(t, latestVersion.String(), "1.0.0")
 	assert.Equal(t, oldestWithoutWarning.String(), "0.1.0")
 	assert.Equal(t, latestDevVersion.String(), "1.0.0-11-gdeadbeef")
+}
+
+func TestAcceptAPIVersionHeader(t *testing.T) {
+	t.Parallel()
+
+	// This test pins the Accept header value the CLI sends. If this fails
+	// because you bumped `currentAPIVersion`, also append a row to the version
+	// history table in api.go (and update the matching version block in
+	// pulumi-service `cmd/service/api/rest/request.go`).
+	var handled atomic.Bool
+	server := newMockServerRequestProcessor(200, func(req *http.Request) string {
+		handled.Store(true)
+		assert.Equal(t, "application/vnd.pulumi+9", req.Header.Get("Accept"))
+		return `{"latestVersion": "1.0.0", "oldestWithoutWarning": "0.1.0", "latestDevVersion": "1.0.0"}`
+	})
+	defer server.Close()
+	client := newMockClient(server)
+
+	_, _, _, err := client.GetCLIVersionInfo(t.Context(), nil)
+	require.NoError(t, err)
+	assert.True(t, handled.Load(), "mock server handler did not run")
 }
 
 func TestAPIVersionMetadataHeaders(t *testing.T) {
@@ -620,7 +643,7 @@ func TestListPackages(t *testing.T) {
 
 		// Set up mock server
 		mockServer := newMockServerRequestProcessor(200, func(req *http.Request) string {
-			assert.Contains(t, req.URL.String(), "/api/preview/registry/packages?limit=499")
+			assert.Contains(t, req.URL.String(), "/api/registry/packages?limit=499")
 			assert.Equal(t, "GET", req.Method)
 
 			data, err := json.Marshal(mockResponse)
@@ -691,7 +714,7 @@ func TestListPackages(t *testing.T) {
 
 			switch requestCount {
 			case 0:
-				assert.Equal(t, "/api/preview/registry/packages?limit=499&name=my-package", req.URL.String())
+				assert.Equal(t, "/api/registry/packages?limit=499&name=my-package", req.URL.String())
 				assert.NotContains(t, "continuationToken", req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
@@ -701,7 +724,7 @@ func TestListPackages(t *testing.T) {
 				require.NoError(t, err)
 			case 1:
 				assert.Equal(t,
-					"/api/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-1",
+					"/api/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-1",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
@@ -711,7 +734,7 @@ func TestListPackages(t *testing.T) {
 				require.NoError(t, err)
 			case 2:
 				assert.Equal(t,
-					"/api/preview/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-2",
+					"/api/registry/packages?limit=499&name=my-package&continuationToken=next-page-token-2",
 					req.URL.String())
 
 				responseData, err = json.Marshal(apitype.ListPackagesResponse{
@@ -866,7 +889,8 @@ func TestCreateNeoTask(t *testing.T) {
 		defer successServer.Close()
 
 		client := newMockClient(successServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
@@ -880,7 +904,8 @@ func TestCreateNeoTask(t *testing.T) {
 		defer errorServer.Close()
 
 		client := newMockClient(errorServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
 		require.Error(t, err)
 		require.Nil(t, resp)
@@ -894,9 +919,273 @@ func TestCreateNeoTask(t *testing.T) {
 		defer unauthorizedServer.Close()
 
 		client := newMockClient(unauthorizedServer)
-		resp, err := client.CreateNeoTask(t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project")
+		resp, err := client.CreateNeoTask(
+			t.Context(), "my-org", "Help me debug this error", "my-stack", "my-project", CreateNeoTaskOptions{})
 
 		require.Error(t, err)
 		require.Nil(t, resp)
+	})
+
+	t.Run("RequestShape", func(t *testing.T) {
+		t.Parallel()
+
+		// The backend deserializes into apitype.CreateAgentTaskRequest, so the path,
+		// toolExecutionMode camelCase tag, and entity_diff block have to land exactly
+		// right. Anchor that wire shape here so a refactor can't silently drift it.
+		var (
+			gotPath   string
+			gotMethod string
+			gotBody   map[string]any
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotPath = req.URL.Path
+			gotMethod = req.Method
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_1"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hello", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode: "cli",
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPost, gotMethod)
+		assert.Equal(t, "/api/preview/agents/my-org/tasks", gotPath)
+		assert.Equal(t, "cli", gotBody["toolExecutionMode"])
+		// approvalMode is omitempty — must not appear in the body when empty so the
+		// server falls back to its default (auto) mode.
+		assert.NotContains(t, gotBody, "approvalMode", "empty approvalMode must be omitted")
+
+		message, _ := gotBody["message"].(map[string]any)
+		require.NotNil(t, message)
+		assert.Equal(t, "user_message", message["type"])
+		assert.Equal(t, "hello", message["content"])
+
+		entityDiff, _ := message["entity_diff"].(map[string]any)
+		require.NotNil(t, entityDiff, "stack+project must produce an entity_diff block")
+		add, _ := entityDiff["add"].([]any)
+		require.Len(t, add, 1)
+		entity, _ := add[0].(map[string]any)
+		assert.Equal(t, "stack", entity["type"])
+		assert.Equal(t, "stack", entity["name"])
+		assert.Equal(t, "proj", entity["project"])
+	})
+
+	t.Run("ApprovalModeManualSerializes", func(t *testing.T) {
+		t.Parallel()
+
+		// When the CLI passes NeoApprovalModeManual, the body must carry
+		// approvalMode:"manual" so the server gates each tool call on a
+		// user_approval_request. The wire tag is camelCase to match the IDL.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_3"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode: "cli",
+			ApprovalMode:      NeoApprovalModeManual,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "manual", gotBody["approvalMode"])
+	})
+
+	t.Run("OmitsEntityDiffWhenStackMissing", func(t *testing.T) {
+		t.Parallel()
+
+		// The backend rejects entity_diff entries with empty name/project, so the
+		// client must omit the block entirely when either side is missing.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_2"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", CreateNeoTaskOptions{})
+		require.NoError(t, err)
+
+		message, _ := gotBody["message"].(map[string]any)
+		require.NotNil(t, message)
+		assert.NotContains(t, message, "entity_diff")
+	})
+
+	t.Run("PlanModeInRequestBody", func(t *testing.T) {
+		t.Parallel()
+
+		// planMode is a per-task feature flag plumbed on CreateAgentTaskRequest; the
+		// JSON tag must be camelCase planMode, and an omitted (false) value must not
+		// leak into the request so unrelated callers aren't implicitly opted in.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_3"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "plan this", "", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode: "cli",
+			PlanMode:          true,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, true, gotBody["planMode"], "planMode=true must be sent as planMode:true")
+	})
+
+	t.Run("PlanModeOmittedWhenFalse", func(t *testing.T) {
+		t.Parallel()
+
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_4"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", CreateNeoTaskOptions{})
+		require.NoError(t, err)
+
+		assert.NotContains(t, gotBody, "planMode", "planMode must be omitted when false")
+	})
+}
+
+func TestPostNeoTaskUserEvent(t *testing.T) {
+	t.Parallel()
+
+	// The CLI loop must POST user events to the task root (not /events, which is
+	// reserved for the agent runtime) and wrap them in the {"event": ...} envelope.
+	var (
+		gotPath   string
+		gotMethod string
+		gotBody   map[string]any
+	)
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotPath = req.URL.Path
+		gotMethod = req.Method
+		require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+		rw.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := newMockClient(server)
+	err := client.PostNeoTaskUserEvent(t.Context(), "my-org", "task_1", apitype.AgentUserEventExecToolCall{
+		Type:       "exec_tool_call",
+		ToolCallID: "c1",
+		Name:       "filesystem__read",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, gotMethod)
+	assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1", gotPath)
+
+	event, _ := gotBody["event"].(map[string]any)
+	require.NotNil(t, event, "body must wrap the inner event in {\"event\": ...}")
+	assert.Equal(t, "exec_tool_call", event["type"])
+	assert.Equal(t, "c1", event["tool_call_id"])
+	assert.Equal(t, "filesystem__read", event["name"])
+}
+
+func TestStreamNeoTaskEvents(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ParsesDataFramesAndIgnoresComments", func(t *testing.T) {
+		t.Parallel()
+
+		// SSE framing: blank lines delimit events, lines that start with ":" are
+		// comments (heartbeats), and event-less `data:` frames concatenate with a
+		// single newline separator. Exercise each in one stream.
+		var gotPath string
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotPath = req.URL.Path
+			assert.Equal(t, "text/event-stream", req.Header.Get("Accept"))
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+			flusher, ok := rw.(http.Flusher)
+			require.True(t, ok)
+			_, _ = rw.Write([]byte(": heartbeat\n"))
+			_, _ = rw.Write([]byte("data: {\"type\":\"agentResponse\"}\n\n"))
+			_, _ = rw.Write([]byte("data: line1\ndata: line2\n\n"))
+			flusher.Flush()
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		require.NoError(t, err)
+
+		got := make([][]byte, 0, 2)
+		for evt := range stream {
+			require.NoError(t, evt.Err)
+			got = append(got, evt.Data)
+		}
+		assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1/events/stream", gotPath)
+		require.Len(t, got, 2)
+		assert.Equal(t, `{"type":"agentResponse"}`, string(got[0]))
+		assert.Equal(t, "line1\nline2", string(got[1]))
+	})
+
+	t.Run("HTTPErrorSurfacesBeforeStreamStarts", func(t *testing.T) {
+		t.Parallel()
+
+		// A non-2xx response must fail the initial handshake, not surface as a
+		// stream error later — the caller should not have to drain a dead channel.
+		server := newMockServer(http.StatusUnauthorized, "unauthorized")
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		require.Error(t, err)
+		assert.Nil(t, stream)
+		assert.Contains(t, err.Error(), "401")
+	})
+
+	t.Run("ContextCancelClosesStream", func(t *testing.T) {
+		t.Parallel()
+
+		// Lifetime is caller-controlled via ctx — cancelling mid-stream must close
+		// the channel promptly, even while the server is still holding the HTTP
+		// connection open.
+		ready := make(chan struct{})
+		release := make(chan struct{})
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+			flusher, _ := rw.(http.Flusher)
+			if flusher != nil {
+				flusher.Flush()
+			}
+			close(ready)
+			<-release
+		}))
+		defer server.Close()
+		defer close(release)
+
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(ctx, "my-org", "task_1")
+		require.NoError(t, err)
+
+		<-ready
+		cancel()
+
+		for range stream {
+			// Drain; just verifying the channel closes.
+		}
 	})
 }

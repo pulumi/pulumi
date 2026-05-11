@@ -24,7 +24,7 @@ class ProviderArgs:
                  hash: pulumi.Input['HashKind'],
                  shared: pulumi.Input['SharedArgs'],
                  user: pulumi.Input[_builtins.str],
-                 password: Optional[pulumi.Input[_builtins.str]] = None):
+                 password: pulumi.Input[Optional[_builtins.str]] = None):
         """
         The set of arguments for constructing a Provider resource.
 
@@ -75,14 +75,14 @@ class ProviderArgs:
 
     @_builtins.property
     @pulumi.getter
-    def password(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def password(self) -> pulumi.Input[Optional[_builtins.str]]:
         """
         The password. It is very secret.
         """
         return pulumi.get(self, "password")
 
     @password.setter
-    def password(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def password(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "password", value)
 
 
@@ -92,10 +92,10 @@ class Provider(pulumi.ProviderResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 hash: Optional[pulumi.Input['HashKind']] = None,
-                 password: Optional[pulumi.Input[_builtins.str]] = None,
-                 shared: Optional[pulumi.Input[Union['SharedArgs', 'SharedArgsDict']]] = None,
-                 user: Optional[pulumi.Input[_builtins.str]] = None,
+                 hash: pulumi.Input[Optional['HashKind']] = None,
+                 password: pulumi.Input[Optional[_builtins.str]] = None,
+                 shared: pulumi.Input[Optional[Union['SharedArgs', 'SharedArgsDict']]] = None,
+                 user: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a Credentials resource with the given unique name, props, and options.
@@ -130,10 +130,10 @@ class Provider(pulumi.ProviderResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 hash: Optional[pulumi.Input['HashKind']] = None,
-                 password: Optional[pulumi.Input[_builtins.str]] = None,
-                 shared: Optional[pulumi.Input[Union['SharedArgs', 'SharedArgsDict']]] = None,
-                 user: Optional[pulumi.Input[_builtins.str]] = None,
+                 hash: pulumi.Input[Optional['HashKind']] = None,
+                 password: pulumi.Input[Optional[_builtins.str]] = None,
+                 shared: pulumi.Input[Optional[Union['SharedArgs', 'SharedArgsDict']]] = None,
+                 user: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

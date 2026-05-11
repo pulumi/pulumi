@@ -1,3 +1,5 @@
+config createTimeout "string" {}
+
 resource "noTimeouts" "simple:index:Resource" {
     value = true
 }
@@ -36,6 +38,15 @@ resource "allTimeouts" "simple:index:Resource" {
             create = "2m"
             update = "4m"
             delete = "1m"
+        }
+    }
+}
+
+resource "configTimeout" "simple:index:Resource" {
+    value = true
+    options {
+        customTimeouts = {
+            create = createTimeout
         }
     }
 }

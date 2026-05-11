@@ -1547,6 +1547,36 @@ function getBuiltInModules(): Promise<Map<any, string>> {
 }
 
 /**
+ * Returns true if obj looks like the result of TypeScript's __importStar() helper, i.e. a plain wrapper object where
+ * `default` holds the original module and all other own properties are re-exports from that module.
+ */
+function isImportStarResult(obj: any): obj is { default: unknown } {
+    if (obj == null || typeof obj !== "object" || !("default" in obj)) {
+        return false;
+    }
+    // __importStar creates its result with `var result = {}`, so the prototype is Object.prototype.
+    if (Object.getPrototypeOf(obj) !== Object.prototype) {
+        return false;
+    }
+    const mod = obj.default;
+    if (mod == null) {
+        return false;
+    }
+    // Every re-exported property must also exist on the underlying module
+    let hasReExport = false;
+    for (const k of Object.getOwnPropertyNames(obj)) {
+        if (k === "default" || k === "__esModule") {
+            continue;
+        }
+        if (!(k in mod)) {
+            return false;
+        }
+        hasReExport = true;
+    }
+    return hasReExport;
+}
+
+/**
  * Attempts to find a global name bound to the object, which can be used as a
  * stable reference across serialization.  For built-in modules (i.e. `os`,
  * `fs`, etc.) this will return that exact name of the module.  Otherwise, this
@@ -1563,6 +1593,16 @@ async function findNormalizedModuleNameAsync(obj: any): Promise<string | undefin
     const key = modules.get(obj);
     if (key) {
         return key;
+    }
+
+    // When TypeScript compiles `import * as foo from "foo"` with `module: "nodenext"`, it emits
+    // `__importStar(require("foo"))`. This creates a wrapper object with a `default` property that holds the original
+    // module.
+    if (isImportStarResult(obj)) {
+        const unwrappedKey = modules.get(obj.default);
+        if (unwrappedKey) {
+            return unwrappedKey;
+        }
     }
 
     // Next, check the Node module require cache, which will store cached values

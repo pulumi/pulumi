@@ -1,0 +1,33 @@
+GET /api/orgs/{orgName}/tokens
+Tag: AccessTokens
+Operation: ListOrgTokens
+
+ListOrgTokens
+
+Retrieves all access tokens created for an organization. Organization tokens provide CI/CD automation access scoped to the organization rather than tied to individual user accounts. The response includes token metadata such as name, description, creation date, last used date, and expiration status. The actual token values are never returned after initial creation. An optional filter parameter can include expired tokens in the results.
+
+Parameters:
+  [path] orgName* (string) — The organization name
+  [query] filter (string) — Filter tokens by status (e.g., include expired tokens)
+
+Success response (application/json):
+  Response:
+    {
+      tokens*: The list of access tokens [
+        {
+          id*: (string) Unique identifier for this access token.
+          name*: (string) Human-readable name assigned to this access token.
+          description*: (string) User-provided description of the token's purpose.
+          created*: (string) Timestamp when the token was created, in ISO 8601 format.
+          lastUsed*: (integer format:int64) Unix epoch timestamp (seconds) when the token was last used. Zero if never used.
+          expires*: (integer format:int64) Unix epoch timestamp (seconds) when the token expires. Zero if it never expires.
+          admin*: (boolean) Whether this token has Pulumi Cloud admin privileges.
+          createdBy*: (string) User.GitHubLogin of the user that created the access token
+          role: A role that can be associated with an access token to scope its permissions. {
+            id*: (string) Unique identifier for this role.
+            name*: (string) Display name of the role.
+            defaultIdentifier*: (string) one of: member, admin, billing-manager, stack-read, stack-write, stack-admin, ... The default identity to assume when using a token with this role.
+          }
+        }
+      ]
+    }

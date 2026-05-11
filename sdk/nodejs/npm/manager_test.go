@@ -31,6 +31,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
 	"github.com/stretchr/testify/assert"
@@ -91,20 +92,56 @@ func TestResolvePackageManager(t *testing.T) {
 		name      string
 		pm        PackageManagerType
 		lockFiles []string
-		expected  string
+		// manifests names manifest files to write into the project directory. Each entry is one of "package.json" or
+		// "package.yaml".
+		manifests []string
+		// expected is the package manager name we expect to resolve to. Leave empty when expecting an error.
+		expected string
+		// expectedErr, if non-empty, asserts that ResolvePackageManager returns an error containing this substring.
+		expectedErr string
 	}{
-		{"defaults to npm", AutoPackageManager, []string{}, "npm"},
-		{"picks npm", NpmPackageManager, []string{}, "npm"},
-		{"picks yarn", YarnPackageManager, []string{}, "yarn"},
-		{"picks pnpm", PnpmPackageManager, []string{}, "pnpm"},
-		{"picks bun", BunPackageManager, []string{}, "bun"},
-		{"picks npm based on lockfile", AutoPackageManager, []string{"npm"}, "npm"},
-		{"picks yarn based on lockfile", AutoPackageManager, []string{"yarn"}, "yarn"},
-		{"picks pnpm based on lockfile", AutoPackageManager, []string{"pnpm"}, "pnpm"},
-		{"picks bun based on lockfile", AutoPackageManager, []string{"bun"}, "bun"},
-		{"yarn > pnpm > npm", AutoPackageManager, []string{"yarn", "pnpm", "npm"}, "yarn"},
-		{"pnpm > bun > npm", AutoPackageManager, []string{"pnpm", "bun", "npm"}, "pnpm"},
-		{"bun > npm", AutoPackageManager, []string{"bun", "npm"}, "bun"},
+		{name: "defaults to npm", pm: AutoPackageManager, expected: "npm"},
+		{name: "picks npm", pm: NpmPackageManager, expected: "npm"},
+		{name: "picks yarn", pm: YarnPackageManager, expected: "yarn"},
+		{name: "picks pnpm", pm: PnpmPackageManager, expected: "pnpm"},
+		{name: "picks bun", pm: BunPackageManager, expected: "bun"},
+		{name: "picks npm based on lockfile", pm: AutoPackageManager, lockFiles: []string{"npm"}, expected: "npm"},
+		{name: "picks yarn based on lockfile", pm: AutoPackageManager, lockFiles: []string{"yarn"}, expected: "yarn"},
+		{name: "picks pnpm based on lockfile", pm: AutoPackageManager, lockFiles: []string{"pnpm"}, expected: "pnpm"},
+		{name: "picks bun based on lockfile", pm: AutoPackageManager, lockFiles: []string{"bun"}, expected: "bun"},
+		{
+			name: "yarn > pnpm > npm", pm: AutoPackageManager,
+			lockFiles: []string{"yarn", "pnpm", "npm"}, expected: "yarn",
+		},
+		{
+			name: "pnpm > bun > npm", pm: AutoPackageManager,
+			lockFiles: []string{"pnpm", "bun", "npm"}, expected: "pnpm",
+		},
+		{name: "bun > npm", pm: AutoPackageManager, lockFiles: []string{"bun", "npm"}, expected: "bun"},
+		// pnpm allows package.yaml in place of package.json
+		{
+			name: "auto picks pnpm when only package.yaml exists",
+			pm:   AutoPackageManager, manifests: []string{"package.yaml"}, expected: "pnpm",
+		},
+		{
+			name: "auto picks pnpm with package.yaml even if yarn.lock is present",
+			pm:   AutoPackageManager, manifests: []string{"package.yaml"},
+			lockFiles: []string{"yarn"}, expected: "pnpm",
+		},
+		{
+			name: "auto respects yarn.lock when both manifests exist",
+			pm:   AutoPackageManager, manifests: []string{"package.json", "package.yaml"},
+			lockFiles: []string{"yarn"}, expected: "yarn",
+		},
+		{
+			name: "explicit pnpm with package.yaml works",
+			pm:   PnpmPackageManager, manifests: []string{"package.yaml"}, expected: "pnpm",
+		},
+		{
+			name: "explicit npm with only package.yaml is rejected",
+			pm:   NpmPackageManager, manifests: []string{"package.yaml"},
+			expectedErr: "package.yaml",
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -112,11 +149,103 @@ func TestResolvePackageManager(t *testing.T) {
 			for _, lockFile := range tt.lockFiles {
 				writeLockFile(t, dir, lockFile)
 			}
+			for _, manifest := range tt.manifests {
+				writeManifest(t, dir, manifest)
+			}
 			pm, err := ResolvePackageManager(tt.pm, dir)
+			if tt.expectedErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedErr)
+				return
+			}
 			require.NoError(t, err)
 			require.Equal(t, tt.expected, pm.Name())
 		})
 	}
+}
+
+func TestResolvePackageManager_SearchesUp(t *testing.T) {
+	t.Parallel()
+
+	t.Run("finds package.yaml in parent dir", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "package.yaml"), "name: test\nversion: 1.0.0\n")
+		sub := filepath.Join(root, "project")
+		require.NoError(t, os.MkdirAll(sub, 0o755))
+
+		pm, err := ResolvePackageManager(AutoPackageManager, sub)
+		require.NoError(t, err)
+		require.Equal(t, "pnpm", pm.Name())
+	})
+
+	t.Run("nearest package.json wins over package.yaml further up", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "package.yaml"), "name: root\nversion: 1.0.0\n")
+		sub := filepath.Join(root, "subdir")
+		require.NoError(t, os.MkdirAll(sub, 0o755))
+		writeFile(t, filepath.Join(sub, "package.json"), `{"name":"subdir","version":"1.0.0"}`)
+		project := filepath.Join(sub, "project")
+		require.NoError(t, os.MkdirAll(project, 0o755))
+
+		pm, err := ResolvePackageManager(AutoPackageManager, project)
+		require.NoError(t, err)
+		require.Equal(t, "npm", pm.Name())
+	})
+
+	t.Run("nearest package.yaml wins over package.json further up", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "package.json"), `{"name":"root","version":"1.0.0"}`)
+		sub := filepath.Join(root, "subdir")
+		require.NoError(t, os.MkdirAll(sub, 0o755))
+		writeFile(t, filepath.Join(sub, "package.yaml"), "name: subdir\nversion: 1.0.0\n")
+		project := filepath.Join(sub, "project")
+		require.NoError(t, os.MkdirAll(project, 0o755))
+
+		pm, err := ResolvePackageManager(AutoPackageManager, project)
+		require.NoError(t, err)
+		require.Equal(t, "pnpm", pm.Name())
+	})
+
+	t.Run("explicit npm rejected when nearest manifest is package.yaml in parent", func(t *testing.T) {
+		t.Parallel()
+		root := t.TempDir()
+		writeFile(t, filepath.Join(root, "package.yaml"), "name: test\nversion: 1.0.0\n")
+		project := filepath.Join(root, "project")
+		require.NoError(t, os.MkdirAll(project, 0o755))
+
+		_, err := ResolvePackageManager(NpmPackageManager, project)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "package.yaml")
+	})
+}
+
+func TestFilterDirectDependencies_PackageYAML(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "package.yaml"), []byte(
+		"name: test\n"+
+			"version: 1.0.0\n"+
+			"dependencies:\n"+
+			"  '@pulumi/pulumi': ^3.0.0\n"+
+			"devDependencies:\n"+
+			"  typescript: ^5.0.0\n",
+	), 0o600))
+
+	deps := []plugin.DependencyInfo{
+		{Name: "@pulumi/pulumi", Version: "3.224.0"},
+		{Name: "typescript", Version: "5.9.3"},
+		{Name: "@grpc/grpc-js", Version: "1.14.3"}, // transitive — should be filtered out
+	}
+
+	got, err := filterDirectDependencies(dir, deps)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []plugin.DependencyInfo{
+		{Name: "@pulumi/pulumi", Version: "3.224.0"},
+		{Name: "typescript", Version: "5.9.3"},
+	}, got)
 }
 
 func TestPack(t *testing.T) {
@@ -238,6 +367,18 @@ func writeLockFile(t *testing.T, dir string, packageManager string) {
 	case "bun":
 		writeFile(t, filepath.Join(dir, "bun.lock"), "{\"lockfileVersion\": 1, \"workspaces\": "+
 			"{\"\": {\"name\": \"test-package\",},}}")
+	}
+}
+
+func writeManifest(t *testing.T, dir string, filename string) {
+	t.Helper()
+	switch filename {
+	case "package.json":
+		writeFile(t, filepath.Join(dir, filename), `{"name":"test","version":"1.0.0"}`)
+	case "package.yaml":
+		writeFile(t, filepath.Join(dir, filename), "name: test\nversion: 1.0.0\n")
+	default:
+		t.Fatalf("unknown manifest filename: %s", filename)
 	}
 }
 

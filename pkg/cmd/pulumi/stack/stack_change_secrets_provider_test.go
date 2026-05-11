@@ -117,8 +117,9 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
+				StringV:             "testStack",
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "organization/testProject/testStack",
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
@@ -216,8 +217,9 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
+				StringV:             "testStack",
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "organization/testProject/testStack",
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },

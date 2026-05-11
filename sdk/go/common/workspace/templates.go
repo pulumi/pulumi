@@ -52,44 +52,70 @@ var (
 	pulumiPolicyTemplateGitRepository = "https://github.com/pulumi/templates-policy.git"
 	// The branch name for the policy pack template repository
 	pulumiPolicyTemplateBranch = "master"
+	// The Git URL for Pulumi package templates.
+	pulumiPackageTemplateGitRepository = "https://github.com/pulumi/templates-packages.git"
+	// The branch name for the package template repository
+	pulumiPackageTemplateBranch = "main"
 )
 
 // getTemplateGitRepository returns the Git URL for the template repository.
 // It checks the environment variable first, then falls back to the compile-time default.
 func getTemplateGitRepository(templateKind TemplateKind) string {
-	if templateKind == TemplateKindPolicyPack {
+	switch templateKind {
+	case TemplateKindPolicyPack:
 		if repo := env.PolicyTemplateGitRepository.Value(); repo != "" {
 			logging.V(5).Infof("Using custom policy template repository from %s: %s",
 				env.PolicyTemplateGitRepository.Var().Name(), repo)
 			return repo
 		}
 		return pulumiPolicyTemplateGitRepository
+	case TemplateKindPackage:
+		if repo := env.PackageTemplateGitRepository.Value(); repo != "" {
+			logging.V(5).Infof("Using custom package template repository from %s: %s",
+				env.PackageTemplateGitRepository.Var().Name(), repo)
+			return repo
+		}
+		return pulumiPackageTemplateGitRepository
+	case TemplateKindPulumiProject:
+		if repo := env.TemplateGitRepository.Value(); repo != "" {
+			logging.V(5).Infof("Using custom template repository from %s: %s",
+				env.TemplateGitRepository.Var().Name(), repo)
+			return repo
+		}
+		return pulumiTemplateGitRepository
 	}
-	if repo := env.TemplateGitRepository.Value(); repo != "" {
-		logging.V(5).Infof("Using custom template repository from %s: %s",
-			env.TemplateGitRepository.Var().Name(), repo)
-		return repo
-	}
-	return pulumiTemplateGitRepository
+	contract.Failf("unhandled TemplateKind: %v", templateKind)
+	return ""
 }
 
 // getTemplateBranch returns the branch name for the template repository.
 // It checks the environment variable first, then falls back to the compile-time default.
 func getTemplateBranch(templateKind TemplateKind) string {
-	if templateKind == TemplateKindPolicyPack {
+	switch templateKind {
+	case TemplateKindPolicyPack:
 		if branch := env.PolicyTemplateBranch.Value(); branch != "" {
 			logging.V(5).Infof("Using custom policy template branch from %s: %s",
 				env.PolicyTemplateBranch.Var().Name(), branch)
 			return branch
 		}
 		return pulumiPolicyTemplateBranch
+	case TemplateKindPackage:
+		if branch := env.PackageTemplateBranch.Value(); branch != "" {
+			logging.V(5).Infof("Using custom package template branch from %s: %s",
+				env.PackageTemplateBranch.Var().Name(), branch)
+			return branch
+		}
+		return pulumiPackageTemplateBranch
+	case TemplateKindPulumiProject:
+		if branch := env.TemplateBranch.Value(); branch != "" {
+			logging.V(5).Infof("Using custom template branch from %s: %s",
+				env.TemplateBranch.Var().Name(), branch)
+			return branch
+		}
+		return pulumiTemplateBranch
 	}
-	if branch := env.TemplateBranch.Value(); branch != "" {
-		logging.V(5).Infof("Using custom template branch from %s: %s",
-			env.TemplateBranch.Var().Name(), branch)
-		return branch
-	}
-	return pulumiTemplateBranch
+	contract.Failf("unhandled TemplateKind: %v", templateKind)
+	return ""
 }
 
 // TemplateKind describes the form of a template.
@@ -101,6 +127,10 @@ const (
 
 	// TemplateKindPolicyPack is a template for a Policy Pack.
 	TemplateKindPolicyPack TemplateKind = 1
+
+	// TemplateKindPackage is a template for a Pulumi package
+	// (a directory containing PulumiPlugin.yaml).
+	TemplateKindPackage TemplateKind = 2
 )
 
 // TemplateRepository represents a repository of templates.
@@ -226,6 +256,55 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 	return result, nil
 }
 
+// PackageTemplates lists the package templates in the repository.
+func (repo TemplateRepository) PackageTemplates() ([]PackageTemplate, error) {
+	path := repo.SubDirectory
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if !info.IsDir() {
+		path = filepath.Dir(path)
+	}
+
+	template, err := LoadPackageTemplate(path)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	} else if err == nil {
+		return []PackageTemplate{template}, nil
+	}
+
+	infos, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []PackageTemplate
+	for _, info := range infos {
+		if info.IsDir() {
+			name := info.Name()
+
+			if name == GitDir {
+				continue
+			}
+
+			template, err := LoadPackageTemplate(filepath.Join(path, name))
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				logging.V(2).Infof(
+					"Failed to load template %s: %s",
+					name, err,
+				)
+				result = append(result, PackageTemplate{Name: name, Error: err})
+			} else if err == nil {
+				result = append(result, template)
+			}
+		}
+	}
+	return result, nil
+}
+
 // Template represents a project template.
 type Template struct {
 	Dir         string                                // The directory containing Pulumi.yaml.
@@ -254,6 +333,20 @@ type PolicyPackTemplate struct {
 
 // Errored returns if the template has an error
 func (t PolicyPackTemplate) Errored() bool {
+	return t.Error != nil
+}
+
+// PackageTemplate represents a Pulumi package template.
+type PackageTemplate struct {
+	Dir         string // The directory containing PulumiPlugin.yaml.
+	Name        string // The name of the template.
+	Description string // Description of the template.
+	Quickstart  string // Optional text to be displayed after template creation.
+	Error       error  // Non-nil if the template is broken.
+}
+
+// Errored returns if the template has an error
+func (t PackageTemplate) Errored() bool {
 	return t.Error != nil
 }
 
@@ -647,25 +740,52 @@ func LoadPolicyPackTemplate(path string) (PolicyPackTemplate, error) {
 	return policyPackTemplate, nil
 }
 
+// LoadPackageTemplate returns a package template from a path.
+func LoadPackageTemplate(path string) (PackageTemplate, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return PackageTemplate{}, err
+	}
+	if !info.IsDir() {
+		return PackageTemplate{}, fmt.Errorf("%s is not a directory", path)
+	}
+
+	plugin, err := LoadPluginProject(filepath.Join(path, "PulumiPlugin.yaml"))
+	if err != nil {
+		return PackageTemplate{}, err
+	}
+	template := PackageTemplate{
+		Dir:  path,
+		Name: filepath.Base(path),
+	}
+	if plugin.Template != nil {
+		template.Description = plugin.Template.Description
+		template.Quickstart = plugin.Template.Quickstart
+	}
+
+	return template, nil
+}
+
 // GetTemplateDir returns the directory in which templates on the current machine are stored.
 func GetTemplateDir(templateKind TemplateKind) (string, error) {
-	envVar := env.TemplatePath
-	if templateKind == TemplateKindPolicyPack {
-		envVar = env.PolicyTemplatePath
+	var override, classicDir string
+	switch templateKind {
+	case TemplateKindPolicyPack:
+		override = env.PolicyTemplatePath.Value()
+		classicDir = TemplatePolicyDir
+	case TemplateKindPackage:
+		override = env.PackageTemplatePath.Value()
+		classicDir = TemplatePackageDir
+	case TemplateKindPulumiProject:
+		override = env.TemplatePath.Value()
+		classicDir = TemplateDir
+	default:
+		contract.Failf("unhandled TemplateKind: %v", templateKind)
 	}
-	// Allow the folder we use to store templates to be overridden.
-	dir := env.Global().GetString(envVar)
-	if dir != "" {
-		return dir, nil
+	if override != "" {
+		return override, nil
 	}
-
-	// If Policy Pack template and there is no override, then return the classic policy template directory.
-	if templateKind == TemplateKindPolicyPack {
-		return GetPulumiPath(TemplatePolicyDir)
-	}
-
-	// Use the classic template directory if there is no override.
-	return GetPulumiPath(TemplateDir)
+	return GetPulumiPath(classicDir)
 }
 
 // walkFiles is a helper that walks the directories/files in a source directory

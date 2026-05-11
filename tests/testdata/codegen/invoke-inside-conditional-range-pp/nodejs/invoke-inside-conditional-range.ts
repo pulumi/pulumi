@@ -38,11 +38,11 @@ export = async () => {
             enableDns64: enableIpv6 && publicSubnetEnableDns64,
             enableResourceNameDnsAaaaRecordOnLaunch: enableIpv6 && publicSubnetEnableResourceNameDnsAaaaRecordOnLaunch,
             enableResourceNameDnsARecordOnLaunch: !publicSubnetIpv6Native && publicSubnetEnableResourceNameDnsARecordOnLaunch,
-            ipv6CidrBlock: enableIpv6 && publicSubnetIpv6Prefixes.length > 0 ? currentVpc.ipv6CidrBlock.apply(ipv6CidrBlock => std.cidrsubnetOutput({
-                input: ipv6CidrBlock,
+            ipv6CidrBlock: enableIpv6 && publicSubnetIpv6Prefixes.length > 0 ? std.cidrsubnetOutput({
+                input: currentVpc.ipv6CidrBlock,
                 newbits: 8,
-                netnum: publicSubnetIpv6Prefixes[range.value],
-            })).apply(invoke => invoke.result) : null,
+                netnum: Number(publicSubnetIpv6Prefixes[range.value]),
+            }).apply(invoke => invoke.result) : null,
             ipv6Native: enableIpv6 && publicSubnetIpv6Native,
             vpcId: currentVpc.id,
         }));

@@ -29,7 +29,9 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -2098,6 +2100,75 @@ func TestResmonCancel(t *testing.T) {
 
 	// Cancel always returns nil or a joinErrors.
 	assert.Equal(t, errors.Join(err), rm.Cancel(t.Context()))
+}
+
+func TestGetDeploymentInfo(t *testing.T) {
+	t.Parallel()
+
+	plugctx, err := plugin.NewContext(t.Context(),
+		&deploytest.NoopSink{}, &deploytest.NoopSink{},
+		deploytest.NewPluginHostF(nil, nil, nil)(),
+		nil, "", nil, false, nil, nil)
+	require.NoError(t, err)
+
+	plainKey := config.MustMakeKey("test", "region")
+	secretKey := config.MustMakeKey("test", "apiKey")
+	cfg := map[config.Key]string{
+		plainKey:  "us-west-2",
+		secretKey: "super-secret",
+	}
+	secretKeys := []config.Key{secretKey}
+	programComplete := &promise.CompletionSource[struct{}]{}
+	programComplete.Fulfill(struct{}{})
+
+	mon, err := newResourceMonitor(&evalSource{
+		plugctx: plugctx,
+		runinfo: &EvalRunInfo{
+			ProjectRoot: "/",
+			Pwd:         "/",
+			Program:     ".",
+			Proj:        &workspace.Project{Name: "proj"},
+			Target: &Target{
+				Name:         tokens.MustParseStackName("dev"),
+				Organization: tokens.Name("acme"),
+			},
+		},
+		opts: EvalSourceOptions{
+			DryRun:                    true,
+			Parallel:                  17,
+			DisableOutputValues:       true,
+			DisableResourceReferences: false,
+		},
+	}, &providerSourceMock{}, nil, nil, nil, nil, programComplete.Promise(), cfg, secretKeys,
+		opentracing.SpanFromContext(t.Context()))
+	require.NoError(t, err)
+
+	conn, err := grpc.NewClient(mon.Address(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, conn.Close())
+	})
+
+	client := pulumirpc.NewResourceMonitorClient(conn)
+	info, err := client.GetDeploymentInfo(t.Context(), &emptypb.Empty{})
+	require.NoError(t, err)
+
+	assert.Equal(t, "proj", info.GetProject())
+	assert.Equal(t, "dev", info.GetStack())
+	assert.Equal(t, "acme", info.GetOrganization())
+	assert.Equal(t, true, info.GetDryRun())
+	assert.Equal(t, int32(17), info.GetParallel())
+	assert.Equal(t, map[string]string{
+		plainKey.String():  "us-west-2",
+		secretKey.String(): "super-secret",
+	}, info.GetConfig())
+	assert.Equal(t, []string{secretKey.String()}, info.GetConfigSecretKeys())
+
+	features := info.GetSupportedFeatures()
+	assert.NotEmpty(t, features)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS)
+	assert.Contains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
+	assert.NotContains(t, features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
 }
 
 func TestSourceEvalServeOptions(t *testing.T) {

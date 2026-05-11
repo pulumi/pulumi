@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
@@ -107,6 +108,7 @@ from the parameters, as in:
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
+				pkgWorkspace.Instance,
 				pluginOrProject.proj,
 				pctx,
 				pluginOrProject.proj.RuntimeInfo().Name(),
@@ -216,8 +218,9 @@ func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrPro
 		return pluginOrProject{
 			installRoot:     filepath.Dir(filePath),
 			projectFilePath: filePath,
-			reg:             cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
-			proj:            baseProject,
+			reg: cmdCmd.NewDefaultRegistry(
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
+			proj: baseProject,
 		}, nil
 	case *workspace.PluginProject:
 		return pluginOrProject{
@@ -226,7 +229,8 @@ func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrPro
 			proj:            baseProject,
 			// Cloud registry is linked to a backend, but we don't have one
 			// available in a plugin. Use the default backend.
-			reg: cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+			reg: cmdCmd.NewDefaultRegistry(
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
 		}, nil
 	default:
 		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+

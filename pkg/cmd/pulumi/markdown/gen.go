@@ -82,6 +82,7 @@ func NewGenMarkdownCmd(root *cobra.Command) *cobra.Command {
 				ymlIndent := "  " // 2 spaces
 				buf := new(bytes.Buffer)
 				buf.WriteString("---\n")
+				fmt.Fprintf(buf, "# This file is auto-generated from github.com/pulumi/pulumi/v3/pkg/cmd/pulumi/markdown\n")
 				fmt.Fprintf(buf, "title: \"%s | CLI commands\"\n", title)
 				// Add redirect aliases to the front matter.
 				fmt.Fprint(buf, "aliases:\n")

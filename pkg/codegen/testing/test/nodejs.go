@@ -106,7 +106,7 @@ func typeCheckNodeJS(t *testing.T, path string, _ codegen.StringSet, linkLocal b
 }
 
 func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
-	RunCommand(t, "npm_install", pwd, "npm", "install")
+	RunCommandWithRetries(t, "npm_install", pwd, 3, "npm", "install")
 	if linkLocal {
 		RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}

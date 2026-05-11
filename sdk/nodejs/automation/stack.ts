@@ -690,7 +690,37 @@ Event: ${line}\n${e.toString()}`);
             applyGlobalOpts(opts, args);
         }
 
-        args.push("--exec-kind", execKind.local);
+        let onExit = (hasError: boolean) => {
+            return;
+        };
+        let didError = false;
+
+        let kind = execKind.local;
+        if (this.workspace.program !== undefined) {
+            this.checkInlineSupport();
+
+            kind = execKind.inline;
+            const server = new grpc.Server({
+                ...grpcChannelOptions,
+            });
+            const languageServer = new LanguageServer(this.workspace.program);
+            server.addService(langrpc.LanguageRuntimeService, languageServer);
+            const port: number = await new Promise<number>((resolve, reject) => {
+                server.bindAsync(`127.0.0.1:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(p);
+                    }
+                });
+            });
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
+                server.forceShutdown();
+            };
+            args.push(`--client=127.0.0.1:${port}`);
+        }
+        args.push("--exec-kind", kind);
 
         let summaryEvent: SummaryEvent | undefined;
         const onEvent = (event: EngineEvent) => {
@@ -702,20 +732,22 @@ Event: ${line}\n${e.toString()}`);
             }
         };
 
-        const { logFile, logPromise, server } = await this.setupEventLog(
-            "preview-refresh",
-            onEvent,
-            this.workspace.pulumiVersion,
-        );
+        const {
+            logFile,
+            logPromise,
+            server: eventsServer,
+        } = await this.setupEventLog("preview-refresh", onEvent, this.workspace.pulumiVersion);
         args.push("--event-log", logFile);
 
         let previewResult: CommandResult;
         try {
             previewResult = await this.runPulumiCmd(args, opts?.onOutput, opts?.onError, opts?.signal);
         } catch (e) {
+            didError = true;
             throw e;
         } finally {
-            await cleanUp(logFile, await logPromise, server);
+            onExit(didError);
+            await cleanUp(logFile, await logPromise, eventsServer);
         }
 
         if (!summaryEvent) {
@@ -791,6 +823,9 @@ Event: ${line}\n${e.toString()}`);
                 } else {
                     args.push("--run-program=false");
                 }
+            }
+            if (opts.diff) {
+                args.push("--diff");
             }
             applyGlobalOpts(opts, args);
         }
@@ -1323,6 +1358,24 @@ Event: ${line}\n${e.toString()}`);
                 stack: this.name,
             }),
         );
+    }
+
+    /**
+     * Gets the default organization for the current backend.
+     */
+    async orgGetDefault(): Promise<string> {
+        const result = await this.run((api, base) => api.orgGetDefault({ ...base }));
+        return result.stdout.trim();
+    }
+
+    /**
+     * Sets the default organization for the current backend.
+     *
+     * @param orgName
+     *  The name of the organization to set as the default.
+     */
+    async orgSetDefault(orgName: string): Promise<void> {
+        await this.run((api, base) => api.orgSetDefault({ ...base }, orgName));
     }
 
     /**
@@ -2198,6 +2251,11 @@ export interface DestroyOptions extends GlobalOpts {
      * Run the program in the workspace to perform the destroy.
      */
     runProgram?: boolean;
+
+    /**
+     * Display the operation as a rich diff showing the overall change.
+     */
+    diff?: boolean;
 }
 
 /**

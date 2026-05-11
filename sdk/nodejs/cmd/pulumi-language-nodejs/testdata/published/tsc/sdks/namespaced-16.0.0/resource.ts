@@ -65,6 +65,6 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
-    resourceRef?: pulumi.Input<pulumiComponent.Custom>;
+    resourceRef?: pulumi.Input<pulumiComponent.Custom | undefined>;
     value: pulumi.Input<boolean>;
 }

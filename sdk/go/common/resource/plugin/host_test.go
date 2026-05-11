@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sync"
@@ -28,6 +29,42 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// TestHostManagedProviderCloseSignalsCancellation locks in the contract that hostManagedProvider.Close sends
+// SignalCancellation before tearing the underlying provider down. Without this, Plugin.Close treats the subsequent
+// process exit as a premature crash (since shutdownAcknowledged is only flipped on Cancel RPC ack) and emits a
+// misleading "exited prematurely" error to the user. defaultHost.Close does the same thing for plugins still
+// registered at shutdown; callers that close individual providers (e.g. the convert mapper) bypass that path.
+func TestHostManagedProviderCloseSignalsCancellation(t *testing.T) {
+	t.Parallel()
+
+	sink := diagtest.LogSink(t)
+	ctx, err := NewContext(t.Context(), sink, sink, nil, nil, "", nil, false, nil, nil)
+	require.NoError(t, err)
+	host, ok := ctx.Host.(*defaultHost)
+	require.True(t, ok)
+	t.Cleanup(func() { require.NoError(t, host.Close()) })
+
+	var calls []string
+	mockProv := &MockProvider{
+		SignalCancellationF: func(context.Context) error {
+			calls = append(calls, "SignalCancellation")
+			return nil
+		},
+		CloseF: func() error {
+			calls = append(calls, "Close")
+			return nil
+		},
+	}
+
+	host.resourcePlugins[mockProv] = &resourcePlugin{Plugin: mockProv, Name: "mock"}
+
+	managed := hostManagedProvider{Provider: mockProv, host: host}
+	require.NoError(t, managed.Close())
+
+	require.Equal(t, []string{"SignalCancellation", "Close"}, calls)
+	require.NotContains(t, host.resourcePlugins, Provider(mockProv))
+}
 
 func TestClosePanic(t *testing.T) {
 	t.Parallel()

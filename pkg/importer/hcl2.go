@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -880,11 +879,6 @@ func generateValue(
 			}
 
 			for k, v := range obj.AllStable {
-				// Ignore internal properties.
-				if strings.HasPrefix(k, "__") {
-					continue
-				}
-
 				x, err := generateValue(elementType, v, importState, onReferenceFound)
 				if err != nil {
 					return nil, err

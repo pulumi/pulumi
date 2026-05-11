@@ -1178,6 +1178,79 @@ func TestInstallParameterizedProviderFromRegistry(t *testing.T) {
 	}, spec)
 }
 
+// TestInstallPluginWithRequiredPackages tests that GetRequiredPackages is called and its
+// results are used to install dependencies.
+//
+// Here, plugin-a has a PulumiPlugin.yaml and the language runtime reports that it requires
+// plugin-b.
+func TestInstallPluginWithRequiredPackages(t *testing.T) {
+	t.Parallel()
+
+	ws := newInvariantWorkspace(t, nil, nil, []invariantPlugin{
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "plugin-a",
+				Version: &semver.Version{Major: 1},
+				Kind:    apitype.ResourcePlugin,
+			},
+			project: &workspace.PluginProject{
+				Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+			},
+			requiredPackages: []workspace.PackageDescriptor{
+				{
+					PluginDescriptor: workspace.PluginDescriptor{
+						Name:              "plugin-b",
+						Version:           &semver.Version{Major: 2},
+						Kind:              apitype.ResourcePlugin,
+						PluginDownloadURL: "https://example.com/plugin-b.tar.gz",
+					},
+				},
+			},
+		},
+		{
+			d: workspace.PluginDescriptor{
+				Name:    "plugin-b",
+				Version: &semver.Version{Major: 2},
+				Kind:    apitype.ResourcePlugin,
+			},
+			project: &workspace.PluginProject{
+				Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+			},
+		},
+	})
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	run, spec, err := packageinstallation.InstallPlugin(t.Context(), workspace.PackageSpec{
+		Source:            "plugin-a",
+		Version:           "1.0.0",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, nil, "", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+	_, err = run(t.Context(), "/tmp")
+	require.NoError(t, err)
+	assert.Equal(t, workspace.PackageSpec{
+		Source:            "plugin-a",
+		Version:           "1.0.0",
+		PluginDownloadURL: "https://example.com/plugin-a.tar.gz",
+	}, spec)
+
+	pluginAPath := "$HOME/.pulumi/plugins/resource-plugin-a-v1.0.0"
+	pluginBPath := "$HOME/.pulumi/plugins/resource-plugin-b-v2.0.0"
+
+	require.True(t, ws.plugins[pluginAPath].downloaded, "plugin-a should be downloaded")
+	require.True(t, ws.plugins[pluginAPath].installed, "plugin-a should be installed")
+	require.True(t, ws.plugins[pluginBPath].downloaded, "plugin-b should be downloaded (as a required package)")
+	require.True(t, ws.plugins[pluginBPath].installed, "plugin-b should be installed (as a required package)")
+}
+
 func TestConcurrency(t *testing.T) {
 	t.Parallel()
 
@@ -1515,4 +1588,94 @@ func TestInstallSharedDependencyInParallel(t *testing.T) {
 		require.NoError(t, err)
 		assertInvariantWorkspaceEqual(t, *baselineWs, *ws)
 	}
+}
+
+// TestRequiredPackagesDeclaredInProjectPackagesNotDownloaded tests that when
+// GetRequiredPackages returns a package that is already declared in the
+// component's packages section, it is not downloaded again.
+//
+// This is the scenario where a component provider (provider) depends on another
+// local component provider (provider-nested) via its packages section. The
+// language host's GetRequiredPackages also reports provider-nested as a
+// dependency (because it's installed in the venv). Without the fix, the install
+// code would try to download provider-nested from the registry and fail.
+//
+// Dependency graph:
+//
+//	project -> provider (local path) -> provider-nested (declared in packages AND returned by GetRequiredPackages)
+func TestRequiredPackagesDeclaredInProjectPackagesNotDownloaded(t *testing.T) {
+	t.Parallel()
+
+	ws := &invariantWorkspace{
+		t:  t,
+		rw: new(sync.RWMutex),
+		plugins: map[string]*invariantPlugin{
+			"/work/provider": {
+				d: workspace.PluginDescriptor{
+					Name: "provider",
+					Kind: apitype.ResourcePlugin,
+				},
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("python", nil),
+					Packages: map[string]workspace.PackageSpec{
+						"provider-nested": {Source: "../provider-nested"},
+					},
+				},
+				downloaded:      true,
+				pathVisible:     true,
+				projectDetected: true,
+				requiredPackages: []workspace.PackageDescriptor{
+					{
+						PluginDescriptor: workspace.PluginDescriptor{
+							Name:    "provider-nested",
+							Version: &semver.Version{},
+							Kind:    apitype.ResourcePlugin,
+						},
+					},
+				},
+			},
+			"/work/provider-nested": {
+				d: workspace.PluginDescriptor{
+					Name: "provider-nested",
+					Kind: apitype.ResourcePlugin,
+				},
+				project: &workspace.PluginProject{
+					Runtime: workspace.NewProjectRuntimeInfo("python", nil),
+				},
+				downloaded:      true,
+				pathVisible:     true,
+				projectDetected: true,
+			},
+		},
+		binaryPaths: map[string]string{},
+		downloadedWorkspace: map[string]*invariantWorkDir{
+			"/work/project": {},
+		},
+	}
+
+	rws := &recordingWorkspace{ws, nil}
+	defer rws.save(t)
+
+	err := packageinstallation.InstallProjectPlugins(t.Context(), &workspace.Project{
+		Name:    "test-project",
+		Runtime: workspace.NewProjectRuntimeInfo("python", nil),
+		Packages: map[string]workspace.PackageSpec{
+			"provider": {Source: "../provider"},
+		},
+	}, "/work/project", packageinstallation.Options{
+		Options: packageresolution.Options{
+			ResolveVersionWithLocalWorkspace:           true,
+			AllowNonInvertableLocalWorkspaceResolution: true,
+		},
+		Concurrency: 1,
+	}, nil, rws)
+	require.NoError(t, err)
+
+	providerPath := "/work/provider"
+	providerNestedPath := "/work/provider-nested"
+
+	require.True(t, ws.plugins[providerPath].installed,
+		"provider should be installed")
+	require.True(t, ws.plugins[providerNestedPath].installed,
+		"provider-nested should be installed (via provider's packages)")
 }

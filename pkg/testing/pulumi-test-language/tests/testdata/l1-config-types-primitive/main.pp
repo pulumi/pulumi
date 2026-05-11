@@ -5,11 +5,25 @@ output "theNumber" {
 }
 
 config "optionalNumber" "number" {
-  default = 41
+  default = 41.5
 }
 
 output "defaultNumber" {
-  value = optionalNumber + 1
+  value = optionalNumber + 1.2
+}
+
+config "anInt" "int" {}
+
+output "theInteger" { 
+  value = anInt + 4
+}
+
+config "optionalInt" "int" {
+  default = 1
+}
+
+output "defaultInteger" {
+  value = optionalInt + 2
 }
 
 config "aString" "string" {}

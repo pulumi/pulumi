@@ -952,6 +952,9 @@ func (h *langhost) Cancel() error {
 	if err != nil {
 		status, ok := status.FromError(err)
 		if ok && status.Code() == codes.Unimplemented {
+			if h.plug != nil {
+				h.plug.shutdownAcknowledged.Store(true)
+			}
 			logging.V(7).Infof("%s not implemented by language runtime, skipping", label)
 			return nil
 		}
@@ -959,6 +962,9 @@ func (h *langhost) Cancel() error {
 		return fmt.Errorf("failed to cancel language runtime: %w", err)
 	}
 
+	if h.plug != nil {
+		h.plug.shutdownAcknowledged.Store(true)
+	}
 	logging.V(7).Infof("%s success", label)
 	return nil
 }

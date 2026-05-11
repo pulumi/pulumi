@@ -68,11 +68,11 @@ func GetCollectionTypes(collectionType Type, rng hcl.Range, strict bool) (Type, 
 	unwrappedCollectionType := unwrapIterableSourceType(collectionType)
 	switch collectionType := unwrappedCollectionType.(type) {
 	case *ListType:
-		keyType, valueType = NumberType, collectionType.ElementType
+		keyType, valueType = IntType, collectionType.ElementType
 	case *MapType:
 		keyType, valueType = StringType, collectionType.ElementType
 	case *TupleType:
-		keyType = NumberType
+		keyType = IntType
 		valueType, _ = UnifyTypes(collectionType.ElementTypes...)
 	case *ObjectType:
 		keyType = StringType

@@ -308,8 +308,14 @@ func GeneratedProgramSpec(
 			if urn == "" {
 				return "", false
 			}
+			visited := map[resource.URN]bool{}
 			wasRewritten := false
 			for {
+				if visited[urn] {
+					t.Skipf("cycle detected in rewritten URNs: %v", visited)
+					return urn, wasRewritten
+				}
+				visited[urn] = true
 				if newURN, has := rewritten[urn]; has {
 					urn = newURN
 					wasRewritten = true

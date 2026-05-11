@@ -15,7 +15,6 @@
 package lifecycletest
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"testing"
@@ -78,7 +77,7 @@ func TestFuzzFromStateFile(t *testing.T) {
 	require.NoError(t, err)
 
 	//nolint:usetesting // outlives t.Context inside the engine
-	v3Deployment, err := stack.UnmarshalUntypedDeployment(context.Background(), &deployment)
+	v3Deployment, err := stack.UnmarshalUntypedDeployment(t.Context(), &deployment)
 	require.NoError(t, err)
 
 	if len(v3Deployment.Resources) == 0 {

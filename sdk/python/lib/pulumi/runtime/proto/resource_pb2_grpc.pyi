@@ -39,6 +39,21 @@ class ResourceMonitorStub:
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
 
     def __init__(self, channel: typing.Union[grpc.Channel, grpc.aio.Channel]) -> None: ...
+    GetDeploymentInfo: grpc.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        pulumi.resource_pb2.DeploymentInfo,
+    ]
+    """GetDeploymentInfo returns the execution context associated with this monitor instance.
+
+    This is an additive API intended to reduce duplicated state passed through
+    environment variables and per-request protobuf fields. New clients should
+    prefer this over piecemeal feature probing via SupportsFeature.
+
+    Backward compatibility:
+    - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+    - Clients should fall back to existing request fields/env vars/SupportsFeature.
+    """
+
     SupportsFeature: grpc.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.SupportsFeatureRequest,
         pulumi.resource_pb2.SupportsFeatureResponse,
@@ -121,6 +136,21 @@ class ResourceMonitorStub:
 class ResourceMonitorAsyncStub:
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
 
+    GetDeploymentInfo: grpc.aio.UnaryUnaryMultiCallable[
+        google.protobuf.empty_pb2.Empty,
+        pulumi.resource_pb2.DeploymentInfo,
+    ]
+    """GetDeploymentInfo returns the execution context associated with this monitor instance.
+
+    This is an additive API intended to reduce duplicated state passed through
+    environment variables and per-request protobuf fields. New clients should
+    prefer this over piecemeal feature probing via SupportsFeature.
+
+    Backward compatibility:
+    - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+    - Clients should fall back to existing request fields/env vars/SupportsFeature.
+    """
+
     SupportsFeature: grpc.aio.UnaryUnaryMultiCallable[
         pulumi.resource_pb2.SupportsFeatureRequest,
         pulumi.resource_pb2.SupportsFeatureResponse,
@@ -202,6 +232,23 @@ class ResourceMonitorAsyncStub:
 
 class ResourceMonitorServicer(metaclass=abc.ABCMeta):
     """ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution."""
+
+    
+    def GetDeploymentInfo(
+        self,
+        request: google.protobuf.empty_pb2.Empty,
+        context: _ServicerContext,
+    ) -> typing.Union[pulumi.resource_pb2.DeploymentInfo, collections.abc.Awaitable[pulumi.resource_pb2.DeploymentInfo]]:
+        """GetDeploymentInfo returns the execution context associated with this monitor instance.
+
+        This is an additive API intended to reduce duplicated state passed through
+        environment variables and per-request protobuf fields. New clients should
+        prefer this over piecemeal feature probing via SupportsFeature.
+
+        Backward compatibility:
+        - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+        - Clients should fall back to existing request fields/env vars/SupportsFeature.
+        """
 
     
     def SupportsFeature(

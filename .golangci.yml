@@ -41,7 +41,6 @@ linters:
         - codegenComment
         - deprecatedComment
         - dupArg
-        - dupBranchBody
         - dupCase
         - dupSubExpr
         - exitAfterDefer

@@ -229,6 +229,14 @@ class ResourceProviderStub:
     include other properties.
     """
 
+    List: grpc.UnaryStreamMultiCallable[
+        pulumi.provider_pb2.ListRequest,
+        pulumi.provider_pb2.ListResponse,
+    ]
+    """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    emit a continuation token indicating another page is available.
+    """
+
     Update: grpc.UnaryUnaryMultiCallable[
         pulumi.provider_pb2.UpdateRequest,
         pulumi.provider_pb2.UpdateResponse,
@@ -520,6 +528,14 @@ class ResourceProviderAsyncStub:
     """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
     must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
     include other properties.
+    """
+
+    List: grpc.aio.UnaryStreamMultiCallable[
+        pulumi.provider_pb2.ListRequest,
+        pulumi.provider_pb2.ListResponse,
+    ]
+    """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+    emit a continuation token indicating another page is available.
     """
 
     Update: grpc.aio.UnaryUnaryMultiCallable[
@@ -837,6 +853,16 @@ class ResourceProviderServicer(metaclass=abc.ABCMeta):
         """`Read` reads the current live state associated with a resource identified by the supplied state. The given state
         must be sufficient to uniquely identify the resource. This is typically just the resource ID, but may also
         include other properties.
+        """
+
+    
+    def List(
+        self,
+        request: pulumi.provider_pb2.ListRequest,
+        context: _ServicerContext,
+    ) -> typing.Union[collections.abc.Iterator[pulumi.provider_pb2.ListResponse], collections.abc.AsyncIterator[pulumi.provider_pb2.ListResponse]]:
+        """`List` lists resources of a given token in pages. A `List` stream emits zero or more resource results, and may
+        emit a continuation token indicating another page is available.
         """
 
     

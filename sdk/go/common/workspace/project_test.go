@@ -1658,6 +1658,120 @@ runtime: yaml`
 	})
 }
 
+func TestEnvironmentVersionPinning(t *testing.T) {
+	t.Parallel()
+
+	projectYaml := `name: test
+runtime: yaml`
+
+	t.Run("YAML list preserves @version syntax", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, "")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("project/env@3")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - project/env@3\n", string(marshaled))
+
+		stack.Environment = stack.Environment.Append("project/other@stable")
+		marshaled, err = encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "environment:\n  - project/env@3\n  - project/other@stable\n", string(marshaled))
+	})
+
+	t.Run("JSON list preserves @version syntax", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromJSONText(t, sink, project, "{}")
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("project/env@3")
+		marshaled, err := encoding.JSON.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, "{\n    \"environment\": [\n        \"project/env@3\"\n    ]\n}\n", string(marshaled))
+	})
+
+	t.Run("YAML literal preserves @version syntax", func(t *testing.T) {
+		t.Parallel()
+
+		projectStackYaml := `environment:
+  values:
+    pulumiConfig:
+      aws:region: us-west-2`
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+		stack, err := loadProjectStackFromText(t, sink, project, projectStackYaml)
+		require.NoError(t, err)
+
+		stack.Environment = stack.Environment.Append("project/env@3")
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+
+		expected := `environment:
+  values:
+    pulumiConfig:
+      aws:region: us-west-2
+  imports:
+    - project/env@3
+`
+		assert.Equal(t, expected, string(marshaled))
+	})
+
+	t.Run("Definition produces correct bytes for versioned imports", func(t *testing.T) {
+		t.Parallel()
+
+		env := NewEnvironment([]string{"project/env@3", "project/other@stable"})
+		def := env.Definition()
+		require.NotNil(t, def)
+
+		var parsed map[string]any
+		err := json.Unmarshal(def, &parsed)
+		require.NoError(t, err)
+
+		imports, ok := parsed["imports"].([]any)
+		require.True(t, ok)
+		assert.Equal(t, []any{"project/env@3", "project/other@stable"}, imports)
+	})
+
+	t.Run("Imports returns versioned names unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		env := NewEnvironment([]string{"project/env@3", "project/other@stable", "project/plain"})
+		imports := env.Imports()
+		assert.Equal(t, []string{"project/env@3", "project/other@stable", "project/plain"}, imports)
+	})
+
+	t.Run("YAML unmarshal round-trip preserves @version", func(t *testing.T) {
+		t.Parallel()
+
+		project, err := loadProjectFromText(t, projectYaml)
+		require.NoError(t, err)
+		var stdout, stderr bytes.Buffer
+		sink := diagtest.MockSink(&stdout, &stderr)
+
+		stackYaml := "environment:\n  - project/env@3\n  - project/other@stable\n"
+		stack, err := loadProjectStackFromText(t, sink, project, stackYaml)
+		require.NoError(t, err)
+
+		marshaled, err := encoding.YAML.Marshal(stack)
+		require.NoError(t, err)
+		assert.Equal(t, stackYaml, string(marshaled))
+	})
+}
+
 func TestEnvironmentRemove(t *testing.T) {
 	t.Parallel()
 

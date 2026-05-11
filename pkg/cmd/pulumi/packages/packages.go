@@ -66,11 +66,11 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
-func InstallPackage(proj workspace.BaseProject, pctx *plugin.Context, language, root,
-	schemaSource string, parameters plugin.ParameterizeParameters,
+func InstallPackage(ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
+	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry, e env.Env, concurrency int,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
-	pkgSpec, specOverride, err := SchemaFromSchemaSource(pctx, schemaSource, parameters, registry, e, concurrency)
+	pkgSpec, specOverride, err := SchemaFromSchemaSource(ws, pctx, schemaSource, parameters, registry, e, concurrency)
 	if err != nil {
 		var diagErr hcl.Diagnostics
 		if errors.As(err, &diagErr) {
@@ -356,6 +356,7 @@ func setSpecNamespace(spec *schema.PackageSpec, pluginSpec workspace.PluginDescr
 // The returned workspace.PackageSpec will be non-nil if and only if the schema is sourced
 // from a plugin.
 func SchemaFromSchemaSource(
+	ws pkgWorkspace.Context,
 	pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters, registry registry.Registry,
 	env env.Env, concurrency int,
 ) (*schema.PackageSpec, *workspace.PackageSpec, error) {
@@ -389,7 +390,7 @@ func SchemaFromSchemaSource(
 		return &spec, nil, nil
 	}
 
-	p, packageSpec, err := ProviderFromSource(pctx, packageSource, registry, env, concurrency)
+	p, packageSpec, err := ProviderFromSource(ws, pctx, packageSource, registry, env, concurrency)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -437,6 +438,7 @@ func SchemaFromSchemaSource(
 //
 // PLUGIN[@VERSION] | PATH_TO_PLUGIN
 func ProviderFromSource(
+	ws pkgWorkspace.Context,
 	pctx *plugin.Context, packageSource string, reg registry.Registry,
 	e env.Env, concurrency int,
 ) (plugin.Provider, workspace.PackageSpec, error) {
@@ -447,7 +449,7 @@ func ProviderFromSource(
 	}
 	packageSpec := workspace.PackageSpec{Source: packageSource, Version: version}
 	{
-		proj, _, err := pkgWorkspace.Instance.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
+		proj, _, err := ws.LoadBaseProjectFrom(pctx.Request(), pctx.Pwd)
 		if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 			return nil, workspace.PackageSpec{}, fmt.Errorf("error loading Pulumi Project: %w", err)
 		}
@@ -465,7 +467,7 @@ func ProviderFromSource(
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 		Concurrency: concurrency,
-	}, reg, packageworkspace.New(pluginstorage.Instance, pkgWorkspace.Instance, pctx.Host, os.Stderr, os.Stderr,
+	}, reg, packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr,
 		nil, packageworkspace.Options{}))
 	if err != nil {
 		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %s: %w", packageSpec, err)

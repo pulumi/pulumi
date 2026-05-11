@@ -36,7 +36,7 @@ func init() {
 
 					RequireStackResource(l, err, changes)
 
-					require.Len(l, snap.Resources, 7, "expected 7 resources in snapshot")
+					require.Len(l, snap.Resources, 10)
 
 					RequireSingleResource(l, snap.Resources, "pulumi:providers:module-format")
 
@@ -60,12 +60,30 @@ func init() {
 					assert.Equal(l, want, res4.Inputs, "expected inputs to be %v", want)
 					assert.Equal(l, res4.Inputs, res4.Outputs, "expected inputs and outputs to match")
 
+					res5 := RequireSingleNamedResource(l, snap.Resources, "res5")
+					want = resource.NewPropertyMapFromMap(map[string]any{"text": "bonjour world"})
+					assert.Equal(l, want, res5.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, res5.Inputs, res5.Outputs, "expected inputs and outputs to match")
+
+					res6 := RequireSingleNamedResource(l, snap.Resources, "res6")
+					want = resource.NewPropertyMapFromMap(map[string]any{"text": "youkoso world"})
+					assert.Equal(l, want, res6.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, res6.Inputs, res6.Outputs, "expected inputs and outputs to match")
+
+					res7 := RequireSingleNamedResource(l, snap.Resources, "res7")
+					want = resource.NewPropertyMapFromMap(map[string]any{"text": "guten tag world"})
+					assert.Equal(l, want, res7.Inputs, "expected inputs to be %v", want)
+					assert.Equal(l, res7.Inputs, res7.Outputs, "expected inputs and outputs to match")
+
 					stk := RequireSingleResource(l, snap.Resources, "pulumi:pulumi:Stack")
 					want = resource.NewPropertyMapFromMap(map[string]any{
 						"out1": 12,
 						"out2": 15,
 						"out3": 12,
 						"out4": 15,
+						"out5": 14,
+						"out6": 15,
+						"out7": 18,
 					})
 					assert.Equal(l, want, stk.Outputs, "expected stack outputs to be %v", want)
 				},

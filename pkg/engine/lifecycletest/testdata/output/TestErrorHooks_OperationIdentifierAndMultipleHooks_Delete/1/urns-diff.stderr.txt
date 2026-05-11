@@ -1,0 +1,1 @@
+<{%fg 3%}>warning: <{%reset%}><{%reset%}>retrying delete due to on-error hook request (1/100)<{%reset%}>

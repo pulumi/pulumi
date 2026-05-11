@@ -31,11 +31,9 @@ import (
 func AssertStackResource(t TestingT, err error, changes display.ResourceChanges) (ok bool) {
 	t.Helper()
 
-	ok = true
-	ok = ok && assert.Nil(t, err, "expected no error, got %v", err)
-	ok = ok && assert.NotEmpty(t, changes, "expected at least 1 StepOp")
-	ok = ok && assert.NotZero(t, changes[deploy.OpCreate], "expected at least 1 Create")
-	return ok
+	return assert.Nil(t, err, "expected no error, got %v", err) &&
+		assert.NotEmpty(t, changes, "expected at least 1 StepOp") &&
+		assert.NotZero(t, changes[deploy.OpCreate], "expected at least 1 Create")
 }
 
 func RequireStackResource(t TestingT, err error, changes display.ResourceChanges) {

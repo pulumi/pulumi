@@ -57,8 +57,8 @@ def func_with_list_param(a: Optional[Sequence[_builtins.str]] = None,
 
     return AwaitableFuncWithListParamResult(
         r=pulumi.get(__ret__, 'r'))
-def func_with_list_param_output(a: Optional[pulumi.Input[Optional[Sequence[_builtins.str]]]] = None,
-                                b: Optional[pulumi.Input[Optional[_builtins.str]]] = None,
+def func_with_list_param_output(a: pulumi.Input[Optional[Optional[Sequence[_builtins.str]]]] = None,
+                                b: pulumi.Input[Optional[Optional[_builtins.str]]] = None,
                                 opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[FuncWithListParamResult]:
     """
     Check codegen of functions with a List parameter.

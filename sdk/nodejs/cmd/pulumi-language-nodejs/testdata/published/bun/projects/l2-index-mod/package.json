@@ -1,0 +1,15 @@
+{
+	"name": "l2-index-mod",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/index-mod": "ROOT/artifacts/pulumi-index-mod-35.0.0.tgz"
+	}
+}

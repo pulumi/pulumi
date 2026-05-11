@@ -150,28 +150,11 @@ async function massage(key: string | undefined, prop: any, objectStack: any[]): 
 }
 
 async function massageComplex(prop: any, objectStack: any[]): Promise<any> {
-    if (asset.Asset.isInstance(prop)) {
-        if ((<asset.FileAsset>prop).path !== undefined) {
-            return { path: (<asset.FileAsset>prop).path };
-        } else if ((<asset.RemoteAsset>prop).uri !== undefined) {
-            return { uri: (<asset.RemoteAsset>prop).uri };
-        } else if ((<asset.StringAsset>prop).text !== undefined) {
-            return { text: "..." };
-        }
-
-        return undefined;
-    }
-
-    if (asset.Archive.isInstance(prop)) {
-        if ((<asset.AssetArchive>prop).assets) {
-            return { assets: await massage("assets", (<asset.AssetArchive>prop).assets, objectStack) };
-        } else if ((<asset.FileArchive>prop).path !== undefined) {
-            return { path: (<asset.FileArchive>prop).path };
-        } else if ((<asset.RemoteArchive>prop).uri !== undefined) {
-            return { uri: (<asset.RemoteArchive>prop).uri };
-        }
-
-        return undefined;
+    // Preserve Asset / Archive instances so subsequent gRPC serialization
+    // tags them with the special signature key (`specialAssetSig` /
+    // `specialArchiveSig`).
+    if (asset.Asset.isInstance(prop) || asset.Archive.isInstance(prop)) {
+        return prop;
     }
 
     if (Resource.isInstance(prop)) {

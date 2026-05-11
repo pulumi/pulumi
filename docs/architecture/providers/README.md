@@ -14,7 +14,7 @@ GCP, or Azure):
 * *Configuration* methods are designed to allow a consumer to configure a
   provider instance in some way. The [](pulumirpc.ResourceProvider.Configure)
   call is the most common example of this, allowing a caller to e.g. specify the
-  AWS region that a provider should use operate in.
+  AWS region that a provider should operate in.
   [](pulumirpc.ResourceProvider.Parameterize) is a similar method that operates
   at a higher level, allowing a caller to influence more deeply how a provider
   works (see [the section on parameterized providers](parameterized-providers)

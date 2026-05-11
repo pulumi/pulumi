@@ -1,3 +1,6 @@
 name: create_inside_apply
-runtime: python
+runtime:
+  name: python
+  options:
+    toolchain: uv
 description: create a resource inside an apply in python

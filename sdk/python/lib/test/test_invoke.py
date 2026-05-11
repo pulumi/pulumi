@@ -251,6 +251,104 @@ async def test_invoke_input_dependency() -> None:
     assert k == False
 
 
+_INTERNAL_KEYS_PAYLOAD: dict = {
+    "__type": "PermissionDescriptorGroup",
+    "items": [
+        {
+            "__type": "PermissionDescriptorCondition",
+            "__provider": "test",
+            "name": "child",
+        }
+    ],
+    "name": "root",
+}
+
+
+class MocksWithInternalKeys(pulumi.runtime.Mocks):
+    def new_resource(
+        self, args: pulumi.runtime.MockResourceArgs
+    ) -> tuple[Optional[str], dict]:
+        return (args.name + "_id", args.inputs)
+
+    def call(
+        self, args: pulumi.runtime.MockCallArgs
+    ) -> tuple[dict, Optional[list[tuple[str, str]]]]:
+        return (_INTERNAL_KEYS_PAYLOAD, [])
+
+
+@pulumi.runtime.test
+def test_invoke_preserves_internal_keys() -> None:
+    pulumi.runtime.mocks.set_mocks(MocksWithInternalKeys())
+
+    result = pulumi.runtime.invoke("test:index:MyFunction", {}).value
+    assert result == _INTERNAL_KEYS_PAYLOAD
+
+
+@pulumi.runtime.test
+async def test_invoke_async_preserves_internal_keys() -> None:
+    pulumi.runtime.mocks.set_mocks(MocksWithInternalKeys())
+
+    o = pulumi.runtime.invoke_output("test:index:MyFunction", {})
+    value = await o.future()
+    assert value == _INTERNAL_KEYS_PAYLOAD
+
+
+class CapturingMocks(pulumi.runtime.Mocks):
+    """Mocks that record the inputs each resource registration receives, so
+    tests can assert what made it through serialization."""
+
+    def __init__(self) -> None:
+        self.captured_inputs: dict[str, dict] = {}
+
+    def new_resource(
+        self, args: pulumi.runtime.MockResourceArgs
+    ) -> tuple[Optional[str], dict]:
+        self.captured_inputs[args.name] = dict(args.inputs)
+        return (args.name + "_id", dict(args.inputs))
+
+    def call(
+        self, args: pulumi.runtime.MockCallArgs
+    ) -> tuple[dict, Optional[list[tuple[str, str]]]]:
+        return (_INTERNAL_KEYS_PAYLOAD, [])
+
+
+class ResourceWithPermissions(pulumi.CustomResource):
+    """A custom resource that accepts an arbitrary `permissions` input. Used
+    to verify that an invoke result containing `__`-prefixed discriminators
+    survives the round-trip into a downstream resource registration."""
+
+    def __init__(
+        self,
+        resource_name: str,
+        permissions: pulumi.Input[Any],
+        opts: Optional[pulumi.ResourceOptions] = None,
+    ):
+        super().__init__(
+            "python:test:ResourceWithPermissions",
+            resource_name,
+            {"permissions": permissions},
+            opts,
+        )
+
+
+@pulumi.runtime.test
+async def test_invoke_result_passed_to_resource_preserves_internal_keys() -> None:
+    # Round-trip test: an invoke that returns `__type`-prefixed discriminators
+    # should be usable as input to a downstream resource without losing them.
+    mocks = CapturingMocks()
+    pulumi.runtime.mocks.set_mocks(mocks)
+
+    permissions = pulumi.runtime.invoke_output("test:index:GetPermissions", {})
+    resource = ResourceWithPermissions("perms-resource", permissions=permissions)
+
+    # Wait for the resource to finish registering so the mock has captured its
+    # inputs.
+    await resource.urn.future()
+
+    captured = mocks.captured_inputs["perms-resource"]
+    assert captured["permissions"] == _INTERNAL_KEYS_PAYLOAD
+
+
 @pytest.mark.parametrize(
     "a,b,expected",
     [

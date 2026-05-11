@@ -9,17 +9,20 @@ scopes:
   ci: []
   cli:
     - about
+    - cloud
     - config
     - display
     - engine
     - env
     - import
     - install
+    - neo
     - new
     - plugin
     - package
     - policy
     - state
+    - convert
   components: [dotnet, go, java, nodejs, python, yaml, pcl]
   docs: []
   engine: []
@@ -30,3 +33,4 @@ scopes:
   sdkgen: [dotnet, go, java, nodejs, python, yaml, pcl, docs]
   yaml: []
   pcl: []
+  java: []

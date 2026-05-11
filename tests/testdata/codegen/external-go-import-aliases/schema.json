@@ -5,31 +5,31 @@
     "example::Component": {
       "inputProperties": {
         "resourceNoAlias": {
-          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:s3/bucket:Bucket"
+          "$ref": "/other/v0.1.0/schema.json#/resources/other:module:Object"
         },
         "typeNoAlias": {
-          "$ref": "/aws/v5.4.0/schema.json#/types/aws:s3/BucketWebsite:BucketWebsite"
+          "$ref": "/other/v0.1.0/schema.json#/types/other:module:Config"
         },
         "resourceLocalAlias": {
-          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:ec2/instance:Instance"
+          "$ref": "/other/v0.1.0/schema.json#/resources/other:module%2Fsub:Object"
         },
         "typeLocalAlias": {
-          "$ref": "/aws/v5.4.0/schema.json#/types/aws:ec2/InstanceLaunchTemplate:InstanceLaunchTemplate"
+          "$ref": "/other/v0.1.0/schema.json#/types/other:module%2Fsub:Config"
         },
         "resourceLocalInsteadOfRemoteAlias": {
-          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1/v1:Res"
+          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1%2Fv1:Res"
         },
         "typeLocalInsteadOfRemoteAlias": {
-          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod1/v1:Config"
+          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod1%2Fv1:Config"
         },
         "resourceRemoteAlias": {
-          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod2/v1:Res"
+          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod2%2Fv1:Res"
         },
         "typeRemoteAlias": {
-          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod2/v1:Spec"
+          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod2%2Fv1:Spec"
         },
         "typeRemoteEnum": {
-          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod3/v1:MyEnum"
+          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod3%2Fv1:MyEnum"
         }
       },
       "requiredInputs": [
@@ -44,28 +44,28 @@
       ],
       "properties": {
         "resourceNoAlias": {
-          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:s3/bucket:Bucket"
+          "$ref": "/other/v0.1.0/schema.json#/resources/other:module:Object"
         },
         "typeNoAlias": {
-          "$ref": "/aws/v5.4.0/schema.json#/types/aws:s3/BucketWebsite:BucketWebsite"
+          "$ref": "/other/v0.1.0/schema.json#/types/other:module:Config"
         },
         "resourceLocalAlias": {
-          "$ref": "/aws/v5.4.0/schema.json#/resources/aws:ec2/instance:Instance"
+          "$ref": "/other/v0.1.0/schema.json#/resources/other:module%2Fsub:Object"
         },
         "typeLocalAlias": {
-          "$ref": "/aws/v5.4.0/schema.json#/types/aws:ec2/InstanceLaunchTemplate:InstanceLaunchTemplate"
+          "$ref": "/other/v0.1.0/schema.json#/types/other:module%2Fsub:Config"
         },
         "resourceLocalInsteadOfRemoteAlias": {
-          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1/v1:Res"
+          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod1%2Fv1:Res"
         },
         "typeLocalInsteadOfRemoteAlias": {
-          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod1/v1:ConfigResponse"
+          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod1%2Fv1:ConfigResponse"
         },
         "resourceRemoteAlias": {
-          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod2/v1:Res"
+          "$ref": "/goalias/v1.0.0/schema.json#/resources/goalias:mod2%2Fv1:Res"
         },
         "typeRemoteAlias": {
-          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod2/v1:SpecResponse"
+          "$ref": "/goalias/v1.0.0/schema.json#/types/goalias:mod2%2Fv1:SpecResponse"
         }
       },
       "required": [
@@ -85,7 +85,7 @@
       "generateResourceContainerTypes": true,
       "generateExtraInputTypes": true,
       "packageImportAliases": {
-        "github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2": "awsec2",
+        "git.example.org/thirdparty/sdk/go/pkg/module/sub": "othersub",
         "github.com/pulumi/pulumi-goalias/sdk/go/goalias/mod1/v1": "localmod1"
       },
       "importBasePath": "external-go-import-aliases/example"

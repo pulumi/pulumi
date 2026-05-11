@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
@@ -32,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -67,9 +67,6 @@ type Host interface {
 	// set of policies that are required to be run during an update, so they tend to be in a
 	// well-known place.
 	PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
-
-	// ListAnalyzers returns a list of all analyzer plugins known to the plugin host.
-	ListAnalyzers() []Analyzer
 
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
@@ -330,6 +327,7 @@ type PolicyAnalyzerOptions struct {
 	ConfigSecretKeys []config.Key
 	DryRun           bool
 	Tags             map[string]string // Tags for the current stack.
+	AdditionalEnv    map[string]string // Per-pack environment variables (e.g., from ESC).
 }
 
 type pluginLoadRequest struct {
@@ -494,14 +492,6 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 	return plugin.(Analyzer), nil
 }
 
-func (host *defaultHost) ListAnalyzers() []Analyzer {
-	analyzers := slice.Prealloc[Analyzer](len(host.analyzerPlugins))
-	for _, analyzer := range host.analyzerPlugins {
-		analyzers = append(analyzers, analyzer.Plugin)
-	}
-	return analyzers
-}
-
 func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {
 	plugin, err := host.loadPlugin(host.loadRequests, func() (any, error) {
 		pkg := descriptor.Name
@@ -577,6 +567,14 @@ type hostManagedProvider struct {
 // Overrides the wrapped provider's implementation of Provider.Close to ask the managing plugin host to close the
 // provider.
 func (pc hostManagedProvider) Close() error {
+	// Send Cancel before tearing the plugin down so that the plugin can acknowledge a graceful shutdown and
+	// Plugin.Close does not treat the subsequent exit as a premature crash. defaultHost.Close does the same for
+	// providers still in resourcePlugins at shutdown, but callers that Close individual providers (e.g. the
+	// convert mapper) bypass that path.
+	cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelCancel()
+	contract.IgnoreError(pc.SignalCancellation(cancelCtx))
+
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
 	_, err := pc.host.loadPlugin(pc.host.loadRequests, func() (any, error) {
 		if err := pc.Provider.Close(); err != nil {
@@ -665,28 +663,53 @@ func (host *defaultHost) GetProjectPlugins() []workspace.ProjectPlugin {
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
 	_, err := host.loadPlugin(host.loadRequests, func() (any, error) {
-		var result error
-		for _, plug := range host.resourcePlugins {
-			if err := plug.Plugin.SignalCancellation(host.ctx.Request()); err != nil {
-				result = multierror.Append(result, fmt.Errorf(
-					"Error signaling cancellation to resource provider '%s': %w", plug.Name, err))
-			}
-		}
+		cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancelCancel()
 
-		for _, plug := range host.analyzerPlugins {
-			if err := plug.Plugin.Cancel(host.ctx.Request()); err != nil {
-				result = multierror.Append(result, fmt.Errorf(
-					"Error signaling cancellation to analyzer '%s': %w", plug.Name, err))
-			}
+		// Cancel in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based providers
+		// run inside a language host, so we cancel non-language host plugins first to give them a chance to shut down
+		// cleanly before cancelling the language host that spawned them.
+		var (
+			mu   sync.Mutex
+			errs []error
+		)
+
+		var wg sync.WaitGroup
+		for _, plug := range host.resourcePlugins {
+			wg.Go(func() {
+				if err := plug.Plugin.SignalCancellation(cancelCtx); err != nil {
+					mu.Lock()
+					errs = append(errs, fmt.Errorf(
+						"error signaling cancellation to resource provider '%s': %w", plug.Name, err))
+					mu.Unlock()
+				}
+			})
 		}
+		for _, plug := range host.analyzerPlugins {
+			wg.Go(func() {
+				if err := plug.Plugin.Cancel(cancelCtx); err != nil {
+					mu.Lock()
+					errs = append(errs, fmt.Errorf(
+						"error signaling cancellation to analyzer '%s': %w", plug.Name, err))
+					mu.Unlock()
+				}
+			})
+		}
+		wg.Wait()
 
 		for _, plug := range host.languagePlugins {
-			if err := plug.Plugin.Cancel(); err != nil {
-				result = multierror.Append(result, fmt.Errorf(
-					"Error signaling cancellation to language runtime '%s': %w", plug.Name, err))
-			}
+			wg.Go(func() {
+				if err := plug.Plugin.Cancel(); err != nil {
+					mu.Lock()
+					errs = append(errs, fmt.Errorf(
+						"error signaling cancellation to language runtime '%s': %w", plug.Name, err))
+					mu.Unlock()
+				}
+			})
 		}
-		return nil, result
+		wg.Wait()
+
+		return nil, errors.Join(errs...)
 	})
 	return err
 }
@@ -699,22 +722,41 @@ func (host *defaultHost) Close() (err error) {
 		host.pluginLock.Lock()
 		// N.B We purposefully do not unlock this.
 
-		// Close all plugins.
-		for _, plug := range host.analyzerPlugins {
-			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Name, err)
-			}
-		}
+		cancelCtx, cancelCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelCancel()
+
+		// Close plugins in two phases: first resource providers and analyzers, then language hosts. RunPlugin-based
+		// providers run inside a language host, so we close them first to give them a chance to shut down cleanly
+		// before closing the language host that spawned them. Each plugin gets a Cancel RPC before being killed, giving
+		// it a chance to shut down gracefully.
+		var wg sync.WaitGroup
 		for _, plug := range host.resourcePlugins {
-			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
-			}
+			wg.Go(func() {
+				contract.IgnoreError(plug.Plugin.SignalCancellation(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					logging.V(5).Infof("Error closing '%s' resource plugin during shutdown; ignoring: %v", plug.Name, err)
+				}
+			})
 		}
+		for _, plug := range host.analyzerPlugins {
+			wg.Go(func() {
+				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
+				if err := plug.Plugin.Close(); err != nil {
+					logging.V(5).Infof("Error closing '%s' analyzer plugin during shutdown; ignoring: %v", plug.Name, err)
+				}
+			})
+		}
+		wg.Wait()
+
 		for _, plug := range host.languagePlugins {
-			if err := plug.Plugin.Close(); err != nil {
-				logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
-			}
+			wg.Go(func() {
+				contract.IgnoreError(plug.Plugin.Cancel())
+				if err := plug.Plugin.Close(); err != nil {
+					logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
+				}
+			})
 		}
+		wg.Wait()
 
 		// Empty out all maps.
 		host.analyzerPlugins = make(map[tokens.QName]*analyzerPlugin)

@@ -13,8 +13,8 @@ _ := $(shell mkdir -p bin)
 _ := $(shell cd pkg && go build -o ../bin/helpmakego github.com/iwahbe/helpmakego)
 
 PKG_CODEGEN := github.com/pulumi/pulumi/pkg/v3/codegen
-# nodejs and python codegen tests are much slower than go/dotnet:
-PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(dotnet|go|nodejs|python)')
+# nodejs and python codegen tests are much slower than go:
+PROJECT_PKGS    = $(shell cd ./pkg && go list ./... | grep -v -E '^${PKG_CODEGEN}/(go|nodejs|python)')
 INTEGRATION_PKG := github.com/pulumi/pulumi/tests/integration
 PERFORMANCE_PKG := github.com/pulumi/pulumi/tests/performance
 TESTS_PKGS      = $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v ^${INTEGRATION_PKG}$ | grep -v ^${PERFORMANCE_PKG}$)
@@ -82,6 +82,14 @@ generate-nodejs-automation-api:: generate-cli-spec
 .PHONY: test-nodejs-automation-api
 test-nodejs-automation-api:: generate-cli-spec
 	cd sdk/nodejs/tools/automation && yarn install && npm start ../../../../tools/automation/specification.json boilerplate/testing.ts && npm test
+
+.PHONY: generate-python-automation-api
+generate-python-automation-api:: generate-cli-spec
+	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python main.py ../../../../tools/automation/specification.json boilerplate/standard.py ../../lib/pulumi/automation/interface
+
+.PHONY: test-python-automation-api
+test-python-automation-api::
+	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python -m unittest tests.test_commands -v
 
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
@@ -200,7 +208,7 @@ test_codegen_%: get_schemas
 test_pkg_rest: get_schemas
 	@cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 
-test_pkg:: test_pkg_rest test_codegen_dotnet test_codegen_go test_codegen_nodejs test_codegen_python
+test_pkg:: test_pkg_rest test_codegen_go test_codegen_nodejs test_codegen_python
 
 subset=$(subst test_integration_,,$(word 1,$(subst !, ,$@)))
 test_integration_%:
@@ -226,6 +234,7 @@ tidy_fix::
 	./scripts/tidy.sh
 
 renovate: tidy_fix
+	./scripts/renovate-changelog.py
 
 validate_codecov_yaml::
 	curl --data-binary @codecov.yml https://codecov.io/validate

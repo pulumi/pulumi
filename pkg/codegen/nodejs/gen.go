@@ -49,8 +49,8 @@ import (
 const (
 	// The minimum version of @pulumi/pulumi compatible with the generated SDK.
 	MinimumValidSDKVersion   string = "^3.142.0"
-	MinimumTypescriptVersion string = "^4.3.5"
-	MinimumNodeTypesVersion  string = "^18"
+	MinimumTypescriptVersion string = "^4.7.0"
+	MinimumNodeTypesVersion  string = "^20"
 )
 
 type typeDetails struct {
@@ -246,11 +246,12 @@ func (mod *modContext) objectType(pkg schema.PackageReference, details *typeDeta
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if strings.HasPrefix(r.Token, "pulumi:providers:") {
 		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
-		if pkgName != mod.pkg.Name() {
-			pkgName = externalModuleName(pkgName)
+		if pkgName == mod.pkg.Name() {
+			// Inside the package's own code, refer to the Provider type unqualified so it resolves
+			// against the local declaration rather than a (non-existent) namespace.
+			return "Provider"
 		}
-
-		return pkgName + ".Provider"
+		return externalModuleName(pkgName) + ".Provider"
 	}
 
 	pkg := mod.pkg
@@ -297,14 +298,25 @@ func tokenToFunctionName(tok string) string {
 func (mod *modContext) typeAst(t schema.Type, input bool, constValue any) tstypes.TypeAst {
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		// Rewrite Optional(Input(T)) to Input(Optional(T)) so that it accepts Output(Optional(T))
+		if lifted := codegen.PushOptionalIntoInput(t); lifted != t {
+			return mod.typeAst(lifted, input, constValue)
+		}
 		return tstypes.Union(
 			mod.typeAst(t.ElementType, input, constValue),
 			tstypes.Identifier("undefined"),
 		)
 	case *schema.InputType:
-		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, constValue)
+		elem := codegen.SimplifyInputUnion(t.ElementType)
+		typ := mod.typeString(elem, input, constValue)
 		if typ == "any" {
 			return tstypes.Identifier("any")
+		}
+		// When the element is Optional(T) where T renders as "any" (e.g. Any, JSON), we can drop the Input wrapper.
+		if opt, ok := elem.(*schema.OptionalType); ok {
+			if inner := mod.typeString(opt.ElementType, input, constValue); inner == "any" {
+				return tstypes.Union(tstypes.Identifier("any"), tstypes.Identifier("undefined"))
+			}
 		}
 		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
 	case *schema.EnumType:
@@ -489,7 +501,10 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string,
 
 		sigil, propertyType := "", p.Type
 		if !p.IsRequired() {
-			sigil, propertyType = "?", codegen.RequiredType(p)
+			sigil = "?"
+			if _, isInput := codegen.RequiredType(p).(*schema.InputType); !isInput {
+				propertyType = codegen.RequiredType(p)
+			}
 		}
 
 		typ := mod.typeString(propertyType, input, p.ConstValue)
@@ -513,17 +528,20 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 			}
 			defaults = append(defaults, fmt.Sprintf("%s: (val.%s) ?? %s", p.Name, p.Name, dv))
 		} else if funcName := mod.provideDefaultsFuncName(p.Type, input); funcName != "" {
-			// ProvideDefaults functions have the form `(Input<shape> | undefined) ->
-			// Output<shape> | undefined`. We need to disallow the undefined. This is safe
-			// because val.%arg existed in the input (type system enforced).
 			var compositeObject string
 			if codegen.IsNOptionalInput(p.Type) {
-				compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", p.Name, funcName)
+				if !p.IsRequired() {
+					compositeObject = fmt.Sprintf(
+						"pulumi.output(val.%s).apply(v => v === undefined ? undefined : %s(v))",
+						p.Name, funcName)
+				} else {
+					compositeObject = fmt.Sprintf("pulumi.output(val.%s).apply(%s)", p.Name, funcName)
+				}
 			} else {
 				compositeObject = fmt.Sprintf("%s(val.%s)", funcName, p.Name)
-			}
-			if !p.IsRequired() {
-				compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
+				if !p.IsRequired() {
+					compositeObject = fmt.Sprintf("(val.%s ? %s : undefined)", p.Name, compositeObject)
+				}
 			}
 			defaults = append(defaults, fmt.Sprintf("%s: %s", p.Name, compositeObject))
 		}
@@ -533,10 +551,6 @@ func (mod *modContext) genPlainObjectDefaultFunc(w io.Writer, name string,
 	if len(defaults) == 0 {
 		return nil
 	}
-	// Generates a function header that looks like this:
-	// export function %sProvideDefaults(val: pulumi.Input<%s> | undefined): pulumi.Output<%s> | undefined {
-	//     const def = (val: LayeredTypeArgs) => ({
-	//         ...val,
 	defaultProvderName := provideDefaultsFuncNameFromName(name)
 	ref := schema.DocRef{}
 	if err := mod.printComment(w, fmt.Sprintf("%s sets the appropriate defaults for %s",
@@ -821,12 +835,15 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 			var arg string
 			applyDefaults := func(arg string) string {
 				if name := mod.provideDefaultsFuncName(prop.Type, true /*input*/); name != "" {
-					var body string
 					if codegen.IsNOptionalInput(prop.Type) {
-						body = fmt.Sprintf("pulumi.output(%[2]s).apply(%[1]s)", name, arg)
-					} else {
-						body = fmt.Sprintf("%s(%s)", name, arg)
+						if !prop.IsRequired() {
+							return fmt.Sprintf(
+								"pulumi.output(%[2]s).apply(v => v === undefined ? undefined : %[1]s(v))",
+								name, arg)
+						}
+						return fmt.Sprintf("pulumi.output(%[2]s).apply(%[1]s)", name, arg)
 					}
+					body := fmt.Sprintf("%s(%s)", name, arg)
 					return fmt.Sprintf("(%s ? %s : undefined)", arg, body)
 				}
 				return arg
@@ -1361,12 +1378,17 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 
 				if name := mod.provideDefaultsFuncName(p.Type, true /*input*/); name != "" {
 					if codegen.IsNOptionalInput(p.Type) || !plain {
-						body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
+						if !p.IsRequired() {
+							body = fmt.Sprintf(
+								"pulumi.output(%s).apply(v => v === undefined ? undefined : %s(v))",
+								body, name)
+						} else {
+							body = fmt.Sprintf("pulumi.output(%s).apply(%s)", body, name)
+						}
 					} else {
 						body = fmt.Sprintf("%s(%s)", name, body)
+						body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
 					}
-
-					body = fmt.Sprintf("args.%s ? %s : undefined", p.Name, body)
 				}
 				fmt.Fprintf(w, "        \"%[1]s\": %[2]s,\n", p.Name, body)
 			}
@@ -1535,7 +1557,14 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 	seen.Add(t)
 
 	resourceOrTokenImport := func(tok string) bool {
-		modName, name, modPath := mod.pkg.TokenToModule(tok), tokenToName(tok), "./index"
+		// Provider tokens (pulumi:providers:<pkg>) correspond to a class named `Provider`, not the
+		// title-cased package name; importing the latter produces a phantom identifier that clashes
+		// with the containing package's component/resource classes.
+		name := tokenToName(tok)
+		if strings.HasPrefix(tok, "pulumi:providers:") {
+			name = "Provider"
+		}
+		modName, modPath := mod.pkg.TokenToModule(tok), "./index"
 		if override, ok := mod.modToPkg[modName]; ok {
 			modName = override
 		}
@@ -2698,17 +2727,23 @@ func genTypeScriptProjectFile(info NodePackageInfo, files codegen.Fs) string {
 
 	fmt.Fprintf(w, `{
     "compilerOptions": {
+        // Output
         "outDir": "bin",
-        "target": "ES2020",
-        "module": "commonjs",
-        "moduleResolution": "node",
         "declaration": true,
+        "declarationMap": true,
         "sourceMap": true,
         "stripInternal": true,
-        "experimentalDecorators": true,
+        // Environment
+        "target": "ES2022",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "moduleDetection": "force",
+        "types": ["node"],
+        // Type Checking
+        "strict": true,
         "noFallthroughCasesInSwitch": true,
-        "forceConsistentCasingInFileNames": true,
-        "strict": true
+        "noImplicitReturns": true,
+        "skipLibCheck": true
     },
     "files": [
 `)

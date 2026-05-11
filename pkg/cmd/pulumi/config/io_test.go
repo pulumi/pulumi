@@ -286,6 +286,87 @@ func TestOpenStackEnvLiteral(t *testing.T) {
 	assert.Equal(t, env, openEnv.Properties)
 }
 
+func TestOpenStackEnvVersionPinned(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+	}
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			assert.Equal(t, "test-org", org)
+			assert.Contains(t, string(yamlBody), "project/env@3")
+			assert.Contains(t, string(yamlBody), "project/other@stable")
+			return &esc.Environment{Properties: env}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	var projectStack workspace.ProjectStack
+	err := yaml.Unmarshal([]byte("environment:\n  - project/env@3\n  - project/other@stable"), &projectStack)
+	require.NoError(t, err)
+
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack)
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	assert.Equal(t, env, openEnv.Properties)
+}
+
+func TestOpenStackEnvVersionPinnedLiteral(t *testing.T) {
+	t.Parallel()
+
+	env := map[string]esc.Value{
+		"pulumiConfig": esc.NewValue(map[string]esc.Value{
+			"test:string": esc.NewValue("esc"),
+		}),
+	}
+
+	be := &backend.MockEnvironmentsBackend{
+		MockBackend: backend.MockBackend{
+			NameF: func() string { return "test" },
+		},
+		OpenYAMLEnvironmentF: func(
+			ctx context.Context,
+			org string,
+			yamlBody []byte,
+			duration time.Duration,
+		) (*esc.Environment, apitype.EnvironmentDiagnostics, error) {
+			assert.Equal(t, "test-org", org)
+			assert.Contains(t, string(yamlBody), "project/env@3")
+			return &esc.Environment{Properties: env}, nil, nil
+		},
+	}
+	stack := &backend.MockStack{
+		OrgNameF: func() string { return "test-org" },
+		BackendF: func() backend.Backend { return be },
+	}
+
+	var projectStack workspace.ProjectStack
+	stackYAML := "environment:\n  imports:\n    - project/env@3\n" +
+		"  values:\n    pulumiConfig:\n      test:string: esc"
+	err := yaml.Unmarshal([]byte(stackYAML), &projectStack)
+	require.NoError(t, err)
+
+	openEnv, diags, err := openStackEnv(t.Context(), stack, &projectStack)
+	require.NoError(t, err)
+	require.Len(t, diags, 0)
+	assert.Equal(t, env, openEnv.Properties)
+}
+
 func TestStackEnvConfig(t *testing.T) {
 	t.Parallel()
 

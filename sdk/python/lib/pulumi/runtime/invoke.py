@@ -31,6 +31,7 @@ from semver import VersionInfo
 
 from .. import _types, log
 from ..invoke import InvokeOptions, InvokeOutputOptions
+from ..output import _OutputData
 from ..runtime.proto import resource_pb2
 from ..resource import CustomResource
 from . import rpc
@@ -157,15 +158,12 @@ def invoke_output(
     resolves when the invoke finishes.
     """
 
-    # Setup the futures for the output.
-    resolve_value: asyncio.Future = asyncio.Future()
-    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
-    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
-    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
+    # Setup the future for the output data.
+    resolve_data: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
     from .. import Output
 
-    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
+    out = Output._from_data(resolve_data)
 
     async def do_invoke_output() -> None:
         try:
@@ -173,19 +171,16 @@ def invoke_output(
                 tok, props, opts, typ, package_ref=package_ref, check_dependencies=True
             )
 
-            resolve_value.set_result(
-                invoke_result.value if invoke_result.is_known else None
+            resolve_data.set_result(
+                _OutputData(
+                    resources=set(invoke_result.dependencies),
+                    value=invoke_result.value if invoke_result.is_known else None,
+                    is_known=invoke_result.is_known,
+                    is_secret=invoke_result.is_secret and invoke_result.is_known,
+                )
             )
-            resolve_is_known.set_result(invoke_result.is_known)
-            resolve_is_secret.set_result(
-                invoke_result.is_secret and invoke_result.is_known
-            )
-            resolve_deps.set_result(set(invoke_result.dependencies))
         except Exception as exn:  # noqa: BLE001 catch blind exception
-            resolve_value.set_exception(exn)
-            resolve_is_known.set_exception(exn)
-            resolve_is_secret.set_exception(exn)
-            resolve_deps.set_exception(exn)
+            resolve_data.set_exception(exn)
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("invoke", do_invoke_output)())
     return out
@@ -420,15 +415,12 @@ def call(
     if typ and not _types.is_output_type(typ):
         raise TypeError("Expected typ to be decorated with @output_type")
 
-    # Setup the futures for the output.
-    resolve_value: asyncio.Future = asyncio.Future()
-    resolve_is_known: asyncio.Future[bool] = asyncio.Future()
-    resolve_is_secret: asyncio.Future[bool] = asyncio.Future()
-    resolve_deps: asyncio.Future[set[Resource]] = asyncio.Future()
+    # Setup the future for the output data.
+    resolve_data: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
     from .. import Output
 
-    out = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
+    out = Output._from_data(resolve_data)
 
     async def do_call() -> None:
         try:
@@ -550,19 +542,20 @@ def call(
                         else deserialized
                     )
 
-            resolve_value.set_result(value)
-            resolve_is_known.set_result(is_known)
-            resolve_is_secret.set_result(is_secret)
-            resolve_deps.set_result(deps)
+            resolve_data.set_result(
+                _OutputData(
+                    resources=deps,
+                    value=value,
+                    is_known=is_known,
+                    is_secret=is_secret,
+                )
+            )
 
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}"
             )
-            resolve_value.set_exception(exn)
-            resolve_is_known.set_exception(exn)
-            resolve_is_secret.set_exception(exn)
-            resolve_deps.set_result(set())
+            resolve_data.set_exception(exn)
             raise
 
     asyncio.ensure_future(_get_rpc_manager().do_rpc("call", do_call)())

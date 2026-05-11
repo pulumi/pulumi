@@ -69,6 +69,9 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -107,6 +110,9 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -139,6 +145,9 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
@@ -177,6 +186,9 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -215,6 +227,9 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -247,6 +262,9 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},

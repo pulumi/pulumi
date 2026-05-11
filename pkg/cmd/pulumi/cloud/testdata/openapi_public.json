@@ -1,0 +1,1279 @@
+{
+  "components": {
+    "schemas": {
+      "AITemplateRequest": {
+        "description": "Request body for generating an infrastructure-as-code template using AI.",
+        "properties": {
+          "connectionId": {
+            "description": "Optional identifier for the connection/session.",
+            "type": "string",
+            "x-order": 4
+          },
+          "conversationId": {
+            "description": "Optional identifier to continue an existing AI conversation.",
+            "type": "string",
+            "x-order": 3
+          },
+          "instructions": {
+            "description": "Natural language instructions describing the desired infrastructure.",
+            "type": "string",
+            "x-order": 2
+          },
+          "language": {
+            "description": "The programming language for the generated template (e.g. 'typescript', 'python', 'go').",
+            "type": "string",
+            "x-order": 1
+          }
+        },
+        "required": [
+          "instructions",
+          "language"
+        ],
+        "type": "object"
+      },
+      "AccessToken": {
+        "description": "AccessToken holds a pulumi access token and some associated metadata",
+        "properties": {
+          "admin": {
+            "description": "Whether this token has Pulumi Cloud admin privileges.",
+            "type": "boolean",
+            "x-order": 7
+          },
+          "created": {
+            "description": "Timestamp when the token was created, in ISO 8601 format.",
+            "type": "string",
+            "x-order": 4
+          },
+          "createdBy": {
+            "description": "User.GitHubLogin of the user that created the access token",
+            "type": "string",
+            "x-order": 8
+          },
+          "description": {
+            "description": "User-provided description of the token's purpose.",
+            "type": "string",
+            "x-order": 3
+          },
+          "expires": {
+            "description": "Unix epoch timestamp (seconds) when the token expires. Zero if it never expires.",
+            "format": "int64",
+            "type": "integer",
+            "x-order": 6
+          },
+          "id": {
+            "description": "Unique identifier for this access token.",
+            "type": "string",
+            "x-order": 1
+          },
+          "lastUsed": {
+            "description": "Unix epoch timestamp (seconds) when the token was last used. Zero if never used.",
+            "format": "int64",
+            "type": "integer",
+            "x-order": 5
+          },
+          "name": {
+            "description": "Human-readable name assigned to this access token.",
+            "type": "string",
+            "x-order": 2
+          },
+          "role": {
+            "$ref": "#/components/schemas/AccessTokenRole",
+            "description": "Role associated with the token, if applicable",
+            "x-order": 9
+          }
+        },
+        "required": [
+          "admin",
+          "created",
+          "createdBy",
+          "description",
+          "expires",
+          "id",
+          "lastUsed",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AccessTokenRole": {
+        "description": "A role that can be associated with an access token to scope its permissions.",
+        "properties": {
+          "defaultIdentifier": {
+            "description": "The default identity to assume when using a token with this role.",
+            "enum": [
+              "member",
+              "admin",
+              "billing-manager",
+              "stack-read",
+              "stack-write",
+              "stack-admin",
+              "environment-read",
+              "environment-write",
+              "environment-admin",
+              "environment-open",
+              "insights-account-read",
+              "insights-account-write",
+              "insights-account-admin"
+            ],
+            "type": "string",
+            "x-order": 3,
+            "x-pulumi-model-property": {
+              "enumComments": "DefaultIdentifier is an enum describing the permission level for a default role.",
+              "enumFieldNames": [
+                "Member",
+                "Admin",
+                "BillingManager",
+                "StackRead",
+                "StackWrite",
+                "StackAdmin",
+                "EnvironmentRead",
+                "EnvironmentWrite",
+                "EnvironmentAdmin",
+                "EnvironmentOpen",
+                "InsightsAccountRead",
+                "InsightsAccountWrite",
+                "InsightsAccountAdmin"
+              ],
+              "enumTypeName": "DefaultIdentifier"
+            }
+          },
+          "id": {
+            "description": "Unique identifier for this role.",
+            "type": "string",
+            "x-order": 1
+          },
+          "name": {
+            "description": "Display name of the role.",
+            "type": "string",
+            "x-order": 2
+          }
+        },
+        "required": [
+          "defaultIdentifier",
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AgentEntity": {
+        "description": "Represents agent entity.",
+        "discriminator": {
+          "mapping": {
+            "policy_issue": "#/components/schemas/AgentEntityPolicyIssue",
+            "pull_request": "#/components/schemas/AgentEntityPR",
+            "repository": "#/components/schemas/AgentEntityRepository",
+            "stack": "#/components/schemas/AgentEntityStack"
+          },
+          "propertyName": "type"
+        },
+        "properties": {
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "AgentEntityDiff": {
+        "description": "Represents agent entity diff.",
+        "properties": {
+          "add": {
+            "description": "Entities to add to the Agent's context.\nEntities must be valid, and will be automatically deleted if they are invalid.",
+            "items": {
+              "$ref": "#/components/schemas/AgentEntity"
+            },
+            "type": "array",
+            "x-order": 1
+          },
+          "remove": {
+            "description": "Entities to remove from the Agent's context.",
+            "items": {
+              "$ref": "#/components/schemas/AgentEntity"
+            },
+            "type": "array",
+            "x-order": 2
+          }
+        },
+        "type": "object"
+      },
+      "AgentEntityPR": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentEntity"
+          },
+          {
+            "description": "Represents agent entity.",
+            "properties": {
+              "merged": {
+                "description": "If the PR has been merged already",
+                "type": "boolean",
+                "x-order": 3
+              },
+              "number": {
+                "description": "The PR number",
+                "format": "int32",
+                "type": "integer",
+                "x-order": 2
+              },
+              "repo": {
+                "$ref": "#/components/schemas/AgentEntityRepository",
+                "description": "The repo the PR is in",
+                "x-order": 1
+              }
+            },
+            "required": [
+              "merged",
+              "number",
+              "repo"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentEntityPolicyIssue": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentEntity"
+          },
+          {
+            "description": "Represents agent entity.",
+            "properties": {
+              "id": {
+                "description": "The ID of the policy issue",
+                "type": "string",
+                "x-order": 1
+              },
+              "name": {
+                "description": "The name of the policy",
+                "type": "string",
+                "x-order": 2
+              }
+            },
+            "required": [
+              "id"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentEntityRepository": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentEntity"
+          },
+          {
+            "description": "Represents agent entity.",
+            "properties": {
+              "forge": {
+                "description": "The forge/provider where the repository is hosted",
+                "example": "github",
+                "type": "string",
+                "x-order": 3
+              },
+              "host": {
+                "description": "The hostname for the repository, used for self-hosted providers such as GitHub Enterprise",
+                "example": "github.example.com",
+                "type": "string",
+                "x-order": 4
+              },
+              "name": {
+                "description": "The name of the repository.",
+                "type": "string",
+                "x-order": 1
+              },
+              "org": {
+                "description": "The organization that the repository is contained within",
+                "type": "string",
+                "x-order": 2
+              }
+            },
+            "required": [
+              "name",
+              "org"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentEntityStack": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentEntity"
+          },
+          {
+            "description": "Represents agent entity.",
+            "properties": {
+              "name": {
+                "description": "The name of the Pulumi stack described.",
+                "type": "string",
+                "x-order": 1
+              },
+              "project": {
+                "description": "The name of the project that the stack is contained within",
+                "type": "string",
+                "x-order": 2
+              }
+            },
+            "required": [
+              "name",
+              "project"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentPool": {
+        "description": "A pool of self-hosted deployment agents for running Pulumi Deployments.",
+        "properties": {
+          "created": {
+            "description": "Unix epoch timestamp (seconds) when the agent pool was created.",
+            "format": "int64",
+            "type": "integer",
+            "x-order": 1
+          },
+          "description": {
+            "description": "User-provided description of the agent pool's purpose.",
+            "type": "string",
+            "x-order": 4
+          },
+          "id": {
+            "description": "Unique identifier for this agent pool.",
+            "type": "string",
+            "x-order": 2
+          },
+          "isDefault": {
+            "description": "Whether this pool is the organization's default workflow runner pool.",
+            "type": "boolean",
+            "x-order": 8
+          },
+          "lastDeployment": {
+            "description": "Unix epoch timestamp (seconds) of the most recent deployment executed by this pool. Null if no deployments have run.",
+            "format": "int64",
+            "type": "integer",
+            "x-order": 7
+          },
+          "lastSeen": {
+            "description": "Unix epoch timestamp (seconds) when any agent in the pool last reported a heartbeat.",
+            "format": "int64",
+            "type": "integer",
+            "x-order": 5
+          },
+          "name": {
+            "description": "Human-readable name for this agent pool.",
+            "type": "string",
+            "x-order": 3
+          },
+          "status": {
+            "description": "Aggregate status of agents in the pool (e.g. idle, busy, offline).",
+            "enum": [
+              "online",
+              "offline"
+            ],
+            "type": "string",
+            "x-order": 6,
+            "x-pulumi-model-property": {
+              "enumComments": "DeploymentAgentStatus is an enum representing the online/offline status of a deployment agent.",
+              "enumTypeName": "DeploymentAgentStatus"
+            }
+          }
+        },
+        "required": [
+          "created",
+          "description",
+          "id",
+          "isDefault",
+          "lastSeen",
+          "name",
+          "status"
+        ],
+        "type": "object"
+      },
+      "AgentSlashCommand": {
+        "description": "An agent slash command.",
+        "properties": {
+          "builtIn": {
+            "description": "Whether this is a built-in system command (true) or user-created (false).",
+            "type": "boolean",
+            "x-order": 4
+          },
+          "description": {
+            "description": "Human-readable description shown to users in the command palette.",
+            "type": "string",
+            "x-order": 3
+          },
+          "modifiedAt": {
+            "description": "When the command was last modified, in ISO 8601 format.",
+            "format": "date-time",
+            "type": "string",
+            "x-order": 5
+          },
+          "name": {
+            "description": "The slash command name (e.g. '/fix', '/explain'). Used to invoke the command.",
+            "type": "string",
+            "x-order": 1
+          },
+          "prompt": {
+            "description": "The system prompt text sent to the AI when this command is invoked.",
+            "type": "string",
+            "x-order": 2
+          },
+          "tag": {
+            "description": "Version tag for optimistic concurrency control.",
+            "type": "string",
+            "x-order": 6
+          }
+        },
+        "required": [
+          "builtIn",
+          "description",
+          "modifiedAt",
+          "name",
+          "prompt",
+          "tag"
+        ],
+        "type": "object"
+      },
+      "AgentUserEvent": {
+        "description": "Represents an agent user event.",
+        "discriminator": {
+          "mapping": {
+            "exec_tool_call": "#/components/schemas/AgentUserEventExecToolCall",
+            "tool_result": "#/components/schemas/AgentUserEventToolResult",
+            "user_cancel": "#/components/schemas/AgentUserEventCancel",
+            "user_confirmation": "#/components/schemas/AgentUserEventConfirmation",
+            "user_message": "#/components/schemas/AgentUserEventMessage"
+          },
+          "propertyName": "type"
+        },
+        "properties": {
+          "entity_diff": {
+            "$ref": "#/components/schemas/AgentEntityDiff",
+            "description": "Entities to add or remove from the agent.",
+            "x-order": 1
+          },
+          "timestamp": {
+            "description": "When the event occurred.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "type"
+        ],
+        "type": "object"
+      },
+      "AgentUserEventCancel": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentUserEvent"
+          },
+          {
+            "description": "Represents an agent user event.",
+            "type": "object"
+          }
+        ]
+      },
+      "AgentUserEventConfirmation": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentUserEvent"
+          },
+          {
+            "description": "Represents an agent user event.",
+            "properties": {
+              "approval_request_id": {
+                "description": "ID to correlate the question the user is responding to.",
+                "type": "string",
+                "x-order": 1
+              },
+              "instructions": {
+                "description": "If the request was rejected, this is field carries instructions to the agent on what to do instead.",
+                "type": "string",
+                "x-order": 3
+              },
+              "ok": {
+                "description": "Boolean confirmation response.",
+                "type": "boolean",
+                "x-order": 2
+              }
+            },
+            "required": [
+              "approval_request_id",
+              "ok"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentUserEventExecToolCall": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentUserEvent"
+          },
+          {
+            "description": "Notification from the CLI client that it is about to execute a tool call locally. Sent before each tool call from a prior AssistantMessage with execution_mode=cli, so the service can record a corresponding exec_tool_call backend event and the UI can render a running tool entry while the CLI executes it.",
+            "properties": {
+              "name": {
+                "description": "Tool name.",
+                "type": "string",
+                "x-order": 2
+              },
+              "tool_call_id": {
+                "description": "Tool call identifier, correlating to a tool call from a prior AssistantMessage with execution_mode=cli.",
+                "type": "string",
+                "x-order": 1
+              }
+            },
+            "required": [
+              "name",
+              "tool_call_id"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentUserEventMessage": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentUserEvent"
+          },
+          {
+            "description": "Represents an agent user event.",
+            "properties": {
+              "commands": {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/AgentSlashCommand"
+                },
+                "description": "Slash Commands the user selected when creating their message.",
+                "type": "object",
+                "x-order": 2
+              },
+              "content": {
+                "description": "The exact natural language instruction from the user.",
+                "type": "string",
+                "x-order": 1
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentUserEventToolResult": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AgentUserEvent"
+          },
+          {
+            "description": "Batch of tool results delivered back to the agent. Sent by the CLI client after it executes tool calls from a prior AssistantMessage that had execution_mode=cli, resuming the agent's turn.",
+            "properties": {
+              "tool_results": {
+                "description": "Batch of tool results from CLI-side execution.",
+                "items": {
+                  "$ref": "#/components/schemas/AgentUserEventToolResultItem"
+                },
+                "type": "array",
+                "x-order": 1
+              }
+            },
+            "required": [
+              "tool_results"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "AgentUserEventToolResultItem": {
+        "description": "A single tool result delivered back to the agent from the CLI client.",
+        "properties": {
+          "content": {
+            "description": "The result content from tool execution.",
+            "type": "object",
+            "x-order": 3
+          },
+          "is_error": {
+            "description": "Whether the tool execution resulted in an error.",
+            "type": "boolean",
+            "x-order": 4
+          },
+          "name": {
+            "description": "Tool name.",
+            "type": "string",
+            "x-order": 2
+          },
+          "tool_call_id": {
+            "description": "Tool call identifier, correlating to a tool call from a prior AssistantMessage with execution_mode=cli.",
+            "type": "string",
+            "x-order": 1
+          }
+        },
+        "required": [
+          "content",
+          "name",
+          "tool_call_id"
+        ],
+        "type": "object"
+      },
+      "BaseCreateAccessTokenRequest": {
+        "description": "Request body for base create access token.",
+        "properties": {
+          "description": {
+            "description": "The description",
+            "type": "string",
+            "x-order": 1
+          },
+          "expires": {
+            "description": "The expiration time",
+            "format": "int64",
+            "type": "integer",
+            "x-order": 2
+          }
+        },
+        "required": [
+          "description",
+          "expires"
+        ],
+        "type": "object"
+      },
+      "CreateAccessTokenResponse": {
+        "description": "CreateAccessTokenResponse is the shape of the response after creating a token. The ID is an opaque ID that can be used\nin future CRUD operations and the Token is the actual token value (that is presented in the authorization header).",
+        "properties": {
+          "id": {
+            "description": "The unique identifier",
+            "type": "string",
+            "x-order": 1
+          },
+          "tokenValue": {
+            "description": "The token value",
+            "type": "string",
+            "x-order": 2
+          }
+        },
+        "required": [
+          "id",
+          "tokenValue"
+        ],
+        "type": "object"
+      },
+      "CreateOrgAccessTokenRequest": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseCreateAccessTokenRequest"
+          },
+          {
+            "description": "CreateOrgAccessTokenRequest is the accepted request body for creating an organization access token.",
+            "properties": {
+              "admin": {
+                "description": "Whether the entity has admin privileges",
+                "type": "boolean",
+                "x-order": 2
+              },
+              "name": {
+                "description": "The name",
+                "type": "string",
+                "x-order": 1
+              },
+              "roleID": {
+                "description": "The role identifier",
+                "type": "string",
+                "x-order": 3
+              }
+            },
+            "required": [
+              "admin",
+              "name"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ListAccessTokensResponse": {
+        "description": "ListAccessTokensResponse is the shape of the response when listing access tokens for a user.",
+        "properties": {
+          "tokens": {
+            "description": "The list of access tokens",
+            "items": {
+              "$ref": "#/components/schemas/AccessToken"
+            },
+            "type": "array",
+            "x-order": 1
+          }
+        },
+        "required": [
+          "tokens"
+        ],
+        "type": "object"
+      },
+      "ListAgentPoolsResponse": {
+        "description": "Response containing a list of agent pools.",
+        "properties": {
+          "agentPools": {
+            "description": "The list of agent pools",
+            "items": {
+              "$ref": "#/components/schemas/AgentPool"
+            },
+            "type": "array",
+            "x-order": 1
+          },
+          "defaultAgentPoolID": {
+            "description": "The ID of the organization's default agent pool. Omitted if the organization uses the Pulumi Hosted Pool.",
+            "type": "string",
+            "x-order": 2
+          }
+        },
+        "required": [
+          "agentPools"
+        ],
+        "type": "object"
+      },
+      "ListPolicyViolationsV2Response": {
+        "description": "Response containing a paginated list of policy violations (v2).",
+        "properties": {
+          "continuationToken": {
+            "description": "Continuation token for pagination",
+            "type": "string",
+            "x-order": 2
+          },
+          "policyViolations": {
+            "description": "The list of policy violations",
+            "items": {
+              "$ref": "#/components/schemas/PolicyViolationV2"
+            },
+            "type": "array",
+            "x-order": 1
+          }
+        },
+        "required": [
+          "policyViolations"
+        ],
+        "type": "object"
+      },
+      "PolicyViolationV2": {
+        "description": "PolicyViolationV2 represents a policy violation detected during an update or resource scan.",
+        "properties": {
+          "accountName": {
+            "description": "The Insights account name associated with the violation, for resource-scoped violations.",
+            "type": "string",
+            "x-order": 5
+          },
+          "id": {
+            "description": "The unique identifier of the policy violation.",
+            "type": "string",
+            "x-order": 1
+          },
+          "kind": {
+            "description": "The kind of policy violation (audit or preventative).",
+            "enum": [
+              "audit",
+              "preventative"
+            ],
+            "type": "string",
+            "x-order": 16,
+            "x-pulumi-model-property": {
+              "enumComments": "Whether a policy issue is audit-only or preventative. Audit issues are informational; preventative issues block operations.",
+              "enumTypeName": "PolicyIssueKind"
+            }
+          },
+          "level": {
+            "description": "The enforcement level of the violated policy (e.g. advisory, mandatory, disabled).",
+            "type": "string",
+            "x-order": 15
+          },
+          "message": {
+            "description": "A human-readable message describing the policy violation.",
+            "type": "string",
+            "x-order": 13
+          },
+          "observedAt": {
+            "description": "The timestamp when the violation was observed.",
+            "format": "date-time",
+            "type": "string",
+            "x-order": 14
+          },
+          "policyName": {
+            "description": "The name of the policy that was violated.",
+            "type": "string",
+            "x-order": 9
+          },
+          "policyPack": {
+            "description": "The name of the policy pack that produced this violation.",
+            "type": "string",
+            "x-order": 7
+          },
+          "policyPackTag": {
+            "description": "The tag of the policy pack version that produced this violation.",
+            "type": "string",
+            "x-order": 8
+          },
+          "projectName": {
+            "description": "The name of the project containing the violating resource.",
+            "type": "string",
+            "x-order": 2
+          },
+          "resourceName": {
+            "description": "The name of the resource that violated the policy.",
+            "type": "string",
+            "x-order": 12
+          },
+          "resourceType": {
+            "description": "The type of the resource that violated the policy.",
+            "type": "string",
+            "x-order": 11
+          },
+          "resourceURN": {
+            "description": "The URN of the resource that violated the policy.",
+            "type": "string",
+            "x-order": 10
+          },
+          "resourceVersion": {
+            "description": "The resource version where the violation was detected.",
+            "format": "int64",
+            "type": "integer",
+            "x-order": 6
+          },
+          "stackName": {
+            "description": "The name of the stack containing the violating resource.",
+            "type": "string",
+            "x-order": 3
+          },
+          "stackVersion": {
+            "description": "The stack version where the violation was detected.",
+            "format": "int64",
+            "type": "integer",
+            "x-order": 4
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "level",
+          "message",
+          "observedAt",
+          "policyName",
+          "policyPack",
+          "policyPackTag",
+          "projectName",
+          "resourceName",
+          "resourceType",
+          "resourceURN"
+        ],
+        "type": "object"
+      },
+      "UpdateAzureDevOpsAppIntegrationRequest": {
+        "description": "Request body for creating or updating an Azure DevOps app integration for a Pulumi organization.",
+        "properties": {
+          "disableCodeAccessForReviews": {
+            "description": "Whether to disable code access for AI reviews",
+            "type": "boolean",
+            "x-order": 6
+          },
+          "disableDetailedDiff": {
+            "description": "Whether detailed property-level diffs are disabled for PR comments",
+            "type": "boolean",
+            "x-order": 5
+          },
+          "disableNeoSummaries": {
+            "description": "Whether Neo AI summaries are disabled for this integration",
+            "type": "boolean",
+            "x-order": 4
+          },
+          "disablePRComments": {
+            "description": "Whether PR comments are disabled for this integration",
+            "type": "boolean",
+            "x-order": 3
+          },
+          "organizationName": {
+            "description": "The name of the Azure DevOps organization (e.g., 'mycompany' in dev.azure.com/mycompany)",
+            "type": "string",
+            "x-order": 1
+          },
+          "projectId": {
+            "description": "The ID of the Azure DevOps project to integrate",
+            "type": "string",
+            "x-order": 2
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "APIs and Definitions for the Pulumi Cloud product.",
+    "title": "Pulumi APIs",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.3",
+  "paths": {
+    "/api/ai/template": {
+      "post": {
+        "deprecated": true,
+        "description": "Generates a Pulumi template using the Pulumi AI service.",
+        "operationId": "AITemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AITemplateRequest"
+              }
+            }
+          },
+          "x-originalParamName": "body"
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "AITemplate",
+        "tags": [
+          "AI"
+        ],
+        "x-pulumi-route-property": {
+          "Deprecated": true,
+          "Visibility": "Public"
+        }
+      }
+    },
+    "/api/console/orgs/{orgName}/integrations/azure-devops": {
+      "post": {
+        "description": "Creates a new Azure DevOps integration for an organization. Requires an Azure DevOps organization and project to be specified in the request body. Returns 409 if an integration already exists for the specified project.",
+        "operationId": "CreateAzureDevOpsSetup",
+        "parameters": [
+          {
+            "description": "The organization name",
+            "in": "path",
+            "name": "orgName",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAzureDevOpsAppIntegrationRequest"
+              }
+            }
+          },
+          "x-originalParamName": "body"
+        },
+        "responses": {
+          "204": {
+            "description": "Created successfully"
+          },
+          "400": {
+            "description": "Missing Azure DevOps organization or project"
+          },
+          "409": {
+            "description": "Azure DevOps integration already exists for this project"
+          }
+        },
+        "summary": "CreateAzureDevOpsSetup",
+        "tags": [
+          "VCS Integrations"
+        ],
+        "x-pulumi-route-property": {
+          "Visibility": "Preview"
+        }
+      }
+    },
+    "/api/orgs/{orgName}/agent-pools": {
+      "get": {
+        "description": "Returns all agent pools configured for an organization. Agent pools enable self-hosted deployment agents, allowing organizations to run Pulumi Deployments on their own infrastructure for accessing private networks, meeting compliance requirements, or using custom execution environments. Each pool in the response includes its ID, name, and configuration details.",
+        "operationId": "ListOrgAgentPool",
+        "parameters": [
+          {
+            "description": "The organization name",
+            "in": "path",
+            "name": "orgName",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListAgentPoolsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        },
+        "summary": "ListOrgAgentPool",
+        "tags": [
+          "Workflows",
+          "DeploymentRunners"
+        ]
+      }
+    },
+    "/api/orgs/{orgName}/policyresults/violationsv2": {
+      "get": {
+        "deprecated": true,
+        "description": "ListPolicyViolationsV2Handler gets all the policy violations for an org.\nDeprecated: Use /policyresults/issues",
+        "operationId": "ListPolicyViolationsV2",
+        "parameters": [
+          {
+            "description": "The organization name",
+            "in": "path",
+            "name": "orgName",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPolicyViolationsV2Response"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "404": {
+            "description": "Organization not found"
+          }
+        },
+        "summary": "ListPolicyViolationsV2",
+        "tags": [
+          "Organizations",
+          "PolicyResults"
+        ],
+        "x-pulumi-route-property": {
+          "Deprecated": true,
+          "SupersededBy": "ListPolicyIssues",
+          "Visibility": "Public"
+        }
+      }
+    },
+    "/api/orgs/{orgName}/tokens": {
+      "get": {
+        "description": "Retrieves all access tokens created for an organization. Organization tokens provide CI/CD automation access scoped to the organization rather than tied to individual user accounts. The response includes token metadata such as name, description, creation date, last used date, and expiration status. The actual token values are never returned after initial creation. An optional filter parameter can include expired tokens in the results.",
+        "operationId": "ListOrgTokens",
+        "parameters": [
+          {
+            "description": "The organization name",
+            "in": "path",
+            "name": "orgName",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter tokens by status (e.g., include expired tokens)",
+            "in": "query",
+            "name": "filter",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListAccessTokensResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "ListOrgTokens",
+        "tags": [
+          "Organizations",
+          "AccessTokens"
+        ]
+      },
+      "post": {
+        "description": "Generates a new access token scoped to the organization for use in CI/CD pipelines and automated workflows. Organization tokens belong to the organization rather than individual users, ensuring that access is not disrupted when team members leave.\n\nThe `name` field must be unique across the organization (including deleted tokens) and cannot exceed 40 characters. The `expires` field accepts a unix epoch timestamp up to two years from the present, or `0` for no expiry (default).\n\n**Important:** The token value in the response is only returned once at creation time and cannot be retrieved later. Audit logs for actions performed with organization tokens are attributed to the organization rather than an individual user.",
+        "operationId": "CreateOrgToken",
+        "parameters": [
+          {
+            "description": "The organization name",
+            "in": "path",
+            "name": "orgName",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Audit log reason for creating this token",
+            "in": "query",
+            "name": "reason",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrgAccessTokenRequest"
+              }
+            }
+          },
+          "x-originalParamName": "body"
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateAccessTokenResponse"
+                }
+              }
+            },
+            "description": "OK"
+          }
+        },
+        "summary": "CreateOrgToken",
+        "tags": [
+          "Organizations",
+          "AccessTokens"
+        ]
+      }
+    },
+    "/api/user/tokens/{tokenId}": {
+      "delete": {
+        "description": "Permanently deletes a personal access token by its identifier. The token is immediately invalidated and can no longer be used for authentication. Returns 204 on success or 404 if the token does not exist.",
+        "operationId": "DeletePersonalToken",
+        "parameters": [
+          {
+            "description": "The access token identifier",
+            "in": "path",
+            "name": "tokenId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Token"
+          }
+        },
+        "summary": "DeletePersonalToken",
+        "tags": [
+          "Users",
+          "AccessTokens"
+        ]
+      }
+    },
+    "/api/test/nested-arrays/{id}": {
+      "get": {
+        "operationId": "GetNestedArrays",
+        "tags": [
+          "TestNested"
+        ],
+        "summary": "GetNestedArrays",
+        "description": "Regression coverage: response has both an array of allOf-wrapped objects and an array of string-enum primitives. Exercises markdown renderer paths that were silently dropping nested model fields and inline enum values.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Synthetic id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nested-array fixture response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "owners",
+                    "statuses"
+                  ],
+                  "properties": {
+                    "owners": {
+                      "type": "array",
+                      "description": "Owners list — items use allOf to merge in the OwnerSummary shape.",
+                      "items": {
+                        "allOf": [
+                          {
+                            "type": "object",
+                            "required": [
+                              "name"
+                            ],
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "description": "Owner display name."
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Owner role.",
+                                "enum": [
+                                  "admin",
+                                  "member",
+                                  "viewer"
+                                ]
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    "statuses": {
+                      "type": "array",
+                      "description": "Allowed status values for the thing.",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "pending",
+                          "active",
+                          "archived"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

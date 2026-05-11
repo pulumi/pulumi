@@ -221,6 +221,8 @@ type pythonLanguageHost struct {
 	engineAddress string
 	tracing       string
 	otelEndpoint  string
+	cancelCtx     context.Context    // Cancelled when we receive the `Cancel` RPC
+	cancelFunc    context.CancelFunc // Cancel the cancelCtx
 
 	// This is used by conformance testing to set the typechecker to use in ProgramGen.
 	typechecker string
@@ -290,6 +292,7 @@ func parseOptions(
 
 func newLanguageHost(exec, engineAddress, tracing, otelEndpoint, typechecker, toolchain string,
 ) pulumirpc.LanguageRuntimeServer {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &pythonLanguageHost{
 		exec:          exec,
 		engineAddress: engineAddress,
@@ -297,6 +300,8 @@ func newLanguageHost(exec, engineAddress, tracing, otelEndpoint, typechecker, to
 		otelEndpoint:  otelEndpoint,
 		typechecker:   typechecker,
 		toolchain:     toolchain,
+		cancelCtx:     ctx,
+		cancelFunc:    cancel,
 	}
 }
 
@@ -1018,7 +1023,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		return nil, err
 	}
 
-	if logging.V(5) {
+	if logging.V(5).Enabled() {
 		commandStr := strings.Join(args, " ")
 		logging.V(5).Infoln("Language host launching process: ", host.exec, commandStr)
 	}
@@ -1031,10 +1036,20 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	if err := tc.ValidateVenv(ctx); err != nil {
 		return nil, err
 	}
-	cmd, err := tc.Command(ctx, args...)
+	// Cancel if either the Cancel RPC fires (host.cancelCtx) or the gRPC request ends (ctx)
+	runCmdCtx, runCmdCancel := context.WithCancel(host.cancelCtx)
+	context.AfterFunc(ctx, runCmdCancel)
+	cmd, err := tc.Command(runCmdCtx, args...)
 	if err != nil {
 		return nil, err
 	}
+	cmd.Cancel = func() error {
+		if err := cmd.Process.Signal(os.Interrupt); err != nil {
+			return cmd.Process.Kill()
+		}
+		return nil
+	}
+	cmd.WaitDelay = 5 * time.Second
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -1097,8 +1112,9 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		if err != nil {
 			return nil, err
 		}
-		typecheckerCmd.Stdout = os.Stdout
-		typecheckerCmd.Stderr = os.Stderr
+		var typecheckerOutput bytes.Buffer
+		typecheckerCmd.Stdout = io.MultiWriter(os.Stdout, &typecheckerOutput)
+		typecheckerCmd.Stderr = io.MultiWriter(os.Stderr, &typecheckerOutput)
 		typecheckerCmd.Dir = req.Info.ProgramDirectory
 		err = checkForPackage(ctx, typechecker, opts)
 		if err != nil {
@@ -1111,9 +1127,8 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		}
 
 		if err := typecheckerCmd.Run(); err != nil {
-			var exiterr *exec.ExitError
-			if errors.As(err, &exiterr) && len(exiterr.Stderr) > 0 {
-				return nil, fmt.Errorf("%s failed: %w: %s", typechecker, exiterr, exiterr.Stderr)
+			if output := typecheckerOutput.String(); output != "" {
+				return nil, fmt.Errorf("%s failed: %w\n%s", typechecker, err, output)
 			}
 			return nil, fmt.Errorf("%s failed: %w", typechecker, err)
 		}
@@ -2007,6 +2022,7 @@ func (host *pythonLanguageHost) Link(
 }
 
 func (host *pythonLanguageHost) Cancel(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	host.cancelFunc()
 	return &emptypb.Empty{}, nil
 }
 

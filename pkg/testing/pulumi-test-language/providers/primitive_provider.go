@@ -93,6 +93,22 @@ func (p *PrimitiveProvider) GetSchema(
 				RequiredInputs:  resourceRequired,
 			},
 		},
+		Functions: map[string]schema.FunctionSpec{
+			"primitive:index:invoke": {
+				Inputs: &schema.ObjectTypeSpec{
+					Type:       "object",
+					Properties: resourceProperties,
+					Required:   resourceRequired,
+				},
+				ReturnType: &schema.ReturnTypeSpec{
+					ObjectTypeSpec: &schema.ObjectTypeSpec{
+						Type:       "object",
+						Properties: resourceProperties,
+						Required:   resourceRequired,
+					},
+				},
+			},
+		},
 	}
 
 	jsonBytes, err := json.Marshal(pkg)
@@ -140,8 +156,16 @@ func (p *PrimitiveProvider) Check(
 	}
 
 	unsecret := func(v resource.PropertyValue) resource.PropertyValue {
-		if v.IsSecret() {
-			return v.SecretValue().Element
+		for {
+			if v.IsSecret() {
+				v = v.SecretValue().Element
+				continue
+			}
+			if v.IsOutput() {
+				v = v.OutputValue().Element
+				continue
+			}
+			break
 		}
 		return v
 	}
@@ -155,7 +179,12 @@ func (p *PrimitiveProvider) Check(
 				Failures: makeCheckFailure(key, "missing value"),
 			}
 		}
-		if !assertType(unsecret(v)) {
+		v = unsecret(v)
+		if v.IsComputed() {
+			// We can't type check if the value is computed.
+			return nil
+		}
+		if !assertType(v) {
 			return &plugin.CheckResponse{
 				Failures: makeCheckFailure(key, "value is not a "+typ),
 			}
@@ -188,7 +217,12 @@ func (p *PrimitiveProvider) Check(
 	// Check the array is numbers
 	numberArray := unsecret(req.News["numberArray"])
 	for _, v := range numberArray.ArrayValue() {
-		if !unsecret(v).IsNumber() {
+		v = unsecret(v)
+		if v.IsComputed() {
+			// We can't type check if the value is computed.
+			continue
+		}
+		if !v.IsNumber() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("numberArray", "array element is not a number"),
 			}, nil
@@ -201,7 +235,12 @@ func (p *PrimitiveProvider) Check(
 	// Check the map values are booleans
 	booleanMap := unsecret(req.News["booleanMap"])
 	for _, v := range booleanMap.ObjectValue() {
-		if !unsecret(v).IsBool() {
+		v = unsecret(v)
+		if v.IsComputed() {
+			// We can't type check if the value is computed.
+			continue
+		}
+		if !v.IsBool() {
 			return plugin.CheckResponse{
 				Failures: makeCheckFailure("booleanMap", "map value is not a boolean"),
 			}, nil
@@ -227,7 +266,30 @@ func (p *PrimitiveProvider) Create(
 		}, fmt.Errorf("invalid URN type: %s", req.URN.Type())
 	}
 
-	id := "id"
+	// Use the string field as the ID, most places treat the ID as opaque, but doing
+	// this lets us write l2-id-type to test conversions with the ID type.
+	unsecret := func(v resource.PropertyValue) resource.PropertyValue {
+		for {
+			if v.IsSecret() {
+				v = v.SecretValue().Element
+				continue
+			}
+			if v.IsOutput() {
+				v = v.OutputValue().Element
+				continue
+			}
+			break
+		}
+		return v
+	}
+	str := unsecret(req.Properties["string"])
+	var id string
+	if str.IsString() {
+		id = str.StringValue()
+	}
+	if id == "" {
+		id = "id"
+	}
 	if req.Preview {
 		id = ""
 	}
@@ -237,6 +299,97 @@ func (p *PrimitiveProvider) Create(
 		Properties: req.Properties,
 		Status:     resource.StatusOK,
 	}, nil
+}
+
+func (p *PrimitiveProvider) Invoke(
+	_ context.Context, req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
+	switch req.Tok {
+	case "primitive:index:invoke":
+		unsecret := func(v resource.PropertyValue) resource.PropertyValue {
+			for {
+				if v.IsSecret() {
+					v = v.SecretValue().Element
+					continue
+				}
+				if v.IsOutput() {
+					v = v.OutputValue().Element
+					continue
+				}
+				break
+			}
+			return v
+		}
+
+		assertField := func(key resource.PropertyKey, typ string,
+			assertType func(resource.PropertyValue) bool,
+		) *plugin.InvokeResponse {
+			v, ok := req.Args[key]
+			if !ok {
+				return &plugin.InvokeResponse{
+					Failures: makeCheckFailure(key, "missing value"),
+				}
+			}
+			if !assertType(unsecret(v)) {
+				return &plugin.InvokeResponse{
+					Failures: makeCheckFailure(key, "value is not a "+typ),
+				}
+			}
+
+			return nil
+		}
+
+		check := assertField("boolean", "boolean", resource.PropertyValue.IsBool)
+		if check != nil {
+			return *check, nil
+		}
+		check = assertField("integer", "number", resource.PropertyValue.IsNumber)
+		if check != nil {
+			return *check, nil
+		}
+		check = assertField("float", "number", resource.PropertyValue.IsNumber)
+		if check != nil {
+			return *check, nil
+		}
+		check = assertField("string", "string", resource.PropertyValue.IsString)
+		if check != nil {
+			return *check, nil
+		}
+		check = assertField("numberArray", "array", resource.PropertyValue.IsArray)
+		if check != nil {
+			return *check, nil
+		}
+		for _, v := range unsecret(req.Args["numberArray"]).ArrayValue() {
+			if !unsecret(v).IsNumber() {
+				return plugin.InvokeResponse{
+					Failures: makeCheckFailure("numberArray", "array element is not a number"),
+				}, nil
+			}
+		}
+		check = assertField("booleanMap", "map", resource.PropertyValue.IsObject)
+		if check != nil {
+			return *check, nil
+		}
+		for _, v := range unsecret(req.Args["booleanMap"]).ObjectValue() {
+			if !unsecret(v).IsBool() {
+				return plugin.InvokeResponse{
+					Failures: makeCheckFailure("booleanMap", "map value is not a boolean"),
+				}, nil
+			}
+		}
+
+		if len(req.Args) != 6 {
+			return plugin.InvokeResponse{
+				Failures: makeCheckFailure("", fmt.Sprintf("too many properties: %v", req.Args)),
+			}, nil
+		}
+
+		return plugin.InvokeResponse{Properties: req.Args}, nil
+	default:
+		return plugin.InvokeResponse{
+			Failures: makeCheckFailure("", fmt.Sprintf("unknown invoke token: %s", req.Tok)),
+		}, nil
+	}
 }
 
 func (p *PrimitiveProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {

@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
@@ -115,9 +116,10 @@ func schemaFromSourceOrStdin(cmd *cobra.Command, source string, extraArgs []stri
 	defer contract.IgnoreClose(pctx)
 
 	parameters := &plugin.ParameterizeArgs{Args: extraArgs}
-	spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-		cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-		env.Global(), 0 /* unbounded concurrency */)
+	registry := cmdCmd.NewDefaultRegistry(
+		cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global())
+	spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
+		registry, env.Global(), 0 /* unbounded concurrency */)
 	if err != nil {
 		return nil, err
 	}

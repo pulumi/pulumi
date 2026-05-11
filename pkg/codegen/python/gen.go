@@ -333,6 +333,12 @@ func (mod *modContext) tokenToResource(tok string) string {
 
 	// Is it a provider resource?
 	if components[0] == "pulumi" && components[1] == "providers" {
+		// Inside the package that owns the provider, refer to it by its unqualified class name to
+		// avoid a self-import (`import pulumi_<pkg>` inside `pulumi_<pkg>/<module>.py`) that would
+		// fail at import time with a circular-import error.
+		if mod.pkg != nil && components[2] == mod.pkg.Name() {
+			return "Provider"
+		}
 		return fmt.Sprintf("pulumi_%s.Provider", components[2])
 	}
 
@@ -988,9 +994,13 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	parts := strings.Split(tok, ":")
 	contract.Assertf(len(parts) == 3, "type token %q is not in the form '<pkg>:<mod>:<type>'", tok)
 
-	// If it's a provider resource, import the top-level package.
+	// If it's a provider resource, import the top-level package unless we're currently generating
+	// code inside that same package, in which case we fall through to the relative-import path to
+	// avoid a circular `import pulumi_<pkg>` inside `pulumi_<pkg>`.
 	if parts[0] == "pulumi" && parts[1] == "providers" {
-		return "import pulumi_" + parts[2]
+		if mod.pkg == nil || parts[2] != mod.pkg.Name() {
+			return "import pulumi_" + parts[2]
+		}
 	}
 
 	modName := mod.tokenToModule(tok)
@@ -1273,7 +1283,14 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType, fun
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := PyName(prop.Name)
 		ptype := mod.pyType(prop.Type)
-		fmt.Fprintf(w, "        if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
+		isInstanceType := ptype
+		switch ptype {
+		case "bool", "int", "float", "str":
+			if pname == ptype {
+				isInstanceType = "_builtins." + ptype
+			}
+		}
+		fmt.Fprintf(w, "        if %s and not isinstance(%s, %s):\n", pname, pname, isInstanceType)
 		fmt.Fprintf(w, "            raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
 		// Now perform the assignment.
@@ -1764,7 +1781,14 @@ func (mod *modContext) genMethodReturnType(w io.Writer, method *schema.Method) (
 		// Check that required arguments are present.  Also check that types are as expected.
 		pname := PyName(prop.Name)
 		ptype := mod.pyType(prop.Type)
-		fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, ptype)
+		isInstanceType := ptype
+		switch ptype {
+		case "bool", "int", "float", "str":
+			if pname == ptype {
+				isInstanceType = "_builtins." + ptype
+			}
+		}
+		fmt.Fprintf(w, "            if %s and not isinstance(%s, %s):\n", pname, pname, isInstanceType)
 		fmt.Fprintf(w, "                raise TypeError(\"Expected argument '%s' to be a %s\")\n", pname, ptype)
 
 		// Now perform the assignment.
@@ -2683,15 +2707,34 @@ type typeStringOpts struct {
 func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		// Rewrite Optional(Input(T)) to Input(Optional(T)) so that it accepts Output(Optional(T))
+		if lifted := codegen.PushOptionalIntoInput(t); lifted != t {
+			// Clear forDict so the inner Optional renders as Optional, not NotRequired.
+			innerOpts := opts
+			innerOpts.forDict = false
+			result := mod.typeString(lifted, innerOpts)
+			if opts.forDict {
+				return fmt.Sprintf("NotRequired[%s]", result)
+			}
+			return result
+		}
 		typ := mod.typeString(t.ElementType, opts)
 		if opts.forDict {
 			return fmt.Sprintf("NotRequired[%s]", typ)
 		}
 		return fmt.Sprintf("Optional[%s]", typ)
 	case *schema.InputType:
-		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), opts)
+		elem := codegen.SimplifyInputUnion(t.ElementType)
+		typ := mod.typeString(elem, opts)
 		if typ == "Any" {
 			return typ
+		}
+		// When the element is Optional(T) where T renders as "Any", we can drop the Input wrapper
+		// since Any already accepts inputs.
+		if opt, ok := elem.(*schema.OptionalType); ok {
+			if inner := mod.typeString(opt.ElementType, opts); inner == "Any" {
+				return "Optional[Any]"
+			}
 		}
 		return fmt.Sprintf("pulumi.Input[%s]", typ)
 	case *schema.EnumType:
@@ -3630,7 +3673,7 @@ func setDependencies(schema *PyprojectSchema, pkg *schema.Package, dependencies 
 }
 
 // Require the SDK to fall within the same major version.
-var MinimumValidSDKVersion = ">=3.165.0,<4.0.0"
+var MinimumValidSDKVersion = ">=3.231.0,<4.0.0"
 
 // ensureValidPulumiVersion ensures that the Pulumi SDK has an entry.
 // It accepts a list of dependencies

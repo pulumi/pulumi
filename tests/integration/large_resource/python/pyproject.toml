@@ -1,0 +1,4 @@
+[project]
+name = "large_resource_python"
+version = "0.0.0"
+dependencies = []

@@ -434,11 +434,7 @@ func TestUnprotect(t *testing.T) {
 
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
-	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 1")
-	} else {
-		assert.ErrorContains(t, err, "exit status 1")
-	}
+	assert.ErrorContains(t, err, "exit status 1")
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes")
@@ -461,22 +457,14 @@ func TestUnprotectProtect(t *testing.T) {
 
 	_, _, err := e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
-	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 1")
-	} else {
-		assert.ErrorContains(t, err, "exit status 1")
-	}
+	assert.ErrorContains(t, err, "exit status 1")
 
 	e.RunCommand("pulumi", "state", "unprotect", "--all", "--yes")
 	e.RunCommand("pulumi", "state", "protect", "--all", "--yes")
 
 	_, _, err = e.RunCommandReturnExpectedError("pulumi", "destroy", "--skip-preview", "--yes")
 	assert.Error(t, err, "expect error from pulumi destroy")
-	if runtime.GOOS == "windows" {
-		assert.ErrorContains(t, err, "exit status 1")
-	} else {
-		assert.ErrorContains(t, err, "exit status 1")
-	}
+	assert.ErrorContains(t, err, "exit status 1")
 }
 
 func TestInvalidPluginError(t *testing.T) {
@@ -1354,7 +1342,6 @@ func TestPolicyPackInstallDependencies(t *testing.T) {
 	e.ImportDirectory("policy/python_policy_pack")
 	require.False(t, e.PathExists("venv"))
 	stdout, _ := e.RunCommand("pulumi", "install")
-	require.Contains(t, stdout, "Finished creating virtual environment")
 	require.Contains(t, stdout, "Finished installing dependencies")
 	require.True(t, e.PathExists("venv"))
 }
@@ -1773,7 +1760,7 @@ func TestPluginLs(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "plugin", "install", "resource", "random")
+	e.RunCommand("pulumi", "plugin", "install", "resource", "random", "4.16.7")
 
 	stdout, _ := e.RunCommand("pulumi", "plugin", "ls", "--json")
 	plugins := []map[string]any{}

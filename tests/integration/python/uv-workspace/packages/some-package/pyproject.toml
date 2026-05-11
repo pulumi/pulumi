@@ -2,7 +2,6 @@
 name = "some-package"
 version = "0.1.0"
 description = "A Python package"
-requires-python = ">=3.9"
 dependencies = []
 
 [build-system]

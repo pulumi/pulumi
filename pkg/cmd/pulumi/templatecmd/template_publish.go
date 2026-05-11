@@ -43,9 +43,7 @@ type publishTemplateArgs struct {
 	name      string
 }
 
-type templatePublishCmd struct {
-	defaultOrg func(context.Context, backend.Backend, *workspace.Project) (string, error)
-}
+type templatePublishCmd struct{}
 
 func newTemplatePublishCmd() *cobra.Command {
 	var args publishTemplateArgs
@@ -57,7 +55,7 @@ func newTemplatePublishCmd() *cobra.Command {
 			"This command publishes a template directory to the Private Registry.",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			tplPublishCmd := templatePublishCmd{defaultOrg: backend.GetDefaultOrg}
+			tplPublishCmd := templatePublishCmd{}
 			return tplPublishCmd.Run(ctx, cmd, args, cliArgs[0])
 		},
 	}
@@ -125,7 +123,7 @@ func (tplCmd *templatePublishCmd) Run(
 	if args.publisher != "" {
 		publisher = args.publisher
 	} else {
-		publisher, err = tplCmd.defaultOrg(ctx, b, project)
+		publisher, err = b.GetDefaultOrg(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
 		}

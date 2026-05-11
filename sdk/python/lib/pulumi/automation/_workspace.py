@@ -25,6 +25,7 @@ from ._output import OutputMap
 from ._project_settings import ProjectSettings
 from ._stack_settings import StackSettings
 from ._tag import TagMap
+from .interface import API
 
 PulumiFn = Callable[[], Optional[Awaitable[None]]]
 
@@ -170,6 +171,14 @@ class Workspace(ABC):
     pulumi_command: PulumiCommand
     """
     The underlying PulumiCommand instance that is used to execute CLI commands.
+    """
+
+    cli_api: API
+    """
+    Low-level Automation API for invoking Pulumi CLI commands directly. Every
+    visible `pulumi` subcommand is exposed as a method taking the flags as
+    keyword arguments, on top of the shared `cwd`, `additional_env`,
+    `on_output`, and `on_error` parameters.
     """
 
     @abstractmethod
@@ -390,6 +399,22 @@ class Workspace(ABC):
         Returns the currently authenticated user.
 
         :returns: WhoAmIResult
+        """
+
+    @abstractmethod
+    def org_get_default(self) -> str:
+        """
+        Returns the default organization for the current backend.
+
+        :returns: str
+        """
+
+    @abstractmethod
+    def org_set_default(self, org_name: str) -> None:
+        """
+        Sets the default organization for the current backend.
+
+        :param str org_name: The name of the organization to set as the default.
         """
 
     @abstractmethod

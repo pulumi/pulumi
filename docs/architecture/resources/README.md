@@ -17,7 +17,7 @@ further update or destroy operation for a resource.
 
 Custom resources are resources that are created in a provider. Custom
 resources often exist in a cloud provider, but this is not necessary
-for all resources (e.g. see the pulumi-random provider, that creates a
+for all resources (e.g. see the pulumi-random provider, that creates
 resources and stores all of the state in outputs, without creating any
 resources in the cloud backend)
 

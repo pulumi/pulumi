@@ -272,6 +272,81 @@ func TestDefaultOrganizationPriority(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // mutates PULUMI_HOME-backed credentials/config
+func TestNewDefaultOrgResolution(t *testing.T) {
+	ctx := t.Context()
+
+	tests := []struct {
+		name                 string
+		configuredOrg        string
+		serviceOrg           string
+		expectedOrg          string
+		expectedDefaultCalls int
+	}{
+		{
+			name:                 "prefers configured default org",
+			configuredOrg:        "configured-org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "configured-org",
+			expectedDefaultCalls: 0,
+		},
+		{
+			name:                 "falls back to service default org",
+			serviceOrg:           "service-org",
+			expectedOrg:          "service-org",
+			expectedDefaultCalls: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PULUMI_HOME", t.TempDir())
+
+			defaultOrgCalls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				switch req.URL.Path {
+				case "/api/capabilities":
+					err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+					require.NoError(t, err)
+				case "/api/user":
+					err := json.NewEncoder(rw).Encode(map[string]any{
+						"githubLogin":   "test-user",
+						"organizations": []map[string]string{},
+					})
+					require.NoError(t, err)
+				case "/api/user/organizations/default":
+					defaultOrgCalls++
+					err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
+						GitHubLogin: tt.serviceOrg,
+					})
+					require.NoError(t, err)
+				default:
+					panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+				}
+			}))
+			t.Cleanup(server.Close)
+
+			err := workspace.StoreAccount(server.URL, workspace.Account{
+				AccessToken: testJWT,
+			}, true)
+			require.NoError(t, err)
+
+			if tt.configuredOrg != "" {
+				err = workspace.SetBackendConfigDefaultOrg(server.URL, tt.configuredOrg)
+				require.NoError(t, err)
+			}
+
+			b, err := New(ctx, diagtest.LogSink(t), server.URL, nil, false)
+			require.NoError(t, err)
+
+			org, err := b.GetDefaultOrg(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedOrg, org)
+			assert.Equal(t, tt.expectedDefaultCalls, defaultOrgCalls)
+		})
+	}
+}
+
 //nolint:paralleltest // mutates global state
 func TestDisableIntegrityChecking(t *testing.T) {
 	if os.Getenv("PULUMI_ACCESS_TOKEN") == "" {
@@ -739,7 +814,8 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	}))
 	defer server.Client()
 
-	b, err := New(ctx, nil, server.URL, nil, false)
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -773,7 +849,7 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, nil, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	_, err = b.CreateStack(ctx, ref, "", &apitype.UntypedDeployment{
@@ -798,6 +874,76 @@ func TestCreateStackDeploymentSchemaVersion(t *testing.T) {
 	handleLastRequest()
 	assert.Equal(t, 4, lastUntypedDeployment.Version)
 	assert.Equal(t, []string{"refreshBeforeUpdate"}, lastUntypedDeployment.Features)
+}
+
+// TestCreateStackDisplaysBackendMessages verifies that backend-vended messages on the
+// CreateStackResponse (e.g. an expired trial warning) flow through the client into the
+// cloudBackend without breaking stack creation, and that displayBackendMessages renders
+// them via the diag sink.
+func TestCreateStackDisplaysBackendMessages(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	const trialWarning = "Your organization's trial has expired. " +
+		"Please contact sales@pulumi.com to upgrade."
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/capabilities":
+			err := json.NewEncoder(rw).Encode(apitype.CapabilitiesResponse{})
+			require.NoError(t, err)
+		case "/api/user":
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin":   "test-user",
+				"organizations": []map[string]string{},
+			})
+			require.NoError(t, err)
+		case "/api/user/organizations/default":
+			err := json.NewEncoder(rw).Encode(apitype.GetDefaultOrganizationResponse{
+				GitHubLogin: "owner",
+			})
+			require.NoError(t, err)
+		case "/api/stacks/owner/project":
+			rw.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(rw).Encode(apitype.CreateStackResponse{
+				Messages: []apitype.Message{{
+					Severity: apitype.MessageSeverityWarning,
+					Message:  trialWarning,
+				}},
+			})
+			require.NoError(t, err)
+		default:
+			panic(fmt.Sprintf("Path not supported: %v", req.URL.Path))
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false)
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("owner/project/stack")
+	require.NoError(t, err)
+
+	// CreateStack should succeed and the warning message should not interfere with
+	// stack creation; it is rendered via cmdutil.Diag() as a side effect.
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	// Exercise displayBackendMessages directly with each severity, including an
+	// unknown one, so the helper's switch arms are all covered. The expired-trial
+	// warning is the primary case driving this test.
+	displayBackendMessages([]apitype.Message{
+		{Severity: apitype.MessageSeverityWarning, Message: trialWarning},
+		{Severity: apitype.MessageSeverityError, Message: "test error"},
+		{Severity: apitype.MessageSeverityInfo, Message: "test info"},
+		{Severity: "mystery", Message: "unknown severity"},
+	})
+
+	// Empty input is a no-op and must not panic.
+	displayBackendMessages(nil)
 }
 
 func TestImportDeploymentSchemaVersion(t *testing.T) {
@@ -877,7 +1023,8 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	}))
 	defer server.Client()
 
-	b, err := New(ctx, nil, server.URL, nil, false)
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	b, err := New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	ref, err := b.ParseStackReference("owner/project/stack")
@@ -914,7 +1061,7 @@ func TestImportDeploymentSchemaVersion(t *testing.T) {
 	// Test 3: v4 supported: send v3 expect v3.
 
 	v4 = true
-	b, err = New(ctx, nil, server.URL, nil, false)
+	b, err = New(ctx, sink, server.URL, nil, false)
 	require.NoError(t, err)
 
 	err = b.ImportDeployment(ctx, s, &apitype.UntypedDeployment{

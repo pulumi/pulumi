@@ -47,7 +47,7 @@ class RegistryGeoReplication(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 resource_group: Optional[pulumi.Input['pulumi_using_dashes.Dash']] = None,
+                 resource_group: pulumi.Input[Optional['pulumi_using_dashes.Dash']] = None,
                  __props__=None):
         """
         Create a RegistryGeoReplication resource with the given unique name, props, and options.
@@ -80,7 +80,7 @@ class RegistryGeoReplication(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 resource_group: Optional[pulumi.Input['pulumi_using_dashes.Dash']] = None,
+                 resource_group: pulumi.Input[Optional['pulumi_using_dashes.Dash']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

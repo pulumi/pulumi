@@ -366,16 +366,14 @@ func TestPackagePublishCmd_Run(t *testing.T) {
 					return mockCloudRegistry, nil
 				},
 				GetReadOnlyCloudRegistryF: func() registry.Registry { return mockCloudRegistry },
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return tt.mockOrg, tt.mockOrgErr
+				},
 			})
 
-			// Setup defaultOrg mock
-			defaultOrg := func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-				return tt.mockOrg, tt.mockOrgErr
-			}
-
 			cmd := &packagePublishCmd{
-				defaultOrg: defaultOrg,
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
@@ -466,13 +464,14 @@ func TestPackagePublishCmd_IOErrors(t *testing.T) {
 					}, nil
 				},
 				GetReadOnlyCloudRegistryF: func() registry.Registry { return &backend.MockCloudRegistry{} },
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return "default-org", nil
+				},
 			})
 
 			cmd := &packagePublishCmd{
-				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-					return "default-org", nil
-				},
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
@@ -510,6 +509,9 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 					GetReadOnlyCloudRegistryF: func() registry.Registry {
 						return &backend.MockCloudRegistry{}
 					},
+					GetDefaultOrgF: func(ctx context.Context) (string, error) {
+						return "default-org", nil
+					},
 				})
 			},
 			expectedErrStr: "failed to get package registry",
@@ -528,10 +530,8 @@ func TestPackagePublishCmd_BackendErrors(t *testing.T) {
 			tt.setupBackend(t)
 
 			cmd := &packagePublishCmd{
-				defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-					return "default-org", nil
-				},
 				extractSchema: func(
+					ws pkgWorkspace.Context,
 					pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 					registry registry.Registry, _ env.Env, _ int,
 				) (*schema.PackageSpec, *workspace.PackageSpec, error) {
@@ -563,10 +563,8 @@ func newMockTemplateWorkspace(readProjectErr error) pkgWorkspace.Context {
 //nolint:paralleltest // This test uses the global pkgWorkspace.Instance variable
 func TestPackagePublishCmd_Run_ReadProjectError(t *testing.T) {
 	cmd := packagePublishCmd{
-		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-			return "", nil
-		},
 		extractSchema: func(
+			ws pkgWorkspace.Context,
 			pctx *plugin.Context,
 			packageSource string,
 			parameters plugin.ParameterizeParameters,

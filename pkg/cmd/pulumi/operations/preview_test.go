@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	sdkconfig "github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,6 +63,14 @@ func makeStateMetadata(
 
 	urn := resource.CreateURN(name, string(typ), "", "project", "stack")
 
+	state := &resource.State{
+		URN:    urn,
+		Type:   typ,
+		Custom: custom,
+		Parent: parent,
+		Inputs: opts.Inputs,
+	}
+
 	return engine.StepEventStateMetadata{
 		URN:      urn,
 		Type:     typ,
@@ -69,6 +78,7 @@ func makeStateMetadata(
 		Provider: provider,
 		Parent:   parent,
 		Inputs:   opts.Inputs,
+		State:    state,
 	}
 }
 
@@ -151,7 +161,7 @@ func TestBuildImportFile_SingleResource(t *testing.T) {
 			t.Parallel()
 
 			events := make(chan engine.Event)
-			importFilePromise := buildImportFile(events)
+			importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 			// Always create a root stack (which shouldn't show in the import file)
 			events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -185,7 +195,7 @@ func TestBuildImportFile_ExistingParent(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -238,7 +248,7 @@ func TestBuildImportFile_NewParent(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -296,7 +306,7 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -347,27 +357,32 @@ func TestBuildImportFile_ExistingProvider(t *testing.T) {
 	assert.Equal(t, expected, importFile.Resources[0])
 }
 
-// TestBuildImportFile_NewProvider test that if we try to import a resource that has an explicit provider
-// that we haven't created yet that we error. We can't handle this case yet in the import system.
+// TestBuildImportFile_NewProvider tests that we can generate an import file for a resource that uses
+// an explicit provider that is also being created in the same deployment (#15453).
 func TestBuildImportFile_NewProvider(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeRootStackMetadata(deploy.OpSame),
 	})
 
-	// And then create a provider resource
-	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{})
+	// Create a provider resource with specific inputs (e.g. region)
+	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{
+		Inputs: resource.NewPropertyMapFromMap(map[string]any{
+			"version": "1.2.3",
+			"region":  "eu-west-1",
+		}),
+	})
 	providerState.ID = providers.UnknownID
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, providerState),
 	})
 
-	// And then create a resource that has that provider
+	// And then create a resource that uses that provider
 	providerRef, err := providers.NewReference(providerState.URN, providerState.ID)
 	require.NoError(t, err)
 	state := makeStateMetadata(t, "res", "pkg:mod:typ", true, stateOptions{
@@ -380,12 +395,29 @@ func TestBuildImportFile_NewProvider(t *testing.T) {
 	// Finally, close the events channel to signal that we're done
 	close(events)
 
-	// This should error because we can't yet handle importing an explicit provider
-	_, err = importFilePromise.Result(t.Context())
-	assert.ErrorContains(
-		t, err,
-		"cannot import resource \"urn:pulumi:stack::project::pkg:mod:typ::res\" "+
-			"with a new explicit provider \"urn:pulumi:stack::project::pulumi:providers:pkg::prov\"")
+	importFile, err := importFilePromise.Result(t.Context())
+	require.NoError(t, err)
+
+	// NameTable should include the provider so the resource can reference it
+	require.Len(t, importFile.NameTable, 1)
+	assert.Equal(t, providerState.URN, importFile.NameTable["prov"])
+
+	// Resource should be in the import file with the provider reference
+	require.Len(t, importFile.Resources, 1)
+	expected := importSpec{
+		ID:       "<PLACEHOLDER>",
+		Type:     "pkg:mod:typ",
+		Name:     "res",
+		Provider: "prov",
+		Version:  "1.2.3",
+	}
+	assert.Equal(t, expected, importFile.Resources[0])
+
+	// ProviderInputs should contain the serialized provider inputs including region
+	require.Contains(t, importFile.ProviderInputs, "prov")
+	provInputs := importFile.ProviderInputs["prov"]
+	assert.Equal(t, "eu-west-1", provInputs["region"])
+	assert.Equal(t, "1.2.3", provInputs["version"])
 }
 
 // TestBuildImportFile_DuplicateNames test that if we try to import resources with the same name we add a
@@ -394,7 +426,7 @@ func TestBuildImportFile_DuplicateNames(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -452,7 +484,7 @@ func TestBuildImportFile_NameConflict(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Pretend the root stack already exists
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
@@ -526,7 +558,7 @@ func TestBuildImportFile_regress_15002(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: engine.StepEventMetadata{
@@ -547,48 +579,35 @@ func TestBuildImportFile_regress_15002(t *testing.T) {
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/15068
-// Creates an explicit provider and a resource that uses it.
+// Tests that the event channel is drained properly when buildImportFile encounters an error.
+// Uses an invalid provider reference to trigger the error.
 func TestBuildImportFile_regress_15068(t *testing.T) {
 	t.Parallel()
 
 	events := make(chan engine.Event)
-	importFilePromise := buildImportFile(events)
+	importFilePromise := buildImportFile(t.Context(), events, sdkconfig.NopEncrypter)
 
 	// Create the root stack.
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeRootStackMetadata(deploy.OpCreate),
 	})
 
-	// And then create a provider resource
-	providerState := makeStateMetadata(t, "prov", "pulumi:providers:pkg", true, stateOptions{})
-	providerState.ID = providers.UnknownID
-	events <- engine.NewEvent(engine.ResourcePreEventPayload{
-		Metadata: makeMetadata(deploy.OpCreate, providerState),
-	})
-
-	// And then create a resource that has that provider
-	providerRef, err := providers.NewReference(providerState.URN, providerState.ID)
-	require.NoError(t, err)
-	state := makeStateMetadata(t, "res", "pkg:mod:typ", true, stateOptions{
-		Provider: &providerRef,
-	})
+	// Create a resource with an invalid (unparseable) provider reference to trigger an error.
+	state := makeStateMetadata(t, "res", "pkg:mod:typ", true, stateOptions{})
+	state.Provider = "not-a-valid-provider-reference"
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
 		Metadata: makeMetadata(deploy.OpCreate, state),
 	})
 
-	// Try and write another event to the channel, this will block if we haven't correctly closed the channel.
-	state = makeStateMetadata(t, "res2", "pkg:mod:typ", true, stateOptions{})
+	// Write another event after the error — this must not block (the channel should be drained).
+	state2 := makeStateMetadata(t, "res2", "pkg:mod:typ", true, stateOptions{})
 	events <- engine.NewEvent(engine.ResourcePreEventPayload{
-		Metadata: makeMetadata(deploy.OpCreate, state),
+		Metadata: makeMetadata(deploy.OpCreate, state2),
 	})
 
-	// Finally, close the events channel to signal that we're done
+	// Close the events channel to signal that we're done.
 	close(events)
 
-	// This should error because we can't yet handle importing an explicit provider
-	_, err = importFilePromise.Result(t.Context())
-	assert.ErrorContains(
-		t, err,
-		"cannot import resource \"urn:pulumi:stack::project::pkg:mod:typ::res\" "+
-			"with a new explicit provider \"urn:pulumi:stack::project::pulumi:providers:pkg::prov\"")
+	_, err := importFilePromise.Result(t.Context())
+	assert.ErrorContains(t, err, "could not parse provider reference")
 }

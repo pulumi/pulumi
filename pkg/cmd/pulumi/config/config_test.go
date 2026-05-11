@@ -421,7 +421,8 @@ func prepareConfig(
 	mockStack := backend.MockStack{
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				NameV: tokens.MustParseStackName("testStack"),
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "testOrg/testProject/testStack",
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation {
@@ -523,7 +524,8 @@ func TestConfigSet(t *testing.T) {
 			s := backend.MockStack{
 				RefF: func() backend.StackReference {
 					return &backend.MockStackReference{
-						NameV: tokens.MustParseStackName("testStack"),
+						NameV:               tokens.MustParseStackName("testStack"),
+						FullyQualifiedNameV: "org/testProject/testStack",
 					}
 				},
 				ConfigLocationF: func() backend.StackConfigLocation {
@@ -637,7 +639,8 @@ func TestConfigSetTypes(t *testing.T) {
 			s := backend.MockStack{
 				RefF: func() backend.StackReference {
 					return &backend.MockStackReference{
-						NameV: tokens.MustParseStackName("testStack"),
+						NameV:               tokens.MustParseStackName("testStack"),
+						FullyQualifiedNameV: "org/testProject/testStack",
 					}
 				},
 				ConfigLocationF: func() backend.StackConfigLocation {
@@ -784,7 +787,8 @@ func TestConfigSetAll(t *testing.T) {
 			s := backend.MockStack{
 				RefF: func() backend.StackReference {
 					return &backend.MockStackReference{
-						NameV: tokens.MustParseStackName("testStack"),
+						NameV:               tokens.MustParseStackName("testStack"),
+						FullyQualifiedNameV: "org/testProject/testStack",
 					}
 				},
 				ConfigLocationF: func() backend.StackConfigLocation {
@@ -925,7 +929,8 @@ func TestConfigRefresh(t *testing.T) {
 				return &backend.MockStack{
 					RefF: func() backend.StackReference {
 						return &backend.MockStackReference{
-							NameV: tokens.MustParseStackName("testStack"),
+							NameV:               tokens.MustParseStackName("testStack"),
+							FullyQualifiedNameV: "org/testProject/testStack",
 						}
 					},
 					ConfigLocationF: func() backend.StackConfigLocation {
@@ -938,7 +943,8 @@ func TestConfigRefresh(t *testing.T) {
 			},
 			ParseStackReferenceF: func(s string) (backend.StackReference, error) {
 				return &backend.MockStackReference{
-					NameV: tokens.MustParseStackName(s),
+					NameV:               tokens.MustParseStackName(s),
+					FullyQualifiedNameV: tokens.QName("org/testProject/" + s),
 				}, nil
 			},
 		}
@@ -1391,7 +1397,8 @@ func TestConfigPathOperations(t *testing.T) {
 			s := backend.MockStack{
 				RefF: func() backend.StackReference {
 					return &backend.MockStackReference{
-						NameV: tokens.MustParseStackName("testStack"),
+						NameV:               tokens.MustParseStackName("testStack"),
+						FullyQualifiedNameV: "org/testProject/testStack",
 					}
 				},
 				ConfigLocationF: func() backend.StackConfigLocation {

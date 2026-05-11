@@ -69,6 +69,8 @@ type MockBackend struct {
 	RemoveStackF func(context.Context, Stack, bool, bool) (bool, error)
 	ListStacksF  func(context.Context, ListStacksFilter, ContinuationToken) (
 		[]StackSummary, ContinuationToken, error)
+	ListPolicyPacksF func(context.Context, string, ContinuationToken) (
+		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 	ListStackNamesF func(context.Context, ListStackNamesFilter, ContinuationToken) (
 		[]StackReference, ContinuationToken, error)
 	RenameStackF                          func(context.Context, Stack, tokens.QName) (StackReference, error)
@@ -143,9 +145,12 @@ func (be *MockBackend) ListPolicyGroups(context.Context, string, ContinuationTok
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListPolicyPacks(context.Context, string, ContinuationToken) (
+func (be *MockBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
 	apitype.ListPolicyPacksResponse, ContinuationToken, error,
 ) {
+	if be.ListPolicyPacksF != nil {
+		return be.ListPolicyPacksF(ctx, orgName, inContToken)
+	}
 	panic("not implemented")
 }
 

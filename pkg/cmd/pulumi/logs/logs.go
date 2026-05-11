@@ -194,6 +194,8 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	constrictor.AttachArguments(logsCmd, constrictor.NoArgs)
 
+	logsCmd.AddCommand(newDecryptCmd(ws))
+
 	logsCmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")

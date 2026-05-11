@@ -1,0 +1,14 @@
+IsExecutable{ctx, "/work/provider"} -> {false, nil}
+LoadPluginProjectAt{ctx, "/work/provider"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}, Packages:map[1]{"provider-nested":PackageSpec{Source:"../provider-nested"}}}, "/work/provider/PulumiPlugin.yaml", nil}
+IsExecutable{ctx, "/work/provider-nested"} -> {false, nil}
+LoadPluginProjectAt{ctx, "/work/provider-nested"} -> {PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}, "/work/provider-nested/PulumiPlugin.yaml", nil}
+InstallPluginAt{ctx, "/work/provider-nested", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil}
+RunPackage{ctx, "/work/provider", "/work/provider-nested", "provider-nested", nil} -> {invariantProvider{path:"/work/provider-nested"}, nil}
+GenerateLocalSDK{ctx, ProjectRuntimeInfo{name:"python"}, "/work/provider", invariantProvider{path:"/work/provider-nested"}} -> {LinkablePackageDescriptor{Path:"/work/provider-nested"}, nil}
+LinkIntoProject{ctx, ProjectRuntimeInfo{name:"python"}, "/work/provider", [1]{LinkablePackageDescriptor{Path:"/work/provider-nested"}}} -> {nil}
+InstallPluginAt{ctx, "/work/provider", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}, Packages:map[1]{"provider-nested":PackageSpec{Source:"../provider-nested"}}}} -> {nil}
+RunPackage{ctx, "/work/project", "/work/provider", "provider", nil} -> {invariantProvider{path:"/work/provider"}, nil}
+GenerateLocalSDK{ctx, ProjectRuntimeInfo{name:"python"}, "/work/project", invariantProvider{path:"/work/provider"}} -> {LinkablePackageDescriptor{Path:"/work/provider"}, nil}
+LinkIntoProject{ctx, ProjectRuntimeInfo{name:"python"}, "/work/project", [1]{LinkablePackageDescriptor{Path:"/work/provider"}}} -> {nil}
+GetRequiredPackages{ctx, "/work/provider", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}, Packages:map[1]{"provider-nested":PackageSpec{Source:"../provider-nested"}}}} -> {[1]{PackageDescriptor{PluginDescriptor:PluginDescriptor{Name:"provider-nested", Kind:"resource", Version:Version{}}}}, nil}
+GetRequiredPackages{ctx, "/work/provider-nested", PluginProject{Runtime:ProjectRuntimeInfo{name:"python"}}} -> {nil, nil}

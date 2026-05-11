@@ -62,6 +62,39 @@ describe("Analyzer", function () {
         });
     });
 
+    it("infers inherited input properties", async function () {
+        const dir = path.join(__dirname, "testdata", "inherited-inputs");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {
+                    baseProp: { type: "string", plain: true },
+                    childProp: { type: "string", plain: true },
+                },
+                outputs: {
+                    outResult: { type: "string" },
+                },
+            },
+        });
+    });
+
+    it("handles empty args interface", async function () {
+        const dir = path.join(__dirname, "testdata", "empty-args");
+        const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));
+        const { components } = analyzer.analyze();
+        assert.deepStrictEqual(components, {
+            MyComponent: {
+                name: "MyComponent",
+                inputs: {},
+                outputs: {
+                    outResult: { type: "string" },
+                },
+            },
+        });
+    });
+
     it("infers optional types", async function () {
         const dir = path.join(__dirname, "testdata", "optional-types");
         const analyzer = new Analyzer(dir, "provider", packageJSON, new Set(["MyComponent"]));

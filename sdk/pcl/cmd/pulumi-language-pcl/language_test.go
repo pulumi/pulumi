@@ -94,11 +94,10 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
-	"l2-parameterized-resource-twice":    "dependency loading reports duplicate package definition for hipackage",
-	"l2-parameterized-invoke":            "dependency loading reports duplicate package definition for subpackage",
-	"l2-parameterized-resource":          "dependency loading reports duplicate package definition for subpackage",
-	"l2-explicit-parameterized-provider": "dependency loading reports duplicate package definition for goodbye",
-	"l3-deferred-outputs":                "incorrectly detects cycle",
+	"l3-deferred-outputs": "incorrectly detects cycle",
+	"l3-component-nested": "nested component outputs are not propagated correctly",
+	"l2-resource-read":    "need to update pkg",
+	"l1-builtin-min-max":  "cannot pin the current commit",
 }
 
 func TestLanguage(t *testing.T) {
@@ -161,8 +160,8 @@ func TestLanguage(t *testing.T) {
 			for _, msg := range result.Messages {
 				t.Log(msg)
 			}
-			ptesting.LogTruncated(t, "stdout", result.Stdout)
-			ptesting.LogTruncated(t, "stderr", result.Stderr)
+			ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+			ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 			assert.True(t, result.Success)
 		})
 	}

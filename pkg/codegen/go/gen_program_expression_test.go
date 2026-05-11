@@ -210,6 +210,19 @@ func TestArgumentTypeName(t *testing.T) {
 	inputDynamicListType := g.argumentTypeName(model.NewListType(model.DynamicType), true /*isInput*/)
 	assert.Equal(t, "pulumi.Array", inputDynamicListType)
 
+	// Asset and Archive opaque types must be qualified with the pulumi package, otherwise nested compositions
+	// render bare names like []AssetMap which is invalid Go.
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, false /*isInput*/))
+	assert.Equal(t, "pulumi.AssetOrArchive", g.argumentTypeName(pcl.AssetType, true /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, false /*isInput*/))
+	assert.Equal(t, "pulumi.Archive", g.argumentTypeName(pcl.ArchiveType, true /*isInput*/))
+	assert.Equal(t,
+		"pulumi.AssetOrArchiveArrayMap",
+		g.argumentTypeName(
+			model.NewObjectType(map[string]model.Type{"k": model.NewListType(pcl.AssetType)}),
+			true, /*isInput*/
+		))
+
 	// assert that the Output[T] + input=false is the same as T + input=true
 	// in this case where T = string
 	assert.Equal(t,
@@ -223,8 +236,6 @@ func TestNotYetImplementedEmittedWhenGeneratingFunctions(t *testing.T) {
 	g := newTestGenerator(t, filepath.Join("aws-s3-logging-pp", "aws-s3-logging.pp"))
 
 	notYetImplementedFunctions := []string{
-		"split",
-		"element",
 		"entries",
 		"lookup",
 		"range",
@@ -300,20 +311,20 @@ func TestConditionalExpression(t *testing.T) {
 
 	cases := []exprTestCase{
 		{
-			hcl2Expr: "true ? 1 : 0",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 1\n} else {\ntmp0 = 0\n}\ntmp0",
+			hcl2Expr: "true ? 1.5 : 0.5",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 1.5\n} else {\ntmp0 = 0.5\n}\ntmp0",
 		},
 		{
-			hcl2Expr: "true ? 1 : true ? 0 : -1",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = 1\n} else {\ntmp1 = tmp0\n}\ntmp1",
+			hcl2Expr: "true ? 1.5 : true ? 0.5 : -1.5",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0.5\n} else {\ntmp0 = -1.5\n}\nvar tmp1 float64\nif true {\ntmp1 = 1.5\n} else {\ntmp1 = tmp0\n}\ntmp1",
 		},
 		{
-			hcl2Expr: "true ? true ? 0 : -1 : 0",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0\n} else {\ntmp0 = -1\n}\nvar tmp1 float64\nif true {\ntmp1 = tmp0\n} else {\ntmp1 = 0\n}\ntmp1",
+			hcl2Expr: "true ? true ? 0.5 : -1.5 : 0.5",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 0.5\n} else {\ntmp0 = -1.5\n}\nvar tmp1 float64\nif true {\ntmp1 = tmp0\n} else {\ntmp1 = 0.5\n}\ntmp1",
 		},
 		{
-			hcl2Expr: "{foo = true ? 2 : 0}",
-			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2\n} else {\ntmp0 = 0\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
+			hcl2Expr: "{foo = true ? 2.5 : 0.5}",
+			goCode:   "var tmp0 float64\nif true {\ntmp0 = 2.5\n} else {\ntmp0 = 0.5\n}\nmap[string]interface{}{\n\"foo\": tmp0,\n}",
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
@@ -336,24 +347,24 @@ func TestObjectConsExpression(t *testing.T) {
 	cases := []exprTestCase{
 		{
 			// TODO probably a bug in the binder. Single value objects should just be maps
-			hcl2Expr: "{foo = 1}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+			hcl2Expr: "{foo = 1.5}",
+			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n}",
 		},
 		{
-			hcl2Expr: "{\"foo\" = 1}",
-			goCode:   "map[string]interface{}{\n\"foo\": 1,\n}",
+			hcl2Expr: "{\"foo\" = 1.5}",
+			goCode:   "map[string]interface{}{\n\"foo\": 1.5,\n}",
 		},
 		{
-			hcl2Expr: "{1 = 1}",
-			goCode:   "map[string]interface{}{\n\"1\": 1,\n}",
+			hcl2Expr: "{1 = 1.5}",
+			goCode:   "map[string]interface{}{\n\"1\": 1.5,\n}",
 		},
 		{
-			hcl2Expr: "{(a) = 1}",
-			goCode:   "map[string]float64{\na: 1,\n}",
+			hcl2Expr: "{(a) = 1.5}",
+			goCode:   "map[string]float64{\na: 1.5,\n}",
 		},
 		{
-			hcl2Expr: "{(a+a) = 1}",
-			goCode:   "map[string]float64{\na + a: 1,\n}",
+			hcl2Expr: "{(a+a) = 1.5}",
+			goCode:   "map[string]float64{\na + a: 1.5,\n}",
 		},
 	}
 	for _, c := range cases {
@@ -393,16 +404,16 @@ func TestTupleConsExpression(t *testing.T) {
 			goCode:   "[]string{\n\"foo\",\n\"bar\",\n\"baz\",\n}",
 		},
 		{
-			hcl2Expr: "[1]",
-			goCode:   "[]float64{\n1,\n}",
+			hcl2Expr: "[1.5]",
+			goCode:   "[]float64{\n1.5,\n}",
 		},
 		{
-			hcl2Expr: "[1,2,3]",
-			goCode:   "[]float64{\n1,\n2,\n3,\n}",
+			hcl2Expr: "[1.5,2.5,3.5]",
+			goCode:   "[]float64{\n1.5,\n2.5,\n3.5,\n}",
 		},
 		{
-			hcl2Expr: "[1,\"foo\"]",
-			goCode:   "[]interface{}{\n1,\n\"foo\",\n}",
+			hcl2Expr: "[1.5,\"foo\"]",
+			goCode:   "[]interface{}{\n1.5,\n\"foo\",\n}",
 		},
 	}
 	for _, c := range cases {

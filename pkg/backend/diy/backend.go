@@ -66,6 +66,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // UpgradeOptions customizes the behavior of the upgrade operation.
@@ -394,6 +397,9 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 	if err != nil {
 		return fmt.Errorf("read old references: %w", err)
 	}
+	logging.V(7).Infof("State upgrade scan for %q found %d legacy stack file(s)",
+		b.originalURL, len(olds))
+
 	sort.Slice(olds, func(i, j int) bool {
 		return olds[i].Name().String() < olds[j].Name().String()
 	})
@@ -415,6 +421,7 @@ func (b *diyBackend) Upgrade(ctx context.Context, opts *UpgradeOptions) error {
 			if err != nil {
 				return fmt.Errorf("guess stack %s project: %w", old.Name(), err)
 			}
+			logging.V(7).Infof("Guessed project %q for stack %s", project, old.Name())
 
 			// No lock necessary;
 			// projects is pre-allocated.
@@ -1089,12 +1096,6 @@ func (b *diyBackend) Update(ctx context.Context, stack backend.Stack,
 func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import,
 ) (sdkDisplay.ResourceChanges, error) {
-	err := b.Lock(ctx, stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(ctx, stack.Ref())
-
 	op.Imports = imports
 
 	if op.Opts.PreviewOnly {
@@ -1110,18 +1111,18 @@ func (b *diyBackend) Import(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil, nil)
-}
-
-func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply, nil, nil)
+}
+
+func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
@@ -1135,18 +1136,18 @@ func (b *diyBackend) Refresh(ctx context.Context, stack backend.Stack,
 		return changes, err
 	}
 
-	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil, nil)
-}
-
-func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation,
-) (sdkDisplay.ResourceChanges, error) {
 	err := b.Lock(ctx, stack.Ref())
 	if err != nil {
 		return nil, err
 	}
 	defer b.Unlock(ctx, stack.Ref())
 
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply, nil, nil)
+}
+
+func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation,
+) (sdkDisplay.ResourceChanges, error) {
 	if op.Opts.PreviewOnly {
 		// We can skip PreviewThenPromptThenExecute, and just go straight to Execute.
 		opts := backend.ApplierOptions{
@@ -1159,6 +1160,12 @@ func (b *diyBackend) Destroy(ctx context.Context, stack backend.Stack,
 			ctx, apitype.DestroyUpdate, stack, op, opts, nil /*events*/)
 		return changes, err
 	}
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+	defer b.Unlock(ctx, stack.Ref())
 
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply, nil, nil)
 }
@@ -1190,6 +1197,13 @@ func (b *diyBackend) apply(
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
+		// than a logical span, but this is a convenient way to record this information.
+		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
+			tracer := otel.Tracer("pulumi-cli")
+			_, span := tracer.Start(ctx, "time-to-first-print", trace.WithTimestamp(startTime))
+			span.End()
+		}
 		// Print a banner so it's clear this is a diy deployment.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stackRef)
@@ -1353,7 +1367,7 @@ func (b *diyBackend) apply(
 				// printing a statefile perma link happens after all the providers have finished
 				// deploying the infrastructure, failing the pulumi update because there was a
 				// problem printing a statefile perma link can be missleading in automated CI environments.
-				cmdutil.Diag().Warningf(diag.Message("", "Unable to create signed url for current backend to "+
+				b.d.Warningf(diag.Message("", "Unable to create signed url for current backend to "+
 					"create a Permalink. Please visit https://www.pulumi.com/docs/troubleshooting/ "+
 					"for more information\n"))
 			}

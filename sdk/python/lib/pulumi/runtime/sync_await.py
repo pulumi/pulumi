@@ -26,7 +26,7 @@ def _sync_await(awaitable: Awaitable[T]) -> T:
 
     # Fetch the current event loop and ensure a future.
     loop = _ensure_event_loop()
-    fut = asyncio.ensure_future(awaitable)
+    fut = asyncio.ensure_future(awaitable, loop=loop)
 
     # If the loop is not running, we can just use run_until_complete. Without this, we would need to duplicate a fair
     # amount of bookkeeping logic around loop startup and shutdown.
@@ -50,8 +50,6 @@ def _sync_await(awaitable: Awaitable[T]) -> T:
     ntodo = len(loop._ready)  # type: ignore
     while not fut.done() and not fut.cancelled():
         loop._run_once()  # type: ignore
-        if loop._stopping:  # type: ignore
-            break
     # If we drained the ready list past what a calling _run_once would have expected, fix things up by pushing
     # cancelled handles onto the list.
     while len(loop._ready) < ntodo:  # type: ignore

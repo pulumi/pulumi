@@ -138,7 +138,7 @@ func (s *Source) getCloudTemplates(
 }
 
 func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
-	r := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
+	r := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
 
 	matches, err := NewTemplateMatcher(templateName)
 	if err != nil {

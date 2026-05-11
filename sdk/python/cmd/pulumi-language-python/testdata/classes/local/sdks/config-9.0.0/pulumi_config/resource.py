@@ -36,7 +36,7 @@ class Resource(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 text: Optional[pulumi.Input[_builtins.str]] = None,
+                 text: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         """
         Create a Resource resource with the given unique name, props, and options.
@@ -68,7 +68,7 @@ class Resource(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 text: Optional[pulumi.Input[_builtins.str]] = None,
+                 text: pulumi.Input[Optional[_builtins.str]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

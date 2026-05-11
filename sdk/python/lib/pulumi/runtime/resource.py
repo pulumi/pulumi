@@ -32,7 +32,7 @@ from google.protobuf import struct_pb2
 
 from .. import _types, log
 from .. import urn as urn_util
-from ..output import Input, Output, _safe_str
+from ..output import Input, Output, _OutputData, _safe_str
 from ..runtime.proto import alias_pb2, resource_pb2, source_pb2, callback_pb2
 from . import known_types, rpc, settings
 from ._depends_on import _resolve_depends_on_urns
@@ -534,21 +534,19 @@ def create_urn(
 def resource_output(
     res: "Resource",
 ) -> tuple[Callable[[Any, bool, bool, Optional[Exception]], None], "Output"]:
-    value_future: asyncio.Future[Any] = asyncio.Future()
-    known_future: asyncio.Future[bool] = asyncio.Future()
-    secret_future: asyncio.Future[bool] = asyncio.Future()
+    data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
 
     def resolve(value: Any, known: bool, secret: bool, exn: Optional[Exception]):
         if exn is not None:
-            value_future.set_exception(exn)
-            known_future.set_exception(exn)
-            secret_future.set_exception(exn)
+            data_future.set_exception(exn)
         else:
-            value_future.set_result(value)
-            known_future.set_result(known)
-            secret_future.set_result(secret)
+            data_future.set_result(
+                _OutputData(
+                    resources={res}, value=value, is_known=known, is_secret=secret
+                )
+            )
 
-    return resolve, Output({res}, value_future, known_future, secret_future)
+    return resolve, Output._from_data(data_future)
 
 
 def get_resource(

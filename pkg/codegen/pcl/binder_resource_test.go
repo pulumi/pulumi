@@ -164,6 +164,324 @@ func TestBindResourceOptions(t *testing.T) {
 	}
 }
 
+func TestBindReadResourceOptions(t *testing.T) {
+	t.Parallel()
+
+	fooPkg := schema.Package{
+		Name: "foo",
+		Provider: &schema.Resource{
+			Token: "foo:index:Foo",
+			InputProperties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+			Properties: []*schema.Property{
+				{Name: "property", Type: schema.StringType},
+			},
+		},
+		Resources: []*schema.Resource{
+			{
+				Token: "foo:index:Foo",
+				InputProperties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+				Properties: []*schema.Property{
+					{Name: "property", Type: schema.StringType},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name string // ResourceOptions field name
+		src  string // line in options block
+		want cty.Value
+	}{
+		{
+			name: "Protect",
+			src:  "protect = true",
+			want: cty.True,
+		},
+		{
+			name: "RetainOnDelete",
+			src:  "retainOnDelete = true",
+			want: cty.True,
+		},
+		{
+			name: "ImportID",
+			src:  `import = "abc123"`,
+			want: cty.StringVal("abc123"),
+		},
+		{
+			name: "CustomTimeouts",
+			src:  `customTimeouts = { create = "5m" }`,
+			want: cty.ObjectVal(map[string]cty.Value{
+				"create": cty.StringVal("5m"),
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var sb strings.Builder
+			fmt.Fprintln(&sb, `read foo "foo:index:Foo" {`)
+			fmt.Fprintln(&sb, `	id = "42"`)
+			fmt.Fprintln(&sb, "	options {")
+			fmt.Fprintln(&sb, "		"+tt.src)
+			fmt.Fprintln(&sb, "	}")
+			fmt.Fprintln(&sb, `}`)
+			src := sb.String()
+			defer func() {
+				if t.Failed() {
+					t.Logf("source:\n%s", src)
+				}
+			}()
+
+			parser := syntax.NewParser()
+			require.NoError(t,
+				parser.ParseFile(strings.NewReader(src), "test.pcl"),
+				"parse failed")
+
+			prog, diag, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+				Package: &fooPkg,
+			}))
+			require.NoError(t, err, "bind failed")
+			require.Empty(t, diag, "bind failed")
+
+			require.Len(t, prog.Nodes, 1, "expected one node")
+			require.IsType(t, &ReadResource{}, prog.Nodes[0], "expected a read resource")
+			res := prog.Nodes[0].(*ReadResource)
+
+			expr := reflect.ValueOf(res.Options).Elem().
+				FieldByName(tt.name).Interface().(model.Expression)
+
+			v, diag := expr.Evaluate(&hcl.EvalContext{})
+			require.Empty(t, diag, "evaluation failed")
+
+			if !v.RawEquals(tt.want) {
+				t.Errorf("unexpected value: %#v != %#v", tt.want, v)
+			}
+		})
+	}
+}
+
+func TestBindReadComponentResourceFails(t *testing.T) {
+	t.Parallel()
+
+	fooPkgSpec := schema.PackageSpec{
+		Name:    "foo",
+		Version: "1.0.0",
+		Provider: schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Type: "object",
+			},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"foo:index:Component": {
+				IsComponent: true,
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"id": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+				StateInputs: &schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"lookup": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+	}
+	fooPkg, diags, err := schema.BindSpec(fooPkgSpec, nil, schema.ValidationOptions{})
+	require.NoError(t, err)
+	require.False(t, diags.HasErrors())
+
+	src := `read comp "foo:index:Component" {
+	id = "existing-id"
+	lookup = "existing-key"
+}`
+
+	parser := syntax.NewParser()
+	require.NoError(t,
+		parser.ParseFile(strings.NewReader(src), "test.pcl"),
+		"parse failed")
+
+	prog, diags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+		Package: fooPkg,
+	}))
+	require.Error(t, err, "bind should fail")
+	require.True(t, diags.HasErrors(), "expected bind diagnostics")
+	require.Nil(t, prog)
+	require.Contains(t, diags.Error(), "component resources cannot be read")
+	require.Contains(t, diags.Error(), "Component")
+}
+
+func TestBindResourceIgnoreChangesNameCollision(t *testing.T) {
+	t.Parallel()
+
+	pkgSpec := schema.PackageSpec{
+		Name:    "foo",
+		Version: "1.0.0",
+		Provider: schema.ResourceSpec{
+			ObjectTypeSpec: schema.ObjectTypeSpec{Type: "object"},
+		},
+		Resources: map[string]schema.ResourceSpec{
+			"foo:index:Foo": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"property": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"property"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"property": {TypeSpec: schema.TypeSpec{Type: "string"}},
+				},
+				RequiredInputs: []string{"property"},
+			},
+			// Input named "ignoreChanges" so the user-attribute subtest can
+			// exercise the top-level case where the name collides.
+			"foo:index:Bar": {
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]schema.PropertySpec{
+						"ignoreChanges": {TypeSpec: schema.TypeSpec{Type: "string"}},
+					},
+					Required: []string{"ignoreChanges"},
+				},
+				InputProperties: map[string]schema.PropertySpec{
+					"ignoreChanges": {TypeSpec: schema.TypeSpec{Type: "string"}},
+				},
+				RequiredInputs: []string{"ignoreChanges"},
+			},
+		},
+	}
+	pkg, diags, err := schema.BindSpec(pkgSpec, nil, schema.ValidationOptions{})
+	require.NoError(t, err, "BindSpec failed")
+	require.False(t, diags.HasErrors(), "BindSpec diagnostics: %v", diags.Error())
+
+	tests := []struct {
+		name     string
+		src      string
+		subject  string
+		wantDeps []string
+	}{
+		{
+			name: "ignoreChanges entry shadows the resource's own name",
+			src: `
+resource property "foo:index:Foo" {
+	property = "p"
+	options {
+		ignoreChanges = [property]
+	}
+}`,
+			subject: "property",
+		},
+		{
+			name: "ignoreChanges entry shadows a sibling resource's name",
+			src: `
+resource property "foo:index:Foo" {
+	property = "s"
+}
+resource other "foo:index:Foo" {
+	property = "p"
+	options {
+		ignoreChanges = [property]
+	}
+}`,
+			subject: "other",
+		},
+		{
+			name: "all four shadowing attributes are suppressed",
+			src: `
+resource property "foo:index:Foo" {
+	property = "p"
+	options {
+		ignoreChanges           = [property]
+		hideDiffs               = [property]
+		replaceOnChanges        = [property]
+		additionalSecretOutputs = [property]
+	}
+}`,
+			subject: "property",
+		},
+		{
+			// Top-level "ignoreChanges" is a user property, not the options
+			// attribute, so its references must still resolve at root scope.
+			name: "user attribute named ignoreChanges still tracks deps",
+			src: `
+target = "t"
+resource bar "foo:index:Bar" {
+	ignoreChanges = target
+}`,
+			subject:  "bar",
+			wantDeps: []string{"target"},
+		},
+		{
+			// Guards against an over-broad fix that would suppress every
+			// options-block lookup; dependsOn is not a property-name attribute.
+			name: "options.dependsOn still registers root references",
+			src: `
+resource target "foo:index:Foo" {
+	property = "t"
+}
+resource property "foo:index:Foo" {
+	property = "p"
+	options {
+		dependsOn     = [target]
+		ignoreChanges = [property]
+	}
+}`,
+			subject:  "property",
+			wantDeps: []string{"target"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			defer func() {
+				if t.Failed() {
+					t.Logf("source:\n%s", tt.src)
+				}
+			}()
+
+			parser := syntax.NewParser()
+			require.NoError(t,
+				parser.ParseFile(strings.NewReader(tt.src), "test.pp"),
+				"parse failed")
+
+			prog, bindDiags, err := BindProgram(parser.Files, Loader(&stubSchemaLoader{
+				Package: pkg,
+			}))
+			require.NoError(t, err, "bind returned error")
+			require.Falsef(t, bindDiags.HasErrors(), "bind diagnostics: %v", bindDiags.Error())
+			require.NotNil(t, prog)
+
+			var subject Node
+			for _, n := range prog.Nodes {
+				if n.Name() == tt.subject {
+					subject = n
+					break
+				}
+			}
+			require.NotNilf(t, subject, "no node named %q in program", tt.subject)
+
+			deps := subject.GetDependencies()
+			gotDeps := make([]string, 0, len(deps))
+			for _, d := range deps {
+				gotDeps = append(gotDeps, d.Name())
+			}
+			require.ElementsMatch(t, tt.wantDeps, gotDeps,
+				"unexpected dependency set for %q", subject.Name())
+		})
+	}
+}
+
 type stubSchemaLoader struct {
 	Package *schema.Package
 }

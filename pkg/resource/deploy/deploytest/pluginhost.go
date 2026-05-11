@@ -564,8 +564,8 @@ func (host *pluginHost) ResolvePlugin(
 			Kind:    v.kind,
 			Name:    v.name,
 			Version: &v.version,
-			// Path and SchemaPath not set as these plugins aren't actually on disk.
-			// SchemaTime not set as caching is indefinite.
+			// Path not set as these plugins aren't actually on disk.
+			// InstallTime not set as caching is indefinite.
 		}
 		plugins = append(plugins, p)
 	}
@@ -603,11 +603,4 @@ func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
 		return nil, err
 	}
 	return plug.(plugin.Analyzer), nil
-}
-
-func (host *pluginHost) ListAnalyzers() []plugin.Analyzer {
-	host.m.Lock()
-	defer host.m.Unlock()
-
-	return host.analyzers
 }

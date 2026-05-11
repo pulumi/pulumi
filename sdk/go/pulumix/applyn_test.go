@@ -44,7 +44,7 @@ func TestApply_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -66,7 +66,7 @@ func TestApply_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -82,7 +82,7 @@ func TestApplyErr_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -103,7 +103,7 @@ func TestApply_failedOutput(t *testing.T) {
 		},
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)
@@ -124,7 +124,7 @@ func TestApply2_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -148,7 +148,7 @@ func TestApply2_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -165,7 +165,7 @@ func TestApply2Err_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -188,7 +188,7 @@ func TestApply2_failedOutput(t *testing.T) {
 		},
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)
@@ -211,7 +211,7 @@ func TestApply3_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -237,7 +237,7 @@ func TestApply3_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -255,7 +255,7 @@ func TestApply3Err_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -279,7 +279,7 @@ func TestApply3_failedOutput(t *testing.T) {
 		},
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)
@@ -304,7 +304,7 @@ func TestApply4_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -332,7 +332,7 @@ func TestApply4_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -351,7 +351,7 @@ func TestApply4Err_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -376,7 +376,7 @@ func TestApply4_failedOutput(t *testing.T) {
 		},
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)
@@ -403,7 +403,7 @@ func TestApply5_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -433,7 +433,7 @@ func TestApply5_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -453,7 +453,7 @@ func TestApply5Err_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -479,7 +479,7 @@ func TestApply5_failedOutput(t *testing.T) {
 		},
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)
@@ -508,7 +508,7 @@ func TestApply6_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -540,7 +540,7 @@ func TestApply6_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -561,7 +561,7 @@ func TestApply6Err_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -588,7 +588,7 @@ func TestApply6_failedOutput(t *testing.T) {
 		},
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)
@@ -619,7 +619,7 @@ func TestApply7_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -653,7 +653,7 @@ func TestApply7_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -675,7 +675,7 @@ func TestApply7Err_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -703,7 +703,7 @@ func TestApply7_failedOutput(t *testing.T) {
 		},
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)
@@ -736,7 +736,7 @@ func TestApply8_simpleSuccess(t *testing.T) {
 		},
 	)
 
-	val, known, secret, deps, err := internal.AwaitOutput(context.Background(), out)
+	val, known, secret, deps, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, known)
 	assert.False(t, secret)
@@ -772,7 +772,7 @@ func TestApply8_secretValue(t *testing.T) {
 		},
 	)
 
-	_, _, secret, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, secret, _, err := internal.AwaitOutput(t.Context(), out)
 	require.NoError(t, err)
 	assert.True(t, secret)
 }
@@ -795,7 +795,7 @@ func TestApply8Err_applyError(t *testing.T) {
 		},
 	)
 
-	_, _, _, _, err := internal.AwaitOutput(context.Background(), out)
+	_, _, _, _, err := internal.AwaitOutput(t.Context(), out)
 	assert.ErrorIs(t, err, giveErr)
 }
 
@@ -824,7 +824,7 @@ func TestApply8_failedOutput(t *testing.T) {
 		},
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	_, _, _, _, err := internal.AwaitOutput(ctx, out)

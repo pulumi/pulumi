@@ -76,7 +76,7 @@ def get_policy_document(statements: Optional[Sequence[Union['_x.GetPolicyDocumen
         id=pulumi.get(__ret__, 'id'),
         json=pulumi.get(__ret__, 'json'),
         statements=pulumi.get(__ret__, 'statements'))
-def get_policy_document_output(statements: Optional[pulumi.Input[Optional[Sequence[Union['_x.GetPolicyDocumentStatementArgs', '_x.GetPolicyDocumentStatementArgsDict']]]]] = None,
+def get_policy_document_output(statements: pulumi.Input[Optional[Optional[Sequence[Union['_x.GetPolicyDocumentStatementArgs', '_x.GetPolicyDocumentStatementArgsDict']]]]] = None,
                                opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetPolicyDocumentResult]:
     """
     Use this data source to access information about an existing resource.

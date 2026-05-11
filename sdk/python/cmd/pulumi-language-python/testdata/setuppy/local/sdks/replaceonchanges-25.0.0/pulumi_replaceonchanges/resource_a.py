@@ -20,7 +20,7 @@ __all__ = ['ResourceAArgs', 'ResourceA']
 class ResourceAArgs:
     def __init__(__self__, *,
                  value: pulumi.Input[_builtins.bool],
-                 replace_prop: Optional[pulumi.Input[_builtins.bool]] = None):
+                 replace_prop: pulumi.Input[Optional[_builtins.bool]] = None):
         """
         The set of arguments for constructing a ResourceA resource.
         """
@@ -39,11 +39,11 @@ class ResourceAArgs:
 
     @_builtins.property
     @pulumi.getter(name="replaceProp")
-    def replace_prop(self) -> Optional[pulumi.Input[_builtins.bool]]:
+    def replace_prop(self) -> pulumi.Input[Optional[_builtins.bool]]:
         return pulumi.get(self, "replace_prop")
 
     @replace_prop.setter
-    def replace_prop(self, value: Optional[pulumi.Input[_builtins.bool]]):
+    def replace_prop(self, value: pulumi.Input[Optional[_builtins.bool]]):
         pulumi.set(self, "replace_prop", value)
 
 
@@ -53,8 +53,8 @@ class ResourceA(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 replace_prop: Optional[pulumi.Input[_builtins.bool]] = None,
-                 value: Optional[pulumi.Input[_builtins.bool]] = None,
+                 replace_prop: pulumi.Input[Optional[_builtins.bool]] = None,
+                 value: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         """
         Create a ResourceA resource with the given unique name, props, and options.
@@ -86,8 +86,8 @@ class ResourceA(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 replace_prop: Optional[pulumi.Input[_builtins.bool]] = None,
-                 value: Optional[pulumi.Input[_builtins.bool]] = None,
+                 replace_prop: pulumi.Input[Optional[_builtins.bool]] = None,
+                 value: pulumi.Input[Optional[_builtins.bool]] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

@@ -47,6 +47,7 @@ import (
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	sdkDisplay "github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/operations"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
@@ -69,6 +70,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/property"
+
+	"go.opentelemetry.io/otel"
+	oteltrace "go.opentelemetry.io/otel/trace"
 )
 
 var ErrUnauthorized = errors.New("Unauthorized: No credentials provided or are invalid.")
@@ -221,6 +225,7 @@ var _ backend.SpecificDeploymentExporter = &cloudBackend{}
 func New(ctx context.Context, d diag.Sink,
 	cloudURL string, project *workspace.Project, insecure bool,
 ) (Backend, error) {
+	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
 	account, err := workspace.GetAccount(cloudURL)
 	if err != nil {
@@ -231,6 +236,33 @@ func New(ctx context.Context, d diag.Sink,
 	apiClient := client.NewClient(cloudURL, apiToken, insecure, d)
 	escClient := esc_client.New(client.UserAgent(), cloudURL, apiToken, insecure)
 
+	config, err := workspace.GetPulumiConfig()
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("get Pulumi config: %w", err)
+	}
+	var org string
+	if beConfig, ok := config.BackendConfig[cloudURL]; ok {
+		if beConfig.DefaultOrg != "" {
+			org = beConfig.DefaultOrg
+		}
+	}
+
+	var defaultOrg *promise.Promise[string]
+	if org == "" {
+		defaultOrg = promise.Run(func() (string, error) {
+			resp, err := apiClient.GetDefaultOrg(ctx)
+			if err != nil {
+				logging.V(1).Infof("failed to get default org: %v", err)
+				return "", err
+			}
+			return resp.GitHubLogin, nil
+		})
+	} else {
+		cts := &promise.CompletionSource[string]{}
+		cts.MustFulfill(org)
+		defaultOrg = cts.Promise()
+	}
+
 	return &cloudBackend{
 		d:              d,
 		url:            cloudURL,
@@ -238,7 +270,7 @@ func New(ctx context.Context, d diag.Sink,
 		escClient:      escClient,
 		capabilities:   detectCapabilities(ctx, d, apiClient),
 		userInfo:       detectUserInfo(ctx, d, cloudURL, apiClient),
-		defaultOrg:     detectDefaultOrg(ctx, d, apiClient),
+		defaultOrg:     defaultOrg,
 		currentProject: project,
 	}, nil
 }
@@ -774,7 +806,7 @@ func (b *cloudBackend) GetStackPolicyPacks(
 	}
 
 	return slices.Collect(fxs.Map(resp.RequiredPolicies, func(policy apitype.RequiredPolicy) engine.RequiredPolicy {
-		return newCloudRequiredPolicy(b.client, policy, stackID.Owner)
+		return newCloudRequiredPolicy(b.client, b, policy, stackID.Owner)
 	})), nil
 }
 
@@ -859,7 +891,7 @@ func (b *cloudBackend) ParseStackReference(s string) (backend.StackReference, er
 		return nil, err
 	}
 
-	defaultOrg, err := backend.GetDefaultOrg(context.TODO(), b, b.currentProject)
+	defaultOrg, err := b.defaultOrg.Result(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -1005,7 +1037,7 @@ func (b *cloudBackend) DoesProjectExist(ctx context.Context, orgName string, pro
 	}
 
 	getDefaultOrg := func() (string, error) {
-		return backend.GetDefaultOrg(ctx, b, nil)
+		return b.defaultOrg.Result(ctx)
 	}
 	getUserOrg := func() (string, error) {
 		orgName, _, _, err := b.currentUser(ctx)
@@ -1068,7 +1100,7 @@ func (b *cloudBackend) CreateStack(
 
 	b.downgradeUntypedDeploymentVersionIfNeeded(ctx, initialState)
 
-	apistack, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
+	apistack, details, err := b.client.CreateStack(ctx, stackID, tags, opts.Teams, initialState, opts.Config)
 	if err != nil {
 		// Wire through well-known error types.
 		if errResp, ok := err.(*apitype.ErrorResponse); ok && errResp.Code == http.StatusConflict {
@@ -1083,6 +1115,9 @@ func (b *cloudBackend) CreateStack(
 		}
 		return nil, err
 	}
+
+	// Display messages from the backend if present.
+	displayBackendMessages(details.Messages)
 
 	stack, err := newStack(ctx, apistack, b)
 	if err != nil {
@@ -1123,7 +1158,7 @@ func (b *cloudBackend) ListStacks(
 	// Since ListStacks is also a potentially long-running operation for power users with many stacks,
 	// this has the added benefit of ensuring that the default org is consistent for the duration of the
 	// operation, even if the user changes their default org mid-process.
-	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
+	defaultOrg, err := b.defaultOrg.Result(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1525,7 +1560,8 @@ func (b *cloudBackend) createNeoTaskOnError(
 		"Help me debug the following Pulumi error for project %s and stack %s:\n\n%s",
 		stackID.Project, stackID.Stack.String(), pulumiOutput)
 
-	return b.client.CreateNeoTask(ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project)
+	return b.client.CreateNeoTask(
+		ctx, stackID.Owner, content, stackID.Stack.String(), stackID.Project, client.CreateNeoTaskOptions{})
 }
 
 type updateMetadata struct {
@@ -1569,8 +1605,11 @@ func (b *cloudBackend) createAndStartUpdate(
 	//
 	for _, policy := range updateDetails.RequiredPolicies {
 		op.Opts.Engine.RequiredPolicies = append(
-			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, policy, update.Owner))
+			op.Opts.Engine.RequiredPolicies, newCloudRequiredPolicy(b.client, b, policy, update.Owner))
 	}
+
+	// Provide ESC environment resolver for local policy packs.
+	op.Opts.Engine.PolicyEnvResolver = NewLocalPolicyEnvironmentResolver(b, update.Owner)
 
 	// Start the update. We use this opportunity to pass new tags to the service, to pick up any
 	// metadata changes.
@@ -1641,6 +1680,13 @@ func (b *cloudBackend) apply(
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
 	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
+		// than a logical span, but this is a convenient way to record this information.
+		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
+			tracer := otel.Tracer("pulumi-cli")
+			_, span := tracer.Start(ctx, "time-to-first-print", oteltrace.WithTimestamp(startTime))
+			span.End()
+		}
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
 			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
@@ -1688,24 +1734,7 @@ func (b *cloudBackend) apply(
 	}
 
 	// Display messages from the backend if present.
-	if len(updateMeta.messages) > 0 {
-		for _, msg := range updateMeta.messages {
-			m := diag.RawMessage("", msg.Message)
-			switch msg.Severity {
-			case apitype.MessageSeverityError:
-				cmdutil.Diag().Errorf(m)
-			case apitype.MessageSeverityWarning:
-				cmdutil.Diag().Warningf(m)
-			case apitype.MessageSeverityInfo:
-				cmdutil.Diag().Infof(m)
-			default:
-				// Fallback on Info if we don't recognize the severity.
-				cmdutil.Diag().Infof(m)
-				logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
-			}
-		}
-		fmt.Print("\n")
-	}
+	displayBackendMessages(updateMeta.messages)
 
 	permalink := b.getPermalink(update, updateMeta.version, opts.DryRun)
 	return b.runEngineAction(
@@ -1742,6 +1771,10 @@ func (b *cloudBackend) runEngineAction(
 		ctx, tokenSource, update,
 		backend.ActionLabel(kind, dryRun), kind, stackRef, op, permalink,
 		displayEvents, displayDone, op.Opts.Display, dryRun)
+
+	if err := pkgLogging.RenameCurrentLogger(string(stackRef.FullyQualifiedName()), update.UpdateID); err != nil {
+		return nil, nil, err
+	}
 
 	// The engineEvents channel receives all events from the engine, which we then forward onto other
 	// channels for actual processing. (displayEvents and callerEventsOpt.)
@@ -2665,18 +2698,6 @@ func detectUserInfo(
 	})
 }
 
-// Builds a lazy wrapper around fetching default org.
-func detectDefaultOrg(ctx context.Context, d diag.Sink, client *client.Client) *promise.Promise[string] {
-	return promise.Run(func() (string, error) {
-		resp, err := client.GetDefaultOrg(ctx)
-		if err != nil {
-			logging.V(1).Infof("failed to get default org: %v", err)
-			return "", err
-		}
-		return resp.GitHubLogin, nil
-	})
-}
-
 func (b *cloudBackend) DefaultSecretManager(_ context.Context, _ *workspace.ProjectStack) (secrets.Manager, error) {
 	// The default secrets manager for a cloud-backed stack is a cloud secrets manager, which is inherently
 	// stack-specific. Thus at the backend level we return nil, deferring to Stack.DefaultSecretManager when the stack has
@@ -2717,4 +2738,30 @@ func (b *cloudBackend) downgradeUntypedDeploymentVersionIfNeeded(
 		deployment.Version, deployment.Features = b.downgradeDeploymentVersionIfNeeded(
 			ctx, deployment.Version, deployment.Features)
 	}
+}
+
+// displayBackendMessages renders backend-vended messages to the user via the default
+// diagnostic sink, mapping each message's severity to the appropriate log level. A trailing
+// blank line is printed when any messages are displayed, to separate them from subsequent
+// output. If messages is empty, this is a no-op.
+func displayBackendMessages(messages []apitype.Message) {
+	if len(messages) == 0 {
+		return
+	}
+	for _, msg := range messages {
+		m := diag.RawMessage("", msg.Message)
+		switch msg.Severity {
+		case apitype.MessageSeverityError:
+			cmdutil.Diag().Errorf(m)
+		case apitype.MessageSeverityWarning:
+			cmdutil.Diag().Warningf(m)
+		case apitype.MessageSeverityInfo:
+			cmdutil.Diag().Infof(m)
+		default:
+			// Fallback on Info if we don't recognize the severity.
+			cmdutil.Diag().Infof(m)
+			logging.V(7).Infof("Unknown message severity: %s", msg.Severity)
+		}
+	}
+	fmt.Print("\n")
 }

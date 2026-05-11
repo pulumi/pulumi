@@ -263,6 +263,11 @@ func TestDestroyOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
 	args, _, err := destroyOptsToCmd(
 		&optdestroy.Options{
 			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
@@ -291,6 +296,11 @@ func TestRefreshOptsConfigFile(t *testing.T) {
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
 
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
+
 	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
 			ConfigFile: filepath.Join(stack.workspace.WorkDir(), "test.yaml"),
@@ -310,13 +320,20 @@ func TestRefreshOptsDiff(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
+	sName := ptesting.RandomStackName()
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
 	// Copy the test project to a temp directory.
 	pDir := t.TempDir()
 	err := fsutil.CopyFile(pDir, filepath.Join(".", "test", "testproj"), nil)
 	require.NoError(t, err)
 
-	stack, err := NewStackLocalSource(ctx, ptesting.RandomStackName(), pDir)
+	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	argsUp, _, err := refreshOptsToCmd(&optrefresh.Options{Diff: true}, &stack, true)
 	require.NoError(t, err)
@@ -340,6 +357,11 @@ func TestRefreshOptsClearPendingCreates(t *testing.T) {
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	args, _, err := refreshOptsToCmd(
 		&optrefresh.Options{
@@ -366,6 +388,11 @@ func TestRename(t *testing.T) {
 
 	stack, err := NewStackLocalSource(ctx, stackName, pDir)
 	require.NoError(t, err)
+
+	defer func() {
+		err = stack.Workspace().RemoveStack(ctx, stack.Name(), optremove.Force())
+		require.NoError(t, err, "failed to remove stack.")
+	}()
 
 	args := renameOptsToCmd(
 		&optrename.Options{

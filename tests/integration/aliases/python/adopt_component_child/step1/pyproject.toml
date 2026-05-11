@@ -1,0 +1,4 @@
+[project]
+name = "aliases_adopt_component_child"
+version = "0.0.0"
+dependencies = []

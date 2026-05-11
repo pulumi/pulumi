@@ -39,7 +39,7 @@ from .runtime.resource import (
     create_urn as create_urn_internal,
 )
 from .runtime.settings import get_root_resource
-from .output import _is_prompt, _map_input, _map2_input, Output
+from .output import _is_prompt, _map_input, _map2_input, Output, _OutputData
 from . import urn as urn_util
 from . import log
 
@@ -893,7 +893,11 @@ class Resource:
                and `translate_output_property` methods.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
-        :param bool remote: True if this is a remote component resource.
+        :param bool remote: This parameter is intended for use by code-generated component SDKs;
+               end users authoring their own :class:`ComponentResource` subclasses should leave this at
+               its default (``False``). When ``True``, the component's children are constructed by the
+               engine rather than in this process, and the constructor skips local child registration
+               accordingly.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
@@ -1232,7 +1236,11 @@ class ComponentResource(Resource):
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
-        :param bool remote: True if this is a remote component resource.
+        :param bool remote: This parameter is intended for use by code-generated component SDKs;
+               end users authoring their own :class:`ComponentResource` subclasses should leave this at
+               its default (``False``). When ``True``, the component's children are constructed by the
+               engine rather than in this process, and the constructor skips local child registration
+               accordingly.
         :param Optional[Awaitable[Optional[str]]] package_ref: The package reference for this resource.
         """
         Resource.__init__(self, t, name, False, props, opts, remote, False, package_ref)
@@ -1300,13 +1308,11 @@ class DependencyResource(CustomResource):
     def __init__(self, urn: str) -> None:
         super().__init__(t="", name="", props={}, opts=None, dependency=True)
 
-        urn_future: asyncio.Future[str] = asyncio.Future()
-        urn_known: asyncio.Future[bool] = asyncio.Future()
-        urn_secret: asyncio.Future[bool] = asyncio.Future()
-        urn_future.set_result(urn)
-        urn_known.set_result(True)
-        urn_secret.set_result(False)
-        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+        urn_data: asyncio.Future[_OutputData[str]] = asyncio.Future()
+        urn_data.set_result(
+            _OutputData(resources={self}, value=urn, is_known=True, is_secret=False)
+        )
+        self.__dict__["urn"] = Output._from_data(urn_data)
 
 
 class DependencyProviderResource(ProviderResource):
@@ -1325,21 +1331,17 @@ class DependencyProviderResource(ProviderResource):
 
         super().__init__(pkg=pkg, name="", props={}, opts=None, dependency=True)
 
-        urn_future: asyncio.Future[str] = asyncio.Future()
-        urn_known: asyncio.Future[bool] = asyncio.Future()
-        urn_secret: asyncio.Future[bool] = asyncio.Future()
-        urn_future.set_result(ref_urn)
-        urn_known.set_result(True)
-        urn_secret.set_result(False)
-        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+        urn_data: asyncio.Future[_OutputData[str]] = asyncio.Future()
+        urn_data.set_result(
+            _OutputData(resources={self}, value=ref_urn, is_known=True, is_secret=False)
+        )
+        self.__dict__["urn"] = Output._from_data(urn_data)
 
-        id_future: asyncio.Future[str] = asyncio.Future()
-        id_known: asyncio.Future[bool] = asyncio.Future()
-        id_secret: asyncio.Future[bool] = asyncio.Future()
-        id_future.set_result(ref_id)
-        id_known.set_result(True)
-        id_secret.set_result(False)
-        self.__dict__["id"] = Output({self}, id_future, id_known, id_secret)
+        id_data: asyncio.Future[_OutputData[str]] = asyncio.Future()
+        id_data.set_result(
+            _OutputData(resources={self}, value=ref_id, is_known=True, is_secret=False)
+        )
+        self.__dict__["id"] = Output._from_data(id_data)
 
 
 def export(name: str, value: Any):

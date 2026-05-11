@@ -758,8 +758,8 @@ func TestDeserializePropertyValue(t *testing.T) {
 	})
 }
 
-func wireValue(v resource.PropertyValue) (any, error) {
-	object, err := SerializePropertyValue(context.Background(), v, config.NopEncrypter, false)
+func wireValue(ctx context.Context, v resource.PropertyValue) (any, error) {
+	object, err := SerializePropertyValue(ctx, v, config.NopEncrypter, false)
 	if err != nil {
 		return nil, err
 	}
@@ -782,7 +782,7 @@ func TestPropertyValueSchema(t *testing.T) {
 
 	//nolint:paralleltest // uses rapid.T not golang testing.T
 	t.Run("serialized", rapid.MakeCheck(func(t *rapid.T) {
-		wireObject, err := wireValue(resource_testing.PropertyValueGenerator(6).Draw(t, "property value"))
+		wireObject, err := wireValue(t.Context(), resource_testing.PropertyValueGenerator(6).Draw(t, "property value"))
 		require.NoError(t, err)
 
 		err = propertyValueSchema.Validate(wireObject)
@@ -830,7 +830,7 @@ func TestRoundTripPropertyValue(t *testing.T) {
 
 	rapid.Check(t, func(t *rapid.T) {
 		original := resource_testing.PropertyValueGenerator(6).Draw(t, "property value")
-		wireObject, err := wireValue(original)
+		wireObject, err := wireValue(t.Context(), original)
 		require.NoError(t, err)
 
 		deserialized, err := DeserializePropertyValue(wireObject, config.NopDecrypter)
@@ -910,6 +910,22 @@ func ArchiveObjectGenerator(maxDepth int) *rapid.Generator[map[string]any] {
 	return LiteralArchiveObjectGenerator(maxDepth)
 }
 
+// FloatObjectGenerator generates float object values representing NaN and Inf, matching the
+// wire format used by SerializePropertyValue.
+func FloatObjectGenerator() *rapid.Generator[map[string]any] {
+	return rapid.Custom(func(t *rapid.T) map[string]any {
+		hex := rapid.SampledFrom([]string{
+			"7ff8000000000001", // NaN
+			"7ff0000000000000", // +Inf
+			"fff0000000000000", // -Inf
+		}).Draw(t, "float hex")
+		return map[string]any{
+			resource.SigKey: floatSignature,
+			"value":         hex,
+		}
+	})
+}
+
 // ResourceReferenceObjectGenerator generates resource reference object values.
 func ResourceReferenceObjectGenerator() *rapid.Generator[any] {
 	return rapid.Custom(func(t *rapid.T) any {
@@ -971,6 +987,7 @@ func ObjectValueGenerator(maxDepth int) *rapid.Generator[any] {
 		NumberObjectGenerator().AsAny(),
 		StringObjectGenerator().AsAny(),
 		AssetObjectGenerator().AsAny(),
+		FloatObjectGenerator().AsAny(),
 		ResourceReferenceObjectGenerator(),
 	}
 	if maxDepth > 0 {

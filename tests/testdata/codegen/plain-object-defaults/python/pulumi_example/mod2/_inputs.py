@@ -24,14 +24,14 @@ class TypArgsDict(TypedDict):
     """
     A test for namespaces (mod 2)
     """
-    mod1: NotRequired[pulumi.Input['_mod1.TypArgsDict']]
-    val: NotRequired[pulumi.Input[_builtins.str]]
+    mod1: NotRequired[pulumi.Input[Optional['_mod1.TypArgs']]]
+    val: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class TypArgs:
     def __init__(__self__, *,
-                 mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
-                 val: Optional[pulumi.Input[_builtins.str]] = None):
+                 mod1: pulumi.Input[Optional['_mod1.TypArgs']] = None,
+                 val: pulumi.Input[Optional[_builtins.str]] = None):
         """
         A test for namespaces (mod 2)
         """
@@ -44,20 +44,20 @@ class TypArgs:
 
     @_builtins.property
     @pulumi.getter
-    def mod1(self) -> Optional[pulumi.Input['_mod1.TypArgs']]:
+    def mod1(self) -> pulumi.Input[Optional['_mod1.TypArgs']]:
         return pulumi.get(self, "mod1")
 
     @mod1.setter
-    def mod1(self, value: Optional[pulumi.Input['_mod1.TypArgs']]):
+    def mod1(self, value: pulumi.Input[Optional['_mod1.TypArgs']]):
         pulumi.set(self, "mod1", value)
 
     @_builtins.property
     @pulumi.getter
-    def val(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def val(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "val")
 
     @val.setter
-    def val(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def val(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "val", value)
 
 
