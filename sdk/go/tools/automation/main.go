@@ -332,58 +332,20 @@ func buildOptionsImports() *ast.GenDecl {
 // over to the real sdk/go/auto address.
 const basePackageImportPath = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
 
-// commonInitialisms mirrors the list golint uses to enforce idiomatic Go
-// naming for acronyms. `strcase.ToCamel` only knows one-word-at-a-time
-// PascalCase, so a flag like `--url` becomes `Url` instead of `URL`.
-// `toGoCamel` post-processes its output by uppercasing any word whose
-// lowercase form appears here.
-var commonInitialisms = map[string]struct{}{
-	"ACL":   {},
-	"AI":    {},
-	"API":   {},
-	"ASCII": {},
-	"CPU":   {},
-	"CSS":   {},
-	"DNS":   {},
-	"EOF":   {},
-	"GUID":  {},
-	"HTML":  {},
-	"HTTP":  {},
-	"HTTPS": {},
-	"ID":    {},
-	"IP":    {},
-	"JSON":  {},
-	"LHS":   {},
-	"OS":    {},
-	"QPS":   {},
-	"RAM":   {},
-	"RHS":   {},
-	"RPC":   {},
-	"SLA":   {},
-	"SMTP":  {},
-	"SQL":   {},
-	"SSH":   {},
-	"TCP":   {},
-	"TLS":   {},
-	"TTL":   {},
-	"UDP":   {},
-	"UI":    {},
-	"UID":   {},
-	"UUID":  {},
-	"URI":   {},
-	"URL":   {},
-	"UTF8":  {},
-	"VM":    {},
-	"XML":   {},
-	"XMPP":  {},
-	"XSRF":  {},
-	"XSS":   {},
+// acronyms lists the words that `toGoCamel` uppercases wholesale to match
+// the Go convention golint enforces (and the broader stdlib style).
+// `strcase.ToCamel` only knows one-word-at-a-time PascalCase, so without
+// this post-pass a flag like `--ai` would surface as `Ai`. Only the
+// acronyms actually produced by the current spec are listed; extend as
+// new specs require.
+var acronyms = map[string]struct{}{
+	"AI": {},
 }
 
 // toGoCamel converts a hyphen/underscore-separated flag name to a
 // PascalCase Go identifier, uppercasing any word that matches an entry in
-// `commonInitialisms`. For example "ai" becomes "AI", "secrets-provider"
-// becomes "SecretsProvider", and "template-or-url" becomes "TemplateOrURL".
+// `acronyms`. For example "ai" becomes "AI" and "secrets-provider"
+// becomes "SecretsProvider".
 func toGoCamel(name string) string {
 	camel := strcase.ToCamel(name)
 	if camel == "" {
@@ -392,7 +354,7 @@ func toGoCamel(name string) string {
 	// Walk the camel-cased string and identify word boundaries: each one
 	// starts at an uppercase ASCII letter. We rebuild the result word by
 	// word, swapping in the all-uppercase form for any word whose
-	// uppercased value appears in commonInitialisms.
+	// uppercased value appears in acronyms.
 	var b strings.Builder
 	b.Grow(len(camel))
 	runes := []rune(camel)
@@ -404,7 +366,7 @@ func toGoCamel(name string) string {
 		}
 		word := string(runes[i:j])
 		upper := strings.ToUpper(word)
-		if _, ok := commonInitialisms[upper]; ok {
+		if _, ok := acronyms[upper]; ok {
 			b.WriteString(upper)
 		} else {
 			b.WriteString(word)
