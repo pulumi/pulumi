@@ -1754,7 +1754,7 @@ def _cleanup(
     # after 5 seconds. This gives the thread some time to read the events log.
     if thread:
         thread.join(5)
-    # If an error occured before the actual Pulumi operation started, we will
+    # If an error occurred before the actual Pulumi operation started, we will
     # never write a CancelEvent to the events log, and the thread will continue
     # polling forever. Set the stop_event to stop the polling loop.
     if stop_event:
