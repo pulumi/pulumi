@@ -26,6 +26,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -142,6 +143,12 @@ type ModelConfig struct {
 	// which is sent to the backend via CreateNeoTask rather than outCh and
 	// would otherwise only appear once the SSE stream echoes it back.
 	InitialPrompt string
+	// InitialApprovalMode and InitialPermissionMode seed the TUI's view of the
+	// task's approval / permission policy. These come from the --approval-mode /
+	// --permission-mode flags (or their defaults) and are sent on the first
+	// user_message; subsequent toggles via Ctrl+A / Ctrl+R PATCH the live task.
+	InitialApprovalMode   client.NeoApprovalMode
+	InitialPermissionMode client.NeoPermissionMode
 	// MessageSent seeds the post-first-message gate. Set it to true in tests
 	// that want to exercise the Shift+Tab post-send warning path without
 	// having to simulate a full Enter-driven send first.
@@ -194,6 +201,15 @@ type Model struct {
 	// true, Shift+Tab stops toggling and planMode is effectively frozen
 	// (further changes happen only via plan-approval auto-clear below).
 	planMode bool
+	// approvalMode is the current approval policy, cycled via Ctrl+A. Pre-first-
+	// message it's purely local — the value is snapshotted into CreateNeoTask on
+	// the first user_message. Post-send toggles dispatch an outboundEvent.update
+	// that the runNeo dispatcher routes through UpdateNeoTask, so cloud
+	// ApprovalHandler picks up the change without restarting the session.
+	approvalMode client.NeoApprovalMode
+	// permissionMode is the current capability scope, toggled via Ctrl+R. Same
+	// pre/post-send semantics as approvalMode.
+	permissionMode client.NeoPermissionMode
 	// messageSent flips to true when the TUI successfully dispatches its
 	// first user_message on outCh. From that point on, Shift+Tab emits the
 	// "plan mode is task-level" warning instead of toggling.
@@ -278,6 +294,30 @@ func renderLeftBracket(borderStyle lipgloss.Style, content string) string {
 	return strings.Join(out, "\n")
 }
 
+// nextApprovalMode returns the next value in the manual → balanced → auto →
+// manual cycle. Empty input is treated as manual so cycling from the zero value
+// lands on a real first state.
+func nextApprovalMode(m client.NeoApprovalMode) client.NeoApprovalMode {
+	switch m {
+	case client.NeoApprovalModeManual:
+		return client.NeoApprovalModeBalanced
+	case client.NeoApprovalModeBalanced:
+		return client.NeoApprovalModeAuto
+	case client.NeoApprovalModeAuto:
+		return client.NeoApprovalModeManual
+	}
+	return client.NeoApprovalModeManual
+}
+
+// nextPermissionMode flips between default and read-only. Anything else
+// (including empty) collapses back to default.
+func nextPermissionMode(m client.NeoPermissionMode) client.NeoPermissionMode {
+	if m == client.NeoPermissionModeReadOnly {
+		return client.NeoPermissionModeDefault
+	}
+	return client.NeoPermissionModeReadOnly
+}
+
 // renderIndented word-wraps content (ANSI-safe) to termWidth minus the
 // 2-space transcript gutter, or returns un-wrapped if the width is too
 // small to wrap into. URLs in the post-wrap output are wrapped in OSC 8
@@ -314,14 +354,16 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		textInput:   ti,
-		eventCh:     cfg.EventCh,
-		outCh:       cfg.OutCh,
-		busy:        cfg.Busy,
-		spinner:     sp,
-		width:       80,
-		height:      24,
-		messageSent: cfg.MessageSent,
+		textInput:      ti,
+		eventCh:        cfg.EventCh,
+		outCh:          cfg.OutCh,
+		busy:           cfg.Busy,
+		spinner:        sp,
+		width:          80,
+		height:         24,
+		messageSent:    cfg.MessageSent,
+		approvalMode:   cfg.InitialApprovalMode,
+		permissionMode: cfg.InitialPermissionMode,
 	}
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
@@ -442,6 +484,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Ctrl+A cycles the approval mode (manual → balanced → auto → manual).
+		// Pre-message the value just updates the local snapshot; post-message we
+		// also dispatch an outboundEvent.update so the dispatcher PATCHes the
+		// live task and the cloud ApprovalHandler picks up the change.
+		if msg.Type == tea.KeyCtrlA {
+			m.approvalMode = nextApprovalMode(m.approvalMode)
+			if m.messageSent {
+				next := m.approvalMode
+				m.sendOut(outboundEvent{
+					update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
+				})
+			}
+			return m, nil
+		}
+
+		// Ctrl+R toggles the permission mode (default ↔ read-only). Same
+		// pre/post-send semantics as the approval-mode cycle above.
+		if msg.Type == tea.KeyCtrlR {
+			m.permissionMode = nextPermissionMode(m.permissionMode)
+			if m.messageSent {
+				next := m.permissionMode
+				m.sendOut(outboundEvent{
+					update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
+				})
+			}
+			return m, nil
+		}
+
 		// ESC asks the agent to abort the current turn. Posts user_cancel
 		// upstream and flips the local cancelling flag so the spinner label
 		// switches to "Cancelling..." until the backend acknowledges via
@@ -538,7 +608,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Type:    userEventUserMessage,
 						Content: text,
 					},
-					planMode: m.planMode,
+					planMode:       m.planMode,
+					approvalMode:   m.approvalMode,
+					permissionMode: m.permissionMode,
 				})
 				if sent {
 					// Render optimistically so the user sees their message in
@@ -773,13 +845,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // drawn here — they were committed to terminal scrollback via tea.Println as
 // soon as they reached a terminal state.
 func (m Model) View() string {
-	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
+	hintText := "enter to send · shift+tab plan · ctrl+a approval · ctrl+r read-only · ctrl+c to quit"
 	if m.busy {
 		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
 	}
 	hint := "  "
-	if m.planMode {
-		hint += planAccentStyle.Render("⏸ plan mode")
+	chips := m.modeChips()
+	if chips != "" {
+		hint += chips
 		hintText = " · " + hintText
 	}
 	if m.ctrlCArmed {
@@ -804,6 +877,28 @@ func (m Model) View() string {
 	}
 	parts = append(parts, m.textInput.View(), hint)
 	return strings.Join(parts, "\n")
+}
+
+// modeChips renders the status-bar chips for the three independent mode axes
+// (plan, approval, permission). Default values are omitted so the status bar
+// stays uncluttered until the user opts into something non-default.
+func (m Model) modeChips() string {
+	var chips []string
+	if m.planMode {
+		chips = append(chips, planAccentStyle.Render("⏸ plan mode"))
+	}
+	switch m.approvalMode {
+	case client.NeoApprovalModeBalanced:
+		chips = append(chips, planAccentStyle.Render("⚖ balanced"))
+	case client.NeoApprovalModeAuto:
+		chips = append(chips, planAccentStyle.Render("⚡ auto-approve"))
+	case client.NeoApprovalModeManual:
+		// Manual is the default — no chip, the status bar stays uncluttered.
+	}
+	if m.permissionMode == client.NeoPermissionModeReadOnly {
+		chips = append(chips, planAccentStyle.Render("🔒 read-only"))
+	}
+	return strings.Join(chips, " ")
 }
 
 // liveWidth returns the width to use when rendering live-frame content:

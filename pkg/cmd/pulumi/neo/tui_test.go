@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -2385,4 +2386,199 @@ func TestLiveView_BlankBetweenLiveBlocks(t *testing.T) {
 	require.Less(t, pulumiIdx, thinkingIdx)
 	assert.Contains(t, live[pulumiIdx:thinkingIdx], "\n\n",
 		"pulumi-op → busy gap must be a full blank line")
+}
+
+func TestModel_Update_CtrlA_CyclesApprovalMode(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+A advances the approval mode through manual → balanced → auto →
+	// manual. Pre-first-message there is no PATCH dispatch — the value lives
+	// purely in the TUI snapshot until the user sends their first message.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeAuto, m.approvalMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"third Ctrl+A must wrap back to manual")
+
+	// Pre-message toggles must not put anything on outCh — the snapshot is
+	// only committed on the first user_message.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("pre-message Ctrl+A must not dispatch an outbound event, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlA_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
+	t.Parallel()
+
+	// Once the first message has been sent, Ctrl+A must both flip the local
+	// snapshot AND dispatch an outboundEvent.update so the runNeo dispatcher
+	// PATCHes the live task. Without that, cloud ApprovalHandler would still
+	// see the original mode and prompt at the wrong cadence.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update, "Ctrl+A after send must dispatch an update")
+		require.NotNil(t, got.update.ApprovalMode, "update must carry the new approvalMode")
+		assert.Equal(t, client.NeoApprovalModeBalanced, *got.update.ApprovalMode)
+		assert.Nil(t, got.update.PermissionMode,
+			"approval-mode toggle must not include permissionMode")
+	default:
+		t.Fatal("Ctrl+A after send must post an outboundEvent.update on outCh")
+	}
+}
+
+func TestModel_Update_CtrlR_TogglesPermissionMode(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+R flips read-only on and off. Like Ctrl+A, pre-message it's a
+	// purely local flip; post-message it dispatches an update.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeDefault, m.permissionMode,
+		"second Ctrl+R must flip back to default")
+
+	select {
+	case ev := <-outCh:
+		t.Fatalf("pre-message Ctrl+R must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlR_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
+	t.Parallel()
+
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		MessageSent:           true,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.PermissionMode)
+		assert.Equal(t, client.NeoPermissionModeReadOnly, *got.update.PermissionMode)
+		assert.Nil(t, got.update.ApprovalMode,
+			"permission-mode toggle must not include approvalMode")
+	default:
+		t.Fatal("Ctrl+R after send must post an outboundEvent.update on outCh")
+	}
+}
+
+func TestModel_View_ModeChips(t *testing.T) {
+	t.Parallel()
+
+	// Default modes (manual approval, default permission) collapse to no chips
+	// so the status bar stays uncluttered. Each non-default value gets its own
+	// chip; multiple chips concatenate with a space separator. We assert on
+	// modeChips() directly rather than View() because the hint line itself
+	// mentions "read-only" / "approval" in its keybindings legend.
+	t.Run("DefaultsRenderNoChips", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{
+			InitialApprovalMode:   client.NeoApprovalModeManual,
+			InitialPermissionMode: client.NeoPermissionModeDefault,
+		})
+		assert.Empty(t, m.modeChips(), "manual+default must render no chips")
+	})
+
+	t.Run("BalancedRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialApprovalMode: client.NeoApprovalModeBalanced})
+		assert.Contains(t, m.modeChips(), "balanced")
+	})
+
+	t.Run("AutoRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialApprovalMode: client.NeoApprovalModeAuto})
+		assert.Contains(t, m.modeChips(), "auto-approve")
+	})
+
+	t.Run("ReadOnlyRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialPermissionMode: client.NeoPermissionModeReadOnly})
+		assert.Contains(t, m.modeChips(), "read-only")
+	})
+
+	t.Run("MultipleChipsCoexist", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{
+			InitialApprovalMode:   client.NeoApprovalModeAuto,
+			InitialPermissionMode: client.NeoPermissionModeReadOnly,
+		})
+		m.planMode = true
+		chips := m.modeChips()
+		assert.Contains(t, chips, "plan mode")
+		assert.Contains(t, chips, "auto-approve")
+		assert.Contains(t, chips, "read-only")
+	})
+}
+
+func TestModel_Update_KeyEnter_FirstMessageCarriesAllModes(t *testing.T) {
+	t.Parallel()
+
+	// The first user message must snapshot all three axes (planMode,
+	// approvalMode, permissionMode) into the outboundEvent envelope. The
+	// dispatcher uses these to seed CreateNeoTask; if the snapshot is wrong
+	// the cloud task is created with the wrong policy.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		InitialApprovalMode:   client.NeoApprovalModeBalanced,
+		InitialPermissionMode: client.NeoPermissionModeReadOnly,
+	})
+	m.planMode = true
+	m.textInput.SetValue("kick off")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		assert.True(t, got.planMode)
+		assert.Equal(t, client.NeoApprovalModeBalanced, got.approvalMode)
+		assert.Equal(t, client.NeoPermissionModeReadOnly, got.permissionMode)
+	default:
+		t.Fatal("Enter must post the input to outCh")
+	}
 }

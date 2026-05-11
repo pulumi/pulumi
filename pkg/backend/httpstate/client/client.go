@@ -58,11 +58,15 @@ const (
 )
 
 // NeoApprovalMode controls whether the agent requires user approval before executing tools.
+// Mirrors apitype.NeoApprovalMode in pulumi-service; the wire values must stay in sync.
 type NeoApprovalMode string
 
 const (
 	// NeoApprovalModeManual requires the agent to request user approval for each tool call.
 	NeoApprovalModeManual NeoApprovalMode = "manual"
+	// NeoApprovalModeBalanced auto-approves low-risk tool calls and prompts only on
+	// destructive operations. The cloud ApprovalHandler decides which calls qualify.
+	NeoApprovalModeBalanced NeoApprovalMode = "balanced"
 	// NeoApprovalModeAuto allows the agent to execute tools without user approval.
 	NeoApprovalModeAuto NeoApprovalMode = "auto"
 )
@@ -73,6 +77,19 @@ type NeoTaskSource string
 const (
 	// NeoTaskSourceCLI tags tasks created from the Pulumi CLI.
 	NeoTaskSourceCLI NeoTaskSource = "cli"
+)
+
+// NeoPermissionMode caps the capabilities granted to an agent task. Mirrors
+// apitype.NeoPermissionMode in pulumi-service; the wire values must stay in sync.
+type NeoPermissionMode string
+
+const (
+	// NeoPermissionModeDefault grants the agent the full set of capabilities permitted
+	// by the user's role. This is the server's default when the field is omitted.
+	NeoPermissionModeDefault NeoPermissionMode = "default"
+	// NeoPermissionModeReadOnly restricts the agent to read-only operations: no
+	// `pulumi up`, no PR creation, no state mutations.
+	NeoPermissionModeReadOnly NeoPermissionMode = "read-only"
 )
 
 // NeoTaskRequest represents a request to create a Neo task. This is a thin client-side
@@ -89,6 +106,9 @@ type NeoTaskRequest struct {
 	// ApprovalMode controls whether the agent requires user approval before executing tools.
 	// JSON tag is camelCase to match apitype.CreateAgentTaskRequest from pulumi-service.
 	ApprovalMode NeoApprovalMode `json:"approvalMode,omitempty"`
+	// PermissionMode caps the agent's capabilities (default vs read-only). Empty means
+	// inherit the org / server default. JSON tag is camelCase to match the service IDL.
+	PermissionMode NeoPermissionMode `json:"permissionMode,omitempty"`
 	// PlanMode, when true, creates the task in plan mode: the agent explores and asks
 	// questions but must not write files, run `pulumi up`, or open PRs. The server enforces
 	// this by activating PlanModeTracker for the task and gating the exit on an approved
@@ -1712,17 +1732,16 @@ func (pc *Client) ExplainPreviewWithNeo(
 }
 
 // CreateNeoTaskOptions bundles the optional knobs on CreateNeoTask. The zero value
-// corresponds to the defaults used by `--neo-task-on-failure`: cloud tool execution,
-// server-default approval policy, and plan mode off.
+// accepts the server-side defaults for every field.
 type CreateNeoTaskOptions struct {
 	ToolExecutionMode string
 	ApprovalMode      NeoApprovalMode
+	PermissionMode    NeoPermissionMode
 	PlanMode          bool
 }
 
 // CreateNeoTask creates a new Neo agent task via the Neo Tasks API. See
-// CreateNeoTaskOptions for the available knobs; pass a zero-value struct to accept
-// server defaults (the `--neo-task-on-failure` path).
+// CreateNeoTaskOptions for the available knobs.
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
@@ -1742,6 +1761,7 @@ func (pc *Client) CreateNeoTask(
 		},
 		ToolExecutionMode: opts.ToolExecutionMode,
 		ApprovalMode:      opts.ApprovalMode,
+		PermissionMode:    opts.PermissionMode,
 		PlanMode:          opts.PlanMode,
 		Source:            NeoTaskSourceCLI,
 	}
@@ -1762,6 +1782,31 @@ func (pc *Client) CreateNeoTask(
 	}
 
 	return &resp, nil
+}
+
+// UpdateNeoTaskOptions bundles the fields a CLI session can change on a live task.
+// Pointer fields let callers update one axis without resetting the other — matches
+// the apitype.UpdateTaskRequest shape on the cloud side.
+type UpdateNeoTaskOptions struct {
+	ApprovalMode   *NeoApprovalMode   `json:"approvalMode,omitempty"`
+	PermissionMode *NeoPermissionMode `json:"permissionMode,omitempty"`
+}
+
+// UpdateNeoTask PATCHes an existing Neo task with new approval / permission mode
+// values. Used by the TUI's mid-session toggles (Ctrl+A / Ctrl+R) so the cloud
+// ApprovalHandler picks up the change immediately. Fields left nil in opts are
+// not sent — the server preserves the existing value.
+func (pc *Client) UpdateNeoTask(
+	ctx context.Context, orgName, taskID string, opts UpdateNeoTaskOptions,
+) error {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
+	if err := pc.restCall(ctx, http.MethodPatch, path, nil, opts, nil); err != nil {
+		return fmt.Errorf("updating Neo task: %w", err)
+	}
+	return nil
 }
 
 // NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
