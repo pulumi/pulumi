@@ -1711,3 +1711,85 @@ func TestResourceHookAfterCreateErrorIgnoreErrors(t *testing.T) {
 	require.Equal(t, snap.Resources[0].URN.Name(), "default")
 	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
 }
+
+// A before hook with IgnoreErrors set to true should only log a warning, not fail the program.
+func TestResourceHookBeforeCreateErrorIgnoreErrors(t *testing.T) {
+	t.Parallel()
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(_ context.Context, req plugin.CreateRequest) (plugin.CreateResponse, error) {
+					id := resource.ID("")
+					if !req.Preview {
+						id = resource.ID("created-id-" + req.URN.Name())
+					}
+					return plugin.CreateResponse{
+						ID:         id,
+						Properties: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+						Status:     resource.StatusOK,
+					}, nil
+				},
+			}, nil
+		}),
+	}
+
+	hookCalled := false
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		callbacks, err := deploytest.NewCallbacksServer()
+		require.NoError(t, err)
+		defer func() { require.NoError(t, callbacks.Close()) }()
+
+		fun := func(ctx context.Context, urn resource.URN, id resource.ID, name string, typ tokens.Type,
+			_ *pulumirpc.ResourceOptions,
+			_ *pulumirpc.ResourceOptions,
+			newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		) error {
+			hookCalled = true
+			return errors.New("Oh no")
+		}
+		myHook, err := deploytest.NewHook(monitor, callbacks, "myHook", fun, true, true)
+		require.NoError(t, err)
+
+		_, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: resource.NewPropertyMapFromMap(map[string]any{"a": "A"}),
+			ResourceHookBindings: deploytest.ResourceHookBindings{
+				BeforeCreate: []*deploytest.ResourceHook{myHook},
+			},
+		})
+		require.NoError(t, err)
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	p.Steps = []lt.TestStep{{
+		Op:          Update,
+		SkipPreview: true,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			evts []Event, err error,
+		) error {
+			sawWarning := false
+			for _, evt := range evts {
+				if evt.Type == DiagEvent {
+					e := evt.Payload().(DiagEventPayload)
+					sawWarning = strings.Contains(e.Message, "hook \"myHook\" failed: Oh no") &&
+						e.Severity == diag.Warning && e.URN.Name() == "resA"
+					if sawWarning {
+						break
+					}
+				}
+			}
+			require.True(t, sawWarning, "There should be a warning diagnostic for resA")
+			return err
+		},
+	}}
+	snap := p.Run(t, nil)
+	require.True(t, hookCalled)
+	require.Len(t, snap.Resources, 2)
+	require.Equal(t, snap.Resources[0].URN.Name(), "default")
+	require.Equal(t, snap.Resources[1].URN.Name(), "resA")
+}
