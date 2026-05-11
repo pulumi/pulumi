@@ -14,24 +14,27 @@ func main() {
 			if args.Name == "res" {
 				length := int(args.NewInputs["length"].NumberValue())
 				ctx.Log.Info(fmt.Sprintf("fun was called with length = %d", length), nil)
-				if args.Name != "res" {
-					return fmt.Errorf("expected name to be 'res', got %q", args.Name)
-				}
 				if string(args.Type) != "testprovider:index:Random" {
 					return fmt.Errorf("expected type to be 'testprovider:index:Random', got %q", args.Type)
 				}
+				return nil
 			} else if args.Name == "comp" {
 				childId := args.NewOutputs["childId"].StringValue()
 				ctx.Log.Info(fmt.Sprintf("fun_comp was called with child = %s", childId), nil)
 				if childId == "" {
 					return errors.New("expected non empty childId")
 				}
-				if args.Name != "comp" {
-					return fmt.Errorf("expected name to be 'comp', got %q", args.Name)
-				}
 				if string(args.Type) != "testprovider:index:Component" {
 					return fmt.Errorf("expected type to be 'testprovider:index:Component', got %q", args.Type)
 				}
+				return nil
+			} else if args.Name == "child-comp" {
+				length := int(args.NewInputs["length"].NumberValue())
+				ctx.Log.Info(fmt.Sprintf("fun_child was called with length = %d", length), nil)
+				if string(args.Type) != "testprovider:index:Random" {
+					return fmt.Errorf("expected type to be 'testprovider:index:Random', got %q", args.Type)
+				}
+				return nil
 			}
 			return fmt.Errorf("got unexpected component name: %s", args.Name)
 		}

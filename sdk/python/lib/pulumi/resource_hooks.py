@@ -206,11 +206,15 @@ class ResourceHookOptions:
     on_dry_run: bool
     """Run the hook during dry run (preview) operations. Defaults to False."""
 
-    def __init__(self, on_dry_run: bool = False):
+    ignore_errors: bool
+    """If True, errors from this hook are logged as warnings instead of failing the program."""
+
+    def __init__(self, on_dry_run: bool = False, ignore_errors: bool = False):
         self.on_dry_run = on_dry_run
+        self.ignore_errors = ignore_errors
 
     def __repr__(self):
-        return f"ResourceHookOptions(on_dry_run={self.on_dry_run})"
+        return f"ResourceHookOptions(on_dry_run={self.on_dry_run}, ignore_errors={self.ignore_errors})"
 
 
 class ResourceHook:

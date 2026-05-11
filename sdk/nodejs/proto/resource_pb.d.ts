@@ -1401,6 +1401,8 @@ export class RegisterResourceHookRequest extends jspb.Message {
     setCallback(value?: pulumi_callback_pb.Callback): RegisterResourceHookRequest;
     getOnDryRun(): boolean;
     setOnDryRun(value: boolean): RegisterResourceHookRequest;
+    getIgnoreErrors(): boolean;
+    setIgnoreErrors(value: boolean): RegisterResourceHookRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RegisterResourceHookRequest.AsObject;
@@ -1417,6 +1419,7 @@ export namespace RegisterResourceHookRequest {
         name: string,
         callback?: pulumi_callback_pb.Callback.AsObject,
         onDryRun: boolean,
+        ignoreErrors: boolean,
     }
 }
 
