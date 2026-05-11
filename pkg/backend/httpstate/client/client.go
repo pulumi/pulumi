@@ -1700,9 +1700,7 @@ type CreateNeoTaskOptions struct {
 
 // CreateNeoTask creates a new Neo agent task via the Neo Tasks API. See
 // CreateNeoTaskOptions for the available knobs; pass a zero-value struct to accept
-// server defaults (the `--neo-task-on-failure` path). When stackName and projectName
-// are both set the stack is attached as an involved entity; if the backend rejects
-// that with an "invalid entities" error, the request is retried once without it.
+// server defaults (the `--neo-task-on-failure` path).
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
@@ -1724,6 +1722,8 @@ func (pc *Client) CreateNeoTask(
 		ApprovalMode:      opts.ApprovalMode,
 		PlanMode:          opts.PlanMode,
 	}
+	// Only attach a stack entity when we actually have one — the backend rejects
+	// entity_diff entries with empty name/project as "unable to access stack".
 	if stackName != "" && projectName != "" {
 		request.Message.EntityDiff = &NeoTaskEntityDiff{
 			Add: []NeoTaskEntity{
@@ -1734,27 +1734,11 @@ func (pc *Client) CreateNeoTask(
 
 	path := fmt.Sprintf("/api/preview/agents/%s/tasks", orgName)
 	var resp NeoTaskResponse
-	err := pc.restCall(ctx, http.MethodPost, path, nil, request, &resp)
-	if err != nil && request.Message.EntityDiff != nil && isInvalidEntitiesError(err) {
-		request.Message.EntityDiff = nil
-		resp = NeoTaskResponse{}
-		err = pc.restCall(ctx, http.MethodPost, path, nil, request, &resp)
-	}
-	if err != nil {
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, request, &resp); err != nil {
 		return nil, fmt.Errorf("creating Neo task: %w", err)
 	}
-	return &resp, nil
-}
 
-// isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
-// rejection. Matched on the response message because the service doesn't expose a
-// stable error code for this case.
-func isInvalidEntitiesError(err error) bool {
-	var errResp *apitype.ErrorResponse
-	if !errors.As(err, &errResp) {
-		return false
-	}
-	return strings.Contains(strings.ToLower(errResp.Message), "invalid entit")
+	return &resp, nil
 }
 
 // NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -40,6 +41,35 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+// createNeoTaskWithEntityRetry calls pc.CreateNeoTask with the stack attached as an
+// involved entity. If the backend rejects the attachment with "invalid entities" —
+// usually because the caller can't access the stack — it retries once with no entity
+// so the task is still created. The `--neo-task-on-failure` path deliberately skips
+// this fallback: there the stack link is the whole point of the task.
+func createNeoTaskWithEntityRetry(
+	ctx context.Context,
+	pc *client.Client,
+	orgName, prompt, stackName, projectName string,
+	opts client.CreateNeoTaskOptions,
+) (*client.NeoTaskResponse, error) {
+	resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackName, projectName, opts)
+	if err != nil && stackName != "" && projectName != "" && isInvalidEntitiesError(err) {
+		return pc.CreateNeoTask(ctx, orgName, prompt, "", "", opts)
+	}
+	return resp, err
+}
+
+// isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
+// rejection. Matched on the response message because the service doesn't expose a
+// stable error code for this case.
+func isInvalidEntitiesError(err error) bool {
+	var errResp *apitype.ErrorResponse
+	if !errors.As(err, &errResp) {
+		return false
+	}
+	return strings.Contains(strings.ToLower(errResp.Message), "invalid entit")
+}
 
 // outboundEvent is the local envelope the TUI uses to dispatch user events to
 // runNeo's dispatcher loop. It wraps the wire-level AgentUserEvent and tacks on
@@ -163,8 +193,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		resp, err := pc.CreateNeoTask(
-			ctx, orgName, prompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+		resp, err := createNeoTaskWithEntityRetry(
+			ctx, pc, orgName, prompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode: "cli",
 				ApprovalMode:      client.NeoApprovalModeManual,
 			})
@@ -229,8 +259,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 			// planMode is the value the TUI captured at the moment the first message was
 			// sent; the CLI-prompt path always passes false.
 			createTask := func(initialPrompt string, planMode bool) error {
-				resp, err := pc.CreateNeoTask(
-					gctx, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+				resp, err := createNeoTaskWithEntityRetry(
+					gctx, pc, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 						ToolExecutionMode: "cli",
 						ApprovalMode:      client.NeoApprovalModeManual,
 						PlanMode:          planMode,
