@@ -1700,12 +1700,9 @@ type CreateNeoTaskOptions struct {
 
 // CreateNeoTask creates a new Neo agent task via the Neo Tasks API. See
 // CreateNeoTaskOptions for the available knobs; pass a zero-value struct to accept
-// server defaults (the `--neo-task-on-failure` path).
-//
-// When stackName and projectName are both set, the stack is attached as an involved
-// entity. If the backend rejects the attachment with an "invalid entities" error
-// (e.g. the caller lacks access to the stack), the request is retried once without
-// the entity so the task is still created.
+// server defaults (the `--neo-task-on-failure` path). When stackName and projectName
+// are both set the stack is attached as an involved entity; if the backend rejects
+// that with an "invalid entities" error, the request is retried once without it.
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
@@ -1717,36 +1714,31 @@ func (pc *Client) CreateNeoTask(
 	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
 
-	// Only attach a stack entity when we actually have one — the backend rejects
-	// entity_diff entries with empty name/project as "unable to access stack".
-	hasEntity := stackName != "" && projectName != ""
-	buildRequest := func(includeEntity bool) NeoTaskRequest {
-		req := NeoTaskRequest{
-			Message: NeoTaskMessage{
-				Type:      "user_message",
-				Content:   content,
-				Timestamp: time.Now().UTC().Format(time.RFC3339),
+	request := NeoTaskRequest{
+		Message: NeoTaskMessage{
+			Type:      "user_message",
+			Content:   content,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+		},
+		ToolExecutionMode: opts.ToolExecutionMode,
+		ApprovalMode:      opts.ApprovalMode,
+		PlanMode:          opts.PlanMode,
+	}
+	if stackName != "" && projectName != "" {
+		request.Message.EntityDiff = &NeoTaskEntityDiff{
+			Add: []NeoTaskEntity{
+				{Type: "stack", Name: stackName, Project: projectName},
 			},
-			ToolExecutionMode: opts.ToolExecutionMode,
-			ApprovalMode:      opts.ApprovalMode,
-			PlanMode:          opts.PlanMode,
 		}
-		if includeEntity {
-			req.Message.EntityDiff = &NeoTaskEntityDiff{
-				Add: []NeoTaskEntity{
-					{Type: "stack", Name: stackName, Project: projectName},
-				},
-			}
-		}
-		return req
 	}
 
 	path := fmt.Sprintf("/api/preview/agents/%s/tasks", orgName)
 	var resp NeoTaskResponse
-	err := pc.restCall(ctx, http.MethodPost, path, nil, buildRequest(hasEntity), &resp)
-	if err != nil && hasEntity && isInvalidEntitiesError(err) {
+	err := pc.restCall(ctx, http.MethodPost, path, nil, request, &resp)
+	if err != nil && request.Message.EntityDiff != nil && isInvalidEntitiesError(err) {
+		request.Message.EntityDiff = nil
 		resp = NeoTaskResponse{}
-		err = pc.restCall(ctx, http.MethodPost, path, nil, buildRequest(false), &resp)
+		err = pc.restCall(ctx, http.MethodPost, path, nil, request, &resp)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("creating Neo task: %w", err)
@@ -1755,9 +1747,8 @@ func (pc *Client) CreateNeoTask(
 }
 
 // isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
-// rejection, emitted when entity_diff references a stack the caller can't access or
-// the backend can't resolve. Matched loosely on the response message because the
-// service doesn't expose a stable error code for this case.
+// rejection. Matched on the response message because the service doesn't expose a
+// stable error code for this case.
 func isInvalidEntitiesError(err error) bool {
 	var errResp *apitype.ErrorResponse
 	if !errors.As(err, &errResp) {

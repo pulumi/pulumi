@@ -1047,9 +1047,8 @@ func TestCreateNeoTask(t *testing.T) {
 	t.Run("RetriesWithoutEntityOnInvalidEntities", func(t *testing.T) {
 		t.Parallel()
 
-		// When the backend rejects the stack entity (e.g. caller lacks access),
-		// the client should retry once without entity_diff so the task is still
-		// created. Anchors both call shapes so a refactor can't drop the retry.
+		// First call carries entity_diff and gets rejected; client must retry once
+		// without it so the task is still created.
 		var calls []map[string]any
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			var body map[string]any
@@ -1072,22 +1071,21 @@ func TestCreateNeoTask(t *testing.T) {
 			})
 		require.NoError(t, err)
 		assert.Equal(t, "t_retry", resp.TaskID)
-		require.Len(t, calls, 2, "client must retry once after invalid entities")
+		require.Len(t, calls, 2)
 
 		firstMsg, _ := calls[0]["message"].(map[string]any)
 		require.NotNil(t, firstMsg)
-		assert.Contains(t, firstMsg, "entity_diff", "first request must include entity_diff")
+		assert.Contains(t, firstMsg, "entity_diff")
 
 		retryMsg, _ := calls[1]["message"].(map[string]any)
 		require.NotNil(t, retryMsg)
-		assert.NotContains(t, retryMsg, "entity_diff", "retry must drop entity_diff")
+		assert.NotContains(t, retryMsg, "entity_diff")
 	})
 
 	t.Run("DoesNotRetryOnUnrelatedError", func(t *testing.T) {
 		t.Parallel()
 
-		// Only "invalid entities" rejections should trigger the retry — other 4xx
-		// responses must surface to the caller without a second POST.
+		// Non-entity errors must surface to the caller without a second POST.
 		var calls int
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			calls++
@@ -1100,7 +1098,7 @@ func TestCreateNeoTask(t *testing.T) {
 		_, err := client.CreateNeoTask(
 			t.Context(), "my-org", "hello", "my-stack", "my-project", CreateNeoTaskOptions{})
 		require.Error(t, err)
-		assert.Equal(t, 1, calls, "non-entity errors must not trigger a retry")
+		assert.Equal(t, 1, calls)
 	})
 
 	t.Run("PlanModeOmittedWhenFalse", func(t *testing.T) {
