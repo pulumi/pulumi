@@ -1558,19 +1558,10 @@ func checkDuplicates(
 	// a token "test:index:A" and another "test:A:B", the first's name is at the same "level" as the second's module, so
 	// they collide.
 	addModule := func(tok string) {
-		module := tokenToModule(tok)
-		if module != "" {
-			// Also add all prefix modules (i.e. "a/b" adds "a" and "a/b")
-			parts := strings.Split(module, "/")
-			for i := 1; i <= len(parts); i++ {
-				prefix := strings.Join(parts[:i], "/")
-				modules[prefix] = struct{}{}
-			}
-		}
-
-		// We check full and normalized module names here for conflicts.
+		// We Only check normalized module names here for conflicts, nothing really refers to the full form modules by
+		// paths.
 		tok = normalize(tok)
-		module = tokenToModule(tok)
+		module := tokenToModule(tok)
 		if module != "" {
 			parts := strings.Split(module, "/")
 			for i := 1; i <= len(parts); i++ {
