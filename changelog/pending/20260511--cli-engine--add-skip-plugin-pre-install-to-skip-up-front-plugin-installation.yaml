@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/engine
+  description: Add `--skip-plugin-pre-install` to skip up-front plugin installation

@@ -423,6 +423,12 @@ func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d d
 	ctx, span := cmdutil.StartSpan(ctx, tracer, "EnsurePluginsAreInstalled")
 	defer span.End()
 
+	// When SkipPluginPreInstall is set, callers that aren't explicitly running the install command want the
+	// engine to defer to lazy plugin install by the provider registry.
+	if !explicitInstall && opts != nil && opts.SkipPluginPreInstall {
+		return nil
+	}
+
 	manager := newInstallManager(true /*returnPluginErrors*/)
 	err := ensurePluginsAreInstalled(ctx, opts, d, plugins, projectPlugins, reinstall, explicitInstall, manager)
 	if err != nil {
