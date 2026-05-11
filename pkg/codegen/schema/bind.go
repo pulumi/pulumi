@@ -1537,6 +1537,8 @@ func checkDuplicates(
 	type token = string
 	names := make(map[token][]schemaPath, len(resources)+len(functions))
 	duplicates := map[token]struct{}{}
+	modules := make(map[string]struct{})
+	moduleCollision := make(map[string]schemaPath)
 
 	// normalize folds tok to its case-insensitive canonical form, applying Meta.ModuleFormat
 	// to the module component. PCL canonicalizes tokens before lookup, so two source tokens
@@ -1552,11 +1554,45 @@ func checkDuplicates(
 		return strings.ToLower(strings.Join(parts, ":"))
 	}
 
+	// As well as tracking duplicate tokens we also need to check tokens don't collide with module names. That is given
+	// a token "test:index:A" and another "test:A:B", the first's name is at the same "level" as the second's module, so
+	// they collide.
+	addModule := func(tok string) {
+		module := tokenToModule(tok)
+		if module != "" {
+			modules[module] = struct{}{}
+		}
+		// We check full and normalized module names here for conflicts.
+		tok = normalize(tok)
+		module = tokenToModule(tok)
+		if module != "" {
+			modules[module] = struct{}{}
+		}
+	}
+	for r := range resources {
+		addModule(r)
+	}
+	for f := range functions {
+		addModule(f)
+	}
+
 	process := func(token token, schemaPath schemaPath) {
 		v := append(names[token], schemaPath)
 		names[token] = v
 		if len(v) > 1 {
 			duplicates[token] = struct{}{}
+		}
+		// Check if this token collides with a module name.
+		parts := strings.Split(token, ":")
+		if len(parts) != 3 {
+			return
+		}
+		path := parts[2]
+		if parts[1] != "index" {
+			path = parts[1] + "/" + parts[2]
+		}
+		if _, ok := modules[path]; ok {
+			moduleCollision[path] = schemaPath
 		}
 	}
 
@@ -1602,6 +1638,11 @@ func checkDuplicates(
 			}
 			diags = append(diags, err)
 		}
+	}
+
+	for module, path := range moduleCollision {
+		err := errorf(path, "token collides with module %s", module)
+		diags = append(diags, err)
 	}
 
 	return diags
