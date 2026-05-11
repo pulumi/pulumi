@@ -124,6 +124,25 @@ type UIApprovalRequest struct {
 
 func (UIApprovalRequest) uiEvent() {}
 
+// UIApprovalResolved signals that a user_approval_request has been settled. The
+// cloud emits the underlying user_confirmation event in two cases: as an echo of
+// the user's own manual confirmation, and as a synthetic event when the auto-
+// approval handler resolves the request server-side under ApprovalMode=auto or
+// balanced. The TUI matches ApprovalID to its own pendingApprovalID and uses
+// the still-pending vs already-cleared state to discriminate auto-resolve from
+// echo (manual Enter clears the pending state locally before sending upstream,
+// so an echo arriving here lands with pendingApproval already false).
+type UIApprovalResolved struct {
+	ApprovalID string
+	// Approved mirrors the "ok" field on the wire: true for approved/answered,
+	// false for denied. Auto-resolve under the current cloud policy always
+	// emits Approved=true, but we carry the flag through so a future auto-deny
+	// path renders correctly.
+	Approved bool
+}
+
+func (UIApprovalResolved) uiEvent() {}
+
 // UIAwaitingApprovals is an interim backend signal that the agent is pausing before
 // it will emit a UIApprovalRequest. The declarative busy rule treats it as non-final
 // and shows an "Awaiting approvals" label until the approval request arrives.

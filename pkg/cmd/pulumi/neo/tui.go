@@ -59,6 +59,7 @@ const (
 	blockApprovalPlan
 	blockApprovalGeneral
 	blockApprovalChoice
+	blockApprovalAuto
 	blockQuestion
 	blockAnswerSubmitted
 	blockPulumiOp
@@ -77,8 +78,14 @@ type block struct {
 	// label and shimmer apply to blockBusy only.
 	label   string
 	shimmer shimmerKind
-	// approved applies to blockApprovalChoice only.
+	// approved applies to blockApprovalChoice and blockApprovalAuto. For
+	// blockApprovalAuto it carries the "ok" field from the cloud's
+	// user_confirmation (true=auto-approved, false=auto-denied).
 	approved bool
+	// autoIsQuestion applies to blockApprovalAuto only — true if the underlying
+	// request was an ask-user call (so the renderer says "Auto-answered" rather
+	// than "Auto-approved").
+	autoIsQuestion bool
 	// pulumi carries per-block state for blockPulumiOp. It is mutated in place
 	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
 	// re-rendered by renderBlock on every update.
@@ -830,6 +837,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
+	case UIApprovalResolved:
+		// Discriminator: pendingApproval is still true iff the cloud auto-
+		// resolved this request server-side (under ApprovalMode=auto/balanced).
+		// The manual path clears state locally on Enter before sending its
+		// user_confirmation upstream, so when the cloud echoes that back here
+		// pendingApproval is already false — and we no-op, which is correct.
+		// The ID match guards against a stale resolved event arriving after
+		// the user has already moved on to a different approval.
+		if m.pendingApproval && msg.ApprovalID == m.pendingApprovalID {
+			cmds = append(cmds, m.commitBlock(block{
+				kind:           blockApprovalAuto,
+				approved:       msg.Approved,
+				autoIsQuestion: m.pendingIsQuestion,
+			}))
+			m.clearPendingPrompt()
+		}
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
 	default:
 		// Pass unhandled messages to textinput (e.g. blink).
 		var tiCmd tea.Cmd
@@ -959,8 +984,8 @@ func isLiveKind(b block) bool {
 		return b.pulumi != nil && !b.pulumi.done
 	case blockToolComplete, blockAssistantFinal, blockError, blockWarning,
 		blockCancelled, blockUserMessage, blockApprovalPlan,
-		blockApprovalGeneral, blockApprovalChoice, blockTodoList,
-		blockQuestion, blockAnswerSubmitted:
+		blockApprovalGeneral, blockApprovalChoice, blockApprovalAuto,
+		blockTodoList, blockQuestion, blockAnswerSubmitted:
 		return false
 	}
 	return false
@@ -1153,11 +1178,16 @@ func (m *Model) findBlockKind(kind blockKind) int {
 }
 
 // renderBlock recomputes b.rendered from b.raw using the current terminal
-// width and markdown renderer. blockApprovalChoice is the one kind that
-// still renders when raw is empty (its verdict is carried by b.approved).
+// width and markdown renderer. blockApprovalChoice and blockApprovalAuto are
+// the two kinds that still render when raw is empty (their state is carried
+// by b.approved / b.autoIsQuestion instead).
 func (m *Model) renderBlock(b *block) {
 	if b.kind == blockApprovalChoice {
 		m.renderApprovalChoice(b)
+		return
+	}
+	if b.kind == blockApprovalAuto {
+		m.renderApprovalAuto(b)
 		return
 	}
 	if b.kind == blockPulumiOp {
@@ -1206,7 +1236,7 @@ func (m *Model) renderBlock(b *block) {
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.
-	case blockApprovalChoice, blockPulumiOp, blockTodoList:
+	case blockApprovalChoice, blockApprovalAuto, blockPulumiOp, blockTodoList:
 		// Unreachable: handled by early returns above.
 	}
 }
@@ -1233,6 +1263,23 @@ func renderTodoLines(items []UITodoItem) string {
 		lines = append(lines, marker+" "+content)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// renderApprovalAuto renders a feedback block committed when the cloud
+// auto-resolves a pending approval/question under ApprovalMode=auto or
+// balanced. The verb depends on what was asked (approval vs ask-user) and
+// whether the cloud reported ok=true; today auto-deny doesn't exist on the
+// cloud side but we render it anyway in case that changes.
+func (m *Model) renderApprovalAuto(b *block) {
+	verb := "Auto-approved"
+	switch {
+	case !b.approved:
+		verb = "Auto-denied"
+	case b.autoIsQuestion:
+		verb = "Auto-answered"
+	}
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	b.rendered = "  " + style.Render("⚡ "+verb)
 }
 
 func (m *Model) renderApprovalChoice(b *block) {

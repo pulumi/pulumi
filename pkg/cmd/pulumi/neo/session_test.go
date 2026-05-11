@@ -955,7 +955,10 @@ func TestSession_ForwardUserInputToUI_EmitsUserMessage(t *testing.T) {
 
 	ch := make(chan UIEvent, 4)
 	s := &Session{UIEvents: ch}
-	body, err := json.Marshal(map[string]any{"content": "hello there"})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "hello there",
+	})
 	require.NoError(t, err)
 
 	s.forwardUserInputToUI(body)
@@ -974,7 +977,10 @@ func TestSession_ForwardUserInputToUI_EmptyContentDropped(t *testing.T) {
 	// UIUserMessage would draw an empty user bubble in the TUI.
 	ch := make(chan UIEvent, 4)
 	s := &Session{UIEvents: ch}
-	body, err := json.Marshal(map[string]any{"content": ""})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "",
+	})
 	require.NoError(t, err)
 
 	s.forwardUserInputToUI(body)
@@ -985,9 +991,76 @@ func TestSession_ForwardUserInputToUI_NilChannelIsNoOp(t *testing.T) {
 	t.Parallel()
 
 	s := &Session{UIEvents: nil}
-	body, err := json.Marshal(map[string]any{"content": "hi"})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "hi",
+	})
 	require.NoError(t, err)
 	s.forwardUserInputToUI(body) // must not panic
+}
+
+func TestSession_ForwardUserInputToUI_UserConfirmationEmitsResolved(t *testing.T) {
+	t.Parallel()
+
+	// The cloud emits a user_confirmation event on the userInput side of the
+	// stream — both as an echo of our own confirmation and (synthetically)
+	// when ApprovalMode=auto/balanced auto-resolves a request. Either way the
+	// TUI needs UIApprovalResolved so it can clear the pending prompt.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{
+		"type":                userEventUserConfirmation,
+		"approval_request_id": "sys-approval-abc",
+		"ok":                  true,
+	})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	res, ok := events[0].(UIApprovalResolved)
+	require.Truef(t, ok, "expected UIApprovalResolved, got %T", events[0])
+	assert.Equal(t, "sys-approval-abc", res.ApprovalID)
+	assert.True(t, res.Approved, "ok=true must round-trip as Approved=true")
+}
+
+func TestSession_ForwardUserInputToUI_UserConfirmationDeniedRoundTrips(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: today's cloud never auto-denies, but the wire format supports
+	// ok=false (manual deny path), and the TUI's renderApprovalAuto branches
+	// on Approved. Make sure the wire flag rides through unchanged.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{
+		"type":                userEventUserConfirmation,
+		"approval_request_id": "sys-approval-xyz",
+		"ok":                  false,
+	})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	res := events[0].(UIApprovalResolved)
+	assert.False(t, res.Approved)
+}
+
+func TestSession_ForwardUserInputToUI_UnknownTypeDropped(t *testing.T) {
+	t.Parallel()
+
+	// An unknown user-input subtype must not panic, must not emit an event.
+	// The cloud has historically added new userInput types (tool_result, etc.)
+	// that the TUI has no rendering for.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{"type": "tool_result"})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+	assert.Empty(t, drainUIEvents(ch))
 }
 
 func TestSession_ForwardUserInputToUI_MalformedJSONIgnored(t *testing.T) {
@@ -1007,7 +1080,10 @@ func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) 
 	// 92.9% coverage) and the path the TUI depends on to show what the user
 	// typed — if this regresses, the user's own messages vanish from the log.
 	streamer := newFakeStreamer()
-	inner, err := json.Marshal(map[string]any{"content": "typed by user"})
+	inner, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "typed by user",
+	})
 	require.NoError(t, err)
 	envelope, err := json.Marshal(apitype.AgentConsoleEvent{
 		Type:      consoleEventUserInput,

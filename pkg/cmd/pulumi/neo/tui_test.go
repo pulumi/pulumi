@@ -2582,3 +2582,157 @@ func TestModel_Update_KeyEnter_FirstMessageCarriesAllModes(t *testing.T) {
 		t.Fatal("Enter must post the input to outCh")
 	}
 }
+
+// newQuestionPendingModel returns a Model that has just received a question
+// (ask-user) request — analogous to newApprovalPendingModel but routes through
+// the isAskUserToolName branch so pendingIsQuestion gets set.
+func newQuestionPendingModel(t *testing.T) Model {
+	t.Helper()
+	m := NewModel(ModelConfig{EventCh: make(chan UIEvent, 4), Busy: true})
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID: "appr_q",
+		Message:    "What region?",
+		ToolName:   "ux__ask_user",
+	})
+	return updated.(Model)
+}
+
+func TestModel_Update_UIApprovalResolved_AutoApprovedCommitsBlockAndClears(t *testing.T) {
+	t.Parallel()
+
+	// The cloud auto-resolved a pending approval. The TUI must commit an
+	// "Auto-approved" feedback block to scrollback and reset the prompt — the
+	// agent has already moved on, so the question prompt is no longer relevant.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+	require.True(t, m.pendingApproval, "precondition: approval is pending")
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval, "matching resolved must clear pendingApproval")
+	assert.Empty(t, m.pendingApprovalID, "pendingApprovalID must reset")
+	assert.False(t, m.pendingIsQuestion)
+	assert.Equal(t, "❯ ", m.textInput.Prompt, "prompt must return to default")
+	assert.Equal(t, "Send a message...", m.textInput.Placeholder)
+
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0, "a blockApprovalAuto must be appended")
+	assert.True(t, m.blocks[idx].approved, "approved flag must round-trip from msg.Approved")
+	assert.False(t, m.blocks[idx].autoIsQuestion, "approval (not question) path must set autoIsQuestion=false")
+
+	// The commit also queues a tea.Println so the block lands in terminal
+	// scrollback. Verify the rendered string carries the "Auto-approved" verb.
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed, "auto-resolved block must be emitted to scrollback")
+	assert.Contains(t, printed[len(printed)-1], "Auto-approved")
+}
+
+func TestModel_Update_UIApprovalResolved_AutoApprovedQuestionRendersAnsweredVerb(t *testing.T) {
+	t.Parallel()
+
+	// Question (ask-user) path: pendingIsQuestion=true. The auto-resolved block
+	// must carry that flag through so the renderer says "Auto-answered" instead
+	// of "Auto-approved" — auto-approving an ask-user is conceptually answering
+	// with the default, not approving.
+	m := newQuestionPendingModel(t)
+	require.True(t, m.pendingApproval)
+	require.True(t, m.pendingIsQuestion)
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_q", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval)
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0)
+	assert.True(t, m.blocks[idx].autoIsQuestion, "question path must carry autoIsQuestion=true")
+
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed)
+	assert.Contains(t, printed[len(printed)-1], "Auto-answered")
+}
+
+func TestModel_Update_UIApprovalResolved_AutoDeniedRendersDeniedVerb(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: ApprovalMode=auto never denies today, but the wire format
+	// supports it (ok=false) and a future cloud policy could exercise this
+	// path. The TUI must render "Auto-denied" so the user sees what happened.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: false})
+	m = updated.(Model)
+
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0)
+	assert.False(t, m.blocks[idx].approved)
+
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed)
+	assert.Contains(t, printed[len(printed)-1], "Auto-denied")
+}
+
+func TestModel_Update_UIApprovalResolved_EchoOfManualIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// Manual confirmation already clears pendingApproval locally (the Enter
+	// handler does that before sending upstream). When the cloud later echoes
+	// our own user_confirmation back on the stream, the TUI must NOT render an
+	// auto-approved block — pendingApproval is already false, so the handler
+	// silently no-ops.
+	m := NewModel(ModelConfig{EventCh: make(chan UIEvent, 4)})
+	require.False(t, m.pendingApproval, "precondition: no pending approval")
+
+	updated, _ := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval)
+	assert.Equal(t, -1, m.findBlockKind(blockApprovalAuto),
+		"echo of our own confirmation must not commit a blockApprovalAuto")
+}
+
+func TestModel_Update_UIApprovalResolved_MismatchedIDIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// A resolved event arriving with a different approval ID than the one the
+	// TUI is currently waiting on must be ignored — it's either stale or for a
+	// different request. The current pending state must survive.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+	require.True(t, m.pendingApproval)
+	require.Equal(t, "appr_1", m.pendingApprovalID)
+
+	updated, _ := m.Update(UIApprovalResolved{ApprovalID: "appr_other", Approved: true})
+	m = updated.(Model)
+
+	assert.True(t, m.pendingApproval, "mismatched ID must not clear pending state")
+	assert.Equal(t, "appr_1", m.pendingApprovalID)
+	assert.Equal(t, -1, m.findBlockKind(blockApprovalAuto),
+		"mismatched ID must not commit a blockApprovalAuto")
+}
+
+func TestRenderApprovalAuto_VerbVariants(t *testing.T) {
+	t.Parallel()
+
+	// Direct render-helper checks for the three string variants. lipgloss may
+	// embed ANSI in the rendered output, so we assert on Contains.
+	m := NewModel(ModelConfig{})
+
+	cases := []struct {
+		name           string
+		approved       bool
+		autoIsQuestion bool
+		want           string
+	}{
+		{name: "auto-approved", approved: true, autoIsQuestion: false, want: "Auto-approved"},
+		{name: "auto-answered", approved: true, autoIsQuestion: true, want: "Auto-answered"},
+		{name: "auto-denied-approval", approved: false, autoIsQuestion: false, want: "Auto-denied"},
+		{name: "auto-denied-question", approved: false, autoIsQuestion: true, want: "Auto-denied"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			b := &block{kind: blockApprovalAuto, approved: tc.approved, autoIsQuestion: tc.autoIsQuestion}
+			m.renderApprovalAuto(b)
+			assert.Contains(t, b.rendered, tc.want)
+		})
+	}
+}
