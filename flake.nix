@@ -52,6 +52,8 @@
               protoc-gen-go-pinned
               protoc-gen-go-grpc-pinned
               pkgs.jq
+              pkgs.uv
+              pkgs.python3
             ];
           };
         }
