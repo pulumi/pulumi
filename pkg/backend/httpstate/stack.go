@@ -27,7 +27,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/service"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -176,6 +177,7 @@ func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 		return nil, nil
 	}
 	projectStack := &workspace.ProjectStack{
+		Config:          make(config.Map),
 		Environment:     workspace.NewEnvironment([]string{stack.Config.Environment}),
 		SecretsProvider: stack.Config.SecretsProvider,
 		EncryptedKey:    stack.Config.EncryptedKey,
@@ -185,7 +187,7 @@ func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 }
 
 func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspace.ProjectStack) error {
-	if projectStack.Config != nil {
+	if len(projectStack.Config) != 0 {
 		// TODO: https://github.com/pulumi/pulumi/issues/19557
 		return errors.New("cannot set config for a stack with cloud config")
 	}
