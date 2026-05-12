@@ -2107,7 +2107,7 @@ func TestJSONCasing(t *testing.T) {
 
 func TestJSONCheckpointIsCompact(t *testing.T) {
 	stateDir := t.TempDir()
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
 	require.NoError(t, err)
 
@@ -2117,15 +2117,15 @@ func TestJSONCheckpointIsCompact(t *testing.T) {
 	s, err := b.CreateStack(ctx, ref, "", nil, nil)
 	require.NoError(t, err)
 
-	deployment, err := makeUntypedDeployment("name1", "abc123",
-		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
-	require.NoError(t, err)
-
-	var prettyDeployment bytes.Buffer
-	require.NoError(t, json.Indent(&prettyDeployment, deployment.Deployment, "", "    "))
-	deployment.Deployment = prettyDeployment.Bytes()
-
-	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
+	deployment := &apitype.UntypedDeployment{
+		Version: apitype.DeploymentSchemaVersionCurrent,
+		Deployment: json.RawMessage(`{
+			"manifest": {
+				"time": "2026-03-18T00:00:00Z"
+			},
+			"resources": []
+		}`),
+	}
 	err = b.ImportDeployment(ctx, s, deployment)
 	require.NoError(t, err)
 
