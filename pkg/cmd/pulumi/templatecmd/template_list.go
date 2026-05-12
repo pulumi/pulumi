@@ -62,7 +62,7 @@ func NewTemplateListCmd(
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "List registry-backed templates",
-		Long: "List templates from the Pulumi Cloud registry.\n" +
+		Long: "[EXPERIMENTAL] List templates from the Pulumi Cloud registry.\n" +
 			"\n" +
 			"No authentication is required; without a Pulumi Cloud session, only publicly\n" +
 			"visible templates are returned.\n" +

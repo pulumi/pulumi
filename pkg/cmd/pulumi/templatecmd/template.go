@@ -23,9 +23,10 @@ func NewTemplateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "template",
 		Short: "Work with Pulumi templates",
-		Long: `Work with Pulumi templates
+		Long: `[EXPERIMENTAL] Work with Pulumi templates.
 
-Publish and manage Pulumi templates.`,
+Publish and manage Pulumi templates. The interface is being restructured under
+the Cloud-Ready CLI epic and is not yet considered stable.`,
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)

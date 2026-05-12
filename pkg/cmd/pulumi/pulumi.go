@@ -496,7 +496,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
-				templatecmd.NewTemplateCmd(),
 			},
 		},
 		{
@@ -524,6 +523,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				convert.NewConvertCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
 				logs.NewLogsCmd(pkgWorkspace.Instance),
+				templatecmd.NewTemplateCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi
