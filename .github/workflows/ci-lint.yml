@@ -28,13 +28,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup CI tools
+        uses: ./.github/actions/setup-ci-tools
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-          # golangci-lint-action handles all the caching for Go.
-          cache: false
+          version-set: ${{ fromJson(inputs.version-set).name }}
 
       # We leverage the golangci-lint action to install
       # and maintain the cache,
@@ -59,11 +56,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup CI tools
+        uses: ./.github/actions/setup-ci-tools
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          version-set: ${{ fromJson(inputs.version-set).name }}
       - name: Run go mod tidy
         run: make tidy
 
@@ -74,11 +70,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup CI tools
+        uses: ./.github/actions/setup-ci-tools
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          version-set: ${{ fromJson(inputs.version-set).name }}
       - name: Run make gen
         run: cd sdk/go && make gen
       - name: Fail if there are changes
@@ -107,26 +102,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup CI tools
+        uses: ./.github/actions/setup-ci-tools
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          cache-dependency-glob: sdk/python/uv.lock
-      - name: Set up Python ${{ fromJson(inputs.version-set).python }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ fromJson(inputs.version-set).python }}
-      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          version-set: ${{ fromJson(inputs.version-set).name }}
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip requests wheel urllib3 chardet
@@ -160,11 +139,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup CI tools
+        uses: ./.github/actions/setup-ci-tools
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
+          version-set: ${{ fromJson(inputs.version-set).name }}
       - run: |
           make lint_actions
 
@@ -185,17 +163,10 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - name: Setup CI tools
+        uses: ./.github/actions/setup-ci-tools
         with:
-          go-version: ${{ fromJson(inputs.version-set).go }}
-          check-latest: true
-      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ fromJson(inputs.version-set).nodejs }}
-          cache: yarn
-          cache-dependency-path: sdk/nodejs/yarn.lock
+          version-set: ${{ fromJson(inputs.version-set).name }}
       - name: Ensure Node # We need to install Node.js deps so that biome is available
         run: |
           cd sdk/nodejs && make ensure

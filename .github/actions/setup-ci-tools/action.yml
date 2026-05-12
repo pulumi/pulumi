@@ -1,0 +1,72 @@
+name: Setup CI Tools
+description: >
+  Installs all CI tools via Nix from the flake.nix ci-tools packages.
+  On Windows, falls back to traditional GitHub Actions setup.
+
+inputs:
+  version-set:
+    description: 'Version set name: "current" or "minimum"'
+    required: false
+    default: "current"
+
+runs:
+  using: composite
+  steps:
+    # --- Linux / macOS: use Nix ---
+    - name: Install Nix
+      if: runner.os != 'Windows'
+      uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3 # v31.10.6
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    - name: Add CI tools to PATH
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        echo "$(nix build .#ci-tools-${{ inputs.version-set }} --print-out-paths)/bin" >> "$GITHUB_PATH"
+    - name: Install npm-based gRPC tools
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        npm install -g grpc-tools@1.13.0 grpc_tools_node_protoc_ts@5.3.3 protoc-gen-js@3.21.4
+
+    # --- Windows: traditional setup actions ---
+    - name: Set up Go (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/setup-go@v6
+      with:
+        go-version: "1.25"
+    - name: Set up Python (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.11"
+    - name: Set up Node (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/setup-node@v6
+      with:
+        node-version: "20"
+    - name: Set up DotNet (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: "8"
+    - name: Set up JDK 11 (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/setup-java@v5
+      with:
+        java-version: "11"
+        distribution: "temurin"
+    - name: Setup Gradle (Windows)
+      if: runner.os == 'Windows'
+      uses: gradle/actions/setup-gradle@v6
+      with:
+        gradle-version: "7.6"
+    - name: Install Windows tools
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        npm install -g yarn pnpm@10
+    - name: Install bun (Windows)
+      if: runner.os == 'Windows'
+      uses: oven-sh/setup-bun@v2

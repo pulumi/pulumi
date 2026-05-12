@@ -3,9 +3,11 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Older nixpkgs for Python 3.10 (EOL in unstable)
+    nixpkgs-python310.url = "github:NixOS/nixpkgs/nixos-24.11";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, nixpkgs-python310 }:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
@@ -14,11 +16,9 @@
       packages = forAllSystems (system:
         let
           pkgs = import nixpkgs { inherit system; };
+          pkgs-old = import nixpkgs-python310 { inherit system; };
 
-          # Pin protoc to the exact version used for code generation.
-          # We download the pre-built binary to match the version exactly,
-          # since even minor version differences (29.5 vs 29.6) change
-          # generated output and fail `make check_proto`.
+          # Pin protoc to exact version — even minor differences change generated output
           protocVersion = "29.5";
           protocPlatform = {
             "x86_64-linux" = { name = "linux-x86_64"; hash = "sha256-o/CUNjzSBcb3rw0bkwXLTIUXBD8mXNsYjwmMrpPoshc="; };
@@ -43,7 +43,6 @@
             '';
           };
 
-          # Pin protoc-gen-go to the exact version used for code generation
           protoc-gen-go-pinned = pkgs.buildGoModule rec {
             pname = "protoc-gen-go";
             version = "1.36.6";
@@ -57,7 +56,6 @@
             subPackages = [ "cmd/protoc-gen-go" ];
           };
 
-          # Pin protoc-gen-go-grpc to the exact version used for code generation
           protoc-gen-go-grpc-pinned = pkgs.buildGoModule rec {
             pname = "protoc-gen-go-grpc";
             version = "1.5.1";
@@ -70,9 +68,44 @@
             vendorHash = "sha256-yn6jo6Ku/bnbSX8FL0B/Uu3Knn59r1arjhsVUkZ0m9g=";
             sourceRoot = "${src.name}/cmd/protoc-gen-go-grpc";
           };
+
+          # JDK11 has bin -> lib/openjdk/bin (a directory symlink) which
+          # symlinkJoin doesn't flatten. Create a package with a real bin/.
+          jdk11-flat = pkgs.runCommand "jdk11-bin" {} ''
+            mkdir -p $out/bin
+            for f in ${pkgs.jdk11}/bin/*; do
+              ln -s "$f" "$out/bin/"
+            done
+          '';
+
+          # Common tools shared across all version sets
+          commonTools = [
+            protoc-pinned
+            protoc-gen-go-pinned
+            protoc-gen-go-grpc-pinned
+            pkgs.jq
+            pkgs.uv
+            pkgs.bun
+            jdk11-flat
+            pkgs.gradle
+            pkgs.gotestsum
+            pkgs.yarn
+            pkgs.pnpm_10
+            pkgs.poetry
+            pkgs.delve
+            pkgs.gh
+            pkgs.wabt
+            pkgs.gofumpt
+            pkgs.golangci-lint
+          ];
+
+          # Build a ci-tools package for a given version set
+          mkCiTools = { name, go, python, nodejs, dotnet }: pkgs.symlinkJoin {
+            name = "pulumi-ci-tools-${name}";
+            paths = commonTools ++ [ go python nodejs dotnet ];
+          };
         in
         {
-          # CI proto toolchain — used by GitHub Actions composite action
           ci-proto-tools = pkgs.symlinkJoin {
             name = "pulumi-ci-proto-tools";
             paths = [
@@ -84,6 +117,22 @@
               pkgs.python3
             ];
           };
+
+          ci-tools-current = mkCiTools {
+            name = "current";
+            go = pkgs.go;              # 1.26.x
+            python = pkgs.python314;
+            nodejs = pkgs.nodejs_25;
+            dotnet = pkgs.dotnet-sdk_9;
+          };
+
+          ci-tools-minimum = mkCiTools {
+            name = "minimum";
+            go = pkgs.go_1_25;
+            python = pkgs-old.python310;
+            nodejs = pkgs.nodejs_20;
+            dotnet = pkgs.dotnet-sdk_8;
+          };
         }
       );
 
@@ -93,32 +142,9 @@
         in
         {
           default = pkgs.mkShell {
-            buildInputs = with pkgs; [
-              # Proto toolchain
-              self.packages.${system}.ci-proto-tools
-
-              # Core languages (default versions for local dev)
-              go
-              nodejs_20
-              python311
-              dotnet-sdk_8
-
-              # Go tools
-              delve
-              gopls
-              gofumpt
-              golangci-lint
-
-              # Build tools
-              jq
-              gh
-              bun
-              uv
-              wabt
-
-              # Java (for Gradle-based tests)
-              jdk11
-              gradle
+            buildInputs = [
+              self.packages.${system}.ci-tools-current
+              pkgs.gopls
             ];
           };
         }
