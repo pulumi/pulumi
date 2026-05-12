@@ -151,7 +151,7 @@ from the parameters, as in:
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
 				if errors.Is(err, registry.ErrNotFound) && agent != "" {
-					return fmt.Errorf("%w\nSearch: pulumi cloud api '/api/registry/packages?search=<term>'", err)
+					return fmt.Errorf("%w\nSearch: pulumi api '/api/registry/packages?search=<term>'", err)
 				}
 				return err
 			}
@@ -203,7 +203,7 @@ from the parameters, as in:
 			}
 
 			fmt.Fprintf(cmd.ErrOrStderr(), "Added package %s\n", schemaDisplayName(pkg))
-			printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), pluginOrProject.reg, pkg)
+			printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), target.reg, pkg)
 			return nil
 		},
 	}
@@ -254,7 +254,7 @@ func printRegistryDocsHint(
 	}
 	fmt.Fprintln(w, "Documentation:")
 	for _, h := range hints {
-		fmt.Fprintf(w, "  pulumi cloud api --format=markdown '%s%s'%s\n", base, h.suffix, h.comment)
+		fmt.Fprintf(w, "  pulumi api --format=markdown '%s%s'%s\n", base, h.suffix, h.comment)
 	}
 }
 

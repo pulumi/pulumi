@@ -243,7 +243,7 @@ func TestPrintRegistryDocsHint(t *testing.T) {
 
 	expectedBase := "/api/registry/packages/pulumi/pulumi/random/versions/4.19.1"
 	cmdLine := func(suffix, comment string) string {
-		return "  pulumi cloud api --format=markdown '" + expectedBase + suffix + "'" + comment + "\n"
+		return "  pulumi api --format=markdown '" + expectedBase + suffix + "'" + comment + "\n"
 	}
 	expectedOutput := "Documentation:\n" +
 		cmdLine("/readme", "                    # package readme") +
