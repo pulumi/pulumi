@@ -23,7 +23,6 @@ from ._instrumentation import wrap_with_context
 import asyncio
 import os
 import threading
-from collections import deque
 from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, NoReturn, Optional, Union
 
@@ -61,7 +60,7 @@ class Settings:
         root_directory: Optional[str] = None,
     ):
         self.rpc_manager = RPCManager()
-        self.outputs = deque()
+        self.outputs = set()
         self.lock = threading.Lock()
 
         # Save the metadata information.
@@ -110,7 +109,7 @@ class Settings:
     def lock(self) -> threading.Lock: ...  # type: ignore
 
     @contextproperty
-    def outputs(self) -> deque[asyncio.Task]: ...  # type: ignore
+    def outputs(self) -> set[asyncio.Task]: ...  # type: ignore
 
     @contextproperty
     def monitor(self) -> Optional[resource_pb2_grpc.ResourceMonitorStub]: ...

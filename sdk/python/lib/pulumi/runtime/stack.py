@@ -164,7 +164,7 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
                 if not_done:
                     with SETTINGS.lock:
                         for task in not_done:
-                            SETTINGS.outputs.append(task)
+                            SETTINGS.outputs.add(task)
 
             log.debug("All outstanding outputs completed.")
 

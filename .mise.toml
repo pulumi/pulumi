@@ -28,7 +28,6 @@ protoc = "29.5"
 dotnet = "8"
 java = "temurin-11"
 gradle = "7.6"
-"github:gotestyourself/gotestsum" = "1.8.1"
 "github:pulumi/goteststats" = "0.0.7"
 
 [tool_alias]
