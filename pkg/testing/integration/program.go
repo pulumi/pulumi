@@ -2922,7 +2922,8 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 	case DotNetRuntime:
 		return pt.prepareDotNetProject(projinfo)
 	case YAMLRuntime, JavaRuntime, HCLRuntime, PCLRuntime:
-		// These runtimes don't need any system setup; plugins auto-install.
+		// These runtimes have no SDK build step (no npm install, pip install,
+		// go mod tidy, dotnet restore, etc.), so there's nothing to prepare.
 		return nil
 	default:
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
