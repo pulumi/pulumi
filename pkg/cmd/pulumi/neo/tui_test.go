@@ -2433,6 +2433,7 @@ func TestModel_Update_CtrlA_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
 	m := NewModel(ModelConfig{
 		OutCh:               outCh,
 		MessageSent:         true,
+		TaskCreated:         true,
 		InitialApprovalMode: client.NeoApprovalModeManual,
 	})
 
@@ -2440,15 +2441,171 @@ func TestModel_Update_CtrlA_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
 	m = updated.(Model)
 	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
 
+	// The keypress only schedules the debounce tick; nothing is on outCh yet.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+A must defer the dispatch behind the debounce tick, got %#v", ev)
+	default:
+	}
+
+	// Deliver the debounce tick with the current gen — that's what tea.Tick
+	// would do after modeToggleDebounce — and assert the PATCH lands.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: m.approvalDebounceGen})
+	_ = updated
+
 	select {
 	case got := <-outCh:
-		require.NotNil(t, got.update, "Ctrl+A after send must dispatch an update")
+		require.NotNil(t, got.update, "the debounce tick must dispatch an update")
 		require.NotNil(t, got.update.ApprovalMode, "update must carry the new approvalMode")
 		assert.Equal(t, client.NeoApprovalModeBalanced, *got.update.ApprovalMode)
 		assert.Nil(t, got.update.PermissionMode,
 			"approval-mode toggle must not include permissionMode")
 	default:
-		t.Fatal("Ctrl+A after send must post an outboundEvent.update on outCh")
+		t.Fatal("the debounce tick at the current gen must dispatch")
+	}
+}
+
+func TestModel_Update_CtrlA_RapidPressesCollapseToOneDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Three Ctrl+A presses in quick succession (faster than the debounce
+	// window) must collapse to a single PATCH carrying the FINAL mode value.
+	// Each press advances the debounce gen, so only the last-scheduled tick
+	// fires the dispatch — the earlier two are gen-mismatched and silently
+	// dropped.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	// Three presses: manual → balanced → auto → manual.
+	for range 3 {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+		m = updated.(Model)
+	}
+	require.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"three presses must wrap back to manual")
+	require.Equal(t, 3, m.approvalDebounceGen, "each press advances the debounce gen")
+
+	// Stale ticks from the first two presses arrive — both must no-op.
+	updated, _ := m.Update(approvalDebounceTickMsg{gen: 1})
+	m = updated.(Model)
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: 2})
+	m = updated.(Model)
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen ticks must not dispatch, got %#v", ev)
+	default:
+	}
+
+	// The latest tick fires the dispatch with the final mode value.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: 3})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.ApprovalMode)
+		assert.Equal(t, client.NeoApprovalModeManual, *got.update.ApprovalMode,
+			"the collapsed dispatch must carry the FINAL mode after all presses")
+	default:
+		t.Fatal("the current-gen tick must dispatch")
+	}
+
+	// And no further events on outCh.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("only one dispatch must land for three rapid presses, got extra %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_ApprovalDebounceTick_StaleGenDoesNotDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: a debounce tick whose gen no longer matches must be a no-op
+	// even when there's no other pending press. This guards the case where a
+	// late tea.Tick fires after the user has already moved past the toggle.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeAuto,
+	})
+	m.approvalDebounceGen = 5
+
+	updated, _ := m.Update(approvalDebounceTickMsg{gen: 4})
+	_ = updated
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen tick must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlA_DuringTaskCreationIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// Between Enter and the task URL arriving (the create-task in-flight
+	// window), Ctrl+A would race the dispatcher: getTaskID() returns "" and
+	// the update event is silently dropped. The fix swallows the keypress
+	// instead so the status bar never lies about what the cloud is enforcing.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         false,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+
+	assert.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"Ctrl+A during the create-task window must not change the local mode")
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+A during the create-task window must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_UISessionURL_UnfreezesPostMessageToggles(t *testing.T) {
+	t.Parallel()
+
+	// UISessionURL is the dispatcher's signal that CreateNeoTask succeeded —
+	// from that moment on, Ctrl+A / Ctrl+R must work again. The status-bar
+	// indicator also flips here.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		EventCh:             make(chan UIEvent, 4),
+		MessageSent:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+	require.False(t, m.taskCreated, "precondition: task not yet created")
+
+	updated, _ := m.Update(UISessionURL{URL: "https://app.pulumi.com/x/neo/tasks/t1"})
+	m = updated.(Model)
+	require.True(t, m.taskCreated, "UISessionURL must flip taskCreated")
+
+	// Toggle now works — schedules a debounced PATCH.
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	// Fire the debounce tick so the PATCH actually lands.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: m.approvalDebounceGen})
+	_ = updated
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+	default:
+		t.Fatal("debounce tick after UISessionURL must dispatch an update")
 	}
 }
 
@@ -2486,12 +2643,23 @@ func TestModel_Update_CtrlR_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
 	m := NewModel(ModelConfig{
 		OutCh:                 outCh,
 		MessageSent:           true,
+		TaskCreated:           true,
 		InitialPermissionMode: client.NeoPermissionModeDefault,
 	})
 
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
+
+	// Debounced — nothing on outCh until the tick fires.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+R must defer the dispatch behind the debounce tick, got %#v", ev)
+	default:
+	}
+
+	updated, _ = m.Update(permissionDebounceTickMsg{gen: m.permissionDebounceGen})
+	_ = updated
 
 	select {
 	case got := <-outCh:
@@ -2501,7 +2669,51 @@ func TestModel_Update_CtrlR_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
 		assert.Nil(t, got.update.ApprovalMode,
 			"permission-mode toggle must not include approvalMode")
 	default:
-		t.Fatal("Ctrl+R after send must post an outboundEvent.update on outCh")
+		t.Fatal("the debounce tick at the current gen must dispatch")
+	}
+}
+
+func TestModel_Update_CtrlR_RapidPressesCollapseToOneDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Mirror of TestModel_Update_CtrlA_RapidPressesCollapseToOneDispatch for
+	// the permission axis. Two rapid Ctrl+R presses must net out to the
+	// starting state (default → read-only → default), so the only dispatch
+	// that fires carries permission=default.
+	outCh := make(chan outboundEvent, 2)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		MessageSent:           true,
+		TaskCreated:           true,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	for range 2 {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+		m = updated.(Model)
+	}
+	require.Equal(t, client.NeoPermissionModeDefault, m.permissionMode)
+	require.Equal(t, 2, m.permissionDebounceGen)
+
+	// Stale tick: gen mismatch, no dispatch.
+	updated, _ := m.Update(permissionDebounceTickMsg{gen: 1})
+	m = updated.(Model)
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen tick must not dispatch, got %#v", ev)
+	default:
+	}
+
+	// Current tick: one dispatch with the netted-out final value.
+	updated, _ = m.Update(permissionDebounceTickMsg{gen: 2})
+	_ = updated
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.PermissionMode)
+		assert.Equal(t, client.NeoPermissionModeDefault, *got.update.PermissionMode)
+	default:
+		t.Fatal("the current-gen tick must dispatch the final value")
 	}
 }
 

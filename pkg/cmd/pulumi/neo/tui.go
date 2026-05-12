@@ -45,6 +45,25 @@ type ctrlCDisarmMsg struct {
 	gen int
 }
 
+// modeToggleDebounce is the trailing-edge window for Ctrl+A / Ctrl+R: each
+// press updates local state immediately but only schedules a PATCH against the
+// live task after the user stops pressing for this long. Rapid mashing
+// collapses to one PATCH carrying the final value, so the cloud and the
+// dispatcher both see the user's intent instead of a noisy burst of updates.
+const modeToggleDebounce = 250 * time.Millisecond
+
+// approvalDebounceTickMsg / permissionDebounceTickMsg fire `modeToggleDebounce`
+// after each Ctrl+A / Ctrl+R press. They carry the generation they were
+// scheduled under so a newer press (which advances the generation) cancels the
+// stale tick by gen-mismatch.
+type approvalDebounceTickMsg struct {
+	gen int
+}
+
+type permissionDebounceTickMsg struct {
+	gen int
+}
+
 // blockKind identifies the type of rendered block in the output log.
 type blockKind int
 
@@ -160,6 +179,10 @@ type ModelConfig struct {
 	// that want to exercise the Shift+Tab post-send warning path without
 	// having to simulate a full Enter-driven send first.
 	MessageSent bool
+	// TaskCreated seeds the post-task-creation gate. Set it to true in tests
+	// that want to exercise the post-task Ctrl+A / Ctrl+R path without driving
+	// a UISessionURL through the event channel.
+	TaskCreated bool
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -217,10 +240,26 @@ type Model struct {
 	// permissionMode is the current capability scope, toggled via Ctrl+R. Same
 	// pre/post-send semantics as approvalMode.
 	permissionMode client.NeoPermissionMode
+	// approvalDebounceGen / permissionDebounceGen increment on every post-send
+	// Ctrl+A / Ctrl+R press. Each press schedules a tea.Tick carrying the
+	// current generation; the tick handler dispatches the PATCH only if the
+	// gen still matches, so rapid presses collapse to a single update with the
+	// final mode value.
+	approvalDebounceGen   int
+	permissionDebounceGen int
 	// messageSent flips to true when the TUI successfully dispatches its
 	// first user_message on outCh. From that point on, Shift+Tab emits the
 	// "plan mode is task-level" warning instead of toggling.
 	messageSent bool
+	// taskCreated flips to true when UISessionURL arrives — the dispatcher
+	// emits that immediately after CreateNeoTask returns OK, so it's the
+	// natural signal that the task is now addressable for PATCH. The window
+	// between messageSent and taskCreated is the race the Ctrl+A / Ctrl+R
+	// handlers gate on: in that window the dispatcher would silently drop a
+	// UpdateNeoTaskOptions event (no taskID yet), leaving the local mode out
+	// of sync with the cloud. Swallow the keypress instead so the status bar
+	// can't lie about what the cloud is enforcing.
+	taskCreated bool
 	// pendingApprovalType is the raw wire approval_type for the currently
 	// pending approval (empty when none). The Enter handler checks for
 	// approvalTypePlanExit so it can auto-clear planMode on approval.
@@ -369,6 +408,7 @@ func NewModel(cfg ModelConfig) Model {
 		width:          80,
 		height:         24,
 		messageSent:    cfg.MessageSent,
+		taskCreated:    cfg.TaskCreated,
 		approvalMode:   cfg.InitialApprovalMode,
 		permissionMode: cfg.InitialPermissionMode,
 	}
@@ -446,6 +486,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case approvalDebounceTickMsg:
+		// Trailing-edge debounce: dispatch the PATCH only if the user hasn't
+		// pressed Ctrl+A again since this tick was scheduled. A newer press
+		// advances approvalDebounceGen, so a stale tick is silently dropped
+		// here. taskCreated is guaranteed by the Ctrl+A handler that
+		// scheduled this tick.
+		if msg.gen == m.approvalDebounceGen {
+			next := m.approvalMode
+			m.sendOut(outboundEvent{
+				update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
+			})
+		}
+		return m, nil
+
+	case permissionDebounceTickMsg:
+		if msg.gen == m.permissionDebounceGen {
+			next := m.permissionMode
+			m.sendOut(outboundEvent{
+				update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
+			})
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
 		// semantics. Two bindings is friendlier than picking one and forcing
@@ -492,29 +555,38 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Ctrl+A cycles the approval mode (manual → balanced → auto → manual).
-		// Pre-message the value just updates the local snapshot; post-message we
-		// also dispatch an outboundEvent.update so the dispatcher PATCHes the
-		// live task and the cloud ApprovalHandler picks up the change.
+		// Pre-message the value just updates the local snapshot; post-message
+		// each press updates local state immediately but the PATCH against the
+		// live task is debounced via approvalDebounceTickMsg so rapid mashing
+		// collapses to one UpdateNeoTask carrying the final value (the cloud
+		// would otherwise see a noisy burst).
+		//
+		// The window between messageSent and taskCreated is a separate race:
+		// the dispatcher has no taskID to PATCH against yet and would silently
+		// drop the update. Swallow the keypress in that window so the status
+		// bar can't get out of sync with the cloud — the user can press again
+		// once the task URL arrives.
 		if msg.Type == tea.KeyCtrlA {
+			if m.messageSent && !m.taskCreated {
+				return m, nil
+			}
 			m.approvalMode = nextApprovalMode(m.approvalMode)
 			if m.messageSent {
-				next := m.approvalMode
-				m.sendOut(outboundEvent{
-					update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
-				})
+				return m, m.scheduleApprovalDebounce()
 			}
 			return m, nil
 		}
 
 		// Ctrl+R toggles the permission mode (default ↔ read-only). Same
-		// pre/post-send semantics as the approval-mode cycle above.
+		// pre/post-send semantics — and the same create-task race window and
+		// debounce mechanics — as the approval-mode cycle above.
 		if msg.Type == tea.KeyCtrlR {
+			if m.messageSent && !m.taskCreated {
+				return m, nil
+			}
 			m.permissionMode = nextPermissionMode(m.permissionMode)
 			if m.messageSent {
-				next := m.permissionMode
-				m.sendOut(outboundEvent{
-					update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
-				})
+				return m, m.schedulePermissionDebounce()
 			}
 			return m, nil
 		}
@@ -707,6 +779,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// arrives, so emit the URL as its own line rather than re-rendering.
 		// OSC 8 wraps the URL so supporting terminals render it as clickable.
 		m.welcome.consoleURL = msg.URL
+		// CreateNeoTask sends UISessionURL immediately after taskID is set,
+		// so this is the natural moment to lift the post-Enter toggle freeze.
+		m.taskCreated = true
 		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -921,7 +996,7 @@ func (m Model) modeChips() string {
 		// Manual is the default — no chip, the status bar stays uncluttered.
 	}
 	if m.permissionMode == client.NeoPermissionModeReadOnly {
-		chips = append(chips, planAccentStyle.Render("🔒 read-only"))
+		chips = append(chips, planAccentStyle.Render("⊘ read-only"))
 	}
 	return strings.Join(chips, " ")
 }
@@ -1133,6 +1208,29 @@ func (m *Model) scheduleCtrlCDisarm() tea.Cmd {
 	gen := m.ctrlCArmGen
 	return tea.Tick(ctrlCArmTimeout, func(time.Time) tea.Msg {
 		return ctrlCDisarmMsg{gen: gen}
+	})
+}
+
+// scheduleApprovalDebounce advances the approval-debounce generation and
+// returns a tea.Cmd that posts an approvalDebounceTickMsg after
+// modeToggleDebounce. The Update handler dispatches the PATCH only if the
+// tick's gen still matches the current one — a subsequent Ctrl+A press
+// advances the gen and silently retires the stale tick.
+func (m *Model) scheduleApprovalDebounce() tea.Cmd {
+	m.approvalDebounceGen++
+	gen := m.approvalDebounceGen
+	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
+		return approvalDebounceTickMsg{gen: gen}
+	})
+}
+
+// schedulePermissionDebounce is the permission-mode counterpart to
+// scheduleApprovalDebounce.
+func (m *Model) schedulePermissionDebounce() tea.Cmd {
+	m.permissionDebounceGen++
+	gen := m.permissionDebounceGen
+	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
+		return permissionDebounceTickMsg{gen: gen}
 	})
 }
 
