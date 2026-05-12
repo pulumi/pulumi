@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: Add `pulumi insights resource get` to look up a single resource discovered by Pulumi Insights

@@ -2262,3 +2262,26 @@ func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[api
 		}
 	}
 }
+
+// GetInsightsResource fetches a single resource discovered by Pulumi Insights.
+//
+// The `accountName` and `resourceTypeAndId` path parameters are double-decoded
+// on the service side, so we double-URL-encode them here to preserve any
+// embedded `/`, `:`, or `::` characters intact through the full decode chain.
+// `resourceTypeAndId` is the colon-separated `<type>::<id>` identifier as
+// described by the OpenAPI spec for the ReadResource operation.
+func (pc *Client) GetInsightsResource(
+	ctx context.Context, org, account, resourceTypeAndId string,
+) (apitype.InsightsResourceWithVersion, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s/resources/%s",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+		url.PathEscape(url.PathEscape(resourceTypeAndId)),
+	)
+	var resp apitype.InsightsResourceWithVersion
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.InsightsResourceWithVersion{}, err
+	}
+	return resp, nil
+}
