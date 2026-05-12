@@ -102,7 +102,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding read args: %w", err)
 		}
-		return f.read(p.FilePath, p.Offset, p.Limit)
+		return nilOnError(f.read(p.FilePath, p.Offset, p.Limit))
 	case "write":
 		var p struct {
 			FilePath string `json:"file_path"`
@@ -111,7 +111,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding write args: %w", err)
 		}
-		return f.write(p.FilePath, p.Content)
+		return nilOnError(f.write(p.FilePath, p.Content))
 	case "directory_tree":
 		var p struct {
 			Path  string `json:"path"`
@@ -120,13 +120,13 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding directory_tree args: %w", err)
 		}
-		return f.directoryTree(p.Path, p.Depth)
+		return nilOnError(f.directoryTree(p.Path, p.Depth))
 	case "edit":
 		var p editArgs
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding edit args: %w", err)
 		}
-		return f.edit(p)
+		return nilOnError(f.edit(p))
 	case "grep":
 		var p struct {
 			Pattern string `json:"pattern"`
@@ -136,7 +136,7 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding grep args: %w", err)
 		}
-		return f.grep(p.Pattern, p.Path, p.Include)
+		return nilOnError(f.grep(p.Pattern, p.Path, p.Include))
 	case "content_replace":
 		var p struct {
 			Pattern     string `json:"pattern"`
@@ -148,12 +148,24 @@ func (f *Filesystem) Invoke(_ context.Context, method string, args json.RawMessa
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, fmt.Errorf("decoding content_replace args: %w", err)
 		}
-		return f.contentReplace(p.Pattern, p.Replacement, p.Path, p.FilePattern, p.DryRun)
+		return nilOnError(f.contentReplace(p.Pattern, p.Replacement, p.Path, p.FilePattern, p.DryRun))
 	case "grep_ast":
 		return nil, fmt.Errorf("filesystem method %q is not yet implemented in pulumi neo CLI mode", method)
 	default:
 		return nil, fmt.Errorf("unknown filesystem method %q", method)
 	}
+}
+
+// nilOnError drops a method's zero-valued result on the floor when it returns
+// an error, so Filesystem.Invoke yields an untyped-nil `any` instead of an
+// interface that wraps a zero struct. Without this Session.invokeToolCall keeps
+// the empty struct as Content (a zero struct boxed into any is non-nil), and
+// the agent sees IsError=true with no failure reason.
+func nilOnError[T any](v T, err error) (any, error) {
+	if err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // resolve safely interprets a path supplied by the agent. The agent sends absolute paths

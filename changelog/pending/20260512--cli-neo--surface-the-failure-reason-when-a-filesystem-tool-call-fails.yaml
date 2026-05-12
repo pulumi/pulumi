@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/neo
+  description: Surface the failure reason when a `filesystem` tool call fails, instead of returning an empty result to the agent
