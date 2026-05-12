@@ -59,8 +59,8 @@ def some_data(nested: Optional[Sequence[Union['Entry', 'EntryDict']]] = None,
 
     return AwaitableSome_dataResult(
         nested_output=pulumi.get(__ret__, 'nested_output'))
-def some_data_output(nested: Optional[pulumi.Input[Sequence[Union['Entry', 'EntryDict']]]] = None,
-                     the_input: Optional[pulumi.Input[_builtins.str]] = None,
+def some_data_output(nested: pulumi.Input[Optional[Sequence[Union['Entry', 'EntryDict']]]] = None,
+                     the_input: pulumi.Input[Optional[_builtins.str]] = None,
                      opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[Some_dataResult]:
     """
     Use this data source to access information about an existing resource.

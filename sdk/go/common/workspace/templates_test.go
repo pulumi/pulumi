@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package workspace
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -84,6 +83,30 @@ func TestGetTemplateGitRepository(t *testing.T) {
 			envValue:        "https://github.com/custom/templates-policy.git",
 			setEmptyString:  false,
 			expectedDefault: "https://github.com/custom/templates-policy.git",
+		},
+		{
+			name:            "Package without env var",
+			templateKind:    TemplateKindPackage,
+			envVar:          env.PackageTemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: pulumiPackageTemplateGitRepository,
+		},
+		{
+			name:            "Package with empty string env var",
+			templateKind:    TemplateKindPackage,
+			envVar:          env.PackageTemplateGitRepository.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: pulumiPackageTemplateGitRepository,
+		},
+		{
+			name:            "Package with env var",
+			templateKind:    TemplateKindPackage,
+			envVar:          env.PackageTemplateGitRepository.Var().Name(),
+			envValue:        "https://github.com/custom/templates-packages.git",
+			setEmptyString:  false,
+			expectedDefault: "https://github.com/custom/templates-packages.git",
 		},
 	}
 
@@ -159,6 +182,30 @@ func TestGetTemplateBranch(t *testing.T) {
 			setEmptyString:  false,
 			expectedDefault: "custom-branch",
 		},
+		{
+			name:            "Package without env var",
+			templateKind:    TemplateKindPackage,
+			envVar:          env.PackageTemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  false,
+			expectedDefault: pulumiPackageTemplateBranch,
+		},
+		{
+			name:            "Package with empty string env var",
+			templateKind:    TemplateKindPackage,
+			envVar:          env.PackageTemplateBranch.Var().Name(),
+			envValue:        "",
+			setEmptyString:  true,
+			expectedDefault: pulumiPackageTemplateBranch,
+		},
+		{
+			name:            "Package with env var",
+			templateKind:    TemplateKindPackage,
+			envVar:          env.PackageTemplateBranch.Var().Name(),
+			envValue:        "custom-branch",
+			setEmptyString:  false,
+			expectedDefault: "custom-branch",
+		},
 	}
 
 	for _, tt := range tests {
@@ -195,7 +242,7 @@ func TestRetrieveNonExistingTemplate(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := RetrieveTemplates(context.Background(), templateName, false, tt.templateKind)
+			_, err := RetrieveTemplates(t.Context(), templateName, false, tt.templateKind)
 			assert.ErrorAs(t, err, &TemplateNotFoundError{})
 			assert.EqualError(t, err, fmt.Sprintf("template '%s' not found", templateName))
 		})
@@ -229,7 +276,7 @@ Did you mean this?
 
 	for _, tt := range tests {
 		t.Run(tt.templateName, func(t *testing.T) {
-			_, err := RetrieveTemplates(context.Background(), tt.templateName, false, TemplateKindPulumiProject)
+			_, err := RetrieveTemplates(t.Context(), tt.templateName, false, TemplateKindPulumiProject)
 			assert.ErrorAs(t, err, &TemplateNotFoundError{})
 			assert.EqualError(t, err, tt.expected)
 		})
@@ -257,7 +304,7 @@ func TestRetrieveStandardTemplate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			repository, err := RetrieveTemplates(context.Background(), tt.templateName, false, tt.templateKind)
+			repository, err := RetrieveTemplates(t.Context(), tt.templateName, false, tt.templateKind)
 			require.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 
@@ -300,12 +347,12 @@ func TestRetrieveHttpsTemplate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			repository, err := RetrieveTemplates(context.Background(), tt.templateURL, false, tt.templateKind)
+			repository, err := RetrieveTemplates(t.Context(), tt.templateURL, false, tt.templateKind)
 			require.NoError(t, err)
 			assert.Equal(t, true, repository.ShouldDelete)
 
 			// Root should point to a subfolder of a Temp Dir
-			tempDir := os.TempDir()
+			tempDir := os.TempDir() //nolint:usetesting // checking system temp dir, not creating one
 			pattern := filepath.Join(tempDir, "*")
 			matched, _ := filepath.Match(pattern, repository.Root)
 			assert.True(t, matched)
@@ -351,7 +398,7 @@ func TestRetrieveHttpsTemplateOffline(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := RetrieveTemplates(context.Background(), tt.templateURL, true, tt.templateKind)
+			_, err := RetrieveTemplates(t.Context(), tt.templateURL, true, tt.templateKind)
 			assert.EqualError(t, err, fmt.Sprintf("cannot use %s offline", tt.templateURL))
 		})
 	}
@@ -375,7 +422,7 @@ func TestRetrieveFileTemplate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			repository, err := RetrieveTemplates(context.Background(), ".", false, tt.templateKind)
+			repository, err := RetrieveTemplates(t.Context(), ".", false, tt.templateKind)
 			require.NoError(t, err)
 			assert.Equal(t, false, repository.ShouldDelete)
 

@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -106,7 +106,7 @@ func typeCheckNodeJS(t *testing.T, path string, _ codegen.StringSet, linkLocal b
 }
 
 func TypeCheckNodeJSPackage(t *testing.T, pwd string, linkLocal bool) {
-	RunCommand(t, "npm_install", pwd, "npm", "install")
+	RunCommandWithRetries(t, "npm_install", pwd, 3, "npm", "install")
 	if linkLocal {
 		RunCommand(t, "yarn_link", pwd, "yarn", "link", "@pulumi/pulumi")
 	}

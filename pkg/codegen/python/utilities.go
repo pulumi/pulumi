@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -128,7 +128,7 @@ var pypiPost = regexp.MustCompile("^post[0-9]+$")
 // versions.
 func normPypiVersion(v semver.Version) semver.Version {
 	s := v.String()
-	s = regexp.MustCompile(`(alpha|beta|rc)[.](\d+)`).ReplaceAllString(s, `$1$2`)
+	s = regexp.MustCompile(`(alpha|beta|rc|dev|post)[.](\d+)`).ReplaceAllString(s, `$1$2`)
 	return semver.MustParse(s)
 }
 

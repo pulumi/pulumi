@@ -1,4 +1,4 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -205,6 +205,7 @@ func ConvertEngineEvent(e engine.Event, showSecrets bool) (apitype.EngineEvent, 
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 			IsPreview:       p.IsPreview,
+			Result:          p.Result,
 		}
 
 	case engine.ResourcePreEvent:
@@ -356,6 +357,7 @@ func convertStepEventStateMetadata(md *engine.StepEventStateMetadata,
 		Provider:       md.Provider,
 		Protect:        md.Protect,
 		Taint:          md.Taint,
+		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,
@@ -479,6 +481,7 @@ func ConvertJSONEvent(apiEvent apitype.EngineEvent) (engine.Event, error) {
 			ResourceChanges: changes,
 			PolicyPacks:     p.PolicyPacks,
 			IsPreview:       p.IsPreview,
+			Result:          p.Result,
 		})
 
 	case apiEvent.ResourcePreEvent != nil:
@@ -625,6 +628,7 @@ func convertJSONStepEventStateMetadata(md *apitype.StepEventStateMetadata) *engi
 		Provider:       md.Provider,
 		Protect:        md.Protect,
 		Taint:          md.Taint,
+		External:       md.External,
 		RetainOnDelete: md.RetainOnDelete,
 		Inputs:         inputs,
 		Outputs:        outputs,

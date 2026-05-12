@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -189,16 +189,15 @@ func startEventLogger(
 
 		client := pulumirpc.NewEventsClient(conn)
 
+		stream, err := client.StreamEvents(context.TODO())
+		if err != nil {
+			logging.V(7).Infof("failed to start event stream: %v", err)
+			return events, done
+		}
+
 		outEvents, outDone := make(chan engine.StampedEvent), make(chan bool)
 		go func() {
 			defer close(done)
-
-			stream, err := client.StreamEvents(context.TODO())
-			if err != nil {
-				logging.V(7).Infof("failed to start event stream: %v", err)
-				<-outDone
-				return
-			}
 
 			for e := range events {
 				var buf bytes.Buffer
@@ -228,6 +227,7 @@ func startEventLogger(
 				logging.V(7).Infof("failed to close event stream: %v", err)
 			}
 
+			close(outEvents)
 			<-outDone
 		}()
 
@@ -262,6 +262,7 @@ func startEventLogger(
 			}
 		}
 
+		close(outEvents)
 		<-outDone
 	}()
 

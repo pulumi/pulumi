@@ -65,7 +65,7 @@ A list of package descriptors that describes the set of dependencies for this pa
 
 `array`
 
-Items: [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/properties/dependencies/items`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemajsonpropertiesdependenciesitems)
+Items: [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json#/properties/dependencies/items`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemapulumijsonpropertiesdependenciesitems)
 
 ---
 
@@ -196,7 +196,7 @@ An optional object to define parameterization for the package.
 `object`
 
 All of:
-- [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/$defs/parameterization`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemajsondefsparameterization)
+- [`https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json#/$defs/parameterization`](#httpsgithubcompulumipulumiblobmasterpkgcodegenschemapulumijsondefsparameterization)
 
 ---
 
@@ -966,7 +966,7 @@ Enum: `"boolean"` | `"integer"` | `"number"` | `"string"`
 
 ---
 
-## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/$defs/parameterization`
+## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json#/$defs/parameterization`
 
 `object`
 
@@ -1012,7 +1012,7 @@ The parameter for the provider.
 
 ---
 
-## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json#/properties/dependencies/items`
+## `https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json#/properties/dependencies/items`
 
 `object`
 

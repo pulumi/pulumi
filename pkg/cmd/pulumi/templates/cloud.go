@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -138,7 +138,7 @@ func (s *Source) getCloudTemplates(
 }
 
 func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateName string) {
-	r := cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
+	r := cmdCmd.NewDefaultRegistry(ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), e)
 
 	matches, err := NewTemplateMatcher(templateName)
 	if err != nil {

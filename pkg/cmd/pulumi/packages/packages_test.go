@@ -1,4 +1,4 @@
-// Copyright 2024-2025, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
@@ -103,6 +104,8 @@ func TestProviderFromSource(t *testing.T) {
 			},
 		}
 
+		mws := &pkgWorkspace.MockContext{}
+
 		pctx, err := plugin.NewContext(
 			t.Context(),
 			nil,
@@ -118,7 +121,7 @@ func TestProviderFromSource(t *testing.T) {
 		require.NoError(t, err)
 		defer pctx.Close()
 
-		provider, _, err := ProviderFromSource(pctx, inputSource, mockRegistry, env.NewEnv(env.MapStore{
+		provider, _, err := ProviderFromSource(mws, pctx, inputSource, mockRegistry, env.NewEnv(env.MapStore{
 			"PULUMI_EXPERIMENTAL": "true",
 		}), 0)
 		require.NoError(t, err)

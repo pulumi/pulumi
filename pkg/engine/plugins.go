@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,10 @@ import (
 	"os"
 	"slices"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
@@ -415,12 +419,21 @@ func gatherPackagesFromSnapshot(plugctx *plugin.Context, target *deploy.Target) 
 func EnsurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
 	projectPlugins []workspace.ProjectPlugin, reinstall, explicitInstall bool,
 ) error {
+	tracer := otel.Tracer("pulumi-cli")
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "EnsurePluginsAreInstalled")
+	defer span.End()
+
 	manager := newInstallManager(true /*returnPluginErrors*/)
 	err := ensurePluginsAreInstalled(ctx, opts, d, plugins, projectPlugins, reinstall, explicitInstall, manager)
 	if err != nil {
+		span.RecordError(err)
 		return err
 	}
-	return manager.Wait()
+	err = manager.Wait()
+	if err != nil {
+		span.RecordError(err)
+	}
+	return err
 }
 
 func ensurePluginsAreInstalled(ctx context.Context, opts *deploymentOptions, d diag.Sink, plugins PluginSet,
@@ -511,6 +524,18 @@ func installPlugin(
 	pluginManager PluginManager,
 	plugin workspace.PluginDescriptor,
 ) error {
+	tracer := otel.Tracer("pulumi-cli")
+	attrs := []attribute.KeyValue{
+		attribute.String("plugin.name", plugin.Name),
+		attribute.String("plugin.kind", string(plugin.Kind)),
+	}
+	if plugin.Version != nil {
+		attrs = append(attrs, attribute.String("plugin.version", plugin.Version.String()))
+	}
+	ctx, span := cmdutil.StartSpan(ctx, tracer, "installPlugin",
+		trace.WithAttributes(attrs...))
+	defer span.End()
+
 	logging.V(preparePluginLog).Infof("installPlugin(%s, %s): beginning install", plugin.Name, plugin.Version)
 
 	// If we don't have a version yet try and call GetLatestVersion to fill it in
@@ -613,6 +638,52 @@ func installPlugin(
 	return nil
 }
 
+// samePluginSource reports whether two PackageDescriptors refer to the same
+// underlying plugin (matching binary Name and matching parameterization
+// origin). Two descriptors that differ only in version are the same source;
+// two descriptors with different plugin Names (for example, a native
+// "scaleway" provider and a "terraform-provider" bridge parameterized as
+// "scaleway") are not.
+func samePluginSource(a, b workspace.PackageDescriptor) bool {
+	return a.Name == b.Name &&
+		(a.Parameterization == nil) == (b.Parameterization == nil) &&
+		(a.Parameterization == nil || a.Parameterization.Name == b.Parameterization.Name)
+}
+
+// describePluginSource returns a human-readable description of a plugin that
+// distinguishes bridged (parameterized) packages from native ones. The output
+// of PackageDescriptor.String is insufficient here because it collapses both
+// forms onto the parameterized name, which hides the distinction users need
+// to resolve a conflict.
+func describePluginSource(p workspace.PackageDescriptor) string {
+	var pluginVer string
+	if p.Version != nil {
+		pluginVer = " v" + p.Version.String()
+	}
+	if p.Parameterization != nil {
+		return fmt.Sprintf("plugin %q%s parameterized as %q v%s",
+			p.Name, pluginVer, p.Parameterization.Name, p.Parameterization.Version.String())
+	}
+	return fmt.Sprintf("plugin %q%s", p.Name, pluginVer)
+}
+
+// ambigiousPluginSourceError is returned when two distinct plugins both claim
+// to provide the same default provider package name.
+type ambigiousPluginSourceError struct {
+	pkg  tokens.Package
+	a, b workspace.PackageDescriptor
+}
+
+func (err ambigiousPluginSourceError) Error() string {
+	return fmt.Sprintf(
+		"package %q is provided by more than one plugin:\n"+
+			"  %s\n"+
+			"  %s\n"+
+			"Remove one of the packages, or pass an explicit `provider` "+
+			"option on each resource to disambiguate.",
+		err.pkg, describePluginSource(err.a), describePluginSource(err.b))
+}
+
 // computeDefaultProviderPackages computes, for every package, a mapping from packages to semver versions reflecting the
 // version of a provider that should be used as the "default" resource when registering resources. This function takes
 // two sets of packages:
@@ -637,7 +708,7 @@ func installPlugin(
 func computeDefaultProviderPackages(
 	languagePackages PackageSet,
 	allPackages PackageSet,
-) map[tokens.Package]workspace.PackageDescriptor {
+) (map[tokens.Package]workspace.PackageDescriptor, error) {
 	// Language hosts are not required to specify the full set of plugins they depend on. If the set of plugins received
 	// from the language host does not include any resource providers, fall back to the full set of plugins.
 	languageReportedProviderPlugins := false
@@ -679,6 +750,10 @@ func computeDefaultProviderPackages(
 		name := tokens.Package(p.PackageName())
 
 		if seenPlugin, has := defaultProviderPlugins[name]; has {
+			if !samePluginSource(seenPlugin, p) {
+				return nil, ambigiousPluginSourceError{name, seenPlugin, p}
+			}
+
 			if seenPlugin.Version == nil {
 				logging.V(preparePluginLog).Infof(
 					"computeDefaultProviderPlugins(): plugin %s selected for package %s (override, previous was nil)",
@@ -706,7 +781,7 @@ func computeDefaultProviderPackages(
 		defaultProviderPlugins[name] = p
 	}
 
-	if logging.V(preparePluginLog) {
+	if logging.V(preparePluginLog).Enabled() {
 		logging.V(preparePluginLog).Infoln("computeDefaultProviderPlugins(): summary of default plugins:")
 		for pkg, info := range defaultProviderPlugins {
 			logging.V(preparePluginLog).Infof("  %-15s = %s", pkg, info.Version)
@@ -718,5 +793,5 @@ func computeDefaultProviderPackages(
 		defaultProviderInfo[name] = plugin
 	}
 
-	return defaultProviderInfo
+	return defaultProviderInfo, nil
 }

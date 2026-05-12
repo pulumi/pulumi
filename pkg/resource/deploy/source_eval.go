@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -736,6 +736,9 @@ type resmon struct {
 	packageRefLock sync.RWMutex
 	// A map of UUIDs to the description of a provider package they correspond to
 	packageRefMap map[string]providers.ProviderRequest
+
+	// the organization name for the deployment.
+	organization string
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -811,12 +814,14 @@ func newResourceMonitor(
 	resmon.constructInfo = plugin.ConstructInfo{
 		Project:          string(src.runinfo.Proj.Name),
 		Stack:            src.runinfo.Target.Name.String(),
+		Organization:     string(src.runinfo.Target.Organization),
 		Config:           config,
 		ConfigSecretKeys: configSecretKeys,
 		DryRun:           src.opts.DryRun,
 		Parallel:         src.opts.Parallel,
 		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", handle.Port),
 	}
+	resmon.organization = string(src.runinfo.Target.Organization)
 	resmon.done = handle.Done
 
 	go d.serve()
@@ -837,7 +842,10 @@ func (rm *resmon) GetCallbacksClient(target string) (*CallbacksClient, error) {
 		return client, nil
 	}
 
-	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	dialOpts := append(
+		rpcutil.TracingInterceptorDialOptions(),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if rm.grpcDialOptions != nil {
 		opts := rm.grpcDialOptions(map[string]any{
 			"mode": "client",
@@ -1042,8 +1050,16 @@ func (rm *resmon) lookupPackageRef(ref string) (providers.ProviderRequest, bool)
 func (rm *resmon) SupportsFeature(ctx context.Context,
 	req *pulumirpc.SupportsFeatureRequest,
 ) (*pulumirpc.SupportsFeatureResponse, error) {
-	hasSupport := false
+	hasSupport := rm.supportsFeatureID(req.Id)
 
+	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
+
+	return &pulumirpc.SupportsFeatureResponse{
+		HasSupport: hasSupport,
+	}, nil
+}
+
+func (rm *resmon) supportsFeatureID(id string) bool {
 	// NOTE: DO NOT ADD ANY MORE FEATURES TO THIS LIST
 	//
 	// Context: https://github.com/pulumi/pulumi-dotnet/pull/88#pullrequestreview-1265714090
@@ -1054,39 +1070,104 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	//
 	// These old features have to stay as is because old engines DO support them, but wouldn't support the new
 	// SupportsFeatureV2 method.
-
-	switch req.Id {
+	switch id {
 	case "secrets":
-		hasSupport = true
+		return true
 	case "resourceReferences":
-		hasSupport = !rm.opts.DisableResourceReferences
+		return !rm.opts.DisableResourceReferences
 	case "outputValues":
-		hasSupport = !rm.opts.DisableOutputValues
+		return !rm.opts.DisableOutputValues
 	case "aliasSpecs":
-		hasSupport = true
+		return true
 	case "replacementTrigger":
-		hasSupport = true
+		return true
 	case "deletedWith":
-		hasSupport = true
+		return true
 	case "replaceWith":
-		hasSupport = true
+		return true
 	case "transforms":
-		hasSupport = true
+		return true
 	case "invokeTransforms":
-		hasSupport = true
+		return true
 	case "parameterization":
 		// N.B This serves a dual purpose of also indicating that package references are supported.
-		hasSupport = true
+		return true
 	case "resourceHooks":
-		hasSupport = true
+		return true
 	case "errorHooks":
-		hasSupport = true
+		return true
+	case "sendsOptionsToHooks":
+		return true
+	}
+	return false
+}
+
+func (rm *resmon) supportedMonitorFeatures() []pulumirpc.ResourceMonitorFeature {
+	features := make([]pulumirpc.ResourceMonitorFeature, 0, 11)
+	if rm.supportsFeatureID("secrets") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SECRETS)
+	}
+	if rm.supportsFeatureID("resourceReferences") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_REFERENCES)
+	}
+	if rm.supportsFeatureID("outputValues") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_OUTPUT_VALUES)
+	}
+	if rm.supportsFeatureID("aliasSpecs") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ALIAS_SPECS)
+	}
+	if rm.supportsFeatureID("replacementTrigger") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACEMENT_TRIGGER)
+	}
+	if rm.supportsFeatureID("deletedWith") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_DELETED_WITH)
+	}
+	if rm.supportsFeatureID("replaceWith") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_REPLACE_WITH)
+	}
+	if rm.supportsFeatureID("transforms") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_TRANSFORMS)
+	}
+	if rm.supportsFeatureID("invokeTransforms") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_INVOKE_TRANSFORMS)
+	}
+	if rm.supportsFeatureID("parameterization") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_PARAMETERIZATION)
+	}
+	if rm.supportsFeatureID("resourceHooks") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_RESOURCE_HOOKS)
+	}
+	if rm.supportsFeatureID("errorHooks") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_ERROR_HOOKS)
+	}
+	if rm.supportsFeatureID("sendsOptionsToHooks") {
+		features = append(features, pulumirpc.ResourceMonitorFeature_RESOURCE_MONITOR_FEATURE_SENDS_OPTIONS_TO_HOOKS)
+	}
+	return features
+}
+
+func (rm *resmon) GetDeploymentInfo(_ context.Context,
+	_ *emptypb.Empty,
+) (*pulumirpc.DeploymentInfo, error) {
+	config := make(map[string]string, len(rm.constructInfo.Config))
+	for k, v := range rm.constructInfo.Config {
+		config[k.String()] = v
 	}
 
-	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
+	configSecretKeys := make([]string, len(rm.constructInfo.ConfigSecretKeys))
+	for i, k := range rm.constructInfo.ConfigSecretKeys {
+		configSecretKeys[i] = k.String()
+	}
 
-	return &pulumirpc.SupportsFeatureResponse{
-		HasSupport: hasSupport,
+	return &pulumirpc.DeploymentInfo{
+		Project:           rm.constructInfo.Project,
+		Stack:             rm.constructInfo.Stack,
+		Organization:      rm.organization,
+		Config:            config,
+		ConfigSecretKeys:  configSecretKeys,
+		DryRun:            rm.constructInfo.DryRun,
+		Parallel:          rm.constructInfo.Parallel,
+		SupportedFeatures: rm.supportedMonitorFeatures(),
 	}, nil
 }
 
@@ -1746,7 +1827,8 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+		newInputs, oldInputs, newOutputs, oldOutputs resource.PropertyMap,
 	) error {
 		logging.V(6).Infof("ResourceHook calling hook %q for urn %s", name, urn)
 		var mNewInputs, mOldInputs, mNewOutputs, mOldOutputs *structpb.Struct
@@ -1791,6 +1873,8 @@ func (rm *resmon) wrapResourceHookCallback(name string, cb *pulumirpc.Callback) 
 			OldInputs:  mOldInputs,
 			NewOutputs: mNewOutputs,
 			OldOutputs: mOldOutputs,
+			OldOptions: oldOptions,
+			NewOptions: newOptions,
 		})
 		if err != nil {
 			return fmt.Errorf("marshaling resource hook request for %q: %w", name, err)
@@ -1825,9 +1909,10 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 		return nil, err
 	}
 	hook := ResourceHook{
-		Name:     req.Name,
-		Callback: wrapped,
-		OnDryRun: req.OnDryRun,
+		Name:         req.Name,
+		Callback:     wrapped,
+		OnDryRun:     req.OnDryRun,
+		IgnoreErrors: req.IgnoreErrors,
 	}
 	err = rm.resourceHooks.RegisterResourceHook(hook)
 	return nil, err
@@ -1842,7 +1927,8 @@ func (rm *resmon) wrapErrorHookCallback(
 	}
 
 	return func(ctx context.Context, urn resource.URN, id resource.ID,
-		name string, typ tokens.Type, newInputs, oldInputs, oldOutputs resource.PropertyMap,
+		name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
+		newInputs, oldInputs, oldOutputs resource.PropertyMap,
 		failedOperation string, errorMessages []string,
 	) (bool, error) {
 		logging.V(6).Infof("ErrorHook calling hook %q for urn %s", name, urn)
@@ -1882,6 +1968,8 @@ func (rm *resmon) wrapErrorHookCallback(
 			OldOutputs:      mOldOutputs,
 			FailedOperation: failedOperation,
 			Errors:          errorMessages,
+			OldOptions:      oldOptions,
+			NewOptions:      newOptions,
 		})
 		if err != nil {
 			return false, fmt.Errorf("marshaling error hook request for %q: %w", name, err)

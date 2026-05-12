@@ -1,0 +1,287 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tools
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestShell_ExecuteCapturesStdout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"echo hi"}`))
+	require.NoError(t, err)
+	m := res.(map[string]any)
+	assert.Equal(t, "hi\n", m["stdout"])
+	assert.Equal(t, 0, m["exit_code"])
+}
+
+func TestShell_ExecuteHonorsTimeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	sh.DefaultTimeout = 50 * time.Millisecond
+	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"sleep 5"}`))
+	require.Error(t, err, "timeout must surface as a non-nil error so the TUI marks the call failed")
+	assert.Contains(t, err.Error(), "timed out")
+	require.NotNil(t, res, "partial result must still be returned alongside the timeout error")
+	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+}
+
+func TestShell_ExecuteHonorsAgentTimeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	start := time.Now()
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"sleep 5","timeout":0.1}`))
+	require.Error(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	assert.Less(t, time.Since(start), 5*time.Second, "agent-supplied timeout was ignored")
+}
+
+func TestShell_ExecuteAgentTimeoutOverridesDefault(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	sh.DefaultTimeout = time.Hour // way longer than the agent value below
+	start := time.Now()
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"sleep 5","timeout":0.1}`))
+	require.Error(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	assert.Less(t, time.Since(start), 5*time.Second, "agent timeout did not override DefaultTimeout")
+}
+
+func TestShell_ExecuteUnblocksOnOrphanedChild(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	// `sleep 30 &; wait` keeps a grandchild holding the inherited stdout/stderr
+	// pipes open well past the deadline. Without process-group kill +
+	// WaitDelay, cmd.Run() blocks for the full 30s instead of returning when
+	// the timeout fires.
+	start := time.Now()
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"sleep 30 & wait","timeout":0.2}`))
+	require.Error(t, err)
+	require.NotNil(t, res)
+	assert.Equal(t, true, res.(map[string]any)["timed_out"])
+	// Allow generous slack for the WaitDelay grace period (5s) plus CI noise.
+	assert.Less(t, time.Since(start), 15*time.Second, "shell hung on orphaned child")
+}
+
+func TestShell_ExecuteRejectsNegativeTimeout(t *testing.T) {
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"echo hi","timeout":-1}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "non-negative")
+}
+
+func TestShell_ExecuteCapturesNonZeroExit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	res, err := sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":"exit 3"}`))
+	require.NoError(t, err)
+	assert.Equal(t, 3, res.(map[string]any)["exit_code"])
+}
+
+func TestShell_ExecuteHonorsCwdSubdirectory(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	root := t.TempDir()
+	sub := filepath.Join(root, "child")
+	require.NoError(t, os.Mkdir(sub, 0o755))
+
+	sh, err := NewShell(root)
+	require.NoError(t, err)
+	// Resolve sub through EvalSymlinks so the comparison matches on macOS where
+	// /var -> /private/var.
+	resolvedSub, err := filepath.EvalSymlinks(sub)
+	require.NoError(t, err)
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"pwd","cwd":"`+sub+`"}`))
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), resolvedSub))
+}
+
+func TestShell_ExecuteRejectsCwdOutsideRoot(t *testing.T) {
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	outside := t.TempDir()
+	_, err = sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, outside)))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the allowed roots")
+}
+
+func TestShell_ExecuteRejectsEmptyCommand(t *testing.T) {
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "shell_execute", json.RawMessage(`{"command":""}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "non-empty command")
+}
+
+func TestShell_RejectsCwdSymlinkEscape(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	outside := t.TempDir()
+	link := filepath.Join(root, "escape")
+	require.NoError(t, os.Symlink(outside, link))
+
+	sh, err := NewShell(root)
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, link)))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the allowed roots")
+}
+
+func TestShell_TruncatesLargeOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	// Generate more than maxOutputBytes of stdout.
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"dd if=/dev/zero bs=1048576 count=2 2>/dev/null | tr '\\0' 'A'"}`))
+	require.NoError(t, err)
+	m := res.(map[string]any)
+	assert.True(t, m["truncated"].(bool))
+	assert.LessOrEqual(t, len(m["stdout"].(string)), maxOutputBytes)
+}
+
+func TestShell_RejectsUnknownMethod(t *testing.T) {
+	t.Parallel()
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	_, err = sh.Invoke(t.Context(), "run", json.RawMessage(`{"command":"echo"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown shell method")
+}
+
+func TestShell_AcceptsCwdUnderExtraRoot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	t.Parallel()
+
+	// Primary cwd and scratch are unrelated directories. Passing scratch as an
+	// extra root mirrors what neo.go does for /tmp: commands launched there must
+	// run successfully even though scratch is outside the primary cwd.
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	sh, err := NewShell(cwd, scratch)
+	require.NoError(t, err)
+
+	resolvedScratch, err := filepath.EvalSymlinks(scratch)
+	require.NoError(t, err)
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(fmt.Sprintf(`{"command":"pwd","cwd":%q}`, scratch)))
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(res.(map[string]any)["stdout"].(string), resolvedScratch))
+}
+
+func TestShell_RejectsCwdOutsideRootAndExtras(t *testing.T) {
+	t.Parallel()
+
+	cwd := t.TempDir()
+	scratch := t.TempDir()
+	sh, err := NewShell(cwd, scratch)
+	require.NoError(t, err)
+
+	// A third unrelated directory must still be rejected even with extras configured.
+	other := t.TempDir()
+	_, err = sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(fmt.Sprintf(`{"command":"echo hi","cwd":%q}`, other)))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside the allowed roots")
+}
+
+func TestNewShell_RejectsMissingExtraRoot(t *testing.T) {
+	t.Parallel()
+
+	missing := filepath.Join(t.TempDir(), "nope")
+	_, err := NewShell(t.TempDir(), missing)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "extra root")
+}
+
+func TestNewShell_RejectsExtraRootThatIsAFile(t *testing.T) {
+	t.Parallel()
+
+	// An extra root that points at a file (not a directory) must be rejected.
+	notADir := filepath.Join(t.TempDir(), "regular-file")
+	require.NoError(t, os.WriteFile(notADir, nil, 0o600))
+
+	_, err := NewShell(t.TempDir(), notADir)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "is not a directory")
+}

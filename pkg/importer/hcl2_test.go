@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sort"
@@ -68,7 +69,7 @@ var names = NameTable{
 	logicalURN:  logicalName,
 }
 
-func renderExpr(t *testing.T, x model.Expression) property.Value {
+func renderExpr(t require.TestingT, x model.Expression) property.Value {
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
 		return renderLiteralValue(t, x)
@@ -88,7 +89,10 @@ func renderExpr(t *testing.T, x model.Expression) property.Value {
 	}
 }
 
-func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) property.Value {
+func renderLiteralValue(t require.TestingT, x *model.LiteralValueExpression) property.Value {
+	if x.Value.IsNull() {
+		return property.New(property.Null)
+	}
 	switch x.Value.Type() {
 	case cty.Bool:
 		return property.New(x.Value.True())
@@ -98,12 +102,12 @@ func renderLiteralValue(t *testing.T, x *model.LiteralValueExpression) property.
 	case cty.String:
 		return property.New(x.Value.AsString())
 	default:
-		assert.Failf(t, "", "unexpected literal of type %v", x.Value.Type())
+		assert.Failf(t, "", "unexpected literal of type %v (value %v)", x.Value.Type().FriendlyName(), x.Value.GoString())
 		return property.New(property.Null)
 	}
 }
 
-func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
+func renderTemplate(t require.TestingT, x *model.TemplateExpression) property.Value {
 	if len(x.Parts) == 1 {
 		return renderLiteralValue(t, x.Parts[0].(*model.LiteralValueExpression))
 	}
@@ -114,7 +118,7 @@ func renderTemplate(t *testing.T, x *model.TemplateExpression) property.Value {
 	return property.New(b.String())
 }
 
-func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Value {
+func renderObjectCons(t require.TestingT, x *model.ObjectConsExpression) property.Value {
 	obj := map[string]property.Value{}
 	for _, item := range x.Items {
 		kv := renderExpr(t, item.Key)
@@ -126,7 +130,7 @@ func renderObjectCons(t *testing.T, x *model.ObjectConsExpression) property.Valu
 	return property.New(obj)
 }
 
-func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) property.Value {
+func renderScopeTraversal(t require.TestingT, x *model.ScopeTraversalExpression) property.Value {
 	require.Len(t, x.Traversal, 1)
 
 	switch x.RootName {
@@ -139,7 +143,7 @@ func renderScopeTraversal(t *testing.T, x *model.ScopeTraversalExpression) prope
 	}
 }
 
-func renderTupleCons(t *testing.T, x *model.TupleConsExpression) property.Value {
+func renderTupleCons(t require.TestingT, x *model.TupleConsExpression) property.Value {
 	arr := make([]property.Value, len(x.Expressions))
 	for i, x := range x.Expressions {
 		arr[i] = renderExpr(t, x)
@@ -147,7 +151,7 @@ func renderTupleCons(t *testing.T, x *model.TupleConsExpression) property.Value 
 	return property.New(arr)
 }
 
-func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) property.Value {
+func renderFunctionCall(t require.TestingT, x *model.FunctionCallExpression) property.Value {
 	switch x.Name {
 	case "fileArchive":
 		require.Len(t, x.Args, 1)
@@ -172,7 +176,7 @@ func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) property.
 	}
 }
 
-func renderResource(t *testing.T, r *pcl.Resource) *resource.State {
+func renderResource(t require.TestingT, r *pcl.Resource) *resource.State {
 	inputs := map[string]property.Value{}
 	for _, attr := range r.Inputs {
 		inputs[attr.Name] = renderExpr(t, attr.Value)
@@ -313,7 +317,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 
 			importState := ImportState{
-				Names:    names,
+				Names:    maps.Clone(names),
 				Snapshot: snapshot,
 			}
 
@@ -352,7 +356,7 @@ func TestGenerateHCL2Definition(t *testing.T) {
 			}
 			assert.Equal(t, state.Protect, actualState.Protect)
 			if !assert.True(t, actualState.Inputs.DeepEquals(state.Inputs)) {
-				actual, err := stack.SerializeResource(context.Background(), actualState, config.NopEncrypter, false)
+				actual, err := stack.SerializeResource(t.Context(), actualState, config.NopEncrypter, false)
 				contract.IgnoreError(err)
 
 				sb, err := json.MarshalIndent(s, "", "    ")
@@ -522,7 +526,7 @@ func TestGenerateHCL2DefinitionsWithDependantResources(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -694,7 +698,7 @@ func TestGenerateHCL2DefinitionsWithDependantResourcesUsingNameOrArnProperty(t *
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -781,7 +785,7 @@ func TestGenerateHCL2DefinitionsWithAmbiguousReferencesMaintainsLiteralValue(t *
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -851,7 +855,7 @@ func TestGenerateHCL2DefinitionsDoesNotMakeSelfReferences(t *testing.T) {
 		states = append(states, state)
 	}
 
-	importState := createImportState(states, snapshot, names)
+	importState := createImportState(states, snapshot, maps.Clone(names))
 
 	var hcl2Text strings.Builder
 	for i, state := range states {
@@ -1108,6 +1112,33 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 		assert.True(t, valueStructurallyTypedAs(complexFittingValue, complexUnionOfObjects))
 	})
+}
+
+func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {
+	t.Parallel()
+
+	value := property.New(map[string]property.Value{
+		"__type": property.New("PermissionDescriptorGroup"),
+		"name":   property.New("root"),
+		"items": property.New([]property.Value{
+			property.New(map[string]property.Value{
+				"__type": property.New("PermissionDescriptorCondition"),
+				"name":   property.New("child"),
+			}),
+		}),
+	})
+
+	expr, err := generateValue(
+		&schema.MapType{ElementType: schema.AnyType},
+		value,
+		ImportState{},
+		func(string) {},
+	)
+	require.NoError(t, err)
+
+	formatted := fmt.Sprintf("%v", expr)
+	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorGroup"`)
+	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorCondition"`)
 }
 
 func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {

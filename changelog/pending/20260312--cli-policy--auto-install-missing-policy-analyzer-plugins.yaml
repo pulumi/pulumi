@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/policy
-  description: Auto-install missing policy analyzer plugins

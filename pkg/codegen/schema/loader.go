@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,12 @@ package schema
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/natefinch/atomic"
 
@@ -32,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -360,6 +365,33 @@ func (e *PackageReferenceVersionMismatchError) Error() string {
 	)
 }
 
+// schemaFilePath returns the path to the schema cache file for the given package descriptor.
+// Schemas are cached in ~/.pulumi/schemas/ with a filename encoding name, version, and
+// hashes of the download URL and parameterization so different sources remain distinct.
+func schemaFilePath(
+	name string,
+	version *semver.Version,
+	downloadURL string,
+	parameterization *ParameterizationDescriptor,
+) (string, error) {
+	fileName := name
+	if version != nil {
+		fileName += "-" + version.String()
+	}
+	if downloadURL != "" {
+		h := sha256.Sum256([]byte(downloadURL))
+		fileName += "-" + hex.EncodeToString(h[:6])
+	}
+	if parameterization != nil {
+		paramBytes, err := json.Marshal(parameterization)
+		contract.AssertNoErrorf(err, "ParameterizationDescriptor should be marshalable to JSON")
+		h := sha256.Sum256(paramBytes)
+		fileName += "-" + hex.EncodeToString(h[:6])
+	}
+	fileName += ".json"
+	return workspace.GetPulumiPath("schemas", fileName)
+}
+
 func pluginSpecFromPackageDescriptor(descriptor *PackageDescriptor) workspace.PluginDescriptor {
 	return workspace.PluginDescriptor{
 		Name:              descriptor.Name,
@@ -433,12 +465,28 @@ func (l *pluginLoader) loadSchemaBytes(
 		pluginVersion = pluginInfo.Version
 	}
 
-	canCache := pluginInfo.SchemaPath != "" && pluginVersion != nil && descriptor.Parameterization == nil
+	var schemaPath string
+	// Only cache versioned plugins
+	if pluginVersion != nil {
+		var pathErr error
+		schemaPath, pathErr = schemaFilePath(
+			descriptor.Name, pluginVersion, descriptor.DownloadURL, descriptor.Parameterization)
+		if pathErr != nil {
+			// Non-fatal: log and proceed without file caching.
+			schemaPath = ""
+		}
+	}
 
-	if canCache {
-		schemaBytes, ok := l.loadCachedSchemaBytes(descriptor.Name, pluginInfo.SchemaPath, pluginInfo.SchemaTime)
-		if ok {
-			return schemaBytes, nil, nil
+	if schemaPath != "" {
+		installTime := pluginInfo.InstallTime()
+		if installTime.IsZero() {
+			// Non-fatal: log and proceed without file caching.
+			logging.V(3).Infof("failed to get install time for plugin %s@%v: %v", descriptor.Name, pluginVersion, err)
+		} else {
+			schemaBytes, ok := l.loadCachedSchemaBytes(schemaPath, installTime)
+			if ok {
+				return schemaBytes, nil, nil
+			}
 		}
 	}
 
@@ -447,10 +495,15 @@ func (l *pluginLoader) loadSchemaBytes(
 		return nil, nil, fmt.Errorf("Error loading schema from plugin: %w", err)
 	}
 
-	if canCache {
-		err = atomic.WriteFile(pluginInfo.SchemaPath, bytes.NewReader(schemaBytes))
-		if err != nil {
-			return nil, nil, fmt.Errorf("Error writing schema from plugin to cache: %w", err)
+	if schemaPath != "" {
+		if mkdirErr := os.MkdirAll(filepath.Dir(schemaPath), 0o700); mkdirErr == nil {
+			if writeErr := atomic.WriteFile(schemaPath, bytes.NewReader(schemaBytes)); writeErr != nil {
+				// Cache writes are best-effort. On Windows, os.Rename (used internally
+				// by atomic.WriteFile) fails with "Access Denied" when a concurrent
+				// loader has already written and memory-mapped the same file. The
+				// schema bytes are still valid — we just lost the race to cache them.
+				logging.V(3).Infof("failed to cache schema at %s: %v", schemaPath, writeErr)
+			}
 		}
 	}
 

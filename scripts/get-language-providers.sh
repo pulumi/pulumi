@@ -35,27 +35,35 @@ retry_with_backoff() {
 }
 
 download_release() {
-  local lang="$1"
-  local tag="$2"
-  local filename="$3"
+  local owner="$1"
+  local lang="$2"
+  local tag="$3"
+  local filename="$4"
 
   if "${USE_GH}"; then
-    retry_with_backoff gh release download "${tag}" --repo "pulumi/pulumi-${lang}" -p "${filename}"
+    retry_with_backoff gh release download "${tag}" --repo "${owner}/pulumi-${lang}" -p "${filename}"
   else
-    curl -OL --fail --retry 3 "https://github.com/pulumi/pulumi-${lang}/releases/download/${tag}/${filename}"
+    curl -OL --fail --retry 3 "https://github.com/${owner}/pulumi-${lang}/releases/download/${tag}/${filename}"
   fi
 }
 
+# Each entry is "lang tag [owner]". The owner defaults to "pulumi" when omitted.
 LANGUAGES=(
-  "dotnet v3.102.0"
-  "java v1.21.3"
-  "yaml v1.30.1"
+  # renovate: datasource=github-releases depName=pulumi/pulumi-dotnet
+  "dotnet v3.106.0"
+  # renovate: datasource=github-releases depName=pulumi/pulumi-java
+  "java v1.26.1"
+  # renovate: datasource=github-releases depName=pulumi/pulumi-yaml
+  "yaml v1.33.1"
+  # renovate: datasource=github-releases depName=pulumi-labs/pulumi-hcl
+  "hcl v0.2.0 pulumi-labs"
 )
 
 for i in "${LANGUAGES[@]}"; do
   set -- $i # treat strings in loop as args
   PULUMI_LANG="$1"
   TAG="$2"
+  PULUMI_OWNER="${3:-pulumi}"
 
   LANG_DIST="$(pwd)/bin"
   mkdir -p "${LANG_DIST}"
@@ -93,7 +101,7 @@ for i in "${LANGUAGES[@]}"; do
 
         mkdir -p "${OUTDIR}"
 
-        download_release "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.tar.gz"
+        download_release "${PULUMI_OWNER}" "${PULUMI_LANG}" "${TAG}" "${ARCHIVE}.tar.gz"
         tar -xzvf "${ARCHIVE}.tar.gz" -C "${OUTDIR}" "pulumi-language-${PULUMI_LANG}${DIST_EXT}"
       done
     done

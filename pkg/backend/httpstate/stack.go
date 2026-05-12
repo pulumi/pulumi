@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -127,7 +127,7 @@ func newStack(ctx context.Context, apistack apitype.Stack, b *cloudBackend) (Sta
 	stackName, err := tokens.ParseStackName(apistack.StackName.String())
 	contract.AssertNoErrorf(err, "unexpected invalid stack name: %v", apistack.StackName)
 
-	defaultOrg, err := backend.GetDefaultOrg(ctx, b, b.currentProject)
+	defaultOrg, err := b.defaultOrg.Result(ctx)
 	if err != nil {
 		return &cloudStack{}, fmt.Errorf("unable to lookup default org: %w", err)
 	}

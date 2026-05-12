@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"unicode"
 
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
@@ -441,9 +440,10 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	// Install dependencies.
 	if !args.generateOnly {
+		registry := cmdCmd.NewDefaultRegistry(
+			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 		if err := InstallPackagesFromProject(ctx, proj, root,
-			cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global()),
-			-1, false, os.Stderr, os.Stderr, env.Global()); err != nil {
+			registry, -1, false, os.Stderr, os.Stderr, env.Global()); err != nil {
 			return err
 		}
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
@@ -868,7 +868,7 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 		}
 
 		// Surround the path with double quotes if it contains whitespace.
-		if containsWhiteSpace(cd) {
+		if ui.ContainsWhiteSpace(cd) {
 			cd = fmt.Sprintf("\"%s\"", cd)
 		}
 
@@ -912,16 +912,6 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	upMsg := colors.Highlight("Then, run `pulumi up`", "pulumi up", colors.BrightBlue+colors.Bold)
 	fmt.Println(opts.Color.Colorize(upMsg))
 	fmt.Println()
-}
-
-// containsWhiteSpace returns true if the string contains whitespace.
-func containsWhiteSpace(value string) bool {
-	for _, c := range value {
-		if unicode.IsSpace(c) {
-			return true
-		}
-	}
-	return false
 }
 
 // compareStackProjectName takes a stack name and a project name and returns an error if they are not the same.

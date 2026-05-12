@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema.json",
+    "$id": "https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/pulumi.json",
     "title": "Pulumi Package Metaschema",
     "description": "A description of the schema for a Pulumi Package",
     "type": "object",
@@ -594,6 +594,10 @@
                 },
                 "stateInputs": {
                     "description": "An optional objectTypeSpec that describes additional inputs that may be necessary to get an existing resource. If this is unset, only an ID is necessary.",
+                    "$ref": "#/$defs/objectTypeSpec"
+                },
+                "listInputs": {
+                    "description": "An optional objectTypeSpec that describes inputs that may be supplied when listing existing resources of this type. If this is unset, the resource does not declare list support in the schema.",
                     "$ref": "#/$defs/objectTypeSpec"
                 },
                 "aliases": {

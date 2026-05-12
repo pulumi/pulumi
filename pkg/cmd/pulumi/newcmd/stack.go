@@ -113,7 +113,7 @@ func buildStackName(ctx context.Context, b backend.Backend, stackName string) (s
 
 	// We never have a project at the point of calling buildStackName (only called from new), so we just pass
 	// nil for the project and only check the global settings.
-	defaultOrg, err := backend.GetDefaultOrg(ctx, b, nil)
+	defaultOrg, err := b.GetDefaultOrg(ctx)
 	if err != nil {
 		return "", err
 	}

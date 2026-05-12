@@ -226,6 +226,23 @@
                 }
             },
             "required": ["4dabf18193072939515e22adb298388d", "urn"]
+        },
+        {
+            "title": "Float property values",
+            "description": "Serialized representation of NaN and Inf float64 values, which cannot be represented directly in JSON.",
+            "type": "object",
+            "properties": {
+                "4dabf18193072939515e22adb298388d": {
+                    "description": "Float signature",
+                    "const": "8ad145fe-0d11-4827-bfd7-1abcbf086f5c"
+                },
+                "value": {
+                    "description": "The IEEE 754 representation of the float value, encoded as a 16-character hexadecimal string.",
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{16}$"
+                }
+            },
+            "required": ["4dabf18193072939515e22adb298388d", "value"]
         }
     ]
 }

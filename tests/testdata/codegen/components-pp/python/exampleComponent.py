@@ -40,7 +40,7 @@ class ExampleComponent(pulumi.ComponentResource):
             opts = pulumi.ResourceOptions(parent=self))
 
         # Example of iterating a list of objects
-        server_passwords = []
+        server_passwords: list[Any] = []
         for range in [{"value": i} for i in range(0, len(args["servers"]))]:
             server_passwords.append(random.RandomPassword(f"{name}-serverPasswords-{range['value']}",
                 length=16,
@@ -49,8 +49,8 @@ class ExampleComponent(pulumi.ComponentResource):
                 opts = pulumi.ResourceOptions(parent=self)))
 
         # Example of iterating a map of objects
-        zone_passwords = []
-        for range in [{"key": k, "value": v} for [k, v] in (args["deploymentZones"]).items()]:
+        zone_passwords: list[Any] = []
+        for range in [{"key": k, "value": v} for [k, v] in sorted((args["deploymentZones"]).items())]:
             zone_passwords.append(random.RandomPassword(f"{name}-zonePasswords-{range['key']}",
                 length=16,
                 special=True,

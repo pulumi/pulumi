@@ -1,0 +1,16 @@
+{
+	"name": "l2-resource-optional",
+	"main": "index.ts",
+	"type": "module",
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@pulumi/pulumi": "ROOT/artifacts/pulumi-pulumi-CORE.VERSION.tgz",
+		"@pulumi/optionalprimitive": "ROOT/artifacts/pulumi-optionalprimitive-34.0.0.tgz",
+		"@pulumi/primitive": "ROOT/artifacts/pulumi-primitive-7.0.0.tgz"
+	}
+}

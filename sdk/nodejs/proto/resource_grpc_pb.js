@@ -1,7 +1,7 @@
 // GENERATED CODE -- DO NOT EDIT!
 
 // Original file comments:
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -56,6 +56,17 @@ function serialize_pulumirpc_Callback(arg) {
 
 function deserialize_pulumirpc_Callback(buffer_arg) {
   return pulumi_callback_pb.Callback.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_DeploymentInfo(arg) {
+  if (!(arg instanceof pulumi_resource_pb.DeploymentInfo)) {
+    throw new Error('Expected argument of type pulumirpc.DeploymentInfo');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_DeploymentInfo(buffer_arg) {
+  return pulumi_resource_pb.DeploymentInfo.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_pulumirpc_InvokeResponse(arg) {
@@ -215,6 +226,26 @@ function deserialize_pulumirpc_SupportsFeatureResponse(buffer_arg) {
 
 // ResourceMonitor is the interface a source uses to talk back to the planning monitor orchestrating the execution.
 var ResourceMonitorService = exports.ResourceMonitorService = {
+  // GetDeploymentInfo returns the execution context associated with this monitor instance.
+//
+// This is an additive API intended to reduce duplicated state passed through
+// environment variables and per-request protobuf fields. New clients should
+// prefer this over piecemeal feature probing via SupportsFeature.
+//
+// Backward compatibility:
+// - Older monitors may not implement this RPC and will return UNIMPLEMENTED.
+// - Clients should fall back to existing request fields/env vars/SupportsFeature.
+getDeploymentInfo: {
+    path: '/pulumirpc.ResourceMonitor/GetDeploymentInfo',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: pulumi_resource_pb.DeploymentInfo,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_pulumirpc_DeploymentInfo,
+    responseDeserialize: deserialize_pulumirpc_DeploymentInfo,
+  },
   supportsFeature: {
     path: '/pulumirpc.ResourceMonitor/SupportsFeature',
     requestStream: false,

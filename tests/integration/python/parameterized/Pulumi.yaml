@@ -1,5 +1,5 @@
-name: parameterized 
+name: parameterized
 runtime:
   name: python
   options:
-    virtualenv: venv
+    toolchain: uv

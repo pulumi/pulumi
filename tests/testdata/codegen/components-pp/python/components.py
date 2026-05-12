@@ -2,9 +2,10 @@ import pulumi
 from another_component import AnotherComponent
 from exampleComponent import ExampleComponent
 from simpleComponent import SimpleComponent
+from typing import Any
 
 simple_component = SimpleComponent("simpleComponent")
-multiple_simple_components = []
+multiple_simple_components: list[Any] = []
 for range in [{"value": i} for i in range(0, 10)]:
     multiple_simple_components.append(SimpleComponent(f"multipleSimpleComponents-{range['value']}"))
 another_component = AnotherComponent("anotherComponent")

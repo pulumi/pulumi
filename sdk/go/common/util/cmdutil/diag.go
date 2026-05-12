@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var (
@@ -92,10 +91,4 @@ func Diag() diag.Sink {
 		})
 	}
 	return snk
-}
-
-// InitDiag forces initialization of the diagnostics sink with the given options.
-func InitDiag(opts diag.FormatOptions) {
-	contract.Assertf(snk == nil, "Cannot initialize diagnostics sink more than once")
-	snk = diag.DefaultSink(os.Stderr, os.Stderr, opts)
 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -66,7 +68,7 @@ func applyEdits(before, deltas json.RawMessage) (json.RawMessage, error) {
 func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	stackID := client.StackIdentifier{
 		Owner:   "owner",
@@ -199,8 +201,10 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 		})
 	}
 
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
 	initPersister := func() *cloudSnapshotPersister {
-		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		backendGeneric, err := New(ctx, sink, server.URL, nil, false)
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
@@ -568,7 +572,7 @@ func TestCloudSnapshotPersisterDeploymentSchemaVersion(t *testing.T) {
 func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	expectationsFile := "testdata/snapshot_test.json"
 	expectations := map[string]string{}
@@ -712,9 +716,11 @@ func TestCloudSnapshotPersisterUseOfDiffProtocol(t *testing.T) {
 		})
 	}
 
+	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+
 	initPersister := func() *cloudSnapshotPersister {
 		server := newMockServer()
-		backendGeneric, err := New(ctx, nil, server.URL, nil, false)
+		backendGeneric, err := New(ctx, sink, server.URL, nil, false)
 		require.NoError(t, err)
 		backend := backendGeneric.(*cloudBackend)
 		persister := backend.newSnapshotPersister(ctx, client.UpdateIdentifier{
@@ -867,7 +873,7 @@ func (tsf tokenSourceFn) GetToken(_ context.Context) (string, error) {
 
 func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloadBytes int) []*apitype.DeploymentV3 {
 	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		ctx, err := pulumi.NewContext(context.Background(), pulumi.RunInfo{
+		ctx, err := pulumi.NewContext(t.Context(), pulumi.RunInfo{
 			Project:     info.Project,
 			Stack:       info.Stack,
 			Parallel:    info.Parallel,
@@ -927,7 +933,7 @@ func generateSnapshots(t testing.TB, r *rand.Rand, resourceCount, resourcePayloa
 	for i := range journalEntries {
 		snap, err := journalEntries[:i].Snap(nil)
 		require.NoError(t, err)
-		deployment, err := stack.SerializeDeployment(context.Background(), snap, true)
+		deployment, err := stack.SerializeDeployment(t.Context(), snap, true)
 		require.NoError(t, err)
 		snaps[i] = deployment
 	}
@@ -959,7 +965,7 @@ func testMarshalDeployment(t *testing.T, snaps []*apitype.DeploymentV3) {
 func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dds := newDeploymentDiffState(0)
 	for _, s := range snaps {
@@ -978,7 +984,7 @@ func testDiffStack(t *testing.T, snaps []*apitype.DeploymentV3) {
 }
 
 func benchmarkDiffStack(b *testing.B, snaps []*apitype.DeploymentV3) {
-	ctx := context.Background()
+	ctx := b.Context()
 	for i := 0; i < b.N; i++ {
 		wireSize, verbatimSize, diffs, verbatims := 0, 0, 0, 0
 		dds := newDeploymentDiffState(0)

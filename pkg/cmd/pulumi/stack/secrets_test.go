@@ -69,6 +69,9 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -78,9 +81,9 @@ func TestStackSecretsManagerLoaderDecrypterFallsBack(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	decrypter, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	decrypter, state, err := ssml.GetDecrypter(t.Context(), s, ps)
 	require.NoError(t, err)
-	plaintext, err := decrypter.DecryptValue(context.Background(), "test")
+	plaintext, err := decrypter.DecryptValue(t.Context(), "test")
 
 	// Assert.
 	//
@@ -107,6 +110,9 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -116,7 +122,7 @@ func TestStackSecretsManagerLoaderDecrypterUpdatesConfig(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetDecrypter(t.Context(), s, ps)
 
 	// Assert.
 	require.NoError(t, err)
@@ -139,6 +145,9 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
@@ -151,9 +160,9 @@ func TestStackSecretsManagerLoaderDecrypterUsesDefaultSecretsManager(t *testing.
 	ssml := SecretsManagerLoader{FallbackToState: false}
 
 	// Act.
-	decrypter, state, err := ssml.GetDecrypter(context.Background(), s, ps)
+	decrypter, state, err := ssml.GetDecrypter(t.Context(), s, ps)
 	require.NoError(t, err)
-	plaintext, err := decrypter.DecryptValue(context.Background(), "test")
+	plaintext, err := decrypter.DecryptValue(t.Context(), "test")
 
 	// Assert.
 	require.NoError(t, err)
@@ -177,6 +186,9 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -186,9 +198,9 @@ func TestStackSecretsManagerLoaderEncrypterFallsBack(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	encrypter, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	encrypter, state, err := ssml.GetEncrypter(t.Context(), s, ps)
 	require.NoError(t, err)
-	ciphertext, err := encrypter.EncryptValue(context.Background(), "test")
+	ciphertext, err := encrypter.EncryptValue(t.Context(), "test")
 
 	// Assert.
 	//
@@ -215,6 +227,9 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	snap := &deploy.Snapshot{SecretsManager: sm}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		SnapshotF: func(context.Context, secrets.Provider) (*deploy.Snapshot, error) {
 			return snap, nil
 		},
@@ -224,7 +239,7 @@ func TestStackSecretsManagerLoaderEncrypterUpdatesConfig(t *testing.T) {
 	ssml := SecretsManagerLoader{FallbackToState: true}
 
 	// Act.
-	_, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	_, state, err := ssml.GetEncrypter(t.Context(), s, ps)
 
 	// Assert.
 	require.NoError(t, err)
@@ -247,6 +262,9 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	}
 
 	s := &backend.MockStack{
+		RefF: func() backend.StackReference {
+			return &backend.MockStackReference{FullyQualifiedNameV: "org/project/stack"}
+		},
 		DefaultSecretManagerF: func(_ context.Context, info *workspace.ProjectStack) (secrets.Manager, error) {
 			return sm, nil
 		},
@@ -259,9 +277,9 @@ func TestStackSecretsManagerLoaderEncrypterUsesDefaultSecretsManager(t *testing.
 	ssml := SecretsManagerLoader{FallbackToState: false}
 
 	// Act.
-	encrypter, state, err := ssml.GetEncrypter(context.Background(), s, ps)
+	encrypter, state, err := ssml.GetEncrypter(t.Context(), s, ps)
 	require.NoError(t, err)
-	ciphertext, err := encrypter.EncryptValue(context.Background(), "test")
+	ciphertext, err := encrypter.EncryptValue(t.Context(), "test")
 
 	// Assert.
 	require.NoError(t, err)

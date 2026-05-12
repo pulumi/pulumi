@@ -62,11 +62,11 @@
                   "plain": "map[string]string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>}> | undefined",
+                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>} | undefined>",
                   "plain": "{[key: string]: string} | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]",
+                  "input": "pulumi.Input[Optional[Mapping[str, pulumi.Input[_builtins.str]]]]",
                   "plain": "Optional[Mapping[str, _builtins.str]]"
                 }
               }
@@ -118,11 +118,11 @@
                   "plain": "pulumi.Archive"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<pulumi.asset.Archive> | undefined",
+                  "input": "pulumi.Input<pulumi.asset.Archive | undefined>",
                   "plain": "pulumi.asset.Archive | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[pulumi.Archive]]",
+                  "input": "pulumi.Input[Optional[pulumi.Archive]]",
                   "plain": "Optional[pulumi.Archive]"
                 }
               }
@@ -143,11 +143,11 @@
                   "plain": "pulumi.AssetOrArchive"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive> | undefined",
+                  "input": "pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive | undefined>",
                   "plain": "pulumi.asset.Asset | pulumi.asset.Archive | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]",
+                  "input": "pulumi.Input[Optional[Union[pulumi.Asset, pulumi.Archive]]]",
                   "plain": "Optional[Union[pulumi.Asset, pulumi.Archive]]"
                 }
               }
@@ -168,11 +168,11 @@
                   "plain": "*bool"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<boolean> | undefined",
+                  "input": "pulumi.Input<boolean | undefined>",
                   "plain": "boolean | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[_builtins.bool]]",
+                  "input": "pulumi.Input[Optional[_builtins.bool]]",
                   "plain": "Optional[_builtins.bool]"
                 }
               }
@@ -193,11 +193,11 @@
                   "plain": "*int"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<number> | undefined",
+                  "input": "pulumi.Input<number | undefined>",
                   "plain": "number | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[_builtins.int]]",
+                  "input": "pulumi.Input[Optional[_builtins.int]]",
                   "plain": "Optional[_builtins.int]"
                 }
               }
@@ -243,11 +243,11 @@
                   "plain": "*float64"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<number> | undefined",
+                  "input": "pulumi.Input<number | undefined>",
                   "plain": "number | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[_builtins.float]]",
+                  "input": "pulumi.Input[Optional[_builtins.float]]",
                   "plain": "Optional[_builtins.float]"
                 }
               }
@@ -468,11 +468,11 @@
                   "plain": "*string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<string> | undefined",
+                  "input": "pulumi.Input<string | undefined>",
                   "plain": "string | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[_builtins.str]]",
+                  "input": "pulumi.Input[Optional[_builtins.str]]",
                   "plain": "Optional[_builtins.str]"
                 }
               }
@@ -512,11 +512,11 @@
                   "plain": "map[string]string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>}> | undefined",
+                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>} | undefined>",
                   "plain": "{[key: string]: string} | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[_builtins.str]]]]",
+                  "input": "pulumi.Input[Optional[Mapping[str, pulumi.Input[_builtins.str]]]]",
                   "plain": "Optional[Mapping[str, _builtins.str]]"
                 }
               }
@@ -553,7 +553,7 @@
                   "plain": "interface{}"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<outputs.ObjectArgs | any[]> | undefined",
+                  "input": "pulumi.Input<outputs.ObjectArgs | any[] | undefined>",
                   "plain": "outputs.Object | any[] | undefined"
                 },
                 "python": {

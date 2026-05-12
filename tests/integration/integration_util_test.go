@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -107,7 +107,7 @@ func testComponentProviderSchema(t *testing.T, path string) {
 			client := pulumirpc.NewResourceProviderClient(conn)
 
 			// Call GetSchema and verify the results.
-			resp, err := client.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{Version: test.version})
+			resp, err := client.GetSchema(t.Context(), &pulumirpc.GetSchemaRequest{Version: test.version})
 			if test.expectedError != "" {
 				assert.ErrorContains(t, err, test.expectedError)
 			} else {
@@ -222,7 +222,7 @@ func runComponentSetup(t *testing.T, testDir string) {
 }
 
 func synchronouslyDo(t testing.TB, lockfile string, timeout time.Duration, fn func()) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	lockWait := make(chan struct{})
@@ -509,65 +509,6 @@ func testConstructProviderExplicit(t *testing.T, lang string, dependencies []str
 			assert.Equal(t, "hello world", stackInfo.Outputs["nestedMessage"])
 		},
 	})
-}
-
-func testConstructComponentConfigureProviderCommonOptions() integration.ProgramTestOptions {
-	const testDir = "construct_component_configure_provider"
-	localProvider := integration.LocalDependency{
-		Package: "metaprovider", Path: filepath.Join(testDir, "testcomponent-go"),
-	}
-	return integration.ProgramTestOptions{
-		NoParallel: true,
-		Config: map[string]string{
-			"proxy": "FromEnv",
-		},
-		LocalProviders:           []integration.LocalDependency{localProvider},
-		Quick:                    false, // intentional, need to test preview here
-		AllowEmptyPreviewChanges: true,  // Pulumi will warn that provider has unknowns in its config
-		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
-			assert.Contains(t, stackInfo.Outputs, "keyAlgo")
-			assert.Equal(t, "ECDSA", stackInfo.Outputs["keyAlgo"])
-			assert.Contains(t, stackInfo.Outputs, "keyAlgo2")
-			assert.Equal(t, "ECDSA", stackInfo.Outputs["keyAlgo2"])
-
-			var providerURNID string
-			for _, r := range stackInfo.Deployment.Resources {
-				if strings.Contains(string(r.URN), "PrivateKey") {
-					providerURNID = r.Provider
-				}
-			}
-			require.NotEmptyf(t, providerURNID, "Did not find the provider of PrivateKey resource")
-			var providerFromEnvSetting *bool
-			for _, r := range stackInfo.Deployment.Resources {
-				if fmt.Sprintf("%s::%s", r.URN, r.ID) == providerURNID {
-					providerFromEnvSetting = new(bool)
-
-					proxy, ok := r.Inputs["proxy"]
-					require.Truef(t, ok, "expected %q Inputs to contain 'proxy'", providerURNID)
-
-					proxyMap, ok := proxy.(map[string]any)
-					require.Truef(t, ok, "expected %q Inputs 'proxy' to be of type map[string]any", providerURNID)
-
-					fromEnv, ok := proxyMap["fromEnv"]
-					require.Truef(t, ok, "expected %q Inputs 'proxy' to contain 'fromEnv'", providerURNID)
-
-					fromEnvB, ok := fromEnv.(bool)
-					require.Truef(t, ok, "expected %q Inputs 'proxy.fromEnv' to have type bool", providerURNID)
-
-					*providerFromEnvSetting = fromEnvB
-				}
-			}
-			require.NotNilf(t, providerFromEnvSetting,
-				"Did not find the inputs of the provider PrivateKey was provisioned with")
-			require.Truef(t, *providerFromEnvSetting,
-				"Expected PrivateKey to be provisioned with a provider with fromEnv=true")
-
-			require.Equalf(t, float64(42), stackInfo.Outputs["meaningOfLife"],
-				"Expected meaningOfLife output to be set to the integer 42")
-			require.Equalf(t, float64(42), stackInfo.Outputs["meaningOfLife2"],
-				"Expected meaningOfLife2 output to be set to the integer 42")
-		},
-	}
 }
 
 // Test failures returned from construct.

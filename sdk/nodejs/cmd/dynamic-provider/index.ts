@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -296,6 +296,13 @@ class ResourceProviderService implements provrpc.IResourceProviderServer {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }
+    }
+
+    list(call: grpc.ServerWritableStream<provproto.ListRequest, provproto.ListResponse>): void {
+        call.emit("error", {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "List is not implemented by the dynamic provider",
+        });
     }
 
     async update(call: any, callback: any): Promise<void> {

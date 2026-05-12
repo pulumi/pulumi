@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -173,7 +173,7 @@ func TestWorkerPool_randomActions(t *testing.T) {
 
 		// Runs a random sequence of actions from the
 		// map of actions.
-		t.Run(map[string]func(*rapid.T){
+		t.Repeat(map[string]func(*rapid.T){
 			"enqueue": func(t *rapid.T) {
 				pending.Add(1)
 

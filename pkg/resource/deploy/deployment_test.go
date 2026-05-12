@@ -1,4 +1,4 @@
-// Copyright 2018-2024, Pulumi Corporation.
+// Copyright 2018, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ func TestPendingOperationsDeployment(t *testing.T) {
 		},
 	})
 
-	_, err := NewDeployment(&plugin.Context{}, &Options{}, nil, &Target{}, snap, nil, NewNullSource("test"), nil, nil, nil)
+	_, err := NewDeployment(&plugin.Context{}, &Options{}, nil, &Target{}, snap, nil, NewNullSource("test"), nil, nil)
 	require.NoError(t, err)
 }
 

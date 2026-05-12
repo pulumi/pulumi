@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/sdk/v3
 
-go 1.25.6
+go 1.25.8
 
 replace golang.org/x/text => golang.org/x/text v0.3.8
 
@@ -11,7 +11,6 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cheggaaa/pb v1.0.29
 	github.com/djherbis/times v1.5.0
-	github.com/golang/glog v1.2.5
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/go-ps v1.0.0
@@ -29,11 +28,11 @@ require (
 	golang.org/x/crypto v0.48.0
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.51.0
-	golang.org/x/sys v0.41.0
-	google.golang.org/grpc v1.79.1
+	golang.org/x/sys v0.42.0
+	google.golang.org/grpc v1.80.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
-	pgregory.net/rapid v0.6.1
+	pgregory.net/rapid v1.2.0
 )
 
 require (
@@ -42,8 +41,9 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/git-pkgs/manifests v0.4.1
-	github.com/go-git/go-git/v5 v5.16.5
+	github.com/go-git/go-git/v5 v5.18.0
 	github.com/go-test/deep v1.1.1
+	github.com/golang/glog v1.2.5
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.22.0
 	github.com/iancoleman/strcase v0.2.0
@@ -55,10 +55,10 @@ require (
 	github.com/pulumi/esc v0.17.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	go.opentelemetry.io/collector/pdata v1.53.0
-	go.opentelemetry.io/otel v1.41.0
+	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.41.0
-	go.opentelemetry.io/otel/sdk v1.41.0
-	go.opentelemetry.io/otel/trace v1.41.0
+	go.opentelemetry.io/otel/sdk v1.43.0
+	go.opentelemetry.io/otel/trace v1.43.0
 	go.opentelemetry.io/proto/otlp v1.9.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/term v0.40.0
@@ -88,11 +88,11 @@ require (
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fatih/color v1.16.0 // indirect
-	github.com/git-pkgs/packageurl-go v0.2.1 // indirect
-	github.com/git-pkgs/purl v0.1.8 // indirect
-	github.com/git-pkgs/vers v0.2.2 // indirect
+	github.com/git-pkgs/packageurl-go v0.3.1 // indirect
+	github.com/git-pkgs/purl v0.1.10 // indirect
+	github.com/git-pkgs/vers v0.2.4 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
-	github.com/go-git/go-billy/v5 v5.6.2 // indirect
+	github.com/go-git/go-billy/v5 v5.8.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
@@ -109,7 +109,7 @@ require (
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
-	github.com/pgavlin/fx/v2 v2.0.10 // indirect
+	github.com/pgavlin/fx/v2 v2.0.12 // indirect
 	github.com/pjbgf/sha1cd v0.3.2 // indirect
 	github.com/quasilyte/go-ruleguard/dsl v0.3.23 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
@@ -118,7 +118,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/collector/featuregate v1.53.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.41.0 // indirect
-	go.opentelemetry.io/otel/metric v1.41.0 // indirect
+	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/tools v0.41.0 // indirect

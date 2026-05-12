@@ -63,6 +63,6 @@ export class Res extends pulumi.CustomResource {
  * The set of arguments for constructing a Res resource.
  */
 export interface ResArgs {
-    intEnum?: pulumi.Input<enums.mod.IntEnum>;
-    stringEnum?: pulumi.Input<enums.mod.StringEnum>;
+    intEnum?: pulumi.Input<enums.mod.IntEnum | undefined>;
+    stringEnum?: pulumi.Input<enums.mod.StringEnum | undefined>;
 }

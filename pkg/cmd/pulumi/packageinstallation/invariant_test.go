@@ -104,13 +104,14 @@ type invariantWorkspace struct {
 type invariantWorkDir struct{ linked []string }
 
 type invariantPlugin struct {
-	d               workspace.PluginDescriptor
-	downloaded      bool
-	installed       bool
-	pathVisible     bool
-	hasBinary       bool
-	projectDetected bool
-	project         *workspace.PluginProject
+	d                workspace.PluginDescriptor
+	downloaded       bool
+	installed        bool
+	pathVisible      bool
+	hasBinary        bool
+	projectDetected  bool
+	project          *workspace.PluginProject
+	requiredPackages []workspace.PackageDescriptor
 
 	linked []string
 }
@@ -296,6 +297,10 @@ func (w invariantWorkspace) GetStoredCredentials() (workspace.Credentials, error
 	return workspace.Credentials{}, nil
 }
 
+func (w invariantWorkspace) GetPlugins(context.Context) ([]workspace.PluginInfo, error) {
+	return nil, nil
+}
+
 func (w invariantWorkspace) GenerateLocalSDK(
 	ctx context.Context,
 	project *workspace.ProjectRuntimeInfo, projectDir string,
@@ -345,6 +350,21 @@ func (w invariantWorkspace) LinkIntoProject(
 		*links = slices.Insert(*links, pos, descriptor.Path)
 	}
 	return nil
+}
+
+func (w invariantWorkspace) GetRequiredPackages(
+	ctx context.Context, dirPath string, project *workspace.PluginProject,
+) ([]workspace.PackageDescriptor, error) {
+	dirPath = filepath.ToSlash(dirPath)
+	pl, ok := w.plugins[dirPath]
+	if !ok || !pl.pathVisible {
+		assert.Failf(w.t, "", "GetRequiredPackages(%q) called on non-visible plugin", dirPath)
+		return nil, assert.AnError
+	}
+	if pl.requiredPackages == nil {
+		return nil, nil
+	}
+	return pl.requiredPackages, nil
 }
 
 func (w invariantWorkspace) RunPackage(

@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -88,7 +88,10 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 		} else if opts.SkipInternalKeys && resource.IsInternalPropertyKey(key) {
 			logging.V(9).Infof("Skipping internal property for RPC[%s]: %s (as requested)", opts.Label, key)
 		} else {
-			m, err := MarshalPropertyValue(key, v, opts)
+			// Only skip top level internal keys
+			copts := opts
+			copts.SkipInternalKeys = false
+			m, err := MarshalPropertyValue(key, v, copts)
 			if err != nil {
 				return nil, err
 			} else if m != nil {
@@ -300,7 +303,10 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) (resource.
 	// And now unmarshal every field it into the map.
 	for _, key := range keys {
 		pk := resource.PropertyKey(key)
-		v, err := UnmarshalPropertyValue(pk, props.Fields[key], opts)
+		// Only skip top level internal keys.
+		copts := opts
+		copts.SkipInternalKeys = false
+		v, err := UnmarshalPropertyValue(pk, props.Fields[key], copts)
 		if err != nil {
 			return nil, err
 		} else if v != nil {

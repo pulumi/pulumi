@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,16 +13,17 @@
 // limitations under the License.
 
 // The tsnode import is used for type-checking only. Do not reference it in the emitted code.
-import * as tsnode from "ts-node";
 import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
-import * as tsutils from "../../tsutils";
+import * as semver from "semver";
+import * as tsnode from "ts-node";
 import { ResourceError, RunError } from "../../errors";
-import { defaultErrorMessage } from "../run/error";
 import * as log from "../../log";
+import { readPackageManifest } from "../../runtime/manifest";
 import * as settings from "../../runtime/settings";
-import * as stack from "../../runtime/stack";
+import * as tsutils from "../../tsutils";
+import { defaultErrorMessage } from "../run/error";
 
 // Keep track if we already logged the information about an unhandled error to the user..  If
 // so, we end with a different exit code.  The language host recognizes this and will not print
@@ -37,7 +38,7 @@ const nodeJSProcessExitedAfterLoggingUserActionableMessage = 32;
  * Attempts to provide a detailed error message for module load failure if the
  * module that failed to load is the top-level module.
  * @param program The name of the program given to `run`, i.e. the top level module
- * @param error The error that occured. Must be a module load error.
+ * @param error The error that occurred. Must be a module load error.
  */
 function reportModuleLoadFailure(program: string, error: Error): never {
     throwOrPrintModuleLoadError(program, error);
@@ -88,10 +89,9 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 
     let packageObject: Record<string, any>;
     try {
-        const packageJson = path.join(projectRoot, "package.json");
-        packageObject = require(packageJson);
+        packageObject = readPackageManifest(projectRoot).data;
     } catch {
-        // This is all best-effort so if we can't load the package.json file, that's
+        // This is all best-effort so if we can't load the package manifest, that's
         // fine.
         return;
     }
@@ -144,7 +144,6 @@ export interface RunOpts {
     argv: minimist.ParsedArgs;
     programStarted: () => void;
     reportLoggedError: (err: Error) => void;
-    runInStack: boolean;
     typeScript: boolean;
 }
 
@@ -169,14 +168,18 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
         const skipProject = !fs.existsSync(tsConfigPath);
         const compilerOptions: object = tsutils.loadTypeScriptCompilerOptions(tsConfigPath);
         const tsn: typeof tsnode = require(tsnodeRequire);
+        const ts = require(typescriptRequire);
+        const tsVersion = semver.parse(ts.version);
+        // Use nodenext for TS >= 4.7, fall back to commonjs/node for older versions (e.g. vendored TS 3.8.3).
+        const useNodeNext = tsVersion && tsVersion.compare(new semver.SemVer("4.7.0")) >= 0;
         tsn.register({
             typeCheck: true,
             skipProject: skipProject,
             compiler: typescriptRequire,
             compilerOptions: {
                 target: "ES2020", // TypeScript 3.8 supports this
-                module: "commonjs",
-                moduleResolution: "node",
+                module: useNodeNext ? "nodenext" : "commonjs",
+                moduleResolution: useNodeNext ? "nodenext" : "node",
                 sourceMap: "true",
                 ...compilerOptions,
             },
@@ -290,5 +293,5 @@ ${errMsg}`,
         }
     };
 
-    return opts.runInStack ? stack.runInPulumiStack(runProgram) : runProgram();
+    return runProgram();
 }

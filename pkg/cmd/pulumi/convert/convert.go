@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
@@ -35,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
@@ -57,7 +59,7 @@ import (
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 )
 
-func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
+func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.Command {
 	var outDir string
 	var from string
 	var language string
@@ -95,6 +97,7 @@ func NewConvertCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 			return runConvert(
 				cmd.Context(),
+				lm,
 				ws,
 				env.Global(),
 				args,
@@ -180,6 +183,7 @@ type projectGeneratorFunction func(
 
 func runConvert(
 	ctx context.Context,
+	lm cmdBackend.LoginManager,
 	ws pkgWorkspace.Context,
 	e env.Env,
 	args []string,
@@ -220,13 +224,7 @@ func runConvert(
 		from = "yaml"
 	}
 
-	// Translate well known languages to runtimes
-	switch language {
-	case "csharp", "c#":
-		language = "dotnet"
-	case "typescript":
-		language = "nodejs"
-	}
+	language = cmdCmd.NormalizeRuntimeName(language)
 
 	var projectGenerator projectGeneratorFunction
 	switch language {
@@ -308,7 +306,7 @@ func runConvert(
 				targetDirectory,
 				packageBlockDescriptors,
 				generateOnly,
-				cmdCmd.NewDefaultRegistry(ctx, ws, proj, cmdutil.Diag(), e),
+				cmdCmd.NewDefaultRegistry(ctx, lm, ws, proj, cmdutil.Diag(), e),
 			)
 			if err != nil {
 				return diags, fmt.Errorf("error generating packages: %w", err)
@@ -350,7 +348,7 @@ func runConvert(
 	loader := schema.NewPluginLoader(pCtx.Host)
 
 	baseMapper, err := convert.NewBasePluginMapper(
-		convert.DefaultWorkspace(),
+		pluginstorage.Instance,
 		from, /*conversionKey*/
 		convert.ProviderFactoryFromHost(ctx, pCtx.Host),
 		installPlugin,
@@ -561,6 +559,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		pkgSpec, _, err := packages.SchemaFromSchemaSource(
+			pkgWorkspace.Instance,
 			pctx,
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},

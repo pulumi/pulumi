@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	backend_secrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
+	pkgLogging "github.com/pulumi/pulumi/pkg/v3/logging"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
@@ -32,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/deepcopy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
@@ -307,7 +309,14 @@ func (l *SecretsManagerLoader) GetSecretsManager(
 		state = SecretsManagerUnchanged
 	}
 
-	return stack.NewBatchingCachingSecretsManager(sm), state, nil
+	bsm := stack.NewBatchingCachingSecretsManager(sm)
+
+	fqn := string(s.Ref().FullyQualifiedName())
+	if err := pkgLogging.UpgradeCurrentLogger(ctx, fqn, "", bsm); err != nil {
+		logging.V(3).Infof("encrypted log upgrade failed: %v", err)
+	}
+
+	return bsm, state, nil
 }
 
 func needsSaveProjectStackAfterSecretManger(

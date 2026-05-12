@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -107,6 +107,10 @@ func TestMakePyPiVersion(t *testing.T) {
 		{"0.0.1-alpha.18", "0.0.1a18"},
 		{"0.0.1-beta.18", "0.0.1b18"},
 		{"0.0.1-rc.18", "0.0.1rc18"},
+		{"1.2.3-dev.20", "1.2.3.dev20"},
+		{"1.2.3-dev.1", "1.2.3.dev1"},
+		{"1.2.3-post.1", "1.2.3.post1"},
+		{"1.2.3-post.20", "1.2.3.post20"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {

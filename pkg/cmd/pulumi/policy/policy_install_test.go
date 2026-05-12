@@ -73,6 +73,10 @@ func (m *mockRequiredPolicy) Install(
 	return nil
 }
 
+func (m *mockRequiredPolicy) ResolveEnvironments(_ context.Context) (*engine.ResolvedPolicyEnvironment, error) {
+	return nil, nil
+}
+
 // newMockStack creates a MockStack wired to the given MockBackend.
 func newMockStack(be *backend.MockBackend) *backend.MockStack {
 	return &backend.MockStack{

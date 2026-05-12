@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,12 +25,13 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func newPluginLsCmd() *cobra.Command {
+func newPluginLsCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var projectOnly bool
 	var jsonOut bool
 	cmd := &cobra.Command{
@@ -51,7 +52,7 @@ func newPluginLsCmd() *cobra.Command {
 					return fmt.Errorf("loading project plugins: %w", err)
 				}
 			} else {
-				if plugins, err = workspace.GetPluginsWithMetadata(); err != nil {
+				if plugins, err = pluginContext.GetPlugins(cmd.Context()); err != nil {
 					return fmt.Errorf("loading plugins: %w", err)
 				}
 			}
@@ -117,12 +118,14 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 			Size:    plugin.Size(),
 		}
 
-		if !plugin.InstallTime.IsZero() {
-			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(plugin.InstallTime.UTC()))
+		installTime := plugin.InstallTime()
+		if !installTime.IsZero() {
+			jsonPluginInfo[idx].InstallTime = makeStringRef(cmd.FormatTime(installTime.UTC()))
 		}
 
-		if !plugin.LastUsedTime.IsZero() {
-			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(plugin.LastUsedTime.UTC()))
+		lastUsedTime := plugin.LastUsedTime()
+		if !lastUsedTime.IsZero() {
+			jsonPluginInfo[idx].LastUsedTime = makeStringRef(cmd.FormatTime(lastUsedTime.UTC()))
 		}
 	}
 
@@ -145,21 +148,23 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 		} else {
 			bytes = humanize.Bytes(plugin.Size())
 		}
-		var installTime string
-		if plugin.InstallTime.IsZero() {
-			installTime = naString
+		var installTimeStr string
+		installTime := plugin.InstallTime()
+		if installTime.IsZero() {
+			installTimeStr = naString
 		} else {
-			installTime = humanize.Time(plugin.InstallTime)
+			installTimeStr = humanize.Time(installTime)
 		}
-		var lastUsedTime string
-		if plugin.LastUsedTime.IsZero() {
-			lastUsedTime = humanNeverTime
+		var lastUsedTimeStr string
+		lastUsedTime := plugin.LastUsedTime()
+		if lastUsedTime.IsZero() {
+			lastUsedTimeStr = humanNeverTime
 		} else {
-			lastUsedTime = humanize.Time(plugin.LastUsedTime)
+			lastUsedTimeStr = humanize.Time(lastUsedTime)
 		}
 
 		rows = append(rows, cmdutil.TableRow{
-			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTime, lastUsedTime},
+			Columns: []string{plugin.Name, string(plugin.Kind), version, bytes, installTimeStr, lastUsedTimeStr},
 		})
 
 		totalSize += plugin.Size()

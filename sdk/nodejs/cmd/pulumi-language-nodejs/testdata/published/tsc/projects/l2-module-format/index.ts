@@ -31,3 +31,24 @@ const res4 = new module_format.mod.nested.Resource("res4", {text: module_format.
 export const out4 = res4.call(({
     input: "xx",
 })).apply(call => call.output);
+// First use the fully specified token to invoke and create a resource in the index module.
+const res5 = new module_format.Resource("res5", {text: module_format.concatWorldOutput({
+    value: "bonjour",
+}).apply(invoke => invoke.result)});
+export const out5 = res5.call(({
+    input: "x",
+})).apply(call => call.output);
+// Next use just the module name as defined by the module format
+const res6 = new module_format.Resource("res6", {text: module_format.concatWorldOutput({
+    value: "youkoso",
+}).apply(invoke => invoke.result)});
+export const out6 = res6.call(({
+    input: "xx",
+})).apply(call => call.output);
+// Next use the short, 2 component, form because this is the index module
+const res7 = new module_format.Resource("res7", {text: module_format.concatWorldOutput({
+    value: "guten tag",
+}).apply(invoke => invoke.result)});
+export const out7 = res7.call(({
+    input: "xxx",
+})).apply(call => call.output);

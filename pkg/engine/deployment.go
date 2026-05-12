@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -166,6 +167,10 @@ type deploymentOptions struct {
 	// true if this deployment is a dry run, such as a preview action or a preview
 	// operation preceding e.g. a refresh or destroy.
 	DryRun bool
+
+	// LoadedAnalyzers is populated by loadPolicyPlugins after policy packs are loaded
+	// and configured. This is the list that the step generator will run for policy checks.
+	LoadedAnalyzers []plugin.Analyzer
 }
 
 // deploymentSourceFunc is a callback that will be used to prepare for, and evaluate, the "new" state for a stack.
@@ -202,7 +207,8 @@ func newDeployment(
 
 	// Create a context for plugins.
 	debugContext := newDebugContext(opts.Events, opts.AttachDebugger)
-	pwd, main, plugctx, err := ProjectInfoContext(ctx.Cancel.Base(), projinfo, opts.Host,
+	baseCtx := trace.ContextWithSpan(ctx.Cancel.Base(), info.otelSpan)
+	pwd, main, plugctx, err := ProjectInfoContext(baseCtx, projinfo, opts.Host,
 		opts.Diag, opts.StatusDiag, debugContext, opts.DisableProviderPreview, info.TracingSpan, config)
 	if err != nil {
 		return nil, err
@@ -231,8 +237,6 @@ func newDeployment(
 		return nil, err
 	}
 
-	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
-
 	deplOpts := &deploy.Options{
 		ParallelDiff:              opts.ParallelDiff,
 		DryRun:                    opts.DryRun,
@@ -253,13 +257,15 @@ func newDeployment(
 		GeneratePlan:              opts.GeneratePlan,
 		ContinueOnError:           opts.ContinueOnError,
 		Autonamer:                 opts.Autonamer,
+		ShowSecrets:               opts.ShowSecrets,
+		Analyzers:                 opts.LoadedAnalyzers,
 	}
 
 	var depl *deploy.Deployment
 	if !opts.isImport {
 		depl, err = deploy.NewDeployment(
 			plugctx, deplOpts, actions, target, target.Snapshot, opts.Plan, source,
-			localPolicyPackPaths, ctx.BackendClient, resourceHooks)
+			ctx.BackendClient, resourceHooks)
 	} else {
 		_, defaultProviderInfo, pluginErr := installPlugins(
 			cancelCtx,
@@ -432,7 +438,8 @@ func (deployment *deployment) run(cancelCtx *Context) (*deploy.Plan, display.Res
 
 	// Emit a summary event.
 	deployment.Options.Events.summaryEvent(
-		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies)
+		deployment.Options.DryRun, deployment.Actions.MaybeCorrupt(), duration, changes, policies,
+		apitype.OperationResultFromError(err))
 
 	close(deployment.panicErrs)
 

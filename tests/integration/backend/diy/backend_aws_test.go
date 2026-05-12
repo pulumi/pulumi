@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ import (
 
 func getAwsCaller(t *testing.T) (context.Context, aws.Config) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		t.Logf("Skipping, could not load aws config: %s", err)

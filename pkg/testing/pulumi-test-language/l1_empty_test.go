@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,6 +22,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
@@ -179,7 +182,7 @@ func TestL1Empty(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -217,7 +220,7 @@ func TestL1Empty_FailPrepare(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 	runtime := &L1EmptyLanguageHost{
 		tempDir:  tempDir,
 		failPack: true,
@@ -303,8 +306,8 @@ func TestL1Empty_BadSnapshot(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
-	engine.DisableSnapshotWriting = true
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
+	engine.SetDisableSnapshotWriting(true)
 	runtime := &L1EmptyLanguageHost{tempDir: tempDir}
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -344,7 +347,7 @@ func TestL1Empty_MissingStack(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 	runtime := &L1EmptyLanguageHost{
 		tempDir:   tempDir,
 		skipStack: true,
@@ -387,7 +390,7 @@ func TestL1Empty_NoCoreSDK(t *testing.T) {
 
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 	runtime := &L1EmptyLanguageHost{
 		tempDir:     tempDir,
 		skipStack:   true,

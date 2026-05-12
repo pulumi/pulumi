@@ -1,4 +1,4 @@
-# Copyright 2016-2023, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ from ._project_settings import ProjectSettings
 from ._stack import _DATETIME_FORMAT, Stack
 from ._stack_settings import StackSettings
 from ._tag import TagMap
+from .interface import API
 from ._workspace import (
     Deployment,
     PluginInfo,
@@ -164,6 +165,7 @@ class LocalWorkspace(Workspace):
         self.pulumi_command = pulumi_command or PulumiCommand(
             skip_version_check=self._version_check_opt_out()
         )
+        self.cli_api = API(self.pulumi_command)
 
         if project_settings:
             self.save_project_settings(project_settings)
@@ -436,6 +438,26 @@ class LocalWorkspace(Workspace):
         result = self._run_pulumi_cmd_sync(["whoami"])
         return WhoAmIResult(user=result.stdout.strip())
 
+    def org_get_default(self) -> str:
+        result = self.cli_api.org_get_default(**self._base_kwargs())
+        return result.stdout.strip()
+
+    def org_set_default(self, org_name: str) -> None:
+        self.cli_api.org_set_default(org_name, **self._base_kwargs())
+
+    def _base_kwargs(self) -> dict:
+        """
+        Build the shared low-level CLI kwargs for workspace-level operations,
+        mirroring the environment setup done by ``_run_pulumi_cmd_sync``.
+        """
+        envs: dict[str, str] = {}
+        if self.pulumi_home is not None:
+            envs["PULUMI_HOME"] = self.pulumi_home
+        if self._remote:
+            envs["PULUMI_EXPERIMENTAL"] = "true"
+        envs = {**envs, **self.env_vars}
+        return {"cwd": self.work_dir, "additional_env": envs}
+
     def stack(self) -> Optional[StackSummary]:
         stacks = self.list_stacks()
         for stack in stacks:
@@ -544,6 +566,72 @@ class LocalWorkspace(Workspace):
         raise InvalidVersionError(
             "The installed version of the CLI does not support this operation. Please "
             "upgrade to at least version 3.91.0."
+        )
+
+    def new(
+        self,
+        template_or_url: Optional[str] = None,
+        *,
+        ai: Optional[str] = None,
+        config: Optional[list[str]] = None,
+        config_path: bool = False,
+        description: Optional[str] = None,
+        dir: Optional[str] = None,
+        force: bool = False,
+        generate_only: bool = False,
+        language: Optional[str] = None,
+        list_templates: bool = False,
+        name: Optional[str] = None,
+        offline: bool = False,
+        remote_stack_config: bool = False,
+        runtime_options: Optional[list[str]] = None,
+        secrets_provider: Optional[str] = None,
+        stack: Optional[str] = None,
+        template_mode: bool = False,
+        on_output: Optional[OnOutput] = None,
+    ) -> CommandResult:
+        """Creates a new Pulumi project from a template.
+
+        :param template_or_url: The template name or URL to use.
+        :param ai: Prompt to use for Pulumi AI.
+        :param config: Config values to save (list of "key=value" strings).
+        :param config_path: Config keys contain a path to a property in a map or list to set.
+        :param description: The project description.
+        :param dir: The location to place the generated project.
+        :param force: Forces content to be generated even if it would change existing files.
+        :param generate_only: Generate the project only; do not create a stack, save config, or install dependencies.
+        :param language: Language to use for Pulumi AI.
+        :param list_templates: List locally installed templates and exit.
+        :param name: The project name.
+        :param offline: Use locally cached templates without making any network requests.
+        :param remote_stack_config: Store stack configuration remotely.
+        :param runtime_options: Additional options for the language runtime (list of "key=value" strings).
+        :param secrets_provider: The type of the provider that should be used to encrypt and decrypt secrets.
+        :param stack: The stack name; either an existing stack or stack to create.
+        :param template_mode: Run in template mode, which will skip prompting for AI or Template functionality.
+        :param on_output: A callback that receives the standard output of the command.
+        :returns: CommandResult
+        """
+        return self.cli_api.new(
+            template_or_url,
+            ai=ai,
+            config=config,
+            config_path=config_path,
+            description=description,
+            dir=dir,
+            force=force,
+            generate_only=generate_only,
+            language=language,
+            list_templates=list_templates,
+            name=name,
+            offline=offline,
+            remote_stack_config=remote_stack_config,
+            runtime_options=runtime_options,
+            secrets_provider=secrets_provider,
+            stack=stack,
+            template_mode=template_mode,
+            on_output=on_output,
+            **self._base_kwargs(),
         )
 
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:

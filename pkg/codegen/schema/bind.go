@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -190,10 +190,12 @@ func bindSpec(spec PackageSpec, languages map[string]Language, loader Loader,
 		return nil, diags, err
 	}
 
+	diags = diags.Extend(validateNoRequiredObjectCycles(typeList))
+
 	parameterization, parameterizationDiags := bindParameterization(spec.Parameterization)
 	diags = diags.Extend(parameterizationDiags)
 
-	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions))
+	diags = diags.Extend(checkDuplicates(spec.Resources, spec.Functions, types.pkg.TokenToModule))
 
 	pkg := types.pkg
 	pkg.Config = config
@@ -547,6 +549,32 @@ func (spec *PackageSpec) validateTypeToken(
 	}
 	if (parts[1] == "" || strings.EqualFold(parts[1], "index")) && strings.EqualFold(parts[2], "provider") {
 		err := errorf(path, "invalid token '%s' (provider is a reserved word for the root module)", token)
+		diags = diags.Append(err)
+	}
+	moduleName := parts[1]
+
+	// Check if this is a nested index module, we need to use the module format regex to determine this because
+	// "index_mod" might be the module "index_mod" or "index" depending on the moduleFormat.
+	var moduleFormat *regexp.Regexp
+	if spec.Meta != nil && spec.Meta.ModuleFormat != "" {
+		var err error
+		moduleFormat, err = regexp.Compile(spec.Meta.ModuleFormat)
+		if err != nil {
+			diags = diags.Append(errorf("#/meta/moduleFormat", "failed to compile module format regex: %v", err))
+			return diags
+		}
+	}
+	if moduleFormat != nil {
+		matches := moduleFormat.FindStringSubmatch(moduleName)
+		if len(matches) > 1 {
+			moduleName = matches[1]
+		}
+	}
+
+	if strings.HasPrefix(moduleName, "index/") {
+		// TODO: We want this to be an error really, but for now warn about it to see if any users comment about it. We
+		// know at least aws-native needs to be updated to handle it.
+		err := warningf(path, "invalid token '%s' (nested modules under index are not allowed)", token)
 		diags = diags.Append(err)
 	}
 	if modules != nil && !slices.Contains(modules, parts[1]) {
@@ -1373,6 +1401,89 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, hcl
 	}, diags
 }
 
+// validateNoRequiredObjectCycles reports a diagnostic for every object type
+// whose required-property graph contains a cycle returning to itself. Such a
+// schema describes a value of infinite size and so cannot be satisfied.
+//
+// Only direct ObjectType references count: Array, Map, and Union members all
+// have a finite empty form (or a non-recursive branch), so they break the
+// cycle. Optional properties also break the cycle.
+func validateNoRequiredObjectCycles(typeList []Type) hcl.Diagnostics {
+	// Each object is bound twice in typeList — once as a plain shape and once
+	// as an input shape — so dedupe by Token to report each logical cycle once.
+	// Visit objects in lexicographic Token order so that the chosen DFS root,
+	// and therefore the cycle text and diagnostic order, are deterministic.
+	objects := make([]*ObjectType, 0, len(typeList))
+	for _, t := range typeList {
+		if obj, ok := t.(*ObjectType); ok {
+			objects = append(objects, obj)
+		}
+	}
+	sort.Slice(objects, func(i, j int) bool { return objects[i].Token < objects[j].Token })
+
+	var diags hcl.Diagnostics
+	reported := map[string]bool{}
+	for _, obj := range objects {
+		if reported[obj.Token] {
+			continue
+		}
+		if cycle := findRequiredObjectCycle(obj, nil, map[*ObjectType]bool{}); cycle != nil {
+			tokens := make([]string, len(cycle))
+			for i, c := range cycle {
+				tokens[i] = c.Token
+				reported[c.Token] = true
+			}
+			diags = diags.Append(errorf(memberPath("types", obj.Token),
+				"object type has unsatisfiable required-property cycle: %s",
+				strings.Join(tokens, " -> ")))
+		}
+	}
+	return diags
+}
+
+// findRequiredObjectCycle DFSes the required-property graph rooted at obj.
+// If a cycle is found, it returns the slice of object types on that cycle,
+// starting at the first repeated node and ending with the same node again.
+func findRequiredObjectCycle(obj *ObjectType, path []*ObjectType, onPath map[*ObjectType]bool) []*ObjectType {
+	// walkRequiredType strips non-cycling wrappers (InputType) and recurses into
+	// ObjectType refs. Array, Map, Union, and Optional are not followed because
+	// they admit a non-recursive value. TokenType is also a leaf: it stands for
+	// a reference into another schema, which we treat as opaque — cycles cannot
+	// span schemas, and other schemas are assumed to have been validated.
+	var walkRequiredType func(typ Type, path []*ObjectType) []*ObjectType
+	walkRequiredType = func(typ Type, path []*ObjectType) []*ObjectType {
+		switch t := typ.(type) {
+		case *InputType:
+			return walkRequiredType(t.ElementType, path)
+		case *ObjectType:
+			return findRequiredObjectCycle(t, path, onPath)
+		}
+		return nil
+	}
+
+	if onPath[obj] {
+		idx := 0
+		for i, c := range path {
+			if c == obj {
+				idx = i
+				break
+			}
+		}
+		return append(append([]*ObjectType{}, path[idx:]...), obj)
+	}
+	onPath[obj] = true
+	defer delete(onPath, obj)
+	for _, p := range obj.Properties {
+		if !p.IsRequired() {
+			continue
+		}
+		if cycle := walkRequiredType(p.Type, append(path, obj)); cycle != nil {
+			return cycle
+		}
+	}
+	return nil
+}
+
 func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type, hcl.Diagnostics, error) {
 	var diags hcl.Diagnostics
 
@@ -1418,12 +1529,28 @@ func (t *types) finishTypes(tokens []string, options ValidationOptions) ([]Type,
 }
 
 func checkDuplicates(
-	resources map[string]ResourceSpec, functions map[string]FunctionSpec,
+	resources map[string]ResourceSpec,
+	functions map[string]FunctionSpec,
+	tokenToModule func(string) string,
 ) hcl.Diagnostics {
 	type schemaPath = string
 	type token = string
 	names := make(map[token][]schemaPath, len(resources)+len(functions))
 	duplicates := map[token]struct{}{}
+
+	// normalize folds tok to its case-insensitive canonical form, applying Meta.ModuleFormat
+	// to the module component. PCL canonicalizes tokens before lookup, so two source tokens
+	// that share a normalized form are unreachable through any external reference.
+	normalize := func(tok string) string {
+		parts := strings.Split(tok, ":")
+		if len(parts) != 3 {
+			return tok // Token is invalid, and will error later.
+		}
+		if p1 := tokenToModule(tok); p1 != "" {
+			parts[1] = p1
+		}
+		return strings.ToLower(strings.Join(parts, ":"))
+	}
 
 	process := func(token token, schemaPath schemaPath) {
 		v := append(names[token], schemaPath)
@@ -1433,11 +1560,28 @@ func checkDuplicates(
 		}
 	}
 
+	// Each source token contributes both its lowercased literal form and its canonical
+	// (moduleFormat-applied) form. Collisions across either dimension are ambiguous: a
+	// query for X may match a source whose literal is X *or* a source whose canonical
+	// form is X, and PCL has no way to disambiguate. For example, with ModuleFormat
+	// "(\w+)_v\d+", the source tokens "test:mod_v1_v2:A" (canonical "test:mod_v1:A")
+	// and "test:mod_v1:A" (canonical "test:mod:A") have disjoint canonicals but the
+	// first's canonical equals the second's literal — querying "test:mod_v1:A" is
+	// ambiguous.
+	processSource := func(tok, schemaPath string) {
+		lit := strings.ToLower(tok)
+		canon := normalize(tok)
+		process(lit, schemaPath)
+		if canon != lit {
+			process(canon, schemaPath)
+		}
+	}
+
 	for r := range resources {
-		process(strings.ToLower(r), memberPath("resources", r))
+		processSource(r, memberPath("resources", r))
 	}
 	for f := range functions {
-		process(strings.ToLower(f), memberPath("functions", f))
+		processSource(f, memberPath("functions", f))
 	}
 
 	diags := slice.Prealloc[*hcl.Diagnostic](len(duplicates))
@@ -1650,12 +1794,30 @@ func (t *types) bindResourceDetails(
 
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
+		for name := range spec.StateInputs.Properties {
+			if isReservedStateInputPropertyKey(name) {
+				diags = diags.Append(errorf(
+					path+"/stateInputs/properties/"+name,
+					"%s is a reserved property name for stateInputs", name))
+			}
+		}
+
 		si, stateDiags, err := t.bindAnonymousObjectType(path+"/stateInputs", token+"Args", *spec.StateInputs, options)
 		diags = diags.Extend(stateDiags)
 		if err != nil {
 			return diags, fmt.Errorf("error binding inputs for %v: %w", token, err)
 		}
 		stateInputs = si.InputShape
+	}
+
+	var listInputs *ObjectType
+	if spec.ListInputs != nil {
+		li, listDiags, err := t.bindAnonymousObjectType(path+"/listInputs", token+"ListArgs", *spec.ListInputs, options)
+		diags = diags.Extend(listDiags)
+		if err != nil {
+			return diags, fmt.Errorf("error binding list inputs for %v: %w", token, err)
+		}
+		listInputs = li.InputShape
 	}
 
 	aliases := slice.Prealloc[*Alias](len(spec.Aliases))
@@ -1670,6 +1832,7 @@ func (t *types) bindResourceDetails(
 		InputProperties:           inputProperties,
 		Properties:                properties,
 		StateInputs:               stateInputs,
+		ListInputs:                listInputs,
 		Aliases:                   aliases,
 		DeprecationMessage:        spec.DeprecationMessage,
 		Language:                  makeLanguageMap(spec.Language),

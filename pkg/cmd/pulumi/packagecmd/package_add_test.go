@@ -25,15 +25,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDetectEnclosingPluginOrProject(t *testing.T) {
+func TestLoadEnclosingTarget(t *testing.T) {
 	t.Parallel()
+
+	ptr := func(s string) *string { return &s }
 
 	tests := []struct {
 		name  string
 		files map[string]string
 		wd    string
 		// Note: reg is ignored during comparison, so should be left nil
-		expected      pluginOrProject
+		expected      addTarget
 		expectedError error
 	}{
 		{
@@ -42,9 +44,9 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 				"PulumiPlugin.yaml": "runtime: nodejs\n",
 			},
 			wd: ".",
-			expected: pluginOrProject{
+			expected: addTarget{
 				installRoot:     ".",
-				projectFilePath: "PulumiPlugin.yaml",
+				projectFilePath: ptr("PulumiPlugin.yaml"),
 				proj: &workspace.PluginProject{
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 				},
@@ -56,9 +58,9 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 				"PulumiPlugin.yaml": "runtime: nodejs\n",
 			},
 			wd: "subdir/nested",
-			expected: pluginOrProject{
+			expected: addTarget{
 				installRoot:     ".",
-				projectFilePath: "PulumiPlugin.yaml",
+				projectFilePath: ptr("PulumiPlugin.yaml"),
 				proj: &workspace.PluginProject{
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 				},
@@ -70,9 +72,9 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 				"Pulumi.yaml": "name: test-project\nruntime: nodejs\n",
 			},
 			wd: ".",
-			expected: pluginOrProject{
+			expected: addTarget{
 				installRoot:     ".",
-				projectFilePath: "Pulumi.yaml",
+				projectFilePath: ptr("Pulumi.yaml"),
 				proj: &workspace.Project{
 					Name:    "test-project",
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
@@ -85,9 +87,9 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 				"Pulumi.yaml": "name: test-project\nruntime: nodejs\n",
 			},
 			wd: "nested/deep/subdir",
-			expected: pluginOrProject{
+			expected: addTarget{
 				installRoot:     ".",
-				projectFilePath: "Pulumi.yaml",
+				projectFilePath: ptr("Pulumi.yaml"),
 				proj: &workspace.Project{
 					Name:    "test-project",
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
@@ -101,9 +103,9 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 				"plugin/PulumiPlugin.yaml": "runtime: nodejs\n",
 			},
 			wd: "plugin/subdir",
-			expected: pluginOrProject{
+			expected: addTarget{
 				installRoot:     "plugin",
-				projectFilePath: "plugin/PulumiPlugin.yaml",
+				projectFilePath: ptr("plugin/PulumiPlugin.yaml"),
 				proj: &workspace.PluginProject{
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
 				},
@@ -116,9 +118,9 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 				"project/Pulumi.yaml": "name: test-project\nruntime: nodejs\n",
 			},
 			wd: "project/subdir",
-			expected: pluginOrProject{
+			expected: addTarget{
 				installRoot:     "project",
-				projectFilePath: "project/Pulumi.yaml",
+				projectFilePath: ptr("project/Pulumi.yaml"),
 				proj: &workspace.Project{
 					Name:    "test-project",
 					Runtime: workspace.NewProjectRuntimeInfo("nodejs", nil),
@@ -155,7 +157,7 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 				require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
 			}
 
-			actual, err := detectEnclosingPluginOrProject(t.Context(), filepath.Join(root, tt.wd))
+			actual, err := loadEnclosingTarget(t.Context(), filepath.Join(root, tt.wd))
 			if tt.expectedError != nil {
 				require.ErrorContains(t, err, tt.expectedError.Error())
 				return
@@ -164,7 +166,8 @@ func TestDetectEnclosingPluginOrProject(t *testing.T) {
 			require.NotNil(t, actual.reg)
 			actual.reg = nil
 			tt.expected.installRoot = filepath.Join(root, tt.expected.installRoot)
-			tt.expected.projectFilePath = filepath.Join(root, tt.expected.projectFilePath)
+			require.NotNil(t, tt.expected.projectFilePath)
+			tt.expected.projectFilePath = ptr(filepath.Join(root, *tt.expected.projectFilePath))
 			if p, ok := actual.proj.(*workspace.Project); ok {
 				// Create a copy of actual.proj up to private keys. This
 				// way, we get a clean comparison.

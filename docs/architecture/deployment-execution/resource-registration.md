@@ -81,7 +81,6 @@ This is a fire and forget process. Once a step has been generated
 the step generator immediately moves on to the next `RegisterResourceEvent`. It
 is the responsibility of the [step executor](step-execution) to communicate the
 results of each step back to the [resource monitor](resource-monitor).
-executor to the step generator.
 
 ### Process Overview
 

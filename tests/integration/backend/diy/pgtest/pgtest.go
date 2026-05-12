@@ -71,7 +71,7 @@ func New(t *testing.T) *Database {
 	user := "postgres"
 	password := "testpassword"
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Start PostgreSQL 17 container using testcontainers
 	postgresContainer, err := postgres.Run(ctx,
@@ -131,13 +131,13 @@ func New(t *testing.T) *Database {
 	if err != nil {
 		host = "unknown"
 	}
-	port, err := postgresContainer.MappedPort(ctx, "5432")
-	if err != nil {
-		port = "unknown"
+	port := "unknown"
+	if p, err := postgresContainer.MappedPort(ctx, "5432"); err == nil {
+		port = p.Port()
 	}
 
 	t.Logf("PostgreSQL 17 is ready. Connection: postgres://%s:****@%s:%s/%s?sslmode=disable",
-		user, host, port.Port(), dbName)
+		user, host, port, dbName)
 
 	// Set up cleanup
 	t.Cleanup(func() {

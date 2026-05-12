@@ -1,0 +1,4 @@
+[project]
+name = "dynamic_py_disable_serialization_as_secret"
+version = "0.0.0"
+dependencies = []

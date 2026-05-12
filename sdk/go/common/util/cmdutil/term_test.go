@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -179,7 +179,7 @@ func TestTerminate_forceKill(t *testing.T) {
 			}
 
 			require.NoError(t,
-				waitPidDead(pid, 100*time.Millisecond),
+				waitPidDead(t, pid, 100*time.Millisecond),
 				"error waiting for process to die")
 		})
 	}
@@ -238,7 +238,7 @@ func TestTerminate_forceKill_processGroup(t *testing.T) {
 
 	for _, pid := range []int{pid, childPid} {
 		require.NoError(t,
-			waitPidDead(pid, 100*time.Millisecond),
+			waitPidDead(t, pid, 100*time.Millisecond),
 			"error waiting for process to die")
 	}
 }
@@ -297,7 +297,7 @@ func TestTerminate_unhandledInterrupt(t *testing.T) {
 			}
 
 			require.NoError(t,
-				waitPidDead(pid, 100*time.Millisecond),
+				waitPidDead(t, pid, 100*time.Millisecond),
 				"error waiting for process to die")
 		})
 	}
@@ -445,8 +445,8 @@ func (b *lockedBuffer) Len() int {
 // or the given timeout has elapsed.
 //
 // Returns an error if the timeout has elapsed.
-func waitPidDead(pid int, timeout time.Duration) error {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func waitPidDead(t *testing.T, pid int, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	var (
@@ -469,6 +469,9 @@ func waitPidDead(pid int, timeout time.Duration) error {
 		default:
 			proc, err = ps.FindProcess(pid)
 			if err == nil && proc == nil {
+				return nil
+			}
+			if err == nil && proc != nil && isZombie(pid) {
 				return nil
 			}
 			time.Sleep(10 * time.Millisecond)

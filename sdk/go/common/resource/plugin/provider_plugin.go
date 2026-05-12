@@ -1,4 +1,4 @@
-// Copyright 2016-2026, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
@@ -205,7 +206,7 @@ func NewProvider(host Host, ctx *Context, spec workspace.PluginDescriptor,
 		}
 
 		var conn *grpc.ClientConn
-		conn, handshakeRes, err = dialPlugin(port, pkg.String(), prefix,
+		conn, handshakeRes, err = dialPlugin(ctx.Base(), port, pkg.String(), prefix,
 			handshake, providerPluginDialOptions(ctx, pkg, ""))
 		if err != nil {
 			return nil, err
@@ -432,7 +433,21 @@ func NewProviderFromPath(host Host, ctx *Context, pkg tokens.Package, path strin
 			return nil, err
 		}
 	}
-	return p, nil
+	return &cancelOnCloseProvider{Provider: p}, nil
+}
+
+// cancelOnCloseProvider wraps a Provider so that Close sends a Cancel RPC before shutting down the plugin process. This
+// is used for providers created via NewProviderFromPath, which are not managed by a Host and therefore don't get Cancel
+// via the host's close sequence.
+type cancelOnCloseProvider struct {
+	Provider
+}
+
+func (p *cancelOnCloseProvider) Close() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	contract.IgnoreError(p.SignalCancellation(ctx))
+	return p.Provider.Close()
 }
 
 func NewProviderWithClient(ctx *Context, pkg tokens.Package, client pulumirpc.ResourceProviderClient,
@@ -1955,6 +1970,7 @@ func (p *provider) Construct(ctx context.Context, req ConstructRequest) (Constru
 	rpcReq := &pulumirpc.ConstructRequest{
 		Project:                 req.Info.Project,
 		Stack:                   req.Info.Stack,
+		Organization:            req.Info.Organization,
 		Config:                  config,
 		ConfigSecretKeys:        configSecretKeys,
 		DryRun:                  req.Info.DryRun,
@@ -2248,14 +2264,21 @@ func (p *provider) Attach(address string) error {
 }
 
 func (p *provider) SignalCancellation(ctx context.Context) error {
-	_, err := p.clientRaw.Cancel(p.requestContext(), &emptypb.Empty{})
+	_, err := p.clientRaw.Cancel(ctx, &emptypb.Empty{})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(8).Infof("provider received rpc error `%s`: `%s`", rpcError.Code(),
 			rpcError.Message())
 		if rpcError.Code() == codes.Unimplemented {
 			// For backwards compatibility, do nothing if it's not implemented.
+			if p.plug != nil {
+				p.plug.shutdownAcknowledged.Store(true)
+			}
 			return nil
+		}
+	} else {
+		if p.plug != nil {
+			p.plug.shutdownAcknowledged.Store(true)
 		}
 	}
 

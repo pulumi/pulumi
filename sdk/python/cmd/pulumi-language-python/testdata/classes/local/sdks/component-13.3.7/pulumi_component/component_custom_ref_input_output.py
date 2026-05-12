@@ -37,7 +37,7 @@ class ComponentCustomRefInputOutput(pulumi.ComponentResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 input_ref: Optional[pulumi.Input['Custom']] = None,
+                 input_ref: pulumi.Input[Optional['Custom']] = None,
                  __props__=None):
         """
         A component resource that accepts a reference to a custom resource. The input resource's `value` is used to create a child custom resource inside the component, before a reference to this child is returned.
@@ -71,7 +71,7 @@ class ComponentCustomRefInputOutput(pulumi.ComponentResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 input_ref: Optional[pulumi.Input['Custom']] = None,
+                 input_ref: pulumi.Input[Optional['Custom']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

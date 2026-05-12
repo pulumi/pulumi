@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,38 @@
 
 package apitype
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import (
+	"context"
+	"errors"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+)
+
+// OperationResult is the high-level outcome of an operation.
+type OperationResult string
+
+const (
+	// OperationResultSucceeded indicates the operation completed without error.
+	OperationResultSucceeded OperationResult = "succeeded"
+	// OperationResultFailed indicates the operation returned an error.
+	OperationResultFailed OperationResult = "failed"
+	// OperationResultCanceled indicates the operation was canceled by the user.
+	OperationResultCanceled OperationResult = "canceled"
+)
+
+// OperationResultFromError maps an operation's terminal error to the high-level
+// OperationResult reported on the summary event. context.Canceled (including
+// wrapped) is treated as user cancellation; any other error is a failure.
+func OperationResultFromError(err error) OperationResult {
+	switch {
+	case errors.Is(err, context.Canceled):
+		return OperationResultCanceled
+	case err != nil:
+		return OperationResultFailed
+	default:
+		return OperationResultSucceeded
+	}
+}
 
 // The "engine events" defined here are a fork of the types and enums defined in the engine
 // package. The duplication is intentional to insulate the Pulumi service from various kinds of
@@ -150,6 +181,8 @@ type SummaryEvent struct {
 	PolicyPacks map[string]string `json:"PolicyPacks"`
 	// IsPreview indicates whether this is a preview or an update.
 	IsPreview bool `json:"isPreview"`
+	// Result is the high-level outcome of the operation.
+	Result OperationResult `json:"result"`
 }
 
 // ErrorEvent is emitted when an internal error occurs in the engine. This is not meant
@@ -232,6 +265,8 @@ type StepEventStateMetadata struct {
 	Protect bool `json:"protect,omitempty"`
 	// Taint is set to true when we wish to force it to be replaced upon the next update.
 	Taint bool `json:"taint,omitempty"`
+	// External is true if this resource is "external" to Pulumi and we don't control the lifecycle.
+	External bool `json:"external,omitempty"`
 	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
 	RetainOnDelete bool `json:"retainOnDelete,omitempty"`
 	// Inputs contains the resource's input properties (as specified by the program). Secrets have

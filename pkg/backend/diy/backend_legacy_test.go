@@ -1,4 +1,4 @@
-// Copyright 2019-2024, Pulumi Corporation.
+// Copyright 2019, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 package diy
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path"
@@ -44,7 +43,7 @@ import (
 func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
@@ -59,7 +58,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 		_, err := b.RemoveStack(ctx, aStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
-	deployment, err := makeUntypedDeployment("a", "abc123",
+	deployment, err := makeUntypedDeployment(t, "a", "abc123",
 		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
 	require.NoError(t, err)
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
@@ -77,7 +76,7 @@ func TestListStacksWithMultiplePassphrases_legacy(t *testing.T) {
 		_, err := b.RemoveStack(ctx, bStack, true /*force*/, false /*removeBackups*/)
 		require.NoError(t, err)
 	}()
-	deployment, err = makeUntypedDeployment("b", "123abc",
+	deployment, err = makeUntypedDeployment(t, "b", "123abc",
 		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==")
 	require.NoError(t, err)
 	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
@@ -104,7 +103,7 @@ func TestDrillError_legacy(t *testing.T) {
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
@@ -122,7 +121,7 @@ func TestCancel_legacy(t *testing.T) {
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
@@ -183,7 +182,7 @@ func TestRemoveMakesBackups_legacy(t *testing.T) {
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
@@ -226,7 +225,7 @@ func TestRenameWorks_legacy(t *testing.T) {
 
 	// Login to a temp dir diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
-	ctx := context.Background()
+	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(tmpDir), nil)
 	require.NoError(t, err)
 
@@ -307,7 +306,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	}
 
 	snap := deploy.NewSnapshot(deploy.Manifest{}, sm, resources, nil, deploy.SnapshotMetadata{})
-	ctx := context.Background()
+	ctx := t.Context()
 
 	udep, err := stack.SerializeUntypedDeployment(ctx, snap, &stack.SerializeOptions{
 		Pretty: true,
@@ -340,7 +339,7 @@ func TestHtmlEscaping_legacy(t *testing.T) {
 	require.NotNil(t, lb)
 
 	chkpath := lb.stackPath(ctx, aStackRef.(*diyBackendReference))
-	bytes, err := lb.bucket.ReadAll(context.Background(), chkpath)
+	bytes, err := lb.bucket.ReadAll(t.Context(), chkpath)
 	require.NoError(t, err)
 	state := string(bytes)
 	assert.Contains(t, state, "<html@tags>")
@@ -357,9 +356,9 @@ func TestDIYBackendRejectsStackInitOptions_legacy(t *testing.T) {
 	// • Create a mock diy backend
 	tmpDir := markLegacyStore(t, t.TempDir())
 	dirURI := "file://" + filepath.ToSlash(tmpDir)
-	diy, err := New(context.Background(), diagtest.LogSink(t), dirURI, nil)
+	diy, err := New(t.Context(), diagtest.LogSink(t), dirURI, nil)
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// • Simulate `pulumi stack init`, passing non-nil init options
 	fakeStackRef, err := diy.ParseStackReference("foobar")
@@ -385,7 +384,7 @@ func TestParallelStackFetch_legacy(t *testing.T) {
 
 	// Login to a temp dir diy backend with legacy format
 	tmpDir := markLegacyStore(t, t.TempDir())
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create a custom environment with DIYBackendParallel set
 	s := make(declared.MapStore)

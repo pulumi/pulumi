@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,7 +69,14 @@ class Server implements grpc.UntypedServiceImplementation {
     // Misc. methods
 
     public cancel(call: any, callback: any): void {
-        callback(undefined, new emptyproto.Empty());
+        if (this.provider.cancel) {
+            this.provider.cancel().then(
+                () => callback(undefined, new emptyproto.Empty()),
+                (e: any) => callback(e),
+            );
+        } else {
+            callback(undefined, new emptyproto.Empty());
+        }
     }
 
     public attach(call: any, callback: any): void {
@@ -294,6 +301,13 @@ class Server implements grpc.UntypedServiceImplementation {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
         }
+    }
+
+    public list(call: grpc.ServerWritableStream<provproto.ListRequest, provproto.ListResponse>): void {
+        call.emit("error", {
+            code: grpc.status.UNIMPLEMENTED,
+            details: "Not yet implemented: List",
+        });
     }
 
     public async update(call: any, callback: any): Promise<void> {

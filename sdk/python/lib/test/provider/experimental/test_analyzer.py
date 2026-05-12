@@ -124,6 +124,40 @@ def test_analyze_component_empty():
     )
 
 
+def test_analyze_component_inherited_inputs():
+    class BaseArgs(TypedDict):
+        base_prop: str
+
+    class DerivedArgs(BaseArgs):
+        child_prop: str
+
+    class MyComponent(pulumi.ComponentResource):
+        out_result: pulumi.Output[str]
+
+        def __init__(self, args: DerivedArgs): ...
+
+    analyzer = Analyzer("inherited")
+    component = analyzer.analyze_component(MyComponent)
+    assert component == ComponentDefinition(
+        name="MyComponent",
+        module="test_analyzer",
+        inputs={
+            "baseProp": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            "childProp": PropertyDefinition(type=PropertyType.STRING, plain=True),
+        },
+        inputs_mapping={
+            "baseProp": "base_prop",
+            "childProp": "child_prop",
+        },
+        outputs={
+            "outResult": PropertyDefinition(type=PropertyType.STRING),
+        },
+        outputs_mapping={
+            "outResult": "out_result",
+        },
+    )
+
+
 def test_analyze_component_plain_types():
     class ComplexTypeInput(TypedDict):
         a_input_list_str: Optional[pulumi.Input[list[str]]]
@@ -333,6 +367,88 @@ def test_analyze_optional_3_10_syntax():
         inputs_mapping={
             "optionalSyntax": "optional_syntax",
             "optionalTyping": "optional_typing",
+        },
+        outputs={},
+        outputs_mapping={},
+    )
+
+
+def test_analyze_not_required():
+    from typing_extensions import NotRequired
+
+    class Args(TypedDict):
+        name: str
+        tags: NotRequired[dict[str, str]]
+        count: NotRequired[pulumi.Input[int]]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer("not-required")
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "name": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            "tags": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                optional=True,
+                plain=True,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.STRING, plain=True
+                ),
+            ),
+            "count": PropertyDefinition(
+                type=PropertyType.INTEGER,
+                optional=True,
+            ),
+        },
+        inputs_mapping={
+            "name": "name",
+            "tags": "tags",
+            "count": "count",
+        },
+        outputs={},
+        outputs_mapping={},
+    )
+
+
+def test_analyze_total_false():
+    from typing_extensions import Required
+
+    class Args(TypedDict, total=False):
+        name: Required[str]
+        tags: dict[str, str]
+        count: pulumi.Input[int]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer("total-false")
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "name": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            "tags": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                optional=True,
+                plain=True,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.STRING, plain=True
+                ),
+            ),
+            "count": PropertyDefinition(
+                type=PropertyType.INTEGER,
+                optional=True,
+            ),
+        },
+        inputs_mapping={
+            "name": "name",
+            "tags": "tags",
+            "count": "count",
         },
         outputs={},
         outputs_mapping={},

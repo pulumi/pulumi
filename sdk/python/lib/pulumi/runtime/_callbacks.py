@@ -1,4 +1,4 @@
-# Copyright 2016-2024, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -381,6 +381,7 @@ class _CallbackServicer(callback_pb2_grpc.CallbacksServicer):
             name=hook.name,
             callback=callback,
             on_dry_run=hook.opts.on_dry_run if hook.opts else False,
+            ignore_errors=hook.opts.ignore_errors if hook.opts else False,
         )
 
     def do_register_error_hook(

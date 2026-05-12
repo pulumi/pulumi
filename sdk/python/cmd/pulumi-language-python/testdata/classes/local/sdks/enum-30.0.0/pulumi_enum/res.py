@@ -15,8 +15,8 @@ __all__ = ['ResArgs', 'Res']
 @pulumi.input_type
 class ResArgs:
     def __init__(__self__, *,
-                 int_enum: Optional[pulumi.Input['IntEnum']] = None,
-                 string_enum: Optional[pulumi.Input['StringEnum']] = None):
+                 int_enum: pulumi.Input[Optional['IntEnum']] = None,
+                 string_enum: pulumi.Input[Optional['StringEnum']] = None):
         """
         The set of arguments for constructing a Res resource.
         """
@@ -27,20 +27,20 @@ class ResArgs:
 
     @_builtins.property
     @pulumi.getter(name="intEnum")
-    def int_enum(self) -> Optional[pulumi.Input['IntEnum']]:
+    def int_enum(self) -> pulumi.Input[Optional['IntEnum']]:
         return pulumi.get(self, "int_enum")
 
     @int_enum.setter
-    def int_enum(self, value: Optional[pulumi.Input['IntEnum']]):
+    def int_enum(self, value: pulumi.Input[Optional['IntEnum']]):
         pulumi.set(self, "int_enum", value)
 
     @_builtins.property
     @pulumi.getter(name="stringEnum")
-    def string_enum(self) -> Optional[pulumi.Input['StringEnum']]:
+    def string_enum(self) -> pulumi.Input[Optional['StringEnum']]:
         return pulumi.get(self, "string_enum")
 
     @string_enum.setter
-    def string_enum(self, value: Optional[pulumi.Input['StringEnum']]):
+    def string_enum(self, value: pulumi.Input[Optional['StringEnum']]):
         pulumi.set(self, "string_enum", value)
 
 
@@ -50,8 +50,8 @@ class Res(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 int_enum: Optional[pulumi.Input['IntEnum']] = None,
-                 string_enum: Optional[pulumi.Input['StringEnum']] = None,
+                 int_enum: pulumi.Input[Optional['IntEnum']] = None,
+                 string_enum: pulumi.Input[Optional['StringEnum']] = None,
                  __props__=None):
         """
         Create a Res resource with the given unique name, props, and options.
@@ -83,8 +83,8 @@ class Res(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 int_enum: Optional[pulumi.Input['IntEnum']] = None,
-                 string_enum: Optional[pulumi.Input['StringEnum']] = None,
+                 int_enum: pulumi.Input[Optional['IntEnum']] = None,
+                 string_enum: pulumi.Input[Optional['StringEnum']] = None,
                  __props__=None):
         opts = pulumi.ResourceOptions.merge(_utilities.get_resource_opts_defaults(), opts)
         if not isinstance(opts, pulumi.ResourceOptions):

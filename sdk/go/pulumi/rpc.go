@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -800,6 +800,12 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		return false, nil
 	}
 
+	// A known Output whose element is null is effectively null. Return early before
+	// pointer allocation to preserve the nil zero value for pointer destinations.
+	if v.IsOutput() && v.OutputValue().Element.IsNull() {
+		return v.OutputValue().Secret, nil
+	}
+
 	allocatedPointer := false
 	// Allocate storage as necessary.
 	for dest.Kind() == reflect.Ptr {
@@ -936,9 +942,6 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		result := reflect.MakeMap(dest.Type())
 		secret := false
 		for k, e := range v.ObjectValue() {
-			if resource.IsInternalPropertyKey(k) {
-				continue
-			}
 			elem := reflect.New(elemType).Elem()
 			esecret, err := unmarshalOutput(ctx, e, elem)
 			if err != nil {

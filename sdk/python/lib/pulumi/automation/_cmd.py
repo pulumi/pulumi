@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -208,8 +208,16 @@ class PulumiCommand:
 
         # All commands should be run in non-interactive mode.
         # This causes commands to fail rather than prompting for input (and thus hanging indefinitely).
-        if "--non-interactive" not in args:
-            args.append("--non-interactive")
+        # Insert at the front (before any subcommand) so that cobra does not
+        # mistake --non-interactive for a positional argument when args
+        # contain a "--" separator.
+        sep_index = len(args)
+        try:
+            sep_index = args.index("--")
+        except ValueError:
+            pass
+        if "--non-interactive" not in args[:sep_index]:
+            args.insert(0, "--non-interactive")
         env = {
             **os.environ,
             **additional_env,

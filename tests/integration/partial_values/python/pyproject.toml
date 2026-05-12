@@ -1,0 +1,4 @@
+[project]
+name = "dynamic_py"
+version = "0.0.0"
+dependencies = []

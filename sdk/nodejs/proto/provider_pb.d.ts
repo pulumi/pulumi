@@ -1018,6 +1018,148 @@ export namespace ReadResponse {
     }
 }
 
+export class ListRequest extends jspb.Message { 
+    getToken(): string;
+    setToken(value: string): ListRequest;
+
+    hasQuery(): boolean;
+    clearQuery(): void;
+    getQuery(): google_protobuf_struct_pb.Struct | undefined;
+    setQuery(value?: google_protobuf_struct_pb.Struct): ListRequest;
+    getLimit(): number;
+    setLimit(value: number): ListRequest;
+    getPageSize(): number;
+    setPageSize(value: number): ListRequest;
+    getContinuationToken(): string;
+    setContinuationToken(value: string): ListRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ListRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: ListRequest): ListRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ListRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ListRequest;
+    static deserializeBinaryFromReader(message: ListRequest, reader: jspb.BinaryReader): ListRequest;
+}
+
+export namespace ListRequest {
+    export type AsObject = {
+        token: string,
+        query?: google_protobuf_struct_pb.Struct.AsObject,
+        limit: number,
+        pageSize: number,
+        continuationToken: string,
+    }
+}
+
+export class ListResponse extends jspb.Message { 
+
+    hasComputed(): boolean;
+    clearComputed(): void;
+    getComputed(): ListResponse.Computed | undefined;
+    setComputed(value?: ListResponse.Computed): ListResponse;
+
+    hasResult(): boolean;
+    clearResult(): void;
+    getResult(): ListResponse.Result | undefined;
+    setResult(value?: ListResponse.Result): ListResponse;
+
+    hasContinuation(): boolean;
+    clearContinuation(): void;
+    getContinuation(): ListResponse.Continuation | undefined;
+    setContinuation(value?: ListResponse.Continuation): ListResponse;
+
+    getResponseCase(): ListResponse.ResponseCase;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): ListResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: ListResponse): ListResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: ListResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): ListResponse;
+    static deserializeBinaryFromReader(message: ListResponse, reader: jspb.BinaryReader): ListResponse;
+}
+
+export namespace ListResponse {
+    export type AsObject = {
+        computed?: ListResponse.Computed.AsObject,
+        result?: ListResponse.Result.AsObject,
+        continuation?: ListResponse.Continuation.AsObject,
+    }
+
+
+    export class Computed extends jspb.Message { 
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): Computed.AsObject;
+        static toObject(includeInstance: boolean, msg: Computed): Computed.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: Computed, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): Computed;
+        static deserializeBinaryFromReader(message: Computed, reader: jspb.BinaryReader): Computed;
+    }
+
+    export namespace Computed {
+        export type AsObject = {
+        }
+    }
+
+    export class Result extends jspb.Message { 
+        getId(): string;
+        setId(value: string): Result;
+        getName(): string;
+        setName(value: string): Result;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): Result.AsObject;
+        static toObject(includeInstance: boolean, msg: Result): Result.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: Result, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): Result;
+        static deserializeBinaryFromReader(message: Result, reader: jspb.BinaryReader): Result;
+    }
+
+    export namespace Result {
+        export type AsObject = {
+            id: string,
+            name: string,
+        }
+    }
+
+    export class Continuation extends jspb.Message { 
+        getContinuationToken(): string;
+        setContinuationToken(value: string): Continuation;
+
+        serializeBinary(): Uint8Array;
+        toObject(includeInstance?: boolean): Continuation.AsObject;
+        static toObject(includeInstance: boolean, msg: Continuation): Continuation.AsObject;
+        static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+        static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+        static serializeBinaryToWriter(message: Continuation, writer: jspb.BinaryWriter): void;
+        static deserializeBinary(bytes: Uint8Array): Continuation;
+        static deserializeBinaryFromReader(message: Continuation, reader: jspb.BinaryReader): Continuation;
+    }
+
+    export namespace Continuation {
+        export type AsObject = {
+            continuationToken: string,
+        }
+    }
+
+
+    export enum ResponseCase {
+        RESPONSE_NOT_SET = 0,
+        COMPUTED = 1,
+        RESULT = 2,
+        CONTINUATION = 3,
+    }
+
+}
+
 export class UpdateRequest extends jspb.Message { 
     getId(): string;
     setId(value: string): UpdateRequest;

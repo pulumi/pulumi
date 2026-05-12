@@ -56,7 +56,7 @@ def arg_function(name: Optional['pulumi_random.RandomPet'] = None,
 
     return AwaitableArgFunctionResult(
         age=pulumi.get(__ret__, 'age'))
-def arg_function_output(name: Optional[pulumi.Input[Optional['pulumi_random.RandomPet']]] = None,
+def arg_function_output(name: pulumi.Input[Optional[Optional['pulumi_random.RandomPet']]] = None,
                         opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[ArgFunctionResult]:
     """
     Use this data source to access information about an existing resource.

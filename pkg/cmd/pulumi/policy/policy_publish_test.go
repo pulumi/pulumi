@@ -1,4 +1,4 @@
-// Copyright 2023-2025, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,6 +54,9 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 					assert.Contains(t, name, "org1")
 					return mockPolicyPack, nil
 				},
+				GetDefaultOrgF: func(ctx context.Context) (string, error) {
+					return "org1", nil
+				},
 			}, nil
 		},
 	}
@@ -66,12 +69,9 @@ func TestPolicyPublishCmd_default(t *testing.T) {
 			}
 			return filepath.Join(cwd, "testdata"), nil
 		},
-		defaultOrg: func(context.Context, backend.Backend, *workspace.Project) (string, error) {
-			return "org1", nil
-		},
 	}
 
-	err := cmd.Run(context.Background(), lm, []string{})
+	err := cmd.Run(t.Context(), lm, []string{})
 	require.NoError(t, err)
 }
 
@@ -112,7 +112,7 @@ func TestPolicyPublishCmd_orgNamePassedIn(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), lm, []string{"org1"})
+	err := cmd.Run(t.Context(), lm, []string{"org1"})
 	require.NoError(t, err)
 }
 
@@ -172,7 +172,7 @@ func TestPolicyPublishCmd_Metadata(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), lm, []string{})
+	err := cmd.Run(t.Context(), lm, []string{})
 	require.NoError(t, err)
 
 	assertEnvValue := func(env map[string]string, key, val string) {

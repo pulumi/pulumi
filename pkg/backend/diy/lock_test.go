@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,6 +68,19 @@ func TestLockURLForError(t *testing.T) {
 			baseURL:  ":bad:url",
 			lockPath: "lock/file",
 			expected: ":bad:url/lock/file",
+		},
+		{
+			name:     "URL with password",
+			baseURL:  "https://user:password@example.com",
+			lockPath: "/.pulumi/locks/organization/proj/stack/18262c43-124d-4f19-b90f-24db3c0a22a3.json",
+			expected: "https://****:****@example.com/.pulumi/locks/organization/proj/stack/" +
+				"18262c43-124d-4f19-b90f-24db3c0a22a3.json",
+		},
+		{
+			name:     "URL without password",
+			baseURL:  "https://example.com",
+			lockPath: "/.pulumi/locks/organization/proj/stack/18262c43-124d-4f19-b90f-24db3c0a22a3.json",
+			expected: "https://example.com/.pulumi/locks/organization/proj/stack/18262c43-124d-4f19-b90f-24db3c0a22a3.json",
 		},
 	}
 	for _, tt := range tests {

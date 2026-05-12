@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	pkgBackend "github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -61,7 +60,7 @@ func NewOrgCmd() *cobra.Command {
 				return err
 			}
 
-			defaultOrg, err := pkgBackend.GetDefaultOrg(ctx, currentBe, project)
+			defaultOrg, err := currentBe.GetDefaultOrg(ctx)
 			if err != nil {
 				return err
 			}
@@ -175,7 +174,7 @@ func newOrgGetDefaultCmd() *cobra.Command {
 					currentBe.Name())
 			}
 
-			defaultOrg, err := pkgBackend.GetDefaultOrg(ctx, currentBe, project)
+			defaultOrg, err := currentBe.GetDefaultOrg(ctx)
 			if err != nil {
 				return err
 			}

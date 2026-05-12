@@ -1,4 +1,4 @@
-// Copyright 2023-2026, Pulumi Corporation.
+// Copyright 2023, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -74,6 +74,42 @@ func TestLanguageNewSmoke(t *testing.T) {
 			e.RunCommand("pulumi", "new", "random-"+Languages[runtime], "--yes")
 			e.RunCommand("pulumi", "up", "--yes")
 			e.RunCommand("pulumi", "destroy", "--yes")
+		})
+	}
+}
+
+// Quick sanity test that `pulumi package new` can scaffold a package from a live template.
+func TestPackageNewSmoke(t *testing.T) {
+	t.Parallel()
+
+	for _, template := range []string{"component-nodejs", "component-python"} {
+		t.Run(template, func(t *testing.T) {
+			t.Parallel()
+			e := ptesting.NewEnvironment(t)
+			defer e.DeleteIfNotFailed()
+
+			// make sure we can download needed plugins
+			e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+			packageDir := filepath.Join(e.RootPath, "package")
+			err := os.Mkdir(packageDir, 0o700)
+			require.NoError(t, err)
+
+			e.CWD = packageDir
+
+			e.RunCommand("pulumi", "package", "new", template, "--name", "my-package",
+				"--description", "A smoke-tested package", "--yes")
+
+			pluginPath := filepath.Join(packageDir, "PulumiPlugin.yaml")
+			plugin, err := workspace.LoadPluginProject(pluginPath)
+			require.NoError(t, err)
+			assert.Nil(t, plugin.Template, "template block should be stripped from the saved manifest")
+			assert.NotEmpty(t, plugin.Runtime.Name())
+
+			schemaJSON, _ := e.RunCommand("pulumi", "package", "get-schema", ".")
+			var spec schema.PackageSpec
+			require.NoError(t, json.Unmarshal([]byte(schemaJSON), &spec))
+			assert.Equal(t, "my-package", spec.Name)
 		})
 	}
 }

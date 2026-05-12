@@ -180,24 +180,48 @@ class ErrorHook:
         return f"ErrorHook(name={self.name}, callback={self.callback})"
 
 
+def error_hook(
+    name: str,
+) -> Callable[[ErrorHookFunction], ErrorHook]:
+    """
+    Decorator for creating an ErrorHook from an ErrorHookFunction.
+
+    Example usage:
+
+    @error_hook("on_error")
+    def my_hook(args: ErrorHookArgs):
+        print(f"Error for resource {args.name} of type {args.type}")
+        return False
+    """
+
+    def decorator(func: ErrorHookFunction) -> ErrorHook:
+        return ErrorHook(name, func)
+
+    return decorator
+
+
 class ResourceHookOptions:
     """Options for registering a resource hook."""
 
     on_dry_run: bool
     """Run the hook during dry run (preview) operations. Defaults to False."""
 
-    def __init__(self, on_dry_run: bool = False):
+    ignore_errors: bool
+    """If True, errors from this hook are logged as warnings instead of failing the program."""
+
+    def __init__(self, on_dry_run: bool = False, ignore_errors: bool = False):
         self.on_dry_run = on_dry_run
+        self.ignore_errors = ignore_errors
 
     def __repr__(self):
-        return f"ResourceHookOptions(on_dry_run={self.on_dry_run})"
+        return f"ResourceHookOptions(on_dry_run={self.on_dry_run}, ignore_errors={self.ignore_errors})"
 
 
 class ResourceHook:
     """ResourceHook is a named hook that can be registered as a resource hook."""
 
     name: str
-    """The unqiue name of the resource hook."""
+    """The unique name of the resource hook."""
     callback: ResourceHookFunction
     """The function that will be called when the resource hook is triggered."""
     opts: Optional[ResourceHookOptions] = None
@@ -225,6 +249,26 @@ class ResourceHook:
 
     def __repr__(self) -> str:
         return f"ResourceHook(name={self.name}, callback={self.callback}, opts={self.opts})"
+
+
+def resource_hook(
+    name: str,
+    opts: Optional[ResourceHookOptions] = None,
+) -> Callable[[ResourceHookFunction], ResourceHook]:
+    """
+    Decorator for creating a ResourceHook from a ResourceHookFunction.
+
+    Example usage:
+
+    @resource_hook("before_create")
+    def my_hook(args: ResourceHookArgs):
+        print(f"Before creating resource {args.name} of type {args.type}")
+    """
+
+    def decorator(func: ResourceHookFunction) -> ResourceHook:
+        return ResourceHook(name, func, opts)
+
+    return decorator
 
 
 class ResourceHookBinding:

@@ -1,4 +1,4 @@
-// Copyright 2024-2024, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,10 +34,10 @@ async function writePackageJSON(
         license: "Apache-2.0",
         dependencies: {
             "@pulumi/pulumi": pulumiPackagePath,
-            "@types/mocha": "^9.0.0",
+            "@types/mocha": "^10.0.0",
             "@types/node": nodeTypesVersion,
             "@types/semver": "^7.5.6",
-            mocha: "^9.0.0",
+            mocha: "^11.0.0",
             "mocha-suppress-logs": "^0.5.1",
             mockpackage: "file:mockpackage-src",
             semver: "^7.5.4",

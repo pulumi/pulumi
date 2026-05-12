@@ -1,4 +1,4 @@
-# Copyright 2016-2021, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -624,7 +624,10 @@ async def serialize_property(
 
     if known_types.is_output(value):
         output = cast("Output", value)
-        value_resources: set[Resource] = await output.resources()
+        # Await _data once to read all output state, avoiding extra coroutine indirection through resources()/future()
+        # methods.
+        data = await output._data
+        value_resources: set[Resource] = data.resources
         if deps is not None:
             deps.extend(value_resources)
 
@@ -632,11 +635,11 @@ async def serialize_property(
         # "unknown value" sentinel. We will do the former for all outputs created directly by user
         # code (such outputs always resolve isKnown to true) and for any resource outputs that were
         # resolved with known values.
-        is_known = await output._is_known
-        is_secret = await output._is_secret
+        is_known = data.is_known
+        is_secret = data.is_secret
         promise_deps: list[Resource] = []
         value = await serialize_property(
-            output.future(),
+            None if contains_unknowns(data.value) else data.value,
             promise_deps,
             property_key,
             resource_obj,
@@ -800,7 +803,7 @@ async def serialize_property(
 def deserialize_properties(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
 ) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
@@ -858,15 +861,13 @@ def deserialize_properties(
     # since we can only set secret outputs on top level properties.
     output = {}
     for k, v in list(props_struct.items()):
-        # Unilaterally skip properties considered internal by the Pulumi engine.
-        # These don't actually contribute to the exposed shape of the object, do
-        # not need to be passed back to the engine, and often will not match the
-        # expected type we are deserializing into.
-        # Keep "__provider" as it's the property name used by Python dynamic providers.
-        if not keep_internal and k.startswith("__") and k != "__provider":
+        # Skip properties considered internal by the Pulumi engine when the caller has
+        # explicitly opted out. `__provider` is always preserved because it's the
+        # property name reserved for Python dynamic providers.
+        if keep_internal is False and k.startswith("__") and k != "__provider":
             continue
 
-        value = deserialize_property(v, keep_unknowns)
+        value = deserialize_property(v, keep_unknowns, keep_internal)
         # We treat values that deserialize to "None" as if they don't exist.
         if value is not None:
             output[k] = value
@@ -955,7 +956,7 @@ def _unwrap_rpc_secret_struct_properties(value: Any) -> tuple[Any, bool]:
 def deserialize_properties_unwrap_secrets(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
 ) -> tuple[Any, bool]:
     """
     Similar to deserialize_properties except that it unwraps secrets and returns a boolean
@@ -1011,20 +1012,14 @@ def deserialize_resource(
 
 def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
     is_known = "value" in ref_struct
-    is_known_future: asyncio.Future = asyncio.Future()
-    is_known_future.set_result(is_known)
 
     value = None
     if is_known:
         value = deserialize_property(ref_struct["value"])
-    value_future: asyncio.Future = asyncio.Future()
-    value_future.set_result(value)
 
     is_secret = False
     if "secret" in ref_struct:
         is_secret = deserialize_property(ref_struct["secret"]) is True
-    is_secret_future: asyncio.Future = asyncio.Future()
-    is_secret_future.set_result(is_secret)
 
     resources: set[Resource] = set()
     if "dependencies" in ref_struct:
@@ -1036,9 +1031,15 @@ def deserialize_output_value(ref_struct: struct_pb2.Struct) -> "Output[Any]":
         for urn in dependencies:
             resources.add(DependencyResource(urn))
 
-    from .. import Output
+    from ..output import Output, _OutputData
 
-    return Output(resources, value_future, is_known_future, is_secret_future)
+    data_future: asyncio.Future[_OutputData[Any]] = asyncio.Future()
+    data_future.set_result(
+        _OutputData(
+            resources=resources, value=value, is_known=is_known, is_secret=is_secret
+        )
+    )
+    return Output._from_data(data_future)
 
 
 def is_rpc_secret(value: Any) -> bool:
@@ -1096,7 +1097,11 @@ def unwrap_rpc_secret(value: Any) -> Any:
     return value
 
 
-def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_property(
+    value: Any,
+    keep_unknowns: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
+) -> Any:
     """
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
@@ -1109,7 +1114,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
         # values has no __iter__ defined but this works.
-        values = [deserialize_property(v, keep_unknowns) for v in value]  # type: ignore
+        values = [deserialize_property(v, keep_unknowns, keep_internal) for v in value]  # type: ignore
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
@@ -1119,7 +1124,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     # Structs are projected to dictionaries
     if isinstance(value, struct_pb2.Struct):
-        props = deserialize_properties(value, keep_unknowns)
+        props = deserialize_properties(value, keep_unknowns, keep_internal)
         # If there are any secret values in the dictionary, push the secretness "up" a level by returning
         # a dictionary that is marked as a secret with raw values inside. Note: the isinstance check here is
         # important, since deserialize_properties will return either a dictionary or a concret type (in the case of
@@ -1142,7 +1147,7 @@ A Resolver is a function that takes four arguments:
     2. A boolean "is_known", which represents whether or not this value is known to have a particular value at this
        point in time (not always true for previews), and
     3. A boolean "is_secret", which represents whether or not this value is contains secret data, and
-    4. An exception, which (if provided) is an exception that occured when attempting to create the resource to whom
+    4. An exception, which (if provided) is an exception that occurred when attempting to create the resource to whom
        this resolver belongs.
 
 If argument 4 is not none, this output is considered to be abnormally resolved and attempts to await its future will

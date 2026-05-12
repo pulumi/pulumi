@@ -1,4 +1,4 @@
-// Copyright 2020-2024, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,10 @@ package pcl_test
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -245,6 +247,22 @@ func TestConfigNodeTypedStringList(t *testing.T) {
 	assert.Equal(t, listType.ElementType, model.StringType, "the element type is a string")
 }
 
+func TestConfigNodeTypedOptionalStringList(t *testing.T) {
+	t.Parallel()
+	source := `config names "list(optional(string))" { default = [null] }`
+	program, diags, err := ParseAndBindProgram(t, source, "config.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program, "failed to parse and bind program")
+	assert.Equal(t, 1, len(program.Nodes), "there is one node")
+	config, ok := program.Nodes[0].(*pcl.ConfigVariable)
+	assert.True(t, ok, "first node is a config variable")
+	assert.Equal(t, "names", config.Name())
+	listType, ok := config.Type().(*model.ListType)
+	assert.True(t, ok, "the type of config is a list type")
+	assert.True(t, model.IsOptionalType(listType.ElementType), "the element type is optional")
+}
+
 func TestConfigNodeTypedIntList(t *testing.T) {
 	t.Parallel()
 	source := "config names \"list(int)\" { }"
@@ -416,6 +434,22 @@ output "values" {
 	strictProgram, _, strictError := ParseAndBindProgram(t, source, "program.pp")
 	require.NotNil(t, strictError, "Binding fails in strict mode")
 	assert.Nil(t, strictProgram)
+}
+
+func TestBindingReadProviderResourceFails(t *testing.T) {
+	t.Parallel()
+
+	source := `
+read provider "pulumi:providers:random" {
+	id = "provider-id"
+}
+`
+
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Nil(t, program)
+	require.Error(t, err)
+	require.True(t, diags.HasErrors())
+	assert.Equal(t, "provider resources cannot be read: 'pulumi:providers:random'", diags[0].Summary)
 }
 
 func TestBindingUnknownResourceFromKnownSchemaWhenSkippingResourceTypeChecking(t *testing.T) {
@@ -657,13 +691,25 @@ package "random" {
         value = "SGVsbG8=" // base64 encoded "Hello"
     }
 }
+
+// Unlabeled package with all fields specified
+package {
+	baseProviderName = "gcp"
+	baseProviderVersion = "2.3.4"
+}
 `
 	parser := syntax.NewParser()
 	err := parser.ParseFile(bytes.NewReader([]byte(source)), "program.pp")
 	require.NoError(t, err)
 	packageDescriptors, diags := pcl.ReadPackageDescriptors(parser.Files[0])
 	require.False(t, diags.HasErrors(), "There are no error diagnostics")
-	require.Len(t, packageDescriptors, 3, "There are two package descriptors")
+	require.Len(t, diags, 3, "There are three warning diagnostics")
+	for _, diag := range diags {
+		require.Equal(t, hcl.DiagWarning, diag.Severity)
+		require.Equal(t, "package block label is deprecated", diag.Summary)
+	}
+
+	require.Len(t, packageDescriptors, 4, "There are four package descriptors")
 
 	require.Equal(t, "aws", packageDescriptors["aws"].Name)
 	require.Nil(t, packageDescriptors["aws"].Version)
@@ -681,6 +727,78 @@ package "random" {
 	assert.Equal(t, "4.5.6", packageDescriptors["random"].Parameterization.Version.String())
 	base64Value := base64.StdEncoding.EncodeToString(packageDescriptors["random"].Parameterization.Value)
 	assert.Equal(t, "SGVsbG8=", base64Value)
+
+	require.Equal(t, "gcp", packageDescriptors["gcp"].Name)
+	require.Equal(t, "2.3.4", packageDescriptors["gcp"].Version.String())
+}
+
+func TestReadAllPackageDescriptorsAllowsIdenticalDuplicates(t *testing.T) {
+	t.Parallel()
+
+	// The same package block in two files (e.g. main.pp and a per-package .pp file) should be
+	// silently deduplicated rather than causing an error.
+	sharedPackage := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "2.0.0"
+		value = "SGVsbG8=" // base64 encoded "Hello"
+	}
+}
+`
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(bytes.NewReader(
+		[]byte(sharedPackage+`resource r "subpackage:index:Foo" {}`)), "main.pp"))
+	require.NoError(t, parser.ParseFile(bytes.NewReader(
+		[]byte(sharedPackage)), "subpackage.pp"))
+
+	descriptors, diags := pcl.ReadAllPackageDescriptors(parser.Files)
+	assert.False(t, diags.HasErrors(), "identical duplicate package blocks should not produce errors: %v", diags)
+	require.Len(t, descriptors, 1)
+	require.NotNil(t, descriptors["subpackage"])
+}
+
+func TestReadAllPackageDescriptorsErrorsOnConflictingDuplicates(t *testing.T) {
+	t.Parallel()
+
+	pkg1 := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "2.0.0"
+		value = "SGVsbG8=" // base64 encoded "Hello"
+	}
+}
+`
+	pkg2 := `
+package {
+	baseProviderName = "parameterized"
+	baseProviderVersion = "1.2.3"
+	parameterization {
+		name = "subpackage"
+		version = "3.0.0"
+		value = "SGVsbG8="
+	}
+}
+`
+	parser := syntax.NewParser()
+	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(pkg1)), "main.pp"))
+	require.NoError(t, parser.ParseFile(bytes.NewReader([]byte(pkg2)), "subpackage.pp"))
+
+	_, diags := pcl.ReadAllPackageDescriptors(parser.Files)
+	assert.True(t, diags.HasErrors(), "conflicting package blocks should produce an error")
+	hasConflictError := false
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError && d.Summary == `package "subpackage" was already defined with different parameters` {
+			hasConflictError = true
+			break
+		}
+	}
+	assert.True(t, hasConflictError, "expected a conflict error diagnostic")
 }
 
 func TestBindingConditionalResourcesDoesNotProduceDiagnostics(t *testing.T) {
@@ -1159,4 +1277,288 @@ resource "ptfeServiceRecord" "aws:route53/record:Record" {
 		require.False(t, diags.HasErrors(), "there are no diagnostics")
 		require.NotNil(t, expr, "the expression is not nil")
 	}
+}
+
+func TestComponentInputTypeMismatchGivesError(t *testing.T) {
+	t.Parallel()
+
+	// Create a temp dir with a component that declares a number input, and a main
+	// program that passes a list (NoConversion from list to number).
+	dir := t.TempDir()
+	componentDir := filepath.Join(dir, "myComponent")
+	require.NoError(t, os.MkdirAll(componentDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(componentDir, "main.pp"),
+		[]byte("config myInput number { }"),
+		0o600))
+
+	mainSource := `
+component myComp "./myComponent" {
+    myInput = [1, 2, 3]
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(mainSource), "main.pp")
+	require.NoError(t, err)
+	require.False(t, parser.Diagnostics.HasErrors())
+
+	absDir, err := filepath.Abs(dir)
+	require.NoError(t, err)
+
+	_, diags, _ := pcl.BindProgram(parser.Files,
+		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.DirPath(absDir),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+
+	require.True(t, diags.HasErrors(), "expected a type error for mismatched component input type")
+}
+
+func TestRewriteConversionsOnComponentInputs(t *testing.T) {
+	t.Parallel()
+
+	// Create a component that declares a number input, and a main program that passes a string for it — an
+	// valid conversion. RewriteConversions should rewrite the literal when given the correct target type,
+	// which is obtained via Component.InputType.
+	dir := t.TempDir()
+	componentDir := filepath.Join(dir, "myComponent")
+	require.NoError(t, os.MkdirAll(componentDir, 0o755))
+	require.NoError(t, os.WriteFile(
+		filepath.Join(componentDir, "main.pp"),
+		[]byte(`config myInput number { }`),
+		0o600))
+
+	mainSource := `
+component myComp "./myComponent" {
+    myInput = "42.5"
+}
+`
+	parser := syntax.NewParser()
+	err := parser.ParseFile(strings.NewReader(mainSource), "main.pp")
+	require.NoError(t, err)
+	require.False(t, parser.Diagnostics.HasErrors())
+
+	absDir, err := filepath.Abs(dir)
+	require.NoError(t, err)
+
+	program, diags, bindErr := pcl.BindProgram(parser.Files,
+		pcl.Loader(schema.NewPluginLoader(utils.NewHost(testdataPath))),
+		pcl.DirPath(absDir),
+		pcl.ComponentBinder(pcl.ComponentProgramBinderFromFileSystem()))
+	require.NoError(t, bindErr)
+	require.False(t, diags.HasErrors())
+	require.NotNil(t, program)
+
+	var component *pcl.Component
+	for _, node := range program.Nodes {
+		if c, ok := node.(*pcl.Component); ok && c.Name() == "myComp" {
+			component = c
+			break
+		}
+	}
+	require.NotNil(t, component, "expected a component named myComp")
+
+	for _, attr := range component.Inputs {
+		targetType := component.InputType.(*model.ObjectType).Properties[attr.Name]
+		require.NotNil(t, targetType, "expected a target type for input %q", attr.Name)
+
+		expr, convertDiags := pcl.RewriteConversions(attr.Value, model.InputType(targetType))
+		require.False(t, convertDiags.HasErrors())
+		require.Equal(t, " 42.5\n", fmt.Sprintf("%v", expr))
+	}
+}
+
+func TestMaxAcceptsMixedIntAndNumber(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "number" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxAcceptsStringArgument(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "string" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMinAcceptsMixedIntAndNumber(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "number" {}
+config "b" "int" {}
+
+output "result" {
+  value = min(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxAcceptsOutputInt(t *testing.T) {
+	t.Parallel()
+	source := `
+config "b" "int" {}
+
+resource "ri" "random:index/randomInteger:RandomInteger" {
+  min = 0
+  max = 10
+}
+
+output "result" {
+  value = max(ri.result, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+}
+
+func TestMaxRejectsListArgument(t *testing.T) {
+	t.Parallel()
+	source := `
+config "a" "int" {}
+config "b" "list(string)" {}
+
+output "result" {
+  value = max(a, b)
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.Error(t, err)
+	require.Equal(t, hcl.Diagnostics{{
+		Severity: hcl.DiagError,
+		Summary:  "cannot assign expression of type list(string) to location of type int | output(int): ",
+		Subject: &hcl.Range{
+			Filename: "program.pp",
+			Start:    hcl.Pos{Line: 5, Column: 18, Byte: 86},
+			End:      hcl.Pos{Line: 5, Column: 19, Byte: 87},
+		},
+	}}, diags)
+	require.Nil(t, program)
+}
+
+func TestBindInvokePicksOutputForm(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name: "resource output at property",
+			source: `
+resource "rng" "random:index/randomInteger:RandomInteger" {
+	min = 0
+	max = 100
+}
+result = invoke("std:index:Abs", {a = rng.result, b = 1})
+`,
+		},
+		{
+			name: "resource output mixed with dynamic",
+			source: `
+config "y" "any" {}
+resource "rng" "random:index/randomInteger:RandomInteger" {
+	min = 0
+	max = 100
+}
+result = invoke("std:index:Abs", {a = rng.result, b = y})
+`,
+		},
+		{
+			name: "whole-output args",
+			source: `
+args = secret({a = 1, b = 2})
+result = invoke("std:index:Abs", args)
+`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			program, diags, err := ParseAndBindProgram(t, tc.source, "program.pp")
+			require.NoError(t, err)
+			require.False(t, diags.HasErrors(), "binding should not error: %v", diags)
+			require.NotNil(t, program)
+
+			var call *model.FunctionCallExpression
+			for _, n := range program.Nodes {
+				lv, ok := n.(*pcl.LocalVariable)
+				if !ok || lv.Name() != "result" {
+					continue
+				}
+				call, _ = lv.Definition.Value.(*model.FunctionCallExpression)
+			}
+			require.NotNil(t, call, "expected 'result' bound to an invoke call")
+			require.GreaterOrEqual(t, len(call.Signature.Parameters), 2)
+			assert.True(t, model.ContainsOutputs(call.Signature.Parameters[1].Type),
+				"args param type should be the Input<T>-shaped output form; got %v",
+				call.Signature.Parameters[1].Type)
+		})
+	}
+}
+
+// Test binding a conditional whose branches mix a promise-typed value (from an
+// invoke().result) with a try() expression.
+func TestBindConditionalMixingPromiseWithTry(t *testing.T) {
+	t.Parallel()
+	source := `
+config "x" "any" {}
+isOne = invoke("std:index:Abs", {a = 1, b = 1}).result == 1
+a = isOne ? x : null
+b = true ? a : try(x, null)
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.False(t, diags.HasErrors(), "binding should not panic or error: %v", diags)
+	require.NotNil(t, program)
+}
+
+func TestStackReferenceGetToken(t *testing.T) {
+	t.Parallel()
+	source := `
+resource stackRef "pulumi:pulumi:StackReference" {
+    name = "org/project/stack"
+}
+`
+	program, diags, err := ParseAndBindProgram(t, source, "program.pp")
+	require.NoError(t, err)
+	assert.Empty(t, diags)
+	require.NotNil(t, program)
+
+	var resource *pcl.Resource
+	for _, node := range program.Nodes {
+		if r, ok := node.(*pcl.Resource); ok && r.Name() == "stackRef" {
+			resource = r
+			break
+		}
+	}
+	require.NotNil(t, resource, "expected a resource named stackRef")
+
+	token, _ := resource.GetToken()
+	assert.Equal(t, "pulumi:pulumi:StackReference", token)
 }

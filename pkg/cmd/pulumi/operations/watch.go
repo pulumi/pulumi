@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ func NewWatchCmd() *cobra.Command {
 	var showConfig bool
 	var showReplacementSteps bool
 	var showSames bool
+	var showURNs bool
 	var secretsProvider string
 
 	cmd := &cobra.Command{
@@ -83,6 +84,7 @@ func NewWatchCmd() *cobra.Command {
 				ShowConfig:           showConfig,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSameResources:    showSames,
+				ShowURNs:             showURNs,
 				SuppressOutputs:      true,
 				SuppressProgress:     true,
 				SuppressPermalink:    false,
@@ -127,6 +129,7 @@ func NewWatchCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("gathering environment metadata: %w", err)
 			}
+			cmdutil.SetStringSpanAttributes(ctx, m.Environment)
 
 			decrypter := sm.Decrypter()
 			encrypter := sm.Encrypter()
@@ -232,6 +235,9 @@ func NewWatchCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need be updated because they haven't changed, alongside those that do")
+	cmd.PersistentFlags().BoolVar(
+		&showURNs, "urns", false,
+		"Display full URNs instead of short resource names")
 
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist

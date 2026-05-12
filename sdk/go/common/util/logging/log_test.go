@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +15,13 @@
 package logging
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInitLogging(t *testing.T) {
@@ -83,4 +87,35 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t,
 		"These are my secrets: [secret]",
 		msg6)
+
+	// Boolean strings "true" and "false" are not masked, regardless of case.
+	filter7 := CreateFilter([]string{"true", "false", "True", "FALSE", "realsecret"}, "[secret]")
+	msg7 := filter7.Filter(
+		"value is True and FALSE but realsecret is hidden")
+	assert.Equal(t,
+		"value is True and FALSE but [secret] is hidden",
+		msg7)
+}
+
+func TestLoggingDoesNotConflictWithGlog(t *testing.T) {
+	t.Parallel()
+
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+
+	// Keep the copied module at a fixed depth below this package so the fixture's
+	// relative replace directive points back to the local sdk module.
+	dir, err := os.MkdirTemp(wd, ".tmp-glog-flag-conflict-*") //nolint:usetesting
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.RemoveAll(dir)
+	})
+
+	fixture := filepath.Join(wd, "testdata", "glog-flag-conflict")
+	require.NoError(t, os.CopyFS(dir, os.DirFS(fixture)))
+
+	cmd := exec.Command("go", "run", "-mod=mod", ".")
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
 }

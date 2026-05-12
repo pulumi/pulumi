@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -125,15 +125,19 @@ func sanitizeName(name string) string {
 func createImportState(states []*resource.State, snapshot []*resource.State, names NameTable) ImportState {
 	pathedLiteralValues := make([]PathedLiteralValue, 0)
 	for _, state := range states {
+		// Ensure all names are sanitized, at this point
+		name := state.URN.Name()
+		if mappedName, ok := names[state.URN]; ok {
+			name = mappedName
+		}
+		name = sanitizeName(name)
+		names[state.URN] = name
+
 		resourceID := state.ID.String()
 		if resourceID == "" {
 			continue
 		}
 
-		name := state.URN.Name()
-		if mappedName, ok := names[state.URN]; ok {
-			name = mappedName
-		}
 		pathedLiteralValues = append(pathedLiteralValues, PathedLiteralValue{
 			Root:  name,
 			Value: resourceID,
@@ -285,10 +289,22 @@ func GenerateLanguageDefinitions(
 		return pcl.BindProgram(parser.Files, pcl.Loader(loader), pcl.AllowMissingVariables)
 	}
 
+	if names == nil {
+		names = NameTable{}
+	}
+
 	importState := createImportState(states, snapshot, names)
 	program, diags, err := generateProgramText(importState)
 	if err != nil {
-		if strings.Contains(err.Error(), "circular reference") {
+		// See if _any_ diagnostics are about circular references
+		diagHasCircularRef := false
+		for _, diag := range diags {
+			if strings.Contains(diag.Summary, "circular reference") {
+				diagHasCircularRef = true
+				break
+			}
+		}
+		if diagHasCircularRef {
 			// hitting an edge case when guessing references between resources
 			// this happens when an input of a _parent_ resource is equal to the ID of a _child_ resource
 			// for example importing the following program:

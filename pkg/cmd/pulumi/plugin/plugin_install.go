@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/blang/semver"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packageresolution"
@@ -134,7 +135,8 @@ func (cmd *pluginInstallCmd) Run(ctx context.Context, args []string) error {
 		cmd.installPluginSpec = installPluginSpec
 	}
 	if cmd.registry == nil {
-		cmd.registry = cmdCmd.NewDefaultRegistry(ctx, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
+		cmd.registry = cmdCmd.NewDefaultRegistry(
+			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmd.diag, cmd.env)
 	}
 
 	// Parse the kind, name, and version, if specified.

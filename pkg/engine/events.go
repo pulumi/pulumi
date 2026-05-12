@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -304,6 +304,7 @@ type SummaryEventPayload struct {
 	Duration        time.Duration           // the duration of the entire update operation (zero values for previews)
 	ResourceChanges display.ResourceChanges // count of changed resources, useful for reporting
 	PolicyPacks     map[string]string       // {policy-pack: version} for each policy pack applied
+	Result          apitype.OperationResult // high-level outcome of the operation (empty if not applicable)
 }
 
 type ResourceOperationFailedPayload struct {
@@ -388,6 +389,8 @@ type StepEventStateMetadata struct {
 	Protect bool
 	// true to force replacement of this resource on the next update.
 	Taint bool
+	// External is true if this resource is "external" to Pulumi and we don't control the lifecycle.
+	External bool
 	// RetainOnDelete is true if the resource is not physically deleted when it is logically deleted.
 	RetainOnDelete bool `json:"retainOnDelete"`
 	// the resource's input properties (as specified by the program). Note: because this will cross
@@ -544,6 +547,7 @@ func makeStepEventStateMetadata(state *resource.State, debug bool, showSecrets b
 		Parent:         state.Parent,
 		Protect:        state.Protect,
 		Taint:          state.Taint,
+		External:       state.External,
 		RetainOnDelete: state.RetainOnDelete,
 		Inputs:         filterResourceProperties(state.Inputs, debug, showSecrets),
 		Outputs:        filterResourceProperties(state.Outputs, debug, showSecrets),
@@ -618,7 +622,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 }
 
 func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration,
-	resourceChanges display.ResourceChanges, policyPacks map[string]string,
+	resourceChanges display.ResourceChanges, policyPacks map[string]string, result apitype.OperationResult,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -628,6 +632,7 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 		Duration:        duration,
 		ResourceChanges: resourceChanges,
 		PolicyPacks:     policyPacks,
+		Result:          result,
 	}))
 }
 
@@ -912,7 +917,7 @@ func trySendEvent(ch chan<- Event, ev Event) (sent bool) {
 	defer func() {
 		if recover() != nil {
 			sent = false
-			if logging.V(9) {
+			if logging.V(9).Enabled() {
 				logging.V(9).Infof(
 					"Ignoring %v send on a closed channel %p",
 					ev.Type, ch)
@@ -931,7 +936,7 @@ func tryCloseEventChan(ch chan<- Event) (closed bool) {
 	defer func() {
 		if recover() != nil {
 			closed = false
-			if logging.V(9) {
+			if logging.V(9).Enabled() {
 				logging.V(9).Infof(
 					"Ignoring close of a closed event channel %p",
 					ch)

@@ -60,9 +60,8 @@ type publishPackageArgs struct {
 }
 
 type packagePublishCmd struct {
-	defaultOrg    func(context.Context, backend.Backend, *workspace.Project) (string, error)
 	extractSchema func(
-		pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
+		ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 		registry registry.Registry, e env.Env, concurrency int,
 	) (*schema.PackageSpec, *workspace.PackageSpec, error)
 }
@@ -93,7 +92,6 @@ func newPackagePublishCmd() *cobra.Command {
 			"  pulumi package publish ./my/schema.json --readme ./README.md",
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
-			pkgPublishCmd.defaultOrg = backend.GetDefaultOrg
 			pkgPublishCmd.extractSchema = packages.SchemaFromSchemaSource
 			parameters := &plugin.ParameterizeArgs{Args: cliArgs[1:]}
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], parameters)
@@ -165,7 +163,7 @@ func (cmd *packagePublishCmd) Run(
 	}
 	defer contract.IgnoreClose(pctx)
 
-	pkg, _, err := cmd.extractSchema(pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
+	pkg, _, err := cmd.extractSchema(pkgWorkspace.Instance, pctx, packageSrc, packageParams, b.GetReadOnlyCloudRegistry(),
 		env.Global(), 0 /* unbounded concurrency */)
 	if err != nil {
 		return fmt.Errorf("failed to get schema: %w", err)
@@ -191,7 +189,7 @@ func (cmd *packagePublishCmd) Run(
 	} else if pkg.Publisher != "" { // Otherwise, fall back to the publisher set in the package schema.
 		publisher = pkg.Publisher
 	} else { // As a last resort, try to determine the publisher from the default organization or fail if none is found.
-		publisher, err = cmd.defaultOrg(ctx, b, project)
+		publisher, err = b.GetDefaultOrg(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to determine default organization: %w", err)
 		}

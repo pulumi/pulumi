@@ -114,11 +114,11 @@ class HelmReleaseSettingsArgsDict(TypedDict):
     """
     to test required args
     """
-    driver: NotRequired[pulumi.Input[_builtins.str]]
+    driver: NotRequired[pulumi.Input[Optional[_builtins.str]]]
     """
     The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
     """
-    plugins_path: NotRequired[pulumi.Input[_builtins.str]]
+    plugins_path: NotRequired[pulumi.Input[Optional[_builtins.str]]]
     """
     The path to the helm plugins directory.
     """
@@ -127,8 +127,8 @@ class HelmReleaseSettingsArgsDict(TypedDict):
 class HelmReleaseSettingsArgs:
     def __init__(__self__, *,
                  required_arg: pulumi.Input[_builtins.str],
-                 driver: Optional[pulumi.Input[_builtins.str]] = None,
-                 plugins_path: Optional[pulumi.Input[_builtins.str]] = None):
+                 driver: pulumi.Input[Optional[_builtins.str]] = None,
+                 plugins_path: pulumi.Input[Optional[_builtins.str]] = None):
         """
         BETA FEATURE - Options to configure the Helm Release resource.
 
@@ -160,26 +160,26 @@ class HelmReleaseSettingsArgs:
 
     @_builtins.property
     @pulumi.getter
-    def driver(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def driver(self) -> pulumi.Input[Optional[_builtins.str]]:
         """
         The backend storage driver for Helm. Values are: configmap, secret, memory, sql.
         """
         return pulumi.get(self, "driver")
 
     @driver.setter
-    def driver(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def driver(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "driver", value)
 
     @_builtins.property
     @pulumi.getter(name="pluginsPath")
-    def plugins_path(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def plugins_path(self) -> pulumi.Input[Optional[_builtins.str]]:
         """
         The path to the helm plugins directory.
         """
         return pulumi.get(self, "plugins_path")
 
     @plugins_path.setter
-    def plugins_path(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def plugins_path(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "plugins_path", value)
 
 
@@ -187,22 +187,22 @@ class KubeClientSettingsArgsDict(TypedDict):
     """
     Options for tuning the Kubernetes client used by a Provider.
     """
-    burst: NotRequired[pulumi.Input[_builtins.int]]
+    burst: NotRequired[pulumi.Input[Optional[_builtins.int]]]
     """
     Maximum burst for throttle. Default value is 10.
     """
-    qps: NotRequired[pulumi.Input[_builtins.float]]
+    qps: NotRequired[pulumi.Input[Optional[_builtins.float]]]
     """
     Maximum queries per second (QPS) to the API server from this client. Default value is 5.
     """
-    rec_test: NotRequired[pulumi.Input['KubeClientSettingsArgsDict']]
+    rec_test: NotRequired[pulumi.Input[Optional['KubeClientSettingsArgs']]]
 
 @pulumi.input_type
 class KubeClientSettingsArgs:
     def __init__(__self__, *,
-                 burst: Optional[pulumi.Input[_builtins.int]] = None,
-                 qps: Optional[pulumi.Input[_builtins.float]] = None,
-                 rec_test: Optional[pulumi.Input['KubeClientSettingsArgs']] = None):
+                 burst: pulumi.Input[Optional[_builtins.int]] = None,
+                 qps: pulumi.Input[Optional[_builtins.float]] = None,
+                 rec_test: pulumi.Input[Optional['KubeClientSettingsArgs']] = None):
         """
         Options for tuning the Kubernetes client used by a Provider.
 
@@ -222,35 +222,35 @@ class KubeClientSettingsArgs:
 
     @_builtins.property
     @pulumi.getter
-    def burst(self) -> Optional[pulumi.Input[_builtins.int]]:
+    def burst(self) -> pulumi.Input[Optional[_builtins.int]]:
         """
         Maximum burst for throttle. Default value is 10.
         """
         return pulumi.get(self, "burst")
 
     @burst.setter
-    def burst(self, value: Optional[pulumi.Input[_builtins.int]]):
+    def burst(self, value: pulumi.Input[Optional[_builtins.int]]):
         pulumi.set(self, "burst", value)
 
     @_builtins.property
     @pulumi.getter
-    def qps(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def qps(self) -> pulumi.Input[Optional[_builtins.float]]:
         """
         Maximum queries per second (QPS) to the API server from this client. Default value is 5.
         """
         return pulumi.get(self, "qps")
 
     @qps.setter
-    def qps(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def qps(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "qps", value)
 
     @_builtins.property
     @pulumi.getter(name="recTest")
-    def rec_test(self) -> Optional[pulumi.Input['KubeClientSettingsArgs']]:
+    def rec_test(self) -> pulumi.Input[Optional['KubeClientSettingsArgs']]:
         return pulumi.get(self, "rec_test")
 
     @rec_test.setter
-    def rec_test(self, value: Optional[pulumi.Input['KubeClientSettingsArgs']]):
+    def rec_test(self, value: pulumi.Input[Optional['KubeClientSettingsArgs']]):
         pulumi.set(self, "rec_test", value)
 
 
@@ -263,7 +263,7 @@ class LayeredTypeArgsDict(TypedDict):
     """
     To ask and answer
     """
-    answer: NotRequired[pulumi.Input[_builtins.float]]
+    answer: NotRequired[pulumi.Input[Optional[_builtins.float]]]
     """
     The answer to the question
     """
@@ -271,21 +271,21 @@ class LayeredTypeArgsDict(TypedDict):
     """
     Test how plain types interact
     """
-    question: NotRequired[pulumi.Input[_builtins.str]]
+    question: NotRequired[pulumi.Input[Optional[_builtins.str]]]
     """
     The question already answered
     """
-    recursive: NotRequired[pulumi.Input['LayeredTypeArgsDict']]
+    recursive: NotRequired[pulumi.Input[Optional['LayeredTypeArgs']]]
 
 @pulumi.input_type
 class LayeredTypeArgs:
     def __init__(__self__, *,
                  other: pulumi.Input['HelmReleaseSettingsArgs'],
-                 thinker: Optional[pulumi.Input[_builtins.str]] = None,
-                 answer: Optional[pulumi.Input[_builtins.float]] = None,
+                 thinker: pulumi.Input[Optional[_builtins.str]] = None,
+                 answer: pulumi.Input[Optional[_builtins.float]] = None,
                  plain_other: Optional['HelmReleaseSettingsArgs'] = None,
-                 question: Optional[pulumi.Input[_builtins.str]] = None,
-                 recursive: Optional[pulumi.Input['LayeredTypeArgs']] = None):
+                 question: pulumi.Input[Optional[_builtins.str]] = None,
+                 recursive: pulumi.Input[Optional['LayeredTypeArgs']] = None):
         """
         Make sure that defaults propagate through types
 
@@ -334,14 +334,14 @@ class LayeredTypeArgs:
 
     @_builtins.property
     @pulumi.getter
-    def answer(self) -> Optional[pulumi.Input[_builtins.float]]:
+    def answer(self) -> pulumi.Input[Optional[_builtins.float]]:
         """
         The answer to the question
         """
         return pulumi.get(self, "answer")
 
     @answer.setter
-    def answer(self, value: Optional[pulumi.Input[_builtins.float]]):
+    def answer(self, value: pulumi.Input[Optional[_builtins.float]]):
         pulumi.set(self, "answer", value)
 
     @_builtins.property
@@ -358,23 +358,23 @@ class LayeredTypeArgs:
 
     @_builtins.property
     @pulumi.getter
-    def question(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def question(self) -> pulumi.Input[Optional[_builtins.str]]:
         """
         The question already answered
         """
         return pulumi.get(self, "question")
 
     @question.setter
-    def question(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def question(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "question", value)
 
     @_builtins.property
     @pulumi.getter
-    def recursive(self) -> Optional[pulumi.Input['LayeredTypeArgs']]:
+    def recursive(self) -> pulumi.Input[Optional['LayeredTypeArgs']]:
         return pulumi.get(self, "recursive")
 
     @recursive.setter
-    def recursive(self, value: Optional[pulumi.Input['LayeredTypeArgs']]):
+    def recursive(self, value: pulumi.Input[Optional['LayeredTypeArgs']]):
         pulumi.set(self, "recursive", value)
 
 
@@ -382,16 +382,16 @@ class TypArgsDict(TypedDict):
     """
     A test for namespaces (mod main)
     """
-    mod1: NotRequired[pulumi.Input['_mod1.TypArgsDict']]
-    mod2: NotRequired[pulumi.Input['_mod2.TypArgsDict']]
-    val: NotRequired[pulumi.Input[_builtins.str]]
+    mod1: NotRequired[pulumi.Input[Optional['_mod1.TypArgs']]]
+    mod2: NotRequired[pulumi.Input[Optional['_mod2.TypArgs']]]
+    val: NotRequired[pulumi.Input[Optional[_builtins.str]]]
 
 @pulumi.input_type
 class TypArgs:
     def __init__(__self__, *,
-                 mod1: Optional[pulumi.Input['_mod1.TypArgs']] = None,
-                 mod2: Optional[pulumi.Input['_mod2.TypArgs']] = None,
-                 val: Optional[pulumi.Input[_builtins.str]] = None):
+                 mod1: pulumi.Input[Optional['_mod1.TypArgs']] = None,
+                 mod2: pulumi.Input[Optional['_mod2.TypArgs']] = None,
+                 val: pulumi.Input[Optional[_builtins.str]] = None):
         """
         A test for namespaces (mod main)
         """
@@ -406,29 +406,29 @@ class TypArgs:
 
     @_builtins.property
     @pulumi.getter
-    def mod1(self) -> Optional[pulumi.Input['_mod1.TypArgs']]:
+    def mod1(self) -> pulumi.Input[Optional['_mod1.TypArgs']]:
         return pulumi.get(self, "mod1")
 
     @mod1.setter
-    def mod1(self, value: Optional[pulumi.Input['_mod1.TypArgs']]):
+    def mod1(self, value: pulumi.Input[Optional['_mod1.TypArgs']]):
         pulumi.set(self, "mod1", value)
 
     @_builtins.property
     @pulumi.getter
-    def mod2(self) -> Optional[pulumi.Input['_mod2.TypArgs']]:
+    def mod2(self) -> pulumi.Input[Optional['_mod2.TypArgs']]:
         return pulumi.get(self, "mod2")
 
     @mod2.setter
-    def mod2(self, value: Optional[pulumi.Input['_mod2.TypArgs']]):
+    def mod2(self, value: pulumi.Input[Optional['_mod2.TypArgs']]):
         pulumi.set(self, "mod2", value)
 
     @_builtins.property
     @pulumi.getter
-    def val(self) -> Optional[pulumi.Input[_builtins.str]]:
+    def val(self) -> pulumi.Input[Optional[_builtins.str]]:
         return pulumi.get(self, "val")
 
     @val.setter
-    def val(self, value: Optional[pulumi.Input[_builtins.str]]):
+    def val(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "val", value)
 
 

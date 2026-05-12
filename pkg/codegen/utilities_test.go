@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -94,23 +94,4 @@ func TestStringSetSubtract(t *testing.T) {
 	assert.Equal(t, set34, set1234.Subtract(set125))
 	assert.Equal(t, setEmpty, set1234.Subtract(set1234))
 	assert.Equal(t, set1234, set1234.Subtract(setEmpty))
-}
-
-func TestSimplifyInputUnion(t *testing.T) {
-	t.Parallel()
-
-	u1 := &schema.UnionType{
-		ElementTypes: []schema.Type{
-			&schema.InputType{ElementType: schema.StringType},
-			schema.NumberType,
-		},
-	}
-
-	u2 := SimplifyInputUnion(u1)
-	assert.Equal(t, &schema.UnionType{
-		ElementTypes: []schema.Type{
-			schema.StringType,
-			schema.NumberType,
-		},
-	}, u2)
 }

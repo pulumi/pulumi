@@ -115,7 +115,7 @@ func runAttach(ctx context.Context, proxy *PolicyProxy, cmd *exec.Cmd) <-chan er
 // awaitClientFulfilled waits up to 5 seconds for proxy.client to be resolved and returns it.
 func awaitClientFulfilled(t *testing.T, proxy *PolicyProxy) pulumirpc.AnalyzerClient {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	client, err := proxy.client.Promise().Result(ctx)
 	require.NoError(t, err, "proxy.client promise should be fulfilled without error")
@@ -136,7 +136,7 @@ func TestPolicyProxy_Attach_OldPolicyPackNoConfigureStack(t *testing.T) {
 	// codes.Unimplemented — just like an old policy pack that has no knowledge of this RPC.
 	port := startMockPolicyPackServer(t, &mockPolicyPackServer{})
 
-	ctx := context.Background()
+	ctx := t.Context()
 	proxy, stdoutW, err := NewPolicyProxy(ctx, &bytes.Buffer{})
 	require.NoError(t, err)
 
@@ -177,7 +177,7 @@ func TestPolicyProxy_Attach_NewPolicyPackWithConfigureStack(t *testing.T) {
 		},
 	})
 
-	ctx := context.Background()
+	ctx := t.Context()
 	proxy, stdoutW, err := NewPolicyProxy(ctx, &bytes.Buffer{})
 	require.NoError(t, err)
 
@@ -215,7 +215,7 @@ func TestPolicyProxy_Attach_ConfigureStackError(t *testing.T) {
 		},
 	})
 
-	ctx := context.Background()
+	ctx := t.Context()
 	proxy, stdoutW, err := NewPolicyProxy(ctx, &bytes.Buffer{})
 	require.NoError(t, err)
 

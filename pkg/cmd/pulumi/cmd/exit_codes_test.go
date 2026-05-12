@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
@@ -92,6 +94,21 @@ func TestExitCodeFor_KnownErrors(t *testing.T) {
 			name: "wrapped auth error",
 			err:  wrap(errors.New("outer"), backenderr.LoginRequiredError{}),
 			want: ExitAuthenticationError,
+		},
+		{
+			name: "api caller error preserves exit code",
+			err:  &cloud.APIError{ExitCode: cmdutil.ExitCodeError},
+			want: ExitCodeError,
+		},
+		{
+			name: "api auth error preserves exit code",
+			err:  &cloud.APIError{ExitCode: cmdutil.ExitAuthenticationError},
+			want: ExitAuthenticationError,
+		},
+		{
+			name: "api cancelled preserves exit code",
+			err:  &cloud.APIError{ExitCode: cmdutil.ExitCancelled},
+			want: ExitCancelled,
 		},
 	}
 

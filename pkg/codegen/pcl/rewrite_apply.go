@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -320,7 +320,7 @@ func (ctx *observeContext) bestArgName(x model.Expression) string {
 			return ctx.bestArgName(x.Args[0])
 		case "fileArchive", "remoteArchive", "assetArchive",
 			"fileAsset", "stringAsset", "remoteAsset",
-			"readDir", "readFile":
+			"readFile":
 			return ctx.bestArgName(x.Args[0])
 		case "lookup":
 			return ctx.bestArgName(x.Args[1])
@@ -377,9 +377,14 @@ func (ctx *observeContext) bestArgName(x model.Expression) string {
 // disambiguateArgName applies type-specific disambiguation to an argument name.
 func (ctx *observeContext) disambiguateArgName(x model.Expression, bestName string) string {
 	if x, ok := x.(*model.ScopeTraversalExpression); ok {
-		if n, ok := x.Parts[0].(*Resource); ok {
-			// If dealing with a broken access, defer to the generic disambiguator. Otherwise, attempt to disambiguate
-			// by prepending the resource's variable name.
+		switch n := x.Parts[0].(type) {
+		// If dealing with a broken access, defer to the generic disambiguator. Otherwise, attempt to disambiguate
+		// by prepending the resource's variable name.
+		case *Resource:
+			if len(x.Traversal) > 1 {
+				return ctx.disambiguateName(n.Name() + titleCase(bestName))
+			}
+		case *ReadResource:
 			if len(x.Traversal) > 1 {
 				return ctx.disambiguateName(n.Name() + titleCase(bestName))
 			}
@@ -445,8 +450,15 @@ func (ctx *observeContext) rewriteRelativeTraversalExpression(expr *model.Relati
 			partResolvedType, isEventual = ctx.isEventualType(model.GetTraversableType(expr.Parts[i+1]))
 		}
 		if isEventual {
-			expr.Traversal, expr.Parts = expr.Traversal[:i+1], expr.Parts[:i+1]
-			paramType, traversal, parts = partResolvedType, expr.Traversal[i+1:], expr.Parts[i+1:]
+			// Invariant: len(expr.Parts) == len(expr.Traversal) + 1, because Parts holds one entry
+			// for the source type plus one entry per traversal hop. Since i < len(expr.Traversal),
+			// i+2 <= len(expr.Parts) and expr.Parts[i+2:] is guaranteed to be in bounds.
+			contract.Assertf(i+2 <= len(expr.Parts),
+				"Parts index out of bounds: i=%d, len(expr.Parts)=%d, len(expr.Traversal)=%d; "+
+					"expected len(Parts) == len(Traversal)+1",
+				i, len(expr.Parts), len(expr.Traversal))
+			expr.Traversal, expr.Parts = expr.Traversal[:i+1], expr.Parts[:i+2]
+			paramType, traversal, parts = partResolvedType, expr.Traversal[i+1:], expr.Parts[i+2:]
 			break
 		}
 	}

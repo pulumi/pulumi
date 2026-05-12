@@ -1,0 +1,16 @@
+<{%fg 13%}><{%bold%}>View Live: <{%underline%}><{%fg 12%}>http://example.com<{%reset%}>
+
+
+ <{%bold%}><{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:pulumi:Stack::test-test <{%bold%}><{%fg 2%}>creating<{%reset%}> 
+ <{%bold%}><{%fg 2%}>= <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%bold%}><{%fg 2%}>importing<{%reset%}> 
+ <{%fg 2%}>= <{%reset%}> urn:pulumi:test::test::pkgA:m:typA::resA <{%fg 2%}>imported<{%reset%}> 
+ <{%bold%}><{%fg 2%}>= <{%reset%}> urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB <{%bold%}><{%fg 2%}>importing<{%reset%}> 
+ <{%fg 2%}>= <{%reset%}> urn:pulumi:test::test::pkgA:m:typA$pkgA:m:typA::resB <{%fg 2%}>imported<{%reset%}> 
+ <{%fg 2%}>+ <{%reset%}> urn:pulumi:test::test::pulumi:pulumi:Stack::test-test <{%fg 2%}>created<{%reset%}> 
+<{%fg 13%}><{%bold%}>Resources:<{%reset%}>
+    <{%fg 2%}>+ 1 created<{%reset%}>
+    <{%fg 2%}>= 2 imported<{%reset%}>
+    <{%bold%}>3 changes<{%reset%}>
+
+<{%fg 13%}><{%bold%}>Duration:<{%reset%}> 1s
+

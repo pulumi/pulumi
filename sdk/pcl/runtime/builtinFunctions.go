@@ -16,18 +16,25 @@ package runtime
 
 import (
 	"context"
+	"crypto/sha1" //nolint:gosec // we don't need a strong cryptographic primitive
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/customdecode"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/function"
@@ -207,45 +214,26 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New("invoke token must be a string")
 			}
 			token := args[0].AsString()
-			components := strings.Split(token, ":")
-			contract.Assertf(len(components) == 3, "invalid token format: %s", token)
-			if components[1] == "" {
-				components[1] = "index"
+			pkg, mod, member, diags := pcl.DecomposeToken(token, hcl.Range{})
+			if diags.HasErrors() {
+				return cty.NilVal, fmt.Errorf("invalid token format: %s", token)
 			}
-			token = fmt.Sprintf("%s:%s:%s", components[0], components[1], components[2])
+			token = fmt.Sprintf("%s:%s:%s", pkg, mod, member)
 
-			// Fall back to just the package name and passed in version if we don't have a descriptor.
-			descriptor := &schema.PackageDescriptor{
-				Name: components[0],
-			}
-			pkg, err := i.loader.LoadPackageReferenceV2(context.TODO(), descriptor)
+			descriptor := i.lookupPackageDescriptor(pkg)
+			pkgref, err := i.loader.LoadPackageReferenceV2(context.TODO(), descriptor)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("load package for token %s: %w", token, err)
 			}
-			functions := pkg.Functions()
+			functions := pkgref.Functions()
 			fun, ok, err := functions.Get(token)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("get function from package for token %s: %w", token, err)
 			}
-			if !ok {
-				// Didn't find the function via a direct lookup, we now need to iterate _all_ the functions and use
-				// TokenToModule to see if any of the match the token we have.
-				iter := functions.Range()
-				for iter.Next() {
-					fnToken := iter.Token()
-					// Canonicalize the functions token via TokenToModule
-					mod := pkg.TokenToModule(fnToken)
-					components := strings.Split(fnToken, ":")
-					fnToken = fmt.Sprintf("%s:%s:%s", components[0], mod, components[2])
-					if token == fnToken {
-						fun, err = iter.Function()
-						if err != nil {
-							return cty.NilVal, fmt.Errorf("get function from package for token %s: %w", token, err)
-						}
-						token = iter.Token()
-						break
-					}
-				}
+			if ok {
+				// Use the canonical schema token (the alias lookup in Get may have resolved a
+				// normalized form like "pkg:index:name" to the source-form "pkg:index_name:name").
+				token = fun.Token
 			}
 
 			argsPV, err := ctyToPropertyValue(args[1])
@@ -253,6 +241,13 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
 			argsPV, dependsOn := unwrapOutputs(argsPV)
+			if fun != nil && fun.Inputs != nil && argsPV.IsObject() {
+				convertedArgs, err := convertInvokeInputObject(argsPV.ObjectValue(), fun.Inputs)
+				if err != nil {
+					return cty.NilVal, fmt.Errorf("convert invoke arguments: %w", err)
+				}
+				argsPV = resource.NewProperty(convertedArgs)
+			}
 
 			marshalOpts := plugin.MarshalOptions{
 				KeepUnknowns:  true,
@@ -267,6 +262,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			request := &pulumirpc.ResourceInvokeRequest{
 				Tok:  token,
 				Args: obj,
+			}
+			request.PackageRef, err = i.getPackageRefFromToken(token)
+			if err != nil {
+				return cty.NilVal, err
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -449,6 +448,10 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				Tok:  fun.Token,
 				Args: obj,
 			}
+			request.PackageRef, err = i.getPackageRefFromToken(fun.Token)
+			if err != nil {
+				return cty.NilVal, err
+			}
 
 			var dependsOn []resource.URN
 			if len(args) == 4 && !args[3].IsNull() {
@@ -495,7 +498,25 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("unmarshal invoke result: %w", err)
 			}
-			resultPV := resource.NewProperty(resultPM)
+			// Methods declared with ReturnTypePlain but no object return type carry the single value in a
+			// property map with exactly one entry, whose key may be any name. Unwrap it so callers get the
+			// value directly.
+			var resultPV resource.PropertyValue
+			if fun.ReturnTypePlain {
+				if _, isObject := fun.ReturnType.(*schema.ObjectType); !isObject {
+					if len(resultPM) != 1 {
+						return cty.NilVal, fmt.Errorf(
+							"invoke %q: expected a single return value, got %d", fun.Token, len(resultPM))
+					}
+					for _, v := range resultPM {
+						resultPV = v
+					}
+				} else {
+					resultPV = resource.NewProperty(resultPM)
+				}
+			} else {
+				resultPV = resource.NewProperty(resultPM)
+			}
 			if len(dependsOn) > 0 {
 				resultPV = resource.NewProperty(resource.Output{
 					Element:      resultPV,
@@ -761,11 +782,17 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, fmt.Errorf("entries argument must be a collection, was %s", args[0].Type().FriendlyName())
 			}
 			obj := args[0]
+			valueMap := obj.AsValueMap()
+			keys := make([]string, 0, len(valueMap))
+			for k := range valueMap {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
 			var entries []cty.Value
-			for k, v := range obj.AsValueMap() {
+			for _, k := range keys {
 				entry := cty.ObjectVal(map[string]cty.Value{
 					"key":   cty.StringVal(k),
-					"value": v,
+					"value": valueMap[k],
 				})
 				entries = append(entries, entry)
 			}
@@ -818,6 +845,26 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	sha1Fn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "input",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if len(args) != 1 {
+				return cty.NilVal, errors.New("sha1 requires an input argument")
+			}
+			if args[0].Type() != cty.String {
+				return cty.NilVal, errors.New("sha1 input argument must be a string")
+			}
+			h := sha1.Sum([]byte(args[0].AsString())) //nolint:gosec // we don't need a strong cryptographic primitive
+			return cty.StringVal(hex.EncodeToString(h[:])), nil
+		},
+	})
+
 	toJSONFn := function.New(&function.Spec{
 		Params: []function.Parameter{
 			{
@@ -851,6 +898,84 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	resolvePath := func(p string) string {
+		if filepath.IsAbs(p) {
+			return p
+		}
+		return filepath.Join(i.info.WorkingDir, p)
+	}
+
+	readFileFn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "path",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			path := resolvePath(args[0].AsString())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("readFile: %w", err)
+			}
+			return cty.StringVal(string(data)), nil
+		},
+	})
+
+	filebase64Fn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "path",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			path := resolvePath(args[0].AsString())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("filebase64: %w", err)
+			}
+			return cty.StringVal(base64.StdEncoding.EncodeToString(data)), nil
+		},
+	})
+
+	filebase64sha256Fn := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "path",
+				Type: cty.String,
+			},
+		},
+		Type: function.StaticReturnType(cty.String),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			path := resolvePath(args[0].AsString())
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return cty.NilVal, fmt.Errorf("filebase64sha256: %w", err)
+			}
+			hash := sha256.Sum256(data)
+			return cty.StringVal(base64.StdEncoding.EncodeToString(hash[:])), nil
+		},
+	})
+
+	lengthFunc := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "value",
+				Type: cty.DynamicPseudoType,
+			},
+		},
+		Type: function.StaticReturnType(cty.Number),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if args[0].Type() == cty.String {
+				return stdlib.Strlen(args[0])
+			}
+			return stdlib.Length(args[0])
+		},
+	})
+
 	return map[string]function.Function{
 		"cwd":                literalStringFn(i.info.WorkingDir),
 		"rootDirectory":      literalStringFn(i.info.RootDirectory),
@@ -876,12 +1001,54 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"split":              stdlib.SplitFunc,
 		"element":            stdlib.ElementFunc,
 		"join":               stdlib.JoinFunc,
-		"length":             stdlib.LengthFunc,
+		"length":             lengthFunc,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
 		"lookup":             stdlib.LookupFunc,
 		"toBase64":           toBase64Fn,
 		"fromBase64":         fromBase64Fn,
 		"toJSON":             toJSONFn,
+		"sha1":               sha1Fn,
+		"readFile":           readFileFn,
+		"filebase64":         filebase64Fn,
+		"filebase64sha256":   filebase64sha256Fn,
+		"max": function.New(&function.Spec{
+			VarParam: &function.Parameter{
+				Name: "numbers",
+				Type: cty.Number,
+			},
+			Type: function.StaticReturnType(cty.Number),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				if len(args) == 0 {
+					return cty.NilVal, errors.New("max requires at least one argument")
+				}
+				result := args[0]
+				for _, arg := range args[1:] {
+					if arg.GreaterThan(result).True() {
+						result = arg
+					}
+				}
+				return result, nil
+			},
+		}),
+		"min": function.New(&function.Spec{
+			VarParam: &function.Parameter{
+				Name: "numbers",
+				Type: cty.Number,
+			},
+			Type: function.StaticReturnType(cty.Number),
+			Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+				if len(args) == 0 {
+					return cty.NilVal, errors.New("min requires at least one argument")
+				}
+				result := args[0]
+				for _, arg := range args[1:] {
+					if arg.LessThan(result).True() {
+						result = arg
+					}
+				}
+				return result, nil
+			},
+		}),
 	}
 }

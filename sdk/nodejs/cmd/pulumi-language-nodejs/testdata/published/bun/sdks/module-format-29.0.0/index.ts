@@ -5,10 +5,18 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export { ConcatWorldArgs, ConcatWorldResult, ConcatWorldOutputArgs } from "./concatWorld";
+export const concatWorld: typeof import("./concatWorld").concatWorld = null as any;
+export const concatWorldOutput: typeof import("./concatWorld").concatWorldOutput = null as any;
+utilities.lazyLoad(exports, ["concatWorld","concatWorldOutput"], () => require("./concatWorld"));
+
 export { ProviderArgs } from "./provider";
 export type Provider = import("./provider").Provider;
 export const Provider: typeof import("./provider").Provider = null as any;
 utilities.lazyLoad(exports, ["Provider"], () => require("./provider"));
+
+export * from "./resource";
+import { Resource } from "./resource";
 
 
 // Export sub-modules:
@@ -17,6 +25,19 @@ import * as mod from "./mod";
 export {
     mod,
 };
+
+const _module = {
+    version: utilities.getVersion(),
+    construct: (name: string, type: string, urn: string): pulumi.Resource => {
+        switch (type) {
+            case "module-format:index_Resource:Resource":
+                return new Resource(name, <any>undefined, { urn })
+            default:
+                throw new Error(`unknown resource type ${type}`);
+        }
+    },
+};
+pulumi.runtime.registerResourceModule("module-format", "index_Resource", _module)
 pulumi.runtime.registerResourcePackage("module-format", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {

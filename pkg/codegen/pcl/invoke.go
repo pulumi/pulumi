@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -221,6 +221,7 @@ func (b *binder) signatureForArgs(fn *schema.Function, args model.Expression) (m
 
 // Heuristic to decide when to use `fnOutput` form of a function. Will
 // conservatively prefer `false` unless bind option choose to prefer otherwise.
+//
 // It decides to return `true` if doing so avoids the need to introduce an `apply` form to
 // accommodate `Output` args (`Promise` args do not count).
 func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bool {
@@ -242,9 +243,15 @@ func (b *binder) useOutputVersion(fn *schema.Function, args model.Expression) bo
 	regularFormParamType := b.schemaTypeToType(fn.Inputs)
 	argsType := args.Type()
 
+	// If we can't convert to the plain type, but we can convert to the output type, do that.
 	if regularFormParamType.ConversionFrom(argsType) == model.NoConversion &&
-		outputFormParamType.ConversionFrom(argsType) == model.SafeConversion &&
+		outputFormParamType.ConversionFrom(argsType) != model.NoConversion &&
 		model.ContainsOutputs(argsType) {
+		return true
+	}
+
+	// If the args themselves represent an output, we need to use the outputty version.
+	if _, ok := argsType.(*model.OutputType); ok {
 		return true
 	}
 

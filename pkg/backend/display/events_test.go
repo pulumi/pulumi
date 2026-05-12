@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,9 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -65,6 +67,30 @@ func TestEmptyDetailedDiff(t *testing.T) {
 	jsonEvent, err := json.Marshal(res)
 	require.NoError(t, err, "unable to marshal to json")
 	assert.Equal(t, expected, string(jsonEvent))
+}
+
+// TestSummaryEventResultRoundTrip verifies that the new Result field survives
+// the engine -> apitype -> engine conversion path.
+func TestSummaryEventResultRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	original := engine.SummaryEventPayload{
+		MaybeCorrupt:    true,
+		Duration:        2 * time.Second,
+		ResourceChanges: display.ResourceChanges{deploy.OpCreate: 2, deploy.OpUpdate: 1},
+		PolicyPacks:     map[string]string{"pack": "v1.0.0"},
+		Result:          apitype.OperationResultFailed,
+	}
+
+	apiEvent, err := ConvertEngineEvent(engine.NewEvent(original), false /* showSecrets */)
+	require.NoError(t, err)
+	require.NotNil(t, apiEvent.SummaryEvent)
+	assert.Equal(t, apitype.OperationResultFailed, apiEvent.SummaryEvent.Result)
+
+	roundTripped, err := ConvertJSONEvent(apiEvent)
+	require.NoError(t, err)
+	payload := roundTripped.Payload().(engine.SummaryEventPayload)
+	assert.Equal(t, original.Result, payload.Result)
 }
 
 // TestConvertJSONEventExhaustive tests that all fields of the EngineEvent type are handled by ConvertJSONEvent.

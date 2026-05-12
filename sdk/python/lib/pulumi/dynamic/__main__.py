@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -233,6 +233,11 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         loop.close()
 
         return proto.ReadResponse(**fields)
+
+    def List(self, request, context):
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details("List is not implemented by the dynamic provider")
+        raise NotImplementedError("List is not implemented by the dynamic provider")
 
     def __init__(self):
         pass

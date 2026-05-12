@@ -1,4 +1,4 @@
-// Copyright 2020-2026, Pulumi Corporation.
+// Copyright 2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -70,6 +70,10 @@ func asWarningDiagnostic(diag *hcl.Diagnostic) *hcl.Diagnostic {
 
 func unknownResourceType(token string, tokenRange hcl.Range) *hcl.Diagnostic {
 	return errorf(tokenRange, "unknown resource type '%s'", token)
+}
+
+func componentResourceCannotBeRead(token string, tokenRange hcl.Range) *hcl.Diagnostic {
+	return errorf(tokenRange, "component resources cannot be read: '%s'", token)
 }
 
 func functionLoadError(token string, err error, tokenRange hcl.Range) *hcl.Diagnostic {

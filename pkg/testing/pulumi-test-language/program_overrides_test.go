@@ -22,6 +22,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/runner"
+	"github.com/pulumi/pulumi/pkg/v3/testing/pulumi-test-language/tests"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -139,7 +142,7 @@ func TestProgramOverrides_DontGenerateProgram(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 
 	runtime := &ProgramOverridesLanguageHost{
 		tempDir: tempDir,
@@ -220,7 +223,7 @@ func TestProgramOverrides_WorkWithMultipleRuns(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 
 	runtime := &ProgramOverridesLanguageHost{
 		tempDir: tempDir,
@@ -396,7 +399,7 @@ func TestProgramOverrides_MustMatchRuns(t *testing.T) {
 	tempDir := t.TempDir()
 
 	ctx := t.Context()
-	engine := newLanguageTestServer()
+	engine := runner.NewLanguageTestServer(tests.LanguageTestdata, tests.LanguageTests)
 
 	runtime := &ProgramOverridesLanguageHost{tempDir: tempDir}
 

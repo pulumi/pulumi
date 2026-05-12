@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,6 +54,8 @@ const (
 	TemplateDir = "templates"
 	// TemplatePolicyDir is the name of the directory containing templates for Policy Packs.
 	TemplatePolicyDir = "templates-policy"
+	// TemplatePackageDir is the name of the directory containing templates for Pulumi packages.
+	TemplatePackageDir = "templates-packages"
 	// WorkspaceDir is the name of the directory that holds workspace information for projects.
 	WorkspaceDir = "workspaces"
 

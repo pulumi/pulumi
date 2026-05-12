@@ -67,8 +67,8 @@ def get_assets(archive: Optional[pulumi.Archive] = None,
     return AwaitableGetAssetsResult(
         archive=pulumi.get(__ret__, 'archive'),
         source=pulumi.get(__ret__, 'source'))
-def get_assets_output(archive: Optional[pulumi.Input[pulumi.Archive]] = None,
-                      source: Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]] = None,
+def get_assets_output(archive: pulumi.Input[Optional[pulumi.Archive]] = None,
+                      source: pulumi.Input[Optional[Union[pulumi.Asset, pulumi.Archive]]] = None,
                       opts: Optional[Union[pulumi.InvokeOptions, pulumi.InvokeOutputOptions]] = None) -> pulumi.Output[GetAssetsResult]:
     """
     Use this data source to access information about an existing resource.

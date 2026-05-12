@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -146,7 +146,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
-	projectStack, config, err := cmd.getStackConfig(ctx, cmdutil.Diag(), project, stack)
+	projectStack, config, err := cmd.getStackConfig(ctx, cmd.parent.diags, project, stack)
 	if err != nil {
 		return err
 	}

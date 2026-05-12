@@ -1,4 +1,4 @@
-// Copyright 2016-2024, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ func TestChangeSecretsProvider_Invalid(t *testing.T) {
 		stdout: &stdoutBuff,
 		stack:  "test",
 	}
-	err := cmd.Run(context.Background(), []string{"not_a_secret"})
+	err := cmd.Run(t.Context(), []string{"not_a_secret"})
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "unknown secrets provider type 'not_a_secret' "+
 		"(supported values: default,passphrase,awskms,azurekeyvault,gcpkms,hashivault)")
@@ -117,8 +117,9 @@ func TestChangeSecretsProvider_NoSecrets(t *testing.T) {
 		},
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
+				StringV:             "testStack",
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "organization/testProject/testStack",
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },
@@ -145,7 +146,7 @@ runtime: mock
 
 	// passphrase will read from stdin for the new passphrase
 	mockStdin(t, "password123\npassword123\n")
-	err = cmd.Run(context.Background(), []string{"passphrase"})
+	err = cmd.Run(t.Context(), []string{"passphrase"})
 	require.NoError(t, err)
 	require.Equal(t, "Migrating old configuration and state to new secrets provider\n", stdoutBuff.String())
 
@@ -164,7 +165,7 @@ runtime: mock
 //
 //nolint:paralleltest // mutates global state
 func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	secretsProvider := b64.Base64SecretsProvider.Add("passphrase", func(state json.RawMessage) (secrets.Manager, error) {
 		return passphrase.NewPromptingPassphraseSecretsManagerFromState(state)
@@ -216,8 +217,9 @@ func TestChangeSecretsProvider_WithSecrets(t *testing.T) {
 		},
 		RefF: func() backend.StackReference {
 			return &backend.MockStackReference{
-				StringV: "testStack",
-				NameV:   tokens.MustParseStackName("testStack"),
+				StringV:             "testStack",
+				NameV:               tokens.MustParseStackName("testStack"),
+				FullyQualifiedNameV: "organization/testProject/testStack",
 			}
 		},
 		ConfigLocationF: func() backend.StackConfigLocation { return backend.StackConfigLocation{} },

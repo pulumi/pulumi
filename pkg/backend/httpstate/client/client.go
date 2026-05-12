@@ -1,4 +1,4 @@
-// Copyright 2016-2025, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@ package client
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -54,9 +56,35 @@ const (
 	NeoRequestTimeout = 20 * time.Second
 )
 
-// NeoTaskRequest represents a request to create a Neo task.
+// NeoApprovalMode controls whether the agent requires user approval before executing tools.
+type NeoApprovalMode string
+
+const (
+	// NeoApprovalModeManual requires the agent to request user approval for each tool call.
+	NeoApprovalModeManual NeoApprovalMode = "manual"
+	// NeoApprovalModeAuto allows the agent to execute tools without user approval.
+	NeoApprovalModeAuto NeoApprovalMode = "auto"
+)
+
+// NeoTaskRequest represents a request to create a Neo task. This is a thin client-side
+// shape that the server deserializes into apitype.CreateAgentTaskRequest, so the JSON
+// field names must match the IDL-generated tags exactly.
 type NeoTaskRequest struct {
 	Message NeoTaskMessage `json:"message"`
+	// ToolExecutionMode selects where Neo tool calls run. Empty (the default) and "cloud"
+	// mean tools run in the agent container as before; "cli" means the cloud agent emits
+	// cli_tool_request backend events for the local-tool subset (filesystem, shell,
+	// pulumi_preview, pulumi_up) and waits for cli_tool_result user events in response.
+	// JSON tag is camelCase to match apitype.CreateAgentTaskRequest from pulumi-service.
+	ToolExecutionMode string `json:"toolExecutionMode,omitempty"`
+	// ApprovalMode controls whether the agent requires user approval before executing tools.
+	// JSON tag is camelCase to match apitype.CreateAgentTaskRequest from pulumi-service.
+	ApprovalMode NeoApprovalMode `json:"approvalMode,omitempty"`
+	// PlanMode, when true, creates the task in plan mode: the agent explores and asks
+	// questions but must not write files, run `pulumi up`, or open PRs. The server enforces
+	// this by activating PlanModeTracker for the task and gating the exit on an approved
+	// exit_plan_mode call. JSON tag is camelCase to match the service IDL.
+	PlanMode bool `json:"planMode,omitempty"`
 }
 
 // NeoTaskMessage represents the message content for a Neo task.
@@ -288,11 +316,11 @@ func getUpdatePath(update UpdateIdentifier, components ...string) string {
 }
 
 func publishPackagePath(source, publisher, name string) string {
-	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions", source, publisher, name)
+	return fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions", source, publisher, name)
 }
 
 func completePackagePublishPath(source, publisher, name, version string) string {
-	return fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
+	return fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s/complete", source, publisher, name, version)
 }
 
 func deletePackageVersionPath(source, publisher, name, version string) string {
@@ -653,7 +681,15 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 	return stack, nil
 }
 
-// CreateStack creates a stack with the given cloud and stack name in the scope of the indicated project.
+// CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
+// created, beyond the stack itself.
+type CreateStackDetails struct {
+	Messages []apitype.Message
+}
+
+// CreateStack creates a stack with the given cloud and stack name in the scope of the indicated
+// project. It returns the created stack along with any side information the backend wants the CLI
+// to act on (e.g. messages to display to the user).
 func (pc *Client) CreateStack(
 	ctx context.Context,
 	stackID StackIdentifier,
@@ -661,10 +697,10 @@ func (pc *Client) CreateStack(
 	teams []string,
 	state *apitype.UntypedDeployment,
 	config *apitype.StackConfig,
-) (apitype.Stack, error) {
+) (apitype.Stack, CreateStackDetails, error) {
 	// Validate names and tags.
 	if err := validation.ValidateStackTags(tags); err != nil {
-		return apitype.Stack{}, fmt.Errorf("validating stack properties: %w", err)
+		return apitype.Stack{}, CreateStackDetails{}, fmt.Errorf("validating stack properties: %w", err)
 	}
 
 	stack := apitype.Stack{
@@ -681,13 +717,16 @@ func (pc *Client) CreateStack(
 		Config:    config,
 	}
 
+	var createStackResp apitype.CreateStackResponse
 	endpoint := fmt.Sprintf("/api/stacks/%s/%s", stackID.Owner, stackID.Project)
 	if err := pc.restCall(
-		ctx, "POST", endpoint, nil, &createStackReq, nil); err != nil {
-		return apitype.Stack{}, err
+		ctx, "POST", endpoint, nil, &createStackReq, &createStackResp); err != nil {
+		return apitype.Stack{}, CreateStackDetails{}, err
 	}
 
-	return stack, nil
+	return stack, CreateStackDetails{
+		Messages: createStackResp.Messages,
+	}, nil
 }
 
 // DeleteStack deletes the indicated stack. If force is true, the stack is deleted even if it contains resources.
@@ -1650,14 +1689,25 @@ func (pc *Client) ExplainPreviewWithNeo(
 	return pc.callCopilot(ctx, request)
 }
 
-// CreateNeoTask creates a new Neo agent task via the Neo Tasks API.
-// This is used to start an AI-assisted debugging session when errors occur.
+// CreateNeoTaskOptions bundles the optional knobs on CreateNeoTask. The zero value
+// corresponds to the defaults used by `--neo-task-on-failure`: cloud tool execution,
+// server-default approval policy, and plan mode off.
+type CreateNeoTaskOptions struct {
+	ToolExecutionMode string
+	ApprovalMode      NeoApprovalMode
+	PlanMode          bool
+}
+
+// CreateNeoTask creates a new Neo agent task via the Neo Tasks API. See
+// CreateNeoTaskOptions for the available knobs; pass a zero-value struct to accept
+// server defaults (the `--neo-task-on-failure` path).
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
 	content string,
 	stackName string,
 	projectName string,
+	opts CreateNeoTaskOptions,
 ) (*NeoTaskResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
 	defer cancel()
@@ -1667,16 +1717,19 @@ func (pc *Client) CreateNeoTask(
 			Type:      "user_message",
 			Content:   content,
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
-			EntityDiff: &NeoTaskEntityDiff{
-				Add: []NeoTaskEntity{
-					{
-						Type:    "stack",
-						Name:    stackName,
-						Project: projectName,
-					},
-				},
-			},
 		},
+		ToolExecutionMode: opts.ToolExecutionMode,
+		ApprovalMode:      opts.ApprovalMode,
+		PlanMode:          opts.PlanMode,
+	}
+	// Only attach a stack entity when we actually have one — the backend rejects
+	// entity_diff entries with empty name/project as "unable to access stack".
+	if stackName != "" && projectName != "" {
+		request.Message.EntityDiff = &NeoTaskEntityDiff{
+			Add: []NeoTaskEntity{
+				{Type: "stack", Name: stackName, Project: projectName},
+			},
+		}
 	}
 
 	path := fmt.Sprintf("/api/preview/agents/%s/tasks", orgName)
@@ -1686,6 +1739,118 @@ func (pc *Client) CreateNeoTask(
 	}
 
 	return &resp, nil
+}
+
+// NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
+// one of Data or Err is populated: Data carries an event payload, Err carries a terminal
+// stream error (after which no further values are sent before the channel closes).
+type NeoStreamEvent struct {
+	Data []byte
+	Err  error
+}
+
+// StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
+// stream and returns a channel of events. Each value carries either a raw event payload
+// (the bytes following each `data:` line, joined for multi-line events) or a terminal
+// stream error. The channel is closed when the stream ends or ctx is cancelled.
+//
+// The endpoint is the SSE stream introduced in pulumi/pulumi-service#40132. This call
+// does not impose its own timeout — callers should manage lifetime via ctx.
+func (pc *Client) StreamNeoTaskEvents(
+	ctx context.Context, orgName, taskID string,
+) (<-chan NeoStreamEvent, error) {
+	streamURL := pc.apiURL + fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events/stream", orgName, taskID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating Neo event stream request: %w", err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
+	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
+	req.Header.Set("Authorization", "token "+string(pc.apiToken))
+
+	resp, err := pc.restClient.HTTPClient().Do(req, retryNone)
+	if err != nil {
+		return nil, fmt.Errorf("opening Neo event stream: %w", err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, fmt.Errorf("opening Neo event stream: HTTP %d: %s",
+			resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	stream := make(chan NeoStreamEvent)
+
+	go func() {
+		defer resp.Body.Close()
+		defer close(stream)
+
+		send := func(evt NeoStreamEvent) {
+			select {
+			case stream <- evt:
+			case <-ctx.Done():
+			}
+		}
+
+		// Tool payloads can be large, so give the scanner a generous max line size.
+		scanner := bufio.NewScanner(resp.Body)
+		scanner.Buffer(make([]byte, 64*1024), 8*1024*1024)
+
+		var data bytes.Buffer
+		flush := func() {
+			if data.Len() == 0 {
+				return
+			}
+			payload := bytes.Clone(data.Bytes())
+			data.Reset()
+			send(NeoStreamEvent{Data: payload})
+		}
+
+		for scanner.Scan() {
+			line := scanner.Text()
+			if line == "" {
+				flush()
+				continue
+			}
+			if strings.HasPrefix(line, ":") {
+				continue
+			}
+			if chunk, ok := strings.CutPrefix(line, "data:"); ok {
+				chunk = strings.TrimPrefix(chunk, " ")
+				if data.Len() > 0 {
+					data.WriteByte('\n')
+				}
+				data.WriteString(chunk)
+			}
+			// Other SSE fields (event:, id:, retry:) are ignored — the server uses a
+			// single event type and the JSON payload carries its own kind discriminator.
+		}
+		flush()
+		if err := scanner.Err(); err != nil && ctx.Err() == nil {
+			send(NeoStreamEvent{Err: fmt.Errorf("reading Neo event stream: %w", err)})
+		}
+	}()
+
+	return stream, nil
+}
+
+// PostNeoTaskUserEvent posts an AgentUserEvent to a Neo task via the RespondToTask
+// endpoint. The body must be a marshalable value matching one of the AgentUserEvent
+// subtypes from pulumi-service's IDL (e.g. tool_result). The caller is responsible for
+// setting the discriminator `type` field; the body is wrapped in the
+// AgentRespondToTaskRequest envelope ({"event": <body>}) before being sent.
+//
+// Note: this is NOT the /events sub-resource — that one is reserved for the agent
+// runtime posting AgentBackendEvents with an agent task token. User events go to the
+// task root with a user PAT.
+func (pc *Client) PostNeoTaskUserEvent(
+	ctx context.Context, orgName, taskID string, body any,
+) error {
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
+	return pc.restCall(ctx, http.MethodPost, path, nil, struct {
+		Event any `json:"event"`
+	}{Event: body}, nil)
 }
 
 func (pc *Client) callCopilot(ctx context.Context, requestBody any) (string, error) {
@@ -1889,7 +2054,7 @@ func (pc *Client) GetPackage(
 	if version != nil {
 		v = version.String()
 	}
-	url := fmt.Sprintf("/api/preview/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, v)
+	url := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s", source, publisher, name, v)
 	var resp apitype.PackageMetadata
 	err := pc.restCall(ctx, "GET", url, nil, nil, &resp)
 	return resp, err
@@ -1902,6 +2067,69 @@ func (pc *Client) DeletePackageVersion(
 	url := deletePackageVersionPath(source, publisher, name, version.String())
 	err := pc.restCall(ctx, "DELETE", url, nil, nil, nil)
 	return err
+}
+
+// RawCall issues an arbitrary Pulumi API request and returns the raw
+// *http.Response. Unlike the typed Call methods, RawCall does not
+// deserialize the response body and does not classify 4xx/5xx into typed
+// errors; the caller inspects status, headers, and body. Gzip-encoded
+// responses are transparently decompressed; the Content-Encoding and
+// Content-Length response headers are left intact so the caller can still
+// see what the server sent.
+func (pc *Client) RawCall(
+	ctx context.Context,
+	method, path string,
+	query url.Values,
+	body io.Reader,
+	header http.Header,
+	gzipCompressBody bool,
+) (*http.Response, error) {
+	fullPath := path
+	if len(query) > 0 {
+		fullPath += "?" + query.Encode()
+	}
+
+	var reqObj any
+	if body != nil {
+		bodyBytes, err := io.ReadAll(body)
+		if err != nil {
+			return nil, fmt.Errorf("reading request body: %w", err)
+		}
+		if len(bodyBytes) > 0 {
+			// json.RawMessage is sent verbatim by the rest-call path — works
+			// for non-JSON content too
+			reqObj = json.RawMessage(bodyBytes)
+		}
+	}
+
+	var resp *http.Response
+	err := pc.restCallWithOptions(ctx, method, fullPath, nil, reqObj, &resp, httpCallOptions{
+		SkipDecodeErrors: true,
+		Header:           header,
+		GzipCompress:     gzipCompressBody,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if encs, ok := resp.Header["Content-Encoding"]; ok && len(encs) == 1 &&
+		(encs[0] == "gzip" || encs[0] == "x-gzip") {
+		gr, gzerr := gzip.NewReader(resp.Body)
+		if gzerr != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("decompressing gzipped response: %w", gzerr)
+		}
+		resp.Body = &gzipReadCloser{gzip: gr, body: resp.Body}
+	}
+	return resp, nil
+}
+
+// GetCloudAPISpec fetches the Pulumi Cloud OpenAPI document as raw bytes.
+func (pc *Client) GetCloudAPISpec(ctx context.Context) ([]byte, error) {
+	var body []byte
+	err := pc.restCallWithOptions(ctx, "GET", "/api/openapi/pulumi-spec.json", nil, nil, &body,
+		httpCallOptions{Header: http.Header{"Accept": []string{"application/json"}}})
+	return body, err
 }
 
 func (pc *Client) GetTemplate(
@@ -1972,7 +2200,7 @@ func (pc *Client) downloadWithRawClient(ctx context.Context, downloadURL string)
 }
 
 func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apitype.PackageMetadata, error] {
-	url := "/api/preview/registry/packages?limit=499"
+	url := "/api/registry/packages?limit=499"
 	if name != nil {
 		url += "&name=" + *name
 	}

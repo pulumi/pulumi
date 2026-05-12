@@ -1,4 +1,4 @@
-// Copyright 2022-2024, Pulumi Corporation.
+// Copyright 2022, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
 package convert
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/stretchr/testify/assert"
@@ -53,7 +53,7 @@ func TestYamlConvert(t *testing.T) {
 	require.NoError(t, err)
 
 	result := runConvert(
-		context.Background(), pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
+		t.Context(), &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
 		"yaml", "go", "testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
@@ -68,7 +68,7 @@ func TestPclConvert(t *testing.T) {
 	require.NoError(t, err)
 
 	result := runConvert(
-		context.Background(), pkgWorkspace.Instance, env.Global(), []string{}, cwd,
+		t.Context(), &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance, env.Global(), []string{}, cwd,
 		[]string{}, "pcl", "pcl", tmp, true, true, "")
 	assert.Nil(t, result)
 
@@ -101,7 +101,8 @@ func TestProjectNameDefaults(t *testing.T) {
 
 	// Act.
 	err = runConvert(
-		context.Background(),
+		t.Context(),
+		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
 		[]string{}, /*args*/
@@ -135,7 +136,8 @@ func TestProjectNameOverrides(t *testing.T) {
 
 	// Act.
 	err = runConvert(
-		context.Background(),
+		t.Context(),
+		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
 		[]string{}, /*args*/

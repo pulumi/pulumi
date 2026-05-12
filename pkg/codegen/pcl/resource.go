@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -76,6 +77,16 @@ type ResourceOptions struct {
 	ReplacementTrigger model.Expression
 	// Environment variable mappings for provider resources.
 	EnvVarMappings model.Expression
+	// Hooks are lifecycle hooks for the resource, keyed by hook type with lists of command arrays.
+	Hooks model.Expression
+}
+
+// BaseResource represents shared resource-like data used by both registered and read resources.
+type BaseResource interface {
+	Node
+	GetToken() (string, hcl.Range)
+	GetSchema() *schema.Resource
+	GetInputType() model.Type
 }
 
 // Resource represents a resource instantiation inside of a program or component.
@@ -97,7 +108,7 @@ type Resource struct {
 	LenientTraversal bool
 
 	// Token is the type token for this resource.
-	Token string
+	token string
 
 	// Schema is the schema definition for this resource, if any.
 	Schema *schema.Resource
@@ -117,6 +128,16 @@ type Resource struct {
 	Options *ResourceOptions
 }
 
+// GetToken returns the resource's token and its source range. If the resource has been successfully bound, the token is
+// canonical, else it's what was parsed from the source code.
+func (r *Resource) GetToken() (string, hcl.Range) {
+	token := r.token
+	if token == "" {
+		token = r.syntax.Labels[1]
+	}
+	return token, r.syntax.LabelRanges[1]
+}
+
 // SyntaxNode returns the syntax node associated with the resource.
 func (r *Resource) SyntaxNode() hclsyntax.Node {
 	return r.syntax
@@ -132,7 +153,7 @@ func (r *Resource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagn
 }
 
 func (r *Resource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
-	if value, hasValue := context.Variables[r.Name()]; hasValue {
+	if value, hasValue := hcl2.LookupVariable(context, r.Name()); hasValue {
 		return value, nil
 	}
 	return cty.DynamicVal, nil
@@ -167,11 +188,119 @@ func (r *Resource) LogicalName() string {
 	return r.Name()
 }
 
-// DecomposeToken attempts to decompose the resource's type token into its package, module, and type. If decomposition
-// fails, a description of the failure is returned in the diagnostics.
-func (r *Resource) DecomposeToken() (string, string, string, hcl.Diagnostics) {
-	_, tokenRange := getResourceToken(r)
-	return DecomposeToken(r.Token, tokenRange)
+func (r *Resource) GetSchema() *schema.Resource {
+	return r.Schema
+}
+
+func (r *Resource) GetInputType() model.Type {
+	return r.InputType
+}
+
+// ReadResource represents a read resource instantiation inside of a program or component.
+type ReadResource struct {
+	node
+
+	syntax *hclsyntax.Block
+
+	// The name visible to API calls related to the resource. Used as the Name argument in resource
+	// constructors, and through those calls to RegisterResource. Must not be modified during code
+	// generation to ensure that resources are not renamed (deleted and recreated).
+	logicalName string
+
+	// The definition of the resource.
+	Definition *model.Block
+
+	// When set to true, allows traversing unknown properties through a resource. i.e. `resource.unknownProperty`
+	// will be valid and the type of the traversal is dynamic. This property is set to false by default
+	LenientTraversal bool
+
+	// Token is the type token for this resource.
+	token string
+
+	// Schema is the schema definition for this resource, if any.
+	Schema *schema.Resource
+
+	// The type of the resource's inputs. This will always be either Any or an object type.
+	InputType model.Type
+	// The type of the resource's outputs. This will always be either Any or an object type.
+	OutputType model.Type
+
+	// The type of the resource variable.
+	VariableType model.Type
+
+	// The resource's input attributes, in source order.
+	Inputs []*model.Attribute
+
+	// The resource's options, if any.
+	Options *ResourceOptions
+}
+
+// SyntaxNode returns the syntax node associated with the resource.
+func (r *ReadResource) SyntaxNode() hclsyntax.Node {
+	return r.syntax
+}
+
+// Type returns the type of the resource.
+func (r *ReadResource) Type() model.Type {
+	return r.VariableType
+}
+
+func (r *ReadResource) VisitExpressions(pre, post model.ExpressionVisitor) hcl.Diagnostics {
+	return model.VisitExpressions(r.Definition, pre, post)
+}
+
+func (r *ReadResource) Value(context *hcl.EvalContext) (cty.Value, hcl.Diagnostics) {
+	if value, hasValue := hcl2.LookupVariable(context, r.Name()); hasValue {
+		return value, nil
+	}
+	return cty.DynamicVal, nil
+}
+
+func (r *ReadResource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Diagnostics) {
+	if r == nil || r.VariableType == nil {
+		return model.DynamicType.Traverse(traverser)
+	}
+
+	traversable, diags := r.VariableType.Traverse(traverser)
+
+	if diags.HasErrors() && r.LenientTraversal {
+		return model.DynamicType.Traverse(traverser)
+	}
+
+	return traversable, diags
+}
+
+// Deprecated: Name returns the variable or declaration name of the resource.
+func (r *ReadResource) Name() string {
+	return r.Definition.Labels[0]
+}
+
+// Returns the unique name of the resource; if the resource has an unique name it is formatted with
+// the format string and returned, otherwise the defaultValue is returned as is.
+func (r *ReadResource) LogicalName() string {
+	if r.logicalName != "" {
+		return r.logicalName
+	}
+
+	return r.Name()
+}
+
+// GetToken returns the resource's token and its source range. If the resource has been successfully bound,
+// the token is canonical, else it's what was parsed from the source code.
+func (r *ReadResource) GetToken() (string, hcl.Range) {
+	token := r.token
+	if token == "" {
+		token = r.syntax.Labels[1]
+	}
+	return token, r.syntax.LabelRanges[1]
+}
+
+func (r *ReadResource) GetSchema() *schema.Resource {
+	return r.Schema
+}
+
+func (r *ReadResource) GetInputType() model.Type {
+	return r.InputType
 }
 
 // ResourceProperty represents a resource property.
@@ -196,7 +325,7 @@ func (p *ResourceProperty) Value(*hcl.EvalContext) (cty.Value, hcl.Diagnostics) 
 		case hcl.TraverseIndex:
 			switch t.Key.Type() {
 			case cty.String:
-				_, err = fmt.Fprintf(&buffer, "[%s]", t.Key.AsString())
+				_, err = fmt.Fprintf(&buffer, `["%s"]`, model.EscapeString(t.Key.AsString()))
 			case cty.Number:
 				idx, _ := t.Key.AsBigFloat().Int64()
 				_, err = fmt.Fprintf(&buffer, "[%d]", idx)

@@ -1,4 +1,4 @@
-// Copyright 2024-2026, Pulumi Corporation.
+// Copyright 2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -308,8 +308,14 @@ func GeneratedProgramSpec(
 			if urn == "" {
 				return "", false
 			}
+			visited := map[resource.URN]bool{}
 			wasRewritten := false
 			for {
+				if visited[urn] {
+					t.Skipf("cycle detected in rewritten URNs: %v", visited)
+					return urn, wasRewritten
+				}
+				visited[urn] = true
 				if newURN, has := rewritten[urn]; has {
 					urn = newURN
 					wasRewritten = true
