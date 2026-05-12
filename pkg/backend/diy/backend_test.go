@@ -2106,6 +2106,8 @@ func TestJSONCasing(t *testing.T) {
 }
 
 func TestJSONCheckpointIsCompact(t *testing.T) {
+	t.Parallel()
+
 	stateDir := t.TempDir()
 	ctx := t.Context()
 	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
