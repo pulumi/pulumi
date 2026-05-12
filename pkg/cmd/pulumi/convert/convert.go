@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -74,7 +75,6 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 	var mappings []string
 	var strict bool
 	var name string
-	var file string
 	var showSecrets bool
 
 	cmd := &cobra.Command{
@@ -92,7 +92,7 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n" +
 			"\n" +
-			"    pulumi convert --from stack --file export.json --language typescript --out . \n" +
+			"    pulumi convert --from stack --language typescript --out . -- --file export.json \n" +
 			"\n\n" +
 			"Note that certain target languages may require additional arguments to be passed to this command.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -120,7 +120,6 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 				generateOnly,
 				strict,
 				name,
-				file,
 				showSecrets,
 			)
 		},
@@ -151,9 +150,6 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 
 	cmd.PersistentFlags().StringVar(
 		&name, "name", "", "The name to use for the converted project; defaults to the directory of the source project")
-
-	cmd.PersistentFlags().StringVar(
-		&file, "file", "", "Input file path (required when --from stack)")
 
 	cmd.PersistentFlags().BoolVar(
 		&showSecrets, "show-secrets", false,
@@ -215,7 +211,6 @@ func runConvert(
 	generateOnly bool,
 	strict bool,
 	name string,
-	file string,
 	showSecrets bool,
 ) error {
 	// Validate the supplied name if one was specified. If one was not supplied,
@@ -390,8 +385,14 @@ func runConvert(
 
 	pCtx.Diag.Infof(diag.Message("", "Converting from %s..."), from)
 	if from == "stack" {
+		fs := flag.NewFlagSet("stack", flag.ContinueOnError)
+		fileFlag := fs.String("file", "", "Input stack export file path")
+		if err := fs.Parse(args); err != nil {
+			return fmt.Errorf("parse stack args: %w", err)
+		}
+		file := *fileFlag
 		if file == "" {
-			return errors.New("--file is required when --from stack")
+			return errors.New("--file is required when --from stack (pass after --, e.g. -- --file export.json)")
 		}
 
 		data, err := os.ReadFile(file)

@@ -121,7 +121,6 @@ func TestStackConvertRequiresFile(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		"",    /*file — intentionally omitted*/
 		false, /*showSecrets*/
 	)
 	require.ErrorContains(t, err, "--file is required when --from stack")
@@ -142,7 +141,7 @@ func TestStackConvertInvalidJSON(t *testing.T) {
 		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{},
+		[]string{"--file", badFile},
 		cwd,
 		[]string{},
 		"stack",
@@ -151,7 +150,6 @@ func TestStackConvertInvalidJSON(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		badFile,
 		false, /*showSecrets*/
 	)
 	require.ErrorContains(t, err, "parse stack file")
@@ -172,7 +170,7 @@ func TestStackConvertEmptyStack(t *testing.T) {
 		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{},
+		[]string{"--file", stackFile},
 		cwd,
 		[]string{},
 		"stack",
@@ -181,7 +179,6 @@ func TestStackConvertEmptyStack(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		stackFile,
 		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
@@ -210,7 +207,7 @@ func TestStackConvertWithSecretsProvider(t *testing.T) {
 		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{},
+		[]string{"--file", stackFile},
 		cwd,
 		[]string{},
 		"stack",
@@ -219,7 +216,6 @@ func TestStackConvertWithSecretsProvider(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		stackFile,
 		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
@@ -248,7 +244,7 @@ func TestStackConvertShowSecrets(t *testing.T) {
 		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{},
+		[]string{"--file", stackFile},
 		cwd,
 		[]string{},
 		"stack",
@@ -257,7 +253,6 @@ func TestStackConvertShowSecrets(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		stackFile,
 		true, /*showSecrets*/
 	)
 	require.NoError(t, err)
@@ -276,7 +271,7 @@ func TestStackConvertFileNotFound(t *testing.T) {
 		&cmdBackend.MockLoginManager{},
 		pkgWorkspace.Instance,
 		env.Global(),
-		[]string{},
+		[]string{"--file", filepath.Join(t.TempDir(), "nonexistent.json")},
 		cwd,
 		[]string{},
 		"stack",
@@ -285,7 +280,6 @@ func TestStackConvertFileNotFound(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		filepath.Join(t.TempDir(), "nonexistent.json"),
 		false, /*showSecrets*/
 	)
 	require.ErrorContains(t, err, "read stack file")
@@ -351,7 +345,7 @@ func TestYamlConvert(t *testing.T) {
 
 	result := runConvert(
 		t.Context(), &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
-		"yaml", "go", "testdata/go", true, true, "", "", false)
+		"yaml", "go", "testdata/go", true, true, "", false)
 	require.Nil(t, result, "convert failed: %v", result)
 }
 
@@ -366,7 +360,7 @@ func TestPclConvert(t *testing.T) {
 
 	result := runConvert(
 		t.Context(), &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance, env.Global(), []string{}, cwd,
-		[]string{}, "pcl", "pcl", tmp, true, true, "", "", false)
+		[]string{}, "pcl", "pcl", tmp, true, true, "", false)
 	assert.Nil(t, result)
 
 	// Check that we made one file
@@ -411,7 +405,6 @@ func TestProjectNameDefaults(t *testing.T) {
 		true,  /*generateOnly*/
 		true,  /*strict*/
 		"",    /*name*/
-		"",    /*file*/
 		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
@@ -448,7 +441,6 @@ func TestProjectNameOverrides(t *testing.T) {
 		true, /*generateOnly*/
 		true, /*strict*/
 		name,
-		"",    /*file*/
 		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
