@@ -50,6 +50,11 @@ const (
 	// via the `Accept: application/vnd.pulumi+N` header. The configuration carries the
 	// server's max, min, and default API versions; see APIVersionCapabilityConfig.
 	APIVersion APICapability = "api-version"
+
+	// Neo advertises minimum CLI requirements for `pulumi neo`. The service sets this when
+	// it wants to refuse old CLIs whose neo wire-shape understanding has diverged from the
+	// current protocol; see NeoCapabilityConfig.
+	Neo APICapability = "neo"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -62,6 +67,14 @@ type DeltaCheckpointUploadsConfigV2 struct {
 type DeploymentSchemaVersionConfig struct {
 	// Version is the maximum version of the deployment schema that the service supports.
 	Version int `json:"version"`
+}
+
+// NeoCapabilityConfig is the configuration for the neo capability.
+type NeoCapabilityConfig struct {
+	// MinCLIVersion is the minimum Pulumi CLI semver required to use `pulumi neo`. Empty
+	// means no minimum is enforced. CLIs older than this should refuse to create a Neo
+	// task and prompt the user to upgrade.
+	MinCLIVersion string `json:"minCLIVersion,omitempty"`
 }
 
 // APIVersionCapabilityConfig is the configuration for the api-version capability. It advertises
@@ -136,6 +149,11 @@ type Capabilities struct {
 	// If non-nil, indicates the REST API version range the service speaks (negotiated via
 	// the `Accept: application/vnd.pulumi+N` header).
 	APIVersion *APIVersionCapabilityConfig
+
+	// If non-nil, indicates that the service advertises minimum CLI requirements for
+	// `pulumi neo`. A nil pointer means the service did not advertise the capability and
+	// callers should treat that as "no minimum enforced".
+	Neo *NeoCapabilityConfig
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -189,6 +207,14 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 					return Capabilities{}, fmt.Errorf("invalid APIVersionCapabilityConfig: %w", err)
 				}
 				parsed.APIVersion = &cfg
+			}
+		case Neo:
+			if entry.Version == 1 {
+				var cfg NeoCapabilityConfig
+				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
+					return Capabilities{}, fmt.Errorf("decoding NeoCapabilityConfig returned %w", err)
+				}
+				parsed.Neo = &cfg
 			}
 		default:
 			continue

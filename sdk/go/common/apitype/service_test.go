@@ -294,6 +294,73 @@ func TestCapabilities(t *testing.T) {
 		}
 	})
 
+	t.Run("parse neo v1", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    Neo,
+					Version:       1,
+					Configuration: json.RawMessage(`{"minCLIVersion":"3.250.0"}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			Neo: &NeoCapabilityConfig{MinCLIVersion: "3.250.0"},
+		}, actual)
+	})
+
+	t.Run("parse neo with newer version ignored", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    Neo,
+					Version:       2,
+					Configuration: json.RawMessage(`{"minCLIVersion":"3.250.0"}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{}, actual)
+	})
+
+	t.Run("parse neo with empty config", func(t *testing.T) {
+		t.Parallel()
+		// Service may advertise the neo capability with an empty config while it sorts
+		// out the right minimum to enforce; the parsed Neo pointer should still be
+		// non-nil so callers can tell "advertised" from "not advertised".
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    Neo,
+					Version:       1,
+					Configuration: json.RawMessage(`{}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			Neo: &NeoCapabilityConfig{},
+		}, actual)
+	})
+
+	t.Run("parse response without neo capability leaves Neo nil", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: BatchEncrypt},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Nil(t, actual.Neo)
+	})
+
 	t.Run("parse api version accepts min equals max equals default", func(t *testing.T) {
 		t.Parallel()
 		// Boundary case: a server that only speaks one API version.

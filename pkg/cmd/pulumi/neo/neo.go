@@ -128,6 +128,14 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	}
 	pc := cloudBe.Client()
 
+	// Refuse to create a Neo task if the service advertises a minimum CLI version that's
+	// newer than this build. The service uses this when the neo wire shape has changed
+	// in a way old CLIs can't survive; doing it pre-flight lets us print a clean upgrade
+	// message before any task is created.
+	if err := checkNeoMinCLIVersion(cloudBe.Capabilities(ctx), version.Version); err != nil {
+		return err
+	}
+
 	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
 	if err != nil {
 		return err
