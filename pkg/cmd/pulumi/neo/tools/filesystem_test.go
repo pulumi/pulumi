@@ -238,14 +238,19 @@ func TestFilesystem_ReadMissingFileReturnsError(t *testing.T) {
 	t.Parallel()
 
 	// Inside the sandbox, but the file itself doesn't exist — os.ReadFile should
-	// surface a clear error (not a silent empty-content result).
+	// surface a clear error (not a silent empty-content result). On the error
+	// path Invoke must also return a nil value: a zero readResult boxed into
+	// any is non-nil, so Session.invokeToolCall would keep it as Content and
+	// drop the err.Error() fallback that conveys the failure reason to the
+	// agent.
 	root := t.TempDir()
 	fs, err := NewFilesystem(root)
 	require.NoError(t, err)
 
-	_, err = fs.Invoke(t.Context(), "read",
+	value, err := fs.Invoke(t.Context(), "read",
 		json.RawMessage(fmt.Sprintf(`{"file_path":%q}`, filepath.Join(root, "missing.txt"))))
 	require.Error(t, err)
+	assert.Nil(t, value, "Invoke must return a nil value on error so session.go's err.Error() fallback fires")
 }
 
 func TestFilesystem_WriteRejectsPathOutsideRoot(t *testing.T) {
