@@ -42,6 +42,10 @@ func newPolicyGroupCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newPolicyGroupLsCmd())
+	cmd.AddCommand(newPolicyGroupNewCmd())
+	cmd.AddCommand(newPolicyGroupGetCmd())
+	cmd.AddCommand(newPolicyGroupEditCmd())
+	cmd.AddCommand(newPolicyGroupRemoveCmd())
 	return cmd
 }
 
