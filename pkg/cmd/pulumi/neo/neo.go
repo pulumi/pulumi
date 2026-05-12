@@ -44,15 +44,21 @@ import (
 
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
-// once without the stack so the task is still created.
+// once without the stack so the task is still created. onEntityDropped, if non-nil,
+// is invoked with the original error when the fallback path runs, so callers can
+// surface a warning.
 func createNeoTaskWithEntityRetry(
 	ctx context.Context,
 	pc *client.Client,
 	orgName, prompt, stackName, projectName string,
 	opts client.CreateNeoTaskOptions,
+	onEntityDropped func(error),
 ) (*client.NeoTaskResponse, error) {
 	resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackName, projectName, opts)
 	if err != nil && stackName != "" && projectName != "" && isInvalidEntitiesError(err) {
+		if onEntityDropped != nil {
+			onEntityDropped(err)
+		}
 		return pc.CreateNeoTask(ctx, orgName, prompt, "", "", opts)
 	}
 	return resp, err
@@ -195,7 +201,7 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 			ctx, pc, orgName, prompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode: "cli",
 				ApprovalMode:      client.NeoApprovalModeManual,
-			})
+			}, nil)
 		if err != nil {
 			return err
 		}
@@ -262,6 +268,12 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 						ToolExecutionMode: "cli",
 						ApprovalMode:      client.NeoApprovalModeManual,
 						PlanMode:          planMode,
+					}, func(originalErr error) {
+						sendUI(uiCh, UIWarning{Message: fmt.Sprintf(
+							"could not attach stack %s/%s/%s to Neo task: %s; "+
+								"creating task without stack context",
+							orgName, projectName, stackRefName, originalErr,
+						)})
 					})
 				if err != nil {
 					sendUI(uiCh, UIError{Message: "failed to create Neo task: " + err.Error()})

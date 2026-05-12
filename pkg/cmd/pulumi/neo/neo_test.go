@@ -875,9 +875,13 @@ func TestCreateNeoTaskWithEntityRetry(t *testing.T) {
 		defer server.Close()
 
 		pc := client.NewClient(server.URL, "", false, nil)
+		var droppedErrs []error
 		resp, err := createNeoTaskWithEntityRetry(
 			t.Context(), pc, "my-org", "hello", "my-stack", "my-project",
-			client.CreateNeoTaskOptions{ToolExecutionMode: "cli"})
+			client.CreateNeoTaskOptions{ToolExecutionMode: "cli"},
+			func(originalErr error) {
+				droppedErrs = append(droppedErrs, originalErr)
+			})
 		require.NoError(t, err)
 		assert.Equal(t, "t_retry", resp.TaskID)
 		require.Len(t, calls, 2)
@@ -889,6 +893,9 @@ func TestCreateNeoTaskWithEntityRetry(t *testing.T) {
 		retryMsg, _ := calls[1]["message"].(map[string]any)
 		require.NotNil(t, retryMsg)
 		assert.NotContains(t, retryMsg, "entity_diff")
+
+		require.Len(t, droppedErrs, 1)
+		assert.Contains(t, droppedErrs[0].Error(), "invalid entities")
 	})
 
 	t.Run("DoesNotRetryOnUnrelatedError", func(t *testing.T) {
@@ -906,7 +913,8 @@ func TestCreateNeoTaskWithEntityRetry(t *testing.T) {
 		pc := client.NewClient(server.URL, "", false, nil)
 		_, err := createNeoTaskWithEntityRetry(
 			t.Context(), pc, "my-org", "hello", "my-stack", "my-project",
-			client.CreateNeoTaskOptions{})
+			client.CreateNeoTaskOptions{},
+			func(error) { t.Fatal("onEntityDropped should not fire on unrelated errors") })
 		require.Error(t, err)
 		assert.Equal(t, 1, calls)
 	})
@@ -926,7 +934,8 @@ func TestCreateNeoTaskWithEntityRetry(t *testing.T) {
 
 		pc := client.NewClient(server.URL, "", false, nil)
 		_, err := createNeoTaskWithEntityRetry(
-			t.Context(), pc, "my-org", "hello", "", "", client.CreateNeoTaskOptions{})
+			t.Context(), pc, "my-org", "hello", "", "", client.CreateNeoTaskOptions{},
+			func(error) { t.Fatal("onEntityDropped should not fire when no stack is attached") })
 		require.Error(t, err)
 		assert.Equal(t, 1, calls)
 	})
