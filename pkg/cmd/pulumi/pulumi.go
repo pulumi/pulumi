@@ -481,7 +481,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
-				cloud.NewCloudCmd(),
+				cloud.NewAPICmd(),
 			},
 		},
 		{

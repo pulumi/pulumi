@@ -77,7 +77,7 @@ func MatchByOperationID(idx *Index, id string) (*MatchResult, error) {
 		return nil, NewAPIError(cmdutil.ExitCodeError, ErrNoMatch,
 			"no operation with ID "+id).
 			WithSuggestions(
-				"run 'pulumi cloud api list' to see available endpoints",
+				"run 'pulumi api list' to see available endpoints",
 				"operation IDs are case-insensitive but must match exactly otherwise",
 			)
 	}
@@ -148,12 +148,12 @@ func MatchPath(idx *Index, method, userPath string) (*MatchResult, error) {
 	}
 
 	suggestions := []string{
-		"run 'pulumi cloud api list' to see available endpoints",
+		"run 'pulumi api list' to see available endpoints",
 		"check the method with -X / --method",
 	}
 	if looksLikeOperationID(userPath) {
 		suggestions = append([]string{
-			"if you meant an operation ID, try 'pulumi cloud api describe " + userPath + "'",
+			"if you meant an operation ID, try 'pulumi api describe " + userPath + "'",
 		}, suggestions...)
 	}
 	return nil, NewAPIError(cmdutil.ExitCodeError, ErrNoMatch,

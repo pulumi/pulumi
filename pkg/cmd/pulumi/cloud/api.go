@@ -40,10 +40,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// apiCommand carries state and api for `pulumi cloud api` and the
-// dispatcher path beneath it. refreshSpec is persistent and inherits
-// into subcommands (list/describe); the rest are local to the dispatcher
-// invocation (`pulumi cloud api <path>`).
+// apiCommand carries state and api for `pulumi api` and the dispatcher
+// path beneath it. refreshSpec is persistent and inherits into subcommands
+// (list/describe); the rest are local to the dispatcher invocation
+// (`pulumi api <path>`).
 type apiCommand struct {
 	// Persistent flag inherited by subcommands.
 	refreshSpec bool
@@ -108,13 +108,15 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 		"Pin the JSON envelope version the caller expects")
 }
 
-func newAPICmd() *cobra.Command {
+// NewAPICmd creates the top-level `pulumi api` command for calling any
+// Pulumi Cloud REST API endpoint.
+func NewAPICmd() *cobra.Command {
 	api := &apiCommand{envelopeVersion: SchemaVersion}
 
 	cmd := &cobra.Command{
 		Use:   "api",
 		Short: "Call any Pulumi Cloud API endpoint",
-		Long: "Call any Pulumi Cloud API endpoint.\n" +
+		Long: "[EXPERIMENTAL] Call any Pulumi Cloud API endpoint.\n" +
 			"\n" +
 			"The positional argument may be: a path (with optional {template} variables, e.g.\n" +
 			"`/api/orgs/{orgName}/members`), an operation ID as shown in `list` (e.g.\n" +
@@ -151,41 +153,41 @@ func newAPICmd() *cobra.Command {
 			"Exit codes: 0 success; 1 caller error; 2 invalid flags; 3 auth; 8 cancelled;\n" +
 			"255 internal.",
 		Example: "  # Verify an op's parameters and schemas with `describe` before calling it.\n" +
-			"  pulumi cloud api describe CreateStackTag\n\n" +
+			"  pulumi api describe CreateStackTag\n\n" +
 			"  # Inspect the currently authenticated user.\n" +
-			"  pulumi cloud api /api/user\n\n" +
+			"  pulumi api /api/user\n\n" +
 			"  # Call by raw path with template variables filled from -F.\n" +
-			"  pulumi cloud api /api/orgs/{orgName}/members -F orgName=acme\n\n" +
+			"  pulumi api /api/orgs/{orgName}/members -F orgName=acme\n\n" +
 			"  # Multiple template variables in the path are filled the same way.\n" +
-			"  pulumi cloud api /api/stacks/{orgName}/{projectName}/{stackName} \\\n" +
+			"  pulumi api /api/stacks/{orgName}/{projectName}/{stackName} \\\n" +
 			"    -F orgName=acme -F projectName=web -F stackName=prod\n\n" +
 			"  # Call by operation ID — orgName is taken from the current Pulumi project.\n" +
-			"  pulumi cloud api ListOrgMembers\n\n" +
+			"  pulumi api ListOrgMembers\n\n" +
 			"  # Pass path variables explicitly when no project context is available.\n" +
-			"  pulumi cloud api GetStack -F orgName=acme -F projectName=web -F stackName=prod\n\n" +
+			"  pulumi api GetStack -F orgName=acme -F projectName=web -F stackName=prod\n\n" +
 			"  # Create a resource via POST; body fields go into a JSON body automatically.\n" +
-			"  pulumi cloud api CreateStackTag -F orgName=acme -F projectName=web \\\n" +
+			"  pulumi api CreateStackTag -F orgName=acme -F projectName=web \\\n" +
 			"    -F stackName=prod -F name=env -F value=prod\n\n" +
 			"  # Build a nested body by mixing scalar fields with an inline JSON object.\n" +
-			"  pulumi cloud api CreateStack -F orgName=acme -F projectName=web \\\n" +
+			"  pulumi api CreateStack -F orgName=acme -F projectName=web \\\n" +
 			"    -F stackName=prod -F 'tags={\"env\":\"prod\",\"team\":\"platform\"}'\n\n" +
 			"  # Send an array of items using a JSON literal.\n" +
-			"  pulumi cloud api AddTeamMembers -F orgName=acme -F teamName=eng \\\n" +
+			"  pulumi api AddTeamMembers -F orgName=acme -F teamName=eng \\\n" +
 			"    -F 'members=[\"alice\",\"bob\",\"carol\"]'\n\n" +
 			"  # Pass the entire request body inline with --body.\n" +
-			"  pulumi cloud api UpdateStack -F orgName=acme -F projectName=web -F stackName=prod \\\n" +
+			"  pulumi api UpdateStack -F orgName=acme -F projectName=web -F stackName=prod \\\n" +
 			"    --body '{\"description\":\"managed by agent\"}'\n\n" +
 			"  # Read a JSON body from a file, or from stdin with `-`.\n" +
-			"  pulumi cloud api UpdateStackTag --input ./tag.json\n" +
-			"  cat tag.json | pulumi cloud api UpdateStackTag --input -\n\n" +
+			"  pulumi api UpdateStackTag --input ./tag.json\n" +
+			"  cat tag.json | pulumi api UpdateStackTag --input -\n\n" +
 			"  # Filter the JSON response with jq.\n" +
-			"  pulumi cloud api /api/user --format=json | jq '.githubLogin'\n\n" +
+			"  pulumi api /api/user --format=json | jq '.githubLogin'\n\n" +
 			"  # Follow pagination cursors and stream the combined result to jq.\n" +
-			"  pulumi cloud api ListStacks --paginate | jq '.stacks[].name'\n\n" +
+			"  pulumi api ListStacks --paginate | jq '.stacks[].name'\n\n" +
 			"  # Extract just the status line + headers without the body.\n" +
-			"  pulumi cloud api /api/user --include --silent\n\n" +
+			"  pulumi api /api/user --include --silent\n\n" +
 			"  # Preview the resolved request without sending it.\n" +
-			"  pulumi cloud api CreateStackTag -F orgName=acme --dry-run",
+			"  pulumi api CreateStackTag -F orgName=acme --dry-run",
 	}
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "path-or-operation-id"}},
@@ -214,10 +216,10 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 			"no endpoint provided").
 			WithField("path").
 			WithSuggestions(
-				"pass a path, e.g. `pulumi cloud api /api/user`",
-				"or an operation ID, e.g. `pulumi cloud api ListAccounts`",
-				"run `pulumi cloud api list` to see available endpoints",
-				"run `pulumi cloud api describe <path-or-operation-id>` to inspect one",
+				"pass a path, e.g. `pulumi api /api/user`",
+				"or an operation ID, e.g. `pulumi api ListAccounts`",
+				"run `pulumi api list` to see available endpoints",
+				"run `pulumi api describe <path-or-operation-id>` to inspect one",
 			)
 	}
 	userArg := strings.TrimSpace(args[0])

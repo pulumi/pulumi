@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// newLsCmd builds `pulumi cloud api list` — a stable, agent-first listing of
+// newLsCmd builds `pulumi api list` — a stable, agent-first listing of
 // every operation exposed by the embedded OpenAPI spec. api carries the
 // parent command's persistent flags (--refresh-spec).
 func newLsCmd(api *apiCommand) *cobra.Command {
@@ -53,23 +53,23 @@ func newLsCmd(api *apiCommand) *cobra.Command {
 			"Preview endpoints are listed by default; deprecated endpoints are hidden. Use\n" +
 			"--include-preview=false or --include-deprecated to change that.",
 		Example: "  # Print the table of stable endpoints.\n" +
-			"  pulumi cloud api list\n\n" +
+			"  pulumi api list\n\n" +
 			"  # Grab every operation as JSON (the default when piped).\n" +
-			"  pulumi cloud api list --format=json\n\n" +
+			"  pulumi api list --format=json\n\n" +
 			"  # Count endpoints per tag with jq.\n" +
-			"  pulumi cloud api list --format=json | jq '[.operations[] | .tag] | group_by(.) |\n" +
+			"  pulumi api list --format=json | jq '[.operations[] | .tag] | group_by(.) |\n" +
 			"    map({tag: .[0], count: length})'\n\n" +
 			"  # Find all stack-related GETs.\n" +
-			"  pulumi cloud api list --format=json | jq '.operations[] |\n" +
+			"  pulumi api list --format=json | jq '.operations[] |\n" +
 			"    select(.method==\"GET\" and (.path | contains(\"/stacks\"))) | .operationId'\n\n" +
 			"  # Full-text search descriptions for deployment-related endpoints.\n" +
-			"  pulumi cloud api list --format=json | jq '.operations[] |\n" +
+			"  pulumi api list --format=json | jq '.operations[] |\n" +
 			"    select(.description | test(\"deployment\"; \"i\")) |\n" +
 			"    {operationId, path, description}'\n\n" +
 			"  # Include deprecated endpoints (hidden by default).\n" +
-			"  pulumi cloud api list --include-deprecated\n\n" +
+			"  pulumi api list --include-deprecated\n\n" +
 			"  # Hide preview endpoints.\n" +
-			"  pulumi cloud api list --include-preview=false",
+			"  pulumi api list --include-preview=false",
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	cmd.Flags().StringVar(&format, "format", "",
