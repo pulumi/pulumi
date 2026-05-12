@@ -184,14 +184,14 @@ func writeErrorText(w io.Writer, d ErrorDetail) error {
 	return err
 }
 
-// Command-output envelopes. Each top-level `--format=json` payload gets a
+// Command-output envelopes. Each top-level `--output=json` payload gets a
 // dedicated envelope type here so the wire format is reviewable in one place.
 
 // orderedByDesc describes the sort order `ls` commits to. Agents can key off
 // this so they skip defensive resorting.
 const orderedByDesc = "tag asc, path asc, method precedence (GET, POST, PUT, PATCH, DELETE, HEAD)"
 
-// lsOperation is the per-row shape of the `list --format=json` payload.
+// lsOperation is the per-row shape of the `list --output=json` payload.
 // Summary and Description both appear: Pulumi's spec generator fills Summary
 // from the same Java annotation value as OperationID (so the two often match),
 // while Description holds the long-form prose. Both are emitted as "" when
@@ -209,7 +209,7 @@ type lsOperation struct {
 }
 
 // lsEnvelope is the top-level JSON shape emitted by `ls` on stdout when
-// piped or when --format=json is set.
+// piped or when --output=json is set.
 type lsEnvelope struct {
 	SchemaVersion int           `json:"schemaVersion"`
 	OrderedBy     string        `json:"orderedBy"`
@@ -218,7 +218,7 @@ type lsEnvelope struct {
 	Operations    []lsOperation `json:"operations"`
 }
 
-// describedOp is the per-operation payload emitted by `describe --format=json`.
+// describedOp is the per-operation payload emitted by `describe --output=json`.
 // It's a view over Operation with stable JSON names so the envelope remains
 // usable across CLI versions.
 type describedOp struct {
@@ -246,7 +246,7 @@ type bodyJSON struct {
 	JSONSchema  json.RawMessage `json:"jsonSchema,omitempty"`
 }
 
-// describeEnvelope is the top-level `describe --format=json` shape.
+// describeEnvelope is the top-level `describe --output=json` shape.
 type describeEnvelope struct {
 	SchemaVersion int         `json:"schemaVersion"`
 	Operation     describedOp `json:"operation"`
