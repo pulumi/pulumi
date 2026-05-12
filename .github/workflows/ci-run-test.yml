@@ -203,8 +203,15 @@ jobs:
             rm -rf "$(command -v pulumi.exe)/../pulumi*"
           fi
       - name: Install Python deps
+        shell: bash
         run: |
-          python -m pip install --user requests wheel urllib3 chardet build
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            python -m venv /tmp/ci-python-env
+            echo "/tmp/ci-python-env/bin" >> "$GITHUB_PATH"
+            /tmp/ci-python-env/bin/pip install requests wheel urllib3 chardet build
+          else
+            python -m pip install --upgrade pip requests wheel urllib3 chardet build
+          fi
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
