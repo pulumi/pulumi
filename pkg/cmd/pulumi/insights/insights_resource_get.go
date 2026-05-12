@@ -169,9 +169,22 @@ func renderResourceText(w io.Writer, r apitype.InsightsResourceWithVersion) erro
 	}
 	if len(r.State) > 0 {
 		var pretty bytes.Buffer
-		// Indent so the nested JSON is visually grouped under the "State:" label.
-		// On malformed JSON we fall back to the raw bytes so the user still sees
-		// what the service returned.
+		// We render `state` as indented JSON rather than a recursive
+		// bulleted/key-value tree on purpose:
+		//
+		//   - `state` is schemaless from the CLI's perspective — its shape
+		//     depends on which cloud provider Insights scanned, so we can't
+		//     pre-format around known fields.
+		//   - JSON preserves type distinctions a tree would muddle (`true`
+		//     vs `"true"`, `[]` vs `{}`, null vs missing) and avoids ad-hoc
+		//     escaping rules for strings that contain colons or newlines,
+		//     both of which are common in cloud state.
+		//   - It matches `pulumi stack`'s `stringifyOutput`, which falls
+		//     back to JSON for any non-scalar output.
+		//
+		// On malformed JSON (shouldn't happen — the server promises
+		// `application/json`) we fall back to the raw bytes so the user
+		// still sees what the service returned.
 		if err := json.Indent(&pretty, r.State, "", "  "); err == nil {
 			fmt.Fprintf(w, "State:\n%s\n", pretty.String())
 		} else {
