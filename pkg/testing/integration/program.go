@@ -240,6 +240,8 @@ type ProgramTestOptions struct {
 	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
+	// DestroyCommandlineFlags specifies flags to add to the `pulumi destroy` command line (e.g. "--output=json")
+	DestroyCommandlineFlags []string
 	// QueryCommandlineFlags specifies flags to add to the `pulumi query` command line (e.g. "--color=raw")
 	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
@@ -595,6 +597,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.UpdateCommandlineFlags != nil {
 		opts.UpdateCommandlineFlags = append(opts.UpdateCommandlineFlags, overrides.UpdateCommandlineFlags...)
+	}
+	if overrides.DestroyCommandlineFlags != nil {
+		opts.DestroyCommandlineFlags = append(opts.DestroyCommandlineFlags, overrides.DestroyCommandlineFlags...)
 	}
 	if overrides.QueryCommandlineFlags != nil {
 		opts.QueryCommandlineFlags = append(opts.QueryCommandlineFlags, overrides.QueryCommandlineFlags...)
@@ -1568,6 +1573,9 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		}
 		if pt.opts.DestroyExcludeProtected {
 			destroy = append(destroy, "--exclude-protected")
+		}
+		if pt.opts.DestroyCommandlineFlags != nil {
+			destroy = append(destroy, pt.opts.DestroyCommandlineFlags...)
 		}
 		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
 			return err
