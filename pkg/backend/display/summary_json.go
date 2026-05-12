@@ -76,13 +76,17 @@ func tapSummaryJSON(in <-chan engine.Event, opts Options) <-chan engine.Event {
 	if stdout == nil {
 		stdout = os.Stdout
 	}
+	stderr := opts.Stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
 	go func() {
 		defer close(out)
 		for e := range in {
 			if e.Type == engine.SummaryEvent {
 				if payload, ok := e.Payload().(engine.SummaryEventPayload); ok {
 					if err := writeSummaryJSON(stdout, summaryJSONFromEvent(payload)); err != nil {
-						fmt.Fprintf(os.Stderr, "warning: failed to write summary JSON: %v\n", err)
+						fmt.Fprintf(stderr, "warning: failed to write summary JSON: %v\n", err)
 					}
 				}
 			}
