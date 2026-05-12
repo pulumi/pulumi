@@ -2467,6 +2467,48 @@ func TestParameterizedNode(t *testing.T) {
 	})
 }
 
+// Regression test for https://github.com/pulumi/pulumi/issues/21950: when an inline program runs more than once in the
+// same Node.js process, each run must register the parameterized package against its own engine.
+//
+//nolint:paralleltest // mutates environment
+func TestStaleParameterizedPackageRefNode(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	e.ImportDirectory(filepath.Join("nodejs", "stale-parameterized-packageref"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "plugin", "install", "resource", "terraform-provider", "1.1.1")
+	e.RunCommand("pulumi", "package", "add", "terraform-provider", "hashicorp/random", "3.8.1")
+
+	localPulumi, err := filepath.Abs(filepath.Join("..", "..", "sdk", "nodejs", "bin"))
+	require.NoError(t, err)
+	rewritePulumiDep(t, filepath.Join(e.CWD, "package.json"), localPulumi)
+	rewritePulumiDep(t, filepath.Join(e.CWD, "sdks", "random", "package.json"), localPulumi)
+
+	e.RunCommand("npm", "install")
+
+	stdout, _ := e.RunCommand("node", "index.js")
+	assert.Contains(t, stdout, "First preview succeeded")
+	assert.Contains(t, stdout, "Second preview succeeded")
+}
+
+func rewritePulumiDep(t *testing.T, packageJSONPath, localPulumi string) {
+	t.Helper()
+	data, err := os.ReadFile(packageJSONPath)
+	require.NoError(t, err)
+	var pkg map[string]any
+	require.NoError(t, json.Unmarshal(data, &pkg))
+	deps, _ := pkg["dependencies"].(map[string]any)
+	if deps == nil {
+		deps = map[string]any{}
+		pkg["dependencies"] = deps
+	}
+	deps["@pulumi/pulumi"] = "file:" + localPulumi
+	out, err := json.MarshalIndent(pkg, "", "    ")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(packageJSONPath, out, 0o600))
+}
+
 func TestPackageAddNode(t *testing.T) {
 	t.Parallel()
 
