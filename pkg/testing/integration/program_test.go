@@ -21,7 +21,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/testing/iotest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -200,4 +202,35 @@ func TestGoModEdits(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDefaultPrepareProjectNoOpRuntimes(t *testing.T) {
+	t.Parallel()
+
+	for _, rt := range []string{YAMLRuntime, JavaRuntime, HCLRuntime, PCLRuntime} {
+		t.Run(rt, func(t *testing.T) {
+			t.Parallel()
+			pt := &ProgramTester{t: t, opts: &ProgramTestOptions{}}
+			projinfo := &engine.Projinfo{
+				Proj: &workspace.Project{
+					Runtime: workspace.NewProjectRuntimeInfo(rt, nil),
+				},
+			}
+			require.NoError(t, pt.defaultPrepareProject(projinfo))
+		})
+	}
+}
+
+func TestDefaultPrepareProjectUnknownRuntime(t *testing.T) {
+	t.Parallel()
+
+	pt := &ProgramTester{t: t, opts: &ProgramTestOptions{}}
+	projinfo := &engine.Projinfo{
+		Proj: &workspace.Project{
+			Runtime: workspace.NewProjectRuntimeInfo("not-a-real-runtime", nil),
+		},
+	}
+	err := pt.defaultPrepareProject(projinfo)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unrecognized project runtime")
 }
