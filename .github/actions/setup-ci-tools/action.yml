@@ -8,6 +8,22 @@ inputs:
     description: 'Version set name: "current" or "minimum"'
     required: false
     default: "current"
+  go-version:
+    description: "Go version (used for Windows fallback)"
+    required: false
+    default: "1.25"
+  python-version:
+    description: "Python version (used for Windows fallback)"
+    required: false
+    default: "3.11"
+  node-version:
+    description: "Node.js version (used for Windows fallback)"
+    required: false
+    default: "20"
+  dotnet-version:
+    description: ".NET version (used for Windows fallback)"
+    required: false
+    default: "8"
 
 runs:
   using: composite
@@ -24,27 +40,28 @@ runs:
       shell: bash
       run: |
         echo "$(nix build .#ci-tools-${{ inputs.version-set }} --print-out-paths)/bin" >> "$GITHUB_PATH"
+
     # --- Windows: traditional setup actions ---
     - name: Set up Go (Windows)
       if: runner.os == 'Windows'
       uses: actions/setup-go@v6
       with:
-        go-version: "1.25"
+        go-version: ${{ inputs.go-version }}
     - name: Set up Python (Windows)
       if: runner.os == 'Windows'
       uses: actions/setup-python@v6
       with:
-        python-version: "3.11"
+        python-version: ${{ inputs.python-version }}
     - name: Set up Node (Windows)
       if: runner.os == 'Windows'
       uses: actions/setup-node@v6
       with:
-        node-version: "20"
+        node-version: ${{ inputs.node-version }}
     - name: Set up DotNet (Windows)
       if: runner.os == 'Windows'
       uses: actions/setup-dotnet@v5
       with:
-        dotnet-version: "8"
+        dotnet-version: ${{ inputs.dotnet-version }}
     - name: Set up JDK 11 (Windows)
       if: runner.os == 'Windows'
       uses: actions/setup-java@v5
