@@ -57,10 +57,13 @@ type UIToolProgress struct {
 
 func (UIToolProgress) uiEvent() {}
 
-// UIToolCompleted signals that a CLI tool call has finished.
+// UIToolCompleted signals that a CLI tool call has finished. Result carries the
+// JSON-marshalled tool output (apitype.AgentUserEventToolResultItem.Content);
+// it is empty when marshalling failed and the overlay shows a fallback line.
 type UIToolCompleted struct {
 	Name    string
 	Args    json.RawMessage
+	Result  json.RawMessage
 	IsError bool
 }
 

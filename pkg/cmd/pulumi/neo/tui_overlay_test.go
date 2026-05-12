@@ -1,0 +1,281 @@
+// Copyright 2026, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package neo
+
+import (
+	"encoding/json"
+	"reflect"
+	"strings"
+	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// cmdMsgTypeName runs cmd in a goroutine (see runCmd) and returns the
+// resolved message's reflect.Type.Name(). It's how we identify bubbletea's
+// internal enterAltScreenMsg / exitAltScreenMsg singletons from tests:
+// they're unexported, so the only reliable handle on them is their type
+// name. Returns "" when the command times out (blocking cmd like
+// waitForEvent) or produces a nil message.
+func cmdMsgTypeName(cmd tea.Cmd) string {
+	msg, ok := runCmd(cmd)
+	if !ok || msg == nil {
+		return ""
+	}
+	return reflect.TypeOf(msg).Name()
+}
+
+// -----------------------------------------------------------------------------
+// History bookkeeping
+// -----------------------------------------------------------------------------
+
+func TestAppendToolStart_BoundsHistory(t *testing.T) {
+	t.Parallel()
+
+	var hist []toolCallRecord
+	for range maxToolHistory + 5 {
+		hist = appendToolStart(hist, "shell__shell_execute", nil)
+	}
+	require.Len(t, hist, maxToolHistory,
+		"history must be capped at maxToolHistory; oldest entries dropped off the front")
+	for _, r := range hist {
+		assert.True(t, r.Pending, "every appended start record should begin Pending")
+	}
+}
+
+func TestCompleteToolCall_MatchesMostRecentPending(t *testing.T) {
+	t.Parallel()
+
+	hist := appendToolStart(nil, "fs__read", json.RawMessage(`{"path":"a.txt"}`))
+	hist = appendToolStart(hist, "fs__read", json.RawMessage(`{"path":"b.txt"}`))
+
+	completeToolCall(hist, "fs__read", json.RawMessage(`"content B"`), false)
+
+	require.Len(t, hist, 2)
+	// Most-recent matching pending entry (index 1) is completed first.
+	assert.False(t, hist[1].Pending)
+	assert.JSONEq(t, `"content B"`, string(hist[1].Result))
+	// Earlier matching entry remains pending — it will be completed by a
+	// subsequent UIToolCompleted.
+	assert.True(t, hist[0].Pending)
+}
+
+func TestCompleteToolCall_NoMatchIsNoOp(t *testing.T) {
+	t.Parallel()
+
+	hist := appendToolStart(nil, "fs__read", nil)
+	// Mark the only entry as completed so there's no pending match anymore.
+	completeToolCall(hist, "fs__read", json.RawMessage(`"ok"`), false)
+	require.False(t, hist[0].Pending)
+
+	// Second completion for the same name finds no pending entry and is dropped.
+	completeToolCall(hist, "fs__read", json.RawMessage(`"different"`), true)
+	assert.JSONEq(t, `"ok"`, string(hist[0].Result), "stale completion must not overwrite a completed entry")
+	assert.False(t, hist[0].IsError)
+}
+
+// -----------------------------------------------------------------------------
+// JSON formatter
+// -----------------------------------------------------------------------------
+
+func TestFormatJSON(t *testing.T) {
+	t.Parallel()
+
+	t.Run("pretty prints valid JSON", func(t *testing.T) {
+		t.Parallel()
+		got := formatJSON(json.RawMessage(`{"b":2,"a":1}`))
+		// json.MarshalIndent gives deterministic key ordering via map sort,
+		// so the result is stable.
+		assert.Equal(t, "{\n  \"a\": 1,\n  \"b\": 2\n}", got)
+	})
+
+	t.Run("falls back to raw bytes when unmarshal fails", func(t *testing.T) {
+		t.Parallel()
+		raw := json.RawMessage(`not-json{`)
+		assert.Equal(t, "not-json{", formatJSON(raw))
+	})
+
+	t.Run("empty input renders explicit placeholder", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "(empty)", formatJSON(nil))
+		assert.Equal(t, "(empty)", formatJSON(json.RawMessage{}))
+	})
+}
+
+// -----------------------------------------------------------------------------
+// Overlay open / close / scroll
+// -----------------------------------------------------------------------------
+
+func TestModel_Update_CtrlOOpensOverlay(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	um := updated.(Model)
+
+	assert.True(t, um.overlayActive, "ctrl+o must flip the overlay on")
+	assert.Equal(t, "enterAltScreenMsg", cmdMsgTypeName(cmd),
+		"ctrl+o must enter the alt-screen so the overlay can take over the frame")
+}
+
+func TestModel_Update_CtrlOClosesOverlay(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	// Open it first.
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	um := updated.(Model)
+	require.True(t, um.overlayActive)
+
+	// A second ctrl+o closes it and exits alt-screen.
+	updated, cmd := um.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	um = updated.(Model)
+	assert.False(t, um.overlayActive)
+	assert.Equal(t, "exitAltScreenMsg", cmdMsgTypeName(cmd))
+}
+
+func TestModel_Update_EscClosesOverlay_NoCancel(t *testing.T) {
+	t.Parallel()
+
+	// Esc in the overlay must close it WITHOUT posting a user_cancel — the
+	// agent's turn must keep running in the background while the user reviews.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	um := updated.(Model)
+	require.True(t, um.overlayActive)
+
+	updated, cmd := um.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	um = updated.(Model)
+	assert.False(t, um.overlayActive, "esc in overlay must close it")
+	assert.False(t, um.cancelling, "esc in overlay must NOT trigger agent cancellation")
+	assert.Equal(t, "exitAltScreenMsg", cmdMsgTypeName(cmd))
+
+	select {
+	case ev := <-outCh:
+		t.Fatalf("esc in overlay must not post any outbound event, got %T", ev.event)
+	default:
+	}
+}
+
+func TestModel_Update_OverlaySwallowsTyping(t *testing.T) {
+	t.Parallel()
+
+	// While the overlay is open, printable keys must NOT reach the input
+	// textarea — the input bar is hidden and any leaked text would surprise
+	// the user when they close the overlay.
+	m := NewModel(ModelConfig{})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	um := updated.(Model)
+	require.True(t, um.overlayActive)
+
+	for _, r := range "hello" {
+		updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		um = updated.(Model)
+	}
+	assert.Equal(t, "", um.textInput.Value(), "typing while overlay is open must not enter the input buffer")
+}
+
+func TestModel_Update_OverlayForwardsScrollKeys(t *testing.T) {
+	t.Parallel()
+
+	// Scroll keys (↑↓ pgup pgdn home end) must reach the viewport. We can't
+	// easily assert the viewport's internal scroll offset from outside, so
+	// we just verify the overlay stays open — i.e. those keys are NOT
+	// hitting the "swallow everything else" default branch that returns nil.
+	m := NewModel(ModelConfig{})
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	um := updated.(Model)
+	require.True(t, um.overlayActive)
+
+	for _, k := range []tea.KeyType{tea.KeyDown, tea.KeyUp, tea.KeyPgDown, tea.KeyPgUp, tea.KeyHome, tea.KeyEnd} {
+		updated, _ = um.Update(tea.KeyMsg{Type: k})
+		um = updated.(Model)
+		assert.True(t, um.overlayActive, "scroll key %v must not close the overlay", k)
+	}
+}
+
+// -----------------------------------------------------------------------------
+// History updates from events
+// -----------------------------------------------------------------------------
+
+func TestModel_ToolEventsAppendHistory(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	args := json.RawMessage(`{"command":"echo hi"}`)
+	result := json.RawMessage(`{"stdout":"hi\n","exit_code":0}`)
+
+	updated, _ := m.Update(UIToolStarted{Name: "shell__shell_execute", Args: args})
+	um := updated.(Model)
+	require.Len(t, um.toolHistory, 1)
+	assert.True(t, um.toolHistory[0].Pending)
+	assert.Equal(t, "shell__shell_execute", um.toolHistory[0].Name)
+	assert.JSONEq(t, string(args), string(um.toolHistory[0].Args))
+
+	updated, _ = um.Update(UIToolCompleted{
+		Name:    "shell__shell_execute",
+		Args:    args,
+		Result:  result,
+		IsError: false,
+	})
+	um = updated.(Model)
+	require.Len(t, um.toolHistory, 1)
+	assert.False(t, um.toolHistory[0].Pending)
+	assert.JSONEq(t, string(result), string(um.toolHistory[0].Result))
+}
+
+// -----------------------------------------------------------------------------
+// Overlay body rendering
+// -----------------------------------------------------------------------------
+
+func TestRenderOverlayBody_EmptyState(t *testing.T) {
+	t.Parallel()
+
+	body := renderOverlayBody(nil, 80)
+	assert.Contains(t, body, "No tool calls yet")
+}
+
+func TestRenderOverlayBody_IncludesArgsAndResult(t *testing.T) {
+	t.Parallel()
+
+	hist := appendToolStart(nil, "fs__read",
+		json.RawMessage(`{"path":"/tmp/a.txt"}`))
+	completeToolCall(hist, "fs__read",
+		json.RawMessage(`{"content":"hello world"}`), false)
+
+	body := renderOverlayBody(hist, 80)
+	assert.Contains(t, body, "Arguments")
+	assert.Contains(t, body, "/tmp/a.txt")
+	assert.Contains(t, body, "Result")
+	assert.Contains(t, body, "hello world")
+	assert.NotContains(t, body, "(in flight)")
+}
+
+func TestRenderOverlayBody_PendingShowsInFlight(t *testing.T) {
+	t.Parallel()
+
+	hist := appendToolStart(nil, "shell__shell_execute",
+		json.RawMessage(`{"command":"sleep 100"}`))
+
+	body := renderOverlayBody(hist, 80)
+	assert.Contains(t, body, "(in flight)")
+	// The "running" annotation in the metadata line tells the user the call
+	// hasn't completed yet — without it they might think the empty result is
+	// the actual output.
+	assert.Contains(t, strings.ToLower(body), "running")
+}

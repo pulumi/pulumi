@@ -174,6 +174,60 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 	assert.NotContains(t, asMap, "timestamp")
 }
 
+func TestSession_UIToolCompletedCarriesResult(t *testing.T) {
+	t.Parallel()
+
+	// The tool-details overlay (ctrl+o in the TUI) only has content because
+	// runBatch attaches the marshalled invokeToolCall result to the
+	// UIToolCompleted event. If that wiring drops, the overlay silently goes
+	// blank for every call — guard against the regression.
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "payload"}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "c1",
+				Name:          "filesystem__read",
+				Args:          json.RawMessage(`{}`),
+				ExecutionMode: "cli",
+			},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	var completed UIToolCompleted
+	var found bool
+	for _, e := range events {
+		if c, ok := e.(UIToolCompleted); ok {
+			completed = c
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "session must emit UIToolCompleted for the cli call")
+	assert.Equal(t, "filesystem__read", completed.Name)
+	assert.False(t, completed.IsError)
+	require.NotEmpty(t, completed.Result, "UIToolCompleted.Result must carry the marshalled tool output")
+	assert.JSONEq(t, `{"content":"payload"}`, string(completed.Result))
+}
+
 func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 	t.Parallel()
 
