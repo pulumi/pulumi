@@ -143,6 +143,52 @@ func TestTemplateListCmd_JSONOutput(t *testing.T) {
 	assert.Equal(t, sampleTemplates(), got.Templates)
 }
 
+func TestTemplateListCmd_ZeroUpdatedAt(t *testing.T) {
+	t.Parallel()
+
+	// Templates whose UpdatedAt is the zero time should produce an empty cell
+	// in the table and be omitted from the JSON output.
+	templates := []apitype.TemplateMetadata{
+		{
+			Name:       "no-timestamp",
+			Publisher:  "pulumi",
+			Source:     "github",
+			Language:   "go",
+			Visibility: apitype.VisibilityPublic,
+			// UpdatedAt left as time.Time{} (zero).
+		},
+	}
+
+	t.Run("table omits zero timestamp", func(t *testing.T) {
+		t.Parallel()
+
+		reg := newMockListRegistry(t, nil, templates, nil)
+		c := &templateListCmd{registryFactory: registryFactory(reg)}
+
+		var out bytes.Buffer
+		require.NoError(t, c.Run(t.Context(), &out, templateListArgs{}))
+		assert.NotContains(t, out.String(), "0001-01-01")
+	})
+
+	t.Run("json omits zero timestamp", func(t *testing.T) {
+		t.Parallel()
+
+		reg := newMockListRegistry(t, nil, templates, nil)
+		c := &templateListCmd{registryFactory: registryFactory(reg)}
+
+		var out bytes.Buffer
+		require.NoError(t, c.Run(t.Context(), &out, templateListArgs{output: "json"}))
+
+		var raw map[string]any
+		require.NoError(t, json.Unmarshal(out.Bytes(), &raw))
+		entries, ok := raw["templates"].([]any)
+		require.True(t, ok)
+		require.Len(t, entries, 1)
+		_, present := entries[0].(map[string]any)["updatedAt"]
+		assert.False(t, present, "updatedAt should be omitted when zero")
+	})
+}
+
 func TestTemplateListCmd_JSONOutput_NoResults(t *testing.T) {
 	t.Parallel()
 

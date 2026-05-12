@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -141,25 +142,49 @@ func renderTemplatesTable(w io.Writer, templates []apitype.TemplateMetadata) err
 	t.Style().Format.Header = text.FormatDefault
 	t.AppendHeader(table.Row{"Name", "Publisher", "Source", "Language", "Visibility", "Updated"})
 	for _, tmpl := range templates {
+		updated := ""
+		if !tmpl.UpdatedAt.IsZero() {
+			updated = tmpl.UpdatedAt.UTC().Format("2006-01-02")
+		}
 		t.AppendRow(table.Row{
 			tmpl.Name,
 			tmpl.Publisher,
 			tmpl.Source,
 			tmpl.Language,
 			tmpl.Visibility,
-			tmpl.UpdatedAt.UTC().Format("2006-01-02"),
+			updated,
 		})
 	}
 	t.Render()
 	return nil
 }
 
+// templateJSONEntry wraps apitype.TemplateMetadata for JSON output, shadowing
+// the embedded UpdatedAt with a pointer so the zero time is omitted via
+// `omitempty`. The Pulumi Cloud service emits "0001-01-01T00:00:00Z" for
+// templates that don't have a real updated timestamp; surfacing that to
+// scripting consumers is noise.
+type templateJSONEntry struct {
+	apitype.TemplateMetadata
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+}
+
 func renderTemplatesJSON(w io.Writer, templates []apitype.TemplateMetadata) error {
+	entries := make([]templateJSONEntry, 0, len(templates))
+	for _, tmpl := range templates {
+		entry := templateJSONEntry{TemplateMetadata: tmpl}
+		if !tmpl.UpdatedAt.IsZero() {
+			u := tmpl.UpdatedAt
+			entry.UpdatedAt = &u
+		}
+		entries = append(entries, entry)
+	}
+
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(struct {
-		Templates []apitype.TemplateMetadata `json:"templates"`
-	}{Templates: templates})
+		Templates []templateJSONEntry `json:"templates"`
+	}{Templates: entries})
 }
 
 func defaultTemplateRegistryFactory(ctx context.Context) registry.Registry {
