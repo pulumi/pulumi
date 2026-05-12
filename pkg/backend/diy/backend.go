@@ -1196,7 +1196,8 @@ func (b *diyBackend) apply(
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
-	if !op.Opts.Display.JSONDisplay && op.Opts.Display.Type != display.DisplayWatch {
+	if !op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON &&
+		op.Opts.Display.Type != display.DisplayWatch {
 		// We're about to print the first line of output, record the time it took to get here. This is more of a metric
 		// than a logical span, but this is a convenient way to record this information.
 		if startTime, ok := cmdutil.ProcessStartTimeFromContext(ctx); ok && cmdutil.IsOTelEnabled() {
@@ -1348,7 +1349,8 @@ func (b *diyBackend) apply(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermalink && opts.ShowLink &&
+		!op.Opts.Display.JSONDisplay && !op.Opts.Display.SummaryJSON {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
