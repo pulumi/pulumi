@@ -51,9 +51,7 @@ const (
 	// server's max, min, and default API versions; see APIVersionCapabilityConfig.
 	APIVersion APICapability = "api-version"
 
-	// Neo advertises minimum CLI requirements for `pulumi neo`. The service sets this when
-	// it wants to refuse old CLIs whose neo wire-shape understanding has diverged from the
-	// current protocol; see NeoCapabilityConfig.
+	// Neo advertises minimum CLI requirements for `pulumi neo`; see NeoCapabilityConfig.
 	Neo APICapability = "neo"
 )
 
@@ -69,11 +67,9 @@ type DeploymentSchemaVersionConfig struct {
 	Version int `json:"version"`
 }
 
-// NeoCapabilityConfig is the configuration for the neo capability.
 type NeoCapabilityConfig struct {
 	// MinCLIVersion is the minimum Pulumi CLI semver required to use `pulumi neo`. Empty
-	// means no minimum is enforced. CLIs older than this should refuse to create a Neo
-	// task and prompt the user to upgrade.
+	// means no minimum.
 	MinCLIVersion string `json:"minCLIVersion,omitempty"`
 }
 
@@ -150,9 +146,8 @@ type Capabilities struct {
 	// the `Accept: application/vnd.pulumi+N` header).
 	APIVersion *APIVersionCapabilityConfig
 
-	// If non-nil, indicates that the service advertises minimum CLI requirements for
-	// `pulumi neo`. A nil pointer means the service did not advertise the capability and
-	// callers should treat that as "no minimum enforced".
+	// If non-nil, indicates that the service has advertised minimum CLI requirements
+	// for `pulumi neo`.
 	Neo *NeoCapabilityConfig
 }
 

@@ -22,15 +22,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-// checkNeoMinCLIVersion enforces the service-advertised minimum CLI version for `pulumi
-// neo`. The service surfaces a Neo capability config in /api/capabilities when it has
-// decided it cannot speak the neo protocol with older CLIs; we read that here and refuse
-// to create a task if the local CLI is too old.
-//
-// Defensive parsing: if either version is missing or unparseable (e.g. a dev build with
-// an empty version.Version, or a service that sent garbage), we let the operation proceed
-// rather than blocking on something we can't reason about. The service still gets to
-// reject the request itself if it really has to.
+// checkNeoMinCLIVersion enforces the service-advertised minimum CLI version for
+// `pulumi neo`. Missing or unparseable versions fall through silently so a dev build
+// (empty version.Version) or a garbage service response can't lock users out.
 func checkNeoMinCLIVersion(caps apitype.Capabilities, currentVersion string) error {
 	if caps.Neo == nil || caps.Neo.MinCLIVersion == "" {
 		return nil

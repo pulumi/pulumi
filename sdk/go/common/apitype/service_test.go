@@ -330,9 +330,8 @@ func TestCapabilities(t *testing.T) {
 
 	t.Run("parse neo with empty config", func(t *testing.T) {
 		t.Parallel()
-		// Service may advertise the neo capability with an empty config while it sorts
-		// out the right minimum to enforce; the parsed Neo pointer should still be
-		// non-nil so callers can tell "advertised" from "not advertised".
+		// Empty config still parses to a non-nil Neo so callers can distinguish
+		// "advertised but no minimum" from "not advertised".
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
