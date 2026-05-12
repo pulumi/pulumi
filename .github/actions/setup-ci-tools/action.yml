@@ -24,12 +24,6 @@ runs:
       shell: bash
       run: |
         echo "$(nix build .#ci-tools-${{ inputs.version-set }} --print-out-paths)/bin" >> "$GITHUB_PATH"
-    - name: Install npm-based gRPC tools
-      if: runner.os != 'Windows'
-      shell: bash
-      run: |
-        npm install -g grpc-tools@1.13.0 grpc_tools_node_protoc_ts@5.3.3 protoc-gen-js@3.21.4
-
     # --- Windows: traditional setup actions ---
     - name: Set up Go (Windows)
       if: runner.os == 'Windows'
