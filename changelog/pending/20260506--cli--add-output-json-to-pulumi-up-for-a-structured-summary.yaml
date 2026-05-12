@@ -1,4 +1,4 @@
 changes:
-- type: feature
+- type: feat
   scope: cli
   description: Add `--output json` to `pulumi up` for a structured JSON summary of the operation result
