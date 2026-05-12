@@ -95,8 +95,6 @@
             pkgs.delve
             pkgs.gh
             pkgs.wabt
-            pkgs.gofumpt
-            pkgs.golangci-lint
           ];
 
           # Build a ci-tools package for a given version set
