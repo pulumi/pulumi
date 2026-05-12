@@ -15,6 +15,34 @@
         let
           pkgs = import nixpkgs { inherit system; };
 
+          # Pin protoc to the exact version used for code generation.
+          # We download the pre-built binary to match the version exactly,
+          # since even minor version differences (29.5 vs 29.6) change
+          # generated output and fail `make check_proto`.
+          protocVersion = "29.5";
+          protocPlatform = {
+            "x86_64-linux" = { name = "linux-x86_64"; hash = "sha256-o/CUNjzSBcb3rw0bkwXLTIUXBD8mXNsYjwmMrpPoshc="; };
+            "aarch64-linux" = { name = "linux-aarch_64"; hash = "sha256-JesISP8TqQoLLSo7Sp0rq8f7/hWPWWwA2MJqIQKN1vU="; };
+            "x86_64-darwin" = { name = "osx-x86_64"; hash = "sha256-hPBaI8jV38bMYTiB8pQXQhRz/0nN20yB6p+5SGTfCfs="; };
+            "aarch64-darwin" = { name = "osx-aarch_64"; hash = "sha256-qkdxVsT+chF6W4Fhj+CcEvL/GcxYqZyFx7Vpar/qZqQ="; };
+          }.${system};
+
+          protoc-pinned = pkgs.stdenv.mkDerivation {
+            pname = "protoc";
+            version = protocVersion;
+            src = pkgs.fetchurl {
+              url = "https://github.com/protocolbuffers/protobuf/releases/download/v${protocVersion}/protoc-${protocVersion}-${protocPlatform.name}.zip";
+              hash = protocPlatform.hash;
+            };
+            nativeBuildInputs = [ pkgs.unzip ];
+            sourceRoot = ".";
+            installPhase = ''
+              mkdir -p $out/bin $out/include
+              cp bin/protoc $out/bin/
+              cp -r include/* $out/include/
+            '';
+          };
+
           # Pin protoc-gen-go to the exact version used for code generation
           protoc-gen-go-pinned = pkgs.buildGoModule rec {
             pname = "protoc-gen-go";
@@ -48,7 +76,7 @@
           ci-proto-tools = pkgs.symlinkJoin {
             name = "pulumi-ci-proto-tools";
             paths = [
-              pkgs.protobuf_29
+              protoc-pinned
               protoc-gen-go-pinned
               protoc-gen-go-grpc-pinned
               pkgs.jq
@@ -67,7 +95,6 @@
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               # Proto toolchain
-              protobuf_29
               self.packages.${system}.ci-proto-tools
 
               # Core languages (default versions for local dev)
