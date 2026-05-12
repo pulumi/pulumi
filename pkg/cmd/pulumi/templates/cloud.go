@@ -146,8 +146,7 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 		return
 	}
 
-	var nameFilter *string
-	for template, err := range r.ListTemplates(ctx, nameFilter) {
+	for template, err := range r.ListTemplates(ctx, registry.ListTemplatesOptions{}) {
 		if err != nil {
 			s.addError(fmt.Errorf("could not get template: %w", err))
 			return
