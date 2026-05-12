@@ -78,7 +78,10 @@ func TestRepoLookup(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "https://github.com/pulumi/test-repo.git", remote)
 
-		assert.Equal(t, filepath.Dir(workDir), rl.GetRepoRoot())
+		// Resolve symlinks so the comparison works on macOS where /var -> /private/var.
+		expectedRoot, err := filepath.EvalSymlinks(filepath.Dir(workDir))
+		require.NoError(t, err)
+		assert.Equal(t, expectedRoot, rl.GetRepoRoot())
 	})
 }
 

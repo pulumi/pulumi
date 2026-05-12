@@ -120,13 +120,21 @@ func newRepoLookup(wd string) (repoLookup, error) {
 		return nil, err
 	}
 
+	// Resolve symlinks so that filepath.Rel works correctly when the caller-provided
+	// paths and the worktree root go through different symlink chains (e.g. on macOS
+	// where /var is a symlink to /private/var).
+	repoRoot, err := filepath.EvalSymlinks(worktree.Filesystem.Root())
+	if err != nil {
+		return nil, err
+	}
+
 	h, err := repo.Head()
 	if err != nil {
 		return nil, err
 	}
 
 	return &repoLookupImpl{
-		RepoRoot: worktree.Filesystem.Root(),
+		RepoRoot: repoRoot,
 		Repo:     repo,
 		Head:     h,
 	}, nil
@@ -139,12 +147,34 @@ type repoLookupImpl struct {
 }
 
 func (r *repoLookupImpl) GetRootDirectory(wd string) (string, error) {
+	// Resolve symlinks so that filepath.Rel works correctly when wd and RepoRoot
+	// go through different symlink chains (e.g. on macOS where /var -> /private/var).
+	// Use evalSymlinksPrefix to handle paths where trailing components may not exist.
+	wd = evalSymlinksPrefix(wd)
+
 	dir, err := filepath.Rel(r.RepoRoot, wd)
 	if err != nil {
 		return "", err
 	}
 
 	return dir, err
+}
+
+// evalSymlinksPrefix resolves symlinks on the longest existing prefix of path,
+// then appends any remaining non-existent components. This handles cases like
+// macOS where /var is a symlink to /private/var but the full path may not exist yet.
+func evalSymlinksPrefix(path string) string {
+	resolved, err := filepath.EvalSymlinks(path)
+	if err == nil {
+		return resolved
+	}
+
+	parent := filepath.Dir(path)
+	if parent == path {
+		return path
+	}
+
+	return filepath.Join(evalSymlinksPrefix(parent), filepath.Base(path))
 }
 
 func (r *repoLookupImpl) GetBranchName() string {
