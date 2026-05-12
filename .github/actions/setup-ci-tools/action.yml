@@ -42,6 +42,13 @@ runs:
         echo "$(nix build .#ci-tools-${{ inputs.version-set }} --print-out-paths)/bin" >> "$GITHUB_PATH"
         # Ensure go install targets (e.g. requiredfield) are on PATH
         echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+        # Nix Node has a read-only npm prefix. Set writable locations for
+        # npm/yarn global installs and caches so tests can install packages.
+        NPM_DIR="$HOME/.npm-global"
+        mkdir -p "$NPM_DIR"
+        npm config set prefix "$NPM_DIR"
+        echo "$NPM_DIR/bin" >> "$GITHUB_PATH"
+        echo "NPM_CONFIG_PREFIX=$NPM_DIR" >> "$GITHUB_ENV"
 
     # --- Windows: traditional setup actions ---
     - name: Set up Go (Windows)
