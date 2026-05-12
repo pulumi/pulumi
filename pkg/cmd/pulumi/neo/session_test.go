@@ -570,6 +570,35 @@ func TestSession_InvokeToolCallHandlerErrorWithPartialValue(t *testing.T) {
 	assert.Equal(t, partial, item.Content)
 }
 
+// structResult stands in for pulumiResult — a non-map struct returned by a
+// handler — without pulling in the cross-package dependency.
+type structResult struct {
+	Status string
+	Logs   string
+}
+
+func TestSession_InvokeToolCallStructValueErrorPreservesContent(t *testing.T) {
+	t.Parallel()
+
+	// A struct returned alongside an error must reach the agent verbatim; the
+	// pulumi tool's failedResult strategy depends on it.
+	result := structResult{Status: "failed", Logs: "error: stack not found\n"}
+	s := &Session{
+		Handlers: map[string]ToolHandler{
+			"pulumi": &fakeHandler{
+				wantMethod: "pulumi_preview",
+				result:     result,
+				err:        errors.New("pulumi preview: stack not found"),
+			},
+		},
+	}
+	item := s.invokeToolCall(t.Context(),
+		apitype.AgentBackendEventToolCall{ToolCallID: "c", Name: "pulumi__pulumi_preview"})
+
+	assert.True(t, item.IsError)
+	assert.Equal(t, result, item.Content)
+}
+
 // errStreamer fails at StreamNeoTaskEvents so the Run loop returns immediately.
 type errStreamer struct{ err error }
 
