@@ -40,6 +40,8 @@ runs:
       shell: bash
       run: |
         echo "$(nix build .#ci-tools-${{ inputs.version-set }} --print-out-paths)/bin" >> "$GITHUB_PATH"
+        # Ensure go install targets (e.g. requiredfield) are on PATH
+        echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
     # --- Windows: traditional setup actions ---
     - name: Set up Go (Windows)
