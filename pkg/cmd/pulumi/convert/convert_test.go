@@ -28,46 +28,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// minimalStackJSONWithSecretsProvider returns a minimal stack export JSON that declares a
-// secrets provider and includes an encrypted secret output on the stack root resource.
-// All resources are filtered out by the converter, but deserialization exercises the
-// nopSecretsProvider and nullDecrypter code paths.
-func minimalStackJSONWithSecretsProvider() string {
-	// 4dabf18193072939515e22adb298388d is resource.SigKey and
-	// 1b47061264138c4ac30d75fd1eb44270 is resource.SecretSig — together they mark
-	// an object as an encrypted secret value in a serialized deployment.
-	return `{
-  "version": 3,
-  "deployment": {
-    "manifest": {
-      "time": "2024-01-01T00:00:00Z",
-      "magic": "abc123",
-      "version": "v3.0.0"
-    },
-    "secrets_providers": {
-      "type": "passphrase",
-      "state": {
-        "salt": "v1:andsomebase64salt:v1:somesalt:AAAA"
-      }
-    },
-    "resources": [
-      {
-        "urn": "urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev",
-        "custom": false,
-        "type": "pulumi:pulumi:Stack",
-        "inputs": {},
-        "outputs": {
-          "myPassword": {
-            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
-            "ciphertext": "AAABAAAfakeciphertext"
-          }
-        }
-      }
-    ]
-  }
-}`
-}
-
 // minimalStackJSON returns a minimal valid UntypedDeployment JSON containing only a stack root resource
 // and a provider resource, both of which are filtered out by the stack converter.
 func minimalStackJSON() string {
@@ -121,7 +81,6 @@ func TestStackConvertRequiresFile(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		false, /*showSecrets*/
 	)
 	require.ErrorContains(t, err, "--file is required when --from stack")
 }
@@ -150,7 +109,6 @@ func TestStackConvertInvalidJSON(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		false, /*showSecrets*/
 	)
 	require.ErrorContains(t, err, "parse stack file")
 }
@@ -179,7 +137,6 @@ func TestStackConvertEmptyStack(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
 
@@ -187,75 +144,6 @@ func TestStackConvertEmptyStack(t *testing.T) {
 	pclBytes, err := os.ReadFile(filepath.Join(outDir, "program.pp"))
 	require.NoError(t, err)
 	assert.Empty(t, pclBytes)
-}
-
-// TestStackConvertWithSecretsProvider verifies that stacks encrypted with any secrets provider
-// (e.g. the Pulumi Service "service" type) can be deserialized without error when --show-secrets
-// is not set. Encrypted secret outputs on the stack root are replaced with "[secret]".
-func TestStackConvertWithSecretsProvider(t *testing.T) {
-	t.Parallel()
-
-	outDir := t.TempDir()
-	cwd, err := filepath.Abs(".")
-	require.NoError(t, err)
-
-	stackFile := filepath.Join(t.TempDir(), "stack.json")
-	require.NoError(t, os.WriteFile(stackFile, []byte(minimalStackJSONWithSecretsProvider()), 0o600))
-
-	err = runConvert(
-		t.Context(),
-		&cmdBackend.MockLoginManager{},
-		pkgWorkspace.Instance,
-		env.Global(),
-		[]string{"--file", stackFile},
-		cwd,
-		[]string{},
-		"stack",
-		"pcl",
-		outDir,
-		true,  /*generateOnly*/
-		false, /*strict*/
-		"myproject",
-		false, /*showSecrets*/
-	)
-	require.NoError(t, err)
-
-	// All resources are filtered out so output should be empty.
-	pclBytes, err := os.ReadFile(filepath.Join(outDir, "program.pp"))
-	require.NoError(t, err)
-	assert.Empty(t, pclBytes)
-}
-
-// TestStackConvertShowSecrets verifies that --show-secrets uses the real secrets provider.
-// This test uses a stack with no secrets_providers, so the DefaultProvider is selected but
-// never actually invoked for decryption, making the test credential-free.
-func TestStackConvertShowSecrets(t *testing.T) {
-	t.Parallel()
-
-	outDir := t.TempDir()
-	cwd, err := filepath.Abs(".")
-	require.NoError(t, err)
-
-	stackFile := filepath.Join(t.TempDir(), "stack.json")
-	require.NoError(t, os.WriteFile(stackFile, []byte(minimalStackJSON()), 0o600))
-
-	err = runConvert(
-		t.Context(),
-		&cmdBackend.MockLoginManager{},
-		pkgWorkspace.Instance,
-		env.Global(),
-		[]string{"--file", stackFile},
-		cwd,
-		[]string{},
-		"stack",
-		"pcl",
-		outDir,
-		true,  /*generateOnly*/
-		false, /*strict*/
-		"myproject",
-		true, /*showSecrets*/
-	)
-	require.NoError(t, err)
 }
 
 // TestStackConvertFileNotFound verifies the error when the stack file cannot be read.
@@ -280,43 +168,8 @@ func TestStackConvertFileNotFound(t *testing.T) {
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
-		false, /*showSecrets*/
 	)
 	require.ErrorContains(t, err, "read stack file")
-}
-
-// TestNopSecretsProvider verifies that nopSecretsProvider accepts any secrets type and that
-// the resulting manager's methods return sensible zero values.
-func TestNopSecretsProvider(t *testing.T) {
-	t.Parallel()
-
-	prov := &nopSecretsProvider{}
-	mgr, err := prov.OfType(t.Context(), "passphrase", nil)
-	require.NoError(t, err)
-
-	assert.Equal(t, "passphrase", mgr.Type())
-	assert.Nil(t, mgr.State())
-	require.NotNil(t, mgr.Encrypter())
-	require.NotNil(t, mgr.Decrypter())
-}
-
-// TestNullDecrypter verifies that nullDecrypter returns "[secret]" for any ciphertext and that
-// BatchDecrypt returns the same placeholder for each entry.
-func TestNullDecrypter(t *testing.T) {
-	t.Parallel()
-
-	dec := nullDecrypter{}
-
-	val, err := dec.DecryptValue(t.Context(), "AAABAOsomeciphertext")
-	require.NoError(t, err)
-	assert.Equal(t, `"[secret]"`, val)
-
-	batch, err := dec.BatchDecrypt(t.Context(), []string{"cipher1", "cipher2", "cipher3"})
-	require.NoError(t, err)
-	require.Len(t, batch, 3)
-	for _, v := range batch {
-		assert.Equal(t, `"[secret]"`, v)
-	}
 }
 
 // TestYamlConvert is an entrypoint for debugging `pulumi convert`. To use this with an editor such as
@@ -345,7 +198,7 @@ func TestYamlConvert(t *testing.T) {
 
 	result := runConvert(
 		t.Context(), &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance, env.Global(), []string{}, cwd, []string{},
-		"yaml", "go", "testdata/go", true, true, "", false)
+		"yaml", "go", "testdata/go", true, true, "")
 	require.Nil(t, result, "convert failed: %v", result)
 }
 
@@ -360,7 +213,7 @@ func TestPclConvert(t *testing.T) {
 
 	result := runConvert(
 		t.Context(), &cmdBackend.MockLoginManager{}, pkgWorkspace.Instance, env.Global(), []string{}, cwd,
-		[]string{}, "pcl", "pcl", tmp, true, true, "", false)
+		[]string{}, "pcl", "pcl", tmp, true, true, "")
 	assert.Nil(t, result)
 
 	// Check that we made one file
@@ -402,10 +255,9 @@ func TestProjectNameDefaults(t *testing.T) {
 		"pcl",      /*from*/
 		"yaml",     /*language*/
 		outDir,
-		true,  /*generateOnly*/
-		true,  /*strict*/
-		"",    /*name*/
-		false, /*showSecrets*/
+		true, /*generateOnly*/
+		true, /*strict*/
+		"",   /*name*/
 	)
 	require.NoError(t, err)
 
@@ -441,7 +293,6 @@ func TestProjectNameOverrides(t *testing.T) {
 		true, /*generateOnly*/
 		true, /*strict*/
 		name,
-		false, /*showSecrets*/
 	)
 	require.NoError(t, err)
 
