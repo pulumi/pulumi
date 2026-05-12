@@ -18,6 +18,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -212,6 +214,103 @@ func TestResolveTaskTarget_OmitsProjectNameWhenProjectNil(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "explicit", org)
 	assert.Empty(t, proj)
+}
+
+// parseQualifiedStackRefF builds a MockStackReference from `owner/project/name`,
+// `owner/name`, or `name`, mirroring the real cloud backend's split rules.
+// Tests use it to exercise the org-resolution paths in resolveTaskTarget that
+// depend on the parsed reference carrying an owner.
+func parseQualifiedStackRefF(s string) (backend.StackReference, error) {
+	parts := strings.Split(s, "/")
+	ref := &backend.MockStackReference{StringV: s, FullyQualifiedNameV: tokens.QName(s)}
+	switch len(parts) {
+	case 3:
+		ref.OrganizationV = parts[0]
+		ref.ProjectV = tokens.Name(parts[1])
+		ref.NameV = tokens.MustParseStackName(parts[2])
+	case 2:
+		ref.OrganizationV = parts[0]
+		ref.NameV = tokens.MustParseStackName(parts[1])
+	default:
+		ref.NameV = tokens.MustParseStackName(s)
+	}
+	return ref, nil
+}
+
+//nolint:paralleltest // uses t.Setenv
+func TestResolveTaskTarget_StackFlagOwnerWinsOverDefaultOrg(t *testing.T) {
+	isolateWorkspace(t)
+
+	// Regression: previously the owner embedded in --stack was discarded and the
+	// Neo task was created in the user's default org, leaving the stack name
+	// pointing at a different org. The parsed reference's owner must win.
+	be := newFakeBackend()
+	be.ParseStackReferenceF = parseQualifiedStackRefF
+	be.GetDefaultOrgF = func(context.Context) (string, error) {
+		t.Fatal("GetDefaultOrg must not be consulted when the stack reference has an owner")
+		return "", nil
+	}
+
+	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "")
+	require.NoError(t, err)
+	assert.Equal(t, "otherorg", org)
+	assert.Equal(t, "dev", stack)
+}
+
+//nolint:paralleltest // uses t.Setenv
+func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
+	isolateWorkspace(t)
+	// isolateWorkspace sets PULUMI_STACK="" (still present in env), which makes
+	// state.CurrentStack short-circuit via os.LookupEnv before consulting the
+	// mocked workspace. For this test we need the workspace path to run, so
+	// fully unset PULUMI_STACK; isolateWorkspace's t.Setenv cleanup still
+	// restores the original after the test.
+	require.NoError(t, os.Unsetenv("PULUMI_STACK"))
+
+	// Regression: same bug as the --stack path but via the workspace-selected
+	// stack. If `.pulumi/workspace.json` selects `otherorg/proj/dev`, Neo must
+	// attach to `otherorg`, not the user's default org.
+	be := newFakeBackend()
+	be.ParseStackReferenceF = parseQualifiedStackRefF
+	be.GetStackF = func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+		return &backend.MockStack{RefF: func() backend.StackReference { return ref }}, nil
+	}
+	be.GetDefaultOrgF = func(context.Context) (string, error) {
+		t.Fatal("GetDefaultOrg must not be consulted when the workspace stack has an owner")
+		return "", nil
+	}
+
+	wsCtx := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "otherorg/proj/dev"}
+				},
+			}, nil
+		},
+	}
+
+	org, _, stack, err := resolveTaskTarget(t.Context(), wsCtx, be, nil, "", "")
+	require.NoError(t, err)
+	assert.Equal(t, "otherorg", org)
+	assert.Equal(t, "dev", stack)
+}
+
+//nolint:paralleltest // uses t.Setenv
+func TestResolveTaskTarget_OrgFlagOverridesStackOwner(t *testing.T) {
+	isolateWorkspace(t)
+
+	// --org is an explicit override — when both are present it wins over the
+	// stack reference's owner. The stack name is still taken from --stack;
+	// the caller is responsible for ensuring the named stack exists in the
+	// org they pass.
+	be := newFakeBackend()
+	be.ParseStackReferenceF = parseQualifiedStackRefF
+
+	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "explicit")
+	require.NoError(t, err)
+	assert.Equal(t, "explicit", org)
+	assert.Equal(t, "dev", stack)
 }
 
 func ws() pkgWorkspace.Context { return &pkgWorkspace.MockContext{} }
