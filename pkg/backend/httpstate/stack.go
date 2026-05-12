@@ -177,11 +177,8 @@ func (s *cloudStack) LoadRemoteConfig(ctx context.Context, project *workspace.Pr
 		return nil, nil
 	}
 	projectStack := &workspace.ProjectStack{
-		Config:          make(config.Map),
-		Environment:     workspace.NewEnvironment([]string{stack.Config.Environment}),
-		SecretsProvider: stack.Config.SecretsProvider,
-		EncryptedKey:    stack.Config.EncryptedKey,
-		EncryptionSalt:  stack.Config.EncryptionSalt,
+		Config:      make(config.Map),
+		Environment: workspace.NewEnvironment([]string{stack.Config.Environment}),
 	}
 	return projectStack, nil
 }
@@ -200,10 +197,7 @@ func (s *cloudStack) SaveRemoteConfig(ctx context.Context, projectStack *workspa
 		return err
 	}
 	err = s.b.client.UpdateStackConfig(ctx, stackID, &apitype.StackConfig{
-		Environment:     imports[0],
-		SecretsProvider: projectStack.SecretsProvider,
-		EncryptedKey:    projectStack.EncryptedKey,
-		EncryptionSalt:  projectStack.EncryptionSalt,
+		Environment: imports[0],
 	})
 	return err
 }

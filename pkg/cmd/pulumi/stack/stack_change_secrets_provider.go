@@ -128,6 +128,15 @@ func (cmd *stackChangeSecretsProviderCmd) Run(ctx context.Context, args []string
 		return err
 	}
 
+	if currentStack.ConfigLocation().IsRemote {
+		return fmt.Errorf(
+			"cannot change the secrets provider for stack %s: its configuration is stored in "+
+				"ESC environment %s. Customer Managed Keys can be configured for ESC in Pulumi Cloud if desired.",
+			currentStack.Ref().Name(),
+			*currentStack.ConfigLocation().EscEnv,
+		)
+	}
+
 	currentProjectStack, err := LoadProjectStack(ctx, cmdutil.Diag(), project, currentStack)
 	if err != nil {
 		return err
