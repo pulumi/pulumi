@@ -68,6 +68,7 @@ const (
 	DotNetRuntime = "dotnet"
 	YAMLRuntime   = "yaml"
 	JavaRuntime   = "java"
+	HCLRuntime    = "hcl"
 )
 
 const windowsOS = "windows"
@@ -2916,6 +2917,11 @@ func (pt *ProgramTester) prepareJavaProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
+func (pt *ProgramTester) prepareHCLProject(projinfo *engine.Projinfo) error {
+	// HCL doesn't need any system setup, and should auto-install required plugins
+	return nil
+}
+
 func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
@@ -2933,6 +2939,8 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 		return pt.prepareYAMLProject(projinfo)
 	case JavaRuntime:
 		return pt.prepareJavaProject(projinfo)
+	case HCLRuntime:
+		return pt.prepareHCLProject(projinfo)
 	default:
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
 	}

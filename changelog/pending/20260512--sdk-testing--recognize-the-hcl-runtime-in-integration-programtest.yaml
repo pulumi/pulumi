@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk/testing
+  description: Recognize the `hcl` runtime in `integration.ProgramTest`
