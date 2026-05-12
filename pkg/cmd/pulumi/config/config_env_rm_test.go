@@ -16,7 +16,6 @@ package config
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"testing"
 
@@ -42,7 +41,7 @@ values:
 		var stdout bytes.Buffer
 		parent := newRemoteConfigEnvCmd(nil, &stdout, envYAML, &savedYAML)
 		rm := &configEnvRmCmd{parent: parent, yes: true}
-		err := rm.run(context.Background(), []string{"myorg/extra-env"})
+		err := rm.run(t.Context(), []string{"myorg/extra-env"})
 		require.NoError(t, err)
 
 		assert.Contains(t, savedYAML, "myorg/base-env")
@@ -64,7 +63,7 @@ values:
 		var stdout bytes.Buffer
 		parent := newRemoteConfigEnvCmd(nil, &stdout, envYAML, &savedYAML)
 		rm := &configEnvRmCmd{parent: parent, yes: true}
-		err := rm.run(context.Background(), []string{"myorg/only-env"})
+		err := rm.run(t.Context(), []string{"myorg/only-env"})
 		require.NoError(t, err)
 
 		assert.NotContains(t, savedYAML, "imports")

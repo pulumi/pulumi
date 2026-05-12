@@ -16,7 +16,6 @@ package config
 
 import (
 	"bytes"
-	"context"
 	"strings"
 	"testing"
 
@@ -42,7 +41,7 @@ func TestConfigEnvLsCmd_RemoteConfig(t *testing.T) {
 		var stdout bytes.Buffer
 		parent := newRemoteConfigEnvCmd(strings.NewReader(""), &stdout, envYAML, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
-		err := ls.run(context.Background(), nil)
+		err := ls.run(t.Context(), nil)
 		require.NoError(t, err)
 		assert.Contains(t, stdout.String(), "no environments listed")
 	})
@@ -60,7 +59,7 @@ values:
 		var stdout bytes.Buffer
 		parent := newRemoteConfigEnvCmd(strings.NewReader(""), &stdout, envYAML, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(false)}
-		err := ls.run(context.Background(), nil)
+		err := ls.run(t.Context(), nil)
 		require.NoError(t, err)
 
 		out := cleanStdoutIncludingPrompt(stdout.String())
@@ -80,7 +79,7 @@ values:
 		var stdout bytes.Buffer
 		parent := newRemoteConfigEnvCmd(strings.NewReader(""), &stdout, envYAML, nil)
 		ls := &configEnvLsCmd{parent: parent, jsonOut: boolPtr(true)}
-		err := ls.run(context.Background(), nil)
+		err := ls.run(t.Context(), nil)
 		require.NoError(t, err)
 
 		expected := "[\n  \"myorg/base-env\"\n]\n"
