@@ -32,10 +32,10 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optcancel"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optorgsearch"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optorgsearchai"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optstatemove"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optorgsearch"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optorgsearchai"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optstatemove"
 )
 
 // newAPI constructs an API wired to the testing boilerplate, which
