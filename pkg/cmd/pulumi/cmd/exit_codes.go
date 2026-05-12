@@ -47,7 +47,7 @@ func ExitCodeFor(err error) int {
 		return ExitSuccess
 	}
 
-	// `pulumi cloud api` carries its own semantic exit code on the error so
+	// `pulumi api` carries its own semantic exit code on the error so
 	// the taxonomy (ExitCodeError / ExitAuthenticationError / ExitCancelled
 	// / etc.) reaches the shell instead of collapsing to the generic bail
 	// default. Checked before the bail branch because processCmdErrors

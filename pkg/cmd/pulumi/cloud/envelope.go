@@ -32,7 +32,7 @@ import (
 // Additions are permissive; renames or removals require bumping this constant.
 const SchemaVersion = 1
 
-// Exit codes used by `pulumi cloud api` come directly from the shared
+// Exit codes used by `pulumi api` come directly from the shared
 // cmdutil taxonomy (sdk/go/common/util/cmdutil/exit.go) so agents get a
 // consistent contract across every pulumi subcommand:
 //
