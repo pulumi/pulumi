@@ -73,11 +73,34 @@ runs:
       uses: gradle/actions/setup-gradle@v6
       with:
         gradle-version: "7.6"
+    - name: Set up uv (Windows)
+      if: runner.os == 'Windows'
+      uses: astral-sh/setup-uv@v7
     - name: Install Windows tools
       if: runner.os == 'Windows'
       shell: bash
       run: |
         npm install -g yarn pnpm@10
+        python -m pip install --upgrade pip poetry
+        go install github.com/go-delve/delve/cmd/dlv@latest
     - name: Install bun (Windows)
       if: runner.os == 'Windows'
       uses: oven-sh/setup-bun@v2
+    - name: Install gotestsum (Windows)
+      if: runner.os == 'Windows'
+      uses: jaxxstorm/action-install-gh-release@v3.0.0
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        repo: gotestyourself/gotestsum
+        tag: v1.8.1
+        cache: enable
+    - name: Install goteststats (Windows)
+      if: runner.os == 'Windows'
+      uses: jaxxstorm/action-install-gh-release@v3.0.0
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        repo: pulumi/goteststats
+        tag: v0.0.7
+        cache: enable
