@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/22993]: Not yet implemented.
 func newPolicyGroupNewCmd() *cobra.Command {
 	var org string
 
@@ -46,6 +47,7 @@ func newPolicyGroupNewCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22992]: Not yet implemented.
 func newPolicyGroupGetCmd() *cobra.Command {
 	var org string
 
@@ -70,6 +72,7 @@ func newPolicyGroupGetCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22991]: Not yet implemented.
 func newPolicyGroupEditCmd() *cobra.Command {
 	var (
 		org                   string
@@ -114,6 +117,7 @@ func newPolicyGroupEditCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22990]: Not yet implemented.
 func newPolicyGroupRemoveCmd() *cobra.Command {
 	var org string
 

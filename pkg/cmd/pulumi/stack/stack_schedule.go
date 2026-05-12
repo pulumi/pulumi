@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23050]: Not yet implemented.
 func newStackScheduleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -42,6 +43,7 @@ func newStackScheduleCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23049]: Not yet implemented.
 func newStackScheduleListCmd() *cobra.Command {
 	var stack string
 
@@ -62,6 +64,7 @@ func newStackScheduleListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23048]: Not yet implemented.
 func newStackScheduleNewCmd() *cobra.Command {
 	var (
 		stack     string
@@ -93,6 +96,7 @@ func newStackScheduleNewCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23047]: Not yet implemented.
 func newStackScheduleGetCmd() *cobra.Command {
 	var stack string
 
@@ -118,6 +122,7 @@ func newStackScheduleGetCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23046]: Not yet implemented.
 func newStackScheduleEditCmd() *cobra.Command {
 	var (
 		stack     string
@@ -154,6 +159,7 @@ func newStackScheduleEditCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23045]: Not yet implemented.
 func newStackScheduleRemoveCmd() *cobra.Command {
 	var stack string
 

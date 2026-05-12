@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23066]: Not yet implemented.
 func newStackNewCmd() *cobra.Command {
 	var (
 		org             string
@@ -65,6 +66,7 @@ func newStackNewCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23065]: Not yet implemented.
 func newStackGetCmd() *cobra.Command {
 	var stack string
 

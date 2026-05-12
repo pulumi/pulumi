@@ -39,6 +39,7 @@ func newOrgAuditLogCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23001]: Not yet implemented.
 func newOrgAuditLogListCmd() *cobra.Command {
 	var (
 		org       string
@@ -70,6 +71,7 @@ func newOrgAuditLogListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23000]: Not yet implemented.
 func newOrgAuditLogExportCmd() *cobra.Command {
 	var (
 		org       string

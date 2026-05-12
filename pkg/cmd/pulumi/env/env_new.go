@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23042]: Not yet implemented.
 func newEnvNewCmd() *cobra.Command {
 	var org string
 

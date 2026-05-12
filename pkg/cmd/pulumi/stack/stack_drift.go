@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23053]: Not yet implemented.
 func newStackDriftCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -39,6 +40,7 @@ func newStackDriftCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23051]: Not yet implemented.
 func newStackDriftListCmd() *cobra.Command {
 	var (
 		stack    string
@@ -65,6 +67,7 @@ func newStackDriftListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23052]: Not yet implemented.
 func newStackDriftGetCmd() *cobra.Command {
 	var stack string
 

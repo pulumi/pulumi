@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23009]: Not yet implemented.
 func newOrgMemberCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -41,6 +42,7 @@ func newOrgMemberCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23013]: Not yet implemented.
 func newOrgMemberListCmd() *cobra.Command {
 	var (
 		org  string
@@ -65,6 +67,7 @@ func newOrgMemberListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23011]: Not yet implemented.
 func newOrgMemberGetCmd() *cobra.Command {
 	var org string
 
@@ -89,6 +92,7 @@ func newOrgMemberGetCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23012]: Not yet implemented.
 func newOrgMemberEditCmd() *cobra.Command {
 	var (
 		org       string
@@ -121,6 +125,7 @@ func newOrgMemberEditCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23010]: Not yet implemented.
 func newOrgMemberRemoveCmd() *cobra.Command {
 	var org string
 

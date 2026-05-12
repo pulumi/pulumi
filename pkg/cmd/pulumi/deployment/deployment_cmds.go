@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/22988]: Not yet implemented.
 func newDeploymentListCmd() *cobra.Command {
 	var (
 		stack    string
@@ -52,6 +53,7 @@ func newDeploymentListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22987]: Not yet implemented.
 func newDeploymentGetCmd() *cobra.Command {
 	var stack string
 
@@ -77,6 +79,7 @@ func newDeploymentGetCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22985]: Not yet implemented.
 func newDeploymentCancelCmd() *cobra.Command {
 	var stack string
 
@@ -106,6 +109,7 @@ func newDeploymentCancelCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22986]: Not yet implemented.
 func newDeploymentLogCmd() *cobra.Command {
 	var (
 		stack  string
@@ -143,6 +147,7 @@ func newDeploymentLogCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22984]: Not yet implemented.
 func newDeploymentSettingsGetCmd() *cobra.Command {
 	var stack string
 
@@ -163,6 +168,7 @@ func newDeploymentSettingsGetCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22983]: Not yet implemented.
 func newDeploymentSettingsEditCmd() *cobra.Command {
 	var (
 		stack string

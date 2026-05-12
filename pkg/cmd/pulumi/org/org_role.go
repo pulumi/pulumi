@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23003]: Not yet implemented.
 func newOrgRoleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -42,6 +43,7 @@ func newOrgRoleCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23008]: Not yet implemented.
 func newOrgRoleListCmd() *cobra.Command {
 	var (
 		org     string
@@ -66,6 +68,7 @@ func newOrgRoleListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23007]: Not yet implemented.
 func newOrgRoleNewCmd() *cobra.Command {
 	var (
 		org         string
@@ -97,6 +100,7 @@ func newOrgRoleNewCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23006]: Not yet implemented.
 func newOrgRoleEditCmd() *cobra.Command {
 	var (
 		org         string
@@ -130,6 +134,7 @@ func newOrgRoleEditCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23005]: Not yet implemented.
 func newOrgRoleRemoveCmd() *cobra.Command {
 	var (
 		org   string
@@ -159,6 +164,7 @@ func newOrgRoleRemoveCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23004]: Not yet implemented.
 func newOrgRoleAssignCmd() *cobra.Command {
 	var (
 		org  string

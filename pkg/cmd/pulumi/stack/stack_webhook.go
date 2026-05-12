@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23063]: Not yet implemented.
 func newStackWebhookCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -53,6 +54,7 @@ func stackWebhookHookArg() *constrictor.Arguments {
 	}
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23062]: Not yet implemented.
 func newStackWebhookListCmd() *cobra.Command {
 	var stack string
 
@@ -73,6 +75,7 @@ func newStackWebhookListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23061]: Not yet implemented.
 func newStackWebhookGetCmd() *cobra.Command {
 	var stack string
 
@@ -93,6 +96,7 @@ func newStackWebhookGetCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23060]: Not yet implemented.
 func newStackWebhookNewCmd() *cobra.Command {
 	var (
 		stack       string
@@ -129,6 +133,7 @@ func newStackWebhookNewCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23059]: Not yet implemented.
 func newStackWebhookEditCmd() *cobra.Command {
 	var (
 		stack       string
@@ -165,6 +170,7 @@ func newStackWebhookEditCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23058]: Not yet implemented.
 func newStackWebhookRemoveCmd() *cobra.Command {
 	var stack string
 
@@ -185,6 +191,7 @@ func newStackWebhookRemoveCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23057]: Not yet implemented.
 func newStackWebhookPingCmd() *cobra.Command {
 	var stack string
 
@@ -205,6 +212,7 @@ func newStackWebhookPingCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23056]: Not yet implemented.
 func newStackWebhookDeliveryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -222,6 +230,7 @@ func newStackWebhookDeliveryCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23055]: Not yet implemented.
 func newStackWebhookDeliveryListCmd() *cobra.Command {
 	var stack string
 
@@ -242,6 +251,7 @@ func newStackWebhookDeliveryListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23054]: Not yet implemented.
 func newStackWebhookDeliveryGetCmd() *cobra.Command {
 	var stack string
 

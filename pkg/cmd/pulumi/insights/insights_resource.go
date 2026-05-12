@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/22973]: Not yet implemented.
 func newInsightsResourceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -40,6 +41,7 @@ func newInsightsResourceCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22974]: Not yet implemented.
 func newInsightsResourceGetCmd() *cobra.Command {
 	var org string
 	var account string
@@ -67,6 +69,7 @@ func newInsightsResourceGetCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22975]: Not yet implemented.
 func newInsightsResourceSearchCmd() *cobra.Command {
 	var (
 		org        string

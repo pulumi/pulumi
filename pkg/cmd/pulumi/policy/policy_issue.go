@@ -39,6 +39,7 @@ func newPolicyIssueCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22995]: Not yet implemented.
 func newPolicyIssueListCmd() *cobra.Command {
 	var (
 		org      string
@@ -64,6 +65,7 @@ func newPolicyIssueListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22996]: Not yet implemented.
 func newPolicyIssueGetCmd() *cobra.Command {
 	var org string
 

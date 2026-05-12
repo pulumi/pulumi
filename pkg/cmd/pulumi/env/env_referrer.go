@@ -38,6 +38,7 @@ func newEnvReferrerCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23041]: Not yet implemented.
 func newEnvReferrerListCmd() *cobra.Command {
 	var (
 		org                    string

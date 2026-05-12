@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/22964]: Not yet implemented.
 func newOrgWebhookCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -44,6 +45,7 @@ func newOrgWebhookCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22965]: Not yet implemented.
 func newOrgWebhookListCmd() *cobra.Command {
 	var org string
 
@@ -63,6 +65,7 @@ func newOrgWebhookListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22966]: Not yet implemented.
 func newOrgWebhookNewCmd() *cobra.Command {
 	var (
 		org         string
@@ -103,6 +106,7 @@ func newOrgWebhookNewCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22967]: Not yet implemented.
 func newOrgWebhookEditCmd() *cobra.Command {
 	var (
 		org         string
@@ -143,6 +147,7 @@ func newOrgWebhookEditCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22968]: Not yet implemented.
 func newOrgWebhookRemoveCmd() *cobra.Command {
 	var org string
 
@@ -167,6 +172,7 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22969]: Not yet implemented.
 func newOrgWebhookPingCmd() *cobra.Command {
 	var org string
 
@@ -207,6 +213,7 @@ func newOrgWebhookDeliveryCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22997]: Not yet implemented.
 func newOrgWebhookDeliveryListCmd() *cobra.Command {
 	var org string
 

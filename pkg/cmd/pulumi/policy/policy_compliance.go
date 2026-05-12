@@ -38,6 +38,7 @@ func newPolicyComplianceCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/22994]: Not yet implemented.
 func newPolicyComplianceListCmd() *cobra.Command {
 	var (
 		org     string

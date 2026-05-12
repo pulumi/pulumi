@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23043]: Not yet implemented.
 func newEnvProviderCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -57,6 +58,7 @@ func newEnvProviderNewCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23040]: Not yet implemented.
 func newEnvProviderNewAWSCmd() *cobra.Command {
 	var (
 		org    string
@@ -85,6 +87,7 @@ func newEnvProviderNewAWSCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23039]: Not yet implemented.
 func newEnvProviderNewAWSSSOCmd() *cobra.Command {
 	var (
 		org    string
@@ -113,6 +116,7 @@ func newEnvProviderNewAWSSSOCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23038]: Not yet implemented.
 func newEnvProviderNewAzureCmd() *cobra.Command {
 	var (
 		org    string
@@ -141,6 +145,7 @@ func newEnvProviderNewAzureCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23037]: Not yet implemented.
 func newEnvProviderNewGCPCmd() *cobra.Command {
 	var (
 		org    string

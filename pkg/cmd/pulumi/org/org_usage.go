@@ -38,6 +38,7 @@ func newOrgUsageCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23002]: Not yet implemented.
 func newOrgUsageGetCmd() *cobra.Command {
 	var org string
 

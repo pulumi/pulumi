@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
+// TODO[https://github.com/pulumi/pulumi/issues/23036]: Not yet implemented.
 func newEnvScheduleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -63,6 +64,7 @@ func envScheduleEnvWithIDArg() *constrictor.Arguments {
 	}
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23035]: Not yet implemented.
 func newEnvScheduleListCmd() *cobra.Command {
 	var org string
 
@@ -82,6 +84,7 @@ func newEnvScheduleListCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23034]: Not yet implemented.
 func newEnvScheduleNewCmd() *cobra.Command {
 	var (
 		org    string
@@ -109,6 +112,7 @@ func newEnvScheduleNewCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23033]: Not yet implemented.
 func newEnvSchedulePauseCmd() *cobra.Command {
 	var org string
 
@@ -128,6 +132,7 @@ func newEnvSchedulePauseCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23032]: Not yet implemented.
 func newEnvScheduleResumeCmd() *cobra.Command {
 	var org string
 
@@ -147,6 +152,7 @@ func newEnvScheduleResumeCmd() *cobra.Command {
 	return cmd
 }
 
+// TODO[https://github.com/pulumi/pulumi/issues/23031]: Not yet implemented.
 func newEnvScheduleRemoveCmd() *cobra.Command {
 	var org string
 
