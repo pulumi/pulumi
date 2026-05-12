@@ -99,14 +99,6 @@ jobs:
           cache-dependency-path: |
             pkg/go.sum
             .gocache.tmp
-      - uses: actions/checkout@v6
-        with:
-          repository: dnephin/gotestsum
-          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
-          path: vendor/gotestsum
-      - run: |
-          cd vendor/gotestsum
-          go install .
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: test-results
@@ -115,6 +107,19 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           experimental: true
+      # Install the dnephin/gotestsum fork after mise-action so that its
+      # $GOPATH/bin entry on PATH wins over any upstream `gotestsum` shim
+      # mise may have cached. The fork provides `gotestsum tool ci-matrix`,
+      # which scripts/get-job-matrix.py depends on.
+      - uses: actions/checkout@v6
+        with:
+          repository: dnephin/gotestsum
+          ref: d09768c81065b404caed0855eb3ab8f11a2a4431
+          path: vendor/gotestsum
+      - run: |
+          cd vendor/gotestsum
+          go install .
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Install CLI
         run: SDKS='' make install
       - name: build matrix
