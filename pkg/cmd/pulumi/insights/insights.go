@@ -1,4 +1,4 @@
-// Copyright 2025, Pulumi Corporation.
+// Copyright 2026, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package templatecmd
+package insights
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-func NewTemplateCmd() *cobra.Command {
+// NewInsightsCmd creates the top-level `pulumi insights` command.
+func NewInsightsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "template",
-		Short: "Work with Pulumi templates",
-		Long: `Work with Pulumi templates
-
-Publish and manage Pulumi templates.`,
+		Hidden: true,
+		Use:    "insights",
+		Short:  "Manage Pulumi Insights resources and accounts",
+		Long: "Manage Pulumi Insights resources and accounts.\n" +
+			"\n" +
+			"Pulumi Insights provides resource discovery and search across\n" +
+			"cloud provider accounts.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
 	}
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.AddCommand(
-		newTemplatePublishCmd(),
-		newTemplateListCmd(),
-	)
+	cmd.AddCommand(newInsightsResourceCmd())
+	cmd.AddCommand(newInsightsAccountCmd())
+
 	return cmd
 }
