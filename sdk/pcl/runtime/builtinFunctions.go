@@ -140,7 +140,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.False, nil
 			}
 			if pv.IsSecret() {
-				return propertyValueToCty(context.TODO(), i.monitor, resource.MakeSecret(resource.NewProperty(true)))
+				return propertyValueToCty(context.TODO(), i.getResource, resource.MakeSecret(resource.NewProperty(true)))
 			}
 			return cty.True, nil
 		},
@@ -181,7 +181,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, err
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, outputPV)
+			return propertyValueToCty(context.TODO(), i.getResource, outputPV)
 		},
 	})
 
@@ -347,7 +347,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 					Dependencies: dependsOn,
 				})
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resultPV)
+			return propertyValueToCty(context.TODO(), i.getResource, resultPV)
 		},
 	})
 
@@ -524,7 +524,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 					Dependencies: dependsOn,
 				})
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resultPV)
+			return propertyValueToCty(context.TODO(), i.getResource, resultPV)
 		},
 	})
 
@@ -548,7 +548,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating file asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -572,7 +572,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating file archive: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -601,7 +601,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating archive from assets: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -625,7 +625,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating string asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -649,7 +649,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating remote asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -673,7 +673,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating remote archive: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), i.getResource, resource.NewProperty(a))
 		},
 	})
 
