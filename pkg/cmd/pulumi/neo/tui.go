@@ -26,6 +26,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -44,6 +45,25 @@ type ctrlCDisarmMsg struct {
 	gen int
 }
 
+// modeToggleDebounce is the trailing-edge window for Ctrl+A / Ctrl+R: each
+// press updates local state immediately but only schedules a PATCH against the
+// live task after the user stops pressing for this long. Rapid mashing
+// collapses to one PATCH carrying the final value, so the cloud and the
+// dispatcher both see the user's intent instead of a noisy burst of updates.
+const modeToggleDebounce = 500 * time.Millisecond
+
+// approvalDebounceTickMsg / permissionDebounceTickMsg fire `modeToggleDebounce`
+// after each Ctrl+A / Ctrl+R press. They carry the generation they were
+// scheduled under so a newer press (which advances the generation) cancels the
+// stale tick by gen-mismatch.
+type approvalDebounceTickMsg struct {
+	gen int
+}
+
+type permissionDebounceTickMsg struct {
+	gen int
+}
+
 // blockKind identifies the type of rendered block in the output log.
 type blockKind int
 
@@ -58,6 +78,7 @@ const (
 	blockApprovalPlan
 	blockApprovalGeneral
 	blockApprovalChoice
+	blockApprovalAuto
 	blockQuestion
 	blockAnswerSubmitted
 	blockPulumiOp
@@ -76,8 +97,14 @@ type block struct {
 	// label and shimmer apply to blockBusy only.
 	label   string
 	shimmer shimmerKind
-	// approved applies to blockApprovalChoice only.
+	// approved applies to blockApprovalChoice and blockApprovalAuto. For
+	// blockApprovalAuto it carries the "ok" field from the cloud's
+	// user_confirmation (true=auto-approved, false=auto-denied).
 	approved bool
+	// autoIsQuestion applies to blockApprovalAuto only — true if the underlying
+	// request was an ask-user call (so the renderer says "Auto-answered" rather
+	// than "Auto-approved").
+	autoIsQuestion bool
 	// pulumi carries per-block state for blockPulumiOp. It is mutated in place
 	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
 	// re-rendered by renderBlock on every update.
@@ -142,10 +169,20 @@ type ModelConfig struct {
 	// which is sent to the backend via CreateNeoTask rather than outCh and
 	// would otherwise only appear once the SSE stream echoes it back.
 	InitialPrompt string
+	// InitialApprovalMode and InitialPermissionMode seed the TUI's view of the
+	// task's approval / permission policy. These come from the --approval-mode /
+	// --permission-mode flags (or their defaults) and are sent on the first
+	// user_message; subsequent toggles via Ctrl+A / Ctrl+R PATCH the live task.
+	InitialApprovalMode   client.NeoApprovalMode
+	InitialPermissionMode client.NeoPermissionMode
 	// MessageSent seeds the post-first-message gate. Set it to true in tests
 	// that want to exercise the Shift+Tab post-send warning path without
 	// having to simulate a full Enter-driven send first.
 	MessageSent bool
+	// TaskCreated seeds the post-task-creation gate. Set it to true in tests
+	// that want to exercise the post-task Ctrl+A / Ctrl+R path without driving
+	// a UISessionURL through the event channel.
+	TaskCreated bool
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -194,10 +231,35 @@ type Model struct {
 	// true, Shift+Tab stops toggling and planMode is effectively frozen
 	// (further changes happen only via plan-approval auto-clear below).
 	planMode bool
+	// approvalMode is the current approval policy, cycled via Ctrl+A. Pre-first-
+	// message it's purely local — the value is snapshotted into CreateNeoTask on
+	// the first user_message. Post-send toggles dispatch an outboundEvent.update
+	// that the runNeo dispatcher routes through UpdateNeoTask, so cloud
+	// ApprovalHandler picks up the change without restarting the session.
+	approvalMode client.NeoApprovalMode
+	// permissionMode is the current capability scope, toggled via Ctrl+R. Same
+	// pre/post-send semantics as approvalMode.
+	permissionMode client.NeoPermissionMode
+	// approvalDebounceGen / permissionDebounceGen increment on every post-send
+	// Ctrl+A / Ctrl+R press. Each press schedules a tea.Tick carrying the
+	// current generation; the tick handler dispatches the PATCH only if the
+	// gen still matches, so rapid presses collapse to a single update with the
+	// final mode value.
+	approvalDebounceGen   int
+	permissionDebounceGen int
 	// messageSent flips to true when the TUI successfully dispatches its
 	// first user_message on outCh. From that point on, Shift+Tab emits the
 	// "plan mode is task-level" warning instead of toggling.
 	messageSent bool
+	// taskCreated flips to true when UISessionURL arrives — the dispatcher
+	// emits that immediately after CreateNeoTask returns OK, so it's the
+	// natural signal that the task is now addressable for PATCH. The window
+	// between messageSent and taskCreated is the race the Ctrl+A / Ctrl+R
+	// handlers gate on: in that window the dispatcher would silently drop a
+	// UpdateNeoTaskOptions event (no taskID yet), leaving the local mode out
+	// of sync with the cloud. Swallow the keypress instead so the status bar
+	// can't lie about what the cloud is enforcing.
+	taskCreated bool
 	// pendingApprovalType is the raw wire approval_type for the currently
 	// pending approval (empty when none). The Enter handler checks for
 	// approvalTypePlanExit so it can auto-clear planMode on approval.
@@ -278,6 +340,30 @@ func renderLeftBracket(borderStyle lipgloss.Style, content string) string {
 	return strings.Join(out, "\n")
 }
 
+// nextApprovalMode returns the next value in the manual → balanced → auto →
+// manual cycle. Empty input is treated as manual so cycling from the zero value
+// lands on a real first state.
+func nextApprovalMode(m client.NeoApprovalMode) client.NeoApprovalMode {
+	switch m {
+	case client.NeoApprovalModeManual:
+		return client.NeoApprovalModeBalanced
+	case client.NeoApprovalModeBalanced:
+		return client.NeoApprovalModeAuto
+	case client.NeoApprovalModeAuto:
+		return client.NeoApprovalModeManual
+	}
+	return client.NeoApprovalModeManual
+}
+
+// nextPermissionMode flips between default and read-only. Anything else
+// (including empty) collapses back to default.
+func nextPermissionMode(m client.NeoPermissionMode) client.NeoPermissionMode {
+	if m == client.NeoPermissionModeReadOnly {
+		return client.NeoPermissionModeDefault
+	}
+	return client.NeoPermissionModeReadOnly
+}
+
 // renderIndented word-wraps content (ANSI-safe) to termWidth minus the
 // 2-space transcript gutter, or returns un-wrapped if the width is too
 // small to wrap into. URLs in the post-wrap output are wrapped in OSC 8
@@ -314,14 +400,17 @@ func NewModel(cfg ModelConfig) Model {
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		textInput:   ti,
-		eventCh:     cfg.EventCh,
-		outCh:       cfg.OutCh,
-		busy:        cfg.Busy,
-		spinner:     sp,
-		width:       80,
-		height:      24,
-		messageSent: cfg.MessageSent,
+		textInput:      ti,
+		eventCh:        cfg.EventCh,
+		outCh:          cfg.OutCh,
+		busy:           cfg.Busy,
+		spinner:        sp,
+		width:          80,
+		height:         24,
+		messageSent:    cfg.MessageSent,
+		taskCreated:    cfg.TaskCreated,
+		approvalMode:   cfg.InitialApprovalMode,
+		permissionMode: cfg.InitialPermissionMode,
 	}
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
@@ -397,6 +486,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case approvalDebounceTickMsg:
+		// Trailing-edge debounce: dispatch the PATCH only if the user hasn't
+		// pressed Ctrl+A again since this tick was scheduled. A newer press
+		// advances approvalDebounceGen, so a stale tick is silently dropped
+		// here. taskCreated is guaranteed by the Ctrl+A handler that
+		// scheduled this tick.
+		if msg.gen == m.approvalDebounceGen {
+			next := m.approvalMode
+			m.sendOut(outboundEvent{
+				update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
+			})
+		}
+		return m, nil
+
+	case permissionDebounceTickMsg:
+		if msg.gen == m.permissionDebounceGen {
+			next := m.permissionMode
+			m.sendOut(outboundEvent{
+				update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
+			})
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
 		// semantics. Two bindings is friendlier than picking one and forcing
@@ -439,6 +551,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					"Plan mode is task-level — start a new `pulumi neo` session to change it.")
 			}
 			m.planMode = !m.planMode
+			return m, nil
+		}
+
+		// Ctrl+A cycles the approval mode (manual → balanced → auto → manual).
+		// Pre-message the value just updates the local snapshot; post-message
+		// each press updates local state immediately but the PATCH against the
+		// live task is debounced via approvalDebounceTickMsg so rapid mashing
+		// collapses to one UpdateNeoTask carrying the final value (the cloud
+		// would otherwise see a noisy burst).
+		//
+		// The window between messageSent and taskCreated is a separate race:
+		// the dispatcher has no taskID to PATCH against yet and would silently
+		// drop the update. Swallow the keypress in that window so the status
+		// bar can't get out of sync with the cloud — the user can press again
+		// once the task URL arrives.
+		if msg.Type == tea.KeyCtrlA {
+			if m.messageSent && !m.taskCreated {
+				return m, nil
+			}
+			m.approvalMode = nextApprovalMode(m.approvalMode)
+			if m.messageSent {
+				return m, m.scheduleApprovalDebounce()
+			}
+			return m, nil
+		}
+
+		// Ctrl+R toggles the permission mode (default ↔ read-only). Same
+		// pre/post-send semantics — and the same create-task race window and
+		// debounce mechanics — as the approval-mode cycle above.
+		if msg.Type == tea.KeyCtrlR {
+			if m.messageSent && !m.taskCreated {
+				return m, nil
+			}
+			m.permissionMode = nextPermissionMode(m.permissionMode)
+			if m.messageSent {
+				return m, m.schedulePermissionDebounce()
+			}
 			return m, nil
 		}
 
@@ -538,7 +687,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Type:    userEventUserMessage,
 						Content: text,
 					},
-					planMode: m.planMode,
+					planMode:       m.planMode,
+					approvalMode:   m.approvalMode,
+					permissionMode: m.permissionMode,
 				})
 				if sent {
 					// Render optimistically so the user sees their message in
@@ -628,6 +779,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// arrives, so emit the URL as its own line rather than re-rendering.
 		// OSC 8 wraps the URL so supporting terminals render it as clickable.
 		m.welcome.consoleURL = msg.URL
+		// CreateNeoTask sends UISessionURL immediately after taskID is set,
+		// so this is the natural moment to lift the post-Enter toggle freeze.
+		m.taskCreated = true
 		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -758,6 +912,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
+	case UIApprovalResolved:
+		// Discriminator: pendingApproval is still true iff the cloud auto-
+		// resolved this request server-side (under ApprovalMode=auto/balanced).
+		// The manual path clears state locally on Enter before sending its
+		// user_confirmation upstream, so when the cloud echoes that back here
+		// pendingApproval is already false — and we no-op, which is correct.
+		// The ID match guards against a stale resolved event arriving after
+		// the user has already moved on to a different approval.
+		if m.pendingApproval && msg.ApprovalID == m.pendingApprovalID {
+			cmds = append(cmds, m.commitBlock(block{
+				kind:           blockApprovalAuto,
+				approved:       msg.Approved,
+				autoIsQuestion: m.pendingIsQuestion,
+			}))
+			m.clearPendingPrompt()
+		}
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
 	default:
 		// Pass unhandled messages to textinput (e.g. blink).
 		var tiCmd tea.Cmd
@@ -773,13 +945,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // drawn here — they were committed to terminal scrollback via tea.Println as
 // soon as they reached a terminal state.
 func (m Model) View() string {
-	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
+	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · ctrl+r read-only · ctrl+c to quit"
 	if m.busy {
 		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
 	}
 	hint := "  "
-	if m.planMode {
-		hint += planAccentStyle.Render("⏸ plan mode")
+	chips := m.modeChips()
+	if chips != "" {
+		hint += chips
 		hintText = " · " + hintText
 	}
 	if m.ctrlCArmed {
@@ -804,6 +977,28 @@ func (m Model) View() string {
 	}
 	parts = append(parts, m.textInput.View(), hint)
 	return strings.Join(parts, "\n")
+}
+
+// modeChips renders the status-bar chips for the three independent mode axes
+// (plan, approval, permission). Default values are omitted so the status bar
+// stays uncluttered until the user opts into something non-default.
+func (m Model) modeChips() string {
+	var chips []string
+	if m.planMode {
+		chips = append(chips, planAccentStyle.Render("⏸ plan mode"))
+	}
+	switch m.approvalMode {
+	case client.NeoApprovalModeBalanced:
+		chips = append(chips, planAccentStyle.Render("⚖ balanced"))
+	case client.NeoApprovalModeAuto:
+		chips = append(chips, planAccentStyle.Render("⚡ auto-approve"))
+	case client.NeoApprovalModeManual:
+		// Manual is the default — no chip, the status bar stays uncluttered.
+	}
+	if m.permissionMode == client.NeoPermissionModeReadOnly {
+		chips = append(chips, planAccentStyle.Render("⊘ read-only"))
+	}
+	return strings.Join(chips, " ")
 }
 
 // liveWidth returns the width to use when rendering live-frame content:
@@ -864,8 +1059,8 @@ func isLiveKind(b block) bool {
 		return b.pulumi != nil && !b.pulumi.done
 	case blockToolComplete, blockAssistantFinal, blockError, blockWarning,
 		blockCancelled, blockUserMessage, blockApprovalPlan,
-		blockApprovalGeneral, blockApprovalChoice, blockTodoList,
-		blockQuestion, blockAnswerSubmitted:
+		blockApprovalGeneral, blockApprovalChoice, blockApprovalAuto,
+		blockTodoList, blockQuestion, blockAnswerSubmitted:
 		return false
 	}
 	return false
@@ -1016,6 +1211,29 @@ func (m *Model) scheduleCtrlCDisarm() tea.Cmd {
 	})
 }
 
+// scheduleApprovalDebounce advances the approval-debounce generation and
+// returns a tea.Cmd that posts an approvalDebounceTickMsg after
+// modeToggleDebounce. The Update handler dispatches the PATCH only if the
+// tick's gen still matches the current one — a subsequent Ctrl+A press
+// advances the gen and silently retires the stale tick.
+func (m *Model) scheduleApprovalDebounce() tea.Cmd {
+	m.approvalDebounceGen++
+	gen := m.approvalDebounceGen
+	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
+		return approvalDebounceTickMsg{gen: gen}
+	})
+}
+
+// schedulePermissionDebounce is the permission-mode counterpart to
+// scheduleApprovalDebounce.
+func (m *Model) schedulePermissionDebounce() tea.Cmd {
+	m.permissionDebounceGen++
+	gen := m.permissionDebounceGen
+	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
+		return permissionDebounceTickMsg{gen: gen}
+	})
+}
+
 // sendOut is a non-blocking send on the outbound channel. Returns true on
 // success. Safe when m.outCh is nil: select with default falls through,
 // since sending on a nil channel blocks forever.
@@ -1058,11 +1276,16 @@ func (m *Model) findBlockKind(kind blockKind) int {
 }
 
 // renderBlock recomputes b.rendered from b.raw using the current terminal
-// width and markdown renderer. blockApprovalChoice is the one kind that
-// still renders when raw is empty (its verdict is carried by b.approved).
+// width and markdown renderer. blockApprovalChoice and blockApprovalAuto are
+// the two kinds that still render when raw is empty (their state is carried
+// by b.approved / b.autoIsQuestion instead).
 func (m *Model) renderBlock(b *block) {
 	if b.kind == blockApprovalChoice {
 		m.renderApprovalChoice(b)
+		return
+	}
+	if b.kind == blockApprovalAuto {
+		m.renderApprovalAuto(b)
 		return
 	}
 	if b.kind == blockPulumiOp {
@@ -1111,7 +1334,7 @@ func (m *Model) renderBlock(b *block) {
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.
-	case blockApprovalChoice, blockPulumiOp, blockTodoList:
+	case blockApprovalChoice, blockApprovalAuto, blockPulumiOp, blockTodoList:
 		// Unreachable: handled by early returns above.
 	}
 }
@@ -1138,6 +1361,23 @@ func renderTodoLines(items []UITodoItem) string {
 		lines = append(lines, marker+" "+content)
 	}
 	return strings.Join(lines, "\n")
+}
+
+// renderApprovalAuto renders a feedback block committed when the cloud
+// auto-resolves a pending approval/question under ApprovalMode=auto or
+// balanced. The verb depends on what was asked (approval vs ask-user) and
+// whether the cloud reported ok=true; today auto-deny doesn't exist on the
+// cloud side but we render it anyway in case that changes.
+func (m *Model) renderApprovalAuto(b *block) {
+	verb := "Auto-approved"
+	switch {
+	case !b.approved:
+		verb = "Auto-denied"
+	case b.autoIsQuestion:
+		verb = "Auto-answered"
+	}
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	b.rendered = "  " + style.Render("⚡ "+verb)
 }
 
 func (m *Model) renderApprovalChoice(b *block) {

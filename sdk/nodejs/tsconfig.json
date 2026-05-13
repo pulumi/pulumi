@@ -105,6 +105,7 @@
         "tests/runtime/dependsOn.spec.ts",
         "tests/runtime/findWorkspaceRoot.spec.ts",
         "tests/runtime/manifest.spec.ts",
+        "tests/runtime/registerPackage.spec.ts",
         "tests/runtime/registrations.spec.ts",
         "tests/runtime/pack.ts",
         "tests/runtime/rpc.spec.ts",

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/neo
+  description: Add `--approval-mode` and `--permission-mode` flags to `pulumi neo`, with Ctrl+A and Ctrl+R hotkeys to switch modes mid-session
