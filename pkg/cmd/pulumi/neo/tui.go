@@ -50,7 +50,7 @@ type ctrlCDisarmMsg struct {
 // live task after the user stops pressing for this long. Rapid mashing
 // collapses to one PATCH carrying the final value, so the cloud and the
 // dispatcher both see the user's intent instead of a noisy burst of updates.
-const modeToggleDebounce = 250 * time.Millisecond
+const modeToggleDebounce = 500 * time.Millisecond
 
 // approvalDebounceTickMsg / permissionDebounceTickMsg fire `modeToggleDebounce`
 // after each Ctrl+A / Ctrl+R press. They carry the generation they were
