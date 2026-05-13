@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: Implement `pulumi stack history events` to retrieve engine events for a Pulumi Cloud update

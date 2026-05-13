@@ -1496,13 +1496,42 @@ func (pc *Client) CompleteUpdate(ctx context.Context, update UpdateIdentifier, s
 		updateAccessToken(token), httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
+// GetUpdateEngineEventsOptions configures filtering and pagination for
+// GetUpdateEngineEvents.
+type GetUpdateEngineEventsOptions struct {
+	// ContinuationToken, if non-nil, fetches the next page of events.
+	ContinuationToken *string
+	// EventTypes, if non-empty, restricts results to the listed engine event
+	// type codes.
+	EventTypes []string
+	// URN, if non-empty, restricts results to events for the given resource URN.
+	URN string
+	// IncludeNonActivated, when true, includes events that have not yet been
+	// marked as activated.
+	IncludeNonActivated bool
+}
+
 // GetUpdateEngineEvents returns the engine events for an update.
 func (pc *Client) GetUpdateEngineEvents(ctx context.Context, update UpdateIdentifier,
-	continuationToken *string,
+	opts GetUpdateEngineEventsOptions,
 ) (apitype.GetUpdateEventsResponse, error) {
 	path := getUpdatePath(update, "events")
-	if continuationToken != nil {
-		path += "?continuationToken=" + *continuationToken
+
+	query := url.Values{}
+	if opts.ContinuationToken != nil {
+		query.Set("continuationToken", *opts.ContinuationToken)
+	}
+	for _, t := range opts.EventTypes {
+		query.Add("type", t)
+	}
+	if opts.URN != "" {
+		query.Set("urn", opts.URN)
+	}
+	if opts.IncludeNonActivated {
+		query.Set("include_non_activated", "true")
+	}
+	if encoded := query.Encode(); encoded != "" {
+		path += "?" + encoded
 	}
 
 	var resp apitype.GetUpdateEventsResponse
