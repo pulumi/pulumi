@@ -1141,6 +1141,34 @@ func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {
 	assert.Contains(t, formatted, `"__type" = "PermissionDescriptorCondition"`)
 }
 
+func TestGenerateValueDropsNonConformingMapEntries(t *testing.T) {
+	t.Parallel()
+
+	value := property.New(map[string]property.Value{
+		"good1": property.New("hello"),
+		"good2": property.New("world"),
+		"bad1":  property.New(42.0),
+		"bad2":  property.New(true),
+		"bad3":  property.New(property.Array{}),
+	})
+
+	expr, err := generateValue(
+		&schema.MapType{ElementType: schema.StringType},
+		value,
+		ImportState{},
+		func(string) {},
+	)
+	require.NoError(t, err)
+
+	rendered := renderExpr(t, expr)
+	require.True(t, rendered.IsMap())
+
+	assert.Equal(t, map[string]property.Value{
+		"\"good1\"": property.New("hello"),
+		"\"good2\"": property.New("world"),
+	}, rendered.AsMap().AsMap())
+}
+
 func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {
 	t.Parallel()
 	value := property.New("hello")
