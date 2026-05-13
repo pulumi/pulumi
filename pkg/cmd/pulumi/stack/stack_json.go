@@ -17,7 +17,6 @@ package stack
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"time"
 
@@ -29,11 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
-
-// errCloudBackendRequired is returned by cloud-only commands when invoked
-// against a DIY backend.
-var errCloudBackendRequired = errors.New(
-	"this command requires the Pulumi Cloud backend; run `pulumi login`")
 
 // stackJSONEnvelope is the stable, machine-readable shape emitted by
 // `pulumi stack --output json` (and its alias, `pulumi stack get`). New

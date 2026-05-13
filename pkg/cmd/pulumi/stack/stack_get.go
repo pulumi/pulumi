@@ -18,18 +18,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// newStackGetCmd registers `pulumi stack get`, a thin convenience alias for
-// `pulumi stack --output=json` that requires the Pulumi Cloud backend.
-//
-// The JSON envelope is identical to `pulumi stack --output=json` and is
-// built by stack_json.go.
+// newStackGetCmd registers `pulumi stack get`, a thin convenience alias
+// for `pulumi stack`. It behaves identically to `pulumi stack` on both
+// the Pulumi Cloud and DIY backends, including the default value of
+// `--output` (human-readable text). Pass `--output=json` for the
+// stable, machine-readable envelope built by stack_json.go.
 func newStackGetCmd() *cobra.Command {
 	var (
 		stackName   string
@@ -42,20 +41,18 @@ func newStackGetCmd() *cobra.Command {
 		Short: "Retrieve detailed information about a stack",
 		Long: "[EXPERIMENTAL] Retrieve detailed information about a stack.\n" +
 			"\n" +
-			"`pulumi stack get` is a convenience alias for `pulumi stack --output=json`\n" +
-			"that requires the Pulumi Cloud backend. It surfaces the organization,\n" +
-			"project, and stack name, the current version, all associated tags, any\n" +
-			"active update operation (with its kind, author, and start time), the\n" +
-			"active update UUID, and (when available) the local resource snapshot.",
+			"`pulumi stack get` is a convenience alias for `pulumi stack --output=json`.\n" +
+			"On the Pulumi Cloud backend it surfaces the organization, project, and\n" +
+			"stack name, the current version, all associated tags, any active update\n" +
+			"operation (with its kind, author, and start time), the active update\n" +
+			"UUID, and (when available) the local resource snapshot. On DIY backends\n" +
+			"the cloud-only fields are omitted; everything else is rendered.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			s, err := RequireStack(ctx, cmdutil.Diag(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager,
 				stackName, LoadOnly, display.Options{Color: cmdutil.GetGlobalColorization()})
 			if err != nil {
 				return err
-			}
-			if _, ok := s.(httpstate.Stack); !ok {
-				return errCloudBackendRequired
 			}
 			return runStack(ctx, s, cmd.OutOrStdout(), stackArgs{
 				output:      output,
@@ -68,7 +65,7 @@ func newStackGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&output, "output", "o", "json",
+	cmd.Flags().StringVarP(&output, "output", "o", "default",
 		"The output format: default (human-readable) or json")
 	cmd.Flags().BoolVar(&showSecrets, "show-secrets", false,
 		"Display stack outputs which are marked as secret in plaintext")

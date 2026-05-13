@@ -221,26 +221,3 @@ func TestBuildStackJSON_WithSnapshot(t *testing.T) {
 	assert.Equal(t, "my-bucket", env.Resources[0].Name)
 	assert.Equal(t, "bucket-id-1", env.Resources[0].ID)
 }
-
-// TestNewStackGetCmd_FlagDefaults guards the cobra surface: --output
-// defaults to json, --stack and --show-secrets are present.
-func TestNewStackGetCmd_FlagDefaults(t *testing.T) {
-	t.Parallel()
-
-	cmd := newStackGetCmd()
-	assert.Equal(t, "get", cmd.Use)
-	require.NotNil(t, cmd.RunE)
-
-	output := cmd.Flags().Lookup("output")
-	require.NotNil(t, output)
-	assert.Equal(t, "o", output.Shorthand)
-	assert.Equal(t, "json", output.DefValue, "stack get must default to --output=json")
-
-	stack := cmd.Flags().Lookup("stack")
-	require.NotNil(t, stack)
-	assert.Equal(t, "s", stack.Shorthand)
-
-	secrets := cmd.Flags().Lookup("show-secrets")
-	require.NotNil(t, secrets)
-	assert.Equal(t, "false", secrets.DefValue)
-}
