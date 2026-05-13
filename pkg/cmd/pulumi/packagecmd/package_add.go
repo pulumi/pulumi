@@ -254,7 +254,7 @@ func printRegistryDocsHint(
 	}
 	fmt.Fprintln(w, "Documentation:")
 	for _, h := range hints {
-		fmt.Fprintf(w, "  pulumi api --format=markdown '%s%s'%s\n", base, h.suffix, h.comment)
+		fmt.Fprintf(w, "  pulumi api --output=markdown '%s%s'%s\n", base, h.suffix, h.comment)
 	}
 }
 
@@ -293,7 +293,8 @@ func loadEnclosingTarget(ctx context.Context, wd string) (addTarget, error) {
 			// Cloud registry is linked to a backend, but we don't have one
 			// available in a plugin. Use the default backend.
 			reg: cmdCmd.NewDefaultRegistry(
-				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global(),
+			),
 		}, nil
 	default:
 		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+
