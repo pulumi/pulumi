@@ -222,6 +222,34 @@ func TestModel_Update_EscClosesOverlay_NoCancel(t *testing.T) {
 	}
 }
 
+func TestModel_Update_CtrlCAndCtrlDCloseOverlay(t *testing.T) {
+	t.Parallel()
+
+	// A reflexive ctrl+c (or ctrl+d) while the overlay is open should dismiss
+	// the overlay rather than arm the quit gate or cancel the agent. Once
+	// back in the inline view a second ctrl+c can still quit normally.
+	for _, key := range []tea.KeyType{tea.KeyCtrlC, tea.KeyCtrlD} {
+		outCh := make(chan outboundEvent, 1)
+		m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+		um := updated.(Model)
+		require.True(t, um.overlayActive)
+
+		updated, cmd := um.Update(tea.KeyMsg{Type: key})
+		um = updated.(Model)
+		assert.False(t, um.overlayActive, "%v in overlay must close it", key)
+		assert.False(t, um.ctrlCArmed, "%v in overlay must not arm the quit gate", key)
+		assert.False(t, um.cancelling, "%v in overlay must not trigger cancellation", key)
+		assert.Equal(t, "exitAltScreenMsg", cmdMsgTypeName(cmd))
+
+		select {
+		case ev := <-outCh:
+			t.Fatalf("%v in overlay must not post any outbound event, got %T", key, ev.event)
+		default:
+		}
+	}
+}
+
 func TestModel_Update_OverlaySwallowsTyping(t *testing.T) {
 	t.Parallel()
 

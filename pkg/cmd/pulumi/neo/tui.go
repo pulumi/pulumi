@@ -518,16 +518,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// While the overlay is open, swallow keys that aren't close / scroll /
-		// quit so they can't leak into the hidden input bar.
+		// While the overlay is open, ctrl+o / esc / ctrl+c / ctrl+d all close
+		// it; scroll keys go to the viewport; everything else is swallowed so
+		// it can't leak into the hidden input bar. Closing on ctrl+c/d means a
+		// reflexive "abort" tap dismisses the overlay rather than killing the
+		// session — the user can press ctrl+c again from the inline view to
+		// quit.
 		if m.overlayActive {
 			//exhaustive:ignore // explicit default below
 			switch msg.Type {
-			case tea.KeyCtrlO, tea.KeyEsc:
+			case tea.KeyCtrlO, tea.KeyEsc, tea.KeyCtrlC, tea.KeyCtrlD:
 				m.overlayActive = false
 				return m, tea.ExitAltScreen
-			case tea.KeyCtrlC, tea.KeyCtrlD:
-				// Fall through to the shared ctrl+c/d gate below.
 			case tea.KeyUp, tea.KeyDown,
 				tea.KeyPgUp, tea.KeyPgDown,
 				tea.KeyHome, tea.KeyEnd:
