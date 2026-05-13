@@ -318,17 +318,40 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 	}
 }
 
-// forwardUserInputToUI parses a userInput event body and sends a UIUserMessage to the TUI.
+// forwardUserInputToUI parses a userInput event body and routes it to the TUI:
+// user_message → UIUserMessage (echo of a chat message, possibly from another
+// client) and user_confirmation → UIApprovalResolved (the cloud's signal that a
+// pending approval has been settled, either by the user clicking approve in the
+// console or by the auto-approval handler under ApprovalMode=auto/balanced).
 func (s *Session) forwardUserInputToUI(eventBody json.RawMessage) {
 	if s.UIEvents == nil {
 		return
 	}
 
-	var evt apitype.AgentUserEventUserMessage
-	if err := json.Unmarshal(eventBody, &evt); err != nil {
+	// Peek at the inner type; we reuse AgentBackendEventHeader because it's just
+	// a Type field and the JSON shape on the user-input side matches.
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil {
 		return
 	}
-	if evt.Content != "" {
-		sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+
+	switch head.Type {
+	case userEventUserMessage:
+		var evt apitype.AgentUserEventUserMessage
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return
+		}
+		if evt.Content != "" {
+			sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+		}
+	case userEventUserConfirmation:
+		var evt apitype.AgentUserEventUserConfirmation
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIApprovalResolved{
+			ApprovalID: evt.ApprovalID,
+			Approved:   evt.Approved,
+		})
 	}
 }
