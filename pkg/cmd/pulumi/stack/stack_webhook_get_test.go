@@ -73,19 +73,19 @@ func TestStackWebhookGet_TextOutput(t *testing.T) {
 	err := newTestGetCmd(c, "default").run(t.Context(), &buf, "deploy-hook")
 	require.NoError(t, err)
 
-	out := buf.String()
-	assert.Contains(t, out, "ID:                deploy-hook")
-	assert.Contains(t, out, "Name:              Deploy Hook")
-	assert.Contains(t, out, "Organization:      my-org")
-	assert.Contains(t, out, "Project:           my-project")
-	assert.Contains(t, out, "Stack:             dev")
-	assert.Contains(t, out, "URL:               https://example.com/webhook")
-	assert.Contains(t, out, "Format:            raw")
-	assert.Contains(t, out, "Event groups:      stacks")
-	assert.Contains(t, out, "Events:            stack_update")
-	assert.Contains(t, out, "Active:            yes")
-	assert.Contains(t, out, "Has secret:        yes")
-	assert.Contains(t, out, "Secret ciphertext: v1:abc123")
+	assert.Equal(t, `ID:                deploy-hook
+Name:              Deploy Hook
+Organization:      my-org
+Project:           my-project
+Stack:             dev
+URL:               https://example.com/webhook
+Format:            raw
+Event groups:      stacks
+Events:            stack_update
+Active:            yes
+Has secret:        yes
+Secret ciphertext: v1:abc123
+`, buf.String())
 }
 
 func TestStackWebhookGet_TextOutput_Minimal(t *testing.T) {
@@ -104,21 +104,12 @@ func TestStackWebhookGet_TextOutput_Minimal(t *testing.T) {
 	err := newTestGetCmd(c, "default").run(t.Context(), &buf, "bare-hook")
 	require.NoError(t, err)
 
-	out := buf.String()
-	assert.Contains(t, out, "ID:                bare-hook")
-	assert.Contains(t, out, "URL:               https://example.com")
-	assert.Contains(t, out, "Active:            no")
-	assert.Contains(t, out, "Has secret:        no")
-
-	// Optional fields should be absent.
-	assert.NotContains(t, out, "Name:")
-	assert.NotContains(t, out, "Project:")
-	assert.NotContains(t, out, "Stack:")
-	assert.NotContains(t, out, "Environment:")
-	assert.NotContains(t, out, "Format:")
-	assert.NotContains(t, out, "Event groups:")
-	assert.NotContains(t, out, "Events:")
-	assert.NotContains(t, out, "Secret ciphertext:")
+	assert.Equal(t, `ID:                bare-hook
+Organization:      my-org
+URL:               https://example.com
+Active:            no
+Has secret:        no
+`, buf.String())
 }
 
 func TestStackWebhookGet_JSONOutput(t *testing.T) {
