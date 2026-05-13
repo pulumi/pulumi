@@ -801,9 +801,7 @@ export function registerPackage(args: RegisterPackageArgs): Promise<string> {
         return existing;
     }
     if (!supportsParameterization()) {
-        throw new Error(
-            "The Pulumi CLI does not support parameterization. Please update the Pulumi CLI",
-        );
+        throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
     }
 
     const params = new resproto.Parameterization();
