@@ -23,9 +23,8 @@ import (
 // NewInsightsCmd creates the top-level `pulumi insights` command.
 func NewInsightsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "insights",
-		Short:  "Manage Pulumi Insights resources and accounts",
+		Use:   "insights",
+		Short: "Manage Pulumi Insights resources and accounts",
 		Long: "Manage Pulumi Insights resources and accounts.\n" +
 			"\n" +
 			"Pulumi Insights provides resource discovery and search across\n" +

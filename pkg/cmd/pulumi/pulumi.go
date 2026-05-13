@@ -483,6 +483,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 				cloud.NewAPICmd(),
+				insights.NewInsightsCmd(),
 			},
 		},
 		{
@@ -514,7 +515,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			Name: "Hidden Commands",
 			Commands: []*cobra.Command{
 				markdown.NewGenMarkdownCmd(cmd),
-				insights.NewInsightsCmd(),
 			},
 		},
 

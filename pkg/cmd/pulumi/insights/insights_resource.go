@@ -22,12 +22,10 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/22973]: Not yet implemented.
 func newInsightsResourceCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "resource",
-		Short:  "Inspect resources discovered by Pulumi Insights",
+		Use:   "resource",
+		Short: "Inspect resources discovered by Pulumi Insights",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -35,36 +33,8 @@ func newInsightsResourceCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.AddCommand(newInsightsResourceGetCmd())
+	cmd.AddCommand(newInsightsResourceGetCmd(nil))
 	cmd.AddCommand(newInsightsResourceSearchCmd())
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/22974]: Not yet implemented.
-func newInsightsResourceGetCmd() *cobra.Command {
-	var org string
-	var account string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Get a discovered resource with its current version details",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "resource-type"},
-			{Name: "resource-id"},
-		},
-		Required: 2,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the resource")
-	cmd.Flags().StringVar(&account, "account", "", "The Insights account that owns the resource")
 
 	return cmd
 }
