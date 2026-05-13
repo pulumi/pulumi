@@ -611,6 +611,16 @@ func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool
 	if union, ok := schemaType.(*schema.UnionType); ok {
 		schemaType = reduceUnionType(union, value)
 	}
+	// reduceUnionType returns a member of the union as-is, which is often an
+	// *schema.InputType wrapping the real type. Strip those wrappers again so
+	// the type switch below can match on the underlying type.
+	for {
+		if input, ok := schemaType.(*schema.InputType); ok {
+			schemaType = input.ElementType
+		} else {
+			break
+		}
+	}
 
 	if schemaType == schema.AnyType {
 		return true
