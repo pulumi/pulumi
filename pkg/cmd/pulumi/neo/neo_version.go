@@ -26,10 +26,10 @@ import (
 // `pulumi neo`. Missing or unparseable versions fall through silently so a dev build
 // (empty version.Version) or a garbage service response can't lock users out.
 func checkNeoMinCLIVersion(caps apitype.Capabilities, currentVersion string) error {
-	if caps.Neo == nil || caps.Neo.MinCLIVersion == "" {
+	if caps.NeoCLIMode == nil || caps.NeoCLIMode.MinCLIVersion == "" {
 		return nil
 	}
-	required, err := semver.ParseTolerant(caps.Neo.MinCLIVersion)
+	required, err := semver.ParseTolerant(caps.NeoCLIMode.MinCLIVersion)
 	if err != nil {
 		return nil
 	}

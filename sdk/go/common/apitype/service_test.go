@@ -294,32 +294,32 @@ func TestCapabilities(t *testing.T) {
 		}
 	})
 
-	t.Run("parse neo v1", func(t *testing.T) {
+	t.Run("parse neo-cli-mode v1", func(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    Neo,
+					Capability:    NeoCLIMode,
 					Version:       1,
-					Configuration: json.RawMessage(`{"minCLIVersion":"3.250.0"}`),
+					Configuration: json.RawMessage(`{"minCliVersion":"3.250.0"}`),
 				},
 			},
 		}
 		actual, err := response.Parse()
 		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
-			Neo: &NeoCapabilityConfig{MinCLIVersion: "3.250.0"},
+			NeoCLIMode: &NeoCLIModeConfig{MinCLIVersion: "3.250.0"},
 		}, actual)
 	})
 
-	t.Run("parse neo with newer version ignored", func(t *testing.T) {
+	t.Run("parse neo-cli-mode with newer version ignored", func(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    Neo,
+					Capability:    NeoCLIMode,
 					Version:       2,
-					Configuration: json.RawMessage(`{"minCLIVersion":"3.250.0"}`),
+					Configuration: json.RawMessage(`{"minCliVersion":"3.250.0"}`),
 				},
 			},
 		}
@@ -328,14 +328,14 @@ func TestCapabilities(t *testing.T) {
 		assert.Equal(t, Capabilities{}, actual)
 	})
 
-	t.Run("parse neo with empty config", func(t *testing.T) {
+	t.Run("parse neo-cli-mode with empty config", func(t *testing.T) {
 		t.Parallel()
-		// Empty config still parses to a non-nil Neo so callers can distinguish
+		// Empty config still parses to a non-nil NeoCLIMode so callers can distinguish
 		// "advertised but no minimum" from "not advertised".
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
 				{
-					Capability:    Neo,
+					Capability:    NeoCLIMode,
 					Version:       1,
 					Configuration: json.RawMessage(`{}`),
 				},
@@ -344,11 +344,11 @@ func TestCapabilities(t *testing.T) {
 		actual, err := response.Parse()
 		require.NoError(t, err)
 		assert.Equal(t, Capabilities{
-			Neo: &NeoCapabilityConfig{},
+			NeoCLIMode: &NeoCLIModeConfig{},
 		}, actual)
 	})
 
-	t.Run("parse response without neo capability leaves Neo nil", func(t *testing.T) {
+	t.Run("parse response without neo-cli-mode capability leaves NeoCLIMode nil", func(t *testing.T) {
 		t.Parallel()
 		response := CapabilitiesResponse{
 			Capabilities: []APICapabilityConfig{
@@ -357,7 +357,7 @@ func TestCapabilities(t *testing.T) {
 		}
 		actual, err := response.Parse()
 		require.NoError(t, err)
-		assert.Nil(t, actual.Neo)
+		assert.Nil(t, actual.NeoCLIMode)
 	})
 
 	t.Run("parse api version accepts min equals max equals default", func(t *testing.T) {

@@ -51,8 +51,8 @@ const (
 	// server's max, min, and default API versions; see APIVersionCapabilityConfig.
 	APIVersion APICapability = "api-version"
 
-	// Neo advertises minimum CLI requirements for `pulumi neo`; see NeoCapabilityConfig.
-	Neo APICapability = "neo"
+	// NeoCLIMode advertises minimum CLI requirements for `pulumi neo`; see NeoCLIModeConfig.
+	NeoCLIMode APICapability = "neo-cli-mode"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -67,10 +67,10 @@ type DeploymentSchemaVersionConfig struct {
 	Version int `json:"version"`
 }
 
-type NeoCapabilityConfig struct {
+type NeoCLIModeConfig struct {
 	// MinCLIVersion is the minimum Pulumi CLI semver required to use `pulumi neo`. Empty
 	// means no minimum.
-	MinCLIVersion string `json:"minCLIVersion,omitempty"`
+	MinCLIVersion string `json:"minCliVersion,omitempty"`
 }
 
 // APIVersionCapabilityConfig is the configuration for the api-version capability. It advertises
@@ -148,7 +148,7 @@ type Capabilities struct {
 
 	// If non-nil, indicates that the service has advertised minimum CLI requirements
 	// for `pulumi neo`.
-	Neo *NeoCapabilityConfig
+	NeoCLIMode *NeoCLIModeConfig
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -203,13 +203,13 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 				}
 				parsed.APIVersion = &cfg
 			}
-		case Neo:
+		case NeoCLIMode:
 			if entry.Version == 1 {
-				var cfg NeoCapabilityConfig
+				var cfg NeoCLIModeConfig
 				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
-					return Capabilities{}, fmt.Errorf("decoding NeoCapabilityConfig returned %w", err)
+					return Capabilities{}, fmt.Errorf("decoding NeoCLIModeConfig returned %w", err)
 				}
-				parsed.Neo = &cfg
+				parsed.NeoCLIMode = &cfg
 			}
 		default:
 			continue
