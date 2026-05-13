@@ -945,7 +945,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // drawn here — they were committed to terminal scrollback via tea.Println as
 // soon as they reached a terminal state.
 func (m Model) View() string {
-	hintText := "enter to send · shift+tab plan · ctrl+a approval · ctrl+r read-only · ctrl+c to quit"
+	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · ctrl+r read-only · ctrl+c to quit"
 	if m.busy {
 		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
 	}
