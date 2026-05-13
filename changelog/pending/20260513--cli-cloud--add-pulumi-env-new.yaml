@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: Add `pulumi env new` to create a Pulumi ESC environment
