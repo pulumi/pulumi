@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/neo
+  description: Tag Neo tasks created from the CLI with a `cli` source so the service can attribute their origin
