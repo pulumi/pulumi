@@ -30,3 +30,18 @@ type Webhook struct {
 	HasSecret        bool     `json:"hasSecret"`
 	SecretCiphertext string   `json:"secretCiphertext"`
 }
+
+// WebhookDelivery describes the result of delivering a webhook event,
+// returned by the ping and delivery endpoints.
+type WebhookDelivery struct {
+	ID              string `json:"id"`
+	Kind            string `json:"kind"`
+	Payload         string `json:"payload"`
+	Timestamp       int64  `json:"timestamp"`
+	Duration        int    `json:"duration"`
+	RequestURL      string `json:"requestUrl"`
+	RequestHeaders  string `json:"requestHeaders"`
+	ResponseCode    int    `json:"responseCode"`
+	ResponseHeaders string `json:"responseHeaders"`
+	ResponseBody    string `json:"responseBody"`
+}
