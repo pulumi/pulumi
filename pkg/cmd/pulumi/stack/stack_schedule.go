@@ -43,27 +43,6 @@ func newStackScheduleCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23049]: Not yet implemented.
-func newStackScheduleListCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List all scheduled actions configured for a stack",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23048]: Not yet implemented.
 func newStackScheduleNewCmd() *cobra.Command {
 	var (
