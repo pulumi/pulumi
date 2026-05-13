@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: Add `pulumi insights account scan` to trigger a resource discovery scan for an Insights account

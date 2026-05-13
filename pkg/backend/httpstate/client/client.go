@@ -2309,3 +2309,25 @@ func (pc *Client) GetInsightsResource(
 	}
 	return resp, nil
 }
+
+// ScanInsightsAccount starts a resource discovery scan for an Insights account.
+// For parent accounts, the server fans the scan out across child accounts and
+// returns the parent workflow run.
+//
+// The `accountName` path parameter is double-decoded on the service side, so we
+// double-URL-encode it here to preserve any embedded `/` intact through the
+// full decode chain.
+func (pc *Client) ScanInsightsAccount(
+	ctx context.Context, org, account string, req apitype.InsightsScanRequest,
+) (apitype.InsightsScanResponse, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s/scan",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+	)
+	var resp apitype.InsightsScanResponse
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.InsightsScanResponse{}, err
+	}
+	return resp, nil
+}

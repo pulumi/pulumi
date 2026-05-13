@@ -16,6 +16,7 @@ package client
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -96,6 +97,113 @@ func TestGetInsightsResource(t *testing.T) {
 		client := newMockClient(server)
 		_, err := client.GetInsightsResource(t.Context(),
 			"acme", "prod-aws", "aws:s3/bucket:Bucket::missing")
+		require.Error(t, err)
+	})
+}
+
+func TestScanInsightsAccount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns parsed workflow run", func(t *testing.T) {
+		t.Parallel()
+
+		want := apitype.InsightsScanResponse{
+			ID:            "wf-123",
+			OrgID:         "org-1",
+			UserID:        "user-1",
+			Status:        "running",
+			StartedAt:     time.Date(2026, 5, 13, 10, 0, 0, 0, time.UTC),
+			LastUpdatedAt: time.Date(2026, 5, 13, 10, 0, 0, 0, time.UTC),
+			JobTimeout:    time.Date(2026, 5, 13, 12, 0, 0, 0, time.UTC),
+			Jobs: []apitype.InsightsScanJobRun{{
+				Status:  "running",
+				Timeout: int64(time.Hour),
+				Steps: []apitype.InsightsScanStepRun{
+					{Name: "list", Status: "running"},
+					{Name: "read", Status: "not-started"},
+				},
+			}},
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPost, r.Method)
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "prod-aws", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("double-encodes accountName", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedPath string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.EscapedPath()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"x","orgId":"y","userId":"z","status":"running",` +
+				`"startedAt":"2026-01-01T00:00:00Z","finishedAt":"0001-01-01T00:00:00Z",` +
+				`"lastUpdatedAt":"2026-01-01T00:00:00Z","jobTimeout":"2026-01-01T01:00:00Z"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "team/a", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+
+		// `team/a` is double-encoded: `/` becomes `%2F` then `%252F`.
+		assert.Equal(t,
+			"/api/preview/insights/acme/accounts/team%252Fa/scan",
+			capturedPath,
+		)
+	})
+
+	t.Run("sends request body", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedBody apitype.InsightsScanRequest
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &capturedBody))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"x","orgId":"y","userId":"z","status":"running",` +
+				`"startedAt":"2026-01-01T00:00:00Z","finishedAt":"0001-01-01T00:00:00Z",` +
+				`"lastUpdatedAt":"2026-01-01T00:00:00Z","jobTimeout":"2026-01-01T01:00:00Z"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		req := apitype.InsightsScanRequest{
+			AgentPoolID:     "pool-1",
+			ListConcurrency: 8,
+			ReadConcurrency: 16,
+			BatchSize:       100,
+			ReadTimeout:     "30s",
+		}
+		_, err := client.ScanInsightsAccount(t.Context(), "acme", "prod-aws", req)
+		require.NoError(t, err)
+		assert.Equal(t, req, capturedBody)
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("not found"))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "missing", apitype.InsightsScanRequest{})
 		require.Error(t, err)
 	})
 }
