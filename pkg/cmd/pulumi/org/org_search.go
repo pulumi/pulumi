@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -32,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -66,41 +68,29 @@ func (d *Delimiter) Rune() rune {
 	return rune(*d)
 }
 
-type outputFormat string
+// searchRender renders a search response to cmd.Stdout. The receiver is passed
+// explicitly so we can capture per-format renderers as function values.
+type searchRender func(cmd *searchCmd, results *apitype.ResourceSearchResponse) error
 
-const (
-	outputFormatTable outputFormat = "table"
-	outputFormatJSON  outputFormat = "json"
-	outputFormatYAML  outputFormat = "yaml"
-	outputFormatCSV   outputFormat = "csv"
-)
-
-// String is used both by fmt.Print and by Cobra in help text
-func (o *outputFormat) String() string {
-	return string(*o)
-}
-
-// Set must have pointer receiver so it doesn't change the value of a copy
-func (o *outputFormat) Set(v string) error {
-	switch v {
-	case "csv", "table", "json", "yaml":
-		*o = outputFormat(v)
-		return nil
-	default:
-		return errors.New(`must be one of "csv", "table", "json", or "yaml"`)
+// defaultSearchOutputFormat returns the OutputFlag wired up with every supported
+// format. Callers (cobra constructors and tests) install this on searchCmd so
+// `--output` selects between them.
+func defaultSearchOutputFormat() outputflag.OutputFlag[searchRender] {
+	return outputflag.OutputFlag[searchRender]{
+		RenderForTerminal: (*searchCmd).RenderTable,
+		RenderJSON:        (*searchCmd).RenderJSON,
+		RenderYAML:        (*searchCmd).RenderYAML,
+		RenderCSV: func(cmd *searchCmd, results *apitype.ResourceSearchResponse) error {
+			return cmd.RenderCSV(results.Resources, cmd.csvDelimiter.Rune())
+		},
 	}
-}
-
-// Type is only used in help text
-func (o *outputFormat) Type() string {
-	return "outputFormat"
 }
 
 type searchCmd struct {
 	orgName      string
 	csvDelimiter Delimiter
-	outputFormat
-	openWeb bool
+	outputFormat outputflag.OutputFlag[searchRender]
+	openWeb      bool
 
 	Stdout io.Writer // defaults to os.Stdout
 
@@ -118,10 +108,6 @@ type orgSearchCmd struct {
 
 func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
-
-	if cmd.outputFormat == "" {
-		cmd.outputFormat = outputFormatTable
-	}
 
 	if cmd.Stdout == nil {
 		cmd.Stdout = os.Stdout
@@ -163,7 +149,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 		cmd.orgName = defaultOrg
 	}
 	if cmd.orgName != "" {
-		if !sliceContains(orgs, cmd.orgName) {
+		if !slices.Contains(orgs, cmd.orgName) {
 			return fmt.Errorf("user %s is not a member of organization %s", userName, cmd.orgName)
 		}
 	} else {
@@ -175,7 +161,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.Render(&cmd.searchCmd, res)
+	err = cmd.outputFormat.Get()(&cmd.searchCmd, res)
 	if err != nil {
 		return fmt.Errorf("table rendering error: %w", err)
 	}
@@ -190,6 +176,7 @@ func (cmd *orgSearchCmd) Run(ctx context.Context, args []string) error {
 
 func newSearchCmd() *cobra.Command {
 	var scmd orgSearchCmd
+	scmd.outputFormat = defaultSearchOutputFormat()
 	cmd := &cobra.Command{
 		Use:   "search",
 		Short: "Search for resources in Pulumi Cloud",
@@ -219,10 +206,7 @@ func newSearchCmd() *cobra.Command {
 			"\t-q \"type:aws:s3/bucketv2:BucketV2\" -q \"modified:>=2023-09-01\"\n"+
 			"See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference.",
 	)
-	cmd.PersistentFlags().VarP(
-		&scmd.outputFormat, "output", "o",
-		"Output format. Supported formats are 'table', 'json', 'csv', and 'yaml'.",
-	)
+	outputflag.VarP(cmd.PersistentFlags(), &scmd.outputFormat)
 	cmd.PersistentFlags().Var(
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",
@@ -233,15 +217,6 @@ func newSearchCmd() *cobra.Command {
 	)
 
 	return cmd
-}
-
-func sliceContains(slice []string, search string) bool {
-	for _, s := range slice {
-		if s == search {
-			return true
-		}
-	}
-	return false
 }
 
 func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) error {
@@ -313,21 +288,6 @@ func renderSearchJSON(w io.Writer, results []apitype.ResourceResult) error {
 	}
 	_, err = w.Write(output)
 	return err
-}
-
-func (o *outputFormat) Render(cmd *searchCmd, result *apitype.ResourceSearchResponse) error {
-	switch *o {
-	case outputFormatJSON:
-		return cmd.RenderJSON(result)
-	case outputFormatTable:
-		return cmd.RenderTable(result)
-	case outputFormatYAML:
-		return cmd.RenderYAML(result)
-	case outputFormatCSV:
-		return cmd.RenderCSV(result.Resources, cmd.csvDelimiter.Rune())
-	default:
-		return fmt.Errorf("unknown output format %q", *o)
-	}
 }
 
 func (cmd *searchCmd) RenderJSON(result *apitype.ResourceSearchResponse) error {
