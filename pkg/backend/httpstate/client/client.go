@@ -2428,3 +2428,38 @@ func (pc *Client) SearchInsightsResources(
 	}
 	return resp, nil
 }
+
+// --- ESC environment referrers ---
+
+// ListEnvironmentReferrersOptions selects the query parameters accepted by the
+// `ListEnvironmentReferrers` endpoint. The zero value sends no query
+// parameters, leaving server-side defaults in place.
+type ListEnvironmentReferrersOptions struct {
+	// Count is the maximum number of results to return (1-500). Zero leaves
+	// the server-side default in place.
+	Count int `url:"count,omitempty"`
+	// AllRevisions includes references across all revisions of the
+	// environment when true.
+	AllRevisions bool `url:"allRevisions,omitempty"`
+	// LatestStackVersionOnly returns only the latest stack version for each
+	// referring stack when true.
+	LatestStackVersionOnly bool `url:"latestStackVersionOnly,omitempty"`
+	// ContinuationToken pages through results returned by a previous call.
+	ContinuationToken string `url:"continuationToken,omitempty"`
+}
+
+// ListEnvironmentReferrers returns the entities that reference a Pulumi ESC
+// environment.
+func (pc *Client) ListEnvironmentReferrers(
+	ctx context.Context, org, project, env string, opts ListEnvironmentReferrersOptions,
+) (apitype.ListEnvironmentReferrersResponse, error) {
+	path := fmt.Sprintf(
+		"/api/esc/environments/%s/%s/%s/referrers",
+		url.PathEscape(org), url.PathEscape(project), url.PathEscape(env),
+	)
+	var resp apitype.ListEnvironmentReferrersResponse
+	if err := pc.restCall(ctx, "GET", path, opts, nil, &resp); err != nil {
+		return apitype.ListEnvironmentReferrersResponse{}, err
+	}
+	return resp, nil
+}

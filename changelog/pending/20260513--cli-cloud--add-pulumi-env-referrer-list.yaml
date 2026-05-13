@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: Add `pulumi env referrer list` to list entities that reference a Pulumi ESC environment
