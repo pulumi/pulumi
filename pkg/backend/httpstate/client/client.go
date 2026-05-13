@@ -67,6 +67,14 @@ const (
 	NeoApprovalModeAuto NeoApprovalMode = "auto"
 )
 
+// NeoTaskSource identifies the origin that triggered a Neo task.
+type NeoTaskSource string
+
+const (
+	// NeoTaskSourceCLI tags tasks created from the Pulumi CLI.
+	NeoTaskSourceCLI NeoTaskSource = "cli"
+)
+
 // NeoTaskRequest represents a request to create a Neo task. This is a thin client-side
 // shape that the server deserializes into apitype.CreateAgentTaskRequest, so the JSON
 // field names must match the IDL-generated tags exactly.
@@ -86,6 +94,10 @@ type NeoTaskRequest struct {
 	// this by activating PlanModeTracker for the task and gating the exit on an approved
 	// exit_plan_mode call. JSON tag is camelCase to match the service IDL.
 	PlanMode bool `json:"planMode,omitempty"`
+	// Source identifies the origin that triggered the task. The CLI always sends
+	// NeoTaskSourceCLI; the server validates against apitype.AgentTaskSource and defaults
+	// to "api" if omitted.
+	Source NeoTaskSource `json:"source,omitempty"`
 }
 
 // NeoTaskMessage represents the message content for a Neo task.
@@ -1731,6 +1743,7 @@ func (pc *Client) CreateNeoTask(
 		ToolExecutionMode: opts.ToolExecutionMode,
 		ApprovalMode:      opts.ApprovalMode,
 		PlanMode:          opts.PlanMode,
+		Source:            NeoTaskSourceCLI,
 	}
 	// Only attach a stack entity when we actually have one — the backend rejects
 	// entity_diff entries with empty name/project as "unable to access stack".
