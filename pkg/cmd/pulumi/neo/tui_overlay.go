@@ -173,7 +173,7 @@ func formatJSON(raw json.RawMessage) string {
 	}
 	var v any
 	if err := json.Unmarshal(raw, &v); err != nil {
-		return string(raw)
+		return "(could not parse as JSON: " + err.Error() + ")\n\n" + string(raw)
 	}
 	var b strings.Builder
 	formatValue(&b, v, 0)

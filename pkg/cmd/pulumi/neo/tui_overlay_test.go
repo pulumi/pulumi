@@ -153,10 +153,12 @@ func TestFormatJSON(t *testing.T) {
 		assert.Equal(t, "bad: false\nnone: null\nok: true", got)
 	})
 
-	t.Run("falls back to raw bytes when unmarshal fails", func(t *testing.T) {
+	t.Run("falls back to raw bytes and surfaces the parse error", func(t *testing.T) {
 		t.Parallel()
-		raw := json.RawMessage(`not-json{`)
-		assert.Equal(t, "not-json{", formatJSON(raw))
+		got := formatJSON(json.RawMessage(`not-json{`))
+		assert.Contains(t, got, "could not parse as JSON",
+			"parse failure must surface the error so the user knows why the block looks raw")
+		assert.Contains(t, got, "not-json{", "raw bytes still shown for inspection")
 	})
 
 	t.Run("empty input renders explicit placeholder", func(t *testing.T) {
