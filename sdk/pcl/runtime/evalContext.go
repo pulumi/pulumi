@@ -41,7 +41,7 @@ type EvalContext struct {
 	call        func(context.Context, *pulumirpc.ResourceCallRequest) (*pulumirpc.CallResponse, error)
 	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error)
 
-	// we write variables to the eval context in parallel during execution, so we need to synchronize access to it
+	// we write variables to the hcl.EvalContext in parallel during execution, so we need to synchronize access to it
 	evalLock    sync.Mutex
 	evalContext *hcl.EvalContext
 }
