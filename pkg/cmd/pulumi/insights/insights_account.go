@@ -22,13 +22,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/22976]: Not yet implemented.
 func newInsightsAccountCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "account",
-		Short:  "Manage Pulumi Insights accounts",
-		Long:   "[EXPERIMENTAL] Manage Pulumi Insights accounts.",
+		Use:   "account",
+		Short: "Manage Pulumi Insights accounts",
+		Long:  "[EXPERIMENTAL] Manage Pulumi Insights accounts.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -37,7 +35,7 @@ func newInsightsAccountCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newInsightsAccountNewCmd())
-	cmd.AddCommand(newInsightsAccountListCmd())
+	cmd.AddCommand(newInsightsAccountListCmd(nil))
 	cmd.AddCommand(newInsightsAccountScanCmd())
 
 	return cmd
@@ -71,27 +69,6 @@ func newInsightsAccountNewCmd() *cobra.Command {
 	cmd.Flags().StringVar(&org, "org", "", "The organization to create the account in")
 	cmd.Flags().StringVar(&provider, "provider", "", "The cloud provider (e.g. aws, azure, gcp)")
 	cmd.Flags().StringVar(&parent, "parent", "", "The parent account, if any")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/22980]: Not yet implemented.
-func newInsightsAccountListCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List Insights accounts available to the authenticated user",
-		Long:   "[EXPERIMENTAL] List Insights accounts available to the authenticated user.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list accounts for")
 
 	return cmd
 }
