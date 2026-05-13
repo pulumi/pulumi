@@ -45,13 +45,13 @@ func newDescribeCmd(api *apiCommand) *cobra.Command {
 			"Default output is a human-readable schema render. Pass --output=json for the\n" +
 			"stable agent envelope, including the inlined JSON schema.",
 		Example: "  # Describe an operation by its ID.\n" +
-			"  pulumi api describe ListOrgMembers\n\n" +
+			"  pulumi api describe ListOrganizationMembers\n\n" +
 			"  # Describe by path — use --method when the same path maps to multiple ops.\n" +
-			"  pulumi api describe /api/orgs/{orgName}/members --method=POST\n\n" +
+			"  pulumi api describe /api/stacks/{orgName}/{projectName}/{stackName}/tags --method=POST\n\n" +
 			"  # Paste-friendly: copy a METHOD + path row from `list` verbatim.\n" +
 			"  pulumi api describe 'GET /api/user'\n\n" +
 			"  # Extract just the request body schema.\n" +
-			"  pulumi api describe CreateStackTag --output=json | jq '.operation.requestBody.jsonSchema'\n\n" +
+			"  pulumi api describe AddStackTag --output=json | jq '.operation.requestBody.jsonSchema'\n\n" +
 			"  # Pull the parameter list for scripting.\n" +
 			"  pulumi api describe GetStack --output=json | jq '.operation.parameters[] | {name, in, required}'",
 	}
