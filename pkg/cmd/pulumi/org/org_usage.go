@@ -27,6 +27,7 @@ func newOrgUsageCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "usage",
 		Short:  "Inspect organization resource usage",
+		Long:   "[EXPERIMENTAL] Inspect organization resource usage.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -46,6 +47,7 @@ func newOrgUsageGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Fetch the resources-under-management summary for an organization",
+		Long:   "[EXPERIMENTAL] Fetch the resources-under-management summary for an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

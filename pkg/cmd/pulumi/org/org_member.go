@@ -28,6 +28,7 @@ func newOrgMemberCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "member",
 		Short:  "Manage organization members",
+		Long:   "[EXPERIMENTAL] Manage organization members.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -53,6 +54,7 @@ func newOrgMemberListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List members of an organization",
+		Long:   "[EXPERIMENTAL] List members of an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -75,6 +77,7 @@ func newOrgMemberGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Get a member of an organization",
+		Long:   "[EXPERIMENTAL] Get a member of an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -104,6 +107,7 @@ func newOrgMemberEditCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "edit",
 		Short:  "Modify a member's role within an organization",
+		Long:   "[EXPERIMENTAL] Modify a member's role within an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -133,6 +137,7 @@ func newOrgMemberRemoveCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "remove",
 		Short:  "Remove a member from an organization",
+		Long:   "[EXPERIMENTAL] Remove a member from an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

@@ -28,6 +28,7 @@ func newStackScheduleCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "schedule",
 		Short:  "Manage scheduled deployment actions for a stack",
+		Long:   "[EXPERIMENTAL] Manage scheduled deployment actions for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -51,6 +52,7 @@ func newStackScheduleListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List all scheduled actions configured for a stack",
+		Long:   "[EXPERIMENTAL] List all scheduled actions configured for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -77,6 +79,7 @@ func newStackScheduleNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a custom deployment schedule for a stack",
+		Long:   "[EXPERIMENTAL] Create a custom deployment schedule for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -104,6 +107,7 @@ func newStackScheduleGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Retrieve the configuration of a scheduled action",
+		Long:   "[EXPERIMENTAL] Retrieve the configuration of a scheduled action.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -135,6 +139,7 @@ func newStackScheduleEditCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "edit",
 		Short:  "Update the configuration of a custom deployment schedule",
+		Long:   "[EXPERIMENTAL] Update the configuration of a custom deployment schedule.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -167,6 +172,7 @@ func newStackScheduleRemoveCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "remove",
 		Short:  "Permanently delete a scheduled deployment action",
+		Long:   "[EXPERIMENTAL] Permanently delete a scheduled deployment action.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

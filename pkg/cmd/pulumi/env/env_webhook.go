@@ -28,6 +28,7 @@ func newEnvWebhookCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "webhook",
 		Short:  "Manage environment webhooks",
+		Long:   "[EXPERIMENTAL] Manage environment webhooks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -74,6 +75,7 @@ func newEnvWebhookListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List all webhooks configured for an environment",
+		Long:   "[EXPERIMENTAL] List all webhooks configured for an environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -101,6 +103,7 @@ func newEnvWebhookNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new environment webhook",
+		Long:   "[EXPERIMENTAL] Create a new environment webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -135,6 +138,7 @@ func newEnvWebhookEditCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "edit",
 		Short:  "Update an environment webhook's configuration",
+		Long:   "[EXPERIMENTAL] Update an environment webhook's configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -162,6 +166,7 @@ func newEnvWebhookRemoveCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "remove",
 		Short:  "Delete an environment webhook",
+		Long:   "[EXPERIMENTAL] Delete an environment webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -182,6 +187,7 @@ func newEnvWebhookPingCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "ping",
 		Short:  "Send a test ping to an environment webhook",
+		Long:   "[EXPERIMENTAL] Send a test ping to an environment webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -202,6 +208,7 @@ func newEnvWebhookDeliveryCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "delivery",
 		Short:  "Inspect environment webhook deliveries",
+		Long:   "[EXPERIMENTAL] Inspect environment webhook deliveries.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -223,6 +230,7 @@ func newEnvWebhookDeliveryListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List recent deliveries for an environment webhook",
+		Long:   "[EXPERIMENTAL] List recent deliveries for an environment webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

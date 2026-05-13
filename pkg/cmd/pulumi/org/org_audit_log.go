@@ -27,6 +27,7 @@ func newOrgAuditLogCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "audit-log",
 		Short:  "Inspect organization audit logs",
+		Long:   "[EXPERIMENTAL] Inspect organization audit logs.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -53,6 +54,7 @@ func newOrgAuditLogListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List audit log events for an organization",
+		Long:   "[EXPERIMENTAL] List audit log events for an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -86,6 +88,7 @@ func newOrgAuditLogExportCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "export",
 		Short:  "Export audit log events for an organization",
+		Long:   "[EXPERIMENTAL] Export audit log events for an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

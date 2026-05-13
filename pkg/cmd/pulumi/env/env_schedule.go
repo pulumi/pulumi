@@ -28,6 +28,7 @@ func newEnvScheduleCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "schedule",
 		Short:  "Manage environment scheduled actions",
+		Long:   "[EXPERIMENTAL] Manage environment scheduled actions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -72,6 +73,7 @@ func newEnvScheduleListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List scheduled actions configured for an environment",
+		Long:   "[EXPERIMENTAL] List scheduled actions configured for an environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -97,6 +99,7 @@ func newEnvScheduleNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new scheduled action for an environment",
+		Long:   "[EXPERIMENTAL] Create a new scheduled action for an environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -120,6 +123,7 @@ func newEnvSchedulePauseCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "pause",
 		Short:  "Pause a scheduled action",
+		Long:   "[EXPERIMENTAL] Pause a scheduled action.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -140,6 +144,7 @@ func newEnvScheduleResumeCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "resume",
 		Short:  "Resume a previously paused scheduled action",
+		Long:   "[EXPERIMENTAL] Resume a previously paused scheduled action.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -160,6 +165,7 @@ func newEnvScheduleRemoveCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "remove",
 		Short:  "Permanently delete a scheduled action",
+		Long:   "[EXPERIMENTAL] Permanently delete a scheduled action.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

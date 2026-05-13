@@ -28,6 +28,7 @@ func newInsightsAccountCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "account",
 		Short:  "Manage Pulumi Insights accounts",
+		Long:   "[EXPERIMENTAL] Manage Pulumi Insights accounts.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -54,6 +55,7 @@ func newInsightsAccountNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new Insights account",
+		Long:   "[EXPERIMENTAL] Create a new Insights account.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -81,6 +83,7 @@ func newInsightsAccountListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List Insights accounts available to the authenticated user",
+		Long:   "[EXPERIMENTAL] List Insights accounts available to the authenticated user.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -101,6 +104,7 @@ func newInsightsAccountScanCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "scan",
 		Short:  "Trigger a resource discovery scan for an Insights account",
+		Long:   "[EXPERIMENTAL] Trigger a resource discovery scan for an Insights account.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -134,6 +138,7 @@ func newInsightsAccountScanLogCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "log",
 		Short:  "Retrieve logs for an Insights scan",
+		Long:   "[EXPERIMENTAL] Retrieve logs for an Insights scan.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

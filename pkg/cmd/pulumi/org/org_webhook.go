@@ -28,6 +28,7 @@ func newOrgWebhookCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "webhook",
 		Short:  "Manage organization-level webhooks",
+		Long:   "[EXPERIMENTAL] Manage organization-level webhooks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -53,6 +54,7 @@ func newOrgWebhookListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List all webhooks configured at the organization level",
+		Long:   "[EXPERIMENTAL] List all webhooks configured at the organization level.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -81,6 +83,7 @@ func newOrgWebhookNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new organization webhook",
+		Long:   "[EXPERIMENTAL] Create a new organization webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -122,6 +125,7 @@ func newOrgWebhookEditCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "edit",
 		Short:  "Update an organization webhook's configuration",
+		Long:   "[EXPERIMENTAL] Update an organization webhook's configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -155,6 +159,7 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "remove",
 		Short:  "Permanently delete an organization webhook",
+		Long:   "[EXPERIMENTAL] Permanently delete an organization webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -180,6 +185,7 @@ func newOrgWebhookPingCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "ping",
 		Short:  "Send a test ping to an organization webhook",
+		Long:   "[EXPERIMENTAL] Send a test ping to an organization webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -202,6 +208,7 @@ func newOrgWebhookDeliveryCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "delivery",
 		Short:  "Inspect organization webhook deliveries",
+		Long:   "[EXPERIMENTAL] Inspect organization webhook deliveries.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -221,6 +228,7 @@ func newOrgWebhookDeliveryListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List recent deliveries for an organization webhook",
+		Long:   "[EXPERIMENTAL] List recent deliveries for an organization webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

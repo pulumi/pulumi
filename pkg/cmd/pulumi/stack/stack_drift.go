@@ -28,6 +28,7 @@ func newStackDriftCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "drift",
 		Short:  "Inspect stack drift detection results",
+		Long:   "[EXPERIMENTAL] Inspect stack drift detection results.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -52,6 +53,7 @@ func newStackDriftListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List drift detection runs for a stack",
+		Long:   "[EXPERIMENTAL] List drift detection runs for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -75,6 +77,7 @@ func newStackDriftGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Retrieve the current drift detection status for a stack",
+		Long:   "[EXPERIMENTAL] Retrieve the current drift detection status for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
