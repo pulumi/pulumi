@@ -219,5 +219,9 @@ func TestSearchInsightsResources(t *testing.T) {
 		_, err := client.SearchInsightsResources(t.Context(), "acme",
 			apitype.InsightsResourceSearchParams{Properties: true})
 		require.Error(t, err)
+		// The 402 status code and the server's body message both make it
+		// through the apitype.ErrorResponse formatter ("[code] message").
+		assert.Contains(t, err.Error(), "402")
+		assert.Contains(t, err.Error(), "subscription required")
 	})
 }

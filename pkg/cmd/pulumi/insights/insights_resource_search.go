@@ -21,11 +21,14 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -150,7 +153,7 @@ func newInsightsResourceSearchCmd(factory searchClientFactory) *cobra.Command {
 	cmd.Flags().BoolVar(&args.collapse, "collapse", false,
 		"Consolidate resources that exist in multiple sources into a single result")
 	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+		"Output format. One of: default, table, json")
 
 	return cmd
 }
@@ -216,32 +219,55 @@ func validateSortFields(sorts []string) error {
 }
 
 // searchRenderer maps --output to the corresponding render function.
+// `default` and `table` are aliases — they both render the box-drawn table
+// produced by go-pretty, matching other cli/cloud list/search commands such
+// as `pulumi stack webhook list` and `pulumi org search`.
 func searchRenderer(format string) (
 	func(io.Writer, apitype.InsightsResourceSearchResponse) error, error,
 ) {
 	switch format {
-	case "", "default":
-		return renderSearchText, nil
+	case "", "default", "table":
+		return renderSearchTable, nil
 	case "json":
 		return renderSearchJSON, nil
 	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
+		return nil, fmt.Errorf(
+			"invalid --output value %q (must be 'default', 'table', or 'json')", format)
 	}
 }
 
-// renderSearchText writes a tab-aligned summary of the response to w. The
-// table columns are chosen to identify each row (URN/Type/ID) plus the most
-// useful context (Stack, Account, Modified). The full record is reachable via
-// --output json or `pulumi insights resource get`.
-func renderSearchText(w io.Writer, r apitype.InsightsResourceSearchResponse) error {
+// searchTableFallbackCols is the column count used when stdout isn't a TTY
+// (e.g. piped to a file). Picked to match `pulumi stack webhook list`.
+const searchTableFallbackCols = 120
+
+// minURNColWidth keeps the URN column readable even on narrow terminals;
+// the table will wrap rather than truncate beyond this point.
+const minURNColWidth = 30
+
+// fixedTableColsWidth is the budgeted width for everything except URN. The
+// non-URN columns are short (type/stack/account/modified all fit well under
+// 25 chars in practice), so 60 leaves comfortable headroom; what's left
+// after subtracting borders goes to URN.
+const fixedTableColsWidth = 60
+
+// renderSearchTable writes a box-drawn table summary of the response to w
+// using go-pretty's StyleLight, matching the other cli/cloud commands. Empty
+// optional columns are dropped so a search that only returned IaC resources
+// doesn't show an empty ACCOUNT column (and vice-versa for Insights-only).
+// URN is given the remaining terminal width with wrapping so the table
+// stays readable when piped to a narrow terminal.
+func renderSearchTable(w io.Writer, r apitype.InsightsResourceSearchResponse) error {
 	if len(r.Resources) == 0 {
 		fmt.Fprintln(w, "No resources found.")
 		return nil
 	}
 
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "URN\tTYPE\tSTACK\tACCOUNT\tMODIFIED")
-	for _, res := range r.Resources {
+	type searchRow struct {
+		urn, typ, stack, account, modified string
+	}
+	rows := make([]searchRow, len(r.Resources))
+	var hasStack, hasAccount, hasModified bool
+	for i, res := range r.Resources {
 		// Fall back to <type>::<id> when the row doesn't carry a URN (some
 		// Insights-only records lack one because they weren't deployed via
 		// Pulumi). Keeps every row identifiable.
@@ -249,17 +275,60 @@ func renderSearchText(w io.Writer, r apitype.InsightsResourceSearchResponse) err
 		if identifier == "" && res.Type != "" {
 			identifier = res.Type + "::" + res.ID
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
-			valueOrDash(identifier),
-			valueOrDash(res.Type),
-			valueOrDash(res.Stack),
-			valueOrDash(res.Account),
-			valueOrDash(res.Modified),
-		)
+		rows[i] = searchRow{
+			urn:      identifier,
+			typ:      res.Type,
+			stack:    res.Stack,
+			account:  res.Account,
+			modified: res.Modified,
+		}
+		hasStack = hasStack || res.Stack != ""
+		hasAccount = hasAccount || res.Account != ""
+		hasModified = hasModified || res.Modified != ""
 	}
-	if err := tw.Flush(); err != nil {
-		return err
+
+	header := table.Row{"URN", "TYPE"}
+	if hasStack {
+		header = append(header, "STACK")
 	}
+	if hasAccount {
+		header = append(header, "ACCOUNT")
+	}
+	if hasModified {
+		header = append(header, "MODIFIED")
+	}
+
+	t := table.NewWriter()
+	t.SetOutputMirror(w)
+	t.SetStyle(table.StyleLight)
+	t.AppendHeader(header)
+	for _, row := range rows {
+		tr := table.Row{row.urn, row.typ}
+		if hasStack {
+			tr = append(tr, row.stack)
+		}
+		if hasAccount {
+			tr = append(tr, row.account)
+		}
+		if hasModified {
+			tr = append(tr, row.modified)
+		}
+		t.AppendRow(tr)
+	}
+
+	// Let the URN column absorb whatever width is left after the other
+	// columns and the borders. 3 chars per column separator + 1 outer border
+	// each side = 3*ncols + 1.
+	cols := termWidth(searchTableFallbackCols)
+	borderWidth := 3*len(header) + 1
+	urnWidth := cols - borderWidth - fixedTableColsWidth
+	if urnWidth < minURNColWidth {
+		urnWidth = minURNColWidth
+	}
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Name: "URN", WidthMax: urnWidth, WidthMaxEnforcer: text.WrapText},
+	})
+	t.Render()
 
 	fmt.Fprintf(w, "\nShowing %d of %d resources.\n", len(r.Resources), r.Total)
 	if r.Pagination != nil && r.Pagination.Next != "" {
@@ -275,20 +344,21 @@ func renderSearchText(w io.Writer, r apitype.InsightsResourceSearchResponse) err
 	return nil
 }
 
+// termWidth reports the column count of stdout, falling back to fallback when
+// stdout isn't a terminal or the size can't be determined (piped output, CI).
+func termWidth(fallback int) int {
+	w, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || w <= 0 {
+		return fallback
+	}
+	return w
+}
+
 // renderSearchJSON writes the full response as indented JSON.
 func renderSearchJSON(w io.Writer, r apitype.InsightsResourceSearchResponse) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(r)
-}
-
-// valueOrDash renders an empty string as "-" so columns stay visually
-// aligned and missing values are obvious.
-func valueOrDash(s string) string {
-	if s == "" {
-		return "-"
-	}
-	return s
 }
 
 // paginationHint translates a pagination `next` link into the CLI flag(s) the

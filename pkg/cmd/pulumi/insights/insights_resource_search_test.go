@@ -109,12 +109,14 @@ func TestInsightsResourceSearchCmd_DefaultOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	output := out.String()
-	// Header is present.
+	// Headers are present.
 	assert.Contains(t, output, "URN")
 	assert.Contains(t, output, "TYPE")
 	assert.Contains(t, output, "MODIFIED")
-	// First row's URN appears verbatim.
-	assert.Contains(t, output, "urn:pulumi:prod::api::aws:s3/bucket:Bucket::my-bucket")
+	// The full first-row URN can wrap across lines on narrow terminals, so
+	// only spot-check distinctive substrings either side of a likely break.
+	assert.Contains(t, output, "urn:pulumi:prod")
+	assert.Contains(t, output, "my-bucket")
 	// Second row lacks a URN — should fall back to <type>::<id>.
 	assert.Contains(t, output, "aws:s3/bucket:Bucket::other-bucket")
 	// Summary line.
@@ -273,6 +275,21 @@ func TestInsightsResourceSearchCmd_InvalidOutput(t *testing.T) {
 	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{output: "yaml"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
+}
+
+func TestInsightsResourceSearchCmd_TableAliasMatchesDefault(t *testing.T) {
+	t.Parallel()
+
+	// `--output table` and `--output default` must produce byte-identical
+	// output — they're aliases. Verifying once here keeps the rest of the
+	// table-shape assertions in one place (TestInsightsResourceSearchCmd_DefaultOutput).
+	client := &mockSearchClient{response: sampleSearchResponse()}
+	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
+
+	var defaultBuf, tableBuf bytes.Buffer
+	require.NoError(t, c.Run(t.Context(), &defaultBuf, insightsResourceSearchArgs{}))
+	require.NoError(t, c.Run(t.Context(), &tableBuf, insightsResourceSearchArgs{output: "table"}))
+	assert.Equal(t, defaultBuf.String(), tableBuf.String())
 }
 
 func TestInsightsResourceSearchCmd_ClientError(t *testing.T) {
