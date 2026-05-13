@@ -130,6 +130,7 @@ func NewUpCmd() *cobra.Command {
 	var planFilePath string
 	var attachDebugger []string
 	var strict bool
+	var skipPluginPreInstall bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -237,12 +238,13 @@ func NewUpCmd() *cobra.Command {
 			ExcludeDependents:         excludeDependents,
 			// Trigger a plan to be generated during the preview phase which can be constrained to during the
 			// update phase.
-			GeneratePlan:    env.Experimental.Value() || strict,
-			Experimental:    env.Experimental.Value(),
-			Strict:          strict,
-			ContinueOnError: continueOnError,
-			AttachDebugger:  attachDebugger,
-			Autonamer:       autonamer,
+			GeneratePlan:         env.Experimental.Value() || strict,
+			Experimental:         env.Experimental.Value(),
+			Strict:               strict,
+			ContinueOnError:      continueOnError,
+			AttachDebugger:       attachDebugger,
+			Autonamer:            autonamer,
+			SkipPluginPreInstall: skipPluginPreInstall,
 		}
 
 		if planFilePath != "" {
@@ -438,9 +440,10 @@ func NewUpCmd() *cobra.Command {
 		}
 
 		defer pctx.Close()
-
-		if err = newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
-			return err
+		if !skipPluginPreInstall {
+			if err = newcmd.InstallDependencies(pctx, &proj.Runtime, main); err != nil {
+				return err
+			}
 		}
 
 		cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, pctx.Diag, ssml, s, proj)
@@ -491,7 +494,8 @@ func NewUpCmd() *cobra.Command {
 			UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 			ContinueOnError:      continueOnError,
 
-			AttachDebugger: attachDebugger,
+			AttachDebugger:       attachDebugger,
+			SkipPluginPreInstall: skipPluginPreInstall,
 		}
 
 		start := time.Now()
@@ -864,6 +868,11 @@ func NewUpCmd() *cobra.Command {
 		&strict, "strict", false,
 		"[EXPERIMENTAL] Enable strict plan behavior: generate a plan during preview and constrain the update "+
 			"to that plan (opt-in). Cannot be used with --skip-preview.")
+
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine. "+
+			"When deploying from a template, also skips installing the project's runtime dependencies.")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

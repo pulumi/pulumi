@@ -84,6 +84,7 @@ func NewRefreshCmd() *cobra.Command {
 	var targetDependents bool
 	var excludes *[]string
 	var excludeDependents bool
+	var skipPluginPreInstall bool
 
 	// Flags for handling pending creates
 	var skipPendingCreates bool
@@ -313,6 +314,7 @@ func NewRefreshCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 				ExecKind:                  execKind,
 				RefreshProgram:            runProgram,
+				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
 			changes, err := backend.RefreshStack(ctx, s, backend.UpdateOperation{
@@ -439,6 +441,10 @@ func NewRefreshCmd() *cobra.Command {
 	importPendingCreates = cmd.PersistentFlags().StringArray(
 		"import-pending-creates", nil,
 		"A list of form [[URN ID]...] describing the provider IDs of pending creates")
+
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

@@ -88,6 +88,7 @@ func NewDestroyCmd() *cobra.Command {
 	var excludeDependents bool
 	var excludeProtected bool
 	var continueOnError bool
+	var skipPluginPreInstall bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -324,6 +325,7 @@ func NewDestroyCmd() *cobra.Command {
 				Experimental:              env.Experimental.Value(),
 				ContinueOnError:           continueOnError,
 				DestroyProgram:            runProgram,
+				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
 			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
@@ -474,6 +476,10 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
+
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

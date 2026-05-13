@@ -631,6 +631,7 @@ func NewImportCmd() *cobra.Command {
 	var yes bool
 	var protectResources bool
 	var properties []string
+	var skipPluginPreInstall bool
 
 	var from string
 	var generateResources string
@@ -986,6 +987,7 @@ func NewImportCmd() *cobra.Command {
 				UseLegacyDiff:        env.EnableLegacyDiff.Value(),
 				UseLegacyRefreshDiff: env.EnableLegacyRefreshDiff.Value(),
 				Experimental:         env.Experimental.Value(),
+				SkipPluginPreInstall: skipPluginPreInstall,
 			}
 
 			_, err = backend.ImportStack(ctx, s, backend.UpdateOperation{
@@ -1138,6 +1140,9 @@ func NewImportCmd() *cobra.Command {
 		&generateResources, "generate-resources", "",
 		//nolint:lll
 		"When used with --from, always write a JSON-encoded file containing a list of importable resources discovered by conversion to the specified path")
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	if env.DebugCommands.Value() {
 		cmd.PersistentFlags().StringVar(

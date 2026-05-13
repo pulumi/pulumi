@@ -424,6 +424,11 @@ type UpdateOptions struct {
 
 	// ShowSecrets is true if the engine should display secrets in the CLI.
 	ShowSecrets bool
+
+	// SkipPluginPreInstall is true if the engine should skip the up-front plugin install step that
+	// otherwise happens during engine setup. Missing plugins will still be installed lazily by
+	// the provider registry when they are actually requested.
+	SkipPluginPreInstall bool
 }
 
 // HasChanges returns true if there are any non-same changes in the resulting summary.
@@ -521,12 +526,17 @@ func installPlugins(
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
 	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
 	// the error.
-	if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
-		false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
-		if returnInstallErrors {
-			return nil, nil, err
+	//
+	// When SkipPluginPreInstall is set we skip this up-front install attempt — the provider registry will install
+	// plugins lazily when they are actually requested.
+	if opts == nil || !opts.SkipPluginPreInstall {
+		if err := ensurePluginsAreInstalled(ctx, opts, plugctx.Diag, allPlugins, plugctx.Host.GetProjectPlugins(),
+			false /*reinstall*/, false /*explicitInstall*/, manager); err != nil {
+			if returnInstallErrors {
+				return nil, nil, err
+			}
+			logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 		}
-		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 	}
 
 	if waitNeeded {
