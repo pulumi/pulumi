@@ -438,11 +438,24 @@ func addGitRemoteMetadataToMap(repo *git.Repository, projectRoot string, env map
 	if err != nil {
 		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
 	} else {
-		rel, err := filepath.Rel(tree.Filesystem.Root(), projectRoot)
+		// Resolve symlinks on both paths so filepath.Rel works correctly when
+		// they go through different symlink chains (e.g. on macOS where /var
+		// is a symlink to /private/var).
+		repoRoot, err := filepath.EvalSymlinks(tree.Filesystem.Root())
 		if err != nil {
-			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
-		} else if !strings.HasPrefix(rel, "..") {
-			env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
+		} else {
+			resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
+			if err != nil {
+				allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+			} else {
+				rel, err := filepath.Rel(repoRoot, resolvedProjectRoot)
+				if err != nil {
+					allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+				} else if !strings.HasPrefix(rel, "..") {
+					env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+				}
+			}
 		}
 	}
 
@@ -585,12 +598,23 @@ func addHgRemoteMetadataToMap(repo *hgutil.Repository, projectRoot string, env m
 		}
 	}
 
-	// Add the repository root path.
-	rel, err := filepath.Rel(repo.Root, projectRoot)
+	// Add the repository root path. Resolve symlinks so filepath.Rel works correctly
+	// when paths go through different symlink chains.
+	resolvedRepoRoot, err := filepath.EvalSymlinks(repo.Root)
 	if err != nil {
-		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
-	} else if !strings.HasPrefix(rel, "..") {
-		env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+		allErrors = multierror.Append(allErrors, fmt.Errorf("detecting VCS root: %w", err))
+	} else {
+		resolvedProjectRoot, err := filepath.EvalSymlinks(projectRoot)
+		if err != nil {
+			allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+		} else {
+			rel, err := filepath.Rel(resolvedRepoRoot, resolvedProjectRoot)
+			if err != nil {
+				allErrors = multierror.Append(allErrors, fmt.Errorf("detecting project root: %w", err))
+			} else if !strings.HasPrefix(rel, "..") {
+				env[backend.VCSRepoRoot] = filepath.ToSlash(rel)
+			}
+		}
 	}
 
 	return allErrors.ErrorOrNil()
