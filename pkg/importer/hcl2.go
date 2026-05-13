@@ -608,6 +608,12 @@ func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool
 			break
 		}
 	}
+	// An enum value is represented as a value of the enum's underlying primitive
+	// type at the wire level (e.g. a string for a string-typed enum). Substitute
+	// the underlying type so the primitive-value branches below match.
+	if enum, ok := schemaType.(*schema.EnumType); ok {
+		schemaType = enum.ElementType
+	}
 	if union, ok := schemaType.(*schema.UnionType); ok {
 		schemaType = reduceUnionType(union, value)
 	}
@@ -622,13 +628,23 @@ func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool
 		}
 	}
 
-	if schemaType == schema.AnyType {
+	// AnyType, JSONType, and AnyResourceType all share the "pulumi:pulumi:Any"
+	// token but are distinct singletons. Each one accepts any value at the
+	// structural level, so short-circuit them together.
+	if schemaType == schema.AnyType || schemaType == schema.JSONType || schemaType == schema.AnyResourceType {
 		return true
 	}
 
 	switch {
 	case value.IsMap():
 		switch arg := schemaType.(type) {
+		case *schema.MapType:
+			for _, vv := range value.AsMap().All {
+				if !valueStructurallyTypedAs(vv, arg.ElementType) {
+					return false
+				}
+			}
+			return true
 		case *schema.ObjectType:
 			schemaProperties := make(map[string]schema.Type)
 			for _, schemaProperty := range arg.Properties {
