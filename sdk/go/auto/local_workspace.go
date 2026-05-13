@@ -575,7 +575,11 @@ func (l *LocalWorkspace) WhoAmIDetails(ctx context.Context) (WhoAmIResult, error
 func (l *LocalWorkspace) OrgGetDefault(ctx context.Context) (string, error) {
 	bo := l.cliBaseOptions()
 	result, err := l.cliAPI.OrgGetDefault(ctx, func(o *optorggetdefault.Options) {
-		o.BaseOptions = bo
+		o.Cwd = bo.Cwd
+		o.AdditionalEnv = bo.AdditionalEnv
+		o.Stdout = bo.Stdout
+		o.Stderr = bo.Stderr
+		o.Stdin = bo.Stdin
 	})
 	if err != nil {
 		return "", newAutoError(
@@ -589,7 +593,11 @@ func (l *LocalWorkspace) OrgGetDefault(ctx context.Context) (string, error) {
 func (l *LocalWorkspace) OrgSetDefault(ctx context.Context, orgName string) error {
 	bo := l.cliBaseOptions()
 	result, err := l.cliAPI.OrgSetDefault(ctx, orgName, func(o *optorgsetdefault.Options) {
-		o.BaseOptions = bo
+		o.Cwd = bo.Cwd
+		o.AdditionalEnv = bo.AdditionalEnv
+		o.Stdout = bo.Stdout
+		o.Stderr = bo.Stderr
+		o.Stdin = bo.Stdin
 	})
 	if err != nil {
 		return newAutoError(
@@ -917,7 +925,11 @@ func (l *LocalWorkspace) New(ctx context.Context, opts *NewOptions) (NewResult, 
 
 	var templateOrURL *string
 	apply := func(o *optnew.Options) {
-		o.BaseOptions = bo
+		o.Cwd = bo.Cwd
+		o.AdditionalEnv = bo.AdditionalEnv
+		o.Stdout = bo.Stdout
+		o.Stderr = bo.Stderr
+		o.Stdin = bo.Stdin
 		if opts == nil {
 			return
 		}
@@ -927,7 +939,7 @@ func (l *LocalWorkspace) New(ctx context.Context, opts *NewOptions) (NewResult, 
 		if opts.Stderr != nil {
 			o.Stderr = opts.Stderr
 		}
-		o.Ai = opts.AI
+		o.AI = opts.AI
 		o.Config = opts.Config
 		o.ConfigPath = opts.ConfigPath
 		o.Description = opts.Description

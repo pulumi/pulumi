@@ -1334,7 +1334,11 @@ func (s *Stack) Cancel(ctx context.Context) error {
 		return errors.New("Stack.Cancel requires a *LocalWorkspace; the workspace does not expose a generated CLI API")
 	}
 	result, err := api.Cancel(ctx, nil, func(o *optcancel.Options) {
-		o.BaseOptions = bo
+		o.Cwd = bo.Cwd
+		o.AdditionalEnv = bo.AdditionalEnv
+		o.Stdout = bo.Stdout
+		o.Stderr = bo.Stderr
+		o.Stdin = bo.Stdin
 		o.Stack = stack
 	})
 	if err != nil {
