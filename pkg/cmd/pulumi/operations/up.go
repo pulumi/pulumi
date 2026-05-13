@@ -45,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -98,7 +99,7 @@ func NewUpCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
-	var output string
+	output := outputflag.OutputFlag[bool]{RenderJSON: true}
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -588,16 +589,6 @@ func NewUpCmd() *cobra.Command {
 				return err
 			}
 
-			// Validate --output up front. We keep the existing --json flag (which
-			// emits a JSONL stream of engine events) backwards compatible, and
-			// only emit the structured operation summary when --output=json.
-			switch output {
-			case "default", "json":
-				// No-op.
-			default:
-				return fmt.Errorf("invalid --output value %q (expected %q or %q)", output, "default", "json")
-			}
-
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, false /* previewOnly */)
 			if err != nil {
 				return err
@@ -628,7 +619,7 @@ func NewUpCmd() *cobra.Command {
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
 				JSONDisplay:            jsonDisplay,
-				SummaryJSON:            output == "json",
+				SummaryJSON:            output.Get(),
 				ShowSecrets:            showSecrets,
 			}
 
@@ -782,11 +773,9 @@ func NewUpCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the update diffs, operations, and overall output as JSON")
-	cmd.Flags().StringVar(
-		&output, "output", "default",
-		"Output format. Supported values are: default, json")
+	outputflag.Var(cmd.Flags(), &output)
 	// Hidden until --output is wired up across all operations (destroy, preview, refresh, ...).
-	_ = cmd.Flags().MarkHidden("output")
+	contract.AssertNoErrorf(cmd.Flags().MarkHidden("output"), `Could not mark "output" as hidden`)
 	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
