@@ -257,7 +257,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			if err != nil {
 				return cty.EmptyObjectVal, err
 			}
-			val, err := propertyValueToCty(ctx, i.monitor, resource.NewProperty(props))
+			val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
 			if err != nil {
 				return cty.EmptyObjectVal, err
 			}
@@ -344,6 +344,40 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 	// Store the hook's registered name as a string so it can be referenced in hooks options.
 	i.setRawVariable(ctx, h.Name(), cty.StringVal(hookName))
 	return nil
+}
+
+func (i *Interpreter) getResource(ctx context.Context, ref resource.ResourceReference) (resource.PropertyMap, error) {
+	args, err := structpb.NewStruct(map[string]any{
+		"urn": string(ref.URN),
+	})
+	contract.AssertNoErrorf(err, "failed to create structpb for resource reference")
+
+	resp, err := i.monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
+		Tok:             "pulumi:pulumi:getResource",
+		Args:            args,
+		AcceptResources: true,
+	})
+	if err != nil {
+		return resource.PropertyMap{}, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
+	}
+
+	marshalOpts := plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	}
+	outputs, err := plugin.UnmarshalProperties(resp.Return, marshalOpts)
+	if err != nil {
+		return resource.PropertyMap{}, fmt.Errorf("unmarshal stack outputs: %w", err)
+	}
+	outputs = outputs["state"].ObjectValue()
+
+	outputs["id"] = ref.ID
+	outputs["urn"] = resource.NewProperty(string(ref.URN))
+	outputs["__name"] = resource.NewProperty(ref.URN.Name())
+	outputs["__type"] = resource.NewProperty(string(ref.URN.Type()))
+
+	return outputs, nil
 }
 
 // effectiveName returns the name to use when registering a resource or component with the given
@@ -1024,7 +1058,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			evalCtx *hcl.EvalContext
 		}, 0, len(values))
 		for idx, v := range values {
-			val, err := propertyValueToCty(ctx, i.monitor, v)
+			val, err := propertyValueToCty(ctx, i.getResource, v)
 			if err != nil {
 				return err
 			}
@@ -1048,7 +1082,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		sort.Strings(keys)
 		resultMap := make(map[string]cty.Value, len(keys))
 		for _, key := range keys {
-			val, err := propertyValueToCty(ctx, i.monitor, values[resource.PropertyKey(key)])
+			val, err := propertyValueToCty(ctx, i.getResource, values[resource.PropertyKey(key)])
 			if err != nil {
 				return err
 			}
@@ -1798,7 +1832,7 @@ func (i *Interpreter) registerResourceWith(
 		Known:        true,
 	})
 
-	return propertyValueToCty(ctx, i.monitor, result)
+	return propertyValueToCty(ctx, i.getResource, result)
 }
 
 func applySchemaInputDefaults(inputs resource.PropertyMap, schemaResource *schema.Resource) {
@@ -2007,7 +2041,7 @@ func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs resource
 }
 
 func (i *Interpreter) setVariable(ctx context.Context, name string, value resource.PropertyValue) error {
-	ctyValue, err := propertyValueToCty(ctx, i.monitor, value)
+	ctyValue, err := propertyValueToCty(ctx, i.getResource, value)
 	if err != nil {
 		return err
 	}
@@ -2064,7 +2098,7 @@ func (i *Interpreter) tryExpressions(args []cty.Value) (cty.Value, error) {
 			})
 			continue
 		}
-		return propertyValueToCty(context.TODO(), i.monitor, pv)
+		return propertyValueToCty(context.TODO(), i.getResource, pv)
 	}
 
 	var buf strings.Builder
