@@ -263,12 +263,12 @@ func renderSearchText(w io.Writer, r apitype.InsightsResourceSearchResponse) err
 
 	fmt.Fprintf(w, "\nShowing %d of %d resources.\n", len(r.Resources), r.Total)
 	if r.Pagination != nil && r.Pagination.Next != "" {
-		if cursor := cursorFromNextLink(r.Pagination.Next); cursor != "" {
-			fmt.Fprintf(w, "More results available. Re-run with --cursor %q to continue.\n", cursor)
+		if hint := paginationHint(r.Pagination.Next); hint != "" {
+			fmt.Fprintf(w, "More results available. Re-run with %s to continue.\n", hint)
 		} else {
-			// Defensive: the spec promises `next` is a link with a cursor
-			// param; fall back to printing the URL so the user can still
-			// act on it.
+			// Defensive: the spec promises `next` is a link with at least a
+			// cursor or page query param. Fall back to printing the URL so
+			// the user can still act on it.
 			fmt.Fprintf(w, "More results available. Next page: %s\n", r.Pagination.Next)
 		}
 	}
@@ -291,15 +291,33 @@ func valueOrDash(s string) string {
 	return s
 }
 
-// cursorFromNextLink pulls the `cursor` query parameter out of a pagination
-// `next` link. The v2 endpoint returns absolute or relative URLs; both parse
-// the same way via url.Parse.
-func cursorFromNextLink(link string) string {
+// paginationHint translates a pagination `next` link into the CLI flag(s) the
+// user should pass to fetch the next page. The v2 endpoint exposes two
+// pagination modes: a `cursor` token (Enterprise) and an offset-style `page`
+// number. Cursor wins when present because it encapsulates all the state the
+// server needs to resume. For the page case we also surface --page-size so
+// the re-run is self-contained — the server's default size could otherwise
+// drift across releases.
+//
+// Returns "" when the link parses but carries no recognised parameter, so the
+// caller can fall back to printing the raw URL.
+func paginationHint(link string) string {
 	u, err := url.Parse(link)
 	if err != nil {
 		return ""
 	}
-	return u.Query().Get("cursor")
+	q := u.Query()
+	if cursor := q.Get("cursor"); cursor != "" {
+		return fmt.Sprintf("--cursor %q", cursor)
+	}
+	if page := q.Get("page"); page != "" {
+		hint := "--page " + page
+		if size := q.Get("size"); size != "" {
+			hint += " --page-size " + size
+		}
+		return hint
+	}
+	return ""
 }
 
 // defaultSearchClientFactory is the production wiring for searchClientFactory.

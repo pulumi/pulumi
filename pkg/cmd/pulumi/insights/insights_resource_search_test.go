@@ -135,6 +135,28 @@ func TestInsightsResourceSearchCmd_DefaultOutput_Empty(t *testing.T) {
 	assert.Equal(t, "No resources found.\n", out.String())
 }
 
+func TestInsightsResourceSearchCmd_DefaultOutput_PageBasedHint(t *testing.T) {
+	t.Parallel()
+
+	// When the server paginates by page number rather than cursor, the hint
+	// must surface --page (+ --page-size when the URL carries `size`), not a
+	// raw URL the user can't usefully copy.
+	resp := sampleSearchResponse()
+	resp.Pagination = &apitype.InsightsResourceSearchPagination{
+		Next: "https://api.pulumi.com/api/orgs/pulumi/search/resourcesv2?page=2&size=25",
+	}
+	client := &mockSearchClient{response: resp}
+	c := &insightsResourceSearchCmd{clientFactory: stubSearchFactory(client, "acme")}
+
+	var out bytes.Buffer
+	err := c.Run(t.Context(), &out, insightsResourceSearchArgs{})
+	require.NoError(t, err)
+
+	output := out.String()
+	assert.Contains(t, output, "More results available. Re-run with --page 2 --page-size 25 to continue.")
+	assert.NotContains(t, output, "Next page: http")
+}
+
 func TestInsightsResourceSearchCmd_DefaultOutput_LastPage(t *testing.T) {
 	t.Parallel()
 
@@ -333,7 +355,7 @@ func TestNewInsightsResourceSearchCmd_NilFactoryUsesDefault(t *testing.T) {
 	assert.Equal(t, "search", cmd.Name())
 }
 
-func TestCursorFromNextLink(t *testing.T) {
+func TestPaginationHint(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -342,17 +364,37 @@ func TestCursorFromNextLink(t *testing.T) {
 		want string
 	}{
 		{
-			name: "relative link",
+			name: "cursor with relative link",
 			link: "/api/orgs/acme/search/resourcesv2?query=foo&cursor=abc&size=2",
-			want: "abc",
+			want: `--cursor "abc"`,
 		},
 		{
-			name: "absolute link",
+			name: "cursor with absolute link",
 			link: "https://api.pulumi.com/api/orgs/acme/search/resourcesv2?cursor=xyz",
-			want: "xyz",
+			want: `--cursor "xyz"`,
 		},
 		{
-			name: "no cursor parameter",
+			name: "cursor wins over page when both present",
+			link: "/api/orgs/acme/search/resourcesv2?cursor=abc&page=2&size=25",
+			want: `--cursor "abc"`,
+		},
+		{
+			name: "page with size",
+			link: "https://api.pulumi.com/api/orgs/pulumi/search/resourcesv2?page=2&size=25",
+			want: "--page 2 --page-size 25",
+		},
+		{
+			name: "page without size",
+			link: "/api/orgs/acme/search/resourcesv2?page=3",
+			want: "--page 3",
+		},
+		{
+			name: "size only (no page)",
+			link: "/api/orgs/acme/search/resourcesv2?size=25",
+			want: "",
+		},
+		{
+			name: "no recognised parameter",
 			link: "/api/orgs/acme/search/resourcesv2?query=foo",
 			want: "",
 		},
@@ -365,7 +407,7 @@ func TestCursorFromNextLink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, tt.want, cursorFromNextLink(tt.link))
+			assert.Equal(t, tt.want, paginationHint(tt.link))
 		})
 	}
 }
