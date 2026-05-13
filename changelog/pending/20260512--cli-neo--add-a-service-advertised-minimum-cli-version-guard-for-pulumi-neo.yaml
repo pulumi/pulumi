@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli-neo
-  description: Refuse to start a `pulumi neo` task when the service advertises a minimum CLI version newer than the current build
