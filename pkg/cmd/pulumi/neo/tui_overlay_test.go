@@ -95,12 +95,73 @@ func TestCompleteToolCall_NoMatchIsNoOp(t *testing.T) {
 func TestFormatJSON(t *testing.T) {
 	t.Parallel()
 
-	t.Run("pretty prints valid JSON", func(t *testing.T) {
+	t.Run("renders a flat map as key/value lines without JSON syntax", func(t *testing.T) {
 		t.Parallel()
 		got := formatJSON(json.RawMessage(`{"b":2,"a":1}`))
-		// json.MarshalIndent gives deterministic key ordering via map sort,
-		// so the result is stable.
-		assert.Equal(t, "{\n  \"a\": 1,\n  \"b\": 2\n}", got)
+		// Keys sorted, no braces, no quotes, no trailing comma — the whole
+		// point of the YAML-ish renderer.
+		assert.Equal(t, "a: 1\nb: 2", got)
+	})
+
+	t.Run("integer numbers render without decimals or exponent", func(t *testing.T) {
+		t.Parallel()
+		// JSON numbers come back as float64; without special-casing, exit_code:0
+		// could otherwise print "0e+00" depending on the format verb.
+		got := formatJSON(json.RawMessage(`{"exit_code":0,"size":1234567890}`))
+		assert.Equal(t, "exit_code: 0\nsize: 1234567890", got)
+	})
+
+	t.Run("fractional numbers use the shortest decimal form", func(t *testing.T) {
+		t.Parallel()
+		got := formatJSON(json.RawMessage(`{"ratio":0.5}`))
+		assert.Equal(t, "ratio: 0.5", got)
+	})
+
+	t.Run("multi-line string value expands onto indented lines", func(t *testing.T) {
+		t.Parallel()
+		// The classic shell-output case: without this expansion, stdout
+		// containing newlines would render as one long line with literal
+		// "\n" escapes.
+		got := formatJSON(json.RawMessage(`{"stdout":"a\nb\nc"}`))
+		assert.Equal(t, "stdout:\n  a\n  b\n  c", got)
+	})
+
+	t.Run("nested map indents the child block", func(t *testing.T) {
+		t.Parallel()
+		got := formatJSON(json.RawMessage(`{"outer":{"inner":"val"}}`))
+		assert.Equal(t, "outer:\n  inner: val", got)
+	})
+
+	t.Run("top-level string prints verbatim with newlines preserved", func(t *testing.T) {
+		t.Parallel()
+		// A Read tool result is often just the file contents. Quoting and
+		// escaping that would defeat the entire purpose of the overlay.
+		got := formatJSON(json.RawMessage(`"line1\nline2\nline3"`))
+		assert.Equal(t, "line1\nline2\nline3", got)
+	})
+
+	t.Run("top-level array renders each element with a bullet", func(t *testing.T) {
+		t.Parallel()
+		got := formatJSON(json.RawMessage(`[1,2,"three"]`))
+		assert.Equal(t, "- 1\n- 2\n- three", got)
+	})
+
+	t.Run("array of maps continues each map under the bullet", func(t *testing.T) {
+		t.Parallel()
+		got := formatJSON(json.RawMessage(`[{"a":1,"b":2}]`))
+		assert.Equal(t, "- a: 1\n  b: 2", got)
+	})
+
+	t.Run("empty collection renders an explicit placeholder", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, "(empty)", formatJSON(json.RawMessage(`{}`)))
+		assert.Equal(t, "(empty)", formatJSON(json.RawMessage(`[]`)))
+	})
+
+	t.Run("booleans and null stringify directly", func(t *testing.T) {
+		t.Parallel()
+		got := formatJSON(json.RawMessage(`{"ok":true,"bad":false,"none":null}`))
+		assert.Equal(t, "bad: false\nnone: null\nok: true", got)
 	})
 
 	t.Run("falls back to raw bytes when unmarshal fails", func(t *testing.T) {

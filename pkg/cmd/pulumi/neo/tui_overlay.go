@@ -16,6 +16,9 @@ package neo
 
 import (
 	"encoding/json"
+	"fmt"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -202,10 +205,14 @@ func resultHead(rec *toolCallRecord) lipgloss.Style {
 	return overlayResultHeadOK
 }
 
-// formatJSON returns a pretty-printed representation of raw. If raw can't be
-// parsed as JSON it falls back to the raw bytes as a string so the user still
-// sees something. An empty payload renders as "(empty)" so consumers don't
-// have to special-case nil.
+// formatJSON renders raw as a YAML-ish key/value block. Unlike pretty-printed
+// JSON, the output drops curly braces, square brackets, and key/value
+// quoting, and multi-line strings are expanded onto their own indented
+// lines rather than escaped with "\n". This is purely a display format —
+// the result is not meant to round-trip back to JSON.
+//
+// Empty input renders "(empty)" so consumers always see an explicit signal.
+// Invalid JSON falls back to the raw bytes so the user still gets *something*.
 func formatJSON(raw json.RawMessage) string {
 	if len(raw) == 0 {
 		return "(empty)"
@@ -214,11 +221,143 @@ func formatJSON(raw json.RawMessage) string {
 	if err := json.Unmarshal(raw, &v); err != nil {
 		return string(raw)
 	}
-	out, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return string(raw)
+	var b strings.Builder
+	formatValue(&b, v, 0)
+	return strings.TrimRight(b.String(), "\n")
+}
+
+// formatValue dispatches on the dynamic type produced by json.Unmarshal.
+// Top-level scalars (string, number, bool, null) print verbatim; collections
+// recurse through formatMap / formatSlice.
+func formatValue(b *strings.Builder, v any, depth int) {
+	switch x := v.(type) {
+	case map[string]any:
+		formatMap(b, x, depth)
+	case []any:
+		formatSlice(b, x, depth)
+	case string:
+		// At the top level (or as a continuation body) a multi-line string
+		// is printed verbatim so file contents and shell output keep their
+		// real line breaks. The caller is responsible for any leading indent.
+		b.WriteString(x)
+	case bool:
+		b.WriteString(strconv.FormatBool(x))
+	case float64:
+		b.WriteString(formatNumber(x))
+	case nil:
+		b.WriteString("null")
+	default:
+		// json.Unmarshal into `any` only produces the cases above, but be
+		// defensive: print the Go default formatting.
+		fmt.Fprintf(b, "%v", x)
 	}
-	return string(out)
+}
+
+// formatMap emits sorted key/value pairs. A scalar value sits on the same
+// line as its key; a complex (map/array) or multi-line string value starts
+// on the next line, indented two spaces deeper than the key.
+func formatMap(b *strings.Builder, m map[string]any, depth int) {
+	if len(m) == 0 {
+		b.WriteString("(empty)")
+		return
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	pad := strings.Repeat(" ", depth)
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		v := m[k]
+		if isInlineScalar(v) {
+			b.WriteString(pad)
+			b.WriteString(k)
+			b.WriteString(": ")
+			formatValue(b, v, depth+2)
+			continue
+		}
+		// Block form: "key:" on its own line, value indented two further.
+		b.WriteString(pad)
+		b.WriteString(k)
+		b.WriteString(":\n")
+		writeBlock(b, v, depth+2)
+	}
+}
+
+// formatSlice emits one element per line, prefixed with "- ". Scalar
+// elements sit on the same line as the bullet; complex elements have their
+// rendered body indented two columns past the bullet.
+func formatSlice(b *strings.Builder, s []any, depth int) {
+	if len(s) == 0 {
+		b.WriteString("(empty)")
+		return
+	}
+	pad := strings.Repeat(" ", depth)
+	for i, v := range s {
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString(pad)
+		b.WriteString("- ")
+		if isInlineScalar(v) {
+			formatValue(b, v, depth+2)
+			continue
+		}
+		// Render the child, then re-indent its continuation lines so they
+		// align past the "- " marker. The first line of the child output
+		// has no leading pad (we just wrote the bullet); subsequent lines
+		// need the bullet's two-space offset added.
+		var child strings.Builder
+		formatValue(&child, v, 0)
+		rendered := child.String()
+		first, rest, hasRest := strings.Cut(rendered, "\n")
+		b.WriteString(strings.TrimLeft(first, " "))
+		if hasRest {
+			b.WriteString("\n")
+			b.WriteString(indent(rest, pad+"  "))
+		}
+	}
+}
+
+// writeBlock renders v as the body of a "key:" line, indented `depth`
+// spaces on every line so it lines up under the key. Strings are written
+// verbatim with their newlines preserved; maps and arrays defer to
+// formatValue, which threads `depth` down to formatMap / formatSlice so
+// their per-line padding lines up too.
+func writeBlock(b *strings.Builder, v any, depth int) {
+	if s, ok := v.(string); ok {
+		b.WriteString(indent(s, strings.Repeat(" ", depth)))
+		return
+	}
+	formatValue(b, v, depth)
+}
+
+// isInlineScalar reports whether v can be rendered on the same line as its
+// owning key or bullet. Multi-line strings, maps, and arrays cannot — they
+// need their own indented block.
+func isInlineScalar(v any) bool {
+	switch x := v.(type) {
+	case map[string]any, []any:
+		return false
+	case string:
+		return !strings.Contains(x, "\n")
+	default:
+		return true
+	}
+}
+
+// formatNumber prints a JSON number (always float64) without trailing zeros
+// or exponent form. Integer values print as e.g. "0", "42", "-7"; fractional
+// values use the shortest decimal form via strconv.FormatFloat 'g' precision -1.
+func formatNumber(x float64) string {
+	if x == float64(int64(x)) {
+		return strconv.FormatInt(int64(x), 10)
+	}
+	return strconv.FormatFloat(x, 'g', -1, 64)
 }
 
 // wrapForOverlay word-wraps content to width-2 so the 2-space indent in
