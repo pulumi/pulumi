@@ -1799,8 +1799,12 @@ func (pc *Client) StreamNeoTaskEvents(
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("opening Neo event stream: HTTP %d: %s",
-			resp.StatusCode, strings.TrimSpace(string(body)))
+		// Match the shared pulumiAPICall error shape so neo can detect status codes
+		// (e.g. 426) the same way for all three of its endpoints.
+		return nil, &apitype.ErrorResponse{
+			Code:    resp.StatusCode,
+			Message: strings.TrimSpace(string(body)),
+		}
 	}
 
 	stream := make(chan NeoStreamEvent)

@@ -203,6 +203,9 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 				ApprovalMode:      client.NeoApprovalModeManual,
 			}, nil)
 		if err != nil {
+			if warnUpgradeRequired(err, nil) {
+				return nil
+			}
 			return err
 		}
 		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
@@ -276,6 +279,11 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 						)})
 					})
 				if err != nil {
+					if warnUpgradeRequired(err, uiCh) {
+						// The TUI shutdown watcher (gctx cancellation -> p.Quit) will
+						// exit the program after the warning renders.
+						return nil
+					}
 					sendUI(uiCh, UIError{Message: "failed to create Neo task: " + err.Error()})
 					return err
 				}
@@ -424,6 +432,9 @@ func dispatchUserEvents(
 				continue
 			}
 			if err := postEvent(ctx, taskID, ob.event); err != nil {
+				if warnUpgradeRequired(err, uiCh) {
+					continue
+				}
 				sendUI(uiCh, UIWarning{Message: "failed to send event: " + err.Error()})
 			}
 		}

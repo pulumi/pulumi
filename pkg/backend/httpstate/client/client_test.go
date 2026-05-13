@@ -926,6 +926,24 @@ func TestCreateNeoTask(t *testing.T) {
 		require.Nil(t, resp)
 	})
 
+	t.Run("UpgradeRequiredSurfacesAsErrorResponse", func(t *testing.T) {
+		t.Parallel()
+
+		// HTTP 426 with an empty body should still produce an *apitype.ErrorResponse
+		// with Code 426 so the neo command can recognise the upgrade signal.
+		upgradeServer := newMockServer(http.StatusUpgradeRequired, "")
+		defer upgradeServer.Close()
+
+		client := newMockClient(upgradeServer)
+		resp, err := client.CreateNeoTask(
+			t.Context(), "my-org", "hello", "my-stack", "my-project", CreateNeoTaskOptions{})
+		require.Error(t, err)
+		require.Nil(t, resp)
+		var errResp *apitype.ErrorResponse
+		require.ErrorAs(t, err, &errResp)
+		assert.Equal(t, http.StatusUpgradeRequired, errResp.Code)
+	})
+
 	t.Run("RequestShape", func(t *testing.T) {
 		t.Parallel()
 
@@ -1154,6 +1172,24 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, stream)
 		assert.Contains(t, err.Error(), "401")
+	})
+
+	t.Run("UpgradeRequiredSurfacesAsErrorResponse", func(t *testing.T) {
+		t.Parallel()
+
+		// StreamNeoTaskEvents bypasses the shared pulumiAPICall path, so verify it
+		// returns the same *apitype.ErrorResponse shape (with Code 426) that the
+		// REST-style endpoints do — neo command relies on this for its upgrade warning.
+		server := newMockServer(http.StatusUpgradeRequired, "")
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		require.Error(t, err)
+		assert.Nil(t, stream)
+		var errResp *apitype.ErrorResponse
+		require.ErrorAs(t, err, &errResp)
+		assert.Equal(t, http.StatusUpgradeRequired, errResp.Code)
 	})
 
 	t.Run("ContextCancelClosesStream", func(t *testing.T) {

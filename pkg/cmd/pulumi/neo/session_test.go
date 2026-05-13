@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"strings"
 	"sync"
 	"testing"
@@ -620,6 +621,45 @@ func TestSession_RunWrapsStreamOpenError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "opening event stream")
 	assert.Contains(t, err.Error(), "boom")
+}
+
+//nolint:paralleltest // mutates package-global upgradeWarnOnce
+func TestSession_RunHandlesUpgradeRequiredOnStreamOpen(t *testing.T) {
+	resetUpgradeWarnOnceForTest()
+
+	ch := make(chan UIEvent, 4)
+	upgErr := &apitype.ErrorResponse{Code: http.StatusUpgradeRequired}
+
+	s := &Session{
+		Client:   &errStreamer{err: upgErr},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: ch,
+	}
+	err := s.Run(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, ch, 1)
+	warn, ok := (<-ch).(UIWarning)
+	require.True(t, ok)
+	assert.Contains(t, warn.Message, "Pulumi CLI is out of date")
+}
+
+//nolint:paralleltest // mutates package-global upgradeWarnOnce
+func TestSession_RunHandlesUpgradeRequiredMidStream(t *testing.T) {
+	resetUpgradeWarnOnceForTest()
+
+	ch := make(chan UIEvent, 4)
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Err: &apitype.ErrorResponse{Code: http.StatusUpgradeRequired}}
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t", UIEvents: ch}
+	err := s.Run(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, ch, 1)
+	_, ok := (<-ch).(UIWarning)
+	require.True(t, ok)
 }
 
 func TestSession_RunReturnsStreamError(t *testing.T) {

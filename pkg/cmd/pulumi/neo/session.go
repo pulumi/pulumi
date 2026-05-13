@@ -63,6 +63,9 @@ type Session struct {
 func (s *Session) Run(ctx context.Context) error {
 	stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID)
 	if err != nil {
+		if warnUpgradeRequired(err, s.UIEvents) {
+			return nil
+		}
 		return fmt.Errorf("opening event stream: %w", err)
 	}
 
@@ -77,6 +80,9 @@ func (s *Session) Run(ctx context.Context) error {
 				return nil
 			}
 			if evt.Err != nil {
+				if warnUpgradeRequired(evt.Err, s.UIEvents) {
+					return nil
+				}
 				return evt.Err
 			}
 			if err := s.handleEvent(ctx, evt.Data); err != nil {
@@ -156,6 +162,11 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 			Name:       call.Name,
 		}
 		if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, execEvt); err != nil {
+			if warnUpgradeRequired(err, s.UIEvents) {
+				// The agent runtime won't transition this call into "running" without
+				// exec_tool_call, so we can't safely run the batch. Bail out cleanly.
+				return nil
+			}
 			return fmt.Errorf("posting exec_tool_call for %q: %w", call.Name, err)
 		}
 
@@ -170,7 +181,9 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 		ToolResults: items,
 	}
 	if err := s.Client.PostNeoTaskUserEvent(ctx, s.OrgName, s.TaskID, result); err != nil {
-		s.logf("error: posting tool_result: %v", err)
+		if !warnUpgradeRequired(err, s.UIEvents) {
+			s.logf("error: posting tool_result: %v", err)
+		}
 	}
 
 	return nil
