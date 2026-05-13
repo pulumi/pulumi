@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -128,8 +129,8 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	}
 	pc := cloudBe.Client()
 
-	if err := checkNeoMinCLIVersion(cloudBe.Capabilities(ctx), version.Version); err != nil {
-		return err
+	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
+		return result.FprintBailf(os.Stderr, "%s", msg)
 	}
 
 	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)

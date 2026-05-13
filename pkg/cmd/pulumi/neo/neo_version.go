@@ -22,26 +22,27 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-// checkNeoMinCLIVersion enforces the service-advertised minimum CLI version for
-// `pulumi neo`. Missing or unparseable versions fall through silently so a dev build
-// (empty version.Version) or a garbage service response can't lock users out.
-func checkNeoMinCLIVersion(caps apitype.Capabilities, currentVersion string) error {
+// neoUpgradeMessage returns a user-facing upgrade message when the build is
+// older than the service-advertised minimum, or "" otherwise. Missing or
+// unparseable versions fall through silently so a dev build (empty
+// version.Version) or a garbled service response can't lock users out.
+func neoUpgradeMessage(caps apitype.Capabilities, currentVersion string) string {
 	if caps.NeoCLIMode == nil || caps.NeoCLIMode.MinCLIVersion == "" {
-		return nil
+		return ""
 	}
 	required, err := semver.ParseTolerant(caps.NeoCLIMode.MinCLIVersion)
 	if err != nil {
-		return nil
+		return ""
 	}
 	current, err := semver.ParseTolerant(currentVersion)
 	if err != nil {
-		return nil
+		return ""
 	}
 	if current.GTE(required) {
-		return nil
+		return ""
 	}
-	return fmt.Errorf(
-		"pulumi neo requires CLI version %s or newer (you have %s); "+
-			"please upgrade to use this feature: https://www.pulumi.com/docs/install/",
+	return fmt.Sprintf(
+		"`pulumi neo` requires Pulumi CLI %s or newer; you are running %s.\n"+
+			"To upgrade, see https://www.pulumi.com/docs/install/",
 		required, current)
 }
