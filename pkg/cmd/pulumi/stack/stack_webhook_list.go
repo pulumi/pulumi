@@ -17,6 +17,7 @@ package stack
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -100,7 +101,8 @@ func defaultStackWebhookListClientFactory(
 
 	cloudStack, ok := s.(httpstate.Stack)
 	if !ok {
-		return nil, client.StackIdentifier{}, fmt.Errorf("stack webhooks require the Pulumi Cloud backend; run `pulumi login`")
+		return nil, client.StackIdentifier{},
+			errors.New("stack webhooks require the Pulumi Cloud backend; run `pulumi login`")
 	}
 
 	ref := cloudStack.Ref()
@@ -163,13 +165,13 @@ type webhookListEnvelope struct {
 }
 
 type webhookJSON struct {
-	ID       string   `json:"id"`
-	Name     string   `json:"name"`
-	URL      string   `json:"url"`
-	Format   string   `json:"format"`
-	Active   bool     `json:"active"`
-	Groups   []string `json:"eventGroups"`
-	Filters  []string `json:"events"`
+	ID      string   `json:"id"`
+	Name    string   `json:"name"`
+	URL     string   `json:"url"`
+	Format  string   `json:"format"`
+	Active  bool     `json:"active"`
+	Groups  []string `json:"eventGroups"`
+	Filters []string `json:"events"`
 }
 
 func toWebhookJSON(wh apitype.Webhook) webhookJSON {
@@ -186,13 +188,13 @@ func toWebhookJSON(wh apitype.Webhook) webhookJSON {
 		filters = []string{}
 	}
 	return webhookJSON{
-		ID:       wh.Name,
-		Name:     wh.DisplayName,
-		URL:      wh.PayloadURL,
-		Format:   format,
-		Active:   wh.Active,
-		Groups:   groups,
-		Filters:  filters,
+		ID:      wh.Name,
+		Name:    wh.DisplayName,
+		URL:     wh.PayloadURL,
+		Format:  format,
+		Active:  wh.Active,
+		Groups:  groups,
+		Filters: filters,
 	}
 }
 

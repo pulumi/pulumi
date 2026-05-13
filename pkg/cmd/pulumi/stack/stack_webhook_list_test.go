@@ -350,7 +350,7 @@ func TestStackWebhookList_DefaultCmd(t *testing.T) {
 	// Verify that newStackWebhookListCmd() returns a well-formed command.
 	cmd := newStackWebhookListCmd()
 	assert.Equal(t, "list", cmd.Use)
-	assert.NotNil(t, cmd.RunE)
+	require.NotNil(t, cmd.RunE)
 
 	f := cmd.Flags().Lookup("output")
 	require.NotNil(t, f)
