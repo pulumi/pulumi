@@ -1113,6 +1113,59 @@ func TestStructuralTypeChecks(t *testing.T) {
 		assert.True(t, valueStructurallyTypedAs(complexFittingValue, complexUnionOfObjects))
 	})
 
+	t.Run("Enum", func(t *testing.T) {
+		t.Parallel()
+
+		// An enum is represented on the wire as a value of its underlying
+		// primitive type. valueStructurallyTypedAs must look through the enum
+		// to its ElementType so a primitive value can be accepted.
+		stringEnum := &schema.EnumType{
+			Token:       "a:index:S",
+			ElementType: schema.StringType,
+			Elements:    []*schema.Enum{{Value: "x"}, {Value: "y"}},
+		}
+		boolEnum := &schema.EnumType{
+			Token:       "a:index:B",
+			ElementType: schema.BoolType,
+			Elements:    []*schema.Enum{{Value: true}, {Value: false}},
+		}
+
+		assert.True(t, valueStructurallyTypedAs(property.New("x"), stringEnum))
+		assert.True(t, valueStructurallyTypedAs(property.New(false), boolEnum))
+		// A bool against a string-typed enum is still rejected.
+		assert.False(t, valueStructurallyTypedAs(property.New(true), stringEnum))
+		// Enum wrapped in InputType is unwrapped too.
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(false),
+			&schema.InputType{ElementType: boolEnum}))
+	})
+
+	t.Run("MissingTypeCases", func(t *testing.T) {
+		t.Parallel()
+
+		// schema.JSONType and schema.AnyResourceType share the
+		// "pulumi:pulumi:Any" token with schema.AnyType but are distinct
+		// singletons. All three accept any value structurally.
+		assert.True(t, valueStructurallyTypedAs(property.New(""), schema.JSONType))
+		assert.True(t, valueStructurallyTypedAs(property.New(false), schema.JSONType))
+		assert.True(t, valueStructurallyTypedAs(property.New(""), schema.AnyResourceType))
+		assert.True(t, valueStructurallyTypedAs(property.New(false), schema.AnyResourceType))
+
+		// A property.Map value against *schema.MapType must accept entries
+		// whose values match the element type (the previous implementation
+		// only handled ObjectType and UnionType for IsMap values).
+		stringMap := &schema.MapType{ElementType: schema.StringType}
+		assert.True(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"k": property.New("v")}),
+			stringMap))
+		// Empty maps trivially match.
+		assert.True(t, valueStructurallyTypedAs(makeObject(nil), stringMap))
+		// Mismatched element type is still rejected.
+		assert.False(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"k": property.New(42.0)}),
+			stringMap))
+	})
+
 	t.Run("UnionOfInputWrappedObjects", func(t *testing.T) {
 		t.Parallel()
 
