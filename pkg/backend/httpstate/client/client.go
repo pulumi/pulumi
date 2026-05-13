@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -66,6 +67,14 @@ const (
 	NeoApprovalModeAuto NeoApprovalMode = "auto"
 )
 
+// NeoTaskSource identifies the origin that triggered a Neo task.
+type NeoTaskSource string
+
+const (
+	// NeoTaskSourceCLI tags tasks created from the Pulumi CLI.
+	NeoTaskSourceCLI NeoTaskSource = "cli"
+)
+
 // NeoTaskRequest represents a request to create a Neo task. This is a thin client-side
 // shape that the server deserializes into apitype.CreateAgentTaskRequest, so the JSON
 // field names must match the IDL-generated tags exactly.
@@ -85,6 +94,10 @@ type NeoTaskRequest struct {
 	// this by activating PlanModeTracker for the task and gating the exit on an approved
 	// exit_plan_mode call. JSON tag is camelCase to match the service IDL.
 	PlanMode bool `json:"planMode,omitempty"`
+	// Source identifies the origin that triggered the task. The CLI always sends
+	// NeoTaskSourceCLI; the server validates against apitype.AgentTaskSource and defaults
+	// to "api" if omitted.
+	Source NeoTaskSource `json:"source,omitempty"`
 }
 
 // NeoTaskMessage represents the message content for a Neo task.
@@ -679,6 +692,15 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 		return apitype.Stack{}, err
 	}
 	return stack, nil
+}
+
+// ListStackWebhooks returns all webhooks configured for the given stack.
+func (pc *Client) ListStackWebhooks(ctx context.Context, stackID StackIdentifier) ([]apitype.Webhook, error) {
+	var resp []apitype.Webhook
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "hooks"), nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
@@ -1721,6 +1743,7 @@ func (pc *Client) CreateNeoTask(
 		ToolExecutionMode: opts.ToolExecutionMode,
 		ApprovalMode:      opts.ApprovalMode,
 		PlanMode:          opts.PlanMode,
+		Source:            NeoTaskSourceCLI,
 	}
 	// Only attach a stack entity when we actually have one — the backend rejects
 	// entity_diff entries with empty name/project as "unable to access stack".
@@ -2231,21 +2254,35 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 	}
 }
 
-func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-	url := "/api/registry/templates?limit=499"
-	if name != nil {
-		url += "&name=" + *name
+func (pc *Client) ListTemplates(
+	ctx context.Context, opts registry.ListTemplatesOptions,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	query := url.Values{}
+	query.Set("limit", "499")
+	if opts.Name != "" {
+		query.Set("name", opts.Name)
+	}
+	if opts.Org != "" {
+		query.Set("orgLogin", opts.Org)
+	}
+	if opts.Search != "" {
+		query.Set("search", opts.Search)
 	}
 
 	var continuationToken *string
 	return func(f func(apitype.TemplateMetadata, error) bool) {
 		for {
-			queryURL := url
+			pageQuery := query
 			if continuationToken != nil {
-				queryURL += "&continuationToken=" + *continuationToken
+				// Clone so we don't mutate the captured map between iterations.
+				pageQuery = url.Values{}
+				for k, v := range query {
+					pageQuery[k] = v
+				}
+				pageQuery.Set("continuationToken", *continuationToken)
 			}
 			var resp apitype.ListTemplatesResponse
-			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			err := pc.restCall(ctx, "GET", "/api/registry/templates?"+pageQuery.Encode(), nil, nil, &resp)
 			if err != nil {
 				f(apitype.TemplateMetadata{}, err)
 				return

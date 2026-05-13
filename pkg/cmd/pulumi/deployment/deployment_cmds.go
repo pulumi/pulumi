@@ -36,6 +36,7 @@ func newDeploymentListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List deployments for a stack",
+		Long:   "[EXPERIMENTAL] List deployments for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -61,6 +62,7 @@ func newDeploymentGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Get details for a specific deployment",
+		Long:   "[EXPERIMENTAL] Get details for a specific deployment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -87,7 +89,7 @@ func newDeploymentCancelCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "cancel",
 		Short:  "Cancel an in-progress deployment",
-		Long: "Cancel an in-progress deployment.\n" +
+		Long: "[EXPERIMENTAL] Cancel an in-progress deployment.\n" +
 			"\n" +
 			"Canceling a deployment is a dangerous action and may leave the stack in\n" +
 			"an inconsistent state if canceled during the execution of a Pulumi operation.",
@@ -124,6 +126,7 @@ func newDeploymentLogCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "log",
 		Short:  "Retrieve execution logs for a deployment",
+		Long:   "[EXPERIMENTAL] Retrieve execution logs for a deployment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -155,6 +158,7 @@ func newDeploymentSettingsGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Retrieve the deployment settings for a stack",
+		Long:   "[EXPERIMENTAL] Retrieve the deployment settings for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -179,7 +183,7 @@ func newDeploymentSettingsEditCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "edit",
 		Short:  "Create or update deployment settings for a stack",
-		Long: "Create or update deployment settings for a stack.\n" +
+		Long: "[EXPERIMENTAL] Create or update deployment settings for a stack.\n" +
 			"\n" +
 			"If no settings exist, they are created. If settings already exist, the\n" +
 			"request body is merged with the current settings.",

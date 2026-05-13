@@ -955,6 +955,9 @@ func TestCreateNeoTask(t *testing.T) {
 		assert.Equal(t, http.MethodPost, gotMethod)
 		assert.Equal(t, "/api/preview/agents/my-org/tasks", gotPath)
 		assert.Equal(t, "cli", gotBody["toolExecutionMode"])
+		// source must be "cli" on every task created via the CLI so the server can
+		// attribute the task to its origin (matches apitype.AgentTaskSourceCli).
+		assert.Equal(t, "cli", gotBody["source"], "CLI-originated tasks must send source:cli")
 		// approvalMode is omitempty — must not appear in the body when empty so the
 		// server falls back to its default (auto) mode.
 		assert.NotContains(t, gotBody, "approvalMode", "empty approvalMode must be omitted")

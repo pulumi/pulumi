@@ -36,6 +36,7 @@ func newStackHistoryEventsCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "events",
 		Short:  "Retrieve engine events for an update",
+		Long:   "[EXPERIMENTAL] Retrieve engine events for an update.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

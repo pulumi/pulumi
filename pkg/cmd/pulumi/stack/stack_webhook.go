@@ -28,6 +28,7 @@ func newStackWebhookCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "webhook",
 		Short:  "Manage stack webhooks",
+		Long:   "[EXPERIMENTAL] Manage stack webhooks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -54,26 +55,7 @@ func stackWebhookHookArg() *constrictor.Arguments {
 	}
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23062]: Not yet implemented.
-func newStackWebhookListCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List all webhooks configured for a stack",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
+// newStackWebhookListCmd is defined in stack_webhook_list.go.
 
 // TODO[https://github.com/pulumi/pulumi/issues/23061]: Not yet implemented.
 func newStackWebhookGetCmd() *cobra.Command {
@@ -83,6 +65,7 @@ func newStackWebhookGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Get the details of a stack webhook",
+		Long:   "[EXPERIMENTAL] Get the details of a stack webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -112,6 +95,7 @@ func newStackWebhookNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new stack webhook",
+		Long:   "[EXPERIMENTAL] Create a new stack webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -149,6 +133,7 @@ func newStackWebhookEditCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "edit",
 		Short:  "Update a stack webhook's configuration",
+		Long:   "[EXPERIMENTAL] Update a stack webhook's configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -178,6 +163,7 @@ func newStackWebhookRemoveCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "remove",
 		Short:  "Delete a stack webhook",
+		Long:   "[EXPERIMENTAL] Delete a stack webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -199,6 +185,7 @@ func newStackWebhookPingCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "ping",
 		Short:  "Send a test ping to a stack webhook",
+		Long:   "[EXPERIMENTAL] Send a test ping to a stack webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -218,6 +205,7 @@ func newStackWebhookDeliveryCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "delivery",
 		Short:  "Inspect stack webhook deliveries",
+		Long:   "[EXPERIMENTAL] Inspect stack webhook deliveries.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -238,6 +226,7 @@ func newStackWebhookDeliveryListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List recent deliveries for a stack webhook",
+		Long:   "[EXPERIMENTAL] List recent deliveries for a stack webhook.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -259,6 +248,7 @@ func newStackWebhookDeliveryGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Redeliver a specific webhook event",
+		Long:   "[EXPERIMENTAL] Redeliver a specific webhook event.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

@@ -121,8 +121,10 @@ func TestFilterOnName(t *testing.T) {
 	})
 
 	t.Run("org-backed-templates - disable registry resolve = false", func(t *testing.T) {
-		listTemplates := func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-			assert.Nil(t, name)
+		listTemplates := func(
+			ctx context.Context, opts registry.ListTemplatesOptions,
+		) iter.Seq2[apitype.TemplateMetadata, error] {
+			assert.Equal(t, registry.ListTemplatesOptions{}, opts)
 			return func(yield func(apitype.TemplateMetadata, error) bool) {
 				if !yield(apitype.TemplateMetadata{
 					Name:      "name1",
@@ -301,7 +303,9 @@ func TestSurfaceListTemplateErrors_RegistryTemplates(t *testing.T) {
 
 	mockRegistry := &backend.MockCloudRegistry{
 		Mock: registry.Mock{
-			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+			ListTemplatesF: func(
+				ctx context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.TemplateMetadata, error] {
 				return func(yield func(apitype.TemplateMetadata, error) bool) {
 					yield(apitype.TemplateMetadata{}, somethingWentWrong)
 				}
@@ -388,7 +392,9 @@ func TestSurfaceOnEmptyError_RegistryTemplates(t *testing.T) {
 
 	mockRegistry := &backend.MockCloudRegistry{
 		Mock: registry.Mock{
-			ListTemplatesF: func(_ context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+			ListTemplatesF: func(
+				_ context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.TemplateMetadata, error] {
 				return func(func(apitype.TemplateMetadata, error) bool) {}
 			},
 		},
@@ -559,7 +565,9 @@ func createMockRegistrySource(
 ) *Source {
 	mockRegistry := &backend.MockCloudRegistry{
 		Mock: registry.Mock{
-			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+			ListTemplatesF: func(
+				ctx context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.TemplateMetadata, error] {
 				return func(yield func(apitype.TemplateMetadata, error) bool) {
 					yield(apitype.TemplateMetadata{
 						Name:        "name1",
@@ -650,8 +658,10 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 	ctx := testContext(t)
 	mockRegistry := &backend.MockCloudRegistry{
 		Mock: registry.Mock{
-			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-				assert.Nil(t, name)
+			ListTemplatesF: func(
+				ctx context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.TemplateMetadata, error] {
+				assert.Equal(t, registry.ListTemplatesOptions{}, opts)
 				return func(yield func(apitype.TemplateMetadata, error) bool) {
 					if !yield(apitype.TemplateMetadata{
 						Name:      "gh-org/repo/name",
@@ -710,8 +720,10 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 	ctx := testContext(t)
 	mockRegistry := &backend.MockCloudRegistry{
 		Mock: registry.Mock{
-			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-				assert.Nil(t, name)
+			ListTemplatesF: func(
+				ctx context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.TemplateMetadata, error] {
+				assert.Equal(t, registry.ListTemplatesOptions{}, opts)
 				return func(yield func(apitype.TemplateMetadata, error) bool) {
 					if !yield(apitype.TemplateMetadata{
 						Name:        "gh-org/repo/target",
@@ -790,7 +802,9 @@ func TestRegistryTemplateResolution(t *testing.T) {
 
 	mockRegistry := &backend.MockCloudRegistry{
 		Mock: registry.Mock{
-			ListTemplatesF: func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+			ListTemplatesF: func(
+				ctx context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.TemplateMetadata, error] {
 				return func(yield func(apitype.TemplateMetadata, error) bool) {
 					yield(apitype.TemplateMetadata{
 						Name:        "csharp-documented",

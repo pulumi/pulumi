@@ -37,7 +37,7 @@ type Mock struct {
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
 
-	ListTemplatesF func(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+	ListTemplatesF func(ctx context.Context, opts ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error]
 
 	DownloadTemplateF func(ctx context.Context, downloadURL string) (io.ReadCloser, error)
 }
@@ -67,11 +67,13 @@ func (m Mock) GetTemplate(
 	return m.GetTemplateF(ctx, source, publisher, name, version)
 }
 
-func (m Mock) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
+func (m Mock) ListTemplates(
+	ctx context.Context, opts ListTemplatesOptions,
+) iter.Seq2[apitype.TemplateMetadata, error] {
 	if m.ListTemplatesF == nil {
 		panic("registry.Mock.ListTemplatesF not implemented")
 	}
-	return m.ListTemplatesF(ctx, name)
+	return m.ListTemplatesF(ctx, opts)
 }
 
 func (m Mock) DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error) {
