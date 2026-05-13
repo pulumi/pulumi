@@ -38,7 +38,8 @@ func main() {
 
 func run() int {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Usage: go run ./sdk/go/tools/automation <path-to-specification.json> [boilerplate-dir]")
+		fmt.Fprintln(os.Stderr,
+			"Usage: go run ./sdk/go/tools/automation <spec.json> [boilerplate-dir] [output-dir] [api-import-base]")
 		return 1
 	}
 	specPath, err := filepath.Abs(os.Args[1])
@@ -55,6 +56,35 @@ func run() int {
 		boilerplateDir = os.Args[2]
 	}
 
+	// outputDir is where api.go, commands.go and the per-command opt
+	// packages are written. Default lands next to the generator source,
+	// stable across CWDs via runtime.Caller. Production callers pass an
+	// absolute path under sdk/go/auto/.
+	outputDir := ""
+	if len(os.Args) >= 4 {
+		outputDir = os.Args[3]
+	}
+	// apiImportBase is the Go import path of outputDir. It is the prefix
+	// the generated commands.go uses to reach each per-command opt
+	// package (e.g. <apiImportBase>/optcancel). Defaults to match the
+	// default output path.
+	apiImportBase := ""
+	if len(os.Args) >= 5 {
+		apiImportBase = os.Args[4]
+	}
+
+	if outputDir == "" {
+		dir, err := defaultOutputDir()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to resolve output directory: %v\n", err)
+			return 1
+		}
+		outputDir = dir
+	}
+	if apiImportBase == "" {
+		apiImportBase = defaultAPIImportBase
+	}
+
 	specBytes, err := os.ReadFile(specPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read specification: %v\n", err)
@@ -67,14 +97,6 @@ func run() int {
 		return 1
 	}
 
-	// Output goes next to the generator source, regardless of CWD. The test
-	// suite, `go generate`, and ad-hoc manual runs all end up in the same
-	// place. `runtime.Caller(0)` gives us this file's absolute path.
-	outputDir, err := defaultOutputDir()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to resolve output directory: %v\n", err)
-		return 1
-	}
 	// Best-effort removal of the legacy single-file output, if present.
 	_ = os.Remove(filepath.Join(outputDir, "main.go"))
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
@@ -127,32 +149,24 @@ func run() int {
 		}
 	}
 
-	// The API host package is a verbatim copy of the chosen boilerplate
-	// plus a generated commands.go that appends one method per executable
-	// CLI node.
-	automationDir := filepath.Join(outputDir, "automation")
-	if err := os.MkdirAll(automationDir, 0o755); err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create automation directory: %v\n", err)
-		return 1
-	}
-
+	// api.go is a verbatim copy of the chosen boilerplate.
 	apiSource, err := readBoilerplateFile(boilerplateDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read boilerplate: %v\n", err)
 		return 1
 	}
-	if err := os.WriteFile(filepath.Join(automationDir, "api.go"), apiSource, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(outputDir, "api.go"), apiSource, 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write api.go: %v\n", err)
 		return 1
 	}
 
-	commandsSource, err := generateCommandsFile(spec)
+	commandsSource, err := generateCommandsFile(spec, apiImportBase)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to generate commands: %v\n", err)
 		return 1
 	}
 	commandsSource = append([]byte(copyrightHeader+generatedMarker), commandsSource...)
-	if err := os.WriteFile(filepath.Join(automationDir, "commands.go"), commandsSource, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(outputDir, "commands.go"), commandsSource, 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to write commands.go: %v\n", err)
 		return 1
 	}
@@ -331,6 +345,11 @@ func buildOptionsImports() *ast.GenDecl {
 // that generated code consumes. The integration PR (#4) is where this flips
 // over to the real sdk/go/auto address.
 const basePackageImportPath = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
+
+// defaultAPIImportBase is the Go import path of the default outputDir.
+// It anchors the per-command opt-package imports emitted by commands.go
+// (each becomes `<defaultAPIImportBase>/optfoo`).
+const defaultAPIImportBase = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation"
 
 // acronyms lists the words that `toGoCamel` uppercases wholesale to match
 // the Go convention golint enforces (and the broader stdlib style).
@@ -644,13 +663,15 @@ func generatorDir() (string, error) {
 	return filepath.Dir(thisFile), nil
 }
 
-// defaultOutputDir returns `<generatorDir>/output`.
+// defaultOutputDir returns `<generatorDir>/output/automation`. The trailing
+// `automation` segment matches the package name written into api.go and
+// commands.go and is reflected in defaultAPIImportBase.
 func defaultOutputDir() (string, error) {
 	dir, err := generatorDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "output"), nil
+	return filepath.Join(dir, "output", "automation"), nil
 }
 
 // readBoilerplateFile returns the contents of the single .go file inside dir.
@@ -699,8 +720,10 @@ type methodArg struct {
 }
 
 // generateCommandsFile walks the spec and produces the contents of
-// output/automation/commands.go — one method per executable command/menu.
-func generateCommandsFile(root Structure) ([]byte, error) {
+// commands.go — one method per executable command/menu. apiImportBase
+// is the Go import path of the directory commands.go is written into;
+// the per-command opt-package imports are derived from it.
+func generateCommandsFile(root Structure, apiImportBase string) ([]byte, error) {
 	var methods []commandMethod
 	optPkgs := map[string]struct{}{}
 	if err := walkCommands(root, nil, nil, &methods, optPkgs); err != nil {
@@ -715,13 +738,15 @@ func generateCommandsFile(root Structure) ([]byte, error) {
 	sort.Strings(imports)
 
 	data := struct {
-		BasePkg    string
-		OptImports []string
-		Methods    []commandMethod
+		BasePkg       string
+		APIImportBase string
+		OptImports    []string
+		Methods       []commandMethod
 	}{
-		BasePkg:    basePackageImportPath,
-		OptImports: imports,
-		Methods:    methods,
+		BasePkg:       basePackageImportPath,
+		APIImportBase: apiImportBase,
+		OptImports:    imports,
+		Methods:       methods,
 	}
 
 	var buf bytes.Buffer
@@ -1026,7 +1051,7 @@ import (
 	"fmt"
 
 	"{{.BasePkg}}"
-{{range .OptImports}}	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/{{.}}"
+{{range .OptImports}}	"{{$.APIImportBase}}/{{.}}"
 {{end}})
 
 // Silence unused-import warnings when a spec has no commands with args.

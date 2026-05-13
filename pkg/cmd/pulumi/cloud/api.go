@@ -61,7 +61,7 @@ type apiCommand struct {
 	silent          bool
 	verbose         bool
 	dryRun          bool
-	format          string
+	output          string
 	envelopeVersion int
 }
 
@@ -99,7 +99,7 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 		"Dump full request and response to stderr")
 	pf.BoolVar(&api.dryRun, "dry-run", false,
 		"Print the resolved request without sending it")
-	pf.StringVar(&api.format, "format", "",
+	pf.StringVar(&api.output, "output", "",
 		"Drive content negotiation and rendering. Default uses the op's primary "+
 			"response content type (usually JSON). `json` or `markdown` request that "+
 			"format via the Accept header — rejected if the op's spec doesn't declare it. "+
@@ -181,7 +181,7 @@ func NewAPICmd() *cobra.Command {
 			"  pulumi api UpdateStackTag --input ./tag.json\n" +
 			"  cat tag.json | pulumi api UpdateStackTag --input -\n\n" +
 			"  # Filter the JSON response with jq.\n" +
-			"  pulumi api /api/user --format=json | jq '.githubLogin'\n\n" +
+			"  pulumi api /api/user --output=json | jq '.githubLogin'\n\n" +
 			"  # Follow pagination cursors and stream the combined result to jq.\n" +
 			"  pulumi api ListStacks --paginate | jq '.stacks[].name'\n\n" +
 			"  # Extract just the status line + headers without the body.\n" +
@@ -270,7 +270,7 @@ func runAPI(cmd *cobra.Command, args []string, api *apiCommand) error {
 
 	query := mergeQuery(rawQuery, queryExtras)
 
-	accept, err := negotiateAccept(mr.Op, api.format)
+	accept, err := negotiateAccept(mr.Op, api.output)
 	if err != nil {
 		return err
 	}
@@ -444,13 +444,13 @@ func writeStatusAndHeaders(w io.Writer, resp *http.Response) {
 }
 
 // negotiateAccept picks the Accept header value to send for op based on the
-// user's --format flag. When --format is unset we use the op's primary
+// user's --output flag. When --output is unset we use the op's primary
 // response content type (historically JSON for Pulumi Cloud). When the user
 // explicitly asks for JSON or markdown we validate against the op's declared
 // response content types so the call fails fast with a helpful message
 // instead of surprising the caller with a 406 from the server.
-func negotiateAccept(op *Operation, format string) (string, error) {
-	switch strings.ToLower(format) {
+func negotiateAccept(op *Operation, output string) (string, error) {
+	switch strings.ToLower(output) {
 	case "", "raw", "auto", "default":
 		if op.ResponseContentType != "" {
 			return op.ResponseContentType, nil
@@ -462,34 +462,34 @@ func negotiateAccept(op *Operation, format string) (string, error) {
 				return ct, nil
 			}
 		}
-		return "", unsupportedFormatError(op, "json", "application/json")
+		return "", unsupportedOutputError(op, "json", "application/json")
 	case "markdown", "md":
 		for _, ct := range op.SuccessContentTypes {
 			if strings.EqualFold(ct, "text/markdown") {
 				return ct, nil
 			}
 		}
-		return "", unsupportedFormatError(op, "markdown", "text/markdown")
+		return "", unsupportedOutputError(op, "markdown", "text/markdown")
 	default:
 		return "", NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
-			"invalid --format value: "+format).
-			WithField("format").
-			WithSuggestions("--format=json", "--format=markdown", "--format=raw")
+			"invalid --output value: "+output).
+			WithField("output").
+			WithSuggestions("--output=json", "--output=markdown", "--output=raw")
 	}
 }
 
-// unsupportedFormatError returns a caller-actionable error when the user
-// asks for a format the op doesn't declare. The suggestions surface the
-// content types the op does declare so the user can pick one that works.
-func unsupportedFormatError(op *Operation, want, mediaType string) error {
+// unsupportedOutputError returns a caller-actionable error when the user
+// asks for an output format the op doesn't declare. The suggestions surface
+// the content types the op does declare so the user can pick one that works.
+func unsupportedOutputError(op *Operation, want, mediaType string) error {
 	msg := fmt.Sprintf("operation %s does not declare a %s response", op.OperationID, mediaType)
-	suggestions := []string{"omit --format to use the op's default content type"}
+	suggestions := []string{"omit --output to use the op's default content type"}
 	if len(op.SuccessContentTypes) > 0 {
 		suggestions = append(suggestions,
 			"declared response content types: "+strings.Join(op.SuccessContentTypes, ", "))
 	}
 	return NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags, msg).
-		WithField("format").
+		WithField("output").
 		WithSuggestions(suggestions...)
 }
 

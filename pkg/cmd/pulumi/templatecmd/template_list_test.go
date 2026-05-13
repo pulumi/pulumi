@@ -285,7 +285,7 @@ func TestNewTemplateListCmd_FlagsAndAliases(t *testing.T) {
 	var captured registry.ListTemplatesOptions
 	reg := newMockListRegistry(t, &captured, sampleTemplates(), nil)
 
-	cmd := NewTemplateListCmd(registryFactory(reg))
+	cmd := newTemplateListCmd(registryFactory(reg))
 	assert.Equal(t, "list", cmd.Name())
 	assert.Contains(t, cmd.Aliases, "ls")
 
@@ -315,7 +315,7 @@ func TestNewTemplateListCmd_NilFactoryUsesDefault(t *testing.T) {
 	// Constructing with nil installs the default factory; we only verify the
 	// command is well-formed without actually invoking it (the default factory
 	// would touch the workspace and Pulumi Cloud).
-	cmd := NewTemplateListCmd(nil)
+	cmd := newTemplateListCmd(nil)
 	require.NotNil(t, cmd)
 	assert.Equal(t, "list", cmd.Name())
 }

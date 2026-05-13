@@ -33,7 +33,7 @@ the Cloud-Ready CLI epic and is not yet considered stable.`,
 
 	cmd.AddCommand(
 		newTemplatePublishCmd(),
-		NewTemplateListCmd(nil),
+		newTemplateListCmd(nil),
 	)
 	return cmd
 }

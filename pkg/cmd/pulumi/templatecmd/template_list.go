@@ -46,10 +46,10 @@ type templateListCmd struct {
 	registryFactory func(ctx context.Context) registry.Registry
 }
 
-// NewTemplateListCmd builds the `pulumi template list` command. registryFactory
+// newTemplateListCmd builds the `pulumi template list` command. registryFactory
 // produces the [registry.Registry] used to fetch templates; pass nil to use the
 // default factory derived from the current backend and login state.
-func NewTemplateListCmd(
+func newTemplateListCmd(
 	registryFactory func(ctx context.Context) registry.Registry,
 ) *cobra.Command {
 	if registryFactory == nil {

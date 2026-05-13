@@ -227,7 +227,7 @@ func TestNegotiateAccept_MarkdownNotDeclared(t *testing.T) {
 	assert.Contains(t, joined, "application/json")
 }
 
-// TestNegotiateAccept_InvalidValue rejects unknown --format values.
+// TestNegotiateAccept_InvalidValue rejects unknown --output values.
 func TestNegotiateAccept_InvalidValue(t *testing.T) {
 	t.Parallel()
 	_, err := negotiateAccept(&Operation{}, "yaml")

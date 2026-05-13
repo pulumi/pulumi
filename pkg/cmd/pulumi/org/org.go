@@ -81,6 +81,11 @@ func NewOrgCmd() *cobra.Command {
 	cmd.AddCommand(newOrgSetDefaultCmd())
 	cmd.AddCommand(newOrgGetDefaultCmd())
 	cmd.AddCommand(newSearchCmd())
+	cmd.AddCommand(newOrgWebhookCmd())
+	cmd.AddCommand(newOrgRoleCmd())
+	cmd.AddCommand(newOrgMemberCmd())
+	cmd.AddCommand(newOrgAuditLogCmd())
+	cmd.AddCommand(newOrgUsageCmd())
 
 	return cmd
 }

@@ -79,6 +79,8 @@ func newDeploymentSettingsCmd() *cobra.Command {
 	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
 	cmd.AddCommand(newDeploymentSettingsEnvCmd())
 	cmd.AddCommand(newDeploymentSettingsConfigureCmd())
+	cmd.AddCommand(newDeploymentSettingsGetCmd())
+	cmd.AddCommand(newDeploymentSettingsEditCmd())
 
 	return cmd
 }

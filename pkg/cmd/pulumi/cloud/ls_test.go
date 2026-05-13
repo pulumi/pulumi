@@ -85,8 +85,8 @@ func TestResolveOutputAcceptsTable(t *testing.T) {
 	assert.Equal(t, outputTable, m)
 }
 
-// TestRunLs_RejectsRawAndMarkdown pins that ls refuses --format=raw and
-// --format=markdown up front, rather than silently rendering the table.
+// TestRunLs_RejectsRawAndMarkdown pins that ls refuses --output=raw and
+// --output=markdown up front, rather than silently rendering the table.
 // These modes are accepted globally by resolveOutput for describe and the
 // raw dispatcher.
 func TestRunLs_RejectsRawAndMarkdown(t *testing.T) {
@@ -100,7 +100,7 @@ func TestRunLs_RejectsRawAndMarkdown(t *testing.T) {
 			require.True(t, errors.As(err, &apiErr))
 			assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
 			assert.Equal(t, cmdutil.ExitConfigurationError, apiErr.ExitCode)
-			assert.Equal(t, "format", apiErr.Envelope.Error.Field)
+			assert.Equal(t, "output", apiErr.Envelope.Error.Field)
 		})
 	}
 }

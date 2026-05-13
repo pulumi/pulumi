@@ -468,7 +468,7 @@ jobs:
     secrets: inherit
 
   test-collect-reports:
-    needs: [unit-test, integration-test, acceptance-test-macos]
+    needs: [unit-test, integration-test]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:

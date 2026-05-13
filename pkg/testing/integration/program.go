@@ -68,6 +68,8 @@ const (
 	DotNetRuntime = "dotnet"
 	YAMLRuntime   = "yaml"
 	JavaRuntime   = "java"
+	HCLRuntime    = "hcl"
+	PCLRuntime    = "pcl"
 )
 
 const windowsOS = "windows"
@@ -2906,16 +2908,6 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 	return nil
 }
 
-func (pt *ProgramTester) prepareYAMLProject(projinfo *engine.Projinfo) error {
-	// YAML doesn't need any system setup, and should auto-install required plugins
-	return nil
-}
-
-func (pt *ProgramTester) prepareJavaProject(projinfo *engine.Projinfo) error {
-	// Java doesn't need any system setup, and should auto-install required plugins
-	return nil
-}
-
 func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error {
 	// Based on the language, invoke the right routine to prepare the target directory.
 	switch rt := projinfo.Proj.Runtime.Name(); rt {
@@ -2929,10 +2921,10 @@ func (pt *ProgramTester) defaultPrepareProject(projinfo *engine.Projinfo) error 
 		return pt.prepareGoProject(projinfo)
 	case DotNetRuntime:
 		return pt.prepareDotNetProject(projinfo)
-	case YAMLRuntime:
-		return pt.prepareYAMLProject(projinfo)
-	case JavaRuntime:
-		return pt.prepareJavaProject(projinfo)
+	case YAMLRuntime, JavaRuntime, HCLRuntime, PCLRuntime:
+		// These runtimes have no SDK build step (no npm install, pip install,
+		// go mod tidy, dotnet restore, etc.), so there's nothing to prepare.
+		return nil
 	default:
 		return fmt.Errorf("unrecognized project runtime: %s", rt)
 	}
