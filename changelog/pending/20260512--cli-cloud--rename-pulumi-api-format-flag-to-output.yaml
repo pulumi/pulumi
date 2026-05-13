@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Rename the `--format` flag to `--output` on `pulumi api` and its subcommands

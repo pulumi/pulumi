@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Rename `pulumi cloud api` to `pulumi api`

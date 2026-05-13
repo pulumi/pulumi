@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/package
-  description: Use `--output=markdown` (not the renamed-away `--format=markdown`) in the `pulumi api` pointers printed by `pulumi package add` and `pulumi package gen-sdk`

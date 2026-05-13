@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/neo
-  description: Include the failure reason in `pulumi_preview` and `pulumi_up` tool results when they fail, so the agent can react instead of seeing a blank error

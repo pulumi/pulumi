@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Add `pulumi insights resource search` to search for resources discovered by Pulumi Insights
