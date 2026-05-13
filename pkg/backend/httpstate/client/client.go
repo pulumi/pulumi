@@ -703,6 +703,18 @@ func (pc *Client) ListStackSchedules(
 	return resp.Schedules, nil
 }
 
+// GetStackSchedule returns the scheduled deployment action with the given ID.
+func (pc *Client) GetStackSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "schedules", scheduleID)
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
