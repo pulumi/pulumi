@@ -55,44 +55,6 @@ func stackWebhookHookArg() *constrictor.Arguments {
 	}
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23060]: Not yet implemented.
-func newStackWebhookNewCmd() *cobra.Command {
-	var (
-		stack       string
-		url         string
-		format      string
-		filters     []string
-		active      bool
-		secret      string
-		displayName string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "new",
-		Short:  "Create a new stack webhook",
-		Long:   "[EXPERIMENTAL] Create a new stack webhook.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, stackWebhookHookArg())
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&url, "url", "", "The webhook payload URL")
-	cmd.Flags().StringVar(&format, "format", "raw",
-		"The webhook format: raw, slack, ms_teams, or pulumi_deployments")
-	cmd.Flags().StringArrayVar(&filters, "filter", nil,
-		"An event type to subscribe to (repeatable)")
-	cmd.Flags().BoolVar(&active, "active", true, "Whether the webhook is active")
-	cmd.Flags().StringVar(&secret, "secret", "", "The HMAC key for signature verification")
-	cmd.Flags().StringVar(&displayName, "display-name", "", "The webhook display name")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23059]: Not yet implemented.
 func newStackWebhookEditCmd() *cobra.Command {
 	var (

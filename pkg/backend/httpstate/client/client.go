@@ -745,6 +745,17 @@ func (pc *Client) PingStackWebhook(
 	return resp, nil
 }
 
+// CreateStackWebhook creates a new webhook for the given stack.
+func (pc *Client) CreateStackWebhook(
+	ctx context.Context, stackID StackIdentifier, req apitype.Webhook,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	if err := pc.restCall(ctx, "POST", getStackPath(stackID, "hooks"), nil, &req, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
