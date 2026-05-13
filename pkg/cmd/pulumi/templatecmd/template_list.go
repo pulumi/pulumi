@@ -28,6 +28,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -94,7 +95,7 @@ func newTemplateListCmd(
 	cmd.Flags().StringVar(&args.search, "search", "",
 		"Free-text search across name, display name, description, metadata values, and runtime")
 	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+		"The output format: default (human-readable table) or json")
 
 	return cmd
 }
@@ -118,15 +119,17 @@ func (c *templateListCmd) Run(ctx context.Context, out io.Writer, args templateL
 		templates = append(templates, tmpl)
 	}
 
-	switch args.output {
-	case "", "default":
-		return renderTemplatesTable(out, templates)
-	case "json":
-		return renderTemplatesJSON(out, templates)
-	default:
-		return fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", args.output)
+	renderer, err := ui.Renderer(args.output, ui.OutputRenderers[templateListRenderFunc]{
+		Default: renderTemplatesTable,
+		JSON:    renderTemplatesJSON,
+	})
+	if err != nil {
+		return err
 	}
+	return renderer(out, templates)
 }
+
+type templateListRenderFunc func(w io.Writer, templates []apitype.TemplateMetadata) error
 
 func renderTemplatesTable(w io.Writer, templates []apitype.TemplateMetadata) error {
 	if len(templates) == 0 {

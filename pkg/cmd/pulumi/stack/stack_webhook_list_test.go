@@ -140,7 +140,7 @@ func TestStackWebhookList_TableOutput_DropsEmptyColumns(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: webhooks}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "table")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "default")
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -182,7 +182,7 @@ func TestStackWebhookList_TableOutput_PartialColumns(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: webhooks}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "table")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "default")
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -197,7 +197,7 @@ func TestStackWebhookList_TableOutput_Empty(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockWebhookClient{webhooks: []apitype.Webhook{}}
-	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "table")
+	err := runStackWebhookList(t.Context(), &buf, stubFactory(c), "", "default")
 	require.NoError(t, err)
 
 	assert.Contains(t, buf.String(), "No webhooks configured for this stack.")

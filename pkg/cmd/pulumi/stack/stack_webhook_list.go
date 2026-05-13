@@ -29,6 +29,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -96,7 +97,10 @@ func runStackWebhookList(
 	stackFlag string,
 	output string,
 ) error {
-	renderer, err := webhookListRenderer(output)
+	renderer, err := ui.Renderer(output, ui.OutputRenderers[webhookListRenderFunc]{
+		Default: renderWebhookListTable,
+		JSON:    renderWebhookListJSON,
+	})
 	if err != nil {
 		return err
 	}
@@ -115,17 +119,6 @@ func runStackWebhookList(
 }
 
 type webhookListRenderFunc func(w io.Writer, webhooks []apitype.Webhook) error
-
-func webhookListRenderer(output string) (webhookListRenderFunc, error) {
-	switch output {
-	case "", "default", "table":
-		return renderWebhookListTable, nil
-	case "json":
-		return renderWebhookListJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q: expected \"default\", \"table\", or \"json\"", output)
-	}
-}
 
 // webhookListEnvelope is the JSON shape emitted by `pulumi stack webhook list --output=json`.
 type webhookListEnvelope struct {
