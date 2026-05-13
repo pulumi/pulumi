@@ -32,55 +32,63 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// stackWebhookPingClient is the interface the ping command needs from the API client.
-type stackWebhookPingClient interface {
-	PingStackWebhook(
-		ctx context.Context, stackID client.StackIdentifier, webhookName string,
+// stackWebhookRedeliverClient is the interface the redeliver command needs.
+type stackWebhookRedeliverClient interface {
+	RedeliverStackWebhookEvent(
+		ctx context.Context, stackID client.StackIdentifier,
+		webhookName, eventID string,
 	) (apitype.WebhookDelivery, error)
 }
 
-// stackWebhookPingClientFactory builds a stackWebhookPingClient from the environment.
-type stackWebhookPingClientFactory func(
+type stackWebhookRedeliverClientFactory func(
 	ctx context.Context, stackFlag string,
-) (stackWebhookPingClient, client.StackIdentifier, error)
+) (stackWebhookRedeliverClient, client.StackIdentifier, error)
 
-func newStackWebhookPingCmd() *cobra.Command {
-	return newStackWebhookPingCmdWith(nil)
+func newStackWebhookDeliveryRedeliverCmd() *cobra.Command {
+	return newStackWebhookDeliveryRedeliverCmdWith(nil)
 }
 
-func newStackWebhookPingCmdWith(factory stackWebhookPingClientFactory) *cobra.Command {
+func newStackWebhookDeliveryRedeliverCmdWith(
+	factory stackWebhookRedeliverClientFactory,
+) *cobra.Command {
 	var (
 		stack  string
 		output string
 	)
 
 	cmd := &cobra.Command{
-		Use:   "ping",
-		Short: "Send a test ping to a stack webhook",
-		Long: "[EXPERIMENTAL] Send a test ping to a stack webhook.\n" +
+		Use:   "redeliver",
+		Short: "[EXPERIMENTAL] Redeliver a specific webhook event",
+		Long: "Redeliver a specific webhook event.\n" +
 			"\n" +
-			"Issues a test ping event to the specified webhook to verify it is\n" +
-			"properly configured and reachable. Unlike normal webhook deliveries,\n" +
-			"this bypasses the message queue and sends the request directly to the\n" +
-			"webhook endpoint.\n" +
+			"Triggers the Pulumi Service to redeliver a specific event to a\n" +
+			"webhook. This is useful for resending an event that the webhook\n" +
+			"endpoint failed to process on the initial delivery attempt.\n" +
 			"\n" +
-			"The response includes the full delivery result: the HTTP request URL,\n" +
-			"response status code, response body, and request duration.\n" +
-			"\n" +
-			"Returns an error if the webhook does not exist.",
-		Example: "  # Ping a webhook to verify it works\n" +
-			"  pulumi stack webhook ping my-webhook\n\n" +
-			"  # Ping a webhook and get the full delivery details as JSON\n" +
-			"  pulumi stack webhook ping my-webhook --output json",
+			"Returns the delivery result with HTTP status and response details.\n" +
+			"Returns an error if the webhook or event does not exist.",
+		Example: "  # Redeliver an event\n" +
+			"  pulumi stack webhook delivery redeliver my-webhook evt-abc123\n\n" +
+			"  # Redeliver and get the full result as JSON\n" +
+			"  pulumi stack webhook delivery redeliver my-webhook evt-abc123 --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
-				factory = defaultStackWebhookPingClientFactory
+				factory = defaultRedeliverClientFactory
 			}
-			return runStackWebhookPing(cmd.Context(), cmd.OutOrStdout(), factory, stack, args[0], output)
+			return runRedeliver(
+				cmd.Context(), cmd.OutOrStdout(), factory,
+				stack, args[0], args[1], output,
+			)
 		},
 	}
 
-	constrictor.AttachArguments(cmd, stackWebhookHookArg())
+	constrictor.AttachArguments(cmd, &constrictor.Arguments{
+		Arguments: []constrictor.Argument{
+			{Name: "webhook"},
+			{Name: "event-id"},
+		},
+		Required: 2,
+	})
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
@@ -90,24 +98,23 @@ func newStackWebhookPingCmdWith(factory stackWebhookPingClientFactory) *cobra.Co
 	return cmd
 }
 
-// defaultStackWebhookPingClientFactory resolves the current Pulumi Cloud context and
-// returns a client and stack identifier.
-func defaultStackWebhookPingClientFactory(
+func defaultRedeliverClientFactory(
 	ctx context.Context, stackFlag string,
-) (stackWebhookPingClient, client.StackIdentifier, error) {
+) (stackWebhookRedeliverClient, client.StackIdentifier, error) {
 	return RequireCloudStack(
-		ctx, cmdutil.Diag(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, stackFlag)
+		ctx, cmdutil.Diag(), pkgWorkspace.Instance,
+		cmdBackend.DefaultLoginManager, stackFlag)
 }
 
-func runStackWebhookPing(
+func runRedeliver(
 	ctx context.Context,
 	w io.Writer,
-	factory stackWebhookPingClientFactory,
+	factory stackWebhookRedeliverClientFactory,
 	stackFlag string,
-	webhookName string,
+	webhookName, eventID string,
 	output string,
 ) error {
-	renderer, err := webhookPingRenderer(output)
+	renderer, err := redeliverRenderer(output)
 	if err != nil {
 		return err
 	}
@@ -117,35 +124,36 @@ func runStackWebhookPing(
 		return err
 	}
 
-	delivery, err := c.PingStackWebhook(ctx, stackID, webhookName)
+	delivery, err := c.RedeliverStackWebhookEvent(ctx, stackID, webhookName, eventID)
 	if err != nil {
-		return fmt.Errorf("pinging stack webhook: %w", err)
+		return fmt.Errorf("redelivering webhook event: %w", err)
 	}
 
 	return renderer(w, delivery)
 }
 
-type webhookPingRenderFunc func(w io.Writer, d apitype.WebhookDelivery) error
+type redeliverRenderFunc func(w io.Writer, d apitype.WebhookDelivery) error
 
-func webhookPingRenderer(output string) (webhookPingRenderFunc, error) {
+func redeliverRenderer(output string) (redeliverRenderFunc, error) {
 	switch output {
 	case "", "default":
-		return renderWebhookPingText, nil
+		return renderRedeliverText, nil
 	case "json":
-		return renderWebhookPingJSON, nil
+		return renderRedeliverJSON, nil
 	default:
-		return nil, fmt.Errorf("invalid --output value %q: expected \"default\" or \"json\"", output)
+		return nil, fmt.Errorf(
+			"invalid --output value %q: expected \"default\" or \"json\"", output)
 	}
 }
 
-func renderWebhookPingJSON(w io.Writer, d apitype.WebhookDelivery) error {
+func renderRedeliverJSON(w io.Writer, d apitype.WebhookDelivery) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	return enc.Encode(d)
 }
 
-func renderWebhookPingText(w io.Writer, d apitype.WebhookDelivery) error {
+func renderRedeliverText(w io.Writer, d apitype.WebhookDelivery) error {
 	ts := time.Unix(d.Timestamp, 0).UTC().Format(time.RFC3339)
 
 	fmt.Fprintf(w, "ID:                %s\n", d.ID)

@@ -940,6 +940,18 @@ func (pc *Client) ListStackWebhookDeliveries(
 	return resp, nil
 }
 
+// RedeliverStackWebhookEvent triggers redelivery of a specific event to the given webhook.
+func (pc *Client) RedeliverStackWebhookEvent(
+	ctx context.Context, stackID StackIdentifier, webhookName, eventID string,
+) (apitype.WebhookDelivery, error) {
+	var resp apitype.WebhookDelivery
+	path := getStackPath(stackID, "hooks", webhookName, "deliveries", eventID, "redeliver")
+	if err := pc.restCall(ctx, "POST", path, nil, nil, &resp); err != nil {
+		return apitype.WebhookDelivery{}, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
