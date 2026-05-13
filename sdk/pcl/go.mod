@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/pulumi/pulumi/pkg/v3 v3.232.0
-	github.com/pulumi/pulumi/sdk/v3 v3.237.0
+	github.com/pulumi/pulumi/sdk/v3 v3.238.0
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.16.3
@@ -108,8 +108,8 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/collector/featuregate v1.57.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.57.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.58.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.58.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0 // indirect
@@ -128,8 +128,8 @@ require (
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260504160031-60b97b32f348 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260504160031-60b97b32f348 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260511170946-3700d4141b60 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/frand v1.5.1 // indirect

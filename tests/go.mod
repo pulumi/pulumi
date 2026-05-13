@@ -25,7 +25,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/pulumi/pkg/v3 v3.225.1
-	github.com/pulumi/pulumi/sdk/v3 v3.237.0
+	github.com/pulumi/pulumi/sdk/v3 v3.238.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
@@ -262,8 +262,8 @@ require (
 	github.com/zclconf/go-cty v1.13.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/collector/featuregate v1.57.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.57.0
+	go.opentelemetry.io/collector/featuregate v1.58.0 // indirect
+	go.opentelemetry.io/collector/pdata v1.58.0
 	go.opentelemetry.io/contrib/detectors/gcp v1.42.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.60.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
@@ -293,8 +293,8 @@ require (
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 	google.golang.org/api v0.228.0 // indirect
 	google.golang.org/genproto v0.0.0-20250324211829-b45e905df463 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260504160031-60b97b32f348 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260504160031-60b97b32f348 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260511170946-3700d4141b60 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
