@@ -1811,21 +1811,29 @@ func (pc *Client) UpdateNeoTask(
 
 // NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
 // one of Data or Err is populated: Data carries an event payload, Err carries a terminal
-// stream error (after which no further values are sent before the channel closes).
+// stream error (after which no further values are sent before the channel closes). ID
+// is the SSE `id:` field associated with the event (empty if absent); callers track it
+// to send `Last-Event-ID` on reconnect so the server can replay missed events.
 type NeoStreamEvent struct {
 	Data []byte
+	ID   string
 	Err  error
 }
 
 // StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
 // stream and returns a channel of events. Each value carries either a raw event payload
-// (the bytes following each `data:` line, joined for multi-line events) or a terminal
-// stream error. The channel is closed when the stream ends or ctx is cancelled.
+// (the bytes following each `data:` line, joined for multi-line events) along with the
+// `id:` of that event, or a terminal stream error. The channel is closed when the stream
+// ends or ctx is cancelled.
+//
+// If lastEventID is non-empty it is sent as the `Last-Event-ID` request header; the
+// pulumi-service stream endpoint honors this and replays only events with sequence
+// greater than the given ID, so a reconnect resumes losslessly.
 //
 // The endpoint is the SSE stream introduced in pulumi/pulumi-service#40132. This call
 // does not impose its own timeout — callers should manage lifetime via ctx.
 func (pc *Client) StreamNeoTaskEvents(
-	ctx context.Context, orgName, taskID string,
+	ctx context.Context, orgName, taskID, lastEventID string,
 ) (<-chan NeoStreamEvent, error) {
 	streamURL := pc.apiURL + fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events/stream", orgName, taskID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
@@ -1836,6 +1844,9 @@ func (pc *Client) StreamNeoTaskEvents(
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
 	req.Header.Set("Authorization", "token "+string(pc.apiToken))
+	if lastEventID != "" {
+		req.Header.Set("Last-Event-ID", lastEventID)
+	}
 
 	resp, err := pc.restClient.HTTPClient().Do(req, retryNone)
 	if err != nil {
@@ -1866,13 +1877,16 @@ func (pc *Client) StreamNeoTaskEvents(
 		scanner.Buffer(make([]byte, 64*1024), 8*1024*1024)
 
 		var data bytes.Buffer
+		// Per the SSE spec the "last event ID buffer" persists across events and is only
+		// overwritten by a new `id:` line, so we don't reset eventID on flush.
+		var eventID string
 		flush := func() {
 			if data.Len() == 0 {
 				return
 			}
 			payload := bytes.Clone(data.Bytes())
 			data.Reset()
-			send(NeoStreamEvent{Data: payload})
+			send(NeoStreamEvent{Data: payload, ID: eventID})
 		}
 
 		for scanner.Scan() {
@@ -1890,9 +1904,14 @@ func (pc *Client) StreamNeoTaskEvents(
 					data.WriteByte('\n')
 				}
 				data.WriteString(chunk)
+				continue
 			}
-			// Other SSE fields (event:, id:, retry:) are ignored — the server uses a
-			// single event type and the JSON payload carries its own kind discriminator.
+			if chunk, ok := strings.CutPrefix(line, "id:"); ok {
+				eventID = strings.TrimPrefix(chunk, " ")
+				continue
+			}
+			// Other SSE fields (event:, retry:) are ignored — the server uses a single
+			// event type and the JSON payload carries its own kind discriminator.
 		}
 		flush()
 		if err := scanner.Err(); err != nil && ctx.Err() == nil {

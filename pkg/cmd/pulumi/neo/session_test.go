@@ -18,9 +18,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -45,9 +48,11 @@ func (f *fakeHandler) Invoke(_ context.Context, method string, _ json.RawMessage
 type fakeStreamer struct {
 	stream chan client.NeoStreamEvent
 
-	mu      sync.Mutex
-	posted  []any
-	postErr error
+	mu             sync.Mutex
+	posted         []any
+	postErr        error
+	openCount      int
+	lastEventIDArg string
 }
 
 func newFakeStreamer() *fakeStreamer {
@@ -56,7 +61,13 @@ func newFakeStreamer() *fakeStreamer {
 	}
 }
 
-func (f *fakeStreamer) StreamNeoTaskEvents(_ context.Context, _, _ string) (<-chan client.NeoStreamEvent, error) {
+func (f *fakeStreamer) StreamNeoTaskEvents(
+	_ context.Context, _, _, lastEventID string,
+) (<-chan client.NeoStreamEvent, error) {
+	f.mu.Lock()
+	f.lastEventIDArg = lastEventID
+	f.openCount++
+	f.mu.Unlock()
 	return f.stream, nil
 }
 
@@ -603,7 +614,7 @@ func TestSession_InvokeToolCallStructValueErrorPreservesContent(t *testing.T) {
 type errStreamer struct{ err error }
 
 func (e *errStreamer) StreamNeoTaskEvents(
-	context.Context, string, string,
+	context.Context, string, string, string,
 ) (<-chan client.NeoStreamEvent, error) {
 	return nil, e.err
 }
@@ -631,6 +642,118 @@ func TestSession_RunReturnsStreamError(t *testing.T) {
 	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
 	err := s.Run(t.Context())
 	require.EqualError(t, err, "stream died")
+}
+
+// reconnectStreamer hands out a fresh channel on each StreamNeoTaskEvents call
+// and records the lastEventID it was given. Used to drive the reconnect path.
+type reconnectStreamer struct {
+	mu       sync.Mutex
+	streams  []chan client.NeoStreamEvent
+	lastIDs  []string
+	openErrs []error
+}
+
+func (r *reconnectStreamer) StreamNeoTaskEvents(
+	_ context.Context, _, _, lastEventID string,
+) (<-chan client.NeoStreamEvent, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.lastIDs = append(r.lastIDs, lastEventID)
+	idx := len(r.lastIDs) - 1
+	if idx < len(r.openErrs) && r.openErrs[idx] != nil {
+		return nil, r.openErrs[idx]
+	}
+	if idx < len(r.streams) {
+		return r.streams[idx], nil
+	}
+	// Out of configured streams: hand back a never-closed empty channel so the
+	// session blocks until ctx cancellation rather than tight-looping.
+	ch := make(chan client.NeoStreamEvent)
+	r.streams = append(r.streams, ch)
+	return ch, nil
+}
+
+func (r *reconnectStreamer) PostNeoTaskUserEvent(context.Context, string, string, any) error {
+	return nil
+}
+
+func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
+	t.Parallel()
+
+	// A connection-reset mid-stream must trigger a reconnect with the last seen
+	// event ID, deliver the replay, and emit UIReconnecting + UIReconnected so
+	// the user sees a non-fatal toast instead of a session crash.
+	t.Cleanup(func(prev time.Duration) func() {
+		return func() { reconnectInitialBackoff = prev }
+	}(reconnectInitialBackoff))
+	reconnectInitialBackoff = 1 * time.Millisecond
+
+	stream1 := make(chan client.NeoStreamEvent, 2)
+	stream2 := make(chan client.NeoStreamEvent, 2)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream1, stream2}}
+
+	// First event lands with id=e1, then the stream errors with ECONNRESET — the
+	// classic "connection reset by peer" the bug report describes.
+	stream1 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e1",
+	}
+	stream1 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream1)
+
+	// On the second open the session should send Last-Event-ID=e1. Replay a
+	// second event then close cleanly so Run returns nil.
+	stream2 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e2",
+	}
+	close(stream2)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t", UIEvents: uiCh}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Equal(t, []string{"", "e1"}, streamer.lastIDs,
+		"second open must pass the last seen event ID so the service replays missed events")
+
+	var reconnecting, reconnected int
+	for evt := range uiCh {
+		switch evt.(type) {
+		case UIReconnecting:
+			reconnecting++
+		case UIReconnected:
+			reconnected++
+		}
+	}
+	assert.Equal(t, 1, reconnecting, "exactly one UIReconnecting toast")
+	assert.Equal(t, 1, reconnected, "UIReconnected after the new stream delivers its first event")
+}
+
+func TestSession_PropagatesNonTransientStreamError(t *testing.T) {
+	t.Parallel()
+
+	// An unrecognised error (e.g. a handler bug or service-side application
+	// error) must propagate — silent reconnect would mask real failures.
+	streamer := &reconnectStreamer{
+		streams: []chan client.NeoStreamEvent{make(chan client.NeoStreamEvent, 1)},
+	}
+	streamer.streams[0] <- client.NeoStreamEvent{Err: errors.New("application error: rate limited")}
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	err := s.Run(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "rate limited")
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, 1, len(streamer.lastIDs), "must not retry on a non-transient error")
 }
 
 func TestSession_RunReturnsNilOnContextCancel(t *testing.T) {

@@ -16,6 +16,7 @@ package neo
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/display"
 )
@@ -79,6 +80,20 @@ type UIWarning struct {
 }
 
 func (UIWarning) uiEvent() {}
+
+// UIReconnecting signals that the event stream dropped and the session is attempting
+// to reopen it. Attempt is 1-based and NextRetryIn is the backoff before this attempt.
+type UIReconnecting struct {
+	Attempt     int
+	NextRetryIn time.Duration
+}
+
+func (UIReconnecting) uiEvent() {}
+
+// UIReconnected signals that the event stream is open again after a UIReconnecting.
+type UIReconnected struct{}
+
+func (UIReconnected) uiEvent() {}
 
 // UICancelled signals the session was cancelled.
 type UICancelled struct{}

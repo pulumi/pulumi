@@ -17,12 +17,28 @@ package neo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
+	"net"
+	"net/url"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+)
+
+// Reconnect tuning. Backoff doubles every consecutive failure, capped at
+// reconnectMaxBackoff and bounded by a total budget that resets on every
+// successfully-delivered event. Variables (not consts) so tests can shorten
+// them; not part of any public API.
+var (
+	reconnectInitialBackoff = 1 * time.Second
+	reconnectMaxBackoff     = 30 * time.Second
+	reconnectTotalBudget    = 5 * time.Minute
 )
 
 // ToolHandler executes a single named method on a Neo CLI-local tool. The method is the
@@ -36,8 +52,12 @@ type ToolHandler interface {
 // EventStreamer is the subset of *client.Client we depend on for the SSE event stream and
 // for posting CLI tool result user events back to the Neo task. It is an interface so the
 // loop can be unit-tested without a live HTTP backend.
+//
+// lastEventID is the SSE id of the last event the caller successfully processed; the
+// service replays only events with sequence greater than that id, so a reconnect resumes
+// losslessly. Pass "" for the initial connection.
 type EventStreamer interface {
-	StreamNeoTaskEvents(ctx context.Context, orgName, taskID string) (<-chan client.NeoStreamEvent, error)
+	StreamNeoTaskEvents(ctx context.Context, orgName, taskID, lastEventID string) (<-chan client.NeoStreamEvent, error)
 	PostNeoTaskUserEvent(ctx context.Context, orgName, taskID string, body any) error
 }
 
@@ -58,31 +78,168 @@ type Session struct {
 	UIEvents chan<- UIEvent
 }
 
-// Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil)
-// or the SSE stream errors out (returns the error).
+// Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil),
+// the stream ends cleanly (returns nil), or an unrecoverable error occurs (returns the
+// error). Transient mid-stream network failures (connection reset, broken pipe, read
+// timeouts) are handled by reopening the stream with the Last-Event-ID of the last
+// delivered event so the server replays anything missed during the disconnect.
 func (s *Session) Run(ctx context.Context) error {
-	stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID)
-	if err != nil {
-		return fmt.Errorf("opening event stream: %w", err)
-	}
+	var (
+		lastEventID         string
+		consecutiveFailures int
+		budgetExpiresAt     time.Time
+		justReconnected     bool
+	)
 
+	for {
+		stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID, lastEventID)
+		if err == nil {
+			// Drain returns nil on a clean close/cancel, or the terminal stream error.
+			gotEvent, drainErr := s.drainStream(ctx, stream, &lastEventID, justReconnected)
+			if gotEvent {
+				// A successful read resets the reconnect budget: a flaky link that
+				// occasionally drops shouldn't burn 5 minutes' worth of attempts when
+				// each individual reconnect succeeds.
+				consecutiveFailures = 0
+				budgetExpiresAt = time.Time{}
+			}
+			if drainErr == nil {
+				return nil
+			}
+			if !isTransientStreamError(drainErr) {
+				return drainErr
+			}
+			err = drainErr
+		} else {
+			// Initial-open failure. If we've never seen a successful event we have
+			// no lastEventID, so a "retry" would be on a guess that the failure is
+			// transport-level rather than auth/task-state — propagate instead.
+			if lastEventID == "" || !isTransientStreamError(err) {
+				return fmt.Errorf("opening event stream: %w", err)
+			}
+		}
+
+		// err is transient; back off and try again, unless the budget is exhausted.
+		if budgetExpiresAt.IsZero() {
+			budgetExpiresAt = time.Now().Add(reconnectTotalBudget)
+		}
+		if time.Now().After(budgetExpiresAt) {
+			return fmt.Errorf("event stream reconnect budget exhausted: %w", err)
+		}
+		consecutiveFailures++
+		delay := backoffDelay(consecutiveFailures)
+		sendUI(s.UIEvents, UIReconnecting{Attempt: consecutiveFailures, NextRetryIn: delay})
+		s.logf("Neo event stream dropped: %v (reconnect attempt %d in %s)",
+			err, consecutiveFailures, delay)
+		if !sleepCtx(ctx, delay) {
+			return nil
+		}
+		justReconnected = true
+	}
+}
+
+// drainStream reads events from the open SSE channel until it closes, ctx is cancelled,
+// or an error event arrives. It updates *lastEventID for each event that carries an ID
+// and emits UIReconnected the first time an event lands after a successful reconnect.
+// The first return value reports whether at least one non-error event was delivered.
+func (s *Session) drainStream(
+	ctx context.Context,
+	stream <-chan client.NeoStreamEvent,
+	lastEventID *string,
+	justReconnected bool,
+) (bool, error) {
+	gotEvent := false
 	for {
 		select {
 		case <-ctx.Done():
-			// Caller-initiated shutdown (e.g. TUI quit) is not an error — surfacing
-			// context.Canceled here would print "error: context canceled" on a normal exit.
-			return nil
+			return gotEvent, nil
 		case evt, ok := <-stream:
 			if !ok {
-				return nil
+				return gotEvent, nil
 			}
 			if evt.Err != nil {
-				return evt.Err
+				return gotEvent, evt.Err
 			}
+			if evt.ID != "" {
+				*lastEventID = evt.ID
+			}
+			if justReconnected {
+				justReconnected = false
+				sendUI(s.UIEvents, UIReconnected{})
+			}
+			gotEvent = true
 			if err := s.handleEvent(ctx, evt.Data); err != nil {
-				return err
+				return gotEvent, err
 			}
 		}
+	}
+}
+
+// isTransientStreamError reports whether err looks like a network-level failure we can
+// hope to recover from by reopening the stream. We are conservative: only known
+// transport-level conditions retry. Unrecognised errors (including JSON decode bugs
+// and handler errors) propagate so they don't get masked by a silent reconnect loop.
+func isTransientStreamError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Don't retry caller-initiated cancellation.
+	if errors.Is(err, context.Canceled) {
+		return false
+	}
+	if errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, syscall.ETIMEDOUT) {
+		return true
+	}
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	var ne net.Error
+	if errors.As(err, &ne) && ne.Timeout() {
+		return true
+	}
+	// url.Error wraps transport-level failures from http.Client.Do.
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		// Don't retry context cancellation that came back wrapped in *url.Error.
+		if errors.Is(ue.Err, context.Canceled) {
+			return false
+		}
+		return true
+	}
+	// net.OpError catches the generic socket-level failures bufio.Scanner surfaces
+	// from a broken connection.
+	var oe *net.OpError
+	return errors.As(err, &oe)
+}
+
+// backoffDelay returns the wait before the Nth (1-based) reconnect attempt: doubling
+// from reconnectInitialBackoff, capped at reconnectMaxBackoff, with up to 25% jitter
+// to desynchronise multiple clients flapping against the same backend.
+func backoffDelay(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	d := reconnectInitialBackoff << (attempt - 1)
+	if d <= 0 || d > reconnectMaxBackoff {
+		d = reconnectMaxBackoff
+	}
+	// #nosec G404 -- reconnect jitter is a desynchronization signal, not a secret.
+	jitter := time.Duration(rand.Int64N(int64(d/4) + 1))
+	return d + jitter
+}
+
+// sleepCtx waits for d or until ctx is cancelled. It returns true if the full wait
+// elapsed, false if the context was cancelled first.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return true
+	case <-ctx.Done():
+		return false
 	}
 }
 
