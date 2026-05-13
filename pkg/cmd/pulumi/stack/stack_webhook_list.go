@@ -17,21 +17,17 @@ package stack
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
-	"golang.org/x/term"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/display"
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
+	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -90,34 +86,7 @@ func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Co
 func defaultStackWebhookListClientFactory(
 	ctx context.Context, stackFlag string,
 ) (stackWebhookListClient, client.StackIdentifier, error) {
-	ws := pkgWorkspace.Instance
-	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-
-	s, err := RequireStack(ctx, cmdutil.Diag(), ws, cmdBackend.DefaultLoginManager,
-		stackFlag, LoadOnly, opts)
-	if err != nil {
-		return nil, client.StackIdentifier{}, fmt.Errorf("resolving stack: %w", err)
-	}
-
-	cloudStack, ok := s.(httpstate.Stack)
-	if !ok {
-		return nil, client.StackIdentifier{},
-			errors.New("stack webhooks require the Pulumi Cloud backend; run `pulumi login`")
-	}
-
-	ref := cloudStack.Ref()
-	project := ""
-	if p, ok := ref.Project(); ok {
-		project = string(p)
-	}
-	stackID := client.StackIdentifier{
-		Owner:   cloudStack.OrgName(),
-		Project: project,
-		Stack:   ref.Name(),
-	}
-
-	be := cloudStack.Backend().(httpstate.Backend)
-	return be.Client(), stackID, nil
+	return RequireCloudStack(ctx, cmdutil.Diag(), pkgWorkspace.Instance, cmdBackend.DefaultLoginManager, stackFlag)
 }
 
 func runStackWebhookList(
@@ -211,8 +180,6 @@ func renderWebhookListJSON(w io.Writer, webhooks []apitype.Webhook) error {
 		Count:    len(items),
 	})
 }
-
-const webhookTableFallbackCols = 120
 
 // webhookTableRow holds the formatted string values for a single table row.
 type webhookTableRow struct {
@@ -310,7 +277,7 @@ func renderWebhookListTable(w io.Writer, webhooks []apitype.Webhook) error {
 	}
 
 	// Let URL absorb remaining width.
-	cols := termWidth(webhookTableFallbackCols)
+	cols := cmdCmd.StdoutWidth()
 	// 3 chars per column separator + 1 outer border each side = 3*ncols + 1.
 	borderWidth := 3*len(header) + 1
 	fixedColsWidth := 40 // rough room for the non-URL columns
@@ -325,12 +292,4 @@ func renderWebhookListTable(w io.Writer, webhooks []apitype.Webhook) error {
 
 	fmt.Fprintf(w, "\n%d webhook(s)\n", len(webhooks))
 	return nil
-}
-
-func termWidth(fallback int) int {
-	w, _, err := term.GetSize(int(os.Stdout.Fd()))
-	if err != nil || w <= 0 {
-		return fallback
-	}
-	return w
 }

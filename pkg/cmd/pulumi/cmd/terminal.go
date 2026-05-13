@@ -14,7 +14,23 @@
 
 package cmd
 
-import "golang.org/x/term"
+import (
+	"os"
+
+	"golang.org/x/term"
+)
+
+const defaultTerminalWidth = 120
+
+// StdoutWidth returns the width of stdout in columns, falling back to a reasonable default
+// when stdout is not a terminal (e.g. when piped or redirected).
+func StdoutWidth() int {
+	w, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || w <= 0 {
+		return defaultTerminalWidth
+	}
+	return w
+}
 
 type OptimalPageSizeOpts struct {
 	Nopts          int
