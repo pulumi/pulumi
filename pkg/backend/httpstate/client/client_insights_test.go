@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -97,5 +98,130 @@ func TestGetInsightsResource(t *testing.T) {
 		_, err := client.GetInsightsResource(t.Context(),
 			"acme", "prod-aws", "aws:s3/bucket:Bucket::missing")
 		require.Error(t, err)
+	})
+}
+
+func TestSearchInsightsResources(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns parsed response", func(t *testing.T) {
+		t.Parallel()
+
+		truthy := true
+		want := apitype.InsightsResourceSearchResponse{
+			Total: 2,
+			Resources: []apitype.InsightsResourceSearchResult{
+				{
+					Account:  "prod-aws",
+					Type:     "aws:s3/bucket:Bucket",
+					ID:       "my-bucket",
+					URN:      "urn:pulumi:prod::api::aws:s3/bucket:Bucket::my-bucket",
+					Stack:    "prod",
+					Project:  "api",
+					Modified: "2026-05-01T14:30:00Z",
+					Managed:  "managed",
+					Custom:   &truthy,
+				},
+				{
+					Account: "prod-aws",
+					Type:    "aws:s3/bucket:Bucket",
+					ID:      "other-bucket",
+				},
+			},
+			Pagination: &apitype.InsightsResourceSearchPagination{
+				Cursor: "bookmark",
+				Next:   "/api/orgs/acme/search/resourcesv2?cursor=next-token",
+			},
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.SearchInsightsResources(t.Context(), "acme",
+			apitype.InsightsResourceSearchParams{Query: "type:aws:s3"})
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("encodes query parameters", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			capturedPath  string
+			capturedQuery url.Values
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.Path
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.SearchInsightsResources(t.Context(), "acme",
+			apitype.InsightsResourceSearchParams{
+				Query:      "type:aws:s3",
+				Sort:       []string{"modified", "name"},
+				Ascending:  true,
+				Page:       2,
+				Size:       50,
+				Properties: true,
+				Collapse:   true,
+			})
+		require.NoError(t, err)
+
+		assert.Equal(t, "/api/orgs/acme/search/resourcesv2", capturedPath)
+		assert.Equal(t, "type:aws:s3", capturedQuery.Get("query"))
+		assert.Equal(t, []string{"modified", "name"}, capturedQuery["sort"])
+		assert.Equal(t, "true", capturedQuery.Get("asc"))
+		assert.Equal(t, "2", capturedQuery.Get("page"))
+		assert.Equal(t, "50", capturedQuery.Get("size"))
+		assert.Equal(t, "true", capturedQuery.Get("properties"))
+		assert.Equal(t, "true", capturedQuery.Get("collapse"))
+	})
+
+	t.Run("omits zero-valued parameters", func(t *testing.T) {
+		t.Parallel()
+
+		// Default-valued bool/int/string fields must not appear on the wire,
+		// so the server's defaults take effect.
+		var capturedQuery url.Values
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.SearchInsightsResources(t.Context(), "acme",
+			apitype.InsightsResourceSearchParams{})
+		require.NoError(t, err)
+
+		assert.Empty(t, capturedQuery)
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusPaymentRequired)
+			_, _ = w.Write([]byte("subscription required"))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.SearchInsightsResources(t.Context(), "acme",
+			apitype.InsightsResourceSearchParams{Properties: true})
+		require.Error(t, err)
+		// The 402 status code and the server's body message both make it
+		// through the apitype.ErrorResponse formatter ("[code] message").
+		assert.Contains(t, err.Error(), "402")
+		assert.Contains(t, err.Error(), "subscription required")
 	})
 }

@@ -2322,3 +2322,20 @@ func (pc *Client) GetInsightsResource(
 	}
 	return resp, nil
 }
+
+// SearchInsightsResources runs a resource search against the v2 endpoint
+// (`GetOrgResourceSearchV2Query`).
+//
+// Zero-valued fields on params are omitted from the query string so the server
+// can apply its own defaults — see [apitype.InsightsResourceSearchParams] for
+// the per-field semantics.
+func (pc *Client) SearchInsightsResources(
+	ctx context.Context, org string, params apitype.InsightsResourceSearchParams,
+) (apitype.InsightsResourceSearchResponse, error) {
+	path := fmt.Sprintf("/api/orgs/%s/search/resourcesv2", url.PathEscape(org))
+	var resp apitype.InsightsResourceSearchResponse
+	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
+		return apitype.InsightsResourceSearchResponse{}, err
+	}
+	return resp, nil
+}
