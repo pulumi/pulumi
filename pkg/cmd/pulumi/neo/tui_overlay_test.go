@@ -25,12 +25,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// cmdMsgTypeName runs cmd in a goroutine (see runCmd) and returns the
-// resolved message's reflect.Type.Name(). It's how we identify bubbletea's
-// internal enterAltScreenMsg / exitAltScreenMsg singletons from tests:
-// they're unexported, so the only reliable handle on them is their type
-// name. Returns "" when the command times out (blocking cmd like
-// waitForEvent) or produces a nil message.
+// cmdMsgTypeName resolves cmd via runCmd and returns the message's reflect
+// type name — the only reliable handle on bubbletea's unexported alt-screen
+// messages from outside the package.
 func cmdMsgTypeName(cmd tea.Cmd) string {
 	msg, ok := runCmd(cmd)
 	if !ok || msg == nil {
@@ -78,13 +75,13 @@ func TestCompleteToolCall_NoMatchIsNoOp(t *testing.T) {
 	t.Parallel()
 
 	hist := appendToolStart(nil, "fs__read", nil)
-	// Mark the only entry as completed so there's no pending match anymore.
 	completeToolCall(hist, "fs__read", json.RawMessage(`"ok"`), false)
 	require.False(t, hist[0].Pending)
 
-	// Second completion for the same name finds no pending entry and is dropped.
+	// A second completion for the same name finds no pending entry; it must
+	// not stomp the already-completed record.
 	completeToolCall(hist, "fs__read", json.RawMessage(`"different"`), true)
-	assert.JSONEq(t, `"ok"`, string(hist[0].Result), "stale completion must not overwrite a completed entry")
+	assert.JSONEq(t, `"ok"`, string(hist[0].Result))
 	assert.False(t, hist[0].IsError)
 }
 
@@ -98,15 +95,12 @@ func TestFormatJSON(t *testing.T) {
 	t.Run("renders a flat map as key/value lines without JSON syntax", func(t *testing.T) {
 		t.Parallel()
 		got := formatJSON(json.RawMessage(`{"b":2,"a":1}`))
-		// Keys sorted, no braces, no quotes, no trailing comma — the whole
-		// point of the YAML-ish renderer.
 		assert.Equal(t, "a: 1\nb: 2", got)
 	})
 
 	t.Run("integer numbers render without decimals or exponent", func(t *testing.T) {
 		t.Parallel()
-		// JSON numbers come back as float64; without special-casing, exit_code:0
-		// could otherwise print "0e+00" depending on the format verb.
+		// Guards against "0e+00" for integer-valued float64s; see formatNumber.
 		got := formatJSON(json.RawMessage(`{"exit_code":0,"size":1234567890}`))
 		assert.Equal(t, "exit_code: 0\nsize: 1234567890", got)
 	})
@@ -119,9 +113,6 @@ func TestFormatJSON(t *testing.T) {
 
 	t.Run("multi-line string value expands onto indented lines", func(t *testing.T) {
 		t.Parallel()
-		// The classic shell-output case: without this expansion, stdout
-		// containing newlines would render as one long line with literal
-		// "\n" escapes.
 		got := formatJSON(json.RawMessage(`{"stdout":"a\nb\nc"}`))
 		assert.Equal(t, "stdout:\n  a\n  b\n  c", got)
 	})
@@ -134,8 +125,6 @@ func TestFormatJSON(t *testing.T) {
 
 	t.Run("top-level string prints verbatim with newlines preserved", func(t *testing.T) {
 		t.Parallel()
-		// A Read tool result is often just the file contents. Quoting and
-		// escaping that would defeat the entire purpose of the overlay.
 		got := formatJSON(json.RawMessage(`"line1\nline2\nline3"`))
 		assert.Equal(t, "line1\nline2\nline3", got)
 	})
@@ -197,12 +186,10 @@ func TestModel_Update_CtrlOClosesOverlay(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{})
-	// Open it first.
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
 	um := updated.(Model)
 	require.True(t, um.overlayActive)
 
-	// A second ctrl+o closes it and exits alt-screen.
 	updated, cmd := um.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
 	um = updated.(Model)
 	assert.False(t, um.overlayActive)
@@ -212,8 +199,8 @@ func TestModel_Update_CtrlOClosesOverlay(t *testing.T) {
 func TestModel_Update_EscClosesOverlay_NoCancel(t *testing.T) {
 	t.Parallel()
 
-	// Esc in the overlay must close it WITHOUT posting a user_cancel — the
-	// agent's turn must keep running in the background while the user reviews.
+	// Esc in the overlay must close it WITHOUT posting user_cancel — the
+	// agent keeps running while the user reviews.
 	outCh := make(chan outboundEvent, 1)
 	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
@@ -236,9 +223,8 @@ func TestModel_Update_EscClosesOverlay_NoCancel(t *testing.T) {
 func TestModel_Update_OverlaySwallowsTyping(t *testing.T) {
 	t.Parallel()
 
-	// While the overlay is open, printable keys must NOT reach the input
-	// textarea — the input bar is hidden and any leaked text would surprise
-	// the user when they close the overlay.
+	// Printable keys must not reach the (hidden) input bar while the overlay
+	// is open, otherwise typed text shows up after the overlay closes.
 	m := NewModel(ModelConfig{})
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
 	um := updated.(Model)
@@ -254,10 +240,9 @@ func TestModel_Update_OverlaySwallowsTyping(t *testing.T) {
 func TestModel_Update_OverlayForwardsScrollKeys(t *testing.T) {
 	t.Parallel()
 
-	// Scroll keys (↑↓ pgup pgdn home end) must reach the viewport. We can't
-	// easily assert the viewport's internal scroll offset from outside, so
-	// we just verify the overlay stays open — i.e. those keys are NOT
-	// hitting the "swallow everything else" default branch that returns nil.
+	// Viewport offset isn't visible from outside, so the assertion is the
+	// negative one: scroll keys must not trip the swallow-everything-else
+	// default branch (which would close-or-no-op the overlay).
 	m := NewModel(ModelConfig{})
 	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
 	um := updated.(Model)
@@ -330,20 +315,14 @@ func TestRenderOverlayBody_IncludesArgsAndResult(t *testing.T) {
 func TestRenderOverlayBody_DividerBetweenCalls(t *testing.T) {
 	t.Parallel()
 
-	// Two completed calls must be visually separated by the box-drawing
-	// divider — without it the second section's title can run into the
-	// first call's result block and the boundary gets lost.
 	hist := appendToolStart(nil, "fs__read", json.RawMessage(`{"path":"a.txt"}`))
 	completeToolCall(hist, "fs__read", json.RawMessage(`"a"`), false)
 	hist = appendToolStart(hist, "fs__read", json.RawMessage(`{"path":"b.txt"}`))
 	completeToolCall(hist, "fs__read", json.RawMessage(`"b"`), false)
 
 	body := renderOverlayBody(hist, 40)
-	// 40 contiguous ─ characters is the divider; if join used a plain
-	// blank-line separator the substring would not appear.
 	assert.Contains(t, body, strings.Repeat("─", 40))
-	// Single-call rendering must NOT include the divider — it's strictly a
-	// between-sections affordance.
+	// Divider is strictly a between-sections affordance.
 	single := renderOverlayBody(hist[:1], 40)
 	assert.NotContains(t, single, strings.Repeat("─", 40))
 }
@@ -351,9 +330,6 @@ func TestRenderOverlayBody_DividerBetweenCalls(t *testing.T) {
 func TestOverlayView_HintAtBottom(t *testing.T) {
 	t.Parallel()
 
-	// The hint is the close/scroll cue and must be the LAST visible line
-	// so users instinctively look down for it (matching Claude Code,
-	// less, man, etc.).
 	o := newOverlayModel(80, 10)
 	o.Refresh(nil)
 	view := o.View()
@@ -371,8 +347,5 @@ func TestRenderOverlayBody_PendingShowsInFlight(t *testing.T) {
 
 	body := renderOverlayBody(hist, 80)
 	assert.Contains(t, body, "(in flight)")
-	// The "running" annotation in the metadata line tells the user the call
-	// hasn't completed yet — without it they might think the empty result is
-	// the actual output.
 	assert.Contains(t, strings.ToLower(body), "running")
 }

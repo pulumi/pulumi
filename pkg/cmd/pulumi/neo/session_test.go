@@ -177,10 +177,8 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 func TestSession_UIToolCompletedCarriesResult(t *testing.T) {
 	t.Parallel()
 
-	// The tool-details overlay (ctrl+o in the TUI) only has content because
-	// runBatch attaches the marshalled invokeToolCall result to the
-	// UIToolCompleted event. If that wiring drops, the overlay silently goes
-	// blank for every call — guard against the regression.
+	// Regression guard: runBatch must attach the marshalled invokeToolCall
+	// result to UIToolCompleted, otherwise the ctrl+o overlay goes blank.
 	streamer := newFakeStreamer()
 	handlers := map[string]ToolHandler{
 		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "payload"}},

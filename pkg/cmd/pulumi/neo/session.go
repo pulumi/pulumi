@@ -162,11 +162,8 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 		result := s.invokeToolCall(ctx, call)
 		items = append(items, result)
 
-		// Marshal a copy of the result so the TUI overlay can render the full
-		// payload. A marshal failure shouldn't abort the call (the upstream
-		// post still happens above with the original any value), so swallow it
-		// and surface an empty Result — the overlay treats that as "no detail
-		// available".
+		// Marshal a JSON copy for the overlay; swallow the error so the call
+		// itself isn't aborted on a display-only failure.
 		var resultRaw json.RawMessage
 		if b, err := json.Marshal(result.Content); err == nil {
 			resultRaw = b

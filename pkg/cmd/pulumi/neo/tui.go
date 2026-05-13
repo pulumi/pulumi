@@ -291,18 +291,10 @@ type Model struct {
 	hasEmittedScrollback bool
 	// pendingTodos buffers the latest UITodoList while planMode is true so
 	// the list lands inside the same block as the Proposed plan, not above it.
-	pendingTodos []UITodoItem
-	// toolHistory captures every tool call (up to maxToolHistory) so the
-	// ctrl+o overlay can render args/results after the fact. UIToolStarted
-	// appends a pending entry; UIToolCompleted completes it.
-	toolHistory []toolCallRecord
-	// overlayActive is true while the ctrl+o alt-screen overlay is open. The
-	// inline View(), input bar, and most key handling are suppressed until
-	// the user closes the overlay (ctrl+o or esc).
+	pendingTodos  []UITodoItem
+	toolHistory   []toolCallRecord
 	overlayActive bool
-	// overlay wraps the bubbles viewport used to scroll the tool-details
-	// alt-screen. Sized off m.width / m.height on WindowSizeMsg.
-	overlay overlayModel
+	overlay       overlayModel
 }
 
 var (
@@ -526,15 +518,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// When the tool-details overlay is open it takes priority over every
-		// other key handler: ctrl+o and esc close it, ctrl+c/ctrl+d still go
-		// through the arm-and-confirm quit gate below, scroll keys are
-		// forwarded to the viewport, and everything else is swallowed so it
-		// can't leak into the (currently hidden) input bar.
+		// While the overlay is open, swallow keys that aren't close / scroll /
+		// quit so they can't leak into the hidden input bar.
 		if m.overlayActive {
-			//exhaustive:ignore // We only act on a handful of keys; everything
-			// else falls through the default branch and is swallowed so it
-			// can't leak into the hidden input bar.
+			//exhaustive:ignore // explicit default below
 			switch msg.Type {
 			case tea.KeyCtrlO, tea.KeyEsc:
 				m.overlayActive = false
@@ -577,11 +564,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// will fire later but no-op because ctrlCArmed is already false.
 		m.ctrlCArmed = false
 
-		// Ctrl+O opens the tool-details overlay. Sits above the busy and
-		// approval gates so users can peek at args/results at any point in the
-		// session, even mid-turn or while waiting on an approval. Closing the
-		// overlay is handled by the overlayActive branch at the top of this
-		// case — once it's open, we never reach this handler.
+		// Ctrl+O opens the overlay. Sits above the busy/approval gates so
+		// users can peek mid-turn. Closing is handled by the overlayActive
+		// branch above.
 		if msg.Type == tea.KeyCtrlO {
 			m.overlayActive = true
 			m.overlay.SetSize(m.width, m.height)
@@ -1003,11 +988,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View returns the rendered live frame: live blocks (busy spinner, in-flight
 // streaming, in-flight pulumi op) above the input bar. Completed blocks aren't
 // drawn here — they were committed to terminal scrollback via tea.Println as
-// soon as they reached a terminal state.
-//
-// When the tool-details overlay is open, View returns its full-screen
-// rendering instead — the inline transcript is suspended (bubbletea switches
-// to the alt-screen) until the user closes the overlay.
+// soon as they reached a terminal state. When the overlay is open the
+// inline frame is suspended and we render the alt-screen view instead.
 func (m Model) View() string {
 	if m.overlayActive {
 		return m.overlay.View()

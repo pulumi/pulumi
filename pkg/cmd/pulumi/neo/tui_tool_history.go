@@ -19,15 +19,8 @@ import (
 	"time"
 )
 
-// maxToolHistory bounds the number of records kept in Model.toolHistory so a
-// very long session can't grow the slice without limit. The oldest entries
-// drop off the front when this is exceeded.
 const maxToolHistory = 50
 
-// toolCallRecord is one entry in the overlay's tool-call history. Args are
-// captured at start time; Result and CompletedAt land when the matching
-// UIToolCompleted arrives. While Pending is true, Result is empty and the
-// overlay renders an "(in flight)" placeholder.
 type toolCallRecord struct {
 	Name        string
 	Args        json.RawMessage
@@ -38,27 +31,22 @@ type toolCallRecord struct {
 	Pending     bool
 }
 
-// appendToolStart records a new in-flight tool call. The caller drops the
-// oldest entry when the slice exceeds maxToolHistory.
 func appendToolStart(history []toolCallRecord, name string, args json.RawMessage) []toolCallRecord {
-	rec := toolCallRecord{
+	history = append(history, toolCallRecord{
 		Name:      name,
 		Args:      args,
 		StartedAt: time.Now(),
 		Pending:   true,
-	}
-	history = append(history, rec)
+	})
 	if len(history) > maxToolHistory {
 		history = history[len(history)-maxToolHistory:]
 	}
 	return history
 }
 
-// completeToolCall mutates the most recent pending entry that matches name to
-// reflect a completed call. runBatch dispatches calls serially so matching on
-// (name, most-recent-pending) is unambiguous in practice. If no match is
-// found (e.g. completed event with no matching start) the history is left
-// untouched.
+// completeToolCall mutates the most-recent pending entry that matches name.
+// Session.runBatch dispatches calls serially, so that entry is unambiguously
+// the one to complete.
 func completeToolCall(history []toolCallRecord, name string, result json.RawMessage, isError bool) {
 	for i := len(history) - 1; i >= 0; i-- {
 		if history[i].Pending && history[i].Name == name {
