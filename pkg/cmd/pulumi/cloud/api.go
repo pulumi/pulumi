@@ -118,11 +118,11 @@ func NewAPICmd() *cobra.Command {
 		Short: "Call any Pulumi Cloud API endpoint",
 		Long: "[EXPERIMENTAL] Call any Pulumi Cloud API endpoint.\n" +
 			"\n" +
-			"The positional argument may be: a path (with optional {template} variables, e.g.\n" +
-			"`/api/orgs/{orgName}/members`), an operation ID as shown in `list` (e.g.\n" +
-			"`ListOrgMembers`), or a paste-friendly row (`GET /api/...`). Template variables\n" +
-			"are resolved from the current Pulumi project / selected stack, or supplied\n" +
-			"with -F (e.g. `-F orgName=acme`).\n" +
+			"The positional argument may be: a path (with optional {template} variables,\n" +
+			"e.g. `/api/orgs/{orgName}/members`), an operation ID as shown in `list` (e.g.\n" +
+			"`ListOrganizationMembers`), or a paste-friendly row (`GET /api/...`). Template\n" +
+			"variables are resolved from the current Pulumi project / selected stack, or\n" +
+			"supplied with -F (e.g. `-F orgName=acme`).\n" +
 			"\n" +
 			"Fields provided via -F/--field and -f/--raw-field are sent as query parameters\n" +
 			"on GET/HEAD requests and as a JSON request body on POST/PUT/PATCH/DELETE. Method\n" +
@@ -153,7 +153,7 @@ func NewAPICmd() *cobra.Command {
 			"Exit codes: 0 success; 1 caller error; 2 invalid flags; 3 auth; 8 cancelled;\n" +
 			"255 internal.",
 		Example: "  # Verify an op's parameters and schemas with `describe` before calling it.\n" +
-			"  pulumi api describe CreateStackTag\n\n" +
+			"  pulumi api describe AddStackTag\n\n" +
 			"  # Inspect the currently authenticated user.\n" +
 			"  pulumi api /api/user\n\n" +
 			"  # Call by raw path with template variables filled from -F.\n" +
@@ -162,32 +162,34 @@ func NewAPICmd() *cobra.Command {
 			"  pulumi api /api/stacks/{orgName}/{projectName}/{stackName} \\\n" +
 			"    -F orgName=acme -F projectName=web -F stackName=prod\n\n" +
 			"  # Call by operation ID — orgName is taken from the current Pulumi project.\n" +
-			"  pulumi api ListOrgMembers\n\n" +
+			"  pulumi api ListOrganizationMembers\n\n" +
 			"  # Pass path variables explicitly when no project context is available.\n" +
 			"  pulumi api GetStack -F orgName=acme -F projectName=web -F stackName=prod\n\n" +
 			"  # Create a resource via POST; body fields go into a JSON body automatically.\n" +
-			"  pulumi api CreateStackTag -F orgName=acme -F projectName=web \\\n" +
+			"  pulumi api AddStackTag -F orgName=acme -F projectName=web \\\n" +
 			"    -F stackName=prod -F name=env -F value=prod\n\n" +
 			"  # Build a nested body by mixing scalar fields with an inline JSON object.\n" +
 			"  pulumi api CreateStack -F orgName=acme -F projectName=web \\\n" +
 			"    -F stackName=prod -F 'tags={\"env\":\"prod\",\"team\":\"platform\"}'\n\n" +
 			"  # Send an array of items using a JSON literal.\n" +
-			"  pulumi api AddTeamMembers -F orgName=acme -F teamName=eng \\\n" +
-			"    -F 'members=[\"alice\",\"bob\",\"carol\"]'\n\n" +
+			"  pulumi api CreateStack -F orgName=acme -F projectName=web \\\n" +
+			"    -F stackName=prod -F 'teams=[\"platform\",\"sre\"]'\n\n" +
 			"  # Pass the entire request body inline with --body.\n" +
-			"  pulumi api UpdateStack -F orgName=acme -F projectName=web -F stackName=prod \\\n" +
-			"    --body '{\"description\":\"managed by agent\"}'\n\n" +
+			"  pulumi api UpdateStackTags -F orgName=acme -F projectName=web -F stackName=prod \\\n" +
+			"    --body '{\"env\":\"production\",\"team\":\"platform\"}'\n\n" +
 			"  # Read a JSON body from a file, or from stdin with `-`.\n" +
-			"  pulumi api UpdateStackTag --input ./tag.json\n" +
-			"  cat tag.json | pulumi api UpdateStackTag --input -\n\n" +
+			"  pulumi api UpdateStackTag -F orgName=acme -F projectName=web \\\n" +
+			"    -F stackName=prod -F tagName=env --input ./tag.json\n" +
+			"  cat tag.json | pulumi api UpdateStackTag -F orgName=acme -F projectName=web \\\n" +
+			"    -F stackName=prod -F tagName=env --input -\n\n" +
 			"  # Filter the JSON response with jq.\n" +
 			"  pulumi api /api/user --output=json | jq '.githubLogin'\n\n" +
 			"  # Follow pagination cursors and stream the combined result to jq.\n" +
-			"  pulumi api ListStacks --paginate | jq '.stacks[].name'\n\n" +
+			"  pulumi api ListUserStacks --paginate | jq '.stacks[].stackName'\n\n" +
 			"  # Extract just the status line + headers without the body.\n" +
 			"  pulumi api /api/user --include --silent\n\n" +
 			"  # Preview the resolved request without sending it.\n" +
-			"  pulumi api CreateStackTag -F orgName=acme --dry-run",
+			"  pulumi api AddStackTag -F orgName=acme --dry-run",
 	}
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "path-or-operation-id"}},
