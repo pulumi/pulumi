@@ -109,28 +109,6 @@ func newStackWebhookDeliveryCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23055]: Not yet implemented.
-func newStackWebhookDeliveryListCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List recent deliveries for a stack webhook",
-		Long:   "[EXPERIMENTAL] List recent deliveries for a stack webhook.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, stackWebhookHookArg())
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23054]: Not yet implemented.
 func newStackWebhookDeliveryGetCmd() *cobra.Command {
 	var stack string
