@@ -1665,9 +1665,9 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				s.deployment.Diag(),
 				s.new.URN, s.new.ID,
 				// pass new inputs/outputs as old inputs/outputs
-				s.new.Inputs, s.new.Outputs,
+				s.old.Inputs, s.old.Outputs,
 				// pass old inputs as new inputs
-				s.old.Inputs,
+				s.new.Inputs,
 				prov, s.deployment.opts.DryRun, s.old.IgnoreChanges,
 			)
 			if err != nil {
@@ -1677,7 +1677,7 @@ func (s *RefreshStep) Apply() (resource.Status, StepCompleteFunc, error) {
 				return refreshed.Status, nil, err
 			}
 
-			s.diff = diff.Invert()
+			s.diff = diff
 			logging.V(7).Infof("Refresh diff for %s: %v", s.URN(), s.diff)
 		}
 	} else {
