@@ -1112,6 +1112,35 @@ func TestStructuralTypeChecks(t *testing.T) {
 
 		assert.True(t, valueStructurallyTypedAs(complexFittingValue, complexUnionOfObjects))
 	})
+
+	t.Run("UnionOfInputWrappedObjects", func(t *testing.T) {
+		t.Parallel()
+
+		// Schema-bound unions wrap their members in *schema.InputType, e.g.
+		// Map<Union<Input<Obj>, Input<Archive>>>. valueStructurallyTypedAs
+		// strips *schema.InputType from its argument *before* the union is
+		// reduced, but reduceUnionType returns the chosen element as-is —
+		// typically Input<Obj>. The type switch below must still see the
+		// underlying type, so the function must strip the wrapper again
+		// after the reduction.
+		objectType := makeObjectType(
+			makeProperty("foo", schema.StringType),
+		)
+		union := makeUnionType(
+			&schema.InputType{ElementType: objectType},
+			&schema.InputType{ElementType: schema.ArchiveType},
+		)
+
+		// A map that fits Obj is accepted even though Obj is wrapped in
+		// *schema.InputType inside the union.
+		assert.True(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"foo": property.New("x")}),
+			union))
+		// A map that does not fit Obj (unknown property) is still rejected.
+		assert.False(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"unknown": property.New("x")}),
+			union))
+	})
 }
 
 func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {

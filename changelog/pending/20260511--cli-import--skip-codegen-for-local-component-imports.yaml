@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/import
+  description: Skip code generation for local component imports so `pulumi import` no longer crashes with "expected '::' in provider reference ''" after a successful import
