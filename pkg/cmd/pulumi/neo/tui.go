@@ -996,7 +996,8 @@ func (m Model) View() string {
 	if m.overlayActive {
 		return m.overlay.View()
 	}
-	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · ctrl+r read-only · ctrl+o tool details · ctrl+c to quit"
+	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · " +
+		"ctrl+r read-only · ctrl+o tool details · ctrl+c to quit"
 	if m.busy {
 		hintText = "agent is working · enter disabled · ctrl+o tool details · esc or ctrl+c to cancel"
 	}
