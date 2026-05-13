@@ -16,39 +16,23 @@ package stack
 
 import (
 	"bytes"
-	"context"
-	"errors"
+	"encoding/json"
 	"testing"
+	"time"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// mockStackGetClient implements stackGetClient for tests.
-type mockStackGetClient struct {
-	stack apitype.Stack
-	err   error
-}
-
-func (m *mockStackGetClient) GetStack(_ context.Context, _ client.StackIdentifier) (apitype.Stack, error) {
-	return m.stack, m.err
-}
-
-func stackGetStubFactory(c stackGetClient) stackGetClientFactory {
-	return func(_ context.Context, _ string) (stackGetClient, client.StackIdentifier, error) {
-		return c, testStackID, nil
-	}
-}
-
-func stackGetFailingFactory(err error) stackGetClientFactory {
-	return func(_ context.Context, _ string) (stackGetClient, client.StackIdentifier, error) {
-		return nil, client.StackIdentifier{}, err
-	}
-}
-
-func sampleStack() apitype.Stack {
+// sampleCloudStack returns a fixture apitype.Stack with every cloud-only
+// field populated; tests use it to assert the JSON envelope's cloud
+// section.
+func sampleCloudStack() apitype.Stack {
 	return apitype.Stack{
 		ID:           "abc123",
 		OrgName:      "my-org",
@@ -59,8 +43,6 @@ func sampleStack() apitype.Stack {
 		Tags: map[apitype.StackTagName]string{
 			"environment":    "production",
 			"pulumi:project": "my-project",
-			"pulumi:runtime": "nodejs",
-			"vcs:owner":      "pulumi",
 		},
 		CurrentOperation: &apitype.OperationStatus{
 			Kind:    apitype.UpdateUpdate,
@@ -70,200 +52,195 @@ func sampleStack() apitype.Stack {
 	}
 }
 
-func TestStackGet_DefaultOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockStackGetClient{stack: sampleStack()}
-	err := runStackGet(t.Context(), &buf, stackGetStubFactory(c), "", "default")
-	require.NoError(t, err)
-
-	out := buf.String()
-	assert.Contains(t, out, "Organization:   my-org")
-	assert.Contains(t, out, "Project:        my-project")
-	assert.Contains(t, out, "Stack:          dev")
-	assert.Contains(t, out, "Version:        42")
-	assert.Contains(t, out, "Active update:  11111111-2222-3333-4444-555555555555")
-	assert.Contains(t, out, "Update in progress:")
-	assert.Contains(t, out, "Kind:    update")
-	assert.Contains(t, out, "Author:  alice")
-	assert.Contains(t, out, "Tags:")
-	assert.Contains(t, out, "environment")
-	assert.Contains(t, out, "production")
-	assert.Contains(t, out, "pulumi:project")
-	assert.Contains(t, out, "pulumi:runtime")
-	assert.Contains(t, out, "nodejs")
+func sampleIdentityInputs() stackJSONInputs {
+	return stackJSONInputs{
+		StackName:   "dev",
+		Project:     "my-project",
+		BackendName: "pulumi.com",
+	}
 }
 
-func TestStackGet_DefaultOutput_NoOperation(t *testing.T) {
+// TestBuildStackJSON_Cloud asserts that the JSON envelope preserves every
+// field the previous `pulumi stack get` envelope emitted, plus the new
+// snapshot/identity fields.
+func TestBuildStackJSON_Cloud(t *testing.T) {
 	t.Parallel()
 
-	stack := sampleStack()
-	stack.CurrentOperation = nil
+	in := sampleIdentityInputs()
+	cs := sampleCloudStack()
+	in.CloudStack = &cs
+	in.ConsoleURL = "https://app.pulumi.com/my-org/my-project/dev"
 
+	env := buildStackJSON(in)
 	var buf bytes.Buffer
-	c := &mockStackGetClient{stack: stack}
-	err := runStackGet(t.Context(), &buf, stackGetStubFactory(c), "", "default")
-	require.NoError(t, err)
-
-	out := buf.String()
-	assert.NotContains(t, out, "Update in progress")
-	assert.NotContains(t, out, "Kind:")
-	assert.NotContains(t, out, "Author:")
-}
-
-func TestStackGet_DefaultOutput_NoActiveUpdate(t *testing.T) {
-	t.Parallel()
-
-	stack := sampleStack()
-	stack.ActiveUpdate = ""
-
-	var buf bytes.Buffer
-	c := &mockStackGetClient{stack: stack}
-	err := runStackGet(t.Context(), &buf, stackGetStubFactory(c), "", "default")
-	require.NoError(t, err)
-
-	assert.NotContains(t, buf.String(), "Active update:")
-}
-
-func TestStackGet_DefaultOutput_NoTags(t *testing.T) {
-	t.Parallel()
-
-	stack := sampleStack()
-	stack.Tags = nil
-
-	var buf bytes.Buffer
-	c := &mockStackGetClient{stack: stack}
-	err := runStackGet(t.Context(), &buf, stackGetStubFactory(c), "", "default")
-	require.NoError(t, err)
-
-	assert.NotContains(t, buf.String(), "Tags:")
-}
-
-func TestStackGet_JSONOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockStackGetClient{stack: sampleStack()}
-	err := runStackGet(t.Context(), &buf, stackGetStubFactory(c), "", "json")
-	require.NoError(t, err)
+	require.NoError(t, renderStackJSON(&buf, env))
 
 	assert.JSONEq(t, `{
 		"organization": "my-org",
 		"project": "my-project",
 		"stack": "dev",
+		"backend": "pulumi.com",
 		"version": 42,
 		"activeUpdate": "11111111-2222-3333-4444-555555555555",
 		"currentOperation": {
 			"kind": "update",
 			"author": "alice",
-			"started": "2025-05-13T13:20:00Z"
+			"started": "2025-05-13T13:20:00.000Z"
 		},
 		"tags": {
 			"environment":    "production",
-			"pulumi:project": "my-project",
-			"pulumi:runtime": "nodejs",
-			"vcs:owner":      "pulumi"
-		}
+			"pulumi:project": "my-project"
+		},
+		"resources": [],
+		"outputs": {},
+		"consoleUrl": "https://app.pulumi.com/my-org/my-project/dev"
 	}`, buf.String())
 }
 
-func TestStackGet_JSONOutput_NoOperation(t *testing.T) {
+func TestBuildStackJSON_Cloud_NoOperation(t *testing.T) {
 	t.Parallel()
 
-	stack := sampleStack()
-	stack.CurrentOperation = nil
-	stack.Tags = nil
+	in := sampleIdentityInputs()
+	cs := sampleCloudStack()
+	cs.CurrentOperation = nil
+	in.CloudStack = &cs
 
-	var buf bytes.Buffer
-	c := &mockStackGetClient{stack: stack}
-	err := runStackGet(t.Context(), &buf, stackGetStubFactory(c), "", "json")
-	require.NoError(t, err)
-
-	assert.JSONEq(t, `{
-		"organization": "my-org",
-		"project": "my-project",
-		"stack": "dev",
-		"version": 42,
-		"activeUpdate": "11111111-2222-3333-4444-555555555555",
-		"tags": {}
-	}`, buf.String())
+	env := buildStackJSON(in)
+	assert.Nil(t, env.CurrentOperation)
+	assert.Equal(t, "11111111-2222-3333-4444-555555555555", env.ActiveUpdate)
 }
 
-func TestStackGet_InvalidOutput(t *testing.T) {
+func TestBuildStackJSON_Cloud_NoTags(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	c := &mockStackGetClient{stack: sampleStack()}
-	err := runStackGet(t.Context(), &buf, stackGetStubFactory(c), "", "xml")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid --output value")
-	assert.Contains(t, err.Error(), "xml")
+	in := sampleIdentityInputs()
+	cs := sampleCloudStack()
+	cs.Tags = nil
+	in.CloudStack = &cs
+
+	env := buildStackJSON(in)
+	assert.Equal(t, map[string]string{}, env.Tags, "tags must be present (possibly empty) for JSON consumers")
 }
 
-func TestStackGet_ClientError(t *testing.T) {
+// TestBuildStackJSON_DIY confirms cloud-only fields are absent on DIY
+// backends while the identity fields still render.
+func TestBuildStackJSON_DIY(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	c := &mockStackGetClient{err: errors.New("server error")}
-	err := runStackGet(t.Context(), &buf, stackGetStubFactory(c), "", "default")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "getting stack")
-	assert.Contains(t, err.Error(), "server error")
-}
-
-func TestStackGet_FactoryError(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	err := runStackGet(t.Context(), &buf, stackGetFailingFactory(errors.New("not logged in")), "", "default")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not logged in")
-}
-
-func TestStackGet_StackFlagPropagation(t *testing.T) {
-	t.Parallel()
-
-	var capturedStack string
-	factory := func(_ context.Context, stackFlag string) (stackGetClient, client.StackIdentifier, error) {
-		capturedStack = stackFlag
-		return &mockStackGetClient{stack: sampleStack()}, testStackID, nil
+	in := stackJSONInputs{
+		StackName:   "dev",
+		Project:     "proj",
+		BackendName: "file:///tmp/state",
 	}
 
+	env := buildStackJSON(in)
 	var buf bytes.Buffer
-	err := runStackGet(t.Context(), &buf, factory, "org/proj/my-stack", "default")
-	require.NoError(t, err)
-	assert.Equal(t, "org/proj/my-stack", capturedStack)
+	require.NoError(t, renderStackJSON(&buf, env))
+
+	assert.JSONEq(t, `{
+		"project": "proj",
+		"stack": "dev",
+		"backend": "file:///tmp/state",
+		"tags": {},
+		"resources": [],
+		"outputs": {}
+	}`, buf.String())
 }
 
-func TestStackGet_CobraFlagBinding(t *testing.T) {
+// TestBuildStackJSON_PreservesLegacyKeys is a regression guard. The shape
+// emitted by the previous `pulumi stack get` JSON envelope is a strict
+// subset of the new unified envelope; anything that consumed it must
+// continue to work.
+func TestBuildStackJSON_PreservesLegacyKeys(t *testing.T) {
 	t.Parallel()
 
-	c := &mockStackGetClient{stack: sampleStack()}
-	cmd := newStackGetCmdWith(stackGetStubFactory(c))
+	in := sampleIdentityInputs()
+	cs := sampleCloudStack()
+	in.CloudStack = &cs
 
 	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetArgs([]string{"--output", "json"})
+	require.NoError(t, renderStackJSON(&buf, buildStackJSON(in)))
 
-	err := cmd.ExecuteContext(t.Context())
-	require.NoError(t, err)
-	assert.Contains(t, buf.String(), `"organization": "my-org"`)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &got))
+
+	legacyKeys := []string{
+		"organization", "project", "stack", "version",
+		"activeUpdate", "currentOperation", "tags",
+	}
+	for _, k := range legacyKeys {
+		assert.Contains(t, got, k, "legacy key %q must remain in the envelope", k)
+	}
+
+	// And legacy values should round-trip unchanged.
+	assert.Equal(t, "my-org", got["organization"])
+	assert.Equal(t, "my-project", got["project"])
+	assert.Equal(t, "dev", got["stack"])
+	assert.Equal(t, float64(42), got["version"])
+	assert.Equal(t, "11111111-2222-3333-4444-555555555555", got["activeUpdate"])
 }
 
-func TestStackGet_DefaultCmd(t *testing.T) {
+// TestBuildStackJSON_WithSnapshot verifies that local snapshot data
+// (manifest, resources) flows into the envelope when a snapshot is
+// supplied.
+func TestBuildStackJSON_WithSnapshot(t *testing.T) {
+	t.Parallel()
+
+	v123 := semver.MustParse("1.2.3")
+
+	urn := resource.NewURN("dev", "proj", "", "aws:s3/bucket:Bucket", "my-bucket")
+	snap := &deploy.Snapshot{
+		Manifest: deploy.Manifest{
+			Time:    time.Date(2026, 5, 13, 12, 0, 0, 0, time.UTC),
+			Version: "v3.140.0",
+			Plugins: []workspace.PluginInfo{
+				{Name: "aws", Kind: "resource", Version: &v123},
+			},
+		},
+		Resources: []*resource.State{
+			{URN: urn, Type: "aws:s3/bucket:Bucket", ID: "bucket-id-1"},
+		},
+	}
+
+	in := sampleIdentityInputs()
+	in.Snapshot = snap
+
+	env := buildStackJSON(in)
+
+	require.NotNil(t, env.Manifest)
+	assert.Equal(t, "v3.140.0", env.Manifest.PulumiVersion)
+	assert.Equal(t, "2026-05-13T12:00:00.000Z", env.Manifest.Time,
+		"manifest time must use cmd.FormatTime (RFC 5424 ms, UTC)")
+	require.Len(t, env.Manifest.Plugins, 1)
+	assert.Equal(t, "aws", env.Manifest.Plugins[0].Name)
+	assert.Equal(t, "1.2.3", env.Manifest.Plugins[0].Version)
+
+	require.Len(t, env.Resources, 1)
+	assert.Equal(t, string(urn), env.Resources[0].URN)
+	assert.Equal(t, "aws:s3/bucket:Bucket", env.Resources[0].Type)
+	assert.Equal(t, "my-bucket", env.Resources[0].Name)
+	assert.Equal(t, "bucket-id-1", env.Resources[0].ID)
+}
+
+// TestNewStackGetCmd_FlagDefaults guards the cobra surface: --output
+// defaults to json, --stack and --show-secrets are present.
+func TestNewStackGetCmd_FlagDefaults(t *testing.T) {
 	t.Parallel()
 
 	cmd := newStackGetCmd()
 	assert.Equal(t, "get", cmd.Use)
 	require.NotNil(t, cmd.RunE)
 
-	f := cmd.Flags().Lookup("output")
-	require.NotNil(t, f)
-	assert.Equal(t, "o", f.Shorthand)
-	assert.Equal(t, "default", f.DefValue)
+	output := cmd.Flags().Lookup("output")
+	require.NotNil(t, output)
+	assert.Equal(t, "o", output.Shorthand)
+	assert.Equal(t, "json", output.DefValue, "stack get must default to --output=json")
 
-	sf := cmd.Flags().Lookup("stack")
-	require.NotNil(t, sf)
-	assert.Equal(t, "s", sf.Shorthand)
+	stack := cmd.Flags().Lookup("stack")
+	require.NotNil(t, stack)
+	assert.Equal(t, "s", stack.Shorthand)
+
+	secrets := cmd.Flags().Lookup("show-secrets")
+	require.NotNil(t, secrets)
+	assert.Equal(t, "false", secrets.DefValue)
 }
