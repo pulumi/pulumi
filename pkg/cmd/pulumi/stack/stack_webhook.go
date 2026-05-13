@@ -55,30 +55,6 @@ func stackWebhookHookArg() *constrictor.Arguments {
 	}
 }
 
-// newStackWebhookListCmd is defined in stack_webhook_list.go.
-
-// TODO[https://github.com/pulumi/pulumi/issues/23061]: Not yet implemented.
-func newStackWebhookGetCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Get the details of a stack webhook",
-		Long:   "[EXPERIMENTAL] Get the details of a stack webhook.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, stackWebhookHookArg())
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23060]: Not yet implemented.
 func newStackWebhookNewCmd() *cobra.Command {
 	var (

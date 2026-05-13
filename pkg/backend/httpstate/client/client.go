@@ -723,6 +723,17 @@ func (pc *Client) ListStackWebhooks(ctx context.Context, stackID StackIdentifier
 	return resp, nil
 }
 
+// GetStackWebhook returns a single webhook by name for the given stack.
+func (pc *Client) GetStackWebhook(
+	ctx context.Context, stackID StackIdentifier, webhookName string,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "hooks", webhookName), nil, nil, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {

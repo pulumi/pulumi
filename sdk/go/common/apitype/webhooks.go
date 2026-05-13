@@ -19,6 +19,7 @@ type Webhook struct {
 	OrganizationName string   `json:"organizationName"`
 	ProjectName      *string  `json:"projectName,omitempty"`
 	StackName        *string  `json:"stackName,omitempty"`
+	EnvName          *string  `json:"envName,omitempty"`
 	Name             string   `json:"name"`
 	DisplayName      string   `json:"displayName"`
 	PayloadURL       string   `json:"payloadUrl"`
@@ -26,4 +27,6 @@ type Webhook struct {
 	Format           *string  `json:"format,omitempty"`
 	Filters          []string `json:"filters,omitempty"`
 	Groups           []string `json:"groups,omitempty"`
+	HasSecret        bool     `json:"hasSecret"`
+	SecretCiphertext string   `json:"secretCiphertext"`
 }
