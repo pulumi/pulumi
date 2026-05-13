@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: Add `pulumi env webhook` to manage Pulumi ESC environment webhooks

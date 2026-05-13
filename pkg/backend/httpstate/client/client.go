@@ -2428,3 +2428,94 @@ func (pc *Client) SearchInsightsResources(
 	}
 	return resp, nil
 }
+
+// --- ESC environment webhooks ---
+
+// envHooksPath returns the path to the env webhook collection or a sub-resource
+// underneath it. ESC routes do not double-encode path segments.
+func envHooksPath(org, project, env string, parts ...string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "/api/esc/environments/%s/%s/%s/hooks",
+		url.PathEscape(org), url.PathEscape(project), url.PathEscape(env))
+	for _, x := range parts {
+		b.WriteByte('/')
+		b.WriteString(url.PathEscape(x))
+	}
+	return b.String()
+}
+
+// ListEnvironmentWebhooks lists all webhooks configured for an environment.
+func (pc *Client) ListEnvironmentWebhooks(
+	ctx context.Context, org, project, env string,
+) ([]apitype.EnvironmentWebhook, error) {
+	var resp []apitype.EnvironmentWebhook
+	if err := pc.restCall(ctx, "GET", envHooksPath(org, project, env), nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetEnvironmentWebhook fetches a single environment webhook by name.
+func (pc *Client) GetEnvironmentWebhook(
+	ctx context.Context, org, project, env, name string,
+) (apitype.EnvironmentWebhook, error) {
+	var resp apitype.EnvironmentWebhook
+	if err := pc.restCall(ctx, "GET", envHooksPath(org, project, env, name), nil, nil, &resp); err != nil {
+		return apitype.EnvironmentWebhook{}, err
+	}
+	return resp, nil
+}
+
+// CreateEnvironmentWebhook creates a new environment webhook.
+func (pc *Client) CreateEnvironmentWebhook(
+	ctx context.Context, org, project, env string, req apitype.CreateEnvironmentWebhookRequest,
+) (apitype.EnvironmentWebhook, error) {
+	var resp apitype.EnvironmentWebhook
+	if err := pc.restCall(ctx, "POST", envHooksPath(org, project, env), nil, req, &resp); err != nil {
+		return apitype.EnvironmentWebhook{}, err
+	}
+	return resp, nil
+}
+
+// UpdateEnvironmentWebhook PATCHes an environment webhook. Fields left nil on
+// the request are not modified.
+func (pc *Client) UpdateEnvironmentWebhook(
+	ctx context.Context, org, project, env, name string, req apitype.UpdateEnvironmentWebhookRequest,
+) (apitype.EnvironmentWebhook, error) {
+	var resp apitype.EnvironmentWebhook
+	if err := pc.restCall(ctx, "PATCH", envHooksPath(org, project, env, name), nil, req, &resp); err != nil {
+		return apitype.EnvironmentWebhook{}, err
+	}
+	return resp, nil
+}
+
+// DeleteEnvironmentWebhook deletes an environment webhook by name.
+func (pc *Client) DeleteEnvironmentWebhook(
+	ctx context.Context, org, project, env, name string,
+) error {
+	return pc.restCall(ctx, "DELETE", envHooksPath(org, project, env, name), nil, nil, nil)
+}
+
+// PingEnvironmentWebhook sends a test delivery to an environment webhook and
+// returns the resulting delivery record.
+func (pc *Client) PingEnvironmentWebhook(
+	ctx context.Context, org, project, env, name string,
+) (apitype.EnvironmentWebhookDelivery, error) {
+	var resp apitype.EnvironmentWebhookDelivery
+	if err := pc.restCall(ctx, "POST", envHooksPath(org, project, env, name, "ping"), nil, nil, &resp); err != nil {
+		return apitype.EnvironmentWebhookDelivery{}, err
+	}
+	return resp, nil
+}
+
+// ListEnvironmentWebhookDeliveries returns recent deliveries for an
+// environment webhook.
+func (pc *Client) ListEnvironmentWebhookDeliveries(
+	ctx context.Context, org, project, env, name string,
+) ([]apitype.EnvironmentWebhookDelivery, error) {
+	var resp []apitype.EnvironmentWebhookDelivery
+	if err := pc.restCall(ctx, "GET", envHooksPath(org, project, env, name, "deliveries"), nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
