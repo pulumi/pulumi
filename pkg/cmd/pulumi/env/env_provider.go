@@ -28,6 +28,7 @@ func newEnvProviderCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "provider",
 		Short:  "Manage environment OIDC providers",
+		Long:   "[EXPERIMENTAL] Manage environment OIDC providers.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -44,6 +45,7 @@ func newEnvProviderNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Register a new OIDC issuer for an organization",
+		Long:   "[EXPERIMENTAL] Register a new OIDC issuer for an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -69,6 +71,7 @@ func newEnvProviderNewAWSCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "aws",
 		Short:  "Register an AWS OIDC issuer",
+		Long:   "[EXPERIMENTAL] Register an AWS OIDC issuer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -98,6 +101,7 @@ func newEnvProviderNewAWSSSOCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "aws-sso",
 		Short:  "Register an AWS SSO OIDC issuer",
+		Long:   "[EXPERIMENTAL] Register an AWS SSO OIDC issuer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -127,6 +131,7 @@ func newEnvProviderNewAzureCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "azure",
 		Short:  "Register an Azure OIDC issuer",
+		Long:   "[EXPERIMENTAL] Register an Azure OIDC issuer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -156,6 +161,7 @@ func newEnvProviderNewGCPCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "gcp",
 		Short:  "Register a Google Cloud OIDC issuer",
+		Long:   "[EXPERIMENTAL] Register a Google Cloud OIDC issuer.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

@@ -36,7 +36,7 @@ func newStackNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new stack",
-		Long: "Create a new stack.\n" +
+		Long: "[EXPERIMENTAL] Create a new stack.\n" +
 			"\n" +
 			"A stack is an isolated, independently configurable instance of a Pulumi\n" +
 			"program, typically representing a deployment environment.",
@@ -74,6 +74,7 @@ func newStackGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Retrieve detailed information about a stack",
+		Long:   "[EXPERIMENTAL] Retrieve detailed information about a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

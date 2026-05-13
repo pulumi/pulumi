@@ -28,6 +28,7 @@ func newOrgRoleCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "role",
 		Short:  "Manage organization custom roles",
+		Long:   "[EXPERIMENTAL] Manage organization custom roles.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -54,6 +55,7 @@ func newOrgRoleListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List custom roles for an organization",
+		Long:   "[EXPERIMENTAL] List custom roles for an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -80,6 +82,7 @@ func newOrgRoleNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new custom role for an organization",
+		Long:   "[EXPERIMENTAL] Create a new custom role for an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -113,6 +116,7 @@ func newOrgRoleEditCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "edit",
 		Short:  "Update a custom role's name, description, or permissions",
+		Long:   "[EXPERIMENTAL] Update a custom role's name, description, or permissions.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -145,6 +149,7 @@ func newOrgRoleRemoveCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "remove",
 		Short:  "Delete a custom role from an organization",
+		Long:   "[EXPERIMENTAL] Delete a custom role from an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -175,6 +180,7 @@ func newOrgRoleAssignCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "assign",
 		Short:  "Assign a role to a team",
+		Long:   "[EXPERIMENTAL] Assign a role to a team.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

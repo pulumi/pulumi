@@ -62,7 +62,7 @@ func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Co
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List all webhooks configured for a stack",
-		Long: "List all webhooks configured for a stack.\n" +
+		Long: "[EXPERIMENTAL] List all webhooks configured for a stack.\n" +
 			"\n" +
 			"Displays the ID, name, payload URL, format, event groups, events, and active\n" +
 			"status of each webhook. By default the output is a human-readable table;\n" +

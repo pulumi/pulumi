@@ -56,6 +56,7 @@ func newInsightsResourceSearchCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "search",
 		Short:  "Search for resources within an organization",
+		Long:   "[EXPERIMENTAL] Search for resources within an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
