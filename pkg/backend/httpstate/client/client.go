@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -2240,21 +2241,35 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 	}
 }
 
-func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-	url := "/api/registry/templates?limit=499"
-	if name != nil {
-		url += "&name=" + *name
+func (pc *Client) ListTemplates(
+	ctx context.Context, opts registry.ListTemplatesOptions,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	query := url.Values{}
+	query.Set("limit", "499")
+	if opts.Name != "" {
+		query.Set("name", opts.Name)
+	}
+	if opts.Org != "" {
+		query.Set("orgLogin", opts.Org)
+	}
+	if opts.Search != "" {
+		query.Set("search", opts.Search)
 	}
 
 	var continuationToken *string
 	return func(f func(apitype.TemplateMetadata, error) bool) {
 		for {
-			queryURL := url
+			pageQuery := query
 			if continuationToken != nil {
-				queryURL += "&continuationToken=" + *continuationToken
+				// Clone so we don't mutate the captured map between iterations.
+				pageQuery = url.Values{}
+				for k, v := range query {
+					pageQuery[k] = v
+				}
+				pageQuery.Set("continuationToken", *continuationToken)
 			}
 			var resp apitype.ListTemplatesResponse
-			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			err := pc.restCall(ctx, "GET", "/api/registry/templates?"+pageQuery.Encode(), nil, nil, &resp)
 			if err != nil {
 				f(apitype.TemplateMetadata{}, err)
 				return
