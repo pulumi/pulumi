@@ -16,8 +16,10 @@ package neo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"sync/atomic"
@@ -847,4 +849,94 @@ func TestDispatchUserEvents_WarnsOnPostFailure(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Contains(t, got[0].Message, "failed to send event")
 	assert.Contains(t, got[0].Message, "network down")
+}
+
+func TestCreateNeoTaskWithEntityRetry(t *testing.T) {
+	t.Parallel()
+
+	t.Run("RetriesWithoutEntityOnInvalidEntities", func(t *testing.T) {
+		t.Parallel()
+
+		// First call carries entity_diff and gets rejected; the wrapper must retry
+		// once with no stack so the task is still created.
+		var calls []map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
+			calls = append(calls, body)
+			if len(calls) == 1 {
+				rw.WriteHeader(http.StatusBadRequest)
+				_, _ = rw.Write([]byte(`{"code":400,"message":"invalid entities: unable to access stack"}`))
+				return
+			}
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_retry"}`))
+		}))
+		defer server.Close()
+
+		pc := client.NewClient(server.URL, "", false, nil)
+		var droppedErrs []error
+		resp, err := createNeoTaskWithEntityRetry(
+			t.Context(), pc, "my-org", "hello", "my-stack", "my-project",
+			client.CreateNeoTaskOptions{ToolExecutionMode: "cli"},
+			func(originalErr error) {
+				droppedErrs = append(droppedErrs, originalErr)
+			})
+		require.NoError(t, err)
+		assert.Equal(t, "t_retry", resp.TaskID)
+		require.Len(t, calls, 2)
+
+		firstMsg, _ := calls[0]["message"].(map[string]any)
+		require.NotNil(t, firstMsg)
+		assert.Contains(t, firstMsg, "entity_diff")
+
+		retryMsg, _ := calls[1]["message"].(map[string]any)
+		require.NotNil(t, retryMsg)
+		assert.NotContains(t, retryMsg, "entity_diff")
+
+		require.Len(t, droppedErrs, 1)
+		assert.Contains(t, droppedErrs[0].Error(), "invalid entities")
+	})
+
+	t.Run("DoesNotRetryOnUnrelatedError", func(t *testing.T) {
+		t.Parallel()
+
+		// Non-entity errors must surface to the caller without a second POST.
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			calls++
+			rw.WriteHeader(http.StatusForbidden)
+			_, _ = rw.Write([]byte(`{"code":403,"message":"forbidden"}`))
+		}))
+		defer server.Close()
+
+		pc := client.NewClient(server.URL, "", false, nil)
+		_, err := createNeoTaskWithEntityRetry(
+			t.Context(), pc, "my-org", "hello", "my-stack", "my-project",
+			client.CreateNeoTaskOptions{},
+			func(error) { t.Fatal("onEntityDropped should not fire on unrelated errors") })
+		require.Error(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("DoesNotRetryWhenStackMissing", func(t *testing.T) {
+		t.Parallel()
+
+		// With no stack to attach there's nothing to drop, so an "invalid entities"
+		// response must propagate as-is rather than triggering a pointless retry.
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			calls++
+			rw.WriteHeader(http.StatusBadRequest)
+			_, _ = rw.Write([]byte(`{"code":400,"message":"invalid entities"}`))
+		}))
+		defer server.Close()
+
+		pc := client.NewClient(server.URL, "", false, nil)
+		_, err := createNeoTaskWithEntityRetry(
+			t.Context(), pc, "my-org", "hello", "", "", client.CreateNeoTaskOptions{},
+			func(error) { t.Fatal("onEntityDropped should not fire when no stack is attached") })
+		require.Error(t, err)
+		assert.Equal(t, 1, calls)
+	})
 }
