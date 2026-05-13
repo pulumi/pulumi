@@ -2428,3 +2428,59 @@ func (pc *Client) SearchInsightsResources(
 	}
 	return resp, nil
 }
+
+// --- ESC environment schedules ---
+
+func envSchedulesPath(org, project, env string, parts ...string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "/api/esc/environments/%s/%s/%s/schedules",
+		url.PathEscape(org), url.PathEscape(project), url.PathEscape(env))
+	for _, x := range parts {
+		b.WriteByte('/')
+		b.WriteString(url.PathEscape(x))
+	}
+	return b.String()
+}
+
+// ListEnvironmentSchedules returns all scheduled actions for the environment.
+func (pc *Client) ListEnvironmentSchedules(
+	ctx context.Context, org, project, env string,
+) (apitype.ListScheduledActionsResponse, error) {
+	var resp apitype.ListScheduledActionsResponse
+	if err := pc.restCall(ctx, "GET", envSchedulesPath(org, project, env), nil, nil, &resp); err != nil {
+		return apitype.ListScheduledActionsResponse{}, err
+	}
+	return resp, nil
+}
+
+// CreateEnvironmentSchedule creates a scheduled action.
+func (pc *Client) CreateEnvironmentSchedule(
+	ctx context.Context, org, project, env string, req apitype.CreateEnvironmentScheduleRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	if err := pc.restCall(ctx, "POST", envSchedulesPath(org, project, env), nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// PauseEnvironmentSchedule pauses a scheduled action.
+func (pc *Client) PauseEnvironmentSchedule(
+	ctx context.Context, org, project, env, scheduleID string,
+) error {
+	return pc.restCall(ctx, "POST", envSchedulesPath(org, project, env, scheduleID, "pause"), nil, nil, nil)
+}
+
+// ResumeEnvironmentSchedule resumes a paused scheduled action.
+func (pc *Client) ResumeEnvironmentSchedule(
+	ctx context.Context, org, project, env, scheduleID string,
+) error {
+	return pc.restCall(ctx, "POST", envSchedulesPath(org, project, env, scheduleID, "resume"), nil, nil, nil)
+}
+
+// DeleteEnvironmentSchedule deletes a scheduled action.
+func (pc *Client) DeleteEnvironmentSchedule(
+	ctx context.Context, org, project, env, scheduleID string,
+) error {
+	return pc.restCall(ctx, "DELETE", envSchedulesPath(org, project, env, scheduleID), nil, nil, nil)
+}
