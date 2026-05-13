@@ -109,6 +109,7 @@ func init() {
 	addEndpoint("PUT", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings", "updateDeploymentSettings")
 	addEndpoint("POST", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings/encrypt", "encryptDeploymentSecret")
 	addEndpoint("DELETE", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments/settings", "destroyDeploymentSettings")
+	addEndpoint("GET", "/api/stacks/{orgName}/{projectName}/{stackName}/deployments", "listStackDeployments")
 
 	// The APIs for performing updates of various kind all have the same set of API endpoints. Only
 	// differentiate the "create update of kind X" APIs, and introduce a pseudo route param "updateKind".

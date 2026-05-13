@@ -22,38 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/22988]: Not yet implemented.
-func newDeploymentListCmd() *cobra.Command {
-	var (
-		stack    string
-		page     int
-		pageSize int
-		sort     string
-		asc      bool
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List deployments for a stack",
-		Long:   "[EXPERIMENTAL] List deployments for a stack.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().IntVar(&page, "page", 1, "The page of results to return")
-	cmd.Flags().IntVar(&pageSize, "page-size", 10, "The number of results per page (1-100)")
-	cmd.Flags().StringVar(&sort, "sort", "", "The field to sort results by")
-	cmd.Flags().BoolVar(&asc, "asc", false, "Sort in ascending order")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/22987]: Not yet implemented.
 func newDeploymentGetCmd() *cobra.Command {
 	var stack string

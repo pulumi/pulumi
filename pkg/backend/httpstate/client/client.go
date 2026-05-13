@@ -2368,6 +2368,50 @@ func (pc *Client) GetInsightsResource(
 	return resp, nil
 }
 
+// ListStackDeploymentsOptions are the optional query parameters accepted by
+// ListStackDeployments. Zero values mean "let the server pick the default":
+// Page < 1 → 1, PageSize ≤ 0 → 10 (server-side cap 100), Sort "" → server's
+// default, Asc false → descending order.
+type ListStackDeploymentsOptions struct {
+	Page     int64
+	PageSize int64
+	Sort     string
+	Asc      bool
+}
+
+// ListStackDeployments returns a paginated list of deployments for the given
+// stack, wrapping the ListStackDeploymentsHandlerV2 endpoint.
+func (pc *Client) ListStackDeployments(
+	ctx context.Context, stack StackIdentifier, opts ListStackDeploymentsOptions,
+) (apitype.ListDeploymentResponseV2, error) {
+	query := url.Values{}
+	if opts.Page > 0 {
+		query.Set("page", strconv.FormatInt(opts.Page, 10))
+	}
+	if opts.PageSize > 0 {
+		query.Set("pageSize", strconv.FormatInt(opts.PageSize, 10))
+	}
+	if opts.Sort != "" {
+		query.Set("sort", opts.Sort)
+	}
+	if opts.Asc {
+		// Only set `asc` when it's non-default — the server treats the absence
+		// of the flag as descending, matching our zero value.
+		query.Set("asc", "true")
+	}
+
+	path := getStackPath(stack, "deployments")
+	if encoded := query.Encode(); encoded != "" {
+		path += "?" + encoded
+	}
+
+	var resp apitype.ListDeploymentResponseV2
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.ListDeploymentResponseV2{}, err
+	}
+	return resp, nil
+}
+
 // SearchInsightsResources runs a resource search against the v2 endpoint
 // (`GetOrgResourceSearchV2Query`).
 //
