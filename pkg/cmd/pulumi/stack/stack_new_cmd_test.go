@@ -26,11 +26,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // When a backend doesn't support the --teams flag,
 // stack creation should fail.
-func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
+func TestStackNew_teamsUnsupportedByBackend(t *testing.T) {
 	t.Parallel()
 
 	mockBackend := &backend.MockBackend{
@@ -58,7 +59,7 @@ func TestStackInit_teamsUnsupportedByBackend(t *testing.T) {
 			return nil, nil
 		},
 	}
-	cmd := &stackInitCmd{
+	cmd := &stackNewCmd{
 		teams:     []string{"red", "blue"},
 		stackName: "dev",
 		currentBackend: func(
@@ -117,6 +118,55 @@ func TestNewCreateStackOptsFiltersWhitespace(t *testing.T) {
 			// then the options should be non-nil.
 			got := sanitizeTeams(tt.giveTeams)
 			assert.ElementsMatch(t, tt.wantTeams, got)
+		})
+	}
+}
+
+func TestValidateEncryptionFlags(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		secretsProvider string
+		encryptedKey    string
+		encryptionSalt  string
+		wantErr         string
+	}{
+		{name: "no flags", secretsProvider: "default"},
+		{name: "salt with passphrase", secretsProvider: "passphrase", encryptionSalt: "v1:abc:def"},
+		{name: "key with awskms", secretsProvider: "awskms://alias/foo", encryptedKey: "ciphertext"},
+		{
+			name: "both set", secretsProvider: "awskms://alias/foo",
+			encryptedKey: "ciphertext", encryptionSalt: "v1:abc:def",
+			wantErr: "--encrypted-key and --encryption-salt are mutually exclusive",
+		},
+		{
+			name: "salt with cloud", secretsProvider: "awskms://alias/foo", encryptionSalt: "v1:abc:def",
+			wantErr: "--encryption-salt requires --secrets-provider=passphrase",
+		},
+		{
+			name: "salt with default", secretsProvider: "default", encryptionSalt: "v1:abc:def",
+			wantErr: "--encryption-salt requires --secrets-provider=passphrase",
+		},
+		{
+			name: "key with passphrase", secretsProvider: "passphrase", encryptedKey: "ciphertext",
+			wantErr: "--encrypted-key requires a cloud secrets provider",
+		},
+		{
+			name: "key with default", secretsProvider: "default", encryptedKey: "ciphertext",
+			wantErr: "--encrypted-key requires a cloud secrets provider",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			err := validateEncryptionFlags(tt.secretsProvider, tt.encryptedKey, tt.encryptionSalt)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				assert.ErrorContains(t, err, tt.wantErr)
+			}
 		})
 	}
 }

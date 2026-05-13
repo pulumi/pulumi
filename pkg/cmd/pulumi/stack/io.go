@@ -157,7 +157,7 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 			return nil, err
 		}
 
-		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
+		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false, CreateStackEncryption{})
 	}
 
 	return nil, backenderr.StackNotFoundError{StackName: stackName}
@@ -300,7 +300,7 @@ func ChooseStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 			return nil, parseErr
 		}
 
-		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false)
+		return CreateStack(ctx, sink, ws, b, stackRef, root, nil, lopt.SetCurrent(), "", false, CreateStackEncryption{})
 	}
 
 	// With the stack name selected, look it up from the backend.
@@ -336,7 +336,18 @@ func InitStack(
 	if err != nil {
 		return nil, err
 	}
-	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig)
+	return CreateStack(ctx, sink, ws, b, stackRef, root, nil, setCurrent, secretsProvider, useRemoteConfig,
+		CreateStackEncryption{})
+}
+
+// CreateStackEncryption optionally pre-populates encryption material on a stack at creation time. When non-empty,
+// EncryptedKey is plumbed through to the workspace ProjectStack (and apitype.StackConfig, when remote config is in use)
+// for cloud-based secrets providers; EncryptionSalt does the same for the passphrase provider. Environment overrides
+// the auto-derived ESC environment name used when remote config is requested.
+type CreateStackEncryption struct {
+	EncryptedKey   string
+	EncryptionSalt string
+	Environment    string
 }
 
 // CreateStack creates a stack with the given name, and optionally selects it as the current.
@@ -344,8 +355,10 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	b backend.Backend, stackRef backend.StackReference,
 	root string, teams []string, setCurrent bool,
 	secretsProvider string, useRemoteConfig bool,
+	enc CreateStackEncryption,
 ) (backend.Stack, error) {
-	ps, needsSave, sm, err := createSecretsManagerForNewStack(ctx, sink, ws, b, stackRef, secretsProvider)
+	ps, needsSave, sm, err := createSecretsManagerForNewStack(
+		ctx, sink, ws, b, stackRef, secretsProvider, enc.EncryptedKey, enc.EncryptionSalt)
 	if err != nil {
 		return nil, fmt.Errorf("could not create secrets manager for new stack: %w", err)
 	}
@@ -384,14 +397,21 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	}
 
 	var escEnvironment string
-	if useRemoteConfig {
+	if enc.Environment != "" {
+		escEnvironment = enc.Environment
+	} else if useRemoteConfig {
 		proj, found := stackRef.Project()
 		if !found {
 			return nil, errors.New("could not get project from stack reference")
 		}
 		escEnvironment = proj.String() + "/" + stackRef.Name().String()
+	}
+	if escEnvironment != "" || enc.EncryptedKey != "" || enc.EncryptionSalt != "" {
 		opts.Config = &apitype.StackConfig{
-			Environment: escEnvironment,
+			Environment:     escEnvironment,
+			SecretsProvider: ps.SecretsProvider,
+			EncryptedKey:    ps.EncryptedKey,
+			EncryptionSalt:  ps.EncryptionSalt,
 		}
 	}
 

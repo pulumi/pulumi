@@ -95,6 +95,12 @@ func CreateSecretsManagerForExistingStack(
 // Creates a secrets manager for a new stack. If a stack configuration already exists (e.g. the user has created a
 // Pulumi.<stack>.yaml file themselves, prior to stack initialisation), try to respect the settings therein. Otherwise,
 // fall back to a default defined by the backend that will manage the stack.
+//
+// If presetEncryptedKey or presetEncryptionSalt is non-empty, that value is written onto the stack configuration
+// before the underlying secrets manager is constructed. NewCloudSecretsManager and NewPromptingPassphraseSecretsManager
+// both short-circuit data-key generation / passphrase prompting when these fields are already set, so the caller's
+// preset values flow through as-is. Callers are responsible for validating that the preset value matches the
+// secretsProvider (e.g. a salt only with the passphrase provider, an encrypted key only with a cloud URL).
 func createSecretsManagerForNewStack(
 	ctx context.Context,
 	sink diag.Sink,
@@ -102,12 +108,21 @@ func createSecretsManagerForNewStack(
 	b backend.Backend,
 	stackRef backend.StackReference,
 	secretsProvider string,
+	presetEncryptedKey string,
+	presetEncryptionSalt string,
 ) (*workspace.ProjectStack, bool, secrets.Manager, error) {
 	var sm secrets.Manager
 
 	ps, err := readStackConfiguration(ctx, sink, ws, b, stackRef)
 	if err != nil {
 		return nil, false, nil, err
+	}
+
+	if presetEncryptedKey != "" {
+		ps.EncryptedKey = presetEncryptedKey
+	}
+	if presetEncryptionSalt != "" {
+		ps.EncryptionSalt = presetEncryptionSalt
 	}
 
 	oldConfig := deepcopy.Copy(ps).(*workspace.ProjectStack)

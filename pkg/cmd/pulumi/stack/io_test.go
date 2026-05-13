@@ -110,6 +110,7 @@ func TestCreateStack_InitialisesStateWithSecretsManager(t *testing.T) {
 		false, /*setCurrent*/
 		"",    /*secretsProvider*/
 		false, /* useRemoteConfig */
+		CreateStackEncryption{},
 	)
 
 	// Assert.

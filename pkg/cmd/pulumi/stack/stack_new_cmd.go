@@ -27,6 +27,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -37,11 +38,12 @@ const (
 		"(possible choices: default, passphrase, awskms, azurekeyvault, gcpkms, hashivault)"
 )
 
-func newStackInitCmd() *cobra.Command {
-	var sicmd stackInitCmd
+func newStackNewCmd() *cobra.Command {
+	var sicmd stackNewCmd
 	cmd := &cobra.Command{
-		Use:   "init",
-		Short: "Create an empty stack with the given name, ready for updates",
+		Use:     "new",
+		Aliases: []string{"init"},
+		Short:   "Create an empty stack with the given name, ready for updates",
 		Long: "Create an empty stack with the given name, ready for updates\n" +
 			"\n" +
 			"This command creates an empty stack with the given name.  It has no resources,\n" +
@@ -57,20 +59,25 @@ func newStackInitCmd() *cobra.Command {
 			"\n" +
 			"To use the `passphrase` secrets provider with the pulumi.com backend, use:\n" +
 			"\n" +
-			"* `pulumi stack init --secrets-provider=passphrase`\n" +
+			"* `pulumi stack new --secrets-provider=passphrase`\n" +
 			"\n" +
 			"To use a cloud secrets provider with any backend, use one of the following:\n" +
 			"\n" +
-			"* `pulumi stack init --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
-			"* `pulumi stack init --secrets-provider=\"hashivault://mykey\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"awskms://alias/ExampleAlias?region=us-east-1\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"gcpkms://projects/<p>/locations/<l>/keyRings/<r>/cryptoKeys/<k>\"`\n" +
+			"* `pulumi stack new --secrets-provider=\"hashivault://mykey\"`\n" +
+			"\n" +
+			"To re-use existing encryption material (e.g. when restoring from backup or sharing across\n" +
+			"environments), pass `--encrypted-key` (cloud-based providers) or `--encryption-salt`\n" +
+			"(passphrase provider). Passphrase-protected stacks still require `PULUMI_CONFIG_PASSPHRASE`\n" +
+			"or `PULUMI_CONFIG_PASSPHRASE_FILE` to be set; supplying the salt alone is not sufficient.\n" +
 			"\n" +
 			"A stack can be created based on the configuration of an existing stack by passing the\n" +
 			"`--copy-config-from` flag:\n" +
 			"\n" +
-			"* `pulumi stack init --copy-config-from dev`",
+			"* `pulumi stack new --copy-config-from dev`",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			return sicmd.Run(ctx, args)
@@ -89,6 +96,17 @@ func newStackInitCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(
 		&sicmd.secretsProvider, "secrets-provider", "", possibleSecretsProviderChoices)
 	cmd.PersistentFlags().StringVar(
+		&sicmd.encryptedKey, "encrypted-key", "",
+		"Pre-existing KMS-encrypted ciphertext for the data key (cloud-based secrets providers only)")
+	cmd.PersistentFlags().StringVar(
+		&sicmd.encryptionSalt, "encryption-salt", "",
+		"Pre-existing encryption salt in `v1:<base64-salt>:<encrypted-verifier>` form "+
+			"(passphrase-based secrets providers only)")
+	cmd.PersistentFlags().StringVar(
+		&sicmd.environment, "environment", "",
+		"Reference to an ESC environment that will store this stack's configuration remotely. "+
+			"Implies remote configuration storage.")
+	cmd.PersistentFlags().StringVar(
 		&sicmd.stackToCopy, "copy-config-from", "", "The name of the stack to copy existing config from")
 	cmd.PersistentFlags().BoolVar(
 		&sicmd.noSelect, "no-select", false, "Do not select the stack")
@@ -102,14 +120,17 @@ func newStackInitCmd() *cobra.Command {
 	return cmd
 }
 
-// stackInitCmd implements the `pulumi stack init` command.
-type stackInitCmd struct {
+// stackNewCmd implements the `pulumi stack new` command (with `pulumi stack init` retained as a back-alias).
+type stackNewCmd struct {
 	secretsProvider string
 	stackName       string
 	stackToCopy     string
 	noSelect        bool
 	teams           []string
 	remoteConfig    bool
+	encryptedKey    string
+	encryptionSalt  string
+	environment     string
 
 	// currentBackend is a reference to the top-level currentBackend function.
 	// This is used to override the default implementation for testing purposes.
@@ -118,7 +139,7 @@ type stackInitCmd struct {
 	) (backend.Backend, error)
 }
 
-func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
+func (cmd *stackNewCmd) Run(ctx context.Context, args []string) error {
 	if cmd.secretsProvider == "" {
 		cmd.secretsProvider = "default"
 	}
@@ -158,6 +179,12 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 		return err
 	}
 
+	// Validate the new encryption-material flags. These short-circuit secrets-manager construction so they're only
+	// meaningful when paired with the matching provider; mixing them is a user error.
+	if err := validateEncryptionFlags(cmd.secretsProvider, cmd.encryptedKey, cmd.encryptionSalt); err != nil {
+		return err
+	}
+
 	if cmd.stackName == "" && cmdutil.Interactive() {
 		if b.SupportsOrganizations() {
 			fmt.Print("Please enter your desired stack name.\n" +
@@ -191,8 +218,15 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	}
 
 	teams := sanitizeTeams(cmd.teams)
+	enc := CreateStackEncryption{
+		EncryptedKey:   cmd.encryptedKey,
+		EncryptionSalt: cmd.encryptionSalt,
+		Environment:    cmd.environment,
+	}
+	// --environment implies storing config remotely; --remote-config remains supported for the legacy default name.
+	useRemoteConfig := cmd.remoteConfig || cmd.environment != ""
 	newStack, err := CreateStack(ctx, cmdutil.Diag(), ws, b, stackRef, root, teams,
-		!cmd.noSelect, cmd.secretsProvider, cmd.remoteConfig)
+		!cmd.noSelect, cmd.secretsProvider, useRemoteConfig, enc)
 	if err != nil {
 		if errors.Is(err, backend.ErrTeamsNotSupported) {
 			return fmt.Errorf("stack %s uses the %s backend: "+
@@ -256,10 +290,34 @@ func (cmd *stackInitCmd) Run(ctx context.Context, args []string) error {
 	return nil
 }
 
-// newCreateStackOptions constructs a backend.CreateStackOptions object
-// from the provided options.
+// validateEncryptionFlags rejects nonsensical combinations of --secrets-provider / --encrypted-key / --encryption-salt.
+//
+// Note on the salt format: the issue and apitype.StackConfig.EncryptionSalt docstring describe this value as a
+// "base64-encoded encryption salt", but the value stored locally in Pulumi.<stack>.yaml (and required by the passphrase
+// secrets manager to verify a passphrase) is the full `v1:<base64-salt>:<encrypted-verifier>` state produced by
+// passphrase.NewPassphraseSecretsManager. We accept and store that full state form here for symmetry with the local
+// workspace format; reconciling the API docs is tracked separately.
+func validateEncryptionFlags(secretsProvider, encryptedKey, encryptionSalt string) error {
+	if encryptedKey == "" && encryptionSalt == "" {
+		return nil
+	}
+	if encryptedKey != "" && encryptionSalt != "" {
+		return errors.New("--encrypted-key and --encryption-salt are mutually exclusive")
+	}
+	isDefault := secretsProvider == "" || secretsProvider == "default"
+	isPassphrase := secretsProvider == passphrase.Type
+	if encryptionSalt != "" && !isPassphrase {
+		return errors.New("--encryption-salt requires --secrets-provider=passphrase")
+	}
+	if encryptedKey != "" && (isPassphrase || isDefault) {
+		return errors.New(
+			"--encrypted-key requires a cloud secrets provider (awskms://, azurekeyvault://, gcpkms://, hashivault://)")
+	}
+	return nil
+}
+
+// sanitizeTeams strips empty / whitespace-only entries from the --teams list so the backend never sees them.
 func sanitizeTeams(teams []string) []string {
-	// Remove any strings from the list that are empty or just whitespace.
 	validTeams := teams[:0] // reuse storage.
 	for _, team := range teams {
 		team = strings.TrimSpace(team)

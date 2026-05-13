@@ -1,0 +1,7 @@
+changes:
+- type: feat
+  scope: cli
+  description: |
+    Rename `pulumi stack init` to `pulumi stack new` (the old name continues to work as an alias) and add
+    `--encrypted-key`, `--encryption-salt`, and `--environment` flags for supplying pre-existing encryption material
+    and an ESC environment reference at stack creation time

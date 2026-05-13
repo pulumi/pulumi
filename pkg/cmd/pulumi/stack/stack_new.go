@@ -22,50 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/23066]: Not yet implemented.
-func newStackNewCmd() *cobra.Command {
-	var (
-		org             string
-		environment     string
-		secretsProvider string
-		encryptedKey    string
-		encryptionSalt  string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "new",
-		Short:  "Create a new stack",
-		Long: "Create a new stack.\n" +
-			"\n" +
-			"A stack is an isolated, independently configurable instance of a Pulumi\n" +
-			"program, typically representing a deployment environment.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "project"},
-			{Name: "name"},
-		},
-		Required: 2,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to create the stack in")
-	cmd.Flags().StringVar(&environment, "environment", "",
-		"Reference to an ESC environment for storing stack configuration")
-	cmd.Flags().StringVar(&secretsProvider, "secrets-provider", "",
-		"The secrets provider for the stack")
-	cmd.Flags().StringVar(&encryptedKey, "encrypted-key", "",
-		"KMS-encrypted ciphertext for the data key (cloud-based secrets providers)")
-	cmd.Flags().StringVar(&encryptionSalt, "encryption-salt", "",
-		"Base64-encoded encryption salt (passphrase-based secrets providers)")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23065]: Not yet implemented.
 func newStackGetCmd() *cobra.Command {
 	var stack string
