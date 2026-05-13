@@ -100,6 +100,29 @@ jobs:
         run: |
           make -C sdk/${{ matrix.language}} publish
 
+  npm_package:
+    name: npm cli wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Set up Node ${{ fromJson(inputs.version-set).nodejs }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ fromJson(inputs.version-set).nodejs }}
+          registry-url: https://registry.npmjs.org
+          always-auth: true
+      - name: Download release artifacts
+        run: |
+          mkdir -p artifacts
+          gh release download "v${PULUMI_VERSION}" --dir ./artifacts --pattern 'sdk-npm-*'
+          find artifacts
+      - name: Publish npm CLI wrapper
+        run: |
+          make -C npm publish
+
   s3-blobs:
     name: s3 blobs
     runs-on: ubuntu-latest

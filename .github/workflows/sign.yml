@@ -57,6 +57,12 @@ jobs:
               mv -vT "$file" "sdk-nodejs-$file"
             done
           )
+          (
+            cd artifacts.tmp/artifacts-npm-package
+            for file in *.tgz ; do
+              mv -vT "$file" "sdk-npm-$file"
+            done
+          )
       - name: Flatten artifact directories
         run: |
           mkdir -p ./artifacts

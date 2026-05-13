@@ -1,0 +1,23 @@
+{
+    "name": "pulumi",
+    "version": "3.239.0",
+    "description": "Pulumi Infrastructure as Code CLI",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/pulumi/pulumi.git",
+        "directory": "npm"
+    },
+    "bin": {
+        "pulumi": "run.js"
+    },
+    "scripts": {
+        "test": "node --test test/*.test.js"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "1.8.3"
+    },
+    "engines": {
+        "node": ">=18"
+    }
+}
