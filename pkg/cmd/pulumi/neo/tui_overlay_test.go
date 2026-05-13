@@ -266,6 +266,42 @@ func TestRenderOverlayBody_IncludesArgsAndResult(t *testing.T) {
 	assert.NotContains(t, body, "(in flight)")
 }
 
+func TestRenderOverlayBody_DividerBetweenCalls(t *testing.T) {
+	t.Parallel()
+
+	// Two completed calls must be visually separated by the box-drawing
+	// divider — without it the second section's title can run into the
+	// first call's result block and the boundary gets lost.
+	hist := appendToolStart(nil, "fs__read", json.RawMessage(`{"path":"a.txt"}`))
+	completeToolCall(hist, "fs__read", json.RawMessage(`"a"`), false)
+	hist = appendToolStart(hist, "fs__read", json.RawMessage(`{"path":"b.txt"}`))
+	completeToolCall(hist, "fs__read", json.RawMessage(`"b"`), false)
+
+	body := renderOverlayBody(hist, 40)
+	// 40 contiguous ─ characters is the divider; if join used a plain
+	// blank-line separator the substring would not appear.
+	assert.Contains(t, body, strings.Repeat("─", 40))
+	// Single-call rendering must NOT include the divider — it's strictly a
+	// between-sections affordance.
+	single := renderOverlayBody(hist[:1], 40)
+	assert.NotContains(t, single, strings.Repeat("─", 40))
+}
+
+func TestOverlayView_HintAtBottom(t *testing.T) {
+	t.Parallel()
+
+	// The hint is the close/scroll cue and must be the LAST visible line
+	// so users instinctively look down for it (matching Claude Code,
+	// less, man, etc.).
+	o := newOverlayModel(80, 10)
+	o.Refresh(nil)
+	view := o.View()
+	lines := strings.Split(view, "\n")
+	last := lines[len(lines)-1]
+	assert.Contains(t, last, "ctrl+o or esc to close",
+		"hint must be on the last line; got last line %q", last)
+}
+
 func TestRenderOverlayBody_PendingShowsInFlight(t *testing.T) {
 	t.Parallel()
 

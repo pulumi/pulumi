@@ -24,16 +24,39 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 )
 
-// overlayHeader is the persistent first line of the overlay so users always
-// know how to dismiss it and scroll.
-const overlayHeader = "Tool details · ctrl+o or esc to close · ↑↓ pgup/pgdn to scroll · home/end for top/bottom"
+// overlayHint is the persistent footer line of the overlay so users always
+// know how to dismiss it and scroll. It sits below the viewport rather than
+// above it so the eye lands on the tool detail content first.
+const overlayHint = "Tool details · ctrl+o or esc to close · ↑↓ pgup/pgdn to scroll · home/end for top/bottom"
 
 var (
-	overlayHeaderStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
-	overlayMetaStyle   = lipgloss.NewStyle().Faint(true)
-	overlaySubheadOK   = lipgloss.NewStyle().Bold(true)
-	overlayErrorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
-	overlayEmptyStyle  = lipgloss.NewStyle().Faint(true).Italic(true)
+	// overlayHintStyle is the dim cue at the bottom of the alt-screen. Faint
+	// (not bold) keeps it out of the way of the actual content.
+	overlayHintStyle = lipgloss.NewStyle().Faint(true)
+	// overlayTitleStyle styles the tool function name in cyan bold so each
+	// section's title pops out at a glance.
+	overlayTitleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("6"))
+	overlayMetaStyle  = lipgloss.NewStyle().Faint(true)
+	// overlayArgsHead is bold blue for the Arguments subhead. Distinct from
+	// the Result subhead so the eye can find the boundary at a glance even
+	// without indentation cues.
+	overlayArgsHead = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))
+	// overlayResultHead is bold green for an ok result, bold red when the
+	// call returned an error — same color discipline as the inline tool
+	// markers (toolOKMarker / toolErrMarker) so the two surfaces stay
+	// visually consistent.
+	overlayResultHeadOK    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("2"))
+	overlayResultHeadError = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("1"))
+	overlayErrorStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
+	overlayEmptyStyle      = lipgloss.NewStyle().Faint(true).Italic(true)
+	overlayDividerStyle    = lipgloss.NewStyle().Faint(true)
+	// Section title markers mirror the inline transcript: green ⏺ for ok,
+	// red for error, dim cyan for in-flight. Same glyph as toolOKMarker so
+	// users get the same visual cue whether they're reading scrollback or
+	// the overlay.
+	overlayMarkerOK      = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("⏺")
+	overlayMarkerError   = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Render("⏺")
+	overlayMarkerPending = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Faint(true).Render("⏺")
 )
 
 // overlayModel is the alt-screen viewer for tool-call args/results. The
@@ -76,15 +99,17 @@ func (o *overlayModel) Refresh(history []toolCallRecord) {
 	o.vp.GotoBottom()
 }
 
-// View renders the overlay as the persistent header on top of the viewport.
+// View renders the viewport with the persistent hint pinned to the bottom of
+// the alt-screen. The hint is below the content so the eye lands on the tool
+// detail first and only drops to the hint when looking for the close key.
 func (o *overlayModel) View() string {
-	return overlayHeaderStyle.Render(overlayHeader) + "\n" + o.vp.View()
+	return o.vp.View() + "\n" + overlayHintStyle.Render(overlayHint)
 }
 
-// renderOverlayBody composes one section per history record, separated by a
-// blank line. Long string values inside the pretty-printed JSON are
-// word-wrapped to the viewport width so the viewport never has to
-// horizontally scroll.
+// renderOverlayBody composes one section per history record, joined by a
+// faint horizontal divider so the boundary between calls is unambiguous.
+// Long string values inside the pretty-printed JSON are word-wrapped to the
+// viewport width so the viewport never has to horizontally scroll.
 func renderOverlayBody(history []toolCallRecord, width int) string {
 	if len(history) == 0 {
 		return overlayEmptyStyle.Render(
@@ -94,7 +119,17 @@ func renderOverlayBody(history []toolCallRecord, width int) string {
 	for i := range history {
 		sections = append(sections, renderToolSection(&history[i], width))
 	}
-	return strings.Join(sections, "\n\n")
+	return strings.Join(sections, "\n\n"+sectionDivider(width)+"\n\n")
+}
+
+// sectionDivider renders the faint horizontal rule used between tool-call
+// sections. We use a box-drawing character so the line reads as a divider
+// even on terminals that render Faint as a subtle grey.
+func sectionDivider(width int) string {
+	if width <= 0 {
+		return ""
+	}
+	return overlayDividerStyle.Render(strings.Repeat("─", width))
 }
 
 // renderToolSection formats one tool call: title line + faint metadata line +
@@ -103,7 +138,13 @@ func renderOverlayBody(history []toolCallRecord, width int) string {
 func renderToolSection(rec *toolCallRecord, width int) string {
 	var b strings.Builder
 
-	b.WriteString(styledToolLabel(rec.Name, rec.Args))
+	funcName, argSummary := toolLabelParts(rec.Name, rec.Args)
+	b.WriteString(toolMarker(rec))
+	b.WriteString(" ")
+	b.WriteString(overlayTitleStyle.Render(funcName))
+	if argSummary != "" {
+		b.WriteString(overlayMetaStyle.Render(" (\"" + argSummary + "\")"))
+	}
 	b.WriteString("\n")
 
 	meta := "started " + rec.StartedAt.Format("15:04:05")
@@ -121,12 +162,12 @@ func renderToolSection(rec *toolCallRecord, width int) string {
 	b.WriteString(overlayMetaStyle.Render(meta))
 	b.WriteString("\n\n")
 
-	b.WriteString(overlaySubheadOK.Render("Arguments"))
+	b.WriteString(overlayArgsHead.Render("Arguments"))
 	b.WriteString("\n")
 	b.WriteString(indent(wrapForOverlay(formatJSON(rec.Args), width), "  "))
 	b.WriteString("\n\n")
 
-	b.WriteString(overlaySubheadOK.Render("Result"))
+	b.WriteString(resultHead(rec).Render("Result"))
 	b.WriteString("\n")
 	if rec.Pending {
 		b.WriteString(indent(overlayEmptyStyle.Render("(in flight)"), "  "))
@@ -135,6 +176,30 @@ func renderToolSection(rec *toolCallRecord, width int) string {
 	}
 
 	return b.String()
+}
+
+// toolMarker picks the ⏺ glyph color for the section title based on call
+// state: green for an ok completion, red for an error, dim cyan while the
+// call is still in flight.
+func toolMarker(rec *toolCallRecord) string {
+	switch {
+	case rec.Pending:
+		return overlayMarkerPending
+	case rec.IsError:
+		return overlayMarkerError
+	default:
+		return overlayMarkerOK
+	}
+}
+
+// resultHead picks the color of the "Result" subhead: green on ok, red on
+// error. Keeps the visual rhythm of the section consistent with the marker
+// at the top.
+func resultHead(rec *toolCallRecord) lipgloss.Style {
+	if rec.IsError {
+		return overlayResultHeadError
+	}
+	return overlayResultHeadOK
 }
 
 // formatJSON returns a pretty-printed representation of raw. If raw can't be
