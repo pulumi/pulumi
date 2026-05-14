@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/cloud
-  description: Fix `pulumi api` help examples that referenced non-existent operation IDs and response fields
