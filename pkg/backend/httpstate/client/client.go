@@ -1123,6 +1123,18 @@ func (pc *Client) GetPolicyGroup(
 	return resp, nil
 }
 
+// DeletePolicyGroup deletes a Policy Group from the given organization. The
+// organization's default Policy Group cannot be deleted; the service will
+// reject such requests.
+func (pc *Client) DeletePolicyGroup(ctx context.Context, orgName, policyGroup string) error {
+	if err := pc.restCall(
+		ctx, http.MethodDelete, updatePolicyGroupPath(orgName, policyGroup), nil, nil, nil,
+	); err != nil {
+		return fmt.Errorf("removing policy group: %w", err)
+	}
+	return nil
+}
+
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyPacksResponse, *string, error,

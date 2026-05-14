@@ -67,29 +67,3 @@ func newPolicyGroupEditCmd() *cobra.Command {
 
 	return cmd
 }
-
-// TODO[https://github.com/pulumi/pulumi/issues/22990]: Not yet implemented.
-func newPolicyGroupRemoveCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "remove",
-		Short:  "Delete a Policy Group",
-		Long:   "[EXPERIMENTAL] Delete a Policy Group.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "name"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the Policy Group")
-
-	return cmd
-}
