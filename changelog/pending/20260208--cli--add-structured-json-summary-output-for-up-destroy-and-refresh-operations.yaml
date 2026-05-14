@@ -1,0 +1,4 @@
+changes:
+- type: improvement
+  scope: cli
+  description: Add structured JSON summary output for pulumi up, destroy, refresh, preview, and import operations

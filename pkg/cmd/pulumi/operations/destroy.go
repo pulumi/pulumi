@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	mapset "github.com/deckarep/golang-set/v2"
 
@@ -34,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/graph"
@@ -340,7 +342,8 @@ func NewDestroyCmd() *cobra.Command {
 				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
-			_, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
+			operationStart := time.Now()
+			changes, destroyErr := backend.DestroyStack(ctx, s, backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -350,6 +353,15 @@ func NewDestroyCmd() *cobra.Command {
 				SecretsProvider:    secrets.DefaultProvider,
 				Scopes:             backend.CancellationScopes,
 			})
+			operationDuration := time.Since(operationStart)
+
+			if jsonDisplay {
+				result := "succeeded"
+				if destroyErr != nil {
+					result = "failed"
+				}
+				_ = ui.PrintOperationSummary(result, changes, operationDuration, nil)
+			}
 
 			if destroyErr == nil && protectedCount > 0 && !jsonDisplay && output != "json" {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
