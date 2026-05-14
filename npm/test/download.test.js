@@ -8,8 +8,17 @@ const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { archiveName, archiveURL, archiveURLFallback, checksumURL, checksumURLFallback, parseChecksums, computeSHA256, downloadBinary, fetchLatestVersion } =
-    require("../lib/download");
+const {
+    archiveName,
+    archiveURL,
+    archiveURLFallback,
+    checksumURL,
+    checksumURLFallback,
+    parseChecksums,
+    computeSHA256,
+    downloadBinary,
+    fetchLatestVersion,
+} = require("../lib/download");
 
 describe("archiveName()", () => {
     const cases = [
@@ -37,19 +46,13 @@ describe("archiveURL()", () => {
 describe("archiveURLFallback()", () => {
     it("uses GitHub releases as fallback", () => {
         const url = archiveURLFallback("3.99.0", "linux", "x64");
-        assert.equal(
-            url,
-            "https://github.com/pulumi/pulumi/releases/download/v3.99.0/pulumi-v3.99.0-linux-x64.tar.gz",
-        );
+        assert.equal(url, "https://github.com/pulumi/pulumi/releases/download/v3.99.0/pulumi-v3.99.0-linux-x64.tar.gz");
     });
 });
 
 describe("checksumURL()", () => {
     it("uses get.pulumi.com as primary", () => {
-        assert.equal(
-            checksumURL("3.99.0"),
-            "https://get.pulumi.com/releases/sdk/pulumi-3.99.0-checksums.txt",
-        );
+        assert.equal(checksumURL("3.99.0"), "https://get.pulumi.com/releases/sdk/pulumi-3.99.0-checksums.txt");
     });
 });
 
@@ -76,10 +79,9 @@ describe("fetchLatestVersion()", () => {
 
 describe("parseChecksums()", () => {
     it("parses standard sha256sum format", () => {
-        const text = [
-            "abc123  pulumi-v3.99.0-linux-x64.tar.gz",
-            "def456  pulumi-v3.99.0-darwin-arm64.tar.gz",
-        ].join("\n");
+        const text = ["abc123  pulumi-v3.99.0-linux-x64.tar.gz", "def456  pulumi-v3.99.0-darwin-arm64.tar.gz"].join(
+            "\n",
+        );
         const map = parseChecksums(text);
         assert.equal(map.get("pulumi-v3.99.0-linux-x64.tar.gz"), "abc123");
         assert.equal(map.get("pulumi-v3.99.0-darwin-arm64.tar.gz"), "def456");
@@ -150,7 +152,9 @@ describe("downloadBinary()", () => {
 
             const fakeName = path.basename(archivePath);
             const fakeFetchText = async () => `${archiveHash}  ${fakeName}\n`;
-            const fakeFetchFile = async (_url, dest) => { fs.copyFileSync(archivePath, dest); };
+            const fakeFetchFile = async (_url, dest) => {
+                fs.copyFileSync(archivePath, dest);
+            };
 
             const dest = path.join(tmpDir, "bin", "pulumi");
             await downloadBinary("3.99.0", "linux", "x64", dest, {
@@ -191,10 +195,11 @@ describe("downloadBinary()", () => {
 
             const dest = path.join(tmpDir, "bin", "pulumi");
             await assert.rejects(
-                () => downloadBinary("3.99.0", "linux", "x64", dest, {
-                    fetchText: fakeFetchText,
-                    fetchFile: fakeFetchFile,
-                }),
+                () =>
+                    downloadBinary("3.99.0", "linux", "x64", dest, {
+                        fetchText: fakeFetchText,
+                        fetchFile: fakeFetchFile,
+                    }),
                 /Checksum mismatch/,
             );
         } finally {
@@ -250,11 +255,12 @@ describe("downloadBinary()", () => {
         const dest = path.join(os.tmpdir(), "should-not-exist");
 
         await assert.rejects(
-            () => downloadBinary("3.99.0", "linux", "x64", dest, {
-                fetchText: fakeFetchText,
-                fetchFile: async () => {},
-                extract: () => {},
-            }),
+            () =>
+                downloadBinary("3.99.0", "linux", "x64", dest, {
+                    fetchText: fakeFetchText,
+                    fetchFile: async () => {},
+                    extract: () => {},
+                }),
             /No checksum found/,
         );
     });

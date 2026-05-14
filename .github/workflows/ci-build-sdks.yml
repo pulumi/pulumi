@@ -139,8 +139,7 @@ jobs:
           node-version: ${{ fromJson(inputs.version-set).nodejs }}
       - name: Build and test the npm CLI wrapper
         run: |
-          make -C npm ensure
-          make -C npm test_fast
+          make -C npm test
       - name: Pack the npm CLI wrapper
         run: |
           cd npm && npm pack

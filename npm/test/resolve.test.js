@@ -17,8 +17,12 @@ function makeExecutable(filePath, content = "binary") {
 
 describe("isExecutable()", () => {
     let tmpDir;
-    beforeEach(() => { tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulumi-test-")); });
-    afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
+    beforeEach(() => {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulumi-test-"));
+    });
+    afterEach(() => {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
 
     it("returns true for a non-empty executable file", () => {
         const f = path.join(tmpDir, "bin");
@@ -53,8 +57,12 @@ describe("isExecutable()", () => {
 
 describe("findSystemPulumi()", () => {
     let tmpDir;
-    beforeEach(() => { tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulumi-test-")); });
-    afterEach(() => { fs.rmSync(tmpDir, { recursive: true, force: true }); });
+    beforeEach(() => {
+        tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulumi-test-"));
+    });
+    afterEach(() => {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
 
     it("finds an executable on PATH", () => {
         const binDir = path.join(tmpDir, "bin");
@@ -112,7 +120,9 @@ describe("resolve()", () => {
             version: "3.99.0",
             targetOS: "linux",
             targetArch: "x64",
-            download: async () => { throw new Error("should not download"); },
+            download: async () => {
+                throw new Error("should not download");
+            },
         });
         assert.equal(result, path.join(binDir, "pulumi"));
     });
@@ -122,7 +132,9 @@ describe("resolve()", () => {
         const cached = path.join(cacheDir("3.99.0"), "pulumi");
         makeExecutable(cached);
 
-        const download = async () => { throw new Error("should not download"); };
+        const download = async () => {
+            throw new Error("should not download");
+        };
         const result = await resolve({
             pathEnv: "",
             version: "3.99.0",
@@ -162,7 +174,7 @@ describe("resolve()", () => {
 
         await resolve({
             pathEnv: "",
-            version: "",   // simulate unset pkg.version
+            version: "", // simulate unset pkg.version
             targetOS: "linux",
             targetArch: "x64",
             download,
@@ -185,7 +197,9 @@ describe("resolve()", () => {
             targetOS: "linux",
             targetArch: "x64",
             download,
-            getLatestVersion: async () => { throw new Error("should not fetch latest"); },
+            getLatestVersion: async () => {
+                throw new Error("should not fetch latest");
+            },
         });
 
         assert.equal(downloadedVersion, "3.99.0");
@@ -205,7 +219,9 @@ describe("resolve()", () => {
             version: "3.99.0",
             targetOS: "linux",
             targetArch: "x64",
-            download: async () => { throw new Error("should not download"); },
+            download: async () => {
+                throw new Error("should not download");
+            },
         });
         assert.equal(result, path.join(binDir, "pulumi"));
     });

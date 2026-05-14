@@ -88,7 +88,11 @@ function extractedBinDir(extractDir) {
 
 function defaultExtract(archive, targetOS, extractDir) {
     if (targetOS === "windows") {
-        execFileSync("powershell", ["-NoProfile", "-Command", `Expand-Archive -Force -LiteralPath '${archive}' -DestinationPath '${extractDir}'`]);
+        execFileSync("powershell", [
+            "-NoProfile",
+            "-Command",
+            `Expand-Archive -Force -LiteralPath '${archive}' -DestinationPath '${extractDir}'`,
+        ]);
     } else {
         execFileSync("tar", ["-xzf", archive, "-C", extractDir]);
     }
@@ -108,11 +112,7 @@ async function downloadBinary(
     targetOS,
     targetArch,
     dest,
-    {
-        fetchText = defaultFetchText,
-        fetchFile = defaultFetchFile,
-        extract = defaultExtract,
-    } = {},
+    { fetchText = defaultFetchText, fetchFile = defaultFetchFile, extract = defaultExtract } = {},
 ) {
     const name = archiveName(version, targetOS, targetArch);
 

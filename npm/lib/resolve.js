@@ -47,16 +47,14 @@ function findSystemPulumi(pathEnv) {
 //   3. A freshly downloaded binary (cached for future invocations).
 //
 // IO functions are injectable for testing.
-async function resolve(
-    {
-        pathEnv,
-        version = process.env.PULUMI_VERSION || pkg.version,
-        targetOS = currentOS(),
-        targetArch = currentArch(),
-        download = downloadBinary,
-        getLatestVersion = fetchLatestVersion,
-    } = {},
-) {
+async function resolve({
+    pathEnv,
+    version = process.env.PULUMI_VERSION || pkg.version,
+    targetOS = currentOS(),
+    targetArch = currentArch(),
+    download = downloadBinary,
+    getLatestVersion = fetchLatestVersion,
+} = {}) {
     const system = findSystemPulumi(pathEnv);
     if (system) return system;
 
