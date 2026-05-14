@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -281,19 +282,22 @@ func (c *insightsAccountScanLogCmd) renderContinuationText(r apitype.InsightsSca
 	}
 
 	for _, line := range r.Lines {
+		// The server's Line field already ends in a newline; strip it so we
+		// don't double-space the output when we add our own.
+		text := strings.TrimRight(line.Line, "\n")
 		ts := ""
 		if !line.Timestamp.IsZero() {
 			ts = line.Timestamp.UTC().Format(time.RFC3339)
 		}
 		switch {
 		case ts != "" && line.Header != "":
-			fmt.Fprintf(c.w, "%s [%s] %s\n", ts, line.Header, line.Line)
+			fmt.Fprintf(c.w, "%s [%s] %s\n", ts, line.Header, text)
 		case ts != "":
-			fmt.Fprintf(c.w, "%s %s\n", ts, line.Line)
+			fmt.Fprintf(c.w, "%s %s\n", ts, text)
 		case line.Header != "":
-			fmt.Fprintf(c.w, "[%s] %s\n", line.Header, line.Line)
+			fmt.Fprintf(c.w, "[%s] %s\n", line.Header, text)
 		default:
-			fmt.Fprintln(c.w, line.Line)
+			fmt.Fprintln(c.w, text)
 		}
 	}
 	if r.ContinuationToken != "" {

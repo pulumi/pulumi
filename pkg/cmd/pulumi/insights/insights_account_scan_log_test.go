@@ -143,6 +143,36 @@ func TestScanLog_ContinuationEmpty(t *testing.T) {
 	assert.Equal(t, "No log entries.\n", buf.String())
 }
 
+func TestScanLog_ContinuationStripsTrailingNewlines(t *testing.T) {
+	t.Parallel()
+
+	// The server's Line field ends with `\n`; the renderer must not
+	// double-space the output by adding its own newline on top.
+	client := &mockScanLogClient{
+		responses: []apitype.InsightsScanLogs{{
+			Lines: []apitype.InsightsScanLogLine{
+				{
+					Timestamp: time.Date(2026, 5, 1, 14, 30, 0, 0, time.UTC),
+					Line:      "starting scan\n",
+				},
+				{
+					Timestamp: time.Date(2026, 5, 1, 14, 30, 1, 0, time.UTC),
+					Line:      "finished scan\n",
+				},
+			},
+		}},
+	}
+	cmd, buf := newTestScanLogCmd()
+	err := cmd.run(t.Context(), stubScanLogFactory(client, "acme"),
+		"prod-aws", "scan-123")
+	require.NoError(t, err)
+
+	assert.Equal(t,
+		"2026-05-01T14:30:00Z starting scan\n"+
+			"2026-05-01T14:30:01Z finished scan\n",
+		buf.String())
+}
+
 func TestScanLog_ContinuationLastPage(t *testing.T) {
 	t.Parallel()
 
