@@ -732,6 +732,15 @@ func (pc *Client) ListDriftRuns(
 	return resp, nil
 }
 
+// ListOrgWebhooks returns all webhooks configured for the given organization.
+func (pc *Client) ListOrgWebhooks(ctx context.Context, org string) ([]apitype.Webhook, error) {
+	var resp []apitype.Webhook
+	if err := pc.restCall(ctx, "GET", "/api/orgs/"+url.PathEscape(org)+"/hooks", nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 // ListStackWebhooks returns all webhooks configured for the given stack.
 func (pc *Client) ListStackWebhooks(ctx context.Context, stackID StackIdentifier) ([]apitype.Webhook, error) {
 	var resp []apitype.Webhook

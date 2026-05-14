@@ -46,26 +46,7 @@ func newOrgWebhookCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/22965]: Not yet implemented.
-func newOrgWebhookListCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List all webhooks configured at the organization level",
-		Long:   "[EXPERIMENTAL] List all webhooks configured at the organization level.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list webhooks for")
-
-	return cmd
-}
+// newOrgWebhookListCmd is defined in org_webhook_list.go.
 
 // TODO[https://github.com/pulumi/pulumi/issues/22966]: Not yet implemented.
 func newOrgWebhookNewCmd() *cobra.Command {
