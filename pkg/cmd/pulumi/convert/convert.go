@@ -80,7 +80,7 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 			"\n" +
 			"The source program to convert will default to the current working directory.\n" +
 			"\n" +
-			"Valid source languages: yaml, terraform, bicep, arm, kubernetes, stack\n" +
+			"Valid source languages: yaml, terraform, bicep, arm, kubernetes, state\n" +
 			"\n" +
 			"Valid target languages: typescript, python, csharp, go, java, yaml" +
 			"\n" +
@@ -88,7 +88,7 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n" +
 			"\n" +
-			"    pulumi convert --from stack --language typescript --out . -- --file export.json \n" +
+			"    pulumi convert --from state --language typescript --out . -- --file export.json \n" +
 			"\n\n" +
 			"Note that certain target languages may require additional arguments to be passed to this command.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -374,30 +374,30 @@ func runConvert(
 	defer os.RemoveAll(pclDirectory)
 
 	pCtx.Diag.Infof(diag.Message("", "Converting from %s..."), from)
-	if from == "stack" {
-		fs := flag.NewFlagSet("stack", flag.ContinueOnError)
+	if from == "state" {
+		fs := flag.NewFlagSet("state", flag.ContinueOnError)
 		fileFlag := fs.String("file", "", "Input stack export file path")
 		if err := fs.Parse(args); err != nil {
-			return fmt.Errorf("parse stack args: %w", err)
+			return fmt.Errorf("parse state args: %w", err)
 		}
 		file := *fileFlag
 		if file == "" {
-			return errors.New("--file is required when --from stack (pass after --, e.g. -- --file export.json)")
+			return errors.New("--file is required when --from state (pass after --, e.g. -- --file export.json)")
 		}
 
 		data, err := os.ReadFile(file)
 		if err != nil {
-			return fmt.Errorf("read stack file: %w", err)
+			return fmt.Errorf("read state file: %w", err)
 		}
 
 		var deployment apitype.UntypedDeployment
 		if err := json.Unmarshal(data, &deployment); err != nil {
-			return fmt.Errorf("parse stack file: %w", err)
+			return fmt.Errorf("parse state file: %w", err)
 		}
 
 		snap, err := resstack.DeserializeUntypedDeployment(ctx, &deployment, backendsecrets.DefaultProvider)
 		if err != nil {
-			return fmt.Errorf("deserialize stack: %w", err)
+			return fmt.Errorf("deserialize state: %w", err)
 		}
 
 		var states []*resource.State
@@ -416,7 +416,7 @@ func runConvert(
 
 		pclBytes, err := importer.GeneratePCLText(loader, states, snap.Resources, importer.NameTable{})
 		if err != nil {
-			return fmt.Errorf("generate PCL from stack: %w", err)
+			return fmt.Errorf("generate PCL from state: %w", err)
 		}
 
 		if err := os.WriteFile(filepath.Join(pclDirectory, "program.pp"), pclBytes, 0o600); err != nil {

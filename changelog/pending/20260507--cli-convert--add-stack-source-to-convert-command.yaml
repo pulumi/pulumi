@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli/convert
-  description: Add `pulumi convert --from stack --file <export.json>` to generate a Pulumi program from an exported stack state file
+  description: Add `pulumi convert --from state --file <export.json>` to generate a Pulumi program from an exported stack state file

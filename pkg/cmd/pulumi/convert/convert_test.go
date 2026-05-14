@@ -60,7 +60,7 @@ func minimalStackJSON() string {
 }`
 }
 
-func TestStackConvertRequiresFile(t *testing.T) {
+func TestStateConvertRequiresFile(t *testing.T) {
 	t.Parallel()
 
 	outDir := t.TempDir()
@@ -75,17 +75,17 @@ func TestStackConvertRequiresFile(t *testing.T) {
 		[]string{},
 		cwd,
 		[]string{},
-		"stack",
+		"state",
 		"pcl",
 		outDir,
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
 	)
-	require.ErrorContains(t, err, "--file is required when --from stack")
+	require.ErrorContains(t, err, "--file is required when --from state")
 }
 
-func TestStackConvertInvalidJSON(t *testing.T) {
+func TestStateConvertInvalidJSON(t *testing.T) {
 	t.Parallel()
 
 	outDir := t.TempDir()
@@ -103,17 +103,17 @@ func TestStackConvertInvalidJSON(t *testing.T) {
 		[]string{"--file", badFile},
 		cwd,
 		[]string{},
-		"stack",
+		"state",
 		"pcl",
 		outDir,
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
 	)
-	require.ErrorContains(t, err, "parse stack file")
+	require.ErrorContains(t, err, "parse state file")
 }
 
-func TestStackConvertEmptyStack(t *testing.T) {
+func TestStateConvertEmptyState(t *testing.T) {
 	t.Parallel()
 
 	outDir := t.TempDir()
@@ -131,7 +131,7 @@ func TestStackConvertEmptyStack(t *testing.T) {
 		[]string{"--file", stackFile},
 		cwd,
 		[]string{},
-		"stack",
+		"state",
 		"pcl",
 		outDir,
 		true,  /*generateOnly*/
@@ -146,8 +146,8 @@ func TestStackConvertEmptyStack(t *testing.T) {
 	assert.Empty(t, pclBytes)
 }
 
-// TestStackConvertFileNotFound verifies the error when the stack file cannot be read.
-func TestStackConvertFileNotFound(t *testing.T) {
+// TestStateConvertFileNotFound verifies the error when the state file cannot be read.
+func TestStateConvertFileNotFound(t *testing.T) {
 	t.Parallel()
 
 	outDir := t.TempDir()
@@ -162,14 +162,14 @@ func TestStackConvertFileNotFound(t *testing.T) {
 		[]string{"--file", filepath.Join(t.TempDir(), "nonexistent.json")},
 		cwd,
 		[]string{},
-		"stack",
+		"state",
 		"pcl",
 		outDir,
 		true,  /*generateOnly*/
 		false, /*strict*/
 		"myproject",
 	)
-	require.ErrorContains(t, err, "read stack file")
+	require.ErrorContains(t, err, "read state file")
 }
 
 // TestYamlConvert is an entrypoint for debugging `pulumi convert`. To use this with an editor such as

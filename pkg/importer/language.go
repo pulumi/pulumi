@@ -170,7 +170,7 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 	}
 }
 
-// GeneratePCLText generates PCL (HCL2) text from the given resource states. The current stack snapshot is also
+// GeneratePCLText generates PCL (HCL2) text from the given resource states. The current state snapshot is also
 // provided to allow the importer to resolve package providers. Returns the content suitable for writing to a .pp file.
 func GeneratePCLText(
 	loader schema.Loader,
@@ -277,7 +277,7 @@ func GeneratePCLText(
 	return hcl2Text.Bytes(), nil
 }
 
-// GenerateLanguageDefintions generates a list of resource definitions for the given resource states. The current stack
+// GenerateLanguageDefintions generates a list of resource definitions for the given resource states. The current state
 // snapshot is also provided in order to allow the importer to resolve package providers.
 func GenerateLanguageDefinitions(
 	w io.Writer,
