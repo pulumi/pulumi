@@ -756,6 +756,13 @@ func (pc *Client) CreateStackWebhook(
 	return resp, nil
 }
 
+// DeleteStackWebhook deletes the given webhook from the stack.
+func (pc *Client) DeleteStackWebhook(
+	ctx context.Context, stackID StackIdentifier, webhookName string,
+) error {
+	return pc.restCall(ctx, "DELETE", getStackPath(stackID, "hooks", webhookName), nil, nil, nil)
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {

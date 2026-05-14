@@ -278,3 +278,43 @@ func TestCreateStackWebhook(t *testing.T) {
 		assert.ErrorContains(t, err, "webhook already exists")
 	})
 }
+
+func TestDeleteStackWebhook(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		var gotPath, gotMethod string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		err := c.DeleteStackWebhook(t.Context(), stackID, "deploy-hook")
+		require.NoError(t, err)
+
+		assert.Equal(t, "DELETE", gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/hooks/deploy-hook", gotPath)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusNotFound, `{"message":"not found"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		err := c.DeleteStackWebhook(t.Context(), stackID, "no-such-hook")
+		assert.Error(t, err)
+	})
+}
