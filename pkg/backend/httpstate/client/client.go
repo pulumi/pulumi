@@ -853,6 +853,14 @@ func (pc *Client) CreateStackTTLSchedule(
 	return resp, nil
 }
 
+// DeleteStackSchedule permanently deletes a scheduled deployment action.
+func (pc *Client) DeleteStackSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+) error {
+	path := getStackPath(stackID, "deployments", "schedules", scheduleID)
+	return pc.restCall(ctx, "DELETE", path, nil, nil, nil)
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {

@@ -181,30 +181,3 @@ func newStackScheduleEditCmd() *cobra.Command {
 
 	return cmd
 }
-
-// TODO[https://github.com/pulumi/pulumi/issues/23045]: Not yet implemented.
-func newStackScheduleRemoveCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "remove",
-		Short:  "Permanently delete a scheduled deployment action",
-		Long:   "[EXPERIMENTAL] Permanently delete a scheduled deployment action.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "schedule-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}

@@ -331,3 +331,44 @@ func TestCreateStackTTLSchedule(t *testing.T) {
 	assert.Equal(t, req, gotBody)
 	assert.Equal(t, want, got)
 }
+
+func TestDeleteStackSchedule(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+	const scheduleID = "bb61b60a-a313-46cb-b4ab-9d42dce46de8"
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		var gotPath, gotMethod string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		err := c.DeleteStackSchedule(t.Context(), stackID, scheduleID)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodDelete, gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/schedules/"+scheduleID, gotPath)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusNotFound, `{"message":"not found"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		err := c.DeleteStackSchedule(t.Context(), stackID, scheduleID)
+		assert.Error(t, err)
+	})
+}
