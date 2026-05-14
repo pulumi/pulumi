@@ -345,6 +345,7 @@ func TestInsightsAccountListCmd_CountPaginatesUntilSatisfied(t *testing.T) {
 
 	args := withOutput(defaultListArgs(), "json")
 	args.count = 3
+	args.countSet = true
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, args)
@@ -358,6 +359,32 @@ func TestInsightsAccountListCmd_CountPaginatesUntilSatisfied(t *testing.T) {
 	assert.Equal(t, []string{"a1", "a2", "a3"},
 		[]string{got.Accounts[0].Name, got.Accounts[1].Name, got.Accounts[2].Name})
 	require.Len(t, client.calls, 2, "should have stopped paginating after --count satisfied")
+}
+
+// TestInsightsAccountListCmd_CountZeroReturnsEmpty: --count 0 is an explicit
+// "I want nothing" — return an empty list immediately without contacting the
+// server. This is the difference between "flag unset" (one page) and "flag set
+// to zero" (no rows).
+func TestInsightsAccountListCmd_CountZeroReturnsEmpty(t *testing.T) {
+	t.Parallel()
+
+	client := &mockInsightsAccountListClient{
+		pages: []apitype.ListInsightsAccountsResponse{
+			// Canned page that must not be requested.
+			{Accounts: []apitype.InsightsAccount{sampleAccount("a1")}},
+		},
+	}
+	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
+
+	args := withOutput(defaultListArgs(), "json")
+	args.count = 0
+	args.countSet = true
+
+	var out bytes.Buffer
+	err := c.Run(t.Context(), &out, args)
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"accounts":[]}`, out.String())
+	assert.Empty(t, client.calls, "--count 0 must not contact the server")
 }
 
 // TestInsightsAccountListCmd_CountLargerThanAvailable: when --count asks for
@@ -378,6 +405,7 @@ func TestInsightsAccountListCmd_CountLargerThanAvailable(t *testing.T) {
 
 	args := withOutput(defaultListArgs(), "json")
 	args.count = 100
+	args.countSet = true
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, args)
@@ -460,6 +488,7 @@ func TestInsightsAccountListCmd_NegativeCount(t *testing.T) {
 
 	args := defaultListArgs()
 	args.count = -1
+	args.countSet = true
 
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, args)

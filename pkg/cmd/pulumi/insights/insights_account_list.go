@@ -73,9 +73,14 @@ type insightsAccountListArgs struct {
 	org    string
 	parent string
 	roleID string
-	count  int
-	all    bool
-	output outputflag.OutputFlag[accountListRender]
+	// count is read iff countSet is true. We track "did the user pass the
+	// flag?" separately from the int value so `--count 0` can mean "return
+	// nothing" while an unset --count means "one server page". This is the
+	// ternary-flag pattern from #22959.
+	count    int
+	countSet bool
+	all      bool
+	output   outputflag.OutputFlag[accountListRender]
 }
 
 type insightsAccountListCmd struct {
@@ -104,10 +109,12 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 			"(e.g. an AWS Organizations management account). --role-id restricts results to\n" +
 			"accounts accessible by a particular role.\n" +
 			"\n" +
-			"By default the command returns a single page as sized by the server. Pass\n" +
-			"--count N to request at least N results — the command follows pagination\n" +
-			"cursors internally until it has enough — or --all to stream every matching\n" +
-			"account. --count and --all are mutually exclusive.\n" +
+			"By default (neither --count nor --all set) the command returns a single page\n" +
+			"as sized by the server. Pass --count N to request at least N results — the\n" +
+			"command follows pagination cursors internally until it has enough, then\n" +
+			"truncates. --count 0 explicitly asks for zero results and returns immediately\n" +
+			"without contacting the server. --all streams every matching account. --count\n" +
+			"and --all are mutually exclusive.\n" +
 			"\n" +
 			"Wraps the `ListAccounts` Pulumi Cloud REST endpoint.",
 		Example: "  # List the first page of Insights accounts in the default organization.\n" +
@@ -121,6 +128,11 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 			"  # Emit JSON for scripting.\n" +
 			"  pulumi insights account list --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Differentiate "flag not passed" from "flag passed as 0", so
+			// `--count 0` can mean "return nothing" while an unset --count
+			// falls back to "one server page". `Changed` is the cobra-blessed
+			// way to do this.
+			args.countSet = cmd.Flags().Changed("count")
 			return list.Run(cmd.Context(), cmd.OutOrStdout(), args)
 		},
 	}
@@ -134,8 +146,8 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 	cmd.Flags().StringVar(&args.roleID, "role-id", "",
 		"Filter to accounts accessible by the named role")
 	cmd.Flags().IntVar(&args.count, "count", 0,
-		"Return at least this many accounts, paginating server-side pages as needed "+
-			"(0 = a single server-sized page)")
+		"Return at least this many accounts, paginating server-side pages as needed. "+
+			"Unset returns one server page; --count 0 returns nothing")
 	cmd.Flags().BoolVar(&args.all, "all", false,
 		"Stream every matching account, following pagination cursors to exhaustion")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
@@ -149,8 +161,15 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 func (c *insightsAccountListCmd) Run(
 	ctx context.Context, out io.Writer, args insightsAccountListArgs,
 ) error {
-	if args.count < 0 {
+	if args.countSet && args.count < 0 {
 		return fmt.Errorf("--count must be non-negative, got %d", args.count)
+	}
+
+	// --count 0 short-circuits: the user has explicitly asked for nothing, so
+	// don't burn a round-trip. The renderer still runs so empty output stays
+	// consistent with the no-results path.
+	if args.countSet && args.count == 0 {
+		return args.output.Get()(c, out, nil)
 	}
 
 	client, org, err := c.clientFactory(ctx, args.org)
@@ -169,11 +188,14 @@ func (c *insightsAccountListCmd) Run(
 // following continuationToken/nextToken cursors when the caller has asked for
 // more rows than a single page provides.
 //
-// The default (count == 0, all == false) returns exactly what one server-side
-// page would. --count caps the result set at the requested size and stops the
-// loop as soon as that many rows have arrived. --all keeps following cursors
-// until the server reports no more pages. listPageLimit is a safety net
-// against a misbehaving server reporting a non-empty cursor forever.
+// The three modes:
+//   - default (countSet=false, all=false): one server page, no pagination.
+//   - --count N (countSet=true, N > 0): paginate until at least N rows have
+//     arrived, then truncate. Callers handle --count 0 before reaching here.
+//   - --all (all=true): follow cursors until the server reports no more pages.
+//
+// listPageLimit is a safety net against a misbehaving server reporting a
+// non-empty cursor forever.
 func collectInsightsAccounts(
 	ctx context.Context,
 	client insightsAccountListClient,
@@ -197,16 +219,16 @@ func collectInsightsAccounts(
 
 		// Stop conditions, in order:
 		//   1. Server says there's no more data.
-		//   2. We're in default-page mode (no --count, no --all) — one page only.
-		//   3. We have at least the user-requested --count rows.
+		//   2. We're in default-page mode (neither --count nor --all) — one page only.
+		//   3. --count has been satisfied; truncate so the user sees exactly N.
 		// Otherwise advance to the next page.
 		if resp.NextToken == "" {
 			return accounts, nil
 		}
-		if !args.all && args.count == 0 {
+		if !args.all && !args.countSet {
 			return accounts, nil
 		}
-		if args.count > 0 && len(accounts) >= args.count {
+		if args.countSet && len(accounts) >= args.count {
 			return accounts[:args.count], nil
 		}
 		cursor = resp.NextToken
