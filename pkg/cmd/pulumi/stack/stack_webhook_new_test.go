@@ -71,12 +71,11 @@ func TestStackWebhookNew_TextOutput(t *testing.T) {
 
 	c := &mockWebhookNewClient{created: createdWebhook()}
 	args := stackWebhookNewArgs{
-		Name:        "my-hook",
-		DisplayName: "My Hook",
-		URL:         "https://example.com/webhook",
-		Format:      "raw",
-		Active:      true,
-		Secret:      "s3cret",
+		Name:   "my-hook",
+		URL:    "https://example.com/webhook",
+		Format: "raw",
+		Active: true,
+		Secret: "s3cret",
 	}
 
 	var buf bytes.Buffer
@@ -100,11 +99,10 @@ func TestStackWebhookNew_JSONOutput(t *testing.T) {
 
 	c := &mockWebhookNewClient{created: createdWebhook()}
 	args := stackWebhookNewArgs{
-		Name:        "my-hook",
-		DisplayName: "My Hook",
-		URL:         "https://example.com/webhook",
-		Format:      "raw",
-		Active:      true,
+		Name:   "my-hook",
+		URL:    "https://example.com/webhook",
+		Format: "raw",
+		Active: true,
 	}
 
 	var buf bytes.Buffer
@@ -120,14 +118,13 @@ func TestStackWebhookNew_RequestFields(t *testing.T) {
 
 	c := &mockWebhookNewClient{created: createdWebhook()}
 	args := stackWebhookNewArgs{
-		Name:        "my-hook",
-		DisplayName: "My Hook",
-		URL:         "https://example.com/webhook",
-		Format:      "slack",
-		Filters:     []string{"update_succeeded", "update_failed"},
-		Groups:      []string{"stacks"},
-		Active:      true,
-		Secret:      "s3cret",
+		Name:    "my-hook",
+		URL:     "https://example.com/webhook",
+		Format:  "slack",
+		Filters: []string{"update_succeeded", "update_failed"},
+		Groups:  []string{"stacks"},
+		Active:  true,
+		Secret:  "s3cret",
 	}
 
 	var buf bytes.Buffer
@@ -135,7 +132,7 @@ func TestStackWebhookNew_RequestFields(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "my-hook", c.gotReq.Name)
-	assert.Equal(t, "My Hook", c.gotReq.DisplayName)
+	assert.Equal(t, "my-hook", c.gotReq.DisplayName)
 	assert.Equal(t, "https://example.com/webhook", c.gotReq.PayloadURL)
 	require.NotNil(t, c.gotReq.Format)
 	assert.Equal(t, "slack", *c.gotReq.Format)
@@ -212,12 +209,11 @@ func TestStackWebhookNew_ResolveArgs_Yes(t *testing.T) {
 	t.Parallel()
 
 	// With skipPrompts=true and --url set, should use defaults without prompting.
-	args, err := resolveNewArgs(true, "my-hook", "", "https://example.com", "raw",
+	args, err := resolveNewArgs(true, "my-hook", "https://example.com", "raw",
 		nil, nil, display.Options{})
 	require.NoError(t, err)
 
 	assert.Equal(t, "my-hook", args.Name)
-	assert.Equal(t, "my-hook", args.DisplayName) // defaults to name
 	assert.Equal(t, "https://example.com", args.URL)
 	assert.Equal(t, "raw", args.Format)
 	assert.Empty(t, args.Filters)
@@ -228,7 +224,7 @@ func TestStackWebhookNew_ResolveArgs_YesNoName(t *testing.T) {
 	t.Parallel()
 
 	// With skipPrompts=true but no name, should error because name is required.
-	_, err := resolveNewArgs(true, "", "", "https://example.com", "raw",
+	_, err := resolveNewArgs(true, "", "https://example.com", "raw",
 		nil, nil, display.Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "webhook name is required")
@@ -239,21 +235,11 @@ func TestStackWebhookNew_ResolveArgs_YesNoURL(t *testing.T) {
 	t.Parallel()
 
 	// With skipPrompts=true but no URL, should error because URL is required.
-	_, err := resolveNewArgs(true, "my-hook", "", "", "raw",
+	_, err := resolveNewArgs(true, "my-hook", "", "raw",
 		nil, nil, display.Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "payload URL is required")
 	assert.Contains(t, err.Error(), "--url")
-}
-
-func TestStackWebhookNew_ResolveArgs_ExplicitDisplayName(t *testing.T) {
-	t.Parallel()
-
-	// Explicit display name should be kept as-is.
-	args, err := resolveNewArgs(true, "my-hook", "Custom Name", "https://example.com", "raw",
-		nil, nil, display.Options{})
-	require.NoError(t, err)
-	assert.Equal(t, "Custom Name", args.DisplayName)
 }
 
 func TestFiltersNotCoveredByGroups(t *testing.T) {
