@@ -106,7 +106,7 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 			"\n" +
 			"By default the command returns a single page of results. --count N returns at\n" +
 			"most N results. --all (equivalent to --count 0) returns every matching\n" +
-			"account. --count and --all are mutually exclusive.\n" +
+			"account. --count and --all are mutually exclusive.",
 		Example: "  # List the first page of Insights accounts in the default organization.\n" +
 			"  pulumi insights account list\n\n" +
 			"  # Return every matching account.\n" +
