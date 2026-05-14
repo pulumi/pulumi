@@ -15,14 +15,22 @@
 package org
 
 import (
+	"context"
 	"errors"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/23003]: Not yet implemented.
 func newOrgRoleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -41,32 +49,6 @@ func newOrgRoleCmd() *cobra.Command {
 	cmd.AddCommand(newOrgRoleEditCmd())
 	cmd.AddCommand(newOrgRoleRemoveCmd())
 	cmd.AddCommand(newOrgRoleAssignCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23008]: Not yet implemented.
-func newOrgRoleListCmd() *cobra.Command {
-	var (
-		org     string
-		purpose string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List custom roles for an organization",
-		Long:   "[EXPERIMENTAL] List custom roles for an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list roles for")
-	cmd.Flags().StringVar(&purpose, "purpose", "",
-		"The UX purpose to filter by: organization, team, or token")
-
 	return cmd
 }
 
@@ -197,4 +179,49 @@ func newOrgRoleAssignCmd() *cobra.Command {
 	cmd.Flags().StringVar(&team, "team", "", "The team to assign the role to")
 
 	return cmd
+}
+
+// orgRoleClientFactory builds an org-role client and resolves the organization name
+// from the given --org flag (or the user's default org).
+type orgRoleClientFactory func(ctx context.Context, orgFlag string) (orgRoleClient, string, error)
+
+// orgRoleClient is the subset of the cloud client used by org role commands.
+// *client.Client already satisfies this interface directly; the indirection
+// exists so tests can substitute a fake.
+type orgRoleClient interface {
+	ListOrgRoles(ctx context.Context, orgName, uxPurpose string) ([]apitype.Role, error)
+}
+
+func defaultOrgRoleClientFactory(ctx context.Context, orgFlag string) (orgRoleClient, string, error) {
+	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
+	ws := pkgWorkspace.Instance
+
+	project, _, err := ws.ReadProject()
+	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
+		return nil, "", err
+	}
+
+	currentBe, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
+	if err != nil {
+		return nil, "", err
+	}
+	cloudBe, ok := currentBe.(httpstate.Backend)
+	if !ok {
+		return nil, "", errors.New("organization roles require the Pulumi Cloud backend; run `pulumi login`")
+	}
+
+	orgName := orgFlag
+	if orgName == "" {
+		defaultOrg, err := cloudBe.GetDefaultOrg(ctx)
+		if err != nil {
+			return nil, "", fmt.Errorf("resolving default organization: %w", err)
+		}
+		if defaultOrg == "" {
+			return nil, "", errors.New(
+				"no organization specified and no default organization is set; pass --org or run `pulumi org set-default`")
+		}
+		orgName = defaultOrg
+	}
+
+	return cloudBe.Client(), orgName, nil
 }

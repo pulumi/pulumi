@@ -1102,6 +1102,25 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContTok
 	return resp, nil, nil
 }
 
+// ListOrgRoles lists the custom roles defined in the given organization, optionally
+// filtered by their UX purpose (e.g. "organization", "team", "token"). An empty
+// uxPurpose returns all roles. The Pulumi Cloud REST API is not paginated for
+// this endpoint, so all roles are returned in a single call.
+func (pc *Client) ListOrgRoles(
+	ctx context.Context, orgName, uxPurpose string,
+) ([]apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles", url.PathEscape(orgName))
+	queryObj := struct {
+		UXPurpose string `url:"uxPurpose,omitempty"`
+	}{UXPurpose: uxPurpose}
+
+	var resp apitype.ListRolesResponse
+	if err := pc.restCall(ctx, "GET", path, queryObj, nil, &resp); err != nil {
+		return nil, fmt.Errorf("listing organization roles: %w", err)
+	}
+	return resp.Roles, nil
+}
+
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
