@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/neo
-  description: Display a clear "upgrade your CLI" warning when the Pulumi API returns HTTP 426 from a `pulumi neo` endpoint
