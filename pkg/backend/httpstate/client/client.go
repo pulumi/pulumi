@@ -1631,6 +1631,20 @@ func (pc *Client) CreateDeployment(ctx context.Context, stack StackIdentifier,
 	return &resp, nil
 }
 
+// GetDeployment retrieves a single deployment for a stack by its deployment
+// ID. It wraps the `GetDeployment` Pulumi Cloud REST endpoint
+// (GET /api/stacks/{org}/{project}/{stack}/deployments/{deploymentId}).
+func (pc *Client) GetDeployment(
+	ctx context.Context, stack StackIdentifier, id string,
+) (apitype.GetDeploymentResponse, error) {
+	var resp apitype.GetDeploymentResponse
+	err := pc.restCall(ctx, http.MethodGet, getDeploymentPath(stack, id), nil, nil, &resp)
+	if err != nil {
+		return apitype.GetDeploymentResponse{}, fmt.Errorf("getting deployment %s failed: %w", id, err)
+	}
+	return resp, nil
+}
+
 func (pc *Client) GetDeploymentLogs(ctx context.Context, stack StackIdentifier, id,
 	token string,
 ) (*apitype.DeploymentLogs, error) {
