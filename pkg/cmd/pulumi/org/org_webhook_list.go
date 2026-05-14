@@ -55,7 +55,7 @@ type orgWebhookListCmd struct {
 	output  outputflag.OutputFlag[orgWebhookListRender]
 	w       io.Writer
 
-	// For testing.
+	ws             pkgWorkspace.Context
 	currentBackend func(
 		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
 		*workspace.Project, display.Options,
@@ -63,10 +63,11 @@ type orgWebhookListCmd struct {
 }
 
 func newOrgWebhookListCmd() *cobra.Command {
-	return newOrgWebhookListCmdWith(nil)
+	return newOrgWebhookListCmdWith(pkgWorkspace.Instance, cmdBackend.CurrentBackend)
 }
 
 func newOrgWebhookListCmdWith(
+	ws pkgWorkspace.Context,
 	overrideBackend func(
 		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
 		*workspace.Project, display.Options,
@@ -77,6 +78,7 @@ func newOrgWebhookListCmdWith(
 			RenderForTerminal: (*orgWebhookListCmd).renderTable,
 			RenderJSON:        (*orgWebhookListCmd).renderJSON,
 		},
+		ws:             ws,
 		currentBackend: overrideBackend,
 	}
 
@@ -120,19 +122,13 @@ func newOrgWebhookListCmdWith(
 }
 
 func (c *orgWebhookListCmd) run(ctx context.Context) error {
-	currentBackend := c.currentBackend
-	if currentBackend == nil {
-		currentBackend = cmdBackend.CurrentBackend
-	}
-
-	ws := pkgWorkspace.Instance
-	project, _, err := ws.ReadProject()
+	project, _, err := c.ws.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return err
 	}
 
 	displayOpts := display.Options{Color: cmdutil.GetGlobalColorization()}
-	be, err := currentBackend(ctx, ws, cmdBackend.DefaultLoginManager, project, displayOpts)
+	be, err := c.currentBackend(ctx, c.ws, cmdBackend.DefaultLoginManager, project, displayOpts)
 	if err != nil {
 		return err
 	}

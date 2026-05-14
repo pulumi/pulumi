@@ -46,7 +46,6 @@ func newOrgWebhookCmd() *cobra.Command {
 	return cmd
 }
 
-
 // TODO[https://github.com/pulumi/pulumi/issues/22966]: Not yet implemented.
 func newOrgWebhookNewCmd() *cobra.Command {
 	var (
