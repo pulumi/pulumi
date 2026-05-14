@@ -51,33 +51,3 @@ func newDeploymentCancelCmd() *cobra.Command {
 
 	return cmd
 }
-
-// TODO[https://github.com/pulumi/pulumi/issues/22983]: Not yet implemented.
-func newDeploymentSettingsEditCmd() *cobra.Command {
-	var (
-		stack string
-		file  string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "edit",
-		Short:  "Create or update deployment settings for a stack",
-		Long: "[EXPERIMENTAL] Create or update deployment settings for a stack.\n" +
-			"\n" +
-			"If no settings exist, they are created. If settings already exist, the\n" +
-			"request body is merged with the current settings.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&file, "file", "f", "",
-		"Read settings patch from file; `-` reads stdin")
-
-	return cmd
-}

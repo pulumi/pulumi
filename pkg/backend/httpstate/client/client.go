@@ -1573,6 +1573,18 @@ func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack Stack
 	return pc.restCall(ctx, "PUT", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
 }
 
+// PatchStackDeploymentSettings merges the supplied patch into the stack's
+// existing deployment settings. Wraps the `PatchDeploymentSettings` Pulumi
+// Cloud REST endpoint (POST /api/stacks/{org}/{project}/{stack}/deployments/settings).
+// For each property in the patch, the server starts with the current value,
+// removes it if the patch specifies null, or merges the new non-null value
+// with the existing one. Non-object properties are replaced entirely.
+func (pc *Client) PatchStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
+	patch *apitype.DeploymentSettings,
+) error {
+	return pc.restCall(ctx, http.MethodPost, getStackPath(stack, "deployments", "settings"), nil, patch, nil)
+}
+
 func (pc *Client) EncryptStackDeploymentSettingsSecret(ctx context.Context,
 	stack StackIdentifier, secret string,
 ) (*apitype.SecretValue, error) {
