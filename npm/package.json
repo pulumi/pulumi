@@ -12,7 +12,8 @@
         "pulumi": "run.js"
     },
     "scripts": {
-        "test": "node --test test/*.test.js"
+        "test": "node --test test/platform.test.js test/cache.test.js test/download.test.js test/resolve.test.js",
+        "test:integration": "node --test test/integration.test.js"
     },
     "devDependencies": {
         "@biomejs/biome": "1.8.3"

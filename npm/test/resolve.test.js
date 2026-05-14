@@ -95,7 +95,7 @@ describe("resolve()", () => {
 
     beforeEach(() => {
         tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulumi-test-"));
-        process.env.npm_config_cache = path.join(tmpDir, "cache");
+        process.env.npm_config_cache = path.join(tmpDir, "npm-cache");
     });
 
     afterEach(() => {

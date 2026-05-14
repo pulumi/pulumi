@@ -140,7 +140,6 @@ jobs:
       - name: Build and test the npm CLI wrapper
         run: |
           make -C npm ensure
-          make -C npm build
           make -C npm test_fast
       - name: Pack the npm CLI wrapper
         run: |

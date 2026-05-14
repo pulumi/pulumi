@@ -3,12 +3,16 @@
 
 "use strict";
 
+const path = require("path");
 const { spawn } = require("child_process");
 const { resolve } = require("./lib/resolve");
 
 resolve()
     .then((bin) => {
-        const child = spawn(bin, process.argv.slice(2), { stdio: "inherit" });
+        // Prepend the directory containing the CLI to PATH so that language
+        // hosts (pulumi-language-nodejs, etc.) installed alongside it are found.
+        const env = { ...process.env, PATH: path.dirname(bin) + path.delimiter + (process.env.PATH || "") };
+        const child = spawn(bin, process.argv.slice(2), { stdio: "inherit", env });
         child.on("exit", (code, signal) => {
             if (signal) {
                 // Propagate signal to the parent process.

@@ -15,10 +15,9 @@ lint:: ensure
 	npx @biomejs/biome ci .
 
 build:: ensure
-	node ../scripts/reversion.js package.json ${VERSION}
 
 test_fast:: ensure
-	node --test test/*.test.js
+	npm test
 
 publish:: build
 	NPM_PKG_JSON=$(CURDIR)/package.json NPM_ARTIFACT_GLOB="sdk-npm-*.tgz" bash -c ../scripts/publish_npm.sh

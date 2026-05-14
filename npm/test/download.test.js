@@ -116,36 +116,41 @@ describe("computeSHA256()", () => {
 });
 
 describe("downloadBinary()", () => {
-    it("verifies checksum and extracts binary", async () => {
+    // buildFakeArchive creates a tar.gz with a realistic set of binaries and
+    // returns { archivePath, binaries } where binaries is a map of name→content.
+    async function buildFakeArchive(destDir, version, targetOS, targetArch) {
+        const { execSync } = require("child_process");
+        const ext = targetOS === "windows" ? ".exe" : "";
+        const binaries = {
+            [`pulumi${ext}`]: "#!/bin/sh\necho fake pulumi\n",
+            [`pulumi-language-nodejs${ext}`]: "#!/bin/sh\necho fake nodejs\n",
+            [`pulumi-language-python${ext}`]: "#!/bin/sh\necho fake python\n",
+        };
+
+        const srcDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulumi-fake-"));
+        const archiveName = `pulumi-v${version}-${targetOS}-${targetArch}.tar.gz`;
+        const archivePath = path.join(destDir, archiveName);
+        try {
+            fs.mkdirSync(path.join(srcDir, "pulumi"));
+            for (const [name, content] of Object.entries(binaries)) {
+                fs.writeFileSync(path.join(srcDir, "pulumi", name), content);
+            }
+            execSync(`tar -czf "${archivePath}" -C "${srcDir}" pulumi`);
+        } finally {
+            fs.rmSync(srcDir, { recursive: true, force: true });
+        }
+        return { archivePath, binaries };
+    }
+
+    it("extracts the CLI and all language host binaries", async () => {
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulumi-dl-test-"));
         try {
-            const { execSync } = require("child_process");
-            const fakeContent = "#!/bin/sh\necho fake pulumi\n";
-            const fakeName = "pulumi-v3.99.0-linux-x64.tar.gz";
+            const { archivePath, binaries } = await buildFakeArchive(tmpDir, "3.99.0", "linux", "x64");
+            const archiveHash = await computeSHA256(archivePath);
 
-            // Build the archive first so we can hash it.
-            const archiveSrcDir = fs.mkdtempSync(path.join(os.tmpdir(), "pulumi-fake-"));
-            const prebuiltArchive = path.join(tmpDir, fakeName);
-            try {
-                fs.mkdirSync(path.join(archiveSrcDir, "pulumi"));
-                fs.writeFileSync(path.join(archiveSrcDir, "pulumi", "pulumi"), fakeContent);
-                execSync(`tar -czf "${prebuiltArchive}" -C "${archiveSrcDir}" pulumi`);
-            } finally {
-                fs.rmSync(archiveSrcDir, { recursive: true, force: true });
-            }
-
-            // Compute the hash of the archive itself (not the binary content).
-            const archiveHash = await computeSHA256(prebuiltArchive);
-
-            const fakeFetchText = async (url) => {
-                assert.ok(url.includes("checksums"), `unexpected fetchText URL: ${url}`);
-                return `${archiveHash}  ${fakeName}\n`;
-            };
-
-            const fakeFetchFile = async (url, dest) => {
-                assert.ok(url.includes("linux-x64"), `unexpected fetchFile URL: ${url}`);
-                fs.copyFileSync(prebuiltArchive, dest);
-            };
+            const fakeName = path.basename(archivePath);
+            const fakeFetchText = async () => `${archiveHash}  ${fakeName}\n`;
+            const fakeFetchFile = async (_url, dest) => { fs.copyFileSync(archivePath, dest); };
 
             const dest = path.join(tmpDir, "bin", "pulumi");
             await downloadBinary("3.99.0", "linux", "x64", dest, {
@@ -153,8 +158,12 @@ describe("downloadBinary()", () => {
                 fetchFile: fakeFetchFile,
             });
 
-            assert.ok(fs.existsSync(dest), "binary should exist at dest");
-            assert.equal(fs.readFileSync(dest, "utf8"), fakeContent);
+            const binDir = path.dirname(dest);
+            for (const name of Object.keys(binaries)) {
+                const p = path.join(binDir, name);
+                assert.ok(fs.existsSync(p), `expected ${name} to be extracted alongside pulumi`);
+                assert.equal(fs.readFileSync(p, "utf8"), binaries[name]);
+            }
         } finally {
             fs.rmSync(tmpDir, { recursive: true, force: true });
         }

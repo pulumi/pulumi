@@ -74,20 +74,16 @@ async function defaultFetchFile(url, dest) {
     await pipeline(res.body, fs.createWriteStream(dest));
 }
 
-// findExtractedBinary locates the pulumi binary after archive extraction.
-// Handles both archive structures used across Pulumi releases:
-//   Current format: pulumi/{exe}
-//   Legacy format:  pulumi/bin/{exe}
-function findExtractedBinary(extractDir, targetOS) {
-    const exe = exeName(targetOS);
-    const candidates = [
-        path.join(extractDir, "pulumi", exe),
-        path.join(extractDir, "pulumi", "bin", exe),
-    ];
-    for (const c of candidates) {
-        if (fs.existsSync(c)) return c;
-    }
-    throw new Error(`Could not find pulumi binary in ${extractDir}`);
+// extractedBinDir locates the directory containing pulumi binaries after
+// archive extraction. Handles both archive structures used across releases:
+//   Current format: pulumi/
+//   Legacy format:  pulumi/bin/
+function extractedBinDir(extractDir) {
+    const legacy = path.join(extractDir, "pulumi", "bin");
+    if (fs.existsSync(legacy)) return legacy;
+    const current = path.join(extractDir, "pulumi");
+    if (fs.existsSync(current)) return current;
+    throw new Error(`Could not find pulumi binaries in ${extractDir}`);
 }
 
 function defaultExtract(archive, targetOS, extractDir) {
@@ -158,18 +154,26 @@ async function downloadBinary(
 
         extract(archive, targetOS, tmpDir);
 
-        const binary = findExtractedBinary(tmpDir, targetOS);
-        fs.mkdirSync(path.dirname(dest), { recursive: true });
-        const tmp = dest + "." + process.pid + ".tmp";
-        fs.copyFileSync(binary, tmp);
-        if (targetOS !== "windows") {
-            fs.chmodSync(tmp, 0o755);
-        }
-        try {
-            fs.renameSync(tmp, dest);
-        } catch {
-            // Another concurrent invocation likely won the race; our copy is redundant.
-            fs.rmSync(tmp, { force: true });
+        // Copy all binaries so language hosts (pulumi-language-nodejs, etc.)
+        // are available alongside the CLI in the cache directory.
+        const binDir = extractedBinDir(tmpDir);
+        const destDir = path.dirname(dest);
+        fs.mkdirSync(destDir, { recursive: true });
+        for (const entry of fs.readdirSync(binDir)) {
+            const src = path.join(binDir, entry);
+            if (!fs.statSync(src).isFile()) continue;
+            const out = path.join(destDir, entry);
+            const outTmp = out + "." + process.pid + ".tmp";
+            fs.copyFileSync(src, outTmp);
+            if (targetOS !== "windows") {
+                fs.chmodSync(outTmp, 0o755);
+            }
+            try {
+                fs.renameSync(outTmp, out);
+            } catch {
+                // Another concurrent invocation likely won the race.
+                fs.rmSync(outTmp, { force: true });
+            }
         }
     } finally {
         fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -181,10 +185,10 @@ module.exports = {
     archiveURL,
     archiveURLFallback,
     checksumURL,
+    extractedBinDir,
     checksumURLFallback,
     parseChecksums,
     computeSHA256,
-    findExtractedBinary,
     downloadBinary,
     fetchLatestVersion,
 };
