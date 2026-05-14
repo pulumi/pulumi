@@ -291,7 +291,10 @@ type Model struct {
 	hasEmittedScrollback bool
 	// pendingTodos buffers the latest UITodoList while planMode is true so
 	// the list lands inside the same block as the Proposed plan, not above it.
-	pendingTodos []UITodoItem
+	pendingTodos  []UITodoItem
+	toolHistory   []toolCallRecord
+	overlayActive bool
+	overlay       overlayModel
 }
 
 var (
@@ -411,6 +414,7 @@ func NewModel(cfg ModelConfig) Model {
 		taskCreated:    cfg.TaskCreated,
 		approvalMode:   cfg.InitialApprovalMode,
 		permissionMode: cfg.InitialPermissionMode,
+		overlay:        newOverlayModel(80, 24),
 	}
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
@@ -450,6 +454,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		safeWidth := m.liveWidth()
 		m.welcome.termWidth = safeWidth
 		m.textInput.Width = max(safeWidth-lipgloss.Width(m.textInput.Prompt)-1, 1)
+		m.overlay.SetSize(m.width, m.height)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 
 		// Glamour's wrap width is baked in at construction, so rebuild on resize.
 		// Wrap at liveWidth-4 so glamour-rendered output (assistant finals, plan
@@ -510,6 +518,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// While the overlay is open, ctrl+o / esc / ctrl+c / ctrl+d all close
+		// it; scroll keys go to the viewport; everything else is swallowed so
+		// it can't leak into the hidden input bar. Closing on ctrl+c/d means a
+		// reflexive "abort" tap dismisses the overlay rather than killing the
+		// session — the user can press ctrl+c again from the inline view to
+		// quit.
+		if m.overlayActive {
+			//exhaustive:ignore // explicit default below
+			switch msg.Type {
+			case tea.KeyCtrlO, tea.KeyEsc, tea.KeyCtrlC, tea.KeyCtrlD:
+				m.overlayActive = false
+				return m, tea.ExitAltScreen
+			case tea.KeyUp, tea.KeyDown,
+				tea.KeyPgUp, tea.KeyPgDown,
+				tea.KeyHome, tea.KeyEnd:
+				return m, m.overlay.Update(msg)
+			default:
+				return m, nil
+			}
+		}
+
 		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
 		// semantics. Two bindings is friendlier than picking one and forcing
 		// users to discover it.
@@ -536,6 +565,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// presses goes back to needing two presses again. The pending tick
 		// will fire later but no-op because ctrlCArmed is already false.
 		m.ctrlCArmed = false
+
+		// Ctrl+O opens the overlay. Sits above the busy/approval gates so
+		// users can peek mid-turn. Closing is handled by the overlayActive
+		// branch above.
+		if msg.Type == tea.KeyCtrlO {
+			m.overlayActive = true
+			m.overlay.SetSize(m.width, m.height)
+			m.overlay.Refresh(m.toolHistory)
+			return m, tea.EnterAltScreen
+		}
 
 		// Shift+Tab toggles plan mode. The toggle must run before the approval
 		// and busy guards so users can flip the indicator at any point in the
@@ -734,6 +773,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolStarted:
+		m.toolHistory = appendToolStart(m.toolHistory, msg.Name, msg.Args)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -742,6 +785,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolCompleted:
+		completeToolCall(m.toolHistory, msg.Name, msg.Result, msg.IsError)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 		marker := toolOKMarker
 		if msg.IsError {
 			marker = toolErrMarker
@@ -943,11 +990,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View returns the rendered live frame: live blocks (busy spinner, in-flight
 // streaming, in-flight pulumi op) above the input bar. Completed blocks aren't
 // drawn here — they were committed to terminal scrollback via tea.Println as
-// soon as they reached a terminal state.
+// soon as they reached a terminal state. When the overlay is open the
+// inline frame is suspended and we render the alt-screen view instead.
 func (m Model) View() string {
-	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · ctrl+r read-only · ctrl+c to quit"
+	if m.overlayActive {
+		return m.overlay.View()
+	}
+	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · " +
+		"ctrl+r read-only · ctrl+o tool details · ctrl+c to quit"
 	if m.busy {
-		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
+		hintText = "agent is working · enter disabled · ctrl+o tool details · esc or ctrl+c to cancel"
 	}
 	hint := "  "
 	chips := m.modeChips()

@@ -283,7 +283,21 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 		result := s.invokeToolCall(ctx, call)
 		items = append(items, result)
 
-		sendUI(s.UIEvents, UIToolCompleted{Name: call.Name, Args: call.Args, IsError: result.IsError})
+		// Marshal a JSON copy for the overlay. A failure shouldn't abort the
+		// call (the post above already happened with the original any value),
+		// so pack the error into a stub Result the overlay can render.
+		resultRaw, err := json.Marshal(result.Content)
+		if err != nil {
+			resultRaw, _ = json.Marshal(map[string]string{
+				"marshal_error": err.Error(),
+			})
+		}
+		sendUI(s.UIEvents, UIToolCompleted{
+			Name:    call.Name,
+			Args:    call.Args,
+			Result:  resultRaw,
+			IsError: result.IsError,
+		})
 	}
 
 	result := apitype.AgentUserEventToolResult{

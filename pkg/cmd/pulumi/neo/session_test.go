@@ -179,6 +179,108 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 	assert.NotContains(t, asMap, "timestamp")
 }
 
+func TestSession_UIToolCompletedCarriesResult(t *testing.T) {
+	t.Parallel()
+
+	// Regression guard: runBatch must attach the marshalled invokeToolCall
+	// result to UIToolCompleted, otherwise the ctrl+o overlay goes blank.
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "payload"}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "c1",
+				Name:          "filesystem__read",
+				Args:          json.RawMessage(`{}`),
+				ExecutionMode: "cli",
+			},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	var completed UIToolCompleted
+	var found bool
+	for _, e := range events {
+		if c, ok := e.(UIToolCompleted); ok {
+			completed = c
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "session must emit UIToolCompleted for the cli call")
+	assert.Equal(t, "filesystem__read", completed.Name)
+	assert.False(t, completed.IsError)
+	require.NotEmpty(t, completed.Result, "UIToolCompleted.Result must carry the marshalled tool output")
+	assert.JSONEq(t, `{"content":"payload"}`, string(completed.Result))
+}
+
+func TestSession_UIToolCompletedSurfacesMarshalError(t *testing.T) {
+	t.Parallel()
+
+	// A handler that returns an unmarshallable value (channels aren't JSON) —
+	// the overlay should still get a non-empty Result containing the
+	// marshal_error stub so the user sees why.
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"ch": make(chan int)}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "c1",
+				Name:          "filesystem__read",
+				Args:          json.RawMessage(`{}`),
+				ExecutionMode: "cli",
+			},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	var completed UIToolCompleted
+	var found bool
+	for _, e := range collectUIEvents(uiCh) {
+		if c, ok := e.(UIToolCompleted); ok {
+			completed = c
+			found = true
+			break
+		}
+	}
+	require.True(t, found)
+	require.NotEmpty(t, completed.Result, "marshal failure must still surface a Result for the overlay")
+	assert.Contains(t, string(completed.Result), "marshal_error")
+}
+
 func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 	t.Parallel()
 
