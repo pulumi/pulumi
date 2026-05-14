@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli
-  description: add a `pulumi` package for npx support
+  description: Add a `pulumi` package for npx support
