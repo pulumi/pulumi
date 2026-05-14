@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/neo
+  description: Show `preparing` in the live preview/up block while the engine is in its quiet startup phase (provider load, language-host bootstrap) so it doesn't look stuck on `running` with no resources

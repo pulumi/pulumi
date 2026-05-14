@@ -465,10 +465,17 @@ func (p *Pulumi) drainEvents(
 	toolName string, isPreview bool, events <-chan engine.Event, ndjson io.Writer,
 ) []string {
 	var diags []string
+	var sequence int
 
 	for e := range events {
-		// Best-effort: skip events that fail to convert.
+		// Best-effort: skip events that fail to convert. Stamp Sequence and
+		// Timestamp here — ConvertEngineEvent leaves them at zero and the
+		// agent reads this file to debug timing (e.g. how long the engine sits
+		// in plugin/language-host startup before the first ResourcePre fires).
 		if apiEv, err := backendDisplay.ConvertEngineEvent(e, false /*showSecrets*/); err == nil {
+			apiEv.Sequence = sequence
+			apiEv.Timestamp = int(time.Now().Unix())
+			sequence++
 			if b, err := json.Marshal(apiEv); err == nil {
 				_, _ = ndjson.Write(b)
 				_, _ = ndjson.Write([]byte("\n"))

@@ -100,6 +100,12 @@ func (m *Model) renderPulumiBlock(st *pulumiBlockState) string {
 	header := pulumiHeaderStyle.Render(title)
 	var status string
 	switch {
+	case !st.done && len(st.resources) == 0:
+		// The engine has a quiet prefix at the start of every run while it
+		// loads providers, starts the language host, and waits for the user's
+		// program to begin registering resources. Surface that as "preparing"
+		// so the block doesn't look stuck on "running" with nothing under it.
+		status = pulumiMetaStyle.Render(" · preparing")
 	case !st.done:
 		status = pulumiMetaStyle.Render(" · running")
 	case st.err != "":
