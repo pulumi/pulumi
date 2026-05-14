@@ -15,7 +15,6 @@
 package neo
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -764,19 +763,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UIWarning:
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, m.appendWarningBlock(msg.Message))
-		cmds = append(cmds, waitForEvent(m.eventCh))
-
-	case UIReconnecting:
-		cmds = append(cmds, m.applyBusyForEvent(msg))
-		cmds = append(cmds, m.appendWarningBlock(fmt.Sprintf(
-			"Reconnecting to Neo (attempt %d, retrying in %s)…",
-			msg.Attempt, msg.NextRetryIn.Round(time.Second),
-		)))
-		cmds = append(cmds, waitForEvent(m.eventCh))
-
-	case UIReconnected:
-		cmds = append(cmds, m.applyBusyForEvent(msg))
-		cmds = append(cmds, m.appendWarningBlock("Reconnected to Neo."))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UICancelled:
