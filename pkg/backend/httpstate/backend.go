@@ -2568,7 +2568,9 @@ func (b *cloudBackend) showDeploymentEvents(ctx context.Context, stackID client.
 	var continuationToken *string
 	var lastEvent engine.Event
 	for {
-		resp, err := b.client.GetUpdateEngineEvents(ctx, update, continuationToken)
+		resp, err := b.client.GetUpdateEngineEvents(ctx, update, client.GetUpdateEngineEventsOptions{
+			ContinuationToken: continuationToken,
+		})
 		if err != nil {
 			return err
 		}
