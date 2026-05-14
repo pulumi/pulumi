@@ -69,32 +69,6 @@ func newOrgMemberListCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23011]: Not yet implemented.
-func newOrgMemberGetCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Get a member of an organization",
-		Long:   "[EXPERIMENTAL] Get a member of an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "user-login"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the member")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23012]: Not yet implemented.
 func newOrgMemberEditCmd() *cobra.Command {
 	var (

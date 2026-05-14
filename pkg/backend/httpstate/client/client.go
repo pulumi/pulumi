@@ -1151,6 +1151,34 @@ func (pc *Client) DeletePolicyGroup(ctx context.Context, orgName, policyGroup st
 	return nil
 }
 
+// ListOrganizationMembers returns a single page of members for the given
+// organization, wrapping the `ListOrganizationMembers` Pulumi Cloud REST
+// endpoint (GET /api/orgs/{orgName}/members).
+//
+// mode selects between "frontend" members (data stored in the Pulumi Service's
+// database) and "backend" members (data stored in the organization's identity
+// backend, e.g. GitHub or GitLab). When mode is empty, the service default is
+// used. continuationToken pages through results when non-nil; pass the
+// ContinuationToken returned by a previous response to fetch the next page.
+func (pc *Client) ListOrganizationMembers(
+	ctx context.Context, orgName, mode string, continuationToken *string,
+) (apitype.ListOrganizationMembersResponse, error) {
+	queryObj := struct {
+		Type              string  `url:"type,omitempty"`
+		ContinuationToken *string `url:"continuationToken,omitempty"`
+	}{
+		Type:              mode,
+		ContinuationToken: continuationToken,
+	}
+
+	var resp apitype.ListOrganizationMembersResponse
+	path := fmt.Sprintf("/api/orgs/%s/members", url.PathEscape(orgName))
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return resp, fmt.Errorf("listing organization members: %w", err)
+	}
+	return resp, nil
+}
+
 // RemoveOrganizationMember removes a user from the given organization. The
 // removed user loses access to all organization resources including stacks,
 // teams, and projects. Wraps the `DeleteOrganizationMember` Pulumi Cloud REST
