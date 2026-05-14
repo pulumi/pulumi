@@ -85,6 +85,36 @@ type ListOrganizationMembersResponse struct {
 	ContinuationToken string `json:"continuationToken,omitempty"`
 }
 
+// AuditLogEvent describes a single entry in an organization's audit log, as
+// returned by the ListAuditLogEvents Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/auditlogs).
+type AuditLogEvent struct {
+	// Timestamp is the Unix epoch (in seconds) at which the event occurred.
+	Timestamp int64 `json:"timestamp"`
+	// Name is the short, machine-readable identifier of the event (e.g.
+	// "stack.create").
+	Name string `json:"name"`
+	// SourceIP is the IP address from which the event originated.
+	SourceIP string `json:"sourceIP"`
+	// Description is the human-readable description of the event.
+	Description string `json:"description"`
+	// User is the user that triggered the event.
+	User UserInfo `json:"user"`
+	// Event is the event-type bucket (e.g. "auth", "stack"). The cloud docs
+	// distinguish this from Name.
+	Event string `json:"event"`
+}
+
+// ListAuditLogEventsResponse is the response body returned by the
+// ListAuditLogEvents Pulumi Cloud REST endpoint.
+type ListAuditLogEventsResponse struct {
+	// AuditLogEvents is the page of audit log events.
+	AuditLogEvents []AuditLogEvent `json:"auditLogEvents"`
+	// ContinuationToken is an opaque token for fetching the next page of
+	// events; empty when there are no more pages.
+	ContinuationToken string `json:"continuationToken,omitempty"`
+}
+
 // UpdateOrganizationMemberRequest modifies a member's role within an
 // organization. It is the body of the `UpdateOrganizationMember` Pulumi Cloud
 // REST endpoint (PATCH /api/orgs/{orgName}/members/{userLogin}). Set Role to

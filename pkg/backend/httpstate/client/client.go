@@ -1179,6 +1179,50 @@ func (pc *Client) ListOrganizationMembers(
 	return resp, nil
 }
 
+// ListAuditLogsOptions are the optional query parameters accepted by
+// ListAuditLogs. Empty fields are omitted from the request and let the
+// service apply its own defaults.
+type ListAuditLogsOptions struct {
+	// EventType filters the audit log to a single event type (e.g.
+	// "stack.create"). Empty means no filter.
+	EventType string
+	// User filters the audit log to events triggered by a single user, by
+	// GitHub login. Empty means no filter.
+	User string
+	// StartTime is the upper-bound timestamp of the time range to query, as
+	// understood by the V1 endpoint. Empty means the service default.
+	StartTime string
+	// ContinuationToken pages through results; pass the ContinuationToken
+	// returned by a previous response to fetch the next page.
+	ContinuationToken string
+}
+
+// ListAuditLogs returns a single page of audit log events for the given
+// organization, wrapping the `ListAuditLogEvents` Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/auditlogs).
+func (pc *Client) ListAuditLogs(
+	ctx context.Context, orgName string, opts ListAuditLogsOptions,
+) (apitype.ListAuditLogEventsResponse, error) {
+	queryObj := struct {
+		EventType         string `url:"eventType,omitempty"`
+		User              string `url:"user,omitempty"`
+		StartTime         string `url:"startTime,omitempty"`
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{
+		EventType:         opts.EventType,
+		User:              opts.User,
+		StartTime:         opts.StartTime,
+		ContinuationToken: opts.ContinuationToken,
+	}
+
+	var resp apitype.ListAuditLogEventsResponse
+	path := fmt.Sprintf("/api/orgs/%s/auditlogs", url.PathEscape(orgName))
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return resp, fmt.Errorf("listing audit logs: %w", err)
+	}
+	return resp, nil
+}
+
 // UpdateOrganizationMember updates the role assignment of a member within
 // the given organization. Wraps the `UpdateOrganizationMember` Pulumi Cloud
 // REST endpoint (PATCH /api/orgs/{orgName}/members/{userLogin}). Only the

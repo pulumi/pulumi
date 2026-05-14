@@ -40,39 +40,6 @@ func newOrgAuditLogCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23001]: Not yet implemented.
-func newOrgAuditLogListCmd() *cobra.Command {
-	var (
-		org       string
-		eventType string
-		userLogin string
-		startTime string
-		token     string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List audit log events for an organization",
-		Long:   "[EXPERIMENTAL] List audit log events for an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list audit logs for")
-	cmd.Flags().StringVar(&eventType, "event-type", "", "Filter by event type")
-	cmd.Flags().StringVar(&userLogin, "user", "", "Filter by user login")
-	cmd.Flags().StringVar(&startTime, "start-time", "",
-		"The upper bound of the time range (V1 semantics)")
-	cmd.Flags().StringVar(&token, "continuation-token", "",
-		"The continuation token for paginated retrieval")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23000]: Not yet implemented.
 func newOrgAuditLogExportCmd() *cobra.Command {
 	var (
