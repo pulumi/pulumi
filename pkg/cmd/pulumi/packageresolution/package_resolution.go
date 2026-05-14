@@ -280,7 +280,7 @@ func Resolve(
 
 	naivePackageDescriptor, err := naivePackageDescriptor(ctx, spec)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse spec: %w%s", err, gitlabSubgroupHint(spec.Source))
+		return nil, fmt.Errorf("unable to parse spec: %w%s", err, vcsURLHint(spec.Source))
 	}
 
 	if options.AllowNonInvertableLocalWorkspaceResolution {
@@ -426,30 +426,47 @@ func Resolve(
 	}
 }
 
-// gitlabSubgroupHint returns a suffix suggesting a ".git" marker when source
-// looks like an ambiguous GitLab subgroup URL, or "" otherwise.
-func gitlabSubgroupHint(source string) string {
+// vcsURLHint returns a suffix suggesting a repo-boundary marker when source
+// looks like an ambiguous VCS URL, or "" otherwise. GitHub, GitLab, and
+// Bitbucket use a ".git" suffix on the repo name; Azure DevOps uses a
+// "_git/" segment before the repo name.
+func vcsURLHint(source string) string {
 	u, err := url.Parse(source)
 	if err != nil || u == nil {
-		return ""
-	}
-	if strings.TrimPrefix(u.Host, "www.") != gitutil.GitLabHostName {
 		return ""
 	}
 	p := strings.Trim(u.Path, "/")
 	if p == "" {
 		return ""
 	}
-	if strings.HasSuffix(p, ".git") || strings.Contains(p, ".git/") {
+	host := gitutil.VCSKind(strings.TrimPrefix(u.Host, "www."))
+	switch host {
+	case gitutil.GitHubHostName, gitutil.GitLabHostName, gitutil.BitbucketHostName:
+		if strings.HasSuffix(p, ".git") || strings.Contains(p, ".git/") {
+			return ""
+		}
+		if strings.Count(p, "/") < 2 {
+			return ""
+		}
+		return fmt.Sprintf(
+			"\n\nhint: URL %q has more than two path segments without a .git marker, "+
+				"so the repo boundary is ambiguous. Add .git after the repo name "+
+				"(e.g. %q for a nested repo, or owner/repo.git/subdir for a subdirectory).",
+			source, source+".git",
+		)
+	case gitutil.AzureDevOpsHostName:
+		if strings.Contains(p, "/_git/") {
+			return ""
+		}
+		if strings.Count(p, "/") < 2 {
+			return ""
+		}
+		return fmt.Sprintf(
+			"\n\nhint: Azure DevOps URL %q is missing the \"_git\" segment. "+
+				"Use the form https://dev.azure.com/{organization}/{project}/_git/{repository}.",
+			source,
+		)
+	default:
 		return ""
 	}
-	if strings.Count(p, "/") < 2 {
-		return ""
-	}
-	return fmt.Sprintf(
-		"\n\nhint: GitLab URL %q has more than two path segments without a .git marker. "+
-			"For a subgroup project use %q; for an owner/repo with a subdirectory use a .git "+
-			"boundary after the repo name (e.g. https://gitlab.com/owner/repo.git/subdir).",
-		source, source+".git",
-	)
 }
