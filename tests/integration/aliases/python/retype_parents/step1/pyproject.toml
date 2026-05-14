@@ -1,0 +1,4 @@
+[project]
+name = "aliases_retype_component"
+version = "0.0.0"
+dependencies = []

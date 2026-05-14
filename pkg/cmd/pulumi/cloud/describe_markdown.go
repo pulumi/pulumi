@@ -26,7 +26,7 @@ import (
 // laid out to mirror pulumi/docs' OpenAPI rendering (method + path header,
 // admonitions for preview/deprecated, description, a parameters table, request
 // body, and a bucketed list of responses). The output is plain GitHub-flavored
-// markdown suitable for `describe --format=markdown`; callers piping to a
+// markdown suitable for `describe --output=markdown`; callers piping to a
 // terminal may further pass it through glow or similar for ANSI rendering.
 func RenderDescribeMarkdown(op *Operation) string {
 	var b strings.Builder

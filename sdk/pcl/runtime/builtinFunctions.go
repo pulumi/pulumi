@@ -29,7 +29,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/ext/customdecode"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
@@ -42,7 +41,64 @@ import (
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 )
 
-func (i *Interpreter) builtinFunctions() map[string]function.Function {
+var invokeOptionsType = cty.ObjectWithOptionalAttrs(map[string]cty.Type{
+	"version":   cty.String,
+	"dependsOn": cty.List(cty.DynamicPseudoType),
+	"provider":  cty.DynamicPseudoType,
+}, []string{
+	"version",
+	"dependsOn",
+	"provider",
+})
+
+func tryExpressions(
+	args []cty.Value,
+	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
+) (cty.Value, error) {
+	if len(args) == 0 {
+		return cty.NilVal, errors.New("at least one argument is required")
+	}
+
+	var diags hcl.Diagnostics
+	for _, arg := range args {
+		closure := customdecode.ExpressionClosureFromVal(arg)
+
+		v, moreDiags := closure.Value()
+		diags = append(diags, moreDiags...)
+
+		if moreDiags.HasErrors() {
+			continue
+		}
+
+		if !v.IsWhollyKnown() {
+			return cty.DynamicVal, nil
+		}
+
+		pv, err := ctyToPropertyValue(v)
+		if err != nil {
+			diags = append(diags, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Summary:  err.Error(),
+			})
+			continue
+		}
+		return propertyValueToCty(context.TODO(), getResource, pv)
+	}
+
+	var buf strings.Builder
+	buf.WriteString("no expression succeeded:\n")
+	for _, diag := range diags {
+		if diag.Subject != nil {
+			buf.WriteString(fmt.Sprintf("- %s (at %s)\n  %s\n", diag.Summary, diag.Subject, diag.Detail))
+		} else {
+			buf.WriteString(fmt.Sprintf("- %s\n  %s\n", diag.Summary, diag.Detail))
+		}
+	}
+	buf.WriteString("\nAt least one expression must produce a successful result")
+	return cty.NilVal, errors.New(buf.String())
+}
+
+func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 	literalStringFn := func(value string) function.Function {
 		return function.New(&function.Spec{
 			Params: []function.Parameter{},
@@ -104,14 +160,14 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			Type: customdecode.ExpressionClosureType,
 		},
 		Type: func(args []cty.Value) (cty.Type, error) {
-			v, err := i.tryExpressions(args)
+			v, err := tryExpressions(args, ectx.getResource)
 			if err != nil {
 				return cty.NilType, err
 			}
 			return v.Type(), nil
 		},
 		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
-			return i.tryExpressions(args)
+			return tryExpressions(args, ectx.getResource)
 		},
 	})
 
@@ -140,7 +196,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.False, nil
 			}
 			if pv.IsSecret() {
-				return propertyValueToCty(context.TODO(), i.monitor, resource.MakeSecret(resource.NewProperty(true)))
+				return propertyValueToCty(context.TODO(), ectx.getResource, resource.MakeSecret(resource.NewProperty(true)))
 			}
 			return cty.True, nil
 		},
@@ -181,7 +237,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, err
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, outputPV)
+			return propertyValueToCty(context.TODO(), ectx.getResource, outputPV)
 		},
 	})
 
@@ -214,27 +270,14 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New("invoke token must be a string")
 			}
 			token := args[0].AsString()
-			pkg, mod, member, diags := pcl.DecomposeToken(token, hcl.Range{})
-			if diags.HasErrors() {
-				return cty.NilVal, fmt.Errorf("invalid token format: %s", token)
-			}
-			token = fmt.Sprintf("%s:%s:%s", pkg, mod, member)
 
-			descriptor := i.lookupPackageDescriptor(pkg)
-			pkgref, err := i.loader.LoadPackageReferenceV2(context.TODO(), descriptor)
+			fun, err := ectx.lookupFunction(context.TODO(), token)
 			if err != nil {
-				return cty.NilVal, fmt.Errorf("load package for token %s: %w", token, err)
+				return cty.NilVal, fmt.Errorf("lookup function for token %s: %w", token, err)
 			}
-			functions := pkgref.Functions()
-			fun, ok, err := functions.Get(token)
-			if err != nil {
-				return cty.NilVal, fmt.Errorf("get function from package for token %s: %w", token, err)
-			}
-			if ok {
-				// Use the canonical schema token (the alias lookup in Get may have resolved a
-				// normalized form like "pkg:index:name" to the source-form "pkg:index_name:name").
-				token = fun.Token
-			}
+			// Use the canonical schema token (the alias lookup in Get may have resolved a
+			// normalized form like "pkg:index:name" to the source-form "pkg:index_name:name").
+			token = fun.Token
 
 			argsPV, err := ctyToPropertyValue(args[1])
 			if err != nil {
@@ -262,10 +305,6 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			request := &pulumirpc.ResourceInvokeRequest{
 				Tok:  token,
 				Args: obj,
-			}
-			request.PackageRef, err = i.getPackageRefFromToken(token)
-			if err != nil {
-				return cty.NilVal, err
 			}
 
 			if len(args) == 3 && !args[2].IsNull() {
@@ -311,7 +350,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				}
 			}
 
-			resp, err := i.monitor.Invoke(context.TODO(), request)
+			resp, err := ectx.invoke(context.TODO(), request)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invoke engine: %w", err)
 			}
@@ -347,7 +386,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 					Dependencies: dependsOn,
 				})
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resultPV)
+			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
 	})
 
@@ -395,7 +434,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			}
 
 			typeStr := typ.AsString()
-			schemaResource, err := i.lookupResource(context.TODO(), typeStr)
+			schemaResource, err := ectx.lookupResource(context.TODO(), typeStr)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("lookup resource schema for token %s: %w", typeStr, err)
 			}
@@ -448,10 +487,6 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				Tok:  fun.Token,
 				Args: obj,
 			}
-			request.PackageRef, err = i.getPackageRefFromToken(fun.Token)
-			if err != nil {
-				return cty.NilVal, err
-			}
 
 			var dependsOn []resource.URN
 			if len(args) == 4 && !args[3].IsNull() {
@@ -481,7 +516,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				}
 			}
 
-			resp, err := i.monitor.Call(context.TODO(), request)
+			resp, err := ectx.call(context.TODO(), request)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("invoke engine: %w", err)
 			}
@@ -524,7 +559,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 					Dependencies: dependsOn,
 				})
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resultPV)
+			return propertyValueToCty(context.TODO(), ectx.getResource, resultPV)
 		},
 	})
 
@@ -544,11 +579,11 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New("fileAsset path must be a string")
 			}
 			path := args[0].AsString()
-			a, err := asset.FromPathWithWD(path, i.info.WorkingDir)
+			a, err := asset.FromPathWithWD(path, ectx.workingDirectory)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating file asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -568,11 +603,11 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, errors.New("fileArchive path must be a string")
 			}
 			path := args[0].AsString()
-			a, err := archive.FromPathWithWD(path, i.info.WorkingDir)
+			a, err := archive.FromPathWithWD(path, ectx.workingDirectory)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating file archive: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -597,11 +632,11 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 				assets[k] = v.EncapsulatedValue()
 			}
 
-			a, err := archive.FromAssetsWithWD(assets, i.info.WorkingDir)
+			a, err := archive.FromAssetsWithWD(assets, ectx.workingDirectory)
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating archive from assets: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -625,7 +660,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating string asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -649,7 +684,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating remote asset: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -673,7 +708,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 			if err != nil {
 				return cty.NilVal, fmt.Errorf("creating remote archive: %w", err)
 			}
-			return propertyValueToCty(context.TODO(), i.monitor, resource.NewProperty(a))
+			return propertyValueToCty(context.TODO(), ectx.getResource, resource.NewProperty(a))
 		},
 	})
 
@@ -902,7 +937,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		if filepath.IsAbs(p) {
 			return p
 		}
-		return filepath.Join(i.info.WorkingDir, p)
+		return filepath.Join(ectx.workingDirectory, p)
 	}
 
 	readFileFn := function.New(&function.Spec{
@@ -960,12 +995,28 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		},
 	})
 
+	lengthFunc := function.New(&function.Spec{
+		Params: []function.Parameter{
+			{
+				Name: "value",
+				Type: cty.DynamicPseudoType,
+			},
+		},
+		Type: function.StaticReturnType(cty.Number),
+		Impl: func(args []cty.Value, retType cty.Type) (cty.Value, error) {
+			if args[0].Type() == cty.String {
+				return stdlib.Strlen(args[0])
+			}
+			return stdlib.Length(args[0])
+		},
+	})
+
 	return map[string]function.Function{
-		"cwd":                literalStringFn(i.info.WorkingDir),
-		"rootDirectory":      literalStringFn(i.info.RootDirectory),
-		"project":            literalStringFn(i.info.Project),
-		"stack":              literalStringFn(i.info.Stack),
-		"organization":       literalStringFn(i.info.Organization),
+		"cwd":                literalStringFn(ectx.workingDirectory),
+		"rootDirectory":      literalStringFn(ectx.rootDirectory),
+		"project":            literalStringFn(ectx.project),
+		"stack":              literalStringFn(ectx.stack),
+		"organization":       literalStringFn(ectx.organization),
 		"secret":             secretFn,
 		"unsecret":           unsecretFn,
 		"try":                tryFn,
@@ -985,7 +1036,7 @@ func (i *Interpreter) builtinFunctions() map[string]function.Function {
 		"split":              stdlib.SplitFunc,
 		"element":            stdlib.ElementFunc,
 		"join":               stdlib.JoinFunc,
-		"length":             stdlib.LengthFunc,
+		"length":             lengthFunc,
 		"singleOrNone":       singleOrNoneFn,
 		"entries":            entriesFn,
 		"lookup":             stdlib.LookupFunc,

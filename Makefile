@@ -91,6 +91,18 @@ generate-python-automation-api:: generate-cli-spec
 test-python-automation-api::
 	cd sdk/python/tools/automation && pip install -q -r requirements.txt && python -m unittest tests.test_commands -v
 
+.PHONY: generate-go-automation-api
+generate-go-automation-api:: generate-cli-spec
+	go run -C sdk ./go/tools/automation \
+		../tools/automation/specification.json \
+		boilerplate/standard \
+		go/auto/automation \
+		github.com/pulumi/pulumi/sdk/v3/go/auto/automation
+
+.PHONY: test-go-automation-api
+test-go-automation-api::
+	cd sdk && go test ./go/tools/automation/...
+
 # For the `pulumi` CLI, building grpc with grpcnotrace has no effect since there other imports that end up disabling
 # dead code elimation due to the usage of certain reflection methods.
 bin/pulumi: GO_BUILD_TAGS =
@@ -130,7 +142,10 @@ brew::
 	./scripts/brew.sh "${PROJECT}"
 
 .PHONY: lint_%
-lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json
+lint:: .make/ensure/golangci-lint lint_golang lint_pulumi_json lint_changelog
+
+lint_changelog::
+	uv run scripts/check-changelog.py
 
 lint_pulumi_json::
 	# NOTE: github.com/santhosh-tekuri/jsonschema uses Go's regexp engine, but

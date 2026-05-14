@@ -22,9 +22,11 @@ import (
 	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 
+	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -51,6 +53,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			` or it must have a PulumiPlugin.yaml file specifying the runtime to use.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			source := args[0]
+			agent := metadata.DetectAIAgent(os.Getenv)
 
 			wd, err := os.Getwd()
 			if err != nil {
@@ -65,9 +68,10 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			defer contract.IgnoreClose(pctx)
 
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
-			spec, _, err := packages.SchemaFromSchemaSource(pctx, source, parameters,
-				cmdCmd.NewDefaultRegistry(cmd.Context(), pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
-				env.Global(), 0 /* unbounded concurrency */)
+			registry := cmdCmd.NewDefaultRegistry(
+				cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, sink, env.Global())
+			spec, _, err := packages.SchemaFromSchemaSource(pkgWorkspace.Instance, pctx, source, parameters,
+				registry, env.Global(), 0 /* unbounded concurrency */)
 			if err != nil {
 				return err
 			}
@@ -86,13 +90,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				}
 				pkg.Version = &pkgVersion
 			}
-			// Normalize from well known language names the matching runtime names.
-			switch language {
-			case "csharp", "c#":
-				language = "dotnet"
-			case "typescript":
-				language = "nodejs"
-			}
+			language = cmdCmd.NormalizeRuntimeName(language)
 
 			if language == "all" {
 				for _, lang := range []string{"dotnet", "go", "java", "nodejs", "python"} {
@@ -103,6 +101,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 					}
 				}
 				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
+				printRegistryDocsHint(os.Stderr, agent, cmd.Context(), registry, pkg)
 				return nil
 			}
 			diags, err := packages.GenSDK(cmd.Context(), language, out, pkg, overlays, local)
@@ -111,6 +110,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			fmt.Fprintf(os.Stderr, "SDK has been written to %s\n", filepath.Join(out, language))
+			printRegistryDocsHint(os.Stderr, agent, cmd.Context(), registry, pkg)
 			return nil
 		},
 	}

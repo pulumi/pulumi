@@ -803,7 +803,7 @@ async def serialize_property(
 def deserialize_properties(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
 ) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
@@ -861,15 +861,13 @@ def deserialize_properties(
     # since we can only set secret outputs on top level properties.
     output = {}
     for k, v in list(props_struct.items()):
-        # Unilaterally skip properties considered internal by the Pulumi engine.
-        # These don't actually contribute to the exposed shape of the object, do
-        # not need to be passed back to the engine, and often will not match the
-        # expected type we are deserializing into.
-        # Keep "__provider" as it's the property name used by Python dynamic providers.
-        if not keep_internal and k.startswith("__") and k != "__provider":
+        # Skip properties considered internal by the Pulumi engine when the caller has
+        # explicitly opted out. `__provider` is always preserved because it's the
+        # property name reserved for Python dynamic providers.
+        if keep_internal is False and k.startswith("__") and k != "__provider":
             continue
 
-        value = deserialize_property(v, keep_unknowns)
+        value = deserialize_property(v, keep_unknowns, keep_internal)
         # We treat values that deserialize to "None" as if they don't exist.
         if value is not None:
             output[k] = value
@@ -958,7 +956,7 @@ def _unwrap_rpc_secret_struct_properties(value: Any) -> tuple[Any, bool]:
 def deserialize_properties_unwrap_secrets(
     props_struct: struct_pb2.Struct,
     keep_unknowns: Optional[bool] = None,
-    keep_internal: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
 ) -> tuple[Any, bool]:
     """
     Similar to deserialize_properties except that it unwraps secrets and returns a boolean
@@ -1099,7 +1097,11 @@ def unwrap_rpc_secret(value: Any) -> Any:
     return value
 
 
-def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_property(
+    value: Any,
+    keep_unknowns: Optional[bool] = None,
+    keep_internal: Optional[bool] = True,
+) -> Any:
     """
     Deserializes a single protobuf value (either `Struct` or `ListValue`) into idiomatic
     Python values.
@@ -1112,7 +1114,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
     # ListValues are projected to lists
     if isinstance(value, struct_pb2.ListValue):
         # values has no __iter__ defined but this works.
-        values = [deserialize_property(v, keep_unknowns) for v in value]  # type: ignore
+        values = [deserialize_property(v, keep_unknowns, keep_internal) for v in value]  # type: ignore
         # If there are any secret values in the list, push the secretness "up" a level by returning
         # an array that is marked as a secret with raw values inside.
         if any(is_rpc_secret(v) for v in values):
@@ -1122,7 +1124,7 @@ def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> An
 
     # Structs are projected to dictionaries
     if isinstance(value, struct_pb2.Struct):
-        props = deserialize_properties(value, keep_unknowns)
+        props = deserialize_properties(value, keep_unknowns, keep_internal)
         # If there are any secret values in the dictionary, push the secretness "up" a level by returning
         # a dictionary that is marked as a secret with raw values inside. Note: the isinstance check here is
         # important, since deserialize_properties will return either a dictionary or a concret type (in the case of

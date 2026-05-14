@@ -52,17 +52,15 @@ type Session struct {
 	// likes (stderr today, a TUI tomorrow). nil disables logging.
 	Log io.Writer
 	// UIEvents, when non-nil, receives parsed events for the bubbletea TUI to display.
-	// The Session closes this channel when Run() exits.
+	// The caller owns the channel — Session.Run never closes it. The channel has
+	// other writers (dispatchUserEvents, createTask, the pulumi sink), and closing
+	// from here races them (pulumi/pulumi-service#42773).
 	UIEvents chan<- UIEvent
 }
 
-// Run drives the loop. It blocks until ctx is cancelled or the SSE stream errors out.
-// If UIEvents is set, it is closed when Run returns.
+// Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil)
+// or the SSE stream errors out (returns the error).
 func (s *Session) Run(ctx context.Context) error {
-	if s.UIEvents != nil {
-		defer close(s.UIEvents)
-	}
-
 	stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID)
 	if err != nil {
 		return fmt.Errorf("opening event stream: %w", err)
@@ -71,7 +69,9 @@ func (s *Session) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			// Caller-initiated shutdown (e.g. TUI quit) is not an error — surfacing
+			// context.Canceled here would print "error: context canceled" on a normal exit.
+			return nil
 		case evt, ok := <-stream:
 			if !ok {
 				return nil
@@ -200,7 +200,13 @@ func (s *Session) invokeToolCall(
 	value, err := handler.Invoke(ctx, method, call.Args)
 	if err != nil {
 		res.IsError = true
-		res.Content = map[string]string{"error": err.Error()}
+		// Handlers may return a partial value alongside an error (e.g. shell
+		// timeout). Prefer that value so the agent sees what was captured.
+		if value != nil {
+			res.Content = value
+		} else {
+			res.Content = map[string]string{"error": err.Error()}
+		}
 		return res
 	}
 	res.Content = value
@@ -250,6 +256,16 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 			IsFinal:           msg.IsFinal,
 			HasPendingCLIWork: msg.IsFinal && hasPendingCLIToolCalls(msg.ToolCalls),
 		})
+		// todo__TodoWrite is cloud-marked, so it never reaches runBatch / the
+		// UIToolStarted path — forward the args directly as a UITodoList.
+		for _, tc := range msg.ToolCalls {
+			if tc.Name != toolNameTodoWrite {
+				continue
+			}
+			if items, ok := parseTodoWriteArgs(tc.Args); ok {
+				sendUI(s.UIEvents, UITodoList{Items: items})
+			}
+		}
 	case backendEventExecToolCallProgress:
 		var p apitype.AgentBackendEventExecToolCallProgress
 		if err := json.Unmarshal(eventBody, &p); err != nil {
@@ -281,6 +297,7 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 			Sensitivity:     req.Sensitivity,
 			ApprovalType:    req.ApprovalType,
 			PlanDescription: req.Context.PlanDescription,
+			ToolName:        req.Context.ToolName,
 		})
 	case backendEventAwaitingApprovals:
 		sendUI(s.UIEvents, UIAwaitingApprovals{})
@@ -301,17 +318,40 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 	}
 }
 
-// forwardUserInputToUI parses a userInput event body and sends a UIUserMessage to the TUI.
+// forwardUserInputToUI parses a userInput event body and routes it to the TUI:
+// user_message → UIUserMessage (echo of a chat message, possibly from another
+// client) and user_confirmation → UIApprovalResolved (the cloud's signal that a
+// pending approval has been settled, either by the user clicking approve in the
+// console or by the auto-approval handler under ApprovalMode=auto/balanced).
 func (s *Session) forwardUserInputToUI(eventBody json.RawMessage) {
 	if s.UIEvents == nil {
 		return
 	}
 
-	var evt apitype.AgentUserEventUserMessage
-	if err := json.Unmarshal(eventBody, &evt); err != nil {
+	// Peek at the inner type; we reuse AgentBackendEventHeader because it's just
+	// a Type field and the JSON shape on the user-input side matches.
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil {
 		return
 	}
-	if evt.Content != "" {
-		sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+
+	switch head.Type {
+	case userEventUserMessage:
+		var evt apitype.AgentUserEventUserMessage
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return
+		}
+		if evt.Content != "" {
+			sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+		}
+	case userEventUserConfirmation:
+		var evt apitype.AgentUserEventUserConfirmation
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIApprovalResolved{
+			ApprovalID: evt.ApprovalID,
+			Approved:   evt.Approved,
+		})
 	}
 }

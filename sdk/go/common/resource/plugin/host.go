@@ -33,7 +33,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -68,9 +67,6 @@ type Host interface {
 	// set of policies that are required to be run during an update, so they tend to be in a
 	// well-known place.
 	PolicyAnalyzer(name tokens.QName, path string, opts *PolicyAnalyzerOptions) (Analyzer, error)
-
-	// ListAnalyzers returns a list of all analyzer plugins known to the plugin host.
-	ListAnalyzers() []Analyzer
 
 	// Provider loads a new copy of the provider for a given package.  If a provider for this package could not be
 	// found, or an error occurs while creating it, a non-nil error is returned.
@@ -494,14 +490,6 @@ func (host *defaultHost) PolicyAnalyzer(name tokens.QName, path string, opts *Po
 		return nil, err
 	}
 	return plugin.(Analyzer), nil
-}
-
-func (host *defaultHost) ListAnalyzers() []Analyzer {
-	analyzers := slice.Prealloc[Analyzer](len(host.analyzerPlugins))
-	for _, analyzer := range host.analyzerPlugins {
-		analyzers = append(analyzers, analyzer.Plugin)
-	}
-	return analyzers
 }
 
 func (host *defaultHost) Provider(descriptor workspace.PluginDescriptor, e env.Env) (Provider, error) {

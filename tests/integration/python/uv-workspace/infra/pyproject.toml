@@ -1,7 +1,6 @@
 [project]
 name = "infra-workspace"
 version = "0.1.0"
-requires-python = ">=3.9"
 dependencies = ["some-package", "pulumi"]
 
 [tool.uv.workspace]

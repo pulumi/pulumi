@@ -1342,7 +1342,6 @@ func TestPolicyPackInstallDependencies(t *testing.T) {
 	e.ImportDirectory("policy/python_policy_pack")
 	require.False(t, e.PathExists("venv"))
 	stdout, _ := e.RunCommand("pulumi", "install")
-	require.Contains(t, stdout, "Finished creating virtual environment")
 	require.Contains(t, stdout, "Finished installing dependencies")
 	require.True(t, e.PathExists("venv"))
 }

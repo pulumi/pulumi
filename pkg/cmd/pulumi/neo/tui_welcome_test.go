@@ -100,6 +100,64 @@ func TestWelcomeView_RendersCoreFields(t *testing.T) {
 	assert.Contains(t, out, "acme", "org must render")
 }
 
+func TestWelcomeView_RendersVersion(t *testing.T) {
+	t.Parallel()
+
+	// The CLI version is stamped at build time and shown in the info line so
+	// users can sanity-check which binary is talking to the backend without
+	// dropping out to `pulumi version`.
+	w := welcomeModel{
+		org:       "acme",
+		workDir:   "/tmp/proj",
+		username:  "alice",
+		version:   "v3.235.0",
+		termWidth: 120,
+		greeting:  "hi",
+	}
+	out := w.View()
+
+	assert.Contains(t, out, "v3.235.0", "version must render in the info line")
+}
+
+func TestWelcomeView_OmitsEmptyVersion(t *testing.T) {
+	t.Parallel()
+
+	// Dev builds leave version.Version empty. The banner must still render
+	// cleanly — no stray "·" separator from a half-built suffix.
+	w := welcomeModel{
+		org:       "acme",
+		workDir:   "/tmp/proj",
+		termWidth: 120,
+		greeting:  "hi",
+	}
+	out := w.View()
+
+	assert.Contains(t, out, "/tmp/proj · org: acme")
+	// The version separator must not appear when version is empty.
+	assert.NotContains(t, out, "/tmp/proj · org: acme · ")
+}
+
+func TestWelcomeView_NarrowTerminalPreservesVersion(t *testing.T) {
+	t.Parallel()
+
+	// When the path overflows, the version (like the org) is a fixed suffix:
+	// the path truncates and the version stays intact, so users keep seeing
+	// which CLI build is running even on narrow terminals.
+	longPath := "/" + strings.Repeat("verylongsegment/", 4)
+	w := welcomeModel{
+		org:       "acme",
+		workDir:   longPath,
+		version:   "v3.235.0",
+		termWidth: 60,
+		greeting:  "hi",
+	}
+	out := w.View()
+
+	assert.Contains(t, out, "...", "long path must be truncated")
+	assert.Contains(t, out, "v3.235.0", "version suffix must survive truncation")
+	assert.Contains(t, out, "acme", "org suffix must survive truncation")
+}
+
 func TestWelcomeView_RendersConsoleHyperlink(t *testing.T) {
 	t.Parallel()
 
@@ -150,8 +208,8 @@ func TestWelcomeView_TildeForHomePath(t *testing.T) {
 
 	// Paths under $HOME are presented as "~/<rel>" so the user sees the
 	// shorter, familiar shell form rather than a long absolute path. The
-	// banner has limited horizontal real estate (capped at liveWidth ≤ 80
-	// cols) and the absolute home path is the dominant chunk on most setups.
+	// banner has limited horizontal real estate and the absolute home path
+	// is the dominant chunk on most setups.
 	home, err := os.UserHomeDir()
 	if err != nil {
 		t.Skipf("UserHomeDir unavailable: %v", err)

@@ -270,6 +270,12 @@ func (u *uv) LinkPackages(ctx context.Context, packages map[string]string) error
 func (u *uv) EnsureVenv(ctx context.Context, cwd string, useLanguageVersionTools, showOutput bool,
 	infoWriter, errorWriter io.Writer,
 ) error {
+	// Skip if the venv already exists. `uv venv --allow-existing` re-copies the launcher into `python.exe`, and on
+	// Windows that can fail with a file-lock error if any earlier process still holds the existing python.exe (e.g.
+	// recursive plugin installs that run multiple uv operations against the same venv).
+	if IsVirtualEnv(u.virtualenvPath) {
+		return nil
+	}
 	venvCmd := u.uvCommand(ctx, cwd, showOutput, infoWriter, errorWriter, "venv", "--quiet",
 		"--allow-existing", u.virtualenvPath)
 	if err := venvCmd.Run(); err != nil {

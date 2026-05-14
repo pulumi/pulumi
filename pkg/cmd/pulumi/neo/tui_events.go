@@ -117,9 +117,31 @@ type UIApprovalRequest struct {
 	// PlanDescription is the markdown plan body, populated only for plan_exit
 	// approvals. The TUI renders it through the glamour markdown renderer.
 	PlanDescription string
+	// ToolName is context.tool_name from the wire. Used by the TUI to route
+	// ask-user calls to the question rendering (see isAskUserToolName).
+	ToolName string
 }
 
 func (UIApprovalRequest) uiEvent() {}
+
+// UIApprovalResolved signals that a user_approval_request has been settled. The
+// cloud emits the underlying user_confirmation event in two cases: as an echo of
+// the user's own manual confirmation, and as a synthetic event when the auto-
+// approval handler resolves the request server-side under ApprovalMode=auto or
+// balanced. The TUI matches ApprovalID to its own pendingApprovalID and uses
+// the still-pending vs already-cleared state to discriminate auto-resolve from
+// echo (manual Enter clears the pending state locally before sending upstream,
+// so an echo arriving here lands with pendingApproval already false).
+type UIApprovalResolved struct {
+	ApprovalID string
+	// Approved mirrors the "ok" field on the wire: true for approved/answered,
+	// false for denied. Auto-resolve under the current cloud policy always
+	// emits Approved=true, but we carry the flag through so a future auto-deny
+	// path renders correctly.
+	Approved bool
+}
+
+func (UIApprovalResolved) uiEvent() {}
 
 // UIAwaitingApprovals is an interim backend signal that the agent is pausing before
 // it will emit a UIApprovalRequest. The declarative busy rule treats it as non-final
@@ -198,3 +220,21 @@ type UIPulumiEnd struct {
 }
 
 func (UIPulumiEnd) uiEvent() {}
+
+// UITodoItem is one entry in the agent's task list. Index preserves the
+// agent's intended ordering; Priority is carried for forward compatibility
+// but the renderer ignores it today. Field tags also let the wire decoder
+// in events.go unmarshal todo__TodoWrite args directly into this type.
+type UITodoItem struct {
+	Content  string `json:"content"`
+	Status   string `json:"status"`   // "pending" | "in_progress" | "completed"
+	Priority string `json:"priority"` // "low" | "medium" | "high"
+	Index    int    `json:"index"`
+}
+
+// UITodoList carries the agent's full task list.
+type UITodoList struct {
+	Items []UITodoItem
+}
+
+func (UITodoList) uiEvent() {}

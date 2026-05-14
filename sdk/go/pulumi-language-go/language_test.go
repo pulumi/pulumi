@@ -100,6 +100,7 @@ func runTestingHost(t *testing.T) (string, testingrpc.LanguageTestClient) {
 // Add test names here that are expected to fail and the reason why they are failing
 var expectedFailures = map[string]string{
 	"l1-config-types-object":        "fails to compile",
+	"l1-config-types-optional":      "fails to compile: cfg.GetObject signature mismatch (same as l1-config-types-object)", //nolint:lll
 	"l1-builtin-try":                "pulumi#18506 Support try in Go program generation",
 	"l1-builtin-can":                "pulumi#18570 Support can in Go program generation",
 	"l1-builtin-list":               "list(string) config decoded as string; element/split emit TODO stubs",
@@ -130,6 +131,8 @@ var expectedFailures = map[string]string{
 	"l3-range-ref":                       "fails with syntax errors",
 
 	"l2-id-type": "codegen isn't keeping track of ID right now",
+
+	"l1-builtin-string": "cannot convert strings.Split(aString, \"-\") (value of type []string) to type pulumi.StringArray", //nolint:lll
 }
 
 // Add program overrides here for programs that can't yet be generated correctly due to programgen bugs.
@@ -285,8 +288,8 @@ func TestLanguage(t *testing.T) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+					ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}

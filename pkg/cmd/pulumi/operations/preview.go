@@ -320,6 +320,7 @@ func NewPreviewCmd() *cobra.Command {
 	var targetDependents bool
 	var excludeDependents bool
 	var attachDebugger []string
+	var skipPluginPreInstall bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -522,10 +523,11 @@ func NewPreviewCmd() *cobra.Command {
 					ExcludeDependents:         excludeDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
-					Experimental:   env.Experimental.Value(),
-					AttachDebugger: attachDebugger,
-					Autonamer:      autonamer,
+					GeneratePlan:         env.Experimental.Value() || planFilePath != "",
+					Experimental:         env.Experimental.Value(),
+					AttachDebugger:       attachDebugger,
+					Autonamer:            autonamer,
+					SkipPluginPreInstall: skipPluginPreInstall,
 				},
 				Display: displayOpts,
 			}
@@ -744,6 +746,10 @@ func NewPreviewCmd() *cobra.Command {
 		&attachDebugger, "attach-debugger", []string{},
 		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.")
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
+
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

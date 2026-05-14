@@ -21,12 +21,10 @@ import (
 	"os/exec"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/ext/customdecode"
 	"github.com/zclconf/go-cty/cty"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -46,16 +44,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
-
-var invokeOptionsType = cty.ObjectWithOptionalAttrs(map[string]cty.Type{
-	"version":   cty.String,
-	"dependsOn": cty.List(cty.DynamicPseudoType),
-	"provider":  cty.DynamicPseudoType,
-}, []string{
-	"version",
-	"dependsOn",
-	"provider",
-})
 
 type RunInfo struct {
 	Project        string
@@ -84,9 +72,7 @@ type Interpreter struct {
 	engine  pulumirpc.EngineClient
 	loader  schema.ReferenceLoader
 
-	// we write variables to the eval context in parallel during execution, so we need to synchronize access to it
-	evalLock    sync.Mutex
-	evalContext *hcl.EvalContext
+	evalContext *EvalContext
 	stackURN    string
 
 	// namePrefix is prepended to resource and component names when this interpreter is executing
@@ -198,7 +184,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 
 	onDryRun := false
 	if h.OnDryRun != nil {
-		odrVal, _, diags := i.evalExpression(h.OnDryRun)
+		odrVal, _, diags := i.evalContext.Evaluate(h.OnDryRun)
 		if diags.HasErrors() {
 			return diags
 		}
@@ -206,6 +192,19 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			onDryRun = odrVal.BoolValue()
 		} else {
 			return fmt.Errorf("hook %s: onDryRun must be a boolean", h.Name())
+		}
+	}
+
+	ignoreErrors := false
+	if h.IgnoreErrors != nil {
+		ieVal, _, diags := i.evalContext.Evaluate(h.IgnoreErrors)
+		if diags.HasErrors() {
+			return diags
+		}
+		if ieVal.IsBool() {
+			ignoreErrors = ieVal.BoolValue()
+		} else {
+			return fmt.Errorf("hook %s: ignoreErrors must be a boolean", h.Name())
 		}
 	}
 
@@ -229,9 +228,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 		}
 
 		// Build a child eval context with `args` populated from the hook request.
-		i.evalLock.Lock()
 		evalCtx := i.evalContext.NewChild()
-		i.evalLock.Unlock()
 
 		unmarshal := func(s *structpb.Struct) (cty.Value, error) {
 			if s == nil {
@@ -244,7 +241,7 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			if err != nil {
 				return cty.EmptyObjectVal, err
 			}
-			val, err := propertyValueToCty(ctx, i.monitor, resource.NewProperty(props))
+			val, err := propertyValueToCty(ctx, i.getResource, resource.NewProperty(props))
 			if err != nil {
 				return cty.EmptyObjectVal, err
 			}
@@ -272,12 +269,10 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 			}
 		}
 
-		evalCtx.Variables = map[string]cty.Value{
-			"args": cty.ObjectVal(args),
-		}
+		evalCtx.SetVariable("args", cty.ObjectVal(args))
 
 		// Evaluate the command expression with the args context.
-		cmdVal, _, evalDiags := i.evalExpressionWith(cmdExpr, evalCtx)
+		cmdVal, _, evalDiags := evalCtx.Evaluate(cmdExpr)
 		if evalDiags.HasErrors() {
 			return &pulumirpc.ResourceHookResponse{
 				Error: fmt.Sprintf("hook %s: evaluating command: %v", hookName, evalDiags),
@@ -319,17 +314,76 @@ func (i *Interpreter) registerHookNode(ctx context.Context, h *pcl.Hook) error {
 	}
 
 	_, err = i.monitor.RegisterResourceHook(ctx, &pulumirpc.RegisterResourceHookRequest{
-		Name:     hookName,
-		Callback: cb,
-		OnDryRun: onDryRun,
+		Name:         hookName,
+		Callback:     cb,
+		OnDryRun:     onDryRun,
+		IgnoreErrors: ignoreErrors,
 	})
 	if err != nil {
 		return fmt.Errorf("registering resource hook %s: %w", hookName, err)
 	}
 
 	// Store the hook's registered name as a string so it can be referenced in hooks options.
-	i.setRawVariable(ctx, h.Name(), cty.StringVal(hookName))
+	i.evalContext.SetVariable(h.Name(), cty.StringVal(hookName))
 	return nil
+}
+
+func (i *Interpreter) invoke(
+	ctx context.Context, req *pulumirpc.ResourceInvokeRequest,
+) (*pulumirpc.InvokeResponse, error) {
+	ref, err := i.getPackageRefFromToken(req.Tok)
+	if err != nil {
+		return nil, err
+	}
+	req.PackageRef = ref
+	resp, err := i.monitor.Invoke(ctx, req)
+	return resp, err
+}
+
+func (i *Interpreter) call(
+	ctx context.Context, req *pulumirpc.ResourceCallRequest,
+) (*pulumirpc.CallResponse, error) {
+	ref, err := i.getPackageRefFromToken(req.Tok)
+	if err != nil {
+		return nil, err
+	}
+	req.PackageRef = ref
+	resp, err := i.monitor.Call(ctx, req)
+	return resp, err
+}
+
+func (i *Interpreter) getResource(ctx context.Context, ref resource.ResourceReference) (resource.PropertyMap, error) {
+	args, err := structpb.NewStruct(map[string]any{
+		"urn": string(ref.URN),
+	})
+	contract.AssertNoErrorf(err, "failed to create structpb for resource reference")
+
+	resp, err := i.monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
+		Tok:             "pulumi:pulumi:getResource",
+		Args:            args,
+		AcceptResources: true,
+	})
+	if err != nil {
+		return resource.PropertyMap{}, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
+	}
+
+	marshalOpts := plugin.MarshalOptions{
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	}
+	outputs, err := plugin.UnmarshalProperties(resp.Return, marshalOpts)
+	if err != nil {
+		return resource.PropertyMap{}, fmt.Errorf("unmarshal stack outputs: %w", err)
+	}
+	outputs = outputs["state"].ObjectValue()
+
+	outputs["id"] = ref.ID
+	outputs["urn"] = resource.NewProperty(string(ref.URN))
+	outputs["__name"] = resource.NewProperty(ref.URN.Name())
+	outputs["__type"] = resource.NewProperty(string(ref.URN.Type()))
+
+	return outputs, nil
 }
 
 // effectiveName returns the name to use when registering a resource or component with the given
@@ -376,10 +430,18 @@ func (i *Interpreter) Run(ctx context.Context) error {
 		i.engine = pulumirpc.NewEngineClient(engineConn)
 	}
 
-	i.evalContext = &hcl.EvalContext{
-		Variables: map[string]cty.Value{},
-		Functions: i.builtinFunctions(),
-	}
+	i.evalContext = NewEvalContext(
+		i.info.WorkingDir,
+		i.info.RootDirectory,
+		i.info.Organization,
+		i.info.Project,
+		i.info.Stack,
+		i.lookupResource,
+		i.lookupFunction,
+		i.getResource,
+		i.invoke,
+		i.call,
+	)
 
 	if diags := i.bindConfigVariables(ctx); diags.HasErrors() {
 		return diags
@@ -461,9 +523,9 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 				return fmt.Errorf("failed to register hook %s: %w", node.Name(), err)
 			}
 		case *pcl.LocalVariable:
-			value, poison, diags := i.evalExpression(node.Definition.Value)
+			value, poison, diags := i.evalContext.Evaluate(node.Definition.Value)
 			if poison != nil {
-				i.setRawVariable(ctx, node.Name(), makePoisonValue(*poison))
+				i.evalContext.SetVariable(node.Name(), makePoisonValue(*poison))
 				return nil
 			}
 			if diags.HasErrors() {
@@ -481,7 +543,7 @@ func (i *Interpreter) executeProgramNodes(ctx context.Context) (resource.Propert
 				return fmt.Errorf("failed to register component %s: %w", node.Name(), err)
 			}
 		case *pcl.OutputVariable:
-			value, poison, diags := i.evalExpression(node.Value)
+			value, poison, diags := i.evalContext.Evaluate(node.Value)
 			if poison != nil {
 				return nil
 			}
@@ -530,6 +592,28 @@ func (i *Interpreter) lookupResource(ctx context.Context, token string) (*schema
 		return nil, fmt.Errorf("get resource from package for token %s", token)
 	}
 	return schemaResource, nil
+}
+
+func (i *Interpreter) lookupFunction(ctx context.Context, token string) (*schema.Function, error) {
+	pkg, mod, typ, diags := pcl.DecomposeToken(token, hcl.Range{})
+	contract.Assertf(!diags.HasErrors(), "invalid token format for function token %s", token)
+
+	token = fmt.Sprintf("%s:%s:%s", pkg, mod, typ)
+
+	descriptor := i.lookupPackageDescriptor(pkg)
+	pkgref, err := i.loader.LoadPackageReferenceV2(ctx, descriptor)
+	if err != nil {
+		return nil, fmt.Errorf("load package for token %s: %w", token, err)
+	}
+	functions := pkgref.Functions()
+	schemaFunction, ok, err := functions.Get(token)
+	if err != nil {
+		return nil, fmt.Errorf("get function from package for token %s: %w", token, err)
+	}
+	if !ok {
+		return nil, fmt.Errorf("get function from package for token %s", token)
+	}
+	return schemaFunction, nil
 }
 
 func (i *Interpreter) lookupPackageDescriptor(pkgName string) *schema.PackageDescriptor {
@@ -609,36 +693,6 @@ func (i *Interpreter) registerPackages(ctx context.Context) error {
 	return nil
 }
 
-func (i *Interpreter) evalExpression(expr model.Expression) (resource.PropertyValue, *string, hcl.Diagnostics) {
-	return i.evalExpressionWith(expr, i.evalContext)
-}
-
-// evalExpressionWith evaluates an expression using the given eval context (which may be a child of
-// i.evalContext with additional variables, e.g. range.key/range.value for ranged resources).
-func (i *Interpreter) evalExpressionWith(
-	expr model.Expression, evalCtx *hcl.EvalContext,
-) (resource.PropertyValue, *string, hcl.Diagnostics) {
-	i.evalLock.Lock()
-	value, diags := expr.Evaluate(evalCtx)
-	i.evalLock.Unlock()
-	if diags.HasErrors() {
-		return resource.PropertyValue{}, nil, diags
-	}
-	pv, err := ctyToPropertyValue(value)
-	if err != nil {
-		var poison *poisonError
-		if errors.As(err, &poison) {
-			return resource.PropertyValue{}, &poison.name, nil
-		}
-		diags = append(diags, &hcl.Diagnostic{
-			Severity: hcl.DiagError,
-			Summary:  err.Error(),
-		})
-		return resource.PropertyValue{}, nil, diags
-	}
-	return pv, nil, diags
-}
-
 func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
 	secretKeys := map[string]struct{}{}
@@ -650,7 +704,7 @@ func (i *Interpreter) bindConfigVariables(ctx context.Context) hcl.Diagnostics {
 		raw, has := i.info.Config[key]
 		if !has {
 			if cfg.DefaultValue != nil {
-				value, poison, diags := i.evalExpression(cfg.DefaultValue)
+				value, poison, diags := i.evalContext.Evaluate(cfg.DefaultValue)
 				contract.Assertf(poison == nil, "config variables can't be poisoned")
 				diagnostics = append(diagnostics, diags...)
 				if _, isSecret := secretKeys[key]; isSecret || cfg.Secret {
@@ -706,7 +760,7 @@ func (i *Interpreter) enforceRequiredVersion(ctx context.Context) error {
 		return nil
 	}
 
-	value, poison, diags := i.evalExpression(required)
+	value, poison, diags := i.evalContext.Evaluate(required)
 	if poison != nil {
 		return fmt.Errorf("could not evaluate requiredVersion because of failure from %s", *poison)
 	}
@@ -917,13 +971,13 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		if err != nil {
 			return err
 		}
-		i.setRawVariable(ctx, lexicalBaseName, result)
+		i.evalContext.SetVariable(lexicalBaseName, result)
 		return nil
 	}
 
-	rangeValue, poison, diags := i.evalExpression(res.Options.Range)
+	rangeValue, poison, diags := i.evalContext.Evaluate(res.Options.Range)
 	if poison != nil {
-		i.setRawVariable(ctx, lexicalBaseName, makePoisonValue(*poison))
+		i.evalContext.SetVariable(lexicalBaseName, makePoisonValue(*poison))
 	}
 	if diags.HasErrors() {
 		return diags
@@ -943,25 +997,23 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		if err != nil {
 			return err
 		}
-		i.setRawVariable(ctx, lexicalBaseName, result)
+		i.evalContext.SetVariable(lexicalBaseName, result)
 		return nil
 	}
 
-	makeRangeCtx := func(key cty.Value, value cty.Value) *hcl.EvalContext {
+	makeRangeCtx := func(key cty.Value, value cty.Value) *EvalContext {
 		rangeCtx := i.evalContext.NewChild()
 		rangeVars := map[string]cty.Value{"value": value}
 		if key != cty.NilVal {
 			rangeVars["key"] = key
 		}
-		rangeCtx.Variables = map[string]cty.Value{
-			"range": cty.ObjectVal(rangeVars),
-		}
+		rangeCtx.SetVariable("range", cty.ObjectVal(rangeVars))
 		return rangeCtx
 	}
 
 	registerMany := func(items []struct {
 		suffix  string
-		evalCtx *hcl.EvalContext
+		evalCtx *EvalContext
 	},
 	) error {
 		results := make([]cty.Value, 0, len(items))
@@ -974,10 +1026,10 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			results = append(results, result)
 		}
 		if len(results) == 0 {
-			i.setRawVariable(ctx, lexicalBaseName, cty.ListValEmpty(cty.DynamicPseudoType))
+			i.evalContext.SetVariable(lexicalBaseName, cty.ListValEmpty(cty.DynamicPseudoType))
 			return nil
 		}
-		i.setRawVariable(ctx, lexicalBaseName, cty.ListVal(results))
+		i.evalContext.SetVariable(lexicalBaseName, cty.ListVal(results))
 		return nil
 	}
 
@@ -988,13 +1040,13 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		}
 		items := make([]struct {
 			suffix  string
-			evalCtx *hcl.EvalContext
+			evalCtx *EvalContext
 		}, 0, count)
 		for idx := 0; idx < count; idx++ {
 			idxVal := cty.NumberIntVal(int64(idx))
 			items = append(items, struct {
 				suffix  string
-				evalCtx *hcl.EvalContext
+				evalCtx *EvalContext
 			}{
 				suffix:  strconv.Itoa(idx),
 				evalCtx: makeRangeCtx(cty.NilVal, idxVal),
@@ -1007,16 +1059,16 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		values := rangeValue.ArrayValue()
 		items := make([]struct {
 			suffix  string
-			evalCtx *hcl.EvalContext
+			evalCtx *EvalContext
 		}, 0, len(values))
 		for idx, v := range values {
-			val, err := propertyValueToCty(ctx, i.monitor, v)
+			val, err := propertyValueToCty(ctx, i.getResource, v)
 			if err != nil {
 				return err
 			}
 			items = append(items, struct {
 				suffix  string
-				evalCtx *hcl.EvalContext
+				evalCtx *EvalContext
 			}{
 				suffix:  strconv.Itoa(idx),
 				evalCtx: makeRangeCtx(cty.NumberIntVal(int64(idx)), val),
@@ -1034,7 +1086,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 		sort.Strings(keys)
 		resultMap := make(map[string]cty.Value, len(keys))
 		for _, key := range keys {
-			val, err := propertyValueToCty(ctx, i.monitor, values[resource.PropertyKey(key)])
+			val, err := propertyValueToCty(ctx, i.getResource, values[resource.PropertyKey(key)])
 			if err != nil {
 				return err
 			}
@@ -1046,9 +1098,9 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 			resultMap[key] = result
 		}
 		if len(resultMap) == 0 {
-			i.setRawVariable(ctx, lexicalBaseName, cty.EmptyObjectVal)
+			i.evalContext.SetVariable(lexicalBaseName, cty.EmptyObjectVal)
 		} else {
-			i.setRawVariable(ctx, lexicalBaseName, cty.ObjectVal(resultMap))
+			i.evalContext.SetVariable(lexicalBaseName, cty.ObjectVal(resultMap))
 		}
 		return nil
 	}
@@ -1057,7 +1109,7 @@ func (i *Interpreter) registerResource(ctx context.Context, res *pcl.Resource) e
 }
 
 func (i *Interpreter) registerResourceWith(
-	ctx context.Context, res *pcl.Resource, evalCtx *hcl.EvalContext, logicalName string,
+	ctx context.Context, res *pcl.Resource, evalCtx *EvalContext, logicalName string,
 ) (cty.Value, error) {
 	token, _ := res.GetToken()
 	schemaResource, err := i.lookupResource(ctx, token)
@@ -1089,7 +1141,7 @@ func (i *Interpreter) registerResourceWith(
 			return cty.NilVal, diags
 		}
 
-		val, poison, diags := i.evalExpressionWith(expr, evalCtx)
+		val, poison, diags := evalCtx.Evaluate(expr)
 		if poison != nil {
 			return makePoisonValue(*poison), nil
 		}
@@ -1169,7 +1221,7 @@ func (i *Interpreter) registerResourceWith(
 
 	if res.Options != nil {
 		if res.Options.AdditionalSecretOutputs != nil {
-			additionalSecretOutputs, poison, diags := i.evalExpressionWith(res.Options.AdditionalSecretOutputs, evalCtx)
+			additionalSecretOutputs, poison, diags := evalCtx.Evaluate(res.Options.AdditionalSecretOutputs)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1194,7 +1246,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.Aliases != nil {
-			aliases, poison, diags := i.evalExpressionWith(res.Options.Aliases, evalCtx)
+			aliases, poison, diags := evalCtx.Evaluate(res.Options.Aliases)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1272,7 +1324,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.DependsOn != nil {
-			dependsOn, poison, diags := i.evalExpressionWith(res.Options.DependsOn, evalCtx)
+			dependsOn, poison, diags := evalCtx.Evaluate(res.Options.DependsOn)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1298,7 +1350,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.EnvVarMappings != nil {
-			envVars, poison, diags := i.evalExpressionWith(res.Options.EnvVarMappings, evalCtx)
+			envVars, poison, diags := evalCtx.Evaluate(res.Options.EnvVarMappings)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1322,7 +1374,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.ImportID != nil {
-			importID, poison, diags := i.evalExpressionWith(res.Options.ImportID, evalCtx)
+			importID, poison, diags := evalCtx.Evaluate(res.Options.ImportID)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1337,7 +1389,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.IgnoreChanges != nil {
-			ignoreChanges, poison, diags := i.evalExpressionWith(res.Options.IgnoreChanges, evalCtx)
+			ignoreChanges, poison, diags := evalCtx.Evaluate(res.Options.IgnoreChanges)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1362,7 +1414,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.Protect != nil {
-			protect, poison, diags := i.evalExpressionWith(res.Options.Protect, evalCtx)
+			protect, poison, diags := evalCtx.Evaluate(res.Options.Protect)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1381,7 +1433,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.ReplaceWith != nil {
-			replaceWith, poison, diags := i.evalExpressionWith(res.Options.ReplaceWith, evalCtx)
+			replaceWith, poison, diags := evalCtx.Evaluate(res.Options.ReplaceWith)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1407,7 +1459,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.ReplaceOnChanges != nil {
-			replaceOnChanges, poison, diags := i.evalExpressionWith(res.Options.ReplaceOnChanges, evalCtx)
+			replaceOnChanges, poison, diags := evalCtx.Evaluate(res.Options.ReplaceOnChanges)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1432,7 +1484,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.ReplacementTrigger != nil {
-			replacement, poison, diags := i.evalExpressionWith(res.Options.ReplacementTrigger, evalCtx)
+			replacement, poison, diags := evalCtx.Evaluate(res.Options.ReplacementTrigger)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1446,7 +1498,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.RetainOnDelete != nil {
-			retain, poison, diags := i.evalExpressionWith(res.Options.RetainOnDelete, evalCtx)
+			retain, poison, diags := evalCtx.Evaluate(res.Options.RetainOnDelete)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1465,7 +1517,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.Version != nil {
-			version, poison, diags := i.evalExpressionWith(res.Options.Version, evalCtx)
+			version, poison, diags := evalCtx.Evaluate(res.Options.Version)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1480,7 +1532,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.CustomTimeouts != nil {
-			timeouts, poison, diags := i.evalExpressionWith(res.Options.CustomTimeouts, evalCtx)
+			timeouts, poison, diags := evalCtx.Evaluate(res.Options.CustomTimeouts)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1509,7 +1561,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.DeleteBeforeReplace != nil {
-			dbr, poison, diags := i.evalExpressionWith(res.Options.DeleteBeforeReplace, evalCtx)
+			dbr, poison, diags := evalCtx.Evaluate(res.Options.DeleteBeforeReplace)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1526,7 +1578,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.DeletedWith != nil {
-			deletedWith, poison, diags := i.evalExpressionWith(res.Options.DeletedWith, evalCtx)
+			deletedWith, poison, diags := evalCtx.Evaluate(res.Options.DeletedWith)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1542,7 +1594,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.PluginDownloadURL != nil {
-			downloadURL, poison, diags := i.evalExpressionWith(res.Options.PluginDownloadURL, evalCtx)
+			downloadURL, poison, diags := evalCtx.Evaluate(res.Options.PluginDownloadURL)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1557,7 +1609,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.Parent != nil {
-			parent, poison, diags := i.evalExpressionWith(res.Options.Parent, evalCtx)
+			parent, poison, diags := evalCtx.Evaluate(res.Options.Parent)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1573,7 +1625,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.Provider != nil {
-			provider, poison, diags := i.evalExpressionWith(res.Options.Provider, evalCtx)
+			provider, poison, diags := evalCtx.Evaluate(res.Options.Provider)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1595,7 +1647,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.Providers != nil {
-			providers, poison, diags := i.evalExpressionWith(res.Options.Providers, evalCtx)
+			providers, poison, diags := evalCtx.Evaluate(res.Options.Providers)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1646,7 +1698,7 @@ func (i *Interpreter) registerResourceWith(
 			}
 		}
 		if res.Options.HideDiffs != nil {
-			hideDiffs, poison, diags := i.evalExpressionWith(res.Options.HideDiffs, evalCtx)
+			hideDiffs, poison, diags := evalCtx.Evaluate(res.Options.HideDiffs)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1673,7 +1725,7 @@ func (i *Interpreter) registerResourceWith(
 
 		// Process hooks - register command hooks and build the hooks binding
 		if res.Options.Hooks != nil {
-			hooksVal, poison, diags := i.evalExpressionWith(res.Options.Hooks, evalCtx)
+			hooksVal, poison, diags := evalCtx.Evaluate(res.Options.Hooks)
 			if poison != nil {
 				return makePoisonValue(*poison), nil
 			}
@@ -1784,7 +1836,7 @@ func (i *Interpreter) registerResourceWith(
 		Known:        true,
 	})
 
-	return propertyValueToCty(ctx, i.monitor, result)
+	return propertyValueToCty(ctx, i.getResource, result)
 }
 
 func applySchemaInputDefaults(inputs resource.PropertyMap, schemaResource *schema.Resource) {
@@ -1815,9 +1867,9 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 			return diags
 		}
 
-		val, poison, diags := i.evalExpression(expr)
+		val, poison, diags := i.evalContext.Evaluate(expr)
 		if poison != nil {
-			i.setRawVariable(ctx, component.Name(), makePoisonValue(*poison))
+			i.evalContext.SetVariable(component.Name(), makePoisonValue(*poison))
 			return nil
 		}
 		if diags.HasErrors() {
@@ -1852,9 +1904,9 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		Parent:          i.stackURN,
 	}
 	if component.Options != nil && component.Options.Parent != nil {
-		parent, poison, diags := i.evalExpression(component.Options.Parent)
+		parent, poison, diags := i.evalContext.Evaluate(component.Options.Parent)
 		if poison != nil {
-			i.setRawVariable(ctx, component.Name(), makePoisonValue(*poison))
+			i.evalContext.SetVariable(component.Name(), makePoisonValue(*poison))
 			return nil
 		}
 		if diags.HasErrors() {
@@ -1889,9 +1941,18 @@ func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Comp
 		}}
 	}
 
-	componentEval := &hcl.EvalContext{}
-	componentEval.Functions = i.evalContext.Functions
-	componentEval.Variables = map[string]cty.Value{}
+	componentEval := NewEvalContext(
+		i.info.WorkingDir,
+		i.info.RootDirectory,
+		i.info.Organization,
+		i.info.Project,
+		i.info.Stack,
+		i.lookupResource,
+		i.lookupFunction,
+		i.getResource,
+		i.invoke,
+		i.call,
+	)
 	componentInterpreter := &Interpreter{
 		program:     component.Program,
 		info:        i.info,
@@ -1993,18 +2054,12 @@ func (i *Interpreter) registerStackOutputs(ctx context.Context, outputs resource
 }
 
 func (i *Interpreter) setVariable(ctx context.Context, name string, value resource.PropertyValue) error {
-	ctyValue, err := propertyValueToCty(ctx, i.monitor, value)
+	ctyValue, err := propertyValueToCty(ctx, i.getResource, value)
 	if err != nil {
 		return err
 	}
-	i.setRawVariable(ctx, name, ctyValue)
+	i.evalContext.SetVariable(name, ctyValue)
 	return nil
-}
-
-func (i *Interpreter) setRawVariable(ctx context.Context, name string, value cty.Value) {
-	i.evalLock.Lock()
-	i.evalContext.Variables[name] = value
-	i.evalLock.Unlock()
 }
 
 func parseConfigPropertyValue(raw string, typ model.Type) (resource.PropertyValue, hcl.Diagnostics) {
@@ -2020,50 +2075,6 @@ func parseConfigPropertyValue(raw string, typ model.Type) (resource.PropertyValu
 		})
 	}
 	return pv, diags
-}
-
-func (i *Interpreter) tryExpressions(args []cty.Value) (cty.Value, error) {
-	if len(args) == 0 {
-		return cty.NilVal, errors.New("at least one argument is required")
-	}
-
-	var diags hcl.Diagnostics
-	for _, arg := range args {
-		closure := customdecode.ExpressionClosureFromVal(arg)
-
-		v, moreDiags := closure.Value()
-		diags = append(diags, moreDiags...)
-
-		if moreDiags.HasErrors() {
-			continue
-		}
-
-		if !v.IsWhollyKnown() {
-			return cty.DynamicVal, nil
-		}
-
-		pv, err := ctyToPropertyValue(v)
-		if err != nil {
-			diags = append(diags, &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  err.Error(),
-			})
-			continue
-		}
-		return propertyValueToCty(context.TODO(), i.monitor, pv)
-	}
-
-	var buf strings.Builder
-	buf.WriteString("no expression succeeded:\n")
-	for _, diag := range diags {
-		if diag.Subject != nil {
-			buf.WriteString(fmt.Sprintf("- %s (at %s)\n  %s\n", diag.Summary, diag.Subject, diag.Detail))
-		} else {
-			buf.WriteString(fmt.Sprintf("- %s\n  %s\n", diag.Summary, diag.Detail))
-		}
-	}
-	buf.WriteString("\nAt least one expression must produce a successful result")
-	return cty.NilVal, errors.New(buf.String())
 }
 
 func getStackOutput(stackRef resource.PropertyValue, outputName string) (resource.PropertyValue, error) {

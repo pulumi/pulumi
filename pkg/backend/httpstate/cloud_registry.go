@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 )
 
 type cloudRegistry struct {
@@ -62,9 +63,9 @@ func (r *cloudRegistry) GetPackage(
 }
 
 func (r *cloudRegistry) ListTemplates(
-	ctx ctx.Context, name *string,
+	ctx ctx.Context, opts registry.ListTemplatesOptions,
 ) iter.Seq2[apitype.TemplateMetadata, error] {
-	return r.cl.ListTemplates(ctx, name)
+	return r.cl.ListTemplates(ctx, opts)
 }
 
 func (r *cloudRegistry) GetTemplate(

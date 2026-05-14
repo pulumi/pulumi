@@ -373,6 +373,88 @@ def test_analyze_optional_3_10_syntax():
     )
 
 
+def test_analyze_not_required():
+    from typing_extensions import NotRequired
+
+    class Args(TypedDict):
+        name: str
+        tags: NotRequired[dict[str, str]]
+        count: NotRequired[pulumi.Input[int]]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer("not-required")
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "name": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            "tags": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                optional=True,
+                plain=True,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.STRING, plain=True
+                ),
+            ),
+            "count": PropertyDefinition(
+                type=PropertyType.INTEGER,
+                optional=True,
+            ),
+        },
+        inputs_mapping={
+            "name": "name",
+            "tags": "tags",
+            "count": "count",
+        },
+        outputs={},
+        outputs_mapping={},
+    )
+
+
+def test_analyze_total_false():
+    from typing_extensions import Required
+
+    class Args(TypedDict, total=False):
+        name: Required[str]
+        tags: dict[str, str]
+        count: pulumi.Input[int]
+
+    class Component(pulumi.ComponentResource):
+        def __init__(self, args: Args): ...
+
+    analyzer = Analyzer("total-false")
+    component = analyzer.analyze_component(Component)
+    assert component == ComponentDefinition(
+        name="Component",
+        module="test_analyzer",
+        inputs={
+            "name": PropertyDefinition(type=PropertyType.STRING, plain=True),
+            "tags": PropertyDefinition(
+                type=PropertyType.OBJECT,
+                optional=True,
+                plain=True,
+                additional_properties=PropertyDefinition(
+                    type=PropertyType.STRING, plain=True
+                ),
+            ),
+            "count": PropertyDefinition(
+                type=PropertyType.INTEGER,
+                optional=True,
+            ),
+        },
+        inputs_mapping={
+            "name": "name",
+            "tags": "tags",
+            "count": "count",
+        },
+        outputs={},
+        outputs_mapping={},
+    )
+
+
 def test_analyze_list_simple():
     class Args(TypedDict):
         list_input: pulumi.Input[list[str]]

@@ -29,12 +29,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/zclconf/go-cty/cty"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type (
@@ -491,7 +487,7 @@ func convertPropertyValueForSchemaType(
 
 func propertyValueToCty(
 	ctx context.Context,
-	monitor pulumirpc.ResourceMonitorClient,
+	getResource func(context.Context, resource.ResourceReference) (resource.PropertyMap, error),
 	value resource.PropertyValue,
 ) (cty.Value, error) {
 	switch {
@@ -502,7 +498,7 @@ func propertyValueToCty(
 		a := value.ArchiveValue()
 		return cty.CapsuleVal(archiveType, a), nil
 	case value.IsSecret():
-		ctyVal, err := propertyValueToCty(ctx, monitor, value.SecretValue().Element)
+		ctyVal, err := propertyValueToCty(ctx, getResource, value.SecretValue().Element)
 		if err != nil {
 			return cty.NilVal, err
 		}
@@ -514,7 +510,7 @@ func propertyValueToCty(
 			ctyVal = cty.UnknownVal(cty.DynamicPseudoType)
 		} else {
 			var err error
-			ctyVal, err = propertyValueToCty(ctx, monitor, output.Element)
+			ctyVal, err = propertyValueToCty(ctx, getResource, output.Element)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -540,7 +536,7 @@ func propertyValueToCty(
 		array := value.ArrayValue()
 		vals := make([]cty.Value, len(array))
 		for i, elem := range array {
-			ctyElem, err := propertyValueToCty(ctx, monitor, elem)
+			ctyElem, err := propertyValueToCty(ctx, getResource, elem)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -560,7 +556,7 @@ func propertyValueToCty(
 		obj := value.ObjectValue()
 		vals := map[string]cty.Value{}
 		for k, v := range obj {
-			ctyVal, err := propertyValueToCty(ctx, monitor, v)
+			ctyVal, err := propertyValueToCty(ctx, getResource, v)
 			if err != nil {
 				return cty.NilVal, err
 			}
@@ -571,37 +567,12 @@ func propertyValueToCty(
 		// We need to expand the resource into a resource object
 		ref := value.ResourceReferenceValue()
 
-		args, err := structpb.NewStruct(map[string]any{
-			"urn": string(ref.URN),
-		})
-		contract.AssertNoErrorf(err, "failed to create structpb for resource reference")
-
-		resp, err := monitor.Invoke(ctx, &pulumirpc.ResourceInvokeRequest{
-			Tok:             "pulumi:pulumi:getResource",
-			Args:            args,
-			AcceptResources: true,
-		})
+		outputs, err := getResource(ctx, ref)
 		if err != nil {
-			return cty.NilVal, fmt.Errorf("invoke getResource for %s: %w", ref.URN, err)
+			return cty.NilVal, fmt.Errorf("get resource for %s: %w", ref.URN, err)
 		}
 
-		marshalOpts := plugin.MarshalOptions{
-			KeepUnknowns:  true,
-			KeepSecrets:   true,
-			KeepResources: true,
-		}
-		outputs, err := plugin.UnmarshalProperties(resp.Return, marshalOpts)
-		if err != nil {
-			return cty.NilVal, fmt.Errorf("unmarshal stack outputs: %w", err)
-		}
-		outputs = outputs["state"].ObjectValue()
-
-		outputs["id"] = ref.ID
-		outputs["urn"] = resource.NewProperty(string(ref.URN))
-		outputs["__name"] = resource.NewProperty(ref.URN.Name())
-		outputs["__type"] = resource.NewProperty(string(ref.URN.Type()))
-
-		return propertyValueToCty(ctx, monitor, resource.NewProperty(outputs))
+		return propertyValueToCty(ctx, getResource, resource.NewProperty(outputs))
 	}
 
 	return cty.NilVal, errors.New("unsupported property value")

@@ -34,6 +34,7 @@ type welcomeModel struct {
 	org        string
 	workDir    string
 	username   string
+	version    string // CLI version, e.g. "v3.235.0"; empty in dev builds
 	consoleURL string
 	termWidth  int
 	greeting   string // cached greeting, picked once at creation
@@ -110,19 +111,22 @@ func (w welcomeModel) View() string {
 
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(magenta)
 
-	infoText := displayDir
+	suffix := ""
 	if w.org != "" {
-		infoText += " · org: " + w.org
+		suffix += " · org: " + w.org
 	}
-	if lipgloss.Width(infoText) > contentWidth && w.org != "" {
-		orgSuffix := " · org: " + w.org
-		maxPath := contentWidth - lipgloss.Width(orgSuffix)
+	if w.version != "" {
+		suffix += " · " + w.version
+	}
+	infoText := displayDir + suffix
+	if lipgloss.Width(infoText) > contentWidth && suffix != "" {
+		maxPath := contentWidth - lipgloss.Width(suffix)
 		if maxPath > 3 {
 			pathRunes := []rune(displayDir)
 			if len(pathRunes) > maxPath {
 				displayDir = string(pathRunes[:maxPath-3]) + "..."
 			}
-			infoText = displayDir + orgSuffix
+			infoText = displayDir + suffix
 		}
 	}
 
@@ -142,8 +146,7 @@ func (w welcomeModel) View() string {
 		if len([]rune(linkText)) > maxLink && maxLink > 3 {
 			linkText = string([]rune(linkText)[:maxLink-3]) + "..."
 		}
-		hyperlink := fmt.Sprintf("\033]8;;%s\033\\%s\033]8;;\033\\", w.consoleURL, linkText)
-		parts = append(parts, dim.Render("⟡ "+hyperlink))
+		parts = append(parts, dim.Render("⟡ "+osc8Hyperlink(w.consoleURL, linkText)))
 	}
 
 	return renderLeftBracket(bracketStyle, strings.Join(parts, "\n"))

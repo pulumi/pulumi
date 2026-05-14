@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
@@ -109,6 +110,8 @@ type Options struct {
 	Autonamer autonaming.Autonamer
 	// true if the engine should display secrets in diagnostic messages.
 	ShowSecrets bool
+	// Analyzers is the list of policy analyzers to run during this deployment.
+	Analyzers []plugin.Analyzer
 }
 
 // DegreeOfParallelism returns the degree of parallelism that should be used during the
@@ -329,8 +332,8 @@ type Deployment struct {
 	schemaLoader schema.Loader
 	// the source of new resources.
 	source Source
-	// the policy packs to run during this deployment's generation.
-	localPolicyPackPaths []string
+	// the policy analyzers to run during this deployment.
+	analyzers []plugin.Analyzer
 	// the dependency graph of the old snapshot.
 	depGraph *graph.DependencyGraph
 	// the provider registry for this deployment.
@@ -347,6 +350,32 @@ type Deployment struct {
 	resourceStatus *resourceStatusServer
 	// the resource hook registry for this deployment
 	resourceHooks *ResourceHooks
+
+	// postStepErrors collects errors reported by phases that run after a step's primary cloud operation has succeeded
+	// (e.g. an after-hook callback). The step itself is still treated as successful and its state is committed to the
+	// snapshot, but the deployment as a whole will be cancelled.
+	postStepErrors []error
+	// postStepErrorsLock guards postStepErrors.
+	postStepErrorsLock sync.Mutex
+}
+
+// RecordPostStepError records an error that occurred after a step's cloud operation completed successfully. The step's
+// snapshot commit is allowed to proceed normally so state matches cloud reality, but the overall deployment is reported
+// as failed.
+func (d *Deployment) RecordPostStepError(err error) {
+	d.postStepErrorsLock.Lock()
+	defer d.postStepErrorsLock.Unlock()
+	d.postStepErrors = append(d.postStepErrors, err)
+}
+
+// PostStepError returns the joined post-step errors collected during the deployment, or nil if none were recorded.
+func (d *Deployment) PostStepError() error {
+	d.postStepErrorsLock.Lock()
+	defer d.postStepErrorsLock.Unlock()
+	if len(d.postStepErrors) == 0 {
+		return nil
+	}
+	return errors.Join(d.postStepErrors...)
 }
 
 // addDefaultProviders adds any necessary default provider definitions and references to the given snapshot. Version
@@ -532,7 +561,6 @@ func NewDeployment(
 	prev *Snapshot,
 	plan *Plan,
 	source Source,
-	localPolicyPackPaths []string,
 	backendClient BackendClient,
 	resourceHooks *ResourceHooks,
 ) (*Deployment, error) {
@@ -586,7 +614,7 @@ func NewDeployment(
 		allOlds:                         allOlds,
 		oldViews:                        oldViews,
 		source:                          source,
-		localPolicyPackPaths:            localPolicyPackPaths,
+		analyzers:                       opts.Analyzers,
 		depGraph:                        depGraph,
 		providers:                       reg,
 		goals:                           newGoals,
@@ -735,8 +763,8 @@ func (d *Deployment) Close() error {
 	return nil
 }
 
-// RunHooks runs all the before/after hooks on the given state. If `hookType` is an after hook, a hook that returns an
-// error will only generate a warning. Otherwise, it will cause an error return.
+// RunHooks runs all the before/after hooks on the given state. A hook that returns an error will cause an error return,
+// unless the hook has IgnoreErrors set, in which case the error is logged as a warning.
 func (d *Deployment) RunHooks(
 	hooks []string, hookType resource.HookType, id resource.ID, urn resource.URN,
 	name string, typ tokens.Type, oldOptions, newOptions *pulumirpc.ResourceOptions,
@@ -759,16 +787,18 @@ func (d *Deployment) RunHooks(
 			newInputs, oldInputs, newOutputs, oldOutputs,
 		)
 		if err != nil {
+			if hook.IgnoreErrors {
+				d.Diag().Warningf(&diag.Diag{
+					URN:     urn,
+					Message: fmt.Sprintf("%s hook %q failed: %s", hookType, hookName, err),
+				})
+				continue
+			}
 			switch {
 			case resource.IsBeforeHook(hookType):
 				return fmt.Errorf("before hook %q failed: %w", hookName, err)
 			case resource.IsAfterHook(hookType):
-				// Errors on after hooks report a diagnostic, but do not fail the step.
-				d.Diag().Warningf(&diag.Diag{
-					URN:     urn,
-					Message: fmt.Sprintf("after hook %q failed: %s", hookName, err),
-				})
-				continue
+				return fmt.Errorf("after hook %q failed: %w", hookName, err)
 			default:
 				return fmt.Errorf("unknown hook type %q: %w", hookType, err)
 			}

@@ -1729,12 +1729,15 @@ class RegisterResourceHookRequest(google.protobuf.message.Message):
     NAME_FIELD_NUMBER: builtins.int
     CALLBACK_FIELD_NUMBER: builtins.int
     ON_DRY_RUN_FIELD_NUMBER: builtins.int
+    IGNORE_ERRORS_FIELD_NUMBER: builtins.int
     name: builtins.str
     """The name of the hook. Must be unique within a program, registering the
     same name twice is an error.
     """
     on_dry_run: builtins.bool
     """whether to run the hook on dry runs."""
+    ignore_errors: builtins.bool
+    """If true, errors from this hook are logged as warnings instead of failing the program."""
     @property
     def callback(self) -> pulumi.callback_pb2.Callback:
         """the callback that the engine can call to run the hook."""
@@ -1745,9 +1748,10 @@ class RegisterResourceHookRequest(google.protobuf.message.Message):
         name: builtins.str = ...,
         callback: pulumi.callback_pb2.Callback | None = ...,
         on_dry_run: builtins.bool = ...,
+        ignore_errors: builtins.bool = ...,
     ) -> None: ...
     def HasField(self, field_name: typing.Literal["callback", b"callback"]) -> builtins.bool: ...
-    def ClearField(self, field_name: typing.Literal["callback", b"callback", "name", b"name", "on_dry_run", b"on_dry_run"]) -> None: ...
+    def ClearField(self, field_name: typing.Literal["callback", b"callback", "ignore_errors", b"ignore_errors", "name", b"name", "on_dry_run", b"on_dry_run"]) -> None: ...
 
 global___RegisterResourceHookRequest = RegisterResourceHookRequest
 

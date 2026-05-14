@@ -15,9 +15,13 @@
 package logging
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInitLogging(t *testing.T) {
@@ -91,4 +95,27 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t,
 		"value is True and FALSE but [secret] is hidden",
 		msg7)
+}
+
+func TestLoggingDoesNotConflictWithGlog(t *testing.T) {
+	t.Parallel()
+
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+
+	// Keep the copied module at a fixed depth below this package so the fixture's
+	// relative replace directive points back to the local sdk module.
+	dir, err := os.MkdirTemp(wd, ".tmp-glog-flag-conflict-*") //nolint:usetesting
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.RemoveAll(dir)
+	})
+
+	fixture := filepath.Join(wd, "testdata", "glog-flag-conflict")
+	require.NoError(t, os.CopyFS(dir, os.DirFS(fixture)))
+
+	cmd := exec.Command("go", "run", "-mod=mod", ".")
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(output))
 }

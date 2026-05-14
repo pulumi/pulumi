@@ -536,8 +536,9 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 	val, ok := mv["foo"]
 	assert.True(t, ok)
 	assert.Equal(t, "bar", val)
-	_, ok = mv["__default"]
-	assert.False(t, ok)
+	val, ok = mv["__default"]
+	assert.True(t, ok)
+	assert.Equal(t, "buzz", val)
 }
 
 // TestMarshalRoundtripNestedSecret ensures that marshaling a complex structure to and from

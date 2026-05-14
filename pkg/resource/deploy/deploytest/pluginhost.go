@@ -604,10 +604,3 @@ func (host *pluginHost) PolicyAnalyzer(name tokens.QName, path string,
 	}
 	return plug.(plugin.Analyzer), nil
 }
-
-func (host *pluginHost) ListAnalyzers() []plugin.Analyzer {
-	host.m.Lock()
-	defer host.m.Unlock()
-
-	return host.analyzers
-}

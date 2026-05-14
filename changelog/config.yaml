@@ -9,12 +9,14 @@ scopes:
   ci: []
   cli:
     - about
+    - cloud
     - config
     - display
     - engine
     - env
     - import
     - install
+    - neo
     - new
     - plugin
     - package

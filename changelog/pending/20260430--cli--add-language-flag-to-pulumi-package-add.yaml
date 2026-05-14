@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add a `--language` flag to `pulumi package add` to run outside a Pulumi project or plugin

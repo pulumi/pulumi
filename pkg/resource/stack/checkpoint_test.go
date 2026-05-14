@@ -15,6 +15,7 @@
 package stack
 
 import (
+	"bytes"
 	"encoding/json"
 	"math"
 	"os"
@@ -26,6 +27,22 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
+
+type compactJSONMarshaler struct{}
+
+func (compactJSONMarshaler) Marshal(v any) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSpace(buf.Bytes()), nil
+}
+
+func (compactJSONMarshaler) Unmarshal(data []byte, v any) error {
+	return json.Unmarshal(data, v)
+}
 
 func TestLoadV0Checkpoint(t *testing.T) {
 	t.Parallel()
@@ -184,6 +201,36 @@ func TestSerializeCheckpoint(t *testing.T) {
 			require.Equal(t, tt.expectedFeatures, checkpoint.Features)
 		})
 	}
+}
+
+func TestMarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(t *testing.T) {
+	t.Parallel()
+
+	deployment := &apitype.UntypedDeployment{
+		Version: 4,
+		Features: []string{
+			"refreshBeforeUpdate",
+		},
+		Deployment: json.RawMessage(`{
+			"big": 100000000000000000000000000000000000000000,
+			"duplicate": 1,
+			"duplicate": 2,
+			"resources": []
+		}`),
+	}
+
+	checkpoint, err := MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+		compactJSONMarshaler{},
+		"stack",
+		deployment,
+	)
+	require.NoError(t, err)
+	require.Equal(t, deployment.Version, checkpoint.Version)
+	require.Equal(t, deployment.Features, checkpoint.Features)
+	require.Equal(t,
+		`{"stack":"stack","latest":{"big":100000000000000000000000000000000000000000,`+
+			`"duplicate":1,"duplicate":2,"resources":[]}}`,
+		string(checkpoint.Checkpoint))
 }
 
 // TestRoundtripCheckpoint tests that various values survive a roundtrip of serialization

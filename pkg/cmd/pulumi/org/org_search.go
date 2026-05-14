@@ -24,6 +24,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -36,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
-	auto_table "go.pennock.tech/tabular/auto"
 	"gopkg.in/yaml.v3"
 )
 
@@ -245,19 +246,21 @@ func sliceContains(slice []string, search string) bool {
 
 func renderSearchTable(w io.Writer, results *apitype.ResourceSearchResponse) error {
 	urlInfo := "Results are also visible in Pulumi Cloud:"
-	table := auto_table.New("utf8-heavy")
-	table.AddHeaders("Project", "Stack", "Name", "Type", "Package", "Module", "Modified")
+	t := table.NewWriter()
+	t.SetOutputMirror(w)
+	t.SetStyle(table.StyleLight)
+	// Preserve title-case headers; the default StyleLight upper-cases them.
+	t.Style().Format.Header = text.FormatDefault
+	t.AppendHeader(table.Row{"Project", "Stack", "Name", "Type", "Package", "Module", "Modified"})
 	for _, r := range results.Resources {
-		table.AddRowItems(*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified)
+		t.AppendRow(table.Row{*r.Program, *r.Stack, *r.Name, *r.Type, *r.Package, *r.Module, *r.Modified})
 	}
-	if errs := table.Errors(); errs != nil {
-		return errors.Join(errs...)
-	}
-	err := table.RenderTo(w)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprintf(w,
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Name: "Stack", WidthMax: 30, WidthMaxEnforcer: text.WrapText},
+		{Name: "Name", WidthMax: 30, WidthMaxEnforcer: text.WrapText},
+	})
+	t.Render()
+	_, err := fmt.Fprintf(w,
 
 		"Displaying %s of %s total results.\n",
 		strconv.Itoa(len(results.Resources)),

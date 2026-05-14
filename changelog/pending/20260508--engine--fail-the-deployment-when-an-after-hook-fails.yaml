@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: engine
+  description: Fail the deployment when an after hook fails

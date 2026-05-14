@@ -1363,14 +1363,45 @@ func (spec PluginDescriptor) String() string {
 // location, by default `~/.pulumi/plugins/<kind>-<name>-<version>/`.  A plugin may contain multiple files,
 // however the primary loadable executable must be named `pulumi-<kind>-<name>`.
 type PluginInfo struct {
-	Name         string             // the simple name of the plugin.
-	Path         string             // the path that a plugin was loaded from (this will always be a directory)
-	Kind         apitype.PluginKind // the kind of the plugin (language, resource, etc).
-	Version      *semver.Version    // the plugin's semantic version, if present.
-	InstallTime  time.Time          // the time the plugin was installed.
-	LastUsedTime time.Time          // the last time the plugin was used.
+	Name    string             // the simple name of the plugin.
+	Path    string             // the path that a plugin was loaded from (this will always be a directory)
+	Kind    apitype.PluginKind // the kind of the plugin (language, resource, etc).
+	Version *semver.Version    // the plugin's semantic version, if present.
+
+	installTime  time.Time // cached time the plugin was installed.
+	lastUsedTime time.Time // cached last time the plugin was used.
 
 	size uint64 // cached plugin size in bytes
+}
+
+// InstallTime returns the time the plugin was installed.
+func (info *PluginInfo) InstallTime() time.Time {
+	if !info.installTime.IsZero() {
+		return info.installTime
+	}
+
+	err := info.setFileMetadata()
+	if err != nil {
+		logging.V(6).Infof("unable to get plugin install time for %s: %v", info.Path, err)
+		return time.Time{}
+	}
+
+	return info.installTime
+}
+
+// LastUsedTime returns the last time the plugin was used.
+func (info *PluginInfo) LastUsedTime() time.Time {
+	if !info.lastUsedTime.IsZero() {
+		return info.lastUsedTime
+	}
+
+	err := info.setFileMetadata()
+	if err != nil {
+		logging.V(6).Infof("unable to get plugin last used time for %s: %v", info.Path, err)
+		return time.Time{}
+	}
+
+	return info.lastUsedTime
 }
 
 // Size calculates the size of the plugin, in bytes.
@@ -1415,9 +1446,13 @@ func (info *PluginInfo) Delete() error {
 }
 
 // setFileMetadata adds extra metadata from the given file, representing this plugin's directory.
-func (info *PluginInfo) setFileMetadata(path string) error {
+func (info *PluginInfo) setFileMetadata() error {
+	if info.Path == "" {
+		return nil
+	}
+
 	// Get the file info.
-	file, err := os.Stat(path)
+	file, err := os.Stat(info.Path)
 	if err != nil {
 		return err
 	}
@@ -1426,12 +1461,12 @@ func (info *PluginInfo) setFileMetadata(path string) error {
 	tinfo := times.Get(file)
 
 	if tinfo.HasChangeTime() {
-		info.InstallTime = tinfo.ChangeTime()
+		info.installTime = tinfo.ChangeTime()
 	} else {
-		info.InstallTime = tinfo.ModTime()
+		info.installTime = tinfo.ModTime()
 	}
 
-	info.LastUsedTime = tinfo.AccessTime()
+	info.lastUsedTime = tinfo.AccessTime()
 
 	return nil
 }
@@ -1961,9 +1996,6 @@ func GetPluginsFromDir(dir string) ([]PluginInfo, error) {
 			} else if !os.IsNotExist(err) {
 				return nil, err
 			}
-			if err = plugin.setFileMetadata(path); err != nil {
-				return nil, err
-			}
 			plugins = append(plugins, plugin)
 		}
 	}
@@ -1992,7 +2024,7 @@ func IsPluginBundled(kind apitype.PluginKind, name string) bool {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (string, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, true /* skipMetadata */, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
 	if err != nil {
 		return "", err
 	}
@@ -2004,7 +2036,7 @@ func GetPluginPath(ctx context.Context, d diag.Sink, spec PluginDescriptor, proj
 
 func GetPluginInfo(ctx context.Context, d diag.Sink, spec PluginDescriptor, projectPlugins []ProjectPlugin,
 ) (*PluginInfo, error) {
-	info, path, err := getPluginInfoAndPath(ctx, d, spec, false, projectPlugins)
+	info, path, err := getPluginInfoAndPath(ctx, d, spec, projectPlugins)
 	if err != nil {
 		return nil, err
 	}
@@ -2038,7 +2070,7 @@ func getPluginPath(info *PluginInfo) string {
 func getPluginInfoAndPath(
 	ctx context.Context,
 	d diag.Sink,
-	spec PluginDescriptor, skipMetadata bool,
+	spec PluginDescriptor,
 	projectPlugins []ProjectPlugin,
 ) (*PluginInfo, string, error) {
 	filename := spec.File()
@@ -2082,12 +2114,6 @@ func getPluginInfoAndPath(
 			Kind:    localSpec.Kind,
 			Version: localSpec.Version,
 			Path:    filepath.Clean(plugin.Path),
-		}
-		// computing plugin sizes can be very expensive (nested node_modules)
-		if !skipMetadata {
-			if err := info.setFileMetadata(info.Path); err != nil {
-				return nil, "", err
-			}
 		}
 		path := getPluginPath(info)
 		return info, path, nil
@@ -2162,12 +2188,6 @@ func getPluginInfoAndPath(
 			Kind: spec.Kind,
 			Name: spec.Name,
 			Path: filepath.Dir(pluginPath),
-		}
-		// computing plugin sizes can be very expensive (nested node_modules)
-		if !skipMetadata {
-			if err := info.setFileMetadata(info.Path); err != nil {
-				return nil, "", err
-			}
 		}
 		return info, pluginPath, nil
 	}

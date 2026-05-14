@@ -26,11 +26,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
-// newDescribeCmd builds `pulumi cloud api describe <path>`. api carries the
+// newDescribeCmd builds `pulumi api describe <path>`. api carries the
 // parent command's persistent flags (--refresh-spec).
 func newDescribeCmd(api *apiCommand) *cobra.Command {
 	var method string
-	var format string
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "describe",
@@ -42,18 +42,18 @@ func newDescribeCmd(api *apiCommand) *cobra.Command {
 			"`/api/stacks/{orgName}`) or an operation ID as shown in `list` (e.g.\n" +
 			"`ListAccounts`). Operation IDs are matched case-insensitively.\n" +
 			"\n" +
-			"Default output is a human-readable schema render. Pass --format=json for the\n" +
+			"Default output is a human-readable schema render. Pass --output=json for the\n" +
 			"stable agent envelope, including the inlined JSON schema.",
 		Example: "  # Describe an operation by its ID.\n" +
-			"  pulumi cloud api describe ListOrgMembers\n\n" +
+			"  pulumi api describe ListOrganizationMembers\n\n" +
 			"  # Describe by path — use --method when the same path maps to multiple ops.\n" +
-			"  pulumi cloud api describe /api/orgs/{orgName}/members --method=POST\n\n" +
+			"  pulumi api describe /api/stacks/{orgName}/{projectName}/{stackName}/tags --method=POST\n\n" +
 			"  # Paste-friendly: copy a METHOD + path row from `list` verbatim.\n" +
-			"  pulumi cloud api describe 'GET /api/user'\n\n" +
+			"  pulumi api describe 'GET /api/user'\n\n" +
 			"  # Extract just the request body schema.\n" +
-			"  pulumi cloud api describe CreateStackTag --format=json | jq '.operation.requestBody.jsonSchema'\n\n" +
+			"  pulumi api describe AddStackTag --output=json | jq '.operation.requestBody.jsonSchema'\n\n" +
 			"  # Pull the parameter list for scripting.\n" +
-			"  pulumi cloud api describe GetStack --format=json | jq '.operation.parameters[] | {name, in, required}'",
+			"  pulumi api describe GetStack --output=json | jq '.operation.parameters[] | {name, in, required}'",
 	}
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{{Name: "path-or-operation-id"}},
@@ -61,14 +61,14 @@ func newDescribeCmd(api *apiCommand) *cobra.Command {
 	})
 	cmd.Flags().StringVarP(&method, "method", "X", "GET",
 		"HTTP method to look up (a path can map to multiple ops by method)")
-	cmd.Flags().StringVar(&format, "format", "",
+	cmd.Flags().StringVar(&output, "output", "",
 		"Output format: default is a human-readable schema render; "+
 			"`markdown` emits a markdown document (piping friendly, renders in IDEs/glow); "+
 			"`json` emits the stable agent envelope")
 
 	cmd.RunE = runWithEnvelope(func(cmd *cobra.Command, args []string) error {
 		return runDescribe(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), args, method,
-			cmd.Flags().Changed("method"), format, api.refreshSpec)
+			cmd.Flags().Changed("method"), output, api.refreshSpec)
 	})
 	return cmd
 }
@@ -76,9 +76,9 @@ func newDescribeCmd(api *apiCommand) *cobra.Command {
 func runDescribe(
 	ctx context.Context,
 	w, warnW io.Writer,
-	args []string, method string, methodExplicit bool, format string, refresh bool,
+	args []string, method string, methodExplicit bool, output string, refresh bool,
 ) error {
-	mode, err := resolveOutput(format)
+	mode, err := resolveOutput(output)
 	if err != nil {
 		return err
 	}

@@ -198,7 +198,7 @@ func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
 }
 
 // collectUIEvents drains a UIEvents channel until it is closed, returning everything seen.
-// Use with a Session that sets s.UIEvents — Run closes the channel when it exits.
+// Tests own the channel and must close it after Run returns before calling this.
 func collectUIEvents(ch <-chan UIEvent) []UIEvent {
 	var out []UIEvent
 	for evt := range ch {
@@ -238,6 +238,7 @@ func TestSession_FinalAssistantMessageWithoutCliCallsEmitsTaskIdle(t *testing.T)
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.True(t, hasUIEvent[UITaskIdle](events), "expected UITaskIdle after final assistant_message with no cli calls")
@@ -264,6 +265,7 @@ func TestSession_StreamingAssistantMessageDoesNotEmitTaskIdle(t *testing.T) {
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.False(t, hasUIEvent[UITaskIdle](events), "streaming chunks must not emit UITaskIdle")
@@ -298,9 +300,96 @@ func TestSession_FinalAssistantMessageWithCliCallsDoesNotEmitTaskIdle(t *testing
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	assert.False(t, hasUIEvent[UITaskIdle](events), "pending cli tool calls must not emit UITaskIdle")
+}
+
+func TestSession_ForwardsTodoWriteToolCallAsUITodoList(t *testing.T) {
+	t.Parallel()
+
+	// todo__TodoWrite is cloud-marked: the agent runs it server-side, so it
+	// must never reach the CLI dispatch loop. It does, however, carry the
+	// task list the TUI wants to render — forwardToUI peeks at the args and
+	// emits a UITodoList alongside the regular UIAssistantMessage.
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{{
+			ToolCallID: "tc1",
+			Name:       toolNameTodoWrite,
+			Args: json.RawMessage(`{"todos":[
+				{"content":"first","index":0,"priority":"high","status":"pending"},
+				{"content":"second","index":1,"priority":"medium","status":"in_progress"},
+				{"content":"third","index":2,"priority":"low","status":"completed"}
+			]}`),
+		}},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	require.True(t, hasUIEvent[UITodoList](events), "todo__TodoWrite must emit UITodoList")
+
+	// Verify the parsed payload preserves the wire content, ordering, and
+	// status strings so the renderer has everything it needs.
+	var got UITodoList
+	for _, e := range events {
+		if list, ok := e.(UITodoList); ok {
+			got = list
+			break
+		}
+	}
+	require.Len(t, got.Items, 3)
+	assert.Equal(t, "first", got.Items[0].Content)
+	assert.Equal(t, "pending", got.Items[0].Status)
+	assert.Equal(t, "high", got.Items[0].Priority)
+	assert.Equal(t, 0, got.Items[0].Index)
+	assert.Equal(t, "in_progress", got.Items[1].Status)
+	assert.Equal(t, "completed", got.Items[2].Status)
+
+	// Cloud-marked TodoWrite must never trigger CLI dispatch — no exec or
+	// tool_result posts should leave the session.
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Empty(t, streamer.posted, "cloud-marked todo__TodoWrite must not produce CLI posts")
+}
+
+func TestSession_TodoWriteWithMalformedArgsEmitsNoTodoList(t *testing.T) {
+	t.Parallel()
+
+	// A malformed args payload must be silently skipped rather than crashing
+	// the forwarder. The session must keep going and process subsequent
+	// events normally.
+	streamer := newFakeStreamer()
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type: backendEventAssistantMessage,
+		ToolCalls: []apitype.AgentBackendEventToolCall{{
+			ToolCallID: "tc1",
+			Name:       toolNameTodoWrite,
+			Args:       json.RawMessage(`{"todos":"not-an-array"}`),
+		}},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 16)
+	s := &Session{Client: streamer, Handlers: map[string]ToolHandler{}, OrgName: "o", TaskID: "t", UIEvents: uiCh}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	assert.False(t, hasUIEvent[UITodoList](events), "malformed todos payload must not emit UITodoList")
 }
 
 func TestSession_MultipleCliCallsEmitExecToolCallPerCallThenOneResult(t *testing.T) {
@@ -457,6 +546,59 @@ func TestSession_InvokeToolCallHandlerError(t *testing.T) {
 	assert.Equal(t, "boom", item.Content.(map[string]string)["error"])
 }
 
+func TestSession_InvokeToolCallHandlerErrorWithPartialValue(t *testing.T) {
+	t.Parallel()
+
+	// Mirrors the shell-timeout case: the handler returns a partial result map
+	// AND a non-nil error. The dispatch layer must flip IsError (so the TUI
+	// shows the failure marker) but keep the partial result as Content so the
+	// agent can still read whatever stdout/stderr was captured before the
+	// deadline fired.
+	partial := map[string]any{"stdout": "hi\n", "timed_out": true, "exit_code": -1}
+	s := &Session{
+		Handlers: map[string]ToolHandler{
+			"shell": &fakeHandler{
+				wantMethod: "shell_execute",
+				result:     partial,
+				err:        errors.New("shell command timed out after 100ms"),
+			},
+		},
+	}
+	item := s.invokeToolCall(t.Context(), apitype.AgentBackendEventToolCall{ToolCallID: "c", Name: "shell__shell_execute"})
+
+	assert.True(t, item.IsError)
+	assert.Equal(t, partial, item.Content)
+}
+
+// structResult stands in for pulumiResult — a non-map struct returned by a
+// handler — without pulling in the cross-package dependency.
+type structResult struct {
+	Status string
+	Logs   string
+}
+
+func TestSession_InvokeToolCallStructValueErrorPreservesContent(t *testing.T) {
+	t.Parallel()
+
+	// A struct returned alongside an error must reach the agent verbatim; the
+	// pulumi tool's failedResult strategy depends on it.
+	result := structResult{Status: "failed", Logs: "error: stack not found\n"}
+	s := &Session{
+		Handlers: map[string]ToolHandler{
+			"pulumi": &fakeHandler{
+				wantMethod: "pulumi_preview",
+				result:     result,
+				err:        errors.New("pulumi preview: stack not found"),
+			},
+		},
+	}
+	item := s.invokeToolCall(t.Context(),
+		apitype.AgentBackendEventToolCall{ToolCallID: "c", Name: "pulumi__pulumi_preview"})
+
+	assert.True(t, item.IsError)
+	assert.Equal(t, result, item.Content)
+}
+
 // errStreamer fails at StreamNeoTaskEvents so the Run loop returns immediately.
 type errStreamer struct{ err error }
 
@@ -491,9 +633,12 @@ func TestSession_RunReturnsStreamError(t *testing.T) {
 	require.EqualError(t, err, "stream died")
 }
 
-func TestSession_RunHonorsContextCancel(t *testing.T) {
+func TestSession_RunReturnsNilOnContextCancel(t *testing.T) {
 	t.Parallel()
 
+	// Caller-initiated cancellation (e.g. TUI quit) must be treated as a clean
+	// shutdown — returning context.Canceled here causes cobra to print
+	// "error: context canceled" on a normal `pulumi neo` quit.
 	streamer := newFakeStreamer() // stream is never closed, never fed
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -501,7 +646,7 @@ func TestSession_RunHonorsContextCancel(t *testing.T) {
 
 	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
 	err := s.Run(ctx)
-	assert.ErrorIs(t, err, context.Canceled)
+	require.NoError(t, err)
 }
 
 func TestSession_MalformedConsoleEventIsIgnored(t *testing.T) {
@@ -726,6 +871,26 @@ func TestSession_ForwardToUI_EmitsAllEventTypes(t *testing.T) {
 					m.Message == "Run pulumi up?" && m.Sensitivity == "high"
 			},
 		},
+		{
+			// context.tool_name must reach the TUI so it can dispatch
+			// ask-user tools to question rendering.
+			"user_approval_request_forwards_tool_name",
+			map[string]any{
+				"type":          backendEventUserApprovalRequest,
+				"id":            "appr_q",
+				"message":       "Which region?",
+				"approval_type": "general",
+				"context": map[string]any{
+					"tool_name":    "ux__ask_user",
+					"tool_call_id": "call_1",
+				},
+			},
+			func(e UIEvent) bool {
+				m, ok := e.(UIApprovalRequest)
+				return ok && m.ApprovalID == "appr_q" &&
+					m.ApprovalType == "general" && m.ToolName == "ux__ask_user"
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -790,7 +955,10 @@ func TestSession_ForwardUserInputToUI_EmitsUserMessage(t *testing.T) {
 
 	ch := make(chan UIEvent, 4)
 	s := &Session{UIEvents: ch}
-	body, err := json.Marshal(map[string]any{"content": "hello there"})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "hello there",
+	})
 	require.NoError(t, err)
 
 	s.forwardUserInputToUI(body)
@@ -809,7 +977,10 @@ func TestSession_ForwardUserInputToUI_EmptyContentDropped(t *testing.T) {
 	// UIUserMessage would draw an empty user bubble in the TUI.
 	ch := make(chan UIEvent, 4)
 	s := &Session{UIEvents: ch}
-	body, err := json.Marshal(map[string]any{"content": ""})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "",
+	})
 	require.NoError(t, err)
 
 	s.forwardUserInputToUI(body)
@@ -820,9 +991,76 @@ func TestSession_ForwardUserInputToUI_NilChannelIsNoOp(t *testing.T) {
 	t.Parallel()
 
 	s := &Session{UIEvents: nil}
-	body, err := json.Marshal(map[string]any{"content": "hi"})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "hi",
+	})
 	require.NoError(t, err)
 	s.forwardUserInputToUI(body) // must not panic
+}
+
+func TestSession_ForwardUserInputToUI_UserConfirmationEmitsResolved(t *testing.T) {
+	t.Parallel()
+
+	// The cloud emits a user_confirmation event on the userInput side of the
+	// stream — both as an echo of our own confirmation and (synthetically)
+	// when ApprovalMode=auto/balanced auto-resolves a request. Either way the
+	// TUI needs UIApprovalResolved so it can clear the pending prompt.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{
+		"type":                userEventUserConfirmation,
+		"approval_request_id": "sys-approval-abc",
+		"ok":                  true,
+	})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	res, ok := events[0].(UIApprovalResolved)
+	require.Truef(t, ok, "expected UIApprovalResolved, got %T", events[0])
+	assert.Equal(t, "sys-approval-abc", res.ApprovalID)
+	assert.True(t, res.Approved, "ok=true must round-trip as Approved=true")
+}
+
+func TestSession_ForwardUserInputToUI_UserConfirmationDeniedRoundTrips(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: today's cloud never auto-denies, but the wire format supports
+	// ok=false (manual deny path), and the TUI's renderApprovalAuto branches
+	// on Approved. Make sure the wire flag rides through unchanged.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{
+		"type":                userEventUserConfirmation,
+		"approval_request_id": "sys-approval-xyz",
+		"ok":                  false,
+	})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	res := events[0].(UIApprovalResolved)
+	assert.False(t, res.Approved)
+}
+
+func TestSession_ForwardUserInputToUI_UnknownTypeDropped(t *testing.T) {
+	t.Parallel()
+
+	// An unknown user-input subtype must not panic, must not emit an event.
+	// The cloud has historically added new userInput types (tool_result, etc.)
+	// that the TUI has no rendering for.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{"type": "tool_result"})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+	assert.Empty(t, drainUIEvents(ch))
 }
 
 func TestSession_ForwardUserInputToUI_MalformedJSONIgnored(t *testing.T) {
@@ -842,7 +1080,10 @@ func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) 
 	// 92.9% coverage) and the path the TUI depends on to show what the user
 	// typed — if this regresses, the user's own messages vanish from the log.
 	streamer := newFakeStreamer()
-	inner, err := json.Marshal(map[string]any{"content": "typed by user"})
+	inner, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "typed by user",
+	})
 	require.NoError(t, err)
 	envelope, err := json.Marshal(apitype.AgentConsoleEvent{
 		Type:      consoleEventUserInput,
@@ -862,7 +1103,30 @@ func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) 
 		UIEvents: uiCh,
 	}
 	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
 
 	events := collectUIEvents(uiCh)
 	require.True(t, hasUIEvent[UIUserMessage](events), "userInput envelope must emit UIUserMessage")
+}
+
+// Regression test for pulumi/pulumi-service#42773.
+func TestSession_RunDoesNotCloseUIEvents(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 4)
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+
+	require.NotPanics(t, func() {
+		sendUI(uiCh, UIWarning{Message: "x"})
+	})
 }

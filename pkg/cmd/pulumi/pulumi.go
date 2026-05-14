@@ -59,9 +59,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/deployment"
 	cmdEnv "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/env"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/events"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/insights"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/install"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/logs"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/markdown"
+	cmdMetadata "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/operations"
@@ -266,6 +268,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 					close(updateCheckResult)
 				}
 			}()
+
+			commandPath := strings.TrimSpace(strings.TrimPrefix(cmd.CommandPath(), "pulumi"))
+			client.SetUserAgentCommand(commandPath)
+			client.SetUserAgentAIAgent(cmdMetadata.DetectAIAgent(os.Getenv))
 
 			// For all commands, attempt to grab out the --color value provided so we
 			// can set the GlobalColorization value to be used by any code that doesn't
@@ -476,7 +482,8 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				org.NewOrgCmd(),
 				project.NewProjectCmd(),
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
-				cloud.NewCloudCmd(),
+				cloud.NewAPICmd(),
+				insights.NewInsightsCmd(),
 			},
 		},
 		{
@@ -491,7 +498,6 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				plugin.NewPluginCmd(),
 				schema.NewSchemaCmd(),
 				packagecmd.NewPackageCmd(),
-				templatecmd.NewTemplateCmd(),
 			},
 		},
 		{
@@ -516,9 +522,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 		{
 			Name: "Experimental Commands",
 			Commands: []*cobra.Command{
-				convert.NewConvertCmd(pkgWorkspace.Instance),
+				convert.NewConvertCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance),
 				operations.NewWatchCmd(),
 				logs.NewLogsCmd(pkgWorkspace.Instance),
+				templatecmd.NewTemplateCmd(),
 			},
 		},
 		// We have a set of options that are useful for developers of pulumi

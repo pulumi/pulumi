@@ -146,7 +146,7 @@ func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 
 	fmt.Fprintf(cmd.parent.stdout, "Creating environment %v/%v for stack %v...\n", envProject, envName, stack.Ref().Name())
 
-	projectStack, config, err := cmd.getStackConfig(ctx, cmdutil.Diag(), project, stack)
+	projectStack, config, err := cmd.getStackConfig(ctx, cmd.parent.diags, project, stack)
 	if err != nil {
 		return err
 	}

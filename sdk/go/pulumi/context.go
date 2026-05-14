@@ -2986,13 +2986,16 @@ func (ctx *Context) RegisterResourceHook(
 			return
 		}
 		onDryRun := false
+		ignoreErrors := false
 		if opts != nil {
 			onDryRun = opts.OnDryRun
+			ignoreErrors = opts.IgnoreErrors
 		}
 		req := &pulumirpc.RegisterResourceHookRequest{
-			Name:     name,
-			Callback: cb,
-			OnDryRun: onDryRun,
+			Name:         name,
+			Callback:     cb,
+			OnDryRun:     onDryRun,
+			IgnoreErrors: ignoreErrors,
 		}
 		_, err = ctx.state.monitor.RegisterResourceHook(ctx.ctx, req)
 		if err != nil {

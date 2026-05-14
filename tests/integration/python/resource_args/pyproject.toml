@@ -1,0 +1,6 @@
+[project]
+name = "pulumi-python-resource-args"
+version = "0.0.0"
+dependencies = [
+    "setuptools",
+]

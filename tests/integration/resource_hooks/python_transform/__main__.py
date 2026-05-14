@@ -15,7 +15,6 @@ from random_ import Random, Component
 def fun(args: ResourceHookArgs) -> None:
     if args.name == "res":
         log.info(f"fun was called with length = {args.new_inputs.get('length')}")
-        assert args.name == "res", f"Expected name 'res', got {args.name}"
         assert args.type == "testprovider:index:Random", (
             f"Expected type 'testprovider:index:Random', got {args.type}"
         )
@@ -24,12 +23,16 @@ def fun(args: ResourceHookArgs) -> None:
         log.info(f"fun_comp was called with child = {childId}")
         if not childId:
             raise ValueError(f"expected non empty childId, got '{childId}'")
-        assert args.name == "comp", f"Expected name 'comp', got {args.name}"
         assert args.type == "testprovider:index:Component", (
             f"Expected type 'testprovider:index:Component', got {args.type}"
         )
+    elif args.name == "child-comp":
+        log.info(f"fun_child was called with length = {args.new_inputs.get('length')}")
+        assert args.type == "testprovider:index:Random", (
+            f"Expected type 'testprovider:index:Random', got {args.type}"
+        )
     else:
-        raise Exception(f"got unexpected compoment name: ${args.name}")
+        raise Exception(f"got unexpected component name: {args.name}")
 
 
 hook = ResourceHook("hook_fun", fun)

@@ -18,8 +18,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -78,6 +78,8 @@ func filterReferences(resourceName string, importState ImportState) ImportState 
 }
 
 // GenerateHCL2Definition generates a Pulumi HCL2 definition for a given resource.
+//
+// GenerateHCL2Definition will drop map entries who's type doesn't conform to the schema type.
 func GenerateHCL2Definition(
 	loader schema.Loader,
 	state *resource.State,
@@ -579,6 +581,8 @@ func zeroValue(t schema.Type) model.Expression {
 // generatePropertyValue generates the value for the given property. If the value is absent and the property is
 // required, a zero value for the property's type is generated. If the value is absent and the property is not
 // required, no value is generated (i.e. this function returns nil).
+//
+// If the property represents a map and a value doesn't conform to the map shape, it is omitted.
 func generatePropertyValue(
 	property *schema.Property,
 	value property.Value,
@@ -597,13 +601,50 @@ func generatePropertyValue(
 
 // valueStructurallyTypedAs returns true if the given value is structurally typed as the given schema type.
 func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool {
+	for {
+		if input, ok := schemaType.(*schema.InputType); ok {
+			schemaType = input.ElementType
+		} else {
+			break
+		}
+	}
+	// An enum value is represented as a value of the enum's underlying primitive
+	// type at the wire level (e.g. a string for a string-typed enum). Substitute
+	// the underlying type so the primitive-value branches below match.
+	if enum, ok := schemaType.(*schema.EnumType); ok {
+		schemaType = enum.ElementType
+	}
 	if union, ok := schemaType.(*schema.UnionType); ok {
 		schemaType = reduceUnionType(union, value)
+	}
+	// reduceUnionType returns a member of the union as-is, which is often an
+	// *schema.InputType wrapping the real type. Strip those wrappers again so
+	// the type switch below can match on the underlying type.
+	for {
+		if input, ok := schemaType.(*schema.InputType); ok {
+			schemaType = input.ElementType
+		} else {
+			break
+		}
+	}
+
+	// AnyType, JSONType, and AnyResourceType all share the "pulumi:pulumi:Any"
+	// token but are distinct singletons. Each one accepts any value at the
+	// structural level, so short-circuit them together.
+	if schemaType == schema.AnyType || schemaType == schema.JSONType || schemaType == schema.AnyResourceType {
+		return true
 	}
 
 	switch {
 	case value.IsMap():
 		switch arg := schemaType.(type) {
+		case *schema.MapType:
+			for _, vv := range value.AsMap().All {
+				if !valueStructurallyTypedAs(vv, arg.ElementType) {
+					return false
+				}
+			}
+			return true
 		case *schema.ObjectType:
 			schemaProperties := make(map[string]schema.Type)
 			for _, schemaProperty := range arg.Properties {
@@ -880,11 +921,11 @@ func generateValue(
 			}
 
 			for k, v := range obj.AllStable {
-				// Ignore internal properties.
-				if strings.HasPrefix(k, "__") {
+				if !valueStructurallyTypedAs(v, elementType) {
+					slog.Info("dropped non-conforming value from object type",
+						slog.Any("expected-type", elementType), slog.Any("found-value", v))
 					continue
 				}
-
 				x, err := generateValue(elementType, v, importState, onReferenceFound)
 				if err != nil {
 					return nil, err

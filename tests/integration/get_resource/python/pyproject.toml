@@ -1,0 +1,4 @@
+[project]
+name = "get_resource"
+version = "0.0.0"
+dependencies = []

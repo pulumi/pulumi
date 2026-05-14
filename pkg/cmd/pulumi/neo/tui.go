@@ -15,6 +15,7 @@
 package neo
 
 import (
+	"sort"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
@@ -43,13 +45,31 @@ type ctrlCDisarmMsg struct {
 	gen int
 }
 
+// modeToggleDebounce is the trailing-edge window for Ctrl+A / Ctrl+R: each
+// press updates local state immediately but only schedules a PATCH against the
+// live task after the user stops pressing for this long. Rapid mashing
+// collapses to one PATCH carrying the final value, so the cloud and the
+// dispatcher both see the user's intent instead of a noisy burst of updates.
+const modeToggleDebounce = 500 * time.Millisecond
+
+// approvalDebounceTickMsg / permissionDebounceTickMsg fire `modeToggleDebounce`
+// after each Ctrl+A / Ctrl+R press. They carry the generation they were
+// scheduled under so a newer press (which advances the generation) cancels the
+// stale tick by gen-mismatch.
+type approvalDebounceTickMsg struct {
+	gen int
+}
+
+type permissionDebounceTickMsg struct {
+	gen int
+}
+
 // blockKind identifies the type of rendered block in the output log.
 type blockKind int
 
 const (
 	blockBusy blockKind = iota
 	blockToolComplete
-	blockAssistantStreaming
 	blockAssistantFinal
 	blockError
 	blockWarning
@@ -58,7 +78,11 @@ const (
 	blockApprovalPlan
 	blockApprovalGeneral
 	blockApprovalChoice
+	blockApprovalAuto
+	blockQuestion
+	blockAnswerSubmitted
 	blockPulumiOp
+	blockTodoList
 )
 
 type block struct {
@@ -73,12 +97,21 @@ type block struct {
 	// label and shimmer apply to blockBusy only.
 	label   string
 	shimmer shimmerKind
-	// approved applies to blockApprovalChoice only.
+	// approved applies to blockApprovalChoice and blockApprovalAuto. For
+	// blockApprovalAuto it carries the "ok" field from the cloud's
+	// user_confirmation (true=auto-approved, false=auto-denied).
 	approved bool
+	// autoIsQuestion applies to blockApprovalAuto only — true if the underlying
+	// request was an ask-user call (so the renderer says "Auto-answered" rather
+	// than "Auto-approved").
+	autoIsQuestion bool
 	// pulumi carries per-block state for blockPulumiOp. It is mutated in place
 	// as UIPulumiResource / UIPulumiDiag / UIPulumiEnd events arrive, then
 	// re-rendered by renderBlock on every update.
 	pulumi *pulumiBlockState
+	// todos is populated for blockTodoList and folded into blockApprovalPlan
+	// as a Tasks: subsection.
+	todos []UITodoItem
 }
 
 // pulumiBlockState accumulates the live state of a blockPulumiOp. Resources are
@@ -117,7 +150,10 @@ type ModelConfig struct {
 	Org      string
 	WorkDir  string
 	Username string
-	EventCh  <-chan UIEvent
+	// Version is the Pulumi CLI version stamped at build time (e.g. "v3.235.0").
+	// Empty in dev builds — the welcome banner omits it when blank.
+	Version string
+	EventCh <-chan UIEvent
 	// OutCh carries every TUI-originated user event (chat messages, approval
 	// answers, …) to the dispatcher in runNeo. Each send also carries the
 	// TUI's current planMode, which the dispatcher reads on the first
@@ -133,10 +169,20 @@ type ModelConfig struct {
 	// which is sent to the backend via CreateNeoTask rather than outCh and
 	// would otherwise only appear once the SSE stream echoes it back.
 	InitialPrompt string
+	// InitialApprovalMode and InitialPermissionMode seed the TUI's view of the
+	// task's approval / permission policy. These come from the --approval-mode /
+	// --permission-mode flags (or their defaults) and are sent on the first
+	// user_message; subsequent toggles via Ctrl+A / Ctrl+R PATCH the live task.
+	InitialApprovalMode   client.NeoApprovalMode
+	InitialPermissionMode client.NeoPermissionMode
 	// MessageSent seeds the post-first-message gate. Set it to true in tests
 	// that want to exercise the Shift+Tab post-send warning path without
 	// having to simulate a full Enter-driven send first.
 	MessageSent bool
+	// TaskCreated seeds the post-task-creation gate. Set it to true in tests
+	// that want to exercise the post-task Ctrl+A / Ctrl+R path without driving
+	// a UISessionURL through the event channel.
+	TaskCreated bool
 }
 
 // Model is the top-level bubbletea model for the Neo TUI.
@@ -185,14 +231,44 @@ type Model struct {
 	// true, Shift+Tab stops toggling and planMode is effectively frozen
 	// (further changes happen only via plan-approval auto-clear below).
 	planMode bool
+	// approvalMode is the current approval policy, cycled via Ctrl+A. Pre-first-
+	// message it's purely local — the value is snapshotted into CreateNeoTask on
+	// the first user_message. Post-send toggles dispatch an outboundEvent.update
+	// that the runNeo dispatcher routes through UpdateNeoTask, so cloud
+	// ApprovalHandler picks up the change without restarting the session.
+	approvalMode client.NeoApprovalMode
+	// permissionMode is the current capability scope, toggled via Ctrl+R. Same
+	// pre/post-send semantics as approvalMode.
+	permissionMode client.NeoPermissionMode
+	// approvalDebounceGen / permissionDebounceGen increment on every post-send
+	// Ctrl+A / Ctrl+R press. Each press schedules a tea.Tick carrying the
+	// current generation; the tick handler dispatches the PATCH only if the
+	// gen still matches, so rapid presses collapse to a single update with the
+	// final mode value.
+	approvalDebounceGen   int
+	permissionDebounceGen int
 	// messageSent flips to true when the TUI successfully dispatches its
 	// first user_message on outCh. From that point on, Shift+Tab emits the
 	// "plan mode is task-level" warning instead of toggling.
 	messageSent bool
+	// taskCreated flips to true when UISessionURL arrives — the dispatcher
+	// emits that immediately after CreateNeoTask returns OK, so it's the
+	// natural signal that the task is now addressable for PATCH. The window
+	// between messageSent and taskCreated is the race the Ctrl+A / Ctrl+R
+	// handlers gate on: in that window the dispatcher would silently drop a
+	// UpdateNeoTaskOptions event (no taskID yet), leaving the local mode out
+	// of sync with the cloud. Swallow the keypress instead so the status bar
+	// can't lie about what the cloud is enforcing.
+	taskCreated bool
 	// pendingApprovalType is the raw wire approval_type for the currently
 	// pending approval (empty when none). The Enter handler checks for
 	// approvalTypePlanExit so it can auto-clear planMode on approval.
 	pendingApprovalType string
+	// pendingIsQuestion is true when the pending request is an ask-user
+	// question (see isAskUserToolName) rather than an approval. Tells the
+	// Enter handler to take the typed text as a free-form answer instead of
+	// running the y/yes-or-deny parsing.
+	pendingIsQuestion bool
 	// cancelling is true from the moment the user presses ESC (the TUI posts an
 	// AgentUserEventCancel upstream) until the next final event arrives. While
 	// it is true the busy label is overridden to "Cancelling..." so the user
@@ -209,6 +285,13 @@ type Model struct {
 	// scheduled for an earlier arm carry the older gen, so a fresh arm racing
 	// with a stale tick is not silently disarmed.
 	ctrlCArmGen int
+	// hasEmittedScrollback flips on the first call to printlnBlock. Subsequent
+	// emissions prepend a blank line so each committed block has visual
+	// breathing room from whatever came before.
+	hasEmittedScrollback bool
+	// pendingTodos buffers the latest UITodoList while planMode is true so
+	// the list lands inside the same block as the Proposed plan, not above it.
+	pendingTodos []UITodoItem
 }
 
 var (
@@ -224,6 +307,11 @@ var (
 	// planAccentStyle is a distinct cyan+bold used for both the footer banner
 	// and the "Proposed plan" block header so they read as the same visual cue.
 	planAccentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	// Styles for in-progress and completed todo items. Pending items render
+	// in the default style — no entry here.
+	todoActiveStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	todoCompletedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Faint(true)
+	todoListHeader     = lipgloss.NewStyle().Bold(true).Render("⏺ TODO")
 )
 
 // renderLeftBracket decorates content with a left-only bracket border: a
@@ -231,8 +319,8 @@ var (
 // line, and a "╰─" tick below the last line. The right edge and full
 // horizontal bars are intentionally omitted so no rendered line ever
 // stretches across the terminal width — that would wrap on resize-shrink
-// and corrupt bubbletea's inline-renderer line accounting (see View() for
-// context). All bracket glyphs are colored via borderStyle.
+// and desync the inline-renderer line accounting. All bracket glyphs are
+// colored via borderStyle.
 //
 // Empty content collapses to two corner ticks ("╭─" / "╰─") with no body.
 func renderLeftBracket(borderStyle lipgloss.Style, content string) string {
@@ -252,14 +340,41 @@ func renderLeftBracket(borderStyle lipgloss.Style, content string) string {
 	return strings.Join(out, "\n")
 }
 
+// nextApprovalMode returns the next value in the manual → balanced → auto →
+// manual cycle. Empty input is treated as manual so cycling from the zero value
+// lands on a real first state.
+func nextApprovalMode(m client.NeoApprovalMode) client.NeoApprovalMode {
+	switch m {
+	case client.NeoApprovalModeManual:
+		return client.NeoApprovalModeBalanced
+	case client.NeoApprovalModeBalanced:
+		return client.NeoApprovalModeAuto
+	case client.NeoApprovalModeAuto:
+		return client.NeoApprovalModeManual
+	}
+	return client.NeoApprovalModeManual
+}
+
+// nextPermissionMode flips between default and read-only. Anything else
+// (including empty) collapses back to default.
+func nextPermissionMode(m client.NeoPermissionMode) client.NeoPermissionMode {
+	if m == client.NeoPermissionModeReadOnly {
+		return client.NeoPermissionModeDefault
+	}
+	return client.NeoPermissionModeReadOnly
+}
+
 // renderIndented word-wraps content (ANSI-safe) to termWidth minus the
 // 2-space transcript gutter, or returns un-wrapped if the width is too
-// small to wrap into.
+// small to wrap into. URLs in the post-wrap output are wrapped in OSC 8
+// escapes so terminals that support hyperlinks render them as clickable.
+// We linkify after wrapping so a URL split across lines simply stays
+// non-clickable rather than producing a broken escape sequence.
 func renderIndented(style lipgloss.Style, termWidth int, content string) string {
 	if termWidth <= 4 {
-		return "  " + style.Render(content)
+		return "  " + linkifyURLs(style.Render(content))
 	}
-	return "  " + style.Width(termWidth-2).Render(content)
+	return "  " + linkifyURLs(style.Width(termWidth-2).Render(content))
 }
 
 // NewModel creates a new TUI Model.
@@ -281,17 +396,21 @@ func NewModel(cfg ModelConfig) Model {
 			org:       cfg.Org,
 			workDir:   cfg.WorkDir,
 			username:  cfg.Username,
+			version:   cfg.Version,
 			termWidth: 80,
 			greeting:  pickGreeting(cfg.Username),
 		},
-		textInput:   ti,
-		eventCh:     cfg.EventCh,
-		outCh:       cfg.OutCh,
-		busy:        cfg.Busy,
-		spinner:     sp,
-		width:       80,
-		height:      24,
-		messageSent: cfg.MessageSent,
+		textInput:      ti,
+		eventCh:        cfg.EventCh,
+		outCh:          cfg.OutCh,
+		busy:           cfg.Busy,
+		spinner:        sp,
+		width:          80,
+		height:         24,
+		messageSent:    cfg.MessageSent,
+		taskCreated:    cfg.TaskCreated,
+		approvalMode:   cfg.InitialApprovalMode,
+		permissionMode: cfg.InitialPermissionMode,
 	}
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
@@ -350,10 +469,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderBlock(&m.blocks[i])
 		}
 		if firstSize {
-			cmds = append(cmds, tea.Println(m.welcome.View()))
+			cmds = append(cmds, m.printlnBlock(m.welcome.View()))
 			for _, b := range m.blocks {
 				if isCommittedKind(b) && b.rendered != "" {
-					cmds = append(cmds, tea.Println(b.rendered))
+					cmds = append(cmds, m.printlnBlock(b.rendered))
 				}
 			}
 		}
@@ -364,6 +483,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// way, leave the current state alone.
 		if msg.gen == m.ctrlCArmGen && m.ctrlCArmed {
 			m.ctrlCArmed = false
+		}
+		return m, nil
+
+	case approvalDebounceTickMsg:
+		// Trailing-edge debounce: dispatch the PATCH only if the user hasn't
+		// pressed Ctrl+A again since this tick was scheduled. A newer press
+		// advances approvalDebounceGen, so a stale tick is silently dropped
+		// here. taskCreated is guaranteed by the Ctrl+A handler that
+		// scheduled this tick.
+		if msg.gen == m.approvalDebounceGen {
+			next := m.approvalMode
+			m.sendOut(outboundEvent{
+				update: &client.UpdateNeoTaskOptions{ApprovalMode: &next},
+			})
+		}
+		return m, nil
+
+	case permissionDebounceTickMsg:
+		if msg.gen == m.permissionDebounceGen {
+			next := m.permissionMode
+			m.sendOut(outboundEvent{
+				update: &client.UpdateNeoTaskOptions{PermissionMode: &next},
+			})
 		}
 		return m, nil
 
@@ -412,6 +554,43 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// Ctrl+A cycles the approval mode (manual → balanced → auto → manual).
+		// Pre-message the value just updates the local snapshot; post-message
+		// each press updates local state immediately but the PATCH against the
+		// live task is debounced via approvalDebounceTickMsg so rapid mashing
+		// collapses to one UpdateNeoTask carrying the final value (the cloud
+		// would otherwise see a noisy burst).
+		//
+		// The window between messageSent and taskCreated is a separate race:
+		// the dispatcher has no taskID to PATCH against yet and would silently
+		// drop the update. Swallow the keypress in that window so the status
+		// bar can't get out of sync with the cloud — the user can press again
+		// once the task URL arrives.
+		if msg.Type == tea.KeyCtrlA {
+			if m.messageSent && !m.taskCreated {
+				return m, nil
+			}
+			m.approvalMode = nextApprovalMode(m.approvalMode)
+			if m.messageSent {
+				return m, m.scheduleApprovalDebounce()
+			}
+			return m, nil
+		}
+
+		// Ctrl+R toggles the permission mode (default ↔ read-only). Same
+		// pre/post-send semantics — and the same create-task race window and
+		// debounce mechanics — as the approval-mode cycle above.
+		if msg.Type == tea.KeyCtrlR {
+			if m.messageSent && !m.taskCreated {
+				return m, nil
+			}
+			m.permissionMode = nextPermissionMode(m.permissionMode)
+			if m.messageSent {
+				return m, m.schedulePermissionDebounce()
+			}
+			return m, nil
+		}
+
 		// ESC asks the agent to abort the current turn. Posts user_cancel
 		// upstream and flips the local cancelling flag so the spinner label
 		// switches to "Cancelling..." until the backend acknowledges via
@@ -432,6 +611,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.pendingApproval {
 			if msg.Type == tea.KeyEnter {
 				text := strings.TrimSpace(m.textInput.Value())
+				if m.pendingIsQuestion {
+					if text == "" {
+						return m, nil
+					}
+					m.sendOut(outboundEvent{
+						event: apitype.AgentUserEventUserConfirmation{
+							Type:       userEventUserConfirmation,
+							ApprovalID: m.pendingApprovalID,
+							Approved:   false,
+							Message:    text,
+						},
+						planMode: m.planMode,
+					})
+					m.clearPendingPrompt()
+					answerCmd := m.commitBlock(block{kind: blockAnswerSubmitted, raw: text})
+					return m, tea.Batch(answerCmd, m.showBusy(thinkingLabel, shimmerVerb))
+				}
 				approved := strings.EqualFold(text, "y") || strings.EqualFold(text, "yes")
 				var denialMsg string
 				if !approved {
@@ -447,9 +643,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					},
 					planMode: m.planMode,
 				})
-				m.pendingApproval = false
-				m.pendingApprovalID = ""
-				m.pendingApprovalType = ""
 				// Approving a plan exits plan mode server-side (the PlanModeTracker
 				// stops gating writes), so mirror that locally. Denial leaves the
 				// mode on — the agent will re-plan and gate-out again on the next
@@ -457,10 +650,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if wasPlanApproval && approved {
 					m.planMode = false
 				}
-				m.textInput.Prompt = "❯ "
-				m.textInput.PromptStyle = promptStyle
-				m.textInput.Placeholder = "Send a message..."
-				m.textInput.Reset()
+				m.clearPendingPrompt()
 				choiceCmd := m.commitBlock(block{
 					kind:     blockApprovalChoice,
 					approved: approved,
@@ -483,6 +673,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			text := strings.TrimSpace(m.textInput.Value())
+			// Typing `quit` or `exit` and pressing Enter cleanly closes the
+			// session, complementing Ctrl+C / Ctrl+D for users who reach for
+			// shell-style commands first. Strict whole-input match so messages
+			// that merely contain the word ("quit the deploy") still send.
+			if strings.EqualFold(text, "quit") || strings.EqualFold(text, "exit") {
+				return m, tea.Quit
+			}
 			if text != "" {
 				m.textInput.Reset()
 				sent := m.sendOut(outboundEvent{
@@ -490,7 +687,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						Type:    userEventUserMessage,
 						Content: text,
 					},
-					planMode: m.planMode,
+					planMode:       m.planMode,
+					approvalMode:   m.approvalMode,
+					permissionMode: m.permissionMode,
 				})
 				if sent {
 					// Render optimistically so the user sees their message in
@@ -528,27 +727,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case UIAssistantMessage:
-		// Any IsFinal=true assistant_message is a complete utterance and must be
-		// committed to scrollback — including hand-offs (HasPendingCLIWork=true),
-		// where the agent's commentary precedes a CLI tool call. HasPendingCLIWork
-		// only governs busy-state management (see applyBusyForEvent); it must not
-		// gate commit, otherwise hand-off commentary lives only in the live frame
-		// and is overwritten by the next hand-off / final message.
-		// The empty-content guard avoids a phantom marker for is_final=true
-		// messages that arrive with no text (e.g. a server-side hand-off finalized
-		// once tool calls were reconciled).
-		if msg.IsFinal {
-			m.removeBlockKind(blockAssistantStreaming)
-			if msg.Content != "" {
-				cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
-			}
-		} else if msg.Content != "" {
-			if idx := m.findBlockKind(blockAssistantStreaming); idx >= 0 {
-				m.blocks[idx].raw = msg.Content
-				m.renderBlock(&m.blocks[idx])
-			} else {
-				m.appendRenderedBlock(block{kind: blockAssistantStreaming, raw: msg.Content})
-			}
+		if msg.Content != "" {
+			cmds = append(cmds, m.commitBlock(block{kind: blockAssistantFinal, raw: msg.Content}))
 		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
@@ -597,8 +777,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case UISessionURL:
 		// The welcome banner is already in scrollback by the time the task URL
 		// arrives, so emit the URL as its own line rather than re-rendering.
+		// OSC 8 wraps the URL so supporting terminals render it as clickable.
 		m.welcome.consoleURL = msg.URL
-		cmds = append(cmds, tea.Println("  "+inputHintStyle.Render("⟡ "+msg.URL)))
+		// CreateNeoTask sends UISessionURL immediately after taskID is set,
+		// so this is the natural moment to lift the post-Enter toggle freeze.
+		m.taskCreated = true
+		cmds = append(cmds, m.printlnBlock("  "+inputHintStyle.Render("⟡ "+osc8Hyperlink(msg.URL, msg.URL))))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIUserMessage:
@@ -680,7 +864,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderBlock(&m.blocks[idx])
 			// done==true flips it from live to committed; emit to scrollback.
 			if rendered := m.blocks[idx].rendered; rendered != "" {
-				cmds = append(cmds, tea.Println(rendered))
+				cmds = append(cmds, m.printlnBlock(rendered))
+			}
+		}
+		cmds = append(cmds, m.applyBusyForEvent(msg))
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UITodoList:
+		// In plan mode, hold the list until plan_exit so the tasks land
+		// inside the same block as the plan. Outside plan mode commit
+		// immediately so status flips show up in scrollback.
+		if len(msg.Items) > 0 {
+			if m.planMode {
+				m.pendingTodos = msg.Items
+			} else {
+				cmds = append(cmds, m.commitBlock(block{kind: blockTodoList, todos: msg.Items}))
 			}
 		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
@@ -691,18 +889,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pendingApproval = true
 		m.pendingApprovalID = msg.ApprovalID
 		m.pendingApprovalType = msg.ApprovalType
-		if m.pendingApprovalType == approvalTypePlanExit {
+		m.pendingIsQuestion = false
+		m.textInput.PromptStyle = warningStyle
+		m.textInput.Placeholder = ""
+		m.textInput.Reset()
+		switch {
+		case m.pendingApprovalType == approvalTypePlanExit:
 			// The plan body is authored as markdown and lives in
 			// PlanDescription; msg.Message is just a generic intro.
-			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalPlan, raw: msg.PlanDescription}))
+			planBlock := block{kind: blockApprovalPlan, raw: msg.PlanDescription, todos: m.pendingTodos}
+			m.pendingTodos = nil
+			cmds = append(cmds, m.commitBlock(planBlock))
 			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
-		} else {
+		case isAskUserToolName(msg.ToolName):
+			m.pendingIsQuestion = true
+			cmds = append(cmds, m.commitBlock(block{kind: blockQuestion, raw: msg.Message}))
+			m.textInput.Prompt = "Your answer: "
+			m.textInput.PromptStyle = promptStyle
+		default:
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalGeneral, raw: msg.Message}))
 			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
 		}
-		m.textInput.PromptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-		m.textInput.Placeholder = ""
-		m.textInput.Reset()
+		cmds = append(cmds, waitForEvent(m.eventCh))
+
+	case UIApprovalResolved:
+		// Discriminator: pendingApproval is still true iff the cloud auto-
+		// resolved this request server-side (under ApprovalMode=auto/balanced).
+		// The manual path clears state locally on Enter before sending its
+		// user_confirmation upstream, so when the cloud echoes that back here
+		// pendingApproval is already false — and we no-op, which is correct.
+		// The ID match guards against a stale resolved event arriving after
+		// the user has already moved on to a different approval.
+		if m.pendingApproval && msg.ApprovalID == m.pendingApprovalID {
+			cmds = append(cmds, m.commitBlock(block{
+				kind:           blockApprovalAuto,
+				approved:       msg.Approved,
+				autoIsQuestion: m.pendingIsQuestion,
+			}))
+			m.clearPendingPrompt()
+		}
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	default:
@@ -720,13 +945,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // drawn here — they were committed to terminal scrollback via tea.Println as
 // soon as they reached a terminal state.
 func (m Model) View() string {
-	hintText := "enter to send · shift+tab to toggle plan mode · ctrl+c to quit"
+	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · ctrl+r read-only · ctrl+c to quit"
 	if m.busy {
 		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
 	}
 	hint := "  "
-	if m.planMode {
-		hint += planAccentStyle.Render("⏸ plan mode")
+	chips := m.modeChips()
+	if chips != "" {
+		hint += chips
 		hintText = " · " + hintText
 	}
 	if m.ctrlCArmed {
@@ -737,7 +963,15 @@ func (m Model) View() string {
 		hint += inputHintStyle.Render(hintText)
 	}
 
-	parts := make([]string, 0, 3)
+	// Lead with an empty line so the live frame (or, when idle, the prompt
+	// itself) is always separated from the last block in scrollback by a
+	// blank gap line. The busy spinner / streaming reply / in-flight pulumi
+	// op deliberately sit directly above the prompt with no gap — they read
+	// as part of the same input zone, and a chat-style spinner pinned to the
+	// prompt is what users expect. The prompt and hint stay adjacent for
+	// the same reason.
+	parts := make([]string, 0, 4)
+	parts = append(parts, "")
 	if live := m.liveView(); live != "" {
 		parts = append(parts, live)
 	}
@@ -745,53 +979,53 @@ func (m Model) View() string {
 	return strings.Join(parts, "\n")
 }
 
-// liveWidth returns the width to use when rendering live-frame content. We
-// cap at 80 cols (book-readable column count) and otherwise back off the
-// real terminal width by 10 cols.
-//
-// bubbletea's inline renderer (v1.3.10 standard_renderer.go) uses logical
-// line counts, not visual rows, when issuing CursorUp(linesRendered-1)
-// before each frame. Any content that wraps to two visual rows on the new
-// terminal width — a lipgloss border at width-4, a glamour-wrapped paragraph
-// at width-4, a width-padded textinput — desyncs the cursor and stacks
-// stale frame fragments into scrollback during drag-resize.
-//
-// The 80-col cap matters because it makes resize a non-event for the
-// common case: any terminal ≥ 90 cols renders content at the same constant
-// 80 cols regardless of actual width, so dragging through that range
-// doesn't change what's on screen and the renderer never sees a wrap.
-// Below 90 cols liveWidth follows the terminal (with a 10-col cushion) so
-// content stays inside the viewport.
+// modeChips renders the status-bar chips for the three independent mode axes
+// (plan, approval, permission). Default values are omitted so the status bar
+// stays uncluttered until the user opts into something non-default.
+func (m Model) modeChips() string {
+	var chips []string
+	if m.planMode {
+		chips = append(chips, planAccentStyle.Render("⏸ plan mode"))
+	}
+	switch m.approvalMode {
+	case client.NeoApprovalModeBalanced:
+		chips = append(chips, planAccentStyle.Render("⚖ balanced"))
+	case client.NeoApprovalModeAuto:
+		chips = append(chips, planAccentStyle.Render("⚡ auto-approve"))
+	case client.NeoApprovalModeManual:
+		// Manual is the default — no chip, the status bar stays uncluttered.
+	}
+	if m.permissionMode == client.NeoPermissionModeReadOnly {
+		chips = append(chips, planAccentStyle.Render("⊘ read-only"))
+	}
+	return strings.Join(chips, " ")
+}
+
+// liveWidth returns the width to use when rendering live-frame content:
+// the terminal width minus a small cushion that keeps glamour, lipgloss,
+// and the textinput off the wrap column.
 func (m *Model) liveWidth() int {
 	const (
-		maxLiveWidth   = 80
-		margin         = 10
+		margin         = 4
 		minUsableWidth = 40 // below this, give up the cushion to keep something visible
 	)
-	w := m.width
-	if w > maxLiveWidth+margin {
-		return maxLiveWidth
+	if m.width > minUsableWidth {
+		return m.width - margin
 	}
-	if w > minUsableWidth {
-		return w - margin
-	}
-	return w
+	return m.width
 }
 
 // liveView renders only the in-flight blocks that should occupy the live
-// frame: busy spinner (always pinned at the bottom of the live region), an
-// in-flight streaming assistant message, and an open pulumi op block. The
-// busy block's spinner glyph is read from m.spinner.View() at render time so
-// the animation tracks the current frame without re-caching per block.
+// frame: busy spinner (always pinned at the bottom of the live region) and
+// an open pulumi op block. The busy block's spinner glyph is read from
+// m.spinner.View() at render time so the animation tracks the current frame
+// without re-caching per block.
 //
-// We deliberately use strings.Join instead of lipgloss.JoinVertical.
-// JoinVertical pads every constituent block to the widest one's column count
-// with trailing spaces, which pins every line in the frame to the longest
-// one. On a resize-shrink those wide lines wrap, bubbletea's inline renderer
-// (v1.3.10) issues CursorUp(linesRendered-1) using the logical count instead
-// of the wrapped visual rows, and stale frame fragments leak into scrollback.
-// strings.Join keeps each line at its natural length so only genuinely-wide
-// content is at risk.
+// We deliberately use strings.Join instead of lipgloss.JoinVertical:
+// JoinVertical pads every line to the widest constituent's column count with
+// trailing spaces, which makes resize-shrink wrap every line and desync the
+// inline-renderer line accounting. strings.Join keeps each line at its
+// natural length so only genuinely-wide content is at risk.
 func (m *Model) liveView() string {
 	var parts []string
 	for _, b := range m.blocks {
@@ -807,20 +1041,26 @@ func (m *Model) liveView() string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return strings.Join(parts, "\n")
+	// "\n\n" separator gives one blank line between live blocks (e.g. an
+	// in-flight pulumi op stack and the busy spinner pinned beneath it) so
+	// the live frame matches the breathing room used between committed blocks
+	// in scrollback. Empty separator lines are safe under the inline-renderer
+	// width constraint above — only wide lines wrap on resize.
+	return strings.Join(parts, "\n\n")
 }
 
 // isLiveKind reports whether a block belongs in the live frame (true) or has
 // been committed to terminal scrollback (false).
 func isLiveKind(b block) bool {
 	switch b.kind {
-	case blockBusy, blockAssistantStreaming:
+	case blockBusy:
 		return true
 	case blockPulumiOp:
 		return b.pulumi != nil && !b.pulumi.done
 	case blockToolComplete, blockAssistantFinal, blockError, blockWarning,
 		blockCancelled, blockUserMessage, blockApprovalPlan,
-		blockApprovalGeneral, blockApprovalChoice:
+		blockApprovalGeneral, blockApprovalChoice, blockApprovalAuto,
+		blockTodoList, blockQuestion, blockAnswerSubmitted:
 		return false
 	}
 	return false
@@ -837,7 +1077,21 @@ func (m *Model) commitBlock(b block) tea.Cmd {
 	if b.rendered == "" {
 		return nil
 	}
-	return tea.Println(b.rendered)
+	return m.printlnBlock(b.rendered)
+}
+
+// printlnBlock emits rendered to scrollback, prepending a blank line so each
+// committed block has visual breathing room from whatever came before. The
+// very first emission (the welcome banner) skips the leading newline so the
+// session doesn't open with empty space above the banner. Every other
+// scrollback emission in the TUI must go through this helper rather than
+// calling tea.Println directly so spacing stays uniform across block kinds.
+func (m *Model) printlnBlock(rendered string) tea.Cmd {
+	if !m.hasEmittedScrollback {
+		m.hasEmittedScrollback = true
+		return tea.Println(rendered)
+	}
+	return tea.Println("\n" + rendered)
 }
 
 // applyBusyForEvent is the single point that decides whether the busy
@@ -923,6 +1177,19 @@ func (m *Model) appendUserMessageBlock(content string) tea.Cmd {
 	return m.commitBlock(block{kind: blockUserMessage, raw: content})
 }
 
+// clearPendingPrompt resets all pendingApproval/pendingIsQuestion state and
+// returns the text input to its default "send a message" appearance.
+func (m *Model) clearPendingPrompt() {
+	m.pendingApproval = false
+	m.pendingApprovalID = ""
+	m.pendingApprovalType = ""
+	m.pendingIsQuestion = false
+	m.textInput.Prompt = "❯ "
+	m.textInput.PromptStyle = promptStyle
+	m.textInput.Placeholder = "Send a message..."
+	m.textInput.Reset()
+}
+
 // appendBlock appends a non-busy block, keeping any existing blockBusy
 // pinned at the bottom.
 func (m *Model) appendBlock(b block) {
@@ -941,6 +1208,29 @@ func (m *Model) scheduleCtrlCDisarm() tea.Cmd {
 	gen := m.ctrlCArmGen
 	return tea.Tick(ctrlCArmTimeout, func(time.Time) tea.Msg {
 		return ctrlCDisarmMsg{gen: gen}
+	})
+}
+
+// scheduleApprovalDebounce advances the approval-debounce generation and
+// returns a tea.Cmd that posts an approvalDebounceTickMsg after
+// modeToggleDebounce. The Update handler dispatches the PATCH only if the
+// tick's gen still matches the current one — a subsequent Ctrl+A press
+// advances the gen and silently retires the stale tick.
+func (m *Model) scheduleApprovalDebounce() tea.Cmd {
+	m.approvalDebounceGen++
+	gen := m.approvalDebounceGen
+	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
+		return approvalDebounceTickMsg{gen: gen}
+	})
+}
+
+// schedulePermissionDebounce is the permission-mode counterpart to
+// scheduleApprovalDebounce.
+func (m *Model) schedulePermissionDebounce() tea.Cmd {
+	m.permissionDebounceGen++
+	gen := m.permissionDebounceGen
+	return tea.Tick(modeToggleDebounce, func(time.Time) tea.Msg {
+		return permissionDebounceTickMsg{gen: gen}
 	})
 }
 
@@ -986,15 +1276,24 @@ func (m *Model) findBlockKind(kind blockKind) int {
 }
 
 // renderBlock recomputes b.rendered from b.raw using the current terminal
-// width and markdown renderer. blockApprovalChoice is the one kind that
-// still renders when raw is empty (its verdict is carried by b.approved).
+// width and markdown renderer. blockApprovalChoice and blockApprovalAuto are
+// the two kinds that still render when raw is empty (their state is carried
+// by b.approved / b.autoIsQuestion instead).
 func (m *Model) renderBlock(b *block) {
 	if b.kind == blockApprovalChoice {
 		m.renderApprovalChoice(b)
 		return
 	}
+	if b.kind == blockApprovalAuto {
+		m.renderApprovalAuto(b)
+		return
+	}
 	if b.kind == blockPulumiOp {
 		b.rendered = m.renderPulumiBlock(b.pulumi)
+		return
+	}
+	if b.kind == blockTodoList {
+		b.rendered = renderHeaderedBlock(todoListHeader, renderTodoLines(b.todos))
 		return
 	}
 	if b.raw == "" {
@@ -1009,22 +1308,76 @@ func (m *Model) renderBlock(b *block) {
 		b.rendered = renderIndented(cancelledStyle, m.width, b.raw)
 	case blockUserMessage:
 		b.rendered = m.renderUserBubble(b.raw)
-	case blockAssistantStreaming:
-		b.rendered = renderAssistantStreaming(m.wrapPlain(b.raw))
 	case blockAssistantFinal:
 		b.rendered = renderAssistantFinal(m.renderMarkdown(b.raw))
 	case blockApprovalPlan:
 		header := planAccentStyle.Render("⏺ Proposed plan")
-		b.rendered = renderHeaderedBlock(header, m.renderMarkdown(b.raw))
+		body := m.renderMarkdown(b.raw)
+		// Fold any todos buffered during plan mode into the plan body. A
+		// blank line separates them from the plan markdown so glamour's
+		// last paragraph doesn't visually run into the Tasks header.
+		if len(b.todos) > 0 {
+			body = strings.TrimRight(body, "\n") + "\n\nTasks:\n" + renderTodoLines(b.todos)
+		}
+		b.rendered = renderHeaderedBlock(header, body)
 	case blockApprovalGeneral:
 		header := warningStyle.Render("⚠ Approval required")
 		b.rendered = renderHeaderedBlock(header, m.wrapPlain(b.raw))
+	case blockQuestion:
+		// Cyan promptStyle (matches the ❯ input prompt) so the header reads
+		// as an input affordance, not a warning.
+		header := promptStyle.Render("◆ Question")
+		b.rendered = renderHeaderedBlock(header, m.wrapPlain(b.raw))
+	case blockAnswerSubmitted:
+		answered := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Render("✎ Answered")
+		b.rendered = renderIndented(lipgloss.NewStyle(), m.width, answered+" — "+b.raw)
 	case blockBusy, blockToolComplete:
 		// No raw: blockBusy renders live from label, blockToolComplete is
 		// pre-styled at event time.
-	case blockApprovalChoice, blockPulumiOp:
-		// Unreachable: both are handled by early returns above.
+	case blockApprovalChoice, blockApprovalAuto, blockPulumiOp, blockTodoList:
+		// Unreachable: handled by early returns above.
 	}
+}
+
+// renderTodoLines formats todos as one ASCII checkbox per line, sorted by
+// Index so the agent's intended ordering survives JSON round-tripping.
+func renderTodoLines(items []UITodoItem) string {
+	if len(items) == 0 {
+		return ""
+	}
+	sorted := append([]UITodoItem(nil), items...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Index < sorted[j].Index })
+	lines := make([]string, 0, len(sorted))
+	for _, it := range sorted {
+		var marker, content string
+		switch it.Status {
+		case "completed":
+			marker, content = "[x]", todoCompletedStyle.Render(it.Content)
+		case "in_progress":
+			marker, content = "[~]", todoActiveStyle.Render(it.Content)
+		default:
+			marker, content = "[ ]", it.Content
+		}
+		lines = append(lines, marker+" "+content)
+	}
+	return strings.Join(lines, "\n")
+}
+
+// renderApprovalAuto renders a feedback block committed when the cloud
+// auto-resolves a pending approval/question under ApprovalMode=auto or
+// balanced. The verb depends on what was asked (approval vs ask-user) and
+// whether the cloud reported ok=true; today auto-deny doesn't exist on the
+// cloud side but we render it anyway in case that changes.
+func (m *Model) renderApprovalAuto(b *block) {
+	verb := "Auto-approved"
+	switch {
+	case !b.approved:
+		verb = "Auto-denied"
+	case b.autoIsQuestion:
+		verb = "Auto-answered"
+	}
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	b.rendered = "  " + style.Render("⚡ "+verb)
 }
 
 func (m *Model) renderApprovalChoice(b *block) {
@@ -1046,7 +1399,7 @@ func (m *Model) renderApprovalChoice(b *block) {
 func (m *Model) renderUserBubble(content string) string {
 	prefix := promptStyle.Render("❯") + " " // visible width 2
 	padded := " " + content + " "
-	bubbleWidth := max(m.width-2, 8)
+	bubbleWidth := max(m.liveWidth()-2, 8)
 	style := userMsgBubble
 	if m.width > 4 && lipgloss.Width(padded) > bubbleWidth {
 		style = style.Width(bubbleWidth)
@@ -1057,32 +1410,29 @@ func (m *Model) renderUserBubble(content string) string {
 // wrapPlain word-wraps non-markdown text to the safe live width (m.liveWidth)
 // so streaming text never sits at the terminal wrap boundary. We use
 // reflow's wordwrap (which only inserts \n at word boundaries) instead of
-// lipgloss.Style.Width(W).Render which also pads each line with trailing
-// spaces to W. Padding produces full-width lines that wrap on resize-shrink
-// and corrupt bubbletea's inline-renderer line accounting.
+// lipgloss.Style.Width(W).Render, which also pads every line to W with
+// trailing spaces — those full-width lines wrap on resize-shrink and desync
+// the inline-renderer line accounting.
 func (m *Model) wrapPlain(text string) string {
 	w := m.liveWidth()
 	if w <= 4 {
-		return text
+		return linkifyURLs(text)
 	}
-	return wordwrap.String(text, w-4)
-}
-
-func (m *Model) appendRenderedBlock(b block) {
-	m.renderBlock(&b)
-	m.appendBlock(b)
+	return linkifyURLs(wordwrap.String(text, w-4))
 }
 
 // renderMarkdown renders text through glamour, falling back to plain text.
+// URLs in the rendered output are wrapped in OSC 8 escapes so terminals that
+// support hyperlinks render them as clickable.
 func (m *Model) renderMarkdown(text string) string {
 	if m.mdRenderer == nil {
-		return text
+		return linkifyURLs(text)
 	}
 	rendered, err := m.mdRenderer.Render(text)
 	if err != nil {
-		return text
+		return linkifyURLs(text)
 	}
-	return strings.TrimRight(rendered, "\n")
+	return linkifyURLs(strings.TrimRight(rendered, "\n"))
 }
 
 // renderHeaderedBlock renders "  header" followed by body indented by 4 spaces,
@@ -1106,14 +1456,6 @@ func renderAssistantFinal(rendered string) string {
 	}
 	firstLine, rest, _ := strings.Cut(trimmed, "\n")
 	return renderHeaderedBlock(finalMarker+" "+firstLine, rest)
-}
-
-// renderAssistantStreaming renders streaming text with a dim indicator.
-func renderAssistantStreaming(text string) string {
-	if text == "" {
-		return ""
-	}
-	return "  " + text
 }
 
 // waitForEvent returns a tea.Cmd that reads from the UIEvent channel.

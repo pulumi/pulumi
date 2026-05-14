@@ -2103,13 +2103,13 @@ func TestPythonComponentProviderRun(t *testing.T) {
 						// We're expecting assetOutput = map[text:HELLO, WORLD!]
 						asset := stack.Outputs["assetOutput"].(map[string]any)
 						text := asset["text"].(string)
-						checkAssetText(t, runtime, "HELLO, WORLD!", text)
+						checkAssetText(t, "HELLO, WORLD!", text)
 
 						// We're expecting  archiveOutput = map[assets:map[asset1:map[text:IM INSIDE AN ARCHIVE]]
 						archive := stack.Outputs["archiveOutput"].(map[string]any)
 						asset1 := archive["assets"].(map[string]any)["asset1"].(map[string]any)
 						text = asset1["text"].(string)
-						checkAssetText(t, runtime, "IM INSIDE AN ARCHIVE", text)
+						checkAssetText(t, "IM INSIDE AN ARCHIVE", text)
 					}
 				},
 			})
@@ -2178,16 +2178,9 @@ func TestPythonComponentProviderFeatures(t *testing.T) {
 	})
 }
 
-func checkAssetText(t *testing.T, runtime, expected, actual string) {
+func checkAssetText(t *testing.T, expected, actual string) {
 	t.Helper()
-	switch runtime {
-	case "nodejs":
-		// Node.js replaces the asset text with "..." in the stack output.
-		// https://github.com/pulumi/pulumi/blob/a3c9fd948de150043a7e07aa82ca17ffaee0bddc/sdk/nodejs/runtime/stack.ts#L163
-		require.Equal(t, "...", actual)
-	default:
-		require.Equal(t, expected, actual)
-	}
+	require.Equal(t, expected, actual)
 }
 
 // Tests that we can get the schema for a Python component provider using component_provider_host.
@@ -2517,6 +2510,17 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "`%s` in %s failed with output: %s", cmd.String(), cmd.Dir, string(out))
 
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+
+	if isUvPythonProject(dir) {
+		cmd := exec.Command("uv", "add", "--editable", coreSDK)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "`uv add --editable %s` in %s failed: %s", coreSDK, dir, string(out))
+		return
+	}
+
 	// Install the local development SDK
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Root:       dir,
@@ -2525,12 +2529,22 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	})
 	require.NoError(t, err)
 
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
-	require.NoError(t, err)
 	cmd, err = tc.ModuleCommand(t.Context(), "pip", "install", coreSDK)
 	require.NoError(t, err)
 	out, err = cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
+}
+
+// isUvPythonProject reports whether the Pulumi project at dir declares `toolchain: uv`.
+func isUvPythonProject(dir string) bool {
+	pattern := regexp.MustCompile(`(?m)^\s+toolchain:\s*uv\s*$`)
+	for _, fname := range []string{"PulumiPlugin.yaml", "Pulumi.yaml"} {
+		data, err := os.ReadFile(filepath.Join(dir, fname))
+		if err == nil && pattern.Match(data) {
+			return true
+		}
+	}
+	return false
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/18768

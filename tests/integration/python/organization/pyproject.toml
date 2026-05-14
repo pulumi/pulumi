@@ -1,0 +1,6 @@
+[project]
+name = "pulumi-python-organization"
+version = "0.0.0"
+dependencies = [
+    "pulumi==3.152.0",
+]

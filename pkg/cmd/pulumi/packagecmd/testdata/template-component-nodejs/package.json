@@ -1,0 +1,5 @@
+{
+  "name": "${PROJECT}",
+  "description": "${DESCRIPTION}",
+  "version": "0.1.0"
+}

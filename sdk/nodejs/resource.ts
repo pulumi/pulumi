@@ -1116,6 +1116,10 @@ export interface ResourceHookOptions {
      * Run the hook during dry run (preview) operations. Defaults to false.
      */
     onDryRun?: boolean;
+    /**
+     * If true, errors from this hook are logged as warnings instead of failing the program.
+     */
+    ignoreErrors?: boolean;
 }
 
 /**

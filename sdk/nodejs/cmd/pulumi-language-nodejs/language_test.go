@@ -203,7 +203,8 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					}
 
 					if runtime == "bun" {
-						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" {
+						if tt == "l2-external-enum" || tt == "l2-namespaced-provider" ||
+							tt == "provider-replacement-trigger-component" {
 							t.Skip(
 								"On linux bun has trouble resolving indirect dependencies that point to a local file" +
 									"https://github.com/pulumi/pulumi/issues/22100")
@@ -239,8 +240,8 @@ func testLanguage(t *testing.T, runtime string, forceTsc bool) {
 					for _, msg := range result.Messages {
 						t.Log(msg)
 					}
-					ptesting.LogTruncated(t, "stdout", result.Stdout)
-					ptesting.LogTruncated(t, "stderr", result.Stderr)
+					ptesting.LogIfVerbose(t, "stdout", result.Stdout)
+					ptesting.LogIfVerbose(t, "stderr", result.Stderr)
 					assert.True(t, result.Success)
 				})
 			}

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strconv"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -348,6 +349,15 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 				if typeName == "" {
 					g.Fgenf(w, "%.v", from)
 				} else if typeName == "pulumi.String" && isID {
+					g.Fgenf(w, "%.v", from)
+				} else if typeName == "pulumi.Asset" ||
+					typeName == "pulumi.Archive" ||
+					typeName == "pulumi.AssetOrArchive" {
+					// Asset/Archive are interface types in the SDK; the values
+					// returned by NewFileAsset/etc. already implement the
+					// corresponding *Input interface. Wrapping with the
+					// interface type strips those methods and breaks use in
+					// pulumi.AssetOrArchiveArray, etc.
 					g.Fgenf(w, "%.v", from)
 				} else {
 					g.Fgenf(w, "%s(%.v)", typeName, from)
@@ -849,7 +859,7 @@ func (g *generator) genObjectConsExpressionWithTypeName(
 	for _, item := range expr.Items {
 		if lit, ok := g.literalKey(item.Key); ok {
 			if isMap || strings.HasSuffix(typeName, "Map") {
-				g.Fgenf(w, "\"%s\"", lit)
+				g.Fgenf(w, "%s", strconv.Quote(lit))
 			} else {
 				g.Fgenf(w, "%s", Title(lit))
 			}
@@ -1225,6 +1235,13 @@ func (g *generator) argumentTypeName(destType model.Type, isInput bool) (result 
 		}).argsType(schemaType)
 	}
 
+	switch destType {
+	case pcl.AssetType:
+		return "pulumi.AssetOrArchive"
+	case pcl.ArchiveType:
+		return "pulumi.Archive"
+	}
+
 	switch destType := destType.(type) {
 	case *model.OpaqueType:
 		switch *destType {
@@ -1592,12 +1609,19 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	case "[]string":
 		typeAssertion = ".(pulumi.StringArrayOutput)"
 	default:
-		if strings.HasPrefix(retType, "*") {
-			retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
-		}
-		typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
-		if !strings.Contains(retType, ".") {
-			typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+		// For map types the string form (e.g. "map[string]bool") cannot be turned into
+		// a valid pulumi output type via simple string manipulation, so use
+		// deferredOutputCastTypeParameter which already knows the correct names.
+		if _, isMap := pcl.UnwrapOption(then.Signature.ReturnType).(*model.MapType); isMap {
+			typeAssertion = ".(" + deferredOutputCastTypeParameter(then.Signature.ReturnType) + ")"
+		} else {
+			if strings.HasPrefix(retType, "*") {
+				retType = Title(strings.TrimPrefix(retType, "*")) + "Ptr"
+			}
+			typeAssertion = fmt.Sprintf(".(%sOutput)", retType)
+			if !strings.Contains(retType, ".") {
+				typeAssertion = fmt.Sprintf(".(pulumi.%sOutput)", Title(retType))
+			}
 		}
 	}
 
@@ -1663,30 +1687,7 @@ func (g *generator) genStringLiteral(w io.Writer, v string, allowRaw bool) {
 		return
 	}
 
-	g.Fgen(w, "\"")
-	g.Fgen(w, g.escapeString(v))
-	g.Fgen(w, "\"")
-}
-
-func (g *generator) escapeString(v string) string {
-	builder := strings.Builder{}
-	for _, c := range v {
-		if c == '\x00' {
-			// escape NUL bytes
-			builder.WriteString(fmt.Sprintf("\\u%04x", c))
-			continue
-		}
-		if c == '"' || c == '\\' {
-			builder.WriteRune('\\')
-		}
-		if c == '\n' {
-			builder.WriteRune('\\')
-			builder.WriteRune('n')
-			continue
-		}
-		builder.WriteRune(c)
-	}
-	return builder.String()
+	g.Fgen(w, strconv.Quote(v))
 }
 
 //nolint:lll

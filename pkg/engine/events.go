@@ -304,6 +304,7 @@ type SummaryEventPayload struct {
 	Duration        time.Duration           // the duration of the entire update operation (zero values for previews)
 	ResourceChanges display.ResourceChanges // count of changed resources, useful for reporting
 	PolicyPacks     map[string]string       // {policy-pack: version} for each policy pack applied
+	Result          apitype.OperationResult // high-level outcome of the operation (empty if not applicable)
 }
 
 type ResourceOperationFailedPayload struct {
@@ -621,7 +622,7 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 }
 
 func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration,
-	resourceChanges display.ResourceChanges, policyPacks map[string]string,
+	resourceChanges display.ResourceChanges, policyPacks map[string]string, result apitype.OperationResult,
 ) {
 	contract.Requiref(e != nil, "e", "!= nil")
 
@@ -631,6 +632,7 @@ func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Du
 		Duration:        duration,
 		ResourceChanges: resourceChanges,
 		PolicyPacks:     policyPacks,
+		Result:          result,
 	}))
 }
 

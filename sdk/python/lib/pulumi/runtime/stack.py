@@ -164,7 +164,7 @@ async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
                 if not_done:
                     with SETTINGS.lock:
                         for task in not_done:
-                            SETTINGS.outputs.append(task)
+                            SETTINGS.outputs.add(task)
 
             log.debug("All outstanding outputs completed.")
 
@@ -269,6 +269,8 @@ def massage(attr: Any, seen: list[Any]):
 
 
 def massage_complex(attr: Any, seen: list[Any]) -> Any:
+    from .. import Asset, Archive
+
     def is_public_key(key: str) -> bool:
         return not key.startswith("_")
 
@@ -278,6 +280,13 @@ def massage_complex(attr: Any, seen: list[Any]) -> Any:
             if include(key):
                 plain_object[key] = massage(attr.__dict__[key], seen)
         return plain_object
+
+    # Preserve Asset / Archive instances so subsequent gRPC serialization
+    # tags them with the special signature key; without that, the engine
+    # deserializes them as weakly-typed dicts and assets in stack outputs
+    # lose their identity. See pulumi/pulumi#16384.
+    if isinstance(attr, (Asset, Archive)):
+        return attr
 
     if isinstance(attr, Resource):
         serialized_attr = serialize_all_keys(is_public_key)
@@ -296,9 +305,7 @@ def massage_complex(attr: Any, seen: list[Any]) -> Any:
     # make sure this is a popo.
     if isinstance(attr, dict):
         # Don't use attr.items() here, as it will error in the case of outputs with an `items` property.
-        return {
-            key: massage(attr[key], seen) for key in attr if not key.startswith("_")
-        }
+        return {key: massage(attr[key], seen) for key in attr}
 
     if hasattr(attr, "__iter__"):
         return [massage(item, seen) for item in attr]

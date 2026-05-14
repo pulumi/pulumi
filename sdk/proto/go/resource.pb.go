@@ -2604,9 +2604,11 @@ type RegisterResourceHookRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The name of the hook. Must be unique within a program, registering the
 	// same name twice is an error.
-	Name          string    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Callback      *Callback `protobuf:"bytes,2,opt,name=callback,proto3" json:"callback,omitempty"`                    // the callback that the engine can call to run the hook.
-	OnDryRun      bool      `protobuf:"varint,3,opt,name=on_dry_run,json=onDryRun,proto3" json:"on_dry_run,omitempty"` // whether to run the hook on dry runs.
+	Name     string    `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Callback *Callback `protobuf:"bytes,2,opt,name=callback,proto3" json:"callback,omitempty"`                    // the callback that the engine can call to run the hook.
+	OnDryRun bool      `protobuf:"varint,3,opt,name=on_dry_run,json=onDryRun,proto3" json:"on_dry_run,omitempty"` // whether to run the hook on dry runs.
+	// If true, errors from this hook are logged as warnings instead of failing the program.
+	IgnoreErrors  bool `protobuf:"varint,4,opt,name=ignore_errors,json=ignoreErrors,proto3" json:"ignore_errors,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2658,6 +2660,13 @@ func (x *RegisterResourceHookRequest) GetCallback() *Callback {
 func (x *RegisterResourceHookRequest) GetOnDryRun() bool {
 	if x != nil {
 		return x.OnDryRun
+	}
+	return false
+}
+
+func (x *RegisterResourceHookRequest) GetIgnoreErrors() bool {
+	if x != nil {
+		return x.IgnoreErrors
 	}
 	return false
 }
@@ -3355,12 +3364,13 @@ const file_pulumi_resource_proto_rawDesc = "" +
 	"\x10Parameterization\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\fR\x05value\"\x80\x01\n" +
+	"\x05value\x18\x03 \x01(\fR\x05value\"\xa5\x01\n" +
 	"\x1bRegisterResourceHookRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
 	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback\x12\x1c\n" +
 	"\n" +
-	"on_dry_run\x18\x03 \x01(\bR\bonDryRun\"_\n" +
+	"on_dry_run\x18\x03 \x01(\bR\bonDryRun\x12#\n" +
+	"\rignore_errors\x18\x04 \x01(\bR\fignoreErrors\"_\n" +
 	"\x18RegisterErrorHookRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12/\n" +
 	"\bcallback\x18\x02 \x01(\v2\x13.pulumirpc.CallbackR\bcallback*\xe2\x04\n" +

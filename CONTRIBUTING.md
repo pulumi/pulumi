@@ -82,6 +82,8 @@ Here's some examples of what we're trying to avoid:
 - Adds a feature
 - Feature now does something
 
+Keep changelog messages short and to the point, one sentence is usually enough. Don't overdescribe a feature in the changelog, to keep the whole log scannable quickly by end users.
+
 ### Downloading Pulumi from contributed pull requests
 
 Artifacts built during pull request workflows can be downloaded by running the following command (note that the artifacts expire 7 days after CI has been run):

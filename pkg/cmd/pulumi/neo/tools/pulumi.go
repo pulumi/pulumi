@@ -198,22 +198,22 @@ func (p *Pulumi) Invoke(ctx context.Context, method string, args json.RawMessage
 
 func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiResult, error) {
 	if a.StackName == "" {
-		return pulumiResult{}, errors.New("stack_name is required")
+		return failedResult(a, "", errors.New("stack_name is required"))
 	}
 	if a.LocalPulumiDir == "" {
-		return pulumiResult{}, errors.New("local_pulumi_dir is required")
+		return failedResult(a, "", errors.New("local_pulumi_dir is required"))
 	}
 	if !filepath.IsAbs(a.LocalPulumiDir) {
-		return pulumiResult{}, errors.New("local_pulumi_dir must be an absolute path")
+		return failedResult(a, "", errors.New("local_pulumi_dir must be an absolute path"))
 	}
 
 	// Confine local_pulumi_dir to the Session sandbox.
 	dir, err := resolveUnderRoots([]string{p.Cwd}, a.LocalPulumiDir, false)
 	if err != nil {
-		return pulumiResult{}, err
+		return failedResult(a, "", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "Pulumi.yaml")); err != nil {
-		return pulumiResult{}, fmt.Errorf("local_pulumi_dir %q: Pulumi.yaml not found", a.LocalPulumiDir)
+		return failedResult(a, "", fmt.Errorf("local_pulumi_dir %q: Pulumi.yaml not found", a.LocalPulumiDir))
 	}
 
 	// Apply environment variables for the engine run. We snapshot and restore the
@@ -230,34 +230,34 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	// process-global — concurrent callers from outside the Session would race.
 	prevDir, err := os.Getwd()
 	if err != nil {
-		return pulumiResult{}, fmt.Errorf("recording working directory: %w", err)
+		return failedResult(a, "", fmt.Errorf("recording working directory: %w", err))
 	}
 	if err := os.Chdir(dir); err != nil {
-		return pulumiResult{}, fmt.Errorf("chdir %q: %w", dir, err)
+		return failedResult(a, "", fmt.Errorf("chdir %q: %w", dir, err))
 	}
 	defer func() { _ = os.Chdir(prevDir) }()
 
 	proj, root, err := p.Workspace.ReadProject()
 	if err != nil {
-		return pulumiResult{}, fmt.Errorf("reading project: %w", err)
+		return failedResult(a, "", fmt.Errorf("reading project: %w", err))
 	}
 
 	stackRef, err := p.Backend.ParseStackReference(a.StackName)
 	if err != nil {
-		return pulumiResult{}, fmt.Errorf("parsing stack reference: %w", err)
+		return failedResult(a, "", fmt.Errorf("parsing stack reference: %w", err))
 	}
 	s, err := p.Backend.GetStack(ctx, stackRef)
 	if err != nil {
-		return pulumiResult{}, fmt.Errorf("getting stack: %w", err)
+		return failedResult(a, "", fmt.Errorf("getting stack: %w", err))
 	}
 	if s == nil {
-		return pulumiResult{}, fmt.Errorf("stack %q not found", a.StackName)
+		return failedResult(a, "", fmt.Errorf("stack %q not found", a.StackName))
 	}
 
 	ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 	cfg, sm, err := cmdConfig.GetStackConfiguration(ctx, cmdutil.Diag(), ssml, s, proj)
 	if err != nil {
-		return pulumiResult{}, fmt.Errorf("getting stack configuration: %w", err)
+		return failedResult(a, "", fmt.Errorf("getting stack configuration: %w", err))
 	}
 
 	decrypter := sm.Decrypter()
@@ -265,13 +265,13 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	if err := workspace.ValidateStackConfigAndApplyProjectConfig(
 		ctx, s.Ref().Name().String(), proj, cfg.Environment, cfg.Config, encrypter, decrypter,
 	); err != nil {
-		return pulumiResult{}, fmt.Errorf("validating stack config: %w", err)
+		return failedResult(a, "", fmt.Errorf("validating stack config: %w", err))
 	}
 
 	autonamer, err := autonaming.ParseAutonamingConfig(
 		autonamingStackContextFor(proj, s), cfg.Config, decrypter)
 	if err != nil {
-		return pulumiResult{}, fmt.Errorf("getting autonaming config: %w", err)
+		return failedResult(a, "", fmt.Errorf("getting autonaming config: %w", err))
 	}
 
 	// Pass nil for flags: GetUpdateMetadata only uses them to record
@@ -279,7 +279,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	m, err := metadata.GetUpdateMetadata("" /*message*/, root,
 		"neo" /*execKind*/, "" /*execAgent*/, false /*updatePlan*/, cfg, nil)
 	if err != nil {
-		return pulumiResult{}, fmt.Errorf("gathering metadata: %w", err)
+		return failedResult(a, "", fmt.Errorf("gathering metadata: %w", err))
 	}
 
 	opts := backend.UpdateOptions{
@@ -304,7 +304,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 
 	eventsFile, err := os.CreateTemp("", "pulumi-neo-events-*.ndjson")
 	if err != nil {
-		return pulumiResult{}, fmt.Errorf("creating events file: %w", err)
+		return failedResult(a, "", fmt.Errorf("creating events file: %w", err))
 	}
 	// We deliberately do NOT delete the file on exit — the agent may read it via
 	// the filesystem tool after the handler returns. Callers accept the OS temp-dir
@@ -364,14 +364,7 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 	close(eventsCh)
 	<-drainDone
 
-	res := pulumiResult{
-		ProjectName: a.ProjectName,
-		StackName:   a.StackName,
-		EventsFile:  eventsPath,
-	}
-	if res.ProjectName == "" {
-		res.ProjectName = proj.Name.String()
-	}
+	res := newPulumiResult(proj, s.Ref(), eventsPath)
 
 	switch {
 	case runErr != nil && errors.Is(ctx.Err(), context.Canceled):
@@ -399,7 +392,11 @@ func (p *Pulumi) run(ctx context.Context, a pulumiArgs, isPreview bool) (pulumiR
 		if isPreview {
 			label = "preview"
 		}
-		return res, fmt.Errorf("pulumi %s: %w", label, runErr)
+		// Prepend the error so the agent sees the reason even when the engine
+		// returned without emitting any DiagEvents (host crash, plugin
+		// discovery, marshalling).
+		res.Logs = fmt.Sprintf("error: pulumi %s: %s\n", label, runErr) + res.Logs
+		return res, errToolFailed
 	}
 	return res, nil
 }
@@ -635,6 +632,41 @@ func silenceStd() func() {
 		os.Stdout, os.Stderr = origStdout, origStderr
 		_ = null.Close()
 	}
+}
+
+// newPulumiResult returns a pulumiResult populated with the canonical project
+// name and bare stack name from the parsed StackReference. ParseStackReference
+// accepts both bare names and fully-qualified "<org>/<project>/<stack>" forms,
+// but downstream consumers (the Neo agent's entity extraction in particular)
+// treat the returned stack_name as a bare name. Echoing the raw input back
+// would cause the agent to construct entities with malformed names whenever
+// the LLM passes an FQSN — a phrasing the CLI itself encourages via some of
+// its own error messages.
+func newPulumiResult(proj *workspace.Project, stackRef backend.StackReference, eventsPath string) pulumiResult {
+	return pulumiResult{
+		ProjectName: proj.Name.String(),
+		StackName:   stackRef.Name().String(),
+		EventsFile:  eventsPath,
+	}
+}
+
+// errToolFailed is the sentinel returned by failedResult. Its content is unread:
+// Session.invokeToolCall reads only err != nil to flip IsError.
+var errToolFailed = errors.New("pulumi tool failed")
+
+// failedResult builds the (pulumiResult, error) pair for every failure path in
+// run(). Session.invokeToolCall keeps the handler's value as Content (a zero
+// pulumiResult boxed into any is non-nil because the interface carries a type
+// descriptor, so the err.Error() fallback never fires), so Status and Logs are
+// the only channels through which the failure reason reaches the agent.
+func failedResult(a pulumiArgs, eventsPath string, err error) (pulumiResult, error) {
+	return pulumiResult{
+		Status:      "failed",
+		Logs:        "error: " + err.Error() + "\n",
+		ProjectName: a.ProjectName,
+		StackName:   a.StackName,
+		EventsFile:  eventsPath,
+	}, errToolFailed
 }
 
 // autonamingStackContextFor mirrors operations.autonamingStackContext without pulling in
