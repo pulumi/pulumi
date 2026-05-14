@@ -1223,6 +1223,61 @@ func (pc *Client) ListAuditLogs(
 	return resp, nil
 }
 
+// ExportAuditLogsOptions are the optional query parameters accepted by
+// ExportAuditLogs. Empty fields are omitted from the request and let the
+// service apply its own defaults.
+type ExportAuditLogsOptions struct {
+	// Format is the export format: "csv" or "cef". Empty defaults to "csv".
+	Format string
+	// EventType filters the audit log to a single event type. Empty means no
+	// filter.
+	EventType string
+	// User filters the audit log to events triggered by a single user, by
+	// GitHub login. Empty means no filter.
+	User string
+	// StartTime is the upper-bound timestamp of the time range to query, as
+	// understood by the V1 endpoint. Empty means the service default.
+	StartTime string
+	// ContinuationToken pages through results; pass the ContinuationToken
+	// returned by a previous response to fetch the next page.
+	ContinuationToken string
+}
+
+// ExportAuditLogs streams an export of audit log events for the given
+// organization in the requested format (csv or cef), wrapping the
+// `ExportAuditLogEvents` Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/auditlogs/export). Unlike ListAuditLogs, the
+// response is plain text (CSV or CEF lines), not JSON; the caller is
+// responsible for closing the returned ReadCloser.
+func (pc *Client) ExportAuditLogs(
+	ctx context.Context, orgName string, opts ExportAuditLogsOptions,
+) (io.ReadCloser, error) {
+	format := opts.Format
+	if format == "" {
+		format = "csv"
+	}
+	queryObj := struct {
+		Format            string `url:"format,omitempty"`
+		EventType         string `url:"eventType,omitempty"`
+		User              string `url:"user,omitempty"`
+		StartTime         string `url:"startTime,omitempty"`
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{
+		Format:            format,
+		EventType:         opts.EventType,
+		User:              opts.User,
+		StartTime:         opts.StartTime,
+		ContinuationToken: opts.ContinuationToken,
+	}
+
+	var body io.ReadCloser
+	path := fmt.Sprintf("/api/orgs/%s/auditlogs/export", url.PathEscape(orgName))
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &body); err != nil {
+		return nil, fmt.Errorf("exporting audit logs: %w", err)
+	}
+	return body, nil
+}
+
 // UpdateOrganizationMember updates the role assignment of a member within
 // the given organization. Wraps the `UpdateOrganizationMember` Pulumi Cloud
 // REST endpoint (PATCH /api/orgs/{orgName}/members/{userLogin}). Only the
