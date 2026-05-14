@@ -439,7 +439,7 @@ func vcsURLHint(source string) string {
 	if p == "" {
 		return ""
 	}
-	host := gitutil.VCSKind(strings.TrimPrefix(u.Host, "www."))
+	host := strings.TrimPrefix(u.Host, "www.")
 	switch host {
 	case gitutil.GitHubHostName, gitutil.GitLabHostName, gitutil.BitbucketHostName:
 		if strings.HasSuffix(p, ".git") || strings.Contains(p, ".git/") {
