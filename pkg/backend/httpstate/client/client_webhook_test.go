@@ -154,3 +154,57 @@ func TestGetStackWebhook(t *testing.T) {
 		assert.ErrorContains(t, err, "not found")
 	})
 }
+
+func TestPingStackWebhook(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		want := apitype.WebhookDelivery{
+			ID:           "delivery-123",
+			Kind:         "ping",
+			Payload:      `{"timestamp":1234567890,"message":"ping"}`,
+			Timestamp:    1234567890,
+			Duration:     42,
+			RequestURL:   "https://example.com/webhook",
+			ResponseCode: 200,
+			ResponseBody: "ok",
+		}
+
+		var gotPath, gotMethod string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(want)
+			require.NoError(t, err)
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		got, err := c.PingStackWebhook(t.Context(), stackID, "deploy-hook")
+		require.NoError(t, err)
+
+		assert.Equal(t, "POST", gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/hooks/deploy-hook/ping", gotPath)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("http error", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusNotFound, `{"message":"not found"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		_, err := c.PingStackWebhook(t.Context(), stackID, "no-such-hook")
+		assert.Error(t, err)
+	})
+}

@@ -734,6 +734,17 @@ func (pc *Client) GetStackWebhook(
 	return resp, nil
 }
 
+// PingStackWebhook sends a test ping to the given webhook and returns the delivery result.
+func (pc *Client) PingStackWebhook(
+	ctx context.Context, stackID StackIdentifier, webhookName string,
+) (apitype.WebhookDelivery, error) {
+	var resp apitype.WebhookDelivery
+	if err := pc.restCall(ctx, "POST", getStackPath(stackID, "hooks", webhookName, "ping"), nil, nil, &resp); err != nil {
+		return apitype.WebhookDelivery{}, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
