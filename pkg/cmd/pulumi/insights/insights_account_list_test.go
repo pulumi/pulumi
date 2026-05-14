@@ -361,17 +361,21 @@ func TestInsightsAccountListCmd_CountPaginatesUntilSatisfied(t *testing.T) {
 	require.Len(t, client.calls, 2, "should have stopped paginating after --count satisfied")
 }
 
-// TestInsightsAccountListCmd_CountZeroReturnsEmpty: --count 0 is an explicit
-// "I want nothing" — return an empty list immediately without contacting the
-// server. This is the difference between "flag unset" (one page) and "flag set
-// to zero" (no rows).
-func TestInsightsAccountListCmd_CountZeroReturnsEmpty(t *testing.T) {
+// TestInsightsAccountListCmd_CountZeroEqualsAll: --count 0 is a synonym for
+// --all, per #22959 — paginate to exhaustion.
+func TestInsightsAccountListCmd_CountZeroEqualsAll(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
 		pages: []apitype.ListInsightsAccountsResponse{
-			// Canned page that must not be requested.
-			{Accounts: []apitype.InsightsAccount{sampleAccount("a1")}},
+			{
+				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				NextToken: "cursor-1",
+			},
+			{
+				Accounts:  []apitype.InsightsAccount{sampleAccount("a3")},
+				NextToken: "",
+			},
 		},
 	}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
@@ -383,8 +387,13 @@ func TestInsightsAccountListCmd_CountZeroReturnsEmpty(t *testing.T) {
 	var out bytes.Buffer
 	err := c.Run(t.Context(), &out, args)
 	require.NoError(t, err)
-	assert.JSONEq(t, `{"accounts":[]}`, out.String())
-	assert.Empty(t, client.calls, "--count 0 must not contact the server")
+
+	var got struct {
+		Accounts []apitype.InsightsAccount `json:"accounts"`
+	}
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+	require.Len(t, got.Accounts, 3)
+	require.Len(t, client.calls, 2)
 }
 
 // TestInsightsAccountListCmd_CountLargerThanAvailable: when --count asks for
