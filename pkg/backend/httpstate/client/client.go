@@ -774,6 +774,17 @@ func (pc *Client) CreateStackWebhook(
 	return resp, nil
 }
 
+// GetDriftStatus returns the current drift detection status for the given stack.
+func (pc *Client) GetDriftStatus(
+	ctx context.Context, stackID StackIdentifier,
+) (apitype.StackDriftStatus, error) {
+	var resp apitype.StackDriftStatus
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "drift", "status"), nil, nil, &resp); err != nil {
+		return apitype.StackDriftStatus{}, err
+	}
+	return resp, nil
+}
+
 // DeleteStackWebhook deletes the given webhook from the stack.
 func (pc *Client) DeleteStackWebhook(
 	ctx context.Context, stackID StackIdentifier, webhookName string,
