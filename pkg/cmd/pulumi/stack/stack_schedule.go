@@ -16,7 +16,6 @@ package stack
 
 import (
 	"encoding/json"
-	"errors"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -141,43 +140,5 @@ func newStackScheduleCmd() *cobra.Command {
 	cmd.AddCommand(newStackScheduleGetCmd())
 	cmd.AddCommand(newStackScheduleEditCmd())
 	cmd.AddCommand(newStackScheduleRemoveCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23046]: Not yet implemented.
-func newStackScheduleEditCmd() *cobra.Command {
-	var (
-		stack     string
-		cron      string
-		once      string
-		operation string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "edit",
-		Short:  "Update the configuration of a custom deployment schedule",
-		Long:   "[EXPERIMENTAL] Update the configuration of a custom deployment schedule.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "schedule-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&cron, "cron", "",
-		"A cron expression for recurring executions")
-	cmd.Flags().StringVar(&once, "once", "",
-		"An ISO 8601 timestamp for a one-time execution")
-	cmd.Flags().StringVar(&operation, "operation", "",
-		"The Pulumi operation to perform: update, preview, refresh, or destroy")
-
 	return cmd
 }

@@ -861,6 +861,51 @@ func (pc *Client) DeleteStackSchedule(
 	return pc.restCall(ctx, "DELETE", path, nil, nil, nil)
 }
 
+// UpdateStackSchedule updates a raw scheduled deployment action. The full request body is expected: callers should read
+// the current schedule and pass back any fields they want to preserve (the service treats omitted bool options as
+// false).
+func (pc *Client) UpdateStackSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+	req apitype.CreateScheduledDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "schedules", scheduleID)
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// UpdateStackDriftSchedule updates a drift-detection scheduled deployment action. The full request body is expected:
+// callers should read the current schedule and pass back any fields they want to preserve (the service treats omitted
+// bool options as false).
+func (pc *Client) UpdateStackDriftSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+	req apitype.CreateScheduledDriftDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "drift", "schedules", scheduleID)
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// UpdateStackTTLSchedule updates a TTL scheduled deployment action. The full request body is expected: callers should
+// read the current schedule and pass back any fields they want to preserve (the service treats omitted bool options as
+// false).
+func (pc *Client) UpdateStackTTLSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+	req apitype.CreateScheduledTTLDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "ttl", "schedules", scheduleID)
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
