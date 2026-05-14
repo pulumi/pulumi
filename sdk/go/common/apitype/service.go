@@ -70,7 +70,7 @@ type DeploymentSchemaVersionConfig struct {
 type NeoCLIModeConfig struct {
 	// MinCLIVersion is the minimum Pulumi CLI semver required to use `pulumi neo`. Empty
 	// means no minimum.
-	MinCLIVersion string `json:"minCliVersion,omitempty"`
+	MinCLIVersion *semver.Version `json:"minCliVersion,omitempty"`
 }
 
 // APIVersionCapabilityConfig is the configuration for the api-version capability. It advertises
