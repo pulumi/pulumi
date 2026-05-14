@@ -162,4 +162,3 @@ func TestGetStackSchedule(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
-
