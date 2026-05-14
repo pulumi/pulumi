@@ -752,6 +752,12 @@ func (pc *Client) CreateOrgWebhook(
 	return resp, nil
 }
 
+// DeleteOrgWebhook deletes the given webhook from the organization.
+func (pc *Client) DeleteOrgWebhook(ctx context.Context, org, webhookName string) error {
+	return pc.restCall(ctx, "DELETE",
+		"/api/orgs/"+url.PathEscape(org)+"/hooks/"+url.PathEscape(webhookName), nil, nil, nil)
+}
+
 // ListStackWebhooks returns all webhooks configured for the given stack.
 func (pc *Client) ListStackWebhooks(ctx context.Context, stackID StackIdentifier) ([]apitype.Webhook, error) {
 	var resp []apitype.Webhook

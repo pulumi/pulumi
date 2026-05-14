@@ -88,31 +88,7 @@ func newOrgWebhookEditCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/22968]: Not yet implemented.
-func newOrgWebhookRemoveCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "remove",
-		Short:  "Permanently delete an organization webhook",
-		Long:   "[EXPERIMENTAL] Permanently delete an organization webhook.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "name"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the webhook")
-
-	return cmd
-}
+// newOrgWebhookRemoveCmd is defined in org_webhook_remove.go.
 
 // TODO[https://github.com/pulumi/pulumi/issues/22969]: Not yet implemented.
 func newOrgWebhookPingCmd() *cobra.Command {
