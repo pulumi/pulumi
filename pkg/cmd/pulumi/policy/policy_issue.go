@@ -15,8 +15,6 @@
 package policy
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -37,31 +35,5 @@ func newPolicyIssueCmd() *cobra.Command {
 
 	cmd.AddCommand(newPolicyIssueListCmd())
 	cmd.AddCommand(newPolicyIssueGetCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/22996]: Not yet implemented.
-func newPolicyIssueGetCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Get the details of a specific policy issue",
-		Long:   "[EXPERIMENTAL] Get the details of a specific policy issue.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "issue-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the issue")
-
 	return cmd
 }

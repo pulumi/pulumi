@@ -1182,6 +1182,23 @@ func (pc *Client) ListPolicyIssues(
 	return resp, nil
 }
 
+// GetPolicyIssue returns the details of a single policy issue in the given
+// organization, wrapping the `GetPolicyIssue` Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
+func (pc *Client) GetPolicyIssue(
+	ctx context.Context, orgName, issueID string,
+) (apitype.PolicyIssue, error) {
+	path := fmt.Sprintf(
+		"/api/orgs/%s/policyresults/issues/%s",
+		url.PathEscape(orgName), url.PathEscape(issueID))
+
+	var resp apitype.PolicyIssue
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return apitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
+	}
+	return resp, nil
+}
+
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyPacksResponse, *string, error,
