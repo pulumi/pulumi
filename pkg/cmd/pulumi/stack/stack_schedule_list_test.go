@@ -237,7 +237,7 @@ func TestStackScheduleList_Count(t *testing.T) {
 			Schedules []scheduleSummary `json:"schedules"`
 		}
 		require.NoError(t, json.Unmarshal(buf.Bytes(), &got))
-		assert.Len(t, got.Schedules, 1)
+		require.Len(t, got.Schedules, 1)
 		assert.Equal(t, "bb61b60a", got.Schedules[0].ID)
 	})
 }
