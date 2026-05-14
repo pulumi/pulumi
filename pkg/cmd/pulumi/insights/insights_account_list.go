@@ -85,9 +85,6 @@ type insightsAccountListCmd struct {
 	clientFactory accountListClientFactory
 }
 
-// newInsightsAccountListCmd builds the `pulumi insights account list` command.
-// factory produces the cloud client and resolves the effective org; pass nil to
-// use the production factory backed by [cloud.ResolveContext].
 func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command {
 	if factory == nil {
 		factory = defaultAccountListClientFactory
