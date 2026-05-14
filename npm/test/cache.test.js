@@ -24,11 +24,14 @@ describe("cacheDir()", () => {
         assert.equal(cacheDir("3.99.0"), path.join("/npm-cache", "_pulumi", "3.99.0"));
     });
 
-    it("falls back to package directory when npm_config_cache is not set", () => {
+    it("falls back to npm's default cache directory when npm_config_cache is not set", () => {
+        if (process.platform === "win32") return; // default path is platform-specific
         delete process.env.npm_config_cache;
         const dir = cacheDir("3.99.0");
-        assert.ok(dir.includes("_pulumi"), `expected _pulumi in path, got ${dir}`);
-        assert.ok(dir.includes("3.99.0"), `expected version in path, got ${dir}`);
+        assert.ok(
+            dir.startsWith(require("path").join(require("os").homedir(), ".npm")),
+            `expected ~/.npm prefix, got ${dir}`,
+        );
     });
 
     it("different versions produce different paths", () => {
