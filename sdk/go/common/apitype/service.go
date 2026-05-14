@@ -17,6 +17,8 @@ package apitype
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/blang/semver"
 )
 
 // An APICapability is the name of a capability or feature that a service backend

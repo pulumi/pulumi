@@ -17,6 +17,7 @@ package neo
 import (
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,6 +26,11 @@ import (
 
 func TestNeoUpgradeMessage(t *testing.T) {
 	t.Parallel()
+
+	minVer := func(s string) *semver.Version {
+		v := semver.MustParse(s)
+		return &v
+	}
 
 	cases := []struct {
 		name           string
@@ -39,30 +45,30 @@ func TestNeoUpgradeMessage(t *testing.T) {
 			currentVersion: "3.100.0",
 		},
 		{
-			name: "empty MinCLIVersion",
+			name: "nil MinCLIVersion",
 			caps: apitype.Capabilities{
-				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: ""},
+				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: nil},
 			},
 			currentVersion: "3.100.0",
 		},
 		{
 			name: "current equals required",
 			caps: apitype.Capabilities{
-				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: "3.250.0"},
+				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: minVer("3.250.0")},
 			},
 			currentVersion: "3.250.0",
 		},
 		{
 			name: "current newer than required",
 			caps: apitype.Capabilities{
-				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: "3.250.0"},
+				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: minVer("3.250.0")},
 			},
 			currentVersion: "3.260.5",
 		},
 		{
 			name: "current older than required",
 			caps: apitype.Capabilities{
-				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: "3.250.0"},
+				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: minVer("3.250.0")},
 			},
 			currentVersion: "3.233.0",
 			wantUpgrade:    true,
@@ -71,21 +77,14 @@ func TestNeoUpgradeMessage(t *testing.T) {
 		{
 			name: "dev build with empty version falls through",
 			caps: apitype.Capabilities{
-				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: "3.250.0"},
+				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: minVer("3.250.0")},
 			},
 			currentVersion: "",
 		},
 		{
-			name: "unparseable MinCLIVersion falls through",
-			caps: apitype.Capabilities{
-				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: "not-a-semver"},
-			},
-			currentVersion: "3.100.0",
-		},
-		{
 			name: "patch difference enforced",
 			caps: apitype.Capabilities{
-				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: "3.250.5"},
+				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: minVer("3.250.5")},
 			},
 			currentVersion: "3.250.4",
 			wantUpgrade:    true,
@@ -94,7 +93,7 @@ func TestNeoUpgradeMessage(t *testing.T) {
 		{
 			name: "prerelease handled by ParseTolerant",
 			caps: apitype.Capabilities{
-				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: "3.250.0"},
+				NeoCLIMode: &apitype.NeoCLIModeConfig{MinCLIVersion: minVer("3.250.0")},
 			},
 			currentVersion: "3.250.0-alpha.1",
 			wantUpgrade:    true,

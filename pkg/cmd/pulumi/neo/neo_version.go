@@ -23,17 +23,14 @@ import (
 )
 
 // neoUpgradeMessage returns a user-facing upgrade message when the build is
-// older than the service-advertised minimum, or "" otherwise. Missing or
-// unparseable versions fall through silently so a dev build (empty
-// version.Version) or a garbled service response can't lock users out.
+// older than the service-advertised minimum, or "" otherwise. An unparseable
+// local version (e.g. an empty version.Version on a dev build) falls through
+// silently so it can't lock developers out.
 func neoUpgradeMessage(caps apitype.Capabilities, currentVersion string) string {
-	if caps.NeoCLIMode == nil || caps.NeoCLIMode.MinCLIVersion == "" {
+	if caps.NeoCLIMode == nil || caps.NeoCLIMode.MinCLIVersion == nil {
 		return ""
 	}
-	required, err := semver.ParseTolerant(caps.NeoCLIMode.MinCLIVersion)
-	if err != nil {
-		return ""
-	}
+	required := *caps.NeoCLIMode.MinCLIVersion
 	current, err := semver.ParseTolerant(currentVersion)
 	if err != nil {
 		return ""

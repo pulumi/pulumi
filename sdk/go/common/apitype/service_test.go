@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -307,9 +308,25 @@ func TestCapabilities(t *testing.T) {
 		}
 		actual, err := response.Parse()
 		require.NoError(t, err)
+		want := semver.MustParse("3.250.0")
 		assert.Equal(t, Capabilities{
-			NeoCLIMode: &NeoCLIModeConfig{MinCLIVersion: "3.250.0"},
+			NeoCLIMode: &NeoCLIModeConfig{MinCLIVersion: &want},
 		}, actual)
+	})
+
+	t.Run("parse neo-cli-mode v1 with invalid semver errors", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    NeoCLIMode,
+					Version:       1,
+					Configuration: json.RawMessage(`{"minCliVersion":"not-a-semver"}`),
+				},
+			},
+		}
+		_, err := response.Parse()
+		require.Error(t, err)
 	})
 
 	t.Run("parse neo-cli-mode with newer version ignored", func(t *testing.T) {
