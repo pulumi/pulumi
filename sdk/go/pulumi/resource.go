@@ -331,7 +331,8 @@ type CustomTimeouts struct {
 
 // ResourceHookOptions are the options for registering a resource hook.
 type ResourceHookOptions struct {
-	OnDryRun bool // Run the hook during dry run (preview) operations. Defaults to false.
+	OnDryRun     bool // Run the hook during dry run (preview) operations. Defaults to false.
+	IgnoreErrors bool // If true, errors are logged as warnings instead of failing the program.
 }
 
 // ResourceHookArgs represents the arguments passed to a resource hook.

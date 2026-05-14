@@ -17,12 +17,27 @@ package neo
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"math/rand/v2"
+	"net"
+	"net/url"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+)
+
+// Reconnect tuning. Backoff doubles per consecutive failure up to reconnectMaxBackoff;
+// the total budget resets on every successfully-delivered event. Vars (not consts) so
+// tests can override them.
+var (
+	reconnectInitialBackoff = 1 * time.Second
+	reconnectMaxBackoff     = 30 * time.Second
+	reconnectTotalBudget    = 5 * time.Minute
 )
 
 // ToolHandler executes a single named method on a Neo CLI-local tool. The method is the
@@ -36,8 +51,12 @@ type ToolHandler interface {
 // EventStreamer is the subset of *client.Client we depend on for the SSE event stream and
 // for posting CLI tool result user events back to the Neo task. It is an interface so the
 // loop can be unit-tested without a live HTTP backend.
+//
+// lastEventID is the SSE id of the last event the caller successfully processed; the
+// service replays only events with sequence greater than that id, so a reconnect resumes
+// losslessly. Pass "" for the initial connection.
 type EventStreamer interface {
-	StreamNeoTaskEvents(ctx context.Context, orgName, taskID string) (<-chan client.NeoStreamEvent, error)
+	StreamNeoTaskEvents(ctx context.Context, orgName, taskID, lastEventID string) (<-chan client.NeoStreamEvent, error)
 	PostNeoTaskUserEvent(ctx context.Context, orgName, taskID string, body any) error
 }
 
@@ -58,31 +77,133 @@ type Session struct {
 	UIEvents chan<- UIEvent
 }
 
-// Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil)
-// or the SSE stream errors out (returns the error).
+// Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil),
+// the stream ends cleanly (returns nil), or an unrecoverable error occurs (returns the
+// error). Mid-stream network drops are reopened silently with Last-Event-ID so the
+// server replays missed events; the user sees no signal unless the retry budget is
+// exhausted.
 func (s *Session) Run(ctx context.Context) error {
-	stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID)
-	if err != nil {
-		return fmt.Errorf("opening event stream: %w", err)
-	}
+	var (
+		lastEventID string
+		failures    int
+		deadline    time.Time
+	)
 
+	for {
+		stream, err := s.Client.StreamNeoTaskEvents(ctx, s.OrgName, s.TaskID, lastEventID)
+		if err != nil {
+			// Never-yet-connected or non-transient error: surface the original
+			// open failure so e.g. auth/not-found don't get masked by silent retry.
+			if lastEventID == "" || !isTransientStreamError(err) {
+				return fmt.Errorf("opening event stream: %w", err)
+			}
+		} else {
+			gotEvent, drainErr := s.drainStream(ctx, stream, &lastEventID)
+			if gotEvent {
+				// Progress means the connection works; reset the budget so a flaky
+				// link doesn't burn 5 minutes' worth of attempts on intermittent drops.
+				failures = 0
+				deadline = time.Time{}
+			}
+			if drainErr == nil {
+				return nil
+			}
+			if !isTransientStreamError(drainErr) {
+				return drainErr
+			}
+			err = drainErr
+		}
+
+		if deadline.IsZero() {
+			deadline = time.Now().Add(reconnectTotalBudget)
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("event stream reconnect budget exhausted: %w", err)
+		}
+		failures++
+		if !sleepCtx(ctx, backoffDelay(failures)) {
+			return nil
+		}
+	}
+}
+
+// drainStream reads events until the channel closes, ctx is cancelled, or an error
+// event arrives. It updates *lastEventID for each event that carries an `id:`. The
+// first return reports whether any non-error event was delivered.
+func (s *Session) drainStream(
+	ctx context.Context, stream <-chan client.NeoStreamEvent, lastEventID *string,
+) (bool, error) {
+	gotEvent := false
 	for {
 		select {
 		case <-ctx.Done():
-			// Caller-initiated shutdown (e.g. TUI quit) is not an error — surfacing
-			// context.Canceled here would print "error: context canceled" on a normal exit.
-			return nil
+			return gotEvent, nil
 		case evt, ok := <-stream:
 			if !ok {
-				return nil
+				return gotEvent, nil
 			}
 			if evt.Err != nil {
-				return evt.Err
+				return gotEvent, evt.Err
 			}
+			if evt.ID != "" {
+				*lastEventID = evt.ID
+			}
+			gotEvent = true
 			if err := s.handleEvent(ctx, evt.Data); err != nil {
-				return err
+				return gotEvent, err
 			}
 		}
+	}
+}
+
+// isTransientStreamError reports whether err is a transport-level failure worth a
+// reconnect attempt. Conservative on purpose: unrecognised errors (handler bugs,
+// decode errors) propagate so they aren't masked by silent retries.
+func isTransientStreamError(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return false
+	}
+	if errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, syscall.ETIMEDOUT) ||
+		errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	var ne net.Error
+	if errors.As(err, &ne) && ne.Timeout() {
+		return true
+	}
+	var ue *url.Error
+	if errors.As(err, &ue) {
+		return !errors.Is(ue.Err, context.Canceled)
+	}
+	var oe *net.OpError
+	return errors.As(err, &oe)
+}
+
+// backoffDelay returns the wait before the Nth (1-based) reconnect attempt: exponential
+// up to reconnectMaxBackoff, plus up to 25% jitter to desynchronise flapping clients.
+func backoffDelay(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	d := reconnectInitialBackoff << (attempt - 1)
+	if d <= 0 || d > reconnectMaxBackoff {
+		d = reconnectMaxBackoff
+	}
+	// #nosec G404 -- jitter is a desynchronization signal, not a secret.
+	return d + time.Duration(rand.Int64N(int64(d/4)+1))
+}
+
+// sleepCtx waits for d or until ctx is cancelled. Returns false if cancelled first.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return true
+	case <-ctx.Done():
+		return false
 	}
 }
 
@@ -162,7 +283,21 @@ func (s *Session) runBatch(ctx context.Context, calls []apitype.AgentBackendEven
 		result := s.invokeToolCall(ctx, call)
 		items = append(items, result)
 
-		sendUI(s.UIEvents, UIToolCompleted{Name: call.Name, Args: call.Args, IsError: result.IsError})
+		// Marshal a JSON copy for the overlay. A failure shouldn't abort the
+		// call (the post above already happened with the original any value),
+		// so pack the error into a stub Result the overlay can render.
+		resultRaw, err := json.Marshal(result.Content)
+		if err != nil {
+			resultRaw, _ = json.Marshal(map[string]string{
+				"marshal_error": err.Error(),
+			})
+		}
+		sendUI(s.UIEvents, UIToolCompleted{
+			Name:    call.Name,
+			Args:    call.Args,
+			Result:  resultRaw,
+			IsError: result.IsError,
+		})
 	}
 
 	result := apitype.AgentUserEventToolResult{
@@ -256,6 +391,16 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 			IsFinal:           msg.IsFinal,
 			HasPendingCLIWork: msg.IsFinal && hasPendingCLIToolCalls(msg.ToolCalls),
 		})
+		// todo__TodoWrite is cloud-marked, so it never reaches runBatch / the
+		// UIToolStarted path — forward the args directly as a UITodoList.
+		for _, tc := range msg.ToolCalls {
+			if tc.Name != toolNameTodoWrite {
+				continue
+			}
+			if items, ok := parseTodoWriteArgs(tc.Args); ok {
+				sendUI(s.UIEvents, UITodoList{Items: items})
+			}
+		}
 	case backendEventExecToolCallProgress:
 		var p apitype.AgentBackendEventExecToolCallProgress
 		if err := json.Unmarshal(eventBody, &p); err != nil {
@@ -287,6 +432,7 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 			Sensitivity:     req.Sensitivity,
 			ApprovalType:    req.ApprovalType,
 			PlanDescription: req.Context.PlanDescription,
+			ToolName:        req.Context.ToolName,
 		})
 	case backendEventAwaitingApprovals:
 		sendUI(s.UIEvents, UIAwaitingApprovals{})
@@ -307,17 +453,40 @@ func (s *Session) forwardToUI(eventBody json.RawMessage) {
 	}
 }
 
-// forwardUserInputToUI parses a userInput event body and sends a UIUserMessage to the TUI.
+// forwardUserInputToUI parses a userInput event body and routes it to the TUI:
+// user_message → UIUserMessage (echo of a chat message, possibly from another
+// client) and user_confirmation → UIApprovalResolved (the cloud's signal that a
+// pending approval has been settled, either by the user clicking approve in the
+// console or by the auto-approval handler under ApprovalMode=auto/balanced).
 func (s *Session) forwardUserInputToUI(eventBody json.RawMessage) {
 	if s.UIEvents == nil {
 		return
 	}
 
-	var evt apitype.AgentUserEventUserMessage
-	if err := json.Unmarshal(eventBody, &evt); err != nil {
+	// Peek at the inner type; we reuse AgentBackendEventHeader because it's just
+	// a Type field and the JSON shape on the user-input side matches.
+	var head apitype.AgentBackendEventHeader
+	if err := json.Unmarshal(eventBody, &head); err != nil {
 		return
 	}
-	if evt.Content != "" {
-		sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+
+	switch head.Type {
+	case userEventUserMessage:
+		var evt apitype.AgentUserEventUserMessage
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return
+		}
+		if evt.Content != "" {
+			sendUI(s.UIEvents, UIUserMessage{Content: evt.Content})
+		}
+	case userEventUserConfirmation:
+		var evt apitype.AgentUserEventUserConfirmation
+		if err := json.Unmarshal(eventBody, &evt); err != nil {
+			return
+		}
+		sendUI(s.UIEvents, UIApprovalResolved{
+			ApprovalID: evt.ApprovalID,
+			Approved:   evt.Approved,
+		})
 	}
 }

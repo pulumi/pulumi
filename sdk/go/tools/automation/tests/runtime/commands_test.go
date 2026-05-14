@@ -32,10 +32,10 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optcancel"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optorgsearch"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optorgsearchai"
-	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/optstatemove"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optcancel"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optorgsearch"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optorgsearchai"
+	"github.com/pulumi/pulumi/sdk/v3/go/tools/automation/output/automation/optstatemove"
 )
 
 // newAPI constructs an API wired to the testing boilerplate, which
@@ -144,10 +144,10 @@ func TestOrgSearch_RepeatableQuery(t *testing.T) {
 	}
 }
 
-func TestOrgSearchAi_SingleQuery(t *testing.T) {
+func TestOrgSearchAI_SingleQuery(t *testing.T) {
 	api := newAPI()
 	got := runStdout(t, func() (string, error) {
-		r, err := api.OrgSearchAi(
+		r, err := api.OrgSearchAI(
 			t.Context(),
 			optorgsearchai.Query("hello"),
 		)
@@ -155,7 +155,7 @@ func TestOrgSearchAi_SingleQuery(t *testing.T) {
 	})
 	want := "pulumi org search ai --query hello"
 	if got != want {
-		t.Fatalf("OrgSearchAi(query=hello) = %q, want %q", got, want)
+		t.Fatalf("OrgSearchAI(query=hello) = %q, want %q", got, want)
 	}
 }
 

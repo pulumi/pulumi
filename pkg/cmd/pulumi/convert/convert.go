@@ -224,13 +224,7 @@ func runConvert(
 		from = "yaml"
 	}
 
-	// Translate well known languages to runtimes
-	switch language {
-	case "csharp", "c#":
-		language = "dotnet"
-	case "typescript":
-		language = "nodejs"
-	}
+	language = cmdCmd.NormalizeRuntimeName(language)
 
 	var projectGenerator projectGeneratorFunction
 	switch language {
@@ -565,6 +559,7 @@ func generateAndLinkSdksForPackages(
 		}
 
 		pkgSpec, _, err := packages.SchemaFromSchemaSource(
+			pkgWorkspace.Instance,
 			pctx,
 			pkg.Name,
 			&plugin.ParameterizeValue{Value: pkg.Parameterization.Value},

@@ -1,0 +1,6 @@
+[project]
+name = "pylint"
+version = "0.0.0"
+dependencies = [
+    "pylint",
+]

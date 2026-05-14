@@ -100,6 +100,8 @@ func (m *Model) renderPulumiBlock(st *pulumiBlockState) string {
 	header := pulumiHeaderStyle.Render(title)
 	var status string
 	switch {
+	case !st.done && len(st.resources) == 0:
+		status = pulumiMetaStyle.Render(" · preparing")
 	case !st.done:
 		status = pulumiMetaStyle.Render(" · running")
 	case st.err != "":

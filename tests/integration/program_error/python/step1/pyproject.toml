@@ -1,0 +1,4 @@
+[project]
+name = "program-error-python"
+version = "0.0.0"
+dependencies = []

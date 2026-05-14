@@ -44,6 +44,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -57,13 +58,38 @@ const (
 )
 
 // NeoApprovalMode controls whether the agent requires user approval before executing tools.
+// Mirrors apitype.NeoApprovalMode in pulumi-service; the wire values must stay in sync.
 type NeoApprovalMode string
 
 const (
 	// NeoApprovalModeManual requires the agent to request user approval for each tool call.
 	NeoApprovalModeManual NeoApprovalMode = "manual"
+	// NeoApprovalModeBalanced auto-approves low-risk tool calls and prompts only on
+	// destructive operations. The cloud ApprovalHandler decides which calls qualify.
+	NeoApprovalModeBalanced NeoApprovalMode = "balanced"
 	// NeoApprovalModeAuto allows the agent to execute tools without user approval.
 	NeoApprovalModeAuto NeoApprovalMode = "auto"
+)
+
+// NeoTaskSource identifies the origin that triggered a Neo task.
+type NeoTaskSource string
+
+const (
+	// NeoTaskSourceCLI tags tasks created from the Pulumi CLI.
+	NeoTaskSourceCLI NeoTaskSource = "cli"
+)
+
+// NeoPermissionMode caps the capabilities granted to an agent task. Mirrors
+// apitype.NeoPermissionMode in pulumi-service; the wire values must stay in sync.
+type NeoPermissionMode string
+
+const (
+	// NeoPermissionModeDefault grants the agent the full set of capabilities permitted
+	// by the user's role. This is the server's default when the field is omitted.
+	NeoPermissionModeDefault NeoPermissionMode = "default"
+	// NeoPermissionModeReadOnly restricts the agent to read-only operations: no
+	// `pulumi up`, no PR creation, no state mutations.
+	NeoPermissionModeReadOnly NeoPermissionMode = "read-only"
 )
 
 // NeoTaskRequest represents a request to create a Neo task. This is a thin client-side
@@ -80,11 +106,18 @@ type NeoTaskRequest struct {
 	// ApprovalMode controls whether the agent requires user approval before executing tools.
 	// JSON tag is camelCase to match apitype.CreateAgentTaskRequest from pulumi-service.
 	ApprovalMode NeoApprovalMode `json:"approvalMode,omitempty"`
+	// PermissionMode caps the agent's capabilities (default vs read-only). Empty means
+	// inherit the org / server default. JSON tag is camelCase to match the service IDL.
+	PermissionMode NeoPermissionMode `json:"permissionMode,omitempty"`
 	// PlanMode, when true, creates the task in plan mode: the agent explores and asks
 	// questions but must not write files, run `pulumi up`, or open PRs. The server enforces
 	// this by activating PlanModeTracker for the task and gating the exit on an approved
 	// exit_plan_mode call. JSON tag is camelCase to match the service IDL.
 	PlanMode bool `json:"planMode,omitempty"`
+	// Source identifies the origin that triggered the task. The CLI always sends
+	// NeoTaskSourceCLI; the server validates against apitype.AgentTaskSource and defaults
+	// to "api" if omitted.
+	Source NeoTaskSource `json:"source,omitempty"`
 }
 
 // NeoTaskMessage represents the message content for a Neo task.
@@ -679,6 +712,48 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 		return apitype.Stack{}, err
 	}
 	return stack, nil
+}
+
+// ListStackWebhooks returns all webhooks configured for the given stack.
+func (pc *Client) ListStackWebhooks(ctx context.Context, stackID StackIdentifier) ([]apitype.Webhook, error) {
+	var resp []apitype.Webhook
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "hooks"), nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetStackWebhook returns a single webhook by name for the given stack.
+func (pc *Client) GetStackWebhook(
+	ctx context.Context, stackID StackIdentifier, webhookName string,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "hooks", webhookName), nil, nil, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
+// PingStackWebhook sends a test ping to the given webhook and returns the delivery result.
+func (pc *Client) PingStackWebhook(
+	ctx context.Context, stackID StackIdentifier, webhookName string,
+) (apitype.WebhookDelivery, error) {
+	var resp apitype.WebhookDelivery
+	if err := pc.restCall(ctx, "POST", getStackPath(stackID, "hooks", webhookName, "ping"), nil, nil, &resp); err != nil {
+		return apitype.WebhookDelivery{}, err
+	}
+	return resp, nil
+}
+
+// CreateStackWebhook creates a new webhook for the given stack.
+func (pc *Client) CreateStackWebhook(
+	ctx context.Context, stackID StackIdentifier, req apitype.Webhook,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	if err := pc.restCall(ctx, "POST", getStackPath(stackID, "hooks"), nil, &req, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
 }
 
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
@@ -1690,17 +1765,16 @@ func (pc *Client) ExplainPreviewWithNeo(
 }
 
 // CreateNeoTaskOptions bundles the optional knobs on CreateNeoTask. The zero value
-// corresponds to the defaults used by `--neo-task-on-failure`: cloud tool execution,
-// server-default approval policy, and plan mode off.
+// accepts the server-side defaults for every field.
 type CreateNeoTaskOptions struct {
 	ToolExecutionMode string
 	ApprovalMode      NeoApprovalMode
+	PermissionMode    NeoPermissionMode
 	PlanMode          bool
 }
 
 // CreateNeoTask creates a new Neo agent task via the Neo Tasks API. See
-// CreateNeoTaskOptions for the available knobs; pass a zero-value struct to accept
-// server defaults (the `--neo-task-on-failure` path).
+// CreateNeoTaskOptions for the available knobs.
 func (pc *Client) CreateNeoTask(
 	ctx context.Context,
 	orgName string,
@@ -1720,7 +1794,9 @@ func (pc *Client) CreateNeoTask(
 		},
 		ToolExecutionMode: opts.ToolExecutionMode,
 		ApprovalMode:      opts.ApprovalMode,
+		PermissionMode:    opts.PermissionMode,
 		PlanMode:          opts.PlanMode,
+		Source:            NeoTaskSourceCLI,
 	}
 	// Only attach a stack entity when we actually have one — the backend rejects
 	// entity_diff entries with empty name/project as "unable to access stack".
@@ -1741,23 +1817,56 @@ func (pc *Client) CreateNeoTask(
 	return &resp, nil
 }
 
+// UpdateNeoTaskOptions bundles the fields a CLI session can change on a live task.
+// Pointer fields let callers update one axis without resetting the other — matches
+// the apitype.UpdateTaskRequest shape on the cloud side.
+type UpdateNeoTaskOptions struct {
+	ApprovalMode   *NeoApprovalMode   `json:"approvalMode,omitempty"`
+	PermissionMode *NeoPermissionMode `json:"permissionMode,omitempty"`
+}
+
+// UpdateNeoTask PATCHes an existing Neo task with new approval / permission mode
+// values. Used by the TUI's mid-session toggles (Ctrl+A / Ctrl+R) so the cloud
+// ApprovalHandler picks up the change immediately. Fields left nil in opts are
+// not sent — the server preserves the existing value.
+func (pc *Client) UpdateNeoTask(
+	ctx context.Context, orgName, taskID string, opts UpdateNeoTaskOptions,
+) error {
+	ctx, cancel := context.WithTimeout(ctx, NeoRequestTimeout)
+	defer cancel()
+
+	path := fmt.Sprintf("/api/preview/agents/%s/tasks/%s", orgName, taskID)
+	if err := pc.restCall(ctx, http.MethodPatch, path, nil, opts, nil); err != nil {
+		return fmt.Errorf("updating Neo task: %w", err)
+	}
+	return nil
+}
+
 // NeoStreamEvent is one item from a Neo task Server-Sent Events (SSE) stream. Exactly
 // one of Data or Err is populated: Data carries an event payload, Err carries a terminal
-// stream error (after which no further values are sent before the channel closes).
+// stream error (after which no further values are sent before the channel closes). ID
+// is the SSE `id:` field associated with the event (empty if absent); callers track it
+// to send `Last-Event-ID` on reconnect so the server can replay missed events.
 type NeoStreamEvent struct {
 	Data []byte
+	ID   string
 	Err  error
 }
 
 // StreamNeoTaskEvents opens a Server-Sent Events (SSE) connection to the Neo task event
 // stream and returns a channel of events. Each value carries either a raw event payload
-// (the bytes following each `data:` line, joined for multi-line events) or a terminal
-// stream error. The channel is closed when the stream ends or ctx is cancelled.
+// (the bytes following each `data:` line, joined for multi-line events) along with the
+// `id:` of that event, or a terminal stream error. The channel is closed when the stream
+// ends or ctx is cancelled.
+//
+// If lastEventID is non-empty it is sent as the `Last-Event-ID` request header; the
+// pulumi-service stream endpoint honors this and replays only events with sequence
+// greater than the given ID, so a reconnect resumes losslessly.
 //
 // The endpoint is the SSE stream introduced in pulumi/pulumi-service#40132. This call
 // does not impose its own timeout — callers should manage lifetime via ctx.
 func (pc *Client) StreamNeoTaskEvents(
-	ctx context.Context, orgName, taskID string,
+	ctx context.Context, orgName, taskID, lastEventID string,
 ) (<-chan NeoStreamEvent, error) {
 	streamURL := pc.apiURL + fmt.Sprintf("/api/preview/agents/%s/tasks/%s/events/stream", orgName, taskID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, streamURL, nil)
@@ -1768,6 +1877,9 @@ func (pc *Client) StreamNeoTaskEvents(
 	req.Header.Set("Cache-Control", "no-cache")
 	req.Header.Set("X-Pulumi-Source", "Pulumi CLI")
 	req.Header.Set("Authorization", "token "+string(pc.apiToken))
+	if lastEventID != "" {
+		req.Header.Set("Last-Event-ID", lastEventID)
+	}
 
 	resp, err := pc.restClient.HTTPClient().Do(req, retryNone)
 	if err != nil {
@@ -1798,13 +1910,16 @@ func (pc *Client) StreamNeoTaskEvents(
 		scanner.Buffer(make([]byte, 64*1024), 8*1024*1024)
 
 		var data bytes.Buffer
+		// Per the SSE spec the "last event ID buffer" persists across events and is only
+		// overwritten by a new `id:` line, so we don't reset eventID on flush.
+		var eventID string
 		flush := func() {
 			if data.Len() == 0 {
 				return
 			}
 			payload := bytes.Clone(data.Bytes())
 			data.Reset()
-			send(NeoStreamEvent{Data: payload})
+			send(NeoStreamEvent{Data: payload, ID: eventID})
 		}
 
 		for scanner.Scan() {
@@ -1822,9 +1937,14 @@ func (pc *Client) StreamNeoTaskEvents(
 					data.WriteByte('\n')
 				}
 				data.WriteString(chunk)
+				continue
 			}
-			// Other SSE fields (event:, id:, retry:) are ignored — the server uses a
-			// single event type and the JSON payload carries its own kind discriminator.
+			if chunk, ok := strings.CutPrefix(line, "id:"); ok {
+				eventID = strings.TrimPrefix(chunk, " ")
+				continue
+			}
+			// Other SSE fields (event:, retry:) are ignored — the server uses a single
+			// event type and the JSON payload carries its own kind discriminator.
 		}
 		flush()
 		if err := scanner.Err(); err != nil && ctx.Err() == nil {
@@ -2231,21 +2351,35 @@ func (pc *Client) ListPackages(ctx context.Context, name *string) iter.Seq2[apit
 	}
 }
 
-func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error] {
-	url := "/api/registry/templates?limit=499"
-	if name != nil {
-		url += "&name=" + *name
+func (pc *Client) ListTemplates(
+	ctx context.Context, opts registry.ListTemplatesOptions,
+) iter.Seq2[apitype.TemplateMetadata, error] {
+	query := url.Values{}
+	query.Set("limit", "499")
+	if opts.Name != "" {
+		query.Set("name", opts.Name)
+	}
+	if opts.Org != "" {
+		query.Set("orgLogin", opts.Org)
+	}
+	if opts.Search != "" {
+		query.Set("search", opts.Search)
 	}
 
 	var continuationToken *string
 	return func(f func(apitype.TemplateMetadata, error) bool) {
 		for {
-			queryURL := url
+			pageQuery := query
 			if continuationToken != nil {
-				queryURL += "&continuationToken=" + *continuationToken
+				// Clone so we don't mutate the captured map between iterations.
+				pageQuery = url.Values{}
+				for k, v := range query {
+					pageQuery[k] = v
+				}
+				pageQuery.Set("continuationToken", *continuationToken)
 			}
 			var resp apitype.ListTemplatesResponse
-			err := pc.restCall(ctx, "GET", queryURL, nil, nil, &resp)
+			err := pc.restCall(ctx, "GET", "/api/registry/templates?"+pageQuery.Encode(), nil, nil, &resp)
 			if err != nil {
 				f(apitype.TemplateMetadata{}, err)
 				return
@@ -2261,4 +2395,88 @@ func (pc *Client) ListTemplates(ctx context.Context, name *string) iter.Seq2[api
 			}
 		}
 	}
+}
+
+// GetInsightsResource fetches a single resource discovered by Pulumi Insights.
+//
+// The `accountName` and `resourceTypeAndId` path parameters are double-decoded
+// on the service side, so we double-URL-encode them here to preserve any
+// embedded `/`, `:`, or `::` characters intact through the full decode chain.
+// `resourceTypeAndId` is the colon-separated `<type>::<id>` identifier as
+// described by the OpenAPI spec for the ReadResource operation.
+func (pc *Client) GetInsightsResource(
+	ctx context.Context, org, account, resourceTypeAndId string,
+) (apitype.InsightsResourceWithVersion, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s/resources/%s",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+		url.PathEscape(url.PathEscape(resourceTypeAndId)),
+	)
+	var resp apitype.InsightsResourceWithVersion
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.InsightsResourceWithVersion{}, err
+	}
+	return resp, nil
+}
+
+// ListStackDeploymentsOptions are the optional query parameters accepted by
+// ListStackDeployments. Zero values mean "let the server pick the default":
+// Page < 1 → 1, PageSize ≤ 0 → 10 (server-side cap 100), Sort "" → server's
+// default, Asc false → descending order.
+type ListStackDeploymentsOptions struct {
+	Page     int64
+	PageSize int64
+	Sort     string
+	Asc      bool
+}
+
+// ListStackDeployments returns a paginated list of deployments for the given
+// stack, wrapping the ListStackDeploymentsHandlerV2 endpoint.
+func (pc *Client) ListStackDeployments(
+	ctx context.Context, stack StackIdentifier, opts ListStackDeploymentsOptions,
+) (apitype.ListDeploymentResponseV2, error) {
+	query := url.Values{}
+	if opts.Page > 0 {
+		query.Set("page", strconv.FormatInt(opts.Page, 10))
+	}
+	if opts.PageSize > 0 {
+		query.Set("pageSize", strconv.FormatInt(opts.PageSize, 10))
+	}
+	if opts.Sort != "" {
+		query.Set("sort", opts.Sort)
+	}
+	if opts.Asc {
+		// Only set `asc` when it's non-default — the server treats the absence
+		// of the flag as descending, matching our zero value.
+		query.Set("asc", "true")
+	}
+
+	path := getStackPath(stack, "deployments")
+	if encoded := query.Encode(); encoded != "" {
+		path += "?" + encoded
+	}
+
+	var resp apitype.ListDeploymentResponseV2
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.ListDeploymentResponseV2{}, err
+	}
+	return resp, nil
+}
+
+// SearchInsightsResources runs a resource search against the v2 endpoint
+// (`GetOrgResourceSearchV2Query`).
+//
+// Zero-valued fields on params are omitted from the query string so the server
+// can apply its own defaults — see [apitype.InsightsResourceSearchParams] for
+// the per-field semantics.
+func (pc *Client) SearchInsightsResources(
+	ctx context.Context, org string, params apitype.InsightsResourceSearchParams,
+) (apitype.InsightsResourceSearchResponse, error) {
+	path := fmt.Sprintf("/api/orgs/%s/search/resourcesv2", url.PathEscape(org))
+	var resp apitype.InsightsResourceSearchResponse
+	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
+		return apitype.InsightsResourceSearchResponse{}, err
+	}
+	return resp, nil
 }

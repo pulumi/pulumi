@@ -115,10 +115,6 @@ jobs:
             echo "Deleting Pulumi"
             rm -v "$PULUMI_INSTALL_DIR"/pulumi*
           fi
-      - name: Install winget
-        uses: Cyberboss/install-winget@1c6f189175e9f015bf1aa113cd1cc6c73efb9d47 # v1
-        with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Pulumi Using WinGet
         run: winget install pulumi --disable-interactivity --accept-source-agreements --verbose
       - run: echo "C:/Program Files (x86)/Pulumi" >> "${GITHUB_PATH}"

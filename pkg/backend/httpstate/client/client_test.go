@@ -955,6 +955,9 @@ func TestCreateNeoTask(t *testing.T) {
 		assert.Equal(t, http.MethodPost, gotMethod)
 		assert.Equal(t, "/api/preview/agents/my-org/tasks", gotPath)
 		assert.Equal(t, "cli", gotBody["toolExecutionMode"])
+		// source must be "cli" on every task created via the CLI so the server can
+		// attribute the task to its origin (matches apitype.AgentTaskSourceCli).
+		assert.Equal(t, "cli", gotBody["source"], "CLI-originated tasks must send source:cli")
 		// approvalMode is omitempty — must not appear in the body when empty so the
 		// server falls back to its default (auto) mode.
 		assert.NotContains(t, gotBody, "approvalMode", "empty approvalMode must be omitted")
@@ -1061,6 +1064,124 @@ func TestCreateNeoTask(t *testing.T) {
 
 		assert.NotContains(t, gotBody, "planMode", "planMode must be omitted when false")
 	})
+
+	t.Run("PermissionModeReadOnlySerializes", func(t *testing.T) {
+		t.Parallel()
+
+		// permissionMode is per-task and the cloud caps OBO token scopes when it
+		// reads "read-only". The wire tag is camelCase to match apitype.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_5"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "stack", "proj", CreateNeoTaskOptions{
+			ToolExecutionMode: "cli",
+			PermissionMode:    NeoPermissionModeReadOnly,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "read-only", gotBody["permissionMode"])
+	})
+
+	t.Run("PermissionModeOmittedWhenEmpty", func(t *testing.T) {
+		t.Parallel()
+
+		// An empty PermissionMode must not appear in the body so the server
+		// falls back to the org default rather than seeing an invalid value.
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_6"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.CreateNeoTask(t.Context(), "my-org", "hi", "", "proj", CreateNeoTaskOptions{})
+		require.NoError(t, err)
+
+		assert.NotContains(t, gotBody, "permissionMode")
+	})
+}
+
+func TestUpdateNeoTask(t *testing.T) {
+	t.Parallel()
+
+	// UpdateNeoTask is the CLI's mid-session toggle path: it PATCHes /tasks/{id}
+	// with whichever mode fields the user just toggled. The pointer fields on
+	// UpdateNeoTaskOptions ensure that a single-axis toggle doesn't reset the
+	// other axis on the server side.
+
+	t.Run("ApprovalModeUpdate", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			gotPath   string
+			gotMethod string
+			gotBody   map[string]any
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotPath = req.URL.Path
+			gotMethod = req.Method
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		mode := NeoApprovalModeBalanced
+		err := c.UpdateNeoTask(t.Context(), "my-org", "task_1", UpdateNeoTaskOptions{
+			ApprovalMode: &mode,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPatch, gotMethod)
+		assert.Equal(t, "/api/preview/agents/my-org/tasks/task_1", gotPath)
+		assert.Equal(t, "balanced", gotBody["approvalMode"])
+		assert.NotContains(t, gotBody, "permissionMode",
+			"a single-axis toggle must not send the untouched axis")
+	})
+
+	t.Run("PermissionModeUpdate", func(t *testing.T) {
+		t.Parallel()
+
+		var gotBody map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&gotBody))
+			rw.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		perm := NeoPermissionModeReadOnly
+		err := c.UpdateNeoTask(t.Context(), "my-org", "task_2", UpdateNeoTaskOptions{
+			PermissionMode: &perm,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "read-only", gotBody["permissionMode"])
+		assert.NotContains(t, gotBody, "approvalMode")
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		t.Parallel()
+
+		errorServer := newMockServer(http.StatusBadRequest, `{"message": "bad"}`)
+		defer errorServer.Close()
+
+		c := newMockClient(errorServer)
+		mode := NeoApprovalModeAuto
+		err := c.UpdateNeoTask(t.Context(), "my-org", "task_x", UpdateNeoTaskOptions{
+			ApprovalMode: &mode,
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "updating Neo task")
+	})
 }
 
 func TestPostNeoTaskUserEvent(t *testing.T) {
@@ -1124,7 +1245,7 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
 		require.NoError(t, err)
 
 		got := make([][]byte, 0, 2)
@@ -1147,10 +1268,70 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
 		require.Error(t, err)
 		assert.Nil(t, stream)
 		assert.Contains(t, err.Error(), "401")
+	})
+
+	t.Run("ParsesEventIDsAndSendsLastEventIDHeader", func(t *testing.T) {
+		t.Parallel()
+
+		// The Neo CLI tracks the last event ID it consumed and sends it back as
+		// `Last-Event-ID` on reconnect so the service can replay missed events.
+		// Verify both halves: outgoing header propagation and incoming `id:` parsing.
+		var gotLastEventID string
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotLastEventID = req.Header.Get("Last-Event-ID")
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+			flusher, ok := rw.(http.Flusher)
+			require.True(t, ok)
+			// First event carries id:42; second event omits id: — per the SSE spec
+			// the "last event ID buffer" persists, so the second event also reports 42.
+			_, _ = rw.Write([]byte("id: 42\ndata: a\n\n"))
+			_, _ = rw.Write([]byte("data: b\n\n"))
+			flusher.Flush()
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "17")
+		require.NoError(t, err)
+
+		got := make([]NeoStreamEvent, 0, 2)
+		for evt := range stream {
+			require.NoError(t, evt.Err)
+			got = append(got, evt)
+		}
+		assert.Equal(t, "17", gotLastEventID, "outgoing Last-Event-ID header")
+		require.Len(t, got, 2)
+		assert.Equal(t, "a", string(got[0].Data))
+		assert.Equal(t, "42", got[0].ID)
+		assert.Equal(t, "b", string(got[1].Data))
+		assert.Equal(t, "42", got[1].ID, "id buffer should persist across events without id:")
+	})
+
+	t.Run("OmitsLastEventIDHeaderWhenEmpty", func(t *testing.T) {
+		t.Parallel()
+
+		// On the very first connection the caller has no event ID yet — make sure
+		// we don't send `Last-Event-ID:` (with an empty value), which some proxies
+		// reject.
+		var headerWasSet bool
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			_, headerWasSet = req.Header["Last-Event-Id"]
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
+		require.NoError(t, err)
+		for range stream {
+		}
+		assert.False(t, headerWasSet, "Last-Event-ID must not be sent when empty")
 	})
 
 	t.Run("ContextCancelClosesStream", func(t *testing.T) {
@@ -1178,7 +1359,7 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer cancel()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(ctx, "my-org", "task_1")
+		stream, err := client.StreamNeoTaskEvents(ctx, "my-org", "task_1", "")
 		require.NoError(t, err)
 
 		<-ready

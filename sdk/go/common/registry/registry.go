@@ -54,11 +54,32 @@ type Registry interface {
 		ctx context.Context, source, publisher, name string, version *semver.Version,
 	) (apitype.TemplateMetadata, error)
 
-	ListTemplates(ctx context.Context, name *string) iter.Seq2[apitype.TemplateMetadata, error]
+	// ListTemplates retrieves registry-backed templates matching the given options.
+	//
+	// Pagination is handled by the iterator: implementations follow continuation
+	// tokens internally so callers see a single flat stream.
+	//
+	// VCS-backed templates (those sourced from GitHub or GitLab repositories) are
+	// not returned by this method.
+	ListTemplates(
+		ctx context.Context, opts ListTemplatesOptions,
+	) iter.Seq2[apitype.TemplateMetadata, error]
 
 	// DownloadTemplate downloads a template given the value of
 	// [apitype.TemplateMetadata].DownloadURL.
 	DownloadTemplate(ctx context.Context, downloadURL string) (io.ReadCloser, error)
+}
+
+// ListTemplatesOptions filters the results returned by [Registry.ListTemplates].
+// An empty field means "no filter on that dimension".
+type ListTemplatesOptions struct {
+	// Name filters results to templates whose name matches the given value.
+	Name string
+	// Org filters results to templates owned by the given organization (orgLogin).
+	Org string
+	// Search performs a case-insensitive partial match against the template
+	// name, display name, description, metadata values, and runtime language.
+	Search string
 }
 
 type registryKey struct{}
@@ -117,7 +138,7 @@ func (r *onDemandRegistry) GetTemplate(
 }
 
 func (r *onDemandRegistry) ListTemplates(
-	ctx context.Context, name *string,
+	ctx context.Context, opts ListTemplatesOptions,
 ) iter.Seq2[apitype.TemplateMetadata, error] {
 	impl, err := r.factory()
 	if err != nil {
@@ -125,7 +146,7 @@ func (r *onDemandRegistry) ListTemplates(
 			consumer(apitype.TemplateMetadata{}, err)
 		}
 	}
-	return impl.ListTemplates(ctx, name)
+	return impl.ListTemplates(ctx, opts)
 }
 
 func (r *onDemandRegistry) DownloadTemplate(

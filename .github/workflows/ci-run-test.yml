@@ -402,6 +402,7 @@ jobs:
           fi
       - name: Merge integration test code coverage
         if: ${{ inputs.enable-coverage }}
+        continue-on-error: true
         run: |
           # Merge coverage data from coverage-instrumented binaries
           # if available.
@@ -424,6 +425,7 @@ jobs:
       - name: Upload code coverage
         uses: actions/upload-artifact@v7
         if: ${{ inputs.enable-coverage }}
+        continue-on-error: true
         with:
           name: coverage-${{ env.TEST_HASH_ID }}
           path: |
@@ -431,6 +433,7 @@ jobs:
             !coverage/.gitkeep
       - name: Upload codecov test results
         uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1
+        continue-on-error: true
         with:
           directory: junit/
           fail_ci_if_error: false

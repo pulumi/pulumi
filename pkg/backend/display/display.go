@@ -112,15 +112,16 @@ func ShowEvents(
 	// that we can consistently use `rawEvents` in both `ShowPreviewDigest` and the non-json display modes. We
 	// can't always create rawEvents because if we're in ShowJSONEvents we'll have two consumers competing for
 	// the stamped events.
-	var rawEvents chan engine.Event
+	var rawEvents <-chan engine.Event
 	if !opts.JSONDisplay || (isPreview && !streamPreview) {
-		rawEvents = make(chan engine.Event)
+		ch := make(chan engine.Event)
 		go func() {
 			for e := range stampedEvents {
-				rawEvents <- e.Event
+				ch <- e.Event
 			}
-			close(rawEvents)
+			close(ch)
 		}()
+		rawEvents = ch
 	}
 
 	if opts.JSONDisplay {
@@ -129,6 +130,23 @@ func ShowEvents(
 		} else {
 			ShowJSONEvents(stampedEvents, done, opts)
 		}
+		return
+	}
+
+	if opts.SummaryJSON {
+		// `--output json` mode: stdout must contain only the summary JSON line.
+		// Suppress all human-readable output (permalinks, progress, diffs); the
+		// tap drains the event stream and emits the summary on stdout when the
+		// SummaryEvent arrives.
+		tapped := tapSummaryJSON(rawEvents, opts)
+		go func() {
+			defer close(done)
+			for e := range tapped {
+				if e.Type == engine.CancelEvent {
+					return
+				}
+			}
+		}()
 		return
 	}
 
@@ -189,16 +207,15 @@ func startEventLogger(
 
 		client := pulumirpc.NewEventsClient(conn)
 
+		stream, err := client.StreamEvents(context.TODO())
+		if err != nil {
+			logging.V(7).Infof("failed to start event stream: %v", err)
+			return events, done
+		}
+
 		outEvents, outDone := make(chan engine.StampedEvent), make(chan bool)
 		go func() {
 			defer close(done)
-
-			stream, err := client.StreamEvents(context.TODO())
-			if err != nil {
-				logging.V(7).Infof("failed to start event stream: %v", err)
-				<-outDone
-				return
-			}
 
 			for e := range events {
 				var buf bytes.Buffer
@@ -228,6 +245,7 @@ func startEventLogger(
 				logging.V(7).Infof("failed to close event stream: %v", err)
 			}
 
+			close(outEvents)
 			<-outDone
 		}()
 
@@ -262,6 +280,7 @@ func startEventLogger(
 			}
 		}
 
+		close(outEvents)
 		<-outDone
 	}()
 

@@ -64,7 +64,7 @@ func processCmdErrors(err error) error {
 		return err
 	}
 
-	// `pulumi cloud api` errors have already had their structured envelope
+	// `pulumi api` errors have already had their structured envelope
 	// written to stderr by runWithEnvelope, so suppress the generic
 	// message print. ExitCodeFor still recovers the semantic exit code via
 	// errors.As.

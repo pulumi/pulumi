@@ -1909,9 +1909,10 @@ func (rm *resmon) RegisterResourceHook(ctx context.Context, req *pulumirpc.Regis
 		return nil, err
 	}
 	hook := ResourceHook{
-		Name:     req.Name,
-		Callback: wrapped,
-		OnDryRun: req.OnDryRun,
+		Name:         req.Name,
+		Callback:     wrapped,
+		OnDryRun:     req.OnDryRun,
+		IgnoreErrors: req.IgnoreErrors,
 	}
 	err = rm.resourceHooks.RegisterResourceHook(hook)
 	return nil, err

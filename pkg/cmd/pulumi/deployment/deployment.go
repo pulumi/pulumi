@@ -44,6 +44,10 @@ func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 
 	cmd.AddCommand(newDeploymentSettingsCmd())
 	cmd.AddCommand(newDeploymentRunCmd(ws))
+	cmd.AddCommand(newDeploymentListCmd())
+	cmd.AddCommand(newDeploymentGetCmd())
+	cmd.AddCommand(newDeploymentCancelCmd())
+	cmd.AddCommand(newDeploymentLogCmd())
 
 	return cmd
 }

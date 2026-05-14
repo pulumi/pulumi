@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,7 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/metadata"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -40,16 +42,20 @@ import (
 
 // Constructs the `pulumi package add` command.
 func newPackageAddCmd() *cobra.Command {
+	var language string
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add a package to your Pulumi project or plugin",
-		Long: `Add a package to your Pulumi project or plugin.
+		Short: "Add a package to your Pulumi project, plugin, or current directory.",
+		Long: `Add a package to your Pulumi project, plugin, or current directory.
 
-This command locally generates an SDK in the currently selected Pulumi language,
-adds the package to your project configuration file (Pulumi.yaml or
-PulumiPlugin.yaml), and prints instructions on how to use it in your project.
-The SDK is based on a Pulumi package schema extracted from a given resource
-plugin or provided directly.
+This command locally generates an SDK in the selected Pulumi language and
+prints instructions on how to use it. The SDK is based on a Pulumi package
+schema extracted from a given resource plugin or provided directly.
+
+When run inside a Pulumi project or plugin, the package is also recorded in
+Pulumi.yaml or PulumiPlugin.yaml. To run outside one (e.g. for a
+single-language component library or with the Automation API), pass
+'--language LANG' to select the SDK language explicitly.
 
 The <provider> argument can be specified in one of the following ways:
 
@@ -86,19 +92,42 @@ from the parameters, as in:
   pulumi package add <provider> -- --provider-parameter-flag value
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			agent := metadata.DetectAIAgent(os.Getenv)
+
 			wd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
 
-			pluginOrProject, err := detectEnclosingPluginOrProject(cmd.Context(), wd)
-			if err != nil {
+			target, err := loadEnclosingTarget(cmd.Context(), wd)
+			if err != nil && !errors.Is(err, workspace.ErrBaseProjectNotFound) {
 				return err
+			}
+			foundProject := err == nil
+
+			if foundProject && language != "" {
+				return fmt.Errorf("--language is for use outside a Pulumi project or "+
+					"plugin, but %s was found; remove the flag, or run from a "+
+					"directory outside the project", *target.projectFilePath)
+			}
+			if !foundProject {
+				if language == "" {
+					return fmt.Errorf("%w; pass --language LANG to run "+
+						"outside a Pulumi project or plugin", err)
+				}
+				target = addTarget{
+					installRoot: wd,
+					proj: &workspace.PluginProject{
+						Runtime: workspace.NewProjectRuntimeInfo(cmdCmd.NormalizeRuntimeName(language), nil),
+					},
+					reg: cmdCmd.NewDefaultRegistry(
+						cmd.Context(), cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+				}
 			}
 
 			sink := cmdutil.Diag()
 			pctx, err := plugin.NewContext(cmd.Context(),
-				sink, sink, nil, nil, pluginOrProject.installRoot, nil, false, nil, schema.NewLoaderServerFromHost)
+				sink, sink, nil, nil, target.installRoot, nil, false, nil, schema.NewLoaderServerFromHost)
 			if err != nil {
 				return err
 			}
@@ -108,18 +137,22 @@ from the parameters, as in:
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
-				pluginOrProject.proj,
+				pkgWorkspace.Instance,
+				target.proj,
 				pctx,
-				pluginOrProject.proj.RuntimeInfo().Name(),
-				pluginOrProject.installRoot,
+				target.proj.RuntimeInfo().Name(),
+				target.installRoot,
 				pluginSource,
 				parameters,
-				pluginOrProject.reg,
+				target.reg,
 				env.Global(),
 				0, /* unbounded concurrency */
 			)
 			cmdDiag.PrintDiagnostics(pctx.Diag, diags)
 			if err != nil {
+				if errors.Is(err, registry.ErrNotFound) && agent != "" {
+					return fmt.Errorf("%w\nSearch: pulumi api '/api/registry/packages?search=<term>'", err)
+				}
 				return err
 			}
 
@@ -159,15 +192,18 @@ from the parameters, as in:
 			contract.Assertf(packageSpec != nil, "packageSpec should be nil if & only if source is file based")
 			packageSpec.Parameters = parameters.Args
 
-			pluginOrProject.proj.AddPackage(pkg.Name, *packageSpec)
+			if target.projectFilePath != nil {
+				target.proj.AddPackage(pkg.Name, *packageSpec)
 
-			fileName := filepath.Base(pluginOrProject.projectFilePath)
-			// Save the updated project
-			if err := pluginOrProject.proj.Save(pluginOrProject.projectFilePath); err != nil {
-				return fmt.Errorf("failed to update %s: %w", fileName, err)
+				fileName := filepath.Base(*target.projectFilePath)
+				// Save the updated project
+				if err := target.proj.Save(*target.projectFilePath); err != nil {
+					return fmt.Errorf("failed to update %s: %w", fileName, err)
+				}
 			}
 
 			fmt.Fprintf(cmd.ErrOrStderr(), "Added package %s\n", schemaDisplayName(pkg))
+			printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), target.reg, pkg)
 			return nil
 		},
 	}
@@ -185,13 +221,41 @@ from the parameters, as in:
 	// In other words, a provider parameter can be `--foo` as long as it's after `--`.
 	cmd.Use = "add <provider|schema|path> [flags] [--] [provider-parameter]..."
 
+	cmd.Flags().StringVar(&language, "language", "",
+		"Run outside a Pulumi project or plugin: [nodejs|python|go|dotnet|java]")
+
 	return cmd
 }
 
-type pluginOrProject struct {
-	installRoot, projectFilePath string
-	reg                          registry.Registry
-	proj                         workspace.BaseProject
+type addTarget struct {
+	installRoot     string
+	projectFilePath *string
+	reg             registry.Registry
+	proj            workspace.BaseProject
+}
+
+func printRegistryDocsHint(
+	w io.Writer, agent string, ctx context.Context, reg registry.Registry, pkg *schema.Package,
+) {
+	if agent == "" || pkg == nil || pkg.Name == "" || pkg.Version == nil || reg == nil {
+		return
+	}
+	meta, err := registry.ResolvePackageFromName(ctx, reg, pkg.Name, pkg.Version)
+	if err != nil {
+		return
+	}
+	base := fmt.Sprintf("/api/registry/packages/%s/%s/%s/versions/%s",
+		meta.Source, meta.Publisher, meta.Name, pkg.Version.String())
+	hints := []struct{ suffix, comment string }{
+		{"/readme", "                    # package readme"},
+		{"/nav", "                       # doc tree (modules)"},
+		{"/nav?q=<term>&depth=full", "   # search for resources/functions"},
+		{"/docs/<token>", "              # one resource or function (token from /nav)"},
+	}
+	fmt.Fprintln(w, "Documentation:")
+	for _, h := range hints {
+		fmt.Fprintf(w, "  pulumi api --output=markdown '%s%s'%s\n", base, h.suffix, h.comment)
+	}
 }
 
 func schemaDisplayName(schema *schema.Package) string {
@@ -206,30 +270,31 @@ func schemaDisplayName(schema *schema.Package) string {
 }
 
 // Detect the nearest enclosing Pulumi Project or Pulumi Plugin root directory.
-func detectEnclosingPluginOrProject(ctx context.Context, wd string) (pluginOrProject, error) {
+func loadEnclosingTarget(ctx context.Context, wd string) (addTarget, error) {
 	baseProject, filePath, err := workspace.LoadBaseProjectFrom(wd)
 	if err != nil {
-		return pluginOrProject{}, err
+		return addTarget{}, err
 	}
 
 	switch baseProject := baseProject.(type) {
 	case *workspace.Project:
-		return pluginOrProject{
+		return addTarget{
 			installRoot:     filepath.Dir(filePath),
-			projectFilePath: filePath,
+			projectFilePath: &filePath,
 			reg: cmdCmd.NewDefaultRegistry(
 				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, baseProject, cmdutil.Diag(), env.Global()),
 			proj: baseProject,
 		}, nil
 	case *workspace.PluginProject:
-		return pluginOrProject{
+		return addTarget{
 			installRoot:     filepath.Dir(filePath),
-			projectFilePath: filePath,
+			projectFilePath: &filePath,
 			proj:            baseProject,
 			// Cloud registry is linked to a backend, but we don't have one
 			// available in a plugin. Use the default backend.
 			reg: cmdCmd.NewDefaultRegistry(
-				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global()),
+				ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, cmdutil.Diag(), env.Global(),
+			),
 		}, nil
 	default:
 		panic(fmt.Sprintf("workspace.LoadBaseProjectFrom promises that it will return "+

@@ -15,9 +15,13 @@
 package neo
 
 import (
+	"bytes"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -67,7 +71,10 @@ func TestRenderPulumiBlockEmpty(t *testing.T) {
 	out := m.renderPulumiBlock(st)
 	assert.Contains(t, out, "PulumiPreview")
 	assert.Contains(t, out, "dev")
-	assert.Contains(t, out, "running")
+	// Empty (no resources yet) blocks render as "preparing" so users know the
+	// engine is in its quiet startup prefix (provider load, language host
+	// init, user program startup) rather than apparently stalled.
+	assert.Contains(t, out, "preparing")
 }
 
 func TestRenderPulumiBlockWithResources(t *testing.T) {
@@ -333,6 +340,140 @@ func TestModel_Update_UIPulumiResource_AppendsRow(t *testing.T) {
 	row := um.blocks[0].pulumi.resources[0]
 	assert.Equal(t, deploy.OpCreate, row.op)
 	assert.Equal(t, "planned", row.status)
+}
+
+// Regression for pulumi-service#42913: between UIPulumiStart and UIPulumiEnd,
+// the live frame must include each streamed resource row. Earlier tests
+// asserted state but never View() — which is exactly how this slipped through.
+func TestModel_View_StreamsPulumiResourcesBeforeCommit(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated, _ := m.Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_preview", StackName: "dev", IsPreview: true,
+	})
+	updated, _ = updated.(Model).Update(UIPulumiResource{
+		ToolName: "pulumi__pulumi_preview",
+		Op:       deploy.OpCreate,
+		URN:      "urn:pulumi:dev::p::aws:s3/Bucket::my-bucket",
+		Type:     "aws:s3/Bucket",
+		Status:   "planned",
+	})
+	um := updated.(Model)
+
+	out := um.View()
+	assert.Contains(t, out, "my-bucket",
+		"View() during streaming must include each resource row, not just after UIPulumiEnd")
+	assert.Contains(t, out, "Planned changes",
+		"View() during streaming must include the resources section header")
+}
+
+// Variant of the streaming-View regression that runs the full event sequence
+// the real session emits — UIToolStarted (which sets busy) before UIPulumiStart
+// — so busy-spinner / block-reordering interactions are exercised too.
+func TestModel_View_StreamsPulumiResourcesWithBusySpinner(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIToolStarted{Name: "pulumi__pulumi_preview"})
+	updated, _ = updated.(Model).Update(UIPulumiStart{
+		ToolName: "pulumi__pulumi_preview", StackName: "dev", IsPreview: true,
+	})
+	updated, _ = updated.(Model).Update(UIPulumiResource{
+		ToolName: "pulumi__pulumi_preview",
+		Op:       deploy.OpCreate,
+		URN:      "urn:pulumi:dev::p::aws:s3/Bucket::first",
+		Type:     "aws:s3/Bucket",
+		Status:   "planned",
+	})
+	updated, _ = updated.(Model).Update(UIPulumiResource{
+		ToolName: "pulumi__pulumi_preview",
+		Op:       deploy.OpUpdate,
+		URN:      "urn:pulumi:dev::p::aws:s3/Bucket::second",
+		Type:     "aws:s3/Bucket",
+		Status:   "planned",
+	})
+	um := updated.(Model)
+
+	out := um.View()
+	assert.Contains(t, out, "first", "first streamed resource must be visible in View()")
+	assert.Contains(t, out, "second", "second streamed resource must be visible in View()")
+}
+
+// safeBuffer is a bytes.Buffer with a mutex, since the renderer writes to it
+// from a goroutine while the test reads from the main goroutine.
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// End-to-end repro for pulumi-service#42913: drive the actual tea.Program
+// (with the standard renderer painting into a buffer instead of a TTY) and
+// assert that resources streamed via UIPulumiResource land in the buffer
+// before UIPulumiEnd is sent. Earlier `View()`-only tests passed despite the
+// bug, which proved the model is correct and the failure is downstream — in
+// the renderer painting pipeline.
+func TestProgram_RendersStreamingPulumiResources_BeforeCommit(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 8)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	out := &safeBuffer{}
+	p := tea.NewProgram(
+		m,
+		tea.WithInput(&bytes.Buffer{}),
+		tea.WithOutput(out),
+		tea.WithoutSignals(),
+		tea.WithoutSignalHandler(),
+	)
+
+	done := make(chan struct{})
+	go func() {
+		_, _ = p.Run()
+		close(done)
+	}()
+
+	// Drive the event sequence the live preview emits in production. Sleep
+	// briefly after each event so the renderer's 60-Hz flush ticker has time
+	// to paint the new frame into the buffer.
+	ch <- UIToolStarted{Name: "pulumi__pulumi_preview"}
+	ch <- UIPulumiStart{ToolName: "pulumi__pulumi_preview", StackName: "dev", IsPreview: true}
+	time.Sleep(80 * time.Millisecond)
+	ch <- UIPulumiResource{
+		ToolName: "pulumi__pulumi_preview",
+		Op:       deploy.OpCreate,
+		URN:      "urn:pulumi:dev::p::aws:s3/Bucket::stream-test-bucket",
+		Type:     "aws:s3/Bucket",
+		Status:   "planned",
+	}
+	time.Sleep(80 * time.Millisecond)
+
+	// Capture *before* sending UIPulumiEnd so we measure the live frame, not
+	// the post-commit scrollback emission.
+	gotBeforeEnd := out.String()
+
+	p.Quit()
+	<-done
+
+	t.Logf("captured renderer output (%d bytes):\n%s", len(gotBeforeEnd), gotBeforeEnd)
+	assert.Contains(t, gotBeforeEnd, "stream-test-bucket",
+		"renderer must paint streamed resource rows during preview, not only after commit")
 }
 
 func TestModel_Update_UIPulumiResource_NoBlockIsDefensiveNoOp(t *testing.T) {

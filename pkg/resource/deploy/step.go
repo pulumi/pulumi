@@ -469,7 +469,11 @@ func (s *CreateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.Outputs,
 			nil, /* oldOutputs */
 		); err != nil {
-			return resourceStatus, complete, err
+			// The cloud resource was created successfully, only the after-hook failed. Surface the error as a
+			// diagnostic and record it as a deployment-level failure, but let the step's snapshot commit go through so
+			// state matches the cloud.
+			s.Deployment().Diag().Errorf(diag.RawMessage(s.new.URN, err.Error()))
+			s.Deployment().RecordPostStepError(err)
 		}
 	}
 
@@ -775,7 +779,11 @@ func (s *DeleteStep) Apply() (resource.Status, StepCompleteFunc, error) {
 		nil, /* newOutputs */
 		s.old.Outputs,
 	); err != nil {
-		return resource.StatusOK, nil, err
+		// The cloud resource was deleted successfully, only the after-hook failed. Surface the error and record it as a
+		// deployment-level failure, but let the step's snapshot commit go through so state matches the cloud (resource
+		// removed).
+		s.Deployment().Diag().Errorf(diag.RawMessage(s.old.URN, err.Error()))
+		s.Deployment().RecordPostStepError(err)
 	}
 
 	return resource.StatusOK, func() {}, nil
@@ -1095,7 +1103,10 @@ func (s *UpdateStep) Apply() (resource.Status, StepCompleteFunc, error) {
 			s.new.Outputs,
 			s.old.Outputs,
 		); err != nil {
-			return resourceStatus, nil, err
+			// The cloud resource was updated successfully, only the after-hook failed. Surface the error and record it
+			// as a deployment-level failure, but let the step's snapshot commit go through so state matches the cloud.
+			s.Deployment().Diag().Errorf(diag.RawMessage(s.new.URN, err.Error()))
+			s.Deployment().RecordPostStepError(err)
 		}
 	}
 

@@ -1,0 +1,4 @@
+[project]
+name = "dynamic_python_read_inputs"
+version = "0.0.0"
+dependencies = []

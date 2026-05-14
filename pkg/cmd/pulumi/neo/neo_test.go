@@ -16,8 +16,12 @@ package neo
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -212,6 +216,103 @@ func TestResolveTaskTarget_OmitsProjectNameWhenProjectNil(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "explicit", org)
 	assert.Empty(t, proj)
+}
+
+// parseQualifiedStackRefF builds a MockStackReference from `owner/project/name`,
+// `owner/name`, or `name`, mirroring the real cloud backend's split rules.
+// Tests use it to exercise the org-resolution paths in resolveTaskTarget that
+// depend on the parsed reference carrying an owner.
+func parseQualifiedStackRefF(s string) (backend.StackReference, error) {
+	parts := strings.Split(s, "/")
+	ref := &backend.MockStackReference{StringV: s, FullyQualifiedNameV: tokens.QName(s)}
+	switch len(parts) {
+	case 3:
+		ref.OrganizationV = parts[0]
+		ref.ProjectV = tokens.Name(parts[1])
+		ref.NameV = tokens.MustParseStackName(parts[2])
+	case 2:
+		ref.OrganizationV = parts[0]
+		ref.NameV = tokens.MustParseStackName(parts[1])
+	default:
+		ref.NameV = tokens.MustParseStackName(s)
+	}
+	return ref, nil
+}
+
+//nolint:paralleltest // uses t.Setenv
+func TestResolveTaskTarget_StackFlagOwnerWinsOverDefaultOrg(t *testing.T) {
+	isolateWorkspace(t)
+
+	// Regression: previously the owner embedded in --stack was discarded and the
+	// Neo task was created in the user's default org, leaving the stack name
+	// pointing at a different org. The parsed reference's owner must win.
+	be := newFakeBackend()
+	be.ParseStackReferenceF = parseQualifiedStackRefF
+	be.GetDefaultOrgF = func(context.Context) (string, error) {
+		t.Fatal("GetDefaultOrg must not be consulted when the stack reference has an owner")
+		return "", nil
+	}
+
+	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "")
+	require.NoError(t, err)
+	assert.Equal(t, "otherorg", org)
+	assert.Equal(t, "dev", stack)
+}
+
+//nolint:paralleltest // uses t.Setenv
+func TestResolveTaskTarget_WorkspaceStackOwnerWinsOverDefaultOrg(t *testing.T) {
+	isolateWorkspace(t)
+	// isolateWorkspace sets PULUMI_STACK="" (still present in env), which makes
+	// state.CurrentStack short-circuit via os.LookupEnv before consulting the
+	// mocked workspace. For this test we need the workspace path to run, so
+	// fully unset PULUMI_STACK; isolateWorkspace's t.Setenv cleanup still
+	// restores the original after the test.
+	require.NoError(t, os.Unsetenv("PULUMI_STACK"))
+
+	// Regression: same bug as the --stack path but via the workspace-selected
+	// stack. If `.pulumi/workspace.json` selects `otherorg/proj/dev`, Neo must
+	// attach to `otherorg`, not the user's default org.
+	be := newFakeBackend()
+	be.ParseStackReferenceF = parseQualifiedStackRefF
+	be.GetStackF = func(_ context.Context, ref backend.StackReference) (backend.Stack, error) {
+		return &backend.MockStack{RefF: func() backend.StackReference { return ref }}, nil
+	}
+	be.GetDefaultOrgF = func(context.Context) (string, error) {
+		t.Fatal("GetDefaultOrg must not be consulted when the workspace stack has an owner")
+		return "", nil
+	}
+
+	wsCtx := &pkgWorkspace.MockContext{
+		NewF: func() (pkgWorkspace.W, error) {
+			return &pkgWorkspace.MockW{
+				SettingsF: func() *pkgWorkspace.Settings {
+					return &pkgWorkspace.Settings{Stack: "otherorg/proj/dev"}
+				},
+			}, nil
+		},
+	}
+
+	org, _, stack, err := resolveTaskTarget(t.Context(), wsCtx, be, nil, "", "")
+	require.NoError(t, err)
+	assert.Equal(t, "otherorg", org)
+	assert.Equal(t, "dev", stack)
+}
+
+//nolint:paralleltest // uses t.Setenv
+func TestResolveTaskTarget_OrgFlagOverridesStackOwner(t *testing.T) {
+	isolateWorkspace(t)
+
+	// --org is an explicit override — when both are present it wins over the
+	// stack reference's owner. The stack name is still taken from --stack;
+	// the caller is responsible for ensuring the named stack exists in the
+	// org they pass.
+	be := newFakeBackend()
+	be.ParseStackReferenceF = parseQualifiedStackRefF
+
+	org, _, stack, err := resolveTaskTarget(t.Context(), ws(), be, nil, "otherorg/proj/dev", "explicit")
+	require.NoError(t, err)
+	assert.Equal(t, "explicit", org)
+	assert.Equal(t, "dev", stack)
 }
 
 func ws() pkgWorkspace.Context { return &pkgWorkspace.MockContext{} }
@@ -572,6 +673,14 @@ func TestRunWithTUI_ParentContextCancellationStopsWorkers(t *testing.T) {
 // test reached the post branch when it shouldn't have.
 func noopPostEvent(context.Context, string, any) error { return nil }
 
+// noopSpawn is the spawnCreateTask stub for dispatcher tests that aren't
+// exercising lazy task creation. Discards everything.
+func noopSpawn(string, client.NeoApprovalMode, client.NeoPermissionMode, bool) {}
+
+// noopUpdateTask is the updateTask stub for dispatcher tests that aren't
+// exercising the mid-session update path. Always succeeds.
+func noopUpdateTask(context.Context, string, client.UpdateNeoTaskOptions) error { return nil }
+
 func TestDispatchUserEvents_ContextCancelExits(t *testing.T) {
 	t.Parallel()
 
@@ -581,7 +690,7 @@ func TestDispatchUserEvents_ContextCancelExits(t *testing.T) {
 	go func() {
 		done <- dispatchUserEvents(ctx, out, nil, true,
 			func() string { return "task-1" },
-			func(string, bool) {}, noopPostEvent)
+			noopSpawn, noopPostEvent, noopUpdateTask)
 	}()
 
 	cancel()
@@ -601,7 +710,7 @@ func TestDispatchUserEvents_ChannelCloseExits(t *testing.T) {
 	go func() {
 		done <- dispatchUserEvents(t.Context(), out, nil, true,
 			func() string { return "task-1" },
-			func(string, bool) {}, noopPostEvent)
+			noopSpawn, noopPostEvent, noopUpdateTask)
 	}()
 
 	close(out)
@@ -621,9 +730,13 @@ func TestDispatchUserEvents_LazyTaskCreationOnFirstUserMessage(t *testing.T) {
 	// events should NOT spawn again — the dispatcher tracks taskCreated.
 	var spawned []string
 	var spawnedPlanMode []bool
-	spawn := func(msg string, planMode bool) {
+	var spawnedApproval []client.NeoApprovalMode
+	var spawnedPermission []client.NeoPermissionMode
+	spawn := func(msg string, am client.NeoApprovalMode, pm client.NeoPermissionMode, planMode bool) {
 		spawned = append(spawned, msg)
 		spawnedPlanMode = append(spawnedPlanMode, planMode)
+		spawnedApproval = append(spawnedApproval, am)
+		spawnedPermission = append(spawnedPermission, pm)
 	}
 
 	postCalls := 0
@@ -634,8 +747,10 @@ func TestDispatchUserEvents_LazyTaskCreationOnFirstUserMessage(t *testing.T) {
 
 	out := make(chan outboundEvent, 4)
 	out <- outboundEvent{
-		event:    apitype.AgentUserEventUserMessage{Type: userEventUserMessage, Content: "hello"},
-		planMode: true,
+		event:          apitype.AgentUserEventUserMessage{Type: userEventUserMessage, Content: "hello"},
+		planMode:       true,
+		approvalMode:   client.NeoApprovalModeBalanced,
+		permissionMode: client.NeoPermissionModeReadOnly,
 	}
 	// Second event arrives after taskCreated is true and a taskID is set —
 	// must take the post branch, not the spawn branch.
@@ -646,13 +761,17 @@ func TestDispatchUserEvents_LazyTaskCreationOnFirstUserMessage(t *testing.T) {
 
 	err := dispatchUserEvents(t.Context(), out, nil, false,
 		func() string { return "task-1" },
-		spawn, post)
+		spawn, post, noopUpdateTask)
 	require.NoError(t, err)
 
 	require.Len(t, spawned, 1, "only the first user_message must trigger lazy task creation")
 	assert.Equal(t, "hello", spawned[0])
 	assert.Equal(t, []bool{true}, spawnedPlanMode,
 		"planMode must be forwarded from the outboundEvent envelope")
+	assert.Equal(t, []client.NeoApprovalMode{client.NeoApprovalModeBalanced}, spawnedApproval,
+		"approvalMode must be forwarded from the outboundEvent envelope")
+	assert.Equal(t, []client.NeoPermissionMode{client.NeoPermissionModeReadOnly}, spawnedPermission,
+		"permissionMode must be forwarded from the outboundEvent envelope")
 	assert.Equal(t, 1, postCalls, "the second event must be posted to the live task")
 }
 
@@ -671,11 +790,14 @@ func TestDispatchUserEvents_WarnsWhenTaskNotReady(t *testing.T) {
 
 	err := dispatchUserEvents(t.Context(), out, uiCh, false,
 		func() string { return "" }, // no task yet
-		func(string, bool) { t.Fatal("spawn must not fire for non-user_message") },
+		func(string, client.NeoApprovalMode, client.NeoPermissionMode, bool) {
+			t.Fatal("spawn must not fire for non-user_message")
+		},
 		func(context.Context, string, any) error {
 			t.Fatal("post must not fire when taskID is empty")
 			return nil
-		})
+		},
+		noopUpdateTask)
 	require.NoError(t, err)
 
 	close(uiCh)
@@ -705,11 +827,12 @@ func TestDispatchUserEvents_PostsEventToBackend(t *testing.T) {
 
 	err := dispatchUserEvents(t.Context(), out, nil, true,
 		func() string { return "task-1" },
-		func(string, bool) {},
+		noopSpawn,
 		func(_ context.Context, taskID string, body any) error {
 			calls = append(calls, postCall{taskID: taskID, body: body})
 			return nil
-		})
+		},
+		noopUpdateTask)
 	require.NoError(t, err)
 
 	require.Len(t, calls, 1)
@@ -732,10 +855,11 @@ func TestDispatchUserEvents_WarnsOnPostFailure(t *testing.T) {
 
 	err := dispatchUserEvents(t.Context(), out, uiCh, true,
 		func() string { return "task-1" },
-		func(string, bool) {},
+		noopSpawn,
 		func(context.Context, string, any) error {
 			return errors.New("network down")
-		})
+		},
+		noopUpdateTask)
 	require.NoError(t, err, "post errors must be reported via UIWarning, not propagated")
 
 	close(uiCh)
@@ -748,4 +872,236 @@ func TestDispatchUserEvents_WarnsOnPostFailure(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Contains(t, got[0].Message, "failed to send event")
 	assert.Contains(t, got[0].Message, "network down")
+}
+
+func TestCreateNeoTaskWithEntityRetry(t *testing.T) {
+	t.Parallel()
+
+	t.Run("RetriesWithoutEntityOnInvalidEntities", func(t *testing.T) {
+		t.Parallel()
+
+		// First call carries entity_diff and gets rejected; the wrapper must retry
+		// once with no stack so the task is still created.
+		var calls []map[string]any
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			var body map[string]any
+			require.NoError(t, json.NewDecoder(req.Body).Decode(&body))
+			calls = append(calls, body)
+			if len(calls) == 1 {
+				rw.WriteHeader(http.StatusBadRequest)
+				_, _ = rw.Write([]byte(`{"code":400,"message":"invalid entities: unable to access stack"}`))
+				return
+			}
+			rw.WriteHeader(http.StatusCreated)
+			_, _ = rw.Write([]byte(`{"taskId":"t_retry"}`))
+		}))
+		defer server.Close()
+
+		pc := client.NewClient(server.URL, "", false, nil)
+		var droppedErrs []error
+		resp, err := createNeoTaskWithEntityRetry(
+			t.Context(), pc, "my-org", "hello", "my-stack", "my-project",
+			client.CreateNeoTaskOptions{ToolExecutionMode: "cli"},
+			func(originalErr error) {
+				droppedErrs = append(droppedErrs, originalErr)
+			})
+		require.NoError(t, err)
+		assert.Equal(t, "t_retry", resp.TaskID)
+		require.Len(t, calls, 2)
+
+		firstMsg, _ := calls[0]["message"].(map[string]any)
+		require.NotNil(t, firstMsg)
+		assert.Contains(t, firstMsg, "entity_diff")
+
+		retryMsg, _ := calls[1]["message"].(map[string]any)
+		require.NotNil(t, retryMsg)
+		assert.NotContains(t, retryMsg, "entity_diff")
+
+		require.Len(t, droppedErrs, 1)
+		assert.Contains(t, droppedErrs[0].Error(), "invalid entities")
+	})
+
+	t.Run("DoesNotRetryOnUnrelatedError", func(t *testing.T) {
+		t.Parallel()
+
+		// Non-entity errors must surface to the caller without a second POST.
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			calls++
+			rw.WriteHeader(http.StatusForbidden)
+			_, _ = rw.Write([]byte(`{"code":403,"message":"forbidden"}`))
+		}))
+		defer server.Close()
+
+		pc := client.NewClient(server.URL, "", false, nil)
+		_, err := createNeoTaskWithEntityRetry(
+			t.Context(), pc, "my-org", "hello", "my-stack", "my-project",
+			client.CreateNeoTaskOptions{},
+			func(error) { t.Fatal("onEntityDropped should not fire on unrelated errors") })
+		require.Error(t, err)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("DoesNotRetryWhenStackMissing", func(t *testing.T) {
+		t.Parallel()
+
+		// With no stack to attach there's nothing to drop, so an "invalid entities"
+		// response must propagate as-is rather than triggering a pointless retry.
+		var calls int
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			calls++
+			rw.WriteHeader(http.StatusBadRequest)
+			_, _ = rw.Write([]byte(`{"code":400,"message":"invalid entities"}`))
+		}))
+		defer server.Close()
+
+		pc := client.NewClient(server.URL, "", false, nil)
+		_, err := createNeoTaskWithEntityRetry(
+			t.Context(), pc, "my-org", "hello", "", "", client.CreateNeoTaskOptions{},
+			func(error) { t.Fatal("onEntityDropped should not fire when no stack is attached") })
+		require.Error(t, err)
+		assert.Equal(t, 1, calls)
+	})
+}
+
+func TestDispatchUserEvents_RoutesUpdateToUpdateTask(t *testing.T) {
+	t.Parallel()
+
+	// An outboundEvent.update entry carries a mid-session approval/permission
+	// toggle. The dispatcher must route it to updateTask (not postEvent) and
+	// pass through the Options struct verbatim, so the cloud PATCH lands.
+	type updateCall struct {
+		taskID string
+		opts   client.UpdateNeoTaskOptions
+	}
+	var updates []updateCall
+	mode := client.NeoApprovalModeBalanced
+
+	out := make(chan outboundEvent, 1)
+	out <- outboundEvent{update: &client.UpdateNeoTaskOptions{ApprovalMode: &mode}}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, nil, true,
+		func() string { return "task-1" },
+		noopSpawn,
+		func(context.Context, string, any) error {
+			t.Fatal("postEvent must not fire for an update-only outboundEvent")
+			return nil
+		},
+		func(_ context.Context, taskID string, opts client.UpdateNeoTaskOptions) error {
+			updates = append(updates, updateCall{taskID: taskID, opts: opts})
+			return nil
+		})
+	require.NoError(t, err)
+
+	require.Len(t, updates, 1)
+	assert.Equal(t, "task-1", updates[0].taskID)
+	require.NotNil(t, updates[0].opts.ApprovalMode)
+	assert.Equal(t, client.NeoApprovalModeBalanced, *updates[0].opts.ApprovalMode)
+}
+
+func TestDispatchUserEvents_DropsUpdateSilentlyWhenTaskNotReady(t *testing.T) {
+	t.Parallel()
+
+	// A pre-task-creation toggle is the expected path when the user presses
+	// Ctrl+A or Ctrl+R before sending any message. The dispatcher must drop
+	// the update without warning — the next CreateNeoTask will pick up the
+	// snapshotted value from the user_message envelope.
+	uiCh := make(chan UIEvent, 4)
+	mode := client.NeoApprovalModeAuto
+
+	out := make(chan outboundEvent, 1)
+	out <- outboundEvent{update: &client.UpdateNeoTaskOptions{ApprovalMode: &mode}}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, uiCh, false,
+		func() string { return "" }, // no task yet
+		noopSpawn,
+		noopPostEvent,
+		func(context.Context, string, client.UpdateNeoTaskOptions) error {
+			t.Fatal("updateTask must not fire when taskID is empty")
+			return nil
+		})
+	require.NoError(t, err)
+
+	close(uiCh)
+	for evt := range uiCh {
+		if w, ok := evt.(UIWarning); ok {
+			t.Fatalf("pre-task update must drop silently, got UIWarning: %s", w.Message)
+		}
+	}
+}
+
+func TestDispatchUserEvents_WarnsOnUpdateFailure(t *testing.T) {
+	t.Parallel()
+
+	// PATCH errors must surface as a UIWarning so the user knows the toggle
+	// didn't take effect, but the dispatcher itself must keep running — a
+	// transient cloud blip shouldn't tear the session down.
+	uiCh := make(chan UIEvent, 4)
+	mode := client.NeoApprovalModeAuto
+
+	out := make(chan outboundEvent, 1)
+	out <- outboundEvent{update: &client.UpdateNeoTaskOptions{ApprovalMode: &mode}}
+	close(out)
+
+	err := dispatchUserEvents(t.Context(), out, uiCh, true,
+		func() string { return "task-1" },
+		noopSpawn,
+		noopPostEvent,
+		func(context.Context, string, client.UpdateNeoTaskOptions) error {
+			return errors.New("network down")
+		})
+	require.NoError(t, err)
+
+	close(uiCh)
+	var got []UIWarning
+	for evt := range uiCh {
+		if w, ok := evt.(UIWarning); ok {
+			got = append(got, w)
+		}
+	}
+	require.Len(t, got, 1)
+	assert.Contains(t, got[0].Message, "failed to update Neo task")
+	assert.Contains(t, got[0].Message, "network down")
+}
+
+func TestParseApprovalMode(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ValidValues", func(t *testing.T) {
+		t.Parallel()
+		for _, s := range []string{"manual", "balanced", "auto"} {
+			got, err := parseApprovalMode(s)
+			require.NoErrorf(t, err, "value %q must parse", s)
+			assert.Equal(t, client.NeoApprovalMode(s), got)
+		}
+	})
+
+	t.Run("RejectsUnknown", func(t *testing.T) {
+		t.Parallel()
+		_, err := parseApprovalMode("yolo")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "manual, balanced, auto")
+	})
+}
+
+func TestParsePermissionMode(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ValidValues", func(t *testing.T) {
+		t.Parallel()
+		for _, s := range []string{"default", "read-only"} {
+			got, err := parsePermissionMode(s)
+			require.NoErrorf(t, err, "value %q must parse", s)
+			assert.Equal(t, client.NeoPermissionMode(s), got)
+		}
+	})
+
+	t.Run("RejectsUnknown", func(t *testing.T) {
+		t.Parallel()
+		_, err := parsePermissionMode("admin")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "default, read-only")
+	})
 }

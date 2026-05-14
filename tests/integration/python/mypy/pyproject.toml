@@ -1,0 +1,7 @@
+[project]
+name = "pulumi-python-mypy"
+version = "0.0.0"
+dependencies = [
+    "pulumi",
+    "mypy",
+]

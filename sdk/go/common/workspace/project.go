@@ -949,7 +949,17 @@ type PluginProject struct {
 	// https://pkg.go.dev/github.com/blang/semver#ParseRange. For example ">=3.0.0", or "!3.1.2". Ranges can be AND-ed
 	// together by concatenating with spaces ">=3.5.0 !3.7.7", meaning greater-or-equal to 3.5.0 and not exactly 3.7.7.
 	// Ranges can be OR-ed with the `||` operator: "<3.4.0 || >3.8.0", meaning less-than 3.4.0 or greater-than 3.8.0.
-	RequiredPulumiVersion string `json:"requiredPulumiVersion" yaml:"requiredPulumiVersion"`
+	RequiredPulumiVersion string `json:"requiredPulumiVersion,omitempty" yaml:"requiredPulumiVersion,omitempty"`
+	// Template is an optional template manifest, if this directory is a package template.
+	Template *PluginTemplate `json:"template,omitempty" yaml:"template,omitempty"`
+}
+
+// PluginTemplate is a manifest describing a package template, embedded in PulumiPlugin.yaml.
+type PluginTemplate struct {
+	// Description is an optional description of the template.
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	// Quickstart contains optional text to be displayed after template creation.
+	Quickstart string `json:"quickstart,omitempty" yaml:"quickstart,omitempty"`
 }
 
 var _ BaseProject = (*PluginProject)(nil)

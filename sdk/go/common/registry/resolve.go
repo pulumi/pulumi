@@ -239,7 +239,7 @@ func ResolveTemplateFromName(
 		var pulumiTemplateMetadata *apitype.TemplateMetadata
 		var privateTemplateMetadata []apitype.TemplateMetadata
 		var suggested []apitype.TemplateMetadata
-		for meta, err := range registry.ListTemplates(ctx, &name) {
+		for meta, err := range registry.ListTemplates(ctx, ListTemplatesOptions{Name: name}) {
 			if err != nil {
 				return apitype.TemplateMetadata{}, err
 			}

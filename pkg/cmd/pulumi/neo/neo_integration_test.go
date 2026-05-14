@@ -293,7 +293,8 @@ func TestRunNeoIntegration_DoubleCtrlCExits(t *testing.T) {
 	// rather than relying on `go test -timeout` to catch a hang.
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), "do a thing", "" /*stack*/, "test-org", t.TempDir())
+		done <- runNeo(t.Context(), "do a thing", "" /*stack*/, "test-org", t.TempDir(),
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	}()
 
 	select {
@@ -378,7 +379,8 @@ func TestRunNeoIntegration_NonInteractiveHappyPath(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), "do a thing", "" /*stack*/, "test-org", t.TempDir())
+		done <- runNeo(t.Context(), "do a thing", "" /*stack*/, "test-org", t.TempDir(),
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	}()
 
 	select {
@@ -405,7 +407,8 @@ func TestRunNeoIntegration_NonInteractiveRequiresPrompt(t *testing.T) {
 	srv := newNeoFakeServer(t)
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
-	err := runNeo(t.Context(), "" /*prompt*/, "", "test-org", t.TempDir())
+	err := runNeo(t.Context(), "" /*prompt*/, "", "test-org", t.TempDir(),
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "prompt argument is required")
 
@@ -430,7 +433,8 @@ func TestRunNeoIntegration_RequiresCloudBackend(t *testing.T) {
 	pkgWorkspace.Instance = &pkgWorkspace.MockContext{}
 	t.Cleanup(func() { pkgWorkspace.Instance = prevWorkspace })
 
-	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir())
+	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir(),
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Pulumi Cloud backend",
 		"non-cloud backends must surface a clear error rather than panic on the type assertion")
@@ -460,7 +464,8 @@ func TestRunNeoIntegration_ResolvesCwdWhenEmpty(t *testing.T) {
 		// cwdFlag empty → runNeo calls os.Getwd. The test's own working
 		// directory is always a real, readable path, so the tools constructors
 		// accept it and runNeo proceeds.
-		done <- runNeo(t.Context(), "do a thing", "", "test-org", "" /*cwd*/)
+		done <- runNeo(t.Context(), "do a thing", "", "test-org", "", /*cwd*/
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	}()
 
 	select {
@@ -483,7 +488,8 @@ func TestRunNeoIntegration_RejectsNonexistentCwd(t *testing.T) {
 	installNeoTestEnv(t, srv, false /*interactive*/)
 
 	missing := t.TempDir() + "/does-not-exist"
-	err := runNeo(t.Context(), "do a thing", "", "test-org", missing)
+	err := runNeo(t.Context(), "do a thing", "", "test-org", missing,
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	require.Error(t, err)
 	// The exact wrapping is internal to tools.NewFilesystem, but the missing
 	// path should be referenced so the user can see what went wrong.
@@ -511,7 +517,8 @@ func TestRunNeoIntegration_PropagatesReadProjectError(t *testing.T) {
 		},
 	}
 
-	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir())
+	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir(),
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "synthetic ReadProject failure")
 	assert.Empty(t, srv.recordedPosts(),
@@ -555,7 +562,8 @@ func TestRunNeoIntegration_PropagatesCreateNeoTaskError(t *testing.T) {
 	isInteractive = func() bool { return false }
 	t.Cleanup(func() { isInteractive = prevInteractive })
 
-	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir())
+	err := runNeo(t.Context(), "do a thing", "", "test-org", t.TempDir(),
+		client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "creating Neo task")
 }
@@ -627,7 +635,8 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		done <- runNeo(t.Context(), "do a thing", "" /*stack*/, "test-org", t.TempDir())
+		done <- runNeo(t.Context(), "do a thing", "" /*stack*/, "test-org", t.TempDir(),
+			client.NeoApprovalModeManual, client.NeoPermissionModeDefault)
 	}()
 
 	select {

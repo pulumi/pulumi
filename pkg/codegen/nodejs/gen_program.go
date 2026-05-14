@@ -1337,8 +1337,20 @@ func (g *generator) genHookNode(w io.Writer, h *pcl.Hook) {
 			g.Fgenf(w, "]);\n")
 		}
 	})
-	if h.OnDryRun != nil {
-		g.Fgenf(w, "%s}, {onDryRun: %v});\n", g.Indent, h.OnDryRun)
+	if h.OnDryRun != nil || h.IgnoreErrors != nil {
+		g.Fgenf(w, "%s}, {", g.Indent)
+		first := true
+		if h.OnDryRun != nil {
+			g.Fgenf(w, "onDryRun: %v", h.OnDryRun)
+			first = false
+		}
+		if h.IgnoreErrors != nil {
+			if !first {
+				g.Fgenf(w, ", ")
+			}
+			g.Fgenf(w, "ignoreErrors: %v", h.IgnoreErrors)
+		}
+		g.Fgenf(w, "});\n")
 	} else {
 		g.Fgenf(w, "%s});\n", g.Indent)
 	}

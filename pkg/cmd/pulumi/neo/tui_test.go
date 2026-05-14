@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -132,16 +133,6 @@ func TestRenderAssistantFinal(t *testing.T) {
 	assert.Contains(t, multi, "third")
 	// Some form of block-level break separates the marker line from the rest.
 	assert.Contains(t, multi, "\n")
-}
-
-func TestRenderAssistantStreaming(t *testing.T) {
-	t.Parallel()
-
-	assert.Empty(t, renderAssistantStreaming(""))
-	// The streaming indent is two spaces — matches the marker column in the
-	// final render so tokens don't visually jump when streaming transitions to
-	// final.
-	assert.Equal(t, "  hi", renderAssistantStreaming("hi"))
 }
 
 func TestWaitForEvent_DeliversEvent(t *testing.T) {
@@ -257,13 +248,13 @@ func TestFindBlockKind(t *testing.T) {
 
 	m := &Model{blocks: []block{
 		{kind: blockUserMessage},
-		{kind: blockAssistantStreaming},
+		{kind: blockAssistantFinal},
 		{kind: blockUserMessage},
 	}}
-	// Returns the *last* index — matters for streaming: we need to update the
-	// latest assistant bubble, not an earlier one.
+	// Returns the *last* index — matters when multiple blocks of the same
+	// kind exist and we need to act on the most recent one.
 	assert.Equal(t, 2, m.findBlockKind(blockUserMessage))
-	assert.Equal(t, 1, m.findBlockKind(blockAssistantStreaming))
+	assert.Equal(t, 1, m.findBlockKind(blockAssistantFinal))
 	assert.Equal(t, -1, m.findBlockKind(blockError))
 }
 
@@ -917,53 +908,79 @@ func TestModel_Update_SpinnerTick_IgnoredWhenIdle(t *testing.T) {
 	assert.Nil(t, cmd, "idle TickMsg must not schedule another tick")
 }
 
-func TestModel_Update_UIAssistantMessage_Streaming_AppendsThenUpdates(t *testing.T) {
+// TestModel_Update_UIAssistantMessage_CommitsEachContentMessage pins the
+// "no chunking" assumption: every assistant_message with non-empty content
+// — final or not — commits its own blockAssistantFinal to scrollback.
+func TestModel_Update_UIAssistantMessage_CommitsEachContentMessage(t *testing.T) {
 	t.Parallel()
 
-	ch := make(chan UIEvent, 4)
-	m := NewModel(ModelConfig{EventCh: ch})
+	m := NewModel(ModelConfig{})
 
-	// First streaming chunk: must append a new blockAssistantStreaming.
-	updated, _ := m.Update(UIAssistantMessage{Content: "one"})
+	updated, _ := m.Update(UIAssistantMessage{Content: "first turn"})
 	m1 := updated.(Model)
-	idx := m1.findBlockKind(blockAssistantStreaming)
-	require.NotEqual(t, -1, idx, "first streaming msg must append a streaming block")
-
-	// Second streaming chunk: same block kind; the rendered text must change
-	// but the number of streaming blocks must not grow.
-	updated2, _ := m1.Update(UIAssistantMessage{Content: "one two"})
+	updated2, _ := m1.Update(UIAssistantMessage{Content: "second turn"})
 	m2 := updated2.(Model)
-	count := 0
-	for _, b := range m2.blocks {
-		if b.kind == blockAssistantStreaming {
-			count++
+	updated3, _ := m2.Update(UIAssistantMessage{Content: "final reply", IsFinal: true})
+	m3 := updated3.(Model)
+
+	finals := 0
+	for _, b := range m3.blocks {
+		if b.kind == blockAssistantFinal {
+			finals++
 		}
 	}
-	assert.Equal(t, 1, count, "second streaming msg must update in place, not append")
+	assert.Equal(t, 3, finals, "three messages with content must produce three final blocks")
 }
 
-func TestModel_Update_UIAssistantMessage_Final_ReplacesStreaming(t *testing.T) {
+// TestModel_Update_UIAssistantMessage_EmptyContentSkipsCommit guards the
+// empty-content branch: a tool-call-only message (no text) must not produce
+// a phantom final block.
+func TestModel_Update_UIAssistantMessage_EmptyContentSkipsCommit(t *testing.T) {
 	t.Parallel()
 
-	ch := make(chan UIEvent, 4)
-	m := NewModel(ModelConfig{EventCh: ch})
-	// Seed a streaming block so the final msg has something to replace.
-	updated, _ := m.Update(UIAssistantMessage{Content: "streaming"})
-	m1 := updated.(Model)
+	m := NewModel(ModelConfig{})
+	updated, _ := m.Update(UIAssistantMessage{Content: "", IsFinal: true})
+	um := updated.(Model)
 
-	updated2, _ := m1.Update(UIAssistantMessage{Content: "done", IsFinal: true})
+	assert.Equal(t, -1, um.findBlockKind(blockAssistantFinal),
+		"empty content must not commit a final block")
+}
+
+// TestModel_Update_UIAssistantMessage_NewTurn_CommitsPriorTurn is a
+// regression for pulumi-service#42775: two consecutive non-final messages
+// must each reach scrollback. Previously the second silently overwrote
+// the first.
+func TestModel_Update_UIAssistantMessage_NewTurn_CommitsPriorTurn(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+
+	updated, _ := m.Update(UIAssistantMessage{Content: "I've explored the project."})
+	m1 := updated.(Model)
+	updated2, cmd := m1.Update(UIAssistantMessage{Content: "Got it — keep the existing bucket."})
 	m2 := updated2.(Model)
 
-	assert.Equal(t, -1, m2.findBlockKind(blockAssistantStreaming), "final msg must drop any streaming block")
-	assert.GreaterOrEqual(t, m2.findBlockKind(blockAssistantFinal), 0, "final msg must leave a final block")
+	var raws []string
+	for _, b := range m2.blocks {
+		if b.kind == blockAssistantFinal {
+			raws = append(raws, b.raw)
+		}
+	}
+	assert.Equal(t, []string{
+		"I've explored the project.",
+		"Got it — keep the existing bucket.",
+	}, raws, "each non-final turn with content must commit its own final block")
+
+	// And both must reach the user via tea.Println, not just sit in m.blocks.
+	printed := strings.Join(collectPrintln(cmd), "\n")
+	assert.Contains(t, printed, "Got it — keep the existing bucket.",
+		"second turn must reach scrollback via tea.Println")
 }
 
 // TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback is a
 // regression for a bug where hand-off messages (IsFinal=true,
-// HasPendingCLIWork=true) carrying assistant commentary were rendered as a
-// streaming live-frame block and then silently overwritten by the next
-// hand-off, so the commentary never reached scrollback. Each IsFinal=true
-// message — hand-off or terminal — must commit a final block.
+// HasPendingCLIWork=true) carrying assistant commentary were dropped before
+// reaching scrollback. Each hand-off must commit its own final block.
 func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T) {
 	t.Parallel()
 
@@ -976,12 +993,6 @@ func TestModel_Update_UIAssistantMessage_HandoffCommitsToScrollback(t *testing.T
 	})
 	m1 := updated.(Model)
 
-	// The streaming block is the live-frame holding pen; a hand-off must
-	// flush it and append a committed final block instead. Otherwise the
-	// next hand-off's content overwrites the streaming raw and the prior
-	// commentary is lost from scrollback.
-	assert.Equal(t, -1, m1.findBlockKind(blockAssistantStreaming),
-		"hand-off must not leave a streaming block behind")
 	idx := m1.findBlockKind(blockAssistantFinal)
 	require.GreaterOrEqual(t, idx, 0, "hand-off must commit a final assistant block")
 	assert.Equal(t, "I'll read the file", m1.blocks[idx].raw)
@@ -1426,6 +1437,375 @@ func TestModel_Update_DenyPlan_LeavesPlanModeOn(t *testing.T) {
 	assert.True(t, m.planMode, "denied plan must leave planMode on")
 }
 
+func TestModel_Update_UIApprovalRequest_AskUser_RendersAsQuestion(t *testing.T) {
+	t.Parallel()
+
+	// The agent's ux__ask_user tool reuses user_approval_request to ask
+	// clarifying questions. The TUI must NOT render this as an approval —
+	// no warning header, no "Approve?" prompt.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q",
+		Message:      "Which region should I deploy to?",
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	um := updated.(Model)
+
+	assert.True(t, um.pendingIsQuestion, "ask_user must set pendingIsQuestion")
+	assert.Equal(t, -1, um.findBlockKind(blockApprovalGeneral),
+		"ask_user must NOT route to the general-approval block")
+	idx := um.findBlockKind(blockQuestion)
+	require.NotEqual(t, -1, idx, "ask_user must commit a blockQuestion")
+	rendered := um.blocks[idx].rendered
+	assert.NotContains(t, rendered, "Approval required",
+		"question rendering must not use the approval-required header")
+	assert.NotContains(t, rendered, "⚠",
+		"question rendering must not use the warning glyph")
+	assert.Contains(t, rendered, "Question",
+		"question rendering must include a question header")
+	assert.Contains(t, rendered, "Which region should I deploy to?",
+		"question body must be rendered verbatim")
+	assert.Contains(t, um.textInput.Prompt, "Your answer",
+		"prompt must invite a free-form answer, not an approval")
+	assert.NotContains(t, um.textInput.Prompt, "Approve",
+		"prompt must not say 'Approve?' for a question")
+}
+
+func TestModel_Update_UIApprovalRequest_AskUser_BareToolName(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q2",
+		Message:      "Pick a runtime.",
+		ApprovalType: "general",
+		ToolName:     "ask_user",
+	})
+	um := updated.(Model)
+
+	assert.True(t, um.pendingIsQuestion)
+	assert.NotEqual(t, -1, um.findBlockKind(blockQuestion))
+}
+
+func TestModel_Update_UIApprovalRequest_AskUser_PlanExitWinsOverToolName(t *testing.T) {
+	t.Parallel()
+
+	// approval_type "plan_exit" is the highest-priority discriminator: a
+	// hypothetical plan_exit request that also carries a ux__ask_user tool
+	// name must render as a plan, never a question.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_p",
+		Message:         "intro",
+		ApprovalType:    approvalTypePlanExit,
+		ToolName:        "ux__ask_user", // ignored when approval_type is plan_exit
+		PlanDescription: "# Plan\n\n- step",
+	})
+	um := updated.(Model)
+
+	assert.False(t, um.pendingIsQuestion, "plan_exit must not be treated as a question")
+	assert.Equal(t, -1, um.findBlockKind(blockQuestion),
+		"plan_exit must not produce a blockQuestion")
+	assert.NotEqual(t, -1, um.findBlockKind(blockApprovalPlan),
+		"plan_exit must produce a blockApprovalPlan")
+}
+
+func TestModel_Update_UIApprovalRequest_GeneralWithoutAskUser_StillApproval(t *testing.T) {
+	t.Parallel()
+
+	// Sanity check that real "general" approvals (no ask_user tool name)
+	// still take the existing approval path. Guards against a regression
+	// where the new branch over-matches.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_real",
+		Message:      "Run pulumi up?",
+		ApprovalType: "general",
+		// no ToolName at all — represents a real approval-gated tool
+	})
+	um := updated.(Model)
+
+	assert.False(t, um.pendingIsQuestion)
+	assert.NotEqual(t, -1, um.findBlockKind(blockApprovalGeneral))
+	assert.Contains(t, um.textInput.Prompt, "Approve?")
+}
+
+func TestModel_Update_AnswerQuestion_SendsConfirmationWithAnswer(t *testing.T) {
+	t.Parallel()
+
+	// Pressing Enter on a question must send the typed text as the answer.
+	// Wire reply is Approved=false, Message=<answer> — the backend's
+	// ask_user tool wrapper converts ok=false+instructions into a
+	// tool_response delivering the answer to the agent.
+	outCh := make(chan outboundEvent, 1)
+	evCh := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q3",
+		Message:      "Which region?",
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	m = updated.(Model)
+	require.True(t, m.pendingIsQuestion)
+
+	answer := "us-west-2 with a hot spare in eu-central-1"
+	m.textInput.SetValue(answer)
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+
+	select {
+	case got := <-outCh:
+		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
+		require.True(t, ok, "expected AgentUserEventUserConfirmation, got %T", got.event)
+		assert.False(t, conf.Approved,
+			"answer is sent with Approved=false to match the backend ask_user wrapper contract")
+		assert.Equal(t, "appr_q3", conf.ApprovalID)
+		assert.Equal(t, answer, conf.Message,
+			"the typed text must be sent verbatim as instructions")
+	default:
+		t.Fatal("answering a question must post a confirmation event")
+	}
+
+	assert.False(t, m.pendingApproval, "submitting an answer must clear pendingApproval")
+	assert.False(t, m.pendingIsQuestion, "pendingIsQuestion must be cleared on submit")
+	assert.Empty(t, m.pendingApprovalType)
+
+	idx := m.findBlockKind(blockAnswerSubmitted)
+	require.NotEqual(t, -1, idx, "submitting must commit a blockAnswerSubmitted")
+	rendered := m.blocks[idx].rendered
+	assert.Contains(t, rendered, "Answered",
+		"the post-submit block must read 'Answered', not 'Denied'")
+	assert.NotContains(t, rendered, "Denied",
+		"the post-submit block must NOT read 'Denied' for a question answer")
+	assert.Contains(t, rendered, answer)
+}
+
+func TestModel_Update_AnswerQuestion_EmptyInputIsNoOp(t *testing.T) {
+	t.Parallel()
+
+	// Empty input + Enter must not produce an outbound event and must
+	// leave the question pending.
+	outCh := make(chan outboundEvent, 1)
+	evCh := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q4",
+		Message:      "Pick a region.",
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	m = updated.(Model)
+
+	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = updated2.(Model)
+
+	select {
+	case got := <-outCh:
+		t.Fatalf("empty Enter must not post a confirmation event; got %#v", got.event)
+	default:
+	}
+
+	assert.True(t, m.pendingApproval, "empty Enter must leave the question pending")
+	assert.True(t, m.pendingIsQuestion, "pendingIsQuestion must remain set")
+}
+
+func TestQuestionWrapsToTerminalWidth(t *testing.T) {
+	t.Parallel()
+
+	// Long question bodies wrap rather than clipping at the viewport edge.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 24})
+	m = updated0.(Model)
+
+	long := strings.Repeat("word ", 25) // ~125 chars
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:   "appr_q5",
+		Message:      long,
+		ApprovalType: "general",
+		ToolName:     "ux__ask_user",
+	})
+	um := updated.(Model)
+
+	idx := um.findBlockKind(blockQuestion)
+	require.NotEqual(t, -1, idx)
+	widths := visibleLines(um.blocks[idx].rendered)
+	require.Greater(t, len(widths), 1,
+		"long question body must wrap; got: %q", um.blocks[idx].rendered)
+	for i, w := range widths {
+		assert.LessOrEqual(t, w, 40, "line %d exceeds terminal width: width=%d", i, w)
+	}
+}
+
+func TestModel_Update_UITodoList_OutsidePlanModeCommitsBlock(t *testing.T) {
+	t.Parallel()
+
+	// Outside plan mode every TodoWrite is rendered immediately so the user
+	// sees status flips ("step completed") and edits land in scrollback.
+	m := NewModel(ModelConfig{})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated, cmd := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "set up project", Index: 0, Status: "completed"},
+		{Content: "add lambda", Index: 1, Status: "in_progress"},
+		{Content: "run preview", Index: 2, Status: "pending"},
+	}})
+	um := updated.(Model)
+
+	idx := um.findBlockKind(blockTodoList)
+	require.NotEqual(t, -1, idx, "TodoWrite outside plan mode must commit a blockTodoList")
+	rendered := um.blocks[idx].rendered
+	assert.Contains(t, rendered, "TODO")
+	assert.Contains(t, rendered, "[x] ")
+	assert.Contains(t, rendered, "[~] ")
+	assert.Contains(t, rendered, "[ ] ")
+	// Index ordering is load-bearing: the agent communicates "next step"
+	// implicitly via priority order.
+	assert.Less(t, strings.Index(rendered, "set up project"), strings.Index(rendered, "add lambda"))
+	assert.Less(t, strings.Index(rendered, "add lambda"), strings.Index(rendered, "run preview"))
+
+	printed := collectPrintln(cmd)
+	require.Len(t, printed, 1, "outside plan mode the TODO block must be printed to scrollback")
+	assert.Contains(t, printed[0], "set up project")
+}
+
+func TestModel_Update_UITodoList_InPlanModeBuffersAndDoesNotCommit(t *testing.T) {
+	t.Parallel()
+
+	// In plan mode the list is held back so it can be folded into the
+	// upcoming Proposed plan block — committing now would split the visual
+	// unit the user picked the embedded layout for.
+	m := NewModel(ModelConfig{})
+	m.planMode = true
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated, cmd := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "draft plan", Index: 0, Status: "pending"},
+	}})
+	um := updated.(Model)
+
+	assert.Equal(t, -1, um.findBlockKind(blockTodoList),
+		"plan-mode TodoWrite must not commit a standalone block")
+	require.Len(t, um.pendingTodos, 1)
+	assert.Equal(t, "draft plan", um.pendingTodos[0].Content)
+	assert.Empty(t, collectPrintln(cmd), "plan-mode TodoWrite must not write to scrollback yet")
+}
+
+func TestModel_Update_PlanExitFoldsBufferedTodosIntoPlanBlock(t *testing.T) {
+	t.Parallel()
+
+	// The buffered list must surface as a Tasks: subsection inside the
+	// single Proposed plan block — that's the layout the user chose so the
+	// plan and the tasks read as one unit in scrollback.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.planMode = true
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated1, _ := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "alpha task", Index: 0, Status: "pending"},
+		{Content: "beta task", Index: 1, Status: "pending"},
+	}})
+	m = updated1.(Model)
+
+	updated2, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_plan",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\n- step one",
+	})
+	um := updated2.(Model)
+
+	assert.Empty(t, um.pendingTodos, "buffered todos must be drained on plan_exit")
+	idx := um.findBlockKind(blockApprovalPlan)
+	require.NotEqual(t, -1, idx)
+	rendered := um.blocks[idx].rendered
+	assert.Contains(t, rendered, "Proposed plan")
+	assert.Contains(t, rendered, "Tasks:")
+	assert.Contains(t, rendered, "alpha task")
+	assert.Contains(t, rendered, "beta task")
+	// Single block — no separate blockTodoList ever materialized.
+	assert.Equal(t, -1, um.findBlockKind(blockTodoList),
+		"plan-exit must not produce a separate TODO block")
+}
+
+func TestModel_Update_PlanModeUITodoList_OnlyLatestSnapshotIsRendered(t *testing.T) {
+	t.Parallel()
+
+	// Several TodoWrites can arrive in plan mode (the agent drafts and
+	// revises). The plan_exit block must reflect only the most recent
+	// snapshot so users don't see superseded work.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.planMode = true
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated1, _ := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "stale entry", Index: 0, Status: "pending"},
+	}})
+	m = updated1.(Model)
+	updated2, _ := m.Update(UITodoList{Items: []UITodoItem{
+		{Content: "latest entry", Index: 0, Status: "pending"},
+	}})
+	m = updated2.(Model)
+
+	updated3, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_plan2",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "Plan body.",
+	})
+	um := updated3.(Model)
+
+	idx := um.findBlockKind(blockApprovalPlan)
+	require.NotEqual(t, -1, idx)
+	rendered := um.blocks[idx].rendered
+	assert.Contains(t, rendered, "latest entry")
+	assert.NotContains(t, rendered, "stale entry",
+		"superseded list entries must not leak into the plan block")
+}
+
+func TestModel_Update_PlanExitWithoutBufferedTodosRendersCleanPlan(t *testing.T) {
+	t.Parallel()
+
+	// When no TodoWrite has fired during plan mode, the plan block must
+	// render exactly as before — no spurious Tasks: header attached.
+	ch := make(chan UIEvent, 4)
+	m := NewModel(ModelConfig{EventCh: ch})
+	m.planMode = true
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	m = updated0.(Model)
+
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID:      "appr_plan3",
+		ApprovalType:    approvalTypePlanExit,
+		PlanDescription: "# Plan\n\nbody only",
+	})
+	um := updated.(Model)
+
+	idx := um.findBlockKind(blockApprovalPlan)
+	require.NotEqual(t, -1, idx)
+	rendered := um.blocks[idx].rendered
+	assert.Contains(t, rendered, "Proposed plan")
+	assert.NotContains(t, rendered, "Tasks:",
+		"a plan with no buffered todos must not advertise an empty Tasks: section")
+}
+
 func TestModel_RenderMarkdown_FallsBackWhenRendererNil(t *testing.T) {
 	t.Parallel()
 
@@ -1610,20 +1990,18 @@ func TestModel_LiveView_OnlyShowsLiveBlocks(t *testing.T) {
 		{kind: blockToolComplete, rendered: "TOOLCOMPLETESCROLLBACK"},
 		{kind: blockAssistantFinal, rendered: "FINALSCROLLBACK"},
 		{kind: blockWarning, rendered: "WARNSCROLLBACK"},
-		{kind: blockAssistantStreaming, rendered: "STREAMING_LIVE", raw: "STREAMING_LIVE"},
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
 	view := m.View()
 	// Live blocks are visible.
-	assert.Contains(t, view, "STREAMING_LIVE", "in-flight streaming must appear in View")
 	assert.Contains(t, view, "Thinking", "busy label must appear in View")
 	// Committed blocks are NOT visible — they were emitted to scrollback.
 	assert.NotContains(t, view, "USERSCROLLBACK")
 	assert.NotContains(t, view, "TOOLCOMPLETESCROLLBACK")
 	assert.NotContains(t, view, "FINALSCROLLBACK")
 	assert.NotContains(t, view, "WARNSCROLLBACK")
-	require.Len(t, m.blocks, 6, "View must not mutate the blocks slice")
+	require.Len(t, m.blocks, 5, "View must not mutate the blocks slice")
 }
 
 func TestApprovalGeneralWrapsToTerminalWidth(t *testing.T) {
@@ -1855,4 +2233,718 @@ func TestModel_WrapPlain_TinyWidthShortCircuits(t *testing.T) {
 	m.width = 100
 	wrapped := m.wrapPlain(strings.Repeat("word ", 30))
 	assert.Contains(t, wrapped, "\n", "normal-width path must wrap into multiple lines")
+}
+
+// -----------------------------------------------------------------------------
+// Conversation spacing (issue #42472)
+// -----------------------------------------------------------------------------
+
+// TestPrintlnBlock_FirstEmissionIsBare guards the welcome-banner case: the
+// first scrollback emission ever must NOT carry a leading blank line, so the
+// session opens with the banner pinned to the top of the transcript.
+func TestPrintlnBlock_FirstEmissionIsBare(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	cmd := m.printlnBlock("hello")
+	require.True(t, m.hasEmittedScrollback, "first call must flip the latch")
+
+	got := collectPrintln(cmd)
+	require.Len(t, got, 1)
+	assert.Equal(t, "hello", got[0], "first emission must be exactly the body, no leading newline")
+}
+
+// TestPrintlnBlock_SubsequentEmissionsLeadByNewline pins the spacing rule for
+// every block after the first: a single leading "\n" so each block is
+// visually separated from whatever sits above it in scrollback.
+func TestPrintlnBlock_SubsequentEmissionsLeadByNewline(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	_ = m.printlnBlock("welcome") // burn the first-emission slot
+
+	cmd := m.printlnBlock("hello")
+	got := collectPrintln(cmd)
+	require.Len(t, got, 1)
+	assert.Equal(t, "\nhello", got[0],
+		"subsequent emissions must start with a single \\n so blocks have a blank-line gap")
+}
+
+// TestTranscriptSpacing_FullSequence drives a representative session through
+// the model and asserts every committed scrollback emission after the welcome
+// carries exactly one leading "\n". This is the regression test for #42472:
+// without per-block spacing, blocks render directly under each other.
+func TestTranscriptSpacing_FullSequence(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan UIEvent, 16)
+	m := tea.Model(NewModel(ModelConfig{EventCh: ch}))
+
+	// First WindowSize flushes the welcome banner.
+	var welcomeCmd tea.Cmd
+	m, welcomeCmd = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	welcomePrinted := collectPrintln(welcomeCmd)
+	require.NotEmpty(t, welcomePrinted, "first WindowSize must emit the welcome banner")
+	assert.False(t, strings.HasPrefix(welcomePrinted[0], "\n"),
+		"welcome banner must be the bare first emission, with no leading blank line")
+
+	// Drive a sequence of events that each commit a block to scrollback.
+	// UIUserMessage is a foreign message (no matching pendingUserEcho) so it
+	// renders. UIAssistantMessage with IsFinal=true commits a final block.
+	// UIWarning and UIError commit warning and error blocks. The combined
+	// transcript must have a blank line between every consecutive pair.
+	events := []UIEvent{
+		UIUserMessage{Content: "hello from web ui"},
+		UIAssistantMessage{Content: "hi back", IsFinal: true},
+		UIToolStarted{Name: "shell__exec"},
+		UIToolCompleted{Name: "shell__exec"},
+		UIWarning{Message: "watch out"},
+		UIError{Message: "boom"},
+	}
+
+	followUpPrinted := make([]string, 0, len(events))
+	for _, ev := range events {
+		var cmd tea.Cmd
+		m, cmd = m.Update(ev)
+		followUpPrinted = append(followUpPrinted, collectPrintln(cmd)...)
+	}
+
+	require.NotEmpty(t, followUpPrinted, "events should have produced at least one Println")
+	for i, body := range followUpPrinted {
+		assert.True(t, strings.HasPrefix(body, "\n"),
+			"emission #%d after the welcome must start with \\n; got %q", i, body)
+		assert.False(t, strings.HasPrefix(body, "\n\n"),
+			"emission #%d must not double up the gap (only one leading \\n); got %q", i, body)
+	}
+}
+
+// TestView_LeadingBlankLine_Idle and _Busy both lock in the spacing rule: a
+// blank gap line sits above the live frame so the last committed block in
+// scrollback is separated from the input zone, but the spinner and the
+// prompt stay flush so the busy indicator reads as part of the input.
+func TestView_LeadingBlankLine_Idle(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.width = 80
+	m.height = 24
+	require.Empty(t, m.blocks, "test relies on an idle model with no blocks")
+
+	view := m.View()
+	assert.True(t, strings.HasPrefix(view, "\n"),
+		"View() must start with a blank line so the prompt is separated from the last scrollback block; got: %q", view)
+	// After the leading blank, the next thing must be the prompt — not a
+	// second blank line. (The prompt itself starts with "❯ ".)
+	assert.True(t, strings.HasPrefix(view, "\n"+m.textInput.Prompt),
+		"idle View() must put the prompt immediately after the leading blank; got: %q", view)
+}
+
+func TestView_LeadingBlankLine_Busy_SpinnerFlushWithPrompt(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.width = 80
+	m.height = 24
+	m.blocks = []block{{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb}}
+
+	view := m.View()
+	require.True(t, strings.HasPrefix(view, "\n"),
+		"View() must start with a blank line above the live frame; got: %q", view)
+
+	// Spinner appears in the live frame, prompt below it, with NO blank line
+	// between them — the spinner reads as part of the input zone.
+	idx := strings.Index(view, m.textInput.Prompt) // "❯ "
+	require.Greater(t, idx, 0, "prompt must appear after the live frame")
+	above := view[:idx]
+	assert.False(t, strings.HasSuffix(above, "\n\n"),
+		"there must be NO blank line between the busy spinner and the prompt — they read as one zone; got: %q", above)
+	assert.Contains(t, above, "Thinking",
+		"busy spinner label must appear above the prompt")
+}
+
+// TestLiveView_BlankBetweenLiveBlocks pins the inter-block gap inside the live
+// frame when an open pulumi op is pending under the busy spinner.
+func TestLiveView_BlankBetweenLiveBlocks(t *testing.T) {
+	t.Parallel()
+
+	m := NewModel(ModelConfig{})
+	m.width = 80
+	m.blocks = []block{
+		{kind: blockPulumiOp, rendered: "PULUMI_LIVE", pulumi: &pulumiBlockState{done: false}},
+		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
+	}
+
+	live := m.liveView()
+	require.Contains(t, live, "PULUMI_LIVE")
+	require.Contains(t, live, "Thinking")
+
+	// The pulumi-op → busy pair must be separated by a blank line. We can't
+	// anchor on exact line counts (the busy line and rendered string may wrap
+	// or embed ANSI), so check that "\n\n" appears between them.
+	pulumiIdx := strings.Index(live, "PULUMI_LIVE")
+	thinkingIdx := strings.Index(live, "Thinking")
+	require.Less(t, pulumiIdx, thinkingIdx)
+	assert.Contains(t, live[pulumiIdx:thinkingIdx], "\n\n",
+		"pulumi-op → busy gap must be a full blank line")
+}
+
+func TestModel_Update_CtrlA_CyclesApprovalMode(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+A advances the approval mode through manual → balanced → auto →
+	// manual. Pre-first-message there is no PATCH dispatch — the value lives
+	// purely in the TUI snapshot until the user sends their first message.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeAuto, m.approvalMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"third Ctrl+A must wrap back to manual")
+
+	// Pre-message toggles must not put anything on outCh — the snapshot is
+	// only committed on the first user_message.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("pre-message Ctrl+A must not dispatch an outbound event, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlA_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
+	t.Parallel()
+
+	// Once the first message has been sent, Ctrl+A must both flip the local
+	// snapshot AND dispatch an outboundEvent.update so the runNeo dispatcher
+	// PATCHes the live task. Without that, cloud ApprovalHandler would still
+	// see the original mode and prompt at the wrong cadence.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	// The keypress only schedules the debounce tick; nothing is on outCh yet.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+A must defer the dispatch behind the debounce tick, got %#v", ev)
+	default:
+	}
+
+	// Deliver the debounce tick with the current gen — that's what tea.Tick
+	// would do after modeToggleDebounce — and assert the PATCH lands.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: m.approvalDebounceGen})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update, "the debounce tick must dispatch an update")
+		require.NotNil(t, got.update.ApprovalMode, "update must carry the new approvalMode")
+		assert.Equal(t, client.NeoApprovalModeBalanced, *got.update.ApprovalMode)
+		assert.Nil(t, got.update.PermissionMode,
+			"approval-mode toggle must not include permissionMode")
+	default:
+		t.Fatal("the debounce tick at the current gen must dispatch")
+	}
+}
+
+func TestModel_Update_CtrlA_RapidPressesCollapseToOneDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Three Ctrl+A presses in quick succession (faster than the debounce
+	// window) must collapse to a single PATCH carrying the FINAL mode value.
+	// Each press advances the debounce gen, so only the last-scheduled tick
+	// fires the dispatch — the earlier two are gen-mismatched and silently
+	// dropped.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	// Three presses: manual → balanced → auto → manual.
+	for range 3 {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+		m = updated.(Model)
+	}
+	require.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"three presses must wrap back to manual")
+	require.Equal(t, 3, m.approvalDebounceGen, "each press advances the debounce gen")
+
+	// Stale ticks from the first two presses arrive — both must no-op.
+	updated, _ := m.Update(approvalDebounceTickMsg{gen: 1})
+	m = updated.(Model)
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: 2})
+	m = updated.(Model)
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen ticks must not dispatch, got %#v", ev)
+	default:
+	}
+
+	// The latest tick fires the dispatch with the final mode value.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: 3})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.ApprovalMode)
+		assert.Equal(t, client.NeoApprovalModeManual, *got.update.ApprovalMode,
+			"the collapsed dispatch must carry the FINAL mode after all presses")
+	default:
+		t.Fatal("the current-gen tick must dispatch")
+	}
+
+	// And no further events on outCh.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("only one dispatch must land for three rapid presses, got extra %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_ApprovalDebounceTick_StaleGenDoesNotDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: a debounce tick whose gen no longer matches must be a no-op
+	// even when there's no other pending press. This guards the case where a
+	// late tea.Tick fires after the user has already moved past the toggle.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeAuto,
+	})
+	m.approvalDebounceGen = 5
+
+	updated, _ := m.Update(approvalDebounceTickMsg{gen: 4})
+	_ = updated
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen tick must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlA_DuringTaskCreationIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// Between Enter and the task URL arriving (the create-task in-flight
+	// window), Ctrl+A would race the dispatcher: getTaskID() returns "" and
+	// the update event is silently dropped. The fix swallows the keypress
+	// instead so the status bar never lies about what the cloud is enforcing.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         false,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+
+	assert.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"Ctrl+A during the create-task window must not change the local mode")
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+A during the create-task window must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_UISessionURL_UnfreezesPostMessageToggles(t *testing.T) {
+	t.Parallel()
+
+	// UISessionURL is the dispatcher's signal that CreateNeoTask succeeded —
+	// from that moment on, Ctrl+A / Ctrl+R must work again. The status-bar
+	// indicator also flips here.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		EventCh:             make(chan UIEvent, 4),
+		MessageSent:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+	require.False(t, m.taskCreated, "precondition: task not yet created")
+
+	updated, _ := m.Update(UISessionURL{URL: "https://app.pulumi.com/x/neo/tasks/t1"})
+	m = updated.(Model)
+	require.True(t, m.taskCreated, "UISessionURL must flip taskCreated")
+
+	// Toggle now works — schedules a debounced PATCH.
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	// Fire the debounce tick so the PATCH actually lands.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: m.approvalDebounceGen})
+	_ = updated
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+	default:
+		t.Fatal("debounce tick after UISessionURL must dispatch an update")
+	}
+}
+
+func TestModel_Update_CtrlR_TogglesPermissionMode(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+R flips read-only on and off. Like Ctrl+A, pre-message it's a
+	// purely local flip; post-message it dispatches an update.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeDefault, m.permissionMode,
+		"second Ctrl+R must flip back to default")
+
+	select {
+	case ev := <-outCh:
+		t.Fatalf("pre-message Ctrl+R must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlR_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
+	t.Parallel()
+
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		MessageSent:           true,
+		TaskCreated:           true,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
+
+	// Debounced — nothing on outCh until the tick fires.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+R must defer the dispatch behind the debounce tick, got %#v", ev)
+	default:
+	}
+
+	updated, _ = m.Update(permissionDebounceTickMsg{gen: m.permissionDebounceGen})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.PermissionMode)
+		assert.Equal(t, client.NeoPermissionModeReadOnly, *got.update.PermissionMode)
+		assert.Nil(t, got.update.ApprovalMode,
+			"permission-mode toggle must not include approvalMode")
+	default:
+		t.Fatal("the debounce tick at the current gen must dispatch")
+	}
+}
+
+func TestModel_Update_CtrlR_RapidPressesCollapseToOneDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Mirror of TestModel_Update_CtrlA_RapidPressesCollapseToOneDispatch for
+	// the permission axis. Two rapid Ctrl+R presses must net out to the
+	// starting state (default → read-only → default), so the only dispatch
+	// that fires carries permission=default.
+	outCh := make(chan outboundEvent, 2)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		MessageSent:           true,
+		TaskCreated:           true,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	for range 2 {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+		m = updated.(Model)
+	}
+	require.Equal(t, client.NeoPermissionModeDefault, m.permissionMode)
+	require.Equal(t, 2, m.permissionDebounceGen)
+
+	// Stale tick: gen mismatch, no dispatch.
+	updated, _ := m.Update(permissionDebounceTickMsg{gen: 1})
+	m = updated.(Model)
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen tick must not dispatch, got %#v", ev)
+	default:
+	}
+
+	// Current tick: one dispatch with the netted-out final value.
+	updated, _ = m.Update(permissionDebounceTickMsg{gen: 2})
+	_ = updated
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.PermissionMode)
+		assert.Equal(t, client.NeoPermissionModeDefault, *got.update.PermissionMode)
+	default:
+		t.Fatal("the current-gen tick must dispatch the final value")
+	}
+}
+
+func TestModel_View_ModeChips(t *testing.T) {
+	t.Parallel()
+
+	// Default modes (manual approval, default permission) collapse to no chips
+	// so the status bar stays uncluttered. Each non-default value gets its own
+	// chip; multiple chips concatenate with a space separator. We assert on
+	// modeChips() directly rather than View() because the hint line itself
+	// mentions "read-only" / "approval" in its keybindings legend.
+	t.Run("DefaultsRenderNoChips", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{
+			InitialApprovalMode:   client.NeoApprovalModeManual,
+			InitialPermissionMode: client.NeoPermissionModeDefault,
+		})
+		assert.Empty(t, m.modeChips(), "manual+default must render no chips")
+	})
+
+	t.Run("BalancedRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialApprovalMode: client.NeoApprovalModeBalanced})
+		assert.Contains(t, m.modeChips(), "balanced")
+	})
+
+	t.Run("AutoRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialApprovalMode: client.NeoApprovalModeAuto})
+		assert.Contains(t, m.modeChips(), "auto-approve")
+	})
+
+	t.Run("ReadOnlyRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialPermissionMode: client.NeoPermissionModeReadOnly})
+		assert.Contains(t, m.modeChips(), "read-only")
+	})
+
+	t.Run("MultipleChipsCoexist", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{
+			InitialApprovalMode:   client.NeoApprovalModeAuto,
+			InitialPermissionMode: client.NeoPermissionModeReadOnly,
+		})
+		m.planMode = true
+		chips := m.modeChips()
+		assert.Contains(t, chips, "plan mode")
+		assert.Contains(t, chips, "auto-approve")
+		assert.Contains(t, chips, "read-only")
+	})
+}
+
+func TestModel_Update_KeyEnter_FirstMessageCarriesAllModes(t *testing.T) {
+	t.Parallel()
+
+	// The first user message must snapshot all three axes (planMode,
+	// approvalMode, permissionMode) into the outboundEvent envelope. The
+	// dispatcher uses these to seed CreateNeoTask; if the snapshot is wrong
+	// the cloud task is created with the wrong policy.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		InitialApprovalMode:   client.NeoApprovalModeBalanced,
+		InitialPermissionMode: client.NeoPermissionModeReadOnly,
+	})
+	m.planMode = true
+	m.textInput.SetValue("kick off")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		assert.True(t, got.planMode)
+		assert.Equal(t, client.NeoApprovalModeBalanced, got.approvalMode)
+		assert.Equal(t, client.NeoPermissionModeReadOnly, got.permissionMode)
+	default:
+		t.Fatal("Enter must post the input to outCh")
+	}
+}
+
+// newQuestionPendingModel returns a Model that has just received a question
+// (ask-user) request — analogous to newApprovalPendingModel but routes through
+// the isAskUserToolName branch so pendingIsQuestion gets set.
+func newQuestionPendingModel(t *testing.T) Model {
+	t.Helper()
+	m := NewModel(ModelConfig{EventCh: make(chan UIEvent, 4), Busy: true})
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID: "appr_q",
+		Message:    "What region?",
+		ToolName:   "ux__ask_user",
+	})
+	return updated.(Model)
+}
+
+func TestModel_Update_UIApprovalResolved_AutoApprovedCommitsBlockAndClears(t *testing.T) {
+	t.Parallel()
+
+	// The cloud auto-resolved a pending approval. The TUI must commit an
+	// "Auto-approved" feedback block to scrollback and reset the prompt — the
+	// agent has already moved on, so the question prompt is no longer relevant.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+	require.True(t, m.pendingApproval, "precondition: approval is pending")
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval, "matching resolved must clear pendingApproval")
+	assert.Empty(t, m.pendingApprovalID, "pendingApprovalID must reset")
+	assert.False(t, m.pendingIsQuestion)
+	assert.Equal(t, "❯ ", m.textInput.Prompt, "prompt must return to default")
+	assert.Equal(t, "Send a message...", m.textInput.Placeholder)
+
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0, "a blockApprovalAuto must be appended")
+	assert.True(t, m.blocks[idx].approved, "approved flag must round-trip from msg.Approved")
+	assert.False(t, m.blocks[idx].autoIsQuestion, "approval (not question) path must set autoIsQuestion=false")
+
+	// The commit also queues a tea.Println so the block lands in terminal
+	// scrollback. Verify the rendered string carries the "Auto-approved" verb.
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed, "auto-resolved block must be emitted to scrollback")
+	assert.Contains(t, printed[len(printed)-1], "Auto-approved")
+}
+
+func TestModel_Update_UIApprovalResolved_AutoApprovedQuestionRendersAnsweredVerb(t *testing.T) {
+	t.Parallel()
+
+	// Question (ask-user) path: pendingIsQuestion=true. The auto-resolved block
+	// must carry that flag through so the renderer says "Auto-answered" instead
+	// of "Auto-approved" — auto-approving an ask-user is conceptually answering
+	// with the default, not approving.
+	m := newQuestionPendingModel(t)
+	require.True(t, m.pendingApproval)
+	require.True(t, m.pendingIsQuestion)
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_q", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval)
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0)
+	assert.True(t, m.blocks[idx].autoIsQuestion, "question path must carry autoIsQuestion=true")
+
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed)
+	assert.Contains(t, printed[len(printed)-1], "Auto-answered")
+}
+
+func TestModel_Update_UIApprovalResolved_AutoDeniedRendersDeniedVerb(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: ApprovalMode=auto never denies today, but the wire format
+	// supports it (ok=false) and a future cloud policy could exercise this
+	// path. The TUI must render "Auto-denied" so the user sees what happened.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: false})
+	m = updated.(Model)
+
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0)
+	assert.False(t, m.blocks[idx].approved)
+
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed)
+	assert.Contains(t, printed[len(printed)-1], "Auto-denied")
+}
+
+func TestModel_Update_UIApprovalResolved_EchoOfManualIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// Manual confirmation already clears pendingApproval locally (the Enter
+	// handler does that before sending upstream). When the cloud later echoes
+	// our own user_confirmation back on the stream, the TUI must NOT render an
+	// auto-approved block — pendingApproval is already false, so the handler
+	// silently no-ops.
+	m := NewModel(ModelConfig{EventCh: make(chan UIEvent, 4)})
+	require.False(t, m.pendingApproval, "precondition: no pending approval")
+
+	updated, _ := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval)
+	assert.Equal(t, -1, m.findBlockKind(blockApprovalAuto),
+		"echo of our own confirmation must not commit a blockApprovalAuto")
+}
+
+func TestModel_Update_UIApprovalResolved_MismatchedIDIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// A resolved event arriving with a different approval ID than the one the
+	// TUI is currently waiting on must be ignored — it's either stale or for a
+	// different request. The current pending state must survive.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+	require.True(t, m.pendingApproval)
+	require.Equal(t, "appr_1", m.pendingApprovalID)
+
+	updated, _ := m.Update(UIApprovalResolved{ApprovalID: "appr_other", Approved: true})
+	m = updated.(Model)
+
+	assert.True(t, m.pendingApproval, "mismatched ID must not clear pending state")
+	assert.Equal(t, "appr_1", m.pendingApprovalID)
+	assert.Equal(t, -1, m.findBlockKind(blockApprovalAuto),
+		"mismatched ID must not commit a blockApprovalAuto")
+}
+
+func TestRenderApprovalAuto_VerbVariants(t *testing.T) {
+	t.Parallel()
+
+	// Direct render-helper checks for the three string variants. lipgloss may
+	// embed ANSI in the rendered output, so we assert on Contains.
+	m := NewModel(ModelConfig{})
+
+	cases := []struct {
+		name           string
+		approved       bool
+		autoIsQuestion bool
+		want           string
+	}{
+		{name: "auto-approved", approved: true, autoIsQuestion: false, want: "Auto-approved"},
+		{name: "auto-answered", approved: true, autoIsQuestion: true, want: "Auto-answered"},
+		{name: "auto-denied-approval", approved: false, autoIsQuestion: false, want: "Auto-denied"},
+		{name: "auto-denied-question", approved: false, autoIsQuestion: true, want: "Auto-denied"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			b := &block{kind: blockApprovalAuto, approved: tc.approved, autoIsQuestion: tc.autoIsQuestion}
+			m.renderApprovalAuto(b)
+			assert.Contains(t, b.rendered, tc.want)
+		})
+	}
 }

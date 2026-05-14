@@ -37,5 +37,11 @@ func NewEnvCmd() *cobra.Command {
 	envCommand := escCLI.Commands()[0]
 	envCommand.Aliases = append(envCommand.Aliases, "esc")
 
+	envCommand.AddCommand(newEnvNewCmd())
+	envCommand.AddCommand(newEnvReferrerCmd())
+	envCommand.AddCommand(newEnvScheduleCmd())
+	envCommand.AddCommand(newEnvWebhookCmd())
+	envCommand.AddCommand(newEnvProviderCmd())
+
 	return envCommand
 }

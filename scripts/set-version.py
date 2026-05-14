@@ -19,6 +19,10 @@ def main():
 
     version = sys.argv[1]
 
+    if version.startswith("v"):
+        print("Version should not start with v")
+        sys.exit(1)
+
     with open("sdk/.version", "w+") as f:
         f.write(version + "\n")
 

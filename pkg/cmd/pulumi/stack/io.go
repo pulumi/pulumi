@@ -30,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -537,4 +539,26 @@ func SaveSnapshot(ctx context.Context, s backend.Stack, snapshot *deploy.Snapsho
 		return fmt.Errorf("could not import deployment: %w", err)
 	}
 	return nil
+}
+
+// RequireCloudStack resolves the named stack (or the current stack when empty), requires that
+// it lives on the Pulumi Cloud backend, and returns the cloud API client along with the
+// StackIdentifier needed to address the stack via REST API endpoints.
+func RequireCloudStack(
+	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, lm cmdBackend.LoginManager,
+	stackName string,
+) (*client.Client, client.StackIdentifier, error) {
+	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+
+	s, err := RequireStack(ctx, sink, ws, lm, stackName, LoadOnly, opts)
+	if err != nil {
+		return nil, client.StackIdentifier{}, fmt.Errorf("resolving stack: %w", err)
+	}
+	cloudStack, ok := s.(httpstate.Stack)
+	if !ok {
+		return nil, client.StackIdentifier{},
+			errors.New("this command requires the Pulumi Cloud backend; run `pulumi login`")
+	}
+	be := cloudStack.Backend().(httpstate.Backend)
+	return be.Client(), cloudStack.StackIdentifier(), nil
 }

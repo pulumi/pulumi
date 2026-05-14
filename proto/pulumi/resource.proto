@@ -473,6 +473,8 @@ message RegisterResourceHookRequest {
     string name = 1;
     Callback callback = 2; // the callback that the engine can call to run the hook.
     bool on_dry_run = 3; // whether to run the hook on dry runs.
+    // If true, errors from this hook are logged as warnings instead of failing the program.
+    bool ignore_errors = 4;
 }
 
 message RegisterErrorHookRequest {

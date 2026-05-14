@@ -224,9 +224,10 @@ func (binding ResourceHookBindings) marshal() *pulumirpc.RegisterResourceRequest
 	return m
 }
 
-func NewHook(monitor *ResourceMonitor, callbacks *CallbackServer, name string, f ResourceHookFunc, onDryRun bool,
+func NewHook(monitor *ResourceMonitor, callbacks *CallbackServer, name string, f ResourceHookFunc,
+	onDryRun bool, ignoreErrors bool,
 ) (*ResourceHook, error) {
-	req, err := prepareHook(callbacks, name, f, onDryRun)
+	req, err := prepareHook(callbacks, name, f, onDryRun, ignoreErrors)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +241,7 @@ func NewHook(monitor *ResourceMonitor, callbacks *CallbackServer, name string, f
 	}, nil
 }
 
-func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onDryRun bool) (
+func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onDryRun bool, ignoreErrors bool) (
 	*pulumirpc.RegisterResourceHookRequest, error,
 ) {
 	wrapped := func(request []byte) (proto.Message, error) {
@@ -307,9 +308,10 @@ func prepareHook(callbacks *CallbackServer, name string, f ResourceHookFunc, onD
 		return nil, err
 	}
 	req := &pulumirpc.RegisterResourceHookRequest{
-		Name:     name,
-		Callback: callback,
-		OnDryRun: onDryRun,
+		Name:         name,
+		Callback:     callback,
+		OnDryRun:     onDryRun,
+		IgnoreErrors: ignoreErrors,
 	}
 	return req, nil
 }

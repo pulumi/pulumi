@@ -170,6 +170,16 @@ jobs:
       - run: |
           make lint_actions
 
+  changelog:
+    name: Lint changelog entries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      - run: uv run scripts/check-changelog.py
+
   pulumi-json:
     name: Lint pulumi.json
     runs-on: ubuntu-latest

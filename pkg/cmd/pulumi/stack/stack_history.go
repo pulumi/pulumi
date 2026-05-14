@@ -129,6 +129,9 @@ This command displays data about previous updates for a stack.`,
 		&pageSize, "page-size", 10, "Used with 'page' to control number of results returned")
 	cmd.PersistentFlags().IntVar(
 		&page, "page", 1, "Used with 'page-size' to paginate results")
+
+	cmd.AddCommand(newStackHistoryEventsCmd())
+
 	return cmd
 }
 

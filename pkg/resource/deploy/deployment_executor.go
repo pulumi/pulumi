@@ -351,7 +351,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 
 	// Finalize the stack outputs.
 	if e := ex.stepExec.stackOutputsEvent; e != nil {
-		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored()
+		errored := err != nil || stepExecutorError != nil || ex.stepGen.Errored() ||
+			ex.deployment.PostStepError() != nil
 		finalizingStackOutputs := true
 		if err := ex.stepExec.executeRegisterResourceOutputs(e, errored, finalizingStackOutputs); err != nil {
 			return nil, result.BailError(err)
@@ -414,8 +415,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		}
 	}
 
+	postStepError := ex.deployment.PostStepError()
 	// Figure out if execution failed and why. Step generation and execution errors trump cancellation.
-	if err != nil || stepExecutorError != nil || ex.stepGen.Errored() {
+	if err != nil || stepExecutorError != nil || ex.stepGen.Errored() || postStepError != nil {
 		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
 		// we be doing a merge here?
 		ex.reportExecResult("failed")
@@ -424,6 +426,9 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context) (_ *Plan, err e
 		}
 		if stepExecutorError != nil {
 			return nil, result.BailErrorf("step executor errored: %w", stepExecutorError)
+		}
+		if postStepError != nil {
+			return nil, result.BailError(postStepError)
 		}
 		return nil, result.BailErrorf("step generator errored")
 	} else if canceled {

@@ -2104,3 +2104,42 @@ func TestJSONCasing(t *testing.T) {
 	assert.Contains(t, string(data), `"stack"`)
 	assert.NotContains(t, string(data), `"Stack"`)
 }
+
+func TestJSONCheckpointIsCompact(t *testing.T) {
+	t.Parallel()
+
+	stateDir := t.TempDir()
+	ctx := t.Context()
+	b, err := New(ctx, diagtest.LogSink(t), "file://"+filepath.ToSlash(stateDir), &workspace.Project{Name: "testproj"})
+	require.NoError(t, err)
+
+	ref, err := b.ParseStackReference("stack")
+	require.NoError(t, err)
+
+	s, err := b.CreateStack(ctx, ref, "", nil, nil)
+	require.NoError(t, err)
+
+	deployment := &apitype.UntypedDeployment{
+		Version: apitype.DeploymentSchemaVersionCurrent,
+		Deployment: json.RawMessage(`{
+			"manifest": {
+				"time": "2026-03-18T00:00:00Z"
+			},
+			"resources": []
+		}`),
+	}
+	err = b.ImportDeployment(ctx, s, deployment)
+	require.NoError(t, err)
+
+	stackFile := path.Join(stateDir, ".pulumi", "stacks", "testproj", "stack.json")
+	data, err := os.ReadFile(stackFile)
+	require.NoError(t, err)
+
+	var checkpoint apitype.VersionedCheckpoint
+	require.NoError(t, json.Unmarshal(data, &checkpoint))
+	assert.Equal(t, deployment.Version, checkpoint.Version)
+
+	var compact bytes.Buffer
+	require.NoError(t, json.Compact(&compact, data))
+	assert.Equal(t, compact.String(), string(data))
+}

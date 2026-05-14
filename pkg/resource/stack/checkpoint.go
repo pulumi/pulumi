@@ -100,6 +100,16 @@ func UnmarshalVersionedCheckpointToLatestCheckpoint(
 func MarshalUntypedDeploymentToVersionedCheckpoint(
 	stack tokens.QName, deployment *apitype.UntypedDeployment,
 ) (*apitype.VersionedCheckpoint, error) {
+	return MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(encoding.JSON, stack, deployment)
+}
+
+func MarshalUntypedDeploymentToVersionedCheckpointWithMarshaler(
+	m encoding.Marshaler,
+	stack tokens.QName,
+	deployment *apitype.UntypedDeployment,
+) (*apitype.VersionedCheckpoint, error) {
+	contract.Requiref(deployment != nil, "deployment", "must not be nil")
+
 	chk := struct {
 		Stack  tokens.QName    `json:"stack,omitempty"`
 		Latest json.RawMessage `json:"latest,omitempty"`
@@ -108,7 +118,7 @@ func MarshalUntypedDeploymentToVersionedCheckpoint(
 		Latest: deployment.Deployment,
 	}
 
-	bytes, err := encoding.JSON.Marshal(chk)
+	bytes, err := m.Marshal(chk)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}
@@ -158,12 +168,22 @@ func DeploymentV3ToCheckpoint(
 	version int,
 	features []string,
 ) (*apitype.VersionedCheckpoint, error) {
+	return DeploymentV3ToCheckpointWithMarshaler(encoding.JSON, stack, deployment, version, features)
+}
+
+func DeploymentV3ToCheckpointWithMarshaler(
+	m encoding.Marshaler,
+	stack tokens.QName,
+	deployment *apitype.DeploymentV3,
+	version int,
+	features []string,
+) (*apitype.VersionedCheckpoint, error) {
 	chk := apitype.CheckpointV3{
 		Stack:  stack,
 		Latest: deployment,
 	}
 
-	b, err := encoding.JSON.Marshal(chk)
+	b, err := m.Marshal(chk)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling checkpoint: %w", err)
 	}

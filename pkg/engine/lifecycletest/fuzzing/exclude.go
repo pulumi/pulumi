@@ -64,6 +64,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludePendingReplacementRegisteredInUpdate,
 		// TODO[pulumi/pulumi#22511]
 		ExcludeTargetedUpdateRefreshWithChildProvider,
+		// TODO[pulumi/pulumi#22923]
+		ExcludeTargetedUpdateRefreshWithDeletedParent,
 	}
 }
 
@@ -747,6 +749,47 @@ func ExcludeTargetedUpdateRefreshWithChildProvider(
 			if childProviderPkgs[resPkg] {
 				return true
 			}
+		}
+	}
+
+	return false
+}
+
+// ExcludeTargetedUpdateRefreshWithDeletedParent excludes scenarios where a
+// targeted update with refresh runs against a snapshot that contains a resource
+// marked for deletion (`Delete: true`) which is the parent of one or more other
+// snapshot resources. During such a run the engine can rebuild the snapshot
+// such that the deleted parent comes after its children, violating the
+// snapshot integrity invariant that parents precede their children.
+func ExcludeTargetedUpdateRefreshWithDeletedParent(
+	snap *SnapshotSpec,
+	_ *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+	if !plan.Refresh {
+		return false
+	}
+	if len(plan.TargetURNs) == 0 {
+		return false
+	}
+
+	deletedURNs := make(map[resource.URN]bool)
+	for _, res := range snap.Resources {
+		if res.Delete {
+			deletedURNs[res.URN()] = true
+		}
+	}
+	if len(deletedURNs) == 0 {
+		return false
+	}
+
+	for _, res := range snap.Resources {
+		if res.Parent != "" && deletedURNs[res.Parent] {
+			return true
 		}
 	}
 

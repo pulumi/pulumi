@@ -2510,6 +2510,17 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "`%s` in %s failed with output: %s", cmd.String(), cmd.Dir, string(out))
 
+	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
+	require.NoError(t, err)
+
+	if isUvPythonProject(dir) {
+		cmd := exec.Command("uv", "add", "--editable", coreSDK)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "`uv add --editable %s` in %s failed: %s", coreSDK, dir, string(out))
+		return
+	}
+
 	// Install the local development SDK
 	tc, err := toolchain.ResolveToolchain(toolchain.PythonOptions{
 		Root:       dir,
@@ -2518,12 +2529,22 @@ func installPythonProviderDependencies(t *testing.T, dir string) {
 	})
 	require.NoError(t, err)
 
-	coreSDK, err := filepath.Abs(filepath.Join("..", "..", "sdk", "python"))
-	require.NoError(t, err)
 	cmd, err = tc.ModuleCommand(t.Context(), "pip", "install", coreSDK)
 	require.NoError(t, err)
 	out, err = cmd.CombinedOutput()
 	require.NoError(t, err, "output: %s", out)
+}
+
+// isUvPythonProject reports whether the Pulumi project at dir declares `toolchain: uv`.
+func isUvPythonProject(dir string) bool {
+	pattern := regexp.MustCompile(`(?m)^\s+toolchain:\s*uv\s*$`)
+	for _, fname := range []string{"PulumiPlugin.yaml", "Pulumi.yaml"} {
+		data, err := os.ReadFile(filepath.Join(dir, fname))
+		if err == nil && pattern.Match(data) {
+			return true
+		}
+	}
+	return false
 }
 
 // Regression test for https://github.com/pulumi/pulumi/issues/18768
