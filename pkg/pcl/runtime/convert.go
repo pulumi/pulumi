@@ -319,37 +319,74 @@ func ctyToPropertyValue(value cty.Value) (resource.PropertyValue, error) {
 	return pv, nil
 }
 
-func convertInvokeInputObject(args resource.PropertyMap, inputType *schema.ObjectType) (resource.PropertyMap, error) {
-	schemaProperties := make(map[string]schema.Type, len(inputType.Properties))
-	for _, prop := range inputType.Properties {
-		schemaProperties[prop.Name] = prop.Type
-	}
+// applySchemaInputs returns a new PropertyMap derived from inputs by, for each schema
+// property: coercing the input value to the property's type, filling in the schema default
+// when no input is provided, and wrapping the value in a secret marker when the property
+// is declared secret. Inputs whose key does not match any schema property pass through
+// unchanged.
+//
+// Recursion through nested objects also applies defaults and conversions, but suppresses
+// secret-marking when an ancestor is already a secret — the outer wrap covers the inner
+// values, so adding redundant inner marks would be wasted (and trips up callers that walk
+// the snapshot, like the language conformance suite). User-supplied inner secrets are
+// preserved untouched.
+func applySchemaInputs(
+	inputs resource.PropertyMap, properties []*schema.Property,
+) (resource.PropertyMap, error) {
+	return applySchemaInputsInner(inputs, properties, false)
+}
 
-	converted := make(resource.PropertyMap, len(args))
-	for key, value := range args {
-		targetType, ok := schemaProperties[string(key)]
-		if !ok {
-			converted[key] = value
+func applySchemaInputsInner(
+	inputs resource.PropertyMap, properties []*schema.Property, insideSecret bool,
+) (resource.PropertyMap, error) {
+	converted := make(resource.PropertyMap, len(inputs))
+	seen := make(map[resource.PropertyKey]struct{}, len(properties))
+
+	for _, prop := range properties {
+		key := resource.PropertyKey(prop.Name)
+		seen[key] = struct{}{}
+
+		// Anything nested below a secret-marked property is itself "inside a secret".
+		nestedInsideSecret := insideSecret || prop.Secret
+
+		var val resource.PropertyValue
+		if input, hasInput := inputs[key]; hasInput {
+			v, err := applySchemaInputConversion(input, prop.Type, nestedInsideSecret)
+			if err != nil {
+				return nil, fmt.Errorf("property %q: %w", key, err)
+			}
+			val = v
+		} else if prop.DefaultValue != nil {
+			val = resource.NewPropertyValue(prop.DefaultValue.Value)
+		} else {
 			continue
 		}
 
-		convertedValue, err := convertPropertyValueForSchemaType(value, targetType)
-		if err != nil {
-			return nil, fmt.Errorf("property %q: %w", key, err)
+		// Only add a fresh secret marker at the outermost level — once inside a secret,
+		// schema-driven marks would just duplicate the outer wrap.
+		if !insideSecret && prop.Secret && !val.IsSecret() {
+			val = resource.MakeSecret(val)
 		}
-		converted[key] = convertedValue
+		converted[key] = val
+	}
+
+	for key, value := range inputs {
+		if _, ok := seen[key]; !ok {
+			converted[key] = value
+		}
 	}
 
 	return converted, nil
 }
 
-func convertPropertyValueForSchemaType(
-	value resource.PropertyValue, targetType schema.Type,
+func applySchemaInputConversion(
+	value resource.PropertyValue, targetType schema.Type, insideSecret bool,
 ) (resource.PropertyValue, error) {
 	targetType = codegen.UnwrapType(targetType)
 
 	if value.IsSecret() {
-		converted, err := convertPropertyValueForSchemaType(value.SecretValue().Element, targetType)
+		// Anything inside the secret wrap is by definition "inside a secret".
+		converted, err := applySchemaInputConversion(value.SecretValue().Element, targetType, true)
 		if err != nil {
 			return resource.PropertyValue{}, err
 		}
@@ -366,7 +403,7 @@ func convertPropertyValueForSchemaType(
 		}
 
 		if copied.Known {
-			converted, err := convertPropertyValueForSchemaType(copied.Element, targetType)
+			converted, err := applySchemaInputConversion(copied.Element, targetType, insideSecret || out.Secret)
 			if err != nil {
 				return resource.PropertyValue{}, err
 			}
@@ -387,7 +424,7 @@ func convertPropertyValueForSchemaType(
 		arr := value.ArrayValue()
 		converted := make([]resource.PropertyValue, len(arr))
 		for i, elem := range arr {
-			v, err := convertPropertyValueForSchemaType(elem, t.ElementType)
+			v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
 			if err != nil {
 				return resource.PropertyValue{}, fmt.Errorf("array index %d: %w", i, err)
 			}
@@ -401,7 +438,7 @@ func convertPropertyValueForSchemaType(
 		obj := value.ObjectValue()
 		converted := make(resource.PropertyMap, len(obj))
 		for key, elem := range obj {
-			v, err := convertPropertyValueForSchemaType(elem, t.ElementType)
+			v, err := applySchemaInputConversion(elem, t.ElementType, insideSecret)
 			if err != nil {
 				return resource.PropertyValue{}, fmt.Errorf("map key %q: %w", key, err)
 			}
@@ -412,7 +449,10 @@ func convertPropertyValueForSchemaType(
 		if !value.IsObject() {
 			return value, nil
 		}
-		converted, err := convertInvokeInputObject(value.ObjectValue(), t)
+		// Recurse with the full helper so nested objects also fill in schema defaults and
+		// mark schema-secret properties. Pass insideSecret through so the inner pass knows
+		// to suppress redundant marks when the outer is already a secret.
+		converted, err := applySchemaInputsInner(value.ObjectValue(), t.Properties, insideSecret)
 		if err != nil {
 			return resource.PropertyValue{}, err
 		}
@@ -423,7 +463,7 @@ func convertPropertyValueForSchemaType(
 		var first *resource.PropertyValue
 		var errs []error
 		for _, elementType := range t.ElementTypes {
-			converted, err := convertPropertyValueForSchemaType(value, elementType)
+			converted, err := applySchemaInputConversion(value, elementType, insideSecret)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
