@@ -178,7 +178,6 @@ func collectInsightsAccounts(
 	exhaust := args.all
 	if args.countSet {
 		if args.count == 0 {
-			// --count 0 is a synonym for --all (per #22959).
 			exhaust = true
 		} else {
 			limit = args.count
@@ -228,8 +227,6 @@ func (c *insightsAccountListCmd) renderTable(w io.Writer, accounts []apitype.Ins
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	// StyleLight upper-cases headers by default; mirror existing list commands
-	// (e.g. `pulumi template list`) which preserve title case.
 	t.Style().Format.Header = text.FormatDefault
 	t.AppendHeader(table.Row{"Name", "Provider", "Owner", "Scheduled Scan", "Last Scan", "Resources"})
 	for _, account := range accounts {
@@ -266,9 +263,7 @@ func (c *insightsAccountListCmd) renderTable(w io.Writer, accounts []apitype.Ins
 	return nil
 }
 
-// renderJSON writes the accounts as an indented JSON envelope. Indentation
-// matches the rest of the cli/cloud commands so jq-style scripting feels
-// consistent.
+// renderJSON writes the accounts as a indented JSON
 func (c *insightsAccountListCmd) renderJSON(w io.Writer, accounts []apitype.InsightsAccount) error {
 	// Make the JSON shape stable: an empty list serialises to `[]`, not `null`,
 	// so consumers can iterate without a nil-check.
@@ -282,11 +277,6 @@ func (c *insightsAccountListCmd) renderJSON(w io.Writer, accounts []apitype.Insi
 	}{Accounts: accounts})
 }
 
-// defaultAccountListClientFactory is the production wiring for
-// accountListClientFactory. It resolves the cloud context via
-// cloud.ResolveContext and surfaces the *client.Client directly —
-// *client.Client already satisfies insightsAccountListClient through its
-// ListInsightsAccounts method.
 func defaultAccountListClientFactory(
 	ctx context.Context, orgOverride string,
 ) (insightsAccountListClient, string, error) {

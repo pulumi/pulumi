@@ -145,8 +145,7 @@ type InsightsResourceSearchAggregationBucket struct {
 }
 
 // ListInsightsAccountsParams are the query parameters for the Pulumi Insights
-// ListAccounts endpoint. Zero-valued fields are stripped from the query string
-// by the `url:"...,omitempty"` tags so the service applies its own defaults.
+// ListAccounts endpoint.
 type ListInsightsAccountsParams struct {
 	// ContinuationToken is the opaque cursor returned by a previous response;
 	// pass it on subsequent calls to fetch the next page.
