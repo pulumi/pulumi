@@ -1120,13 +1120,6 @@ func (i *Interpreter) registerResourceWith(
 		token = schemaResource.Token
 	}
 
-	inputPropertyTypes := map[string]schema.Type{}
-	if schemaResource != nil {
-		for _, property := range schemaResource.InputProperties {
-			inputPropertyTypes[property.Name] = property.Type
-		}
-	}
-
 	inputs := resource.PropertyMap{}
 	for _, attr := range res.Inputs {
 		targetType := attr.Value.Type()
@@ -1148,28 +1141,15 @@ func (i *Interpreter) registerResourceWith(
 		if diags.HasErrors() {
 			return cty.NilVal, diags
 		}
-		propertyValue := collapseResourceReferences(val)
-		if inputPropertyType, ok := inputPropertyTypes[attr.Name]; ok {
-			converted, err := convertPropertyValueForSchemaType(propertyValue, inputPropertyType)
-			if err != nil {
-				return cty.NilVal, err
-			}
-			propertyValue = converted
-		}
-		inputs[resource.PropertyKey(attr.Name)] = propertyValue
+		inputs[resource.PropertyKey(attr.Name)] = collapseResourceReferences(val)
 	}
 
 	if schemaResource != nil {
-		applySchemaInputDefaults(inputs, schemaResource)
-		for _, input := range schemaResource.InputProperties {
-			if input.Secret {
-				key := resource.PropertyKey(input.Name)
-				attr, ok := inputs[key]
-				if ok && !attr.IsSecret() {
-					inputs[key] = resource.MakeSecret(attr)
-				}
-			}
+		converted, err := applySchemaInputs(inputs, schemaResource.InputProperties)
+		if err != nil {
+			return cty.NilVal, err
 		}
+		inputs = converted
 	}
 
 	marshalOpts := plugin.MarshalOptions{
@@ -1837,19 +1817,6 @@ func (i *Interpreter) registerResourceWith(
 	})
 
 	return propertyValueToCty(ctx, i.getResource, result)
-}
-
-func applySchemaInputDefaults(inputs resource.PropertyMap, schemaResource *schema.Resource) {
-	for _, input := range schemaResource.InputProperties {
-		if input.DefaultValue == nil {
-			continue
-		}
-		key := resource.PropertyKey(input.Name)
-		if _, exists := inputs[key]; exists {
-			continue
-		}
-		inputs[key] = resource.NewPropertyValue(input.DefaultValue.Value)
-	}
 }
 
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
