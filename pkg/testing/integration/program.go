@@ -733,6 +733,14 @@ func init() {
 
 	mutexPath := filepath.Join(os.TempDir(), "pip-mutex.lock")
 	pipMutex = fsutil.NewFileMutex(mutexPath)
+
+	// Disable pip's HTTP cache to work around pypa/pip#13979: pip 26.1's upgraded urllib3
+	// advertises zstd encoding, changing the Vary header. Cache entries written by one pip
+	// version (e.g. the system pip upgraded in CI setup) become unreadable by another (e.g.
+	// the venv pip), causing "Cache entry deserialization failed" → "Content-Type: Unknown"
+	// → package resolution failures. Setting this process-wide ensures all subprocesses
+	// (including component_setup.sh and language host plugins) inherit it.
+	os.Setenv("PIP_NO_CACHE_DIR", "1")
 }
 
 // GetLogs retrieves the logs for a given stack in a particular region making the query provided.
