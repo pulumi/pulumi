@@ -353,7 +353,7 @@ func TestProjectLoadJSONInformativeErrors(t *testing.T) {
 		// Assert.
 		assert.ErrorContains(t, err, "'displayNameDisplayName' not allowed")
 		assert.ErrorContains(t, err, "'displayNameDisplayName' not allowed; the allowed attributes are "+
-			"'config', 'description', 'displayName', 'important', 'metadata' and 'quickstart'")
+			"'config', 'description', 'displayName', 'environments', 'important', 'metadata' and 'quickstart'")
 	})
 
 	t.Run("specific errors when only a single attribute is expected", func(t *testing.T) {
@@ -2519,4 +2519,39 @@ func TestAddPackage(t *testing.T) {
 		// Verify the internal representation was converted to PackageSpec
 		requireTextualRepresentationIsSpec(t, proj.Packages["string-package"])
 	})
+}
+
+func TestProjectTemplateEnvironmentsParses(t *testing.T) {
+	t.Parallel()
+
+	projectYaml := `
+name: eks-template
+runtime: nodejs
+description: EKS cluster with shared infra creds
+template:
+  displayName: EKS Cluster
+  environments:
+    - infra/aws-prod-creds
+    - infra/shared-tags
+`
+	project, err := loadProjectFromText(t, projectYaml)
+	require.NoError(t, err)
+	require.NotNil(t, project.Template)
+	assert.Equal(t, "EKS Cluster", project.Template.DisplayName)
+	assert.Equal(t, []string{"infra/aws-prod-creds", "infra/shared-tags"}, project.Template.Environments)
+}
+
+func TestProjectTemplateEnvironmentsOmittedIsNil(t *testing.T) {
+	t.Parallel()
+
+	projectYaml := `
+name: eks-template
+runtime: nodejs
+template:
+  displayName: EKS Cluster
+`
+	project, err := loadProjectFromText(t, projectYaml)
+	require.NoError(t, err)
+	require.NotNil(t, project.Template)
+	assert.Nil(t, project.Template.Environments)
 }

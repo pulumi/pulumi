@@ -90,6 +90,9 @@ type ProjectTemplate struct {
 	Important bool `json:"important,omitempty" yaml:"important,omitempty"`
 	// Metadata are key/value pairs used to attach additional metadata to a template.
 	Metadata map[string]string `json:"metadata,omitempty" yaml:"metadata,omitempty"`
+	// Environments is an optional list of ESC environments (project/name) to import
+	// into the consumer's stack file when scaffolding from this template.
+	Environments []string `json:"environments,omitempty" yaml:"environments,omitempty"`
 }
 
 // ProjectTemplateConfigValue is a config value included in the project template manifest.
