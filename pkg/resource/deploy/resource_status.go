@@ -147,6 +147,7 @@ func resourceStatusServeOptions(ctx *plugin.Context, logFile string) []grpc.Serv
 func (rs *resourceStatusServer) Close() error {
 	if rs != nil && rs.cancel != nil {
 		rs.cancel <- true
+		_ = rs.handle.Close()
 		err := <-rs.handle.Done
 		rs.cancel = nil
 		return err
