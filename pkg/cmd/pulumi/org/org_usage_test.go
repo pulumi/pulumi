@@ -231,4 +231,3 @@ func TestOrgUsageGet_CobraFlagBinding(t *testing.T) {
 	require.NoError(t, json.Unmarshal(buf.Bytes(), &decoded))
 	assert.Equal(t, sampleDailyUsage(), decoded)
 }
-
