@@ -1,4 +1,4 @@
 changes:
 - type: fix
-  scope: backend/diy
-  description: guard journal manager against nil journaler
+  scope: backend/cloud
+  description: Error out when setting up journaler fails
