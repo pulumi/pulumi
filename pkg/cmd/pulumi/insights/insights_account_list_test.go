@@ -83,6 +83,22 @@ func failingAccountListFactory(err error) accountListClientFactory {
 	}
 }
 
+// defaultListArgs returns a fresh insightsAccountListArgs with the OutputFlag
+// pre-populated. Tests that drive Run directly need this because they bypass
+// the cobra constructor that would otherwise install the renderer table.
+func defaultListArgs() insightsAccountListArgs {
+	return insightsAccountListArgs{output: defaultAccountListOutputFormat()}
+}
+
+// withOutput is a small helper for tests that need to flip the output format
+// without rebuilding the whole args struct.
+func withOutput(args insightsAccountListArgs, format string) insightsAccountListArgs {
+	if err := args.output.Set(format); err != nil {
+		panic(err)
+	}
+	return args
+}
+
 func sampleAccount(name string) apitype.InsightsAccount {
 	finished := time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC)
 	return apitype.InsightsAccount{
@@ -120,7 +136,7 @@ func TestInsightsAccountListCmd_DefaultOutput(t *testing.T) {
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{})
+	err := c.Run(t.Context(), &out, defaultListArgs())
 	require.NoError(t, err)
 
 	output := out.String()
@@ -148,7 +164,7 @@ func TestInsightsAccountListCmd_DefaultOutput_NoResults(t *testing.T) {
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{})
+	err := c.Run(t.Context(), &out, defaultListArgs())
 	require.NoError(t, err)
 	assert.Equal(t, "No accounts found.\n", out.String())
 }
@@ -168,7 +184,7 @@ func TestInsightsAccountListCmd_DefaultOutput_NoScanStatus(t *testing.T) {
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{})
+	err := c.Run(t.Context(), &out, defaultListArgs())
 	require.NoError(t, err)
 
 	output := out.String()
@@ -189,7 +205,7 @@ func TestInsightsAccountListCmd_JSONOutput(t *testing.T) {
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{output: "json"})
+	err := c.Run(t.Context(), &out, withOutput(defaultListArgs(), "json"))
 	require.NoError(t, err)
 
 	var got struct {
@@ -211,12 +227,53 @@ func TestInsightsAccountListCmd_JSONOutput_EmptyList(t *testing.T) {
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{output: "json"})
+	err := c.Run(t.Context(), &out, withOutput(defaultListArgs(), "json"))
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"accounts":[]}`, out.String())
 }
 
-func TestInsightsAccountListCmd_FollowsPagination(t *testing.T) {
+// TestInsightsAccountListCmd_DefaultStopsAfterFirstPage: without --count or
+// --all the command must return exactly what the first server-side page
+// contains, even when the server signals more pages are available. This is the
+// "Default is the size of the first page" rule from the epic.
+func TestInsightsAccountListCmd_DefaultStopsAfterFirstPage(t *testing.T) {
+	t.Parallel()
+
+	client := &mockInsightsAccountListClient{
+		pages: []apitype.ListInsightsAccountsResponse{
+			{
+				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				NextToken: "cursor-1",
+			},
+			// A second page is canned but must not be consumed when --count
+			// and --all are both unset.
+			{
+				Accounts:  []apitype.InsightsAccount{sampleAccount("a3")},
+				NextToken: "",
+			},
+		},
+	}
+	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
+
+	var out bytes.Buffer
+	err := c.Run(t.Context(), &out, withOutput(defaultListArgs(), "json"))
+	require.NoError(t, err)
+
+	var got struct {
+		Accounts []apitype.InsightsAccount `json:"accounts"`
+	}
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+	require.Len(t, got.Accounts, 2)
+	assert.Equal(t, "a1", got.Accounts[0].Name)
+	assert.Equal(t, "a2", got.Accounts[1].Name)
+	// Only the first page was requested.
+	require.Len(t, client.calls, 1)
+}
+
+// TestInsightsAccountListCmd_AllFollowsPagination: --all keeps following the
+// continuationToken cursor until the server reports an empty nextToken,
+// collecting every account from every page.
+func TestInsightsAccountListCmd_AllFollowsPagination(t *testing.T) {
 	t.Parallel()
 
 	client := &mockInsightsAccountListClient{
@@ -237,8 +294,11 @@ func TestInsightsAccountListCmd_FollowsPagination(t *testing.T) {
 	}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
+	args := withOutput(defaultListArgs(), "json")
+	args.all = true
+
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{output: "json"})
+	err := c.Run(t.Context(), &out, args)
 	require.NoError(t, err)
 
 	var got struct {
@@ -249,12 +309,85 @@ func TestInsightsAccountListCmd_FollowsPagination(t *testing.T) {
 	assert.Equal(t, "a1", got.Accounts[0].Name)
 	assert.Equal(t, "a4", got.Accounts[3].Name)
 
-	// The continuationToken must come from the previous response's nextToken,
-	// not from --cursor or any other source.
+	// The continuationToken on each request must come from the previous
+	// response's nextToken.
 	require.Len(t, client.calls, 3)
 	assert.Empty(t, client.calls[0].params.ContinuationToken)
 	assert.Equal(t, "cursor-1", client.calls[1].params.ContinuationToken)
 	assert.Equal(t, "cursor-2", client.calls[2].params.ContinuationToken)
+}
+
+// TestInsightsAccountListCmd_CountPaginatesUntilSatisfied: --count N pages
+// across as many server pages as needed to gather N rows, and truncates the
+// last page so the user sees exactly N.
+func TestInsightsAccountListCmd_CountPaginatesUntilSatisfied(t *testing.T) {
+	t.Parallel()
+
+	client := &mockInsightsAccountListClient{
+		pages: []apitype.ListInsightsAccountsResponse{
+			{
+				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				NextToken: "cursor-1",
+			},
+			{
+				Accounts:  []apitype.InsightsAccount{sampleAccount("a3"), sampleAccount("a4")},
+				NextToken: "cursor-2",
+			},
+			// A third page is canned but should not be requested because
+			// --count=3 is already satisfied at the end of page 2.
+			{
+				Accounts:  []apitype.InsightsAccount{sampleAccount("a5")},
+				NextToken: "",
+			},
+		},
+	}
+	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
+
+	args := withOutput(defaultListArgs(), "json")
+	args.count = 3
+
+	var out bytes.Buffer
+	err := c.Run(t.Context(), &out, args)
+	require.NoError(t, err)
+
+	var got struct {
+		Accounts []apitype.InsightsAccount `json:"accounts"`
+	}
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+	require.Len(t, got.Accounts, 3, "result should be truncated to --count")
+	assert.Equal(t, []string{"a1", "a2", "a3"},
+		[]string{got.Accounts[0].Name, got.Accounts[1].Name, got.Accounts[2].Name})
+	require.Len(t, client.calls, 2, "should have stopped paginating after --count satisfied")
+}
+
+// TestInsightsAccountListCmd_CountLargerThanAvailable: when --count asks for
+// more rows than the server has, the command returns every available row
+// without erroring or padding.
+func TestInsightsAccountListCmd_CountLargerThanAvailable(t *testing.T) {
+	t.Parallel()
+
+	client := &mockInsightsAccountListClient{
+		pages: []apitype.ListInsightsAccountsResponse{
+			{
+				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
+				NextToken: "",
+			},
+		},
+	}
+	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
+
+	args := withOutput(defaultListArgs(), "json")
+	args.count = 100
+
+	var out bytes.Buffer
+	err := c.Run(t.Context(), &out, args)
+	require.NoError(t, err)
+
+	var got struct {
+		Accounts []apitype.InsightsAccount `json:"accounts"`
+	}
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+	require.Len(t, got.Accounts, 2)
 }
 
 func TestInsightsAccountListCmd_FilterPropagation(t *testing.T) {
@@ -262,7 +395,7 @@ func TestInsightsAccountListCmd_FilterPropagation(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		args       insightsAccountListArgs
+		mutate     func(*insightsAccountListArgs)
 		defaultOrg string
 		wantOrg    string
 		wantParent string
@@ -270,19 +403,21 @@ func TestInsightsAccountListCmd_FilterPropagation(t *testing.T) {
 	}{
 		{
 			name:       "default org used when --org omitted",
-			args:       insightsAccountListArgs{},
 			defaultOrg: "acme",
 			wantOrg:    "acme",
 		},
 		{
 			name:       "--org overrides default",
-			args:       insightsAccountListArgs{org: "other-co"},
+			mutate:     func(a *insightsAccountListArgs) { a.org = "other-co" },
 			defaultOrg: "acme",
 			wantOrg:    "other-co",
 		},
 		{
-			name:       "--parent and --role-id propagate",
-			args:       insightsAccountListArgs{parent: "aws-mgmt", roleID: "role-42"},
+			name: "--parent and --role-id propagate",
+			mutate: func(a *insightsAccountListArgs) {
+				a.parent = "aws-mgmt"
+				a.roleID = "role-42"
+			},
 			defaultOrg: "acme",
 			wantOrg:    "acme",
 			wantParent: "aws-mgmt",
@@ -298,8 +433,13 @@ func TestInsightsAccountListCmd_FilterPropagation(t *testing.T) {
 			}
 			c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, tt.defaultOrg)}
 
+			args := defaultListArgs()
+			if tt.mutate != nil {
+				tt.mutate(&args)
+			}
+
 			var out bytes.Buffer
-			err := c.Run(t.Context(), &out, tt.args)
+			err := c.Run(t.Context(), &out, args)
 			require.NoError(t, err)
 			require.Len(t, client.calls, 1)
 			assert.Equal(t, tt.wantOrg, client.calls[0].org)
@@ -309,19 +449,23 @@ func TestInsightsAccountListCmd_FilterPropagation(t *testing.T) {
 	}
 }
 
-func TestInsightsAccountListCmd_InvalidOutput(t *testing.T) {
+// TestInsightsAccountListCmd_NegativeCount guards Run against a programming
+// mistake — cobra accepts a negative int but the command should refuse rather
+// than send `count=-1` to the server.
+func TestInsightsAccountListCmd_NegativeCount(t *testing.T) {
 	t.Parallel()
 
-	// Invalid --output is caught before any API call so a typo doesn't burn a
-	// round-trip.
 	client := &mockInsightsAccountListClient{}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
+	args := defaultListArgs()
+	args.count = -1
+
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{output: "yaml"})
+	err := c.Run(t.Context(), &out, args)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
-	assert.Empty(t, client.calls, "no API call should be made on invalid --output")
+	assert.Contains(t, err.Error(), "--count must be non-negative")
+	assert.Empty(t, client.calls, "no API call should be made on invalid --count")
 }
 
 func TestInsightsAccountListCmd_ClientError(t *testing.T) {
@@ -331,7 +475,7 @@ func TestInsightsAccountListCmd_ClientError(t *testing.T) {
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{})
+	err := c.Run(t.Context(), &out, defaultListArgs())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "listing insights accounts")
 	assert.Contains(t, err.Error(), "403 forbidden")
@@ -345,7 +489,7 @@ func TestInsightsAccountListCmd_FactoryError(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{})
+	err := c.Run(t.Context(), &out, defaultListArgs())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
@@ -366,8 +510,11 @@ func TestInsightsAccountListCmd_PaginationLimit(t *testing.T) {
 	client := &mockInsightsAccountListClient{pages: pages}
 	c := &insightsAccountListCmd{clientFactory: stubAccountListFactory(client, "acme")}
 
+	args := defaultListArgs()
+	args.all = true
+
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, insightsAccountListArgs{})
+	err := c.Run(t.Context(), &out, args)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pagination exceeded")
 }
@@ -406,6 +553,43 @@ func TestNewInsightsAccountListCmd_FlagBinding(t *testing.T) {
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	require.Len(t, got.Accounts, 1)
 	assert.Equal(t, "prod-aws", got.Accounts[0].Name)
+}
+
+// TestNewInsightsAccountListCmd_CountAllMutuallyExclusive ensures cobra
+// surfaces the conflict before RunE fires so the user can't accidentally
+// combine the two pagination knobs.
+func TestNewInsightsAccountListCmd_CountAllMutuallyExclusive(t *testing.T) {
+	t.Parallel()
+
+	cmd := newInsightsAccountListCmd(stubAccountListFactory(&mockInsightsAccountListClient{}, "acme"))
+	cmd.SetArgs([]string{"--count", "10", "--all"})
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+
+	err := cmd.ExecuteContext(t.Context())
+	require.Error(t, err)
+	// Cobra's wording: "if any flags in the group [count all] are set none of
+	// the others can be; [all count] were all set".
+	assert.Contains(t, err.Error(), "[count all]")
+}
+
+func TestNewInsightsAccountListCmd_InvalidOutput(t *testing.T) {
+	t.Parallel()
+
+	// outputflag.OutputFlag rejects unsupported values at flag-parse time, so
+	// the error fires before any API call. This protects users from typos.
+	client := &mockInsightsAccountListClient{}
+	cmd := newInsightsAccountListCmd(stubAccountListFactory(client, "acme"))
+	cmd.SetArgs([]string{"--output", "yaml"})
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+
+	err := cmd.ExecuteContext(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `output "yaml" not supported`)
+	assert.Empty(t, client.calls, "no API call should be made on invalid --output")
 }
 
 func TestNewInsightsAccountListCmd_NilFactoryUsesDefault(t *testing.T) {

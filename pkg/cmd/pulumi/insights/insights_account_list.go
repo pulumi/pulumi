@@ -28,13 +28,15 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // listPageLimit caps the number of pages we'll follow before bailing out, so a
-// pathological server can't loop us forever. 100 pages × 1000 (the server-side
-// max page size) covers 100k accounts — more than any real organization has.
-const listPageLimit = 100
+// pathological server can't loop us forever. 1000 pages × the server-side max
+// of 1000 covers a million accounts — many orders of magnitude beyond any real
+// organization.
+const listPageLimit = 1000
 
 // insightsAccountListClient is the subset of cloud-API operations the list
 // command needs. Defined inside this package so unit tests can stub it without
@@ -52,11 +54,28 @@ type accountListClientFactory func(
 	ctx context.Context, orgOverride string,
 ) (insightsAccountListClient, string, error)
 
+// accountListRender is the function signature stored in the OutputFlag — one
+// per supported output format. Sharing the signature keeps the renderer table
+// in [defaultAccountListOutputFormat] readable.
+type accountListRender func(*insightsAccountListCmd, io.Writer, []apitype.InsightsAccount) error
+
+// defaultAccountListOutputFormat wires the output flag up with every supported
+// format. Sharing this between the cobra constructor and the tests keeps the
+// renderer table in one place.
+func defaultAccountListOutputFormat() outputflag.OutputFlag[accountListRender] {
+	return outputflag.OutputFlag[accountListRender]{
+		RenderForTerminal: (*insightsAccountListCmd).renderTable,
+		RenderJSON:        (*insightsAccountListCmd).renderJSON,
+	}
+}
+
 type insightsAccountListArgs struct {
 	org    string
 	parent string
 	roleID string
-	output string
+	count  int
+	all    bool
+	output outputflag.OutputFlag[accountListRender]
 }
 
 type insightsAccountListCmd struct {
@@ -72,7 +91,7 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 	}
 
 	list := &insightsAccountListCmd{clientFactory: factory}
-	var args insightsAccountListArgs
+	args := insightsAccountListArgs{output: defaultAccountListOutputFormat()}
 
 	cmd := &cobra.Command{
 		Use:     "list",
@@ -85,16 +104,20 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 			"(e.g. an AWS Organizations management account). --role-id restricts results to\n" +
 			"accounts accessible by a particular role.\n" +
 			"\n" +
-			"Results are paginated by the server; the command follows continuation tokens\n" +
-			"internally so all matching accounts are streamed in a single invocation.\n" +
+			"By default the command returns a single page as sized by the server. Pass\n" +
+			"--count N to request at least N results — the command follows pagination\n" +
+			"cursors internally until it has enough — or --all to stream every matching\n" +
+			"account. --count and --all are mutually exclusive.\n" +
 			"\n" +
 			"Wraps the `ListAccounts` Pulumi Cloud REST endpoint.",
-		Example: "  # List every Insights account in the default organization.\n" +
+		Example: "  # List the first page of Insights accounts in the default organization.\n" +
 			"  pulumi insights account list\n\n" +
+			"  # Stream every matching account, following pagination cursors.\n" +
+			"  pulumi insights account list --all\n\n" +
+			"  # Ask for up to 250 results — the command paginates until it has them.\n" +
+			"  pulumi insights account list --count 250\n\n" +
 			"  # Filter to child accounts of an AWS Organizations management account.\n" +
 			"  pulumi insights account list --parent aws-management\n\n" +
-			"  # Restrict to accounts accessible by a particular role.\n" +
-			"  pulumi insights account list --role-id 01HXXXX\n\n" +
 			"  # Emit JSON for scripting.\n" +
 			"  pulumi insights account list --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -110,8 +133,13 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 		"Filter to child accounts of the named parent account")
 	cmd.Flags().StringVar(&args.roleID, "role-id", "",
 		"Filter to accounts accessible by the named role")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	cmd.Flags().IntVar(&args.count, "count", 0,
+		"Return at least this many accounts, paginating server-side pages as needed "+
+			"(0 = a single server-sized page)")
+	cmd.Flags().BoolVar(&args.all, "all", false,
+		"Stream every matching account, following pagination cursors to exhaustion")
+	cmd.MarkFlagsMutuallyExclusive("count", "all")
+	outputflag.VarP(cmd.Flags(), &args.output)
 
 	return cmd
 }
@@ -121,11 +149,8 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 func (c *insightsAccountListCmd) Run(
 	ctx context.Context, out io.Writer, args insightsAccountListArgs,
 ) error {
-	// Validate --output before talking to the network so a typo doesn't burn an
-	// API call.
-	render, err := accountListRenderer(args.output)
-	if err != nil {
-		return err
+	if args.count < 0 {
+		return fmt.Errorf("--count must be non-negative, got %d", args.count)
 	}
 
 	client, org, err := c.clientFactory(ctx, args.org)
@@ -137,13 +162,18 @@ func (c *insightsAccountListCmd) Run(
 	if err != nil {
 		return fmt.Errorf("listing insights accounts: %w", err)
 	}
-	return render(out, accounts)
+	return args.output.Get()(c, out, accounts)
 }
 
-// collectInsightsAccounts follows the server-side continuationToken cursor
-// until it's empty, accumulating every page into a single slice. Bailing out
-// after listPageLimit pages prevents a misbehaving server from spinning us
-// forever; in practice no org has that many accounts.
+// collectInsightsAccounts pulls accounts from the server, transparently
+// following continuationToken/nextToken cursors when the caller has asked for
+// more rows than a single page provides.
+//
+// The default (count == 0, all == false) returns exactly what one server-side
+// page would. --count caps the result set at the requested size and stops the
+// loop as soon as that many rows have arrived. --all keeps following cursors
+// until the server reports no more pages. listPageLimit is a safety net
+// against a misbehaving server reporting a non-empty cursor forever.
 func collectInsightsAccounts(
 	ctx context.Context,
 	client insightsAccountListClient,
@@ -164,33 +194,31 @@ func collectInsightsAccounts(
 			return nil, err
 		}
 		accounts = append(accounts, resp.Accounts...)
+
+		// Stop conditions, in order:
+		//   1. Server says there's no more data.
+		//   2. We're in default-page mode (no --count, no --all) — one page only.
+		//   3. We have at least the user-requested --count rows.
+		// Otherwise advance to the next page.
 		if resp.NextToken == "" {
 			return accounts, nil
+		}
+		if !args.all && args.count == 0 {
+			return accounts, nil
+		}
+		if args.count > 0 && len(accounts) >= args.count {
+			return accounts[:args.count], nil
 		}
 		cursor = resp.NextToken
 	}
 	return nil, fmt.Errorf("pagination exceeded %d pages; the server may be looping", listPageLimit)
 }
 
-// accountListRenderer maps --output to the corresponding render function.
-func accountListRenderer(format string) (
-	func(io.Writer, []apitype.InsightsAccount) error, error,
-) {
-	switch format {
-	case "", "default":
-		return renderAccountsTable, nil
-	case "json":
-		return renderAccountsJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
-
-// renderAccountsTable writes a human-readable table view of the accounts. The
-// chosen columns identify each row (Name/Provider/Owner) and surface the most
-// useful operational context (Scheduled Scan, Last Scan, Resources). The full
-// record is reachable via --output json.
-func renderAccountsTable(w io.Writer, accounts []apitype.InsightsAccount) error {
+// renderTable writes a human-readable table view of the accounts. The chosen
+// columns identify each row (Name/Provider/Owner) and surface the most useful
+// operational context (Scheduled Scan, Last Scan, Resources). The full record
+// is reachable via --output json.
+func (c *insightsAccountListCmd) renderTable(w io.Writer, accounts []apitype.InsightsAccount) error {
 	if len(accounts) == 0 {
 		fmt.Fprintln(w, "No accounts found.")
 		return nil
@@ -237,10 +265,10 @@ func renderAccountsTable(w io.Writer, accounts []apitype.InsightsAccount) error 
 	return nil
 }
 
-// renderAccountsJSON writes the accounts as an indented JSON envelope.
-// Indentation matches the rest of the cli/cloud commands so jq-style scripting
-// feels consistent.
-func renderAccountsJSON(w io.Writer, accounts []apitype.InsightsAccount) error {
+// renderJSON writes the accounts as an indented JSON envelope. Indentation
+// matches the rest of the cli/cloud commands so jq-style scripting feels
+// consistent.
+func (c *insightsAccountListCmd) renderJSON(w io.Writer, accounts []apitype.InsightsAccount) error {
 	// Make the JSON shape stable: an empty list serialises to `[]`, not `null`,
 	// so consumers can iterate without a nil-check.
 	if accounts == nil {
