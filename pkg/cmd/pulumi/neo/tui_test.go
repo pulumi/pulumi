@@ -21,9 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/acarl005/stripansi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -346,7 +347,7 @@ func TestModel_Update_WindowSize_TinyTerminalDoesNotPanic(t *testing.T) {
 	m := NewModel(ModelConfig{})
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 1})
 	um := updated.(Model)
-	require.NotPanics(t, func() { _ = um.View() })
+	require.NotPanics(t, func() { _ = um.viewString() })
 }
 
 func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
@@ -356,7 +357,7 @@ func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
 	// matching the cancel-vs-quit semantics requested in pulumi-service#42029.
 	// Only a second Ctrl+C in a row produces tea.QuitMsg.
 	m := NewModel(ModelConfig{})
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um := updated.(Model)
 	assert.True(t, um.ctrlCArmed, "first Ctrl+C must arm the second-press-to-exit prompt")
 	if cmd != nil {
@@ -365,11 +366,11 @@ func TestModel_Update_KeyCtrlC_TwoPressesQuit(t *testing.T) {
 			assert.False(t, isQuit, "first Ctrl+C must not quit")
 		}
 	}
-	assert.Contains(t, um.View(), "Press Ctrl+C again to exit",
+	assert.Contains(t, um.viewString(), "Press Ctrl+C again to exit",
 		"footer must surface the second-press-to-exit hint")
 
 	// Second Ctrl+C in a row quits.
-	_, cmd = um.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	_, cmd = um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	_, ok := cmd().(tea.QuitMsg)
 	assert.True(t, ok, "second consecutive Ctrl+C must produce a tea.QuitMsg")
@@ -384,7 +385,7 @@ func TestModel_Update_KeyCtrlC_FirstPressCancelsWhenBusy(t *testing.T) {
 	outCh := make(chan outboundEvent, 1)
 	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um := updated.(Model)
 	assert.True(t, um.ctrlCArmed, "Ctrl+C must arm the exit prompt")
 	assert.True(t, um.cancelling, "Ctrl+C while busy must trigger cancellation")
@@ -411,17 +412,17 @@ func TestModel_Update_KeyCtrlC_OtherKeyDisarms(t *testing.T) {
 	// this, an idle session could be exited by a Ctrl+C now and another one
 	// minutes later — the user would have lost the "press again" context.
 	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um := updated.(Model)
 	require.True(t, um.ctrlCArmed)
 
-	updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	updated, _ = um.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	um = updated.(Model)
 	assert.False(t, um.ctrlCArmed, "any other key must disarm the exit prompt")
-	assert.NotContains(t, um.View(), "Press Ctrl+C again to exit")
+	assert.NotContains(t, um.viewString(), "Press Ctrl+C again to exit")
 
 	// Another Ctrl+C now arms again rather than quitting.
-	_, cmd := um.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	_, cmd := um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	if cmd != nil {
 		if msg := cmd(); msg != nil {
 			_, isQuit := msg.(tea.QuitMsg)
@@ -438,7 +439,7 @@ func TestModel_Update_KeyCtrlC_TimeoutDisarms(t *testing.T) {
 	// a ctrlCDisarmMsg tagged with the current arm gen; receiving that msg
 	// while still armed at the same gen flips ctrlCArmed back off.
 	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um := updated.(Model)
 	require.True(t, um.ctrlCArmed)
 	gen := um.ctrlCArmGen
@@ -446,7 +447,7 @@ func TestModel_Update_KeyCtrlC_TimeoutDisarms(t *testing.T) {
 	updated2, _ := um.Update(ctrlCDisarmMsg{gen: gen})
 	um2 := updated2.(Model)
 	assert.False(t, um2.ctrlCArmed, "disarm tick at the current gen must clear the arm")
-	assert.NotContains(t, um2.View(), "Press Ctrl+C again to exit")
+	assert.NotContains(t, um2.viewString(), "Press Ctrl+C again to exit")
 }
 
 func TestModel_Update_KeyCtrlC_StaleDisarmIgnored(t *testing.T) {
@@ -457,15 +458,15 @@ func TestModel_Update_KeyCtrlC_StaleDisarmIgnored(t *testing.T) {
 	// in flight), arm again (gen advances). Delivering the old tick now
 	// must be a no-op because its gen no longer matches.
 	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um := updated.(Model)
 	staleGen := um.ctrlCArmGen
 
-	updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("x")})
+	updated, _ = um.Update(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	um = updated.(Model)
 	require.False(t, um.ctrlCArmed)
 
-	updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated, _ = um.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um = updated.(Model)
 	require.True(t, um.ctrlCArmed)
 	require.Greater(t, um.ctrlCArmGen, staleGen, "re-arm must advance the generation")
@@ -482,23 +483,23 @@ func TestModel_Update_KeyCtrlD_BehavesLikeCtrlC(t *testing.T) {
 	// cancel-when-busy semantics — so users who reach for either binding to
 	// exit get the same behaviour.
 	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
 	um := updated.(Model)
 	assert.True(t, um.ctrlCArmed, "first Ctrl+D must arm the second-press-to-exit prompt")
-	assert.Contains(t, um.View(), "Press Ctrl+C again to exit",
+	assert.Contains(t, um.viewString(), "Press Ctrl+C again to exit",
 		"footer hint must surface even when the first press was Ctrl+D")
 
-	_, cmd := um.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	_, cmd := um.Update(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd)
 	_, ok := cmd().(tea.QuitMsg)
 	assert.True(t, ok, "second consecutive Ctrl+D must produce a tea.QuitMsg")
 
 	// Also verify the cross-binding case: Ctrl+C followed by Ctrl+D quits.
 	m2 := NewModel(ModelConfig{})
-	updated2, _ := m2.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	updated2, _ := m2.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	um2 := updated2.(Model)
 	require.True(t, um2.ctrlCArmed)
-	_, cmd2 := um2.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	_, cmd2 := um2.Update(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
 	require.NotNil(t, cmd2)
 	_, ok = cmd2().(tea.QuitMsg)
 	assert.True(t, ok, "Ctrl+C then Ctrl+D must quit just like two Ctrl+Cs")
@@ -512,7 +513,7 @@ func TestModel_Update_KeyCtrlD_FirstPressCancelsWhenBusy(t *testing.T) {
 	outCh := make(chan outboundEvent, 1)
 	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlD})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'd', Mod: tea.ModCtrl})
 	um := updated.(Model)
 	assert.True(t, um.ctrlCArmed)
 	assert.True(t, um.cancelling, "Ctrl+D while busy must trigger cancellation")
@@ -534,7 +535,7 @@ func TestModel_View_BusyHintMentionsCancelKeys(t *testing.T) {
 	// abort a turn so the affordance isn't hidden behind a key the user has
 	// to discover.
 	busy := NewModel(ModelConfig{Busy: true})
-	view := busy.View()
+	view := busy.viewString()
 	assert.Contains(t, view, "esc")
 	assert.Contains(t, view, "ctrl+c")
 	assert.Contains(t, view, "cancel")
@@ -549,7 +550,7 @@ func TestModel_Update_KeyEnter_WhileBusy_SwallowsAndDoesNotSend(t *testing.T) {
 	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
 	m.textInput.SetValue("queued")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	um := updated.(Model)
 
 	assert.Nil(t, cmd)
@@ -561,6 +562,52 @@ func TestModel_Update_KeyEnter_WhileBusy_SwallowsAndDoesNotSend(t *testing.T) {
 	}
 }
 
+func TestModel_Update_ShiftEnter_InsertsNewlineDoesNotSend(t *testing.T) {
+	t.Parallel()
+
+	// Shift+Enter goes through the textarea's InsertNewline binding rather
+	// than the bare-Enter branch in Update. Nothing posts to outCh; the
+	// value gains a newline.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m.textInput.SetValue("hello")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift})
+	um := updated.(Model)
+
+	select {
+	case got := <-outCh:
+		t.Fatalf("shift+enter must not send; got %#v", got)
+	default:
+	}
+	assert.Contains(t, um.textInput.Value(), "\n",
+		"shift+enter must insert a newline into the textarea")
+	assert.False(t, um.busy, "shift+enter must not enter the busy state")
+}
+
+func TestModel_Update_KeyEnter_BackslashSuffixInsertsNewline(t *testing.T) {
+	t.Parallel()
+
+	// Trailing backslash rewrites Enter from submit to newline so users on
+	// terminals that can't distinguish Shift+Enter still have a way to add
+	// a line. Backslash is stripped; nothing posts to outCh.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{OutCh: outCh})
+	m.textInput.SetValue("hello\\")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	um := updated.(Model)
+
+	select {
+	case got := <-outCh:
+		t.Fatalf("backslash-Enter must not send; got %#v", got)
+	default:
+	}
+	assert.Equal(t, "hello\n", um.textInput.Value(),
+		"backslash must be stripped and replaced with a newline")
+	assert.False(t, um.busy, "backslash-Enter must not enter the busy state")
+}
+
 func TestModel_Update_KeyEnter_Idle_SendsAndClearsInput(t *testing.T) {
 	t.Parallel()
 
@@ -568,7 +615,7 @@ func TestModel_Update_KeyEnter_Idle_SendsAndClearsInput(t *testing.T) {
 	m := NewModel(ModelConfig{OutCh: outCh})
 	m.textInput.SetValue("hello")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	um := updated.(Model)
 
 	select {
@@ -601,7 +648,7 @@ func TestModel_Update_KeyEnter_EmptyInput_NoSend(t *testing.T) {
 	m := NewModel(ModelConfig{OutCh: outCh})
 	// input left empty
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	um := updated.(Model)
 
 	assert.False(t, um.busy, "empty Enter must not enter the busy state")
@@ -629,7 +676,7 @@ func TestModel_Update_KeyEnter_QuitOrExit_ClosesSession(t *testing.T) {
 			m := NewModel(ModelConfig{OutCh: outCh})
 			m.textInput.SetValue(input)
 
-			_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 			require.NotNil(t, cmd, "quit/exit Enter must return a command")
 			_, ok := cmd().(tea.QuitMsg)
 			assert.True(t, ok, "quit/exit Enter must produce a tea.QuitMsg")
@@ -652,7 +699,7 @@ func TestModel_Update_KeyEnter_QuitSubstring_StillSends(t *testing.T) {
 	m := NewModel(ModelConfig{OutCh: outCh})
 	m.textInput.SetValue("quit the deploy")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	um := updated.(Model)
 
 	select {
@@ -676,7 +723,7 @@ func TestModel_Update_KeyEnter_QuitWhileBusy_DoesNotQuit(t *testing.T) {
 	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
 	m.textInput.SetValue("quit")
 
-	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	assert.Nil(t, cmd, "Enter on 'quit' while busy must not produce a quit command")
 }
 
@@ -694,7 +741,7 @@ func TestModel_Update_KeyRune_TypesAndDoesNotScrollViewport(t *testing.T) {
 			updated, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
 			um := updated.(Model)
 
-			updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+			updated, _ = um.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 			um = updated.(Model)
 
 			assert.Equal(t, string(r), um.textInput.Value(), "rune must reach the text input")
@@ -734,7 +781,7 @@ func TestModel_Update_UIApprovalRequest_ShowsPromptAndPausesAgent(t *testing.T) 
 	assert.True(t, m.pendingApproval)
 	assert.Equal(t, "appr_1", m.pendingApprovalID)
 	assert.GreaterOrEqual(t, m.findBlockKind(blockApprovalGeneral), 0, "an approval block must be appended")
-	assert.Contains(t, m.textInput.Prompt, "Approve?", "input prompt must reflect approval mode")
+	assert.Contains(t, m.approvalPromptText, "Approve?", "input prompt must reflect approval mode")
 }
 
 func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
@@ -748,7 +795,7 @@ func TestModel_Update_KeyEnter_Approval_ApproveYes(t *testing.T) {
 			m := newApprovalPendingModel(t, outCh)
 			m.textInput.SetValue(in)
 
-			updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+			updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 			um := updated.(Model)
 
 			// Must post a confirmation event with Approved=true and no instructions.
@@ -785,7 +832,7 @@ func TestModel_Update_KeyEnter_Approval_DenyWithReason(t *testing.T) {
 	m := newApprovalPendingModel(t, outCh)
 	m.textInput.SetValue("not on prod")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	um := updated.(Model)
 
 	select {
@@ -812,7 +859,7 @@ func TestModel_Update_KeyEnter_Approval_DenyEmpty(t *testing.T) {
 	m := newApprovalPendingModel(t, outCh)
 	// input left empty
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	um := updated.(Model)
 
 	select {
@@ -836,7 +883,7 @@ func TestModel_Update_Approval_NonEnterKey_ForwardsToTextInput(t *testing.T) {
 	outCh := make(chan outboundEvent, 1)
 	m := newApprovalPendingModel(t, outCh)
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Text: "a"})
 	um := updated.(Model)
 
 	assert.True(t, um.pendingApproval, "non-Enter key must not exit approval mode")
@@ -860,7 +907,7 @@ func TestModel_Update_KeyEnter_Approval_NotGatedByBusy(t *testing.T) {
 	m.busy = true // simulate a stale busy state
 	m.textInput.SetValue("y")
 
-	_, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	select {
 	case got := <-outCh:
 		conf, ok := got.event.(apitype.AgentUserEventUserConfirmation)
@@ -875,7 +922,7 @@ func TestModel_Update_UnknownMessage_ForwardsToTextInput(t *testing.T) {
 	t.Parallel()
 
 	// The default switch arm forwards unhandled messages to the text input
-	// (e.g. textinput.Blink). The arm must return without panicking; coverage
+	// (e.g. textarea.Blink). The arm must return without panicking; coverage
 	// of the default branch is the goal.
 	m := NewModel(ModelConfig{})
 	type unknownMsg struct{}
@@ -1145,7 +1192,7 @@ func TestModel_Update_UIUserMessage_SelfEchoIsSuppressed(t *testing.T) {
 	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
 	m.textInput.SetValue("hi")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated.(Model)
 	<-outCh // drain the submitted event so outCh doesn't leak
 	require.Len(t, m.pendingUserEchoes, 1)
@@ -1174,7 +1221,7 @@ func TestModel_Update_UIUserMessage_ForeignEchoStillRenders(t *testing.T) {
 	m := NewModel(ModelConfig{OutCh: outCh, EventCh: evCh})
 	m.textInput.SetValue("from cli")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated.(Model)
 	<-outCh
 
@@ -1219,11 +1266,11 @@ func TestModel_View_ShowsHintBasedOnBusy(t *testing.T) {
 	// The footer hint line is the user's only affordance telling them whether
 	// Enter will do anything. Pin both states.
 	idle := NewModel(ModelConfig{})
-	assert.Contains(t, idle.View(), "enter to send")
+	assert.Contains(t, idle.viewString(), "enter to send")
 
 	busy := NewModel(ModelConfig{Busy: true})
-	assert.Contains(t, busy.View(), "agent is working")
-	assert.Contains(t, busy.View(), "enter disabled")
+	assert.Contains(t, busy.viewString(), "agent is working")
+	assert.Contains(t, busy.viewString(), "enter disabled")
 }
 
 // -----------------------------------------------------------------------------
@@ -1237,18 +1284,18 @@ func TestModel_Update_ShiftTab_TogglesPlanModeBeforeFirstMessage(t *testing.T) {
 	// opt into plan mode. The toggle is reflected in the footer hint so the
 	// user gets immediate feedback without waiting for any server round trip.
 	m := NewModel(ModelConfig{})
-	assert.NotContains(t, m.View(), "plan mode on")
+	assert.NotContains(t, m.viewString(), "plan mode on")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	m = updated.(Model)
 	assert.True(t, m.planMode, "Shift+Tab must flip planMode on")
-	assert.Contains(t, m.View(), "plan mode", "hint must show the plan-mode indicator")
+	assert.Contains(t, m.viewString(), "plan mode", "hint must show the plan-mode indicator")
 
 	// Second press toggles back off — same affordance, symmetric behaviour.
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	m = updated.(Model)
 	assert.False(t, m.planMode, "second Shift+Tab must flip planMode off")
-	assert.NotContains(t, m.View(), "plan mode on")
+	assert.NotContains(t, m.viewString(), "plan mode on")
 }
 
 func TestModel_Update_ShiftTab_AfterFirstMessage_WarnsAndDoesNotToggle(t *testing.T) {
@@ -1260,7 +1307,7 @@ func TestModel_Update_ShiftTab_AfterFirstMessage_WarnsAndDoesNotToggle(t *testin
 	// later flip could not affect the task.
 	m := NewModel(ModelConfig{MessageSent: true})
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	m = updated.(Model)
 
 	assert.False(t, m.planMode, "post-send Shift+Tab must not toggle planMode")
@@ -1280,7 +1327,7 @@ func TestModel_Update_KeyEnter_SendingFirstMessageFreezesPlanMode(t *testing.T) 
 	m.planMode = true
 	m.textInput.SetValue("kick off")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated.(Model)
 
 	select {
@@ -1296,7 +1343,7 @@ func TestModel_Update_KeyEnter_SendingFirstMessageFreezesPlanMode(t *testing.T) 
 	assert.True(t, m.messageSent, "first send must freeze the plan-mode affordance")
 
 	// Shift+Tab after send must warn, not toggle.
-	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	updated2, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	m = updated2.(Model)
 	assert.True(t, m.planMode, "post-send Shift+Tab must leave planMode untouched")
 	assert.NotEqual(t, -1, m.findBlockKind(blockWarning), "post-send Shift+Tab must warn")
@@ -1335,7 +1382,7 @@ func TestModel_Update_UIApprovalRequest_PlanCategory_RendersPlanHeaderAndMarkdow
 	// fragments that the renderer never splits ("step" shows up verbatim).
 	assert.Contains(t, um.blocks[idx].rendered, "step", "rendered plan must include the plan body")
 	assert.Contains(t, um.blocks[idx].rendered, "Plan", "rendered plan must include the heading")
-	assert.Contains(t, um.textInput.Prompt, "Approve plan",
+	assert.Contains(t, um.approvalPromptText, "Approve plan",
 		"prompt must indicate this is a plan approval")
 }
 
@@ -1361,8 +1408,8 @@ func TestModel_Update_UIApprovalRequest_General_UsesExistingApprovalRendering(t 
 	idx := um.findBlockKind(blockApprovalGeneral)
 	require.NotEqual(t, -1, idx)
 	assert.Contains(t, um.blocks[idx].rendered, "Approval required")
-	assert.Contains(t, um.textInput.Prompt, "Approve?")
-	assert.NotContains(t, um.textInput.Prompt, "plan")
+	assert.Contains(t, um.approvalPromptText, "Approve?")
+	assert.NotContains(t, um.approvalPromptText, "plan")
 }
 
 func TestModel_Update_ApprovePlan_ClearsPlanMode(t *testing.T) {
@@ -1385,7 +1432,7 @@ func TestModel_Update_ApprovePlan_ClearsPlanMode(t *testing.T) {
 	m = updated.(Model)
 	m.textInput.SetValue("y")
 
-	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated2, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated2.(Model)
 
 	select {
@@ -1421,7 +1468,7 @@ func TestModel_Update_DenyPlan_LeavesPlanModeOn(t *testing.T) {
 	m = updated.(Model)
 	m.textInput.SetValue("cover error handling too")
 
-	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated2, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated2.(Model)
 
 	select {
@@ -1468,9 +1515,9 @@ func TestModel_Update_UIApprovalRequest_AskUser_RendersAsQuestion(t *testing.T) 
 		"question rendering must include a question header")
 	assert.Contains(t, rendered, "Which region should I deploy to?",
 		"question body must be rendered verbatim")
-	assert.Contains(t, um.textInput.Prompt, "Your answer",
+	assert.Contains(t, um.approvalPromptText, "Your answer",
 		"prompt must invite a free-form answer, not an approval")
-	assert.NotContains(t, um.textInput.Prompt, "Approve",
+	assert.NotContains(t, um.approvalPromptText, "Approve",
 		"prompt must not say 'Approve?' for a question")
 }
 
@@ -1536,7 +1583,7 @@ func TestModel_Update_UIApprovalRequest_GeneralWithoutAskUser_StillApproval(t *t
 
 	assert.False(t, um.pendingIsQuestion)
 	assert.NotEqual(t, -1, um.findBlockKind(blockApprovalGeneral))
-	assert.Contains(t, um.textInput.Prompt, "Approve?")
+	assert.Contains(t, um.approvalPromptText, "Approve?")
 }
 
 func TestModel_Update_AnswerQuestion_SendsConfirmationWithAnswer(t *testing.T) {
@@ -1562,7 +1609,7 @@ func TestModel_Update_AnswerQuestion_SendsConfirmationWithAnswer(t *testing.T) {
 	answer := "us-west-2 with a hot spare in eu-central-1"
 	m.textInput.SetValue(answer)
 
-	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated2, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated2.(Model)
 
 	select {
@@ -1609,7 +1656,7 @@ func TestModel_Update_AnswerQuestion_EmptyInputIsNoOp(t *testing.T) {
 	})
 	m = updated.(Model)
 
-	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated2, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated2.(Model)
 
 	select {
@@ -1993,9 +2040,10 @@ func TestModel_LiveView_OnlyShowsLiveBlocks(t *testing.T) {
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
-	view := m.View()
-	// Live blocks are visible.
-	assert.Contains(t, view, "Thinking", "busy label must appear in View")
+	view := m.viewString()
+	// Live blocks are visible. Shimmer styles each char with its own ANSI
+	// run, so strip escapes before substring-matching the label.
+	assert.Contains(t, stripansi.Strip(view), "Thinking", "busy label must appear in View")
 	// Committed blocks are NOT visible — they were emitted to scrollback.
 	assert.NotContains(t, view, "USERSCROLLBACK")
 	assert.NotContains(t, view, "TOOLCOMPLETESCROLLBACK")
@@ -2081,7 +2129,7 @@ func TestApprovalChoiceDenialWrapsToTerminalWidth(t *testing.T) {
 	m = updated1.(Model)
 	m.textInput.SetValue(strings.Repeat("because ", 20)) // ~160 chars of denial text
 
-	updated2, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated2, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated2.(Model)
 	<-outCh
 
@@ -2124,7 +2172,7 @@ func TestModel_LiveView_PulumiOpLiveVsCommitted(t *testing.T) {
 		{kind: blockPulumiOp, rendered: "PULUMI_DONE_SCROLLBACK", pulumi: &pulumiBlockState{done: true}},
 	}
 
-	view := m.View()
+	view := m.viewString()
 	assert.Contains(t, view, "PULUMI_OPEN_LIVE",
 		"open pulumi op (done=false) must appear in the live frame")
 	assert.NotContains(t, view, "PULUMI_DONE_SCROLLBACK",
@@ -2330,13 +2378,15 @@ func TestView_LeadingBlankLine_Idle(t *testing.T) {
 	m.height = 24
 	require.Empty(t, m.blocks, "test relies on an idle model with no blocks")
 
-	view := m.View()
+	view := m.viewString()
 	assert.True(t, strings.HasPrefix(view, "\n"),
 		"View() must start with a blank line so the prompt is separated from the last scrollback block; got: %q", view)
 	// After the leading blank, the next thing must be the prompt — not a
-	// second blank line. (The prompt itself starts with "❯ ".)
-	assert.True(t, strings.HasPrefix(view, "\n"+m.textInput.Prompt),
-		"idle View() must put the prompt immediately after the leading blank; got: %q", view)
+	// second blank line. The textarea wraps the "❯ " prompt in ANSI escapes,
+	// so strip them before doing the prefix check.
+	stripped := stripansi.Strip(view)
+	assert.True(t, strings.HasPrefix(stripped, "\n❯ "),
+		"idle View() must put the prompt immediately after the leading blank; got: %q", stripped)
 }
 
 func TestView_LeadingBlankLine_Busy_SpinnerFlushWithPrompt(t *testing.T) {
@@ -2347,13 +2397,13 @@ func TestView_LeadingBlankLine_Busy_SpinnerFlushWithPrompt(t *testing.T) {
 	m.height = 24
 	m.blocks = []block{{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb}}
 
-	view := m.View()
+	view := stripansi.Strip(m.viewString())
 	require.True(t, strings.HasPrefix(view, "\n"),
 		"View() must start with a blank line above the live frame; got: %q", view)
 
 	// Spinner appears in the live frame, prompt below it, with NO blank line
 	// between them — the spinner reads as part of the input zone.
-	idx := strings.Index(view, m.textInput.Prompt) // "❯ "
+	idx := strings.Index(view, "❯ ")
 	require.Greater(t, idx, 0, "prompt must appear after the live frame")
 	above := view[:idx]
 	assert.False(t, strings.HasSuffix(above, "\n\n"),
@@ -2374,7 +2424,7 @@ func TestLiveView_BlankBetweenLiveBlocks(t *testing.T) {
 		{kind: blockBusy, label: "Thinking...", shimmer: shimmerVerb},
 	}
 
-	live := m.liveView()
+	live := stripansi.Strip(m.liveView())
 	require.Contains(t, live, "PULUMI_LIVE")
 	require.Contains(t, live, "Thinking")
 
@@ -2400,15 +2450,15 @@ func TestModel_Update_CtrlA_CyclesApprovalMode(t *testing.T) {
 		InitialApprovalMode: client.NeoApprovalModeManual,
 	})
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
 
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoApprovalModeAuto, m.approvalMode)
 
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
 		"third Ctrl+A must wrap back to manual")
@@ -2437,7 +2487,7 @@ func TestModel_Update_CtrlA_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
 		InitialApprovalMode: client.NeoApprovalModeManual,
 	})
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
 
@@ -2483,7 +2533,7 @@ func TestModel_Update_CtrlA_RapidPressesCollapseToOneDispatch(t *testing.T) {
 
 	// Three presses: manual → balanced → auto → manual.
 	for range 3 {
-		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 		m = updated.(Model)
 	}
 	require.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
@@ -2562,7 +2612,7 @@ func TestModel_Update_CtrlA_DuringTaskCreationIsNoop(t *testing.T) {
 		InitialApprovalMode: client.NeoApprovalModeManual,
 	})
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 	m = updated.(Model)
 
 	assert.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
@@ -2594,7 +2644,7 @@ func TestModel_Update_UISessionURL_UnfreezesPostMessageToggles(t *testing.T) {
 	require.True(t, m.taskCreated, "UISessionURL must flip taskCreated")
 
 	// Toggle now works — schedules a debounced PATCH.
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: 'a', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
 
@@ -2620,11 +2670,11 @@ func TestModel_Update_CtrlR_TogglesPermissionMode(t *testing.T) {
 		InitialPermissionMode: client.NeoPermissionModeDefault,
 	})
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
 
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoPermissionModeDefault, m.permissionMode,
 		"second Ctrl+R must flip back to default")
@@ -2647,7 +2697,7 @@ func TestModel_Update_CtrlR_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
 		InitialPermissionMode: client.NeoPermissionModeDefault,
 	})
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
 	m = updated.(Model)
 	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
 
@@ -2689,7 +2739,7 @@ func TestModel_Update_CtrlR_RapidPressesCollapseToOneDispatch(t *testing.T) {
 	})
 
 	for range 2 {
-		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+		updated, _ := m.Update(tea.KeyPressMsg{Code: 'r', Mod: tea.ModCtrl})
 		m = updated.(Model)
 	}
 	require.Equal(t, client.NeoPermissionModeDefault, m.permissionMode)
@@ -2782,7 +2832,7 @@ func TestModel_Update_KeyEnter_FirstMessageCarriesAllModes(t *testing.T) {
 	m.planMode = true
 	m.textInput.SetValue("kick off")
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	_ = updated
 
 	select {
@@ -2824,7 +2874,7 @@ func TestModel_Update_UIApprovalResolved_AutoApprovedCommitsBlockAndClears(t *te
 	assert.False(t, m.pendingApproval, "matching resolved must clear pendingApproval")
 	assert.Empty(t, m.pendingApprovalID, "pendingApprovalID must reset")
 	assert.False(t, m.pendingIsQuestion)
-	assert.Equal(t, "❯ ", m.textInput.Prompt, "prompt must return to default")
+	assert.Empty(t, m.approvalPromptText, "approval prompt header must clear when approval resolves")
 	assert.Equal(t, "Send a message...", m.textInput.Placeholder)
 
 	idx := m.findBlockKind(blockApprovalAuto)

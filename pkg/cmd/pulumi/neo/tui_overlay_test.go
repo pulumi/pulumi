@@ -16,25 +16,13 @@ package neo
 
 import (
 	"encoding/json"
-	"reflect"
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// cmdMsgTypeName resolves cmd via runCmd and returns the message's reflect
-// type name — the only reliable handle on bubbletea's unexported alt-screen
-// messages from outside the package.
-func cmdMsgTypeName(cmd tea.Cmd) string {
-	msg, ok := runCmd(cmd)
-	if !ok || msg == nil {
-		return ""
-	}
-	return reflect.TypeOf(msg).Name()
-}
 
 // -----------------------------------------------------------------------------
 // History bookkeeping
@@ -172,30 +160,35 @@ func TestFormatJSON(t *testing.T) {
 // Overlay open / close / scroll
 // -----------------------------------------------------------------------------
 
+// ctrlKey builds a v2 bubbletea Ctrl+<r> key event.
+func ctrlKey(r rune) tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: r, Mod: tea.ModCtrl}
+}
+
 func TestModel_Update_CtrlOOpensOverlay(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{})
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	updated, _ := m.Update(ctrlKey('o'))
 	um := updated.(Model)
 
 	assert.True(t, um.overlayActive, "ctrl+o must flip the overlay on")
-	assert.Equal(t, "enterAltScreenMsg", cmdMsgTypeName(cmd),
-		"ctrl+o must enter the alt-screen so the overlay can take over the frame")
+	assert.True(t, um.View().AltScreen,
+		"ctrl+o must mark the next View() as alt-screen so the overlay can take over the frame")
 }
 
 func TestModel_Update_CtrlOClosesOverlay(t *testing.T) {
 	t.Parallel()
 
 	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	updated, _ := m.Update(ctrlKey('o'))
 	um := updated.(Model)
 	require.True(t, um.overlayActive)
 
-	updated, cmd := um.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	updated, _ = um.Update(ctrlKey('o'))
 	um = updated.(Model)
 	assert.False(t, um.overlayActive)
-	assert.Equal(t, "exitAltScreenMsg", cmdMsgTypeName(cmd))
+	assert.False(t, um.View().AltScreen, "closing the overlay must drop AltScreen on the next View()")
 }
 
 func TestModel_Update_EscClosesOverlay_NoCancel(t *testing.T) {
@@ -205,15 +198,15 @@ func TestModel_Update_EscClosesOverlay_NoCancel(t *testing.T) {
 	// agent keeps running while the user reviews.
 	outCh := make(chan outboundEvent, 1)
 	m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	updated, _ := m.Update(ctrlKey('o'))
 	um := updated.(Model)
 	require.True(t, um.overlayActive)
 
-	updated, cmd := um.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ = um.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	um = updated.(Model)
 	assert.False(t, um.overlayActive, "esc in overlay must close it")
 	assert.False(t, um.cancelling, "esc in overlay must NOT trigger agent cancellation")
-	assert.Equal(t, "exitAltScreenMsg", cmdMsgTypeName(cmd))
+	assert.False(t, um.View().AltScreen, "closing the overlay must drop AltScreen on the next View()")
 
 	select {
 	case ev := <-outCh:
@@ -228,23 +221,24 @@ func TestModel_Update_CtrlCAndCtrlDCloseOverlay(t *testing.T) {
 	// A reflexive ctrl+c (or ctrl+d) while the overlay is open should dismiss
 	// the overlay rather than arm the quit gate or cancel the agent. Once
 	// back in the inline view a second ctrl+c can still quit normally.
-	for _, key := range []tea.KeyType{tea.KeyCtrlC, tea.KeyCtrlD} {
+	for _, r := range []rune{'c', 'd'} {
 		outCh := make(chan outboundEvent, 1)
 		m := NewModel(ModelConfig{OutCh: outCh, Busy: true})
-		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+		updated, _ := m.Update(ctrlKey('o'))
 		um := updated.(Model)
 		require.True(t, um.overlayActive)
 
-		updated, cmd := um.Update(tea.KeyMsg{Type: key})
+		updated, _ = um.Update(ctrlKey(r))
 		um = updated.(Model)
-		assert.False(t, um.overlayActive, "%v in overlay must close it", key)
-		assert.False(t, um.ctrlCArmed, "%v in overlay must not arm the quit gate", key)
-		assert.False(t, um.cancelling, "%v in overlay must not trigger cancellation", key)
-		assert.Equal(t, "exitAltScreenMsg", cmdMsgTypeName(cmd))
+		assert.False(t, um.overlayActive, "ctrl+%c in overlay must close it", r)
+		assert.False(t, um.ctrlCArmed, "ctrl+%c in overlay must not arm the quit gate", r)
+		assert.False(t, um.cancelling, "ctrl+%c in overlay must not trigger cancellation", r)
+		assert.False(t, um.View().AltScreen,
+			"closing the overlay must drop AltScreen on the next View()")
 
 		select {
 		case ev := <-outCh:
-			t.Fatalf("%v in overlay must not post any outbound event, got %T", key, ev.event)
+			t.Fatalf("ctrl+%c in overlay must not post any outbound event, got %T", r, ev.event)
 		default:
 		}
 	}
@@ -256,12 +250,12 @@ func TestModel_Update_OverlaySwallowsTyping(t *testing.T) {
 	// Printable keys must not reach the (hidden) input bar while the overlay
 	// is open, otherwise typed text shows up after the overlay closes.
 	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	updated, _ := m.Update(ctrlKey('o'))
 	um := updated.(Model)
 	require.True(t, um.overlayActive)
 
 	for _, r := range "hello" {
-		updated, _ = um.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		updated, _ = um.Update(tea.KeyPressMsg{Code: r, Text: string(r)})
 		um = updated.(Model)
 	}
 	assert.Equal(t, "", um.textInput.Value(), "typing while overlay is open must not enter the input buffer")
@@ -274,14 +268,14 @@ func TestModel_Update_OverlayForwardsScrollKeys(t *testing.T) {
 	// negative one: scroll keys must not trip the swallow-everything-else
 	// default branch (which would close-or-no-op the overlay).
 	m := NewModel(ModelConfig{})
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlO})
+	updated, _ := m.Update(ctrlKey('o'))
 	um := updated.(Model)
 	require.True(t, um.overlayActive)
 
-	for _, k := range []tea.KeyType{tea.KeyDown, tea.KeyUp, tea.KeyPgDown, tea.KeyPgUp, tea.KeyHome, tea.KeyEnd} {
-		updated, _ = um.Update(tea.KeyMsg{Type: k})
+	for _, code := range []rune{tea.KeyDown, tea.KeyUp, tea.KeyPgDown, tea.KeyPgUp, tea.KeyHome, tea.KeyEnd} {
+		updated, _ = um.Update(tea.KeyPressMsg{Code: code})
 		um = updated.(Model)
-		assert.True(t, um.overlayActive, "scroll key %v must not close the overlay", k)
+		assert.True(t, um.overlayActive, "scroll key %v must not close the overlay", code)
 	}
 }
 
