@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `pulumi stack webhook ping` to send a test ping to a stack webhook
