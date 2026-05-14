@@ -426,14 +426,8 @@ func Resolve(
 	}
 }
 
-// gitlabSubgroupHint returns a human-readable suffix to append to a package
-// resolution error message when the source URL looks like a GitLab subgroup
-// project written without an explicit ".git" marker. Such URLs parse as
-// owner/repo + subpath, so a real subgroup project ("group/subgroup/repo")
-// is silently mis-parsed and the clone fails far from the cause. The hint
-// surfaces the most likely fix without requiring the user to know the
-// gitutil convention. Returns "" when the URL doesn't match the pattern,
-// so callers can unconditionally concatenate.
+// gitlabSubgroupHint returns a suffix suggesting a ".git" marker when source
+// looks like an ambiguous GitLab subgroup URL, or "" otherwise.
 func gitlabSubgroupHint(source string) string {
 	u, err := url.Parse(source)
 	if err != nil || u == nil {

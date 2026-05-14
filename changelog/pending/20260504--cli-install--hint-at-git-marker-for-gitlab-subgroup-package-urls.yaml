@@ -1,10 +1,4 @@
 changes:
   - type: fix
     scope: cli/install
-    description: |
-      When `pulumi install` fails to resolve a `packages:` entry whose URL points
-      at a GitLab subgroup project written without the canonical `.git` suffix
-      (e.g. `https://gitlab.com/group/subgroup/repo`), the error now includes a
-      hint pointing at the fix. GitLab supports nested subgroups, so without a
-      `.git` marker the parser can't distinguish a subgroup project from
-      `owner/repo` plus a subpath; the hint nudges users to the marker form.
+    description: Hint at adding a `.git` suffix when GitLab subgroup package resolution fails.
