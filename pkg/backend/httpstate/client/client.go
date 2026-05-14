@@ -1100,6 +1100,20 @@ func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContTo
 	return resp, nil, nil
 }
 
+// GetPolicyGroup returns the details of a single Policy Group in the Pulumi
+// service, including the list of Policy Packs applied to it and the stacks or
+// cloud accounts that are members of the group.
+func (pc *Client) GetPolicyGroup(
+	ctx context.Context, orgName, policyGroup string,
+) (apitype.GetPolicyGroupResponse, error) {
+	var resp apitype.GetPolicyGroupResponse
+	err := pc.restCall(ctx, "GET", updatePolicyGroupPath(orgName, policyGroup), nil, nil, &resp)
+	if err != nil {
+		return resp, fmt.Errorf("getting policy group: %w", err)
+	}
+	return resp, nil
+}
+
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyPacksResponse, *string, error,

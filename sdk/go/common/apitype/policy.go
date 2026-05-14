@@ -313,6 +313,39 @@ type PolicyGroupSummary struct {
 	NumEnabledPolicyPacks int             `json:"numEnabledPolicyPacks"`
 }
 
+// GetPolicyGroupResponse is the response to get a specific Policy Group's
+// metadata, applied Policy Packs, and member stacks or accounts.
+type GetPolicyGroupResponse struct {
+	// Name is the name of the Policy Group.
+	Name string `json:"name"`
+
+	// IsOrgDefault is true if this is either the default stacks or default
+	// accounts Policy Group for the organization.
+	IsOrgDefault bool `json:"isOrgDefault"`
+
+	// EntityType is the type of entities this Policy Group applies to
+	// (stacks or accounts).
+	EntityType EntityType `json:"entityType"`
+
+	// Mode is the enforcement mode for the Policy Group (audit or preventative).
+	Mode PolicyGroupMode `json:"mode"`
+
+	// Stacks lists the stacks that are members of this Policy Group.
+	Stacks []PulumiStackReference `json:"stacks"`
+
+	// AppliedPolicyPacks lists the Policy Packs that are applied to this
+	// Policy Group.
+	AppliedPolicyPacks []PolicyPackMetadata `json:"appliedPolicyPacks"`
+
+	// Accounts lists the Insights account names that are members of this
+	// Policy Group.
+	Accounts []string `json:"accounts"`
+
+	// AgentPoolID is the agent pool ID used for audit policy evaluation.
+	// Defaults to the Pulumi hosted pool if not specified.
+	AgentPoolID string `json:"agentPoolId,omitempty"`
+}
+
 // GetPolicyPackConfigSchemaResponse is the response that includes the JSON
 // schemas of Policies within a particular Policy Pack.
 type GetPolicyPackConfigSchemaResponse struct {
