@@ -52,39 +52,6 @@ func newOrgRoleCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23007]: Not yet implemented.
-func newOrgRoleNewCmd() *cobra.Command {
-	var (
-		org         string
-		description string
-		permissions []string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "new",
-		Short:  "Create a new custom role for an organization",
-		Long:   "[EXPERIMENTAL] Create a new custom role for an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "name"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to create the role in")
-	cmd.Flags().StringVar(&description, "description", "", "A description for the role")
-	cmd.Flags().StringArrayVar(&permissions, "permission", nil,
-		"A permission scope for the role (repeatable)")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23006]: Not yet implemented.
 func newOrgRoleEditCmd() *cobra.Command {
 	var (
@@ -190,6 +157,7 @@ type orgRoleClientFactory func(ctx context.Context, orgFlag string) (orgRoleClie
 // exists so tests can substitute a fake.
 type orgRoleClient interface {
 	ListOrgRoles(ctx context.Context, orgName, uxPurpose string) ([]apitype.Role, error)
+	CreateOrgRole(ctx context.Context, orgName string, req apitype.CreateRoleRequest) (apitype.Role, error)
 }
 
 func defaultOrgRoleClientFactory(ctx context.Context, orgFlag string) (orgRoleClient, string, error) {

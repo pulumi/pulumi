@@ -1121,6 +1121,18 @@ func (pc *Client) ListOrgRoles(
 	return resp.Roles, nil
 }
 
+// CreateOrgRole creates a new custom role in the given organization.
+func (pc *Client) CreateOrgRole(
+	ctx context.Context, orgName string, req apitype.CreateRoleRequest,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles", url.PathEscape(orgName))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "POST", path, nil, &req, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("creating organization role: %w", err)
+	}
+	return resp, nil
+}
+
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
