@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-func intP(i int) *int { return &i }
+func ref[T any](v T) *T { return &v }
 
 func TestGetOrgUsageSummary(t *testing.T) {
 	t.Parallel()
@@ -38,15 +38,15 @@ func TestGetOrgUsageSummary(t *testing.T) {
 			Summary: []apitype.OrgResourceCountSummary{
 				{
 					Year:          2026,
-					Month:         intP(5),
-					Day:           intP(1),
+					Month:         ref(5),
+					Day:           ref(1),
 					Resources:     1200,
 					ResourceHours: 28800,
 				},
 				{
 					Year:          2026,
-					Month:         intP(5),
-					Day:           intP(2),
+					Month:         ref(5),
+					Day:           ref(2),
 					Resources:     1300,
 					ResourceHours: 31200,
 				},

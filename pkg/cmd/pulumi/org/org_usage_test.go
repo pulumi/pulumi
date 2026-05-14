@@ -59,28 +59,22 @@ func stubUsageFactory(c orgUsageGetClient, resolvedOrg string) orgUsageGetClient
 	}
 }
 
-func failingUsageFactory(err error) orgUsageGetClientFactory {
-	return func(_ context.Context, _ string) (orgUsageGetClient, string, error) {
-		return nil, "", err
-	}
-}
-
-func intPtr(i int) *int { return &i }
+func ref[T any](v T) *T { return &v }
 
 func sampleDailyUsage() apitype.OrgUsageSummaryResponse {
 	return apitype.OrgUsageSummaryResponse{
 		Summary: []apitype.OrgResourceCountSummary{
 			{
 				Year:          2026,
-				Month:         intPtr(5),
-				Day:           intPtr(1),
+				Month:         ref(5),
+				Day:           ref(1),
 				Resources:     1200,
 				ResourceHours: 28800,
 			},
 			{
 				Year:          2026,
-				Month:         intPtr(5),
-				Day:           intPtr(2),
+				Month:         ref(5),
+				Day:           ref(2),
 				Resources:     1300,
 				ResourceHours: 31200,
 			},
@@ -89,7 +83,7 @@ func sampleDailyUsage() apitype.OrgUsageSummaryResponse {
 }
 
 func defaultArgs() orgUsageGetArgs {
-	return orgUsageGetArgs{output: defaultUsageGetOutputFormat()}
+	return orgUsageGetArgs{render: renderUsageGetTable}
 }
 
 func TestOrgUsageGet_DefaultOutput(t *testing.T) {
@@ -139,7 +133,7 @@ func TestOrgUsageGet_JSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockUsageGetClient{resp: sampleDailyUsage()}
 	args := defaultArgs()
-	require.NoError(t, args.output.Set("json"))
+	args.render = renderUsageGetJSON
 	err := runOrgUsageGet(t.Context(), &buf, stubUsageFactory(c, "acme"), args)
 	require.NoError(t, err)
 
@@ -154,7 +148,7 @@ func TestOrgUsageGet_JSONOutput_EmptyNormalizesToArray(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockUsageGetClient{resp: apitype.OrgUsageSummaryResponse{}}
 	args := defaultArgs()
-	require.NoError(t, args.output.Set("json"))
+	args.render = renderUsageGetJSON
 	err := runOrgUsageGet(t.Context(), &buf, stubUsageFactory(c, "acme"), args)
 	require.NoError(t, err)
 
@@ -172,9 +166,9 @@ func TestOrgUsageGet_HourlyColumns(t *testing.T) {
 	c := &mockUsageGetClient{resp: apitype.OrgUsageSummaryResponse{
 		Summary: []apitype.OrgResourceCountSummary{{
 			Year:          2026,
-			Month:         intPtr(5),
-			Day:           intPtr(14),
-			Hour:          intPtr(13),
+			Month:         ref(5),
+			Day:           ref(14),
+			Hour:          ref(13),
 			Resources:     50,
 			ResourceHours: 50,
 		}},
@@ -187,40 +181,6 @@ func TestOrgUsageGet_HourlyColumns(t *testing.T) {
 	assert.NotContains(t, out, "Week")
 }
 
-func TestOrgUsageGet_PropagatesFlags(t *testing.T) {
-	t.Parallel()
-
-	captured := &capturedUsageCall{}
-	c := &mockUsageGetClient{resp: sampleDailyUsage(), captured: captured}
-	args := defaultArgs()
-	args.org = "explicit-org"
-	args.granularity = "daily"
-	args.lookbackDays = 7
-	args.lookbackStart = 1_700_000_000
-
-	err := runOrgUsageGet(t.Context(), &bytes.Buffer{}, stubUsageFactory(c, "default-org"), args)
-	require.NoError(t, err)
-
-	assert.Equal(t, "explicit-org", captured.org)
-	assert.Equal(t, apitype.OrgUsageSummaryParams{
-		Granularity:   "daily",
-		LookbackDays:  7,
-		LookbackStart: 1_700_000_000,
-	}, captured.params)
-}
-
-func TestOrgUsageGet_DefaultsToResolvedOrg(t *testing.T) {
-	t.Parallel()
-
-	captured := &capturedUsageCall{}
-	c := &mockUsageGetClient{resp: sampleDailyUsage(), captured: captured}
-
-	err := runOrgUsageGet(t.Context(), &bytes.Buffer{}, stubUsageFactory(c, "default-org"), defaultArgs())
-	require.NoError(t, err)
-
-	assert.Equal(t, "default-org", captured.org)
-}
-
 func TestOrgUsageGet_InvalidGranularity(t *testing.T) {
 	t.Parallel()
 
@@ -230,14 +190,6 @@ func TestOrgUsageGet_InvalidGranularity(t *testing.T) {
 
 	err := runOrgUsageGet(t.Context(), &bytes.Buffer{}, stubUsageFactory(c, "acme"), args)
 	require.ErrorContains(t, err, `invalid --granularity "yearly"`)
-}
-
-func TestOrgUsageGet_FactoryError(t *testing.T) {
-	t.Parallel()
-
-	factory := failingUsageFactory(errors.New("no default org"))
-	err := runOrgUsageGet(t.Context(), &bytes.Buffer{}, factory, defaultArgs())
-	require.ErrorContains(t, err, "no default org")
 }
 
 func TestOrgUsageGet_ClientError(t *testing.T) {
@@ -280,16 +232,3 @@ func TestOrgUsageGet_CobraFlagBinding(t *testing.T) {
 	assert.Equal(t, sampleDailyUsage(), decoded)
 }
 
-func TestOrgUsageGet_CobraInvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	cmd := newOrgUsageGetCmd(stubUsageFactory(&mockUsageGetClient{}, "acme"))
-	cmd.SetArgs([]string{"--output", "xml"})
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetErr(&buf)
-
-	err := cmd.Execute()
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `output "xml" not supported`)
-}

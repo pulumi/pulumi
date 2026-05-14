@@ -77,19 +77,12 @@ type orgUsageGetClientFactory func(
 // usageGetRender renders a usage summary response to a writer.
 type usageGetRender func(w io.Writer, resp apitype.OrgUsageSummaryResponse) error
 
-func defaultUsageGetOutputFormat() outputflag.OutputFlag[usageGetRender] {
-	return outputflag.OutputFlag[usageGetRender]{
-		RenderForTerminal: renderUsageGetTable,
-		RenderJSON:        renderUsageGetJSON,
-	}
-}
-
 type orgUsageGetArgs struct {
 	org           string
 	granularity   string
 	lookbackDays  int64
 	lookbackStart int64
-	output        outputflag.OutputFlag[usageGetRender]
+	render        usageGetRender
 }
 
 // newOrgUsageGetCmd builds `pulumi org usage get`. factory produces the cloud
@@ -100,7 +93,11 @@ func newOrgUsageGetCmd(factory orgUsageGetClientFactory) *cobra.Command {
 		factory = defaultUsageGetClientFactory
 	}
 
-	args := orgUsageGetArgs{output: defaultUsageGetOutputFormat()}
+	var args orgUsageGetArgs
+	output := outputflag.OutputFlag[usageGetRender]{
+		RenderForTerminal: renderUsageGetTable,
+		RenderJSON:        renderUsageGetJSON,
+	}
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -123,6 +120,7 @@ func newOrgUsageGetCmd(factory orgUsageGetClientFactory) *cobra.Command {
 			"  # JSON output for scripting.\n" +
 			"  pulumi org usage get --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			args.render = output.Get()
 			return runOrgUsageGet(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
 	}
@@ -131,13 +129,13 @@ func newOrgUsageGetCmd(factory orgUsageGetClientFactory) *cobra.Command {
 
 	cmd.Flags().StringVar(&args.org, "org", "",
 		"Organization to fetch usage for (defaults to the current default org)")
-	cmd.Flags().StringVar(&args.granularity, "granularity", "",
+	cmd.Flags().StringVar(&args.granularity, "granularity", "daily",
 		"Time granularity for aggregation. One of: hourly, daily, monthly")
-	cmd.Flags().Int64Var(&args.lookbackDays, "lookback-days", 0,
+	cmd.Flags().Int64Var(&args.lookbackDays, "lookback-days", 30,
 		"Number of days to look back from --lookback-start (or the current time)")
 	cmd.Flags().Int64Var(&args.lookbackStart, "lookback-start", 0,
 		"Unix timestamp (seconds) marking the end of the lookback window")
-	outputflag.Var(cmd.Flags(), &args.output)
+	outputflag.Var(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -166,7 +164,7 @@ func runOrgUsageGet(
 		return fmt.Errorf("fetching organization usage summary: %w", err)
 	}
 
-	return args.output.Get()(w, resp)
+	return args.render(w, resp)
 }
 
 // defaultUsageGetClientFactory is the production wiring: resolve the cloud
