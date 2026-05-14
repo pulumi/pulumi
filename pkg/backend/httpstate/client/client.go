@@ -1133,6 +1133,34 @@ func (pc *Client) CreateOrgRole(
 	return resp, nil
 }
 
+// GetOrgRole fetches a single custom role by its identifier.
+func (pc *Client) GetOrgRole(
+	ctx context.Context, orgName, roleID string,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("getting organization role: %w", err)
+	}
+	return resp, nil
+}
+
+// UpdateOrgRole updates an existing custom role's name, description, and details.
+// The service requires all three fields; callers that want to leave any of them
+// unchanged should fetch the current role first and merge.
+func (pc *Client) UpdateOrgRole(
+	ctx context.Context, orgName, roleID string, req apitype.UpdateRoleRequest,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "PATCH", path, nil, &req, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("updating organization role: %w", err)
+	}
+	return resp, nil
+}
+
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,

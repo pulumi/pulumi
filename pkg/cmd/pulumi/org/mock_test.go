@@ -32,6 +32,15 @@ type mockOrgRoleClient struct {
 	createResp apitype.Role
 	createErr  error
 	createReq  apitype.CreateRoleRequest
+
+	getResp apitype.Role
+	getErr  error
+	getID   string
+
+	updateResp apitype.Role
+	updateErr  error
+	updateID   string
+	updateReq  apitype.UpdateRoleRequest
 }
 
 func (m *mockOrgRoleClient) ListOrgRoles(_ context.Context, orgName, uxPurpose string) ([]apitype.Role, error) {
@@ -46,6 +55,23 @@ func (m *mockOrgRoleClient) CreateOrgRole(
 	m.capturedOrg = orgName
 	m.createReq = req
 	return m.createResp, m.createErr
+}
+
+func (m *mockOrgRoleClient) GetOrgRole(
+	_ context.Context, orgName, roleID string,
+) (apitype.Role, error) {
+	m.capturedOrg = orgName
+	m.getID = roleID
+	return m.getResp, m.getErr
+}
+
+func (m *mockOrgRoleClient) UpdateOrgRole(
+	_ context.Context, orgName, roleID string, req apitype.UpdateRoleRequest,
+) (apitype.Role, error) {
+	m.capturedOrg = orgName
+	m.updateID = roleID
+	m.updateReq = req
+	return m.updateResp, m.updateErr
 }
 
 func stubRoleFactory(c orgRoleClient, orgName string) orgRoleClientFactory {
