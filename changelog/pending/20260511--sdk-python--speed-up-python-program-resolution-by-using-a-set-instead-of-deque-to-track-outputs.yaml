@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: sdk/python
-  description: Speed up python program resolution by using a set instead of deque to track outputs

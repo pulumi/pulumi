@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: sdk/nodejs
-  description: Add registerPackage helper to cache package references per deployment

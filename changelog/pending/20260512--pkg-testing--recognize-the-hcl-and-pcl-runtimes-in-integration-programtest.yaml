@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: pkg/testing
-  description: Recognize the `hcl` and `pcl` runtimes in `integration.ProgramTest`

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: pkg/testing
-  description: Add `l1-config-types-optional` conformance test for PCL's `optional` type constructor
