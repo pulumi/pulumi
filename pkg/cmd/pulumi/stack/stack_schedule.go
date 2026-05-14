@@ -15,12 +15,112 @@
 package stack
 
 import (
+	"encoding/json"
 	"errors"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
+
+const (
+	scheduleKindRaw   = "raw"
+	scheduleKindDrift = "drift"
+	scheduleKindTTL   = "ttl"
+)
+
+type scheduleSummary struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Settings string `json:"settings"`
+	Schedule string `json:"schedule"`
+	NextRun  string `json:"nextRun,omitempty"`
+	LastRun  string `json:"lastRun,omitempty"`
+	Created  string `json:"created,omitempty"`
+}
+
+// scheduleKindLabel returns the user-facing schedule kind (raw / drift / ttl) matching
+// the Cloud UI.
+//
+//   - operation == detect-drift                       -> drift
+//   - operation == destroy && operationContext != nil -> ttl
+//   - operation == destroy && operationContext == nil -> raw
+//   - anything else                                   -> raw
+func scheduleKindLabel(s apitype.ScheduledAction) string {
+	if s.Kind != apitype.ScheduledActionKindDeployment {
+		return string(s.Kind)
+	}
+	var def apitype.ScheduledDeploymentDefinition
+	if err := json.Unmarshal(s.Definition, &def); err != nil || def.Request == nil {
+		return scheduleKindRaw
+	}
+	req := def.Request
+	if req.Op == apitype.DetectDrift {
+		return scheduleKindDrift
+	}
+	if req.Op == apitype.Destroy && req.Operation != nil {
+		return scheduleKindTTL
+	}
+	return scheduleKindRaw
+}
+
+func summarizeSchedule(s apitype.ScheduledAction) scheduleSummary {
+	lastRun := ""
+	if s.LastExecuted != nil {
+		lastRun = *s.LastExecuted
+	}
+	return scheduleSummary{
+		ID:       s.ID,
+		Type:     scheduleKindLabel(s),
+		Settings: scheduleSettings(s),
+		Schedule: formatSchedule(s),
+		NextRun:  s.NextExecution,
+		LastRun:  lastRun,
+		Created:  s.Created,
+	}
+}
+
+// scheduleSettings returns a compact, user-readable summary of what the schedule does,
+// modeled on the Cloud UI's Settings column.
+//
+//	"detect"                  — drift detection only
+//	"detect + auto-remediate" — drift detection that auto-applies a remediation update
+//	"destroy"                 — TTL destroy
+//	"destroy + delete stack"  — TTL destroy that also deletes the stack from Pulumi Cloud
+//	"pulumi update"           — raw schedule running a Pulumi operation
+func scheduleSettings(s apitype.ScheduledAction) string {
+	if s.Kind != apitype.ScheduledActionKindDeployment {
+		return ""
+	}
+	var def apitype.ScheduledDeploymentDefinition
+	if err := json.Unmarshal(s.Definition, &def); err != nil || def.Request == nil {
+		return ""
+	}
+	req := def.Request
+	var opts apitype.OperationContextOptions
+	if req.Operation != nil && req.Operation.Options != nil {
+		opts = *req.Operation.Options
+	}
+	//exhaustive:ignore // other operations fall through to the default branch.
+	switch req.Op {
+	case apitype.DetectDrift:
+		parts := []string{"detect"}
+		if opts.RemediateIfDriftDetected {
+			parts = append(parts, "auto-remediate")
+		}
+		return strings.Join(parts, " + ")
+	case apitype.Destroy:
+		parts := []string{"destroy"}
+		if opts.DeleteAfterDestroy {
+			parts = append(parts, "delete stack")
+		}
+		return strings.Join(parts, " + ")
+	default:
+		return "pulumi " + string(req.Op)
+	}
+}
 
 // TODO[https://github.com/pulumi/pulumi/issues/23050]: Not yet implemented.
 func newStackScheduleCmd() *cobra.Command {
@@ -41,28 +141,6 @@ func newStackScheduleCmd() *cobra.Command {
 	cmd.AddCommand(newStackScheduleGetCmd())
 	cmd.AddCommand(newStackScheduleEditCmd())
 	cmd.AddCommand(newStackScheduleRemoveCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23049]: Not yet implemented.
-func newStackScheduleListCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List all scheduled actions configured for a stack",
-		Long:   "[EXPERIMENTAL] List all scheduled actions configured for a stack.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
 	return cmd
 }
 

@@ -790,6 +790,17 @@ func (pc *Client) DeleteStackWebhook(
 	return pc.restCall(ctx, "DELETE", getStackPath(stackID, "hooks", webhookName), nil, nil, nil)
 }
 
+// ListStackSchedules returns all scheduled deployment actions configured for the given stack.
+func (pc *Client) ListStackSchedules(
+	ctx context.Context, stackID StackIdentifier,
+) ([]apitype.ScheduledAction, error) {
+	var resp apitype.ListScheduledActionsResponse
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "deployments", "schedules"), nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp.Schedules, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
