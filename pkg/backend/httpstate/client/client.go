@@ -1161,6 +1161,23 @@ func (pc *Client) UpdateOrgRole(
 	return resp, nil
 }
 
+// DeleteOrgRole deletes a custom role from an organization. When force is true,
+// the service will delete the role even if it is currently assigned to members
+// or teams (and revoke those assignments).
+func (pc *Client) DeleteOrgRole(
+	ctx context.Context, orgName, roleID string, force bool,
+) error {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	queryObj := struct {
+		Force bool `url:"force,omitempty"`
+	}{Force: force}
+	if err := pc.restCall(ctx, "DELETE", path, queryObj, nil, nil); err != nil {
+		return fmt.Errorf("deleting organization role: %w", err)
+	}
+	return nil
+}
+
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,

@@ -52,37 +52,6 @@ func newOrgRoleCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23005]: Not yet implemented.
-func newOrgRoleRemoveCmd() *cobra.Command {
-	var (
-		org   string
-		force bool
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "remove",
-		Short:  "Delete a custom role from an organization",
-		Long:   "[EXPERIMENTAL] Delete a custom role from an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "role-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the role")
-	cmd.Flags().BoolVar(&force, "force", false,
-		"Force deletion even if the role is currently assigned")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/23004]: Not yet implemented.
 func newOrgRoleAssignCmd() *cobra.Command {
 	var (
@@ -127,6 +96,7 @@ type orgRoleClient interface {
 	UpdateOrgRole(
 		ctx context.Context, orgName, roleID string, req apitype.UpdateRoleRequest,
 	) (apitype.Role, error)
+	DeleteOrgRole(ctx context.Context, orgName, roleID string, force bool) error
 }
 
 func defaultOrgRoleClientFactory(ctx context.Context, orgFlag string) (orgRoleClient, string, error) {
