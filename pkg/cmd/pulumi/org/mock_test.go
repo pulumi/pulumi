@@ -45,6 +45,10 @@ type mockOrgRoleClient struct {
 	deleteErr   error
 	deleteID    string
 	deleteForce bool
+
+	assignErr  error
+	assignTeam string
+	assignID   string
 }
 
 func (m *mockOrgRoleClient) ListOrgRoles(_ context.Context, orgName, uxPurpose string) ([]apitype.Role, error) {
@@ -85,6 +89,15 @@ func (m *mockOrgRoleClient) DeleteOrgRole(
 	m.deleteID = roleID
 	m.deleteForce = force
 	return m.deleteErr
+}
+
+func (m *mockOrgRoleClient) AssignTeamRole(
+	_ context.Context, orgName, teamName, roleID string,
+) error {
+	m.capturedOrg = orgName
+	m.assignTeam = teamName
+	m.assignID = roleID
+	return m.assignErr
 }
 
 func stubRoleFactory(c orgRoleClient, orgName string) orgRoleClientFactory {

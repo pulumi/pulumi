@@ -1178,6 +1178,20 @@ func (pc *Client) DeleteOrgRole(
 	return nil
 }
 
+// AssignTeamRole upserts the role assignment for the given team. The Pulumi
+// Cloud REST API currently supports a single role per team, so calling this
+// method replaces any previously assigned custom role.
+func (pc *Client) AssignTeamRole(
+	ctx context.Context, orgName, teamName, roleID string,
+) error {
+	path := fmt.Sprintf("/api/orgs/%s/teams/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(teamName), url.PathEscape(roleID))
+	if err := pc.restCall(ctx, "POST", path, nil, nil, nil); err != nil {
+		return fmt.Errorf("assigning role to team: %w", err)
+	}
+	return nil
+}
+
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,

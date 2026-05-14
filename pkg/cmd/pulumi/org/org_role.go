@@ -52,36 +52,6 @@ func newOrgRoleCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23004]: Not yet implemented.
-func newOrgRoleAssignCmd() *cobra.Command {
-	var (
-		org  string
-		team string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "assign",
-		Short:  "Assign a role to a team",
-		Long:   "[EXPERIMENTAL] Assign a role to a team.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "role-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the role")
-	cmd.Flags().StringVar(&team, "team", "", "The team to assign the role to")
-
-	return cmd
-}
-
 // orgRoleClientFactory builds an org-role client and resolves the organization name
 // from the given --org flag (or the user's default org).
 type orgRoleClientFactory func(ctx context.Context, orgFlag string) (orgRoleClient, string, error)
@@ -97,6 +67,7 @@ type orgRoleClient interface {
 		ctx context.Context, orgName, roleID string, req apitype.UpdateRoleRequest,
 	) (apitype.Role, error)
 	DeleteOrgRole(ctx context.Context, orgName, roleID string, force bool) error
+	AssignTeamRole(ctx context.Context, orgName, teamName, roleID string) error
 }
 
 func defaultOrgRoleClientFactory(ctx context.Context, orgFlag string) (orgRoleClient, string, error) {
