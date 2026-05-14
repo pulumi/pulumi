@@ -118,7 +118,7 @@ func TestStackScheduleList_TableOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockScheduleClient{schedules: sampleSchedules(t)}
-	err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", renderScheduleListTable)
+	err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", 0, renderScheduleListTable)
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -154,7 +154,7 @@ func TestStackScheduleList_TableOutput_Empty(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockScheduleClient{schedules: []apitype.ScheduledAction{}}
-	err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", renderScheduleListTable)
+	err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", 0, renderScheduleListTable)
 	require.NoError(t, err)
 
 	assert.Contains(t, buf.String(), "No scheduled actions configured for this stack.")
@@ -165,7 +165,7 @@ func TestStackScheduleList_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockScheduleClient{schedules: sampleSchedules(t)}
-	err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", renderScheduleListJSON)
+	err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", 0, renderScheduleListJSON)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -196,8 +196,48 @@ func TestStackScheduleList_JSONOutput_Empty(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockScheduleClient{schedules: []apitype.ScheduledAction{}}
-	err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", renderScheduleListJSON)
+	err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", 0, renderScheduleListJSON)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{"schedules": []}`, buf.String())
+}
+
+func TestStackScheduleList_Count(t *testing.T) {
+	t.Parallel()
+
+	t.Run("limits to N", func(t *testing.T) {
+		t.Parallel()
+		var buf bytes.Buffer
+		c := &mockScheduleClient{schedules: sampleSchedules(t)}
+		err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", 1, renderScheduleListTable)
+		require.NoError(t, err)
+		out := buf.String()
+		assert.Contains(t, out, "bb61b60a")
+		assert.NotContains(t, out, "abc-cron")
+	})
+
+	t.Run("count larger than total", func(t *testing.T) {
+		t.Parallel()
+		var buf bytes.Buffer
+		c := &mockScheduleClient{schedules: sampleSchedules(t)}
+		err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", 99, renderScheduleListTable)
+		require.NoError(t, err)
+		out := buf.String()
+		assert.Contains(t, out, "bb61b60a")
+		assert.Contains(t, out, "abc-cron")
+	})
+
+	t.Run("json truncated", func(t *testing.T) {
+		t.Parallel()
+		var buf bytes.Buffer
+		c := &mockScheduleClient{schedules: sampleSchedules(t)}
+		err := runStackScheduleList(t.Context(), &buf, clientFactory(c), "", 1, renderScheduleListJSON)
+		require.NoError(t, err)
+		var got struct {
+			Schedules []scheduleSummary `json:"schedules"`
+		}
+		require.NoError(t, json.Unmarshal(buf.Bytes(), &got))
+		assert.Len(t, got.Schedules, 1)
+		assert.Equal(t, "bb61b60a", got.Schedules[0].ID)
+	})
 }

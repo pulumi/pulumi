@@ -47,7 +47,10 @@ func newStackScheduleListCmd() *cobra.Command {
 }
 
 func newStackScheduleListCmdWith(factory stackScheduleListClientFactory) *cobra.Command {
-	var stack string
+	var (
+		stack string
+		count int
+	)
 	output := outputflag.OutputFlag[scheduleListRenderFunc]{
 		RenderForTerminal: renderScheduleListTable,
 		RenderJSON:        renderScheduleListJSON,
@@ -61,7 +64,7 @@ func newStackScheduleListCmdWith(factory stackScheduleListClientFactory) *cobra.
 			if factory == nil {
 				factory = defaultStackScheduleListClientFactory
 			}
-			return runStackScheduleList(cmd.Context(), cmd.OutOrStdout(), factory, stack, output.Get())
+			return runStackScheduleList(cmd.Context(), cmd.OutOrStdout(), factory, stack, count, output.Get())
 		},
 	}
 
@@ -69,6 +72,8 @@ func newStackScheduleListCmdWith(factory stackScheduleListClientFactory) *cobra.
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmd.Flags().IntVar(&count, "count", 0,
+		"Show only the first N schedules. 0 (the default) shows all")
 	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
@@ -85,6 +90,7 @@ func runStackScheduleList(
 	w io.Writer,
 	factory stackScheduleListClientFactory,
 	stackFlag string,
+	count int,
 	render scheduleListRenderFunc,
 ) error {
 	c, stackID, err := factory(ctx, stackFlag)
@@ -95,6 +101,10 @@ func runStackScheduleList(
 	schedules, err := c.ListStackSchedules(ctx, stackID)
 	if err != nil {
 		return fmt.Errorf("listing stack schedules: %w", err)
+	}
+
+	if count > 0 && count < len(schedules) {
+		schedules = schedules[:count]
 	}
 
 	return render(w, schedules)
