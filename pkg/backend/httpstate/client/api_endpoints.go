@@ -135,6 +135,9 @@ func init() {
 	addEndpoint("POST", "/api/orgs/{orgName}/policypacks", "publishPolicyPack")
 	addEndpoint("POST", "/api/orgs/{orgName}/policypacks/{policyPackName}/{versionTag}/complete", "completePolicyPackPublish")
 
+	// APIs for usage summaries (Resources Under Management).
+	addEndpoint("GET", "/api/orgs/{orgName}/resources/summary", "getUsageSummaryResourceHours")
+
 	// APIs for managing Search capabilities
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources", "getSearchResources")
 	addEndpoint("GET", "/api/orgs/{orgName}/search/resources/parse", "getSearchResourcesParse")
