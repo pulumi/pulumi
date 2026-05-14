@@ -250,6 +250,13 @@ type GetStackPolicyPacksResponse struct {
 	RequiredPolicies []RequiredPolicy `json:"requiredPolicies,omitempty"`
 }
 
+// CreatePolicyGroupRequest defines the request body for creating a new Policy
+// Group in an organization.
+type CreatePolicyGroupRequest struct {
+	// Name is the name of the new Policy Group.
+	Name string `json:"name"`
+}
+
 // UpdatePolicyGroupRequest modifies a Policy Group.
 type UpdatePolicyGroupRequest struct {
 	NewName *string `json:"newName,omitempty"`

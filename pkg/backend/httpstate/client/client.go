@@ -1100,6 +1100,15 @@ func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContTo
 	return resp, nil, nil
 }
 
+// CreatePolicyGroup creates a new Policy Group in the given organization.
+func (pc *Client) CreatePolicyGroup(ctx context.Context, orgName, name string) error {
+	req := apitype.CreatePolicyGroupRequest{Name: name}
+	if err := pc.restCall(ctx, "POST", listPolicyGroupsPath(orgName), nil, req, nil); err != nil {
+		return fmt.Errorf("creating policy group: %w", err)
+	}
+	return nil
+}
+
 // GetPolicyGroup returns the details of a single Policy Group in the Pulumi
 // service, including the list of Policy Packs applied to it and the stacks or
 // cloud accounts that are members of the group.
