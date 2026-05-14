@@ -2527,3 +2527,18 @@ func (pc *Client) SearchInsightsResources(
 	}
 	return resp, nil
 }
+
+// ListInsightsAccounts fetches a single page of Pulumi Insights accounts for an
+// organization. The caller is responsible for following the NextToken cursor
+// across pages; zero-valued fields on params are omitted from the query string
+// so the service applies its own defaults.
+func (pc *Client) ListInsightsAccounts(
+	ctx context.Context, org string, params apitype.ListInsightsAccountsParams,
+) (apitype.ListInsightsAccountsResponse, error) {
+	path := fmt.Sprintf("/api/preview/insights/%s/accounts", url.PathEscape(org))
+	var resp apitype.ListInsightsAccountsResponse
+	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
+		return apitype.ListInsightsAccountsResponse{}, err
+	}
+	return resp, nil
+}

@@ -143,3 +143,93 @@ type InsightsResourceSearchAggregationBucket struct {
 	Name  string `json:"name,omitempty"`
 	Count int64  `json:"count,omitempty"`
 }
+
+// ListInsightsAccountsParams are the query parameters for the Pulumi Insights
+// ListAccounts endpoint.
+type ListInsightsAccountsParams struct {
+	// ContinuationToken is the opaque cursor returned by a previous response;
+	// pass it on subsequent calls to fetch the next page.
+	ContinuationToken string `url:"continuationToken,omitempty"`
+	// Count is the maximum number of results to return on a single page.
+	// Defaults to 100 server-side; capped at 1000.
+	Count int `url:"count,omitempty"`
+	// Parent filters results to child accounts of the named parent account
+	// (e.g. an AWS Organizations management account).
+	Parent string `url:"parent,omitempty"`
+	// RoleID filters results to accounts accessible by the named role.
+	RoleID string `url:"roleID,omitempty"`
+}
+
+// ListInsightsAccountsResponse is the envelope returned by the ListAccounts
+// endpoint. NextToken is empty on the last page.
+type ListInsightsAccountsResponse struct {
+	Accounts  []InsightsAccount `json:"accounts"`
+	NextToken string            `json:"nextToken,omitempty"`
+}
+
+// InsightsAccount describes a single Pulumi Insights account as returned by
+// the ListAccounts endpoint. The shape mirrors the OpenAPI schema of the same
+// name in the Pulumi Cloud REST API.
+type InsightsAccount struct {
+	// ID is the unique identifier of the account.
+	ID string `json:"id"`
+	// Name is the human-readable name of the account.
+	Name string `json:"name"`
+	// Provider is the cloud provider for the account (e.g. `aws`, `gcp`,
+	// `azure-native`).
+	Provider string `json:"provider"`
+	// ProviderVersion is the version of the Pulumi provider package used for
+	// discovery, when set.
+	ProviderVersion string `json:"providerVersion,omitempty"`
+	// ProviderEnvRef is a `project/environment[@version]` reference to an ESC
+	// environment that supplies the account's provider credentials.
+	ProviderEnvRef string `json:"providerEnvRef,omitempty"`
+	// ScheduledScanEnabled indicates whether the account is scheduled for
+	// recurring discovery.
+	ScheduledScanEnabled bool `json:"scheduledScanEnabled"`
+	// AgentPoolID is the agent pool that runs discovery workflows for this
+	// account; empty means the default agent pool.
+	AgentPoolID string `json:"agentPoolID,omitempty"`
+	// ProviderConfig is the provider-specific configuration for the account.
+	// Passed through as JSON because the shape varies per provider.
+	ProviderConfig json.RawMessage `json:"providerConfig,omitempty"`
+	// OwnedBy is the display information for the user that owns the account.
+	OwnedBy InsightsAccountOwner `json:"ownedBy"`
+	// ScanStatus is the most recent discovery run for the account.
+	ScanStatus *InsightsAccountScanStatus `json:"scanStatus,omitempty"`
+}
+
+// InsightsAccountOwner is the display information for an Insights account's
+// owner. Mirrors the cloud `UserInfo` schema, restricted to the fields the
+// ListAccounts response includes.
+type InsightsAccountOwner struct {
+	Name        string `json:"name"`
+	GitHubLogin string `json:"githubLogin"`
+	AvatarURL   string `json:"avatarUrl"`
+}
+
+// InsightsAccountScanStatus describes the most recent discovery workflow run
+// for an Insights account, as returned alongside the account record.
+type InsightsAccountScanStatus struct {
+	// AccountName is the name of the Insights account this scan belongs to.
+	AccountName string `json:"accountName,omitempty"`
+	// ID is the unique identifier of the workflow run.
+	ID string `json:"id"`
+	// OrgID is the organization ID the workflow ran under.
+	OrgID string `json:"orgId"`
+	// ResourceCount is the number of resources discovered by this scan, when
+	// the scan has completed.
+	ResourceCount int64 `json:"resourceCount,omitempty"`
+	// UserID is the user that initiated the workflow run.
+	UserID string `json:"userId"`
+	// Status is the run's current status: `running`, `failed`, or `succeeded`.
+	Status string `json:"status"`
+	// StartedAt is the time the workflow run started.
+	StartedAt time.Time `json:"startedAt"`
+	// FinishedAt is the time the workflow run finished, if it has completed.
+	FinishedAt *time.Time `json:"finishedAt"`
+	// LastUpdatedAt is the time the workflow run was last updated.
+	LastUpdatedAt time.Time `json:"lastUpdatedAt"`
+	// JobTimeout is the deadline for jobs in the workflow run.
+	JobTimeout time.Time `json:"jobTimeout"`
+}
