@@ -1122,19 +1122,7 @@ func (i *Interpreter) registerResourceWith(
 
 	inputs := resource.PropertyMap{}
 	for _, attr := range res.Inputs {
-		targetType := attr.Value.Type()
-		if obj, ok := res.InputType.(*model.ObjectType); ok {
-			if prop, ok := obj.Properties[attr.Name]; ok {
-				targetType = prop
-			}
-		}
-
-		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
-		if diags.HasErrors() {
-			return cty.NilVal, diags
-		}
-
-		val, poison, diags := evalCtx.Evaluate(expr)
+		val, poison, diags := evalCtx.Evaluate(attr.Value)
 		if poison != nil {
 			return makePoisonValue(*poison), nil
 		}
@@ -1822,19 +1810,7 @@ func (i *Interpreter) registerResourceWith(
 func (i *Interpreter) registerComponent(ctx context.Context, component *pcl.Component) hcl.Diagnostics {
 	inputs := resource.PropertyMap{}
 	for _, attr := range component.Inputs {
-		targetType := attr.Value.Type()
-		if obj, ok := component.InputType.(*model.ObjectType); ok {
-			if prop, ok := obj.Properties[attr.Name]; ok {
-				targetType = prop
-			}
-		}
-
-		expr, diags := pcl.RewriteConversions(attr.Value, targetType)
-		if diags.HasErrors() {
-			return diags
-		}
-
-		val, poison, diags := i.evalContext.Evaluate(expr)
+		val, poison, diags := i.evalContext.Evaluate(attr.Value)
 		if poison != nil {
 			i.evalContext.SetVariable(component.Name(), makePoisonValue(*poison))
 			return nil
