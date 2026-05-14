@@ -1151,6 +1151,37 @@ func (pc *Client) DeletePolicyGroup(ctx context.Context, orgName, policyGroup st
 	return nil
 }
 
+// ListPolicyIssuesOptions are the optional pagination parameters accepted by
+// ListPolicyIssues. Zero values mean "let the server pick the default":
+// Page < 1 → 1, PageSize ≤ 0 → server default, Asc false → descending order.
+type ListPolicyIssuesOptions struct {
+	Page     int64
+	PageSize int64
+	Asc      bool
+}
+
+// ListPolicyIssues returns a paginated list of policy issues for the given
+// organization, wrapping the `ListPolicyIssues` Pulumi Cloud REST endpoint
+// (POST /api/orgs/{orgName}/policyresults/issues). The endpoint uses POST
+// despite being a list because the request body carries filter and
+// pagination parameters.
+func (pc *Client) ListPolicyIssues(
+	ctx context.Context, orgName string, opts ListPolicyIssuesOptions,
+) (apitype.ListPolicyIssuesResponse, error) {
+	req := apitype.ListPolicyIssuesRequest{
+		Page:     opts.Page,
+		PageSize: opts.PageSize,
+		Asc:      opts.Asc,
+	}
+	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
+
+	var resp apitype.ListPolicyIssuesResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
+		return apitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
+	}
+	return resp, nil
+}
+
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyPacksResponse, *string, error,

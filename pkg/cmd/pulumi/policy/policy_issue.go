@@ -40,33 +40,6 @@ func newPolicyIssueCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/22995]: Not yet implemented.
-func newPolicyIssueListCmd() *cobra.Command {
-	var (
-		org      string
-		page     int
-		pageSize int
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List all policy issues for an organization",
-		Long:   "[EXPERIMENTAL] List all policy issues for an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list policy issues for")
-	cmd.Flags().IntVar(&page, "page", 1, "The page of results to return")
-	cmd.Flags().IntVar(&pageSize, "page-size", 0, "The number of results per page")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/22996]: Not yet implemented.
 func newPolicyIssueGetCmd() *cobra.Command {
 	var org string
