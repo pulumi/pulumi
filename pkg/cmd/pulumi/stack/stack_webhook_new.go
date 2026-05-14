@@ -63,6 +63,7 @@ func newStackWebhookNewCmd() *cobra.Command {
 func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Command {
 	var (
 		stack       string
+		name        string
 		url         string
 		format      string
 		filters     []string
@@ -90,16 +91,16 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 			"\n" +
 			"Returns 409 if a webhook with the same name already exists.",
 		Example: "  # Create a webhook interactively\n" +
-			"  pulumi stack webhook new my-hook\n\n" +
+			"  pulumi stack webhook new --name my-hook\n\n" +
 			"  # Create a webhook non-interactively\n" +
-			"  pulumi stack webhook new my-hook --url https://example.com/hook --yes\n\n" +
+			"  pulumi stack webhook new --name my-hook --url https://example.com/hook --yes\n\n" +
 			"  # Create a Slack webhook with specific event filters\n" +
-			"  pulumi stack webhook new slack-alerts \\\n" +
+			"  pulumi stack webhook new --name slack-alerts \\\n" +
 			"    --url https://hooks.slack.com/services/T00/B00/xxx \\\n" +
 			"    --format slack \\\n" +
 			"    --filter update_succeeded --filter update_failed --yes\n\n" +
 			"  # Create a webhook and get the result as JSON\n" +
-			"  pulumi stack webhook new my-hook --url https://example.com --yes --output json",
+			"  pulumi stack webhook new --name my-hook --url https://example.com --yes --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
 				factory = defaultStackWebhookNewClientFactory
@@ -110,7 +111,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 			opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 			webhookArgs, err := resolveNewArgs(
-				skipPrompts, args[0], displayName, url, format,
+				skipPrompts, name, displayName, url, format,
 				filters, groups, opts,
 			)
 			if err != nil {
@@ -126,8 +127,10 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 		},
 	}
 
-	constrictor.AttachArguments(cmd, stackWebhookHookArg())
+	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
+	cmd.Flags().StringVar(&name, "name", "",
+		"The webhook name (1-32 chars: letters, numbers, hyphens, underscores, dots)")
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().StringVar(&url, "url", "",
@@ -217,6 +220,25 @@ func resolveNewArgs(
 	opts display.Options,
 ) (stackWebhookNewArgs, error) {
 	var err error
+
+	// Name is required.
+	if name == "" {
+		nameErrMsg := "a webhook name is required (use --name)"
+		if !skipPrompts {
+			nameErrMsg = "a webhook name is required"
+		}
+		name, err = ui.PromptForValue(
+			skipPrompts, "Webhook name", "", false,
+			func(v string) error {
+				if v == "" {
+					return errors.New(nameErrMsg) //nolint:goerr113 // dynamic but intentional
+				}
+				return nil
+			}, opts)
+		if err != nil {
+			return stackWebhookNewArgs{}, err
+		}
+	}
 
 	// Display name defaults to the webhook name.
 	if displayName == "" {
@@ -337,7 +359,7 @@ type webhookNewRenderFunc func(w io.Writer, wh apitype.Webhook) error
 func webhookNewRenderer(output string) (webhookNewRenderFunc, error) {
 	switch output {
 	case "", "default":
-		return renderWebhookNewText, nil
+		return renderWebhookGetText, nil
 	case "json":
 		return renderWebhookGetJSON, nil
 	default:
@@ -345,9 +367,4 @@ func webhookNewRenderer(output string) (webhookNewRenderFunc, error) {
 			"invalid --output value %q: expected \"default\" or \"json\"",
 			output)
 	}
-}
-
-func renderWebhookNewText(w io.Writer, wh apitype.Webhook) error {
-	fmt.Fprintf(w, "Created webhook %q\n", wh.Name)
-	return nil
 }

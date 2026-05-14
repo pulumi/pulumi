@@ -229,7 +229,7 @@ func TestCreateStackWebhook(t *testing.T) {
 			PayloadURL:       "https://example.com/webhook",
 			Active:           true,
 			Format:           &format,
-			HasSecret:        true,
+			HasSecret:        false,
 		}
 
 		var gotPath, gotMethod string
@@ -260,8 +260,7 @@ func TestCreateStackWebhook(t *testing.T) {
 
 		assert.Equal(t, "POST", gotMethod)
 		assert.Equal(t, "/api/stacks/my-org/my-project/dev/hooks", gotPath)
-		assert.Equal(t, "new-hook", gotBody.Name)
-		assert.Equal(t, "https://example.com/webhook", gotBody.PayloadURL)
+		assert.Equal(t, req, gotBody)
 		assert.Equal(t, want, got)
 	})
 

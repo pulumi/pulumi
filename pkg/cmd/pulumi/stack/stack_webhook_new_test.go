@@ -83,7 +83,16 @@ func TestStackWebhookNew_TextOutput(t *testing.T) {
 	err := runStackWebhookNew(t.Context(), &buf, stubNewFactory(c), "", args, "default")
 	require.NoError(t, err)
 
-	assert.Equal(t, "Created webhook \"my-hook\"\n", buf.String())
+	expected := "ID:                my-hook\n" +
+		"Name:              My Hook\n" +
+		"Organization:      my-org\n" +
+		"Project:           my-project\n" +
+		"Stack:             dev\n" +
+		"URL:               https://example.com/webhook\n" +
+		"Format:            raw\n" +
+		"Active:            yes\n" +
+		"Has secret:        yes\n"
+	assert.Equal(t, expected, buf.String())
 }
 
 func TestStackWebhookNew_JSONOutput(t *testing.T) {
@@ -213,6 +222,17 @@ func TestStackWebhookNew_ResolveArgs_Yes(t *testing.T) {
 	assert.Equal(t, "raw", args.Format)
 	assert.Empty(t, args.Filters)
 	assert.Empty(t, args.Groups)
+}
+
+func TestStackWebhookNew_ResolveArgs_YesNoName(t *testing.T) {
+	t.Parallel()
+
+	// With skipPrompts=true but no name, should error because name is required.
+	_, err := resolveNewArgs(true, "", "", "https://example.com", "raw",
+		nil, nil, display.Options{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "webhook name is required")
+	assert.Contains(t, err.Error(), "--name")
 }
 
 func TestStackWebhookNew_ResolveArgs_YesNoURL(t *testing.T) {
