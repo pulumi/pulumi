@@ -4,10 +4,15 @@
 
 import builtins as _builtins
 import warnings
+import sys
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
-from . import _utilities
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, TypedDict, TypeAlias
+else:
+    from typing_extensions import NotRequired, TypedDict, TypeAlias
+from .. import _utilities
 
 __all__ = ['LambdaArgs', 'Lambda']
 
@@ -52,7 +57,7 @@ class LambdaArgs:
         pulumi.set(self, "property", value)
 
 
-@pulumi.type_token("keywords:index:Lambda")
+@pulumi.type_token("keywords:module:Lambda")
 class Lambda(pulumi.CustomResource):
     @overload
     def __init__(__self__,
@@ -114,7 +119,7 @@ class Lambda(pulumi.CustomResource):
                 raise TypeError("Missing required property 'property'")
             __props__.__dict__["property"] = property
         super(Lambda, __self__).__init__(
-            'keywords:index:Lambda',
+            'keywords:module:Lambda',
             resource_name,
             __props__,
             opts)

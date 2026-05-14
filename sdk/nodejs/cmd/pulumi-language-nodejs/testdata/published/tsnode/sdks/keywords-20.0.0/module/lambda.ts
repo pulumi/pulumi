@@ -2,7 +2,7 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
-import * as utilities from "./utilities";
+import * as utilities from "../utilities";
 
 export class Lambda extends pulumi.CustomResource {
     /**
@@ -18,7 +18,7 @@ export class Lambda extends pulumi.CustomResource {
     }
 
     /** @internal */
-    public static readonly __pulumiType = 'keywords:index:Lambda';
+    public static readonly __pulumiType = 'keywords:module:Lambda';
 
     /**
      * Returns true if the given object is an instance of Lambda.  This is designed to work even

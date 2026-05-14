@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdkgen
+  description: Validate that schema names can't conflict with module paths
