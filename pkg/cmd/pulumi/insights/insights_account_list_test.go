@@ -51,7 +51,7 @@ func (m *mockInsightsAccountListClient) ListInsightsAccounts(
 		return apitype.ListInsightsAccountsResponse{}, m.err
 	}
 	if len(m.pages) == 0 {
-		// Caller exhausted the canned pages; return an empty terminal page so
+		// Caller exhausted the available pages; return an empty terminal page so
 		// the loop in collectInsightsAccounts can finish cleanly.
 		return apitype.ListInsightsAccountsResponse{}, nil
 	}
@@ -245,7 +245,7 @@ func TestInsightsAccountListCmd_DefaultStopsAfterFirstPage(t *testing.T) {
 				Accounts:  []apitype.InsightsAccount{sampleAccount("a1"), sampleAccount("a2")},
 				NextToken: "cursor-1",
 			},
-			// A second page is canned but must not be consumed when --count
+			// A second page is available but must not be consumed when --count
 			// and --all are both unset.
 			{
 				Accounts:  []apitype.InsightsAccount{sampleAccount("a3")},
@@ -333,7 +333,7 @@ func TestInsightsAccountListCmd_CountPaginatesUntilSatisfied(t *testing.T) {
 				Accounts:  []apitype.InsightsAccount{sampleAccount("a3"), sampleAccount("a4")},
 				NextToken: "cursor-2",
 			},
-			// A third page is canned but should not be requested because
+			// A third page is available but should not be requested because
 			// --count=3 is already satisfied at the end of page 2.
 			{
 				Accounts:  []apitype.InsightsAccount{sampleAccount("a5")},
