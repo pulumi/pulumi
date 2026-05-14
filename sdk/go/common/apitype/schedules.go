@@ -63,3 +63,35 @@ type ScheduledDeploymentDefinition struct {
 	// Request is the deployment request payload that will be executed when the schedule fires.
 	Request *CreateDeploymentRequest `json:"request,omitempty"`
 }
+
+// CreateScheduledDeploymentRequest is the request payload for creating a custom scheduled
+// deployment action. Exactly one of ScheduleCron and ScheduleOnce must be set.
+type CreateScheduledDeploymentRequest struct {
+	// ScheduleCron is a cron expression defining a recurring schedule for this deployment,
+	// evaluated in UTC. When set, ScheduleOnce must be empty.
+	ScheduleCron string `json:"scheduleCron,omitempty"`
+	// ScheduleOnce is an ISO 8601 timestamp for a one-time execution. When set,
+	// ScheduleCron must be empty.
+	ScheduleOnce string `json:"scheduleOnce,omitempty"`
+	// Request is the deployment request payload to execute when the schedule fires.
+	Request *CreateDeploymentRequest `json:"request,omitempty"`
+}
+
+// CreateScheduledDriftDeploymentRequest is the request payload for creating a scheduled
+// drift detection action.
+type CreateScheduledDriftDeploymentRequest struct {
+	// ScheduleCron is a cron expression defining when drift detection should run, evaluated in UTC.
+	ScheduleCron string `json:"scheduleCron,omitempty"`
+	// AutoRemediate, when true, automatically runs a remediation update when drift is detected.
+	AutoRemediate bool `json:"autoRemediate,omitempty"`
+}
+
+// CreateScheduledTTLDeploymentRequest is the request payload for creating a scheduled
+// TTL action: a one-time destroy that runs at the given timestamp.
+type CreateScheduledTTLDeploymentRequest struct {
+	// Timestamp is the ISO 8601 timestamp at which the TTL expires and the stack should be destroyed.
+	Timestamp string `json:"timestamp,omitempty"`
+	// DeleteAfterDestroy, when true, deletes the stack from Pulumi Cloud after successfully
+	// destroying its resources.
+	DeleteAfterDestroy bool `json:"deleteAfterDestroy,omitempty"`
+}

@@ -813,6 +813,46 @@ func (pc *Client) GetStackSchedule(
 	return resp, nil
 }
 
+// CreateStackSchedule creates a custom scheduled deployment action for the given stack.
+// Exactly one of req.ScheduleCron or req.ScheduleOnce must be set. The stack must have
+// deployment settings configured before a schedule can be created.
+func (pc *Client) CreateStackSchedule(
+	ctx context.Context, stackID StackIdentifier, req apitype.CreateScheduledDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "schedules")
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// CreateStackDriftSchedule creates a scheduled drift-detection action for the given stack.
+// The stack must have deployment settings configured before a schedule can be created.
+func (pc *Client) CreateStackDriftSchedule(
+	ctx context.Context, stackID StackIdentifier, req apitype.CreateScheduledDriftDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "drift", "schedules")
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// CreateStackTTLSchedule creates a scheduled TTL (one-time destroy) action for the given stack.
+// The stack must have deployment settings configured before a schedule can be created.
+func (pc *Client) CreateStackTTLSchedule(
+	ctx context.Context, stackID StackIdentifier, req apitype.CreateScheduledTTLDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "ttl", "schedules")
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
