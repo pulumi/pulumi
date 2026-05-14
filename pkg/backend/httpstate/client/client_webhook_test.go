@@ -62,7 +62,7 @@ func TestListStackWebhooks(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotPath = r.URL.Path
 			w.Header().Set("Content-Type", "application/json")
-			err := json.NewEncoder(w).Encode(want)
+			err := json.NewEncoder(w).Encode(want) //nolint:gosec // test data
 			require.NoError(t, err)
 		}))
 		defer srv.Close()
@@ -206,5 +206,75 @@ func TestPingStackWebhook(t *testing.T) {
 		c := newMockClient(srv)
 		_, err := c.PingStackWebhook(t.Context(), stackID, "no-such-hook")
 		assert.Error(t, err)
+	})
+}
+
+func TestCreateStackWebhook(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		format := "raw"
+		want := apitype.Webhook{
+			OrganizationName: "my-org",
+			Name:             "new-hook",
+			DisplayName:      "New Hook",
+			PayloadURL:       "https://example.com/webhook",
+			Active:           true,
+			Format:           &format,
+			HasSecret:        false,
+		}
+
+		var gotPath, gotMethod string
+		var gotBody apitype.Webhook
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			err := json.NewDecoder(r.Body).Decode(&gotBody)
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(want)
+			require.NoError(t, err)
+		}))
+		defer srv.Close()
+
+		req := apitype.Webhook{
+			OrganizationName: "my-org",
+			Name:             "new-hook",
+			DisplayName:      "New Hook",
+			PayloadURL:       "https://example.com/webhook",
+			Active:           true,
+			Format:           &format,
+		}
+
+		c := newMockClient(srv)
+		got, err := c.CreateStackWebhook(t.Context(), stackID, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, "POST", gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/hooks", gotPath)
+		assert.Equal(t, req, gotBody)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("conflict", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusConflict, `{"message":"webhook already exists"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		_, err := c.CreateStackWebhook(t.Context(), stackID, apitype.Webhook{
+			Name:       "existing",
+			PayloadURL: "https://example.com",
+		})
+		assert.ErrorContains(t, err, "webhook already exists")
 	})
 }

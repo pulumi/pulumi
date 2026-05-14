@@ -27,6 +27,7 @@ type Webhook struct {
 	Format           *string  `json:"format,omitempty"`
 	Filters          []string `json:"filters,omitempty"`
 	Groups           []string `json:"groups,omitempty"`
+	Secret           string   `json:"secret,omitempty"`
 	HasSecret        bool     `json:"hasSecret"`
 	SecretCiphertext string   `json:"secretCiphertext"`
 }
