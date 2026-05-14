@@ -1151,6 +1151,18 @@ func (pc *Client) DeletePolicyGroup(ctx context.Context, orgName, policyGroup st
 	return nil
 }
 
+// RemoveOrganizationMember removes a user from the given organization. The
+// removed user loses access to all organization resources including stacks,
+// teams, and projects. Wraps the `DeleteOrganizationMember` Pulumi Cloud REST
+// endpoint (DELETE /api/orgs/{orgName}/members/{userLogin}).
+func (pc *Client) RemoveOrganizationMember(ctx context.Context, orgName, userLogin string) error {
+	path := fmt.Sprintf("/api/orgs/%s/members/%s", url.PathEscape(orgName), url.PathEscape(userLogin))
+	if err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil); err != nil {
+		return fmt.Errorf("removing organization member: %w", err)
+	}
+	return nil
+}
+
 // ListPolicyIssuesOptions are the optional pagination parameters accepted by
 // ListPolicyIssues. Zero values mean "let the server pick the default":
 // Page < 1 → 1, PageSize ≤ 0 → server default, Asc false → descending order.

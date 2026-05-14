@@ -128,29 +128,3 @@ func newOrgMemberEditCmd() *cobra.Command {
 
 	return cmd
 }
-
-// TODO[https://github.com/pulumi/pulumi/issues/23010]: Not yet implemented.
-func newOrgMemberRemoveCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "remove",
-		Short:  "Remove a member from an organization",
-		Long:   "[EXPERIMENTAL] Remove a member from an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "user-login"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the member")
-
-	return cmd
-}
