@@ -106,8 +106,8 @@ func (w *Workspace) GetCurrentAccount(shared bool) (*Account, bool, error) {
 	// If the account does not exist, fail.
 	account, ok := pulumiCreds.Accounts[backendURL]
 	if !ok {
-		return nil, false, fmt.Errorf("account '%s' not found."+
-			"Please re-run `esc login` to reset your credentials file.", backendURL)
+		return nil, false, fmt.Errorf("account '%s' not found, "+
+			"please re-run `esc login` to reset your credentials file", backendURL)
 	}
 
 	config, err := w.pulumi.GetPulumiConfig()

@@ -105,7 +105,7 @@ func newGenDocsCmd(root *cobra.Command) *cobra.Command {
 				// heading levels when these files are used to render the CLI docs on the docs site.
 				result = h3Pattern.ReplaceAllString(result, "## ")
 
-				if err := os.WriteFile(file, []byte(result), 0o600); err != nil {
+				if err := os.WriteFile(file, []byte(result), 0o600); err != nil { // #nosec G703 -- developer tool writing to user-supplied output dir
 					return err
 				}
 			}

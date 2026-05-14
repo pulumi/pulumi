@@ -189,7 +189,7 @@ func (esc *escCommand) checkBackendURL(url string) error {
 		return fmt.Errorf("%s is not a valid self-hosted backend, "+
 			"use `%s login` without arguments to log into the Pulumi Cloud backend", url, esc.command)
 	case diy.IsDIYBackendURL(url):
-		return fmt.Errorf("%s does not support Pulumi ESC.", url)
+		return fmt.Errorf("%s does not support Pulumi ESC", url)
 	default:
 		return nil
 	}
@@ -234,7 +234,7 @@ func (esc *escCommand) getCachedClient(ctx context.Context) error {
 		return fmt.Errorf("getting credentials: %w", err)
 	}
 	if !ok {
-		return fmt.Errorf("no credentials. Please run `%v login` to log in.", esc.command)
+		return fmt.Errorf("no credentials, please run `%v login` to log in", esc.command)
 	}
 
 	esc.client = esc.newClient(esc.userAgent, account.BackendURL, account.AccessToken, account.Insecure)

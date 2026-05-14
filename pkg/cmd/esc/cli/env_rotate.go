@@ -61,9 +61,10 @@ func newEnvRotateCmd(envcmd *envCommand) *cobra.Command {
 
 			// Print result of rotation
 			var b strings.Builder
-			if event.Status == client.RotationEventSucceeded {
+			switch event.Status {
+			case client.RotationEventSucceeded:
 				fmt.Fprintf(&b, "Environment '%s' rotated.\n", args[0])
-			} else if event.Status == client.RotationEventFailed {
+			case client.RotationEventFailed:
 				if event.ErrorMessage != nil {
 					fmt.Fprintf(&b, "%vError rotating: %s.%v\n", colors.SpecError, *event.ErrorMessage, colors.Reset)
 				} else {

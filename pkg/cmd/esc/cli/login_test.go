@@ -117,7 +117,7 @@ func TestCurrentAccountButInvalidToken(t *testing.T) {
 		login: invalidatedCredsLoginManager(0),
 	}
 	err := esc.getCachedClient(context.Background())
-	assert.ErrorContains(t, err, "no credentials. Please run `esc login` to log in.")
+	assert.ErrorContains(t, err, "no credentials, please run `esc login` to log in")
 }
 
 func TestInvalidSelfHostedBackend(t *testing.T) {

@@ -1436,7 +1436,7 @@ func (pc *client) restCallWithOptions(
 			// Return the raw bytes of the response body.
 			*respObj = respBody
 		case []byte:
-			return fmt.Errorf("Can't unmarshal response body to []byte. Try *[]byte")
+			return fmt.Errorf("can't unmarshal response body to []byte, try *[]byte")
 		default:
 			// Else, unmarshal as JSON.
 			if err = json.Unmarshal(respBody, respObj); err != nil {

@@ -6,4 +6,4 @@ error: exit status 1
 
 ---
 > esc env edit default/test
-Error: No available editor. Please use the --editor flag or set one of the VISUAL or EDITOR environment variables.
+Error: no available editor; please use the --editor flag or set one of the VISUAL or EDITOR environment variables

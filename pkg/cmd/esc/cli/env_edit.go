@@ -224,8 +224,8 @@ func (edit *envEditCommand) getEditor() ([]string, error) {
 	if len(args) == 0 {
 		path, err := edit.env.esc.exec.LookPath("vi")
 		if err != nil {
-			return nil, errors.New("No available editor. Please use the --editor flag or set one of the " +
-				"VISUAL or EDITOR environment variables.")
+			return nil, errors.New("no available editor; please use the --editor flag or set one of the " +
+				"VISUAL or EDITOR environment variables")
 		}
 		args = []string{path}
 		return args, nil
