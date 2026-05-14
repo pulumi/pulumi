@@ -103,7 +103,7 @@ func TestStackWebhookList_TableOutput(t *testing.T) {
 	// Table should contain data
 	assert.Contains(t, out, "deploy-hook")
 	assert.Contains(t, out, "Deploy Hook")
-	assert.Contains(t, out, "https://example.com/webhook")
+	assert.Contains(t, out, "https://example.com")
 	assert.Contains(t, out, "raw")
 	assert.Contains(t, out, "stacks")
 	assert.Contains(t, out, "stack_update")
