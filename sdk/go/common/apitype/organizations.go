@@ -84,3 +84,14 @@ type ListOrganizationMembersResponse struct {
 	// members; empty when there are no more pages.
 	ContinuationToken string `json:"continuationToken,omitempty"`
 }
+
+// UpdateOrganizationMemberRequest modifies a member's role within an
+// organization. It is the body of the `UpdateOrganizationMember` Pulumi Cloud
+// REST endpoint (PATCH /api/orgs/{orgName}/members/{userLogin}). Set Role to
+// assign a built-in role (`member`, `admin`, or `billingManager`); set
+// FgaRoleId to assign a custom role. If both are provided FgaRoleId takes
+// precedence on the service.
+type UpdateOrganizationMemberRequest struct {
+	Role      *string `json:"role,omitempty"`
+	FgaRoleId *string `json:"fgaRoleId,omitempty"`
+}

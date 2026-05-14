@@ -1179,6 +1179,21 @@ func (pc *Client) ListOrganizationMembers(
 	return resp, nil
 }
 
+// UpdateOrganizationMember updates the role assignment of a member within
+// the given organization. Wraps the `UpdateOrganizationMember` Pulumi Cloud
+// REST endpoint (PATCH /api/orgs/{orgName}/members/{userLogin}). Only the
+// non-nil fields of req are sent; the service interprets omitted fields as
+// "leave unchanged".
+func (pc *Client) UpdateOrganizationMember(
+	ctx context.Context, orgName, userLogin string, req apitype.UpdateOrganizationMemberRequest,
+) error {
+	path := fmt.Sprintf("/api/orgs/%s/members/%s", url.PathEscape(orgName), url.PathEscape(userLogin))
+	if err := pc.restCall(ctx, http.MethodPatch, path, nil, req, nil); err != nil {
+		return fmt.Errorf("updating organization member: %w", err)
+	}
+	return nil
+}
+
 // RemoveOrganizationMember removes a user from the given organization. The
 // removed user loses access to all organization resources including stacks,
 // teams, and projects. Wraps the `DeleteOrganizationMember` Pulumi Cloud REST

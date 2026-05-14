@@ -68,37 +68,3 @@ func newOrgMemberListCmd() *cobra.Command {
 
 	return cmd
 }
-
-// TODO[https://github.com/pulumi/pulumi/issues/23012]: Not yet implemented.
-func newOrgMemberEditCmd() *cobra.Command {
-	var (
-		org       string
-		role      string
-		fgaRoleID string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "edit",
-		Short:  "Modify a member's role within an organization",
-		Long:   "[EXPERIMENTAL] Modify a member's role within an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "user-login"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the member")
-	cmd.Flags().StringVar(&role, "role", "",
-		"The built-in role to assign: member, admin, or billingManager")
-	cmd.Flags().StringVar(&fgaRoleID, "fga-role-id", "",
-		"The custom role to assign (takes precedence over --role)")
-
-	return cmd
-}
