@@ -95,3 +95,29 @@ func (c *converterServer) ConvertProgram(ctx context.Context,
 		Diagnostics: diags,
 	}, nil
 }
+
+func (c *converterServer) GenerateSnippet(ctx context.Context,
+	req *pulumirpc.GenerateSnippetRequest,
+) (*pulumirpc.GenerateSnippetResponse, error) {
+	resp, err := c.converter.GenerateSnippet(ctx, &GenerateSnippetRequest{
+		Filename:     req.Filename,
+		Source:       req.Source,
+		TargetLoader: req.TargetLoader,
+		Package:      req.Package,
+		Token:        req.Token,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	diags := slice.Prealloc[*codegenrpc.Diagnostic](len(resp.Diagnostics))
+	for _, diag := range resp.Diagnostics {
+		diags = append(diags, HclDiagnosticToRPCDiagnostic(diag))
+	}
+
+	return &pulumirpc.GenerateSnippetResponse{
+		Diagnostics: diags,
+		Filename:    resp.Filename,
+		Source:      resp.Source,
+	}, nil
+}

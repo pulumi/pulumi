@@ -22,6 +22,7 @@ import google.protobuf.descriptor
 import google.protobuf.internal.containers
 import google.protobuf.message
 import pulumi.codegen.hcl_pb2
+import pulumi.codegen.loader_pb2
 import typing
 
 DESCRIPTOR: google.protobuf.descriptor.FileDescriptor
@@ -179,3 +180,66 @@ class ConvertProgramResponse(google.protobuf.message.Message):
     def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics"]) -> None: ...
 
 global___ConvertProgramResponse = ConvertProgramResponse
+
+@typing.final
+class GenerateSnippetRequest(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    FILENAME_FIELD_NUMBER: builtins.int
+    SOURCE_FIELD_NUMBER: builtins.int
+    TARGET_LOADER_FIELD_NUMBER: builtins.int
+    PACKAGE_FIELD_NUMBER: builtins.int
+    TOKEN_FIELD_NUMBER: builtins.int
+    filename: builtins.str
+    """The name of the source file. This is used for diagnostics."""
+    source: builtins.bytes
+    """The raw bytes of the source file."""
+    target_loader: builtins.str
+    """The target of a codegen.LoaderServer to use for loading schemas."""
+    token: builtins.str
+    """The token to use when converting the snippet. This may be a provider token, such as `pulumi:providers:pkg`,
+    a function token, or a resource token.
+    """
+    @property
+    def package(self) -> pulumi.codegen.loader_pb2.GetSchemaRequest:
+        """The package description to load which contains the token."""
+
+    def __init__(
+        self,
+        *,
+        filename: builtins.str = ...,
+        source: builtins.bytes = ...,
+        target_loader: builtins.str = ...,
+        package: pulumi.codegen.loader_pb2.GetSchemaRequest | None = ...,
+        token: builtins.str = ...,
+    ) -> None: ...
+    def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
+    def ClearField(self, field_name: typing.Literal["filename", b"filename", "package", b"package", "source", b"source", "target_loader", b"target_loader", "token", b"token"]) -> None: ...
+
+global___GenerateSnippetRequest = GenerateSnippetRequest
+
+@typing.final
+class GenerateSnippetResponse(google.protobuf.message.Message):
+    DESCRIPTOR: google.protobuf.descriptor.Descriptor
+
+    DIAGNOSTICS_FIELD_NUMBER: builtins.int
+    FILENAME_FIELD_NUMBER: builtins.int
+    SOURCE_FIELD_NUMBER: builtins.int
+    filename: builtins.str
+    """The generated PCL filename."""
+    source: builtins.bytes
+    """The generated PCL source code."""
+    @property
+    def diagnostics(self) -> google.protobuf.internal.containers.RepeatedCompositeFieldContainer[pulumi.codegen.hcl_pb2.Diagnostic]:
+        """Any diagnostics raised by code generation."""
+
+    def __init__(
+        self,
+        *,
+        diagnostics: collections.abc.Iterable[pulumi.codegen.hcl_pb2.Diagnostic] | None = ...,
+        filename: builtins.str = ...,
+        source: builtins.bytes = ...,
+    ) -> None: ...
+    def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "filename", b"filename", "source", b"source"]) -> None: ...
+
+global___GenerateSnippetResponse = GenerateSnippetResponse

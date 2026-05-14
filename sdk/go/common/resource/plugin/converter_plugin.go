@@ -180,3 +180,35 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 		Diagnostics: diags,
 	}, nil
 }
+
+func (c *converter) GenerateSnippet(
+	ctx context.Context, req *GenerateSnippetRequest,
+) (*GenerateSnippetResponse, error) {
+	label := c.label() + ".GenerateSnippet"
+	logging.V(7).Infof("%s executing", label)
+
+	resp, err := c.clientRaw.GenerateSnippet(ctx, &pulumirpc.GenerateSnippetRequest{
+		Filename:     req.Filename,
+		Source:       req.Source,
+		TargetLoader: req.TargetLoader,
+		Package:      req.Package,
+		Token:        req.Token,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(8).Infof("%s converter received rpc error `%s`: `%s`", label, rpcError.Code(), rpcError.Message())
+		return nil, err
+	}
+
+	var diags hcl.Diagnostics
+	for _, rpcDiag := range resp.Diagnostics {
+		diags = append(diags, RPCDiagnosticToHclDiagnostic(rpcDiag))
+	}
+
+	logging.V(7).Infof("%s success", label)
+	return &GenerateSnippetResponse{
+		Diagnostics: diags,
+		Filename:    resp.Filename,
+		Source:      resp.Source,
+	}, nil
+}

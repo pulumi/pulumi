@@ -45,6 +45,15 @@ func (h *pclConverterHost) ConvertProgram(
 	return &pulumirpc.ConvertProgramResponse{}, nil
 }
 
+func (h *pclConverterHost) GenerateSnippet(
+	ctx context.Context, req *pulumirpc.GenerateSnippetRequest,
+) (*pulumirpc.GenerateSnippetResponse, error) {
+	return &pulumirpc.GenerateSnippetResponse{
+		Filename: req.GetFilename(),
+		Source:   req.GetSource(),
+	}, nil
+}
+
 func (h *pclConverterHost) ConvertState(
 	context.Context, *pulumirpc.ConvertStateRequest,
 ) (*pulumirpc.ConvertStateResponse, error) {

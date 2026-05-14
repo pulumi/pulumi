@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"slices"
 	"strings"
@@ -32,6 +31,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -43,27 +43,42 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 func NewDoCmd(
 	lm cmdBackend.LoginManager, ws pkgWorkspace.Context,
-	pluginFromSource func(context.Context, diag.Sink, string, string) (io.Closer, plugin.Provider, error),
+	pluginFromSource func(context.Context, *plugin.Context, string, string) (plugin.Provider, error),
+	newHost func() (plugin.Host, error),
+) *cobra.Command {
+	return newDoCmd(lm, ws, pluginFromSource, newHost, nil)
+}
+
+func newDoCmd(
+	lm cmdBackend.LoginManager, ws pkgWorkspace.Context,
+	pluginFromSource func(context.Context, *plugin.Context, string, string) (plugin.Provider, error),
+	newHost func() (plugin.Host, error),
+	loadConverterPlugin func(
+		*plugin.Context, string, func(sev diag.Severity, msg string),
+	) (plugin.Converter, error),
 ) *cobra.Command {
 	if pluginFromSource == nil {
 		pluginFromSource = func(
-			ctx context.Context, sink diag.Sink, wd, source string,
-		) (io.Closer, plugin.Provider, error) {
-			pctx, err := plugin.NewContext(
-				ctx, sink, sink, nil, nil, wd, nil, false,
-				nil, schema.NewLoaderServerFromHost)
-			if err != nil {
-				return nil, nil, fmt.Errorf("create plugin context: %w", err)
-			}
-
-			registry := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, sink, env.Global())
+			ctx context.Context,
+			pctx *plugin.Context, wd, source string,
+		) (plugin.Provider, error) {
+			registry := cmdCmd.NewDefaultRegistry(ctx, lm, ws, nil, pctx.Diag, env.Global())
 			p, _, err := packages.ProviderFromSource(ws, pctx, source, registry, env.Global(), 0 /* unbounded concurrency */)
-			return pctx, p, err
+			return p, err
 		}
+	}
+	if newHost == nil {
+		newHost = func() (plugin.Host, error) {
+			return nil, nil
+		}
+	}
+	if loadConverterPlugin == nil {
+		loadConverterPlugin = cmdConvert.LoadConverterPlugin
 	}
 
 	var dryrun bool
@@ -126,13 +141,41 @@ func NewDoCmd(
 		}
 
 		ctx := cmd.Context()
-		pctx, p, err := pluginFromSource(ctx, sink, wd, pkgargs[0])
+
+		host, err := newHost()
 		if err != nil {
+			return nil, nil, fmt.Errorf("create plugin host: %w", err)
+		}
+
+		pctx, err := plugin.NewContext(
+			ctx, sink, sink, host, nil, wd, nil, false,
+			nil, schema.NewLoaderServerFromHost)
+		if err != nil {
+			return nil, nil, fmt.Errorf("create plugin context: %w", err)
+		}
+
+		p, err := pluginFromSource(ctx, pctx, wd, pkgargs[0])
+		if err != nil {
+			// Close the plugin context we opened above since we're not returning it to the caller.
+			contract.IgnoreClose(pctx)
 			return nil, nil, fmt.Errorf("load provider: %w", err)
 		}
 		cleanup := func() {
 			contract.IgnoreClose(p)
 			contract.IgnoreClose(pctx)
+		}
+
+		// Parse "name@version" out of pkgargs[0] so we can also describe the package to downstream consumers
+		// (such as snippet converters) in the form the codegen loader expects.
+		pkgName := pkgargs[0]
+		var pkgVersion string
+		if at := strings.Index(pkgName, "@"); at != -1 {
+			pkgVersion = pkgName[at+1:]
+			pkgName = pkgName[:at]
+		}
+		packageDescriptor := &codegenrpc.GetSchemaRequest{
+			Package: pkgName,
+			Version: pkgVersion,
 		}
 
 		var schemaRequest plugin.GetSchemaRequest
@@ -146,6 +189,10 @@ func NewDoCmd(
 			}
 			schemaRequest.SubpackageName = resp.Name
 			schemaRequest.SubpackageVersion = &resp.Version
+			packageDescriptor.Parameterization = &codegenrpc.Parameterization{
+				Name:    resp.Name,
+				Version: resp.Version.String(),
+			}
 		}
 
 		getSchema, err := p.GetSchema(ctx, schemaRequest)
@@ -166,13 +213,23 @@ func NewDoCmd(
 			return nil, nil, fmt.Errorf("bind schema: %w", err)
 		}
 
+		loadConverter := func(name string) (plugin.Converter, error) {
+			log := func(sev diag.Severity, msg string) {
+				pctx.Diag.Logf(sev, diag.RawMessage("", msg))
+			}
+			return loadConverterPlugin(pctx, name, log)
+		}
+
 		subcmd := (&packageCommand{
-			args:        pargs,
-			evalContext: evalContext,
-			provider:    p,
-			spec:        boundpkg,
-			dryrun:      dryrun,
-			showSecrets: showSecrets,
+			args:              pargs,
+			evalContext:       evalContext,
+			converter:         loadConverter,
+			loaderTarget:      pctx.Host.LoaderAddr(),
+			packageDescriptor: packageDescriptor,
+			provider:          p,
+			spec:              boundpkg,
+			dryrun:            dryrun,
+			showSecrets:       showSecrets,
 		}).newCommand()
 		subcmd.SetContext(cmd.Context())
 		subcmd.SetOut(cmd.OutOrStdout())
@@ -257,7 +314,12 @@ installed locally.
 
 Provider configuration can be supplied via:
   - the provider's standard environment variables (e.g. AWS_REGION)
-  - an input file passed with --provider-file`,
+  - an input file passed with --provider-file (PCL by default;
+    set --provider-format to convert from another format)
+
+Function inputs come from --input-file. PCL is the default; pass --input
+to convert from another format such as YAML. Non-PCL formats require a
+converter plugin for that format to be installed.`,
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			subcmd, cleanup, err := buildSubcommand(cmd, args)
@@ -306,13 +368,17 @@ Provider configuration can be supplied via:
 }
 
 type packageCommand struct {
-	args         []string
-	evalContext  functionEvalContext
-	provider     plugin.Provider
-	providerFile string
-	spec         *schema.Package
-	dryrun       bool
-	showSecrets  bool
+	args              []string
+	evalContext       functionEvalContext
+	converter         func(string) (plugin.Converter, error)
+	loaderTarget      string
+	packageDescriptor *codegenrpc.GetSchemaRequest
+	provider          plugin.Provider
+	providerFile      string
+	providerFormat    string
+	spec              *schema.Package
+	dryrun            bool
+	showSecrets       bool
 }
 
 func (pc *packageCommand) newCommand() *cobra.Command {
@@ -334,6 +400,8 @@ func (pc *packageCommand) newCommand() *cobra.Command {
 
 	cmd.PersistentFlags().StringVar(
 		&pc.providerFile, "provider-file", "", "Path to a file containing provider configuration")
+	cmd.PersistentFlags().StringVar(
+		&pc.providerFormat, "provider-format", "pcl", "Format of the provider configuration file")
 
 	moduleCommands := map[string]*cobra.Command{}
 	moduleCommands[""] = cmd // top-level commands with no module go directly under the package command

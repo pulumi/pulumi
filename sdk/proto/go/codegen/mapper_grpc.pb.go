@@ -33,7 +33,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Mapper_GetMapping_FullMethodName = "/codegen.Mapper/GetMapping"
+	Mapper_GetMapping_FullMethodName = "/pulumirpc.codegen.Mapper/GetMapping"
 )
 
 // MapperClient is the client API for Mapper service.
@@ -144,7 +144,7 @@ func _Mapper_GetMapping_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Mapper_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "codegen.Mapper",
+	ServiceName: "pulumirpc.codegen.Mapper",
 	HandlerType: (*MapperServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

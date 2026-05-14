@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "pulumi/codegen/hcl.proto";
+import "pulumi/codegen/loader.proto";
 
 package pulumirpc;
 
@@ -28,6 +29,10 @@ service Converter {
 
     // ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi.
     rpc ConvertProgram(ConvertProgramRequest) returns (ConvertProgramResponse) {}
+
+    // GenerateSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+    // callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
+    rpc GenerateSnippet(GenerateSnippetRequest) returns (GenerateSnippetResponse) {}
 }
 
 message ConvertStateRequest {
@@ -91,4 +96,33 @@ message ConvertProgramRequest {
 message ConvertProgramResponse {
     // any diagnostics from code generation.
     repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
+}
+
+message GenerateSnippetRequest {
+    // The name of the source file. This is used for diagnostics.
+    string filename = 1;
+
+    // The raw bytes of the source file.
+    bytes source = 2;
+
+    // The target of a codegen.LoaderServer to use for loading schemas.
+    string target_loader = 3;
+
+    // The package description to load which contains the token.
+    pulumirpc.codegen.GetSchemaRequest package = 4;
+
+    // The token to use when converting the snippet. This may be a provider token, such as `pulumi:providers:pkg`,
+    // a function token, or a resource token.
+    string token = 5;
+}
+
+message GenerateSnippetResponse {
+    // Any diagnostics raised by code generation.
+    repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
+
+    // The generated PCL filename.
+    string filename = 2;
+
+    // The generated PCL source code.
+    bytes source = 3;
 }

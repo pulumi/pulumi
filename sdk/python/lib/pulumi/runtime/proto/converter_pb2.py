@@ -12,9 +12,10 @@ _sym_db = _symbol_database.Default()
 
 
 from .codegen import hcl_pb2 as pulumi_dot_codegen_dot_hcl__pb2
+from .codegen import loader_pb2 as pulumi_dot_codegen_dot_loader__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\":\n\x13\x43onvertStateRequest\x12\x15\n\rmapper_target\x18\x01 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x02 \x03(\t\"\xa3\x01\n\x0eResourceImport\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\n\n\x02id\x18\x03 \x01(\t\x12\x0f\n\x07version\x18\x04 \x01(\t\x12\x19\n\x11pluginDownloadURL\x18\x05 \x01(\t\x12\x14\n\x0clogical_name\x18\x06 \x01(\t\x12\x14\n\x0cis_component\x18\x07 \x01(\x08\x12\x11\n\tis_remote\x18\x08 \x01(\x08\"x\n\x14\x43onvertStateResponse\x12,\n\tresources\x18\x01 \x03(\x0b\x32\x19.pulumirpc.ResourceImport\x12\x32\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"\xac\x01\n\x15\x43onvertProgramRequest\x12\x18\n\x10source_directory\x18\x01 \x01(\t\x12\x18\n\x10target_directory\x18\x02 \x01(\t\x12\x15\n\rmapper_target\x18\x03 \x01(\t\x12\x15\n\rloader_target\x18\x04 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x05 \x03(\t\x12#\n\x1bgenerated_project_directory\x18\x06 \x01(\t\"L\n\x16\x43onvertProgramResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic2\xb7\x01\n\tConverter\x12Q\n\x0c\x43onvertState\x12\x1e.pulumirpc.ConvertStateRequest\x1a\x1f.pulumirpc.ConvertStateResponse\"\x00\x12W\n\x0e\x43onvertProgram\x12 .pulumirpc.ConvertProgramRequest\x1a!.pulumirpc.ConvertProgramResponse\"\x00\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16pulumi/converter.proto\x12\tpulumirpc\x1a\x18pulumi/codegen/hcl.proto\x1a\x1bpulumi/codegen/loader.proto\":\n\x13\x43onvertStateRequest\x12\x15\n\rmapper_target\x18\x01 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x02 \x03(\t\"\xa3\x01\n\x0eResourceImport\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\n\n\x02id\x18\x03 \x01(\t\x12\x0f\n\x07version\x18\x04 \x01(\t\x12\x19\n\x11pluginDownloadURL\x18\x05 \x01(\t\x12\x14\n\x0clogical_name\x18\x06 \x01(\t\x12\x14\n\x0cis_component\x18\x07 \x01(\x08\x12\x11\n\tis_remote\x18\x08 \x01(\x08\"x\n\x14\x43onvertStateResponse\x12,\n\tresources\x18\x01 \x03(\x0b\x32\x19.pulumirpc.ResourceImport\x12\x32\n\x0b\x64iagnostics\x18\x02 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"\xac\x01\n\x15\x43onvertProgramRequest\x12\x18\n\x10source_directory\x18\x01 \x01(\t\x12\x18\n\x10target_directory\x18\x02 \x01(\t\x12\x15\n\rmapper_target\x18\x03 \x01(\t\x12\x15\n\rloader_target\x18\x04 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x05 \x03(\t\x12#\n\x1bgenerated_project_directory\x18\x06 \x01(\t\"L\n\x16\x43onvertProgramResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\"\x96\x01\n\x16GenerateSnippetRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\x0c\x12\x15\n\rtarget_loader\x18\x03 \x01(\t\x12\x34\n\x07package\x18\x04 \x01(\x0b\x32#.pulumirpc.codegen.GetSchemaRequest\x12\r\n\x05token\x18\x05 \x01(\t\"o\n\x17GenerateSnippetResponse\x12\x32\n\x0b\x64iagnostics\x18\x01 \x03(\x0b\x32\x1d.pulumirpc.codegen.Diagnostic\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x0e\n\x06source\x18\x03 \x01(\x0c\x32\x93\x02\n\tConverter\x12Q\n\x0c\x43onvertState\x12\x1e.pulumirpc.ConvertStateRequest\x1a\x1f.pulumirpc.ConvertStateResponse\"\x00\x12W\n\x0e\x43onvertProgram\x12 .pulumirpc.ConvertProgramRequest\x1a!.pulumirpc.ConvertProgramResponse\"\x00\x12Z\n\x0fGenerateSnippet\x12!.pulumirpc.GenerateSnippetRequest\x1a\".pulumirpc.GenerateSnippetResponse\"\x00\x42\x34Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -22,16 +23,20 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'pulumi.converter_pb2', _glo
 if _descriptor._USE_C_DESCRIPTORS == False:
   DESCRIPTOR._options = None
   DESCRIPTOR._serialized_options = b'Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpc'
-  _globals['_CONVERTSTATEREQUEST']._serialized_start=63
-  _globals['_CONVERTSTATEREQUEST']._serialized_end=121
-  _globals['_RESOURCEIMPORT']._serialized_start=124
-  _globals['_RESOURCEIMPORT']._serialized_end=287
-  _globals['_CONVERTSTATERESPONSE']._serialized_start=289
-  _globals['_CONVERTSTATERESPONSE']._serialized_end=409
-  _globals['_CONVERTPROGRAMREQUEST']._serialized_start=412
-  _globals['_CONVERTPROGRAMREQUEST']._serialized_end=584
-  _globals['_CONVERTPROGRAMRESPONSE']._serialized_start=586
-  _globals['_CONVERTPROGRAMRESPONSE']._serialized_end=662
-  _globals['_CONVERTER']._serialized_start=665
-  _globals['_CONVERTER']._serialized_end=848
+  _globals['_CONVERTSTATEREQUEST']._serialized_start=92
+  _globals['_CONVERTSTATEREQUEST']._serialized_end=150
+  _globals['_RESOURCEIMPORT']._serialized_start=153
+  _globals['_RESOURCEIMPORT']._serialized_end=316
+  _globals['_CONVERTSTATERESPONSE']._serialized_start=318
+  _globals['_CONVERTSTATERESPONSE']._serialized_end=438
+  _globals['_CONVERTPROGRAMREQUEST']._serialized_start=441
+  _globals['_CONVERTPROGRAMREQUEST']._serialized_end=613
+  _globals['_CONVERTPROGRAMRESPONSE']._serialized_start=615
+  _globals['_CONVERTPROGRAMRESPONSE']._serialized_end=691
+  _globals['_GENERATESNIPPETREQUEST']._serialized_start=694
+  _globals['_GENERATESNIPPETREQUEST']._serialized_end=844
+  _globals['_GENERATESNIPPETRESPONSE']._serialized_start=846
+  _globals['_GENERATESNIPPETRESPONSE']._serialized_end=957
+  _globals['_CONVERTER']._serialized_start=960
+  _globals['_CONVERTER']._serialized_end=1235
 # @@protoc_insertion_point(module_scope)

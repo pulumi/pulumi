@@ -15,6 +15,7 @@
 package do
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -37,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
 
 type functionEvalContext struct {
@@ -200,7 +202,7 @@ func unionVariantMatches(prop resource.PropertyValue, typ schema.Type) bool {
 	return false
 }
 
-// evaluatePclFile reads, binds, and evaluates a PCL input file against a caller-supplied schema. The bind callback
+// evaluatePCLFile reads, binds, and evaluates a PCL input file against a caller-supplied schema. The bind callback
 // decides how the parsed file is type-checked (function vs. resource) and returns the schema property list used to
 // coerce values during evaluation.
 func evaluatePCLFile(
@@ -224,6 +226,15 @@ func evaluatePCLFile(
 		input = f
 	}
 
+	return evaluatePCL(input, filename, fileType, bind, evalContext)
+}
+
+func evaluatePCL(
+	input io.Reader,
+	filename, fileType string,
+	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
+	evalContext functionEvalContext,
+) (resource.PropertyMap, error) {
 	parser := hclsyntax.NewParser()
 	if err := parser.ParseFile(input, filename); err != nil {
 		return nil, fmt.Errorf("parse input: %w", err)
@@ -276,8 +287,53 @@ func evaluatePCLFile(
 	return result, nil
 }
 
-func evaluatePclFunctionFile(
-	path, fileType string, fn *schema.Function, evalContext functionEvalContext,
+// evaluateFile reads an input file in the given format and evaluates it. For non-PCL formats the source is routed
+// through the named converter plugin's GenerateSnippet RPC and the resulting PCL is fed into the same bind pipeline.
+// An empty path is treated as "no input provided" and always goes through the PCL path so the bind step's
+// missing-required check still fires.
+func evaluateFile(
+	ctx context.Context,
+	path, fileType, inputFormat, token string,
+	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
+	loadConverter func(string) (plugin.Converter, error),
+	loaderTarget string,
+	packageDescriptor *codegenrpc.GetSchemaRequest,
+	evalContext functionEvalContext,
+) (resource.PropertyMap, error) {
+	if path == "" || inputFormat == "" || inputFormat == "pcl" {
+		return evaluatePCLFile(path, fileType, bind, evalContext)
+	}
+
+	converter, err := loadConverter(inputFormat)
+	if err != nil {
+		return nil, fmt.Errorf("load %s input converter: %w", inputFormat, err)
+	}
+	defer contract.IgnoreClose(converter)
+
+	source, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read %s file: %w", fileType, err)
+	}
+	resp, err := converter.GenerateSnippet(ctx, &plugin.GenerateSnippetRequest{
+		Filename:     path,
+		Source:       source,
+		TargetLoader: loaderTarget,
+		Package:      packageDescriptor,
+		Token:        token,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("generate PCL from %s file: %w", fileType, err)
+	}
+	if resp.Diagnostics.HasErrors() {
+		return nil, resp.Diagnostics
+	}
+	return evaluatePCL(bytes.NewReader(resp.Source), resp.Filename, fileType, bind, evalContext)
+}
+
+func evaluateFunctionFile(
+	ctx context.Context, path, fileType, inputFormat string, fn *schema.Function, evalContext functionEvalContext,
+	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
+	packageDescriptor *codegenrpc.GetSchemaRequest,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
 		attrs, inputType, diags := pcl.BindFunction(file, fn)
@@ -287,17 +343,23 @@ func evaluatePclFunctionFile(
 		}
 		return attrs, inputType, properties, diags
 	}
-	return evaluatePCLFile(path, fileType, bind, evalContext)
+	return evaluateFile(
+		ctx, path, fileType, inputFormat, fn.Token, bind, loadConverter, loaderTarget, packageDescriptor, evalContext,
+	)
 }
 
-func evaluatePclResourceFile(
-	path, fileType string, res *schema.Resource, evalContext functionEvalContext,
+func evaluateResourceFile(
+	ctx context.Context, path, fileType, inputFormat string, res *schema.Resource, evalContext functionEvalContext,
+	loadConverter func(string) (plugin.Converter, error), loaderTarget string,
+	packageDescriptor *codegenrpc.GetSchemaRequest,
 ) (resource.PropertyMap, error) {
 	bind := func(file *hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics) {
 		attrs, inputType, diags := pcl.BindResource(file, res)
 		return attrs, inputType, res.InputProperties, diags
 	}
-	return evaluatePCLFile(path, fileType, bind, evalContext)
+	return evaluateFile(
+		ctx, path, fileType, inputFormat, res.Token, bind, loadConverter, loaderTarget, packageDescriptor, evalContext,
+	)
 }
 
 func functionSchemaHelp(fn *schema.Function) string {
@@ -370,6 +432,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 	}
 
 	var inputFile string
+	var inputFormat string
 
 	cmd := &cobra.Command{
 		Use:     name,
@@ -382,8 +445,9 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 
 			// We need to evaluate the provider configuration so we can call Configure on the provider before invoking
 			// the function.
-			config, err := evaluatePclResourceFile(
-				pc.providerFile, "provider", pc.spec.Provider, pc.evalContext)
+			config, err := evaluateResourceFile(
+				ctx, pc.providerFile, "provider", pc.providerFormat,
+				pc.spec.Provider, pc.evalContext, pc.converter, pc.loaderTarget, pc.packageDescriptor)
 			if err != nil {
 				return fmt.Errorf("parse provider file: %w", err)
 			}
@@ -408,7 +472,9 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 				return fmt.Errorf("configure provider: %w", err)
 			}
 
-			inputs, err := evaluatePclFunctionFile(inputFile, "input", fn, pc.evalContext)
+			inputs, err := evaluateFunctionFile(
+				cmd.Context(), inputFile, "input", inputFormat, fn, pc.evalContext,
+				pc.converter, pc.loaderTarget, pc.packageDescriptor)
 			if err != nil {
 				return fmt.Errorf("parse input file: %w", err)
 			}
@@ -447,6 +513,7 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 		},
 	}
 
+	cmd.Flags().StringVar(&inputFormat, "input", "pcl", "Input file format")
 	cmd.Flags().StringVar(&inputFile, "input-file", "", "Path to a file containing function inputs")
 
 	return cmd

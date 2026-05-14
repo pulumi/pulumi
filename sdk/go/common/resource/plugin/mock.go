@@ -327,3 +327,44 @@ func (m *MockProvider) GetMappings(ctx context.Context, req GetMappingsRequest) 
 	}
 	return GetMappingsResponse{}, errors.New("GetMappings not implemented")
 }
+
+type MockConverter struct {
+	CloseF           func() error
+	ConvertStateF    func(context.Context, *ConvertStateRequest) (*ConvertStateResponse, error)
+	ConvertProgramF  func(context.Context, *ConvertProgramRequest) (*ConvertProgramResponse, error)
+	GenerateSnippetF func(context.Context, *GenerateSnippetRequest) (*GenerateSnippetResponse, error)
+}
+
+var _ Converter = (*MockConverter)(nil)
+
+func (m *MockConverter) Close() error {
+	if m.CloseF != nil {
+		return m.CloseF()
+	}
+	return nil
+}
+
+func (m *MockConverter) ConvertState(ctx context.Context, req *ConvertStateRequest) (*ConvertStateResponse, error) {
+	if m.ConvertStateF != nil {
+		return m.ConvertStateF(ctx, req)
+	}
+	return nil, errors.New("ConvertState not implemented")
+}
+
+func (m *MockConverter) ConvertProgram(
+	ctx context.Context, req *ConvertProgramRequest,
+) (*ConvertProgramResponse, error) {
+	if m.ConvertProgramF != nil {
+		return m.ConvertProgramF(ctx, req)
+	}
+	return nil, errors.New("ConvertProgram not implemented")
+}
+
+func (m *MockConverter) GenerateSnippet(
+	ctx context.Context, req *GenerateSnippetRequest,
+) (*GenerateSnippetResponse, error) {
+	if m.GenerateSnippetF != nil {
+		return m.GenerateSnippetF(ctx, req)
+	}
+	return nil, errors.New("GenerateSnippet not implemented")
+}

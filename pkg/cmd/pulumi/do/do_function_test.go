@@ -18,13 +18,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/hashicorp/hcl/v2"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -45,7 +46,7 @@ func TestDoCmdWithFunctionHelpArgPrintsHelp(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -98,11 +99,11 @@ func TestDoCmdWithFunctionHelpArgPrintsHelp(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{spec: spec}, nil
+		return &testProvider{spec: spec}, nil
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -128,12 +129,14 @@ Usage:
 
 Flags:
   -h, --help                help for myOtherFunction
+      --input string        Input file format (default "pcl")
       --input-file string   Path to a file containing function inputs
 
 Global Flags:
-      --dry-run                Run the operation in preview mode
-      --provider-file string   Path to a file containing provider configuration
-      --show-secrets           Show secret values in output
+      --dry-run                  Run the operation in preview mode
+      --provider-file string     Path to a file containing provider configuration
+      --provider-format string   Format of the provider configuration file (default "pcl")
+      --show-secrets             Show secret values in output
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -143,7 +146,7 @@ func TestDoCmdFunctionInvoke(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -178,7 +181,7 @@ func TestDoCmdFunctionInvoke(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -200,7 +203,7 @@ func TestDoCmdFunctionInvoke(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -228,7 +231,7 @@ func TestDoCmdFunctionInvokeFiltersOutputsToSchema(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -242,7 +245,7 @@ func TestDoCmdFunctionInvokeFiltersOutputsToSchema(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -259,7 +262,7 @@ func TestDoCmdFunctionInvokeFiltersOutputsToSchema(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -282,7 +285,7 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
 			Types: map[string]schema.ComplexTypeSpec{
@@ -334,7 +337,7 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 			"__defaults": extras["__defaults"],
 			"extra":      extras["extra"],
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -352,7 +355,7 @@ func TestDoCmdFunctionInvokeFiltersNestedObjectsInCollections(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -381,7 +384,7 @@ func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -395,7 +398,7 @@ func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -410,7 +413,7 @@ func TestDoCmdFunctionInvokeReturnType(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -428,7 +431,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchema(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -465,7 +468,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchema(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -489,7 +492,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchema(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -512,7 +515,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -549,7 +552,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -573,7 +576,7 @@ func TestDoCmdFunctionInvokeReturnTypeFiltersSchemaSecrets(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -608,7 +611,7 @@ func TestDoCmdFunctionInvokeNestedModule(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "pkg", source)
 		spec := schema.PackageSpec{
 			Name: "pkg",
@@ -629,7 +632,7 @@ func TestDoCmdFunctionInvokeNestedModule(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -646,7 +649,7 @@ func TestDoCmdFunctionInvokeNestedModule(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -671,7 +674,7 @@ func TestDoCmdFunctionInvoke_MissingRequiredInput(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -707,11 +710,11 @@ func TestDoCmdFunctionInvoke_MissingRequiredInput(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{spec: spec}, nil
+		return &testProvider{spec: spec}, nil
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -732,7 +735,7 @@ func TestDoCmdFunctionInvoke_NoInputFileWithRequired(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
 			Functions: map[string]schema.FunctionSpec{
@@ -751,7 +754,7 @@ func TestDoCmdFunctionInvoke_NoInputFileWithRequired(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -763,7 +766,7 @@ func TestDoCmdFunctionInvoke_NoInputFileWithRequired(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure", "myFunction"})
@@ -848,7 +851,7 @@ param3 = {
 
 			mlm := &cmdBackend.MockLoginManager{}
 			mws := &pkgWorkspace.MockContext{}
-			loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+			loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 				assert.Equal(t, "azure", source)
 				spec := schema.PackageSpec{
 					Name: "azure",
@@ -878,7 +881,7 @@ param3 = {
 						},
 					},
 				}
-				return closer(t), &testProvider{
+				return &testProvider{
 					spec: spec,
 					MockProvider: plugin.MockProvider{
 						InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -890,7 +893,7 @@ param3 = {
 			}
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, loader)
+			cmd := NewDoCmd(mlm, mws, loader, testHost)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 
@@ -913,7 +916,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
 			Functions: map[string]schema.FunctionSpec{
@@ -927,7 +930,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -941,7 +944,7 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.pcl", `bogus = "hello"`)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
@@ -958,7 +961,7 @@ func TestDoCmdFunctionInvokeInputFileRejectsHCLBlocks(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		spec := schema.PackageSpec{
 			Name: "azure",
 			Functions: map[string]schema.FunctionSpec{
@@ -976,7 +979,7 @@ func TestDoCmdFunctionInvokeInputFileRejectsHCLBlocks(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -997,7 +1000,7 @@ stuff {
 `)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
@@ -1011,7 +1014,7 @@ func TestDoCmdFunctionInvokeInputFileSchemaConversions(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1032,7 +1035,7 @@ func TestDoCmdFunctionInvokeInputFileSchemaConversions(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -1050,7 +1053,7 @@ func TestDoCmdFunctionInvokeInputFileSchemaConversions(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1076,7 +1079,7 @@ func TestDoCmdFunctionInvokeDryRun(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1111,7 +1114,7 @@ func TestDoCmdFunctionInvokeDryRun(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -1133,7 +1136,7 @@ func TestDoCmdFunctionInvokeDryRun(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1161,7 +1164,7 @@ func TestDoCmdFunctionInvokeWithBuiltinFunctions(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1189,7 +1192,7 @@ func TestDoCmdFunctionInvokeWithBuiltinFunctions(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -1212,7 +1215,7 @@ param2 = max(1, length(split(":", "a:b:c")), 6)
 `, dataFile))
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1247,7 +1250,7 @@ func TestDoCmdFunctionInvokeWithUnsupportedBuiltinFunction(t *testing.T) {
 
 			mlm := &cmdBackend.MockLoginManager{}
 			mws := &pkgWorkspace.MockContext{}
-			loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+			loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 				spec := schema.PackageSpec{
 					Name: "azure",
 					Functions: map[string]schema.FunctionSpec{
@@ -1271,11 +1274,11 @@ func TestDoCmdFunctionInvokeWithUnsupportedBuiltinFunction(t *testing.T) {
 						},
 					},
 				}
-				return closer(t), &testProvider{spec: spec}, nil
+				return &testProvider{spec: spec}, nil
 			}
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, loader)
+			cmd := NewDoCmd(mlm, mws, loader, testHost)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 
@@ -1305,7 +1308,7 @@ func TestDoCmdFunctionInvokeWithProjectContext(t *testing.T) {
 			}, root, nil
 		},
 	}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, mainDir, wd)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1332,7 +1335,7 @@ func TestDoCmdFunctionInvokeWithProjectContext(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -1356,7 +1359,7 @@ project = project()
 `)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1371,7 +1374,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 	configureCalled := false
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1415,7 +1418,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
@@ -1442,7 +1445,7 @@ func TestDoCmdFunctionInvokeWithConfiguration(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1479,7 +1482,7 @@ func TestDoCmdFunctionInvokeNestedResults(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1507,7 +1510,7 @@ func TestDoCmdFunctionInvokeNestedResults(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -1532,7 +1535,7 @@ func TestDoCmdFunctionInvokeNestedResults(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1559,7 +1562,7 @@ func TestDoCmdFunctionInvokeShowSecrets(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1581,7 +1584,7 @@ func TestDoCmdFunctionInvokeShowSecrets(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -1599,7 +1602,7 @@ func TestDoCmdFunctionInvokeShowSecrets(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1629,7 +1632,7 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "azure", source)
 		spec := schema.PackageSpec{
 			Name: "azure",
@@ -1652,7 +1655,7 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
@@ -1668,7 +1671,7 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -1711,7 +1714,7 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		// shlex-split takes only the first token as the plugin source; the rest go to Parameterize.
 		assert.Equal(t, "terraform-provider", source)
 		spec := schema.PackageSpec{
@@ -1731,7 +1734,7 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{
+		return &testProvider{
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				ParameterizeF: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
@@ -1786,7 +1789,7 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 	inputFile := writeHCLFile(t, "inputs.pcl", `x = "hello"`)
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 	// First positional is the package spec: base provider name plus any Parameterize args, shlex-quoted.
@@ -1802,4 +1805,500 @@ func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
 }
 `
 	assert.Equal(t, expected, stdout.String())
+}
+
+func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	yamlHost := func() (plugin.Host, error) {
+		return &plugin.MockHost{
+			LoaderAddrF: func() string {
+				return "loader-address"
+			},
+		}, nil
+	}
+	loadConverter := func(
+		pctx *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		require.NotNil(t, pctx)
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
+				*plugin.GenerateSnippetResponse, error,
+			) {
+				assert.Equal(t, "inputs.yaml", filepath.Base(req.Filename))
+				assert.Equal(t, `
+param1: hello
+param2: 42
+param3: true
+`, string(req.Source))
+				assert.NotEmpty(t, req.TargetLoader)
+				assert.Equal(t, "azure:index:myFunction", req.Token)
+				// The package descriptor we hand to the converter should match the package the user typed.
+				// No version was specified and no parameterization was used.
+				require.NotNil(t, req.Package)
+				assert.Equal(t, "azure", req.Package.Package)
+				assert.Empty(t, req.Package.Version)
+				assert.Nil(t, req.Package.Parameterization)
+				return &plugin.GenerateSnippetResponse{
+					Filename: "inputs.pp",
+					Source: []byte(`
+param1 = "hello"
+param2 = 42
+param3 = true
+`),
+				}, nil
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"param1": {
+								TypeSpec: schema.TypeSpec{
+									Type: "string",
+								},
+							},
+							"param2": {
+								TypeSpec: schema.TypeSpec{
+									Type: "number",
+								},
+							},
+							"param3": {
+								TypeSpec: schema.TypeSpec{
+									Type: "boolean",
+								},
+							},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+							"output2": {TypeSpec: schema.TypeSpec{Type: "number"}},
+							"output3": {TypeSpec: schema.TypeSpec{Type: "boolean"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "azure:index:myFunction", string(req.Tok))
+					assert.Equal(t, "hello", req.Args["param1"].StringValue())
+					assert.Equal(t, 42.0, req.Args["param2"].NumberValue())
+					assert.Equal(t, true, req.Args["param3"].BoolValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{
+							"output1": resource.NewProperty("world"),
+							"output2": resource.NewProperty(43.0),
+							"output3": resource.NewProperty(false),
+						},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := newDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+
+	inputFile := writeHCLFile(t, "inputs.yaml", `
+param1: hello
+param2: 42
+param3: true
+`)
+
+	cmd.SetArgs([]string{"azure", "myFunction", "--input", "yaml", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	expected := `{
+  "output1": "world",
+  "output2": 43,
+  "output3": false
+}
+`
+	assert.Equal(t, expected, stdout.String())
+}
+
+// TestDoCmdFunctionInvokeWithYAMLInputFileParameterized exercises the GenerateSnippet Package descriptor for a
+// parameterized package — version comes from the @version suffix and Parameterization is populated from the
+// provider's Parameterize response.
+func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	yamlHost := func() (plugin.Host, error) {
+		return &plugin.MockHost{
+			LoaderAddrF: func() string {
+				return "loader-address"
+			},
+		}, nil
+	}
+	subVersion := semver.MustParse("1.2.3")
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
+				*plugin.GenerateSnippetResponse, error,
+			) {
+				// Package descriptor should carry the base provider name and version split out from the
+				// "terraform-provider@2.0.0" spec, plus the parameterization info we got back from Parameterize.
+				require.NotNil(t, req.Package)
+				assert.Equal(t, "terraform-provider", req.Package.Package)
+				assert.Equal(t, "2.0.0", req.Package.Version)
+				require.NotNil(t, req.Package.Parameterization)
+				assert.Equal(t, "myparam", req.Package.Parameterization.Name)
+				assert.Equal(t, subVersion.String(), req.Package.Parameterization.Version)
+				return &plugin.GenerateSnippetResponse{
+					Filename: "inputs.pp",
+					Source:   []byte(`x = "hello"` + "\n"),
+				}, nil
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "terraform-provider@2.0.0", source)
+		spec := schema.PackageSpec{
+			Name: "myparam",
+			Functions: map[string]schema.FunctionSpec{
+				"myparam:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ParameterizeF: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+					args, ok := req.Parameters.(*plugin.ParameterizeArgs)
+					require.True(t, ok)
+					assert.Equal(t, []string{"foo/bar", "1.2.3"}, args.Args)
+					return plugin.ParameterizeResponse{Name: "myparam", Version: subVersion}, nil
+				},
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "hello", req.Args["x"].StringValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"y": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.yaml", `x: hello`+"\n")
+
+	var stdout bytes.Buffer
+	cmd := newDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"terraform-provider@2.0.0 foo/bar 1.2.3",
+		"myFunction", "--input", "yaml", "--input-file", inputFile,
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
+}
+
+// TestDoCmdFunctionInvokeWithYAMLProviderFile exercises the provider-config converter path: --provider-format yaml
+// + --provider-file p.yaml should run the YAML through the converter, hand the resulting PCL to Configure, and
+// pass the right token (the provider's pulumi:providers:<pkg> token) and the same package descriptor we use for
+// function inputs.
+func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
+	t.Parallel()
+
+	configureCalled := false
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	yamlHost := func() (plugin.Host, error) {
+		return &plugin.MockHost{
+			LoaderAddrF: func() string { return "loader-address" },
+		}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "yaml", name)
+		return &plugin.MockConverter{
+			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
+				*plugin.GenerateSnippetResponse, error,
+			) {
+				assert.Equal(t, "provider.yaml", filepath.Base(req.Filename))
+				assert.Equal(t, "opt1: val1\n", string(req.Source))
+				assert.NotEmpty(t, req.TargetLoader)
+				// The converter should be told this is a provider-config snippet via the provider's resource token,
+				// not the function token.
+				assert.Equal(t, "pulumi:providers:azure", req.Token)
+				require.NotNil(t, req.Package)
+				assert.Equal(t, "azure", req.Package.Package)
+				return &plugin.GenerateSnippetResponse{
+					Filename: "provider.pp",
+					Source:   []byte(`opt1 = "val1"` + "\n"),
+				}, nil
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Provider: schema.ResourceSpec{
+				InputProperties: map[string]schema.PropertySpec{
+					"opt1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+				},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ConfigureF: func(ctx context.Context, req plugin.ConfigureRequest) (plugin.ConfigureResponse, error) {
+					configureCalled = true
+					// The converted PCL ("opt1 = \"val1\"") should be bound, evaluated, and reach Configure intact.
+					assert.Equal(t, "val1", req.Inputs["opt1"].StringValue())
+					return plugin.ConfigureResponse{}, nil
+				},
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{"output1": resource.NewProperty("world")},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	providerFile := writeHCLFile(t, "provider.yaml", "opt1: val1\n")
+
+	var stdout bytes.Buffer
+	cmd := newDoCmd(mlm, mws, loader, yamlHost, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{
+		"azure", "--provider-file", providerFile, "--provider-format", "yaml", "myFunction",
+	})
+	err := cmd.Execute()
+	require.NoError(t, err)
+	assert.True(t, configureCalled, "Configure should be called with the converted provider config")
+}
+
+// TestDoCmdFunctionInvokeWithUnknownInputFormat verifies that an unknown --input format surfaces as an error from
+// the converter loader rather than crashing or silently falling through.
+func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	host := func() (plugin.Host, error) {
+		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		assert.Equal(t, "fictional", name)
+		return nil, errors.New("converter not found")
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					require.Fail(t, "Invoke should not be called when the converter fails to load")
+					return plugin.InvokeResponse{}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.fictional", "x: hello")
+
+	var stdout bytes.Buffer
+	cmd := newDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure", "myFunction", "--input", "fictional", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "load fictional input converter")
+	assert.ErrorContains(t, err, "converter not found")
+}
+
+// TestDoCmdFunctionInvokeWithConverterDiagnostics asserts that diagnostic-level errors from GenerateSnippet are
+// surfaced and that Invoke is never called.
+func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	host := func() (plugin.Host, error) {
+		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		return &plugin.MockConverter{
+			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
+				*plugin.GenerateSnippetResponse, error,
+			) {
+				return &plugin.GenerateSnippetResponse{
+					Diagnostics: hcl.Diagnostics{
+						{Severity: hcl.DiagError, Summary: "could not convert: synthetic failure"},
+					},
+				}, nil
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					require.Fail(t, "Invoke should not be called when GenerateSnippet returns error diagnostics")
+					return plugin.InvokeResponse{}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello")
+
+	var stdout bytes.Buffer
+	cmd := newDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure", "myFunction", "--input", "yaml", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "could not convert: synthetic failure")
+}
+
+// TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL asserts that valid-looking PCL from the converter still
+// has to satisfy the function's schema — extra attributes that aren't part of the function's inputs are caught
+// by the bind step.
+func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	host := func() (plugin.Host, error) {
+		return &plugin.MockHost{LoaderAddrF: func() string { return "loader-address" }}, nil
+	}
+	loadConverter := func(
+		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
+	) (plugin.Converter, error) {
+		return &plugin.MockConverter{
+			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
+				*plugin.GenerateSnippetResponse, error,
+			) {
+				// PCL parses fine but `not_an_input` isn't part of the function's schema — the bind step should reject it.
+				return &plugin.GenerateSnippetResponse{
+					Filename: "inputs.pp",
+					Source:   []byte(`x = "hello"` + "\n" + `not_an_input = true` + "\n"),
+				}, nil
+			},
+		}, nil
+	}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					require.Fail(t, "Invoke should not be called when the converted PCL fails to bind")
+					return plugin.InvokeResponse{}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.yaml", "x: hello")
+
+	var stdout bytes.Buffer
+	cmd := newDoCmd(mlm, mws, loader, host, loadConverter)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure", "myFunction", "--input", "yaml", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "not_an_input")
 }

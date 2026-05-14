@@ -6,6 +6,7 @@
 
 import * as jspb from "google-protobuf";
 import * as pulumi_codegen_hcl_pb from "./codegen/hcl_pb";
+import * as pulumi_codegen_loader_pb from "./codegen/loader_pb";
 
 export class ConvertStateRequest extends jspb.Message { 
     getMapperTarget(): string;
@@ -156,5 +157,72 @@ export class ConvertProgramResponse extends jspb.Message {
 export namespace ConvertProgramResponse {
     export type AsObject = {
         diagnosticsList: Array<pulumi_codegen_hcl_pb.Diagnostic.AsObject>,
+    }
+}
+
+export class GenerateSnippetRequest extends jspb.Message { 
+    getFilename(): string;
+    setFilename(value: string): GenerateSnippetRequest;
+    getSource(): Uint8Array | string;
+    getSource_asU8(): Uint8Array;
+    getSource_asB64(): string;
+    setSource(value: Uint8Array | string): GenerateSnippetRequest;
+    getTargetLoader(): string;
+    setTargetLoader(value: string): GenerateSnippetRequest;
+
+    hasPackage(): boolean;
+    clearPackage(): void;
+    getPackage(): pulumi_codegen_loader_pb.GetSchemaRequest | undefined;
+    setPackage(value?: pulumi_codegen_loader_pb.GetSchemaRequest): GenerateSnippetRequest;
+    getToken(): string;
+    setToken(value: string): GenerateSnippetRequest;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GenerateSnippetRequest.AsObject;
+    static toObject(includeInstance: boolean, msg: GenerateSnippetRequest): GenerateSnippetRequest.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GenerateSnippetRequest, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GenerateSnippetRequest;
+    static deserializeBinaryFromReader(message: GenerateSnippetRequest, reader: jspb.BinaryReader): GenerateSnippetRequest;
+}
+
+export namespace GenerateSnippetRequest {
+    export type AsObject = {
+        filename: string,
+        source: Uint8Array | string,
+        targetLoader: string,
+        pb_package?: pulumi_codegen_loader_pb.GetSchemaRequest.AsObject,
+        token: string,
+    }
+}
+
+export class GenerateSnippetResponse extends jspb.Message { 
+    clearDiagnosticsList(): void;
+    getDiagnosticsList(): Array<pulumi_codegen_hcl_pb.Diagnostic>;
+    setDiagnosticsList(value: Array<pulumi_codegen_hcl_pb.Diagnostic>): GenerateSnippetResponse;
+    addDiagnostics(value?: pulumi_codegen_hcl_pb.Diagnostic, index?: number): pulumi_codegen_hcl_pb.Diagnostic;
+    getFilename(): string;
+    setFilename(value: string): GenerateSnippetResponse;
+    getSource(): Uint8Array | string;
+    getSource_asU8(): Uint8Array;
+    getSource_asB64(): string;
+    setSource(value: Uint8Array | string): GenerateSnippetResponse;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): GenerateSnippetResponse.AsObject;
+    static toObject(includeInstance: boolean, msg: GenerateSnippetResponse): GenerateSnippetResponse.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: GenerateSnippetResponse, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): GenerateSnippetResponse;
+    static deserializeBinaryFromReader(message: GenerateSnippetResponse, reader: jspb.BinaryReader): GenerateSnippetResponse;
+}
+
+export namespace GenerateSnippetResponse {
+    export type AsObject = {
+        diagnosticsList: Array<pulumi_codegen_hcl_pb.Diagnostic.AsObject>,
+        filename: string,
+        source: Uint8Array | string,
     }
 }

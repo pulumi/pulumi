@@ -1,4 +1,4 @@
-// package: codegen
+// package: pulumirpc.codegen
 // file: pulumi/codegen/loader.proto
 
 /* tslint:disable */
@@ -12,7 +12,7 @@ interface ILoaderService extends grpc.ServiceDefinition<grpc.UntypedServiceImple
 }
 
 interface ILoaderService_IGetSchema extends grpc.MethodDefinition<pulumi_codegen_loader_pb.GetSchemaRequest, pulumi_codegen_loader_pb.GetSchemaResponse> {
-    path: "/codegen.Loader/GetSchema";
+    path: "/pulumirpc.codegen.Loader/GetSchema";
     requestStream: false;
     responseStream: false;
     requestSerialize: grpc.serialize<pulumi_codegen_loader_pb.GetSchemaRequest>;

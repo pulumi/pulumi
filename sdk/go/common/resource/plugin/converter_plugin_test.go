@@ -81,6 +81,29 @@ func (c *testConverterClient) ConvertProgram(
 	}, nil
 }
 
+func (c *testConverterClient) GenerateSnippet(
+	ctx context.Context, req *pulumirpc.GenerateSnippetRequest, opts ...grpc.CallOption,
+) (*pulumirpc.GenerateSnippetResponse, error) {
+	if req.Filename != "inputs.yaml" {
+		return nil, fmt.Errorf("unexpected Filename: %s", req.Filename)
+	}
+	if string(req.Source) != "inputs: true" {
+		return nil, fmt.Errorf("unexpected Source: %s", req.Source)
+	}
+	if req.TargetLoader != "localhost:4321" {
+		return nil, fmt.Errorf("unexpected TargetLoader: %s", req.TargetLoader)
+	}
+	if req.Token != "test:index:fn" {
+		return nil, fmt.Errorf("unexpected Token: %s", req.Token)
+	}
+
+	return &pulumirpc.GenerateSnippetResponse{
+		Diagnostics: c.diagnostics,
+		Filename:    "inputs.pp",
+		Source:      []byte("inputs = true"),
+	}, nil
+}
+
 func TestConverterPlugin_State(t *testing.T) {
 	t.Parallel()
 
@@ -148,6 +171,39 @@ func TestConverterPlugin_Program(t *testing.T) {
 
 	diag := resp.Diagnostics[0]
 	assert.Equal(t, hcl.DiagError, diag.Severity)
+	assert.Equal(t, "test:summary", diag.Summary)
+	assert.Equal(t, "test:detail", diag.Detail)
+}
+
+func TestConverterPlugin_GenerateSnippet(t *testing.T) {
+	t.Parallel()
+
+	plugin := &converter{
+		clientRaw: &testConverterClient{
+			diagnostics: []*codegenrpc.Diagnostic{
+				{
+					Severity: codegenrpc.DiagnosticSeverity_DIAG_WARNING,
+					Summary:  "test:summary",
+					Detail:   "test:detail",
+				},
+			},
+		},
+	}
+
+	resp, err := plugin.GenerateSnippet(t.Context(), &GenerateSnippetRequest{
+		Filename:     "inputs.yaml",
+		Source:       []byte("inputs: true"),
+		TargetLoader: "localhost:4321",
+		Token:        "test:index:fn",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "inputs.pp", resp.Filename)
+	assert.Equal(t, []byte("inputs = true"), resp.Source)
+	require.Len(t, resp.Diagnostics, 1)
+
+	diag := resp.Diagnostics[0]
+	assert.Equal(t, hcl.DiagWarning, diag.Severity)
 	assert.Equal(t, "test:summary", diag.Summary)
 	assert.Equal(t, "test:detail", diag.Detail)
 }

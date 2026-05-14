@@ -219,20 +219,20 @@ var File_pulumi_codegen_loader_proto protoreflect.FileDescriptor
 
 const file_pulumi_codegen_loader_proto_rawDesc = "" +
 	"\n" +
-	"\x1bpulumi/codegen/loader.proto\x12\acodegen\"V\n" +
+	"\x1bpulumi/codegen/loader.proto\x12\x11pulumirpc.codegen\"V\n" +
 	"\x10Parameterization\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +
-	"\x05value\x18\x03 \x01(\fR\x05value\"\xb0\x01\n" +
+	"\x05value\x18\x03 \x01(\fR\x05value\"\xba\x01\n" +
 	"\x10GetSchemaRequest\x12\x18\n" +
 	"\apackage\x18\x01 \x01(\tR\apackage\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12!\n" +
-	"\fdownload_url\x18\x03 \x01(\tR\vdownloadUrl\x12E\n" +
-	"\x10parameterization\x18\x04 \x01(\v2\x19.codegen.ParameterizationR\x10parameterization\"+\n" +
+	"\fdownload_url\x18\x03 \x01(\tR\vdownloadUrl\x12O\n" +
+	"\x10parameterization\x18\x04 \x01(\v2#.pulumirpc.codegen.ParameterizationR\x10parameterization\"+\n" +
 	"\x11GetSchemaResponse\x12\x16\n" +
-	"\x06schema\x18\x01 \x01(\fR\x06schema2N\n" +
-	"\x06Loader\x12D\n" +
-	"\tGetSchema\x12\x19.codegen.GetSchemaRequest\x1a\x1a.codegen.GetSchemaResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
+	"\x06schema\x18\x01 \x01(\fR\x06schema2b\n" +
+	"\x06Loader\x12X\n" +
+	"\tGetSchema\x12#.pulumirpc.codegen.GetSchemaRequest\x1a$.pulumirpc.codegen.GetSchemaResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
 
 var (
 	file_pulumi_codegen_loader_proto_rawDescOnce sync.Once
@@ -248,14 +248,14 @@ func file_pulumi_codegen_loader_proto_rawDescGZIP() []byte {
 
 var file_pulumi_codegen_loader_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_codegen_loader_proto_goTypes = []any{
-	(*Parameterization)(nil),  // 0: codegen.Parameterization
-	(*GetSchemaRequest)(nil),  // 1: codegen.GetSchemaRequest
-	(*GetSchemaResponse)(nil), // 2: codegen.GetSchemaResponse
+	(*Parameterization)(nil),  // 0: pulumirpc.codegen.Parameterization
+	(*GetSchemaRequest)(nil),  // 1: pulumirpc.codegen.GetSchemaRequest
+	(*GetSchemaResponse)(nil), // 2: pulumirpc.codegen.GetSchemaResponse
 }
 var file_pulumi_codegen_loader_proto_depIdxs = []int32{
-	0, // 0: codegen.GetSchemaRequest.parameterization:type_name -> codegen.Parameterization
-	1, // 1: codegen.Loader.GetSchema:input_type -> codegen.GetSchemaRequest
-	2, // 2: codegen.Loader.GetSchema:output_type -> codegen.GetSchemaResponse
+	0, // 0: pulumirpc.codegen.GetSchemaRequest.parameterization:type_name -> pulumirpc.codegen.Parameterization
+	1, // 1: pulumirpc.codegen.Loader.GetSchema:input_type -> pulumirpc.codegen.GetSchemaRequest
+	2, // 2: pulumirpc.codegen.Loader.GetSchema:output_type -> pulumirpc.codegen.GetSchemaResponse
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

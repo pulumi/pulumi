@@ -572,6 +572,12 @@ func (c *convertTestConverter) ConvertProgram(
 	return &plugin.ConvertProgramResponse{}, err
 }
 
+func (c *convertTestConverter) GenerateSnippet(
+	_ context.Context, _ *plugin.GenerateSnippetRequest,
+) (*plugin.GenerateSnippetResponse, error) {
+	return nil, errors.New("not implemented")
+}
+
 // TestL2ResourceSimple_ConvertPath verifies that when ConverterPluginTarget is set, the engine
 // performs the PCL→Language→PCL→Language round-trip (eject) and writes snapshots to isolated
 // directories without affecting the normal project snapshot directory.

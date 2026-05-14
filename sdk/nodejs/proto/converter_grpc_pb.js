@@ -19,6 +19,7 @@
 var grpc = require('@grpc/grpc-js');
 var pulumi_converter_pb = require('./converter_pb.js');
 var pulumi_codegen_hcl_pb = require('./codegen/hcl_pb.js');
+var pulumi_codegen_loader_pb = require('./codegen/loader_pb.js');
 
 function serialize_pulumirpc_ConvertProgramRequest(arg) {
   if (!(arg instanceof pulumi_converter_pb.ConvertProgramRequest)) {
@@ -64,6 +65,28 @@ function deserialize_pulumirpc_ConvertStateResponse(buffer_arg) {
   return pulumi_converter_pb.ConvertStateResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_GenerateSnippetRequest(arg) {
+  if (!(arg instanceof pulumi_converter_pb.GenerateSnippetRequest)) {
+    throw new Error('Expected argument of type pulumirpc.GenerateSnippetRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GenerateSnippetRequest(buffer_arg) {
+  return pulumi_converter_pb.GenerateSnippetRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_GenerateSnippetResponse(arg) {
+  if (!(arg instanceof pulumi_converter_pb.GenerateSnippetResponse)) {
+    throw new Error('Expected argument of type pulumirpc.GenerateSnippetResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_GenerateSnippetResponse(buffer_arg) {
+  return pulumi_converter_pb.GenerateSnippetResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 
 // Converter is a service for converting between other ecosystems and Pulumi.
 // This is currently unstable and experimental.
@@ -91,6 +114,19 @@ convertProgram: {
     requestDeserialize: deserialize_pulumirpc_ConvertProgramRequest,
     responseSerialize: serialize_pulumirpc_ConvertProgramResponse,
     responseDeserialize: deserialize_pulumirpc_ConvertProgramResponse,
+  },
+  // GenerateSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+// callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
+generateSnippet: {
+    path: '/pulumirpc.Converter/GenerateSnippet',
+    requestStream: false,
+    responseStream: false,
+    requestType: pulumi_converter_pb.GenerateSnippetRequest,
+    responseType: pulumi_converter_pb.GenerateSnippetResponse,
+    requestSerialize: serialize_pulumirpc_GenerateSnippetRequest,
+    requestDeserialize: deserialize_pulumirpc_GenerateSnippetRequest,
+    responseSerialize: serialize_pulumirpc_GenerateSnippetResponse,
+    responseDeserialize: deserialize_pulumirpc_GenerateSnippetResponse,
   },
 };
 
