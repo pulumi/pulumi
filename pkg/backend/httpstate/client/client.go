@@ -1123,6 +1123,22 @@ func (pc *Client) GetPolicyGroup(
 	return resp, nil
 }
 
+// UpdatePolicyGroup issues a PATCH against the Policy Group endpoint. The
+// service's UpdatePolicyGroup endpoint accepts at most one mutation per
+// request (rename, add/remove stack, add/remove policy pack, add/remove
+// insights account), so callers performing multiple mutations must issue
+// multiple calls.
+func (pc *Client) UpdatePolicyGroup(
+	ctx context.Context, orgName, policyGroup string, req apitype.UpdatePolicyGroupRequest,
+) error {
+	if err := pc.restCall(
+		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil,
+	); err != nil {
+		return fmt.Errorf("updating policy group: %w", err)
+	}
+	return nil
+}
+
 // DeletePolicyGroup deletes a Policy Group from the given organization. The
 // organization's default Policy Group cannot be deleted; the service will
 // reject such requests.
