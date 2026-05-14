@@ -1020,7 +1020,9 @@ func TestVersionedTemplateResolution(t *testing.T) {
 				// Return not found for other versions
 				return apitype.TemplateMetadata{}, backenderr.NotFoundError{}
 			},
-			ListTemplatesF: func(ctx context.Context, opts registry.ListTemplatesOptions) iter.Seq2[apitype.TemplateMetadata, error] {
+			ListTemplatesF: func(
+				ctx context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.TemplateMetadata, error] {
 				return func(yield func(apitype.TemplateMetadata, error) bool) {
 					yield(apitype.TemplateMetadata{
 						Name:        "my-template",

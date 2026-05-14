@@ -155,7 +155,7 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 
 	// Use ListTemplates to find matching templates
 	matches := NewTemplateMatcher(urlInfo, templateName)
-	var matchedTemplates []apitype.TemplateMetadata
+	var matchedTemplates []apitype.TemplateMetadata //nolint:prealloc // size unknown until iteration completes
 
 	for template, err := range r.ListTemplates(ctx, registry.ListTemplatesOptions{}) {
 		if err != nil {
