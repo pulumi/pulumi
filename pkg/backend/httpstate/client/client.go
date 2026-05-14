@@ -2453,6 +2453,24 @@ func (pc *Client) ListStackDeployments(
 	return resp, nil
 }
 
+// GetOrgUsageSummary fetches the Resources Under Management (RUM) and
+// Resource Hours Under Management (RHUM) summary for an organization, wrapping
+// the GetUsageSummaryResourceHours endpoint.
+//
+// Zero-valued fields on params are omitted from the query string so the server
+// can apply its own defaults — see [apitype.OrgUsageSummaryParams] for the
+// per-field semantics.
+func (pc *Client) GetOrgUsageSummary(
+	ctx context.Context, org string, params apitype.OrgUsageSummaryParams,
+) (apitype.OrgUsageSummaryResponse, error) {
+	path := fmt.Sprintf("/api/orgs/%s/resources/summary", url.PathEscape(org))
+	var resp apitype.OrgUsageSummaryResponse
+	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
+		return apitype.OrgUsageSummaryResponse{}, err
+	}
+	return resp, nil
+}
+
 // SearchInsightsResources runs a resource search against the v2 endpoint
 // (`GetOrgResourceSearchV2Query`).
 //
