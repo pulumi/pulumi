@@ -46,7 +46,6 @@ func newOrgWebhookCmd() *cobra.Command {
 	return cmd
 }
 
-// newOrgWebhookListCmd is defined in org_webhook_list.go.
 
 // TODO[https://github.com/pulumi/pulumi/issues/22966]: Not yet implemented.
 func newOrgWebhookNewCmd() *cobra.Command {
