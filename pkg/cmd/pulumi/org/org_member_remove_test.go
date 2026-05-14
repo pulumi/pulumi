@@ -58,7 +58,8 @@ func TestOrgMemberRemove_DefaultOutput(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockOrgMemberRemoveClient{}
 	err := runOrgMemberRemove(t.Context(), &buf,
-		stubOrgMemberRemoveFactory(c, "acme"), "alice", orgMemberRemoveArgs{})
+		stubOrgMemberRemoveFactory(c, "acme"), "alice",
+		orgMemberRemoveArgs{outputFormat: defaultOrgMemberRemoveOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, "Removed member alice from organization acme.\n", buf.String())
@@ -71,32 +72,16 @@ func TestOrgMemberRemove_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockOrgMemberRemoveClient{}
+	args := orgMemberRemoveArgs{outputFormat: defaultOrgMemberRemoveOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	err := runOrgMemberRemove(t.Context(), &buf,
-		stubOrgMemberRemoveFactory(c, "acme"), "alice",
-		orgMemberRemoveArgs{output: "json"})
+		stubOrgMemberRemoveFactory(c, "acme"), "alice", args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
 		"organizationName": "acme",
 		"userLogin": "alice"
 	}`, buf.String())
-}
-
-func TestOrgMemberRemove_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockOrgMemberRemoveClient{}
-	err := runOrgMemberRemove(t.Context(), &buf,
-		stubOrgMemberRemoveFactory(c, "acme"), "alice",
-		orgMemberRemoveArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	// Validation must run before the API call.
-	assert.Equal(t, "", c.gotOrg)
-	assert.Equal(t, "", c.gotUserLogin)
 }
 
 func TestOrgMemberRemove_ClientError(t *testing.T) {
@@ -106,7 +91,7 @@ func TestOrgMemberRemove_ClientError(t *testing.T) {
 	c := &mockOrgMemberRemoveClient{err: errors.New("cannot remove self")}
 	err := runOrgMemberRemove(t.Context(), &buf,
 		stubOrgMemberRemoveFactory(c, "acme"), "alice",
-		orgMemberRemoveArgs{})
+		orgMemberRemoveArgs{outputFormat: defaultOrgMemberRemoveOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "removing organization member: cannot remove self", err.Error())
 	assert.Equal(t, "", buf.String())
@@ -118,7 +103,7 @@ func TestOrgMemberRemove_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgMemberRemove(t.Context(), &buf,
 		failingOrgMemberRemoveFactory(errors.New("not logged in")),
-		"alice", orgMemberRemoveArgs{})
+		"alice", orgMemberRemoveArgs{outputFormat: defaultOrgMemberRemoveOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }

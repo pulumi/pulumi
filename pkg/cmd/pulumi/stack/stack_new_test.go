@@ -91,7 +91,8 @@ func TestStackNew_TextOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runStackNew(t.Context(), &buf, stubStackNewFactory(c, "acme"),
-		"my-project", "dev", stackNewArgs{output: "default"})
+		"my-project", "dev",
+		stackNewArgs{outputFormat: defaultStackNewOutputFormat()})
 	require.NoError(t, err)
 
 	expected := "Created stack acme/my-project/dev\n" +
@@ -113,9 +114,11 @@ func TestStackNew_JSONOutput(t *testing.T) {
 		},
 	}
 
+	args := stackNewArgs{outputFormat: defaultStackNewOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	var buf bytes.Buffer
 	err := runStackNew(t.Context(), &buf, stubStackNewFactory(c, "acme"),
-		"my-project", "dev", stackNewArgs{output: "json"})
+		"my-project", "dev", args)
 	require.NoError(t, err)
 
 	expected := `{
@@ -134,9 +137,11 @@ func TestStackNew_JSONNormalizesNilMessages(t *testing.T) {
 
 	c := &mockStackNewClient{details: client.CreateStackDetails{Messages: nil}}
 
+	args := stackNewArgs{outputFormat: defaultStackNewOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	var buf bytes.Buffer
 	err := runStackNew(t.Context(), &buf, stubStackNewFactory(c, "acme"),
-		"my-project", "dev", stackNewArgs{output: "json"})
+		"my-project", "dev", args)
 	require.NoError(t, err)
 
 	expected := `{
@@ -148,26 +153,14 @@ func TestStackNew_JSONNormalizesNilMessages(t *testing.T) {
 	assert.JSONEq(t, expected, buf.String())
 }
 
-func TestStackNew_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockStackNewClient{}
-	var buf bytes.Buffer
-	err := runStackNew(t.Context(), &buf, stubStackNewFactory(c, "acme"),
-		"my-project", "dev", stackNewArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml": expected "default" or "json"`,
-		err.Error())
-}
-
 func TestStackNew_FactoryError(t *testing.T) {
 	t.Parallel()
 
 	factoryErr := errors.New("user not a member of acme")
 	var buf bytes.Buffer
 	err := runStackNew(t.Context(), &buf, failingStackNewFactory(factoryErr),
-		"my-project", "dev", stackNewArgs{output: "default"})
+		"my-project", "dev",
+		stackNewArgs{outputFormat: defaultStackNewOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, factoryErr, err)
 }
@@ -178,7 +171,8 @@ func TestStackNew_ClientErrorWrapped(t *testing.T) {
 	c := &mockStackNewClient{err: errors.New("boom")}
 	var buf bytes.Buffer
 	err := runStackNew(t.Context(), &buf, stubStackNewFactory(c, "acme"),
-		"my-project", "dev", stackNewArgs{output: "default"})
+		"my-project", "dev",
+		stackNewArgs{outputFormat: defaultStackNewOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "creating stack: boom", err.Error())
 }
@@ -191,7 +185,8 @@ func TestStackNew_NoConfigFlagsSendsNilConfig(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runStackNew(t.Context(), &buf, stubStackNewFactory(c, "acme"),
-		"my-project", "dev", stackNewArgs{output: "default"})
+		"my-project", "dev",
+		stackNewArgs{outputFormat: defaultStackNewOutputFormat()})
 	require.NoError(t, err)
 	assert.Nil(t, captured.config)
 	assert.Nil(t, captured.tags)
@@ -210,7 +205,7 @@ func TestStackNew_ConfigFlagsBuildStackConfig(t *testing.T) {
 		"my-project", "dev", stackNewArgs{
 			environment:     "acme/prod",
 			secretsProvider: "awskms://key",
-			output:          "default",
+			outputFormat:    defaultStackNewOutputFormat(),
 		})
 	require.NoError(t, err)
 	assert.Equal(t, &apitype.StackConfig{

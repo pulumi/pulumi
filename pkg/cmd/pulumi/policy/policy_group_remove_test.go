@@ -58,7 +58,8 @@ func TestPolicyGroupRemove_DefaultOutput(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockPolicyGroupRemoveClient{}
 	err := runPolicyGroupRemove(t.Context(), &buf,
-		stubPolicyGroupRemoveFactory(c, "acme"), "prod-policies", policyGroupRemoveArgs{})
+		stubPolicyGroupRemoveFactory(c, "acme"), "prod-policies",
+		policyGroupRemoveArgs{outputFormat: defaultPolicyGroupRemoveOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, "Removed policy group prod-policies from organization acme.\n", buf.String())
@@ -71,32 +72,16 @@ func TestPolicyGroupRemove_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockPolicyGroupRemoveClient{}
+	args := policyGroupRemoveArgs{outputFormat: defaultPolicyGroupRemoveOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyGroupRemove(t.Context(), &buf,
-		stubPolicyGroupRemoveFactory(c, "acme"), "prod-policies",
-		policyGroupRemoveArgs{output: "json"})
+		stubPolicyGroupRemoveFactory(c, "acme"), "prod-policies", args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
 		"organizationName": "acme",
 		"name": "prod-policies"
 	}`, buf.String())
-}
-
-func TestPolicyGroupRemove_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockPolicyGroupRemoveClient{}
-	err := runPolicyGroupRemove(t.Context(), &buf,
-		stubPolicyGroupRemoveFactory(c, "acme"), "prod-policies",
-		policyGroupRemoveArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	// Validation must run before the API call.
-	assert.Equal(t, "", c.gotOrg)
-	assert.Equal(t, "", c.gotGroup)
 }
 
 func TestPolicyGroupRemove_ClientError(t *testing.T) {
@@ -106,7 +91,7 @@ func TestPolicyGroupRemove_ClientError(t *testing.T) {
 	c := &mockPolicyGroupRemoveClient{err: errors.New("cannot delete default group")}
 	err := runPolicyGroupRemove(t.Context(), &buf,
 		stubPolicyGroupRemoveFactory(c, "acme"), "default-policy-group",
-		policyGroupRemoveArgs{})
+		policyGroupRemoveArgs{outputFormat: defaultPolicyGroupRemoveOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "removing policy group: cannot delete default group", err.Error())
 	assert.Equal(t, "", buf.String())
@@ -118,7 +103,7 @@ func TestPolicyGroupRemove_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupRemove(t.Context(), &buf,
 		failingPolicyGroupRemoveFactory(errors.New("not logged in")),
-		"prod-policies", policyGroupRemoveArgs{})
+		"prod-policies", policyGroupRemoveArgs{outputFormat: defaultPolicyGroupRemoveOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }

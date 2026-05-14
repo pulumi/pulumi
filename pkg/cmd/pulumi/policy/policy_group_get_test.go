@@ -85,7 +85,8 @@ func TestPolicyGroupGet_DefaultOutput(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockPolicyGroupGetClient{resp: samplePolicyGroupResponse()}
 	err := runPolicyGroupGet(t.Context(), &buf,
-		stubPolicyGroupGetFactory(c, "acme"), "prod-policies", policyGroupGetArgs{})
+		stubPolicyGroupGetFactory(c, "acme"), "prod-policies",
+		policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, `Name:                  prod-policies
@@ -117,7 +118,8 @@ func TestPolicyGroupGet_DefaultOutput_Empty(t *testing.T) {
 	}
 	c := &mockPolicyGroupGetClient{resp: resp}
 	err := runPolicyGroupGet(t.Context(), &buf,
-		stubPolicyGroupGetFactory(c, "acme"), "default-policy-group", policyGroupGetArgs{})
+		stubPolicyGroupGetFactory(c, "acme"), "default-policy-group",
+		policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, `Name:                  default-policy-group
@@ -135,9 +137,10 @@ func TestPolicyGroupGet_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockPolicyGroupGetClient{resp: samplePolicyGroupResponse()}
+	args := policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyGroupGet(t.Context(), &buf,
-		stubPolicyGroupGetFactory(c, "acme"), "prod-policies",
-		policyGroupGetArgs{output: "json"})
+		stubPolicyGroupGetFactory(c, "acme"), "prod-policies", args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -170,9 +173,10 @@ func TestPolicyGroupGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockPolicyGroupGetClient{resp: resp}
+	args := policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyGroupGet(t.Context(), &buf,
-		stubPolicyGroupGetFactory(c, "acme"), "bare",
-		policyGroupGetArgs{output: "json"})
+		stubPolicyGroupGetFactory(c, "acme"), "bare", args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -186,30 +190,14 @@ func TestPolicyGroupGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestPolicyGroupGet_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockPolicyGroupGetClient{resp: samplePolicyGroupResponse()}
-	err := runPolicyGroupGet(t.Context(), &buf,
-		stubPolicyGroupGetFactory(c, "acme"), "prod-policies",
-		policyGroupGetArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	// Validation must run before the API call.
-	assert.Equal(t, "", c.gotOrg)
-	assert.Equal(t, "", c.gotGroup)
-}
-
 func TestPolicyGroupGet_ClientError(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
 	c := &mockPolicyGroupGetClient{err: errors.New("not found")}
 	err := runPolicyGroupGet(t.Context(), &buf,
-		stubPolicyGroupGetFactory(c, "acme"), "missing", policyGroupGetArgs{})
+		stubPolicyGroupGetFactory(c, "acme"), "missing",
+		policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "getting policy group: not found", err.Error())
 }
@@ -220,7 +208,7 @@ func TestPolicyGroupGet_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupGet(t.Context(), &buf,
 		failingPolicyGroupGetFactory(errors.New("not logged in")),
-		"prod-policies", policyGroupGetArgs{})
+		"prod-policies", policyGroupGetArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }

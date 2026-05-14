@@ -80,10 +80,11 @@ func TestOrgAuditLogExport_DefaultOutput(t *testing.T) {
 	err := runOrgAuditLogExport(t.Context(), &buf,
 		stubOrgAuditLogExportFactory(c, "acme"),
 		orgAuditLogExportArgs{
-			format:    "csv",
-			eventType: "stack.create",
-			user:      "alice",
-			startTime: "1735000000",
+			outputFormat: defaultOrgAuditLogExportOutputFormat(),
+			format:       "csv",
+			eventType:    "stack.create",
+			user:         "alice",
+			startTime:    "1735000000",
 		})
 	require.NoError(t, err)
 
@@ -109,7 +110,7 @@ func TestOrgAuditLogExport_DefaultFormat(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgAuditLogExport(t.Context(), &buf,
 		stubOrgAuditLogExportFactory(c, "acme"),
-		orgAuditLogExportArgs{})
+		orgAuditLogExportArgs{outputFormat: defaultOrgAuditLogExportOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, []orgAuditLogExportCall{
@@ -129,22 +130,22 @@ func TestOrgAuditLogExport_JSONOutput(t *testing.T) {
 
 	c := &mockOrgAuditLogExportClient{body: fixture}
 
+	args := orgAuditLogExportArgs{
+		outputFormat: defaultOrgAuditLogExportOutputFormat(),
+		format:       "cef",
+	}
+	require.NoError(t, args.outputFormat.Set("json"))
+
 	var buf bytes.Buffer
 	err := runOrgAuditLogExport(t.Context(), &buf,
-		stubOrgAuditLogExportFactory(c, "acme"),
-		orgAuditLogExportArgs{
-			format:            "cef",
-			continuationToken: "prev-page",
-			output:            "json",
-		})
+		stubOrgAuditLogExportFactory(c, "acme"), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, []orgAuditLogExportCall{
 		{
 			org: "acme",
 			opts: client.ExportAuditLogsOptions{
-				Format:            "cef",
-				ContinuationToken: "prev-page",
+				Format: "cef",
 			},
 		},
 	}, c.calls)
@@ -163,26 +164,13 @@ func TestOrgAuditLogExport_InvalidFormat(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgAuditLogExport(t.Context(), &buf,
 		stubOrgAuditLogExportFactory(c, "acme"),
-		orgAuditLogExportArgs{format: "xml"})
+		orgAuditLogExportArgs{
+			outputFormat: defaultOrgAuditLogExportOutputFormat(),
+			format:       "xml",
+		})
 	require.Error(t, err)
 	assert.Equal(t,
 		`invalid --format value "xml" (must be 'csv' or 'cef')`,
-		err.Error())
-	assert.Empty(t, c.calls)
-	assert.Equal(t, "", buf.String())
-}
-
-func TestOrgAuditLogExport_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockOrgAuditLogExportClient{}
-	var buf bytes.Buffer
-	err := runOrgAuditLogExport(t.Context(), &buf,
-		stubOrgAuditLogExportFactory(c, "acme"),
-		orgAuditLogExportArgs{format: "csv", output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
 		err.Error())
 	assert.Empty(t, c.calls)
 	assert.Equal(t, "", buf.String())
@@ -202,7 +190,10 @@ func TestOrgAuditLogExport_ClientErrorPropagated(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgAuditLogExport(t.Context(), &buf,
 		stubOrgAuditLogExportFactory(c, "acme"),
-		orgAuditLogExportArgs{format: "csv"})
+		orgAuditLogExportArgs{
+			outputFormat: defaultOrgAuditLogExportOutputFormat(),
+			format:       "csv",
+		})
 	require.Error(t, err)
 	assert.Equal(t, "exporting audit logs: boom", err.Error())
 	assert.Equal(t, "", buf.String())
@@ -214,7 +205,10 @@ func TestOrgAuditLogExport_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgAuditLogExport(t.Context(), &buf,
 		failingOrgAuditLogExportFactory(errors.New("not logged in")),
-		orgAuditLogExportArgs{format: "csv"})
+		orgAuditLogExportArgs{
+			outputFormat: defaultOrgAuditLogExportOutputFormat(),
+			format:       "csv",
+		})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 	assert.Equal(t, "", buf.String())

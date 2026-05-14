@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -55,8 +56,17 @@ type orgMemberGetClientFactory func(
 
 // orgMemberGetArgs collects the flag values for the get command.
 type orgMemberGetArgs struct {
-	org    string
-	output string
+	org          string
+	outputFormat outputflag.OutputFlag[orgMemberGetRenderFunc]
+}
+
+// defaultOrgMemberGetOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultOrgMemberGetOutputFormat() outputflag.OutputFlag[orgMemberGetRenderFunc] {
+	return outputflag.OutputFlag[orgMemberGetRenderFunc]{
+		RenderForTerminal: renderOrgMemberGetText,
+		RenderJSON:        renderOrgMemberGetJSON,
+	}
 }
 
 // newOrgMemberGetCmd builds `pulumi org member get` with the production
@@ -68,6 +78,7 @@ func newOrgMemberGetCmd() *cobra.Command {
 func newOrgMemberGetCmdWith(factory orgMemberGetClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "orgMemberGetClientFactory must not be nil")
 	var args orgMemberGetArgs
+	args.outputFormat = defaultOrgMemberGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -76,10 +87,7 @@ func newOrgMemberGetCmdWith(factory orgMemberGetClientFactory) *cobra.Command {
 		Long: "[EXPERIMENTAL] Get a member of an organization.\n" +
 			"\n" +
 			"Retrieves a single organization member by GitHub login. Matching is\n" +
-			"case-insensitive. The Pulumi Cloud REST API does not expose a singular\n" +
-			"GET for organization members, so this command pages through the\n" +
-			"`ListOrganizationMembers` endpoint until it finds the requested user\n" +
-			"or exhausts the list.\n" +
+			"case-insensitive.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"raw member record as JSON.",
@@ -100,8 +108,7 @@ func newOrgMemberGetCmdWith(factory orgMemberGetClientFactory) *cobra.Command {
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the member")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -155,11 +162,6 @@ func runOrgMemberGet(
 	ctx context.Context, w io.Writer,
 	factory orgMemberGetClientFactory, userLogin string, args orgMemberGetArgs,
 ) error {
-	render, err := orgMemberGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
@@ -170,7 +172,7 @@ func runOrgMemberGet(
 		return err
 	}
 
-	return render(w, member)
+	return args.outputFormat.Get()(w, member)
 }
 
 // findOrganizationMember pages through ListOrganizationMembers and returns
@@ -204,17 +206,6 @@ func findOrganizationMember(
 }
 
 type orgMemberGetRenderFunc func(w io.Writer, member apitype.OrganizationMember) error
-
-func orgMemberGetRenderer(format string) (orgMemberGetRenderFunc, error) {
-	switch format {
-	case "", "default":
-		return renderOrgMemberGetText, nil
-	case "json":
-		return renderOrgMemberGetJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 func renderOrgMemberGetText(w io.Writer, member apitype.OrganizationMember) error {
 	name := member.User.Name

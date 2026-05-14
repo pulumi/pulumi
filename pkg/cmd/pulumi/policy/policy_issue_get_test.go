@@ -83,7 +83,8 @@ func TestPolicyIssueGet_DefaultOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
 	c := &mockPolicyIssueGetClient{resp: samplePolicyIssue()}
 	err := runPolicyIssueGet(t.Context(), buf,
-		stubPolicyIssueGetFactory(c, "acme"), "issue-1", policyIssueGetArgs{})
+		stubPolicyIssueGetFactory(c, "acme"), "issue-1",
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, `ID:                  issue-1
@@ -106,9 +107,10 @@ func TestPolicyIssueGet_JSONOutput(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	c := &mockPolicyIssueGetClient{resp: samplePolicyIssue()}
+	args := policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyIssueGet(t.Context(), buf,
-		stubPolicyIssueGetFactory(c, "acme"), "issue-1",
-		policyIssueGetArgs{output: "json"})
+		stubPolicyIssueGetFactory(c, "acme"), "issue-1", args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -127,30 +129,14 @@ func TestPolicyIssueGet_JSONOutput(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestPolicyIssueGet_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	buf := &bytes.Buffer{}
-	c := &mockPolicyIssueGetClient{resp: samplePolicyIssue()}
-	err := runPolicyIssueGet(t.Context(), buf,
-		stubPolicyIssueGetFactory(c, "acme"), "issue-1",
-		policyIssueGetArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	// Validation must run before the API call.
-	assert.Equal(t, "", c.gotOrg)
-	assert.Equal(t, "", c.gotIssueID)
-}
-
 func TestPolicyIssueGet_ClientError(t *testing.T) {
 	t.Parallel()
 
 	buf := &bytes.Buffer{}
 	c := &mockPolicyIssueGetClient{err: errors.New("not found")}
 	err := runPolicyIssueGet(t.Context(), buf,
-		stubPolicyIssueGetFactory(c, "acme"), "missing", policyIssueGetArgs{})
+		stubPolicyIssueGetFactory(c, "acme"), "missing",
+		policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "getting policy issue: not found", err.Error())
 }
@@ -161,7 +147,7 @@ func TestPolicyIssueGet_FactoryError(t *testing.T) {
 	buf := &bytes.Buffer{}
 	err := runPolicyIssueGet(t.Context(), buf,
 		failingPolicyIssueGetFactory(errors.New("not logged in")),
-		"issue-1", policyIssueGetArgs{})
+		"issue-1", policyIssueGetArgs{outputFormat: defaultPolicyIssueGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }

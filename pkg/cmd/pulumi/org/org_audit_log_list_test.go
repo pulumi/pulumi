@@ -19,6 +19,7 @@ package org
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -28,6 +29,18 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
+
+// fakeAuditLogListClient stubs orgAuditLogListClient with a dynamic response
+// function so tests can drive multi-page scenarios.
+type fakeAuditLogListClient struct {
+	nextResp func(ctx context.Context, org string, opts client.ListAuditLogsOptions) apitype.ListAuditLogEventsResponse
+}
+
+func (f *fakeAuditLogListClient) ListAuditLogs(
+	ctx context.Context, org string, opts client.ListAuditLogsOptions,
+) (apitype.ListAuditLogEventsResponse, error) {
+	return f.nextResp(ctx, org, opts), nil
+}
 
 // orgAuditLogListCall records a single ListAuditLogs invocation made by the
 // command under test.
@@ -91,9 +104,10 @@ func TestOrgAuditLogList_DefaultOutput(t *testing.T) {
 	err := runOrgAuditLogList(t.Context(), &buf,
 		stubOrgAuditLogListFactory(c, "acme"),
 		orgAuditLogListArgs{
-			eventType: "stack.create",
-			user:      "alice",
-			startTime: "1735000000",
+			outputFormat: defaultOrgAuditLogListOutputFormat(),
+			eventType:    "stack.create",
+			user:         "alice",
+			startTime:    "1735000000",
 		})
 	require.NoError(t, err)
 
@@ -127,35 +141,50 @@ func TestOrgAuditLogList_EmptyText(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgAuditLogList(t.Context(), &buf,
 		stubOrgAuditLogListFactory(c, "acme"),
-		orgAuditLogListArgs{})
+		orgAuditLogListArgs{outputFormat: defaultOrgAuditLogListOutputFormat()})
 	require.NoError(t, err)
 	assert.Equal(t, "No audit log events found.\n", buf.String())
 }
 
-func TestOrgAuditLogList_TextContinuationHint(t *testing.T) {
+func TestOrgAuditLogList_AutoPaginatesWithCount(t *testing.T) {
 	t.Parallel()
 
-	c := &mockOrgAuditLogListClient{
-		resp: apitype.ListAuditLogEventsResponse{
-			AuditLogEvents:    []apitype.AuditLogEvent{sampleAuditLogEvent()},
-			ContinuationToken: "next-page",
+	// First page has 1 event with a continuation token; second page has another
+	// event. --count=2 should drive a second call.
+	page2Event := sampleAuditLogEvent()
+	page2Event.Name = "stack.delete"
+
+	calls := 0
+	c := &fakeAuditLogListClient{
+		nextResp: func(_ context.Context, _ string, opts client.ListAuditLogsOptions) apitype.ListAuditLogEventsResponse {
+			calls++
+			if opts.ContinuationToken == "" {
+				return apitype.ListAuditLogEventsResponse{
+					AuditLogEvents:    []apitype.AuditLogEvent{sampleAuditLogEvent()},
+					ContinuationToken: "tok",
+				}
+			}
+			return apitype.ListAuditLogEventsResponse{
+				AuditLogEvents: []apitype.AuditLogEvent{page2Event},
+			}
 		},
 	}
 
+	args := orgAuditLogListArgs{
+		outputFormat: defaultOrgAuditLogListOutputFormat(),
+		count:        2,
+	}
+	require.NoError(t, args.outputFormat.Set("json"))
+
 	var buf bytes.Buffer
 	err := runOrgAuditLogList(t.Context(), &buf,
-		stubOrgAuditLogListFactory(c, "acme"),
-		orgAuditLogListArgs{})
+		stubOrgAuditLogListFactory(c, "acme"), args)
 	require.NoError(t, err)
+	assert.Equal(t, 2, calls)
 
-	expected := "" +
-		"┌──────────────────────┬───────┬───────┬──────────────┬─────────────┐\n" +
-		"│ TIMESTAMP            │ USER  │ EVENT │ NAME         │ SOURCE IP   │\n" +
-		"├──────────────────────┼───────┼───────┼──────────────┼─────────────┤\n" +
-		"│ 2025-01-02T03:04:05Z │ alice │ stack │ stack.create │ 203.0.113.7 │\n" +
-		"└──────────────────────┴───────┴───────┴──────────────┴─────────────┘\n" +
-		"\nMore results available. Re-run with --continuation-token \"next-page\" to continue.\n"
-	assert.Equal(t, expected, buf.String())
+	var envelope auditLogListEnvelope
+	require.NoError(t, json.Unmarshal(buf.Bytes(), &envelope))
+	assert.Equal(t, 2, envelope.Count)
 }
 
 func TestOrgAuditLogList_JSONOutput(t *testing.T) {
@@ -163,26 +192,22 @@ func TestOrgAuditLogList_JSONOutput(t *testing.T) {
 
 	c := &mockOrgAuditLogListClient{
 		resp: apitype.ListAuditLogEventsResponse{
-			AuditLogEvents:    []apitype.AuditLogEvent{sampleAuditLogEvent()},
-			ContinuationToken: "next-page",
+			AuditLogEvents: []apitype.AuditLogEvent{sampleAuditLogEvent()},
 		},
 	}
 
+	args := orgAuditLogListArgs{outputFormat: defaultOrgAuditLogListOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
+
 	var buf bytes.Buffer
 	err := runOrgAuditLogList(t.Context(), &buf,
-		stubOrgAuditLogListFactory(c, "acme"),
-		orgAuditLogListArgs{
-			continuationToken: "prev-page",
-			output:            "json",
-		})
+		stubOrgAuditLogListFactory(c, "acme"), args)
 	require.NoError(t, err)
 
 	assert.Equal(t, []orgAuditLogListCall{
 		{
-			org: "acme",
-			opts: client.ListAuditLogsOptions{
-				ContinuationToken: "prev-page",
-			},
+			org:  "acme",
+			opts: client.ListAuditLogsOptions{},
 		},
 	}, c.calls)
 
@@ -199,7 +224,7 @@ func TestOrgAuditLogList_JSONOutput(t *testing.T) {
 			},
 			"event": "stack"
 		}],
-		"continuationToken": "next-page"
+		"count": 1
 	}`, buf.String())
 }
 
@@ -212,32 +237,18 @@ func TestOrgAuditLogList_JSONNilSliceNormalized(t *testing.T) {
 		},
 	}
 
+	args := orgAuditLogListArgs{outputFormat: defaultOrgAuditLogListOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
+
 	var buf bytes.Buffer
 	err := runOrgAuditLogList(t.Context(), &buf,
-		stubOrgAuditLogListFactory(c, "acme"),
-		orgAuditLogListArgs{output: "json"})
+		stubOrgAuditLogListFactory(c, "acme"), args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
 		"events": [],
-		"continuationToken": ""
+		"count": 0
 	}`, buf.String())
-}
-
-func TestOrgAuditLogList_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockOrgAuditLogListClient{}
-	var buf bytes.Buffer
-	err := runOrgAuditLogList(t.Context(), &buf,
-		stubOrgAuditLogListFactory(c, "acme"),
-		orgAuditLogListArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	assert.Empty(t, c.calls)
-	assert.Equal(t, "", buf.String())
 }
 
 func TestOrgAuditLogList_ClientErrorPropagated(t *testing.T) {
@@ -254,7 +265,7 @@ func TestOrgAuditLogList_ClientErrorPropagated(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgAuditLogList(t.Context(), &buf,
 		stubOrgAuditLogListFactory(c, "acme"),
-		orgAuditLogListArgs{})
+		orgAuditLogListArgs{outputFormat: defaultOrgAuditLogListOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "listing audit logs: boom", err.Error())
 	assert.Equal(t, "", buf.String())
@@ -266,7 +277,7 @@ func TestOrgAuditLogList_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgAuditLogList(t.Context(), &buf,
 		failingOrgAuditLogListFactory(errors.New("not logged in")),
-		orgAuditLogListArgs{})
+		orgAuditLogListArgs{outputFormat: defaultOrgAuditLogListOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 	assert.Equal(t, "", buf.String())

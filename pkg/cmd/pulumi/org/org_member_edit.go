@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -36,9 +37,7 @@ import (
 )
 
 // orgMemberEditClient is the narrow subset of cloud-API operations the edit
-// command needs. The PATCH endpoint does not return the updated record, so a
-// read-back through `ListOrganizationMembers` is required to render the
-// post-update state.
+// command needs.
 type orgMemberEditClient interface {
 	UpdateOrganizationMember(
 		ctx context.Context, orgName, userLogin string, req apitype.UpdateOrganizationMemberRequest,
@@ -60,10 +59,10 @@ type orgMemberEditClientFactory func(
 // function distinguish an explicit empty `--role ""` from "user did not pass
 // --role", and lets tests drive the command without spinning up cobra.
 type orgMemberEditArgs struct {
-	org       string
-	output    string
-	role      string
-	fgaRoleID string
+	org          string
+	outputFormat outputflag.OutputFlag[orgMemberGetRenderFunc]
+	role         string
+	fgaRoleID    string
 
 	// changedFlags records which mutation flags were set by the user. Keys
 	// are flag names: "role", "fga-role-id".
@@ -79,6 +78,7 @@ func newOrgMemberEditCmd() *cobra.Command {
 func newOrgMemberEditCmdWith(factory orgMemberEditClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "orgMemberEditClientFactory must not be nil")
 	var args orgMemberEditArgs
+	args.outputFormat = defaultOrgMemberGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -92,9 +92,6 @@ func newOrgMemberEditCmdWith(factory orgMemberEditClientFactory) *cobra.Command 
 			"service uses --fga-role-id. At least one of --role or --fga-role-id\n" +
 			"must be supplied.\n" +
 			"\n" +
-			"Wraps the `UpdateOrganizationMember` Pulumi Cloud REST endpoint. The\n" +
-			"endpoint does not return the updated record, so this command fetches\n" +
-			"the member after a successful PATCH to render the current state.\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"raw member record as JSON.",
 		Example: "  # Promote a member to admin in the default organization\n" +
@@ -115,8 +112,7 @@ func newOrgMemberEditCmdWith(factory orgMemberEditClientFactory) *cobra.Command 
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the member")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 	cmd.Flags().StringVar(&args.role, "role", "",
 		"The built-in role to assign: member, admin, or billingManager")
 	cmd.Flags().StringVar(&args.fgaRoleID, "fga-role-id", "",
@@ -186,11 +182,6 @@ func runOrgMemberEdit(
 	ctx context.Context, w io.Writer,
 	factory orgMemberEditClientFactory, userLogin string, args orgMemberEditArgs,
 ) error {
-	render, err := orgMemberGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	roleChanged := args.changedFlags["role"]
 	fgaChanged := args.changedFlags["fga-role-id"]
 	if !roleChanged && !fgaChanged {
@@ -222,5 +213,5 @@ func runOrgMemberEdit(
 		return fmt.Errorf("reading organization member after edit: %w", err)
 	}
 
-	return render(w, member)
+	return args.outputFormat.Get()(w, member)
 }

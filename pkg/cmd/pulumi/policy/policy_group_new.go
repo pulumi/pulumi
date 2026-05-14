@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -54,8 +55,8 @@ type policyGroupNewClientFactory func(
 
 // policyGroupNewArgs collects the flag values for the new command.
 type policyGroupNewArgs struct {
-	org    string
-	output string
+	org          string
+	outputFormat outputflag.OutputFlag[policyGroupGetRenderFunc]
 }
 
 // newPolicyGroupNewCmd builds `pulumi policy group new` with the production
@@ -67,6 +68,7 @@ func newPolicyGroupNewCmd() *cobra.Command {
 func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "policyGroupNewClientFactory must not be nil")
 	var args policyGroupNewArgs
+	args.outputFormat = defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -78,10 +80,8 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 			"define which Policy Packs are enforced on which stacks or cloud\n" +
 			"accounts, with configurable enforcement levels per pack.\n" +
 			"\n" +
-			"Wraps the `NewPolicyGroup` Pulumi Cloud REST endpoint. On success the\n" +
-			"created group is fetched and rendered; default output is a\n" +
-			"human-readable summary, pass --output=json for the full response as\n" +
-			"JSON.",
+			"On success the created group is fetched and rendered. Default output is a\n" +
+			"human-readable summary; pass --output=json for the full response as JSON.",
 		Example: "  # Create a Policy Group in the default organization\n" +
 			"  pulumi policy group new prod-policies\n\n" +
 			"  # Create a Policy Group in a specific organization and emit JSON\n" +
@@ -99,8 +99,7 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization to create the Policy Group in")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -154,11 +153,6 @@ func runPolicyGroupNew(
 	ctx context.Context, w io.Writer,
 	factory policyGroupNewClientFactory, name string, args policyGroupNewArgs,
 ) error {
-	render, err := policyGroupGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
@@ -173,5 +167,5 @@ func runPolicyGroupNew(
 		return fmt.Errorf("reading policy group after create: %w", err)
 	}
 
-	return render(w, resp)
+	return args.outputFormat.Get()(w, resp)
 }

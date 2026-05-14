@@ -31,6 +31,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -56,8 +57,17 @@ type deploymentGetClientFactory func(
 // deploymentGetArgs collects the flag values for the get command, in one
 // struct so Run can be driven directly from tests.
 type deploymentGetArgs struct {
-	stack  string
-	output string
+	stack        string
+	outputFormat outputflag.OutputFlag[deploymentGetRenderFunc]
+}
+
+// defaultDeploymentGetOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultDeploymentGetOutputFormat() outputflag.OutputFlag[deploymentGetRenderFunc] {
+	return outputflag.OutputFlag[deploymentGetRenderFunc]{
+		RenderForTerminal: renderDeploymentGetText,
+		RenderJSON:        renderDeploymentGetJSON,
+	}
 }
 
 // newDeploymentGetCmd builds `pulumi deployment get` with the production
@@ -70,6 +80,7 @@ func newDeploymentGetCmd() *cobra.Command {
 func newDeploymentGetCmdWith(factory deploymentGetClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "deploymentGetClientFactory must not be nil")
 	var args deploymentGetArgs
+	args.outputFormat = defaultDeploymentGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -83,8 +94,8 @@ func newDeploymentGetCmdWith(factory deploymentGetClientFactory) *cobra.Command 
 			"the deployment, the Pulumi operation type, the list of jobs (with their\n" +
 			"step-level status), and any stack updates produced by the deployment.\n" +
 			"\n" +
-			"Wraps the `GetDeployment` Pulumi Cloud REST endpoint. Default output is a\n" +
-			"human-readable summary; pass --output=json for the full response as JSON.",
+			"Default output is a human-readable summary; pass --output=json for the full\n" +
+			"response as JSON.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runDeploymentGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -99,8 +110,7 @@ func newDeploymentGetCmdWith(factory deploymentGetClientFactory) *cobra.Command 
 
 	cmd.Flags().StringVarP(&args.stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -152,11 +162,6 @@ func runDeploymentGet(
 	ctx context.Context, w io.Writer,
 	factory deploymentGetClientFactory, deploymentID string, args deploymentGetArgs,
 ) error {
-	render, err := deploymentGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, stackID, err := factory(ctx, args.stack)
 	if err != nil {
 		return err
@@ -167,21 +172,10 @@ func runDeploymentGet(
 		return fmt.Errorf("getting deployment: %w", err)
 	}
 
-	return render(w, resp)
+	return args.outputFormat.Get()(w, resp)
 }
 
 type deploymentGetRenderFunc func(w io.Writer, resp apitype.GetDeploymentResponse) error
-
-func deploymentGetRenderer(format string) (deploymentGetRenderFunc, error) {
-	switch format {
-	case "", "default":
-		return renderDeploymentGetText, nil
-	case "json":
-		return renderDeploymentGetJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 // renderDeploymentGetText prints a human-readable summary of a single
 // deployment as aligned key/value pairs.

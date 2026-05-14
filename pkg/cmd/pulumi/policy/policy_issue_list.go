@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -57,10 +58,19 @@ type policyIssueListClientFactory func(
 // policyIssueListArgs collects the flag values for the list command, in one
 // struct so Run can be driven directly from tests.
 type policyIssueListArgs struct {
-	org      string
-	page     int64
-	pageSize int64
-	output   string
+	org          string
+	count        int64
+	all          bool
+	outputFormat outputflag.OutputFlag[policyIssueListRenderFunc]
+}
+
+// defaultPolicyIssueListOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultPolicyIssueListOutputFormat() outputflag.OutputFlag[policyIssueListRenderFunc] {
+	return outputflag.OutputFlag[policyIssueListRenderFunc]{
+		RenderForTerminal: renderPolicyIssueListTable,
+		RenderJSON:        renderPolicyIssueListJSON,
+	}
 }
 
 // newPolicyIssueListCmd builds `pulumi policy issue list` with the production
@@ -73,6 +83,7 @@ func newPolicyIssueListCmd() *cobra.Command {
 func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "policyIssueListClientFactory must not be nil")
 	var args policyIssueListArgs
+	args.outputFormat = defaultPolicyIssueListOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -80,14 +91,13 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 		Short:  "[EXPERIMENTAL] List all policy issues for an organization",
 		Long: "[EXPERIMENTAL] List all policy issues for an organization.\n" +
 			"\n" +
-			"Returns a paginated list of policy issues for the organization. Each\n" +
-			"issue represents a violation detected by a Policy Pack during a stack\n" +
-			"update or a continuous-compliance scan, and includes the violating\n" +
-			"resource, policy details, and enforcement level.\n" +
+			"Returns a list of policy issues for the organization. Each issue\n" +
+			"represents a violation detected by a Policy Pack during a stack update\n" +
+			"or a continuous-compliance scan, and includes the violating resource,\n" +
+			"policy details, and enforcement level.\n" +
 			"\n" +
-			"Wraps the `ListPolicyIssues` Pulumi Cloud REST endpoint. Default output\n" +
-			"is a human-readable table; pass --output=json for the full response as\n" +
-			"a JSON envelope.",
+			"Default output is a human-readable table; pass --output=json for the\n" +
+			"full response as a JSON envelope.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runPolicyIssueList(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
@@ -96,10 +106,12 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization to list policy issues for")
-	cmd.Flags().Int64Var(&args.page, "page", 1, "The page of results to return (min 1)")
-	cmd.Flags().Int64Var(&args.pageSize, "page-size", 10, "The number of results per page")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	cmd.Flags().Int64Var(&args.count, "count", 0,
+		"Maximum number of issues to return. Defaults to the size of the first page; "+
+			"larger values auto-paginate")
+	cmd.Flags().BoolVar(&args.all, "all", false, "Return all matching issues; mutually exclusive with --count")
+	cmd.MarkFlagsMutuallyExclusive("count", "all")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -153,41 +165,59 @@ func runPolicyIssueList(
 	ctx context.Context, w io.Writer,
 	factory policyIssueListClientFactory, args policyIssueListArgs,
 ) error {
-	render, err := policyIssueListRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{
-		Page:     args.page,
-		PageSize: args.pageSize,
-	})
+	// Fetch the first page using the server's default page size, then
+	// continue paginating until we satisfy --count (if set) or exhaust the
+	// list (when --all). When neither is set, return the first page.
+	first, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{Page: 1})
 	if err != nil {
 		return fmt.Errorf("listing policy issues: %w", err)
 	}
 
-	return render(w, args, resp)
+	issues := first.Issues
+	total := first.Total
+	pageSize := first.ItemsPerPage
+	want := args.count
+	all := args.all
+
+	// Continue paginating if --all or if --count exceeds the first page size.
+	if all || (want > int64(len(issues)) && pageSize > 0) {
+		for page := int64(2); all || int64(len(issues)) < want; page++ {
+			if total > 0 && int64(len(issues)) >= total {
+				break
+			}
+			next, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{
+				Page:     page,
+				PageSize: pageSize,
+			})
+			if err != nil {
+				return fmt.Errorf("listing policy issues: %w", err)
+			}
+			if len(next.Issues) == 0 {
+				break
+			}
+			issues = append(issues, next.Issues...)
+		}
+	}
+
+	// Trim to --count if it bounds the response shorter than what we fetched.
+	if !all && want > 0 && int64(len(issues)) > want {
+		issues = issues[:want]
+	}
+
+	return args.outputFormat.Get()(w, apitype.ListPolicyIssuesResponse{
+		Issues: issues,
+		Total:  total,
+	})
 }
 
 type policyIssueListRenderFunc func(
-	w io.Writer, args policyIssueListArgs, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp apitype.ListPolicyIssuesResponse,
 ) error
-
-func policyIssueListRenderer(format string) (policyIssueListRenderFunc, error) {
-	switch format {
-	case "", "default", "table":
-		return renderPolicyIssueListTable, nil
-	case "json":
-		return renderPolicyIssueListJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 // policyIssueMessageMax is the maximum width of the message column in the
 // human-readable table. Longer messages are truncated with an ellipsis so the
@@ -210,7 +240,7 @@ func truncateMessage(s string, max int) string {
 }
 
 func renderPolicyIssueListTable(
-	w io.Writer, args policyIssueListArgs, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp apitype.ListPolicyIssuesResponse,
 ) error {
 	if len(resp.Issues) == 0 {
 		fmt.Fprintln(w, "No policy issues found for this organization.")
@@ -249,27 +279,19 @@ func renderPolicyIssueListTable(
 	}
 	t.Render()
 
-	fmt.Fprintf(w, "\nShowing %d of %d policy issue(s)", len(resp.Issues), resp.Total)
-	if args.page > 0 {
-		fmt.Fprintf(w, " (page %d)", args.page)
-	}
-	fmt.Fprintln(w)
+	fmt.Fprintf(w, "\nShowing %d of %d policy issue(s)\n", len(resp.Issues), resp.Total)
 	return nil
 }
 
 // policyIssueListEnvelope is the JSON shape emitted by
-// `pulumi policy issue list --output=json`. It mirrors the API response but
-// adds the page number the client asked for, which the server doesn't echo
-// back, so scripts can keep paginating without remembering their own state.
+// `pulumi policy issue list --output=json`.
 type policyIssueListEnvelope struct {
-	Issues       []apitype.PolicyIssue `json:"issues"`
-	Page         int64                 `json:"page"`
-	ItemsPerPage int64                 `json:"itemsPerPage"`
-	Total        int64                 `json:"total"`
+	Issues []apitype.PolicyIssue `json:"issues"`
+	Total  int64                 `json:"total"`
 }
 
 func renderPolicyIssueListJSON(
-	w io.Writer, args policyIssueListArgs, resp apitype.ListPolicyIssuesResponse,
+	w io.Writer, resp apitype.ListPolicyIssuesResponse,
 ) error {
 	issues := resp.Issues
 	if issues == nil {
@@ -279,9 +301,7 @@ func renderPolicyIssueListJSON(
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	return enc.Encode(policyIssueListEnvelope{
-		Issues:       issues,
-		Page:         args.page,
-		ItemsPerPage: resp.ItemsPerPage,
-		Total:        resp.Total,
+		Issues: issues,
+		Total:  resp.Total,
 	})
 }

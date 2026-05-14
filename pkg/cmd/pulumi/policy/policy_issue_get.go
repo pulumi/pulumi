@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -55,8 +56,17 @@ type policyIssueGetClientFactory func(
 // policyIssueGetArgs collects the flag values for the get command, in one
 // struct so Run can be driven directly from tests.
 type policyIssueGetArgs struct {
-	org    string
-	output string
+	org          string
+	outputFormat outputflag.OutputFlag[policyIssueGetRenderFunc]
+}
+
+// defaultPolicyIssueGetOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultPolicyIssueGetOutputFormat() outputflag.OutputFlag[policyIssueGetRenderFunc] {
+	return outputflag.OutputFlag[policyIssueGetRenderFunc]{
+		RenderForTerminal: renderPolicyIssueGetText,
+		RenderJSON:        renderPolicyIssueGetJSON,
+	}
 }
 
 // newPolicyIssueGetCmd builds `pulumi policy issue get` with the production
@@ -69,6 +79,7 @@ func newPolicyIssueGetCmd() *cobra.Command {
 func newPolicyIssueGetCmdWith(factory policyIssueGetClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "policyIssueGetClientFactory must not be nil")
 	var args policyIssueGetArgs
+	args.outputFormat = defaultPolicyIssueGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -81,9 +92,8 @@ func newPolicyIssueGetCmdWith(factory policyIssueGetClientFactory) *cobra.Comman
 			"enforcement level, severity, and the human-readable message produced\n" +
 			"by the policy.\n" +
 			"\n" +
-			"Wraps the `GetPolicyIssue` Pulumi Cloud REST endpoint. Default output\n" +
-			"is a human-readable summary; pass --output=json for the full response\n" +
-			"as JSON.",
+			"Default output is a human-readable summary; pass --output=json for the\n" +
+			"full response as JSON.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyIssueGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -97,8 +107,7 @@ func newPolicyIssueGetCmdWith(factory policyIssueGetClientFactory) *cobra.Comman
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the issue")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -152,11 +161,6 @@ func runPolicyIssueGet(
 	ctx context.Context, w io.Writer,
 	factory policyIssueGetClientFactory, issueID string, args policyIssueGetArgs,
 ) error {
-	render, err := policyIssueGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
@@ -167,21 +171,10 @@ func runPolicyIssueGet(
 		return fmt.Errorf("getting policy issue: %w", err)
 	}
 
-	return render(w, resp)
+	return args.outputFormat.Get()(w, resp)
 }
 
 type policyIssueGetRenderFunc func(w io.Writer, resp apitype.PolicyIssue) error
-
-func policyIssueGetRenderer(format string) (policyIssueGetRenderFunc, error) {
-	switch format {
-	case "", "default":
-		return renderPolicyIssueGetText, nil
-	case "json":
-		return renderPolicyIssueGetJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 	pack := issue.PolicyPackName

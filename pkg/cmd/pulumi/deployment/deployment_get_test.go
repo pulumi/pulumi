@@ -58,6 +58,13 @@ func failingGetFactory(err error) deploymentGetClientFactory {
 	}
 }
 
+func deploymentGetJSONArgs(t *testing.T) deploymentGetArgs {
+	t.Helper()
+	args := deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
+	return args
+}
+
 func sampleGetResponse() apitype.GetDeploymentResponse {
 	return apitype.GetDeploymentResponse{
 		ID:              "dep-1",
@@ -86,7 +93,8 @@ func TestDeploymentGet_DefaultOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockDeploymentGetClient{resp: sampleGetResponse()}
-	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "dep-1", deploymentGetArgs{})
+	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "dep-1",
+		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, `ID:                dep-1
@@ -110,7 +118,7 @@ func TestDeploymentGet_JSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockDeploymentGetClient{resp: sampleGetResponse()}
 	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "dep-1",
-		deploymentGetArgs{output: "json"})
+		deploymentGetJSONArgs(t))
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -159,7 +167,7 @@ func TestDeploymentGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockDeploymentGetClient{resp: resp}
 	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "dep-bare",
-		deploymentGetArgs{output: "json"})
+		deploymentGetJSONArgs(t))
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -184,24 +192,13 @@ func TestDeploymentGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestDeploymentGet_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockDeploymentGetClient{resp: sampleGetResponse()}
-	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "dep-1",
-		deploymentGetArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
-}
-
 func TestDeploymentGet_ClientError(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
 	c := &mockDeploymentGetClient{err: errors.New("not found")}
 	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "dep-missing",
-		deploymentGetArgs{})
+		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting deployment")
 	assert.Contains(t, err.Error(), "not found")
@@ -212,7 +209,8 @@ func TestDeploymentGet_FactoryError(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runDeploymentGet(t.Context(), &buf,
-		failingGetFactory(errors.New("not logged in")), "dep-1", deploymentGetArgs{})
+		failingGetFactory(errors.New("not logged in")), "dep-1",
+		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
@@ -223,7 +221,7 @@ func TestDeploymentGet_DeploymentIDPropagation(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockDeploymentGetClient{resp: sampleGetResponse()}
 	err := runDeploymentGet(t.Context(), &buf, stubGetFactory(c), "my-dep-id",
-		deploymentGetArgs{})
+		deploymentGetArgs{outputFormat: defaultDeploymentGetOutputFormat()})
 	require.NoError(t, err)
 	assert.Equal(t, "my-dep-id", c.gotID)
 }

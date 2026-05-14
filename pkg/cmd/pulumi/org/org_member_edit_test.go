@@ -101,6 +101,7 @@ func TestOrgMemberEdit_DefaultOutput_RoleOnly(t *testing.T) {
 	err := runOrgMemberEdit(t.Context(), &buf,
 		stubOrgMemberEditFactory(c, "acme"), "alice",
 		orgMemberEditArgs{
+			outputFormat: defaultOrgMemberGetOutputFormat(),
 			role:         "admin",
 			changedFlags: map[string]bool{"role": true},
 		})
@@ -134,15 +135,16 @@ func TestOrgMemberEdit_JSONOutput_BothFlags(t *testing.T) {
 		},
 	}
 
+	args := orgMemberEditArgs{
+		outputFormat: defaultOrgMemberGetOutputFormat(),
+		role:         "admin",
+		fgaRoleID:    "role-abc",
+		changedFlags: map[string]bool{"role": true, "fga-role-id": true},
+	}
+	require.NoError(t, args.outputFormat.Set("json"))
 	var buf bytes.Buffer
 	err := runOrgMemberEdit(t.Context(), &buf,
-		stubOrgMemberEditFactory(c, "acme"), "alice",
-		orgMemberEditArgs{
-			output:       "json",
-			role:         "admin",
-			fgaRoleID:    "role-abc",
-			changedFlags: map[string]bool{"role": true, "fga-role-id": true},
-		})
+		stubOrgMemberEditFactory(c, "acme"), "alice", args)
 	require.NoError(t, err)
 
 	assert.Equal(t, []orgMemberEditUpdateCall{
@@ -174,27 +176,6 @@ func TestOrgMemberEdit_JSONOutput_BothFlags(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestOrgMemberEdit_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockOrgMemberEditClient{}
-	var buf bytes.Buffer
-	err := runOrgMemberEdit(t.Context(), &buf,
-		stubOrgMemberEditFactory(c, "acme"), "alice",
-		orgMemberEditArgs{
-			output:       "yaml",
-			role:         "admin",
-			changedFlags: map[string]bool{"role": true},
-		})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	// Validation must run before any API call.
-	assert.Empty(t, c.updateCalls)
-	assert.Empty(t, c.listCalls)
-}
-
 func TestOrgMemberEdit_NoFlagsChanged(t *testing.T) {
 	t.Parallel()
 
@@ -203,6 +184,7 @@ func TestOrgMemberEdit_NoFlagsChanged(t *testing.T) {
 	err := runOrgMemberEdit(t.Context(), &buf,
 		stubOrgMemberEditFactory(c, "acme"), "alice",
 		orgMemberEditArgs{
+			outputFormat: defaultOrgMemberGetOutputFormat(),
 			role:         "admin",
 			fgaRoleID:    "role-abc",
 			changedFlags: map[string]bool{"role": false, "fga-role-id": false},
@@ -226,6 +208,7 @@ func TestOrgMemberEdit_UpdateError(t *testing.T) {
 	err := runOrgMemberEdit(t.Context(), &buf,
 		stubOrgMemberEditFactory(c, "acme"), "alice",
 		orgMemberEditArgs{
+			outputFormat: defaultOrgMemberGetOutputFormat(),
 			role:         "admin",
 			changedFlags: map[string]bool{"role": true},
 		})
@@ -248,6 +231,7 @@ func TestOrgMemberEdit_GetAfterPatchError(t *testing.T) {
 	err := runOrgMemberEdit(t.Context(), &buf,
 		stubOrgMemberEditFactory(c, "acme"), "alice",
 		orgMemberEditArgs{
+			outputFormat: defaultOrgMemberGetOutputFormat(),
 			role:         "admin",
 			changedFlags: map[string]bool{"role": true},
 		})
@@ -266,6 +250,7 @@ func TestOrgMemberEdit_FactoryError(t *testing.T) {
 		failingOrgMemberEditFactory(errors.New("not logged in")),
 		"alice",
 		orgMemberEditArgs{
+			outputFormat: defaultOrgMemberGetOutputFormat(),
 			role:         "admin",
 			changedFlags: map[string]bool{"role": true},
 		})

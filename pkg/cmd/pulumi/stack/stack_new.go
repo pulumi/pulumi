@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -65,7 +66,16 @@ type stackNewArgs struct {
 	secretsProvider string
 	encryptedKey    string
 	encryptionSalt  string
-	output          string
+	outputFormat    outputflag.OutputFlag[stackNewRenderFunc]
+}
+
+// defaultStackNewOutputFormat wires the OutputFlag to the per-format renderers
+// so `--output` selects between them.
+func defaultStackNewOutputFormat() outputflag.OutputFlag[stackNewRenderFunc] {
+	return outputflag.OutputFlag[stackNewRenderFunc]{
+		RenderForTerminal: renderStackNewText,
+		RenderJSON:        renderStackNewJSON,
+	}
 }
 
 func newStackNewCmd() *cobra.Command {
@@ -75,6 +85,7 @@ func newStackNewCmd() *cobra.Command {
 func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "stackNewClientFactory must not be nil")
 	var args stackNewArgs
+	args.outputFormat = defaultStackNewOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -86,11 +97,9 @@ func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 			"does not exist it will be created. A stack is an isolated, independently\n" +
 			"configurable instance of a Pulumi program, typically representing a\n" +
 			"deployment environment (e.g. development, staging, production). The\n" +
-			"stack name must be unique within the project.\n" +
-			"\n" +
-			"This command is a thin wrapper for the Pulumi Cloud `CreateStack` REST\n" +
-			"endpoint. It does not select the new stack as the current stack or\n" +
-			"write any local project files.\n" +
+			"stack name must be unique within the project. This command does not\n" +
+			"select the new stack as the current stack or write any local project\n" +
+			"files.\n" +
 			"\n" +
 			"Default output is a human-readable confirmation; pass --output=json for\n" +
 			"the created stack identity and any backend messages as JSON.",
@@ -122,8 +131,7 @@ func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 		"KMS-encrypted ciphertext for the data key (cloud-based secrets providers)")
 	cmd.Flags().StringVar(&args.encryptionSalt, "encryption-salt", "",
 		"Base64-encoded encryption salt (passphrase-based secrets providers)")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -180,11 +188,6 @@ func runStackNew(
 	project, name string,
 	args stackNewArgs,
 ) error {
-	render, err := stackNewRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	stackName, err := tokens.ParseStackName(name)
 	if err != nil {
 		return fmt.Errorf("creating stack: %w", err)
@@ -208,7 +211,7 @@ func runStackNew(
 		return fmt.Errorf("creating stack: %w", err)
 	}
 
-	return render(w, stackID, details)
+	return args.outputFormat.Get()(w, stackID, details)
 }
 
 // buildStackNewConfig returns a *StackConfig only if at least one of the
@@ -228,18 +231,6 @@ func buildStackNewConfig(args stackNewArgs) *apitype.StackConfig {
 }
 
 type stackNewRenderFunc func(w io.Writer, stackID client.StackIdentifier, details client.CreateStackDetails) error
-
-func stackNewRenderer(output string) (stackNewRenderFunc, error) {
-	switch output {
-	case "", "default":
-		return renderStackNewText, nil
-	case "json":
-		return renderStackNewJSON, nil
-	default:
-		return nil, fmt.Errorf(
-			"invalid --output value %q: expected \"default\" or \"json\"", output)
-	}
-}
 
 func renderStackNewText(
 	w io.Writer, stackID client.StackIdentifier, details client.CreateStackDetails,

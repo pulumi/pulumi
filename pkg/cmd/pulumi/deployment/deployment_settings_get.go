@@ -31,6 +31,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -56,8 +57,17 @@ type deploymentSettingsGetClientFactory func(
 // deploymentSettingsGetArgs collects the resolved flag values so Run can be
 // driven directly from tests.
 type deploymentSettingsGetArgs struct {
-	stack  string
-	output string
+	stack        string
+	outputFormat outputflag.OutputFlag[deploymentSettingsGetRenderFunc]
+}
+
+// defaultDeploymentSettingsGetOutputFormat wires the OutputFlag to the
+// per-format renderers so `--output` selects between them.
+func defaultDeploymentSettingsGetOutputFormat() outputflag.OutputFlag[deploymentSettingsGetRenderFunc] {
+	return outputflag.OutputFlag[deploymentSettingsGetRenderFunc]{
+		RenderForTerminal: renderDeploymentSettingsGetText,
+		RenderJSON:        renderDeploymentSettingsGetJSON,
+	}
 }
 
 // newDeploymentSettingsGetCmd builds `pulumi deployment settings get` wired to
@@ -69,6 +79,7 @@ func newDeploymentSettingsGetCmd() *cobra.Command {
 func newDeploymentSettingsGetCmdWith(factory deploymentSettingsGetClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "deploymentSettingsGetClientFactory must not be nil")
 	var args deploymentSettingsGetArgs
+	args.outputFormat = defaultDeploymentSettingsGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -84,8 +95,8 @@ func newDeploymentSettingsGetCmdWith(factory deploymentSettingsGetClientFactory)
 			"Secret material (git credentials and environment variable values) is never\n" +
 			"emitted by this command.\n" +
 			"\n" +
-			"Wraps the `GetDeploymentSettings` Pulumi Cloud REST endpoint. Default output\n" +
-			"is a human-readable summary; pass --output=json for the raw response as JSON.",
+			"Default output is a human-readable summary; pass --output=json for the raw\n" +
+			"response as JSON.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runDeploymentSettingsGet(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
@@ -95,8 +106,7 @@ func newDeploymentSettingsGetCmdWith(factory deploymentSettingsGetClientFactory)
 
 	cmd.Flags().StringVarP(&args.stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -147,11 +157,6 @@ func runDeploymentSettingsGet(
 	ctx context.Context, w io.Writer,
 	factory deploymentSettingsGetClientFactory, args deploymentSettingsGetArgs,
 ) error {
-	render, err := deploymentSettingsGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, stackID, err := factory(ctx, args.stack)
 	if err != nil {
 		return err
@@ -165,21 +170,10 @@ func runDeploymentSettingsGet(
 		resp = &apitype.DeploymentSettings{}
 	}
 
-	return render(w, *resp)
+	return args.outputFormat.Get()(w, *resp)
 }
 
 type deploymentSettingsGetRenderFunc func(w io.Writer, settings apitype.DeploymentSettings) error
-
-func deploymentSettingsGetRenderer(format string) (deploymentSettingsGetRenderFunc, error) {
-	switch format {
-	case "", "default":
-		return renderDeploymentSettingsGetText, nil
-	case "json":
-		return renderDeploymentSettingsGetJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 // renderDeploymentSettingsGetText prints a human-readable summary as aligned
 // key/value pairs. Secrets (git auth, environment variable values) are never

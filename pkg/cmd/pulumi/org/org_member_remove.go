@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -50,8 +51,17 @@ type orgMemberRemoveClientFactory func(
 
 // orgMemberRemoveArgs collects the flag values for the remove command.
 type orgMemberRemoveArgs struct {
-	org    string
-	output string
+	org          string
+	outputFormat outputflag.OutputFlag[orgMemberRemoveRenderFunc]
+}
+
+// defaultOrgMemberRemoveOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultOrgMemberRemoveOutputFormat() outputflag.OutputFlag[orgMemberRemoveRenderFunc] {
+	return outputflag.OutputFlag[orgMemberRemoveRenderFunc]{
+		RenderForTerminal: renderOrgMemberRemoveText,
+		RenderJSON:        renderOrgMemberRemoveJSON,
+	}
 }
 
 // newOrgMemberRemoveCmd builds `pulumi org member remove` with the production
@@ -63,6 +73,7 @@ func newOrgMemberRemoveCmd() *cobra.Command {
 func newOrgMemberRemoveCmdWith(factory orgMemberRemoveClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "orgMemberRemoveClientFactory must not be nil")
 	var args orgMemberRemoveArgs
+	args.outputFormat = defaultOrgMemberRemoveOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -75,9 +86,8 @@ func newOrgMemberRemoveCmdWith(factory orgMemberRemoveClientFactory) *cobra.Comm
 			"caller cannot remove themselves from the organization. The user is\n" +
 			"also removed from all teams they belong to within the organization.\n" +
 			"\n" +
-			"Wraps the `DeleteOrganizationMember` Pulumi Cloud REST endpoint.\n" +
-			"Default output is a human-readable confirmation; pass --output=json\n" +
-			"for a machine-readable summary.",
+			"Default output is a human-readable confirmation; pass --output=json for\n" +
+			"a machine-readable summary.",
 		Example: "  # Remove a member from the default organization\n" +
 			"  pulumi org member remove alice\n\n" +
 			"  # Remove a member from a specific organization and emit JSON\n" +
@@ -95,8 +105,7 @@ func newOrgMemberRemoveCmdWith(factory orgMemberRemoveClientFactory) *cobra.Comm
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the member")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -150,11 +159,6 @@ func runOrgMemberRemove(
 	ctx context.Context, w io.Writer,
 	factory orgMemberRemoveClientFactory, userLogin string, args orgMemberRemoveArgs,
 ) error {
-	render, err := orgMemberRemoveRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
@@ -164,21 +168,10 @@ func runOrgMemberRemove(
 		return fmt.Errorf("removing organization member: %w", err)
 	}
 
-	return render(w, org, userLogin)
+	return args.outputFormat.Get()(w, org, userLogin)
 }
 
 type orgMemberRemoveRenderFunc func(w io.Writer, org, userLogin string) error
-
-func orgMemberRemoveRenderer(format string) (orgMemberRemoveRenderFunc, error) {
-	switch format {
-	case "", "default":
-		return renderOrgMemberRemoveText, nil
-	case "json":
-		return renderOrgMemberRemoveJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 func renderOrgMemberRemoveText(w io.Writer, org, userLogin string) error {
 	fmt.Fprintf(w, "Removed member %s from organization %s.\n", userLogin, org)

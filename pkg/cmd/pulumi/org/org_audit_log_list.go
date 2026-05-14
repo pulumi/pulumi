@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -57,12 +58,22 @@ type orgAuditLogListClientFactory func(
 // orgAuditLogListArgs collects the flag values for the list command, in one
 // struct so Run can be driven directly from tests.
 type orgAuditLogListArgs struct {
-	org               string
-	eventType         string
-	user              string
-	startTime         string
-	continuationToken string
-	output            string
+	org          string
+	eventType    string
+	user         string
+	startTime    string
+	count        int64
+	all          bool
+	outputFormat outputflag.OutputFlag[orgAuditLogListRenderFunc]
+}
+
+// defaultOrgAuditLogListOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultOrgAuditLogListOutputFormat() outputflag.OutputFlag[orgAuditLogListRenderFunc] {
+	return outputflag.OutputFlag[orgAuditLogListRenderFunc]{
+		RenderForTerminal: renderOrgAuditLogListTable,
+		RenderJSON:        renderOrgAuditLogListJSON,
+	}
 }
 
 // newOrgAuditLogListCmd builds `pulumi org audit-log list` with the production
@@ -74,6 +85,7 @@ func newOrgAuditLogListCmd() *cobra.Command {
 func newOrgAuditLogListCmdWith(factory orgAuditLogListClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "orgAuditLogListClientFactory must not be nil")
 	var args orgAuditLogListArgs
+	args.outputFormat = defaultOrgAuditLogListOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -81,17 +93,12 @@ func newOrgAuditLogListCmdWith(factory orgAuditLogListClientFactory) *cobra.Comm
 		Short:  "[EXPERIMENTAL] List audit log events for an organization",
 		Long: "[EXPERIMENTAL] List audit log events for an organization.\n" +
 			"\n" +
-			"Returns a single page of audit log events for the organization.\n" +
-			"Results may be filtered by event type and by the user that triggered\n" +
-			"the event. Use --start-time to bound the upper end of the time range.\n" +
+			"Returns audit log events for the organization. Results may be filtered\n" +
+			"by event type and by the user that triggered the event. Use\n" +
+			"--start-time to bound the upper end of the time range.\n" +
 			"\n" +
-			"The endpoint is paginated; the response includes a continuation token\n" +
-			"when more results are available. Pass that token via\n" +
-			"--continuation-token on a subsequent call to fetch the next page.\n" +
-			"\n" +
-			"Wraps the `ListAuditLogEvents` Pulumi Cloud REST endpoint. Default\n" +
-			"output is a human-readable table; pass --output=json for the full\n" +
-			"response as a JSON envelope.",
+			"Default output is a human-readable table; pass --output=json for the\n" +
+			"full response as a JSON envelope.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runOrgAuditLogList(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
@@ -104,10 +111,12 @@ func newOrgAuditLogListCmdWith(factory orgAuditLogListClientFactory) *cobra.Comm
 	cmd.Flags().StringVar(&args.user, "user", "", "Filter by user login")
 	cmd.Flags().StringVar(&args.startTime, "start-time", "",
 		"The upper bound of the time range (V1 semantics)")
-	cmd.Flags().StringVar(&args.continuationToken, "continuation-token", "",
-		"The continuation token for paginated retrieval")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	cmd.Flags().Int64Var(&args.count, "count", 0,
+		"Maximum number of events to return. Defaults to the size of the first page; "+
+			"larger values auto-paginate")
+	cmd.Flags().BoolVar(&args.all, "all", false, "Return all matching events; mutually exclusive with --count")
+	cmd.MarkFlagsMutuallyExclusive("count", "all")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -161,41 +170,51 @@ func runOrgAuditLogList(
 	ctx context.Context, w io.Writer,
 	factory orgAuditLogListClientFactory, args orgAuditLogListArgs,
 ) error {
-	render, err := orgAuditLogListRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.ListAuditLogs(ctx, org, client.ListAuditLogsOptions{
-		EventType:         args.eventType,
-		User:              args.user,
-		StartTime:         args.startTime,
-		ContinuationToken: args.continuationToken,
+	// Fetch the first page. Auto-paginate when --all is set or --count
+	// exceeds the first page.
+	first, err := c.ListAuditLogs(ctx, org, client.ListAuditLogsOptions{
+		EventType: args.eventType,
+		User:      args.user,
+		StartTime: args.startTime,
 	})
 	if err != nil {
 		return err
 	}
 
-	return render(w, resp)
+	events := first.AuditLogEvents
+	token := first.ContinuationToken
+	want := args.count
+	all := args.all
+
+	for token != "" && (all || want > int64(len(events))) {
+		next, err := c.ListAuditLogs(ctx, org, client.ListAuditLogsOptions{
+			EventType:         args.eventType,
+			User:              args.user,
+			StartTime:         args.startTime,
+			ContinuationToken: token,
+		})
+		if err != nil {
+			return err
+		}
+		events = append(events, next.AuditLogEvents...)
+		token = next.ContinuationToken
+	}
+
+	if !all && want > 0 && int64(len(events)) > want {
+		events = events[:want]
+	}
+
+	return args.outputFormat.Get()(w, apitype.ListAuditLogEventsResponse{
+		AuditLogEvents: events,
+	})
 }
 
 type orgAuditLogListRenderFunc func(w io.Writer, resp apitype.ListAuditLogEventsResponse) error
-
-func orgAuditLogListRenderer(format string) (orgAuditLogListRenderFunc, error) {
-	switch format {
-	case "", "default", "table":
-		return renderOrgAuditLogListTable, nil
-	case "json":
-		return renderOrgAuditLogListJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 // formatAuditLogTimestamp renders a Unix-epoch timestamp in RFC3339 UTC. A
 // zero timestamp renders as the empty-cell placeholder so the table stays
@@ -246,20 +265,14 @@ func renderOrgAuditLogListTable(
 		})
 	}
 	t.Render()
-
-	if resp.ContinuationToken != "" {
-		fmt.Fprintf(w,
-			"\nMore results available. Re-run with --continuation-token %q to continue.\n",
-			resp.ContinuationToken)
-	}
 	return nil
 }
 
 // auditLogListEnvelope is the JSON shape emitted by
 // `pulumi org audit-log list --output=json`.
 type auditLogListEnvelope struct {
-	Events            []apitype.AuditLogEvent `json:"events"`
-	ContinuationToken string                  `json:"continuationToken"`
+	Events []apitype.AuditLogEvent `json:"events"`
+	Count  int                     `json:"count"`
 }
 
 func renderOrgAuditLogListJSON(
@@ -273,7 +286,7 @@ func renderOrgAuditLogListJSON(
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	return enc.Encode(auditLogListEnvelope{
-		Events:            events,
-		ContinuationToken: resp.ContinuationToken,
+		Events: events,
+		Count:  len(events),
 	})
 }

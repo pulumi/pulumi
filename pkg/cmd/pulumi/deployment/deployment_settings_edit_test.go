@@ -102,7 +102,7 @@ func TestDeploymentSettingsEdit_DefaultOutput(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
 		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{file: patchFile})
+		deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, testStackID, captured.stack)
@@ -135,10 +135,11 @@ func TestDeploymentSettingsEdit_JSONOutput(t *testing.T) {
 
 	c := &mockDeploymentSettingsEditClient{getResp: sampleDeploymentSettings()}
 
+	args := deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
-		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{file: patchFile, output: "json"})
+		stubSettingsEditFactory(c), args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -171,22 +172,6 @@ func TestDeploymentSettingsEdit_JSONOutput(t *testing.T) {
 		},
 		"agentPoolID": "pool-1"
 	}`, buf.String())
-}
-
-func TestDeploymentSettingsEdit_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	patchFile := writePatchFile(t, `{}`)
-
-	c := &mockDeploymentSettingsEditClient{getResp: &apitype.DeploymentSettings{}}
-
-	var buf bytes.Buffer
-	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
-		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{file: patchFile, output: "yaml"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
-	assert.Equal(t, "", buf.String())
 }
 
 func TestDeploymentSettingsEdit_EmptyFileFlag(t *testing.T) {
@@ -225,7 +210,7 @@ func TestDeploymentSettingsEdit_EmptyFileContent(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
 		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{file: patchFile})
+		deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "patch file is empty")
 }
@@ -240,7 +225,7 @@ func TestDeploymentSettingsEdit_MalformedJSON(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
 		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{file: patchFile})
+		deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "reading deployment settings patch")
 }
@@ -255,7 +240,7 @@ func TestDeploymentSettingsEdit_PatchError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
 		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{file: patchFile})
+		deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "editing deployment settings")
 	assert.Contains(t, err.Error(), "boom")
@@ -271,7 +256,7 @@ func TestDeploymentSettingsEdit_GetAfterPatchError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
 		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{file: patchFile})
+		deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting deployment settings")
 	assert.Contains(t, err.Error(), "get boom")
@@ -285,7 +270,7 @@ func TestDeploymentSettingsEdit_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
 		failingSettingsEditFactory(errors.New("not logged in")),
-		deploymentSettingsEditArgs{file: patchFile})
+		deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
@@ -304,7 +289,7 @@ func TestDeploymentSettingsEdit_StdinPatch(t *testing.T) {
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, stdin,
 		stubSettingsEditFactory(c),
-		deploymentSettingsEditArgs{file: "-"})
+		deploymentSettingsEditArgs{file: "-", outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.NoError(t, err)
 
 	require.NotNil(t, captured.patch)

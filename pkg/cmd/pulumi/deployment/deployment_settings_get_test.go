@@ -56,6 +56,13 @@ func failingSettingsGetFactory(err error) deploymentSettingsGetClientFactory {
 	}
 }
 
+func deploymentSettingsGetJSONArgs(t *testing.T) deploymentSettingsGetArgs {
+	t.Helper()
+	args := deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
+	return args
+}
+
 func sampleDeploymentSettings() *apitype.DeploymentSettings {
 	agentPool := "pool-1"
 	return &apitype.DeploymentSettings{
@@ -95,7 +102,8 @@ func TestDeploymentSettingsGet_DefaultOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockDeploymentSettingsGetClient{resp: sampleDeploymentSettings()}
-	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c), deploymentSettingsGetArgs{})
+	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
+		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, `Executor image:          pulumi/pulumi:latest
@@ -120,7 +128,8 @@ func TestDeploymentSettingsGet_DefaultOutput_Empty(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockDeploymentSettingsGetClient{resp: &apitype.DeploymentSettings{}}
-	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c), deploymentSettingsGetArgs{})
+	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
+		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, `Executor image:          -
@@ -146,7 +155,7 @@ func TestDeploymentSettingsGet_JSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockDeploymentSettingsGetClient{resp: sampleDeploymentSettings()}
 	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
-		deploymentSettingsGetArgs{output: "json"})
+		deploymentSettingsGetJSONArgs(t))
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -196,7 +205,7 @@ func TestDeploymentSettingsGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	var buf bytes.Buffer
 	c := &mockDeploymentSettingsGetClient{resp: settings}
 	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
-		deploymentSettingsGetArgs{output: "json"})
+		deploymentSettingsGetJSONArgs(t))
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -215,25 +224,13 @@ func TestDeploymentSettingsGet_JSONOutput_NilSlicesNormalized(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestDeploymentSettingsGet_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	var buf bytes.Buffer
-	c := &mockDeploymentSettingsGetClient{resp: sampleDeploymentSettings()}
-	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
-		deploymentSettingsGetArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
-	assert.Equal(t, "", buf.String())
-}
-
 func TestDeploymentSettingsGet_ClientError(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
 	c := &mockDeploymentSettingsGetClient{err: errors.New("boom")}
 	err := runDeploymentSettingsGet(t.Context(), &buf, stubSettingsGetFactory(c),
-		deploymentSettingsGetArgs{})
+		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "getting deployment settings")
 	assert.Contains(t, err.Error(), "boom")
@@ -244,7 +241,8 @@ func TestDeploymentSettingsGet_FactoryError(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runDeploymentSettingsGet(t.Context(), &buf,
-		failingSettingsGetFactory(errors.New("not logged in")), deploymentSettingsGetArgs{})
+		failingSettingsGetFactory(errors.New("not logged in")),
+		deploymentSettingsGetArgs{outputFormat: defaultDeploymentSettingsGetOutputFormat()})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }

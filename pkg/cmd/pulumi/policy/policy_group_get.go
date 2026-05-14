@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -55,8 +56,17 @@ type policyGroupGetClientFactory func(
 // policyGroupGetArgs collects the flag values for the get command, in one
 // struct so Run can be driven directly from tests.
 type policyGroupGetArgs struct {
-	org    string
-	output string
+	org          string
+	outputFormat outputflag.OutputFlag[policyGroupGetRenderFunc]
+}
+
+// defaultPolicyGroupGetOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultPolicyGroupGetOutputFormat() outputflag.OutputFlag[policyGroupGetRenderFunc] {
+	return outputflag.OutputFlag[policyGroupGetRenderFunc]{
+		RenderForTerminal: renderPolicyGroupGetText,
+		RenderJSON:        renderPolicyGroupGetJSON,
+	}
 }
 
 // newPolicyGroupGetCmd builds `pulumi policy group get` with the production
@@ -69,6 +79,7 @@ func newPolicyGroupGetCmd() *cobra.Command {
 func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "policyGroupGetClientFactory must not be nil")
 	var args policyGroupGetArgs
+	args.outputFormat = defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -80,9 +91,8 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 			"organization, including the list of Policy Packs applied to it and\n" +
 			"the stacks or Insights accounts that are members of the group.\n" +
 			"\n" +
-			"Wraps the `GetPolicyGroup` Pulumi Cloud REST endpoint. Default output\n" +
-			"is a human-readable summary; pass --output=json for the full response\n" +
-			"as JSON.",
+			"Default output is a human-readable summary; pass --output=json for the\n" +
+			"full response as JSON.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyGroupGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -96,8 +106,7 @@ func newPolicyGroupGetCmdWith(factory policyGroupGetClientFactory) *cobra.Comman
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the Policy Group")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -151,11 +160,6 @@ func runPolicyGroupGet(
 	ctx context.Context, w io.Writer,
 	factory policyGroupGetClientFactory, name string, args policyGroupGetArgs,
 ) error {
-	render, err := policyGroupGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
@@ -166,21 +170,10 @@ func runPolicyGroupGet(
 		return fmt.Errorf("getting policy group: %w", err)
 	}
 
-	return render(w, resp)
+	return args.outputFormat.Get()(w, resp)
 }
 
 type policyGroupGetRenderFunc func(w io.Writer, resp apitype.GetPolicyGroupResponse) error
-
-func policyGroupGetRenderer(format string) (policyGroupGetRenderFunc, error) {
-	switch format {
-	case "", "default":
-		return renderPolicyGroupGetText, nil
-	case "json":
-		return renderPolicyGroupGetJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 func renderPolicyGroupGetText(w io.Writer, resp apitype.GetPolicyGroupResponse) error {
 	isDefault := "no"

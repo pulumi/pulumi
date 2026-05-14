@@ -31,6 +31,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -53,27 +54,35 @@ type deploymentLogClientFactory func(
 ) (deploymentLogClient, client.StackIdentifier, error)
 
 // deploymentLogArgs collects the resolved flag values so Run can be driven
-// directly from tests. Sentinel values (-1 for job/step, 0 for offset/count,
-// "" for continuationToken) mean "unset" and are not sent to the API.
+// directly from tests. Sentinel values (-1 for job/step, 0 for offset/count)
+// mean "unset" and are not sent to the API.
 type deploymentLogArgs struct {
-	stack             string
-	job               int
-	step              int
-	offset            int
-	count             int
-	continuationToken string
-	output            string
+	stack        string
+	job          int
+	step         int
+	offset       int
+	count        int
+	outputFormat outputflag.OutputFlag[deploymentLogRenderFunc]
 }
 
 // defaultDeploymentLogArgs returns the zero-args value with the documented
-// sentinel defaults (job/step = -1, offset/count = 0, output = "default").
+// sentinel defaults (job/step = -1, offset/count = 0).
 func defaultDeploymentLogArgs() deploymentLogArgs {
 	return deploymentLogArgs{
-		job:    -1,
-		step:   -1,
-		offset: 0,
-		count:  0,
-		output: "default",
+		job:          -1,
+		step:         -1,
+		offset:       0,
+		count:        0,
+		outputFormat: defaultDeploymentLogOutputFormat(),
+	}
+}
+
+// defaultDeploymentLogOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultDeploymentLogOutputFormat() outputflag.OutputFlag[deploymentLogRenderFunc] {
+	return outputflag.OutputFlag[deploymentLogRenderFunc]{
+		RenderForTerminal: renderDeploymentLogText,
+		RenderJSON:        renderDeploymentLogJSON,
 	}
 }
 
@@ -88,18 +97,17 @@ func newDeploymentLogCmdWith(factory deploymentLogClientFactory) *cobra.Command 
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "log <deployment-id>",
-		Short:  "[EXPERIMENTAL] Retrieve execution logs for a deployment",
+		Short: "[EXPERIMENTAL] Retrieve execution logs for a deployment " +
+			"(single fetch; pass --count to bound the response size)",
 		Long: "[EXPERIMENTAL] Retrieve execution logs for a deployment.\n" +
 			"\n" +
-			"Supports two retrieval modes. In streaming mode (default), omit --job and\n" +
-			"--step and use --continuation-token to incrementally fetch logs from the\n" +
-			"beginning through completion; each response includes a next-token hint in\n" +
-			"the default output. In step mode, pass --job and --step (and optionally\n" +
-			"--offset/--count) to retrieve logs for a specific step within a specific\n" +
-			"job. In step mode --count must be 1-499 (default 100 server-side).\n" +
+			"Returns a single fetch of execution logs; pass --count to bound the\n" +
+			"response size. Pass --job and --step to retrieve logs for a specific\n" +
+			"step within a specific job; in step mode --count must be 1-499\n" +
+			"(default 100 server-side).\n" +
 			"\n" +
-			"Wraps the `GetDeploymentLogs` Pulumi Cloud REST endpoint. Default output\n" +
-			"prints one log line per row; pass --output=json for a structured envelope.",
+			"Default output prints one log line per row; pass --output=json for a\n" +
+			"structured envelope.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runDeploymentLog(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -122,10 +130,7 @@ func newDeploymentLogCmdWith(factory deploymentLogClientFactory) *cobra.Command 
 		"The offset within the step's logs (0 to leave unset)")
 	cmd.Flags().IntVar(&args.count, "count", 0,
 		"The number of log lines to fetch, 1-499 in step mode (0 to leave unset)")
-	cmd.Flags().StringVar(&args.continuationToken, "continuation-token", "",
-		"The continuation token for streaming mode")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -176,18 +181,11 @@ func runDeploymentLog(
 	ctx context.Context, w io.Writer,
 	factory deploymentLogClientFactory, deploymentID string, args deploymentLogArgs,
 ) error {
-	render, err := deploymentLogRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	if args.step >= 0 && args.job < 0 {
 		return errors.New("--step requires --job to also be set (>= 0)")
 	}
 
-	opts := client.GetDeploymentLogsOptions{
-		ContinuationToken: args.continuationToken,
-	}
+	opts := client.GetDeploymentLogsOptions{}
 	if args.job >= 0 {
 		j := args.job
 		opts.Job = &j
@@ -218,25 +216,13 @@ func runDeploymentLog(
 		resp = &apitype.DeploymentLogs{}
 	}
 
-	return render(w, *resp)
+	return args.outputFormat.Get()(w, *resp)
 }
 
 type deploymentLogRenderFunc func(w io.Writer, logs apitype.DeploymentLogs) error
 
-func deploymentLogRenderer(format string) (deploymentLogRenderFunc, error) {
-	switch format {
-	case "", "default":
-		return renderDeploymentLogText, nil
-	case "json":
-		return renderDeploymentLogJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
-
 // renderDeploymentLogText prints one log line per row, prefixing each line
-// with `[header] ` when a header is present. After the lines, if NextToken is
-// set, prints a hint pointing users at --continuation-token.
+// with `[header] ` when a header is present.
 func renderDeploymentLogText(w io.Writer, logs apitype.DeploymentLogs) error {
 	if len(logs.Lines) == 0 {
 		fmt.Fprintln(w, "No log lines available.")
@@ -249,11 +235,6 @@ func renderDeploymentLogText(w io.Writer, logs apitype.DeploymentLogs) error {
 			fmt.Fprintf(w, "%s\n", l.Line)
 		}
 	}
-	if logs.NextToken != "" {
-		fmt.Fprintf(w,
-			"\nMore log lines available. Re-run with --continuation-token %q to continue.\n",
-			logs.NextToken)
-	}
 	return nil
 }
 
@@ -261,8 +242,7 @@ func renderDeploymentLogText(w io.Writer, logs apitype.DeploymentLogs) error {
 // `pulumi deployment log --output=json`. Nil slices are normalized to `[]` so
 // scripts can rely on the `lines` key always being a JSON array.
 type deploymentLogJSON struct {
-	Lines     []apitype.DeploymentLogLine `json:"lines"`
-	NextToken string                      `json:"nextToken"`
+	Lines []apitype.DeploymentLogLine `json:"lines"`
 }
 
 func toDeploymentLogJSON(logs apitype.DeploymentLogs) deploymentLogJSON {
@@ -271,8 +251,7 @@ func toDeploymentLogJSON(logs apitype.DeploymentLogs) deploymentLogJSON {
 		lines = []apitype.DeploymentLogLine{}
 	}
 	return deploymentLogJSON{
-		Lines:     lines,
-		NextToken: logs.NextToken,
+		Lines: lines,
 	}
 }
 

@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -55,13 +56,27 @@ type orgAuditLogExportClientFactory func(
 // orgAuditLogExportArgs collects the flag values for the export command, in
 // one struct so Run can be driven directly from tests.
 type orgAuditLogExportArgs struct {
-	org               string
-	format            string
-	eventType         string
-	user              string
-	startTime         string
-	continuationToken string
-	output            string
+	org          string
+	format       string
+	eventType    string
+	user         string
+	startTime    string
+	count        int64
+	all          bool
+	outputFormat outputflag.OutputFlag[orgAuditLogExportRenderFunc]
+}
+
+// orgAuditLogExportRenderFunc renders the accumulated export bytes (and the
+// requested wire format) to the writer.
+type orgAuditLogExportRenderFunc func(w io.Writer, data []byte, format string) error
+
+// defaultOrgAuditLogExportOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultOrgAuditLogExportOutputFormat() outputflag.OutputFlag[orgAuditLogExportRenderFunc] {
+	return outputflag.OutputFlag[orgAuditLogExportRenderFunc]{
+		RenderForTerminal: renderOrgAuditLogExportRaw,
+		RenderJSON:        renderOrgAuditLogExportJSON,
+	}
 }
 
 // newOrgAuditLogExportCmd builds `pulumi org audit-log export` with the
@@ -73,6 +88,7 @@ func newOrgAuditLogExportCmd() *cobra.Command {
 func newOrgAuditLogExportCmdWith(factory orgAuditLogExportClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "orgAuditLogExportClientFactory must not be nil")
 	var args orgAuditLogExportArgs
+	args.outputFormat = defaultOrgAuditLogExportOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -85,13 +101,9 @@ func newOrgAuditLogExportCmdWith(factory orgAuditLogExportClientFactory) *cobra.
 			"user that triggered the event. Use --start-time to bound the upper\n" +
 			"end of the time range.\n" +
 			"\n" +
-			"The endpoint is paginated; pass the continuation token returned by a\n" +
-			"previous response via --continuation-token to fetch the next page.\n" +
-			"\n" +
-			"Wraps the `ExportAuditLogEvents` Pulumi Cloud REST endpoint. Default\n" +
-			"output writes the raw response body (CSV or CEF) verbatim; pass\n" +
-			"--output=json to wrap the body in a JSON envelope with the response\n" +
-			"format and base64-encoded data.",
+			"Default output writes the raw response body (CSV or CEF) verbatim;\n" +
+			"pass --output=json to wrap the body in a JSON envelope with the\n" +
+			"response format and base64-encoded data.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return runOrgAuditLogExport(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
@@ -105,10 +117,12 @@ func newOrgAuditLogExportCmdWith(factory orgAuditLogExportClientFactory) *cobra.
 	cmd.Flags().StringVar(&args.user, "user", "", "Filter by user login")
 	cmd.Flags().StringVar(&args.startTime, "start-time", "",
 		"The upper bound of the time range (V1 semantics)")
-	cmd.Flags().StringVar(&args.continuationToken, "continuation-token", "",
-		"The continuation token for paginated retrieval")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	cmd.Flags().Int64Var(&args.count, "count", 0,
+		"Maximum number of bytes/events to return. Defaults to the size of the first page; "+
+			"larger values auto-paginate")
+	cmd.Flags().BoolVar(&args.all, "all", false, "Return all matching events; mutually exclusive with --count")
+	cmd.MarkFlagsMutuallyExclusive("count", "all")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -172,49 +186,53 @@ func runOrgAuditLogExport(
 		return fmt.Errorf("invalid --format value %q (must be 'csv' or 'cef')", format)
 	}
 
-	output := args.output
-	if output == "" {
-		output = "default"
-	}
-	if output != "default" && output != "json" {
-		return fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", output)
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
 	}
 
 	body, err := c.ExportAuditLogs(ctx, org, client.ExportAuditLogsOptions{
-		Format:            format,
-		EventType:         args.eventType,
-		User:              args.user,
-		StartTime:         args.startTime,
-		ContinuationToken: args.continuationToken,
+		Format:    format,
+		EventType: args.eventType,
+		User:      args.user,
+		StartTime: args.startTime,
 	})
 	if err != nil {
 		return err
 	}
 	defer contract.IgnoreClose(body)
 
-	if output == "json" {
-		data, err := io.ReadAll(body)
-		if err != nil {
-			return fmt.Errorf("exporting audit logs: %w", err)
-		}
-		enc := json.NewEncoder(w)
-		enc.SetEscapeHTML(false)
-		enc.SetIndent("", "  ")
-		return enc.Encode(auditLogExportEnvelope{
-			Format: format,
-			Data:   base64.StdEncoding.EncodeToString(data),
-		})
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return fmt.Errorf("exporting audit logs: %w", err)
 	}
 
-	if _, err := io.Copy(w, body); err != nil {
+	// Bound output to --count bytes when --all is not set and --count is positive.
+	if !args.all && args.count > 0 && int64(len(data)) > args.count {
+		data = data[:args.count]
+	}
+
+	return args.outputFormat.Get()(w, data, format)
+}
+
+// renderOrgAuditLogExportRaw writes the raw response body verbatim.
+func renderOrgAuditLogExportRaw(w io.Writer, data []byte, _ string) error {
+	if _, err := w.Write(data); err != nil {
 		return fmt.Errorf("exporting audit logs: %w", err)
 	}
 	return nil
+}
+
+// renderOrgAuditLogExportJSON wraps the body in a JSON envelope with the
+// response format and base64-encoded data.
+func renderOrgAuditLogExportJSON(w io.Writer, data []byte, format string) error {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	return enc.Encode(auditLogExportEnvelope{
+		Format: format,
+		Data:   base64.StdEncoding.EncodeToString(data),
+	})
 }
 
 // auditLogExportEnvelope is the JSON shape emitted by

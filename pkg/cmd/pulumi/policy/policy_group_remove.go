@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -50,8 +51,17 @@ type policyGroupRemoveClientFactory func(
 
 // policyGroupRemoveArgs collects the flag values for the remove command.
 type policyGroupRemoveArgs struct {
-	org    string
-	output string
+	org          string
+	outputFormat outputflag.OutputFlag[policyGroupRemoveRenderFunc]
+}
+
+// defaultPolicyGroupRemoveOutputFormat wires the OutputFlag to the per-format
+// renderers so `--output` selects between them.
+func defaultPolicyGroupRemoveOutputFormat() outputflag.OutputFlag[policyGroupRemoveRenderFunc] {
+	return outputflag.OutputFlag[policyGroupRemoveRenderFunc]{
+		RenderForTerminal: renderPolicyGroupRemoveText,
+		RenderJSON:        renderPolicyGroupRemoveJSON,
+	}
 }
 
 // newPolicyGroupRemoveCmd builds `pulumi policy group remove` with the
@@ -63,6 +73,7 @@ func newPolicyGroupRemoveCmd() *cobra.Command {
 func newPolicyGroupRemoveCmdWith(factory policyGroupRemoveClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "policyGroupRemoveClientFactory must not be nil")
 	var args policyGroupRemoveArgs
+	args.outputFormat = defaultPolicyGroupRemoveOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -76,9 +87,8 @@ func newPolicyGroupRemoveCmdWith(factory policyGroupRemoveClientFactory) *cobra.
 			"cannot be deleted. Deleting a Policy Group removes all policy\n" +
 			"enforcement associations for the stacks that were assigned to it.\n" +
 			"\n" +
-			"Wraps the `DeletePolicyGroup` Pulumi Cloud REST endpoint. Default\n" +
-			"output is a human-readable confirmation; pass --output=json for a\n" +
-			"machine-readable summary.",
+			"Default output is a human-readable confirmation; pass --output=json for\n" +
+			"a machine-readable summary.",
 		Example: "  # Remove a Policy Group from the default organization\n" +
 			"  pulumi policy group remove prod-policies\n\n" +
 			"  # Remove a Policy Group from a specific organization and emit JSON\n" +
@@ -96,8 +106,7 @@ func newPolicyGroupRemoveCmdWith(factory policyGroupRemoveClientFactory) *cobra.
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the Policy Group")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
 }
@@ -151,11 +160,6 @@ func runPolicyGroupRemove(
 	ctx context.Context, w io.Writer,
 	factory policyGroupRemoveClientFactory, name string, args policyGroupRemoveArgs,
 ) error {
-	render, err := policyGroupRemoveRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
@@ -165,21 +169,10 @@ func runPolicyGroupRemove(
 		return fmt.Errorf("removing policy group: %w", err)
 	}
 
-	return render(w, org, name)
+	return args.outputFormat.Get()(w, org, name)
 }
 
 type policyGroupRemoveRenderFunc func(w io.Writer, org, name string) error
-
-func policyGroupRemoveRenderer(format string) (policyGroupRemoveRenderFunc, error) {
-	switch format {
-	case "", "default":
-		return renderPolicyGroupRemoveText, nil
-	case "json":
-		return renderPolicyGroupRemoveJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
 
 func renderPolicyGroupRemoveText(w io.Writer, org, name string) error {
 	fmt.Fprintf(w, "Removed policy group %s from organization %s.\n", name, org)

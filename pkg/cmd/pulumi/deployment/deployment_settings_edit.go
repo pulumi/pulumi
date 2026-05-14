@@ -32,6 +32,7 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -39,8 +40,7 @@ import (
 )
 
 // deploymentSettingsEditClient is the narrow API surface this command depends
-// on: a PATCH (POST-with-merge) to apply the user's diff, followed by a GET to
-// render the resulting settings.
+// on.
 type deploymentSettingsEditClient interface {
 	PatchStackDeploymentSettings(
 		ctx context.Context, stack client.StackIdentifier, patch *apitype.DeploymentSettings,
@@ -60,9 +60,9 @@ type deploymentSettingsEditClientFactory func(
 // deploymentSettingsEditArgs collects the resolved flag values so Run can be
 // driven directly from tests.
 type deploymentSettingsEditArgs struct {
-	stack  string
-	file   string
-	output string
+	stack        string
+	file         string
+	outputFormat outputflag.OutputFlag[deploymentSettingsGetRenderFunc]
 }
 
 // newDeploymentSettingsEditCmd builds `pulumi deployment settings edit` wired
@@ -74,6 +74,7 @@ func newDeploymentSettingsEditCmd() *cobra.Command {
 func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "deploymentSettingsEditClientFactory must not be nil")
 	var args deploymentSettingsEditArgs
+	args.outputFormat = defaultDeploymentSettingsGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -82,19 +83,14 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		Long: "[EXPERIMENTAL] Create or update deployment settings for a stack.\n" +
 			"\n" +
 			"Applies a JSON patch to the stack's Pulumi Deployments settings. If no\n" +
-			"settings exist they are created from the patch; otherwise the patch is\n" +
-			"merged with the existing settings on the server. For each property the\n" +
-			"server starts with the current value, removes it if the patch specifies\n" +
-			"null, or merges the new non-null value with the existing one. Non-object\n" +
-			"properties (strings, numbers, booleans) are replaced entirely.\n" +
+			"settings exist they are created from the patch.\n" +
 			"\n" +
 			"Use --file to point at a JSON document containing the patch; pass `-` to\n" +
 			"read the patch from stdin. On success the resulting settings are printed\n" +
 			"in the same format as `pulumi deployment settings get`.\n" +
 			"\n" +
-			"Wraps the `PatchDeploymentSettings` Pulumi Cloud REST endpoint. Default\n" +
-			"output is a human-readable summary; pass --output=json for the raw\n" +
-			"response as JSON.",
+			"Default output is a human-readable summary; pass --output=json for the\n" +
+			"raw response as JSON.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runDeploymentSettingsEdit(cmd.Context(), cmd.OutOrStdout(), os.Stdin, factory, args)
 		},
@@ -106,8 +102,7 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().StringVarP(&args.file, "file", "f", "",
 		"Read settings patch from file; `-` reads stdin")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 	contract.AssertNoErrorf(cmd.MarkFlagRequired("file"), "marking --file required")
 
 	return cmd
@@ -160,10 +155,6 @@ func runDeploymentSettingsEdit(
 	ctx context.Context, w io.Writer, stdin io.Reader,
 	factory deploymentSettingsEditClientFactory, args deploymentSettingsEditArgs,
 ) error {
-	render, err := deploymentSettingsGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
 	if args.file == "" {
 		return errors.New("--file is required (use `-` to read the patch from stdin)")
 	}
@@ -190,7 +181,7 @@ func runDeploymentSettingsEdit(
 		resp = &apitype.DeploymentSettings{}
 	}
 
-	return render(w, *resp)
+	return args.outputFormat.Get()(w, *resp)
 }
 
 // readDeploymentSettingsPatch reads the JSON patch from path (or stdin when

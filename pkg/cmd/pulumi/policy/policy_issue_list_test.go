@@ -109,7 +109,7 @@ func TestPolicyIssueList_DefaultOutput(t *testing.T) {
 	c := &mockPolicyIssueListClient{resp: samplePolicyIssueListResponse()}
 	err := runPolicyIssueList(t.Context(), buf,
 		stubPolicyIssueListFactory(c, "acme"),
-		policyIssueListArgs{page: 1, pageSize: 10})
+		policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()})
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -137,8 +137,8 @@ func TestPolicyIssueList_DefaultOutput(t *testing.T) {
 	assert.Contains(t, out, "...")
 	assert.NotContains(t, out, "truncation path in the table renderer")
 
-	// Footer pagination summary.
-	assert.Contains(t, out, "Showing 2 of 2 policy issue(s) (page 1)")
+	// Footer summary (no page number).
+	assert.Contains(t, out, "Showing 2 of 2 policy issue(s)")
 }
 
 func TestPolicyIssueList_DefaultOutput_Empty(t *testing.T) {
@@ -148,7 +148,7 @@ func TestPolicyIssueList_DefaultOutput_Empty(t *testing.T) {
 	c := &mockPolicyIssueListClient{resp: apitype.ListPolicyIssuesResponse{}}
 	err := runPolicyIssueList(t.Context(), buf,
 		stubPolicyIssueListFactory(c, "acme"),
-		policyIssueListArgs{page: 1})
+		policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()})
 	require.NoError(t, err)
 	assert.Equal(t, "No policy issues found for this organization.\n", buf.String())
 }
@@ -158,9 +158,10 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	c := &mockPolicyIssueListClient{resp: samplePolicyIssueListResponse()}
+	args := policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyIssueList(t.Context(), buf,
-		stubPolicyIssueListFactory(c, "acme"),
-		policyIssueListArgs{output: "json", page: 1})
+		stubPolicyIssueListFactory(c, "acme"), args)
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -191,8 +192,6 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 				"createdAt": "2026-04-30T08:00:00Z"
 			}
 		],
-		"page": 1,
-		"itemsPerPage": 10,
 		"total": 2
 	}`, buf.String())
 }
@@ -202,33 +201,13 @@ func TestPolicyIssueList_JSONOutput_NilSliceNormalized(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	c := &mockPolicyIssueListClient{resp: apitype.ListPolicyIssuesResponse{}}
+	args := policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyIssueList(t.Context(), buf,
-		stubPolicyIssueListFactory(c, "acme"),
-		policyIssueListArgs{output: "json", page: 1})
+		stubPolicyIssueListFactory(c, "acme"), args)
 	require.NoError(t, err)
 
-	assert.JSONEq(t,
-		`{"issues":[],"page":1,"itemsPerPage":0,"total":0}`, buf.String())
-}
-
-func TestPolicyIssueList_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	buf := &bytes.Buffer{}
-	captured := &capturedPolicyIssueListCall{}
-	c := &mockPolicyIssueListClient{
-		resp:     samplePolicyIssueListResponse(),
-		captured: captured,
-	}
-	err := runPolicyIssueList(t.Context(), buf,
-		stubPolicyIssueListFactory(c, "acme"),
-		policyIssueListArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	// Validation must run before the API call.
-	assert.Equal(t, capturedPolicyIssueListCall{}, *captured)
+	assert.JSONEq(t, `{"issues":[],"total":0}`, buf.String())
 }
 
 func TestPolicyIssueList_ClientError(t *testing.T) {
@@ -238,7 +217,7 @@ func TestPolicyIssueList_ClientError(t *testing.T) {
 	c := &mockPolicyIssueListClient{err: errors.New("server boom")}
 	err := runPolicyIssueList(t.Context(), buf,
 		stubPolicyIssueListFactory(c, "acme"),
-		policyIssueListArgs{page: 1})
+		policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "listing policy issues: server boom", err.Error())
 }
@@ -249,7 +228,7 @@ func TestPolicyIssueList_FactoryError(t *testing.T) {
 	buf := &bytes.Buffer{}
 	err := runPolicyIssueList(t.Context(), buf,
 		failingPolicyIssueListFactory(errors.New("not logged in")),
-		policyIssueListArgs{page: 1})
+		policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }

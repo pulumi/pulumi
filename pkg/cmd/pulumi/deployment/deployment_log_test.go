@@ -92,25 +92,6 @@ func TestDeploymentLog_DefaultOutput_Empty(t *testing.T) {
 	assert.Equal(t, "No log lines available.\n", buf.String())
 }
 
-func TestDeploymentLog_DefaultOutput_NextTokenHint(t *testing.T) {
-	t.Parallel()
-
-	resp := &apitype.DeploymentLogs{
-		Lines:     []apitype.DeploymentLogLine{{Line: "first line"}},
-		NextToken: "tok-abc",
-	}
-	c := &mockDeploymentLogClient{resp: resp}
-
-	var buf bytes.Buffer
-	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1",
-		defaultDeploymentLogArgs())
-	require.NoError(t, err)
-
-	assert.Equal(t,
-		"first line\n\nMore log lines available. Re-run with --continuation-token \"tok-abc\" to continue.\n",
-		buf.String())
-}
-
 func TestDeploymentLog_JSONOutput(t *testing.T) {
 	t.Parallel()
 
@@ -119,12 +100,11 @@ func TestDeploymentLog_JSONOutput(t *testing.T) {
 			{Header: "h1", Line: "line a"},
 			{Line: "line b"},
 		},
-		NextToken: "next-1",
 	}
 	c := &mockDeploymentLogClient{resp: resp}
 
 	args := defaultDeploymentLogArgs()
-	args.output = "json"
+	require.NoError(t, args.outputFormat.Set("json"))
 
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1", args)
@@ -134,8 +114,7 @@ func TestDeploymentLog_JSONOutput(t *testing.T) {
 		"lines": [
 			{"header": "h1", "timestamp": "0001-01-01T00:00:00Z", "line": "line a"},
 			{"timestamp": "0001-01-01T00:00:00Z", "line": "line b"}
-		],
-		"nextToken": "next-1"
+		]
 	}`, buf.String())
 }
 
@@ -144,26 +123,13 @@ func TestDeploymentLog_JSONOutput_NilLinesNormalized(t *testing.T) {
 
 	c := &mockDeploymentLogClient{resp: &apitype.DeploymentLogs{}}
 	args := defaultDeploymentLogArgs()
-	args.output = "json"
+	require.NoError(t, args.outputFormat.Set("json"))
 
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1", args)
 	require.NoError(t, err)
 
-	assert.JSONEq(t, `{"lines": [], "nextToken": ""}`, buf.String())
-}
-
-func TestDeploymentLog_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockDeploymentLogClient{resp: &apitype.DeploymentLogs{}}
-	args := defaultDeploymentLogArgs()
-	args.output = "yaml"
-
-	var buf bytes.Buffer
-	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-1", args)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
+	assert.JSONEq(t, `{"lines": []}`, buf.String())
 }
 
 func TestDeploymentLog_StepRequiresJob(t *testing.T) {
@@ -210,7 +176,6 @@ func TestDeploymentLog_OptionsPropagation(t *testing.T) {
 	args.step = 2
 	args.offset = 3
 	args.count = 4
-	args.continuationToken = "tok"
 
 	var buf bytes.Buffer
 	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-id", args)
@@ -219,11 +184,10 @@ func TestDeploymentLog_OptionsPropagation(t *testing.T) {
 	job, step, offset, count := 1, 2, 3, 4
 	assert.Equal(t, "dep-id", c.gotID)
 	assert.Equal(t, client.GetDeploymentLogsOptions{
-		Job:               &job,
-		Step:              &step,
-		Offset:            &offset,
-		Count:             &count,
-		ContinuationToken: "tok",
+		Job:    &job,
+		Step:   &step,
+		Offset: &offset,
+		Count:  &count,
 	}, c.gotOpts)
 }
 

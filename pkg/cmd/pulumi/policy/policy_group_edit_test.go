@@ -92,8 +92,9 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
-			newName: "production",
-			changed: map[string]bool{"new-name": true},
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			newName:      "production",
+			changed:      map[string]bool{"new-name": true},
 		})
 	require.NoError(t, err)
 
@@ -131,23 +132,25 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 	}
 	c := &mockPolicyGroupEditClient{getResp: resp}
 
+	args := policyGroupEditArgs{
+		outputFormat:          defaultPolicyGroupGetOutputFormat(),
+		newName:               "production",
+		addStack:              []string{"web/prod", "standalone"},
+		removeStack:           []string{"web/legacy"},
+		addPolicyPack:         []string{"aws-guardrails@3", "tagging"},
+		removePolicyPack:      []string{"old-pack@stable"},
+		addInsightsAccount:    []string{"acct-2"},
+		removeInsightsAccount: []string{"acct-1"},
+		changed: map[string]bool{
+			"new-name": true, "add-stack": true, "remove-stack": true,
+			"add-policy-pack": true, "remove-policy-pack": true,
+			"add-insights-account": true, "remove-insights-account": true,
+		},
+	}
+	require.NoError(t, args.outputFormat.Set("json"))
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
-		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
-			output:                "json",
-			newName:               "production",
-			addStack:              []string{"web/prod", "standalone"},
-			removeStack:           []string{"web/legacy"},
-			addPolicyPack:         []string{"aws-guardrails@3", "tagging"},
-			removePolicyPack:      []string{"old-pack@stable"},
-			addInsightsAccount:    []string{"acct-2"},
-			removeInsightsAccount: []string{"acct-1"},
-			changed: map[string]bool{
-				"new-name": true, "add-stack": true, "remove-stack": true,
-				"add-policy-pack": true, "remove-policy-pack": true,
-				"add-insights-account": true, "remove-insights-account": true,
-			},
-		})
+		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", args)
 	require.NoError(t, err)
 
 	assert.Equal(t, []apitype.UpdatePolicyGroupRequest{
@@ -186,26 +189,6 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 	}`, buf.String())
 }
 
-func TestPolicyGroupEdit_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockPolicyGroupEditClient{}
-	var buf bytes.Buffer
-	err := runPolicyGroupEdit(t.Context(), &buf,
-		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
-			output:  "yaml",
-			newName: "production",
-			changed: map[string]bool{"new-name": true},
-		})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	// Validation must run before the API call.
-	assert.Empty(t, c.updates)
-	assert.Empty(t, c.gotGetGroup)
-}
-
 func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {
 	t.Parallel()
 
@@ -213,7 +196,8 @@ func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
-			changed: map[string]bool{},
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			changed:      map[string]bool{},
 		})
 	require.Error(t, err)
 	assert.Equal(t,
@@ -233,8 +217,9 @@ func TestPolicyGroupEdit_UpdateErrorStopsSubsequentPatches(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
-			addStack: []string{"web/prod", "web/staging"},
-			changed:  map[string]bool{"add-stack": true},
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			addStack:     []string{"web/prod", "web/staging"},
+			changed:      map[string]bool{"add-stack": true},
 		})
 	require.Error(t, err)
 	assert.Equal(t, "conflict", err.Error())
@@ -254,8 +239,9 @@ func TestPolicyGroupEdit_GetAfterEditError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
-			newName: "production",
-			changed: map[string]bool{"new-name": true},
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			newName:      "production",
+			changed:      map[string]bool{"new-name": true},
 		})
 	require.Error(t, err)
 	assert.Equal(t, "reading policy group after edit: boom", err.Error())
@@ -268,8 +254,9 @@ func TestPolicyGroupEdit_FactoryError(t *testing.T) {
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		failingPolicyGroupEditFactory(errors.New("not logged in")),
 		"prod-policies", policyGroupEditArgs{
-			newName: "production",
-			changed: map[string]bool{"new-name": true},
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			newName:      "production",
+			changed:      map[string]bool{"new-name": true},
 		})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
@@ -282,6 +269,7 @@ func TestPolicyGroupEdit_InvalidPolicyPackRef(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
+			outputFormat:  defaultPolicyGroupGetOutputFormat(),
 			addPolicyPack: []string{"@1"},
 			changed:       map[string]bool{"add-policy-pack": true},
 		})

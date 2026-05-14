@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -61,8 +62,8 @@ type policyGroupEditClientFactory func(
 // an explicit empty --new-name from "user did not pass --new-name", and lets
 // tests drive the command without spinning up cobra.
 type policyGroupEditArgs struct {
-	org    string
-	output string
+	org          string
+	outputFormat outputflag.OutputFlag[policyGroupGetRenderFunc]
 
 	newName               string
 	addStack              []string
@@ -88,6 +89,7 @@ func newPolicyGroupEditCmd() *cobra.Command {
 func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "policyGroupEditClientFactory must not be nil")
 	var args policyGroupEditArgs
+	args.outputFormat = defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -97,14 +99,11 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 			"\n" +
 			"Renames a Policy Group, adds or removes stacks, applies or detaches\n" +
 			"Policy Packs, and adds or removes Insights accounts. At least one\n" +
-			"mutation flag must be provided. The Pulumi Cloud API accepts a single\n" +
-			"mutation per PATCH; this command issues one PATCH per change in the\n" +
-			"order new-name, adds, removes, and stops on the first error.\n" +
+			"mutation flag must be provided. Changes are applied in the order\n" +
+			"new-name, adds, removes, and the command stops on the first error.\n" +
 			"\n" +
-			"Wraps the `UpdatePolicyGroup` Pulumi Cloud REST endpoint. After all\n" +
-			"changes succeed the group is fetched and rendered; default output is a\n" +
-			"human-readable summary, pass --output=json for the full response as\n" +
-			"JSON.",
+			"Default output is a human-readable summary; pass --output=json for the\n" +
+			"full response as JSON.",
 		Example: "  # Rename a Policy Group\n" +
 			"  pulumi policy group edit prod-policies --new-name production\n\n" +
 			"  # Add a stack and a Policy Pack to a group\n" +
@@ -124,8 +123,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the Policy Group")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
+	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 	cmd.Flags().StringVar(&args.newName, "new-name", "", "Rename the Policy Group")
 	cmd.Flags().StringArrayVar(&args.addStack, "add-stack", nil,
 		"Add a stack to the Policy Group (repeatable). Format: 'project/stack' or 'stack'")
@@ -212,11 +210,6 @@ func runPolicyGroupEdit(
 	ctx context.Context, w io.Writer,
 	factory policyGroupEditClientFactory, name string, args policyGroupEditArgs,
 ) error {
-	render, err := policyGroupGetRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
 	patches, err := buildPolicyGroupEditPatches(args)
 	if err != nil {
 		return err
@@ -247,7 +240,7 @@ func runPolicyGroupEdit(
 		return fmt.Errorf("reading policy group after edit: %w", err)
 	}
 
-	return render(w, resp)
+	return args.outputFormat.Get()(w, resp)
 }
 
 // buildPolicyGroupEditPatches expands the edit args into the ordered sequence

@@ -76,6 +76,14 @@ func failingOrgMemberGetFactory(err error) orgMemberGetClientFactory {
 	}
 }
 
+// orgMemberGetArgsForJSON builds an orgMemberGetArgs with --output=json wired up.
+func orgMemberGetArgsForJSON(t *testing.T) orgMemberGetArgs {
+	t.Helper()
+	args := orgMemberGetArgs{outputFormat: defaultOrgMemberGetOutputFormat()}
+	require.NoError(t, args.outputFormat.Set("json"))
+	return args
+}
+
 func aliceMember() apitype.OrganizationMember {
 	return apitype.OrganizationMember{
 		Role: "admin",
@@ -107,7 +115,7 @@ func TestOrgMemberGet_DefaultOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runOrgMemberGet(t.Context(), &buf,
-		stubOrgMemberGetFactory(c, "acme"), "alice", orgMemberGetArgs{})
+		stubOrgMemberGetFactory(c, "acme"), "alice", orgMemberGetArgs{outputFormat: defaultOrgMemberGetOutputFormat()})
 	require.NoError(t, err)
 
 	expected := "User name:       Alice Example\n" +
@@ -136,7 +144,7 @@ func TestOrgMemberGet_JSONOutput(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgMemberGet(t.Context(), &buf,
 		stubOrgMemberGetFactory(c, "acme"), "alice",
-		orgMemberGetArgs{output: "json"})
+		orgMemberGetArgsForJSON(t))
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -171,7 +179,7 @@ func TestOrgMemberGet_MatchesCaseInsensitively(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgMemberGet(t.Context(), &buf,
 		stubOrgMemberGetFactory(c, "acme"), "ALICE",
-		orgMemberGetArgs{})
+		orgMemberGetArgs{outputFormat: defaultOrgMemberGetOutputFormat()})
 	require.NoError(t, err)
 	// Single call confirms the case-insensitive match returned on the first
 	// page; we don't need the full rendered output, only that the lookup
@@ -203,7 +211,7 @@ func TestOrgMemberGet_PaginationAcrossPages(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgMemberGet(t.Context(), &buf,
 		stubOrgMemberGetFactory(c, "acme"), "bob",
-		orgMemberGetArgs{output: "json"})
+		orgMemberGetArgsForJSON(t))
 	require.NoError(t, err)
 
 	tok := "page-2"
@@ -246,7 +254,7 @@ func TestOrgMemberGet_FallsBackToBackendMode(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgMemberGet(t.Context(), &buf,
 		stubOrgMemberGetFactory(c, "acme"), "alice",
-		orgMemberGetArgs{output: "json"})
+		orgMemberGetArgsForJSON(t))
 	require.NoError(t, err)
 	assert.Equal(t, []orgMemberGetCall{
 		{org: "acme", mode: "frontend", continuationToken: nil},
@@ -266,26 +274,10 @@ func TestOrgMemberGet_NotFound(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runOrgMemberGet(t.Context(), &buf,
-		stubOrgMemberGetFactory(c, "acme"), "ghost", orgMemberGetArgs{})
+		stubOrgMemberGetFactory(c, "acme"), "ghost", orgMemberGetArgs{outputFormat: defaultOrgMemberGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, `organization member "ghost" not found in acme`, err.Error())
 	assert.Equal(t, "", buf.String())
-}
-
-func TestOrgMemberGet_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockOrgMemberGetClient{}
-	var buf bytes.Buffer
-	err := runOrgMemberGet(t.Context(), &buf,
-		stubOrgMemberGetFactory(c, "acme"), "alice",
-		orgMemberGetArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Equal(t,
-		`invalid --output value "yaml" (must be 'default' or 'json')`,
-		err.Error())
-	// Validation must run before any API call.
-	assert.Empty(t, c.calls)
 }
 
 func TestOrgMemberGet_ClientError(t *testing.T) {
@@ -299,7 +291,7 @@ func TestOrgMemberGet_ClientError(t *testing.T) {
 
 	var buf bytes.Buffer
 	err := runOrgMemberGet(t.Context(), &buf,
-		stubOrgMemberGetFactory(c, "acme"), "alice", orgMemberGetArgs{})
+		stubOrgMemberGetFactory(c, "acme"), "alice", orgMemberGetArgs{outputFormat: defaultOrgMemberGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "getting organization member: boom", err.Error())
 	assert.Equal(t, "", buf.String())
@@ -311,7 +303,7 @@ func TestOrgMemberGet_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runOrgMemberGet(t.Context(), &buf,
 		failingOrgMemberGetFactory(errors.New("not logged in")),
-		"alice", orgMemberGetArgs{})
+		"alice", orgMemberGetArgs{outputFormat: defaultOrgMemberGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }
