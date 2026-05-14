@@ -1645,12 +1645,46 @@ func (pc *Client) GetDeployment(
 	return resp, nil
 }
 
-func (pc *Client) GetDeploymentLogs(ctx context.Context, stack StackIdentifier, id,
-	token string,
+// GetDeploymentLogsOptions configures the query parameters sent to the
+// `GetDeploymentLogs` Pulumi Cloud REST endpoint. Pointer-typed fields encode
+// "unset"; only fields the caller defines are serialized into the URL.
+type GetDeploymentLogsOptions struct {
+	Job               *int
+	Step              *int
+	Offset            *int
+	Count             *int
+	ContinuationToken string
+}
+
+// GetDeploymentLogs retrieves execution logs for a deployment. The endpoint
+// supports two retrieval modes (see opts above): streaming mode (no job/step,
+// optional ContinuationToken) and step mode (Job/Step required, Offset/Count
+// optional).
+func (pc *Client) GetDeploymentLogs(
+	ctx context.Context, stack StackIdentifier, id string, opts GetDeploymentLogsOptions,
 ) (*apitype.DeploymentLogs, error) {
-	path := getDeploymentPath(stack, id, "logs?continuationToken="+token)
+	q := url.Values{}
+	if opts.Job != nil {
+		q.Set("job", strconv.Itoa(*opts.Job))
+	}
+	if opts.Step != nil {
+		q.Set("step", strconv.Itoa(*opts.Step))
+	}
+	if opts.Offset != nil {
+		q.Set("offset", strconv.Itoa(*opts.Offset))
+	}
+	if opts.Count != nil {
+		q.Set("count", strconv.Itoa(*opts.Count))
+	}
+	if opts.ContinuationToken != "" {
+		q.Set("continuationToken", opts.ContinuationToken)
+	}
+	p := getDeploymentPath(stack, id, "logs")
+	if encoded := q.Encode(); encoded != "" {
+		p = p + "?" + encoded
+	}
 	var resp apitype.DeploymentLogs
-	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	err := pc.restCall(ctx, http.MethodGet, p, nil, nil, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("getting deployment %s logs failed: %w", id, err)
 	}

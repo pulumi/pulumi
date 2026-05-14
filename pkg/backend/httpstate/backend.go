@@ -2486,7 +2486,9 @@ func (b *cloudBackend) RunDeployment(ctx context.Context, stackRef backend.Stack
 
 	token := ""
 	for {
-		logs, err := b.client.GetDeploymentLogs(ctx, stackID, id, token)
+		logs, err := b.client.GetDeploymentLogs(ctx, stackID, id, client.GetDeploymentLogsOptions{
+			ContinuationToken: token,
+		})
 		if err != nil {
 			return err
 		}
