@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi stack drift list` to list drift detection runs for a stack

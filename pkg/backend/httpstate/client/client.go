@@ -714,6 +714,24 @@ func (pc *Client) GetStack(ctx context.Context, stackID StackIdentifier) (apityp
 	return stack, nil
 }
 
+// ListDriftRuns returns a paginated list of drift detection runs for the given stack.
+func (pc *Client) ListDriftRuns(
+	ctx context.Context, stackID StackIdentifier, page, pageSize int,
+) (apitype.ListDriftRunsResponse, error) {
+	queryObj := struct {
+		Page     int `url:"page"`
+		PageSize int `url:"pageSize"`
+	}{
+		Page:     page,
+		PageSize: pageSize,
+	}
+	var resp apitype.ListDriftRunsResponse
+	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "drift", "runs"), queryObj, nil, &resp); err != nil {
+		return apitype.ListDriftRunsResponse{}, err
+	}
+	return resp, nil
+}
+
 // ListStackWebhooks returns all webhooks configured for the given stack.
 func (pc *Client) ListStackWebhooks(ctx context.Context, stackID StackIdentifier) ([]apitype.Webhook, error) {
 	var resp []apitype.Webhook
