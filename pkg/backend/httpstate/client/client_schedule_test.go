@@ -107,3 +107,59 @@ func TestListStackSchedules(t *testing.T) {
 		assert.Empty(t, got)
 	})
 }
+
+func TestGetStackSchedule(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+	const scheduleID = "bb61b60a-a313-46cb-b4ab-9d42dce46de8"
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		want := apitype.ScheduledAction{
+			ID:            scheduleID,
+			OrgID:         "feacc792-460f-4525-a091-e8de1f6ef34c",
+			ScheduleCron:  "12 16 * * *",
+			NextExecution: "2026-05-13 16:12:00.000",
+			Paused:        false,
+			Kind:          apitype.ScheduledActionKindDeployment,
+			Definition: json.RawMessage(
+				`{"programID":"5f337707","request":{"operation":"detect-drift","inheritSettings":true}}`),
+			Created:  "2026-05-13 08:51:42.176",
+			Modified: "2026-05-13 09:47:37.982",
+		}
+
+		var gotPath string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			w.Header().Set("Content-Type", "application/json")
+			err := json.NewEncoder(w).Encode(want)
+			require.NoError(t, err)
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		got, err := c.GetStackSchedule(t.Context(), stackID, scheduleID)
+		require.NoError(t, err)
+
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/schedules/"+scheduleID, gotPath)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("http error", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusNotFound, `{"message":"not found"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		_, err := c.GetStackSchedule(t.Context(), stackID, scheduleID)
+		assert.Error(t, err)
+	})
+}
+
