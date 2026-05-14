@@ -68,6 +68,33 @@ func collectPrintln(cmd tea.Cmd) []string {
 	return nil
 }
 
+// runFirstFlushTick finds and runs the firstFlushReadyMsg tick from the
+// first WindowSizeMsg's cmd batch. Waits longer than runCmd because the
+// production tick fires at 50ms (the runCmd timeout). tea.Batch returns the
+// sole cmd directly when only one is queued, so handle both shapes.
+func runFirstFlushTick(t *testing.T, cmd tea.Cmd) tea.Msg {
+	t.Helper()
+	msg := cmd()
+	if tick, ok := msg.(firstFlushReadyMsg); ok {
+		return tick
+	}
+	batch, ok := msg.(tea.BatchMsg)
+	require.True(t, ok, "expected firstFlushReadyMsg or a batch, got %T", msg)
+	for _, c := range batch {
+		done := make(chan tea.Msg, 1)
+		go func(c tea.Cmd) { done <- c() }(c)
+		select {
+		case m := <-done:
+			if tick, ok := m.(firstFlushReadyMsg); ok {
+				return tick
+			}
+		case <-time.After(time.Second):
+		}
+	}
+	t.Fatal("did not find firstFlushReadyMsg in the WindowSizeMsg batch")
+	return nil
+}
+
 // runCmd invokes cmd in a goroutine and returns its result if it produces one
 // within a short window. waitForEvent and similar blocking cmds time out and
 // are reported as "no message" — collectPrintln then ignores them.
@@ -583,6 +610,25 @@ func TestModel_Update_ShiftEnter_InsertsNewlineDoesNotSend(t *testing.T) {
 	assert.Contains(t, um.textInput.Value(), "\n",
 		"shift+enter must insert a newline into the textarea")
 	assert.False(t, um.busy, "shift+enter must not enter the busy state")
+}
+
+func TestModel_Update_ShiftEnter_GrowsUnboundedWithContent(t *testing.T) {
+	t.Parallel()
+
+	// MaxHeight=0 must let the textarea grow without capping logical lines —
+	// the default MaxHeight=99 silently swallows Enter past the cap.
+	m := NewModel(ModelConfig{})
+	updated0, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = updated0.(Model)
+
+	const newlines = 15
+	for range newlines {
+		updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModShift})
+		m = updated.(Model)
+	}
+
+	assert.Equal(t, newlines, strings.Count(m.textInput.Value(), "\n"))
+	assert.Equal(t, newlines+1, m.textInput.Height())
 }
 
 func TestModel_Update_KeyEnter_BackslashSuffixInsertsNewline(t *testing.T) {
@@ -2192,9 +2238,15 @@ func TestModel_Update_FirstWindowSize_EmitsWelcomeAndInitialPromptToScrollback(t
 	m := NewModel(ModelConfig{InitialPrompt: "deploy prod"})
 	require.False(t, m.sizeReceived, "fresh model has not received a size yet")
 
-	updated, cmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	updated, sizeCmd := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	um := updated.(Model)
 	assert.True(t, um.sizeReceived, "first WindowSize must flip sizeReceived")
+
+	// The welcome and pre-seeded prompt are deferred behind a tea.Tick (see
+	// firstFlushReadyMsg). Drive the tick manually so the test exercises the
+	// post-defer scrollback emission rather than the empty pre-tick path.
+	updated2, cmd := um.Update(runFirstFlushTick(t, sizeCmd))
+	um = updated2.(Model)
 
 	printed := collectPrintln(cmd)
 	welcomeMatches := 0
@@ -2328,9 +2380,12 @@ func TestTranscriptSpacing_FullSequence(t *testing.T) {
 	ch := make(chan UIEvent, 16)
 	m := tea.Model(NewModel(ModelConfig{EventCh: ch}))
 
-	// First WindowSize flushes the welcome banner.
+	// First WindowSize defers the welcome behind a tea.Tick (firstFlushReadyMsg).
+	// Drive the tick so we observe the actual scrollback emission.
+	var sizeCmd tea.Cmd
+	m, sizeCmd = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	var welcomeCmd tea.Cmd
-	m, welcomeCmd = m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	m, welcomeCmd = m.Update(runFirstFlushTick(t, sizeCmd))
 	welcomePrinted := collectPrintln(welcomeCmd)
 	require.NotEmpty(t, welcomePrinted, "first WindowSize must emit the welcome banner")
 	assert.False(t, strings.HasPrefix(welcomePrinted[0], "\n"),

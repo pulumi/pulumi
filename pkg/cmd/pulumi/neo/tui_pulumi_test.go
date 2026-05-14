@@ -362,7 +362,7 @@ func TestModel_View_StreamsPulumiResourcesBeforeCommit(t *testing.T) {
 	})
 	um := updated.(Model)
 
-	out := um.View()
+	out := um.View().Content
 	assert.Contains(t, out, "my-bucket",
 		"View() during streaming must include each resource row, not just after UIPulumiEnd")
 	assert.Contains(t, out, "Planned changes",
@@ -398,7 +398,7 @@ func TestModel_View_StreamsPulumiResourcesWithBusySpinner(t *testing.T) {
 	})
 	um := updated.(Model)
 
-	out := um.View()
+	out := um.View().Content
 	assert.Contains(t, out, "first", "first streamed resource must be visible in View()")
 	assert.Contains(t, out, "second", "second streamed resource must be visible in View()")
 }
@@ -441,6 +441,10 @@ func TestProgram_RendersStreamingPulumiResources_BeforeCommit(t *testing.T) {
 		tea.WithOutput(out),
 		tea.WithoutSignals(),
 		tea.WithoutSignalHandler(),
+		// Bubbletea v2 only auto-detects window size when output is a TTY; with
+		// a buffered output we have to seed it ourselves, otherwise the live
+		// frame paints at zero width and no resource rows show up.
+		tea.WithWindowSize(120, 40),
 	)
 
 	done := make(chan struct{})

@@ -65,6 +65,15 @@ type permissionDebounceTickMsg struct {
 	gen int
 }
 
+// firstFlushReadyMsg defers the welcome banner / pre-seeded blocks to
+// tea.Println until after bubbletea v2's first renderer flush. Calling
+// Println inside the WindowSizeMsg handler runs while cellbuf is still
+// sized to the terminal, so insertAbove would scroll a screenful of blank
+// lines above the prompt.
+type firstFlushReadyMsg struct {
+	rendered []string
+}
+
 // blockKind identifies the type of rendered block in the output log.
 type blockKind int
 
@@ -398,7 +407,13 @@ func NewModel(cfg ModelConfig) Model {
 	// the textarea rather than pushing scrollback off-screen.
 	ti.DynamicHeight = true
 	ti.MinHeight = 1
-	ti.MaxHeight = 10
+	// MaxHeight=0 disables both the visual cap and atContentLimit, so the
+	// textarea grows with content. CharLimit is the real upper bound.
+	ti.MaxHeight = 0
+	// textarea defaults to height 6 and only recalculates inside SetWidth.
+	// Force the first frame to 1 line so there's no gap above the welcome
+	// banner before the WindowSizeMsg handler fires.
+	ti.SetHeight(1)
 	// First line carries the prompt chevron; subsequent lines indent to keep
 	// continuation lines visually aligned under the chevron.
 	ti.SetPromptFunc(2, func(info textarea.PromptInfo) string {
@@ -411,11 +426,9 @@ func NewModel(cfg ModelConfig) Model {
 	styles.Focused.Prompt = promptStyle
 	styles.Blurred.Prompt = promptStyle
 	ti.SetStyles(styles)
-	// Rebind newline insertion away from plain Enter so we can keep Enter as
-	// submit. Shift+Enter / Alt+Enter need a kitty-keyboard-protocol-capable
-	// terminal; Ctrl+J is the universal portable fallback (LF == Ctrl+J).
-	// Trailing backslash + Enter is handled separately in the bare-Enter
-	// branch of Update.
+	// Keep Enter as submit. Shift+Enter / Alt+Enter need kitty keyboard
+	// protocol; Ctrl+J (== LF) is the portable fallback. Trailing backslash
+	// + Enter inserts a newline via the bare-Enter branch of Update.
 	ti.KeyMap.InsertNewline = key.NewBinding(
 		key.WithKeys("shift+enter", "alt+enter", "ctrl+j"),
 		key.WithHelp("shift+enter / alt+enter / ctrl+j", "newline"),
@@ -511,12 +524,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderBlock(&m.blocks[i])
 		}
 		if firstSize {
-			cmds = append(cmds, m.printlnBlock(m.welcome.View()))
+			rendered := []string{m.welcome.View()}
 			for _, b := range m.blocks {
 				if isCommittedKind(b) && b.rendered != "" {
-					cmds = append(cmds, m.printlnBlock(b.rendered))
+					rendered = append(rendered, b.rendered)
 				}
 			}
+			// 50ms covers ~3 ticks at bubbletea's 60Hz default — see
+			// firstFlushReadyMsg for why we defer at all.
+			cmds = append(cmds, tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg {
+				return firstFlushReadyMsg{rendered: rendered}
+			}))
+		}
+
+	case firstFlushReadyMsg:
+		for _, r := range msg.rendered {
+			cmds = append(cmds, m.printlnBlock(r))
 		}
 
 	case ctrlCDisarmMsg:
@@ -746,8 +769,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			raw := m.textInput.Value()
 			// Backslash-Enter: a trailing `\` rewrites this Enter from submit
 			// to newline, so users on terminals that can't distinguish
-			// Shift+Enter still have a way to add a line. Matches the Claude
-			// Code default so the muscle memory carries over.
+			// Shift+Enter still have a way to add a line.
 			if stripped, ok := strings.CutSuffix(raw, "\\"); ok {
 				m.textInput.SetValue(stripped)
 				m.textInput.InsertRune('\n')
@@ -1018,7 +1040,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	default:
-		// Pass unhandled messages to textinput (e.g. blink).
+		// Pass unhandled messages to the textarea (e.g. blink).
 		var tiCmd tea.Cmd
 		m.textInput, tiCmd = m.textInput.Update(msg)
 		cmds = append(cmds, tiCmd)
@@ -1108,7 +1130,7 @@ func (m Model) modeChips() string {
 
 // liveWidth returns the width to use when rendering live-frame content:
 // the terminal width minus a small cushion that keeps glamour, lipgloss,
-// and the textinput off the wrap column.
+// and the textarea off the wrap column.
 func (m *Model) liveWidth() int {
 	const (
 		margin         = 4
