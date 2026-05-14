@@ -58,6 +58,7 @@ func newPolicyInstallCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 
 	return cmd
 }

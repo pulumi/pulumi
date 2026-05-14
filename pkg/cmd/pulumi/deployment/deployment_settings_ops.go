@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -73,6 +74,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -128,6 +130,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -179,6 +182,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -278,6 +282,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 
 	return cmd
 }

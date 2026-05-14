@@ -140,6 +140,7 @@ func newStackExportCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.PersistentFlags().StringVarP(
 		&file, "file", "", "", "A filename to write stack output to")
 	cmd.PersistentFlags().StringVarP(

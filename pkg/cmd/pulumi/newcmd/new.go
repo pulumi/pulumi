@@ -628,6 +628,7 @@ func NewNewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&args.stack, "stack", "s", "",
 		"The stack name; either an existing stack or stack to create; if not specified, a prompt will request it")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.PersistentFlags().BoolVarP(
 		&args.yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")

@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -108,6 +109,7 @@ func NewConsoleCmd(ws pkgWorkspace.Context) *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "", "The name of the stack to view")
+	cmdStack.RegisterCompleteStack(cmd)
 	return cmd
 }
 

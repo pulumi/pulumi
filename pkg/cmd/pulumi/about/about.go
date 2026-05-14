@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -86,6 +87,7 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to get info on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.PersistentFlags().BoolVarP(
 		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
 

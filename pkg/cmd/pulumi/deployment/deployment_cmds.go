@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 )
 
 // TODO[https://github.com/pulumi/pulumi/issues/22987]: Not yet implemented.
@@ -45,6 +46,7 @@ func newDeploymentGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -75,6 +77,7 @@ func newDeploymentCancelCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -109,6 +112,7 @@ func newDeploymentLogCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.Flags().IntVar(&job, "job", -1, "The job index to fetch step-level logs for")
 	cmd.Flags().IntVar(&step, "step", -1, "The step index within the job (requires --job)")
 	cmd.Flags().IntVar(&offset, "offset", 0, "The byte offset within the step's logs")
@@ -136,6 +140,7 @@ func newDeploymentSettingsGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -164,6 +169,7 @@ func newDeploymentSettingsEditCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.Flags().StringVarP(&file, "file", "f", "",
 		"Read settings patch from file; `-` reads stdin")
 

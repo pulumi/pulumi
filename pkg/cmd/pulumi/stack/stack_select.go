@@ -133,6 +133,7 @@ func newStackSelectCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to select")
+	RegisterCompleteStack(cmd)
 	cmd.PersistentFlags().BoolVarP(
 		&create, "create", "c", false,
 		"If selected stack does not exist, create it")

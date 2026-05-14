@@ -63,6 +63,7 @@ func newStackDriftListCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.Flags().IntVar(&page, "page", 1, "The page of results to return")
 	cmd.Flags().IntVar(&pageSize, "page-size", 10, "The number of results per page (1-100)")
 
@@ -87,6 +88,7 @@ func newStackDriftGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 
 	return cmd
 }

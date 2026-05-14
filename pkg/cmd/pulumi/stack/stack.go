@@ -92,6 +92,7 @@ func NewStackCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.Flags().BoolVarP(
 		&args.showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
 	cmd.Flags().BoolVarP(

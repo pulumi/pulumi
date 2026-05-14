@@ -152,6 +152,7 @@ func newPolicyAnalyzeCmd(
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to analyze. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.Flags().BoolVar(&diffDisplay, "diff", false,
 		"Display policy diagnostics as a rich diff instead of grouped progress output")
 	cmd.Flags().BoolVarP(&jsonDisplay, "json", "j", false,

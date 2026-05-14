@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add shell completion for the `--stack` flag on all commands that operate on an existing stack, listing stacks from the current backend

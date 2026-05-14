@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	"github.com/spf13/cobra"
 )
 
@@ -97,6 +98,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.Flags().BoolVar(&unprotectAll, "all", false, "Unprotect all resources in the checkpoint")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Skip confirmation prompts")
 

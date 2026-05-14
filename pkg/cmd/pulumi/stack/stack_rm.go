@@ -143,6 +143,7 @@ func newStackRmCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.PersistentFlags().BoolVar(
 		&preserveConfig, "preserve-config", false,
 		"Do not delete the corresponding Pulumi.<stack-name>.yaml configuration file for the stack")

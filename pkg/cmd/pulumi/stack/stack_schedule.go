@@ -62,6 +62,7 @@ func newStackScheduleListCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -89,6 +90,7 @@ func newStackScheduleNewCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.Flags().StringVar(&cron, "cron", "",
 		"A cron expression for recurring executions (e.g. '0 */4 * * *')")
 	cmd.Flags().StringVar(&once, "once", "",
@@ -122,6 +124,7 @@ func newStackScheduleGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -154,6 +157,7 @@ func newStackScheduleEditCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.Flags().StringVar(&cron, "cron", "",
 		"A cron expression for recurring executions")
 	cmd.Flags().StringVar(&once, "once", "",
@@ -187,6 +191,7 @@ func newStackScheduleRemoveCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 
 	return cmd
 }

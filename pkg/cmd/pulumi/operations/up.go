@@ -534,11 +534,18 @@ func NewUpCmd() *cobra.Command {
 		}
 	}
 
+	completionOptions := cobra.CompletionOptions{}
+	completionOptions.SetDefaultShellCompDirective(cobra.ShellCompDirectiveFilterDirs)
 	cmd := &cobra.Command{
-		Use:        "up",
-		Aliases:    []string{"update"},
-		SuggestFor: []string{"apply", "deploy", "push"},
-		Short:      "Create or update the resources in a stack",
+		Use:               "up",
+		Aliases:           []string{"update"},
+		SuggestFor:        []string{"apply", "deploy", "push"},
+		Short:             "Create or update the resources in a stack",
+		Args:              cobra.MaximumNArgs(1),
+		CompletionOptions: completionOptions,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return nil, cobra.ShellCompDirectiveFilterDirs
+		},
 		Long: "Create or update the resources in a stack.\n" +
 			"\n" +
 			"This command creates or updates resources in a stack. The new desired goal state for the target stack\n" +
@@ -723,6 +730,7 @@ func NewUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.PersistentFlags().StringVar(
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")

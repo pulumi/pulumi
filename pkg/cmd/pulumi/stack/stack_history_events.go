@@ -51,6 +51,7 @@ func newStackHistoryEventsCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.Flags().StringArrayVar(&eventTypes, "event-type", nil,
 		"Filter by engine event type code (repeatable)")
 	cmd.Flags().StringVar(&resourceURN, "urn", "", "Filter by resource URN")

@@ -70,6 +70,7 @@ func newStackOutputCmd() *cobra.Command {
 		&socmd.shellOut, "shell", false, "Emit output as a shell script")
 	cmd.PersistentFlags().StringVarP(
 		&socmd.stackName, "stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.PersistentFlags().BoolVar(
 		&socmd.showSecrets, "show-secrets", false, "Display outputs which are marked as secret in plaintext")
 

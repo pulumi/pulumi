@@ -81,6 +81,7 @@ func newStackWebhookNewCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.Flags().StringVar(&url, "url", "", "The webhook payload URL")
 	cmd.Flags().StringVar(&format, "format", "raw",
 		"The webhook format: raw, slack, ms_teams, or pulumi_deployments")
@@ -119,6 +120,7 @@ func newStackWebhookEditCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.Flags().StringVar(&url, "url", "", "The webhook payload URL")
 	cmd.Flags().StringVar(&format, "format", "",
 		"The webhook format: raw, slack, ms_teams, or pulumi_deployments")
@@ -149,6 +151,7 @@ func newStackWebhookRemoveCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -171,6 +174,7 @@ func newStackWebhookPingCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -212,6 +216,7 @@ func newStackWebhookDeliveryListCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 
 	return cmd
 }
@@ -240,6 +245,7 @@ func newStackWebhookDeliveryGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 
 	return cmd
 }

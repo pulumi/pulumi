@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
+	cmdStack "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/stack"
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -147,6 +148,7 @@ func NewNeoCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stackName, "stack", "s", "",
 		"The name of the stack to attach to the Neo task")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.Flags().StringVar(&orgFlag, "org", "",
 		"The organization that owns the Neo task (defaults to the user's default org)")
 	cmd.Flags().StringVar(&cwdFlag, "cwd", "",

@@ -108,6 +108,7 @@ not write any changes.
 
 	cmd.Flags().StringVarP(&stateRepair.Args.Stack,
 		"stack", "s", "", "The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.Flags().BoolVarP(&stateRepair.Args.Yes,
 		"yes", "y", false, "Automatically approve and perform the repair")
 

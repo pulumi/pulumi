@@ -75,6 +75,7 @@ func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Co
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	RegisterCompleteStack(cmd)
 	cmd.Flags().StringVarP(&output, "output", "o", "default",
 		"The output format: default (human-readable table) or json")
 

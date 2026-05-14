@@ -363,6 +363,7 @@ func NewRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.PersistentFlags().StringVar(
 		&cmdStack.ConfigFile, "config-file", "",
 		"Use the configuration values in the specified file rather than detecting the file name")

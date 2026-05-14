@@ -107,6 +107,7 @@ func newDeploymentListCmdWith(factory deploymentListClientFactory) *cobra.Comman
 
 	cmd.Flags().StringVarP(&args.stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
+	cmdStack.RegisterCompleteStack(cmd)
 	cmd.Flags().Int64Var(&args.page, "page", 1, "The page of results to return (min 1)")
 	cmd.Flags().Int64Var(&args.pageSize, "page-size", 10, "The number of results per page (1-100)")
 	cmd.Flags().StringVar(&args.sort, "sort", "", "The field to sort results by")
