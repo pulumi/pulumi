@@ -91,28 +91,6 @@ func newDeploymentLogCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/22984]: Not yet implemented.
-func newDeploymentSettingsGetCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Retrieve the deployment settings for a stack",
-		Long:   "[EXPERIMENTAL] Retrieve the deployment settings for a stack.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/22983]: Not yet implemented.
 func newDeploymentSettingsEditCmd() *cobra.Command {
 	var (
