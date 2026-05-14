@@ -16,9 +16,10 @@ func newEnvInitCmd(env *envCommand) *cobra.Command {
 	var file string
 
 	cmd := &cobra.Command{
-		Use:   "init [<org-name>/][<project-name>/]<environment-name>",
-		Args:  cobra.MaximumNArgs(1),
-		Short: "Create an empty environment with the given name.",
+		Use:     "init [<org-name>/][<project-name>/]<environment-name>",
+		Aliases: []string{"new"},
+		Args:    cobra.MaximumNArgs(1),
+		Short:   "Create an empty environment with the given name.",
 		Long: "Create an empty environment with the given name, ready for editing\n" +
 			"\n" +
 			"This command creates an empty environment with the given name. It has no definition,\n" +
