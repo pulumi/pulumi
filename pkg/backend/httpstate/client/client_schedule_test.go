@@ -16,6 +16,7 @@ package client
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -160,5 +161,316 @@ func TestGetStackSchedule(t *testing.T) {
 		c := newMockClient(srv)
 		_, err := c.GetStackSchedule(t.Context(), stackID, scheduleID)
 		assert.Error(t, err)
+	})
+}
+
+func TestCreateStackSchedule(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		req := apitype.CreateScheduledDeploymentRequest{
+			ScheduleCron: "0 */4 * * *",
+			Request: &apitype.CreateDeploymentRequest{
+				Op:              apitype.Update,
+				InheritSettings: true,
+			},
+		}
+		want := apitype.ScheduledAction{
+			ID:           "bb61b60a-a313-46cb-b4ab-9d42dce46de8",
+			OrgID:        "feacc792-460f-4525-a091-e8de1f6ef34c",
+			ScheduleCron: "0 */4 * * *",
+			Paused:       false,
+			Kind:         apitype.ScheduledActionKindDeployment,
+			Definition: json.RawMessage(
+				`{"request":{"operation":"update","inheritSettings":true}}`),
+			Created:  "2026-05-13 10:00:00.000",
+			Modified: "2026-05-13 10:00:00.000",
+		}
+
+		var (
+			gotPath   string
+			gotMethod string
+			gotBody   apitype.CreateScheduledDeploymentRequest
+		)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &gotBody))
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		got, err := c.CreateStackSchedule(t.Context(), stackID, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPost, gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/schedules", gotPath)
+		assert.Equal(t, req, gotBody)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("http error", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusBadRequest, `{"message":"deployment settings not configured"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		_, err := c.CreateStackSchedule(t.Context(), stackID, apitype.CreateScheduledDeploymentRequest{
+			ScheduleCron: "0 */4 * * *",
+			Request:      &apitype.CreateDeploymentRequest{Op: apitype.Update, InheritSettings: true},
+		})
+		assert.Error(t, err)
+	})
+}
+
+func TestCreateStackDriftSchedule(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+
+	req := apitype.CreateScheduledDriftDeploymentRequest{
+		ScheduleCron:  "0 */4 * * *",
+		AutoRemediate: true,
+	}
+	want := apitype.ScheduledAction{
+		ID:           "drift-id",
+		ScheduleCron: "0 */4 * * *",
+		Kind:         apitype.ScheduledActionKindDeployment,
+		Definition: json.RawMessage(
+			`{"request":{"operation":"detect-drift","inheritSettings":true,` +
+				`"operationContext":{"options":{"remediateIfDriftDetected":true}}}}`),
+	}
+
+	var (
+		gotPath   string
+		gotMethod string
+		gotBody   apitype.CreateScheduledDriftDeploymentRequest
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.NoError(t, json.Unmarshal(body, &gotBody))
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(want))
+	}))
+	defer srv.Close()
+
+	c := newMockClient(srv)
+	got, err := c.CreateStackDriftSchedule(t.Context(), stackID, req)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, gotMethod)
+	assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/drift/schedules", gotPath)
+	assert.Equal(t, req, gotBody)
+	assert.Equal(t, want, got)
+}
+
+func TestCreateStackTTLSchedule(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+
+	req := apitype.CreateScheduledTTLDeploymentRequest{
+		Timestamp:          "2026-12-31T23:59:00Z",
+		DeleteAfterDestroy: true,
+	}
+	want := apitype.ScheduledAction{
+		ID:           "ttl-id",
+		ScheduleOnce: "2026-12-31T23:59:00Z",
+		Kind:         apitype.ScheduledActionKindDeployment,
+		Definition: json.RawMessage(
+			`{"request":{"operation":"destroy","inheritSettings":true,` +
+				`"operationContext":{"options":{"deleteAfterDestroy":true}}}}`),
+	}
+
+	var (
+		gotPath   string
+		gotMethod string
+		gotBody   apitype.CreateScheduledTTLDeploymentRequest
+	)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotMethod = r.Method
+		body, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		require.NoError(t, json.Unmarshal(body, &gotBody))
+		w.Header().Set("Content-Type", "application/json")
+		require.NoError(t, json.NewEncoder(w).Encode(want))
+	}))
+	defer srv.Close()
+
+	c := newMockClient(srv)
+	got, err := c.CreateStackTTLSchedule(t.Context(), stackID, req)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, gotMethod)
+	assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/ttl/schedules", gotPath)
+	assert.Equal(t, req, gotBody)
+	assert.Equal(t, want, got)
+}
+
+func TestDeleteStackSchedule(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+	const scheduleID = "bb61b60a-a313-46cb-b4ab-9d42dce46de8"
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		var gotPath, gotMethod string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		err := c.DeleteStackSchedule(t.Context(), stackID, scheduleID)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodDelete, gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/schedules/"+scheduleID, gotPath)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusNotFound, `{"message":"not found"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		err := c.DeleteStackSchedule(t.Context(), stackID, scheduleID)
+		assert.Error(t, err)
+	})
+}
+
+func TestUpdateStackSchedule(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+	const scheduleID = "bb61b60a"
+
+	t.Run("raw", func(t *testing.T) {
+		t.Parallel()
+
+		req := apitype.CreateScheduledDeploymentRequest{
+			ScheduleCron: "0 */4 * * *",
+			Request: &apitype.CreateDeploymentRequest{
+				Op:              apitype.Refresh,
+				InheritSettings: true,
+			},
+		}
+		var gotPath, gotMethod string
+		var gotBody apitype.CreateScheduledDeploymentRequest
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &gotBody))
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ScheduledAction{ID: scheduleID}))
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		got, err := c.UpdateStackSchedule(t.Context(), stackID, scheduleID, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPost, gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/schedules/"+scheduleID, gotPath)
+		assert.Equal(t, req, gotBody)
+		assert.Equal(t, scheduleID, got.ID)
+	})
+
+	t.Run("drift", func(t *testing.T) {
+		t.Parallel()
+
+		req := apitype.CreateScheduledDriftDeploymentRequest{
+			ScheduleCron:  "0 */4 * * *",
+			AutoRemediate: true,
+		}
+		var gotPath, gotMethod string
+		var gotBody apitype.CreateScheduledDriftDeploymentRequest
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &gotBody))
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ScheduledAction{ID: scheduleID}))
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		_, err := c.UpdateStackDriftSchedule(t.Context(), stackID, scheduleID, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPost, gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/drift/schedules/"+scheduleID, gotPath)
+		assert.Equal(t, req, gotBody)
+	})
+
+	t.Run("ttl", func(t *testing.T) {
+		t.Parallel()
+
+		req := apitype.CreateScheduledTTLDeploymentRequest{
+			Timestamp:          "2026-12-31T23:59:00Z",
+			DeleteAfterDestroy: true,
+		}
+		var gotPath, gotMethod string
+		var gotBody apitype.CreateScheduledTTLDeploymentRequest
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &gotBody))
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(apitype.ScheduledAction{ID: scheduleID}))
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		_, err := c.UpdateStackTTLSchedule(t.Context(), stackID, scheduleID, req)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPost, gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/deployments/ttl/schedules/"+scheduleID, gotPath)
+		assert.Equal(t, req, gotBody)
 	})
 }
