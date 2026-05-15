@@ -606,6 +606,11 @@ removeNonStructuralTypes:
 		switch t := schemaType.(type) {
 		case *schema.InputType:
 			schemaType = t.ElementType
+		case *schema.OptionalType:
+			if value.IsNull() {
+				return true
+			}
+			schemaType = t.ElementType
 		case *schema.EnumType:
 			schemaType = t.ElementType
 		case *schema.UnionType:

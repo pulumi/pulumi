@@ -1195,6 +1195,44 @@ func TestStructuralTypeChecks(t *testing.T) {
 			union))
 	})
 
+	t.Run("OptionalWrappers", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(false),
+			&schema.OptionalType{ElementType: schema.BoolType}))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(""),
+			&schema.OptionalType{ElementType: &schema.InputType{ElementType: schema.AnyType}}))
+		// Optional<Object> with a present, conforming value.
+		assert.True(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"foo": property.New("x")}),
+			&schema.OptionalType{ElementType: makeObjectType(
+				makeProperty("foo", schema.StringType),
+			)}))
+		// Optional<Object> with a present, non-conforming value still rejected.
+		assert.False(t, valueStructurallyTypedAs(
+			makeObject(map[string]property.Value{"foo": property.New(42.0)}),
+			&schema.OptionalType{ElementType: makeObjectType(
+				makeProperty("foo", schema.StringType),
+			)}))
+	})
+
+	t.Run("OptionalAcceptsNull", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(property.Null),
+			&schema.OptionalType{ElementType: schema.StringType}))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(property.Null),
+			&schema.OptionalType{ElementType: &schema.InputType{ElementType: schema.BoolType}}))
+		// A required (non-Optional) T must still reject null.
+		assert.False(t, valueStructurallyTypedAs(
+			property.New(property.Null),
+			schema.StringType))
+	})
+
 	t.Run("UnionOfInputWrappedEnums", func(t *testing.T) {
 		t.Parallel()
 
