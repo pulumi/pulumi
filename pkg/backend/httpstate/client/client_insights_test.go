@@ -548,6 +548,7 @@ func TestListInsightsAccounts(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
 func TestGetInsightsScanLogs(t *testing.T) {
 	t.Parallel()
 

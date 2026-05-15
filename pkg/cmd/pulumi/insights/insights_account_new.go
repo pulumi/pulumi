@@ -87,14 +87,8 @@ func newInsightsAccountNewCmdWith(factory accountNewClientFactory) *cobra.Comman
 		Use:   "new",
 		Short: "Create a new Insights account",
 		Long: "[EXPERIMENTAL] Create a new Pulumi Insights account.\n\n" +
-			"An Insights account represents a cloud provider account (e.g. AWS, Azure,\n" +
-			"GCP, OCI, Kubernetes) configured for resource discovery. The provider\n" +
-			"credentials are sourced from an ESC environment, referenced with\n" +
-			"--environment in the `project/environment[@version]` form.\n\n" +
-			"When run interactively, prompts for required values that aren't provided\n" +
-			"via flags. Pass --yes to fail fast on missing values instead of prompting.\n\n" +
-			"The organization defaults to the current default org and can be overridden\n" +
-			"with --org.",
+			"An Insights account represents a cloud provider account (e.g. AWS,\n" +
+			"Azure, GCP, OCI, Kubernetes) configured for resource discovery.",
 		Example: "  # Walk through prompts to create an account\n" +
 			"  pulumi insights account new prod-aws\n\n" +
 			"  # Create an AWS Insights account using credentials from an ESC environment\n" +
@@ -144,7 +138,7 @@ func newInsightsAccountNewCmdWith(factory accountNewClientFactory) *cobra.Comman
 		"Provider-specific configuration as an inline JSON object (e.g. '{\"regions\":[\"us-east-1\"]}')")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false,
 		"Skip prompts; fail if any required value is missing")
-	outputflag.VarP(cmd.Flags(), &output)
+	outputflag.Var(cmd.Flags(), &output)
 
 	return cmd
 }
