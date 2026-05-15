@@ -93,13 +93,10 @@ func newStackWebhookEditCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23056]: Not yet implemented.
 func newStackWebhookDeliveryCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "delivery",
-		Short:  "Inspect stack webhook deliveries",
-		Long:   "[EXPERIMENTAL] Inspect stack webhook deliveries.",
+		Use:   "delivery",
+		Short: "[EXPERIMENTAL] Inspect stack webhook deliveries",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
