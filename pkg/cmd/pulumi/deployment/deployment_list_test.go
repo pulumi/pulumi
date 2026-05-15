@@ -73,12 +73,6 @@ func stubListFactory(c deploymentListClient) deploymentListClientFactory {
 	}
 }
 
-func failingListFactory(err error) deploymentListClientFactory {
-	return func(_ context.Context, _ string) (deploymentListClient, client.StackIdentifier, error) {
-		return nil, client.StackIdentifier{}, err
-	}
-}
-
 func sampleListResponse() apitype.ListDeploymentResponseV2 {
 	return apitype.ListDeploymentResponseV2{
 		ItemsPerPage: 10,
