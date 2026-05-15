@@ -248,7 +248,7 @@ async function invokeAsync(
         const monitor: any = getMonitor();
 
         const provider = await ProviderResource.register(getProvider(tok, opts));
-        // keep track of the the secretness of the inputs
+        // keep track of the secretness of the inputs
         // if any of the inputs are secret, the invoke response should be marked as secret
         const [plainInputs, inputsContainSecrets] = unwrapSecretValues(serialized);
         const req = await createInvokeRequest(tok, plainInputs, provider, opts, packageRef);

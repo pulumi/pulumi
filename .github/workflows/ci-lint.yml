@@ -17,8 +17,8 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Must match the `version:` field in .custom-gcl.yml.
   GOLANGCI_LINT_VERSION: v2.9.0
-  REQUIREDFIELD_VERSION: v0.8.0
 
 jobs:
   golangci:
@@ -46,9 +46,6 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           args: --help
-
-      - name: Install requiredfield
-        run: go install go.abhg.dev/requiredfield/cmd/requiredfield@${{ env.REQUIREDFIELD_VERSION }}
 
       - name: Run golangci-lint
         run: make lint_golang

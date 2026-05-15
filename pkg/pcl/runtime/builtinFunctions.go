@@ -284,12 +284,12 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 				return cty.NilVal, fmt.Errorf("invalid invoke arguments: %w", err)
 			}
 			argsPV, dependsOn := unwrapOutputs(argsPV)
-			if fun != nil && fun.Inputs != nil && argsPV.IsObject() {
-				convertedArgs, err := convertInvokeInputObject(argsPV.ObjectValue(), fun.Inputs)
+			if fun.Inputs != nil {
+				args, err := applySchemaInputs(argsPV.ObjectValue(), fun.Inputs.Properties)
 				if err != nil {
 					return cty.NilVal, fmt.Errorf("convert invoke arguments: %w", err)
 				}
-				argsPV = resource.NewProperty(convertedArgs)
+				argsPV = resource.NewProperty(args)
 			}
 
 			marshalOpts := plugin.MarshalOptions{
@@ -456,6 +456,12 @@ func (ectx *EvalContext) builtinFunctions() map[string]function.Function {
 			}
 			argsPV, _ = unwrapOutputs(argsPV)
 			argsPM := argsPV.ObjectValue()
+			if fun.Inputs != nil {
+				argsPM, err = applySchemaInputs(argsPM, fun.Inputs.Properties)
+				if err != nil {
+					return cty.NilVal, fmt.Errorf("convert call arguments: %w", err)
+				}
+			}
 
 			urnVal, ok := self["urn"]
 			if !ok || urnVal.IsNull() || !urnVal.IsKnown() || urnVal.Type() != cty.String {

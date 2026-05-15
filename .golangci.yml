@@ -26,7 +26,12 @@ linters:
     - whitespace
     - copyloopvar
     - gocritic
+    - requiredfield
   settings:
+    custom:
+      requiredfield:
+        type: module
+        description: Checks that required fields are set in struct literals (see go.abhg.dev/requiredfield)
     usetesting:
       os-temp-dir: true
       context-background: true
@@ -169,6 +174,9 @@ linters:
       - linters:
           - staticcheck
         text: 'other import of'
+      - linters:
+          - goheader
+        path: pkg/cmd/pulumi/logs/timestamp\.go$
     paths:
       - Godeps$
       - builtin$

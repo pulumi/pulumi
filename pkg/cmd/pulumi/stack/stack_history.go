@@ -115,22 +115,22 @@ This command displays data about previous updates for a stack.`,
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
-	cmd.PersistentFlags().StringVarP(
+	cmd.Flags().StringVarP(
 		&stack, "stack", "s", "",
 		"Choose a stack other than the currently selected one")
 	cmd.Flags().BoolVar(
 		&showSecrets, "show-secrets", false,
 		"Show secret values when listing config instead of displaying blinded values")
-	cmd.PersistentFlags().BoolVarP(
+	cmd.Flags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().BoolVar(
+	cmd.Flags().BoolVar(
 		&showFullDates, "full-dates", false, "Show full dates, instead of relative dates")
-	cmd.PersistentFlags().IntVar(
+	cmd.Flags().IntVar(
 		&pageSize, "page-size", 10, "Used with 'page' to control number of results returned")
-	cmd.PersistentFlags().IntVar(
+	cmd.Flags().IntVar(
 		&page, "page", 1, "Used with 'page-size' to paginate results")
 
-	cmd.AddCommand(newStackHistoryEventsCmd())
+	cmd.AddCommand(newStackHistoryEventsCmd(pkgWorkspace.Instance, cmdBackend.DefaultLoginManager))
 
 	return cmd
 }

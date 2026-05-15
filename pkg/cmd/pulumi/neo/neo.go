@@ -23,7 +23,7 @@ import (
 	"strings"
 	"sync"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -215,6 +216,10 @@ func runNeo(
 		return errors.New("`pulumi neo` requires the Pulumi Cloud backend")
 	}
 	pc := cloudBe.Client()
+
+	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
+		return result.FprintBailf(os.Stderr, "%s", msg)
+	}
 
 	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
 	if err != nil {
