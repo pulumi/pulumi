@@ -29,8 +29,6 @@ func Var[R any](flags *pflag.FlagSet, output *OutputFlag[R]) {
 
 // VarP registers the OutputFlag on flags as --output with the conventional
 // -o shorthand.
-//
-// Deprecated: use [Var] instead.
 func VarP[R any](flags *pflag.FlagSet, output *OutputFlag[R]) {
 	flags.VarP(output, "output", "", usage(*output))
 }
