@@ -40,11 +40,16 @@ type capturedAccountCall struct {
 // mockInsightsAccountNewClient stubs insightsAccountNewClient. Each instance
 // records the most recent Create invocation and replays a fixed GetAccount
 // response (or an error on either method) so tests can drive each branch.
+// listEnvs / listEnvsErr drive the optional environment-picker path used by
+// resolveAccountNewArgs.
 type mockInsightsAccountNewClient struct {
-	getAccount apitype.InsightsAccount
-	createErr  error
-	getErr     error
-	captured   *capturedAccountCall
+	getAccount   apitype.InsightsAccount
+	createErr    error
+	getErr       error
+	listEnvs     []apitype.ESCEnvironment
+	listEnvsErr  error
+	captured     *capturedAccountCall
+	listEnvsCall *string // optional: captures the org passed to ListESCEnvironments
 }
 
 func (m *mockInsightsAccountNewClient) CreateInsightsAccount(
@@ -63,6 +68,18 @@ func (m *mockInsightsAccountNewClient) GetInsightsAccount(
 		return apitype.InsightsAccount{}, m.getErr
 	}
 	return m.getAccount, nil
+}
+
+func (m *mockInsightsAccountNewClient) ListESCEnvironments(
+	_ context.Context, org, _ string,
+) ([]apitype.ESCEnvironment, string, error) {
+	if m.listEnvsCall != nil {
+		*m.listEnvsCall = org
+	}
+	if m.listEnvsErr != nil {
+		return nil, "", m.listEnvsErr
+	}
+	return m.listEnvs, "", nil
 }
 
 // stubAccountNewFactory returns an accountNewClientFactory that always yields
@@ -122,7 +139,7 @@ func TestRunInsightsAccountNew_DefaultOutput(t *testing.T) {
 	client := &mockInsightsAccountNewClient{getAccount: sampleNewAccount()}
 	var out bytes.Buffer
 	err := runInsightsAccountNew(
-		t.Context(), &out, stubAccountNewFactory(client, "acme"), "prod-aws",
+		t.Context(), &out, client, "acme", "prod-aws",
 		accountNewArgs{provider: "aws", environment: "infra/prod-aws-creds"},
 		renderInsightsAccountText,
 	)
@@ -150,7 +167,7 @@ func TestRunInsightsAccountNew_JSONOutput(t *testing.T) {
 	client := &mockInsightsAccountNewClient{getAccount: sampleNewAccount()}
 	var out bytes.Buffer
 	err := runInsightsAccountNew(
-		t.Context(), &out, stubAccountNewFactory(client, "acme"), "prod-aws",
+		t.Context(), &out, client, "acme", "prod-aws",
 		accountNewArgs{provider: "aws", environment: "infra/prod-aws-creds"},
 		renderInsightsAccountJSON,
 	)
@@ -176,7 +193,7 @@ func TestRunInsightsAccountNew_RequestPropagation(t *testing.T) {
 		captured:   &captured,
 	}
 	err := runInsightsAccountNew(
-		t.Context(), &bytes.Buffer{}, stubAccountNewFactory(client, "acme"), "prod-aws",
+		t.Context(), &bytes.Buffer{}, client, "acme", "prod-aws",
 		accountNewArgs{
 			provider:       "gcp",
 			environment:    "infra/gcp-creds@2",
@@ -201,48 +218,27 @@ func TestRunInsightsAccountNew_RequestPropagation(t *testing.T) {
 	}, captured)
 }
 
-func TestRunInsightsAccountNew_OrgOverride(t *testing.T) {
+func TestRunInsightsAccountNew_PassesOrgAndNameToClient(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name       string
-		args       accountNewArgs
-		defaultOrg string
-		wantOrg    string
-	}{
-		{
-			name:       "default org used when --org omitted",
-			args:       accountNewArgs{provider: "aws", environment: "infra/creds"},
-			defaultOrg: "acme",
-			wantOrg:    "acme",
-		},
-		{
-			name: "--org overrides default",
-			args: accountNewArgs{
-				org: "other-co", provider: "aws", environment: "infra/creds",
-			},
-			defaultOrg: "acme",
-			wantOrg:    "other-co",
-		},
+	// runInsightsAccountNew is called by the cobra RunE with an already-
+	// resolved org (the factory in RunE applies any --org override). This
+	// test just verifies that whatever org/name the caller hands in lands
+	// on the CreateInsightsAccount call. Cobra-level coverage of the
+	// --org override lives in TestNewInsightsAccountNewCmd_FlagBinding.
+	var captured capturedAccountCall
+	client := &mockInsightsAccountNewClient{
+		getAccount: sampleNewAccount(),
+		captured:   &captured,
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			var captured capturedAccountCall
-			client := &mockInsightsAccountNewClient{
-				getAccount: sampleNewAccount(),
-				captured:   &captured,
-			}
-			err := runInsightsAccountNew(
-				t.Context(), &bytes.Buffer{}, stubAccountNewFactory(client, tt.defaultOrg),
-				"prod-aws", tt.args, renderInsightsAccountText,
-			)
-			require.NoError(t, err)
-			assert.Equal(t, tt.wantOrg, captured.org)
-			assert.Equal(t, "prod-aws", captured.account)
-		})
-	}
+	err := runInsightsAccountNew(
+		t.Context(), &bytes.Buffer{}, client, "other-co", "prod-aws",
+		accountNewArgs{provider: "aws", environment: "infra/creds"},
+		renderInsightsAccountText,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, "other-co", captured.org)
+	assert.Equal(t, "prod-aws", captured.account)
 }
 
 func TestRunInsightsAccountNew_MissingRequired(t *testing.T) {
@@ -270,8 +266,8 @@ func TestRunInsightsAccountNew_MissingRequired(t *testing.T) {
 			t.Parallel()
 			client := &mockInsightsAccountNewClient{getAccount: sampleNewAccount()}
 			err := runInsightsAccountNew(
-				t.Context(), &bytes.Buffer{}, stubAccountNewFactory(client, "acme"),
-				"prod-aws", tt.args, renderInsightsAccountText,
+				t.Context(), &bytes.Buffer{}, client, "acme", "prod-aws",
+				tt.args, renderInsightsAccountText,
 			)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.want)
@@ -299,8 +295,7 @@ func TestRunInsightsAccountNew_InvalidProviderConfig(t *testing.T) {
 			t.Parallel()
 			client := &mockInsightsAccountNewClient{getAccount: sampleNewAccount()}
 			err := runInsightsAccountNew(
-				t.Context(), &bytes.Buffer{}, stubAccountNewFactory(client, "acme"),
-				"prod-aws",
+				t.Context(), &bytes.Buffer{}, client, "acme", "prod-aws",
 				accountNewArgs{provider: "aws", environment: "infra/creds", providerConfig: tt.raw},
 				renderInsightsAccountText,
 			)
@@ -315,7 +310,7 @@ func TestRunInsightsAccountNew_CreateError(t *testing.T) {
 
 	client := &mockInsightsAccountNewClient{createErr: errors.New("404 environment not found")}
 	err := runInsightsAccountNew(
-		t.Context(), &bytes.Buffer{}, stubAccountNewFactory(client, "acme"), "prod-aws",
+		t.Context(), &bytes.Buffer{}, client, "acme", "prod-aws",
 		accountNewArgs{provider: "aws", environment: "infra/missing"},
 		renderInsightsAccountText,
 	)
@@ -332,7 +327,7 @@ func TestRunInsightsAccountNew_ReadBackError(t *testing.T) {
 	// `list` to verify.
 	client := &mockInsightsAccountNewClient{getErr: errors.New("503 service unavailable")}
 	err := runInsightsAccountNew(
-		t.Context(), &bytes.Buffer{}, stubAccountNewFactory(client, "acme"), "prod-aws",
+		t.Context(), &bytes.Buffer{}, client, "acme", "prod-aws",
 		accountNewArgs{provider: "aws", environment: "infra/creds"},
 		renderInsightsAccountText,
 	)
@@ -343,15 +338,17 @@ func TestRunInsightsAccountNew_ReadBackError(t *testing.T) {
 	assert.Contains(t, err.Error(), "pulumi insights account list")
 }
 
-func TestRunInsightsAccountNew_FactoryError(t *testing.T) {
+func TestNewInsightsAccountNewCmd_FactoryError(t *testing.T) {
 	t.Parallel()
 
-	err := runInsightsAccountNew(
-		t.Context(), &bytes.Buffer{},
-		failingAccountNewFactory(errors.New("not logged in")), "prod-aws",
-		accountNewArgs{provider: "aws", environment: "infra/creds"},
-		renderInsightsAccountText,
-	)
+	// With the cobra RunE responsible for calling the factory, factory
+	// failures surface through cobra rather than runInsightsAccountNew.
+	cmd := newInsightsAccountNewCmdWith(failingAccountNewFactory(errors.New("not logged in")))
+	cmd.SetArgs([]string{"--yes", "--provider", "aws", "--environment", "infra/creds", "prod-aws"})
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
@@ -408,7 +405,11 @@ func TestResolveAccountNewArgs_SkipPromptsRequiresFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := resolveAccountNewArgs(true, tt.args, display.Options{})
+			// skipPrompts=true short-circuits before the client is touched,
+			// so a nil client is fine here.
+			_, err := resolveAccountNewArgs(
+				t.Context(), true, nil, "acme", tt.args, display.Options{},
+			)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.want)
 		})
@@ -422,7 +423,7 @@ func TestResolveAccountNewArgs_PassesThroughCompleteArgs(t *testing.T) {
 	// regardless of skipPrompts. This covers the happy path the cobra
 	// RunE follows when the user passed everything on the command line.
 	args := accountNewArgs{provider: "aws", environment: "infra/creds"}
-	got, err := resolveAccountNewArgs(true, args, display.Options{})
+	got, err := resolveAccountNewArgs(t.Context(), true, nil, "acme", args, display.Options{})
 	require.NoError(t, err)
 	assert.Equal(t, args, got)
 }

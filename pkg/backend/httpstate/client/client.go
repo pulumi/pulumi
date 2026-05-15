@@ -3050,6 +3050,28 @@ func (pc *Client) GetInsightsAccount(
 	return resp, nil
 }
 
+// ListESCEnvironments fetches a page of ESC environments visible to the
+// caller in the named organization. Mirrors the endpoint exposed by the ESC
+// CLI (`pulumi esc ls`) so the Pulumi CLI can offer the same picker without
+// pulling in the esc-cli library.
+//
+// The endpoint paginates with an opaque continuation token; nextToken is
+// empty on the last page.
+func (pc *Client) ListESCEnvironments(
+	ctx context.Context, org, continuationToken string,
+) ([]apitype.ESCEnvironment, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{ContinuationToken: continuationToken}
+
+	path := "/api/esc/environments/" + url.PathEscape(org)
+	var resp apitype.ListESCEnvironmentsResponse
+	if err := pc.restCall(ctx, "GET", path, queryObj, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	return resp.Environments, resp.NextToken, nil
+}
+
 // ListStackDeploymentsOptions are the optional query parameters accepted by
 // ListStackDeployments. Zero values mean "let the server pick the default":
 // Page < 1 → 1, PageSize ≤ 0 → 10 (server-side cap 100), Sort "" → server's

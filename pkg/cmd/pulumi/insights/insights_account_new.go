@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,12 @@ type insightsAccountNewClient interface {
 	GetInsightsAccount(
 		ctx context.Context, org, account string,
 	) (apitype.InsightsAccount, error)
+	// ListESCEnvironments backs the interactive environment picker. Returns
+	// a single page; the picker doesn't paginate — if a user has more envs
+	// than fit on a page, the "Enter manually" option covers them.
+	ListESCEnvironments(
+		ctx context.Context, org, continuationToken string,
+	) ([]apitype.ESCEnvironment, string, error)
 }
 
 // accountNewClientFactory resolves the cloud client and the effective org for
@@ -106,14 +113,21 @@ func newInsightsAccountNewCmdWith(factory accountNewClientFactory) *cobra.Comman
 			if factory == nil {
 				factory = defaultAccountNewClientFactory
 			}
+			ctx := cmd.Context()
+			// Resolve the cloud client and effective org up front so the
+			// interactive env picker can list the org's ESC environments.
+			c, org, err := factory(ctx, args.org)
+			if err != nil {
+				return err
+			}
 			skipPrompts := yes || !cmdutil.Interactive()
 			opts := display.Options{Color: cmdutil.GetGlobalColorization()}
-			resolved, err := resolveAccountNewArgs(skipPrompts, args, opts)
+			resolved, err := resolveAccountNewArgs(ctx, skipPrompts, c, org, args, opts)
 			if err != nil {
 				return err
 			}
 			return runInsightsAccountNew(
-				cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], resolved, output.Get(),
+				ctx, cmd.OutOrStdout(), c, org, posArgs[0], resolved, output.Get(),
 			)
 		},
 	}
@@ -145,9 +159,17 @@ func newInsightsAccountNewCmdWith(factory accountNewClientFactory) *cobra.Comman
 
 // resolveAccountNewArgs prompts for any required values not provided via
 // flags. When skipPrompts is true (--yes or non-interactive), missing values
-// return an error instead of prompting.
+// return an error instead of prompting. The ESC environment prompt asks the
+// service for the org's environments and presents them as a picker; if the
+// list call fails or comes back empty we silently fall back to free-text
+// input so the picker never blocks the user.
 func resolveAccountNewArgs(
-	skipPrompts bool, args accountNewArgs, opts display.Options,
+	ctx context.Context,
+	skipPrompts bool,
+	c insightsAccountNewClient,
+	org string,
+	args accountNewArgs,
+	opts display.Options,
 ) (accountNewArgs, error) {
 	if strings.TrimSpace(args.provider) == "" {
 		if skipPrompts {
@@ -166,19 +188,54 @@ func resolveAccountNewArgs(
 		if skipPrompts {
 			return args, errors.New("--environment is required")
 		}
-		env, err := ui.PromptForValue(
-			false,
-			"ESC environment (project/environment[@version])",
-			"", false,
-			nonEmptyValidator("an ESC environment reference"),
-			opts,
-		)
+		env, err := promptForESCEnvironment(ctx, c, org, opts)
 		if err != nil {
 			return args, err
 		}
 		args.environment = env
 	}
 	return args, nil
+}
+
+// promptForESCEnvironment offers a picker over the org's ESC environments
+// (the same set surfaced by `pulumi esc ls`). The list call is best-effort:
+// if it fails or returns no environments, the prompt degrades to free-text
+// input so an offline-ish or empty-org user can still proceed. The picker
+// always offers an "Enter manually..." choice so users can specify a
+// `@version` suffix or any env the server doesn't yet list.
+func promptForESCEnvironment(
+	ctx context.Context, c insightsAccountNewClient, org string, opts display.Options,
+) (string, error) {
+	free := func() (string, error) {
+		return ui.PromptForValue(
+			false,
+			"ESC environment (project/environment[@version])",
+			"", false,
+			nonEmptyValidator("an ESC environment reference"),
+			opts,
+		)
+	}
+
+	envs, _, err := c.ListESCEnvironments(ctx, org, "")
+	if err != nil || len(envs) == 0 {
+		// Best-effort: degrade silently to free-text on any error so a
+		// transient listing failure doesn't block account creation.
+		return free()
+	}
+
+	const enterManually = "[Enter manually]"
+	options := make([]string, 0, len(envs)+1)
+	for _, e := range envs {
+		options = append(options, e.Project+"/"+e.Name)
+	}
+	sort.Strings(options)
+	options = append(options, enterManually)
+
+	choice := ui.PromptUser("ESC environment", options, options[0], opts.Color)
+	if choice == "" || choice == enterManually {
+		return free()
+	}
+	return choice, nil
 }
 
 // nonEmptyValidator returns a validator function suitable for
@@ -195,12 +252,13 @@ func nonEmptyValidator(what string) func(string) error {
 // runInsightsAccountNew creates the account and then reads it back so the
 // caller can render the structure the new convention asks for. ctx and w are
 // decoupled from cobra so the function is straightforward to drive from
-// tests.
+// tests; c and org are pre-resolved by the caller (the cobra RunE) so the
+// env picker in resolveAccountNewArgs can share them.
 func runInsightsAccountNew(
 	ctx context.Context,
 	w io.Writer,
-	factory accountNewClientFactory,
-	name string,
+	c insightsAccountNewClient,
+	org, name string,
 	args accountNewArgs,
 	render insightsAccountRenderFunc,
 ) error {
@@ -218,11 +276,6 @@ func runInsightsAccountNew(
 	// locally rather than as a generic server-side 400. The server contract
 	// is "object optional," so non-object JSON is rejected here.
 	providerConfig, err := parseProviderConfig(args.providerConfig)
-	if err != nil {
-		return err
-	}
-
-	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
 	}
