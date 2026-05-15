@@ -17,7 +17,7 @@ package neo
 import (
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 )
 
 // thinkingLabel is the label shown by the busy indicator while the agent is

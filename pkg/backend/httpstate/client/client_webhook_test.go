@@ -318,3 +318,77 @@ func TestDeleteStackWebhook(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestListStackWebhookDeliveries(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		want := []apitype.WebhookDelivery{
+			{
+				ID:           "d-1",
+				Kind:         "stack_update",
+				Timestamp:    1715558400,
+				Duration:     120,
+				RequestURL:   "https://example.com/webhook",
+				ResponseCode: 200,
+			},
+			{
+				ID:           "d-2",
+				Kind:         "ping",
+				Timestamp:    1715558300,
+				Duration:     42,
+				RequestURL:   "https://example.com/webhook",
+				ResponseCode: 500,
+			},
+		}
+
+		var gotPath string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(want)
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		got, err := c.ListStackWebhookDeliveries(t.Context(), stackID, "deploy-hook")
+		require.NoError(t, err)
+
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/hooks/deploy-hook/deliveries", gotPath)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte("[]"))
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		got, err := c.ListStackWebhookDeliveries(t.Context(), stackID, "hook")
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("http error", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusNotFound, `{"message":"not found"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		_, err := c.ListStackWebhookDeliveries(t.Context(), stackID, "no-such")
+		assert.Error(t, err)
+	})
+}
