@@ -132,7 +132,7 @@ func newStackScheduleNewCmdWith(factory stackScheduleNewClientFactory) *cobra.Co
 		"(ttl only) Delete the stack from Pulumi Cloud after successfully destroying its resources")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false,
 		"Skip prompts; fail if any required value is missing")
-	outputflag.VarP(cmd.Flags(), &output)
+	outputflag.Var(cmd.Flags(), &output)
 
 	cmd.MarkFlagsMutuallyExclusive("cron", "once")
 	cmd.MarkFlagsMutuallyExclusive("operation", "auto-remediate")

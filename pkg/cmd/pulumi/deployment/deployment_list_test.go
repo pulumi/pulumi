@@ -351,7 +351,7 @@ func TestNewDeploymentListCmd_Defaults(t *testing.T) {
 
 	f := cmd.Flags().Lookup("output")
 	require.NotNil(t, f)
-	assert.Equal(t, "o", f.Shorthand)
+	assert.Equal(t, "", f.Shorthand)
 	assert.Equal(t, "default", f.DefValue)
 
 	sf := cmd.Flags().Lookup("stack")

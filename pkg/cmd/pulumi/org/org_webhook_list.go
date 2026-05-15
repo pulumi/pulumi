@@ -116,7 +116,7 @@ func newOrgWebhookListCmdWith(
 		"Number of results to display")
 	cmd.Flags().BoolVar(&olcmd.all, "all", false,
 		"Show all results (mutually exclusive with --count)")
-	outputflag.VarP(cmd.Flags(), &olcmd.output)
+	outputflag.Var(cmd.Flags(), &olcmd.output)
 
 	return cmd
 }

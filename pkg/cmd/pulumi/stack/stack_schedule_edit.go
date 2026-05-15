@@ -135,7 +135,7 @@ func newStackScheduleEditCmdWith(factory stackScheduleEditClientFactory) *cobra.
 		"(drift only) Automatically run a remediation update when drift is detected")
 	cmd.Flags().BoolVar(&flags.deleteAfterDestroy, "delete-after-destroy", false,
 		"(ttl only) Delete the stack from Pulumi Cloud after successfully destroying its resources")
-	outputflag.VarP(cmd.Flags(), &output)
+	outputflag.Var(cmd.Flags(), &output)
 
 	cmd.MarkFlagsMutuallyExclusive("cron", "once")
 

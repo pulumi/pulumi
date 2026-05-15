@@ -73,7 +73,7 @@ func newStackScheduleGetCmdWith(factory stackScheduleGetClientFactory) *cobra.Co
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	outputflag.VarP(cmd.Flags(), &output)
+	outputflag.Var(cmd.Flags(), &output)
 
 	return cmd
 }

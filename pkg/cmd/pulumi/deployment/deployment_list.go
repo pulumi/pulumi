@@ -111,7 +111,7 @@ func newDeploymentListCmdWith(factory deploymentListClientFactory) *cobra.Comman
 	cmd.Flags().Int64Var(&args.pageSize, "page-size", 10, "The number of results per page (1-100)")
 	cmd.Flags().StringVar(&args.sort, "sort", "", "The field to sort results by")
 	cmd.Flags().BoolVar(&args.asc, "asc", false, "Sort in ascending order (default descending)")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
+	cmd.Flags().StringVar(&args.output, "output", "default",
 		"Output format. One of: default, json")
 
 	return cmd
