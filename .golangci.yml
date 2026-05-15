@@ -26,7 +26,12 @@ linters:
     - whitespace
     - copyloopvar
     - gocritic
+    - requiredfield
   settings:
+    custom:
+      requiredfield:
+        type: module
+        description: Checks that required fields are set in struct literals (see go.abhg.dev/requiredfield)
     usetesting:
       os-temp-dir: true
       context-background: true
