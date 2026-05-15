@@ -16,6 +16,7 @@ package client
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -148,6 +149,63 @@ func TestListStackDeployments(t *testing.T) {
 
 		c := newMockClient(server)
 		_, err := c.ListStackDeployments(t.Context(), stackID, ListStackDeploymentsOptions{Page: -1})
+		require.Error(t, err)
+	})
+}
+
+func TestPatchStackDeploymentSettings(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "acme",
+		Project: "web",
+		Stack:   tokens.MustParseStackName("prod"),
+	}
+
+	t.Run("posts patch to settings endpoint", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			capturedMethod string
+			capturedURI    string
+			capturedBody   apitype.DeploymentSettings
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedMethod = r.Method
+			capturedURI = r.URL.RequestURI()
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &capturedBody))
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		patch := &apitype.DeploymentSettings{
+			SourceContext: &apitype.SourceContext{
+				Git: &apitype.SourceContextGit{Branch: "feature"},
+			},
+		}
+		require.NoError(t, c.PatchStackDeploymentSettings(t.Context(), stackID, patch))
+
+		assert.Equal(t, http.MethodPost, capturedMethod)
+		assert.Equal(t, "/api/stacks/acme/web/prod/deployments/settings", capturedURI)
+		require.NotNil(t, capturedBody.SourceContext)
+		require.NotNil(t, capturedBody.SourceContext.Git)
+		assert.Equal(t, "feature", capturedBody.SourceContext.Git.Branch)
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("invalid patch"))
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		err := c.PatchStackDeploymentSettings(t.Context(), stackID, &apitype.DeploymentSettings{})
 		require.Error(t, err)
 	})
 }

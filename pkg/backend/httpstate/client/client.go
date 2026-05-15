@@ -1261,6 +1261,259 @@ func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContTo
 	return resp, nil, nil
 }
 
+// CreatePolicyGroup creates a new Policy Group in the given organization.
+func (pc *Client) CreatePolicyGroup(ctx context.Context, orgName, name string) error {
+	req := apitype.CreatePolicyGroupRequest{Name: name}
+	if err := pc.restCall(ctx, "POST", listPolicyGroupsPath(orgName), nil, req, nil); err != nil {
+		return fmt.Errorf("creating policy group: %w", err)
+	}
+	return nil
+}
+
+// GetPolicyGroup returns the details of a single Policy Group in the Pulumi
+// service, including the list of Policy Packs applied to it and the stacks or
+// cloud accounts that are members of the group.
+func (pc *Client) GetPolicyGroup(
+	ctx context.Context, orgName, policyGroup string,
+) (apitype.GetPolicyGroupResponse, error) {
+	var resp apitype.GetPolicyGroupResponse
+	err := pc.restCall(ctx, "GET", updatePolicyGroupPath(orgName, policyGroup), nil, nil, &resp)
+	if err != nil {
+		return resp, fmt.Errorf("getting policy group: %w", err)
+	}
+	return resp, nil
+}
+
+// UpdatePolicyGroup issues a PATCH against the Policy Group endpoint. The
+// service's UpdatePolicyGroup endpoint accepts at most one mutation per
+// request (rename, add/remove stack, add/remove policy pack, add/remove
+// insights account), so callers performing multiple mutations must issue
+// multiple calls.
+func (pc *Client) UpdatePolicyGroup(
+	ctx context.Context, orgName, policyGroup string, req apitype.UpdatePolicyGroupRequest,
+) error {
+	if err := pc.restCall(
+		ctx, http.MethodPatch, updatePolicyGroupPath(orgName, policyGroup), nil, req, nil,
+	); err != nil {
+		return fmt.Errorf("updating policy group: %w", err)
+	}
+	return nil
+}
+
+// DeletePolicyGroup deletes a Policy Group from the given organization. The
+// organization's default Policy Group cannot be deleted; the service will
+// reject such requests.
+func (pc *Client) DeletePolicyGroup(ctx context.Context, orgName, policyGroup string) error {
+	if err := pc.restCall(
+		ctx, http.MethodDelete, updatePolicyGroupPath(orgName, policyGroup), nil, nil, nil,
+	); err != nil {
+		return fmt.Errorf("removing policy group: %w", err)
+	}
+	return nil
+}
+
+// ListOrganizationMembers returns a single page of members for the given
+// organization, wrapping the `ListOrganizationMembers` Pulumi Cloud REST
+// endpoint (GET /api/orgs/{orgName}/members).
+//
+// mode selects between "frontend" members (data stored in the Pulumi Service's
+// database) and "backend" members (data stored in the organization's identity
+// backend, e.g. GitHub or GitLab). When mode is empty, the service default is
+// used. continuationToken pages through results when non-nil; pass the
+// ContinuationToken returned by a previous response to fetch the next page.
+func (pc *Client) ListOrganizationMembers(
+	ctx context.Context, orgName, mode string, continuationToken *string,
+) (apitype.ListOrganizationMembersResponse, error) {
+	queryObj := struct {
+		Type              string  `url:"type,omitempty"`
+		ContinuationToken *string `url:"continuationToken,omitempty"`
+	}{
+		Type:              mode,
+		ContinuationToken: continuationToken,
+	}
+
+	var resp apitype.ListOrganizationMembersResponse
+	path := fmt.Sprintf("/api/orgs/%s/members", url.PathEscape(orgName))
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return resp, fmt.Errorf("listing organization members: %w", err)
+	}
+	return resp, nil
+}
+
+// ListAuditLogsOptions are the optional query parameters accepted by
+// ListAuditLogs. Empty fields are omitted from the request and let the
+// service apply its own defaults.
+type ListAuditLogsOptions struct {
+	// EventType filters the audit log to a single event type (e.g.
+	// "stack.create"). Empty means no filter.
+	EventType string
+	// User filters the audit log to events triggered by a single user, by
+	// GitHub login. Empty means no filter.
+	User string
+	// StartTime is the upper-bound timestamp of the time range to query, as
+	// understood by the V1 endpoint. Empty means the service default.
+	StartTime string
+	// ContinuationToken pages through results; pass the ContinuationToken
+	// returned by a previous response to fetch the next page.
+	ContinuationToken string
+}
+
+// ListAuditLogs returns a single page of audit log events for the given
+// organization, wrapping the `ListAuditLogEvents` Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/auditlogs).
+func (pc *Client) ListAuditLogs(
+	ctx context.Context, orgName string, opts ListAuditLogsOptions,
+) (apitype.ListAuditLogEventsResponse, error) {
+	queryObj := struct {
+		EventType         string `url:"eventType,omitempty"`
+		User              string `url:"user,omitempty"`
+		StartTime         string `url:"startTime,omitempty"`
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{
+		EventType:         opts.EventType,
+		User:              opts.User,
+		StartTime:         opts.StartTime,
+		ContinuationToken: opts.ContinuationToken,
+	}
+
+	var resp apitype.ListAuditLogEventsResponse
+	path := fmt.Sprintf("/api/orgs/%s/auditlogs", url.PathEscape(orgName))
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &resp); err != nil {
+		return resp, fmt.Errorf("listing audit logs: %w", err)
+	}
+	return resp, nil
+}
+
+// ExportAuditLogsOptions are the optional query parameters accepted by
+// ExportAuditLogs. Empty fields are omitted from the request and let the
+// service apply its own defaults.
+type ExportAuditLogsOptions struct {
+	// Format is the export format: "csv" or "cef". Empty defaults to "csv".
+	Format string
+	// EventType filters the audit log to a single event type. Empty means no
+	// filter.
+	EventType string
+	// User filters the audit log to events triggered by a single user, by
+	// GitHub login. Empty means no filter.
+	User string
+	// StartTime is the upper-bound timestamp of the time range to query, as
+	// understood by the V1 endpoint. Empty means the service default.
+	StartTime string
+	// ContinuationToken pages through results; pass the ContinuationToken
+	// returned by a previous response to fetch the next page.
+	ContinuationToken string
+}
+
+// ExportAuditLogs streams an export of audit log events for the given
+// organization in the requested format (csv or cef), wrapping the
+// `ExportAuditLogEvents` Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/auditlogs/export). Unlike ListAuditLogs, the
+// response is plain text (CSV or CEF lines), not JSON; the caller is
+// responsible for closing the returned ReadCloser.
+func (pc *Client) ExportAuditLogs(
+	ctx context.Context, orgName string, opts ExportAuditLogsOptions,
+) (io.ReadCloser, error) {
+	format := opts.Format
+	if format == "" {
+		format = "csv"
+	}
+	queryObj := struct {
+		Format            string `url:"format,omitempty"`
+		EventType         string `url:"eventType,omitempty"`
+		User              string `url:"user,omitempty"`
+		StartTime         string `url:"startTime,omitempty"`
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{
+		Format:            format,
+		EventType:         opts.EventType,
+		User:              opts.User,
+		StartTime:         opts.StartTime,
+		ContinuationToken: opts.ContinuationToken,
+	}
+
+	var body io.ReadCloser
+	path := fmt.Sprintf("/api/orgs/%s/auditlogs/export", url.PathEscape(orgName))
+	if err := pc.restCall(ctx, http.MethodGet, path, queryObj, nil, &body); err != nil {
+		return nil, fmt.Errorf("exporting audit logs: %w", err)
+	}
+	return body, nil
+}
+
+// UpdateOrganizationMember updates the role assignment of a member within
+// the given organization. Wraps the `UpdateOrganizationMember` Pulumi Cloud
+// REST endpoint (PATCH /api/orgs/{orgName}/members/{userLogin}). Only the
+// non-nil fields of req are sent; the service interprets omitted fields as
+// "leave unchanged".
+func (pc *Client) UpdateOrganizationMember(
+	ctx context.Context, orgName, userLogin string, req apitype.UpdateOrganizationMemberRequest,
+) error {
+	path := fmt.Sprintf("/api/orgs/%s/members/%s", url.PathEscape(orgName), url.PathEscape(userLogin))
+	if err := pc.restCall(ctx, http.MethodPatch, path, nil, req, nil); err != nil {
+		return fmt.Errorf("updating organization member: %w", err)
+	}
+	return nil
+}
+
+// RemoveOrganizationMember removes a user from the given organization. The
+// removed user loses access to all organization resources including stacks,
+// teams, and projects. Wraps the `DeleteOrganizationMember` Pulumi Cloud REST
+// endpoint (DELETE /api/orgs/{orgName}/members/{userLogin}).
+func (pc *Client) RemoveOrganizationMember(ctx context.Context, orgName, userLogin string) error {
+	path := fmt.Sprintf("/api/orgs/%s/members/%s", url.PathEscape(orgName), url.PathEscape(userLogin))
+	if err := pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil); err != nil {
+		return fmt.Errorf("removing organization member: %w", err)
+	}
+	return nil
+}
+
+// ListPolicyIssuesOptions are the optional pagination parameters accepted by
+// ListPolicyIssues. Zero values mean "let the server pick the default":
+// Page < 1 → 1, PageSize ≤ 0 → server default, Asc false → descending order.
+type ListPolicyIssuesOptions struct {
+	Page     int64
+	PageSize int64
+	Asc      bool
+}
+
+// ListPolicyIssues returns a paginated list of policy issues for the given
+// organization, wrapping the `ListPolicyIssues` Pulumi Cloud REST endpoint
+// (POST /api/orgs/{orgName}/policyresults/issues). The endpoint uses POST
+// despite being a list because the request body carries filter and
+// pagination parameters.
+func (pc *Client) ListPolicyIssues(
+	ctx context.Context, orgName string, opts ListPolicyIssuesOptions,
+) (apitype.ListPolicyIssuesResponse, error) {
+	req := apitype.ListPolicyIssuesRequest{
+		Page:     opts.Page,
+		PageSize: opts.PageSize,
+		Asc:      opts.Asc,
+	}
+	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
+
+	var resp apitype.ListPolicyIssuesResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
+		return apitype.ListPolicyIssuesResponse{}, fmt.Errorf("listing policy issues: %w", err)
+	}
+	return resp, nil
+}
+
+// GetPolicyIssue returns the details of a single policy issue in the given
+// organization, wrapping the `GetPolicyIssue` Pulumi Cloud REST endpoint
+// (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
+func (pc *Client) GetPolicyIssue(
+	ctx context.Context, orgName, issueID string,
+) (apitype.PolicyIssue, error) {
+	path := fmt.Sprintf(
+		"/api/orgs/%s/policyresults/issues/%s",
+		url.PathEscape(orgName), url.PathEscape(issueID))
+
+	var resp apitype.PolicyIssue
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return apitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
+	}
+	return resp, nil
+}
+
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
 func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
 	apitype.ListPolicyPacksResponse, *string, error,
@@ -1763,6 +2016,18 @@ func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack Stack
 	return pc.restCall(ctx, "PUT", getStackPath(stack, "deployments", "settings"), nil, deployment, nil)
 }
 
+// PatchStackDeploymentSettings merges the supplied patch into the stack's
+// existing deployment settings. Wraps the `PatchDeploymentSettings` Pulumi
+// Cloud REST endpoint (POST /api/stacks/{org}/{project}/{stack}/deployments/settings).
+// For each property in the patch, the server starts with the current value,
+// removes it if the patch specifies null, or merges the new non-null value
+// with the existing one. Non-object properties are replaced entirely.
+func (pc *Client) PatchStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
+	patch *apitype.DeploymentSettings,
+) error {
+	return pc.restCall(ctx, http.MethodPost, getStackPath(stack, "deployments", "settings"), nil, patch, nil)
+}
+
 func (pc *Client) EncryptStackDeploymentSettingsSecret(ctx context.Context,
 	stack StackIdentifier, secret string,
 ) (*apitype.SecretValue, error) {
@@ -1821,12 +2086,60 @@ func (pc *Client) CreateDeployment(ctx context.Context, stack StackIdentifier,
 	return &resp, nil
 }
 
-func (pc *Client) GetDeploymentLogs(ctx context.Context, stack StackIdentifier, id,
-	token string,
+// GetDeployment retrieves a single deployment for a stack by its deployment
+// ID. It wraps the `GetDeployment` Pulumi Cloud REST endpoint
+// (GET /api/stacks/{org}/{project}/{stack}/deployments/{deploymentId}).
+func (pc *Client) GetDeployment(
+	ctx context.Context, stack StackIdentifier, id string,
+) (apitype.GetDeploymentResponse, error) {
+	var resp apitype.GetDeploymentResponse
+	err := pc.restCall(ctx, http.MethodGet, getDeploymentPath(stack, id), nil, nil, &resp)
+	if err != nil {
+		return apitype.GetDeploymentResponse{}, fmt.Errorf("getting deployment %s failed: %w", id, err)
+	}
+	return resp, nil
+}
+
+// GetDeploymentLogsOptions configures the query parameters sent to the
+// `GetDeploymentLogs` Pulumi Cloud REST endpoint. Pointer-typed fields encode
+// "unset"; only fields the caller defines are serialized into the URL.
+type GetDeploymentLogsOptions struct {
+	Job               *int
+	Step              *int
+	Offset            *int
+	Count             *int
+	ContinuationToken string
+}
+
+// GetDeploymentLogs retrieves execution logs for a deployment. The endpoint
+// supports two retrieval modes (see opts above): streaming mode (no job/step,
+// optional ContinuationToken) and step mode (Job/Step required, Offset/Count
+// optional).
+func (pc *Client) GetDeploymentLogs(
+	ctx context.Context, stack StackIdentifier, id string, opts GetDeploymentLogsOptions,
 ) (*apitype.DeploymentLogs, error) {
-	path := getDeploymentPath(stack, id, "logs?continuationToken="+token)
+	q := url.Values{}
+	if opts.Job != nil {
+		q.Set("job", strconv.Itoa(*opts.Job))
+	}
+	if opts.Step != nil {
+		q.Set("step", strconv.Itoa(*opts.Step))
+	}
+	if opts.Offset != nil {
+		q.Set("offset", strconv.Itoa(*opts.Offset))
+	}
+	if opts.Count != nil {
+		q.Set("count", strconv.Itoa(*opts.Count))
+	}
+	if opts.ContinuationToken != "" {
+		q.Set("continuationToken", opts.ContinuationToken)
+	}
+	p := getDeploymentPath(stack, id, "logs")
+	if encoded := q.Encode(); encoded != "" {
+		p = p + "?" + encoded
+	}
 	var resp apitype.DeploymentLogs
-	err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp)
+	err := pc.restCall(ctx, http.MethodGet, p, nil, nil, &resp)
 	if err != nil {
 		return nil, fmt.Errorf("getting deployment %s logs failed: %w", id, err)
 	}
