@@ -79,8 +79,8 @@ func newPolicyGroupRemoveCmdWith(factory policyGroupRemoveClientFactory) *cobra.
 	args.outputFormat = defaultPolicyGroupRemoveOutputFormat()
 
 	cmd := &cobra.Command{
-		Use:    "remove <name>",
-		Short:  "[EXPERIMENTAL] Delete a Policy Group",
+		Use:   "remove <name>",
+		Short: "[EXPERIMENTAL] Delete a Policy Group",
 		Long: "[EXPERIMENTAL] Delete a Policy Group.\n" +
 			"\n" +
 			"Deletes a Policy Group from an organization. This cannot be undone.\n" +
