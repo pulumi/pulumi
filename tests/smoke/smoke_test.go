@@ -1269,3 +1269,34 @@ func TestDoCommandLocalRun(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "expected JSON output, got: %s", stdout)
 	assert.Equal(t, "hello", strings.TrimSpace(fmt.Sprint(result["stdout"])))
 }
+
+// Test that `pulumi do <pkg> <module>` renders the expected help text for a module-level command. We only assert on
+// the do-specific portion up to (and including) the "Flags:" section — the trailing "Global Flags:" comes from
+// pulumi's root command and changes as global flags are added, which isn't what we're trying to pin down here.
+func TestDoCommandLocalHelp(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	stdout, _ := e.RunCommand("pulumi", "do", "command", "local")
+
+	expectedPrefix := `Functions and resources for the local module.
+
+Run 'pulumi do command local <resource/function> --help' for more details on usage.
+
+Usage:
+  pulumi do command local [command]
+
+Functions
+  run         Invoke the run function
+
+Resources
+  Command     Operate on the Command resource
+
+`
+	assert.True(t, strings.HasPrefix(stdout, expectedPrefix),
+		"stdout did not start with expected help prefix.\nExpected:\n%s\nActual:\n%s", expectedPrefix, stdout)
+}
