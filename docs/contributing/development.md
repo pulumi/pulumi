@@ -12,11 +12,8 @@ install the following on your machine:
 - [NodeJS](https://nodejs.org/en/download/), for working with the NodeJS SDK.
 - [Python](https://www.python.org/downloads/), for working with the Python SDK.
 - [.NET](https://dotnet.microsoft.com/download), for working with the .Net SDK.
-- [Golangci-lint](https://github.com/golangci/golangci-lint), for linting Go
-  code.
-- [gofumpt](https://github.com/mvdan/gofumpt) for formatting Go code. See
-  [installation](https://github.com/mvdan/gofumpt#installation) for editor setup
-  instructions.
+- [Golangci-lint](https://github.com/golangci/golangci-lint), for linting and
+  formatting Go code.
 - [Yarn](https://yarnpkg.com/), for building and working with the NodeJS SDK.
 - [Pulumictl](https://github.com/pulumi/pulumictl)
 - [jq](https://stedolan.github.io/jq/)

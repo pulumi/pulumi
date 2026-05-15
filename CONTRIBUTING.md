@@ -39,12 +39,12 @@ Before you open a pull request, make sure all lint checks pass:
 $ make lint
 ```
 
-If you see formatting failures, fix them by running [gofumpt](https://github.com/mvdan/gofumpt) on your code:
+If you see formatting failures, fix them with `make format`. To format a single file or directory directly:
 
 ```bash
-$ gofumpt -w path/to/file.go
+$ golangci-lint fmt path/to/file.go
 # or
-$ gofumpt -w path/to/dir
+$ golangci-lint fmt path/to/dir
 ```
 
 We require a changelog entry for all PR that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…

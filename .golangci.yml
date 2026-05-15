@@ -187,6 +187,7 @@ formatters:
     paths:
       - Godeps$
       - builtin$
+      - compilation_error
       - node_modules
       - testdata$
       - third_party$

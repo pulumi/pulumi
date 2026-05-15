@@ -261,17 +261,12 @@ $(SUB_PROJECTS:%=%_clean):
 endif
 
 # As a convenience, we provide a format target that folks can build to run go fmt over all
-# the go code in their tree.
+# the go code in their tree. We delegate to `golangci-lint fmt` so the formatter version
+# stays in lockstep with the linter version pinned in .mise.toml.
 .PHONY: format
 format::
 	$(call STEP_MESSAGE)
-	find . -iname "*.go" -not \( \
-		-path "./.git/*" -or \
-		-path "./sdk/proto/go/*" -or \
-		-path "./vendor/*" -or \
-		-path "./*/compilation_error/*" -or \
-		-path "./*/testdata/*" \
-	\) | xargs gofumpt -w
+	golangci-lint fmt
 
 .SECONDEXPANSION: # Needed by .make/ensure/% and .make/ensure/__%.
 
