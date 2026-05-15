@@ -1518,11 +1518,11 @@ func (pc *Client) GetPolicyIssue(
 		"/api/orgs/%s/policyresults/issues/%s",
 		url.PathEscape(orgName), url.PathEscape(issueID))
 
-	var resp apitype.PolicyIssue
+	var resp apitype.GetPolicyIssueResponse
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
 		return apitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
 	}
-	return resp, nil
+	return resp.PolicyIssue, nil
 }
 
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.

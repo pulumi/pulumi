@@ -22,10 +22,9 @@ import (
 
 func newPolicyIssueCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "issue",
-		Short:  "Inspect policy issues",
-		Long:   "[EXPERIMENTAL] Inspect policy issues.",
+		Use:   "issue",
+		Short: "Inspect policy issues",
+		Long:  "[EXPERIMENTAL] Inspect policy issues.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

@@ -62,18 +62,18 @@ func failingPolicyIssueGetFactory(err error) policyIssueGetClientFactory {
 
 func samplePolicyIssue() apitype.PolicyIssue {
 	return apitype.PolicyIssue{
-		ID:                "issue-1",
-		PolicyName:        "no-public-buckets",
-		PolicyPackName:    "aws-guardrails",
-		PolicyPackVersion: "1.2.0",
-		EnforcementLevel:  apitype.Mandatory,
-		Severity:          apitype.PolicySeverityHigh,
-		ResourceURN:       "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
-		ResourceType:      "aws:s3/bucket:Bucket",
-		StackName:         "prod",
-		ProjectName:       "web",
-		Message:           "S3 bucket must not allow public access",
-		CreatedAt:         "2026-05-01T12:00:00Z",
+		ID:            "issue-1",
+		PolicyName:    "no-public-buckets",
+		PolicyPack:    "aws-guardrails",
+		PolicyPackTag: "1.2.0",
+		Level:         string(apitype.Mandatory),
+		Severity:      apitype.PolicySeverityHigh,
+		ResourceURN:   "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
+		ResourceType:  "aws:s3/bucket:Bucket",
+		EntityID:      "prod",
+		EntityProject: "web",
+		Message:       "S3 bucket must not allow public access",
+		ObservedAt:    "2026-05-01T12:00:00Z",
 	}
 }
 
@@ -95,7 +95,7 @@ Severity:            high
 Stack:               web/prod
 Resource URN:        urn:pulumi:prod::web::aws:s3/bucket:Bucket::data
 Resource type:       aws:s3/bucket:Bucket
-Created at:          2026-05-01T12:00:00Z
+Observed at:         2026-05-01T12:00:00Z
 Message:             S3 bucket must not allow public access
 `, buf.String())
 	assert.Equal(t, "acme", c.gotOrg)
@@ -116,16 +116,16 @@ func TestPolicyIssueGet_JSONOutput(t *testing.T) {
 	assert.JSONEq(t, `{
 		"id": "issue-1",
 		"policyName": "no-public-buckets",
-		"policyPackName": "aws-guardrails",
-		"policyPackVersion": "1.2.0",
-		"enforcementLevel": "mandatory",
+		"policyPack": "aws-guardrails",
+		"policyPackTag": "1.2.0",
+		"level": "mandatory",
 		"severity": "high",
 		"resourceURN": "urn:pulumi:prod::web::aws:s3/bucket:Bucket::data",
 		"resourceType": "aws:s3/bucket:Bucket",
-		"stackName": "prod",
-		"projectName": "web",
+		"entityId": "prod",
+		"entityProject": "web",
 		"message": "S3 bucket must not allow public access",
-		"createdAt": "2026-05-01T12:00:00Z"
+		"observedAt": "2026-05-01T12:00:00Z"
 	}`, buf.String())
 }
 
