@@ -218,7 +218,8 @@ func (testProvider) Open(ctx context.Context, inputs map[string]esc.Value, conte
 type testProviders struct{}
 
 func (testProviders) LoadProvider(ctx context.Context, name string) (esc.Provider, error) {
-	if name == "test" {
+	switch name {
+	case "test", "aws-login", "azure-login", "gcp-login":
 		return testProvider{}, nil
 	}
 	return nil, fmt.Errorf("unknown provider %q", name)

@@ -1,6 +1,6 @@
 run: |
   esc env open-request test-org/test-project/test-env
-  esc env open-request test-org/test-project/test-env --grant-expiration-seconds 3600s --access-duration-seconds 7200s  
+  esc env open-request test-org/test-project/test-env --grant-expiration-seconds 3600s --access-duration-seconds 7200s
 environments:
   test-org/test-project/test-env:
     values:

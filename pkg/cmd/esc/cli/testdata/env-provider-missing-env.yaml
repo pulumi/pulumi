@@ -1,0 +1,40 @@
+run: |
+  esc env provider aws-login static default/created AKIAEXAMPLE shhhhhh --create && esc env get default/created --definition
+  esc env provider aws-login static default/created AKIANEW newshhh && esc env get default/created --definition
+  esc env provider aws-login static default/missing AKIAEXAMPLE shhhhhh || echo -n ""
+
+---
+> esc env provider aws-login static default/created AKIAEXAMPLE shhhhhh --create
+Environment created: test-user/default/created
+Provider updated.
+> esc env get default/created --definition
+values:
+  aws:
+    login:
+      fn::open::aws-login:
+        static:
+          accessKeyId: AKIAEXAMPLE
+          secretAccessKey:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAHz6Ojo6OjoVtjhwQ==
+> esc env provider aws-login static default/created AKIANEW newshhh
+Provider updated.
+> esc env get default/created --definition
+values:
+  aws:
+    login:
+      fn::open::aws-login:
+        static:
+          accessKeyId: AKIANEW
+          secretAccessKey:
+            fn::secret:
+              ciphertext: ZXNjeAAAAAHu5ffz6Ojoieff3A==
+> esc env provider aws-login static default/missing AKIAEXAMPLE shhhhhh
+
+---
+> esc env provider aws-login static default/created AKIAEXAMPLE shhhhhh --create
+> esc env get default/created --definition
+> esc env provider aws-login static default/created AKIANEW newshhh
+> esc env get default/created --definition
+> esc env provider aws-login static default/missing AKIAEXAMPLE shhhhhh
+Error: getting environment definition: not found

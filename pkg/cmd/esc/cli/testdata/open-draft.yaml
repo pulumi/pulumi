@@ -1,8 +1,4 @@
-run: |
-  esc env init default/test
-  esc env set default/test password 1234 --secret --draft
-  esc open default/test 
-  esc open default/test --draft=EXAMPLE
+run: "esc env init default/test\nesc env set default/test password 1234 --secret --draft\nesc open default/test \nesc open default/test --draft=EXAMPLE\n"
 
 ---
 > esc env init default/test
