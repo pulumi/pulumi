@@ -78,10 +78,9 @@ func newInsightsAccountScanCmd() *cobra.Command {
 	var org string
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "scan",
-		Short:  "Trigger a resource discovery scan for an Insights account",
-		Long:   "[EXPERIMENTAL] Trigger a resource discovery scan for an Insights account.",
+		Use:   "scan",
+		Short: "Trigger a resource discovery scan for an Insights account",
+		Long:  "[EXPERIMENTAL] Trigger a resource discovery scan for an Insights account.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -96,44 +95,7 @@ func newInsightsAccountScanCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the account")
 
-	cmd.AddCommand(newInsightsAccountScanLogCmd())
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/22977]: Not yet implemented.
-func newInsightsAccountScanLogCmd() *cobra.Command {
-	var (
-		org   string
-		job   int
-		step  int
-		count int
-		token string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "log",
-		Short:  "Retrieve logs for an Insights scan",
-		Long:   "[EXPERIMENTAL] Retrieve logs for an Insights scan.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "account"},
-			{Name: "scan-id"},
-		},
-		Required: 2,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the account")
-	cmd.Flags().IntVar(&job, "job", -1, "The job index to fetch step-level logs for")
-	cmd.Flags().IntVar(&step, "step", -1, "The step index within the job (requires --job)")
-	cmd.Flags().IntVar(&count, "count", 0, "The number of log lines to fetch")
-	cmd.Flags().StringVar(&token, "continuation-token", "", "The continuation token for paginated retrieval")
+	cmd.AddCommand(newInsightsAccountScanLogCmd(nil))
 
 	return cmd
 }

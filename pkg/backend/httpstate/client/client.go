@@ -3027,3 +3027,23 @@ func (pc *Client) ListInsightsAccounts(
 	}
 	return resp, nil
 }
+
+// GetInsightsScanLogs wraps the GetScanLogs endpoint. See
+// [apitype.InsightsScanLogsParams] for mode and per-field semantics.
+//
+// `accountName` is double-decoded server-side, hence the double encoding here.
+func (pc *Client) GetInsightsScanLogs(
+	ctx context.Context, org, account, scanID string, params apitype.InsightsScanLogsParams,
+) (apitype.InsightsScanLogs, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s/scans/%s/logs",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+		url.PathEscape(scanID),
+	)
+	var resp apitype.InsightsScanLogs
+	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
+		return apitype.InsightsScanLogs{}, err
+	}
+	return resp, nil
+}

@@ -233,3 +233,34 @@ type InsightsAccountScanStatus struct {
 	// JobTimeout is the deadline for jobs in the workflow run.
 	JobTimeout time.Time `json:"jobTimeout"`
 }
+
+// InsightsScanLogsParams are the query parameters for GetScanLogs. The endpoint
+// has two modes; setting Job switches from continuation-token mode to step mode.
+//
+// Job, Step, and Offset are pointers because zero is a legitimate index in the
+// underlying API.
+type InsightsScanLogsParams struct {
+	ContinuationToken string `url:"continuationToken,omitempty"`
+	Count             int    `url:"count,omitempty"`
+	Job               *int   `url:"job,omitempty"`
+	Step              *int   `url:"step,omitempty"`
+	Offset            *int64 `url:"offset,omitempty"`
+}
+
+// InsightsScanLogs is the response from GetScanLogs. Type is the
+// DeploymentLogsBase discriminator; only the fields relevant to the active
+// mode (continuation-token vs step) are populated.
+type InsightsScanLogs struct {
+	Type              string                `json:"__type,omitempty"`
+	Lines             []InsightsScanLogLine `json:"lines,omitempty"`
+	ContinuationToken string                `json:"continuationToken,omitempty"`
+	Output            string                `json:"output,omitempty"`
+	NextOffset        int64                 `json:"nextOffset,omitempty"`
+}
+
+// InsightsScanLogLine mirrors apitype.DeploymentLogLine.
+type InsightsScanLogLine struct {
+	Header    string    `json:"header,omitempty"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
+	Line      string    `json:"line,omitempty"`
+}
