@@ -20,7 +20,6 @@ func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 		Long: "Get an environment tag\n" +
 			"\n" +
 			"This command get a tag with the given name on the specified environment.",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

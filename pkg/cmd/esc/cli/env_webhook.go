@@ -13,8 +13,7 @@ func newEnvWebhookCmd(env *envCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Manage environment webhooks\n" +
 			"\n" +
 			"A webhook delivers JSON event payloads to a URL whenever the environment changes.",
-		Args:         cobra.NoArgs,
-		SilenceUsage: true,
+		Args: cobra.NoArgs,
 	}
 
 	cmd.AddCommand(newEnvWebhookListCmd(env))

@@ -18,8 +18,7 @@ func newEnvWebhookPingCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"This command triggers a synthetic delivery against the named webhook and prints\n" +
 			"the resulting delivery record.\n",
-		Args:         cobra.ExactArgs(2),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

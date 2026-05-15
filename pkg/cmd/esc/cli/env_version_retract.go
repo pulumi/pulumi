@@ -28,7 +28,6 @@ func newEnvVersionRetractCmd(env *envCommand) *cobra.Command {
 			"The revision pointed to by the `latest` tag may not be retracted. To retract\n" +
 			"the latest revision of an environment, first update the environment with a new\n" +
 			"definition.",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

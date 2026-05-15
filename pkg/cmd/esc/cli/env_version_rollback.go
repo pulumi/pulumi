@@ -22,7 +22,6 @@ func newEnvVersionRollbackCmd(env *envCommand) *cobra.Command {
 			"This command rolls an environment's definition back to the specified\n" +
 			"version. The environment's definition will be replaced with the\n" +
 			"definition at that version, creating a new revision.\n",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

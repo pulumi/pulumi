@@ -17,7 +17,6 @@ func newEnvVersionTagRmCmd(env *envCommand) *cobra.Command {
 		Long: "Remove a tagged version\n" +
 			"\n" +
 			"This command removes the tagged version with the given name",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

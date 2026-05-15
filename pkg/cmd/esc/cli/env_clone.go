@@ -29,7 +29,6 @@ func newEnvCloneCmd(env *envCommand) *cobra.Command {
 			"This command clones an existing environment with the given identifier into a new environment.\n" +
 			"If a project is omitted from the new environment identifier the new environment will be created\n" +
 			"within the same project as the environment being cloned.\n",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

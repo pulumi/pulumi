@@ -26,7 +26,6 @@ func newEnvSettingsSetCmd(env *envCommand, registry *EnvSettingsRegistry) *cobra
 			"\n" +
 			"Available settings:\n" +
 			registry.GetSettingsHelpText(),
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

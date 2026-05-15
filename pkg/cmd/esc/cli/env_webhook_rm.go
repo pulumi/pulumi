@@ -17,8 +17,7 @@ func newEnvWebhookRmCmd(env *envCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Remove an environment webhook\n" +
 			"\n" +
 			"This command removes the named webhook from the environment.\n",
-		Args:         cobra.ExactArgs(2),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

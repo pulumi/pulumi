@@ -46,7 +46,6 @@ func newEnvEditCmd(env *envCommand) *cobra.Command {
 			"commands to which the name of the temporary file used for the environment is appended.\n" +
 			"If no editor is specified via the --editor flag or environment variables, edit\n" +
 			"defaults to `vi`.\n",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

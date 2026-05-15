@@ -50,7 +50,6 @@ func newEnvProviderAWSLoginStaticCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/\n" +
 			"for the full provider reference.\n",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
@@ -153,7 +152,6 @@ func newEnvProviderAWSLoginOIDCCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"See https://www.pulumi.com/docs/esc/integrations/dynamic-login-credentials/aws-login/\n" +
 			"for the full provider reference.\n",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

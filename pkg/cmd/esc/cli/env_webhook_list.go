@@ -25,8 +25,7 @@ func newEnvWebhookListCmd(env *envCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] List environment webhooks\n" +
 			"\n" +
 			"This command lists the webhooks attached to the given environment.\n",
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

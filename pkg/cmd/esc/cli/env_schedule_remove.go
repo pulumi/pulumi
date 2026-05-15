@@ -24,8 +24,7 @@ func newEnvScheduleRemoveCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"This command removes the named scheduled action from the environment.\n" +
 			"You will be prompted to confirm by typing `remove` unless --yes is passed.\n",
-		Args:         cobra.ExactArgs(2),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

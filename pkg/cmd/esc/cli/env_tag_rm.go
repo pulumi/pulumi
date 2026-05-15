@@ -16,8 +16,7 @@ func newEnvTagRmCmd(env *envCommand) *cobra.Command {
 		Long: "Remove an environment tag\n" +
 			"\n" +
 			"This command removes an environment tag using the tag name.\n",
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(2),
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

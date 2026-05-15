@@ -26,8 +26,7 @@ func newEnvScheduleHistoryCmd(env *envCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Show the execution history of an environment scheduled action\n" +
 			"\n" +
 			"This command lists past executions of a scheduled action.\n",
-		Args:         cobra.ExactArgs(2),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

@@ -30,8 +30,7 @@ func newEnvReferrerListCmd(env *envCommand) *cobra.Command {
 			"This command lists referrers (other environments, Pulumi IaC stacks, and Pulumi\n" +
 			"Insights accounts) that reference the given environment. Results are grouped by\n" +
 			"the revision of the referenced environment.\n",
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

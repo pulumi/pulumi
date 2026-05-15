@@ -26,8 +26,7 @@ func newEnvScheduleListCmd(env *envCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] List environment scheduled actions\n" +
 			"\n" +
 			"This command lists the scheduled actions configured for the given environment.\n",
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

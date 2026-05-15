@@ -26,7 +26,6 @@ func newEnvVersionTagCmd(env *envCommand) *cobra.Command {
 			"is updated to point to the latest revision.\n" +
 			"\n" +
 			"Subcommands exist for listing and removing tagged versions.",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

@@ -13,8 +13,7 @@ func newEnvWebhookDeliveryCmd(env *envCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Manage environment webhook deliveries\n" +
 			"\n" +
 			"A delivery is a single attempt to deliver a webhook payload.",
-		Args:         cobra.NoArgs,
-		SilenceUsage: true,
+		Args: cobra.NoArgs,
 	}
 
 	cmd.AddCommand(newEnvWebhookDeliveryListCmd(env))

@@ -30,8 +30,7 @@ func newEnvScheduleNewCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"Only one schedule per environment is currently supported; creating a second\n" +
 			"schedule will fail. The minimum cron interval is once per day.\n",
-		Args:         cobra.ExactArgs(1),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

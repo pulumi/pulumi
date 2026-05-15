@@ -52,8 +52,7 @@ func newEnvWebhookEditCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"--secret replaces the shared secret. Use --remove-secret to clear an existing\n" +
 			"secret; passing --secret \"\" leaves it unchanged.\n",
-		Args:         cobra.ExactArgs(2),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

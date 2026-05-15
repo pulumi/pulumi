@@ -24,8 +24,7 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 		Long: "List environments\n" +
 			"\n" +
 			"This command lists environments. All environments you have access to will be listed.\n",
-		SilenceUsage: true,
-		Args:         cobra.NoArgs,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
 

@@ -18,8 +18,7 @@ func newEnvScheduleGetCmd(env *envCommand) *cobra.Command {
 		Long: "[EXPERIMENTAL] Show details for an environment scheduled action\n" +
 			"\n" +
 			"This command retrieves details for a single scheduled action.\n",
-		Args:         cobra.ExactArgs(2),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

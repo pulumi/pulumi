@@ -25,8 +25,7 @@ func newEnvTagLsCmd(env *envCommand) *cobra.Command {
 		Long: "List environment tags\n" +
 			"\n" +
 			"This command lists an environment's tags.\n",
-		SilenceUsage: true,
-		Args:         cobra.ExactArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

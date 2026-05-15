@@ -29,7 +29,6 @@ func newEnvVersionCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"Subcommands exist for viewing revision history and managing" +
 			"tagged versions.",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

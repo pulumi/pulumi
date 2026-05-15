@@ -37,7 +37,6 @@ func newEnvRmCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"When removing an environment, the environment will no longer be available\n" +
 			"once this command completes.",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

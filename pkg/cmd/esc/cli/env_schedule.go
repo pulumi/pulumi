@@ -14,8 +14,7 @@ func newEnvScheduleCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"A scheduled action runs against an environment on a cron schedule or at a single\n" +
 			"point in time. Today the CLI exposes secret-rotation schedules.",
-		Args:         cobra.NoArgs,
-		SilenceUsage: true,
+		Args: cobra.NoArgs,
 	}
 
 	cmd.AddCommand(newEnvScheduleEditCmd(env))

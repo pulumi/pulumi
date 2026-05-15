@@ -11,10 +11,9 @@ import (
 
 func newVersionCmd(esc *escCommand) *cobra.Command {
 	return &cobra.Command{
-		Use:          "version",
-		Short:        "Print esc's version number",
-		SilenceUsage: true,
-		Args:         cobra.NoArgs,
+		Use:   "version",
+		Short: "Print esc's version number",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(esc.stdout, "%v\n", version.Version)
 			return nil

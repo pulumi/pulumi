@@ -53,8 +53,7 @@ func newLoginCmd(esc *escCommand) *cobra.Command {
 			"For `https://` URLs, the CLI will speak REST to a Pulumi Cloud that manages state and concurrency control.\n" +
 			"You can specify a default org to use when logging into the Pulumi Cloud backend or a " +
 			"self-hosted Pulumi Cloud.\n",
-		SilenceUsage: true,
-		Args:         cobra.MaximumNArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

@@ -44,8 +44,7 @@ func newEnvWebhookNewCmd(env *envCommand) *cobra.Command {
 			"  raw, ms_teams:      any http(s) URL\n" +
 			"  slack:              must begin with https://hooks.slack.com/\n" +
 			"  pulumi_deployments: must be of the form <project>/<stack>\n",
-		Args:         cobra.ExactArgs(2),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

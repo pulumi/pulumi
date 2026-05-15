@@ -21,7 +21,6 @@ func newEnvTagMvCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"This command updates a tag with the given name on the specified environment, " +
 			"changing it's name.\n",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

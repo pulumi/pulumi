@@ -27,7 +27,6 @@ func newEnvInitCmd(env *envCommand) *cobra.Command {
 			"\n" +
 			"To create an environment in an organization when logged in to the Pulumi Cloud,\n" +
 			"prefix the stack name with the organization name and a slash (e.g. 'acmecorp/dev').\n",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

@@ -47,7 +47,6 @@ func newEnvGetCmd(env *envCommand) *cobra.Command {
 			"This command fetches the current definition for the named environment and gets a\n" +
 			"value within it. The path to the value to set is a Pulumi property path. The value\n" +
 			"is printed to stdout as YAML.\n",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

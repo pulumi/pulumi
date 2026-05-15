@@ -120,7 +120,6 @@ func newEnvRunCmd(envcmd *envCommand) *cobra.Command {
 			"arguments that follow it should be treated as positional arguments instead of flags.\n"+
 			"It is only required if the arguments to the command you would like to run include\n"+
 			"flags of the form `--flag` or `-f`.\n", shell),
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

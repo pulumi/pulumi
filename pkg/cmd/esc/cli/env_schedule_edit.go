@@ -30,8 +30,7 @@ func newEnvScheduleEditCmd(env *envCommand) *cobra.Command {
 			"one-time schedule at a specific time (ISO 8601 / RFC 3339).\n" +
 			"\n" +
 			"The minimum cron interval is once per day.\n",
-		Args:         cobra.ExactArgs(2),
-		SilenceUsage: true,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 

@@ -121,6 +121,8 @@ func New(opts *Options) *cobra.Command {
 			"    - %[1]s open     : Open an environment and access its contents\n"+
 			"\n"+
 			"For more information, please visit the project page: https://www.pulumi.com/docs/esc", command),
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	esc := newESC(opts)

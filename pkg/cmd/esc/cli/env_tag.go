@@ -25,7 +25,6 @@ func newEnvTagCmd(env *envCommand) *cobra.Command {
 			"This command creates a tag with the given name on the specified environment.\n" +
 			"\n" +
 			"Subcommands exist for reading, listing, updating, and removing tags.",
-		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 
