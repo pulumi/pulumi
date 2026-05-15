@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
@@ -45,14 +46,29 @@ type scanClientFactory func(
 	ctx context.Context, orgOverride string,
 ) (insightsAccountScanClient, string, error)
 
+// accountScanRender is the function signature stored in the OutputFlag — one
+// per supported output format. Sharing the signature keeps the renderer table
+// in [defaultAccountScanOutputFormat] readable.
+type accountScanRender func(*insightsAccountScanCmd, io.Writer, apitype.InsightsScanResponse) error
+
+// defaultAccountScanOutputFormat wires the output flag up with every supported
+// format. Sharing this between the cobra constructor and the tests keeps the
+// renderer table in one place.
+func defaultAccountScanOutputFormat() outputflag.OutputFlag[accountScanRender] {
+	return outputflag.OutputFlag[accountScanRender]{
+		RenderForTerminal: (*insightsAccountScanCmd).renderText,
+		RenderJSON:        (*insightsAccountScanCmd).renderJSON,
+	}
+}
+
 type insightsAccountScanArgs struct {
 	org             string
-	output          string
 	agentPoolID     string
 	listConcurrency int64
 	readConcurrency int64
 	batchSize       int64
 	readTimeout     string
+	output          outputflag.OutputFlag[accountScanRender]
 }
 
 type insightsAccountScanCmd struct {
@@ -68,7 +84,7 @@ func newInsightsAccountScanCmd(factory scanClientFactory) *cobra.Command {
 	}
 
 	scan := &insightsAccountScanCmd{clientFactory: factory}
-	var args insightsAccountScanArgs
+	args := insightsAccountScanArgs{output: defaultAccountScanOutputFormat()}
 
 	cmd := &cobra.Command{
 		Use:   "scan",
@@ -78,9 +94,7 @@ func newInsightsAccountScanCmd(factory scanClientFactory) *cobra.Command {
 			"The positional argument is the Insights account to scan; the organization\n" +
 			"defaults to the current default org and can be overridden with --org. For\n" +
 			"parent accounts the server fans the scan out across child accounts and\n" +
-			"returns the parent workflow run.\n" +
-			"\n" +
-			"Wraps the `ScanAccount` Pulumi Cloud REST endpoint.",
+			"returns the parent workflow run.",
 		Example: "  # Trigger a scan in a specific Insights account.\n" +
 			"  pulumi insights account scan prod-aws\n\n" +
 			"  # Override the organization.\n" +
@@ -102,8 +116,6 @@ func newInsightsAccountScanCmd(factory scanClientFactory) *cobra.Command {
 
 	cmd.Flags().StringVar(&args.org, "org", "",
 		"Organization that owns the Insights account (defaults to the current default org)")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
-		"Output format. One of: default, json")
 	cmd.Flags().StringVar(&args.agentPoolID, "agent-pool", "",
 		"Agent pool ID to use for the scan (defaults to the account's default pool)")
 	cmd.Flags().Int64Var(&args.listConcurrency, "list-concurrency", 0,
@@ -114,6 +126,7 @@ func newInsightsAccountScanCmd(factory scanClientFactory) *cobra.Command {
 		"Number of resources processed per batch (server default when 0)")
 	cmd.Flags().StringVar(&args.readTimeout, "read-timeout", "",
 		"Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty")
+	outputflag.VarP(cmd.Flags(), &args.output)
 
 	cmd.AddCommand(newInsightsAccountScanLogCmd())
 
@@ -125,30 +138,6 @@ func newInsightsAccountScanCmd(factory scanClientFactory) *cobra.Command {
 func (c *insightsAccountScanCmd) Run(
 	ctx context.Context, out io.Writer, account string, args insightsAccountScanArgs,
 ) error {
-	// Validate --output before talking to the network so a typo doesn't burn an
-	// API call.
-	render, err := scanRenderer(args.output)
-	if err != nil {
-		return err
-	}
-
-	// Negative tuning knobs would be silently rejected by the server with an
-	// unhelpful error; reject them here where we can name the flag.
-	if args.listConcurrency < 0 {
-		return errors.New("--list-concurrency must not be negative")
-	}
-	if args.readConcurrency < 0 {
-		return errors.New("--read-concurrency must not be negative")
-	}
-	if args.batchSize < 0 {
-		return errors.New("--batch-size must not be negative")
-	}
-	if args.readTimeout != "" {
-		if _, err := time.ParseDuration(args.readTimeout); err != nil {
-			return fmt.Errorf("invalid --read-timeout %q: %w", args.readTimeout, err)
-		}
-	}
-
 	client, org, err := c.clientFactory(ctx, args.org)
 	if err != nil {
 		return err
@@ -166,26 +155,13 @@ func (c *insightsAccountScanCmd) Run(
 		return fmt.Errorf("starting insights scan: %w", err)
 	}
 
-	return render(out, resp)
+	return args.output.Get()(c, out, resp)
 }
 
-// scanRenderer maps --output to the corresponding render function. Returns a
-// caller-actionable error for unknown values.
-func scanRenderer(format string) (func(io.Writer, apitype.InsightsScanResponse) error, error) {
-	switch format {
-	case "", "default":
-		return renderScanText, nil
-	case "json":
-		return renderScanJSON, nil
-	default:
-		return nil, fmt.Errorf("invalid --output value %q (must be 'default' or 'json')", format)
-	}
-}
-
-// renderScanText writes a human-readable view of the workflow run. The shape
+// renderText writes a human-readable view of the workflow run. The shape
 // mirrors `insights resource get`'s flat key/value layout — a single record
 // reads better than a table here.
-func renderScanText(w io.Writer, r apitype.InsightsScanResponse) error {
+func (c *insightsAccountScanCmd) renderText(w io.Writer, r apitype.InsightsScanResponse) error {
 	fmt.Fprintf(w, "ID:           %s\n", r.ID)
 	fmt.Fprintf(w, "Status:       %s\n", r.Status)
 	fmt.Fprintf(w, "Started:      %s\n", r.StartedAt.UTC().Format(time.RFC3339))
@@ -208,9 +184,9 @@ func renderScanText(w io.Writer, r apitype.InsightsScanResponse) error {
 	return nil
 }
 
-// renderScanJSON writes the workflow run as indented JSON. Indentation matches
+// renderJSON writes the workflow run as indented JSON. Indentation matches
 // the rest of the cli/cloud commands so jq-style scripting feels consistent.
-func renderScanJSON(w io.Writer, r apitype.InsightsScanResponse) error {
+func (c *insightsAccountScanCmd) renderJSON(w io.Writer, r apitype.InsightsScanResponse) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(r)

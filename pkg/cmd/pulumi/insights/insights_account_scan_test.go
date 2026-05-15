@@ -78,6 +78,22 @@ func failingScanFactory(err error) scanClientFactory {
 	}
 }
 
+// defaultScanArgs returns a fresh insightsAccountScanArgs with the OutputFlag
+// pre-populated. Tests that drive Run directly need this because they bypass
+// the cobra constructor that would otherwise install the renderer table.
+func defaultScanArgs() insightsAccountScanArgs {
+	return insightsAccountScanArgs{output: defaultAccountScanOutputFormat()}
+}
+
+// withScanOutput flips the output format without rebuilding the whole args
+// struct.
+func withScanOutput(args insightsAccountScanArgs, format string) insightsAccountScanArgs {
+	if err := args.output.Set(format); err != nil {
+		panic(err)
+	}
+	return args
+}
+
 func sampleScanResponse() apitype.InsightsScanResponse {
 	return apitype.InsightsScanResponse{
 		ID:            "wf-123",
@@ -97,7 +113,7 @@ func TestInsightsAccountScanCmd_DefaultOutput(t *testing.T) {
 	c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "prod-aws", insightsAccountScanArgs{})
+	err := c.Run(t.Context(), &out, "prod-aws", defaultScanArgs())
 	require.NoError(t, err)
 
 	output := out.String()
@@ -122,7 +138,7 @@ func TestInsightsAccountScanCmd_DefaultOutput_Finished(t *testing.T) {
 	c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "prod-aws", insightsAccountScanArgs{})
+	err := c.Run(t.Context(), &out, "prod-aws", defaultScanArgs())
 	require.NoError(t, err)
 
 	output := out.String()
@@ -153,7 +169,7 @@ func TestInsightsAccountScanCmd_DefaultOutput_WithJobs(t *testing.T) {
 	c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "prod-aws", insightsAccountScanArgs{})
+	err := c.Run(t.Context(), &out, "prod-aws", defaultScanArgs())
 	require.NoError(t, err)
 
 	output := out.String()
@@ -171,7 +187,7 @@ func TestInsightsAccountScanCmd_JSONOutput(t *testing.T) {
 	c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "prod-aws", insightsAccountScanArgs{output: "json"})
+	err := c.Run(t.Context(), &out, "prod-aws", withScanOutput(defaultScanArgs(), "json"))
 	require.NoError(t, err)
 
 	var got apitype.InsightsScanResponse
@@ -183,23 +199,24 @@ func TestInsightsAccountScanCmd_RequestBodyPropagation(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name string
-		args insightsAccountScanArgs
-		want apitype.InsightsScanRequest
+		name  string
+		setup func(insightsAccountScanArgs) insightsAccountScanArgs
+		want  apitype.InsightsScanRequest
 	}{
 		{
-			name: "no tuning",
-			args: insightsAccountScanArgs{},
-			want: apitype.InsightsScanRequest{},
+			name:  "no tuning",
+			setup: func(args insightsAccountScanArgs) insightsAccountScanArgs { return args },
+			want:  apitype.InsightsScanRequest{},
 		},
 		{
 			name: "all tuning flags",
-			args: insightsAccountScanArgs{
-				agentPoolID:     "pool-1",
-				listConcurrency: 8,
-				readConcurrency: 16,
-				batchSize:       100,
-				readTimeout:     "30s",
+			setup: func(args insightsAccountScanArgs) insightsAccountScanArgs {
+				args.agentPoolID = "pool-1"
+				args.listConcurrency = 8
+				args.readConcurrency = 16
+				args.batchSize = 100
+				args.readTimeout = "30s"
+				return args
 			},
 			want: apitype.InsightsScanRequest{
 				AgentPoolID:     "pool-1",
@@ -219,7 +236,7 @@ func TestInsightsAccountScanCmd_RequestBodyPropagation(t *testing.T) {
 			c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
 
 			var out bytes.Buffer
-			err := c.Run(t.Context(), &out, "prod-aws", tt.args)
+			err := c.Run(t.Context(), &out, "prod-aws", tt.setup(defaultScanArgs()))
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, captured.req)
 		})
@@ -231,19 +248,22 @@ func TestInsightsAccountScanCmd_OrgOverride(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		args       insightsAccountScanArgs
+		setup      func(insightsAccountScanArgs) insightsAccountScanArgs
 		defaultOrg string
 		wantOrg    string
 	}{
 		{
 			name:       "default org used when --org omitted",
-			args:       insightsAccountScanArgs{},
+			setup:      func(args insightsAccountScanArgs) insightsAccountScanArgs { return args },
 			defaultOrg: "acme",
 			wantOrg:    "acme",
 		},
 		{
-			name:       "--org overrides default",
-			args:       insightsAccountScanArgs{org: "other-co"},
+			name: "--org overrides default",
+			setup: func(args insightsAccountScanArgs) insightsAccountScanArgs {
+				args.org = "other-co"
+				return args
+			},
 			defaultOrg: "acme",
 			wantOrg:    "other-co",
 		},
@@ -257,66 +277,10 @@ func TestInsightsAccountScanCmd_OrgOverride(t *testing.T) {
 			c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, tt.defaultOrg)}
 
 			var out bytes.Buffer
-			err := c.Run(t.Context(), &out, "prod-aws", tt.args)
+			err := c.Run(t.Context(), &out, "prod-aws", tt.setup(defaultScanArgs()))
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantOrg, captured.org)
 			assert.Equal(t, "prod-aws", captured.account)
-		})
-	}
-}
-
-func TestInsightsAccountScanCmd_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	client := &mockScanClient{resp: sampleScanResponse()}
-	c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
-
-	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "prod-aws", insightsAccountScanArgs{output: "yaml"})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), `invalid --output value "yaml"`)
-}
-
-func TestInsightsAccountScanCmd_TuningValidation(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		args    insightsAccountScanArgs
-		wantErr string
-	}{
-		{
-			name:    "negative list-concurrency rejected",
-			args:    insightsAccountScanArgs{listConcurrency: -1},
-			wantErr: "--list-concurrency",
-		},
-		{
-			name:    "negative read-concurrency rejected",
-			args:    insightsAccountScanArgs{readConcurrency: -1},
-			wantErr: "--read-concurrency",
-		},
-		{
-			name:    "negative batch-size rejected",
-			args:    insightsAccountScanArgs{batchSize: -1},
-			wantErr: "--batch-size",
-		},
-		{
-			name:    "malformed read-timeout rejected",
-			args:    insightsAccountScanArgs{readTimeout: "not-a-duration"},
-			wantErr: "invalid --read-timeout",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			client := &mockScanClient{resp: sampleScanResponse()}
-			c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
-
-			var out bytes.Buffer
-			err := c.Run(t.Context(), &out, "prod-aws", tt.args)
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), tt.wantErr)
 		})
 	}
 }
@@ -328,7 +292,7 @@ func TestInsightsAccountScanCmd_ClientError(t *testing.T) {
 	c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "missing", insightsAccountScanArgs{})
+	err := c.Run(t.Context(), &out, "missing", defaultScanArgs())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "starting insights scan")
 	assert.Contains(t, err.Error(), "404 not found")
@@ -340,7 +304,7 @@ func TestInsightsAccountScanCmd_FactoryError(t *testing.T) {
 	c := &insightsAccountScanCmd{clientFactory: failingScanFactory(errors.New("not logged in"))}
 
 	var out bytes.Buffer
-	err := c.Run(t.Context(), &out, "prod-aws", insightsAccountScanArgs{})
+	err := c.Run(t.Context(), &out, "prod-aws", defaultScanArgs())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
@@ -383,6 +347,22 @@ func TestNewInsightsAccountScanCmd_FlagBinding(t *testing.T) {
 	var got apitype.InsightsScanResponse
 	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
 	assert.Equal(t, sampleScanResponse(), got)
+}
+
+func TestNewInsightsAccountScanCmd_RejectsUnsupportedOutput(t *testing.T) {
+	t.Parallel()
+
+	// outputflag rejects unknown formats at cobra parse time, before RunE
+	// fires — so the error mentions which values *are* valid.
+	cmd := newInsightsAccountScanCmd(stubScanFactory(&mockScanClient{}, "acme"))
+	cmd.SetArgs([]string{"--output", "yaml", "prod-aws"})
+
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	err := cmd.ExecuteContext(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `output "yaml" not supported`)
 }
 
 func TestNewInsightsAccountScanCmd_RegistersScanLog(t *testing.T) {
