@@ -37,7 +37,6 @@ func newOrgMemberCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newOrgMemberListCmd())
-	cmd.AddCommand(newOrgMemberGetCmd())
 	cmd.AddCommand(newOrgMemberEditCmd())
 	cmd.AddCommand(newOrgMemberRemoveCmd())
 	return cmd
