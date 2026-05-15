@@ -124,7 +124,6 @@ func newPolicyGroupNewCmdWith(factory policyGroupNewClientFactory) *cobra.Comman
 	return cmd
 }
 
-// defaultPolicyGroupNewClientFactory is the production wiring.
 func defaultPolicyGroupNewClientFactory(
 	ctx context.Context, orgFlag string,
 ) (policyGroupNewClient, string, error) {
@@ -183,8 +182,8 @@ func runPolicyGroupNew(
 		if skipPrompts {
 			return errors.New("--entity-type is required (use --entity-type stacks or --entity-type accounts)")
 		}
-		entityType = ui.PromptUserSkippable(
-			false, "Entity type",
+		entityType = ui.PromptUser(
+			"Entity type",
 			validEntityTypes, "stacks",
 			displayOpts.Color)
 	}
