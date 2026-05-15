@@ -296,6 +296,79 @@ func TestStateConvertFiltersRemoteComponentGrandchildren(t *testing.T) {
 	assert.Empty(t, pclBytes)
 }
 
+// TestStateConvertDependencyOnFilteredResource verifies that a resource with a dependency on a
+// filtered-out resource (e.g. a remote component) does not cause an error. The dependency edge is
+// silently dropped since the target no longer exists in the generated output.
+func TestStateConvertDependencyOnFilteredResource(t *testing.T) {
+	t.Parallel()
+
+	// The custom resource depends on the remote component, which is filtered out.
+	// Before the fix this caused a hard error from makeResourceOptions ("no name for resource").
+	stateJSON := `{
+  "version": 3,
+  "deployment": {
+    "manifest": {
+      "time": "2024-01-01T00:00:00Z",
+      "magic": "abc123",
+      "version": "v3.0.0"
+    },
+    "resources": [
+      {
+        "urn": "urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev",
+        "custom": false,
+        "type": "pulumi:pulumi:Stack",
+        "inputs": {},
+        "outputs": {}
+      },
+      {
+        "urn": "urn:pulumi:dev::myproject::pkg:index:Component::mycomp",
+        "custom": false,
+        "type": "pkg:index:Component",
+        "provider": "urn:pulumi:dev::myproject::pulumi:providers:pkg::default::abc123",
+        "inputs": {},
+        "outputs": {}
+      },
+      {
+        "urn": "urn:pulumi:dev::myproject::pulumi:providers:random::default",
+        "custom": true,
+        "type": "pulumi:providers:random",
+        "id": "default",
+        "inputs": {},
+        "outputs": {},
+        "dependencies": [
+          "urn:pulumi:dev::myproject::pkg:index:Component::mycomp"
+        ]
+      }
+    ]
+  }
+}`
+
+	outDir := t.TempDir()
+	cwd, err := filepath.Abs(".")
+	require.NoError(t, err)
+
+	stateFile := filepath.Join(t.TempDir(), "state.json")
+	require.NoError(t, os.WriteFile(stateFile, []byte(stateJSON), 0o600))
+
+	err = runConvert(
+		t.Context(),
+		&cmdBackend.MockLoginManager{},
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{"--file", stateFile},
+		cwd,
+		[]string{},
+		"state",
+		"pcl",
+		outDir,
+		true,  /*generateOnly*/
+		false, /*strict*/
+		"myproject",
+	)
+	// Should succeed without error even though the dependency target was filtered out.
+	require.NoError(t, err)
+}
+
 // TestStateConvertFileNotFound verifies the error when the state file cannot be read.
 func TestStateConvertFileNotFound(t *testing.T) {
 	t.Parallel()

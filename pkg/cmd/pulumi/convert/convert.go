@@ -433,7 +433,30 @@ func runConvert(
 			}
 		}
 
-		pclBytes, err := importer.GeneratePCLText(loader, states, snap.Resources, importer.NameTable{})
+		// Filter each state's Dependencies to only include URNs that are also in states.
+		// Dependencies pointing to filtered-out resources would cause GeneratePCLText to error.
+		includedURNs := make(map[resource.URN]struct{}, len(states))
+		for _, r := range states {
+			includedURNs[r.URN] = struct{}{}
+		}
+		filteredStates := make([]*resource.State, 0, len(states))
+		for _, r := range states {
+			if len(r.Dependencies) == 0 {
+				filteredStates = append(filteredStates, r)
+				continue
+			}
+			copied := r.Copy()
+			kept := copied.Dependencies[:0]
+			for _, dep := range copied.Dependencies {
+				if _, ok := includedURNs[dep]; ok {
+					kept = append(kept, dep)
+				}
+			}
+			copied.Dependencies = kept
+			filteredStates = append(filteredStates, copied)
+		}
+
+		pclBytes, err := importer.GeneratePCLText(loader, filteredStates, snap.Resources, importer.NameTable{})
 		if err != nil {
 			return fmt.Errorf("generate PCL from state: %w", err)
 		}
