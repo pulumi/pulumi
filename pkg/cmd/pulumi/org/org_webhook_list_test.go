@@ -38,7 +38,7 @@ func (m *mockOrgWebhookListClient) ListOrgWebhooks(
 	return m.webhooks, m.err
 }
 
-func ptr(s string) *string { return &s }
+func ptr[T any](v T) *T { return &v }
 
 func sampleOrgWebhooks() []apitype.Webhook {
 	return []apitype.Webhook{

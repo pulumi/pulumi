@@ -15,8 +15,6 @@
 package org
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -40,31 +38,5 @@ func newOrgMemberCmd() *cobra.Command {
 	cmd.AddCommand(newOrgMemberGetCmd())
 	cmd.AddCommand(newOrgMemberEditCmd())
 	cmd.AddCommand(newOrgMemberRemoveCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23013]: Not yet implemented.
-func newOrgMemberListCmd() *cobra.Command {
-	var (
-		org  string
-		mode string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List members of an organization",
-		Long:   "[EXPERIMENTAL] List members of an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list members for")
-	cmd.Flags().StringVar(&mode, "mode", "frontend",
-		"Member list mode: frontend or backend")
-
 	return cmd
 }
