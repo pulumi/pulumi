@@ -17,11 +17,14 @@ package do
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/blang/semver"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -1636,5 +1639,111 @@ func TestDoCmdFunctionInvokeAssetArchiveResults(t *testing.T) {
   }
 }
 `, textAsset.Hash, literalArchive.Hash, textAsset.Hash)
+	assert.Equal(t, expected, stdout.String())
+}
+
+// TestDoCmdFunctionInvokeWithParameterizedPackage exercises the parameterized-provider path: when the user quotes
+// `"<base-provider> <param1> <param2> ..."` as the first argument, `do` shlex-splits it, loads the base provider,
+// and calls Parameterize with the remaining tokens before fetching the schema. The schema used for the function
+// tree and the Invoke call is then for the parameterized subpackage.
+func TestDoCmdFunctionInvokeWithParameterizedPackage(t *testing.T) {
+	t.Parallel()
+
+	parameterizeCalled := false
+	getSchemaCalled := false
+	subpackageVersion := semver.MustParse("1.2.3")
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+		// shlex-split takes only the first token as the plugin source; the rest go to Parameterize.
+		assert.Equal(t, "terraform-provider", source)
+		spec := schema.PackageSpec{
+			Name: "myparam",
+			Functions: map[string]schema.FunctionSpec{
+				"myparam:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return closer(t), &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ParameterizeF: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+					parameterizeCalled = true
+					args, ok := req.Parameters.(*plugin.ParameterizeArgs)
+					require.True(t, ok, "expected ParameterizeArgs, got %T", req.Parameters)
+					assert.Equal(t, []string{"foo/bar", "1.2.3"}, args.Args)
+					return plugin.ParameterizeResponse{
+						Name:    "myparam",
+						Version: subpackageVersion,
+					}, nil
+				},
+				GetSchemaF: func(ctx context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+					getSchemaCalled = true
+					// The schema request after Parameterize should target the subpackage by name and version.
+					assert.Equal(t, "myparam", req.SubpackageName)
+					require.NotNil(t, req.SubpackageVersion)
+					assert.Equal(t, subpackageVersion.String(), req.SubpackageVersion.String())
+					schemaBytes, err := json.Marshal(schema.PackageSpec{
+						Name: "myparam",
+						Functions: map[string]schema.FunctionSpec{
+							"myparam:index:myFunction": {
+								Inputs: &schema.ObjectTypeSpec{
+									Properties: map[string]schema.PropertySpec{
+										"x": {TypeSpec: schema.TypeSpec{Type: "string"}},
+									},
+								},
+								Outputs: &schema.ObjectTypeSpec{
+									Properties: map[string]schema.PropertySpec{
+										"y": {TypeSpec: schema.TypeSpec{Type: "string"}},
+									},
+								},
+							},
+						},
+					})
+					require.NoError(t, err)
+					return plugin.GetSchemaResponse{Schema: schemaBytes}, nil
+				},
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					assert.Equal(t, "myparam:index:myFunction", string(req.Tok))
+					assert.Equal(t, "hello", req.Args["x"].StringValue())
+					return plugin.InvokeResponse{
+						Properties: resource.PropertyMap{
+							"y": resource.NewProperty("world"),
+						},
+					}, nil
+				},
+			},
+		}, nil
+	}
+
+	inputFile := writeHCLFile(t, "inputs.pcl", `x = "hello"`)
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	// First positional is the package spec: base provider name plus any Parameterize args, shlex-quoted.
+	cmd.SetArgs([]string{"terraform-provider foo/bar 1.2.3", "myFunction", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	assert.True(t, parameterizeCalled, "expected Parameterize to be called")
+	assert.True(t, getSchemaCalled, "expected GetSchema to be called")
+
+	expected := `{
+  "y": "world"
+}
+`
 	assert.Equal(t, expected, stdout.String())
 }

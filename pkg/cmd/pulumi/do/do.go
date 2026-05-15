@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/google/shlex"
@@ -181,7 +182,20 @@ func NewDoCmd(
 		// Build a fake command tree so we get accurate 'Usage' but without re-invoking any hooks. The top fake
 		// is what we dispatch on, so its args need to include each intermediate command name so cobra's Find can
 		// walk down through the shadow tree to subcmd.
-		fullArgs := append([]string(nil), args...)
+		//
+		// The first positional in args might be a shlex-quoted package spec with embedded spaces (e.g.
+		// "name@version param1 param2"). cobra's Find matches against command names directly, but the subcmd's
+		// Name() is just the first token (e.g. "name@version"). Substitute the quoted spec with its first token
+		// in the dispatch args so Find can match.
+		fullArgs := slices.Clone(args)
+		if pargs[0] != pkgargs[0] {
+			for i, a := range fullArgs {
+				if a == pargs[0] {
+					fullArgs[i] = pkgargs[0]
+					break
+				}
+			}
+		}
 		parent := cmd
 		current := subcmd
 		for parent != nil {

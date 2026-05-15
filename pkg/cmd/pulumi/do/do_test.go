@@ -103,13 +103,15 @@ func (p *testProvider) Configure(ctx context.Context, req plugin.ConfigureReques
 	return plugin.ConfigureResponse{}, nil
 }
 
-func (p *testProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+func (p *testProvider) GetSchema(ctx context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+	if p.GetSchemaF != nil {
+		return p.GetSchemaF(ctx, req)
+	}
 	schemaBytes, err := json.Marshal(p.spec)
 	if err != nil {
 		return plugin.GetSchemaResponse{}, err
 	}
-	schema := string(schemaBytes)
-	return plugin.GetSchemaResponse{Schema: []byte(schema)}, nil
+	return plugin.GetSchemaResponse{Schema: schemaBytes}, nil
 }
 
 func writeHCLFile(t *testing.T, name, contents string) string {
