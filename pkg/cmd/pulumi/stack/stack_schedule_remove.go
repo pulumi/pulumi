@@ -54,7 +54,7 @@ func newStackScheduleRemoveCmdWith(factory stackScheduleRemoveClientFactory) *co
 		Use:   "remove <schedule-id>",
 		Short: "Delete a scheduled deployment action",
 		Long: "[EXPERIMENTAL] Delete a scheduled deployment action.\n\n" +
-			"You will be prompted to confirm by retyping the schedule ID unless --yes is passed.",
+			"You will be prompted to confirm by typing `remove` unless --yes is passed.",
 		Example: "  # Remove a schedule (prompts for confirmation)\n" +
 			"  pulumi stack schedule remove bb61b60a-a313-46cb-b4ab-9d42dce46de8\n" +
 			"\n" +
@@ -103,7 +103,7 @@ func runStackScheduleRemove(
 
 	if !yes {
 		prompt := fmt.Sprintf("This will remove the schedule '%s'!", scheduleID)
-		if !ui.ConfirmPrompt(prompt, scheduleID, opts) {
+		if !ui.ConfirmPrompt(prompt, "remove", opts) {
 			return result.FprintBailf(os.Stdout, "confirmation declined")
 		}
 	}
