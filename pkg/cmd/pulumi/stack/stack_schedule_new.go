@@ -234,14 +234,6 @@ func nonEmptyValidator(what string) func(string) error {
 	}
 }
 
-func timestampValidator(v string) error {
-	if strings.TrimSpace(v) == "" {
-		return errors.New("a timestamp is required")
-	}
-	_, err := parseScheduleTimestamp(v)
-	return err
-}
-
 func defaultStackScheduleNewClientFactory(
 	ctx context.Context, stackFlag string,
 ) (stackScheduleNewClient, client.StackIdentifier, error) {
