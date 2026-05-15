@@ -46,14 +46,13 @@ type stackWebhookNewClientFactory func(
 
 // stackWebhookNewArgs holds the resolved arguments for creating a webhook.
 type stackWebhookNewArgs struct {
-	Name        string
-	DisplayName string
-	URL         string
-	Format      string
-	Filters     []string
-	Groups      []string
-	Active      bool
-	Secret      string
+	Name    string
+	URL     string
+	Format  string
+	Filters []string
+	Groups  []string
+	Active  bool
+	Secret  string
 }
 
 func newStackWebhookNewCmd() *cobra.Command {
@@ -62,17 +61,16 @@ func newStackWebhookNewCmd() *cobra.Command {
 
 func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Command {
 	var (
-		stack       string
-		name        string
-		url         string
-		format      string
-		filters     []string
-		groups      []string
-		active      bool
-		secret      string
-		displayName string
-		yes         bool
-		output      string
+		stack   string
+		name    string
+		url     string
+		format  string
+		filters []string
+		groups  []string
+		active  bool
+		secret  string
+		yes     bool
+		output  string
 	)
 
 	cmd := &cobra.Command{
@@ -111,7 +109,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 			opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 			webhookArgs, err := resolveNewArgs(
-				skipPrompts, name, displayName, url, format,
+				skipPrompts, name, url, format,
 				filters, groups, opts,
 			)
 			if err != nil {
@@ -145,8 +143,6 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 		"Whether the webhook is active")
 	cmd.Flags().StringVar(&secret, "secret", "",
 		"The HMAC key for signature verification")
-	cmd.Flags().StringVar(&displayName, "display-name", "",
-		"The webhook display name (defaults to the webhook name)")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
 	cmd.Flags().StringVarP(&output, "output", "o", "default",
@@ -215,7 +211,7 @@ func filtersNotCoveredByGroups(selectedGroups []string) []string {
 // resolveNewArgs prompts for any required values not provided via flags.
 func resolveNewArgs(
 	skipPrompts bool,
-	name, displayName, url, format string,
+	name, url, format string,
 	filters, groups []string,
 	opts display.Options,
 ) (stackWebhookNewArgs, error) {
@@ -238,11 +234,6 @@ func resolveNewArgs(
 		if err != nil {
 			return stackWebhookNewArgs{}, err
 		}
-	}
-
-	// Display name defaults to the webhook name.
-	if displayName == "" {
-		displayName = name
 	}
 
 	// URL is required.
@@ -296,12 +287,11 @@ func resolveNewArgs(
 	}
 
 	return stackWebhookNewArgs{
-		Name:        name,
-		DisplayName: displayName,
-		URL:         url,
-		Format:      format,
-		Filters:     filters,
-		Groups:      groups,
+		Name:    name,
+		URL:     url,
+		Format:  format,
+		Filters: filters,
+		Groups:  groups,
 	}, nil
 }
 
@@ -335,7 +325,7 @@ func runStackWebhookNew(
 		ProjectName:      &project,
 		StackName:        &stack,
 		Name:             args.Name,
-		DisplayName:      args.DisplayName,
+		DisplayName:      args.Name,
 		PayloadURL:       args.URL,
 		Active:           args.Active,
 		Format:           formatPtr,
