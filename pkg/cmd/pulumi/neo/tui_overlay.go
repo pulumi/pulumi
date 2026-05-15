@@ -20,9 +20,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/muesli/reflow/wordwrap"
 )
 
@@ -51,7 +51,7 @@ type overlayModel struct {
 
 func newOverlayModel(width, height int) overlayModel {
 	return overlayModel{
-		vp:     viewport.New(width, max(height-1, 1)),
+		vp:     viewport.New(viewport.WithWidth(width), viewport.WithHeight(max(height-1, 1))),
 		width:  width,
 		height: height,
 	}
@@ -60,8 +60,8 @@ func newOverlayModel(width, height int) overlayModel {
 func (o *overlayModel) SetSize(width, height int) {
 	o.width = width
 	o.height = height
-	o.vp.Width = width
-	o.vp.Height = max(height-1, 1)
+	o.vp.SetWidth(width)
+	o.vp.SetHeight(max(height-1, 1))
 }
 
 func (o *overlayModel) Update(msg tea.Msg) tea.Cmd {

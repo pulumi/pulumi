@@ -15,8 +15,6 @@
 package policy
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -37,58 +35,5 @@ func newPolicyIssueCmd() *cobra.Command {
 
 	cmd.AddCommand(newPolicyIssueListCmd())
 	cmd.AddCommand(newPolicyIssueGetCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/22995]: Not yet implemented.
-func newPolicyIssueListCmd() *cobra.Command {
-	var (
-		org      string
-		page     int
-		pageSize int
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List all policy issues for an organization",
-		Long:   "[EXPERIMENTAL] List all policy issues for an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list policy issues for")
-	cmd.Flags().IntVar(&page, "page", 1, "The page of results to return")
-	cmd.Flags().IntVar(&pageSize, "page-size", 0, "The number of results per page")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/22996]: Not yet implemented.
-func newPolicyIssueGetCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Get the details of a specific policy issue",
-		Long:   "[EXPERIMENTAL] Get the details of a specific policy issue.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "issue-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization that owns the issue")
-
 	return cmd
 }

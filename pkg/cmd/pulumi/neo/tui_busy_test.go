@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -145,7 +145,7 @@ func TestBusy_CancellingSubstate(t *testing.T) {
 	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh, Busy: true}))
 
 	// Press ESC mid-turn.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m := model.(Model)
 	assert.True(t, m.cancelling, "ESC must set the cancelling flag")
 	assert.True(t, m.busy, "spinner stays on while we wait for the backend to confirm")
@@ -192,7 +192,7 @@ func TestBusy_EscIgnoredWhenIdle(t *testing.T) {
 	model := tea.Model(NewModel(ModelConfig{EventCh: ch, OutCh: outCh}))
 	assert.False(t, model.(Model).busy)
 
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m := model.(Model)
 	assert.False(t, m.cancelling)
 	assert.False(t, m.busy)
@@ -218,7 +218,7 @@ func TestBusy_EscIgnoredWhileApprovalPending(t *testing.T) {
 	require.True(t, model.(Model).pendingApproval)
 
 	// ESC must not post anything.
-	model, _ = model.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	model, _ = model.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	assert.False(t, model.(Model).cancelling)
 	select {
 	case <-outCh:

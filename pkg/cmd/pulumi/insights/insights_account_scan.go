@@ -128,7 +128,7 @@ func newInsightsAccountScanCmd(factory scanClientFactory) *cobra.Command {
 		"Per-read timeout as a Go duration (e.g. '30s', '5m'); server default when empty")
 	outputflag.VarP(cmd.Flags(), &args.output)
 
-	cmd.AddCommand(newInsightsAccountScanLogCmd())
+	cmd.AddCommand(newInsightsAccountScanLogCmd(nil))
 
 	return cmd
 }

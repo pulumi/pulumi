@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi stack schedule get` to retrieve the configuration of a scheduled action

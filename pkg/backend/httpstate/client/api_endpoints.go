@@ -145,6 +145,9 @@ func init() {
 
 	// APIs for managing Pulumi Insights
 	addEndpoint("GET", "/api/preview/insights/{orgName}/accounts", "listInsightsAccounts")
+	addEndpoint("GET",
+		"/api/preview/insights/{orgName}/accounts/{accountName}/scans/{scanId}/logs",
+		"getScanLogs")
 
 	// APIs for interacting with the Package Registry
 	addEndpoint("POST", "/api/registry/packages/{source}/{publisher}/{name}/versions", "publishPackage")

@@ -548,3 +548,184 @@ func TestListInsightsAccounts(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestGetInsightsScanLogs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns continuation-token response", func(t *testing.T) {
+		t.Parallel()
+
+		want := apitype.InsightsScanLogs{
+			Type: "continuation",
+			Lines: []apitype.InsightsScanLogLine{
+				{
+					Header:    "scan",
+					Timestamp: time.Date(2026, 5, 1, 14, 30, 0, 0, time.UTC),
+					Line:      "starting scan",
+				},
+				{
+					Timestamp: time.Date(2026, 5, 1, 14, 30, 1, 0, time.UTC),
+					Line:      "finished scan",
+				},
+			},
+			ContinuationToken: "next-page",
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.GetInsightsScanLogs(t.Context(),
+			"acme", "prod-aws", "scan-123", apitype.InsightsScanLogsParams{Count: 50})
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("returns step response", func(t *testing.T) {
+		t.Parallel()
+
+		want := apitype.InsightsScanLogs{
+			Type:       "step",
+			Output:     "scan output text\n",
+			NextOffset: 1024,
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		job, step := 0, 0
+		offset := int64(0)
+		got, err := client.GetInsightsScanLogs(t.Context(),
+			"acme", "prod-aws", "scan-123",
+			apitype.InsightsScanLogsParams{Job: &job, Step: &step, Offset: &offset})
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("encodes query parameters", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			capturedPath  string
+			capturedQuery url.Values
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.EscapedPath()
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		job, step := 2, 3
+		offset := int64(4096)
+		_, err := client.GetInsightsScanLogs(t.Context(),
+			"acme", "prod-aws", "scan-123",
+			apitype.InsightsScanLogsParams{
+				Job:    &job,
+				Step:   &step,
+				Offset: &offset,
+			})
+		require.NoError(t, err)
+
+		assert.Equal(t,
+			"/api/preview/insights/acme/accounts/prod-aws/scans/scan-123/logs",
+			capturedPath,
+		)
+		assert.Equal(t, "2", capturedQuery.Get("job"))
+		assert.Equal(t, "3", capturedQuery.Get("step"))
+		assert.Equal(t, "4096", capturedQuery.Get("offset"))
+	})
+
+	t.Run("encodes continuation-mode parameters", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedQuery url.Values
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.GetInsightsScanLogs(t.Context(),
+			"acme", "prod-aws", "scan-123",
+			apitype.InsightsScanLogsParams{
+				ContinuationToken: "cursor",
+				Count:             100,
+			})
+		require.NoError(t, err)
+
+		assert.Equal(t, "cursor", capturedQuery.Get("continuationToken"))
+		assert.Equal(t, "100", capturedQuery.Get("count"))
+		assert.False(t, capturedQuery.Has("job"))
+		assert.False(t, capturedQuery.Has("step"))
+		assert.False(t, capturedQuery.Has("offset"))
+	})
+
+	t.Run("omits zero-valued parameters", func(t *testing.T) {
+		t.Parallel()
+
+		// Empty query string lets the server apply its own defaults.
+		var capturedQuery url.Values
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.GetInsightsScanLogs(t.Context(),
+			"acme", "prod-aws", "scan-123", apitype.InsightsScanLogsParams{})
+		require.NoError(t, err)
+		assert.Empty(t, capturedQuery)
+	})
+
+	t.Run("double-encodes accountName in path", func(t *testing.T) {
+		t.Parallel()
+
+		// `/` becomes `%2F` once, then `%252F` for the server-side double-decode.
+		var capturedPath string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.EscapedPath()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.GetInsightsScanLogs(t.Context(),
+			"acme", "team/a", "scan-123", apitype.InsightsScanLogsParams{})
+		require.NoError(t, err)
+
+		assert.Equal(t,
+			"/api/preview/insights/acme/accounts/team%252Fa/scans/scan-123/logs",
+			capturedPath,
+		)
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("not found"))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.GetInsightsScanLogs(t.Context(),
+			"acme", "prod-aws", "missing-scan", apitype.InsightsScanLogsParams{})
+		require.Error(t, err)
+	})
+}

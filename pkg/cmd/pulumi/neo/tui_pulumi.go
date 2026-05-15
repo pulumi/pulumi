@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	"github.com/pulumi/pulumi/pkg/v3/display"
