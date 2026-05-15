@@ -928,6 +928,18 @@ func (pc *Client) UpdateStackTTLSchedule(
 	return resp, nil
 }
 
+// ListStackWebhookDeliveries returns recent deliveries for the given webhook.
+func (pc *Client) ListStackWebhookDeliveries(
+	ctx context.Context, stackID StackIdentifier, webhookName string,
+) ([]apitype.WebhookDelivery, error) {
+	var resp []apitype.WebhookDelivery
+	path := getStackPath(stackID, "hooks", webhookName, "deliveries")
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
@@ -3061,6 +3073,22 @@ func (pc *Client) GetOrgUsageSummary(
 		return apitype.OrgUsageSummaryResponse{}, err
 	}
 	return resp, nil
+}
+
+// CancelStackDeployment requests cancellation of an in-progress Pulumi
+// Deployments execution. Wraps the CancelDeployment endpoint.
+//
+// The endpoint is fire-and-forget: a 200 OK signals that the request was
+// accepted, not that the deployment has finished tearing down. The server
+// returns 404 when the deployment is not known. We treat the call as
+// idempotent enough to retry on transient transport failures — the worst case
+// is a redundant cancel against an already-canceling deployment.
+func (pc *Client) CancelStackDeployment(
+	ctx context.Context, stack StackIdentifier, deploymentID string,
+) error {
+	path := getStackPath(stack, "deployments", deploymentID, "cancel")
+	return pc.restCallWithOptions(ctx, "POST", path, nil, nil, nil,
+		httpCallOptions{RetryPolicy: retryAllMethods})
 }
 
 // GetInsightsScanLogs wraps the GetScanLogs endpoint. See

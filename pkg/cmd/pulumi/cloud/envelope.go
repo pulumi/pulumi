@@ -89,7 +89,7 @@ type APIError struct {
 	Envelope ErrorEnvelope
 	// Silent suppresses the automatic ErrorEnvelope emission in
 	// runWithEnvelope. Use when the command has already written its own
-	// structured output (e.g. a partial_failure event during --paginate
+	// structured output (e.g. a partial_failure event during --all
 	// or a cancellation event from the signal handler).
 	Silent bool
 }

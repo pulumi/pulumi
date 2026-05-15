@@ -48,15 +48,14 @@ type apiCommand struct {
 	// Persistent flag inherited by subcommands.
 	refreshSpec bool
 
-	// Local api for the dispatcher path. Flag names are a stable contract
-	// matching `gh api`.
+	// Local api for the dispatcher path.
 	method          string
 	fields          []string
 	rawFields       []string
 	headers         []string
 	input           string
 	body            string
-	paginate        bool
+	all             bool
 	include         bool
 	silent          bool
 	verbose         bool
@@ -89,7 +88,7 @@ func bindFlags(cmd *cobra.Command, api *apiCommand) {
 	pf.StringVar(&api.body, "body", "",
 		"Inline request body sent verbatim (default Content-Type: application/json). "+
 			"Mutually exclusive with --input")
-	pf.BoolVar(&api.paginate, "paginate", false,
+	pf.BoolVar(&api.all, "all", false,
 		"Follow pagination cursors and emit the combined result")
 	pf.BoolVarP(&api.include, "include", "i", false,
 		"Include HTTP status line and response headers in output")
@@ -185,7 +184,7 @@ func NewAPICmd() *cobra.Command {
 			"  # Filter the JSON response with jq.\n" +
 			"  pulumi api /api/user --output=json | jq '.githubLogin'\n\n" +
 			"  # Follow pagination cursors and stream the combined result to jq.\n" +
-			"  pulumi api ListUserStacks --paginate | jq '.stacks[].stackName'\n\n" +
+			"  pulumi api ListUserStacks --all | jq '.stacks[].stackName'\n\n" +
 			"  # Extract just the status line + headers without the body.\n" +
 			"  pulumi api /api/user --include --silent\n\n" +
 			"  # Preview the resolved request without sending it.\n" +
@@ -327,7 +326,7 @@ func executeLive(
 			fmt.Sprintf("parsing query string %q: %v", query, err)).WithField("path")
 	}
 
-	if api.paginate {
+	if api.all {
 		return runPaginate(ctx, w, apiClient, paginateRequest{
 			Method:      method,
 			Path:        concretePath,

@@ -209,3 +209,48 @@ func TestPatchStackDeploymentSettings(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestCancelStackDeployment(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "acme",
+		Project: "web",
+		Stack:   tokens.MustParseStackName("prod"),
+	}
+
+	t.Run("issues POST against the expected path", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			capturedMethod string
+			capturedURI    string
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedMethod = r.Method
+			capturedURI = r.URL.RequestURI()
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		err := c.CancelStackDeployment(t.Context(), stackID, "dep-123")
+		require.NoError(t, err)
+		assert.Equal(t, http.MethodPost, capturedMethod)
+		assert.Equal(t, "/api/stacks/acme/web/prod/deployments/dep-123/cancel", capturedURI)
+	})
+
+	t.Run("propagates 404 errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("deployment not found"))
+		}))
+		defer server.Close()
+
+		c := newMockClient(server)
+		err := c.CancelStackDeployment(t.Context(), stackID, "missing")
+		require.Error(t, err)
+	})
+}
