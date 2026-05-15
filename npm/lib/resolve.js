@@ -4,7 +4,6 @@
 
 const fs = require("fs");
 const path = require("path");
-const { os: currentOS, arch: currentArch, exeName } = require("./platform");
 const { cacheDir } = require("./cache");
 const { downloadBinary, fetchLatestVersion } = require("./download");
 
@@ -31,7 +30,7 @@ function isExecutable(filePath) {
 // pathEnv defaults to process.env.PATH and is injectable for testing.
 function findSystemPulumi(pathEnv) {
     const search = pathEnv !== undefined ? pathEnv : process.env.PATH || "";
-    const exe = exeName();
+    const exe = process.platform === "win32" ? "pulumi.exe" : "pulumi";
     for (const dir of search.split(path.delimiter)) {
         if (!dir || dir.includes("node_modules")) continue;
         const candidate = path.join(dir, exe);
@@ -50,8 +49,8 @@ function findSystemPulumi(pathEnv) {
 async function resolve({
     pathEnv,
     version = process.env.PULUMI_VERSION || pkg.version,
-    targetOS = currentOS(),
-    targetArch = currentArch(),
+    targetOS = process.platform === "win32" ? "windows" : process.platform,
+    targetArch = process.arch,
     download = downloadBinary,
     getLatestVersion = fetchLatestVersion,
 } = {}) {
@@ -62,7 +61,7 @@ async function resolve({
         version = await getLatestVersion();
     }
 
-    const dest = path.join(cacheDir(version), exeName(targetOS));
+    const dest = path.join(cacheDir(version), targetOS === "windows" ? "pulumi.exe" : "pulumi");
     if (isExecutable(dest)) return dest;
 
     process.stderr.write(`Downloading pulumi v${version}...\n`);

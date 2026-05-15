@@ -8,10 +8,9 @@ const { pipeline } = require("stream/promises");
 const os = require("os");
 const path = require("path");
 const { execFileSync } = require("child_process");
-const { archiveExt, exeName } = require("./platform");
-
 function archiveName(version, targetOS, targetArch) {
-    return `pulumi-v${version}-${targetOS}-${targetArch}.${archiveExt(targetOS)}`;
+    const ext = targetOS === "windows" ? "zip" : "tar.gz";
+    return `pulumi-v${version}-${targetOS}-${targetArch}.${ext}`;
 }
 
 // Primary download origin. GitHub releases are the fallback.

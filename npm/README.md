@@ -6,13 +6,18 @@ Lazily install the [Pulumi CLI](https://www.pulumi.com) via npx.
 npx pulumi up
 ```
 
+> **Note:** This is NOT the Pulumi SDK. If you're writing a Pulumi program you
+> want [`@pulumi/pulumi`](https://www.npmjs.com/package/@pulumi/pulumi)
+> instead. See the [language SDK
+> docs](https://www.pulumi.com/docs/iac/languages-sdks/) for all supported
+> runtimes.
+
 ## How it works
 
 On first use, the package downloads the Pulumi CLI binary for your platform from
 [get.pulumi.com](https://get.pulumi.com) and caches it in npm's cache directory
-(`~/.npm/_pulumi/` by default). The download is checksum-verified against the
-signed manifest published with each release. Subsequent invocations use the
-cached binary directly.
+(`~/.npm/_pulumi/` by default). The download is checksum-verified to detect
+corruption in transit. Subsequent invocations use the cached binary directly.
 
 If a `pulumi` binary is already on your `PATH` (e.g. installed via Homebrew or
 the [install script](https://www.pulumi.com/docs/install/)), that installation

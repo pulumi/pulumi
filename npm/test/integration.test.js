@@ -20,8 +20,6 @@ if (!version) {
 }
 
 const { resolve } = require("../lib/resolve");
-const { os: currentOS, arch: currentArch } = require("../lib/platform");
-
 // Expected language hosts bundled in every Pulumi release.
 const LANGUAGE_HOSTS = [
     "pulumi-language-nodejs",
@@ -48,8 +46,8 @@ describe(`pulumi v${version} integration`, () => {
         bin = await resolve({
             pathEnv: "", // bypass PATH deferral — exercise the download path
             version,
-            targetOS: currentOS(),
-            targetArch: currentArch(),
+            targetOS: process.platform === "win32" ? "windows" : process.platform,
+            targetArch: process.arch,
         });
         binDir = path.dirname(bin);
 
