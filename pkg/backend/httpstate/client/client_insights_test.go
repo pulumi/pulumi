@@ -16,6 +16,7 @@ package client
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -98,6 +99,214 @@ func TestGetInsightsResource(t *testing.T) {
 		_, err := client.GetInsightsResource(t.Context(),
 			"acme", "prod-aws", "aws:s3/bucket:Bucket::missing")
 		require.Error(t, err)
+	})
+}
+
+func TestScanInsightsAccount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns parsed workflow run", func(t *testing.T) {
+		t.Parallel()
+
+		want := apitype.InsightsScanResponse{
+			ID:            "wf-123",
+			OrgID:         "org-1",
+			UserID:        "user-1",
+			Status:        "running",
+			StartedAt:     time.Date(2026, 5, 13, 10, 0, 0, 0, time.UTC),
+			LastUpdatedAt: time.Date(2026, 5, 13, 10, 0, 0, 0, time.UTC),
+			JobTimeout:    time.Date(2026, 5, 13, 12, 0, 0, 0, time.UTC),
+			Jobs: []apitype.InsightsScanJobRun{{
+				Status:  "running",
+				Timeout: int64(time.Hour),
+				Steps: []apitype.InsightsScanStepRun{
+					{Name: "list", Status: "running"},
+					{Name: "read", Status: "not-started"},
+				},
+			}},
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPost, r.Method)
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "prod-aws", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("double-encodes accountName", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedPath string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.EscapedPath()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"x","orgId":"y","userId":"z","status":"running",` +
+				`"startedAt":"2026-01-01T00:00:00Z","finishedAt":"0001-01-01T00:00:00Z",` +
+				`"lastUpdatedAt":"2026-01-01T00:00:00Z","jobTimeout":"2026-01-01T01:00:00Z"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "team/a", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+
+		// `team/a` is double-encoded: `/` becomes `%2F` then `%252F`.
+		assert.Equal(t,
+			"/api/preview/insights/acme/accounts/team%252Fa/scan",
+			capturedPath,
+		)
+	})
+
+	t.Run("sends request body", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedBody apitype.InsightsScanRequest
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &capturedBody))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"x","orgId":"y","userId":"z","status":"running",` +
+				`"startedAt":"2026-01-01T00:00:00Z","finishedAt":"0001-01-01T00:00:00Z",` +
+				`"lastUpdatedAt":"2026-01-01T00:00:00Z","jobTimeout":"2026-01-01T01:00:00Z"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		req := apitype.InsightsScanRequest{
+			AgentPoolID:     "pool-1",
+			ListConcurrency: 8,
+			ReadConcurrency: 16,
+			BatchSize:       100,
+			ReadTimeout:     "30s",
+		}
+		_, err := client.ScanInsightsAccount(t.Context(), "acme", "prod-aws", req)
+		require.NoError(t, err)
+		assert.Equal(t, req, capturedBody)
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("not found"))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "missing", apitype.InsightsScanRequest{})
+		require.Error(t, err)
+	})
+
+	t.Run("returns zero value on 204 No Content", func(t *testing.T) {
+		t.Parallel()
+
+		// The live service uses 204 No Content for successful scan
+		// initiations even though the OpenAPI spec advertises a JSON body.
+		// We must not blow up on the empty payload.
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "prod-aws", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, apitype.InsightsScanResponse{}, got)
+	})
+
+	t.Run("returns zero value on empty 200 body", func(t *testing.T) {
+		t.Parallel()
+
+		// Some intermediaries strip the 204 status; an empty 200 body is
+		// the other shape we have to tolerate without exploding.
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "prod-aws", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, apitype.InsightsScanResponse{}, got)
+	})
+
+	t.Run("parses live WorkflowRun shape", func(t *testing.T) {
+		t.Parallel()
+
+		// Verbatim body captured from the live service on 2026-05-15 for a
+		// running scan on `azure-test`. The interesting bits are:
+		//   - `finishedAt: null` — must not break decoding of the time.Time
+		//     field; the standard library treats null as "leave zero".
+		//   - sub-second nanosecond precision on the nested timestamps.
+		//   - `worker` is a JSON string here, not the OpenAPI-advertised
+		//     object; the field is json.RawMessage so we forward it as-is.
+		body := []byte(`{
+			"id": "527b0ab2-f0e3-4c18-a248-85a5e23072e9",
+			"orgId": "ab1162ff-daf9-4237-8076-81deb1bcb108",
+			"userId": "6ef778ce-63bc-4f81-a722-9defbba759e6",
+			"status": "running",
+			"startedAt": "2026-05-15T09:15:16.311Z",
+			"finishedAt": null,
+			"lastUpdatedAt": "2026-05-15T09:16:23.741Z",
+			"jobTimeout": "0001-01-01T00:00:00Z",
+			"jobs": [
+				{
+					"status": "running",
+					"started": "2026-05-15T09:15:40.772181644Z",
+					"lastUpdated": "2026-05-15T09:16:06.20101125Z",
+					"timeout": 43200000000000,
+					"steps": [
+						{
+							"name": "Setup",
+							"status": "succeeded",
+							"started": "2026-05-15T09:15:40.772181644Z",
+							"lastUpdated": "2026-05-15T09:15:50.519294704Z"
+						},
+						{
+							"name": "Scan account",
+							"status": "running",
+							"started": "2026-05-15T09:16:06.20101125Z",
+							"lastUpdated": "2026-05-15T09:16:06.20101125Z"
+						}
+					],
+					"worker": "i-0fe69bc90e010c94b"
+				}
+			]
+		}`)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "azure-test", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, "527b0ab2-f0e3-4c18-a248-85a5e23072e9", got.ID)
+		assert.Equal(t, "running", got.Status)
+		// `null` on the wire becomes zero-valued time.Time, which the
+		// rendering logic suppresses.
+		assert.True(t, got.FinishedAt.IsZero())
+		require.Len(t, got.Jobs, 1)
+		assert.Equal(t, time.Duration(43200000000000), time.Duration(got.Jobs[0].Timeout))
+		require.Len(t, got.Jobs[0].Steps, 2)
+		assert.Equal(t, "Setup", got.Jobs[0].Steps[0].Name)
+		assert.Equal(t, "succeeded", got.Jobs[0].Steps[0].Status)
 	})
 }
 
