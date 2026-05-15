@@ -332,6 +332,50 @@ type Client interface {
 	// DeleteEnvironmentTag deletes a specified tag on an environment.
 	DeleteEnvironmentTag(ctx context.Context, orgName, projectName, envName, tagName string) error
 
+	// ListEnvironmentWebhooks lists the webhooks attached to the given environment.
+	ListEnvironmentWebhooks(
+		ctx context.Context,
+		orgName, projectName, envName string,
+	) ([]EnvironmentWebhook, error)
+
+	// GetEnvironmentWebhook returns the named webhook for the given environment.
+	GetEnvironmentWebhook(
+		ctx context.Context,
+		orgName, projectName, envName, webhookName string,
+	) (*EnvironmentWebhook, error)
+
+	// CreateEnvironmentWebhook creates a new webhook on the given environment.
+	CreateEnvironmentWebhook(
+		ctx context.Context,
+		orgName, projectName, envName string,
+		req CreateEnvironmentWebhookRequest,
+	) (*EnvironmentWebhook, error)
+
+	// UpdateEnvironmentWebhook updates the named webhook on the given environment.
+	UpdateEnvironmentWebhook(
+		ctx context.Context,
+		orgName, projectName, envName, webhookName string,
+		req UpdateEnvironmentWebhookRequest,
+	) (*EnvironmentWebhook, error)
+
+	// DeleteEnvironmentWebhook deletes the named webhook from the given environment.
+	DeleteEnvironmentWebhook(
+		ctx context.Context,
+		orgName, projectName, envName, webhookName string,
+	) error
+
+	// PingEnvironmentWebhook sends a synthetic delivery to the named webhook and returns the result.
+	PingEnvironmentWebhook(
+		ctx context.Context,
+		orgName, projectName, envName, webhookName string,
+	) (*EnvironmentWebhookDelivery, error)
+
+	// ListEnvironmentWebhookDeliveries lists the deliveries for the named webhook.
+	ListEnvironmentWebhookDeliveries(
+		ctx context.Context,
+		orgName, projectName, envName, webhookName string,
+	) ([]EnvironmentWebhookDelivery, error)
+
 	// ListEnvironmentSchedules lists the scheduled actions for the given environment.
 	ListEnvironmentSchedules(
 		ctx context.Context,
@@ -1205,6 +1249,100 @@ func (pc *client) UpdateEnvironmentTag(
 func (pc *client) DeleteEnvironmentTag(ctx context.Context, orgName, projectName, envName, tagName string) error {
 	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/tags/%v", orgName, projectName, envName, tagName)
 	return pc.restCall(ctx, http.MethodDelete, path, nil, nil, nil)
+}
+
+// envHooksPath joins the base webhook path for an environment with optional trailing segments.
+func envHooksPath(orgName, projectName, envName string, parts ...string) string {
+	base := fmt.Sprintf("/api/esc/environments/%v/%v/%v/hooks", orgName, projectName, envName)
+	for _, p := range parts {
+		base += "/" + p
+	}
+	return base
+}
+
+// ListEnvironmentWebhooks lists the webhooks attached to the given environment.
+func (pc *client) ListEnvironmentWebhooks(
+	ctx context.Context,
+	orgName, projectName, envName string,
+) ([]EnvironmentWebhook, error) {
+	var resp []EnvironmentWebhook
+	if err := pc.restCall(ctx, http.MethodGet, envHooksPath(orgName, projectName, envName), nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+// GetEnvironmentWebhook returns the named webhook for the given environment.
+func (pc *client) GetEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+) (*EnvironmentWebhook, error) {
+	var resp EnvironmentWebhook
+	if err := pc.restCall(ctx, http.MethodGet, envHooksPath(orgName, projectName, envName, webhookName), nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// CreateEnvironmentWebhook creates a new webhook on the given environment.
+func (pc *client) CreateEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName string,
+	req CreateEnvironmentWebhookRequest,
+) (*EnvironmentWebhook, error) {
+	var resp EnvironmentWebhook
+	if err := pc.restCall(ctx, http.MethodPost, envHooksPath(orgName, projectName, envName), nil, &req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// UpdateEnvironmentWebhook updates the named webhook on the given environment.
+func (pc *client) UpdateEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+	req UpdateEnvironmentWebhookRequest,
+) (*EnvironmentWebhook, error) {
+	var resp EnvironmentWebhook
+	path := envHooksPath(orgName, projectName, envName, webhookName)
+	if err := pc.restCall(ctx, http.MethodPatch, path, nil, &req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// DeleteEnvironmentWebhook deletes the named webhook from the given environment.
+func (pc *client) DeleteEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+) error {
+	return pc.restCall(ctx, http.MethodDelete, envHooksPath(orgName, projectName, envName, webhookName), nil, nil, nil)
+}
+
+// PingEnvironmentWebhook sends a synthetic delivery to the named webhook and returns the result.
+func (pc *client) PingEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+) (*EnvironmentWebhookDelivery, error) {
+	var resp EnvironmentWebhookDelivery
+	path := envHooksPath(orgName, projectName, envName, webhookName, "ping")
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ListEnvironmentWebhookDeliveries lists the deliveries for the named webhook.
+func (pc *client) ListEnvironmentWebhookDeliveries(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+) ([]EnvironmentWebhookDelivery, error) {
+	var resp []EnvironmentWebhookDelivery
+	path := envHooksPath(orgName, projectName, envName, webhookName, "deliveries")
+	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // ListEnvironmentSchedules lists the scheduled actions for the given environment.

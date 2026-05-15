@@ -285,6 +285,8 @@ type testEnvironment struct {
 	revisionTags      map[string]int
 	tags              map[string]string
 	deletionProtected bool
+	webhooks          []client.EnvironmentWebhook
+	webhookDeliveries map[string][]client.EnvironmentWebhookDelivery
 	schedules         []client.ScheduledAction
 	referrers         map[string][]client.EnvironmentReferrer
 }
@@ -1149,6 +1151,158 @@ func (c *testPulumiClient) DeleteEnvironmentSchedule(
 	return nil
 }
 
+func (c *testPulumiClient) findWebhook(orgName, projectName, envName, webhookName string) (*testEnvironment, int, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)]
+	if !ok {
+		return nil, 0, errors.New("environment not found")
+	}
+	for i, w := range env.webhooks {
+		if w.Name == webhookName {
+			return env, i, nil
+		}
+	}
+	return nil, 0, errors.New("webhook not found")
+}
+
+func (c *testPulumiClient) ListEnvironmentWebhooks(
+	ctx context.Context,
+	orgName, projectName, envName string,
+) ([]client.EnvironmentWebhook, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)]
+	if !ok {
+		return nil, errors.New("environment not found")
+	}
+	return append([]client.EnvironmentWebhook(nil), env.webhooks...), nil
+}
+
+func (c *testPulumiClient) GetEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+) (*client.EnvironmentWebhook, error) {
+	env, i, err := c.findWebhook(orgName, projectName, envName, webhookName)
+	if err != nil {
+		return nil, err
+	}
+	w := env.webhooks[i]
+	return &w, nil
+}
+
+func (c *testPulumiClient) CreateEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName string,
+	req client.CreateEnvironmentWebhookRequest,
+) (*client.EnvironmentWebhook, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)]
+	if !ok {
+		return nil, errors.New("environment not found")
+	}
+	name := req.Name
+	if name == "" {
+		name = fmt.Sprintf("hook-%d", len(env.webhooks)+1)
+	}
+	for _, w := range env.webhooks {
+		if w.Name == name {
+			return nil, errors.New("webhook already exists")
+		}
+	}
+	w := client.EnvironmentWebhook{
+		Active:           req.Active,
+		DisplayName:      req.DisplayName,
+		Name:             name,
+		OrganizationName: orgName,
+		PayloadURL:       req.PayloadURL,
+		EnvName:          envName,
+		Filters:          append([]string(nil), req.Filters...),
+		Groups:           append([]string(nil), req.Groups...),
+		Format:           req.Format,
+		ProjectName:      projectName,
+		HasSecret:        req.Secret != "",
+	}
+	env.webhooks = append(env.webhooks, w)
+	return &w, nil
+}
+
+func (c *testPulumiClient) UpdateEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+	req client.UpdateEnvironmentWebhookRequest,
+) (*client.EnvironmentWebhook, error) {
+	env, i, err := c.findWebhook(orgName, projectName, envName, webhookName)
+	if err != nil {
+		return nil, err
+	}
+	w := env.webhooks[i]
+	w.Active = req.Active
+	w.DisplayName = req.DisplayName
+	w.PayloadURL = req.PayloadURL
+	w.Filters = append([]string(nil), req.Filters...)
+	w.Groups = append([]string(nil), req.Groups...)
+	if req.Format != nil {
+		w.Format = *req.Format
+	}
+	switch req.Secret {
+	case "":
+		// leave HasSecret unchanged
+	case "__remove-secret":
+		w.HasSecret = false
+	default:
+		w.HasSecret = true
+	}
+	env.webhooks[i] = w
+	return &w, nil
+}
+
+func (c *testPulumiClient) DeleteEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+) error {
+	env, i, err := c.findWebhook(orgName, projectName, envName, webhookName)
+	if err != nil {
+		return err
+	}
+	env.webhooks = append(env.webhooks[:i], env.webhooks[i+1:]...)
+	return nil
+}
+
+func (c *testPulumiClient) PingEnvironmentWebhook(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+) (*client.EnvironmentWebhookDelivery, error) {
+	env, _, err := c.findWebhook(orgName, projectName, envName, webhookName)
+	if err != nil {
+		return nil, err
+	}
+	if env.webhookDeliveries == nil {
+		env.webhookDeliveries = map[string][]client.EnvironmentWebhookDelivery{}
+	}
+	id := fmt.Sprintf("dlv-%s-%d", webhookName, len(env.webhookDeliveries[webhookName])+1)
+	d := client.EnvironmentWebhookDelivery{
+		ID:              id,
+		Kind:            "ping",
+		Timestamp:       1747094400,
+		Duration:        42,
+		Payload:         "{}",
+		RequestURL:      "https://example.invalid/hook",
+		RequestHeaders:  "Content-Type: application/json",
+		ResponseCode:    200,
+		ResponseHeaders: "Content-Type: text/plain",
+		ResponseBody:    "ok",
+	}
+	env.webhookDeliveries[webhookName] = append(env.webhookDeliveries[webhookName], d)
+	return &d, nil
+}
+
+func (c *testPulumiClient) ListEnvironmentWebhookDeliveries(
+	ctx context.Context,
+	orgName, projectName, envName, webhookName string,
+) ([]client.EnvironmentWebhookDelivery, error) {
+	env, _, err := c.findWebhook(orgName, projectName, envName, webhookName)
+	if err != nil {
+		return nil, err
+	}
+	return append([]client.EnvironmentWebhookDelivery(nil), env.webhookDeliveries[webhookName]...), nil
+}
+
 func (c *testPulumiClient) GetEnvironmentRevision(
 	ctx context.Context,
 	orgName string,
@@ -1595,6 +1749,35 @@ type cliTestcaseEnvironmentTags struct {
 	Tags map[string]string `yaml:"tags,omitempty"`
 }
 
+type cliTestcaseWebhook struct {
+	Name        string   `yaml:"name,omitempty"`
+	DisplayName string   `yaml:"display-name,omitempty"`
+	PayloadURL  string   `yaml:"payload-url,omitempty"`
+	Active      bool     `yaml:"active,omitempty"`
+	Format      string   `yaml:"format,omitempty"`
+	Filters     []string `yaml:"filters,omitempty"`
+	HasSecret   bool     `yaml:"has-secret,omitempty"`
+}
+
+type cliTestcaseEnvironmentWebhooks struct {
+	Webhooks []cliTestcaseWebhook `yaml:"webhooks,omitempty"`
+}
+
+func (w cliTestcaseWebhook) toClient(orgName, projectName, envName string) client.EnvironmentWebhook {
+	return client.EnvironmentWebhook{
+		Active:           w.Active,
+		DisplayName:      w.DisplayName,
+		Name:             w.Name,
+		OrganizationName: orgName,
+		PayloadURL:       w.PayloadURL,
+		EnvName:          envName,
+		Filters:          append([]string(nil), w.Filters...),
+		Format:           w.Format,
+		ProjectName:      projectName,
+		HasSecret:        w.HasSecret,
+	}
+}
+
 type cliTestcaseSchedule struct {
 	ID            string `yaml:"id,omitempty"`
 	Kind          string `yaml:"kind,omitempty"`
@@ -1753,6 +1936,20 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			envTags = tags.Tags
 		}
 
+		var webhooks cliTestcaseEnvironmentWebhooks
+		var envWebhooks []client.EnvironmentWebhook
+		if err := env.Decode(&webhooks); webhooks.Webhooks != nil && err == nil {
+			parts := strings.SplitN(k, "/", 3)
+			var orgName, projectName, envName string
+			if len(parts) == 3 {
+				orgName, projectName, envName = parts[0], parts[1], parts[2]
+			}
+			envWebhooks = make([]client.EnvironmentWebhook, len(webhooks.Webhooks))
+			for i, w := range webhooks.Webhooks {
+				envWebhooks[i] = w.toClient(orgName, projectName, envName)
+			}
+		}
+
 		var schedules cliTestcaseEnvironmentSchedules
 		var envSchedules []client.ScheduledAction
 		if err := env.Decode(&schedules); schedules.Schedules != nil && err == nil {
@@ -1817,6 +2014,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			revisions:    envRevisions,
 			revisionTags: revisionTags,
 			tags:         envTags,
+			webhooks:     envWebhooks,
 			schedules:    envSchedules,
 			referrers:    envReferrers,
 		}
