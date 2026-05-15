@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
-	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -33,7 +32,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -446,7 +444,7 @@ func (pc *packageCommand) newCommand() *cobra.Command {
 	for _, fn := range pc.spec.Resources {
 		mod := ensureModuleCommand(pc.args, cmd, moduleCommands, pc.spec.TokenToModule(fn.Token))
 		ensureCommandGroup(mod, "Resources", "Resources")
-		mod.AddCommand(newResourceCommand(pc.args, pc.provider, &pc.providerFile, fn))
+		mod.AddCommand(pc.newResourceCommand(fn))
 	}
 
 	return cmd
@@ -539,28 +537,4 @@ func ensureCommandGroup(cmd *cobra.Command, id, title string) {
 		ID:    id,
 		Title: title,
 	})
-}
-
-func newResourceCommand(args []string, p plugin.Provider, providerFile *string, fn *schema.Resource) *cobra.Command {
-	_, _, name, diags := pcl.DecomposeToken(fn.Token, hcl.Range{})
-	contract.Assertf(!diags.HasErrors(), "token should decompose")
-
-	shorthelp := fmt.Sprintf("Operate on the %s resource", name)
-	longhelp := shorthelp + "."
-	if fn.Comment != "" {
-		longhelp = fmt.Sprintf("%s\n\n%s", longhelp, fn.Comment)
-	}
-
-	cmd := &cobra.Command{
-		Use:     name,
-		GroupID: "Resources",
-		Short:   shorthelp,
-		Long:    longhelp,
-		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("resource operations not implemented yet")
-		},
-	}
-
-	return cmd
 }
