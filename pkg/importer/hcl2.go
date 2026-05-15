@@ -603,30 +603,22 @@ func generatePropertyValue(
 
 // valueStructurallyTypedAs returns true if the given value is structurally typed as the given schema type.
 func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool {
+removeNonStructuralTypes:
 	for {
-		if input, ok := schemaType.(*schema.InputType); ok {
-			schemaType = input.ElementType
-		} else {
-			break
-		}
-	}
-	// An enum value is represented as a value of the enum's underlying primitive
-	// type at the wire level (e.g. a string for a string-typed enum). Substitute
-	// the underlying type so the primitive-value branches below match.
-	if enum, ok := schemaType.(*schema.EnumType); ok {
-		schemaType = enum.ElementType
-	}
-	if union, ok := schemaType.(*schema.UnionType); ok {
-		schemaType = reduceUnionType(union, value)
-	}
-	// reduceUnionType returns a member of the union as-is, which is often an
-	// *schema.InputType wrapping the real type. Strip those wrappers again so
-	// the type switch below can match on the underlying type.
-	for {
-		if input, ok := schemaType.(*schema.InputType); ok {
-			schemaType = input.ElementType
-		} else {
-			break
+		switch t := schemaType.(type) {
+		case *schema.InputType:
+			schemaType = t.ElementType
+		case *schema.OptionalType:
+			if value.IsNull() {
+				return true
+			}
+			schemaType = t.ElementType
+		case *schema.EnumType:
+			schemaType = t.ElementType
+		case *schema.UnionType:
+			schemaType = reduceUnionType(t, value)
+		default:
+			break removeNonStructuralTypes
 		}
 	}
 
