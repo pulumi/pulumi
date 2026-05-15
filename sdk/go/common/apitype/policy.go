@@ -376,18 +376,18 @@ type PolicyComplianceFramework struct {
 }
 
 // ListPolicyIssuesRequest is the request body for the ListPolicyIssues endpoint
-// (POST /api/orgs/{orgName}/policyresults/issues). Despite using POST, this is
-// a "list" operation — the body carries pagination (and, eventually, filter)
-// parameters. Zero-valued fields are omitted so the server can apply its own
-// defaults.
+// (POST /api/orgs/{orgName}/policyresults/issues). The server expects an
+// AngularGrid-style request with startRow/endRow pagination.
 type ListPolicyIssuesRequest struct {
-	// Page is the 1-based page number to fetch.
-	Page int64 `json:"page,omitempty"`
-	// PageSize is the maximum number of results to return per page.
-	PageSize int64 `json:"pageSize,omitempty"`
-	// Asc requests ascending sort order. When false the server returns the
-	// default (descending) order.
-	Asc bool `json:"asc,omitempty"`
+	StartRow  int                    `json:"startRow"`
+	EndRow    int                    `json:"endRow"`
+	SortModel []PolicyIssueSortModel `json:"sortModel"`
+}
+
+// PolicyIssueSortModel describes a sort column for the policy issues endpoint.
+type PolicyIssueSortModel struct {
+	ColID string `json:"colId"`
+	Sort  string `json:"sort"` // "asc" or "desc"
 }
 
 // PolicyIssue is a single policy violation detected by a Policy Pack during a
@@ -422,13 +422,10 @@ type PolicyIssue struct {
 }
 
 // ListPolicyIssuesResponse is the response body for the ListPolicyIssues
-// endpoint. Issues are returned in pages; the response echoes the pagination
-// state the client should use to fetch additional pages.
+// endpoint.
 type ListPolicyIssuesResponse struct {
-	// Issues is the page of policy issues for this organization.
-	Issues []PolicyIssue `json:"issues"`
-	// ItemsPerPage is the page size the server used.
-	ItemsPerPage int64 `json:"itemsPerPage,omitempty"`
-	// Total is the total number of issues matching the request across all pages.
-	Total int64 `json:"total,omitempty"`
+	// Issues is the page of policy issues.
+	Issues []PolicyIssue `json:"policyIssues"`
+	// Total is the total number of issues across all pages.
+	Total int64 `json:"rowCount"`
 }
