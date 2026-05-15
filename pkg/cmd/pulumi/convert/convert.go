@@ -415,6 +415,15 @@ func runConvert(
 			states = append(states, r)
 		}
 
+		for _, r := range snap.Resources {
+			if r.Type.Module() == tokens.Module("pulumi-nodejs:dynamic") ||
+				r.Type.Module() == tokens.Module("pulumi-python:dynamic") {
+				pCtx.Diag.Warningf(diag.Message("", "state contains dynamic provider resources; "+
+					"the generated code may be incomplete and should be reviewed carefully"))
+				break
+			}
+		}
+
 		pclBytes, err := importer.GeneratePCLText(loader, states, snap.Resources, importer.NameTable{})
 		if err != nil {
 			return fmt.Errorf("generate PCL from state: %w", err)
