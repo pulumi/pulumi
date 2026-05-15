@@ -138,7 +138,7 @@ ALL_PLATFORMS = ["ubuntu-latest", "windows-latest", "macos-latest"]
 
 
 # When updating the minumum and current versions, consider also updating the
-# versions in the the pulumi-docker-containers repo by updating the file
+# versions in the pulumi-docker-containers repo by updating the file
 # https://github.com/pulumi/pulumi-docker-containers/blob/main/.github/scripts/matrix/versions.py
 
 ALL_VERSION_SET = {
