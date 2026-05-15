@@ -18,9 +18,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,7 +59,9 @@ func newFakeStreamer() *fakeStreamer {
 	}
 }
 
-func (f *fakeStreamer) StreamNeoTaskEvents(_ context.Context, _, _ string) (<-chan client.NeoStreamEvent, error) {
+func (f *fakeStreamer) StreamNeoTaskEvents(
+	_ context.Context, _, _, _ string,
+) (<-chan client.NeoStreamEvent, error) {
 	return f.stream, nil
 }
 
@@ -172,6 +177,108 @@ func TestSession_DispatchesCliMarkedToolCallsAndPostsResult(t *testing.T) {
 	assert.Contains(t, asMap, "tool_results")
 	assert.NotContains(t, asMap, "entity_diff")
 	assert.NotContains(t, asMap, "timestamp")
+}
+
+func TestSession_UIToolCompletedCarriesResult(t *testing.T) {
+	t.Parallel()
+
+	// Regression guard: runBatch must attach the marshalled invokeToolCall
+	// result to UIToolCompleted, otherwise the ctrl+o overlay goes blank.
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"content": "payload"}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "c1",
+				Name:          "filesystem__read",
+				Args:          json.RawMessage(`{}`),
+				ExecutionMode: "cli",
+			},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	events := collectUIEvents(uiCh)
+	var completed UIToolCompleted
+	var found bool
+	for _, e := range events {
+		if c, ok := e.(UIToolCompleted); ok {
+			completed = c
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "session must emit UIToolCompleted for the cli call")
+	assert.Equal(t, "filesystem__read", completed.Name)
+	assert.False(t, completed.IsError)
+	require.NotEmpty(t, completed.Result, "UIToolCompleted.Result must carry the marshalled tool output")
+	assert.JSONEq(t, `{"content":"payload"}`, string(completed.Result))
+}
+
+func TestSession_UIToolCompletedSurfacesMarshalError(t *testing.T) {
+	t.Parallel()
+
+	// A handler that returns an unmarshallable value (channels aren't JSON) —
+	// the overlay should still get a non-empty Result containing the
+	// marshal_error stub so the user sees why.
+	streamer := newFakeStreamer()
+	handlers := map[string]ToolHandler{
+		"filesystem": &fakeHandler{wantMethod: "read", result: map[string]any{"ch": make(chan int)}},
+	}
+
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{
+			{
+				ToolCallID:    "c1",
+				Name:          "filesystem__read",
+				Args:          json.RawMessage(`{}`),
+				ExecutionMode: "cli",
+			},
+		},
+	})}
+	close(streamer.stream)
+
+	uiCh := make(chan UIEvent, 32)
+	s := &Session{
+		Client:   streamer,
+		Handlers: handlers,
+		OrgName:  "org",
+		TaskID:   "task",
+		UIEvents: uiCh,
+	}
+	require.NoError(t, s.Run(t.Context()))
+	close(uiCh)
+
+	var completed UIToolCompleted
+	var found bool
+	for _, e := range collectUIEvents(uiCh) {
+		if c, ok := e.(UIToolCompleted); ok {
+			completed = c
+			found = true
+			break
+		}
+	}
+	require.True(t, found)
+	require.NotEmpty(t, completed.Result, "marshal failure must still surface a Result for the overlay")
+	assert.Contains(t, string(completed.Result), "marshal_error")
 }
 
 func TestSession_AssistantMessageWithoutCliCallsPostsNothing(t *testing.T) {
@@ -603,7 +710,7 @@ func TestSession_InvokeToolCallStructValueErrorPreservesContent(t *testing.T) {
 type errStreamer struct{ err error }
 
 func (e *errStreamer) StreamNeoTaskEvents(
-	context.Context, string, string,
+	context.Context, string, string, string,
 ) (<-chan client.NeoStreamEvent, error) {
 	return nil, e.err
 }
@@ -631,6 +738,94 @@ func TestSession_RunReturnsStreamError(t *testing.T) {
 	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
 	err := s.Run(t.Context())
 	require.EqualError(t, err, "stream died")
+}
+
+// reconnectStreamer hands out a fresh channel on each StreamNeoTaskEvents call and
+// records the lastEventID it was given. Drives the reconnect path in tests.
+type reconnectStreamer struct {
+	mu      sync.Mutex
+	streams []chan client.NeoStreamEvent
+	lastIDs []string
+}
+
+func (r *reconnectStreamer) StreamNeoTaskEvents(
+	_ context.Context, _, _, lastEventID string,
+) (<-chan client.NeoStreamEvent, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.lastIDs = append(r.lastIDs, lastEventID)
+	if idx := len(r.lastIDs) - 1; idx < len(r.streams) {
+		return r.streams[idx], nil
+	}
+	// Out of configured streams: hand back a never-closed channel so the session
+	// blocks until ctx cancellation rather than tight-looping.
+	ch := make(chan client.NeoStreamEvent)
+	r.streams = append(r.streams, ch)
+	return ch, nil
+}
+
+func (r *reconnectStreamer) PostNeoTaskUserEvent(context.Context, string, string, any) error {
+	return nil
+}
+
+func TestSession_ReconnectsAfterTransientStreamError(t *testing.T) {
+	t.Parallel()
+
+	// A connection-reset mid-stream must reopen the stream with the last seen
+	// event ID so the service can replay missed events losslessly.
+	t.Cleanup(func(prev time.Duration) func() {
+		return func() { reconnectInitialBackoff = prev }
+	}(reconnectInitialBackoff))
+	reconnectInitialBackoff = 1 * time.Millisecond
+
+	stream1 := make(chan client.NeoStreamEvent, 2)
+	stream2 := make(chan client.NeoStreamEvent, 2)
+	streamer := &reconnectStreamer{streams: []chan client.NeoStreamEvent{stream1, stream2}}
+
+	stream1 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e1",
+	}
+	stream1 <- client.NeoStreamEvent{Err: &net.OpError{Op: "read", Err: syscall.ECONNRESET}}
+	close(stream1)
+
+	stream2 <- client.NeoStreamEvent{
+		Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+			Type: backendEventAssistantMessage,
+		}),
+		ID: "e2",
+	}
+	close(stream2)
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	require.NoError(t, s.Run(t.Context()))
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, []string{"", "e1"}, streamer.lastIDs,
+		"second open must pass the last seen event ID so the service replays missed events")
+}
+
+func TestSession_PropagatesNonTransientStreamError(t *testing.T) {
+	t.Parallel()
+
+	// An unrecognised error (e.g. a handler bug or service-side application
+	// error) must propagate — silent reconnect would mask real failures.
+	streamer := &reconnectStreamer{
+		streams: []chan client.NeoStreamEvent{make(chan client.NeoStreamEvent, 1)},
+	}
+	streamer.streams[0] <- client.NeoStreamEvent{Err: errors.New("application error: rate limited")}
+
+	s := &Session{Client: streamer, OrgName: "o", TaskID: "t"}
+	err := s.Run(t.Context())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "rate limited")
+
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	assert.Equal(t, 1, len(streamer.lastIDs), "must not retry on a non-transient error")
 }
 
 func TestSession_RunReturnsNilOnContextCancel(t *testing.T) {
@@ -955,7 +1150,10 @@ func TestSession_ForwardUserInputToUI_EmitsUserMessage(t *testing.T) {
 
 	ch := make(chan UIEvent, 4)
 	s := &Session{UIEvents: ch}
-	body, err := json.Marshal(map[string]any{"content": "hello there"})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "hello there",
+	})
 	require.NoError(t, err)
 
 	s.forwardUserInputToUI(body)
@@ -974,7 +1172,10 @@ func TestSession_ForwardUserInputToUI_EmptyContentDropped(t *testing.T) {
 	// UIUserMessage would draw an empty user bubble in the TUI.
 	ch := make(chan UIEvent, 4)
 	s := &Session{UIEvents: ch}
-	body, err := json.Marshal(map[string]any{"content": ""})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "",
+	})
 	require.NoError(t, err)
 
 	s.forwardUserInputToUI(body)
@@ -985,9 +1186,76 @@ func TestSession_ForwardUserInputToUI_NilChannelIsNoOp(t *testing.T) {
 	t.Parallel()
 
 	s := &Session{UIEvents: nil}
-	body, err := json.Marshal(map[string]any{"content": "hi"})
+	body, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "hi",
+	})
 	require.NoError(t, err)
 	s.forwardUserInputToUI(body) // must not panic
+}
+
+func TestSession_ForwardUserInputToUI_UserConfirmationEmitsResolved(t *testing.T) {
+	t.Parallel()
+
+	// The cloud emits a user_confirmation event on the userInput side of the
+	// stream — both as an echo of our own confirmation and (synthetically)
+	// when ApprovalMode=auto/balanced auto-resolves a request. Either way the
+	// TUI needs UIApprovalResolved so it can clear the pending prompt.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{
+		"type":                userEventUserConfirmation,
+		"approval_request_id": "sys-approval-abc",
+		"ok":                  true,
+	})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	res, ok := events[0].(UIApprovalResolved)
+	require.Truef(t, ok, "expected UIApprovalResolved, got %T", events[0])
+	assert.Equal(t, "sys-approval-abc", res.ApprovalID)
+	assert.True(t, res.Approved, "ok=true must round-trip as Approved=true")
+}
+
+func TestSession_ForwardUserInputToUI_UserConfirmationDeniedRoundTrips(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: today's cloud never auto-denies, but the wire format supports
+	// ok=false (manual deny path), and the TUI's renderApprovalAuto branches
+	// on Approved. Make sure the wire flag rides through unchanged.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{
+		"type":                userEventUserConfirmation,
+		"approval_request_id": "sys-approval-xyz",
+		"ok":                  false,
+	})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+
+	events := drainUIEvents(ch)
+	require.Len(t, events, 1)
+	res := events[0].(UIApprovalResolved)
+	assert.False(t, res.Approved)
+}
+
+func TestSession_ForwardUserInputToUI_UnknownTypeDropped(t *testing.T) {
+	t.Parallel()
+
+	// An unknown user-input subtype must not panic, must not emit an event.
+	// The cloud has historically added new userInput types (tool_result, etc.)
+	// that the TUI has no rendering for.
+	ch := make(chan UIEvent, 4)
+	s := &Session{UIEvents: ch}
+	body, err := json.Marshal(map[string]any{"type": "tool_result"})
+	require.NoError(t, err)
+
+	s.forwardUserInputToUI(body)
+	assert.Empty(t, drainUIEvents(ch))
 }
 
 func TestSession_ForwardUserInputToUI_MalformedJSONIgnored(t *testing.T) {
@@ -1007,7 +1275,10 @@ func TestSession_HandleEvent_UserInputEnvelope_EmitsUIUserMessage(t *testing.T) 
 	// 92.9% coverage) and the path the TUI depends on to show what the user
 	// typed — if this regresses, the user's own messages vanish from the log.
 	streamer := newFakeStreamer()
-	inner, err := json.Marshal(map[string]any{"content": "typed by user"})
+	inner, err := json.Marshal(map[string]any{
+		"type":    userEventUserMessage,
+		"content": "typed by user",
+	})
 	require.NoError(t, err)
 	envelope, err := json.Marshal(apitype.AgentConsoleEvent{
 		Type:      consoleEventUserInput,

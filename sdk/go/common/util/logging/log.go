@@ -61,7 +61,6 @@ var (
 	handlerMu   sync.RWMutex
 	primary     slog.Handler = discardHandler{} // regular log output (stderr / file)
 	sinkHandler slog.Handler                    // encrypted log handler, nil when inactive
-	slogHandler *slog.Logger
 	logFilePath string
 	logFile     *os.File
 )
@@ -71,13 +70,15 @@ func init() {
 }
 
 // rebuildLogger assembles the slog.Logger from the current primary and
-// sink handlers. Must be called with handlerMu held for writing.
+// sink handlers and installs it as the slog default. Must be called with
+// handlerMu held for writing. slog.SetDefault is safe for concurrent use
+// with readers, so no additional synchronisation is needed.
 func rebuildLogger() {
 	var h slog.Handler = formattingHandler{inner: filteringHandler{inner: primary}}
 	if sinkHandler != nil {
 		h = &teeHandler{primary: h, sink: sinkHandler}
 	}
-	slogHandler = slog.New(h)
+	slog.SetDefault(slog.New(h))
 }
 
 // SetSinkHandler installs an additional slog.Handler that receives a
@@ -131,7 +132,7 @@ func (v VerboseLogger) slogLevel() slog.Level {
 
 func (v VerboseLogger) Info(args ...any) {
 	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v.level))
+		slog.Log(context.TODO(), v.slogLevel(), fmt.Sprint(args...), "v", int(v.level))
 	}
 }
 
@@ -146,7 +147,7 @@ func (v VerboseLogger) Infoln(args ...any) {
 // handler can access them individually.
 func (v VerboseLogger) Infof(format string, args ...any) {
 	if v.Enabled() {
-		slogHandler.Log(context.TODO(), v.slogLevel(), format, fmtAttrs(args, "v", int(v.level))...)
+		slog.Log(context.TODO(), v.slogLevel(), format, fmtAttrs(args, "v", int(v.level))...)
 	}
 }
 
@@ -155,15 +156,15 @@ func V(level int32) VerboseLogger {
 }
 
 func Errorf(format string, args ...any) {
-	slogHandler.Log(context.TODO(), slog.LevelError, format, fmtAttrs(args)...)
+	slog.Log(context.TODO(), slog.LevelError, format, fmtAttrs(args)...)
 }
 
 func Infof(format string, args ...any) {
-	slogHandler.Log(context.TODO(), slog.LevelInfo, format, fmtAttrs(args)...)
+	slog.Log(context.TODO(), slog.LevelInfo, format, fmtAttrs(args)...)
 }
 
 func Warningf(format string, args ...any) {
-	slogHandler.Log(context.TODO(), slog.LevelWarn, format, fmtAttrs(args)...)
+	slog.Log(context.TODO(), slog.LevelWarn, format, fmtAttrs(args)...)
 }
 
 // fmtAttrs encodes format arguments as slog key-value pairs so that

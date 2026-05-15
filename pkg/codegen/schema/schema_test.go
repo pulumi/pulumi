@@ -597,6 +597,54 @@ func TestRejectDuplicateNames(t *testing.T) {
 				},
 			},
 		},
+		{
+			"root type name conflicts with module",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:Res": {},
+					"test:res:Other": {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:Res: token collides with module res",
+				},
+			},
+		},
+		{
+			"nested type name conflicts with module",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:a/b:C": {},
+					"test:a:b":   {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:a:b: token collides with module a/b",
+				},
+			},
+		},
+		{
+			"type conflicts with non-leaf module",
+			PackageSpec{
+				Name: "test",
+				Resources: map[string]ResourceSpec{
+					"test:index:A": {},
+					"test:a/b:C":   {},
+				},
+			},
+			hcl.Diagnostics{
+				{
+					Severity: hcl.DiagError,
+					Summary:  "#/resources/test:index:A: token collides with module a",
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

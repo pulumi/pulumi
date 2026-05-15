@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/neo
-  description: Render the agent's TODO list in the `pulumi neo` TUI

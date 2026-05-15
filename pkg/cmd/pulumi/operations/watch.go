@@ -55,6 +55,7 @@ func NewWatchCmd() *cobra.Command {
 	var showSames bool
 	var showURNs bool
 	var secretsProvider string
+	var skipPluginPreInstall bool
 
 	cmd := &cobra.Command{
 		Use:        "watch",
@@ -159,6 +160,7 @@ func NewWatchCmd() *cobra.Command {
 				DisableResourceReferences: env.DisableResourceReferences.Value(),
 				DisableOutputValues:       env.DisableOutputValues.Value(),
 				Experimental:              env.Experimental.Value(),
+				SkipPluginPreInstall:      skipPluginPreInstall,
 			}
 
 			err = backend.WatchStack(ctx, s, backend.UpdateOperation{
@@ -238,6 +240,9 @@ func NewWatchCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showURNs, "urns", false,
 		"Display full URNs instead of short resource names")
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist

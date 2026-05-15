@@ -26,6 +26,7 @@ func newInsightsAccountCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "account",
 		Short: "Manage Pulumi Insights accounts",
+		Long:  "[EXPERIMENTAL] Manage Pulumi Insights accounts.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -34,7 +35,7 @@ func newInsightsAccountCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newInsightsAccountNewCmd())
-	cmd.AddCommand(newInsightsAccountListCmd())
+	cmd.AddCommand(newInsightsAccountListCmd(nil))
 	cmd.AddCommand(newInsightsAccountScanCmd(nil))
 
 	return cmd
@@ -52,6 +53,7 @@ func newInsightsAccountNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new Insights account",
+		Long:   "[EXPERIMENTAL] Create a new Insights account.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -71,26 +73,6 @@ func newInsightsAccountNewCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/22980]: Not yet implemented.
-func newInsightsAccountListCmd() *cobra.Command {
-	var org string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List Insights accounts available to the authenticated user",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list accounts for")
-
-	return cmd
-}
-
 // TODO[https://github.com/pulumi/pulumi/issues/22977]: Not yet implemented.
 func newInsightsAccountScanLogCmd() *cobra.Command {
 	var (
@@ -105,6 +87,7 @@ func newInsightsAccountScanLogCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "log",
 		Short:  "Retrieve logs for an Insights scan",
+		Long:   "[EXPERIMENTAL] Retrieve logs for an Insights scan.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

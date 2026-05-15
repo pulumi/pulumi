@@ -28,6 +28,7 @@ func newStackDriftCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "drift",
 		Short:  "Inspect stack drift detection results",
+		Long:   "[EXPERIMENTAL] Inspect stack drift detection results.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -40,32 +41,7 @@ func newStackDriftCmd() *cobra.Command {
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23051]: Not yet implemented.
-func newStackDriftListCmd() *cobra.Command {
-	var (
-		stack    string
-		page     int
-		pageSize int
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List drift detection runs for a stack",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().IntVar(&page, "page", 1, "The page of results to return")
-	cmd.Flags().IntVar(&pageSize, "page-size", 10, "The number of results per page (1-100)")
-
-	return cmd
-}
+// newStackDriftListCmd is defined in stack_drift_list.go.
 
 // TODO[https://github.com/pulumi/pulumi/issues/23052]: Not yet implemented.
 func newStackDriftGetCmd() *cobra.Command {
@@ -75,6 +51,7 @@ func newStackDriftGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Retrieve the current drift detection status for a stack",
+		Long:   "[EXPERIMENTAL] Retrieve the current drift detection status for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

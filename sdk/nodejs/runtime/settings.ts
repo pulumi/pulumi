@@ -18,7 +18,7 @@ import * as path from "path";
 import { ComponentResource } from "../resource";
 import { CallbackServer, ICallbackServer } from "./callbacks";
 import { debuggablePromise } from "./debuggable";
-import { getLocalStore, getStore } from "./state";
+import { getLocalStore, getPackageRefs, getStore } from "./state";
 
 import * as engrpc from "../proto/engine_grpc_pb";
 import * as engproto from "../proto/engine_pb";
@@ -207,6 +207,7 @@ export function resetOptions(
     store.supportsInvokeTransforms = false;
     store.supportsParameterization = false;
     store.callbacks = undefined;
+    store.packageRefs = new Map<string, Promise<string>>();
 }
 
 export function setMockOptions(
@@ -764,6 +765,70 @@ export function rpcKeepAlive(): () => void {
  */
 export function supportsParameterization(): boolean {
     return getStore().supportsParameterization;
+}
+
+/**
+ * Arguments for {@link registerPackage}.
+ */
+export interface RegisterPackageArgs {
+    baseProviderName: string;
+    baseProviderVersion: string;
+    baseProviderDownloadUrl: string;
+    packageName: string;
+    packageVersion: string;
+    base64Parameter: string;
+}
+
+/**
+ * Registers a parameterized provider package with the resource monitor and
+ * returns its package reference. The result is cached per deployment so that
+ * concurrent inline programs each register against their own engine and
+ * receive distinct refs.
+ */
+export function registerPackage(args: RegisterPackageArgs): Promise<string> {
+    const key = [
+        args.baseProviderName,
+        args.baseProviderVersion,
+        args.baseProviderDownloadUrl,
+        args.packageName,
+        args.packageVersion,
+        args.base64Parameter,
+    ].join("\0");
+
+    const cache = getPackageRefs();
+    const existing = cache.get(key);
+    if (existing !== undefined) {
+        return existing;
+    }
+    if (!supportsParameterization()) {
+        throw new Error("The Pulumi CLI does not support parameterization. Please update the Pulumi CLI");
+    }
+
+    const params = new resproto.Parameterization();
+    params.setName(args.packageName);
+    params.setVersion(args.packageVersion);
+    params.setValue(Uint8Array.from(atob(args.base64Parameter), (c) => c.charCodeAt(0)));
+    const req = new resproto.RegisterPackageRequest();
+    req.setName(args.baseProviderName);
+    req.setVersion(args.baseProviderVersion);
+    req.setDownloadUrl(args.baseProviderDownloadUrl);
+    req.setParameterization(params);
+
+    const mon = getMonitor();
+    if (mon === undefined) {
+        throw new Error("No monitor available");
+    }
+    const promise = new Promise<string>((resolve, reject) => {
+        mon.registerPackage(req, (err, resp) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(resp.getRef());
+            }
+        });
+    });
+    cache.set(key, promise);
+    return promise;
 }
 
 /**

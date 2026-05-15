@@ -19,6 +19,7 @@ type Webhook struct {
 	OrganizationName string   `json:"organizationName"`
 	ProjectName      *string  `json:"projectName,omitempty"`
 	StackName        *string  `json:"stackName,omitempty"`
+	EnvName          *string  `json:"envName,omitempty"`
 	Name             string   `json:"name"`
 	DisplayName      string   `json:"displayName"`
 	PayloadURL       string   `json:"payloadUrl"`
@@ -26,4 +27,22 @@ type Webhook struct {
 	Format           *string  `json:"format,omitempty"`
 	Filters          []string `json:"filters,omitempty"`
 	Groups           []string `json:"groups,omitempty"`
+	Secret           string   `json:"secret,omitempty"`
+	HasSecret        bool     `json:"hasSecret"`
+	SecretCiphertext string   `json:"secretCiphertext"`
+}
+
+// WebhookDelivery describes the result of delivering a webhook event,
+// returned by the ping and delivery endpoints.
+type WebhookDelivery struct {
+	ID              string `json:"id"`
+	Kind            string `json:"kind"`
+	Payload         string `json:"payload"`
+	Timestamp       int64  `json:"timestamp"`
+	Duration        int    `json:"duration"`
+	RequestURL      string `json:"requestUrl"`
+	RequestHeaders  string `json:"requestHeaders"`
+	ResponseCode    int    `json:"responseCode"`
+	ResponseHeaders string `json:"responseHeaders"`
+	ResponseBody    string `json:"responseBody"`
 }

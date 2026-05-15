@@ -46,8 +46,9 @@ func TestSearch_cmd(t *testing.T) {
 	orgName := "org1"
 	cmd := orgSearchCmd{
 		searchCmd: searchCmd{
-			orgName: orgName,
-			Stdout:  &buff,
+			orgName:      orgName,
+			Stdout:       &buff,
+			outputFormat: defaultSearchOutputFormat(),
 			currentBackend: func(
 				context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {
@@ -101,7 +102,8 @@ func TestSearchNoOrgName_cmd(t *testing.T) {
 	total := int64(132)
 	cmd := orgSearchCmd{
 		searchCmd: searchCmd{
-			Stdout: &buff,
+			Stdout:       &buff,
+			outputFormat: defaultSearchOutputFormat(),
 			currentBackend: func(
 				context.Context, pkgWorkspace.Context, cmdBackend.LoginManager, *workspace.Project, display.Options,
 			) (backend.Backend, error) {

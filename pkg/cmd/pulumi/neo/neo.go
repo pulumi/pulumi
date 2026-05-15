@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -37,18 +38,62 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
+// attached stack with "invalid entities" (typically a permissions issue) it retries
+// once without the stack so the task is still created. onEntityDropped, if non-nil,
+// is invoked with the original error when the fallback path runs, so callers can
+// surface a warning.
+func createNeoTaskWithEntityRetry(
+	ctx context.Context,
+	pc *client.Client,
+	orgName, prompt, stackName, projectName string,
+	opts client.CreateNeoTaskOptions,
+	onEntityDropped func(error),
+) (*client.NeoTaskResponse, error) {
+	resp, err := pc.CreateNeoTask(ctx, orgName, prompt, stackName, projectName, opts)
+	if err != nil && stackName != "" && projectName != "" && isInvalidEntitiesError(err) {
+		if onEntityDropped != nil {
+			onEntityDropped(err)
+		}
+		return pc.CreateNeoTask(ctx, orgName, prompt, "", "", opts)
+	}
+	return resp, err
+}
+
+// isInvalidEntitiesError reports whether err is the Neo backend's "invalid entities"
+// rejection. Matched on the message because the service doesn't expose a stable
+// error code for this case.
+func isInvalidEntitiesError(err error) bool {
+	var errResp *apitype.ErrorResponse
+	if !errors.As(err, &errResp) {
+		return false
+	}
+	return strings.Contains(strings.ToLower(errResp.Message), "invalid entit")
+}
+
 // outboundEvent is the local envelope the TUI uses to dispatch user events to
-// runNeo's dispatcher loop. It wraps the wire-level AgentUserEvent and tacks on
-// planMode, which is only meaningful for the first user_message (the one that
-// triggers CreateNeoTask). Wrapping keeps planMode out of apitype and avoids a
-// second channel for a value that's always produced alongside a message.
+// runNeo's dispatcher loop. It carries either a wire-level AgentUserEvent (chat
+// messages, approval answers, cancels) or, when update is non-nil, a mid-session
+// approval/permission mode change. Wrapping keeps these out of apitype and avoids
+// a second channel for values produced alongside the user's keypresses.
+//
+// planMode, approvalMode, and permissionMode are only meaningful on the first
+// user_message — the one that triggers CreateNeoTask. The dispatcher snapshots
+// them into the create-task call. Later toggles surface through update instead.
 type outboundEvent struct {
-	event    apitype.AgentUserEvent
-	planMode bool
+	event          apitype.AgentUserEvent
+	planMode       bool
+	approvalMode   client.NeoApprovalMode
+	permissionMode client.NeoPermissionMode
+	// update, when non-nil, requests a PATCH against the live task instead of
+	// posting a user event. Used by Ctrl+A / Ctrl+R after the first message has
+	// been sent, so cloud ApprovalHandler picks up the new mode immediately.
+	update *client.UpdateNeoTaskOptions
 }
 
 // Indirection points for the integration test in neo_integration_test.go.
@@ -67,9 +112,11 @@ var (
 // There is no interactive UI yet — the chat happens in the web console.
 func NewNeoCmd() *cobra.Command {
 	var (
-		stackName string
-		orgFlag   string
-		cwdFlag   string
+		stackName          string
+		orgFlag            string
+		cwdFlag            string
+		approvalModeFlag   string
+		permissionModeFlag string
 	)
 
 	cmd := &cobra.Command{
@@ -87,7 +134,15 @@ func NewNeoCmd() *cobra.Command {
 			if len(args) > 0 {
 				prompt = args[0]
 			}
-			return runNeo(ctx, prompt, stackName, orgFlag, cwdFlag)
+			approvalMode, err := parseApprovalMode(approvalModeFlag)
+			if err != nil {
+				return err
+			}
+			permissionMode, err := parsePermissionMode(permissionModeFlag)
+			if err != nil {
+				return err
+			}
+			return runNeo(ctx, prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode)
 		},
 	}
 
@@ -97,11 +152,45 @@ func NewNeoCmd() *cobra.Command {
 		"The organization that owns the Neo task (defaults to the user's default org)")
 	cmd.Flags().StringVar(&cwdFlag, "cwd", "",
 		"Working directory for local tool execution (defaults to the current directory)")
+	cmd.Flags().StringVar(&approvalModeFlag, "approval-mode", string(client.NeoApprovalModeManual),
+		"Approval mode for tool calls: 'manual' prompts on every call, 'balanced' "+
+			"auto-approves low-risk calls, 'auto' executes everything without prompting")
+	cmd.Flags().StringVar(&permissionModeFlag, "permission-mode", string(client.NeoPermissionModeDefault),
+		"Permission mode for the agent: 'default' grants full role-based capabilities, "+
+			"'read-only' blocks state-mutating operations")
 
 	return cmd
 }
 
-func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) error {
+// parseApprovalMode validates the --approval-mode flag value against the
+// NeoApprovalMode enum. The cloud rejects unknown values too, but a CLI-side
+// check produces a clearer error before any network round-trip.
+func parseApprovalMode(s string) (client.NeoApprovalMode, error) {
+	switch client.NeoApprovalMode(s) {
+	case client.NeoApprovalModeManual,
+		client.NeoApprovalModeBalanced,
+		client.NeoApprovalModeAuto:
+		return client.NeoApprovalMode(s), nil
+	}
+	return "", fmt.Errorf("invalid --approval-mode %q: expected one of manual, balanced, auto", s)
+}
+
+// parsePermissionMode validates the --permission-mode flag value against the
+// NeoPermissionMode enum.
+func parsePermissionMode(s string) (client.NeoPermissionMode, error) {
+	switch client.NeoPermissionMode(s) {
+	case client.NeoPermissionModeDefault, client.NeoPermissionModeReadOnly:
+		return client.NeoPermissionMode(s), nil
+	}
+	return "", fmt.Errorf("invalid --permission-mode %q: expected one of default, read-only", s)
+}
+
+func runNeo(
+	ctx context.Context,
+	prompt, stackName, orgFlag, cwdFlag string,
+	approvalMode client.NeoApprovalMode,
+	permissionMode client.NeoPermissionMode,
+) error {
 	if cwdFlag == "" {
 		var err error
 		cwdFlag, err = os.Getwd()
@@ -127,6 +216,10 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		return errors.New("`pulumi neo` requires the Pulumi Cloud backend")
 	}
 	pc := cloudBe.Client()
+
+	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
+		return result.FprintBailf(os.Stderr, "%s", msg)
+	}
 
 	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
 	if err != nil {
@@ -163,11 +256,12 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		resp, err := pc.CreateNeoTask(
-			ctx, orgName, prompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+		resp, err := createNeoTaskWithEntityRetry(
+			ctx, pc, orgName, prompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode: "cli",
-				ApprovalMode:      client.NeoApprovalModeManual,
-			})
+				ApprovalMode:      approvalMode,
+				PermissionMode:    permissionMode,
+			}, nil)
 		if err != nil {
 			return err
 		}
@@ -196,14 +290,16 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 	username, _, _, _ := pc.GetPulumiAccountDetails(ctx)
 
 	model := NewModel(ModelConfig{
-		Org:           orgName,
-		WorkDir:       cwdFlag,
-		Username:      username,
-		Version:       version.Version,
-		EventCh:       uiCh,
-		OutCh:         outCh,
-		Busy:          prompt != "",
-		InitialPrompt: prompt,
+		Org:                   orgName,
+		WorkDir:               cwdFlag,
+		Username:              username,
+		Version:               version.Version,
+		EventCh:               uiCh,
+		OutCh:                 outCh,
+		Busy:                  prompt != "",
+		InitialPrompt:         prompt,
+		InitialApprovalMode:   approvalMode,
+		InitialPermissionMode: permissionMode,
 	})
 
 	// Inline (non-alt-screen) so the transcript stays in the user's terminal
@@ -226,14 +322,27 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 
 			// createTask creates the Neo task with the given prompt and starts the session.
 			// Called immediately if a prompt was provided, or on the first user message.
-			// planMode is the value the TUI captured at the moment the first message was
-			// sent; the CLI-prompt path always passes false.
-			createTask := func(initialPrompt string, planMode bool) error {
-				resp, err := pc.CreateNeoTask(
-					gctx, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+			// approvalMode / permissionMode / planMode are the values the TUI captured at
+			// the moment the first message was sent; the CLI-prompt path passes the values
+			// from the --approval-mode / --permission-mode flags and false for plan mode.
+			createTask := func(
+				initialPrompt string,
+				createApprovalMode client.NeoApprovalMode,
+				createPermissionMode client.NeoPermissionMode,
+				planMode bool,
+			) error {
+				resp, err := createNeoTaskWithEntityRetry(
+					gctx, pc, orgName, initialPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 						ToolExecutionMode: "cli",
-						ApprovalMode:      client.NeoApprovalModeManual,
+						ApprovalMode:      createApprovalMode,
+						PermissionMode:    createPermissionMode,
 						PlanMode:          planMode,
+					}, func(originalErr error) {
+						sendUI(uiCh, UIWarning{Message: fmt.Sprintf(
+							"could not attach stack %s/%s/%s to Neo task: %s; "+
+								"creating task without stack context",
+							orgName, projectName, stackRefName, originalErr,
+						)})
 					})
 				if err != nil {
 					sendUI(uiCh, UIError{Message: "failed to create Neo task: " + err.Error()})
@@ -260,9 +369,11 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 			}
 
 			if prompt != "" {
-				// The command-line prompt path always passes false for planMode.
+				// The command-line prompt path always passes false for planMode and
+				// uses the modes parsed from the CLI flags (which the TUI also seeds
+				// into its model). A subsequent toggle still routes through the TUI.
 				g.Go(func() error {
-					return createTask(prompt, false)
+					return createTask(prompt, approvalMode, permissionMode, false)
 				})
 			}
 
@@ -290,13 +401,16 @@ func runNeo(ctx context.Context, prompt, stackName, orgFlag, cwdFlag string) err
 						defer ts.mu.Unlock()
 						return ts.taskID
 					},
-					func(message string, planMode bool) {
+					func(message string, am client.NeoApprovalMode, pm client.NeoPermissionMode, planMode bool) {
 						g.Go(func() error {
-							return createTask(message, planMode)
+							return createTask(message, am, pm, planMode)
 						})
 					},
 					func(ctx context.Context, taskID string, body any) error {
 						return pc.PostNeoTaskUserEvent(ctx, orgName, taskID, body)
+					},
+					func(ctx context.Context, taskID string, opts client.UpdateNeoTaskOptions) error {
+						return pc.UpdateNeoTask(ctx, orgName, taskID, opts)
 					},
 				)
 			})
@@ -357,8 +471,10 @@ func dispatchUserEvents(
 	uiCh chan<- UIEvent,
 	initialTaskCreated bool,
 	getTaskID func() string,
-	spawnCreateTask func(message string, planMode bool),
+	spawnCreateTask func(message string, approvalMode client.NeoApprovalMode,
+		permissionMode client.NeoPermissionMode, planMode bool),
 	postEvent func(ctx context.Context, taskID string, body any) error,
+	updateTask func(ctx context.Context, taskID string, opts client.UpdateNeoTaskOptions) error,
 ) error {
 	taskCreated := initialTaskCreated
 	for {
@@ -371,16 +487,29 @@ func dispatchUserEvents(
 			}
 			if msg, isMsg := ob.event.(apitype.AgentUserEventUserMessage); isMsg && !taskCreated {
 				taskCreated = true
-				spawnCreateTask(msg.Content, ob.planMode)
+				spawnCreateTask(msg.Content, ob.approvalMode, ob.permissionMode, ob.planMode)
 				continue
 			}
 			taskID := getTaskID()
 			if taskID == "" {
+				// A pre-task-creation mode toggle is a no-op: CreateNeoTask hasn't
+				// fired yet, so the next createTask call will pick up the latest
+				// values from the model snapshot. Drop silently — this is the
+				// expected path when the user toggles before sending a message.
+				if ob.update != nil {
+					continue
+				}
 				// Unreachable in normal use: the TUI gates Enter on busy state
 				// until UITaskIdle, and approvals only fire in response to backend
 				// events that imply the task exists. Surface instead of silently
 				// dropping.
 				sendUI(uiCh, UIWarning{Message: "dropped event: task not ready"})
+				continue
+			}
+			if ob.update != nil {
+				if err := updateTask(ctx, taskID, *ob.update); err != nil {
+					sendUI(uiCh, UIWarning{Message: "failed to update Neo task: " + err.Error()})
+				}
 				continue
 			}
 			if err := postEvent(ctx, taskID, ob.event); err != nil {

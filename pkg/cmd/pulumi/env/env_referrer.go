@@ -27,6 +27,7 @@ func newEnvReferrerCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "referrer",
 		Short:  "Inspect entities that reference an environment",
+		Long:   "[EXPERIMENTAL] Inspect entities that reference an environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -52,6 +53,7 @@ func newEnvReferrerListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List entities that reference an environment",
+		Long:   "[EXPERIMENTAL] List entities that reference an environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

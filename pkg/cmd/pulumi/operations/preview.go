@@ -297,6 +297,7 @@ func NewPreviewCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var output string
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -320,6 +321,7 @@ func NewPreviewCmd() *cobra.Command {
 	var targetDependents bool
 	var excludeDependents bool
 	var attachDebugger []string
+	var skipPluginPreInstall bool
 
 	// Flags for Neo.
 	var neoEnabled bool
@@ -360,6 +362,16 @@ func NewPreviewCmd() *cobra.Command {
 				return err
 			}
 
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch output {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", output, "default", "json")
+			}
+
 			ssml := cmdStack.NewStackSecretsManagerLoaderFromEnv()
 			displayType := display.DisplayProgress
 			if diffDisplay {
@@ -381,6 +393,7 @@ func NewPreviewCmd() *cobra.Command {
 				IsInteractive:          cmdutil.Interactive(),
 				Type:                   displayType,
 				JSONDisplay:            jsonDisplay,
+				SummaryJSON:            output == "json",
 				EventLogPath:           eventLogPath,
 				Debug:                  debug,
 			}
@@ -522,10 +535,11 @@ func NewPreviewCmd() *cobra.Command {
 					ExcludeDependents:         excludeDependents,
 					// If we're trying to save a plan then we _need_ to generate it. We also turn this on in
 					// experimental mode to just get more testing of it.
-					GeneratePlan:   env.Experimental.Value() || planFilePath != "",
-					Experimental:   env.Experimental.Value(),
-					AttachDebugger: attachDebugger,
-					Autonamer:      autonamer,
+					GeneratePlan:         env.Experimental.Value() || planFilePath != "",
+					Experimental:         env.Experimental.Value(),
+					AttachDebugger:       attachDebugger,
+					Autonamer:            autonamer,
+					SkipPluginPreInstall: skipPluginPreInstall,
 				},
 				Display: displayOpts,
 			}
@@ -578,7 +592,7 @@ func NewPreviewCmd() *cobra.Command {
 					}
 
 					// Write out message on how to use the plan (if not writing out --json)
-					if !jsonDisplay {
+					if !jsonDisplay && output != "json" {
 						var buf bytes.Buffer
 						ui.Fprintf(&buf, "Update plan written to '%s'", planFilePath)
 						ui.Fprintf(
@@ -696,6 +710,12 @@ func NewPreviewCmd() *cobra.Command {
 		&jsonDisplay, "json", "j", false,
 		"Serialize the preview diffs, operations, and overall output as JSON."+
 			" Set PULUMI_ENABLE_STREAMING_JSON_PREVIEW to stream JSON events instead.")
+	cmd.Flags().StringVar(
+		&output, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations.
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")
@@ -744,6 +764,10 @@ func NewPreviewCmd() *cobra.Command {
 		&attachDebugger, "attach-debugger", []string{},
 		"Enable the ability to attach a debugger to the program and source based plugins being executed. Can limit debug type to 'program', 'plugins', 'plugin:<name>' or 'all'.")
 	cmd.Flag("attach-debugger").NoOptDefVal = "program"
+
+	cmd.PersistentFlags().BoolVar(
+		&skipPluginPreInstall, "skip-plugin-pre-install", false,
+		"Skip the up-front provider plugin install step; missing plugins are installed lazily by the engine")
 
 	cmd.PersistentFlags().BoolVar(
 		&neoEnabled, "neo", false,

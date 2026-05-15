@@ -27,6 +27,7 @@ func newPolicyComplianceCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "compliance",
 		Short:  "Inspect policy compliance results",
+		Long:   "[EXPERIMENTAL] Inspect policy compliance results.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -49,6 +50,7 @@ func newPolicyComplianceListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List compliance results grouped by entity",
+		Long:   "[EXPERIMENTAL] List compliance results grouped by entity.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

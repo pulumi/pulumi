@@ -341,6 +341,70 @@ func TestRunPaginate_TruncationEmitsPartialPaginationError(t *testing.T) {
 	assert.Equal(t, 3, pagesServed)
 }
 
+func TestRunPaginate_FirstPageShapeErrorEmitsEnvelope(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"organizations":[{"name":"o1"}],"identities":[{"name":"i1"}]}`)
+	}))
+	t.Cleanup(srv.Close)
+
+	apiClient := client.NewClient(srv.URL, "", false, nil)
+	req := paginateRequest{Method: "GET", Path: "/api/user", BaseQuery: url.Values{}, Accept: "application/json"}
+	var buf bytes.Buffer
+	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
+	require.Error(t, err)
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.Equal(t, cmdutil.ExitCodeError, apiErr.ExitCode)
+	assert.Equal(t, ErrInvalidFlags, apiErr.Envelope.Error.Code)
+	assert.False(t, apiErr.Silent, "first-page failure must not be Silent; user needs the diagnostic on stderr")
+	assert.Empty(t, strings.TrimSpace(buf.String()),
+		"first-page failure must not write a misleading empty envelope to stdout")
+}
+
+func TestRunPaginate_FirstPageHTTPErrorEmitsEnvelope(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"message":"boom"}`, http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	apiClient := client.NewClient(srv.URL, "", false, nil)
+	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
+	var buf bytes.Buffer
+	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
+	require.Error(t, err)
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.False(t, apiErr.Silent, "first-page HTTP failure must not be Silent")
+	assert.Empty(t, strings.TrimSpace(buf.String()), "first-page HTTP failure must not write to stdout")
+}
+
+func TestRunPaginate_LaterPageErrorStaysSilent(t *testing.T) {
+	t.Parallel()
+	var page int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page++
+		if page == 1 {
+			fmt.Fprintln(w, `{"items":[{"id":"a"}],"continuationToken":"next"}`)
+			return
+		}
+		http.Error(w, `{"message":"boom"}`, http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+
+	apiClient := client.NewClient(srv.URL, "", false, nil)
+	req := paginateRequest{Method: "GET", Path: "/list", BaseQuery: url.Values{}, Accept: "application/json"}
+	var buf bytes.Buffer
+	err := runPaginate(t.Context(), &buf, apiClient, req, &apiCommand{})
+	require.Error(t, err)
+	var apiErr *APIError
+	require.True(t, errors.As(err, &apiErr))
+	assert.True(t, apiErr.Silent, "partial failure with accumulated pages must stay Silent")
+	assert.Contains(t, buf.String(), `"items"`, "partial failure must flush accumulated pages to stdout")
+	assert.Contains(t, buf.String(), `"id":"a"`)
+}
+
 // TestHTTPErrorEnvelopeBytes_ExitCodes pins the exit-code contract:
 // 4xx and 5xx both exit 1, only 401/403 exit 3. The error code field still
 // distinguishes 4xx from 5xx for JSON consumers.

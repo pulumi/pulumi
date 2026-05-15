@@ -30,6 +30,7 @@ func newPolicyGroupNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new Policy Group",
+		Long:   "[EXPERIMENTAL] Create a new Policy Group.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -55,6 +56,7 @@ func newPolicyGroupGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Get the details of a Policy Group",
+		Long:   "[EXPERIMENTAL] Get the details of a Policy Group.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -89,6 +91,7 @@ func newPolicyGroupEditCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "edit",
 		Short:  "Update a Policy Group's configuration",
+		Long:   "[EXPERIMENTAL] Update a Policy Group's configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -125,6 +128,7 @@ func newPolicyGroupRemoveCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "remove",
 		Short:  "Delete a Policy Group",
+		Long:   "[EXPERIMENTAL] Delete a Policy Group.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

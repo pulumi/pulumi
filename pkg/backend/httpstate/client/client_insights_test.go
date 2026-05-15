@@ -19,6 +19,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -204,6 +205,245 @@ func TestScanInsightsAccount(t *testing.T) {
 		client := newMockClient(server)
 		_, err := client.ScanInsightsAccount(t.Context(),
 			"acme", "missing", apitype.InsightsScanRequest{})
+		require.Error(t, err)
+	})
+}
+
+func TestSearchInsightsResources(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns parsed response", func(t *testing.T) {
+		t.Parallel()
+
+		truthy := true
+		want := apitype.InsightsResourceSearchResponse{
+			Total: 2,
+			Resources: []apitype.InsightsResourceSearchResult{
+				{
+					Account:  "prod-aws",
+					Type:     "aws:s3/bucket:Bucket",
+					ID:       "my-bucket",
+					URN:      "urn:pulumi:prod::api::aws:s3/bucket:Bucket::my-bucket",
+					Stack:    "prod",
+					Project:  "api",
+					Modified: "2026-05-01T14:30:00Z",
+					Managed:  "managed",
+					Custom:   &truthy,
+				},
+				{
+					Account: "prod-aws",
+					Type:    "aws:s3/bucket:Bucket",
+					ID:      "other-bucket",
+				},
+			},
+			Pagination: &apitype.InsightsResourceSearchPagination{
+				Cursor: "bookmark",
+				Next:   "/api/orgs/acme/search/resourcesv2?cursor=next-token",
+			},
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.SearchInsightsResources(t.Context(), "acme",
+			apitype.InsightsResourceSearchParams{Query: "type:aws:s3"})
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("encodes query parameters", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			capturedPath  string
+			capturedQuery url.Values
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.Path
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.SearchInsightsResources(t.Context(), "acme",
+			apitype.InsightsResourceSearchParams{
+				Query:      "type:aws:s3",
+				Sort:       []string{"modified", "name"},
+				Ascending:  true,
+				Page:       2,
+				Size:       50,
+				Properties: true,
+				Collapse:   true,
+			})
+		require.NoError(t, err)
+
+		assert.Equal(t, "/api/orgs/acme/search/resourcesv2", capturedPath)
+		assert.Equal(t, "type:aws:s3", capturedQuery.Get("query"))
+		assert.Equal(t, []string{"modified", "name"}, capturedQuery["sort"])
+		assert.Equal(t, "true", capturedQuery.Get("asc"))
+		assert.Equal(t, "2", capturedQuery.Get("page"))
+		assert.Equal(t, "50", capturedQuery.Get("size"))
+		assert.Equal(t, "true", capturedQuery.Get("properties"))
+		assert.Equal(t, "true", capturedQuery.Get("collapse"))
+	})
+
+	t.Run("omits zero-valued parameters", func(t *testing.T) {
+		t.Parallel()
+
+		// Default-valued bool/int/string fields must not appear on the wire,
+		// so the server's defaults take effect.
+		var capturedQuery url.Values
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.SearchInsightsResources(t.Context(), "acme",
+			apitype.InsightsResourceSearchParams{})
+		require.NoError(t, err)
+
+		assert.Empty(t, capturedQuery)
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusPaymentRequired)
+			_, _ = w.Write([]byte("subscription required"))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.SearchInsightsResources(t.Context(), "acme",
+			apitype.InsightsResourceSearchParams{Properties: true})
+		require.Error(t, err)
+		// The 402 status code and the server's body message both make it
+		// through the apitype.ErrorResponse formatter ("[code] message").
+		assert.Contains(t, err.Error(), "402")
+		assert.Contains(t, err.Error(), "subscription required")
+	})
+}
+
+func TestListInsightsAccounts(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns parsed response", func(t *testing.T) {
+		t.Parallel()
+
+		finished := time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC)
+		want := apitype.ListInsightsAccountsResponse{
+			Accounts: []apitype.InsightsAccount{
+				{
+					ID:                   "79440e1c-089f-4a02-9ad7-0b7effb971b5",
+					Name:                 "prod-aws",
+					Provider:             "aws",
+					ProviderEnvRef:       "team/prod-aws@4",
+					ScheduledScanEnabled: true,
+					OwnedBy: apitype.InsightsAccountOwner{
+						Name:        "Ada Lovelace",
+						GitHubLogin: "ada-pulumi-corp",
+						AvatarURL:   "https://api.pulumi.com/static/avatars/A.png",
+					},
+					ScanStatus: &apitype.InsightsAccountScanStatus{
+						ID:            "scan-1",
+						OrgID:         "org-1",
+						UserID:        "user-1",
+						Status:        "succeeded",
+						StartedAt:     time.Date(2026, 5, 12, 16, 6, 1, 0, time.UTC),
+						FinishedAt:    &finished,
+						LastUpdatedAt: time.Date(2026, 5, 12, 16, 7, 24, 0, time.UTC),
+						ResourceCount: 42,
+					},
+				},
+			},
+			NextToken: "next-page",
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ListInsightsAccounts(t.Context(), "acme",
+			apitype.ListInsightsAccountsParams{})
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("encodes query parameters", func(t *testing.T) {
+		t.Parallel()
+
+		var (
+			capturedPath  string
+			capturedQuery url.Values
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.Path
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"accounts":[]}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.ListInsightsAccounts(t.Context(), "acme",
+			apitype.ListInsightsAccountsParams{
+				ContinuationToken: "cursor-token",
+				Count:             250,
+				Parent:            "org-root",
+				RoleID:            "role-id",
+			})
+		require.NoError(t, err)
+
+		assert.Equal(t, "/api/preview/insights/acme/accounts", capturedPath)
+		assert.Equal(t, "cursor-token", capturedQuery.Get("continuationToken"))
+		assert.Equal(t, "250", capturedQuery.Get("count"))
+		assert.Equal(t, "org-root", capturedQuery.Get("parent"))
+		assert.Equal(t, "role-id", capturedQuery.Get("roleID"))
+	})
+
+	t.Run("omits zero-valued parameters", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedQuery url.Values
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedQuery = r.URL.Query()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"accounts":[]}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.ListInsightsAccounts(t.Context(), "acme",
+			apitype.ListInsightsAccountsParams{})
+		require.NoError(t, err)
+		assert.Empty(t, capturedQuery)
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte("forbidden"))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.ListInsightsAccounts(t.Context(), "acme",
+			apitype.ListInsightsAccountsParams{})
 		require.Error(t, err)
 	})
 }

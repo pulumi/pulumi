@@ -27,6 +27,7 @@ func newPolicyIssueCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "issue",
 		Short:  "Inspect policy issues",
+		Long:   "[EXPERIMENTAL] Inspect policy issues.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -51,6 +52,7 @@ func newPolicyIssueListCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "list",
 		Short:  "List all policy issues for an organization",
+		Long:   "[EXPERIMENTAL] List all policy issues for an organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},
@@ -73,6 +75,7 @@ func newPolicyIssueGetCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "get",
 		Short:  "Get the details of a specific policy issue",
+		Long:   "[EXPERIMENTAL] Get the details of a specific policy issue.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return errors.New("not yet implemented")
 		},

@@ -17,6 +17,8 @@ package apitype
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/blang/semver"
 )
 
 // An APICapability is the name of a capability or feature that a service backend
@@ -50,6 +52,9 @@ const (
 	// via the `Accept: application/vnd.pulumi+N` header. The configuration carries the
 	// server's max, min, and default API versions; see APIVersionCapabilityConfig.
 	APIVersion APICapability = "api-version"
+
+	// NeoCLIMode advertises minimum CLI requirements for `pulumi neo`; see NeoCLIModeConfig.
+	NeoCLIMode APICapability = "neo-cli-mode"
 )
 
 type DeltaCheckpointUploadsConfigV2 struct {
@@ -62,6 +67,12 @@ type DeltaCheckpointUploadsConfigV2 struct {
 type DeploymentSchemaVersionConfig struct {
 	// Version is the maximum version of the deployment schema that the service supports.
 	Version int `json:"version"`
+}
+
+type NeoCLIModeConfig struct {
+	// MinCLIVersion is the minimum Pulumi CLI semver required to use `pulumi neo`. Empty
+	// means no minimum.
+	MinCLIVersion *semver.Version `json:"minCliVersion,omitempty"`
 }
 
 // APIVersionCapabilityConfig is the configuration for the api-version capability. It advertises
@@ -136,6 +147,10 @@ type Capabilities struct {
 	// If non-nil, indicates the REST API version range the service speaks (negotiated via
 	// the `Accept: application/vnd.pulumi+N` header).
 	APIVersion *APIVersionCapabilityConfig
+
+	// If non-nil, indicates that the service has advertised minimum CLI requirements
+	// for `pulumi neo`.
+	NeoCLIMode *NeoCLIModeConfig
 }
 
 // Parse decodes the CapabilitiesResponse into a Capabilities struct for ease of use.
@@ -189,6 +204,14 @@ func (r CapabilitiesResponse) Parse() (Capabilities, error) {
 					return Capabilities{}, fmt.Errorf("invalid APIVersionCapabilityConfig: %w", err)
 				}
 				parsed.APIVersion = &cfg
+			}
+		case NeoCLIMode:
+			if entry.Version == 1 {
+				var cfg NeoCLIModeConfig
+				if err := json.Unmarshal(entry.Configuration, &cfg); err != nil {
+					return Capabilities{}, fmt.Errorf("decoding NeoCLIModeConfig returned %w", err)
+				}
+				parsed.NeoCLIMode = &cfg
 			}
 		default:
 			continue

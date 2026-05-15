@@ -30,7 +30,7 @@ func newEnvNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new Pulumi ESC environment",
-		Long: "Create a new Pulumi ESC environment.\n" +
+		Long: "[EXPERIMENTAL] Create a new Pulumi ESC environment.\n" +
 			"\n" +
 			"The environment starts with an empty YAML definition.",
 		RunE: func(cmd *cobra.Command, args []string) error {

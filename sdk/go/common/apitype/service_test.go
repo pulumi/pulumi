@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -292,6 +293,88 @@ func TestCapabilities(t *testing.T) {
 				assert.Contains(t, err.Error(), tc.errSub)
 			})
 		}
+	})
+
+	t.Run("parse neo-cli-mode v1", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    NeoCLIMode,
+					Version:       1,
+					Configuration: json.RawMessage(`{"minCliVersion":"3.250.0"}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		want := semver.MustParse("3.250.0")
+		assert.Equal(t, Capabilities{
+			NeoCLIMode: &NeoCLIModeConfig{MinCLIVersion: &want},
+		}, actual)
+	})
+
+	t.Run("parse neo-cli-mode v1 with invalid semver errors", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    NeoCLIMode,
+					Version:       1,
+					Configuration: json.RawMessage(`{"minCliVersion":"not-a-semver"}`),
+				},
+			},
+		}
+		_, err := response.Parse()
+		require.Error(t, err)
+	})
+
+	t.Run("parse neo-cli-mode with newer version ignored", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    NeoCLIMode,
+					Version:       2,
+					Configuration: json.RawMessage(`{"minCliVersion":"3.250.0"}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{}, actual)
+	})
+
+	t.Run("parse neo-cli-mode with empty config", func(t *testing.T) {
+		t.Parallel()
+		// Empty config still parses to a non-nil NeoCLIMode so callers can distinguish
+		// "advertised but no minimum" from "not advertised".
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{
+					Capability:    NeoCLIMode,
+					Version:       1,
+					Configuration: json.RawMessage(`{}`),
+				},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Equal(t, Capabilities{
+			NeoCLIMode: &NeoCLIModeConfig{},
+		}, actual)
+	})
+
+	t.Run("parse response without neo-cli-mode capability leaves NeoCLIMode nil", func(t *testing.T) {
+		t.Parallel()
+		response := CapabilitiesResponse{
+			Capabilities: []APICapabilityConfig{
+				{Capability: BatchEncrypt},
+			},
+		}
+		actual, err := response.Parse()
+		require.NoError(t, err)
+		assert.Nil(t, actual.NeoCLIMode)
 	})
 
 	t.Run("parse api version accepts min equals max equals default", func(t *testing.T) {

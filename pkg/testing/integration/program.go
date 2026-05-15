@@ -240,6 +240,10 @@ type ProgramTestOptions struct {
 	PreviewCommandlineFlags []string
 	// UpdateCommandlineFlags specifies flags to add to the `pulumi up` command line (e.g. "--color=raw")
 	UpdateCommandlineFlags []string
+	// DestroyCommandlineFlags specifies flags to add to the `pulumi destroy` command line (e.g. "--output=json")
+	DestroyCommandlineFlags []string
+	// RefreshCommandlineFlags specifies flags to add to the `pulumi refresh` command line (e.g. "--output=json")
+	RefreshCommandlineFlags []string
 	// QueryCommandlineFlags specifies flags to add to the `pulumi query` command line (e.g. "--color=raw")
 	QueryCommandlineFlags []string
 	// RunBuild indicates that the build step should be run (e.g. run `yarn build` for `nodejs` programs)
@@ -596,6 +600,12 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.UpdateCommandlineFlags != nil {
 		opts.UpdateCommandlineFlags = append(opts.UpdateCommandlineFlags, overrides.UpdateCommandlineFlags...)
 	}
+	if overrides.DestroyCommandlineFlags != nil {
+		opts.DestroyCommandlineFlags = append(opts.DestroyCommandlineFlags, overrides.DestroyCommandlineFlags...)
+	}
+	if overrides.RefreshCommandlineFlags != nil {
+		opts.RefreshCommandlineFlags = append(opts.RefreshCommandlineFlags, overrides.RefreshCommandlineFlags...)
+	}
 	if overrides.QueryCommandlineFlags != nil {
 		opts.QueryCommandlineFlags = append(opts.QueryCommandlineFlags, overrides.QueryCommandlineFlags...)
 	}
@@ -733,6 +743,14 @@ func init() {
 
 	mutexPath := filepath.Join(os.TempDir(), "pip-mutex.lock")
 	pipMutex = fsutil.NewFileMutex(mutexPath)
+
+	// Disable pip's HTTP cache to work around pypa/pip#13979: pip 26.1's upgraded urllib3
+	// advertises zstd encoding, changing the Vary header. Cache entries written by one pip
+	// version (e.g. the system pip upgraded in CI setup) become unreadable by another (e.g.
+	// the venv pip), causing "Cache entry deserialization failed" → "Content-Type: Unknown"
+	// → package resolution failures. Setting this process-wide ensures all subprocesses
+	// (including component_setup.sh and language host plugins) inherit it.
+	os.Setenv("PIP_NO_CACHE_DIR", "1")
 }
 
 // GetLogs retrieves the logs for a given stack in a particular region making the query provided.
@@ -1569,6 +1587,9 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		if pt.opts.DestroyExcludeProtected {
 			destroy = append(destroy, "--exclude-protected")
 		}
+		if pt.opts.DestroyCommandlineFlags != nil {
+			destroy = append(destroy, pt.opts.DestroyCommandlineFlags...)
+		}
 		if err := pt.runPulumiCommand("pulumi-destroy", destroy, pt.projdir, false); err != nil {
 			return err
 		}
@@ -1645,6 +1666,9 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		}
 		if !pt.opts.ExpectRefreshChanges {
 			refresh = append(refresh, "--expect-no-changes")
+		}
+		if pt.opts.RefreshCommandlineFlags != nil {
+			refresh = append(refresh, pt.opts.RefreshCommandlineFlags...)
 		}
 		if err := pt.runPulumiCommand("pulumi-refresh", refresh, dir, false); err != nil {
 			return err

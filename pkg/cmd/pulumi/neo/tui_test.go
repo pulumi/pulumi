@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/pkg/v3/display"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -2385,4 +2386,565 @@ func TestLiveView_BlankBetweenLiveBlocks(t *testing.T) {
 	require.Less(t, pulumiIdx, thinkingIdx)
 	assert.Contains(t, live[pulumiIdx:thinkingIdx], "\n\n",
 		"pulumi-op → busy gap must be a full blank line")
+}
+
+func TestModel_Update_CtrlA_CyclesApprovalMode(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+A advances the approval mode through manual → balanced → auto →
+	// manual. Pre-first-message there is no PATCH dispatch — the value lives
+	// purely in the TUI snapshot until the user sends their first message.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeAuto, m.approvalMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"third Ctrl+A must wrap back to manual")
+
+	// Pre-message toggles must not put anything on outCh — the snapshot is
+	// only committed on the first user_message.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("pre-message Ctrl+A must not dispatch an outbound event, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlA_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
+	t.Parallel()
+
+	// Once the first message has been sent, Ctrl+A must both flip the local
+	// snapshot AND dispatch an outboundEvent.update so the runNeo dispatcher
+	// PATCHes the live task. Without that, cloud ApprovalHandler would still
+	// see the original mode and prompt at the wrong cadence.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	// The keypress only schedules the debounce tick; nothing is on outCh yet.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+A must defer the dispatch behind the debounce tick, got %#v", ev)
+	default:
+	}
+
+	// Deliver the debounce tick with the current gen — that's what tea.Tick
+	// would do after modeToggleDebounce — and assert the PATCH lands.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: m.approvalDebounceGen})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update, "the debounce tick must dispatch an update")
+		require.NotNil(t, got.update.ApprovalMode, "update must carry the new approvalMode")
+		assert.Equal(t, client.NeoApprovalModeBalanced, *got.update.ApprovalMode)
+		assert.Nil(t, got.update.PermissionMode,
+			"approval-mode toggle must not include permissionMode")
+	default:
+		t.Fatal("the debounce tick at the current gen must dispatch")
+	}
+}
+
+func TestModel_Update_CtrlA_RapidPressesCollapseToOneDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Three Ctrl+A presses in quick succession (faster than the debounce
+	// window) must collapse to a single PATCH carrying the FINAL mode value.
+	// Each press advances the debounce gen, so only the last-scheduled tick
+	// fires the dispatch — the earlier two are gen-mismatched and silently
+	// dropped.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	// Three presses: manual → balanced → auto → manual.
+	for range 3 {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+		m = updated.(Model)
+	}
+	require.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"three presses must wrap back to manual")
+	require.Equal(t, 3, m.approvalDebounceGen, "each press advances the debounce gen")
+
+	// Stale ticks from the first two presses arrive — both must no-op.
+	updated, _ := m.Update(approvalDebounceTickMsg{gen: 1})
+	m = updated.(Model)
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: 2})
+	m = updated.(Model)
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen ticks must not dispatch, got %#v", ev)
+	default:
+	}
+
+	// The latest tick fires the dispatch with the final mode value.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: 3})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.ApprovalMode)
+		assert.Equal(t, client.NeoApprovalModeManual, *got.update.ApprovalMode,
+			"the collapsed dispatch must carry the FINAL mode after all presses")
+	default:
+		t.Fatal("the current-gen tick must dispatch")
+	}
+
+	// And no further events on outCh.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("only one dispatch must land for three rapid presses, got extra %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_ApprovalDebounceTick_StaleGenDoesNotDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: a debounce tick whose gen no longer matches must be a no-op
+	// even when there's no other pending press. This guards the case where a
+	// late tea.Tick fires after the user has already moved past the toggle.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         true,
+		InitialApprovalMode: client.NeoApprovalModeAuto,
+	})
+	m.approvalDebounceGen = 5
+
+	updated, _ := m.Update(approvalDebounceTickMsg{gen: 4})
+	_ = updated
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen tick must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlA_DuringTaskCreationIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// Between Enter and the task URL arriving (the create-task in-flight
+	// window), Ctrl+A would race the dispatcher: getTaskID() returns "" and
+	// the update event is silently dropped. The fix swallows the keypress
+	// instead so the status bar never lies about what the cloud is enforcing.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		MessageSent:         true,
+		TaskCreated:         false,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+
+	assert.Equal(t, client.NeoApprovalModeManual, m.approvalMode,
+		"Ctrl+A during the create-task window must not change the local mode")
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+A during the create-task window must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_UISessionURL_UnfreezesPostMessageToggles(t *testing.T) {
+	t.Parallel()
+
+	// UISessionURL is the dispatcher's signal that CreateNeoTask succeeded —
+	// from that moment on, Ctrl+A / Ctrl+R must work again. The status-bar
+	// indicator also flips here.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:               outCh,
+		EventCh:             make(chan UIEvent, 4),
+		MessageSent:         true,
+		InitialApprovalMode: client.NeoApprovalModeManual,
+	})
+	require.False(t, m.taskCreated, "precondition: task not yet created")
+
+	updated, _ := m.Update(UISessionURL{URL: "https://app.pulumi.com/x/neo/tasks/t1"})
+	m = updated.(Model)
+	require.True(t, m.taskCreated, "UISessionURL must flip taskCreated")
+
+	// Toggle now works — schedules a debounced PATCH.
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlA})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoApprovalModeBalanced, m.approvalMode)
+
+	// Fire the debounce tick so the PATCH actually lands.
+	updated, _ = m.Update(approvalDebounceTickMsg{gen: m.approvalDebounceGen})
+	_ = updated
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+	default:
+		t.Fatal("debounce tick after UISessionURL must dispatch an update")
+	}
+}
+
+func TestModel_Update_CtrlR_TogglesPermissionMode(t *testing.T) {
+	t.Parallel()
+
+	// Ctrl+R flips read-only on and off. Like Ctrl+A, pre-message it's a
+	// purely local flip; post-message it dispatches an update.
+	outCh := make(chan outboundEvent, 4)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
+
+	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeDefault, m.permissionMode,
+		"second Ctrl+R must flip back to default")
+
+	select {
+	case ev := <-outCh:
+		t.Fatalf("pre-message Ctrl+R must not dispatch, got %#v", ev)
+	default:
+	}
+}
+
+func TestModel_Update_CtrlR_AfterFirstMessage_DispatchesUpdate(t *testing.T) {
+	t.Parallel()
+
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		MessageSent:           true,
+		TaskCreated:           true,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+	m = updated.(Model)
+	assert.Equal(t, client.NeoPermissionModeReadOnly, m.permissionMode)
+
+	// Debounced — nothing on outCh until the tick fires.
+	select {
+	case ev := <-outCh:
+		t.Fatalf("Ctrl+R must defer the dispatch behind the debounce tick, got %#v", ev)
+	default:
+	}
+
+	updated, _ = m.Update(permissionDebounceTickMsg{gen: m.permissionDebounceGen})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.PermissionMode)
+		assert.Equal(t, client.NeoPermissionModeReadOnly, *got.update.PermissionMode)
+		assert.Nil(t, got.update.ApprovalMode,
+			"permission-mode toggle must not include approvalMode")
+	default:
+		t.Fatal("the debounce tick at the current gen must dispatch")
+	}
+}
+
+func TestModel_Update_CtrlR_RapidPressesCollapseToOneDispatch(t *testing.T) {
+	t.Parallel()
+
+	// Mirror of TestModel_Update_CtrlA_RapidPressesCollapseToOneDispatch for
+	// the permission axis. Two rapid Ctrl+R presses must net out to the
+	// starting state (default → read-only → default), so the only dispatch
+	// that fires carries permission=default.
+	outCh := make(chan outboundEvent, 2)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		MessageSent:           true,
+		TaskCreated:           true,
+		InitialPermissionMode: client.NeoPermissionModeDefault,
+	})
+
+	for range 2 {
+		updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyCtrlR})
+		m = updated.(Model)
+	}
+	require.Equal(t, client.NeoPermissionModeDefault, m.permissionMode)
+	require.Equal(t, 2, m.permissionDebounceGen)
+
+	// Stale tick: gen mismatch, no dispatch.
+	updated, _ := m.Update(permissionDebounceTickMsg{gen: 1})
+	m = updated.(Model)
+	select {
+	case ev := <-outCh:
+		t.Fatalf("stale-gen tick must not dispatch, got %#v", ev)
+	default:
+	}
+
+	// Current tick: one dispatch with the netted-out final value.
+	updated, _ = m.Update(permissionDebounceTickMsg{gen: 2})
+	_ = updated
+	select {
+	case got := <-outCh:
+		require.NotNil(t, got.update)
+		require.NotNil(t, got.update.PermissionMode)
+		assert.Equal(t, client.NeoPermissionModeDefault, *got.update.PermissionMode)
+	default:
+		t.Fatal("the current-gen tick must dispatch the final value")
+	}
+}
+
+func TestModel_View_ModeChips(t *testing.T) {
+	t.Parallel()
+
+	// Default modes (manual approval, default permission) collapse to no chips
+	// so the status bar stays uncluttered. Each non-default value gets its own
+	// chip; multiple chips concatenate with a space separator. We assert on
+	// modeChips() directly rather than View() because the hint line itself
+	// mentions "read-only" / "approval" in its keybindings legend.
+	t.Run("DefaultsRenderNoChips", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{
+			InitialApprovalMode:   client.NeoApprovalModeManual,
+			InitialPermissionMode: client.NeoPermissionModeDefault,
+		})
+		assert.Empty(t, m.modeChips(), "manual+default must render no chips")
+	})
+
+	t.Run("BalancedRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialApprovalMode: client.NeoApprovalModeBalanced})
+		assert.Contains(t, m.modeChips(), "balanced")
+	})
+
+	t.Run("AutoRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialApprovalMode: client.NeoApprovalModeAuto})
+		assert.Contains(t, m.modeChips(), "auto-approve")
+	})
+
+	t.Run("ReadOnlyRendersChip", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{InitialPermissionMode: client.NeoPermissionModeReadOnly})
+		assert.Contains(t, m.modeChips(), "read-only")
+	})
+
+	t.Run("MultipleChipsCoexist", func(t *testing.T) {
+		t.Parallel()
+		m := NewModel(ModelConfig{
+			InitialApprovalMode:   client.NeoApprovalModeAuto,
+			InitialPermissionMode: client.NeoPermissionModeReadOnly,
+		})
+		m.planMode = true
+		chips := m.modeChips()
+		assert.Contains(t, chips, "plan mode")
+		assert.Contains(t, chips, "auto-approve")
+		assert.Contains(t, chips, "read-only")
+	})
+}
+
+func TestModel_Update_KeyEnter_FirstMessageCarriesAllModes(t *testing.T) {
+	t.Parallel()
+
+	// The first user message must snapshot all three axes (planMode,
+	// approvalMode, permissionMode) into the outboundEvent envelope. The
+	// dispatcher uses these to seed CreateNeoTask; if the snapshot is wrong
+	// the cloud task is created with the wrong policy.
+	outCh := make(chan outboundEvent, 1)
+	m := NewModel(ModelConfig{
+		OutCh:                 outCh,
+		InitialApprovalMode:   client.NeoApprovalModeBalanced,
+		InitialPermissionMode: client.NeoPermissionModeReadOnly,
+	})
+	m.planMode = true
+	m.textInput.SetValue("kick off")
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_ = updated
+
+	select {
+	case got := <-outCh:
+		assert.True(t, got.planMode)
+		assert.Equal(t, client.NeoApprovalModeBalanced, got.approvalMode)
+		assert.Equal(t, client.NeoPermissionModeReadOnly, got.permissionMode)
+	default:
+		t.Fatal("Enter must post the input to outCh")
+	}
+}
+
+// newQuestionPendingModel returns a Model that has just received a question
+// (ask-user) request — analogous to newApprovalPendingModel but routes through
+// the isAskUserToolName branch so pendingIsQuestion gets set.
+func newQuestionPendingModel(t *testing.T) Model {
+	t.Helper()
+	m := NewModel(ModelConfig{EventCh: make(chan UIEvent, 4), Busy: true})
+	updated, _ := m.Update(UIApprovalRequest{
+		ApprovalID: "appr_q",
+		Message:    "What region?",
+		ToolName:   "ux__ask_user",
+	})
+	return updated.(Model)
+}
+
+func TestModel_Update_UIApprovalResolved_AutoApprovedCommitsBlockAndClears(t *testing.T) {
+	t.Parallel()
+
+	// The cloud auto-resolved a pending approval. The TUI must commit an
+	// "Auto-approved" feedback block to scrollback and reset the prompt — the
+	// agent has already moved on, so the question prompt is no longer relevant.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+	require.True(t, m.pendingApproval, "precondition: approval is pending")
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval, "matching resolved must clear pendingApproval")
+	assert.Empty(t, m.pendingApprovalID, "pendingApprovalID must reset")
+	assert.False(t, m.pendingIsQuestion)
+	assert.Equal(t, "❯ ", m.textInput.Prompt, "prompt must return to default")
+	assert.Equal(t, "Send a message...", m.textInput.Placeholder)
+
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0, "a blockApprovalAuto must be appended")
+	assert.True(t, m.blocks[idx].approved, "approved flag must round-trip from msg.Approved")
+	assert.False(t, m.blocks[idx].autoIsQuestion, "approval (not question) path must set autoIsQuestion=false")
+
+	// The commit also queues a tea.Println so the block lands in terminal
+	// scrollback. Verify the rendered string carries the "Auto-approved" verb.
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed, "auto-resolved block must be emitted to scrollback")
+	assert.Contains(t, printed[len(printed)-1], "Auto-approved")
+}
+
+func TestModel_Update_UIApprovalResolved_AutoApprovedQuestionRendersAnsweredVerb(t *testing.T) {
+	t.Parallel()
+
+	// Question (ask-user) path: pendingIsQuestion=true. The auto-resolved block
+	// must carry that flag through so the renderer says "Auto-answered" instead
+	// of "Auto-approved" — auto-approving an ask-user is conceptually answering
+	// with the default, not approving.
+	m := newQuestionPendingModel(t)
+	require.True(t, m.pendingApproval)
+	require.True(t, m.pendingIsQuestion)
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_q", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval)
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0)
+	assert.True(t, m.blocks[idx].autoIsQuestion, "question path must carry autoIsQuestion=true")
+
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed)
+	assert.Contains(t, printed[len(printed)-1], "Auto-answered")
+}
+
+func TestModel_Update_UIApprovalResolved_AutoDeniedRendersDeniedVerb(t *testing.T) {
+	t.Parallel()
+
+	// Defensive: ApprovalMode=auto never denies today, but the wire format
+	// supports it (ok=false) and a future cloud policy could exercise this
+	// path. The TUI must render "Auto-denied" so the user sees what happened.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+
+	updated, cmd := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: false})
+	m = updated.(Model)
+
+	idx := m.findBlockKind(blockApprovalAuto)
+	require.GreaterOrEqual(t, idx, 0)
+	assert.False(t, m.blocks[idx].approved)
+
+	printed := collectPrintln(cmd)
+	require.NotEmpty(t, printed)
+	assert.Contains(t, printed[len(printed)-1], "Auto-denied")
+}
+
+func TestModel_Update_UIApprovalResolved_EchoOfManualIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// Manual confirmation already clears pendingApproval locally (the Enter
+	// handler does that before sending upstream). When the cloud later echoes
+	// our own user_confirmation back on the stream, the TUI must NOT render an
+	// auto-approved block — pendingApproval is already false, so the handler
+	// silently no-ops.
+	m := NewModel(ModelConfig{EventCh: make(chan UIEvent, 4)})
+	require.False(t, m.pendingApproval, "precondition: no pending approval")
+
+	updated, _ := m.Update(UIApprovalResolved{ApprovalID: "appr_1", Approved: true})
+	m = updated.(Model)
+
+	assert.False(t, m.pendingApproval)
+	assert.Equal(t, -1, m.findBlockKind(blockApprovalAuto),
+		"echo of our own confirmation must not commit a blockApprovalAuto")
+}
+
+func TestModel_Update_UIApprovalResolved_MismatchedIDIsNoop(t *testing.T) {
+	t.Parallel()
+
+	// A resolved event arriving with a different approval ID than the one the
+	// TUI is currently waiting on must be ignored — it's either stale or for a
+	// different request. The current pending state must survive.
+	m := newApprovalPendingModel(t, make(chan outboundEvent, 1))
+	require.True(t, m.pendingApproval)
+	require.Equal(t, "appr_1", m.pendingApprovalID)
+
+	updated, _ := m.Update(UIApprovalResolved{ApprovalID: "appr_other", Approved: true})
+	m = updated.(Model)
+
+	assert.True(t, m.pendingApproval, "mismatched ID must not clear pending state")
+	assert.Equal(t, "appr_1", m.pendingApprovalID)
+	assert.Equal(t, -1, m.findBlockKind(blockApprovalAuto),
+		"mismatched ID must not commit a blockApprovalAuto")
+}
+
+func TestRenderApprovalAuto_VerbVariants(t *testing.T) {
+	t.Parallel()
+
+	// Direct render-helper checks for the three string variants. lipgloss may
+	// embed ANSI in the rendered output, so we assert on Contains.
+	m := NewModel(ModelConfig{})
+
+	cases := []struct {
+		name           string
+		approved       bool
+		autoIsQuestion bool
+		want           string
+	}{
+		{name: "auto-approved", approved: true, autoIsQuestion: false, want: "Auto-approved"},
+		{name: "auto-answered", approved: true, autoIsQuestion: true, want: "Auto-answered"},
+		{name: "auto-denied-approval", approved: false, autoIsQuestion: false, want: "Auto-denied"},
+		{name: "auto-denied-question", approved: false, autoIsQuestion: true, want: "Auto-denied"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			b := &block{kind: blockApprovalAuto, approved: tc.approved, autoIsQuestion: tc.autoIsQuestion}
+			m.renderApprovalAuto(b)
+			assert.Contains(t, b.rendered, tc.want)
+		})
+	}
 }

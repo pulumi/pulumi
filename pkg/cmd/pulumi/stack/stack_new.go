@@ -36,7 +36,7 @@ func newStackNewCmd() *cobra.Command {
 		Hidden: true,
 		Use:    "new",
 		Short:  "Create a new stack",
-		Long: "Create a new stack.\n" +
+		Long: "[EXPERIMENTAL] Create a new stack.\n" +
 			"\n" +
 			"A stack is an isolated, independently configurable instance of a Pulumi\n" +
 			"program, typically representing a deployment environment.",
@@ -62,27 +62,6 @@ func newStackNewCmd() *cobra.Command {
 		"KMS-encrypted ciphertext for the data key (cloud-based secrets providers)")
 	cmd.Flags().StringVar(&encryptionSalt, "encryption-salt", "",
 		"Base64-encoded encryption salt (passphrase-based secrets providers)")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23065]: Not yet implemented.
-func newStackGetCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Retrieve detailed information about a stack",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
 
 	return cmd
 }

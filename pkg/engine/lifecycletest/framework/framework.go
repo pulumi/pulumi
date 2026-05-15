@@ -279,12 +279,16 @@ func (op TestOp) runWithContext(
 		}
 	}
 
+	pluginManager := opts.PluginManager
+	if pluginManager == nil {
+		pluginManager = NopPluginManager{}
+	}
 	ctx := &engine.Context{
 		Cancel:          cancelCtx,
 		Events:          events,
 		SnapshotManager: combined,
 		BackendClient:   backendClient,
-		PluginManager:   NopPluginManager{},
+		PluginManager:   pluginManager,
 	}
 
 	updateOpts := opts.Options()
@@ -775,7 +779,9 @@ func (t *TestStep) ValidateAnd(f ValidateFunc) {
 type TestUpdateOptions struct {
 	engine.UpdateOptions
 	// a factory to produce a plugin host for an update operation.
-	HostF            deploytest.PluginHostFactory
+	HostF deploytest.PluginHostFactory
+	// PluginManager overrides the engine.Context.PluginManager used by the run. Defaults to NopPluginManager{}.
+	PluginManager    engine.PluginManager
 	T                TB
 	SkipDisplayTests bool
 }

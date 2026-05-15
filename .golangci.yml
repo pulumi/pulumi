@@ -169,6 +169,9 @@ linters:
       - linters:
           - staticcheck
         text: 'other import of'
+      - linters:
+          - goheader
+        path: pkg/cmd/pulumi/logs/timestamp\.go$
     paths:
       - Godeps$
       - builtin$

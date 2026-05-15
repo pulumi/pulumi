@@ -393,6 +393,10 @@ func emitPartialFailure(
 	w io.Writer, flags *apiCommand,
 	accumulated []json.RawMessage, itemsField string, apiErr *APIError,
 ) error {
+	// Total failure, return the error without flushing.
+	if len(accumulated) == 0 {
+		return apiErr
+	}
 	flushAccumulated(w, accumulated, itemsField, flags)
 	apiErr.Silent = true
 	return apiErr
