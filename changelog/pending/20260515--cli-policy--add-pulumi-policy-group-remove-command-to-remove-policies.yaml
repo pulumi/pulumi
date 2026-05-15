@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/policy
+  description: Add `pulumi policy group remove` command to remove policies
