@@ -7,17 +7,28 @@
 
 "use strict";
 
-const { describe, it } = require("node:test");
+const { before, describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { spawnSync } = require("child_process");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { fetchLatestVersion } = require("../lib/download");
 
-const version = process.env.PULUMI_VERSION;
-if (!version) {
-    throw new Error("PULUMI_VERSION must be set to a released version");
+if (!process.env.PULUMI_VERSION) {
+    throw new Error("PULUMI_VERSION must be set");
 }
+
+// Pre-release build versions (e.g. 3.239.0-alpha.123) are not published to
+// the CDN. Resolve to the latest stable release for integration testing.
+let version = process.env.PULUMI_VERSION;
+before(async () => {
+    if (version.includes("-")) {
+        const stable = await fetchLatestVersion();
+        process.stderr.write(`PULUMI_VERSION ${version} is pre-release; using latest stable ${stable}\n`);
+        version = stable;
+    }
+});
 
 const { resolve } = require("../lib/resolve");
 // Expected language hosts bundled in every Pulumi release.
@@ -61,7 +72,7 @@ describe(`pulumi v${version} integration`, () => {
 
     it("installs language host binaries alongside the CLI", () => {
         assert.ok(binDir, "resolve must run first");
-        const exe = currentOS() === "windows" ? ".exe" : "";
+        const exe = process.platform === "win32" ? ".exe" : "";
         for (const host of LANGUAGE_HOSTS) {
             const p = path.join(binDir, `${host}${exe}`);
             assert.ok(fs.existsSync(p), `expected ${host} to be installed at ${p}`);
