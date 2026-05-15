@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 
 	"github.com/spf13/cobra"
 
@@ -37,6 +37,7 @@ import (
 type orgWebhookRemoveCmd struct {
 	orgName string
 	yes     bool
+	w       io.Writer
 
 	currentBackend func(
 		context.Context, pkgWorkspace.Context, cmdBackend.LoginManager,
@@ -62,6 +63,7 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 			"  # Remove without confirmation\n" +
 			"  pulumi org webhook remove my-webhook --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			orcmd.w = cmd.OutOrStdout()
 			return orcmd.run(cmd.Context(), args[0])
 		},
 	}
@@ -86,7 +88,7 @@ func (c *orgWebhookRemoveCmd) run(ctx context.Context, webhookName string) error
 		prompt := fmt.Sprintf(
 			"This will permanently remove the webhook '%s'!", webhookName)
 		if !ui.ConfirmPrompt(prompt, webhookName, opts) {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
+			return result.FprintBailf(c.w, "confirmation declined")
 		}
 	}
 
@@ -129,6 +131,6 @@ func (c *orgWebhookRemoveCmd) run(ctx context.Context, webhookName string) error
 		return fmt.Errorf("removing organization webhook: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "Webhook '%s' has been removed.\n", webhookName)
+	fmt.Fprintf(c.w, "Webhook '%s' has been removed.\n", webhookName)
 	return nil
 }
