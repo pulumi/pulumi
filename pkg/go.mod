@@ -24,7 +24,6 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/iancoleman/strcase v0.2.0
 	github.com/mitchellh/copystructure v1.2.0
-	github.com/moby/moby v28.3.3+incompatible
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d

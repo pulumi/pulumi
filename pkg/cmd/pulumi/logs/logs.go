@@ -21,8 +21,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	mobytime "github.com/moby/moby/api/types/time"
-
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/secrets"
@@ -219,11 +217,11 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 }
 
 func parseSince(since string, reference time.Time) (*time.Time, error) {
-	startTimestamp, err := mobytime.GetTimestamp(since, reference)
+	startTimestamp, err := getTimestamp(since, reference)
 	if err != nil {
 		return nil, err
 	}
-	startTimeSec, startTimeNs, err := mobytime.ParseTimestamps(startTimestamp, 0)
+	startTimeSec, startTimeNs, err := parseTimestamps(startTimestamp, 0)
 	if err != nil {
 		return nil, err
 	}
