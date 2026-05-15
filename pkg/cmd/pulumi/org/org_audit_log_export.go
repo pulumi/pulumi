@@ -17,8 +17,9 @@ package org
 // AI Generated - needs human review
 
 import (
+	"bytes"
 	"context"
-	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -219,23 +220,76 @@ func renderOrgAuditLogExportRaw(w io.Writer, data []byte, _ string) error {
 	return nil
 }
 
-// renderOrgAuditLogExportJSON wraps the body in a JSON envelope with the
-// response format and base64-encoded data.
+// renderOrgAuditLogExportJSON parses the export data and emits structured JSON.
+// For CSV exports, each row becomes a JSON object keyed by the CSV header.
+// For CEF exports, the raw lines are emitted as a string array.
 func renderOrgAuditLogExportJSON(w io.Writer, data []byte, format string) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(auditLogExportEnvelope{
+
+	if format == "csv" {
+		return renderCSVAsJSON(w, data, enc)
+	}
+	// CEF or unknown: emit raw lines.
+	lines := splitLines(data)
+	return enc.Encode(struct {
+		Format string   `json:"format"`
+		Lines  []string `json:"lines"`
+		Count  int      `json:"count"`
+	}{
 		Format: format,
-		Data:   base64.StdEncoding.EncodeToString(data),
+		Lines:  lines,
+		Count:  len(lines),
 	})
 }
 
-// auditLogExportEnvelope is the JSON shape emitted by
-// `pulumi org audit-log export --output=json`. The raw response body is
-// base64-encoded so it survives transport through JSON regardless of which
-// format (CSV or CEF) the server produced.
-type auditLogExportEnvelope struct {
-	Format string `json:"format"`
-	Data   string `json:"data"`
+func renderCSVAsJSON(w io.Writer, data []byte, enc *json.Encoder) error {
+	reader := csv.NewReader(bytes.NewReader(data))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return fmt.Errorf("parsing CSV export: %w", err)
+	}
+	if len(records) == 0 {
+		return enc.Encode(struct {
+			Events []map[string]string `json:"events"`
+			Count  int                 `json:"count"`
+		}{
+			Events: []map[string]string{},
+			Count:  0,
+		})
+	}
+
+	headers := records[0]
+	events := make([]map[string]string, 0, len(records)-1)
+	for _, row := range records[1:] {
+		event := make(map[string]string, len(headers))
+		for i, h := range headers {
+			if i < len(row) {
+				event[h] = row[i]
+			}
+		}
+		events = append(events, event)
+	}
+
+	return enc.Encode(struct {
+		Events []map[string]string `json:"events"`
+		Count  int                 `json:"count"`
+	}{
+		Events: events,
+		Count:  len(events),
+	})
+}
+
+func splitLines(data []byte) []string {
+	s := string(bytes.TrimRight(data, "\n\r"))
+	if s == "" {
+		return []string{}
+	}
+	lines := bytes.Split([]byte(s), []byte("\n"))
+	result := make([]string, len(lines))
+	for i, l := range lines {
+		result[i] = string(bytes.TrimRight(l, "\r"))
+	}
+	return result
 }
