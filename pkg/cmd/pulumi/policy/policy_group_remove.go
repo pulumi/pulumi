@@ -30,10 +30,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // policyGroupRemoveClient is the narrow subset of cloud-API operations the
@@ -52,6 +54,7 @@ type policyGroupRemoveClientFactory func(
 // policyGroupRemoveArgs collects the flag values for the remove command.
 type policyGroupRemoveArgs struct {
 	org          string
+	yes          bool
 	outputFormat outputflag.OutputFlag[policyGroupRemoveRenderFunc]
 }
 
@@ -76,23 +79,22 @@ func newPolicyGroupRemoveCmdWith(factory policyGroupRemoveClientFactory) *cobra.
 	args.outputFormat = defaultPolicyGroupRemoveOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
 		Use:    "remove <name>",
 		Short:  "[EXPERIMENTAL] Delete a Policy Group",
 		Long: "[EXPERIMENTAL] Delete a Policy Group.\n" +
 			"\n" +
-			"Deletes a Policy Group from an organization. A Policy Group defines\n" +
-			"which Policy Packs are enforced on which stacks, with configurable\n" +
-			"enforcement levels per pack. The organization's default Policy Group\n" +
-			"cannot be deleted. Deleting a Policy Group removes all policy\n" +
-			"enforcement associations for the stacks that were assigned to it.\n" +
+			"Deletes a Policy Group from an organization. This cannot be undone.\n" +
+			"You will be prompted to confirm unless --yes is passed.\n" +
 			"\n" +
-			"Default output is a human-readable confirmation; pass --output=json for\n" +
-			"a machine-readable summary.",
-		Example: "  # Remove a Policy Group from the default organization\n" +
+			"The organization's default Policy Group cannot be deleted. Deleting\n" +
+			"a Policy Group removes all policy enforcement associations for the\n" +
+			"stacks that were assigned to it.",
+		Example: "  # Remove a Policy Group (will prompt for confirmation)\n" +
 			"  pulumi policy group remove prod-policies\n\n" +
-			"  # Remove a Policy Group from a specific organization and emit JSON\n" +
-			"  pulumi policy group remove prod-policies --org acme --output json",
+			"  # Remove without confirmation\n" +
+			"  pulumi policy group remove prod-policies --yes\n\n" +
+			"  # Remove from a specific organization\n" +
+			"  pulumi policy group remove prod-policies --org acme --yes",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runPolicyGroupRemove(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -106,6 +108,7 @@ func newPolicyGroupRemoveCmdWith(factory policyGroupRemoveClientFactory) *cobra.
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the Policy Group")
+	cmd.Flags().BoolVarP(&args.yes, "yes", "y", false, "Skip confirmation prompts")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
@@ -160,6 +163,14 @@ func runPolicyGroupRemove(
 	ctx context.Context, w io.Writer,
 	factory policyGroupRemoveClientFactory, name string, args policyGroupRemoveArgs,
 ) error {
+	if !args.yes {
+		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+		prompt := fmt.Sprintf("This will permanently remove the policy group '%s'!", name)
+		if !ui.ConfirmPrompt(prompt, name, opts) {
+			return result.FprintBailf(w, "confirmation declined")
+		}
+	}
+
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
