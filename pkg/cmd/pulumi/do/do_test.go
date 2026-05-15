@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/cobra"
+
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -193,6 +195,96 @@ Use "do aws@4.1 [command] --help" for more information about a command.
 	cmd.SetArgs([]string{"--dry-run", "aws@4.1"})
 	err = cmd.Execute()
 	require.NoError(t, err)
+	assert.Equal(t, expected, stdout.String())
+}
+
+// TestDoCmdWithPkgArgPrintsHelpUnderRoot wraps the do command beneath a synthetic root with PersistentPreRun /
+// PersistentPostRun (mimicking the real `pulumi` command). When the dynamic subcommand executes via
+// subcmd.ExecuteContext, cobra walks back up to the root for a second Find/Execute pass — without the lifecycle
+// bookkeeping in buildSubcommand that would re-run the root's persistent runs, sometimes panicking
+// (e.g. the pulumi root's update-check goroutine closes a channel and a second send-after-close panics). Verify
+// the persistent runs fire exactly once and the help output still matches.
+func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+		assert.Equal(t, "aws@4.1", source)
+		spec := schema.PackageSpec{
+			Name:        "aws",
+			Description: "Help text about aws.",
+			Functions: map[string]schema.FunctionSpec{
+				"aws:index:myFunction":         {},
+				"aws:myModule:myOtherFunction": {},
+			},
+			Resources: map[string]schema.ResourceSpec{
+				"aws:index:myResource":         {},
+				"aws:myModule:myOtherResource": {},
+			},
+			Provider: schema.ResourceSpec{
+				InputProperties: map[string]schema.PropertySpec{
+					"region": {
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+			},
+		}
+		return closer(t), &testProvider{spec: spec}, nil
+	}
+
+	var preRunCount, postRunCount int
+	rootCmd := &cobra.Command{
+		Use: "pulumi",
+		PersistentPreRun: func(*cobra.Command, []string) {
+			preRunCount++
+		},
+		PersistentPostRun: func(*cobra.Command, []string) {
+			postRunCount++
+		},
+	}
+	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader))
+
+	var stdout bytes.Buffer
+	rootCmd.SetOut(&stdout)
+	rootCmd.SetErr(&stdout)
+	rootCmd.SetArgs([]string{"do", "aws@4.1"})
+	err := rootCmd.Execute()
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, preRunCount, "PersistentPreRun should run exactly once across the nested Execute")
+	assert.Equal(t, 1, postRunCount, "PersistentPostRun should run exactly once across the nested Execute")
+
+	expected := `Interact with aws resources and functions.
+
+Help text about aws.
+
+Run 'pulumi do aws@4.1 <module/resource/function> --help' for more details on usage.
+
+Usage:
+  pulumi do aws@4.1 [command]
+
+Functions
+  myFunction  Invoke the myFunction function
+
+Resources
+  myResource  Operate on the myResource resource
+
+Modules
+  myModule    Functions and resources for the myModule module
+
+Flags:
+  -h, --help                   help for aws@4.1
+      --provider-file string   Path to a file containing provider configuration
+
+Global Flags:
+      --dry-run        Run the operation in preview mode
+      --show-secrets   Show secret values in output
+
+Use "pulumi do aws@4.1 [command] --help" for more information about a command.
+`
 	assert.Equal(t, expected, stdout.String())
 }
 

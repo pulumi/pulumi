@@ -177,9 +177,11 @@ func NewDoCmd(
 		subcmd.SetOut(cmd.OutOrStdout())
 		subcmd.SetErr(cmd.ErrOrStderr())
 		subcmd.SetIn(cmd.InOrStdin())
-		subcmd.SetArgs(args)
 
-		// Build a fake command tree so we get accurate 'Usage' but without re-invoking any hooks.
+		// Build a fake command tree so we get accurate 'Usage' but without re-invoking any hooks. The top fake
+		// is what we dispatch on, so its args need to include each intermediate command name so cobra's Find can
+		// walk down through the shadow tree to subcmd.
+		fullArgs := append([]string(nil), args...)
 		parent := cmd
 		current := subcmd
 		for parent != nil {
@@ -190,7 +192,6 @@ func NewDoCmd(
 			nextParent.SetOut(cmd.OutOrStdout())
 			nextParent.SetErr(cmd.ErrOrStderr())
 			nextParent.SetIn(cmd.InOrStdin())
-			nextParent.SetArgs(args)
 			nextParent.AddCommand(current)
 			parent.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
 				nextParent.Flags().AddFlag(f)
@@ -201,9 +202,17 @@ func NewDoCmd(
 				}
 			})
 
+			// If the real parent has its own parent, the next iteration will create another fake above this one.
+			// That fake will be the dispatch target, so include the current level's name in its args so Find walks
+			// through this fake.
+			if parent.Parent() != nil {
+				fullArgs = append([]string{parent.Name()}, fullArgs...)
+			}
+
 			current = nextParent
 			parent = parent.Parent()
 		}
+		current.SetArgs(fullArgs)
 
 		return current, cleanup, nil
 	}
