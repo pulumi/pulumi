@@ -3008,6 +3008,22 @@ func (pc *Client) GetOrgUsageSummary(
 	return resp, nil
 }
 
+// CancelStackDeployment requests cancellation of an in-progress Pulumi
+// Deployments execution. Wraps the CancelDeployment endpoint.
+//
+// The endpoint is fire-and-forget: a 200 OK signals that the request was
+// accepted, not that the deployment has finished tearing down. The server
+// returns 404 when the deployment is not known. We treat the call as
+// idempotent enough to retry on transient transport failures — the worst case
+// is a redundant cancel against an already-canceling deployment.
+func (pc *Client) CancelStackDeployment(
+	ctx context.Context, stack StackIdentifier, deploymentID string,
+) error {
+	path := getStackPath(stack, "deployments", deploymentID, "cancel")
+	return pc.restCallWithOptions(ctx, "POST", path, nil, nil, nil,
+		httpCallOptions{RetryPolicy: retryAllMethods})
+}
+
 // SearchInsightsResources runs a resource search against the v2 endpoint
 // (`GetOrgResourceSearchV2Query`).
 //
