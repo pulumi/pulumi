@@ -40,3 +40,10 @@ type DriftRunUpdate struct {
 	Modified        string         `json:"modified"`
 	Status          string         `json:"status"`
 }
+
+// StackDriftStatus is the response from the drift status endpoint.
+type StackDriftStatus struct {
+	DriftDetected  bool   `json:"driftDetected"`
+	LatestDriftRun string `json:"latestDriftRun"`
+	RunInProgress  bool   `json:"runInProgress"`
+}
