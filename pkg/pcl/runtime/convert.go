@@ -356,6 +356,8 @@ func applySchemaInputsInner(
 				return nil, fmt.Errorf("property %q: %w", key, err)
 			}
 			val = v
+		} else if prop.ConstValue != nil {
+			val = resource.NewPropertyValue(prop.ConstValue)
 		} else if prop.DefaultValue != nil {
 			val = resource.NewPropertyValue(prop.DefaultValue.Value)
 		} else {

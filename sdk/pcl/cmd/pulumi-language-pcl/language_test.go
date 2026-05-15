@@ -98,7 +98,6 @@ var expectedFailures = map[string]string{
 	"l3-component-nested": "nested component outputs are not propagated correctly",
 	"l2-resource-read":    "need to update pkg",
 	"l1-builtin-min-max":  "cannot pin the current commit",
-	"l2-const-values":     "PCL binder rejects omitted const fields in nested object literals",
 }
 
 func TestLanguage(t *testing.T) {
