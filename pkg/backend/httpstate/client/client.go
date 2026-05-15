@@ -801,6 +801,111 @@ func (pc *Client) ListStackSchedules(
 	return resp.Schedules, nil
 }
 
+// GetStackSchedule returns the scheduled deployment action with the given ID.
+func (pc *Client) GetStackSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "schedules", scheduleID)
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// CreateStackSchedule creates a custom scheduled deployment action for the given stack.
+// Exactly one of req.ScheduleCron or req.ScheduleOnce must be set. The stack must have
+// deployment settings configured before a schedule can be created.
+func (pc *Client) CreateStackSchedule(
+	ctx context.Context, stackID StackIdentifier, req apitype.CreateScheduledDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "schedules")
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// CreateStackDriftSchedule creates a scheduled drift-detection action for the given stack.
+// The stack must have deployment settings configured before a schedule can be created.
+func (pc *Client) CreateStackDriftSchedule(
+	ctx context.Context, stackID StackIdentifier, req apitype.CreateScheduledDriftDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "drift", "schedules")
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// CreateStackTTLSchedule creates a scheduled TTL (one-time destroy) action for the given stack.
+// The stack must have deployment settings configured before a schedule can be created.
+func (pc *Client) CreateStackTTLSchedule(
+	ctx context.Context, stackID StackIdentifier, req apitype.CreateScheduledTTLDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "ttl", "schedules")
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// DeleteStackSchedule permanently deletes a scheduled deployment action.
+func (pc *Client) DeleteStackSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+) error {
+	path := getStackPath(stackID, "deployments", "schedules", scheduleID)
+	return pc.restCall(ctx, "DELETE", path, nil, nil, nil)
+}
+
+// UpdateStackSchedule updates a raw scheduled deployment action. The full request body is expected: callers should read
+// the current schedule and pass back any fields they want to preserve (the service treats omitted bool options as
+// false).
+func (pc *Client) UpdateStackSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+	req apitype.CreateScheduledDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "schedules", scheduleID)
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// UpdateStackDriftSchedule updates a drift-detection scheduled deployment action. The full request body is expected:
+// callers should read the current schedule and pass back any fields they want to preserve (the service treats omitted
+// bool options as false).
+func (pc *Client) UpdateStackDriftSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+	req apitype.CreateScheduledDriftDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "drift", "schedules", scheduleID)
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
+// UpdateStackTTLSchedule updates a TTL scheduled deployment action. The full request body is expected: callers should
+// read the current schedule and pass back any fields they want to preserve (the service treats omitted bool options as
+// false).
+func (pc *Client) UpdateStackTTLSchedule(
+	ctx context.Context, stackID StackIdentifier, scheduleID string,
+	req apitype.CreateScheduledTTLDeploymentRequest,
+) (apitype.ScheduledAction, error) {
+	var resp apitype.ScheduledAction
+	path := getStackPath(stackID, "deployments", "ttl", "schedules", scheduleID)
+	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+		return apitype.ScheduledAction{}, err
+	}
+	return resp, nil
+}
+
 // CreateStackDetails holds additional information returned by the Pulumi Service when a stack is
 // created, beyond the stack itself.
 type CreateStackDetails struct {
