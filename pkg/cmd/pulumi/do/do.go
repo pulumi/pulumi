@@ -68,7 +68,6 @@ func NewDoCmd(
 	var dryrun bool
 	var showSecrets bool
 
-	var defaultHelp func(*cobra.Command, []string)
 	// buildSubcommand returns the dynamically constructed subcommand along with a cleanup function that must be
 	// deferred by the caller. The cleanup tears down the provider gRPC channel — running it as a defer inside
 	// buildSubcommand would close the channel before the subcommand's RunE actually invokes the provider.
@@ -173,13 +172,40 @@ func NewDoCmd(
 			spec:        boundpkg,
 			dryrun:      dryrun,
 			showSecrets: showSecrets,
-		}).newCommand(defaultHelp)
+		}).newCommand()
+		subcmd.SetContext(cmd.Context())
 		subcmd.SetOut(cmd.OutOrStdout())
 		subcmd.SetErr(cmd.ErrOrStderr())
 		subcmd.SetIn(cmd.InOrStdin())
 		subcmd.SetArgs(args)
-		cmd.AddCommand(subcmd)
-		return subcmd, cleanup, nil
+
+		// Build a fake command tree so we get accurate 'Usage' but without re-invoking any hooks.
+		parent := cmd
+		current := subcmd
+		for parent != nil {
+			nextParent := &cobra.Command{
+				Use: parent.Use,
+			}
+			nextParent.SetContext(cmd.Context())
+			nextParent.SetOut(cmd.OutOrStdout())
+			nextParent.SetErr(cmd.ErrOrStderr())
+			nextParent.SetIn(cmd.InOrStdin())
+			nextParent.SetArgs(args)
+			nextParent.AddCommand(current)
+			parent.LocalNonPersistentFlags().VisitAll(func(f *pflag.Flag) {
+				nextParent.Flags().AddFlag(f)
+			})
+			parent.LocalFlags().VisitAll(func(f *pflag.Flag) {
+				if nextParent.Flags().Lookup(f.Name) == nil {
+					nextParent.PersistentFlags().AddFlag(f)
+				}
+			})
+
+			current = nextParent
+			parent = parent.Parent()
+		}
+
+		return current, cleanup, nil
 	}
 
 	cmd := &cobra.Command{
@@ -218,16 +244,12 @@ Provider configuration can be supplied via:
 			}
 			ctx := cmd.Context()
 			err = subcmd.ExecuteContext(ctx)
-			// Clean up the command after execution, so that tests can re-run the command with different arguments
-			// without having to create a new one.
-			cmd.RemoveCommand(subcmd)
 			return err
 		},
 	}
 
-	// Save default help to pass to the package subcommand
-	defaultHelp = cmd.HelpFunc()
-
+	// Save default help to run if there are no args
+	defaultHelp := cmd.HelpFunc()
 	cmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
 		subcmd, cleanup, err := buildSubcommand(cmd, args)
 		if cleanup != nil {
@@ -245,7 +267,6 @@ Provider configuration can be supplied via:
 		if err != nil {
 			cmd.PrintErrln(err)
 		}
-		cmd.RemoveCommand(subcmd)
 	})
 
 	constrictor.AttachArguments(cmd, constrictor.UnrestrictedArgs)
@@ -266,9 +287,7 @@ type packageCommand struct {
 	showSecrets  bool
 }
 
-func (pc *packageCommand) newCommand(
-	helpFunc func(*cobra.Command, []string),
-) *cobra.Command {
+func (pc *packageCommand) newCommand() *cobra.Command {
 	shorthelp := fmt.Sprintf("Interact with %s resources and functions", pc.spec.Name)
 	longhelp := shorthelp + "."
 	if pc.spec.Description != "" {
@@ -284,8 +303,6 @@ func (pc *packageCommand) newCommand(
 		Long:  longhelp,
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-	// Fixup default help to run on this command, not the parent `do` command.
-	cmd.SetHelpFunc(helpFunc)
 
 	cmd.PersistentFlags().StringVar(
 		&pc.providerFile, "provider-file", "", "Path to a file containing provider configuration")
