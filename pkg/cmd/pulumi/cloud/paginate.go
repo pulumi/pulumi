@@ -119,7 +119,7 @@ func runPaginate(
 		if err != nil {
 			return emitPartialFailure(w, flags, accumulated, itemsField,
 				NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags,
-					fmt.Sprintf("page %d: %v; --paginate requires a JSON shape with an array and "+
+					fmt.Sprintf("page %d: %v; --all requires a JSON shape with an array and "+
 						"optional continuationToken/cursor/nextToken", page, err)))
 		}
 		if itemsField == "" && pageItemsField != "" {
@@ -333,7 +333,7 @@ func cursorFromLink(link string) (cursor, param string) {
 // writeAccumulated writes the combined result to w. When itemsField is
 // non-empty (the server returned an object envelope with a named array), the
 // output is wrapped back into that same shape ({<itemsField>: [...]}) so
-// downstream `| jq` filters work identically whether or not --paginate is set.
+// downstream `| jq` filters work identically whether or not --all is set.
 // When itemsField is empty (server returned a bare array), the output stays
 // a bare array.
 func writeAccumulated(w io.Writer, items []json.RawMessage, itemsField string, flags *apiCommand) error {
