@@ -299,6 +299,11 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 			for k, dst := range t.Properties {
 				src, ok := src.Properties[k]
 				if !ok {
+					if IsConstType(dst) {
+						// Const values are implied — omitting them from a source object literal
+						// is allowed because the SDK is expected to fill the const value in.
+						continue
+					}
 					src = NoneType
 				}
 				if ck, why := dst.conversionFrom(src, unifying, seen); ck < conversionKind {

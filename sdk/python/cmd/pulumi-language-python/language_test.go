@@ -107,6 +107,7 @@ var expectedFailures = map[string]string{
 	"l3-range-ref":                       `Item "None" of "Target | None" has no attribute "name"  [union-attr]`,
 	"l3-component-primitive-conversions": "primitive conversions accepted by PCL bind, but not lowered correctly by SDK generators", //nolint:lll
 	"l3-component-nested":                "syntax error",
+	"l2-const-values":                    "PCL binder rejects omitted const fields in nested object literals",
 }
 
 type languageTestConfig struct {
