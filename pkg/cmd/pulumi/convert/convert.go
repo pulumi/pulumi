@@ -401,8 +401,13 @@ func runConvert(
 			return fmt.Errorf("deserialize state: %w", err)
 		}
 
+		excludedURNs := map[resource.URN]struct{}{}
+
 		var states []*resource.State
 		for _, r := range snap.Resources {
+			if !r.Custom && r.Provider != "" {
+				excludedURNs[r.URN] = struct{}{}
+			}
 			if r.Delete || !r.Custom {
 				continue
 			}
@@ -410,6 +415,10 @@ func runConvert(
 				continue
 			}
 			if providers.IsDefaultProvider(r.URN) {
+				continue
+			}
+			if _, excluded := excludedURNs[r.Parent]; excluded {
+				excludedURNs[r.URN] = struct{}{}
 				continue
 			}
 			states = append(states, r)

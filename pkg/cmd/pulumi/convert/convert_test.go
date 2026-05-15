@@ -146,6 +146,156 @@ func TestStateConvertEmptyState(t *testing.T) {
 	assert.Empty(t, pclBytes)
 }
 
+// TestStateConvertFiltersRemoteComponentChildren verifies that custom resources whose parent is a
+// remote component are excluded from the generated output.
+func TestStateConvertFiltersRemoteComponentChildren(t *testing.T) {
+	t.Parallel()
+
+	stateJSON := `{
+  "version": 3,
+  "deployment": {
+    "manifest": {
+      "time": "2024-01-01T00:00:00Z",
+      "magic": "abc123",
+      "version": "v3.0.0"
+    },
+    "resources": [
+      {
+        "urn": "urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev",
+        "custom": false,
+        "type": "pulumi:pulumi:Stack",
+        "inputs": {},
+        "outputs": {}
+      },
+      {
+        "urn": "urn:pulumi:dev::myproject::pkg:index:Component::mycomp",
+        "custom": false,
+        "type": "pkg:index:Component",
+        "provider": "urn:pulumi:dev::myproject::pulumi:providers:pkg::default::abc123",
+        "inputs": {},
+        "outputs": {}
+      },
+      {
+        "urn": "urn:pulumi:dev::myproject::pkg:index:Component$pkg:index:Child::mychild",
+        "custom": true,
+        "type": "pkg:index:Child",
+        "parent": "urn:pulumi:dev::myproject::pkg:index:Component::mycomp",
+        "inputs": {},
+        "outputs": {}
+      }
+    ]
+  }
+}`
+
+	outDir := t.TempDir()
+	cwd, err := filepath.Abs(".")
+	require.NoError(t, err)
+
+	stateFile := filepath.Join(t.TempDir(), "state.json")
+	require.NoError(t, os.WriteFile(stateFile, []byte(stateJSON), 0o600))
+
+	err = runConvert(
+		t.Context(),
+		&cmdBackend.MockLoginManager{},
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{"--file", stateFile},
+		cwd,
+		[]string{},
+		"state",
+		"pcl",
+		outDir,
+		true,  /*generateOnly*/
+		false, /*strict*/
+		"myproject",
+	)
+	require.NoError(t, err)
+
+	// The remote component and its child are filtered out, so program.pp should be empty.
+	pclBytes, err := os.ReadFile(filepath.Join(outDir, "program.pp"))
+	require.NoError(t, err)
+	assert.Empty(t, pclBytes)
+}
+
+// TestStateConvertFiltersRemoteComponentGrandchildren verifies that the remote component child
+// filter is applied transitively.
+func TestStateConvertFiltersRemoteComponentGrandchildren(t *testing.T) {
+	t.Parallel()
+
+	stateJSON := `{
+  "version": 3,
+  "deployment": {
+    "manifest": {
+      "time": "2024-01-01T00:00:00Z",
+      "magic": "abc123",
+      "version": "v3.0.0"
+    },
+    "resources": [
+      {
+        "urn": "urn:pulumi:dev::myproject::pulumi:pulumi:Stack::myproject-dev",
+        "custom": false,
+        "type": "pulumi:pulumi:Stack",
+        "inputs": {},
+        "outputs": {}
+      },
+      {
+        "urn": "urn:pulumi:dev::myproject::pkg:index:Component::mycomp",
+        "custom": false,
+        "type": "pkg:index:Component",
+        "provider": "urn:pulumi:dev::myproject::pulumi:providers:pkg::default::abc123",
+        "inputs": {},
+        "outputs": {}
+      },
+      {
+        "urn": "urn:pulumi:dev::myproject::pkg:index:Component$pkg:index:Child::mychild",
+        "custom": true,
+        "type": "pkg:index:Child",
+        "parent": "urn:pulumi:dev::myproject::pkg:index:Component::mycomp",
+        "inputs": {},
+        "outputs": {}
+      },
+      {
+        "urn": "urn:pulumi:dev::myproject::pkg:index:Component$pkg:index:Child$pkg:index:Grandchild::mygrandchild",
+        "custom": true,
+        "type": "pkg:index:Grandchild",
+        "parent": "urn:pulumi:dev::myproject::pkg:index:Component$pkg:index:Child::mychild",
+        "inputs": {},
+        "outputs": {}
+      }
+    ]
+  }
+}`
+
+	outDir := t.TempDir()
+	cwd, err := filepath.Abs(".")
+	require.NoError(t, err)
+
+	stateFile := filepath.Join(t.TempDir(), "state.json")
+	require.NoError(t, os.WriteFile(stateFile, []byte(stateJSON), 0o600))
+
+	err = runConvert(
+		t.Context(),
+		&cmdBackend.MockLoginManager{},
+		pkgWorkspace.Instance,
+		env.Global(),
+		[]string{"--file", stateFile},
+		cwd,
+		[]string{},
+		"state",
+		"pcl",
+		outDir,
+		true,  /*generateOnly*/
+		false, /*strict*/
+		"myproject",
+	)
+	require.NoError(t, err)
+
+	// The remote component and all of its descendants are filtered out, so program.pp should be empty.
+	pclBytes, err := os.ReadFile(filepath.Join(outDir, "program.pp"))
+	require.NoError(t, err)
+	assert.Empty(t, pclBytes)
+}
+
 // TestStateConvertFileNotFound verifies the error when the state file cannot be read.
 func TestStateConvertFileNotFound(t *testing.T) {
 	t.Parallel()
