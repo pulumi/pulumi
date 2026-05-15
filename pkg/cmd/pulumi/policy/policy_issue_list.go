@@ -86,9 +86,8 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 	args.outputFormat = defaultPolicyIssueListOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "[EXPERIMENTAL] List all policy issues for an organization",
+		Use:   "list",
+		Short: "[EXPERIMENTAL] List all policy issues for an organization",
 		Long: "[EXPERIMENTAL] List all policy issues for an organization.\n" +
 			"\n" +
 			"Returns a list of policy issues for the organization. Each issue\n" +
@@ -107,8 +106,7 @@ func newPolicyIssueListCmdWith(factory policyIssueListClientFactory) *cobra.Comm
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization to list policy issues for")
 	cmd.Flags().Int64Var(&args.count, "count", 0,
-		"Maximum number of issues to return. Defaults to the size of the first page; "+
-			"larger values auto-paginate")
+		"Maximum number of issues to return (default 100)")
 	cmd.Flags().BoolVar(&args.all, "all", false, "Return all matching issues; mutually exclusive with --count")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
@@ -159,6 +157,9 @@ func defaultPolicyIssueListClientFactory(
 	return cloudBackend.Client(), org, nil
 }
 
+// defaultPageSize is the number of items fetched per API call.
+const policyIssueDefaultPageSize = 100
+
 // runPolicyIssueList is the cobra-decoupled command body so tests can drive
 // it directly without spinning up the flag parser.
 func runPolicyIssueList(
@@ -170,47 +171,47 @@ func runPolicyIssueList(
 		return err
 	}
 
-	// Fetch the first page using the server's default page size, then
-	// continue paginating until we satisfy --count (if set) or exhaust the
-	// list (when --all). When neither is set, return the first page.
-	first, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{Page: 1})
-	if err != nil {
-		return fmt.Errorf("listing policy issues: %w", err)
+	// Determine how many results to fetch.
+	want := int64(policyIssueDefaultPageSize) // default: one page
+	if args.count > 0 {
+		want = args.count
+	} else if args.all {
+		want = -1 // sentinel: fetch everything
 	}
 
-	issues := first.Issues
-	total := first.Total
-	pageSize := first.ItemsPerPage
-	want := args.count
-	all := args.all
+	var allIssues []apitype.PolicyIssue
+	var total int64
+	startRow := 0
 
-	// Continue paginating if --all or if --count exceeds the first page size.
-	if all || (want > int64(len(issues)) && pageSize > 0) {
-		for page := int64(2); all || int64(len(issues)) < want; page++ {
-			if total > 0 && int64(len(issues)) >= total {
-				break
-			}
-			next, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{
-				Page:     page,
-				PageSize: pageSize,
-			})
-			if err != nil {
-				return fmt.Errorf("listing policy issues: %w", err)
-			}
-			if len(next.Issues) == 0 {
-				break
-			}
-			issues = append(issues, next.Issues...)
+	for {
+		pageSize := policyIssueDefaultPageSize
+		if want > 0 && int64(pageSize) > want-int64(len(allIssues)) {
+			pageSize = int(want - int64(len(allIssues)))
 		}
-	}
 
-	// Trim to --count if it bounds the response shorter than what we fetched.
-	if !all && want > 0 && int64(len(issues)) > want {
-		issues = issues[:want]
+		resp, err := c.ListPolicyIssues(ctx, org, client.ListPolicyIssuesOptions{
+			StartRow: startRow,
+			EndRow:   startRow + pageSize,
+		})
+		if err != nil {
+			return fmt.Errorf("listing policy issues: %w", err)
+		}
+		total = resp.Total
+		allIssues = append(allIssues, resp.Issues...)
+
+		// Stop if we've collected enough, or there are no more results.
+		if want > 0 && int64(len(allIssues)) >= want {
+			allIssues = allIssues[:want]
+			break
+		}
+		if int64(len(allIssues)) >= total || len(resp.Issues) == 0 {
+			break
+		}
+		startRow += len(resp.Issues)
 	}
 
 	return args.outputFormat.Get()(w, apitype.ListPolicyIssuesResponse{
-		Issues: issues,
+		Issues: allIssues,
 		Total:  total,
 	})
 }

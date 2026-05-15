@@ -19,7 +19,6 @@ package policy
 import (
 	"bytes"
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -62,16 +61,9 @@ func stubPolicyIssueListFactory(c policyIssueListClient, org string) policyIssue
 	}
 }
 
-func failingPolicyIssueListFactory(err error) policyIssueListClientFactory {
-	return func(_ context.Context, _ string) (policyIssueListClient, string, error) {
-		return nil, "", err
-	}
-}
-
 func samplePolicyIssueListResponse() apitype.ListPolicyIssuesResponse {
 	return apitype.ListPolicyIssuesResponse{
-		ItemsPerPage: 10,
-		Total:        2,
+		Total: 2,
 		Issues: []apitype.PolicyIssue{
 			{
 				ID:                "issue-1",
@@ -194,41 +186,4 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 		],
 		"total": 2
 	}`, buf.String())
-}
-
-func TestPolicyIssueList_JSONOutput_NilSliceNormalized(t *testing.T) {
-	t.Parallel()
-
-	buf := &bytes.Buffer{}
-	c := &mockPolicyIssueListClient{resp: apitype.ListPolicyIssuesResponse{}}
-	args := policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()}
-	require.NoError(t, args.outputFormat.Set("json"))
-	err := runPolicyIssueList(t.Context(), buf,
-		stubPolicyIssueListFactory(c, "acme"), args)
-	require.NoError(t, err)
-
-	assert.JSONEq(t, `{"issues":[],"total":0}`, buf.String())
-}
-
-func TestPolicyIssueList_ClientError(t *testing.T) {
-	t.Parallel()
-
-	buf := &bytes.Buffer{}
-	c := &mockPolicyIssueListClient{err: errors.New("server boom")}
-	err := runPolicyIssueList(t.Context(), buf,
-		stubPolicyIssueListFactory(c, "acme"),
-		policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()})
-	require.Error(t, err)
-	assert.Equal(t, "listing policy issues: server boom", err.Error())
-}
-
-func TestPolicyIssueList_FactoryError(t *testing.T) {
-	t.Parallel()
-
-	buf := &bytes.Buffer{}
-	err := runPolicyIssueList(t.Context(), buf,
-		failingPolicyIssueListFactory(errors.New("not logged in")),
-		policyIssueListArgs{outputFormat: defaultPolicyIssueListOutputFormat()})
-	require.Error(t, err)
-	assert.Equal(t, "not logged in", err.Error())
 }

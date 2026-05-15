@@ -1492,24 +1492,25 @@ func (pc *Client) RemoveOrganizationMember(ctx context.Context, orgName, userLog
 // ListPolicyIssuesOptions are the optional pagination parameters accepted by
 // ListPolicyIssues. Zero values mean "let the server pick the default":
 // Page < 1 → 1, PageSize ≤ 0 → server default, Asc false → descending order.
+// ListPolicyIssuesOptions configures the policy issues list request.
 type ListPolicyIssuesOptions struct {
-	Page     int64
-	PageSize int64
-	Asc      bool
+	// StartRow is the 0-based offset of the first result.
+	StartRow int
+	// EndRow is the exclusive upper bound (startRow + pageSize).
+	EndRow int
 }
 
 // ListPolicyIssues returns a paginated list of policy issues for the given
 // organization, wrapping the `ListPolicyIssues` Pulumi Cloud REST endpoint
 // (POST /api/orgs/{orgName}/policyresults/issues). The endpoint uses POST
-// despite being a list because the request body carries filter and
-// pagination parameters.
+// because the request body carries pagination parameters in an AngularGrid
+// format.
 func (pc *Client) ListPolicyIssues(
 	ctx context.Context, orgName string, opts ListPolicyIssuesOptions,
 ) (apitype.ListPolicyIssuesResponse, error) {
 	req := apitype.ListPolicyIssuesRequest{
-		Page:     opts.Page,
-		PageSize: opts.PageSize,
-		Asc:      opts.Asc,
+		StartRow: opts.StartRow,
+		EndRow:   opts.EndRow,
 	}
 	path := fmt.Sprintf("/api/orgs/%s/policyresults/issues", url.PathEscape(orgName))
 
