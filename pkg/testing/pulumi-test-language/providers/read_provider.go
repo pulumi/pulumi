@@ -156,7 +156,7 @@ func (p *ReadProvider) Read(_ context.Context, req plugin.ReadRequest) (plugin.R
 
 func (p *ReadProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(semver.MustParse("39.0.0")),
+		Version: ptr(semver.MustParse("39.0.0")),
 	}, nil
 }
 

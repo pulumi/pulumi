@@ -32,8 +32,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python/toolchain"
 )
 
-func boolPointer(b bool) *bool {
-	return &b
+func ptr[T any](v T) *T {
+	return &v
 }
 
 // TestEmptyPython simply tests that we can run an empty Python project.
@@ -92,7 +92,7 @@ func TestDynamicPython(t *testing.T) {
 				}
 			},
 		}},
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: ptr(false),
 	})
 }
 
@@ -121,7 +121,7 @@ func TestDynamicPythonReadInputs(t *testing.T) {
 				}
 			}
 		},
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: ptr(false),
 	})
 }
 
@@ -184,7 +184,7 @@ func optsForConstructPython(
 			"secret": "this super secret is encrypted",
 		},
 		Quick:               true,
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: ptr(false),
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			require.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {

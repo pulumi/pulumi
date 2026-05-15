@@ -84,8 +84,6 @@ func failingOrgMemberEditFactory(err error) orgMemberEditClientFactory {
 	}
 }
 
-func stringPtr(s string) *string { return &s }
-
 func TestOrgMemberEdit_DefaultOutput_RoleOnly(t *testing.T) {
 	t.Parallel()
 
@@ -111,7 +109,7 @@ func TestOrgMemberEdit_DefaultOutput_RoleOnly(t *testing.T) {
 		{
 			org:       "acme",
 			userLogin: "alice",
-			req:       apitype.UpdateOrganizationMemberRequest{Role: stringPtr("admin")},
+			req:       apitype.UpdateOrganizationMemberRequest{Role: ptr("admin")},
 		},
 	}, c.updateCalls)
 
@@ -152,8 +150,8 @@ func TestOrgMemberEdit_JSONOutput_BothFlags(t *testing.T) {
 			org:       "acme",
 			userLogin: "alice",
 			req: apitype.UpdateOrganizationMemberRequest{
-				Role:      stringPtr("admin"),
-				FgaRoleId: stringPtr("role-abc"),
+				Role:      ptr("admin"),
+				FgaRoleId: ptr("role-abc"),
 			},
 		},
 	}, c.updateCalls)

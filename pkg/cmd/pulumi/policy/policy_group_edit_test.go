@@ -79,7 +79,7 @@ func failingPolicyGroupEditFactory(err error) policyGroupEditClientFactory {
 	}
 }
 
-func ptrString(s string) *string { return &s }
+func ptr[T any](v T) *T { return &v }
 
 func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	t.Parallel()
@@ -104,7 +104,7 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	// Rename-only does not touch any list, so the pre-edit GET is skipped.
 	assert.Equal(t, 1, c.getCalls)
 	assert.Equal(t, []apitype.UpdatePolicyGroupRequest{
-		{NewName: ptrString("production")},
+		{NewName: ptr("production")},
 	}, c.updates)
 	assert.Equal(t, []string{"prod-policies"}, c.updateGroups)
 	assert.Equal(t, "acme", c.gotGetOrg)
@@ -164,7 +164,7 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 	// A single batched PATCH with the rename and the full replacement lists.
 	require.Len(t, c.updates, 1)
 	got := c.updates[0]
-	assert.Equal(t, ptrString("production"), got.NewName)
+	assert.Equal(t, ptr("production"), got.NewName)
 
 	require.NotNil(t, got.Stacks)
 	assert.Equal(t, []apitype.PulumiStackReference{
