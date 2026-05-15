@@ -303,6 +303,14 @@ type Client interface {
 		options ListEnvironmentTagsOptions,
 	) ([]*EnvironmentTag, string, error)
 
+	// ListEnvironmentReferrers lists entities (other environments, stacks, and Insights accounts) that
+	// reference the given environment.
+	ListEnvironmentReferrers(
+		ctx context.Context,
+		orgName, projectName, envName string,
+		options ListEnvironmentReferrersOptions,
+	) (*ListEnvironmentReferrersResponse, error)
+
 	// CreateEnvironmentTag creates and applies a tag to the given environment.
 	CreateEnvironmentTag(
 		ctx context.Context,
@@ -1077,6 +1085,28 @@ func (pc *client) ListEnvironmentTags(
 		tags = append(tags, t)
 	}
 	return tags, resp.NextToken, nil
+}
+
+// ListEnvironmentReferrersOptions controls pagination and filtering for ListEnvironmentReferrers.
+type ListEnvironmentReferrersOptions struct {
+	Count                  *int   `url:"count,omitempty"`
+	AllRevisions           *bool  `url:"allRevisions,omitempty"`
+	LatestStackVersionOnly *bool  `url:"latestStackVersionOnly,omitempty"`
+	ContinuationToken      string `url:"continuationToken,omitempty"`
+}
+
+// ListEnvironmentReferrers lists entities that reference the given environment.
+func (pc *client) ListEnvironmentReferrers(
+	ctx context.Context,
+	orgName, projectName, envName string,
+	options ListEnvironmentReferrersOptions,
+) (*ListEnvironmentReferrersResponse, error) {
+	var resp ListEnvironmentReferrersResponse
+	path := fmt.Sprintf("/api/esc/environments/%v/%v/%v/referrers", orgName, projectName, envName)
+	if err := pc.restCall(ctx, http.MethodGet, path, options, nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 // CreateEnvironmentTag creates and applies a tag to the given environment.

@@ -271,3 +271,37 @@ type EnvironmentSettings struct {
 type PatchEnvironmentSettingsRequest struct {
 	DeletionProtected *bool `json:"deletionProtected,omitempty"`
 }
+
+// EnvironmentImportReferrer represents an `import` reference from another environment.
+type EnvironmentImportReferrer struct {
+	Project  string `json:"project"`
+	Name     string `json:"name"`
+	Revision int64  `json:"revision"`
+}
+
+// EnvironmentStackReferrer represents a reference from an IaC stack.
+type EnvironmentStackReferrer struct {
+	Project string `json:"project"`
+	Stack   string `json:"stack"`
+	Version int64  `json:"version"`
+}
+
+// EnvironmentInsightsAccountReferrer represents a reference from an Insights account.
+type EnvironmentInsightsAccountReferrer struct {
+	AccountName string `json:"accountName"`
+}
+
+// EnvironmentReferrer represents an entity that refers to an environment. Exactly one of the
+// pointer fields will be non-nil, indicating which kind of referrer this is.
+type EnvironmentReferrer struct {
+	Environment     *EnvironmentImportReferrer          `json:"environment,omitempty"`
+	Stack           *EnvironmentStackReferrer           `json:"stack,omitempty"`
+	InsightsAccount *EnvironmentInsightsAccountReferrer `json:"insightsAccount,omitempty"`
+}
+
+// ListEnvironmentReferrersResponse contains a list of entities that reference an environment,
+// keyed by the revision tag of the referenced environment (e.g. "latest" or "3").
+type ListEnvironmentReferrersResponse struct {
+	Referrers         map[string][]EnvironmentReferrer `json:"referrers"`
+	ContinuationToken string                           `json:"continuationToken,omitempty"`
+}

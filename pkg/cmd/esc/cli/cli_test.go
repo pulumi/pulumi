@@ -284,6 +284,7 @@ type testEnvironment struct {
 	revisionTags      map[string]int
 	tags              map[string]string
 	deletionProtected bool
+	referrers         map[string][]client.EnvironmentReferrer
 }
 
 func (env *testEnvironment) latest() *testEnvironmentRevision {
@@ -923,6 +924,24 @@ func (c *testPulumiClient) ListEnvironmentTags(
 	return tags, "0", nil
 }
 
+func (c *testPulumiClient) ListEnvironmentReferrers(
+	ctx context.Context,
+	orgName, projectName, envName string,
+	options client.ListEnvironmentReferrersOptions,
+) (*client.ListEnvironmentReferrersResponse, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)]
+	if !ok {
+		return nil, errors.New("environment not found")
+	}
+	resp := &client.ListEnvironmentReferrersResponse{
+		Referrers: map[string][]client.EnvironmentReferrer{},
+	}
+	for k, v := range env.referrers {
+		resp.Referrers[k] = v
+	}
+	return resp, nil
+}
+
 func (c *testPulumiClient) CreateEnvironmentTag(
 	ctx context.Context,
 	orgName, projectName, envName, key, value string,
@@ -1442,6 +1461,56 @@ type cliTestcaseEnvironmentTags struct {
 	Tags map[string]string `yaml:"tags,omitempty"`
 }
 
+type cliTestcaseReferrer struct {
+	Environment     *cliTestcaseEnvironmentImportReferrer `yaml:"environment,omitempty"`
+	Stack           *cliTestcaseStackReferrer             `yaml:"stack,omitempty"`
+	InsightsAccount *cliTestcaseInsightsAccountReferrer   `yaml:"insights-account,omitempty"`
+}
+
+type cliTestcaseEnvironmentImportReferrer struct {
+	Project  string `yaml:"project"`
+	Name     string `yaml:"name"`
+	Revision int64  `yaml:"revision"`
+}
+
+type cliTestcaseStackReferrer struct {
+	Project string `yaml:"project"`
+	Stack   string `yaml:"stack"`
+	Version int64  `yaml:"version"`
+}
+
+type cliTestcaseInsightsAccountReferrer struct {
+	AccountName string `yaml:"account-name"`
+}
+
+type cliTestcaseEnvironmentReferrers struct {
+	Referrers map[string][]cliTestcaseReferrer `yaml:"referrers,omitempty"`
+}
+
+func (r cliTestcaseReferrer) toClient() client.EnvironmentReferrer {
+	out := client.EnvironmentReferrer{}
+	if r.Environment != nil {
+		out.Environment = &client.EnvironmentImportReferrer{
+			Project:  r.Environment.Project,
+			Name:     r.Environment.Name,
+			Revision: r.Environment.Revision,
+		}
+	}
+	if r.Stack != nil {
+		out.Stack = &client.EnvironmentStackReferrer{
+			Project: r.Stack.Project,
+			Stack:   r.Stack.Stack,
+			Version: r.Stack.Version,
+		}
+	}
+	if r.InsightsAccount != nil {
+		out.InsightsAccount = &client.EnvironmentInsightsAccountReferrer{
+			AccountName: r.InsightsAccount.AccountName,
+		}
+	}
+	return out
+}
+
 type cliTestcaseYAML struct {
 	Parent string `yaml:"parent,omitempty"`
 
@@ -1510,6 +1579,18 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			envTags = tags.Tags
 		}
 
+		var referrers cliTestcaseEnvironmentReferrers
+		envReferrers := map[string][]client.EnvironmentReferrer{}
+		if err := env.Decode(&referrers); referrers.Referrers != nil && err == nil {
+			for k, rs := range referrers.Referrers {
+				out := make([]client.EnvironmentReferrer, len(rs))
+				for i, r := range rs {
+					out[i] = r.toClient()
+				}
+				envReferrers[k] = out
+			}
+		}
+
 		envRevisions := []*testEnvironmentRevision{{number: 1}}
 		revisionTags := map[string]int{}
 		for _, rev := range revisions.Revisions {
@@ -1553,6 +1634,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			revisions:    envRevisions,
 			revisionTags: revisionTags,
 			tags:         envTags,
+			referrers:    envReferrers,
 		}
 	}
 
