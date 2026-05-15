@@ -99,8 +99,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 			"\n" +
 			"Renames a Policy Group, adds or removes stacks, applies or detaches\n" +
 			"Policy Packs, and adds or removes Insights accounts. At least one\n" +
-			"mutation flag must be provided. Changes are applied in the order\n" +
-			"new-name, adds, removes, and the command stops on the first error.\n" +
+			"mutation flag must be provided.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
@@ -206,18 +205,30 @@ func defaultPolicyGroupEditClientFactory(
 
 // runPolicyGroupEdit is the cobra-decoupled command body so tests can drive it
 // directly without spinning up the flag parser.
+//
+// The command issues a single batched PATCH. For each list field that the
+// user mutated (stacks, policy packs, insights accounts) we GET the current
+// group, apply the requested adds and removes, and send the resulting full
+// list in the PATCH body — the service interprets a list value in a PATCH
+// as a complete replacement of the prior list, so we cannot send isolated
+// "add this one" deltas for those fields without losing the others.
 func runPolicyGroupEdit(
 	ctx context.Context, w io.Writer,
 	factory policyGroupEditClientFactory, name string, args policyGroupEditArgs,
 ) error {
-	patches, err := buildPolicyGroupEditPatches(args)
-	if err != nil {
-		return err
-	}
-	if len(patches) == 0 {
+	if !anyMutationRequested(args) {
 		return errors.New(
 			"no changes specified; pass at least one of --new-name, --add-stack, --remove-stack, " +
 				"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account")
+	}
+
+	addStacks, removeStacks, err := parseStackReferences(args.addStack, args.removeStack)
+	if err != nil {
+		return err
+	}
+	addPacks, removePacks, err := parsePolicyPackRefs(args.addPolicyPack, args.removePolicyPack)
+	if err != nil {
+		return err
 	}
 
 	c, org, err := factory(ctx, args.org)
@@ -225,17 +236,45 @@ func runPolicyGroupEdit(
 		return err
 	}
 
-	current := name
-	for _, p := range patches {
-		if err := c.UpdatePolicyGroup(ctx, org, current, p); err != nil {
-			return err
+	mutatesLists := args.changed["add-stack"] || args.changed["remove-stack"] ||
+		args.changed["add-policy-pack"] || args.changed["remove-policy-pack"] ||
+		args.changed["add-insights-account"] || args.changed["remove-insights-account"]
+
+	patch := apitype.UpdatePolicyGroupRequest{}
+	if args.changed["new-name"] {
+		nn := args.newName
+		patch.NewName = &nn
+	}
+
+	if mutatesLists {
+		// Read the current group so we can compute the post-edit lists.
+		current, err := c.GetPolicyGroup(ctx, org, name)
+		if err != nil {
+			return fmt.Errorf("reading policy group before edit: %w", err)
 		}
-		if p.NewName != nil {
-			current = *p.NewName
+		if args.changed["add-stack"] || args.changed["remove-stack"] {
+			next := mergeStackList(current.Stacks, addStacks, removeStacks)
+			patch.Stacks = &next
+		}
+		if args.changed["add-policy-pack"] || args.changed["remove-policy-pack"] {
+			next := mergePolicyPackList(current.AppliedPolicyPacks, addPacks, removePacks)
+			patch.PolicyPacks = &next
+		}
+		if args.changed["add-insights-account"] || args.changed["remove-insights-account"] {
+			next := mergeStringList(current.Accounts, args.addInsightsAccount, args.removeInsightsAccount)
+			patch.InsightsAccounts = &next
 		}
 	}
 
-	resp, err := c.GetPolicyGroup(ctx, org, current)
+	if err := c.UpdatePolicyGroup(ctx, org, name, patch); err != nil {
+		return err
+	}
+
+	finalName := name
+	if patch.NewName != nil {
+		finalName = *patch.NewName
+	}
+	resp, err := c.GetPolicyGroup(ctx, org, finalName)
 	if err != nil {
 		return fmt.Errorf("reading policy group after edit: %w", err)
 	}
@@ -243,63 +282,109 @@ func runPolicyGroupEdit(
 	return args.outputFormat.Get()(w, resp)
 }
 
-// buildPolicyGroupEditPatches expands the edit args into the ordered sequence
-// of PATCHes to send: rename first, then adds, then removes. Each PATCH
-// carries a single mutation, matching the service's UpdatePolicyGroup
-// contract.
-func buildPolicyGroupEditPatches(args policyGroupEditArgs) ([]apitype.UpdatePolicyGroupRequest, error) {
-	var patches []apitype.UpdatePolicyGroupRequest
+// anyMutationRequested returns true when at least one of the mutation flags
+// was set by the user.
+func anyMutationRequested(args policyGroupEditArgs) bool {
+	for _, name := range mutationFlagNames {
+		if args.changed[name] {
+			return true
+		}
+	}
+	return false
+}
 
-	if args.changed["new-name"] {
-		name := args.newName
-		patches = append(patches, apitype.UpdatePolicyGroupRequest{NewName: &name})
+// parseStackReferences pre-parses every add and remove stack value so the
+// command surfaces parse errors before any network call.
+func parseStackReferences(
+	adds, removes []string,
+) ([]apitype.PulumiStackReference, []apitype.PulumiStackReference, error) {
+	parsedAdds := make([]apitype.PulumiStackReference, 0, len(adds))
+	for _, s := range adds {
+		parsedAdds = append(parsedAdds, parseStackReference(s))
 	}
+	parsedRemoves := make([]apitype.PulumiStackReference, 0, len(removes))
+	for _, s := range removes {
+		parsedRemoves = append(parsedRemoves, parseStackReference(s))
+	}
+	return parsedAdds, parsedRemoves, nil
+}
 
-	if args.changed["add-stack"] {
-		for _, s := range args.addStack {
-			ref := parseStackReference(s)
-			patches = append(patches, apitype.UpdatePolicyGroupRequest{AddStack: &ref})
+// parsePolicyPackRefs pre-parses every add and remove policy-pack value so
+// invalid references surface before any network call.
+func parsePolicyPackRefs(adds, removes []string) ([]apitype.PolicyPackMetadata, []apitype.PolicyPackMetadata, error) {
+	parsedAdds := make([]apitype.PolicyPackMetadata, 0, len(adds))
+	for _, p := range adds {
+		meta, err := parsePolicyPackRef(p)
+		if err != nil {
+			return nil, nil, err
 		}
+		parsedAdds = append(parsedAdds, meta)
 	}
-	if args.changed["add-policy-pack"] {
-		for _, p := range args.addPolicyPack {
-			meta, err := parsePolicyPackRef(p)
-			if err != nil {
-				return nil, err
-			}
-			patches = append(patches, apitype.UpdatePolicyGroupRequest{AddPolicyPack: &meta})
+	parsedRemoves := make([]apitype.PolicyPackMetadata, 0, len(removes))
+	for _, p := range removes {
+		meta, err := parsePolicyPackRef(p)
+		if err != nil {
+			return nil, nil, err
 		}
+		parsedRemoves = append(parsedRemoves, meta)
 	}
-	if args.changed["add-insights-account"] {
-		for _, a := range args.addInsightsAccount {
-			acct := a
-			patches = append(patches, apitype.UpdatePolicyGroupRequest{AddInsightsAccount: &acct})
-		}
-	}
+	return parsedAdds, parsedRemoves, nil
+}
 
-	if args.changed["remove-stack"] {
-		for _, s := range args.removeStack {
-			ref := parseStackReference(s)
-			patches = append(patches, apitype.UpdatePolicyGroupRequest{RemoveStack: &ref})
+// mergeStackList returns the current stacks plus adds, minus any that match a
+// removal. Equality is by RoutingProject + Name.
+func mergeStackList(
+	current []apitype.PulumiStackReference,
+	adds, removes []apitype.PulumiStackReference,
+) []apitype.PulumiStackReference {
+	stackEq := func(a, b apitype.PulumiStackReference) bool {
+		return a.Name == b.Name && a.RoutingProject == b.RoutingProject
+	}
+	out := slices.Clone(current)
+	for _, r := range removes {
+		out = slices.DeleteFunc(out, func(s apitype.PulumiStackReference) bool { return stackEq(s, r) })
+	}
+	for _, a := range adds {
+		if !slices.ContainsFunc(out, func(s apitype.PulumiStackReference) bool { return stackEq(s, a) }) {
+			out = append(out, a)
 		}
 	}
-	if args.changed["remove-policy-pack"] {
-		for _, p := range args.removePolicyPack {
-			meta, err := parsePolicyPackRef(p)
-			if err != nil {
-				return nil, err
-			}
-			patches = append(patches, apitype.UpdatePolicyGroupRequest{RemovePolicyPack: &meta})
-		}
-	}
-	if args.changed["remove-insights-account"] {
-		for _, a := range args.removeInsightsAccount {
-			acct := a
-			patches = append(patches, apitype.UpdatePolicyGroupRequest{RemoveInsightsAccount: &acct})
-		}
-	}
+	return out
+}
 
-	return patches, nil
+// mergePolicyPackList returns the current applied packs plus adds, minus any
+// that match a removal. Equality is by Name and version (Version + VersionTag).
+func mergePolicyPackList(
+	current []apitype.PolicyPackMetadata,
+	adds, removes []apitype.PolicyPackMetadata,
+) []apitype.PolicyPackMetadata {
+	packEq := func(a, b apitype.PolicyPackMetadata) bool {
+		return a.Name == b.Name && a.Version == b.Version && a.VersionTag == b.VersionTag
+	}
+	out := slices.Clone(current)
+	for _, r := range removes {
+		out = slices.DeleteFunc(out, func(p apitype.PolicyPackMetadata) bool { return packEq(p, r) })
+	}
+	for _, a := range adds {
+		if !slices.ContainsFunc(out, func(p apitype.PolicyPackMetadata) bool { return packEq(p, a) }) {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+// mergeStringList returns current plus adds, minus any in removes.
+func mergeStringList(current, adds, removes []string) []string {
+	out := slices.Clone(current)
+	for _, r := range removes {
+		out = slices.DeleteFunc(out, func(s string) bool { return s == r })
+	}
+	for _, a := range adds {
+		if !slices.Contains(out, a) {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 // parseStackReference splits "project/stack" into a PulumiStackReference. A

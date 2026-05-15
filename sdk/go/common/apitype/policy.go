@@ -257,7 +257,16 @@ type CreatePolicyGroupRequest struct {
 	Name string `json:"name"`
 }
 
-// UpdatePolicyGroupRequest modifies a Policy Group.
+// UpdatePolicyGroupRequest modifies a Policy Group. Callers may set:
+//
+//   - NewName to rename the group.
+//   - A singular AddX/RemoveX field for a single per-PATCH membership change.
+//   - A list field (Stacks, PolicyPacks, InsightsAccounts) to replace the
+//     corresponding list outright; the values sent become the new full list.
+//     Use the pointer-to-slice indirection to distinguish "leave list
+//     unchanged" (nil pointer) from "set list to empty" (non-nil empty slice).
+//
+// Multiple of these may be combined in a single request to batch changes.
 type UpdatePolicyGroupRequest struct {
 	NewName *string `json:"newName,omitempty"`
 
@@ -269,6 +278,15 @@ type UpdatePolicyGroupRequest struct {
 
 	AddInsightsAccount    *string `json:"addInsightsAccount,omitempty"`
 	RemoveInsightsAccount *string `json:"removeInsightsAccount,omitempty"`
+
+	// Stacks, when non-nil, replaces the full list of stacks in the group.
+	Stacks *[]PulumiStackReference `json:"stacks,omitempty"`
+	// PolicyPacks, when non-nil, replaces the full list of Policy Packs
+	// applied to the group.
+	PolicyPacks *[]PolicyPackMetadata `json:"policyPacks,omitempty"`
+	// InsightsAccounts, when non-nil, replaces the full list of Insights
+	// accounts in the group.
+	InsightsAccounts *[]string `json:"insightsAccounts,omitempty"`
 }
 
 // PulumiStackReference contains the StackName and ProjectName of the stack.
