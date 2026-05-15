@@ -3014,6 +3014,42 @@ func (pc *Client) ListInsightsAccounts(
 	return resp, nil
 }
 
+// CreateInsightsAccount creates a new Pulumi Insights account.
+//
+// The `accountName` path parameter is double-decoded on the service side, so
+// we double-URL-encode it here — matching the convention already used by
+// GetInsightsResource. The endpoint returns 204 No Content on success; no
+// response body is parsed.
+func (pc *Client) CreateInsightsAccount(
+	ctx context.Context, org, account string, req apitype.CreateInsightsAccountRequest,
+) error {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+	)
+	return pc.restCall(ctx, "POST", path, nil, req, nil)
+}
+
+// GetInsightsAccount fetches the details of a Pulumi Insights account. The
+// `accountName` path parameter is double-decoded on the service side, so we
+// double-URL-encode it here — same convention as CreateInsightsAccount and
+// GetInsightsResource.
+func (pc *Client) GetInsightsAccount(
+	ctx context.Context, org, account string,
+) (apitype.InsightsAccount, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+	)
+	var resp apitype.InsightsAccount
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.InsightsAccount{}, err
+	}
+	return resp, nil
+}
+
 // ListStackDeploymentsOptions are the optional query parameters accepted by
 // ListStackDeployments. Zero values mean "let the server pick the default":
 // Page < 1 → 1, PageSize ≤ 0 → 10 (server-side cap 100), Sort "" → server's
