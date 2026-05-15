@@ -1,4 +1,4 @@
 changes:
 - type: fix
-  scope: backend/cloud
+  scope: backend/service
   description: Error out when setting up journaler fails
