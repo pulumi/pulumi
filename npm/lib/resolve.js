@@ -5,7 +5,7 @@
 const fs = require("fs");
 const path = require("path");
 const { cacheDir } = require("./cache");
-const { downloadBinary, fetchLatestVersion } = require("./download");
+const { installCLI, fetchLatestVersion } = require("./download");
 
 const pkg = require("../package.json");
 
@@ -43,15 +43,13 @@ function findSystemPulumi(pathEnv) {
 // following priority:
 //   1. A native pulumi binary found on PATH (defers to existing installs).
 //   2. A version-pinned binary in the local cache.
-//   3. A freshly downloaded binary (cached for future invocations).
+//   3. A freshly installed binary (cached for future invocations).
 //
 // IO functions are injectable for testing.
 async function resolve({
     pathEnv,
     version = process.env.PULUMI_VERSION || pkg.version,
-    targetOS = process.platform === "win32" ? "windows" : process.platform,
-    targetArch = process.arch,
-    download = downloadBinary,
+    install = installCLI,
     getLatestVersion = fetchLatestVersion,
 } = {}) {
     const system = findSystemPulumi(pathEnv);
@@ -61,11 +59,13 @@ async function resolve({
         version = await getLatestVersion();
     }
 
-    const dest = path.join(cacheDir(version), targetOS === "windows" ? "pulumi.exe" : "pulumi");
+    const exe = process.platform === "win32" ? "pulumi.exe" : "pulumi";
+    const root = cacheDir(version);
+    const dest = path.join(root, "bin", exe);
     if (isExecutable(dest)) return dest;
 
     process.stderr.write(`Downloading pulumi v${version}...\n`);
-    await download(version, targetOS, targetArch, dest);
+    await install(version, root);
     return dest;
 }
 
