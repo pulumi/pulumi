@@ -79,8 +79,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 		Long: "Create a new stack webhook.\n" +
 			"\n" +
 			"Creates a webhook that delivers events for the specified stack to a\n" +
-			"given URL. The webhook name must be unique within the stack and can\n" +
-			"contain letters, numbers, hyphens, underscores, and dots (1-32 chars).\n" +
+			"given URL.\n" +
 			"\n" +
 			"When run interactively, prompts for required values that aren't\n" +
 			"provided via flags. Pass --yes to accept defaults without prompting.\n" +
@@ -89,16 +88,16 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 			"\n" +
 			"Returns 409 if a webhook with the same name already exists.",
 		Example: "  # Create a webhook interactively\n" +
-			"  pulumi stack webhook new --name my-hook\n\n" +
+			"  pulumi stack webhook new\n\n" +
 			"  # Create a webhook non-interactively\n" +
-			"  pulumi stack webhook new --name my-hook --url https://example.com/hook --yes\n\n" +
+			"  pulumi stack webhook new --name \"My Hook\" --url https://example.com/hook --yes\n\n" +
 			"  # Create a Slack webhook with specific event filters\n" +
 			"  pulumi stack webhook new --name slack-alerts \\\n" +
 			"    --url https://hooks.slack.com/services/T00/B00/xxx \\\n" +
 			"    --format slack \\\n" +
-			"    --filter update_succeeded --filter update_failed --yes\n\n" +
+			"    --event update_succeeded --event update_failed --yes\n\n" +
 			"  # Create a webhook and get the result as JSON\n" +
-			"  pulumi stack webhook new --name my-hook --url https://example.com --yes --output json",
+			"  pulumi stack webhook new --name \"My Hook\" --url https://example.com --yes --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {
 				factory = defaultStackWebhookNewClientFactory
@@ -128,7 +127,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.Flags().StringVar(&name, "name", "",
-		"The webhook name (1-32 chars: letters, numbers, hyphens, underscores, dots)")
+		"The webhook name (required)")
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().StringVar(&url, "url", "",
@@ -324,7 +323,6 @@ func runStackWebhookNew(
 		OrganizationName: stackID.Owner,
 		ProjectName:      &project,
 		StackName:        &stack,
-		Name:             args.Name,
 		DisplayName:      args.Name,
 		PayloadURL:       args.URL,
 		Active:           args.Active,
