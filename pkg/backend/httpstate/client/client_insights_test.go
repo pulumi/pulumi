@@ -207,6 +207,41 @@ func TestScanInsightsAccount(t *testing.T) {
 			"acme", "missing", apitype.InsightsScanRequest{})
 		require.Error(t, err)
 	})
+
+	t.Run("returns zero value on 204 No Content", func(t *testing.T) {
+		t.Parallel()
+
+		// The live service uses 204 No Content for successful scan
+		// initiations even though the OpenAPI spec advertises a JSON body.
+		// We must not blow up on the empty payload.
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "prod-aws", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, apitype.InsightsScanResponse{}, got)
+	})
+
+	t.Run("returns zero value on empty 200 body", func(t *testing.T) {
+		t.Parallel()
+
+		// Some intermediaries strip the 204 status; an empty 200 body is
+		// the other shape we have to tolerate without exploding.
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "prod-aws", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, apitype.InsightsScanResponse{}, got)
+	})
 }
 
 func TestSearchInsightsResources(t *testing.T) {

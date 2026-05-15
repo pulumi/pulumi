@@ -259,6 +259,11 @@ type InsightsScanRequest struct {
 // ScanAccount endpoint. The shape mirrors the OpenAPI `WorkflowRun` schema.
 // Related to `InsightsAccountScanStatus`, which is the per-account summary
 // embedded in ListAccounts rows.
+//
+// The service currently responds with 204 No Content on success, so the
+// in-tree CLI surfaces the zero value of this struct for successful scans.
+// The fields are kept in place so we pick the payload up automatically when
+// the server starts returning it.
 type InsightsScanResponse struct {
 	// ID is the unique identifier of the workflow run. It is also the scan ID
 	// used by follow-up endpoints (e.g. ReadScanStatus, GetScanLogs).

@@ -161,7 +161,15 @@ func (c *insightsAccountScanCmd) Run(
 // renderText writes a human-readable view of the workflow run. The shape
 // mirrors `insights resource get`'s flat key/value layout — a single record
 // reads better than a table here.
+//
+// When the response is empty — the current 204-No-Content reality, see
+// [client.Client.ScanInsightsAccount] — we print a single "scan triggered"
+// line instead of a header full of zero fields.
 func (c *insightsAccountScanCmd) renderText(w io.Writer, r apitype.InsightsScanResponse) error {
+	if scanResponseEmpty(r) {
+		fmt.Fprintln(w, "Scan triggered.")
+		return nil
+	}
 	fmt.Fprintf(w, "ID:           %s\n", r.ID)
 	fmt.Fprintf(w, "Status:       %s\n", r.Status)
 	fmt.Fprintf(w, "Started:      %s\n", r.StartedAt.UTC().Format(time.RFC3339))
@@ -186,10 +194,27 @@ func (c *insightsAccountScanCmd) renderText(w io.Writer, r apitype.InsightsScanR
 
 // renderJSON writes the workflow run as indented JSON. Indentation matches
 // the rest of the cli/cloud commands so jq-style scripting feels consistent.
+//
+// When the response is empty we emit `{"started": true}` rather than a
+// struct full of zero fields, so jq consumers can tell a freshly initiated
+// scan apart from a populated workflow run.
 func (c *insightsAccountScanCmd) renderJSON(w io.Writer, r apitype.InsightsScanResponse) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
+	if scanResponseEmpty(r) {
+		return enc.Encode(struct {
+			Started bool `json:"started"`
+		}{Started: true})
+	}
 	return enc.Encode(r)
+}
+
+// scanResponseEmpty reports whether the response carries no workflow data.
+// The service currently returns 204 No Content for a successful scan trigger,
+// so a zero-value [apitype.InsightsScanResponse] means "the call succeeded
+// but the server didn't include a workflow run".
+func scanResponseEmpty(r apitype.InsightsScanResponse) bool {
+	return r.ID == "" && r.Status == "" && r.StartedAt.IsZero() && len(r.Jobs) == 0
 }
 
 // defaultScanClientFactory is the production wiring for scanClientFactory. It

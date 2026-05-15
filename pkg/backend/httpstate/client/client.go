@@ -2484,12 +2484,16 @@ func (pc *Client) GetInsightsResource(
 }
 
 // ScanInsightsAccount starts a resource discovery scan for an Insights account.
-// For parent accounts, the server fans the scan out across child accounts and
-// returns the parent workflow run.
+// For parent accounts, the server fans the scan out across child accounts.
 //
 // The `accountName` path parameter is double-decoded on the service side, so we
 // double-URL-encode it here to preserve any embedded `/` intact through the
 // full decode chain.
+//
+// The service currently returns 204 No Content on success (no body), even
+// though the OpenAPI spec advertises a [apitype.InsightsScanResponse]. We
+// surface a zero-value response in that case; when the server starts returning
+// the documented JSON, the decode path picks it up automatically.
 func (pc *Client) ScanInsightsAccount(
 	ctx context.Context, org, account string, req apitype.InsightsScanRequest,
 ) (apitype.InsightsScanResponse, error) {
@@ -2498,9 +2502,18 @@ func (pc *Client) ScanInsightsAccount(
 		url.PathEscape(org),
 		url.PathEscape(url.PathEscape(account)),
 	)
-	var resp apitype.InsightsScanResponse
-	if err := pc.restCall(ctx, "POST", path, nil, req, &resp); err != nil {
+	// Read the body into a byte slice first so an empty 204 doesn't fall into
+	// `json.Unmarshal` and trip over "unexpected end of JSON input".
+	var raw []byte
+	if err := pc.restCall(ctx, "POST", path, nil, req, &raw); err != nil {
 		return apitype.InsightsScanResponse{}, err
+	}
+	if len(bytes.TrimSpace(raw)) == 0 {
+		return apitype.InsightsScanResponse{}, nil
+	}
+	var resp apitype.InsightsScanResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return apitype.InsightsScanResponse{}, fmt.Errorf("decoding scan response: %w", err)
 	}
 	return resp, nil
 }

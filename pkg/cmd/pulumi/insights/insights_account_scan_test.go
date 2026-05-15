@@ -195,6 +195,41 @@ func TestInsightsAccountScanCmd_JSONOutput(t *testing.T) {
 	assert.Equal(t, sampleScanResponse(), got)
 }
 
+func TestInsightsAccountScanCmd_DefaultOutput_EmptyResponse(t *testing.T) {
+	t.Parallel()
+
+	// The live service currently returns 204 No Content on success, so the
+	// client surfaces a zero value. The CLI must render a clean message
+	// rather than a sea of empty fields and a 0001-01-01 timestamp.
+	client := &mockScanClient{resp: apitype.InsightsScanResponse{}}
+	c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
+
+	var out bytes.Buffer
+	err := c.Run(t.Context(), &out, "prod-aws", defaultScanArgs())
+	require.NoError(t, err)
+
+	assert.Equal(t, "Scan triggered.\n", out.String())
+}
+
+func TestInsightsAccountScanCmd_JSONOutput_EmptyResponse(t *testing.T) {
+	t.Parallel()
+
+	// Mirror the human-readable path: for an empty response we emit a
+	// minimal envelope so `jq` consumers can detect the case.
+	client := &mockScanClient{resp: apitype.InsightsScanResponse{}}
+	c := &insightsAccountScanCmd{clientFactory: stubScanFactory(client, "acme")}
+
+	var out bytes.Buffer
+	err := c.Run(t.Context(), &out, "prod-aws", withScanOutput(defaultScanArgs(), "json"))
+	require.NoError(t, err)
+
+	var got struct {
+		Started bool `json:"started"`
+	}
+	require.NoError(t, json.Unmarshal(out.Bytes(), &got))
+	assert.True(t, got.Started)
+}
+
 func TestInsightsAccountScanCmd_RequestBodyPropagation(t *testing.T) {
 	t.Parallel()
 
