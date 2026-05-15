@@ -255,6 +255,14 @@ type GetStackPolicyPacksResponse struct {
 type CreatePolicyGroupRequest struct {
 	// Name is the name of the new Policy Group.
 	Name string `json:"name"`
+	// EntityType is the type of entities this policy group applies to:
+	// "stacks" or "accounts".
+	EntityType string `json:"entityType"`
+	// Mode is the enforcement mode: "audit" or "preventative".
+	// If empty, defaults to "audit" for accounts and "preventative" for stacks.
+	Mode string `json:"mode,omitempty"`
+	// AgentPoolID is the optional agent pool to use for policy evaluation.
+	AgentPoolID string `json:"agentPoolId,omitempty"`
 }
 
 // UpdatePolicyGroupRequest modifies a Policy Group. Callers may set:

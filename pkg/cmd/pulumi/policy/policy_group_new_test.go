@@ -43,10 +43,12 @@ type mockPolicyGroupNewClient struct {
 	getCalls    int
 }
 
-func (m *mockPolicyGroupNewClient) CreatePolicyGroup(_ context.Context, org, name string) error {
+func (m *mockPolicyGroupNewClient) CreatePolicyGroup(
+	_ context.Context, org string, req apitype.CreatePolicyGroupRequest,
+) error {
 	m.createCalls++
 	m.createdOrg = org
-	m.createdName = name
+	m.createdName = req.Name
 	return m.createErr
 }
 
@@ -90,7 +92,7 @@ func TestPolicyGroupNew_DefaultOutput(t *testing.T) {
 	c := &mockPolicyGroupNewClient{getResp: newPolicyGroupResponseFixture()}
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
+		policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, `Name:                  prod-policies
@@ -114,7 +116,7 @@ func TestPolicyGroupNew_JSONOutput(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	c := &mockPolicyGroupNewClient{getResp: newPolicyGroupResponseFixture()}
-	args := policyGroupNewArgs{outputFormat: defaultPolicyGroupGetOutputFormat()}
+	args := policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()}
 	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies", args)
@@ -138,7 +140,7 @@ func TestPolicyGroupNew_CreateError(t *testing.T) {
 	c := &mockPolicyGroupNewClient{createErr: errors.New("already exists")}
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
+		policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "creating policy group: already exists", err.Error())
 	assert.Equal(t, 1, c.createCalls)
@@ -152,7 +154,7 @@ func TestPolicyGroupNew_GetAfterCreateError(t *testing.T) {
 	c := &mockPolicyGroupNewClient{getErr: errors.New("not found")}
 	err := runPolicyGroupNew(t.Context(), buf,
 		stubPolicyGroupNewFactory(c, "acme"), "prod-policies",
-		policyGroupNewArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
+		policyGroupNewArgs{entityType: "stacks", yes: true, outputFormat: defaultPolicyGroupGetOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "reading policy group after create: not found", err.Error())
 	assert.Equal(t, 1, c.createCalls)
@@ -165,7 +167,10 @@ func TestPolicyGroupNew_FactoryError(t *testing.T) {
 	buf := &bytes.Buffer{}
 	err := runPolicyGroupNew(t.Context(), buf,
 		failingPolicyGroupNewFactory(errors.New("not logged in")),
-		"prod-policies", policyGroupNewArgs{outputFormat: defaultPolicyGroupGetOutputFormat()})
+		"prod-policies", policyGroupNewArgs{
+			entityType: "stacks", yes: true,
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+		})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }

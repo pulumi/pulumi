@@ -1303,8 +1303,9 @@ func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContTo
 }
 
 // CreatePolicyGroup creates a new Policy Group in the given organization.
-func (pc *Client) CreatePolicyGroup(ctx context.Context, orgName, name string) error {
-	req := apitype.CreatePolicyGroupRequest{Name: name}
+func (pc *Client) CreatePolicyGroup(
+	ctx context.Context, orgName string, req apitype.CreatePolicyGroupRequest,
+) error {
 	if err := pc.restCall(ctx, "POST", listPolicyGroupsPath(orgName), nil, req, nil); err != nil {
 		return fmt.Errorf("creating policy group: %w", err)
 	}
