@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -284,6 +285,7 @@ type testEnvironment struct {
 	revisionTags      map[string]int
 	tags              map[string]string
 	deletionProtected bool
+	schedules         []client.ScheduledAction
 	referrers         map[string][]client.EnvironmentReferrer
 }
 
@@ -1015,6 +1017,138 @@ func (c *testPulumiClient) DeleteEnvironmentTag(ctx context.Context, orgName, pr
 	return nil
 }
 
+func (c *testPulumiClient) ListEnvironmentSchedules(
+	ctx context.Context,
+	orgName, projectName, envName string,
+) (*client.ListScheduledActionsResponse, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)]
+	if !ok {
+		return nil, errors.New("environment not found")
+	}
+	resp := &client.ListScheduledActionsResponse{
+		Schedules: append([]client.ScheduledAction(nil), env.schedules...),
+	}
+	return resp, nil
+}
+
+func (c *testPulumiClient) CreateEnvironmentSchedule(
+	ctx context.Context,
+	orgName, projectName, envName string,
+	req client.CreateEnvironmentScheduleRequest,
+) (*client.ScheduledAction, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)]
+	if !ok {
+		return nil, errors.New("environment not found")
+	}
+	id := fmt.Sprintf("sched-%d", len(env.schedules)+1)
+	var def json.RawMessage
+	if req.SecretRotationRequest != nil {
+		def, _ = json.Marshal(map[string]any{
+			"environmentPath": req.SecretRotationRequest.EnvironmentPath,
+		})
+	}
+	s := client.ScheduledAction{
+		ID:            id,
+		OrgID:         orgName,
+		Kind:          "environment_rotation",
+		Paused:        false,
+		Created:       "2026-05-13T12:00:00Z",
+		Modified:      "2026-05-13T12:00:00Z",
+		LastExecuted:  "",
+		NextExecution: "2026-05-14T00:00:00Z",
+		Definition:    def,
+		ScheduleCron:  req.ScheduleCron,
+		ScheduleOnce:  req.ScheduleOnce,
+	}
+	env.schedules = append(env.schedules, s)
+	return &s, nil
+}
+
+func (c *testPulumiClient) findSchedule(orgName, projectName, envName, scheduleID string) (*testEnvironment, int, error) {
+	env, ok := c.environments[fmt.Sprintf("%s/%s/%s", orgName, projectName, envName)]
+	if !ok {
+		return nil, 0, errors.New("environment not found")
+	}
+	for i, s := range env.schedules {
+		if s.ID == scheduleID {
+			return env, i, nil
+		}
+	}
+	return nil, 0, errors.New("schedule not found")
+}
+
+func (c *testPulumiClient) GetEnvironmentSchedule(
+	ctx context.Context,
+	orgName, projectName, envName, scheduleID string,
+) (*client.ScheduledAction, error) {
+	env, i, err := c.findSchedule(orgName, projectName, envName, scheduleID)
+	if err != nil {
+		return nil, err
+	}
+	s := env.schedules[i]
+	return &s, nil
+}
+
+func (c *testPulumiClient) UpdateEnvironmentSchedule(
+	ctx context.Context,
+	orgName, projectName, envName, scheduleID string,
+	req client.UpdateEnvironmentScheduleRequest,
+) (*client.ScheduledAction, error) {
+	env, i, err := c.findSchedule(orgName, projectName, envName, scheduleID)
+	if err != nil {
+		return nil, err
+	}
+	if req.ScheduleCron != "" {
+		env.schedules[i].ScheduleCron = req.ScheduleCron
+		env.schedules[i].ScheduleOnce = ""
+	}
+	if req.ScheduleOnce != "" {
+		env.schedules[i].ScheduleOnce = req.ScheduleOnce
+		env.schedules[i].ScheduleCron = ""
+	}
+	if req.SecretRotationRequest != nil {
+		def, _ := json.Marshal(map[string]any{
+			"environmentPath": req.SecretRotationRequest.EnvironmentPath,
+		})
+		env.schedules[i].Definition = def
+	}
+	env.schedules[i].Modified = "2026-05-13T13:00:00Z"
+	s := env.schedules[i]
+	return &s, nil
+}
+
+func (c *testPulumiClient) ListEnvironmentScheduleHistory(
+	ctx context.Context,
+	orgName, projectName, envName, scheduleID string,
+) (*client.ListScheduleHistoryResponse, error) {
+	if _, _, err := c.findSchedule(orgName, projectName, envName, scheduleID); err != nil {
+		return nil, err
+	}
+	return &client.ListScheduleHistoryResponse{
+		ScheduleHistoryEvents: []client.ScheduleHistoryEvent{
+			{
+				ID:                "evt-1",
+				ScheduledActionID: scheduleID,
+				Executed:          "2026-05-13T12:30:00Z",
+				Version:           1,
+				Result:            "succeeded",
+			},
+		},
+	}, nil
+}
+
+func (c *testPulumiClient) DeleteEnvironmentSchedule(
+	ctx context.Context,
+	orgName, projectName, envName, scheduleID string,
+) error {
+	env, i, err := c.findSchedule(orgName, projectName, envName, scheduleID)
+	if err != nil {
+		return err
+	}
+	env.schedules = append(env.schedules[:i], env.schedules[i+1:]...)
+	return nil
+}
+
 func (c *testPulumiClient) GetEnvironmentRevision(
 	ctx context.Context,
 	orgName string,
@@ -1461,6 +1595,46 @@ type cliTestcaseEnvironmentTags struct {
 	Tags map[string]string `yaml:"tags,omitempty"`
 }
 
+type cliTestcaseSchedule struct {
+	ID            string `yaml:"id,omitempty"`
+	Kind          string `yaml:"kind,omitempty"`
+	Paused        bool   `yaml:"paused,omitempty"`
+	Created       string `yaml:"created,omitempty"`
+	Modified      string `yaml:"modified,omitempty"`
+	LastExecuted  string `yaml:"last-executed,omitempty"`
+	NextExecution string `yaml:"next-execution,omitempty"`
+	ScheduleCron  string `yaml:"schedule-cron,omitempty"`
+	ScheduleOnce  string `yaml:"schedule-once,omitempty"`
+	Path          string `yaml:"path,omitempty"`
+}
+
+type cliTestcaseEnvironmentSchedules struct {
+	Schedules []cliTestcaseSchedule `yaml:"schedules,omitempty"`
+}
+
+func (s cliTestcaseSchedule) toClient() client.ScheduledAction {
+	var def json.RawMessage
+	if s.Path != "" {
+		def, _ = json.Marshal(map[string]any{"environmentPath": s.Path})
+	}
+	kind := s.Kind
+	if kind == "" {
+		kind = "environment_rotation"
+	}
+	return client.ScheduledAction{
+		ID:            s.ID,
+		Kind:          kind,
+		Paused:        s.Paused,
+		Created:       s.Created,
+		Modified:      s.Modified,
+		LastExecuted:  s.LastExecuted,
+		NextExecution: s.NextExecution,
+		Definition:    def,
+		ScheduleCron:  s.ScheduleCron,
+		ScheduleOnce:  s.ScheduleOnce,
+	}
+}
+
 type cliTestcaseReferrer struct {
 	Environment     *cliTestcaseEnvironmentImportReferrer `yaml:"environment,omitempty"`
 	Stack           *cliTestcaseStackReferrer             `yaml:"stack,omitempty"`
@@ -1579,6 +1753,15 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			envTags = tags.Tags
 		}
 
+		var schedules cliTestcaseEnvironmentSchedules
+		var envSchedules []client.ScheduledAction
+		if err := env.Decode(&schedules); schedules.Schedules != nil && err == nil {
+			envSchedules = make([]client.ScheduledAction, len(schedules.Schedules))
+			for i, s := range schedules.Schedules {
+				envSchedules[i] = s.toClient()
+			}
+		}
+
 		var referrers cliTestcaseEnvironmentReferrers
 		envReferrers := map[string][]client.EnvironmentReferrer{}
 		if err := env.Decode(&referrers); referrers.Referrers != nil && err == nil {
@@ -1634,6 +1817,7 @@ func loadTestcase(path string) (*cliTestcaseYAML, *cliTestcase, error) {
 			revisions:    envRevisions,
 			revisionTags: revisionTags,
 			tags:         envTags,
+			schedules:    envSchedules,
 			referrers:    envReferrers,
 		}
 	}
