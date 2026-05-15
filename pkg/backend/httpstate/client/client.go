@@ -1520,6 +1520,20 @@ func (pc *Client) ListPolicyIssues(
 	return resp, nil
 }
 
+// GetPolicyComplianceResults returns compliance results for policy issues
+// grouped by entity.
+func (pc *Client) GetPolicyComplianceResults(
+	ctx context.Context, orgName string, req apitype.GetPolicyComplianceResultsRequest,
+) (apitype.GetPolicyComplianceResultsResponse, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policyresults/compliance", url.PathEscape(orgName))
+	var resp apitype.GetPolicyComplianceResultsResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
+		return apitype.GetPolicyComplianceResultsResponse{},
+			fmt.Errorf("getting policy compliance results: %w", err)
+	}
+	return resp, nil
+}
+
 // GetPolicyIssue returns the details of a single policy issue in the given
 // organization, wrapping the `GetPolicyIssue` Pulumi Cloud REST endpoint
 // (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).

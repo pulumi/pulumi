@@ -432,3 +432,34 @@ type ListPolicyIssuesResponse struct {
 	// Total is the total number of issues matching the request across all pages.
 	Total int64 `json:"total,omitempty"`
 }
+
+// GetPolicyComplianceResultsRequest is the request body for the compliance
+// results endpoint (POST /api/orgs/{orgName}/policy-results/compliance).
+type GetPolicyComplianceResultsRequest struct {
+	// Entity is how to group results: "stack", "account", or "severity".
+	Entity string `json:"entity"`
+	// ContinuationToken is the pagination token from a previous response.
+	ContinuationToken *string `json:"continuationToken,omitempty"`
+	// Size is the number of results per page (max 1000).
+	Size *int `json:"size,omitempty"`
+}
+
+// GetPolicyComplianceResultsResponse is the response from the compliance
+// results endpoint.
+type GetPolicyComplianceResultsResponse struct {
+	// Columns lists the policy group/pack identifiers or severity levels.
+	Columns []string `json:"columns"`
+	// Rows contains one entry per entity (stack, account, or policy pack).
+	Rows []PolicyComplianceResult `json:"rows"`
+	// ContinuationToken is set when more pages are available.
+	ContinuationToken *string `json:"continuationToken,omitempty"`
+}
+
+// PolicyComplianceResult is a single row in the compliance results table.
+type PolicyComplianceResult struct {
+	// EntityName identifies the entity (e.g. "project/stack" or account name).
+	EntityName string `json:"entityName"`
+	// Scores is an array correlating 1:1 with Columns. Values are 0-100
+	// (compliance %), -1 (N/A), or -2 (config error).
+	Scores []int `json:"scores"`
+}
