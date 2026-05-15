@@ -12,6 +12,7 @@ scopes:
     - cloud
     - config
     - display
+    - do
     - engine
     - env
     - import
