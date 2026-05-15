@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -859,7 +861,7 @@ func generateValue(
 
 	switch {
 	case value.IsArchive():
-		return nil, errors.New("NYI: archives")
+		return generateArchive(value.AsArchive())
 	case value.IsArray():
 		elementType := schema.AnyType
 		if typ, ok := typ.(*schema.ArrayType); ok {
@@ -880,7 +882,7 @@ func generateValue(
 			Expressions: exprs,
 		}, nil
 	case value.IsAsset():
-		return nil, errors.New("NYI: assets")
+		return generateAsset(value.AsAsset())
 	case value.IsBool():
 		return &model.LiteralValueExpression{
 			Value: cty.BoolVal(value.AsBool()),
@@ -995,4 +997,82 @@ func generateValue(
 		contract.Failf("unexpected property value %v", value)
 		return nil, nil
 	}
+}
+
+// stringLiteralCall builds an HCL call to fn with a single string argument.
+func stringLiteralCall(fn, s string) *model.FunctionCallExpression {
+	return &model.FunctionCallExpression{
+		Name: fn,
+		Args: []model.Expression{
+			&model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: cty.StringVal(s),
+					},
+				},
+			},
+		},
+	}
+}
+
+// generateAsset emits a PCL function call that constructs the given asset.
+func generateAsset(a *asset.Asset) (model.Expression, error) {
+	switch {
+	case a.IsText():
+		text, _ := a.GetText()
+		return stringLiteralCall("stringAsset", text), nil
+	case a.IsPath():
+		path, _ := a.GetPath()
+		return stringLiteralCall("fileAsset", path), nil
+	case a.IsURI():
+		uri, _ := a.GetURI()
+		return stringLiteralCall("remoteAsset", uri), nil
+	}
+	return nil, errors.New("asset has no text, path, or uri")
+}
+
+// generateArchive emits a PCL function call that constructs the given archive.
+func generateArchive(a *archive.Archive) (model.Expression, error) {
+	switch {
+	case a.IsAssets():
+		assets, _ := a.GetAssets()
+		items := slice.Prealloc[model.ObjectConsItem](len(assets))
+		for k, v := range assets {
+			var elem model.Expression
+			var err error
+			switch v := v.(type) {
+			case *asset.Asset:
+				elem, err = generateAsset(v)
+			case *archive.Archive:
+				elem, err = generateArchive(v)
+			default:
+				return nil, fmt.Errorf("unexpected archive entry type %T", v)
+			}
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, model.ObjectConsItem{
+				Key: &model.LiteralValueExpression{
+					Value: cty.StringVal(fmt.Sprintf("%q", k)),
+				},
+				Value: elem,
+			})
+		}
+		return &model.FunctionCallExpression{
+			Name: "assetArchive",
+			Args: []model.Expression{
+				&model.ObjectConsExpression{
+					Tokens: syntax.NewObjectConsTokens(len(items)),
+					Items:  items,
+				},
+			},
+		}, nil
+	case a.IsPath():
+		path, _ := a.GetPath()
+		return stringLiteralCall("fileArchive", path), nil
+	case a.IsURI():
+		uri, _ := a.GetURI()
+		return stringLiteralCall("remoteArchive", uri), nil
+	}
+	return nil, errors.New("archive has no assets, path, or uri")
 }

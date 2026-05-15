@@ -62,13 +62,22 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 			if v.IsString() && !norm.NFC.IsNormalString(v.AsString()) {
 				return true
 			}
-			if !v.IsMap() {
+			if v.IsMap() {
+				for k := range v.AsMap().All {
+					if !norm.NFC.IsNormalString(k) {
+						return true
+					}
+				}
 				return false
 			}
-			for k := range v.AsMap().All {
-				if !norm.NFC.IsNormalString(k) {
-					return true
-				}
+			if v.IsAsset() {
+				a := v.AsAsset()
+				return !norm.NFC.IsNormalString(a.Text) ||
+					!norm.NFC.IsNormalString(a.Path) ||
+					!norm.NFC.IsNormalString(a.URI)
+			}
+			if v.IsArchive() {
+				return archiveHasNonNFC(v.AsArchive())
 			}
 			return false
 		}) {
@@ -78,12 +87,6 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 			// and the spec doesn't mandate normalization, so this loses
 			// information silently. Skip non-NFC inputs until that is fixed.
 			t.Skip("inputs contain a non-NFC string; HCL round-trip silently NFC-normalizes")
-		}
-
-		if checkPropertyMap(sample.State.Inputs, func(p property.Value) bool {
-			return p.IsArchive() || p.IsAsset()
-		}) {
-			t.Skip("Assets & archives are not yet implemented")
 		}
 
 		if checkPropertyMap(sample.State.Inputs, func(p property.Value) bool {
@@ -140,6 +143,33 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 		require.Truef(t, sample.State.Inputs.DeepEquals(gotInputs),
 			"inputs differ\nwant: %#v\ngot:  %#v\nblock:\n%s", sample.State.Inputs, gotInputs, text)
 	})
+}
+
+// archiveHasNonNFC reports whether a contains, transitively, any string that
+// is not in Unicode NFC form (asset text/path/uri, archive path/uri, or
+// archive entry keys).
+func archiveHasNonNFC(a property.Archive) bool {
+	if !norm.NFC.IsNormalString(a.Path) || !norm.NFC.IsNormalString(a.URI) {
+		return true
+	}
+	for k, entry := range a.Assets {
+		if !norm.NFC.IsNormalString(k) {
+			return true
+		}
+		switch entry := entry.(type) {
+		case property.Asset:
+			if !norm.NFC.IsNormalString(entry.Text) ||
+				!norm.NFC.IsNormalString(entry.Path) ||
+				!norm.NFC.IsNormalString(entry.URI) {
+				return true
+			}
+		case property.Archive:
+			if archiveHasNonNFC(entry) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func checkPropertyMap(m resource.PropertyMap, check func(property.Value) bool) bool {

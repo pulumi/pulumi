@@ -37,6 +37,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -167,6 +169,58 @@ func renderFunctionCall(t require.TestingT, x *model.FunctionCallExpression) pro
 			return property.New(property.Null)
 		}
 		return expr
+	case "stringAsset":
+		require.Len(t, x.Args, 1)
+		expr := renderExpr(t, x.Args[0])
+		if !assert.True(t, expr.IsString()) {
+			return property.New(property.Null)
+		}
+		a, err := asset.FromText(expr.AsString())
+		require.NoError(t, err)
+		return property.New(a)
+	case "remoteAsset":
+		require.Len(t, x.Args, 1)
+		expr := renderExpr(t, x.Args[0])
+		if !assert.True(t, expr.IsString()) {
+			return property.New(property.Null)
+		}
+		a, err := asset.FromURI(expr.AsString())
+		require.NoError(t, err)
+		return property.New(a)
+	case "remoteArchive":
+		require.Len(t, x.Args, 1)
+		expr := renderExpr(t, x.Args[0])
+		if !assert.True(t, expr.IsString()) {
+			return property.New(property.Null)
+		}
+		a, err := archive.FromURI(expr.AsString())
+		require.NoError(t, err)
+		return property.New(a)
+	case "assetArchive":
+		require.Len(t, x.Args, 1)
+		obj, ok := x.Args[0].(*model.ObjectConsExpression)
+		if !assert.True(t, ok, "assetArchive arg must be an object cons") {
+			return property.New(property.Null)
+		}
+		assets := map[string]any{}
+		for _, item := range obj.Items {
+			kv := renderExpr(t, item.Key)
+			if !assert.True(t, kv.IsString()) {
+				continue
+			}
+			v := renderExpr(t, item.Value)
+			switch {
+			case v.IsAsset():
+				assets[kv.AsString()] = v.AsAsset()
+			case v.IsArchive():
+				assets[kv.AsString()] = v.AsArchive()
+			default:
+				assert.Failf(t, "", "assetArchive entry %q is %v, want asset or archive", kv.AsString(), v)
+			}
+		}
+		a, err := archive.FromAssets(assets)
+		require.NoError(t, err)
+		return property.New(a)
 	case "secret":
 		require.Len(t, x.Args, 1)
 		return renderExpr(t, x.Args[0]).WithSecret(true)
