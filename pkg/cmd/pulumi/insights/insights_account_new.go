@@ -188,7 +188,7 @@ func resolveAccountNewArgs(
 		if skipPrompts {
 			return args, errors.New("--environment is required")
 		}
-		env, err := promptForESCEnvironment(ctx, c, org, opts)
+		env, err := promptForESCEnvironment(ctx, c, org, newDisplayPrompter(opts))
 		if err != nil {
 			return args, err
 		}
@@ -197,43 +197,84 @@ func resolveAccountNewArgs(
 	return args, nil
 }
 
-// promptForESCEnvironment offers a picker over the org's ESC environments
-// (the same set surfaced by `pulumi esc ls`). The list call is best-effort:
-// if it fails or returns no environments, the prompt degrades to free-text
-// input so an offline-ish or empty-org user can still proceed. The picker
-// always offers an "Enter manually..." choice so users can specify a
-// `@version` suffix or any env the server doesn't yet list.
-func promptForESCEnvironment(
-	ctx context.Context, c insightsAccountNewClient, org string, opts display.Options,
-) (string, error) {
-	free := func() (string, error) {
-		return ui.PromptForValue(
-			false,
-			"ESC environment (project/environment[@version])",
-			"", false,
-			nonEmptyValidator("an ESC environment reference"),
-			opts,
-		)
-	}
+// escEnvManualOption is the label of the picker entry that lets a user
+// bail out of the listed choices and type an environment by hand. Exposed
+// as a constant so the test for [escEnvironmentChoices] can assert on it.
+const escEnvManualOption = "[Enter manually]"
 
+// escEnvironmentChoices builds the picker option list for the org's ESC
+// environments. Returns nil when the listing call errors or comes back
+// empty — the caller treats that signal as "fall back to free-text input."
+// Otherwise it returns the envs formatted as `project/name`, sorted, with
+// [escEnvManualOption] appended as an escape hatch.
+//
+// Pulled out of [promptForESCEnvironment] so the data-shaping logic is
+// unit-testable without driving the survey/stdin interactions.
+func escEnvironmentChoices(
+	ctx context.Context, c insightsAccountNewClient, org string,
+) []string {
 	envs, _, err := c.ListESCEnvironments(ctx, org, "")
 	if err != nil || len(envs) == 0 {
-		// Best-effort: degrade silently to free-text on any error so a
-		// transient listing failure doesn't block account creation.
-		return free()
+		return nil
 	}
-
-	const enterManually = "[Enter manually]"
 	options := make([]string, 0, len(envs)+1)
 	for _, e := range envs {
 		options = append(options, e.Project+"/"+e.Name)
 	}
 	sort.Strings(options)
-	options = append(options, enterManually)
+	options = append(options, escEnvManualOption)
+	return options
+}
 
-	choice := ui.PromptUser("ESC environment", options, options[0], opts.Color)
-	if choice == "" || choice == enterManually {
-		return free()
+// escEnvPrompter is the small interface promptForESCEnvironment uses to
+// reach the UI. Splitting it out lets unit tests substitute stubs in place
+// of the survey-driven [ui.PromptUser]/[ui.PromptForValue] calls, which
+// otherwise block waiting on stdin.
+type escEnvPrompter struct {
+	// pick shows a picker over options and returns the chosen entry, or
+	// "" when the user dismissed the prompt.
+	pick func(options []string) string
+	// enter prompts the user to type an environment reference, with the
+	// usual non-empty validation.
+	enter func() (string, error)
+}
+
+// newDisplayPrompter wires the picker / free-text prompt up to the live UI
+// for production callers. The display options come from the cobra RunE so
+// the prompts inherit the user's global color settings.
+func newDisplayPrompter(opts display.Options) escEnvPrompter {
+	return escEnvPrompter{
+		pick: func(options []string) string {
+			return ui.PromptUser("ESC environment", options, options[0], opts.Color)
+		},
+		enter: func() (string, error) {
+			return ui.PromptForValue(
+				false,
+				"ESC environment (project/environment[@version])",
+				"", false,
+				nonEmptyValidator("an ESC environment reference"),
+				opts,
+			)
+		},
+	}
+}
+
+// promptForESCEnvironment offers a picker over the org's ESC environments
+// (the same set surfaced by `pulumi esc ls`). The list call is best-effort:
+// if it fails or returns no environments, the prompt degrades to free-text
+// input so an offline-ish or empty-org user can still proceed. The picker
+// always offers an "Enter manually" choice so users can specify a
+// `@version` suffix or any env the server doesn't yet list.
+func promptForESCEnvironment(
+	ctx context.Context, c insightsAccountNewClient, org string, p escEnvPrompter,
+) (string, error) {
+	options := escEnvironmentChoices(ctx, c, org)
+	if len(options) == 0 {
+		return p.enter()
+	}
+	choice := p.pick(options)
+	if choice == "" || choice == escEnvManualOption {
+		return p.enter()
 	}
 	return choice, nil
 }

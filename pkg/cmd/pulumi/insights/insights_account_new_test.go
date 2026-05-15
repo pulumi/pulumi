@@ -504,3 +504,167 @@ func TestNewInsightsAccountNewCmd_NilFactoryUsesDefault(t *testing.T) {
 	require.NotNil(t, cmd)
 	assert.Equal(t, "new", cmd.Name())
 }
+
+func TestESCEnvironmentChoices(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns nil when listing errors", func(t *testing.T) {
+		t.Parallel()
+		// The picker treats any listing error as "fall back to free-text,"
+		// so the helper must return nil so the caller can detect that.
+		client := &mockInsightsAccountNewClient{listEnvsErr: errors.New("boom")}
+		assert.Nil(t, escEnvironmentChoices(t.Context(), client, "acme"))
+	})
+
+	t.Run("returns nil when listing is empty", func(t *testing.T) {
+		t.Parallel()
+		client := &mockInsightsAccountNewClient{listEnvs: nil}
+		assert.Nil(t, escEnvironmentChoices(t.Context(), client, "acme"))
+	})
+
+	t.Run("formats, sorts, and appends the manual option", func(t *testing.T) {
+		t.Parallel()
+		client := &mockInsightsAccountNewClient{listEnvs: []apitype.ESCEnvironment{
+			// Intentionally unsorted to confirm we sort.
+			{Project: "platform", Name: "prod"},
+			{Project: "infra", Name: "dev"},
+			{Project: "infra", Name: "prod-aws-creds"},
+		}}
+		got := escEnvironmentChoices(t.Context(), client, "acme")
+		assert.Equal(t, []string{
+			"infra/dev",
+			"infra/prod-aws-creds",
+			"platform/prod",
+			escEnvManualOption,
+		}, got)
+	})
+
+	t.Run("passes the org through to the listing call", func(t *testing.T) {
+		t.Parallel()
+		var got string
+		client := &mockInsightsAccountNewClient{
+			listEnvs:     []apitype.ESCEnvironment{{Project: "p", Name: "e"}},
+			listEnvsCall: &got,
+		}
+		_ = escEnvironmentChoices(t.Context(), client, "the-org")
+		assert.Equal(t, "the-org", got)
+	})
+}
+
+func TestPromptForESCEnvironment(t *testing.T) {
+	t.Parallel()
+
+	// scriptedPrompter records the picker's option list (for assertions
+	// against `escEnvironmentChoices`) and replays a canned answer for
+	// each hook so we can drive every branch from a unit test.
+	scriptedPrompter := func(pickResult, enterResult string, enterErr error) (escEnvPrompter, *[]string, *int, *int) {
+		var (
+			pickedOptions []string
+			pickCalls     int
+			enterCalls    int
+		)
+		p := escEnvPrompter{
+			pick: func(options []string) string {
+				pickedOptions = options
+				pickCalls++
+				return pickResult
+			},
+			enter: func() (string, error) {
+				enterCalls++
+				return enterResult, enterErr
+			},
+		}
+		return p, &pickedOptions, &pickCalls, &enterCalls
+	}
+
+	t.Run("empty list falls back to free-text", func(t *testing.T) {
+		t.Parallel()
+		client := &mockInsightsAccountNewClient{} // listEnvs nil
+		p, _, pickCalls, enterCalls := scriptedPrompter("", "infra/dev", nil)
+		got, err := promptForESCEnvironment(t.Context(), client, "acme", p)
+		require.NoError(t, err)
+		assert.Equal(t, "infra/dev", got)
+		assert.Zero(t, *pickCalls)
+		assert.Equal(t, 1, *enterCalls)
+	})
+
+	t.Run("listing error falls back to free-text", func(t *testing.T) {
+		t.Parallel()
+		client := &mockInsightsAccountNewClient{listEnvsErr: errors.New("boom")}
+		p, _, pickCalls, enterCalls := scriptedPrompter("", "infra/dev", nil)
+		got, err := promptForESCEnvironment(t.Context(), client, "acme", p)
+		require.NoError(t, err)
+		assert.Equal(t, "infra/dev", got)
+		assert.Zero(t, *pickCalls)
+		assert.Equal(t, 1, *enterCalls)
+	})
+
+	t.Run("picker returns the user's selection", func(t *testing.T) {
+		t.Parallel()
+		client := &mockInsightsAccountNewClient{listEnvs: []apitype.ESCEnvironment{
+			{Project: "infra", Name: "dev"},
+			{Project: "infra", Name: "prod"},
+		}}
+		p, options, pickCalls, enterCalls := scriptedPrompter("infra/prod", "", nil)
+		got, err := promptForESCEnvironment(t.Context(), client, "acme", p)
+		require.NoError(t, err)
+		assert.Equal(t, "infra/prod", got)
+		assert.Equal(t, 1, *pickCalls)
+		assert.Zero(t, *enterCalls)
+		// The picker is fed the sorted formatted list plus the manual option.
+		assert.Equal(t, []string{"infra/dev", "infra/prod", escEnvManualOption}, *options)
+	})
+
+	t.Run("manual choice falls back to free-text", func(t *testing.T) {
+		t.Parallel()
+		client := &mockInsightsAccountNewClient{listEnvs: []apitype.ESCEnvironment{
+			{Project: "infra", Name: "dev"},
+		}}
+		p, _, pickCalls, enterCalls := scriptedPrompter(
+			escEnvManualOption, "infra/dev@2", nil,
+		)
+		got, err := promptForESCEnvironment(t.Context(), client, "acme", p)
+		require.NoError(t, err)
+		assert.Equal(t, "infra/dev@2", got)
+		assert.Equal(t, 1, *pickCalls)
+		assert.Equal(t, 1, *enterCalls)
+	})
+
+	t.Run("dismissed picker (empty choice) falls back to free-text", func(t *testing.T) {
+		t.Parallel()
+		// survey returns "" when the user hits Ctrl-C or the parent
+		// process closes stdin; the picker treats it as "user wants
+		// out, ask for free-text input instead" rather than aborting.
+		client := &mockInsightsAccountNewClient{listEnvs: []apitype.ESCEnvironment{
+			{Project: "infra", Name: "dev"},
+		}}
+		p, _, _, enterCalls := scriptedPrompter("", "infra/dev", nil)
+		got, err := promptForESCEnvironment(t.Context(), client, "acme", p)
+		require.NoError(t, err)
+		assert.Equal(t, "infra/dev", got)
+		assert.Equal(t, 1, *enterCalls)
+	})
+
+	t.Run("free-text error propagates", func(t *testing.T) {
+		t.Parallel()
+		client := &mockInsightsAccountNewClient{} // empty → free-text path
+		p, _, _, _ := scriptedPrompter("", "", errors.New("stdin closed"))
+		_, err := promptForESCEnvironment(t.Context(), client, "acme", p)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "stdin closed")
+	})
+}
+
+func TestNonEmptyValidator(t *testing.T) {
+	t.Parallel()
+
+	validator := nonEmptyValidator("a thing")
+	require.NoError(t, validator("anything"))
+	// Whitespace-only counts as empty so the prompt re-asks instead of
+	// accepting an unusable value.
+	for _, empty := range []string{"", " ", "\t\n"} {
+		err := validator(empty)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "a thing is required")
+	}
+}
