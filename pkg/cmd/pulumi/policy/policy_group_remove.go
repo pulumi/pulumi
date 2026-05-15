@@ -26,6 +26,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -163,6 +164,10 @@ func runPolicyGroupRemove(
 	ctx context.Context, w io.Writer,
 	factory policyGroupRemoveClientFactory, name string, args policyGroupRemoveArgs,
 ) error {
+	if !cmdutil.Interactive() && !args.yes {
+		return backenderr.NonInteractiveRequiresYesError{}
+	}
+
 	if !args.yes {
 		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 		prompt := fmt.Sprintf("This will permanently remove the policy group '%s'!", name)
