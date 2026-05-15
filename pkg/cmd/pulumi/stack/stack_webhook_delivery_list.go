@@ -27,8 +27,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
-	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -48,6 +48,19 @@ type stackWebhookDeliveryListClientFactory func(
 	ctx context.Context, stackFlag string,
 ) (stackWebhookDeliveryListClient, client.StackIdentifier, error)
 
+type deliveryListRender func(
+	cmd *deliveryListCmd, deliveries []apitype.WebhookDelivery,
+) error
+
+type deliveryListCmd struct {
+	stack string
+	count int
+	w     io.Writer
+
+	output  outputflag.OutputFlag[deliveryListRender]
+	factory stackWebhookDeliveryListClientFactory
+}
+
 func newStackWebhookDeliveryListCmd() *cobra.Command {
 	return newStackWebhookDeliveryListCmdWith(nil)
 }
@@ -55,10 +68,13 @@ func newStackWebhookDeliveryListCmd() *cobra.Command {
 func newStackWebhookDeliveryListCmdWith(
 	factory stackWebhookDeliveryListClientFactory,
 ) *cobra.Command {
-	var (
-		stack  string
-		output string
-	)
+	dlcmd := &deliveryListCmd{
+		output: outputflag.OutputFlag[deliveryListRender]{
+			RenderForTerminal: (*deliveryListCmd).renderTable,
+			RenderJSON:        (*deliveryListCmd).renderJSON,
+		},
+		factory: factory,
+	}
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -72,25 +88,26 @@ func newStackWebhookDeliveryListCmdWith(
 			"Returns an error if the webhook does not exist.",
 		Example: "  # List deliveries for a webhook\n" +
 			"  pulumi stack webhook delivery list my-webhook\n\n" +
+			"  # List the last 5 deliveries\n" +
+			"  pulumi stack webhook delivery list my-webhook --count 5\n\n" +
 			"  # List deliveries as JSON\n" +
 			"  pulumi stack webhook delivery list my-webhook --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if factory == nil {
-				factory = defaultDeliveryListClientFactory
+			if dlcmd.factory == nil {
+				dlcmd.factory = defaultDeliveryListClientFactory
 			}
-			return runDeliveryList(
-				cmd.Context(), cmd.OutOrStdout(), factory,
-				stack, args[0], output,
-			)
+			dlcmd.w = cmd.OutOrStdout()
+			return dlcmd.run(cmd.Context(), args[0])
 		},
 	}
 
 	constrictor.AttachArguments(cmd, stackWebhookHookArg())
 
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
+	cmd.Flags().StringVarP(&dlcmd.stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&output, "output", "o", "default",
-		"The output format: default (human-readable table) or json")
+	cmd.Flags().IntVar(&dlcmd.count, "count", 0,
+		"Number of deliveries to display (default: all)")
+	outputflag.VarP(cmd.Flags(), &dlcmd.output)
 
 	return cmd
 }
@@ -103,79 +120,54 @@ func defaultDeliveryListClientFactory(
 		cmdBackend.DefaultLoginManager, stackFlag)
 }
 
-func runDeliveryList(
-	ctx context.Context,
-	w io.Writer,
-	factory stackWebhookDeliveryListClientFactory,
-	stackFlag string,
-	webhookName string,
-	output string,
-) error {
-	renderer, err := deliveryListRenderer(output)
-	if err != nil {
-		return err
-	}
-
-	c, stackID, err := factory(ctx, stackFlag)
+func (c *deliveryListCmd) run(ctx context.Context, webhookName string) error {
+	cl, stackID, err := c.factory(ctx, c.stack)
 	if err != nil {
 		return err
 	}
 
 	// Verify the webhook exists first — the deliveries endpoint returns
 	// an empty list for non-existent webhooks instead of 404.
-	if _, err := c.GetStackWebhook(ctx, stackID, webhookName); err != nil {
+	if _, err := cl.GetStackWebhook(ctx, stackID, webhookName); err != nil {
 		return fmt.Errorf("webhook %q not found: %w", webhookName, err)
 	}
 
-	deliveries, err := c.ListStackWebhookDeliveries(ctx, stackID, webhookName)
+	deliveries, err := cl.ListStackWebhookDeliveries(ctx, stackID, webhookName)
 	if err != nil {
 		return fmt.Errorf("listing webhook deliveries: %w", err)
 	}
 
-	return renderer(w, deliveries)
-}
-
-type deliveryListRenderFunc func(w io.Writer, deliveries []apitype.WebhookDelivery) error
-
-func deliveryListRenderer(output string) (deliveryListRenderFunc, error) {
-	switch output {
-	case "", "default", "table":
-		return renderDeliveryListTable, nil
-	case "json":
-		return renderDeliveryListJSON, nil
-	default:
-		return nil, fmt.Errorf(
-			"invalid --output value %q: expected \"default\", \"table\", or \"json\"", output)
+	if c.count > 0 && c.count < len(deliveries) {
+		deliveries = deliveries[:c.count]
 	}
+
+	return c.output.Get()(c, deliveries)
 }
 
-// deliveryListEnvelope is the JSON shape for delivery list output.
-type deliveryListEnvelope struct {
-	Deliveries []apitype.WebhookDelivery `json:"deliveries"`
-	Count      int                       `json:"count"`
-}
-
-func renderDeliveryListJSON(w io.Writer, deliveries []apitype.WebhookDelivery) error {
+func (c *deliveryListCmd) renderJSON(deliveries []apitype.WebhookDelivery) error {
 	if deliveries == nil {
 		deliveries = []apitype.WebhookDelivery{}
 	}
-	enc := json.NewEncoder(w)
+	enc := json.NewEncoder(c.w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
-	return enc.Encode(deliveryListEnvelope{
+	return enc.Encode(struct {
+		Deliveries []apitype.WebhookDelivery `json:"deliveries"`
+		Count      int                       `json:"count"`
+	}{
 		Deliveries: deliveries,
 		Count:      len(deliveries),
 	})
 }
 
-func renderDeliveryListTable(w io.Writer, deliveries []apitype.WebhookDelivery) error {
+func (c *deliveryListCmd) renderTable(deliveries []apitype.WebhookDelivery) error {
 	if len(deliveries) == 0 {
-		fmt.Fprintln(w, "No deliveries found for this webhook.")
+		fmt.Fprintln(c.w, "No deliveries found for this webhook.")
 		return nil
 	}
 
 	t := table.NewWriter()
-	t.SetOutputMirror(w)
+	t.SetOutputMirror(c.w)
 	t.SetStyle(table.StyleLight)
 	t.AppendHeader(table.Row{"ID", "KIND", "TIMESTAMP", "DURATION", "STATUS"})
 
@@ -185,16 +177,8 @@ func renderDeliveryListTable(w io.Writer, deliveries []apitype.WebhookDelivery) 
 		t.AppendRow(table.Row{d.ID, d.Kind, ts, duration, d.ResponseCode})
 	}
 
-	cols := cmdCmd.StdoutWidth()
-	idWidth := cols - 80 // leave room for other columns
-	if idWidth < 10 {
-		idWidth = 10
-	}
-	t.SetColumnConfigs([]table.ColumnConfig{
-		{Name: "ID", WidthMax: idWidth},
-	})
 	t.Render()
 
-	fmt.Fprintf(w, "\n%d delivery(ies)\n", len(deliveries))
+	fmt.Fprintf(c.w, "\n%d delivery(ies)\n", len(deliveries))
 	return nil
 }

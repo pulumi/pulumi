@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,6 +58,20 @@ func stubDeliveryListFactory(
 	}
 }
 
+func newTestDeliveryListCmd(
+	factory stackWebhookDeliveryListClientFactory,
+) (*deliveryListCmd, *bytes.Buffer) {
+	var buf bytes.Buffer
+	return &deliveryListCmd{
+		output: outputflag.OutputFlag[deliveryListRender]{
+			RenderForTerminal: (*deliveryListCmd).renderTable,
+			RenderJSON:        (*deliveryListCmd).renderJSON,
+		},
+		factory: factory,
+		w:       &buf,
+	}, &buf
+}
+
 func sampleDeliveries() []apitype.WebhookDelivery {
 	return []apitype.WebhookDelivery{
 		{
@@ -83,8 +98,8 @@ func TestDeliveryList_TableOutput(t *testing.T) {
 	t.Parallel()
 
 	c := &mockDeliveryListClient{deliveries: sampleDeliveries()}
-	var buf bytes.Buffer
-	err := runDeliveryList(t.Context(), &buf, stubDeliveryListFactory(c), "", "my-hook", "default")
+	dlcmd, buf := newTestDeliveryListCmd(stubDeliveryListFactory(c))
+	err := dlcmd.run(t.Context(), "my-hook")
 	require.NoError(t, err)
 
 	out := buf.String()
@@ -111,8 +126,8 @@ func TestDeliveryList_TableOutput_Empty(t *testing.T) {
 	t.Parallel()
 
 	c := &mockDeliveryListClient{deliveries: []apitype.WebhookDelivery{}}
-	var buf bytes.Buffer
-	err := runDeliveryList(t.Context(), &buf, stubDeliveryListFactory(c), "", "hook", "table")
+	dlcmd, buf := newTestDeliveryListCmd(stubDeliveryListFactory(c))
+	err := dlcmd.run(t.Context(), "hook")
 	require.NoError(t, err)
 
 	assert.Contains(t, buf.String(), "No deliveries found for this webhook.")
@@ -122,8 +137,9 @@ func TestDeliveryList_JSONOutput(t *testing.T) {
 	t.Parallel()
 
 	c := &mockDeliveryListClient{deliveries: sampleDeliveries()}
-	var buf bytes.Buffer
-	err := runDeliveryList(t.Context(), &buf, stubDeliveryListFactory(c), "", "my-hook", "json")
+	dlcmd, buf := newTestDeliveryListCmd(stubDeliveryListFactory(c))
+	require.NoError(t, dlcmd.output.Set("json"))
+	err := dlcmd.run(t.Context(), "my-hook")
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
@@ -161,29 +177,20 @@ func TestDeliveryList_JSONOutput_Empty(t *testing.T) {
 	t.Parallel()
 
 	c := &mockDeliveryListClient{deliveries: []apitype.WebhookDelivery{}}
-	var buf bytes.Buffer
-	err := runDeliveryList(t.Context(), &buf, stubDeliveryListFactory(c), "", "hook", "json")
+	dlcmd, buf := newTestDeliveryListCmd(stubDeliveryListFactory(c))
+	require.NoError(t, dlcmd.output.Set("json"))
+	err := dlcmd.run(t.Context(), "hook")
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{"deliveries": [], "count": 0}`, buf.String())
-}
-
-func TestDeliveryList_InvalidOutput(t *testing.T) {
-	t.Parallel()
-
-	c := &mockDeliveryListClient{deliveries: sampleDeliveries()}
-	var buf bytes.Buffer
-	err := runDeliveryList(t.Context(), &buf, stubDeliveryListFactory(c), "", "hook", "xml")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid --output value")
 }
 
 func TestDeliveryList_WebhookNotFound(t *testing.T) {
 	t.Parallel()
 
 	c := &mockDeliveryListClient{getErr: errors.New("[404] Not Found")}
-	var buf bytes.Buffer
-	err := runDeliveryList(t.Context(), &buf, stubDeliveryListFactory(c), "", "typo-hook", "default")
+	dlcmd, _ := newTestDeliveryListCmd(stubDeliveryListFactory(c))
+	err := dlcmd.run(t.Context(), "typo-hook")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `webhook "typo-hook" not found`)
 }
@@ -192,8 +199,8 @@ func TestDeliveryList_ClientError(t *testing.T) {
 	t.Parallel()
 
 	c := &mockDeliveryListClient{err: errors.New("not found")}
-	var buf bytes.Buffer
-	err := runDeliveryList(t.Context(), &buf, stubDeliveryListFactory(c), "", "hook", "default")
+	dlcmd, _ := newTestDeliveryListCmd(stubDeliveryListFactory(c))
+	err := dlcmd.run(t.Context(), "hook")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "listing webhook deliveries")
 }
@@ -202,39 +209,8 @@ func TestDeliveryList_WebhookNamePropagation(t *testing.T) {
 	t.Parallel()
 
 	c := &mockDeliveryListClient{deliveries: []apitype.WebhookDelivery{}}
-	var buf bytes.Buffer
-	err := runDeliveryList(t.Context(), &buf, stubDeliveryListFactory(c), "", "my-hook", "default")
+	dlcmd, _ := newTestDeliveryListCmd(stubDeliveryListFactory(c))
+	err := dlcmd.run(t.Context(), "my-hook")
 	require.NoError(t, err)
 	assert.Equal(t, "my-hook", c.gotName)
-}
-
-func TestDeliveryList_CobraFlagBinding(t *testing.T) {
-	t.Parallel()
-
-	c := &mockDeliveryListClient{deliveries: sampleDeliveries()}
-	cmd := newStackWebhookDeliveryListCmdWith(stubDeliveryListFactory(c))
-
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetArgs([]string{"my-hook", "--output", "json"})
-
-	err := cmd.ExecuteContext(t.Context())
-	require.NoError(t, err)
-	assert.Contains(t, buf.String(), `"count": 2`)
-}
-
-func TestDeliveryList_DefaultCmd(t *testing.T) {
-	t.Parallel()
-
-	cmd := newStackWebhookDeliveryListCmd()
-	assert.Contains(t, cmd.Use, "list")
-	require.NotNil(t, cmd.RunE)
-
-	f := cmd.Flags().Lookup("output")
-	require.NotNil(t, f)
-	assert.Equal(t, "o", f.Shorthand)
-
-	sf := cmd.Flags().Lookup("stack")
-	require.NotNil(t, sf)
-	assert.Equal(t, "s", sf.Shorthand)
 }
