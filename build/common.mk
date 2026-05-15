@@ -264,7 +264,7 @@ endif
 # the go code in their tree. We delegate to `golangci-lint fmt` so the formatter version
 # stays in lockstep with the linter version pinned in .mise.toml.
 .PHONY: format
-format::
+format:: .make/ensure/golangci-lint
 	$(call STEP_MESSAGE)
 	golangci-lint fmt
 
