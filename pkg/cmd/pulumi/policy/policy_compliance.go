@@ -15,8 +15,6 @@
 package policy
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -24,10 +22,8 @@ import (
 
 func newPolicyComplianceCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "compliance",
-		Short:  "Inspect policy compliance results",
-		Long:   "[EXPERIMENTAL] Inspect policy compliance results.",
+		Use:   "compliance",
+		Short: "[EXPERIMENTAL] Inspect policy compliance results",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -36,31 +32,5 @@ func newPolicyComplianceCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newPolicyComplianceListCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/22994]: Not yet implemented.
-func newPolicyComplianceListCmd() *cobra.Command {
-	var (
-		org     string
-		groupBy string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List compliance results grouped by entity",
-		Long:   "[EXPERIMENTAL] List compliance results grouped by entity.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to fetch compliance results for")
-	cmd.Flags().StringVar(&groupBy, "group-by", "stack",
-		"How to group results: stack, account, or severity")
-
 	return cmd
 }
