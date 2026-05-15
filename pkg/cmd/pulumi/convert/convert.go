@@ -51,6 +51,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -405,10 +406,10 @@ func runConvert(
 			if r.Delete || !r.Custom {
 				continue
 			}
-			if r.URN.Type() == "pulumi:pulumi:Stack" {
+			if r.URN.Type() == resource.RootStackType {
 				continue
 			}
-			if strings.HasPrefix(string(r.Type), "pulumi:providers:") {
+			if providers.IsDefaultProvider(r.URN) {
 				continue
 			}
 			states = append(states, r)
