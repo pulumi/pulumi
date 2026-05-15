@@ -894,6 +894,10 @@ func parseGitRepoURLParts(rawurl string) (gitRepoURLParts, error) {
 // For example, "https://github.com/pulumi/platform-team/templates.git/templates/javascript"
 // returns "https://github.com/pulumi/platform-team/templates.git" and "templates/javascript"
 //
+// Paths longer than owner/repo are ambiguous without a ".git" marker: use
+// e.g. "https://gitlab.com/group/subgroup/repo.git" to target a nested
+// GitLab subgroup project.
+//
 // Note: URL with a hostname of `dev.azure.com`, are currently treated as a raw git clone url
 // and currently do not support subpaths.
 func ParseGitRepoURL(rawurl string) (string, string, error) {
