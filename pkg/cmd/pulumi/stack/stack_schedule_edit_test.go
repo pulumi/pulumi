@@ -327,6 +327,57 @@ func TestStackScheduleEdit_GetError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
+func TestStackScheduleEdit_TTL_NormalizesExistingTimestamp(t *testing.T) {
+	t.Parallel()
+
+	existing := ttlSchedule(t)
+	existing.ScheduleOnce = "2026-12-31 23:59:00.000"
+	c := &mockScheduleEditClient{existing: existing}
+
+	flags := stackScheduleEditFlags{deleteAfterDestroy: false, deleteAfterDestroyChanged: true}
+	err := runStackScheduleEdit(
+		t.Context(), &bytes.Buffer{}, editClientFactory(c), "", "ttl-id", flags, renderScheduleGetText,
+	)
+	require.NoError(t, err)
+
+	require.NotNil(t, c.gotTTLReq)
+	assert.Equal(t, "2026-12-31T23:59:00Z", c.gotTTLReq.Timestamp)
+}
+
+func TestStackScheduleEdit_Raw_NormalizesExistingTimestamp(t *testing.T) {
+	t.Parallel()
+
+	existing := apitype.ScheduledAction{
+		ID:           "raw-id",
+		ScheduleOnce: "2026-12-31 23:59:00.000",
+		Kind:         apitype.ScheduledActionKindDeployment,
+		Definition:   defWithOpts(t, apitype.Refresh, nil),
+	}
+	c := &mockScheduleEditClient{existing: existing}
+
+	flags := stackScheduleEditFlags{operation: "update", operationChanged: true}
+	err := runStackScheduleEdit(
+		t.Context(), &bytes.Buffer{}, editClientFactory(c), "", "raw-id", flags, renderScheduleGetText,
+	)
+	require.NoError(t, err)
+
+	require.NotNil(t, c.gotRawReq)
+	assert.Equal(t, "2026-12-31T23:59:00Z", c.gotRawReq.ScheduleOnce)
+}
+
+func TestStackScheduleEdit_TTL_RejectsInvalidOnce(t *testing.T) {
+	t.Parallel()
+
+	c := &mockScheduleEditClient{existing: ttlSchedule(t)}
+	flags := stackScheduleEditFlags{once: "not-a-timestamp", onceChanged: true}
+	err := runStackScheduleEdit(
+		t.Context(), &bytes.Buffer{}, editClientFactory(c), "", "ttl-id", flags, renderScheduleGetText,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--once invalid timestamp")
+	assert.Nil(t, c.gotTTLReq)
+}
+
 func TestStackScheduleEdit_NoFlags(t *testing.T) {
 	t.Parallel()
 

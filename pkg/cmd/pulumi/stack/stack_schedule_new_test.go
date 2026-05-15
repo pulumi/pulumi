@@ -265,6 +265,18 @@ func TestStackScheduleNew_ValidationErrors(t *testing.T) {
 			args: stackScheduleNewArgs{kind: "weekly"},
 			want: "invalid --kind",
 		},
+		{
+			name: "ttl invalid once",
+			args: stackScheduleNewArgs{kind: scheduleKindTTL, once: "not-a-timestamp"},
+			want: "--once invalid timestamp",
+		},
+		{
+			name: "raw invalid once",
+			args: stackScheduleNewArgs{
+				kind: scheduleKindRaw, operation: "update", once: "not-a-timestamp",
+			},
+			want: "--once invalid timestamp",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

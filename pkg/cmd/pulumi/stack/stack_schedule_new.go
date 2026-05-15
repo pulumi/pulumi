@@ -234,6 +234,14 @@ func nonEmptyValidator(what string) func(string) error {
 	}
 }
 
+func timestampValidator(v string) error {
+	if strings.TrimSpace(v) == "" {
+		return errors.New("a timestamp is required")
+	}
+	_, err := parseScheduleTimestamp(v)
+	return err
+}
+
 func defaultStackScheduleNewClientFactory(
 	ctx context.Context, stackFlag string,
 ) (stackScheduleNewClient, client.StackIdentifier, error) {
@@ -250,6 +258,14 @@ func runStackScheduleNew(
 	kind := strings.ToLower(strings.TrimSpace(args.kind))
 	if err := validateScheduleNewArgs(kind, args); err != nil {
 		return err
+	}
+
+	if args.once != "" {
+		normalized, err := parseScheduleTimestamp(args.once)
+		if err != nil {
+			return fmt.Errorf("--once %w", err)
+		}
+		args.once = normalized
 	}
 
 	c, stackID, err := factory(ctx, args.stack)
