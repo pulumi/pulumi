@@ -1256,7 +1256,9 @@ func TestDoCommandLocalRun(t *testing.T) {
 	// Allow auto-acquiring the command plugin.
 	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
 
-	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n")
+	// logging = "none" suppresses the command provider's own stdout/stderr echo so the only thing on our stdout
+	// is the JSON result. The provider still captures stdout/stderr as outputs.
+	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
 
 	stdout, stderr := e.RunCommand("pulumi", "do", "command", "local", "run", "--input-file", "inputs.pcl")
 
