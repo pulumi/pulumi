@@ -28,18 +28,20 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-// mockPolicyGroupEditClient records the sequence of UpdatePolicyGroup calls,
-// returns getResp / getErr from GetPolicyGroup, and can inject an error on the
-// Nth (1-indexed) UpdatePolicyGroup call via updateErrOn.
+// mockPolicyGroupEditClient records the single batched UpdatePolicyGroup call
+// and returns getResp / getErr from GetPolicyGroup. updateErr forces
+// UpdatePolicyGroup to fail.
 type mockPolicyGroupEditClient struct {
 	updates      []apitype.UpdatePolicyGroupRequest
 	updateGroups []string
-	updateErrOn  int
 	updateErr    error
-	getResp      apitype.GetPolicyGroupResponse
-	getErr       error
-	gotGetOrg    string
-	gotGetGroup  string
+
+	getResp     apitype.GetPolicyGroupResponse
+	getErr      error
+	getErrOn    int // which Get call to fail (1-indexed)
+	getCalls    int
+	gotGetOrg   string
+	gotGetGroup string
 }
 
 func (m *mockPolicyGroupEditClient) UpdatePolicyGroup(
@@ -47,18 +49,19 @@ func (m *mockPolicyGroupEditClient) UpdatePolicyGroup(
 ) error {
 	m.updates = append(m.updates, req)
 	m.updateGroups = append(m.updateGroups, policyGroup)
-	if m.updateErrOn > 0 && len(m.updates) == m.updateErrOn {
-		return m.updateErr
-	}
-	return nil
+	return m.updateErr
 }
 
 func (m *mockPolicyGroupEditClient) GetPolicyGroup(
 	_ context.Context, org, policyGroup string,
 ) (apitype.GetPolicyGroupResponse, error) {
+	m.getCalls++
 	m.gotGetOrg = org
 	m.gotGetGroup = policyGroup
-	if m.getErr != nil {
+	if m.getErrOn > 0 && m.getCalls == m.getErrOn {
+		return apitype.GetPolicyGroupResponse{}, m.getErr
+	}
+	if m.getErrOn == 0 && m.getErr != nil {
 		return apitype.GetPolicyGroupResponse{}, m.getErr
 	}
 	return m.getResp, nil
@@ -98,6 +101,8 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 		})
 	require.NoError(t, err)
 
+	// Rename-only does not touch any list, so the pre-edit GET is skipped.
+	assert.Equal(t, 1, c.getCalls)
 	assert.Equal(t, []apitype.UpdatePolicyGroupRequest{
 		{NewName: ptrString("production")},
 	}, c.updates)
@@ -117,8 +122,8 @@ Accounts:              0
 func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 	t.Parallel()
 
-	resp := apitype.GetPolicyGroupResponse{
-		Name:         "production",
+	current := apitype.GetPolicyGroupResponse{
+		Name:         "prod-policies",
 		IsOrgDefault: false,
 		EntityType:   apitype.Stacks,
 		Mode:         apitype.PolicyGroupModePreventative,
@@ -130,7 +135,7 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 		},
 		Accounts: []string{"acct-2"},
 	}
-	c := &mockPolicyGroupEditClient{getResp: resp}
+	c := &mockPolicyGroupEditClient{getResp: current}
 
 	args := policyGroupEditArgs{
 		outputFormat:          defaultPolicyGroupGetOutputFormat(),
@@ -153,40 +158,41 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", args)
 	require.NoError(t, err)
 
-	assert.Equal(t, []apitype.UpdatePolicyGroupRequest{
-		{NewName: ptrString("production")},
-		{AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"}},
-		{AddStack: &apitype.PulumiStackReference{Name: "standalone"}},
-		{AddPolicyPack: &apitype.PolicyPackMetadata{Name: "aws-guardrails", Version: 3}},
-		{AddPolicyPack: &apitype.PolicyPackMetadata{Name: "tagging"}},
-		{AddInsightsAccount: ptrString("acct-2")},
-		{RemoveStack: &apitype.PulumiStackReference{Name: "legacy", RoutingProject: "web"}},
-		{RemovePolicyPack: &apitype.PolicyPackMetadata{Name: "old-pack", VersionTag: "stable"}},
-		{RemoveInsightsAccount: ptrString("acct-1")},
-	}, c.updates)
+	// Two GETs: one to seed the merge, one to render after the PATCH.
+	assert.Equal(t, 2, c.getCalls)
 
-	assert.Equal(t, []string{
-		"prod-policies",
-		"production", "production",
-		"production", "production",
-		"production",
-		"production",
-		"production",
-		"production",
-	}, c.updateGroups)
+	// A single batched PATCH with the rename and the full replacement lists.
+	require.Len(t, c.updates, 1)
+	got := c.updates[0]
+	assert.Equal(t, ptrString("production"), got.NewName)
+
+	require.NotNil(t, got.Stacks)
+	assert.Equal(t, []apitype.PulumiStackReference{
+		{Name: "prod", RoutingProject: "web"},
+		{Name: "standalone"},
+	}, *got.Stacks)
+
+	require.NotNil(t, got.PolicyPacks)
+	assert.Equal(t, []apitype.PolicyPackMetadata{
+		{Name: "aws-guardrails", Version: 3},
+		{Name: "tagging"},
+	}, *got.PolicyPacks)
+
+	require.NotNil(t, got.InsightsAccounts)
+	assert.Equal(t, []string{"acct-2"}, *got.InsightsAccounts)
+
+	// Singular Add/Remove fields are not populated when lists are sent.
+	assert.Nil(t, got.AddStack)
+	assert.Nil(t, got.RemoveStack)
+	assert.Nil(t, got.AddPolicyPack)
+	assert.Nil(t, got.RemovePolicyPack)
+	assert.Nil(t, got.AddInsightsAccount)
+	assert.Nil(t, got.RemoveInsightsAccount)
+
+	// PATCH is issued against the original group name; the post-edit GET
+	// uses the new name.
+	assert.Equal(t, []string{"prod-policies"}, c.updateGroups)
 	assert.Equal(t, "production", c.gotGetGroup)
-
-	assert.JSONEq(t, `{
-		"name": "production",
-		"isOrgDefault": false,
-		"entityType": "stacks",
-		"mode": "preventative",
-		"stacks": [{"name": "prod", "routingProject": "web"}],
-		"appliedPolicyPacks": [
-			{"name": "aws-guardrails", "displayName": "", "version": 3, "versionTag": ""}
-		],
-		"accounts": ["acct-2"]
-	}`, buf.String())
 }
 
 func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {
@@ -207,35 +213,44 @@ func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {
 	assert.Empty(t, c.updates)
 }
 
-func TestPolicyGroupEdit_UpdateErrorStopsSubsequentPatches(t *testing.T) {
+func TestPolicyGroupEdit_UpdateError(t *testing.T) {
 	t.Parallel()
 
-	c := &mockPolicyGroupEditClient{
-		updateErrOn: 2,
-		updateErr:   errors.New("conflict"),
-	}
+	c := &mockPolicyGroupEditClient{updateErr: errors.New("conflict")}
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			addStack:     []string{"web/prod", "web/staging"},
-			changed:      map[string]bool{"add-stack": true},
+			newName:      "production",
+			changed:      map[string]bool{"new-name": true},
 		})
 	require.Error(t, err)
 	assert.Equal(t, "conflict", err.Error())
+	// The post-edit render is skipped on PATCH failure.
+	assert.Equal(t, 0, c.getCalls)
+}
 
-	// Two PATCHes were attempted; the third never ran and Get was skipped.
-	assert.Equal(t, []apitype.UpdatePolicyGroupRequest{
-		{AddStack: &apitype.PulumiStackReference{Name: "prod", RoutingProject: "web"}},
-		{AddStack: &apitype.PulumiStackReference{Name: "staging", RoutingProject: "web"}},
-	}, c.updates)
-	assert.Empty(t, c.gotGetGroup)
+func TestPolicyGroupEdit_GetBeforeEditError(t *testing.T) {
+	t.Parallel()
+
+	c := &mockPolicyGroupEditClient{getErr: errors.New("boom"), getErrOn: 1}
+	var buf bytes.Buffer
+	err := runPolicyGroupEdit(t.Context(), &buf,
+		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
+			outputFormat: defaultPolicyGroupGetOutputFormat(),
+			addStack:     []string{"web/prod"},
+			changed:      map[string]bool{"add-stack": true},
+		})
+	require.Error(t, err)
+	assert.Equal(t, "reading policy group before edit: boom", err.Error())
+	// PATCH never fired because we could not compute the new list.
+	assert.Empty(t, c.updates)
 }
 
 func TestPolicyGroupEdit_GetAfterEditError(t *testing.T) {
 	t.Parallel()
 
-	c := &mockPolicyGroupEditClient{getErr: errors.New("boom")}
+	c := &mockPolicyGroupEditClient{getErr: errors.New("boom"), getErrOn: 1}
 	var buf bytes.Buffer
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
