@@ -34,5 +34,3 @@ func newPolicyComplianceCmd() *cobra.Command {
 	cmd.AddCommand(newPolicyComplianceListCmd())
 	return cmd
 }
-
-// newPolicyComplianceListCmd is defined in policy_compliance_list.go.
