@@ -6,12 +6,10 @@ import (
 	"context"
 	"errors"
 	"io"
-	"strconv"
 	"time"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 )
@@ -78,21 +76,17 @@ func printWebhookDeliveries(stdout io.Writer, ds []client.EnvironmentWebhookDeli
 	if len(ds) == 0 {
 		return
 	}
-	rows := make([]cmdutil.TableRow, 0, len(ds))
+	t := newTable(stdout)
+	t.AppendHeader(table.Row{"ID", "KIND", "TIMESTAMP", "RESPONSE", "DURATION (ms)"})
 	for _, d := range ds {
 		ts := time.Unix(d.Timestamp, 0)
-		rows = append(rows, cmdutil.TableRow{
-			Columns: []string{
-				d.ID,
-				d.Kind,
-				utc.time(ts).Format(time.RFC3339),
-				strconv.FormatInt(d.ResponseCode, 10),
-				strconv.FormatInt(d.Duration, 10),
-			},
+		t.AppendRow(table.Row{
+			d.ID,
+			d.Kind,
+			utc.time(ts).Format(time.RFC3339),
+			d.ResponseCode,
+			d.Duration,
 		})
 	}
-	_ = cmdutil.FprintTable(stdout, cmdutil.Table{
-		Headers: []string{"ID", "KIND", "TIMESTAMP", "RESPONSE", "DURATION (ms)"},
-		Rows:    rows,
-	})
+	t.Render()
 }

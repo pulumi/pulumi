@@ -27,29 +27,32 @@ environments:
 
 ---
 > esc env referrer list default/src
-revision latest
-environment  shared/dev@7
-insights     insights-acct
-stack        my-iac/prod@42
-
-revision 3
-stack        my-iac/prod@41
+┌──────────┬─────────────┬────────────────┐
+│ REVISION │ KIND        │ REFERRER       │
+├──────────┼─────────────┼────────────────┤
+│ latest   │ environment │ shared/dev@7   │
+│ latest   │ insights    │ insights-acct  │
+│ latest   │ stack       │ my-iac/prod@42 │
+│ 3        │ stack       │ my-iac/prod@41 │
+└──────────┴─────────────┴────────────────┘
 > esc env referrer ls default/src
-revision latest
-environment  shared/dev@7
-insights     insights-acct
-stack        my-iac/prod@42
-
-revision 3
-stack        my-iac/prod@41
+┌──────────┬─────────────┬────────────────┐
+│ REVISION │ KIND        │ REFERRER       │
+├──────────┼─────────────┼────────────────┤
+│ latest   │ environment │ shared/dev@7   │
+│ latest   │ insights    │ insights-acct  │
+│ latest   │ stack       │ my-iac/prod@42 │
+│ 3        │ stack       │ my-iac/prod@41 │
+└──────────┴─────────────┴────────────────┘
 > esc env referrer list default/src --count 100 --all-revisions --latest-stack-version-only
-revision latest
-environment  shared/dev@7
-insights     insights-acct
-stack        my-iac/prod@42
-
-revision 3
-stack        my-iac/prod@41
+┌──────────┬─────────────┬────────────────┐
+│ REVISION │ KIND        │ REFERRER       │
+├──────────┼─────────────┼────────────────┤
+│ latest   │ environment │ shared/dev@7   │
+│ latest   │ insights    │ insights-acct  │
+│ latest   │ stack       │ my-iac/prod@42 │
+│ 3        │ stack       │ my-iac/prod@41 │
+└──────────┴─────────────┴────────────────┘
 
 ---
 > esc env referrer list default/src

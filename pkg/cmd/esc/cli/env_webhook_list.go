@@ -6,11 +6,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strconv"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 )
@@ -67,18 +65,14 @@ func printWebhooks(stdout io.Writer, hooks []client.EnvironmentWebhook) {
 	if len(hooks) == 0 {
 		return
 	}
-	rows := make([]cmdutil.TableRow, 0, len(hooks))
+	t := newTable(stdout)
+	t.AppendHeader(table.Row{"NAME", "DISPLAY NAME", "URL", "ACTIVE", "FORMAT"})
 	for _, h := range hooks {
 		format := h.Format
 		if format == "" {
 			format = "-"
 		}
-		rows = append(rows, cmdutil.TableRow{
-			Columns: []string{h.Name, h.DisplayName, h.PayloadURL, strconv.FormatBool(h.Active), format},
-		})
+		t.AppendRow(table.Row{h.Name, h.DisplayName, h.PayloadURL, h.Active, format})
 	}
-	_ = cmdutil.FprintTable(stdout, cmdutil.Table{
-		Headers: []string{"NAME", "DISPLAY NAME", "URL", "ACTIVE", "FORMAT"},
-		Rows:    rows,
-	})
+	t.Render()
 }

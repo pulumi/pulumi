@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
@@ -107,28 +108,26 @@ func newEnvReferrerListCmd(env *envCommand) *cobra.Command {
 	return cmd
 }
 
-// printReferrers writes the response to stdout, one referrer per line, grouped by revision tag.
-// "latest" is printed first, followed by numeric revision tags in ascending order, then any
-// remaining non-numeric tags in lexical order.
+// printReferrers writes the response as a single table with a REVISION column.
+// Rows are ordered by revision: "latest" first, then numeric tags ascending, then
+// remaining non-numeric tags in lexical order. Within a revision, rows are sorted
+// for stable output.
 func printReferrers(env *envCommand, resp *client.ListEnvironmentReferrersResponse) {
-	if resp == nil {
+	if resp == nil || len(resp.Referrers) == 0 {
 		return
 	}
-	stdout := env.esc.stdout
 
-	keys := sortReferrerKeys(resp.Referrers)
-	for i, k := range keys {
-		if i > 0 {
-			fmt.Fprintln(stdout)
-		}
-		fmt.Fprintf(stdout, "revision %s\n", k)
+	t := newTable(env.esc.stdout)
+	t.AppendHeader(table.Row{"REVISION", "KIND", "REFERRER"})
+	for _, k := range sortReferrerKeys(resp.Referrers) {
 		group := resp.Referrers[k]
-		// Sort referrers within a group for stable output.
 		sortReferrers(group)
 		for _, r := range group {
-			fmt.Fprintln(stdout, formatReferrer(r))
+			kind, ref := referrerColumns(r)
+			t.AppendRow(table.Row{k, kind, ref})
 		}
 	}
+	t.Render()
 }
 
 func sortReferrerKeys(m map[string][]client.EnvironmentReferrer) []string {
@@ -169,14 +168,19 @@ func sortReferrers(rs []client.EnvironmentReferrer) {
 }
 
 func formatReferrer(r client.EnvironmentReferrer) string {
+	kind, ref := referrerColumns(r)
+	return fmt.Sprintf("%s %s", kind, ref)
+}
+
+func referrerColumns(r client.EnvironmentReferrer) (kind, ref string) {
 	switch {
 	case r.Environment != nil:
-		return fmt.Sprintf("environment  %s/%s@%d", r.Environment.Project, r.Environment.Name, r.Environment.Revision)
+		return "environment", fmt.Sprintf("%s/%s@%d", r.Environment.Project, r.Environment.Name, r.Environment.Revision)
 	case r.Stack != nil:
-		return fmt.Sprintf("stack        %s/%s@%d", r.Stack.Project, r.Stack.Stack, r.Stack.Version)
+		return "stack", fmt.Sprintf("%s/%s@%d", r.Stack.Project, r.Stack.Stack, r.Stack.Version)
 	case r.InsightsAccount != nil:
-		return fmt.Sprintf("insights     %s", r.InsightsAccount.AccountName)
+		return "insights", r.InsightsAccount.AccountName
 	default:
-		return "unknown"
+		return "unknown", ""
 	}
 }

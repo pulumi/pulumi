@@ -8,6 +8,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
@@ -65,36 +66,43 @@ func newEnvScheduleListCmd(env *envCommand) *cobra.Command {
 	return cmd
 }
 
-// printSchedules writes each schedule as a key/value block separated by blank lines.
+// printSchedules renders the schedules as a table.
 func printSchedules(stdout io.Writer, resp *client.ListScheduledActionsResponse, utc utcFlag) {
-	if resp == nil {
+	if resp == nil || len(resp.Schedules) == 0 {
 		return
 	}
-	for i, s := range resp.Schedules {
-		if i > 0 {
-			fmt.Fprintln(stdout)
-		}
-		printSchedule(stdout, s, utc)
+	t := newTable(stdout)
+	t.AppendHeader(table.Row{"ID", "KIND", "SCHEDULE", "NEXT", "LAST"})
+	for _, s := range resp.Schedules {
+		t.AppendRow(table.Row{
+			s.ID,
+			s.Kind,
+			scheduleExpr(s, utc),
+			formatScheduleTime(s.NextExecution, utc),
+			formatScheduleTime(s.LastExecuted, utc),
+		})
 	}
+	t.Render()
 }
 
+// printSchedule renders a single schedule as a key/value block.
 func printSchedule(stdout io.Writer, s client.ScheduledAction, utc utcFlag) {
-	var schedule string
-	switch {
-	case s.ScheduleCron != "":
-		schedule = s.ScheduleCron
-	case s.ScheduleOnce != "":
-		schedule = formatScheduleTime(s.ScheduleOnce, utc)
-	default:
-		schedule = "<unknown>"
-	}
-
 	fmt.Fprintf(stdout, "ID: %s\n", s.ID)
 	fmt.Fprintf(stdout, "Kind: %s\n", s.Kind)
-	fmt.Fprintf(stdout, "Schedule: %s\n", schedule)
-	fmt.Fprintf(stdout, "Paused: %t\n", s.Paused)
+	fmt.Fprintf(stdout, "Schedule: %s\n", scheduleExpr(s, utc))
 	fmt.Fprintf(stdout, "Next execution: %s\n", formatScheduleTime(s.NextExecution, utc))
 	fmt.Fprintf(stdout, "Last executed: %s\n", formatScheduleTime(s.LastExecuted, utc))
+}
+
+func scheduleExpr(s client.ScheduledAction, utc utcFlag) string {
+	switch {
+	case s.ScheduleCron != "":
+		return s.ScheduleCron
+	case s.ScheduleOnce != "":
+		return formatScheduleTime(s.ScheduleOnce, utc)
+	default:
+		return "<unknown>"
+	}
 }
 
 // The backend serializes schedule timestamps without a timezone but always in UTC.
