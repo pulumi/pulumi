@@ -80,14 +80,13 @@ func sampleAuditLogEvent() apitype.AuditLogEvent {
 	return apitype.AuditLogEvent{
 		// 2025-01-02T03:04:05Z
 		Timestamp:   1735787045,
-		Name:        "stack.create",
+		Event:       "stack.create",
 		SourceIP:    "203.0.113.7",
 		Description: "Created stack acme/web/prod",
 		User: apitype.UserInfo{
 			Name:        "Alice Example",
 			GitHubLogin: "alice",
 		},
-		Event: "stack",
 	}
 }
 
@@ -123,11 +122,11 @@ func TestOrgAuditLogList_DefaultOutput(t *testing.T) {
 	}, c.calls)
 
 	expected := "" +
-		"┌──────────────────────┬───────┬───────┬──────────────┬─────────────┐\n" +
-		"│ TIMESTAMP            │ USER  │ EVENT │ NAME         │ SOURCE IP   │\n" +
-		"├──────────────────────┼───────┼───────┼──────────────┼─────────────┤\n" +
-		"│ 2025-01-02T03:04:05Z │ alice │ stack │ stack.create │ 203.0.113.7 │\n" +
-		"└──────────────────────┴───────┴───────┴──────────────┴─────────────┘\n"
+		"┌──────────────────────┬───────┬──────────────┬─────────────────────────────┬─────────────┐\n" +
+		"│ TIMESTAMP            │ USER  │ EVENT        │ DESCRIPTION                 │ SOURCE IP   │\n" +
+		"├──────────────────────┼───────┼──────────────┼─────────────────────────────┼─────────────┤\n" +
+		"│ 2025-01-02T03:04:05Z │ alice │ stack.create │ Created stack acme/web/prod │ 203.0.113.7 │\n" +
+		"└──────────────────────┴───────┴──────────────┴─────────────────────────────┴─────────────┘\n"
 	assert.Equal(t, expected, buf.String())
 }
 
@@ -152,7 +151,7 @@ func TestOrgAuditLogList_AutoPaginatesWithCount(t *testing.T) {
 	// First page has 1 event with a continuation token; second page has another
 	// event. --count=2 should drive a second call.
 	page2Event := sampleAuditLogEvent()
-	page2Event.Name = "stack.delete"
+	page2Event.Event = "stack.delete"
 
 	calls := 0
 	c := &fakeAuditLogListClient{
@@ -214,15 +213,14 @@ func TestOrgAuditLogList_JSONOutput(t *testing.T) {
 	assert.JSONEq(t, `{
 		"events": [{
 			"timestamp": 1735787045,
-			"name": "stack.create",
+			"event": "stack.create",
 			"sourceIP": "203.0.113.7",
 			"description": "Created stack acme/web/prod",
 			"user": {
 				"name": "Alice Example",
 				"githubLogin": "alice",
 				"avatarUrl": ""
-			},
-			"event": "stack"
+			}
 		}],
 		"count": 1
 	}`, buf.String())
