@@ -242,6 +242,72 @@ func TestScanInsightsAccount(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, apitype.InsightsScanResponse{}, got)
 	})
+
+	t.Run("parses live WorkflowRun shape", func(t *testing.T) {
+		t.Parallel()
+
+		// Verbatim body captured from the live service on 2026-05-15 for a
+		// running scan on `azure-test`. The interesting bits are:
+		//   - `finishedAt: null` — must not break decoding of the time.Time
+		//     field; the standard library treats null as "leave zero".
+		//   - sub-second nanosecond precision on the nested timestamps.
+		//   - `worker` is a JSON string here, not the OpenAPI-advertised
+		//     object; the field is json.RawMessage so we forward it as-is.
+		body := []byte(`{
+			"id": "527b0ab2-f0e3-4c18-a248-85a5e23072e9",
+			"orgId": "ab1162ff-daf9-4237-8076-81deb1bcb108",
+			"userId": "6ef778ce-63bc-4f81-a722-9defbba759e6",
+			"status": "running",
+			"startedAt": "2026-05-15T09:15:16.311Z",
+			"finishedAt": null,
+			"lastUpdatedAt": "2026-05-15T09:16:23.741Z",
+			"jobTimeout": "0001-01-01T00:00:00Z",
+			"jobs": [
+				{
+					"status": "running",
+					"started": "2026-05-15T09:15:40.772181644Z",
+					"lastUpdated": "2026-05-15T09:16:06.20101125Z",
+					"timeout": 43200000000000,
+					"steps": [
+						{
+							"name": "Setup",
+							"status": "succeeded",
+							"started": "2026-05-15T09:15:40.772181644Z",
+							"lastUpdated": "2026-05-15T09:15:50.519294704Z"
+						},
+						{
+							"name": "Scan account",
+							"status": "running",
+							"started": "2026-05-15T09:16:06.20101125Z",
+							"lastUpdated": "2026-05-15T09:16:06.20101125Z"
+						}
+					],
+					"worker": "i-0fe69bc90e010c94b"
+				}
+			]
+		}`)
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write(body)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.ScanInsightsAccount(t.Context(),
+			"acme", "azure-test", apitype.InsightsScanRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, "527b0ab2-f0e3-4c18-a248-85a5e23072e9", got.ID)
+		assert.Equal(t, "running", got.Status)
+		// `null` on the wire becomes zero-valued time.Time, which the
+		// rendering logic suppresses.
+		assert.True(t, got.FinishedAt.IsZero())
+		require.Len(t, got.Jobs, 1)
+		assert.Equal(t, time.Duration(43200000000000), time.Duration(got.Jobs[0].Timeout))
+		require.Len(t, got.Jobs[0].Steps, 2)
+		assert.Equal(t, "Setup", got.Jobs[0].Steps[0].Name)
+		assert.Equal(t, "succeeded", got.Jobs[0].Steps[0].Status)
+	})
 }
 
 func TestSearchInsightsResources(t *testing.T) {
