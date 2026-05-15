@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: cli/cloud
-  description: Rename `pulumi api --paginate` to `pulumi api --all`
