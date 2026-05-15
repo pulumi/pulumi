@@ -1258,7 +1258,12 @@ func TestDoCommandLocalRun(t *testing.T) {
 
 	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n")
 
-	stdout, _ := e.RunCommand("pulumi", "do", "command", "local", "run", "--input-file", "inputs.pcl")
+	stdout, stderr := e.RunCommand("pulumi", "do", "command", "local", "run", "--input-file", "inputs.pcl")
+
+	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
+	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
+	// when it happens the test should fail loudly.
+	assert.NotContains(t, stderr, "panic:", "pulumi do should not panic; stderr:\n%s", stderr)
 
 	var result map[string]any
 	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "expected JSON output, got: %s", stdout)
