@@ -145,18 +145,12 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 		return
 	}
 
-	// If we have a fully qualified template (source/publisher/name) with a specific version,
-	// fetch directly using GetTemplate.
-	if urlInfo != nil && urlInfo.Source() != "" && urlInfo.Publisher() != "" &&
-		urlInfo.Name() != "" && urlInfo.Version() != nil {
+	if urlInfo != nil && urlInfo.Version() != nil {
 		s.getRegistryTemplateByVersion(ctx, r, urlInfo)
 		return
 	}
 
-	// Use ListTemplates to find matching templates
 	matches := NewTemplateMatcher(urlInfo, templateName)
-	var matchedTemplates []apitype.TemplateMetadata //nolint:prealloc // size unknown until iteration completes
-
 	for template, err := range r.ListTemplates(ctx, registry.ListTemplatesOptions{}) {
 		if err != nil {
 			s.addError(fmt.Errorf("could not get template: %w", err))
@@ -174,62 +168,58 @@ func (s *Source) getRegistryTemplates(ctx context.Context, e env.Env, templateNa
 			continue
 		}
 
-		matchedTemplates = append(matchedTemplates, template)
-	}
-
-	// If a version was specified but we only have partial info (no source/publisher),
-	// use the matched templates to discover source/publisher, then fetch the specific version.
-	if urlInfo != nil && urlInfo.Version() != nil && len(matchedTemplates) > 0 {
-		// Use the first match to get source/publisher info, then fetch the specific version
-		for _, matched := range matchedTemplates {
-			template, err := r.GetTemplate(ctx, matched.Source, matched.Publisher, matched.Name, urlInfo.Version())
-			if err != nil {
-				if errors.Is(err, registry.ErrNotFound) {
-					s.addError(fmt.Errorf("template '%s/%s/%s' version '%s' not found",
-						matched.Source, matched.Publisher, matched.Name, urlInfo.Version().String()))
-					return
-				}
-				s.addError(fmt.Errorf("could not get template: %w", err))
-				return
-			}
-			s.addTemplate(registryTemplate{template, r, s})
-		}
-		return
-	}
-
-	// No version specified, add all matched templates
-	for _, template := range matchedTemplates {
-		s.addTemplate(registryTemplate{template, r, s})
+		s.addTemplate(t)
 	}
 }
 
-// getRegistryTemplateByVersion fetches a specific version of a template directly using GetTemplate.
 func (s *Source) getRegistryTemplateByVersion(
 	ctx context.Context,
 	r registry.Registry,
 	urlInfo *registry.URLInfo,
 ) {
-	template, err := r.GetTemplate(ctx, urlInfo.Source(), urlInfo.Publisher(), urlInfo.Name(), urlInfo.Version())
+	version := urlInfo.Version()
+	displayName := buildResolveName(urlInfo)
+
+	var template apitype.TemplateMetadata
+	var err error
+	if urlInfo.Source() != "" && urlInfo.Publisher() != "" {
+		// Use direct GetTemplate to preserve names containing '/' (VCS paths),
+		// which ResolveTemplateFromName would split on.
+		template, err = r.GetTemplate(ctx, urlInfo.Source(), urlInfo.Publisher(), urlInfo.Name(), version)
+	} else {
+		template, err = registry.ResolveTemplateFromName(ctx, r, displayName, version)
+	}
+
 	if err != nil {
-		var notFoundErr backenderr.NotFoundError
-		if errors.As(err, &notFoundErr) {
-			s.addError(fmt.Errorf("template '%s/%s/%s' version '%s' not found",
-				urlInfo.Source(), urlInfo.Publisher(), urlInfo.Name(), urlInfo.Version().String()))
+		if errors.Is(err, registry.ErrNotFound) {
+			s.addError(fmt.Errorf("template '%s' version '%s' not found",
+				displayName, version.String()))
 			return
 		}
-		s.addError(fmt.Errorf("could not get template: %w", err))
+		s.addError(fmt.Errorf("could not resolve template: %w", err))
 		return
 	}
 
 	if template.Source == "github" && strings.HasPrefix(template.Name, "pulumi/templates/") {
-		// These templates are maintained using https://github.com/pulumi/templates, and are
-		// ingested without going through the Pulumi Cloud.
-		s.addError(fmt.Errorf("template '%s/%s/%s' version '%s' not found",
-			urlInfo.Source(), urlInfo.Publisher(), urlInfo.Name(), urlInfo.Version().String()))
+		s.addError(fmt.Errorf(
+			"template '%s' is VCS-backed and does not support specific versions",
+			displayName))
 		return
 	}
 
 	s.addTemplate(registryTemplate{template, r, s})
+}
+
+func buildResolveName(u *registry.URLInfo) string {
+	parts := make([]string, 0, 3)
+	if u.Source() != "" {
+		parts = append(parts, u.Source())
+	}
+	if u.Publisher() != "" {
+		parts = append(parts, u.Publisher())
+	}
+	parts = append(parts, u.Name())
+	return strings.Join(parts, "/")
 }
 
 type registryTemplate struct {

@@ -992,23 +992,22 @@ func TestRegistryTemplateResolution(t *testing.T) {
 func TestVersionedTemplateResolution(t *testing.T) {
 	ctx := testContext(t)
 
-	// Track which methods were called and with what parameters
-	var getTemplateCalls []struct {
-		source, publisher, name string
-		version                 *semver.Version
+	type getCall struct {
+		source, publisher, name, version string
 	}
+	var getTemplateCalls []getCall
 
 	mockRegistry := &backend.MockCloudRegistry{
 		Mock: registry.Mock{
 			GetTemplateF: func(
 				ctx context.Context, source, publisher, name string, version *semver.Version,
 			) (apitype.TemplateMetadata, error) {
-				getTemplateCalls = append(getTemplateCalls, struct {
-					source, publisher, name string
-					version                 *semver.Version
-				}{source, publisher, name, version})
+				v := ""
+				if version != nil {
+					v = version.String()
+				}
+				getTemplateCalls = append(getTemplateCalls, getCall{source, publisher, name, v})
 
-				// Return a template if version is 1.0.0
 				if version != nil && version.String() == "1.0.0" {
 					return apitype.TemplateMetadata{
 						Name:        name,
@@ -1017,7 +1016,6 @@ func TestVersionedTemplateResolution(t *testing.T) {
 						Description: ref("A versioned template"),
 					}, nil
 				}
-				// Return not found for other versions
 				return apitype.TemplateMetadata{}, backenderr.NotFoundError{}
 			},
 			ListTemplatesF: func(
@@ -1048,7 +1046,7 @@ func TestVersionedTemplateResolution(t *testing.T) {
 		expectedDisplayName string
 		description         string
 		expectSpecificError string
-		expectGetTemplate   bool
+		expectedGetCalls    []getCall
 	}{
 		{
 			name:                "versioned template with full URL",
@@ -1057,7 +1055,7 @@ func TestVersionedTemplateResolution(t *testing.T) {
 			expectedName:        "my-template",
 			expectedDisplayName: "my-template [my-org]",
 			description:         "A versioned template",
-			expectGetTemplate:   true,
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "1.0.0"}},
 		},
 		{
 			name:                "versioned template with registry URL",
@@ -1066,14 +1064,23 @@ func TestVersionedTemplateResolution(t *testing.T) {
 			expectedName:        "my-template",
 			expectedDisplayName: "my-template [my-org]",
 			description:         "A versioned template",
-			expectGetTemplate:   true,
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "1.0.0"}},
 		},
 		{
 			name:                "versioned template not found",
 			templateURL:         "private/my-org/my-template@2.0.0",
 			shouldMatch:         false,
 			expectSpecificError: "version '2.0.0' not found",
-			expectGetTemplate:   true,
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "2.0.0"}},
+		},
+		{
+			name:                "two-part with version uses private then version",
+			templateURL:         "my-org/my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "A versioned template",
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "1.0.0"}},
 		},
 		{
 			name:                "partial URL with version discovers source from list",
@@ -1082,7 +1089,7 @@ func TestVersionedTemplateResolution(t *testing.T) {
 			expectedName:        "my-template",
 			expectedDisplayName: "my-template [my-org]",
 			description:         "A versioned template",
-			expectGetTemplate:   true,
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "1.0.0"}},
 		},
 		{
 			name:                "without version uses ListTemplates",
@@ -1091,13 +1098,11 @@ func TestVersionedTemplateResolution(t *testing.T) {
 			expectedName:        "my-template",
 			expectedDisplayName: "my-template [my-org]",
 			description:         "Latest version",
-			expectGetTemplate:   false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Reset call tracking
 			getTemplateCalls = nil
 
 			source := newImpl(ctx, tc.templateURL, ScopeAll, workspace.TemplateKindPulumiProject,
@@ -1109,12 +1114,8 @@ func TestVersionedTemplateResolution(t *testing.T) {
 
 			templates, err := source.Templates()
 
-			// Check if GetTemplate was called as expected
-			if tc.expectGetTemplate {
-				assert.NotEmpty(t, getTemplateCalls, "expected GetTemplate to be called")
-			} else {
-				assert.Empty(t, getTemplateCalls, "expected GetTemplate not to be called")
-			}
+			assert.Equal(t, tc.expectedGetCalls, getTemplateCalls,
+				"GetTemplate call sequence does not match")
 
 			if tc.shouldMatch {
 				require.NoError(t, err)
@@ -1132,4 +1133,41 @@ func TestVersionedTemplateResolution(t *testing.T) {
 			}
 		})
 	}
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestVCSBackedTemplateRejectsVersion(t *testing.T) {
+	ctx := testContext(t)
+
+	mockRegistry := &backend.MockCloudRegistry{
+		Mock: registry.Mock{
+			GetTemplateF: func(
+				ctx context.Context, source, publisher, name string, version *semver.Version,
+			) (apitype.TemplateMetadata, error) {
+				return apitype.TemplateMetadata{
+					Name:      "pulumi/templates/typescript",
+					Source:    "github",
+					Publisher: "pulumi",
+				}, nil
+			},
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+
+	source := newImpl(ctx, "github/pulumi/pulumi%2Ftemplates%2Ftypescript@1.0.0",
+		ScopeAll, workspace.TemplateKindPulumiProject,
+		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+		env.NewEnv(env.MapStore{
+			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
+			"PULUMI_EXPERIMENTAL":             "true",
+		}))
+
+	_, err := source.Templates()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "VCS-backed")
+	assert.Contains(t, err.Error(), "does not support specific versions")
 }
