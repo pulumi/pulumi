@@ -16,8 +16,9 @@ import (
 
 func newEnvWebhookDeliveryListCmd(env *envCommand) *cobra.Command {
 	var (
-		utc   bool
-		count int
+		utc    bool
+		count  int
+		output string
 	)
 
 	cmd := &cobra.Command{
@@ -30,6 +31,11 @@ func newEnvWebhookDeliveryListCmd(env *envCommand) *cobra.Command {
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -61,6 +67,22 @@ func newEnvWebhookDeliveryListCmd(env *envCommand) *cobra.Command {
 				deliveries = deliveries[:count]
 			}
 
+			if format == outputJSON {
+				out := struct {
+					Deliveries []webhookDeliveryJSON `json:"deliveries"`
+				}{Deliveries: make([]webhookDeliveryJSON, 0, len(deliveries))}
+				for _, d := range deliveries {
+					out.Deliveries = append(out.Deliveries, webhookDeliveryJSON{
+						ID:           d.ID,
+						Kind:         d.Kind,
+						Timestamp:    utcFlag(utc).time(time.Unix(d.Timestamp, 0)).Format(time.RFC3339),
+						ResponseCode: d.ResponseCode,
+						Duration:     d.Duration,
+					})
+				}
+				return writeJSON(env.esc.stdout, out)
+			}
+
 			printWebhookDeliveries(env.esc.stdout, deliveries, utcFlag(utc))
 			return nil
 		},
@@ -68,8 +90,21 @@ func newEnvWebhookDeliveryListCmd(env *envCommand) *cobra.Command {
 
 	cmd.Flags().BoolVar(&utc, "utc", false, "Display times in UTC")
 	cmd.Flags().IntVar(&count, "count", 0, "The maximum number of deliveries to return (all if unset)")
+	addOutputFlag(cmd, &output)
 
 	return cmd
+}
+
+// webhookDeliveryJSON is the slim per-delivery projection emitted by JSON
+// output. Mirrors the columns shown by printWebhookDeliveries; the bulky
+// payload / request-headers / response-headers / response-body fields are
+// omitted (use `pulumi api` for the full record).
+type webhookDeliveryJSON struct {
+	ID           string `json:"id"`
+	Kind         string `json:"kind"`
+	Timestamp    string `json:"timestamp"`
+	ResponseCode int64  `json:"responseCode"`
+	Duration     int64  `json:"duration"`
 }
 
 func printWebhookDeliveries(stdout io.Writer, ds []client.EnvironmentWebhookDelivery, utc utcFlag) {

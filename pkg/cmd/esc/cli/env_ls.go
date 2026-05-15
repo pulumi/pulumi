@@ -16,6 +16,7 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 	var (
 		orgFilter     string
 		projectFilter string
+		output        string
 	)
 
 	cmd := &cobra.Command{
@@ -27,6 +28,11 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -49,12 +55,18 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 				return ei.Organization < ej.Organization
 			})
 
-			for _, e := range allEnvs {
-				if e.Organization == "" {
-					fmt.Fprintf(env.esc.stdout, "%v/%v\n", e.Project, e.Name)
-				} else {
-					fmt.Fprintf(env.esc.stdout, "%v/%v/%v\n", e.Organization, e.Project, e.Name)
+			if format == outputJSON {
+				ids := make([]string, 0, len(allEnvs))
+				for _, e := range allEnvs {
+					ids = append(ids, envIdentifier(e))
 				}
+				return writeJSON(env.esc.stdout, struct {
+					Environments []string `json:"environments"`
+				}{ids})
+			}
+
+			for _, e := range allEnvs {
+				fmt.Fprintln(env.esc.stdout, envIdentifier(e))
 			}
 
 			return nil
@@ -65,8 +77,18 @@ func newEnvLsCmd(env *envCommand) *cobra.Command {
 		&orgFilter, "organization", "o", "", "Filter returned environments to those in a specific organization")
 	cmd.PersistentFlags().StringVarP(
 		&projectFilter, "project", "p", "", "Filter returned environments to those in a specific project")
+	addOutputFlag(cmd, &output)
 
 	return cmd
+}
+
+// envIdentifier formats an environment as "org/project/name", omitting the org segment
+// when it has been blanked out (i.e. it matches the caller's own username).
+func envIdentifier(e client.OrgEnvironment) string {
+	if e.Organization == "" {
+		return fmt.Sprintf("%s/%s", e.Project, e.Name)
+	}
+	return fmt.Sprintf("%s/%s/%s", e.Organization, e.Project, e.Name)
 }
 
 func (env *envCommand) listEnvironments(ctx context.Context, orgFilter, projectFilter string) ([]client.OrgEnvironment, error) {

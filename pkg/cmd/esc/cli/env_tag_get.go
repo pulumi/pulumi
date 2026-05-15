@@ -12,6 +12,7 @@ import (
 
 func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 	var utc bool
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "get [<org-name>/][<project-name>/]<environment-name> <name>",
@@ -22,6 +23,11 @@ func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 			"This command get a tag with the given name on the specified environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -46,6 +52,10 @@ func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
+			if format == outputJSON {
+				return writeJSON(env.esc.stdout, newTagJSON(tag, utcFlag(utc)))
+			}
+
 			st := style.NewStylist(style.Profile(env.esc.stdout))
 
 			printTag(env.esc.stdout, st, tag, utcFlag(utc))
@@ -54,6 +64,7 @@ func newEnvTagGetCmd(env *envCommand) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&utc, "utc", false, "display times in UTC")
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }

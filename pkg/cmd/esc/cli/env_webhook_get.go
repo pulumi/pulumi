@@ -15,6 +15,8 @@ import (
 )
 
 func newEnvWebhookGetCmd(env *envCommand) *cobra.Command {
+	var output string
+
 	cmd := &cobra.Command{
 		Use:   "get [<org-name>/][<project-name>/]<environment-name> <webhook-name>",
 		Short: "Get an environment webhook.",
@@ -24,6 +26,11 @@ func newEnvWebhookGetCmd(env *envCommand) *cobra.Command {
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -47,10 +54,16 @@ func newEnvWebhookGetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
+			if format == outputJSON {
+				return writeJSON(env.esc.stdout, webhookJSON(*w))
+			}
+
 			printWebhook(env.esc.stdout, *w)
 			return nil
 		},
 	}
+
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }
@@ -77,4 +90,32 @@ func printWebhook(stdout io.Writer, w client.EnvironmentWebhook) {
 	}
 	fmt.Fprintf(stdout, "Event groups: %s\n", groups)
 	fmt.Fprintf(stdout, "Has secret: %t\n", w.HasSecret)
+}
+
+// webhookDetailJSON is the slim webhook projection emitted by `env webhook get`.
+// Mirrors the fields shown by printWebhook; identity fields (organization /
+// project / env / stack) and secret material are omitted on purpose — for the
+// full API response use `pulumi api`.
+type webhookDetailJSON struct {
+	Name        string   `json:"name"`
+	DisplayName string   `json:"displayName"`
+	PayloadURL  string   `json:"payloadUrl"`
+	Active      bool     `json:"active"`
+	Format      string   `json:"format,omitempty"`
+	Events      []string `json:"events,omitempty"`
+	EventGroups []string `json:"eventGroups,omitempty"`
+	HasSecret   bool     `json:"hasSecret"`
+}
+
+func webhookJSON(w client.EnvironmentWebhook) webhookDetailJSON {
+	return webhookDetailJSON{
+		Name:        w.Name,
+		DisplayName: w.DisplayName,
+		PayloadURL:  w.PayloadURL,
+		Active:      w.Active,
+		Format:      w.Format,
+		Events:      w.Filters,
+		EventGroups: w.Groups,
+		HasSecret:   w.HasSecret,
+	}
 }

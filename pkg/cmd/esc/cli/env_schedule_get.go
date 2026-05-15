@@ -11,6 +11,7 @@ import (
 
 func newEnvScheduleGetCmd(env *envCommand) *cobra.Command {
 	var utc bool
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "get [<org-name>/][<project-name>/]<environment-name> <schedule-id>",
@@ -21,6 +22,11 @@ func newEnvScheduleGetCmd(env *envCommand) *cobra.Command {
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -44,12 +50,17 @@ func newEnvScheduleGetCmd(env *envCommand) *cobra.Command {
 				return err
 			}
 
+			if format == outputJSON {
+				return writeJSON(env.esc.stdout, newScheduleJSON(*s, utcFlag(utc)))
+			}
+
 			printSchedule(env.esc.stdout, *s, utcFlag(utc))
 			return nil
 		},
 	}
 
 	cmd.Flags().BoolVar(&utc, "utc", false, "display times in UTC")
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }

@@ -13,6 +13,7 @@ import (
 func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 	var grantExpiration time.Duration
 	var accessDuration time.Duration
+	var output string
 
 	cmd := &cobra.Command{
 		Use:   "open-request [<org-name>/][<project-name>/]<environment-name>[@<version>]",
@@ -24,6 +25,11 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 			"approved before the environment can be accessed.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := envcmd.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -46,6 +52,12 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 				return err
 			}
 
+			if format == outputJSON {
+				return writeJSON(envcmd.esc.stdout, struct {
+					ChangeRequestID string `json:"changeRequestId"`
+				}{resp.ChangeRequests[0].ChangeRequestID})
+			}
+
 			fmt.Fprintf(envcmd.esc.stdout, "Created environment open request with ID: %s\n", resp.ChangeRequests[0].ChangeRequestID)
 
 			return nil
@@ -58,6 +70,7 @@ func newEnvOpenRequestCmd(envcmd *envCommand) *cobra.Command {
 	cmd.Flags().DurationVar(
 		&accessDuration, "access-duration-seconds", 259200*time.Second,
 		"duration of access in seconds")
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }

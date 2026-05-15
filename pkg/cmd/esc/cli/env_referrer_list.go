@@ -20,6 +20,7 @@ func newEnvReferrerListCmd(env *envCommand) *cobra.Command {
 		all                    bool
 		allRevisions           bool
 		latestStackVersionOnly bool
+		output                 string
 	)
 
 	cmd := &cobra.Command{
@@ -34,6 +35,11 @@ func newEnvReferrerListCmd(env *envCommand) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -91,6 +97,12 @@ func newEnvReferrerListCmd(env *envCommand) *cobra.Command {
 				continuationToken = resp.ContinuationToken
 			}
 
+			if format == outputJSON {
+				return writeJSON(env.esc.stdout, struct {
+					Referrers map[string][]client.EnvironmentReferrer `json:"referrers"`
+				}{merged.Referrers})
+			}
+
 			printReferrers(env, merged)
 			return nil
 		},
@@ -104,6 +116,7 @@ func newEnvReferrerListCmd(env *envCommand) *cobra.Command {
 		"include referrers across all revisions of the environment, not just the latest")
 	cmd.Flags().BoolVar(&latestStackVersionOnly, "latest-stack-version-only", false,
 		"only include the latest version of each referring stack")
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }

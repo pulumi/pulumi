@@ -16,8 +16,9 @@ import (
 
 func newEnvScheduleListCmd(env *envCommand) *cobra.Command {
 	var (
-		utc   bool
-		count int
+		utc    bool
+		count  int
+		output string
 	)
 
 	cmd := &cobra.Command{
@@ -30,6 +31,11 @@ func newEnvScheduleListCmd(env *envCommand) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -55,6 +61,19 @@ func newEnvScheduleListCmd(env *envCommand) *cobra.Command {
 				resp.Schedules = resp.Schedules[:count]
 			}
 
+			if format == outputJSON {
+				out := struct {
+					Schedules []scheduleJSON `json:"schedules"`
+				}{Schedules: []scheduleJSON{}}
+				if resp != nil {
+					out.Schedules = make([]scheduleJSON, 0, len(resp.Schedules))
+					for _, s := range resp.Schedules {
+						out.Schedules = append(out.Schedules, newScheduleJSON(s, utcFlag(utc)))
+					}
+				}
+				return writeJSON(env.esc.stdout, out)
+			}
+
 			printSchedules(env.esc.stdout, resp, utcFlag(utc))
 			return nil
 		},
@@ -62,8 +81,30 @@ func newEnvScheduleListCmd(env *envCommand) *cobra.Command {
 
 	cmd.Flags().BoolVar(&utc, "utc", false, "display times in UTC")
 	cmd.Flags().IntVar(&count, "count", 0, "the maximum number of schedules to return (all if unset)")
+	addOutputFlag(cmd, &output)
 
 	return cmd
+}
+
+// scheduleJSON is the slim per-schedule projection emitted by JSON output.
+// Mirrors the fields shown by printSchedule; internal timestamps (created,
+// modified) and the org/definition blob are omitted.
+type scheduleJSON struct {
+	ID            string `json:"id"`
+	Kind          string `json:"kind"`
+	Schedule      string `json:"schedule"`
+	NextExecution string `json:"nextExecution"`
+	LastExecuted  string `json:"lastExecuted"`
+}
+
+func newScheduleJSON(s client.ScheduledAction, utc utcFlag) scheduleJSON {
+	return scheduleJSON{
+		ID:            s.ID,
+		Kind:          s.Kind,
+		Schedule:      scheduleExpr(s, utc),
+		NextExecution: formatScheduleTime(s.NextExecution, utc),
+		LastExecuted:  formatScheduleTime(s.LastExecuted, utc),
+	}
 }
 
 // printSchedules renders the schedules as a table.

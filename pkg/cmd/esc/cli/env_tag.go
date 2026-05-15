@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/pulumi/esc/cmd/esc/cli/client"
 	"github.com/pulumi/esc/cmd/esc/cli/style"
@@ -89,6 +90,27 @@ func newEnvTagCmd(env *envCommand) *cobra.Command {
 	cmd.Flags().BoolVar(&utc, "utc", false, "display times in UTC")
 
 	return cmd
+}
+
+// tagJSON is the slim per-tag projection emitted by JSON output. Mirrors the
+// fields shown by printTag; `id` and `created` are omitted because text only
+// shows the modified timestamp and editor.
+type tagJSON struct {
+	Name        string    `json:"name"`
+	Value       string    `json:"value"`
+	Modified    time.Time `json:"modified"`
+	EditorLogin string    `json:"editorLogin,omitempty"`
+	EditorName  string    `json:"editorName,omitempty"`
+}
+
+func newTagJSON(t *client.EnvironmentTag, utc utcFlag) tagJSON {
+	return tagJSON{
+		Name:        t.Name,
+		Value:       t.Value,
+		Modified:    utc.time(t.Modified),
+		EditorLogin: t.EditorLogin,
+		EditorName:  t.EditorName,
+	}
 }
 
 func printTag(stdout io.Writer, st *style.Stylist, tag *client.EnvironmentTag, utc utcFlag) {

@@ -16,8 +16,9 @@ import (
 
 func newEnvScheduleHistoryCmd(env *envCommand) *cobra.Command {
 	var (
-		utc   bool
-		count int
+		utc    bool
+		count  int
+		output string
 	)
 
 	cmd := &cobra.Command{
@@ -29,6 +30,11 @@ func newEnvScheduleHistoryCmd(env *envCommand) *cobra.Command {
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -59,6 +65,24 @@ func newEnvScheduleHistoryCmd(env *envCommand) *cobra.Command {
 				resp.ScheduleHistoryEvents = resp.ScheduleHistoryEvents[:count]
 			}
 
+			if format == outputJSON {
+				out := struct {
+					Events []scheduleHistoryEventJSON `json:"events"`
+				}{Events: []scheduleHistoryEventJSON{}}
+				if resp != nil {
+					out.Events = make([]scheduleHistoryEventJSON, 0, len(resp.ScheduleHistoryEvents))
+					for _, e := range resp.ScheduleHistoryEvents {
+						out.Events = append(out.Events, scheduleHistoryEventJSON{
+							ID:       e.ID,
+							Executed: formatHistoryTime(e.Executed, utcFlag(utc)),
+							Version:  e.Version,
+							Result:   e.Result,
+						})
+					}
+				}
+				return writeJSON(env.esc.stdout, out)
+			}
+
 			printScheduleHistory(env.esc.stdout, resp, utcFlag(utc))
 			return nil
 		},
@@ -66,8 +90,19 @@ func newEnvScheduleHistoryCmd(env *envCommand) *cobra.Command {
 
 	cmd.Flags().BoolVar(&utc, "utc", false, "display times in UTC")
 	cmd.Flags().IntVar(&count, "count", 0, "the maximum number of events to return (all if unset)")
+	addOutputFlag(cmd, &output)
 
 	return cmd
+}
+
+// scheduleHistoryEventJSON is the slim per-event projection emitted by JSON
+// output. Mirrors the fields shown by printScheduleHistory; the parent
+// scheduledActionID is omitted because the user provided it as a CLI arg.
+type scheduleHistoryEventJSON struct {
+	ID       string `json:"id"`
+	Executed string `json:"executed"`
+	Version  int    `json:"version"`
+	Result   string `json:"result"`
 }
 
 func printScheduleHistory(stdout io.Writer, resp *client.ListScheduleHistoryResponse, utc utcFlag) {

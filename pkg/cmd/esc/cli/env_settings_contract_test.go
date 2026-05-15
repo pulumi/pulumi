@@ -16,9 +16,17 @@ func TestSettingsFlagsAreSubsetOfEnvFlags(t *testing.T) {
 	tests := []struct {
 		parent []string
 		subset []string
+		// allowed lists flags that may appear on the subset command without yet
+		// existing on the parent — divergences that are deliberate and tracked
+		// as future work on the parent command.
+		allowed []string
 	}{
 		{parent: []string{"env", "set"}, subset: []string{"env", "settings", "set"}},
-		{parent: []string{"env", "get"}, subset: []string{"env", "settings", "get"}},
+		{
+			parent:  []string{"env", "get"},
+			subset:  []string{"env", "settings", "get"},
+			allowed: []string{"output"}, // env get's JSON shape is being designed; settings get ships --output ahead.
+		},
 	}
 
 	esc := New(&Options{})
@@ -34,7 +42,15 @@ func TestSettingsFlagsAreSubsetOfEnvFlags(t *testing.T) {
 			parentFlags := getFlagNames(parentCmd)
 			subsetFlags := getFlagNames(subsetCmd)
 
+			allowed := map[string]bool{}
+			for _, f := range tt.allowed {
+				allowed[f] = true
+			}
+
 			for _, flag := range subsetFlags {
+				if allowed[flag] {
+					continue
+				}
 				assert.Contains(t, parentFlags, flag,
 					"%s has flag --%s which doesn't exist in %s. "+
 						"If this is a deliberate product decision, update or remove this test.",

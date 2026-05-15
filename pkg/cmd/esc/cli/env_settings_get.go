@@ -13,6 +13,8 @@ import (
 // This command should maintain interface compatibility as a subset of env get.
 // See env_settings_contract_test.go for basic validation.
 func newEnvSettingsGetCmd(env *envCommand, registry *EnvSettingsRegistry) *cobra.Command {
+	var output string
+
 	cmd := &cobra.Command{
 		Use:   "get [<org-name>/][<project-name>/]<environment-name> [<setting-name>]",
 		Args:  cobra.RangeArgs(1, 2),
@@ -26,6 +28,11 @@ func newEnvSettingsGetCmd(env *envCommand, registry *EnvSettingsRegistry) *cobra
 			registry.GetSettingsHelpText(),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
+
+			format, err := parseOutputFormat(output)
+			if err != nil {
+				return err
+			}
 
 			if err := env.esc.getCachedClient(ctx); err != nil {
 				return err
@@ -45,6 +52,13 @@ func newEnvSettingsGetCmd(env *envCommand, registry *EnvSettingsRegistry) *cobra
 			}
 
 			if len(args) == 0 {
+				if format == outputJSON {
+					all := map[string]any{}
+					for _, setting := range registry.Settings {
+						all[setting.KebabName()] = setting.GetValue(settings)
+					}
+					return writeJSON(env.esc.stdout, all)
+				}
 				for _, setting := range registry.Settings {
 					fmt.Fprintf(env.esc.stdout, "%s %v\n", setting.KebabName(), setting.GetValue(settings))
 				}
@@ -58,11 +72,16 @@ func newEnvSettingsGetCmd(env *envCommand, registry *EnvSettingsRegistry) *cobra
 			}
 
 			value := setting.GetValue(settings)
+			if format == outputJSON {
+				return writeJSON(env.esc.stdout, map[string]any{setting.KebabName(): value})
+			}
 			fmt.Fprintln(env.esc.stdout, value)
 
 			return nil
 		},
 	}
+
+	addOutputFlag(cmd, &output)
 
 	return cmd
 }
