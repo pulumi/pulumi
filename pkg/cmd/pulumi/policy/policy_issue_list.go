@@ -254,15 +254,15 @@ func renderPolicyIssueListTable(
 	t.AppendHeader(table.Row{"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
 
 	for _, issue := range resp.Issues {
-		pack := issue.PolicyPackName
-		if issue.PolicyPackVersion != "" {
-			pack = fmt.Sprintf("%s@%s", issue.PolicyPackName, issue.PolicyPackVersion)
+		pack := issue.PolicyPack
+		if issue.PolicyPackTag != "" {
+			pack = fmt.Sprintf("%s@%s", issue.PolicyPack, issue.PolicyPackTag)
 		}
-		stack := issue.StackName
-		if issue.ProjectName != "" && issue.StackName != "" {
-			stack = fmt.Sprintf("%s/%s", issue.ProjectName, issue.StackName)
+		stack := issue.EntityID
+		if issue.EntityProject != "" && issue.EntityID != "" {
+			stack = fmt.Sprintf("%s/%s", issue.EntityProject, issue.EntityID)
 		}
-		enforcement := string(issue.EnforcementLevel)
+		enforcement := issue.Level
 		if enforcement == "" {
 			enforcement = "-"
 		}

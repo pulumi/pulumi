@@ -82,9 +82,8 @@ func newPolicyIssueGetCmdWith(factory policyIssueGetClientFactory) *cobra.Comman
 	args.outputFormat = defaultPolicyIssueGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get <issue-id>",
-		Short:  "[EXPERIMENTAL] Get the details of a specific policy issue",
+		Use:   "get <issue-id>",
+		Short: "[EXPERIMENTAL] Get the details of a specific policy issue",
 		Long: "[EXPERIMENTAL] Get the details of a specific policy issue.\n" +
 			"\n" +
 			"Returns the details of a single policy issue, including the violating\n" +
@@ -177,21 +176,24 @@ func runPolicyIssueGet(
 type policyIssueGetRenderFunc func(w io.Writer, resp apitype.PolicyIssue) error
 
 func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
-	pack := issue.PolicyPackName
-	if issue.PolicyPackVersion != "" {
-		pack = fmt.Sprintf("%s@%s", issue.PolicyPackName, issue.PolicyPackVersion)
+	pack := issue.PolicyPack
+	if issue.PolicyPackTag != "" {
+		pack = fmt.Sprintf("%s@%s", issue.PolicyPack, issue.PolicyPackTag)
 	}
-	stack := issue.StackName
-	if issue.ProjectName != "" && issue.StackName != "" {
-		stack = fmt.Sprintf("%s/%s", issue.ProjectName, issue.StackName)
+	stack := issue.EntityID
+	if issue.EntityProject != "" && issue.EntityID != "" {
+		stack = fmt.Sprintf("%s/%s", issue.EntityProject, issue.EntityID)
 	}
 
 	fmt.Fprintf(w, "%-20s %s\n", "ID:", issue.ID)
 	fmt.Fprintf(w, "%-20s %s\n", "Policy pack:", pack)
 	fmt.Fprintf(w, "%-20s %s\n", "Policy:", issue.PolicyName)
-	fmt.Fprintf(w, "%-20s %s\n", "Enforcement level:", string(issue.EnforcementLevel))
+	fmt.Fprintf(w, "%-20s %s\n", "Enforcement level:", issue.Level)
 	if issue.Severity != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Severity:", string(issue.Severity))
+	}
+	if issue.Status != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Status:", issue.Status)
 	}
 	if stack != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Stack:", stack)
@@ -202,8 +204,8 @@ func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 	if issue.ResourceType != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Resource type:", issue.ResourceType)
 	}
-	if issue.CreatedAt != "" {
-		fmt.Fprintf(w, "%-20s %s\n", "Created at:", issue.CreatedAt)
+	if issue.ObservedAt != "" {
+		fmt.Fprintf(w, "%-20s %s\n", "Observed at:", issue.ObservedAt)
 	}
 	if issue.Message != "" {
 		fmt.Fprintf(w, "%-20s %s\n", "Message:", issue.Message)
@@ -212,37 +214,38 @@ func renderPolicyIssueGetText(w io.Writer, issue apitype.PolicyIssue) error {
 }
 
 // policyIssueGetJSON is the JSON envelope emitted by
-// `pulumi policy issue get --output=json`. It mirrors apitype.PolicyIssue so
-// scripts can parse the response with stable, documented field names.
+// `pulumi policy issue get --output=json`.
 type policyIssueGetJSON struct {
-	ID                string                   `json:"id"`
-	PolicyName        string                   `json:"policyName"`
-	PolicyPackName    string                   `json:"policyPackName"`
-	PolicyPackVersion string                   `json:"policyPackVersion,omitempty"`
-	EnforcementLevel  apitype.EnforcementLevel `json:"enforcementLevel"`
-	Severity          apitype.PolicySeverity   `json:"severity,omitempty"`
-	ResourceURN       string                   `json:"resourceURN,omitempty"`
-	ResourceType      string                   `json:"resourceType,omitempty"`
-	StackName         string                   `json:"stackName,omitempty"`
-	ProjectName       string                   `json:"projectName,omitempty"`
-	Message           string                   `json:"message,omitempty"`
-	CreatedAt         string                   `json:"createdAt,omitempty"`
+	ID            string                 `json:"id"`
+	PolicyName    string                 `json:"policyName"`
+	PolicyPack    string                 `json:"policyPack"`
+	PolicyPackTag string                 `json:"policyPackTag,omitempty"`
+	Level         string                 `json:"level"`
+	Severity      apitype.PolicySeverity `json:"severity,omitempty"`
+	Status        string                 `json:"status,omitempty"`
+	ResourceURN   string                 `json:"resourceURN,omitempty"`
+	ResourceType  string                 `json:"resourceType,omitempty"`
+	EntityProject string                 `json:"entityProject,omitempty"`
+	EntityID      string                 `json:"entityId,omitempty"`
+	Message       string                 `json:"message,omitempty"`
+	ObservedAt    string                 `json:"observedAt,omitempty"`
 }
 
 func toPolicyIssueGetJSON(issue apitype.PolicyIssue) policyIssueGetJSON {
 	return policyIssueGetJSON{
-		ID:                issue.ID,
-		PolicyName:        issue.PolicyName,
-		PolicyPackName:    issue.PolicyPackName,
-		PolicyPackVersion: issue.PolicyPackVersion,
-		EnforcementLevel:  issue.EnforcementLevel,
-		Severity:          issue.Severity,
-		ResourceURN:       issue.ResourceURN,
-		ResourceType:      issue.ResourceType,
-		StackName:         issue.StackName,
-		ProjectName:       issue.ProjectName,
-		Message:           issue.Message,
-		CreatedAt:         issue.CreatedAt,
+		ID:            issue.ID,
+		PolicyName:    issue.PolicyName,
+		PolicyPack:    issue.PolicyPack,
+		PolicyPackTag: issue.PolicyPackTag,
+		Level:         issue.Level,
+		Severity:      issue.Severity,
+		Status:        issue.Status,
+		ResourceURN:   issue.ResourceURN,
+		ResourceType:  issue.ResourceType,
+		EntityProject: issue.EntityProject,
+		EntityID:      issue.EntityID,
+		Message:       issue.Message,
+		ObservedAt:    issue.ObservedAt,
 	}
 }
 

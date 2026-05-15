@@ -409,34 +409,34 @@ type PolicyIssueSortModel struct {
 }
 
 // PolicyIssue is a single policy violation detected by a Policy Pack during a
-// stack update or a continuous-compliance scan.
+// stack update or a continuous-compliance scan. Field names match the server's
+// JSON response.
 type PolicyIssue struct {
-	// ID is the server-assigned identifier of this issue.
-	ID string `json:"id"`
-	// PolicyName is the URL-safe name of the policy that produced this issue.
-	PolicyName string `json:"policyName"`
-	// PolicyPackName is the URL-safe name of the Policy Pack the policy lives in.
-	PolicyPackName string `json:"policyPackName"`
-	// PolicyPackVersion is the version of the Policy Pack at the time the issue
-	// was recorded.
-	PolicyPackVersion string `json:"policyPackVersion,omitempty"`
-	// EnforcementLevel describes how the policy was being enforced when the
-	// issue was raised (advisory, mandatory, remediate).
-	EnforcementLevel EnforcementLevel `json:"enforcementLevel"`
-	// Severity is the policy author's classification of the issue's severity.
-	Severity PolicySeverity `json:"severity,omitempty"`
-	// ResourceURN is the URN of the resource that violated the policy.
-	ResourceURN string `json:"resourceURN,omitempty"`
-	// ResourceType is the Pulumi resource type that violated the policy.
-	ResourceType string `json:"resourceType,omitempty"`
-	// StackName is the name of the stack the violation was observed in.
-	StackName string `json:"stackName,omitempty"`
-	// ProjectName is the name of the project the stack belongs to.
-	ProjectName string `json:"projectName,omitempty"`
-	// Message is the human-readable message produced by the policy.
-	Message string `json:"message,omitempty"`
-	// CreatedAt is the time the issue was first observed, in RFC 3339 format.
-	CreatedAt string `json:"createdAt,omitempty"`
+	ID               string         `json:"id"`
+	EntityType       string         `json:"entityType,omitempty"`
+	EntityProject    string         `json:"entityProject,omitempty"`
+	EntityID         string         `json:"entityId,omitempty"`
+	PolicyPack       string         `json:"policyPack"`
+	PolicyPackTag    string         `json:"policyPackTag,omitempty"`
+	PolicyName       string         `json:"policyName"`
+	Level            string         `json:"level"`
+	Severity         PolicySeverity `json:"severity,omitempty"`
+	ResourceURN      string         `json:"resourceURN,omitempty"`
+	ResourceProvider string         `json:"resourceProvider,omitempty"`
+	ResourceType     string         `json:"resourceType,omitempty"`
+	ResourceName     string         `json:"resourceName,omitempty"`
+	Message          string         `json:"message,omitempty"`
+	ObservedAt       string         `json:"observedAt,omitempty"`
+	LastModified     string         `json:"lastModified,omitempty"`
+	Status           string         `json:"status,omitempty"`
+	Kind             string         `json:"kind,omitempty"`
+	Priority         string         `json:"priority,omitempty"`
+}
+
+// GetPolicyIssueResponse is the response wrapper for the GetPolicyIssue
+// endpoint (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
+type GetPolicyIssueResponse struct {
+	PolicyIssue PolicyIssue `json:"policyIssue"`
 }
 
 // ListPolicyIssuesResponse is the response body for the ListPolicyIssues
