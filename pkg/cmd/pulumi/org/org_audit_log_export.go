@@ -62,7 +62,6 @@ type orgAuditLogExportArgs struct {
 	user         string
 	startTime    string
 	count        int64
-	all          bool
 	outputFormat outputflag.OutputFlag[orgAuditLogExportRenderFunc]
 }
 
@@ -118,10 +117,7 @@ func newOrgAuditLogExportCmdWith(factory orgAuditLogExportClientFactory) *cobra.
 	cmd.Flags().StringVar(&args.startTime, "start-time", "",
 		"The upper bound of the time range (V1 semantics)")
 	cmd.Flags().Int64Var(&args.count, "count", 0,
-		"Maximum number of bytes/events to return. Defaults to the size of the first page; "+
-			"larger values auto-paginate")
-	cmd.Flags().BoolVar(&args.all, "all", false, "Return all matching events; mutually exclusive with --count")
-	cmd.MarkFlagsMutuallyExclusive("count", "all")
+		"Truncate the exported response to the given number of bytes (0 returns the full response)")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
@@ -207,8 +203,8 @@ func runOrgAuditLogExport(
 		return fmt.Errorf("exporting audit logs: %w", err)
 	}
 
-	// Bound output to --count bytes when --all is not set and --count is positive.
-	if !args.all && args.count > 0 && int64(len(data)) > args.count {
+	// Bound output to --count bytes when --count is positive.
+	if args.count > 0 && int64(len(data)) > args.count {
 		data = data[:args.count]
 	}
 

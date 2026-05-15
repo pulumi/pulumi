@@ -62,6 +62,7 @@ type deploymentLogArgs struct {
 	step         int
 	offset       int
 	count        int
+	all          bool
 	outputFormat outputflag.OutputFlag[deploymentLogRenderFunc]
 }
 
@@ -97,14 +98,14 @@ func newDeploymentLogCmdWith(factory deploymentLogClientFactory) *cobra.Command 
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "log <deployment-id>",
-		Short: "[EXPERIMENTAL] Retrieve execution logs for a deployment " +
-			"(single fetch; pass --count to bound the response size)",
+		Short:  "[EXPERIMENTAL] Retrieve execution logs for a deployment",
 		Long: "[EXPERIMENTAL] Retrieve execution logs for a deployment.\n" +
 			"\n" +
-			"Returns a single fetch of execution logs; pass --count to bound the\n" +
-			"response size. Pass --job and --step to retrieve logs for a specific\n" +
-			"step within a specific job; in step mode --count must be 1-499\n" +
-			"(default 100 server-side).\n" +
+			"Returns log lines from a deployment. Pass --job and --step to scope to a\n" +
+			"specific step within a specific job; in step mode --count must be 1-499\n" +
+			"(default 100 server-side). Pass --all to fetch every available log line,\n" +
+			"following the server's pagination internally; --count and --all are\n" +
+			"mutually exclusive.\n" +
 			"\n" +
 			"Default output prints one log line per row; pass --output=json for a\n" +
 			"structured envelope.",
@@ -130,6 +131,9 @@ func newDeploymentLogCmdWith(factory deploymentLogClientFactory) *cobra.Command 
 		"The offset within the step's logs (0 to leave unset)")
 	cmd.Flags().IntVar(&args.count, "count", 0,
 		"The number of log lines to fetch, 1-499 in step mode (0 to leave unset)")
+	cmd.Flags().BoolVar(&args.all, "all", false,
+		"Fetch every available log line, following server-side pagination; mutually exclusive with --count")
+	cmd.MarkFlagsMutuallyExclusive("count", "all")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
@@ -214,6 +218,23 @@ func runDeploymentLog(
 	}
 	if resp == nil {
 		resp = &apitype.DeploymentLogs{}
+	}
+
+	// --all walks the server's continuation tokens internally, accumulating
+	// every page into a single response before rendering.
+	if args.all {
+		for resp.NextToken != "" {
+			opts.ContinuationToken = resp.NextToken
+			next, err := c.GetDeploymentLogs(ctx, stackID, deploymentID, opts)
+			if err != nil {
+				return fmt.Errorf("getting deployment logs: %w", err)
+			}
+			if next == nil {
+				break
+			}
+			resp.Lines = append(resp.Lines, next.Lines...)
+			resp.NextToken = next.NextToken
+		}
 	}
 
 	return args.outputFormat.Get()(w, *resp)

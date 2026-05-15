@@ -29,12 +29,16 @@ import (
 )
 
 // mockDeploymentLogClient stubs deploymentLogClient. It returns a fixed
-// response (or error) and records the call inputs for assertions.
+// response (or error) and records the call inputs for assertions. When
+// queuedResps is non-nil the mock returns the head of the queue on each
+// call, allowing tests to exercise the --all pagination loop.
 type mockDeploymentLogClient struct {
-	resp    *apitype.DeploymentLogs
-	err     error
-	gotID   string
-	gotOpts client.GetDeploymentLogsOptions
+	resp        *apitype.DeploymentLogs
+	queuedResps []*apitype.DeploymentLogs
+	err         error
+	gotID       string
+	gotOpts     client.GetDeploymentLogsOptions
+	gotOptsAll  []client.GetDeploymentLogsOptions
 }
 
 func (m *mockDeploymentLogClient) GetDeploymentLogs(
@@ -43,8 +47,14 @@ func (m *mockDeploymentLogClient) GetDeploymentLogs(
 ) (*apitype.DeploymentLogs, error) {
 	m.gotID = id
 	m.gotOpts = opts
+	m.gotOptsAll = append(m.gotOptsAll, opts)
 	if m.err != nil {
 		return nil, m.err
+	}
+	if len(m.queuedResps) > 0 {
+		head := m.queuedResps[0]
+		m.queuedResps = m.queuedResps[1:]
+		return head, nil
 	}
 	return m.resp, nil
 }
@@ -202,4 +212,29 @@ func TestDeploymentLog_OptionsPropagation_AllUnset(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, client.GetDeploymentLogsOptions{}, c.gotOpts)
+}
+
+func TestDeploymentLog_AllFollowsContinuationToken(t *testing.T) {
+	t.Parallel()
+
+	c := &mockDeploymentLogClient{
+		queuedResps: []*apitype.DeploymentLogs{
+			{Lines: []apitype.DeploymentLogLine{{Line: "page-1"}}, NextToken: "tok-1"},
+			{Lines: []apitype.DeploymentLogLine{{Line: "page-2"}}, NextToken: "tok-2"},
+			{Lines: []apitype.DeploymentLogLine{{Line: "page-3"}}, NextToken: ""},
+		},
+	}
+
+	args := defaultDeploymentLogArgs()
+	args.all = true
+
+	var buf bytes.Buffer
+	err := runDeploymentLog(t.Context(), &buf, stubLogFactory(c), "dep-id", args)
+	require.NoError(t, err)
+
+	assert.Equal(t, "page-1\npage-2\npage-3\n", buf.String())
+	require.Len(t, c.gotOptsAll, 3)
+	assert.Equal(t, "", c.gotOptsAll[0].ContinuationToken)
+	assert.Equal(t, "tok-1", c.gotOptsAll[1].ContinuationToken)
+	assert.Equal(t, "tok-2", c.gotOptsAll[2].ContinuationToken)
 }
