@@ -90,9 +90,8 @@ func newOrgAuditLogExportCmdWith(factory orgAuditLogExportClientFactory) *cobra.
 	args.outputFormat = defaultOrgAuditLogExportOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "export",
-		Short:  "[EXPERIMENTAL] Export audit log events for an organization",
+		Use:   "export",
+		Short: "[EXPERIMENTAL] Export audit log events for an organization",
 		Long: "[EXPERIMENTAL] Export audit log events for an organization.\n" +
 			"\n" +
 			"Streams an export of audit log events for the organization in the\n" +
