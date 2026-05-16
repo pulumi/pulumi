@@ -234,16 +234,8 @@ func (t updateToken) Get(ctx context.Context) (string, error) {
 	return t.source.GetToken(ctx)
 }
 
-func float64Ptr(f float64) *float64 {
-	return &f
-}
-
-func durationPtr(d time.Duration) *time.Duration {
-	return &d
-}
-
-func intPtr(i int) *int {
-	return &i
+func ptr[T any](v T) *T {
+	return &v
 }
 
 // retryPolicy defines the policy for retrying requests by httpClient.Do.
@@ -373,11 +365,11 @@ func (c *defaultHTTPClient) Do(req *http.Request, policy retryPolicy) (*http.Res
 	// maximum delay is reached. Stop after maxRetryCount requests have
 	// been made.
 	opts := httputil.RetryOpts{
-		Delay:    durationPtr(time.Second),
-		Backoff:  float64Ptr(2.0),
-		MaxDelay: durationPtr(30 * time.Second),
+		Delay:    ptr(time.Second),
+		Backoff:  ptr(2.0),
+		MaxDelay: ptr(30 * time.Second),
 
-		MaxRetryCount:         intPtr(4),
+		MaxRetryCount:         ptr(4),
 		HandshakeTimeoutsOnly: !policy.shouldRetry(req),
 	}
 	return httputil.DoWithRetryOpts(req, &tracingClient, opts)

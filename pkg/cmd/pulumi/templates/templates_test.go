@@ -669,7 +669,7 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 						Name:      "gh-org/repo/name",
 						Source:    "github",
 						Publisher: "pulumi-org",
-						RepoSlug:  ref("gh-org/repo"),
+						RepoSlug:  ptr("gh-org/repo"),
 					}, nil) {
 						return
 					}
@@ -677,7 +677,7 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 						Name:      "gl-org/repo/name",
 						Source:    "gitlab",
 						Publisher: "pulumi-org",
-						RepoSlug:  ref("gl-org/repo"),
+						RepoSlug:  ptr("gl-org/repo"),
 					}, nil) {
 						return
 					}
@@ -730,9 +730,9 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 					if !yield(apitype.TemplateMetadata{
 						Name:        "gh-org/repo/target",
 						Source:      "github",
-						Description: ref("This is from GH"),
+						Description: ptr("This is from GH"),
 						Publisher:   "pulumi-org",
-						RepoSlug:    ref("gh-org/repo"),
+						RepoSlug:    ptr("gh-org/repo"),
 					}, nil) {
 						return
 					}
@@ -740,14 +740,14 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 						Name:      "gl-org/repo/name",
 						Source:    "gitlab",
 						Publisher: "pulumi-org",
-						RepoSlug:  ref("gl-org/repo"),
+						RepoSlug:  ptr("gl-org/repo"),
 					}, nil) {
 						return
 					}
 					if !yield(apitype.TemplateMetadata{
 						Name:        "target",
 						Source:      "private",
-						Description: ref("This is from the registry"),
+						Description: ptr("This is from the registry"),
 						Publisher:   "pulumi-org",
 					}, nil) {
 						return
@@ -796,7 +796,7 @@ func testContext(t *testing.T) context.Context {
 	return ctx
 }
 
-func ref[T any](v T) *T { return &v }
+func ptr[T any](v T) *T { return &v }
 
 //nolint:paralleltest // replaces global backend instance
 func TestRegistryTemplateResolution(t *testing.T) {
@@ -812,7 +812,7 @@ func TestRegistryTemplateResolution(t *testing.T) {
 						Name:        "csharp-documented",
 						Source:      "private",
 						Publisher:   "pulumi_local",
-						Description: ref("A C# template"),
+						Description: ptr("A C# template"),
 					}, nil)
 					yield(apitype.TemplateMetadata{
 						Name:      "csharp-documented",
@@ -823,14 +823,14 @@ func TestRegistryTemplateResolution(t *testing.T) {
 						Name:        "gh-org/repo/target",
 						Source:      "github",
 						Publisher:   "pulumi-org",
-						RepoSlug:    ref("gh-org/repo"),
-						Description: ref("A template from VCS"),
+						RepoSlug:    ptr("gh-org/repo"),
+						Description: ptr("A template from VCS"),
 					}, nil)
 					yield(apitype.TemplateMetadata{
 						Name:        "whatever-template",
 						Source:      "private",
 						Publisher:   "test-org",
-						Description: ref("A template with special chars"),
+						Description: ptr("A template with special chars"),
 					}, nil)
 				}
 			},
@@ -1013,7 +1013,7 @@ func TestVersionedTemplateResolution(t *testing.T) {
 						Name:        name,
 						Source:      source,
 						Publisher:   publisher,
-						Description: ref("A versioned template"),
+						Description: ptr("A versioned template"),
 					}, nil
 				}
 				return apitype.TemplateMetadata{}, backenderr.NotFoundError{}
@@ -1026,7 +1026,7 @@ func TestVersionedTemplateResolution(t *testing.T) {
 						Name:        "my-template",
 						Source:      "private",
 						Publisher:   "my-org",
-						Description: ref("Latest version"),
+						Description: ptr("Latest version"),
 					}, nil)
 				}
 			},
