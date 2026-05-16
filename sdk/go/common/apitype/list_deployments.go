@@ -127,3 +127,50 @@ type ListDeploymentSnapshotAgentPool struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
+
+// GetDeploymentResponse is the response from the Pulumi Cloud
+// `GetDeployment` endpoint
+// (GET /api/stacks/{org}/{project}/{stack}/deployments/{deploymentId}).
+//
+// The shape mirrors ListDeploymentSnapshot — every field returned by the
+// list endpoint is also returned by the get endpoint — with the addition
+// of `inheritSettings`, which records whether the deployment inherited
+// settings from the stack at creation time.
+type GetDeploymentResponse struct {
+	// ID uniquely identifies this deployment.
+	ID string `json:"id"`
+	// Created is when the deployment was created. The wire format is a
+	// string (no `date-time` constraint in the OpenAPI spec).
+	Created string `json:"created"`
+	// Modified is when the corresponding WorkflowRun was last modified.
+	Modified string `json:"modified"`
+	// Status is the deployment status: one of `not-started`, `accepted`,
+	// `running`, `failed`, `succeeded`, `skipped`.
+	Status string `json:"status"`
+	// Version is the ordinal ID for the stack at the time of this deployment.
+	Version int64 `json:"version"`
+	// RequestedBy describes the user who created the deployment.
+	RequestedBy UserInfo `json:"requestedBy"`
+	// ProjectName is the name of the project the stack belongs to.
+	ProjectName string `json:"projectName,omitempty"`
+	// StackName is the name of the stack.
+	StackName string `json:"stackName,omitempty"`
+	// Paused is true when deployments are paused for the program.
+	Paused bool `json:"paused,omitempty"`
+	// PulumiOperation is the Pulumi operation that was performed.
+	PulumiOperation PulumiOperation `json:"pulumiOperation"`
+	// Updates is the list of stack updates produced by this deployment.
+	Updates []DeploymentNestedUpdate `json:"updates"`
+	// Jobs is the list of jobs run as part of this deployment, with their
+	// step-level progress.
+	Jobs []DeploymentJob `json:"jobs"`
+	// Initiator records the initiation source of the deployment (e.g.
+	// `cli`, `webhook`). Empty when the server did not report one.
+	Initiator string `json:"initiator,omitempty"`
+	// AgentPool is the self-hosted agent pool that ran the deployment,
+	// if any.
+	AgentPool *ListDeploymentSnapshotAgentPool `json:"agentPool,omitempty"`
+	// InheritSettings indicates whether the deployment inherited
+	// deployment settings from the stack at creation time.
+	InheritSettings bool `json:"inheritSettings,omitempty"`
+}

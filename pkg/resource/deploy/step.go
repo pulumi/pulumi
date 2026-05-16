@@ -2429,7 +2429,7 @@ func (s *ViewStep) ResultOp() display.StepOp {
 func (s *ViewStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	// ViewStep is a special step that that represents an operation for a view resource.
 	// It doesn't actually do anything in Apply. It's used to flow the step through the
-	// system for display in the UI and so the the result of the operation is recorded
+	// system for display in the UI and so the result of the operation is recorded
 	// in the state.
 
 	if s.error != "" {

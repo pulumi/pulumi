@@ -16,6 +16,10 @@
 package testing
 
 import (
+	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 
@@ -226,22 +230,53 @@ func AssetPropertyGenerator() *rapid.Generator[resource.PropertyValue] {
 
 // LiteralArchiveGenerator generates *archive.Archive values with literal archive contents.
 func LiteralArchiveGenerator(maxDepth int) *rapid.Generator[*archive.Archive] {
-	return rapid.Custom(func(t *rapid.T) *archive.Archive {
-		var contentsGenerator *rapid.Generator[map[string]any]
-		if maxDepth > 0 {
-			contentsGenerator = rapid.MapOfN(
-				rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`),
-				rapid.OneOf(AssetGenerator().AsAny(), ArchiveGenerator(maxDepth-1).AsAny()),
-				0,  // min length
-				16, // max length
-			)
-		} else {
-			contentsGenerator = rapid.Just(map[string]any{})
-		}
-		archive, err := archive.FromAssets(contentsGenerator.Draw(t, "literal archive contents"))
-		require.NoError(t, err)
-		return archive
-	})
+	keyGenerator := rapid.StringMatching(`^(/[^[:cntrl:]/]+)*/?[^[:cntrl:]/]+$`)
+
+	var gen func(maxDepth int, currentPath string) *rapid.Generator[*archive.Archive]
+	gen = func(maxDepth int, currentPath string) *rapid.Generator[*archive.Archive] {
+		return rapid.Custom(func(t *rapid.T) *archive.Archive {
+			maxCount := 0
+			if maxDepth > 0 {
+				maxCount = 16
+			}
+			count := rapid.IntRange(0, maxCount).Draw(t, "literal archive entry count")
+			contents := map[string]any{}
+			for i := range count {
+				key := keyGenerator.
+					Filter(func(k string) bool {
+						return validNestedArchivePath(currentPath, k) && contents[k] == nil
+					}).
+					Draw(t, fmt.Sprintf("literal archive key %d", i))
+				entryPath := filepath.Join(currentPath, key)
+				if rapid.Bool().Draw(t, fmt.Sprintf("literal archive entry %d is asset", i)) {
+					contents[key] = AssetGenerator().Draw(t, fmt.Sprintf("literal archive asset %d", i))
+				} else {
+					contents[key] = gen(maxDepth-1, entryPath).
+						Draw(t, fmt.Sprintf("literal archive sub-archive %d", i))
+				}
+			}
+			a, err := archive.FromAssets(contents)
+			require.NoError(t, err)
+			return a
+		})
+	}
+	return gen(maxDepth, "")
+}
+
+// validNestedArchivePath reports whether key, when joined with currentPath, produces a path that
+// archive/tar can safely write: non-empty, not the filesystem root, and a strict descendant of
+// currentPath (so keys containing ".." can't escape their mount point).
+func validNestedArchivePath(currentPath, key string) bool {
+	joined := filepath.Clean(filepath.Join(currentPath, key))
+	switch joined {
+	case "", ".", "/", "..":
+		return false
+	}
+	if currentPath == "" {
+		return true
+	}
+	parent := filepath.Clean(currentPath)
+	return strings.HasPrefix(joined, parent+string(filepath.Separator))
 }
 
 // ArchiveGenerator generates *archive.Archive values.

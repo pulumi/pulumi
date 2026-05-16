@@ -166,21 +166,31 @@ lint_pulumi_json_fix::
 
 lint_fix:: lint_golang_fix lint_pulumi_json_fix
 
+# bin/custom-gcl is a golangci-lint binary with the requiredfield linter
+# baked in as a module plugin. Built from .custom-gcl.yml and the wrapper
+# under .golangci/plugins/requiredfield/.
+CUSTOM_GCL := bin/custom-gcl
+CUSTOM_GCL_DEPS := .custom-gcl.yml \
+		   .golangci/plugins/requiredfield/go.mod \
+		   .golangci/plugins/requiredfield/go.sum \
+		   .golangci/plugins/requiredfield/plugin.go
+
+$(CUSTOM_GCL): $(CUSTOM_GCL_DEPS) .make/ensure/golangci-lint
+	golangci-lint custom
+
 define lint_golang_pkg
 	@echo "[golangci-lint] Linting $(1)..."
-	@(cd $(1) && golangci-lint run $(GOLANGCI_LINT_ARGS) \
+	@(cd $(1) && $(abspath $(CUSTOM_GCL)) run $(GOLANGCI_LINT_ARGS) \
 			--config $(GOLANGCI_LINT_CONFIG) \
 			--max-same-issues 0 \
 			--max-issues-per-linter 0 \
 			--timeout 5m)
-	@echo "[requiredfield] Linting $(1)..."
-	@(cd $(1) && go vet -tags all -vettool=$$(which requiredfield) github.com/pulumi/pulumi/$(1)/...)
 
 endef
 
 .PHONY: lint_golang lint_golang_fix
 lint_golang: GOLANGCI_LINT_CONFIG=$(shell pwd)/.golangci.yml
-lint_golang: .make/ensure/golangci-lint .make/ensure/requiredfield
+lint_golang: $(CUSTOM_GCL)
 	$(foreach pkg,$(LINT_GOLANG_PKGS),$(call lint_golang_pkg,${pkg}))
 
 lint_golang_fix: GOLANGCI_LINT_ARGS=--fix

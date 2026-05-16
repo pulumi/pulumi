@@ -264,7 +264,7 @@ func TestMarshalAccumulated_BareArray(t *testing.T) {
 func TestMarshalAccumulated_PreservesEnvelope(t *testing.T) {
 	t.Parallel()
 	// When the server returned an object envelope, we rewrap so downstream
-	// `| jq` filters like '.accounts[]' keep working across --paginate.
+	// `| jq` filters like '.accounts[]' keep working across --all.
 	items := []json.RawMessage{json.RawMessage(`{"id":"a"}`), json.RawMessage(`{"id":"b"}`)}
 	out, err := marshalAccumulated(items, "accounts")
 	require.NoError(t, err)

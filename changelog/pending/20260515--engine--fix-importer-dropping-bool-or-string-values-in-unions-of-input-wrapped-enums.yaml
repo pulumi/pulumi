@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: engine
+  description: Fix `pulumi import` dropping map entries whose value matched the enum member of a `Union<Input<Enum<T>>, ...>` element type

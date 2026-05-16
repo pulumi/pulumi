@@ -252,6 +252,14 @@ func runStackScheduleNew(
 		return err
 	}
 
+	if args.once != "" {
+		normalized, err := parseScheduleTimestamp(args.once)
+		if err != nil {
+			return fmt.Errorf("--once %w", err)
+		}
+		args.once = normalized
+	}
+
 	c, stackID, err := factory(ctx, args.stack)
 	if err != nil {
 		return err

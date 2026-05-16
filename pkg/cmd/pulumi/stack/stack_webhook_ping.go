@@ -166,7 +166,12 @@ func renderWebhookPingText(w io.Writer, d apitype.WebhookDelivery) error {
 	}
 	fmt.Fprintf(w, "Response code:     %d\n", d.ResponseCode)
 	if d.ResponseBody != "" {
-		fmt.Fprintf(w, "Response body:     %s\n", d.ResponseBody)
+		fmt.Fprintln(w, "Response body:")
+		for _, line := range strings.Split(d.ResponseBody, "\n") {
+			if line = strings.TrimSpace(line); line != "" {
+				fmt.Fprintf(w, "  %s\n", line)
+			}
+		}
 	}
 	return nil
 }

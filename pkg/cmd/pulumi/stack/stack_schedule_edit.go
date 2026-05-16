@@ -189,7 +189,10 @@ func runStackScheduleEdit(
 		req := buildDriftEditRequest(existing, flags)
 		_, err = c.UpdateStackDriftSchedule(ctx, stackID, scheduleID, req)
 	case scheduleKindTTL:
-		req := buildTTLEditRequest(existing, flags)
+		req, buildErr := buildTTLEditRequest(existing, flags)
+		if buildErr != nil {
+			return buildErr
+		}
 		_, err = c.UpdateStackTTLSchedule(ctx, stackID, scheduleID, req)
 	default:
 		return fmt.Errorf("cannot edit schedule of kind %q", kind)
@@ -264,6 +267,13 @@ func buildRawEditRequest(
 		once = flags.once
 		cron = ""
 	}
+	once, err := parseScheduleTimestamp(once)
+	if err != nil {
+		if flags.onceChanged {
+			return apitype.CreateScheduledDeploymentRequest{}, fmt.Errorf("--once %w", err)
+		}
+		return apitype.CreateScheduledDeploymentRequest{}, err
+	}
 
 	existingReq, err := existingDeploymentRequest(existing)
 	if err != nil {
@@ -309,10 +319,17 @@ func buildDriftEditRequest(
 // The TTL update endpoint rewrites the entire definition on every call.
 func buildTTLEditRequest(
 	existing apitype.ScheduledAction, flags stackScheduleEditFlags,
-) apitype.CreateScheduledTTLDeploymentRequest {
+) (apitype.CreateScheduledTTLDeploymentRequest, error) {
 	once := existing.ScheduleOnce
 	if flags.onceChanged {
 		once = flags.once
+	}
+	once, err := parseScheduleTimestamp(once)
+	if err != nil {
+		if flags.onceChanged {
+			return apitype.CreateScheduledTTLDeploymentRequest{}, fmt.Errorf("--once %w", err)
+		}
+		return apitype.CreateScheduledTTLDeploymentRequest{}, err
 	}
 	deleteAfterDestroy := existingDeleteAfterDestroy(existing)
 	if flags.deleteAfterDestroyChanged {
@@ -321,7 +338,7 @@ func buildTTLEditRequest(
 	return apitype.CreateScheduledTTLDeploymentRequest{
 		Timestamp:          once,
 		DeleteAfterDestroy: deleteAfterDestroy,
-	}
+	}, nil
 }
 
 func parseRawOperation(s string) (apitype.PulumiOperation, error) {

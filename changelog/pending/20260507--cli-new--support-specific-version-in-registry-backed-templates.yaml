@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli/new
+  description: Support specific versions when using registry-backed templates with `pulumi new`

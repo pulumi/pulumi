@@ -16,13 +16,34 @@ package stack
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
+
+// parseScheduleTimestamp normalizes a schedule timestamp to the ISO 8601 form the service's request expects. It accepts
+// either that form (what users type into --once) or the SQL-style "2006-01-02 15:04:05.000" format the Cloud API
+// returns in response bodies
+func parseScheduleTimestamp(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.UTC().Format(time.RFC3339), nil
+	}
+	if t, err := time.ParseInLocation("2006-01-02 15:04:05.999", s, time.UTC); err == nil {
+		return t.Format(time.RFC3339), nil
+	}
+	return "", fmt.Errorf(
+		"invalid timestamp %q: must be ISO 8601 (e.g. 2026-12-31T23:59:00Z)", s,
+	)
+}
 
 const (
 	scheduleKindRaw   = "raw"
@@ -121,13 +142,10 @@ func scheduleSettings(s apitype.ScheduledAction) string {
 	}
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23050]: Not yet implemented.
 func newStackScheduleCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "schedule",
-		Short:  "Manage scheduled deployment actions for a stack",
-		Long:   "[EXPERIMENTAL] Manage scheduled deployment actions for a stack.",
+		Use:   "schedule",
+		Short: "[EXPERIMENTAL] Manage scheduled deployment actions for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
