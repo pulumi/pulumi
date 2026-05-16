@@ -749,6 +749,42 @@ removeNonStructuralTypes:
 				}
 			}
 		}
+
+	case value.IsArchive():
+		if schemaType == schema.ArchiveType {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsAsset():
+		if schemaType == schema.AssetType {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsResourceReference():
+		if _, ok := schemaType.(*schema.ResourceType); ok {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
 	}
 
 	return false
@@ -925,12 +961,9 @@ func generateValue(
 					return nil, err
 				}
 
-				// Always quote the key in case it includes invalid identifier characters (like '/' or ':')
-				propKey := fmt.Sprintf("%q", k)
-
 				items = append(items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Value: cty.StringVal(propKey),
+						Value: cty.StringVal(`"` + model.EscapeString(k) + `"`),
 					},
 					Value: x,
 				})

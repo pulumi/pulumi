@@ -999,6 +999,10 @@ func makeArrayType(elementType schema.Type) *schema.ArrayType {
 	return &schema.ArrayType{ElementType: elementType}
 }
 
+func makeMapType(elementType schema.Type) *schema.MapType {
+	return &schema.MapType{ElementType: elementType}
+}
+
 func makeProperty(name string, t schema.Type) *schema.Property {
 	return &schema.Property{Name: name, Type: t}
 }
@@ -1322,6 +1326,63 @@ func TestStructuralTypeChecks(t *testing.T) {
 				&schema.InputType{ElementType: schema.NumberType},
 			)))
 	})
+
+	t.Run("Archive", func(t *testing.T) {
+		t.Parallel()
+		value := property.New(&archive.Archive{Sig: archive.ArchiveSig, Assets: map[string]any{}})
+
+		assert.True(t, valueStructurallyTypedAs(value, schema.ArchiveType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.AnyType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.JSONType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.ArchiveType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.ArchiveType, schema.StringType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.StringType, schema.ArchiveType)))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New(map[string]property.Value{"k": value}),
+			makeMapType(schema.ArchiveType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.AssetType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.AssetType, schema.StringType)))
+	})
+
+	t.Run("Asset", func(t *testing.T) {
+		t.Parallel()
+		a, err := asset.FromText("hello")
+		require.NoError(t, err)
+		value := property.New(a)
+
+		assert.True(t, valueStructurallyTypedAs(value, schema.AssetType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.AnyType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.JSONType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.AssetType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(schema.AssetType, schema.StringType)))
+		assert.True(t, valueStructurallyTypedAs(
+			property.New([]property.Value{value}),
+			makeArrayType(schema.AssetType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.ArchiveType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.False(t, valueStructurallyTypedAs(value, makeUnionType(schema.ArchiveType, schema.StringType)))
+	})
+
+	t.Run("ResourceReference", func(t *testing.T) {
+		t.Parallel()
+		value := property.New(property.ResourceReference{
+			URN: "urn:pulumi:s::p::pkg:index:R::r",
+			ID:  property.New("id"),
+		})
+		resType := &schema.ResourceType{Token: "pkg:index:R"}
+
+		assert.True(t, valueStructurallyTypedAs(value, resType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.AnyResourceType))
+		assert.True(t, valueStructurallyTypedAs(value, schema.AnyType))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(resType)))
+		assert.True(t, valueStructurallyTypedAs(value, makeUnionType(resType, schema.StringType)))
+
+		assert.False(t, valueStructurallyTypedAs(value, schema.StringType))
+		assert.False(t, valueStructurallyTypedAs(value, schema.ArchiveType))
+	})
 }
 
 func TestGenerateValuePreservesProviderDiscriminators(t *testing.T) {
@@ -1377,6 +1438,44 @@ func TestGenerateValueDropsNonConformingMapEntries(t *testing.T) {
 		"\"good1\"": property.New("hello"),
 		"\"good2\"": property.New("world"),
 	}, rendered.AsMap().AsMap())
+}
+
+// TestGenerateValueEscapesTemplateMapKeys verifies that map keys containing
+// HCL template-interpolation sequences (`${`, `%{`) are escaped so the
+// resulting text round-trips through the HCL parser without losing one of
+// the leading sigils.
+func TestGenerateValueEscapesTemplateMapKeys(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		key string
+		hcl string
+	}{
+		{"$${", `"$$${"`},
+		{"%{", `"%%{"`},
+		{"${foo}", `"$${foo}"`},
+		{"plain", `"plain"`},
+	}
+
+	for _, c := range cases {
+		t.Run(c.key, func(t *testing.T) {
+			t.Parallel()
+			value := property.New(map[string]property.Value{
+				c.key: property.New("v"),
+			})
+			expr, err := generateValue(
+				&schema.MapType{ElementType: schema.StringType},
+				value, ImportState{}, func(string) {},
+			)
+			require.NoError(t, err)
+			obj, ok := expr.(*model.ObjectConsExpression)
+			require.True(t, ok)
+			require.Len(t, obj.Items, 1)
+			lit, ok := obj.Items[0].Key.(*model.LiteralValueExpression)
+			require.True(t, ok)
+			assert.Equal(t, c.hcl, lit.Value.AsString())
+		})
+	}
 }
 
 func TestReduceUnionTypeEliminatesUnionsBasicCase(t *testing.T) {
