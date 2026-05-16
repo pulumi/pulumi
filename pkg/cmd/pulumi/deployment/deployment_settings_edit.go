@@ -78,9 +78,8 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 	args.outputFormat = defaultDeploymentSettingsGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "edit",
-		Short:  "[EXPERIMENTAL] Create or update deployment settings for a stack",
+		Use:   "edit",
+		Short: "[EXPERIMENTAL] Create or update deployment settings for a stack",
 		Long: "[EXPERIMENTAL] Create or update deployment settings for a stack.\n" +
 			"\n" +
 			"Applies a JSON patch to the stack's Pulumi Deployments settings. If no\n" +
