@@ -17,6 +17,7 @@ package deployment
 // AI Generated - needs human review
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -43,7 +44,7 @@ import (
 // on.
 type deploymentSettingsEditClient interface {
 	PatchStackDeploymentSettings(
-		ctx context.Context, stack client.StackIdentifier, patch *apitype.DeploymentSettings,
+		ctx context.Context, stack client.StackIdentifier, patch json.RawMessage,
 	) error
 	GetStackDeploymentSettings(
 		ctx context.Context, stack client.StackIdentifier,
@@ -185,9 +186,12 @@ func runDeploymentSettingsEdit(
 }
 
 // readDeploymentSettingsPatch reads the JSON patch from path (or stdin when
-// path is `-`) and unmarshals it into an apitype.DeploymentSettings. Empty
-// content is rejected so a typo doesn't silently send an empty patch.
-func readDeploymentSettingsPatch(path string, stdin io.Reader) (*apitype.DeploymentSettings, error) {
+// path is `-`). The bytes are validated against apitype.DeploymentSettings
+// (with unknown fields rejected) so typos surface here instead of silently
+// no-op'ing on the server, but the original bytes are sent through verbatim
+// so that we can send partial objects (undefined fields) or null for deleting
+// fields.
+func readDeploymentSettingsPatch(path string, stdin io.Reader) (json.RawMessage, error) {
 	var raw []byte
 	var err error
 	if path == "-" {
@@ -209,11 +213,13 @@ func readDeploymentSettingsPatch(path string, stdin io.Reader) (*apitype.Deploym
 		return nil, errors.New("patch file is empty")
 	}
 
-	var patch apitype.DeploymentSettings
-	if err := json.Unmarshal(raw, &patch); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	var probe apitype.DeploymentSettings
+	if err := dec.Decode(&probe); err != nil {
 		return nil, err
 	}
-	return &patch, nil
+	return json.RawMessage(raw), nil
 }
 
 func isAllWhitespace(b []byte) bool {
