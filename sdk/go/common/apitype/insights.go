@@ -19,6 +19,32 @@ import (
 	"time"
 )
 
+// CreateInsightsAccountRequest is the body sent to the Pulumi Insights
+// CreateAccount endpoint. The shape mirrors the OpenAPI schema of the same
+// name in the Pulumi Cloud REST API.
+//
+// Both required fields (Provider, Environment) are server-validated; the CLI
+// surfaces the validation error rather than re-checking the enum locally.
+type CreateInsightsAccountRequest struct {
+	// Provider is the cloud provider the account discovers resources from.
+	// Server-side enum: aws, gcp, azure-native, oci, kubernetes.
+	Provider string `json:"provider"`
+	// Environment is the ESC environment reference holding provider
+	// credentials, in the form `project/environment` with an optional
+	// `@version` suffix.
+	Environment string `json:"environment"`
+	// ScanSchedule controls automated discovery scans. Server-side enum:
+	// none, 12h, daily. Empty means "use the server default."
+	ScanSchedule string `json:"scanSchedule,omitempty"`
+	// AgentPoolID selects an agent pool for discovery workflows. Empty
+	// means the org's default pool.
+	AgentPoolID string `json:"agentPoolID,omitempty"`
+	// ProviderConfig is provider-specific configuration (e.g. the list of
+	// regions to scan). The shape is provider-dependent; the CLI passes it
+	// through verbatim as JSON.
+	ProviderConfig json.RawMessage `json:"providerConfig,omitempty"`
+}
+
 // InsightsResourceWithVersion is a single discovered resource as returned by the
 // Pulumi Insights ReadResource endpoint. The shape mirrors the OpenAPI schema of
 // the same name in the Pulumi Cloud REST API.
