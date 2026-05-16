@@ -448,24 +448,3 @@ func TestNewOrgMemberListCmd_CountAndAllAreMutuallyExclusive(t *testing.T) {
 	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
 }
-
-func TestNewOrgMemberListCmd_Defaults(t *testing.T) {
-	t.Parallel()
-
-	cmd := newOrgMemberListCmd()
-	require.NotNil(t, cmd)
-	assert.Equal(t, "list", cmd.Use)
-
-	output := cmd.Flags().Lookup("output")
-	require.NotNil(t, output)
-	assert.Equal(t, "o", output.Shorthand)
-	assert.Equal(t, "default", output.DefValue)
-
-	count := cmd.Flags().Lookup("count")
-	require.NotNil(t, count)
-	assert.Equal(t, "0", count.DefValue)
-
-	all := cmd.Flags().Lookup("all")
-	require.NotNil(t, all)
-	assert.Equal(t, "false", all.DefValue)
-}

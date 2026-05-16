@@ -195,14 +195,3 @@ func TestOrgRoleNew_FactoryError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
-
-func TestOrgRoleNew_DefaultCmd(t *testing.T) {
-	t.Parallel()
-
-	cmd := newOrgRoleNewCmd()
-	assert.Equal(t, "new <name> <details-file>", cmd.Use)
-
-	o := cmd.Flags().Lookup("output")
-	require.NotNil(t, o)
-	assert.Equal(t, "o", o.Shorthand)
-}

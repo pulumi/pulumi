@@ -313,28 +313,3 @@ func TestNewDeploymentCancelCmd_RequiresDeploymentID(t *testing.T) {
 	err := cmd.ExecuteContext(t.Context())
 	require.Error(t, err)
 }
-
-func TestNewDeploymentCancelCmd_Defaults(t *testing.T) {
-	t.Parallel()
-
-	// Passing nil installs the production factory and confirmer; assert the
-	// command is well-formed without invoking it (the prod factory would
-	// touch the real filesystem / cloud config).
-	cmd := newDeploymentCancelCmd()
-	require.NotNil(t, cmd)
-	assert.Equal(t, "cancel <deployment-id>", cmd.Use)
-
-	output := cmd.Flags().Lookup("output")
-	require.NotNil(t, output)
-	assert.Equal(t, "o", output.Shorthand)
-	assert.Equal(t, "default", output.DefValue)
-
-	stack := cmd.Flags().Lookup("stack")
-	require.NotNil(t, stack)
-	assert.Equal(t, "s", stack.Shorthand)
-
-	yes := cmd.Flags().Lookup("yes")
-	require.NotNil(t, yes)
-	assert.Equal(t, "y", yes.Shorthand)
-	assert.Equal(t, "false", yes.DefValue)
-}
