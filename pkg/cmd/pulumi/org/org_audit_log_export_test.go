@@ -19,7 +19,6 @@ package org
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"io"
 	"strings"
@@ -150,10 +149,10 @@ func TestOrgAuditLogExport_JSONOutput(t *testing.T) {
 		},
 	}, c.calls)
 
-	encoded := base64.StdEncoding.EncodeToString([]byte(fixture))
 	assert.JSONEq(t, `{
 		"format": "cef",
-		"data": "`+encoded+`"
+		"lines": ["timestamp,user,event", "2025-01-02T03:04:05Z,alice,stack.create"],
+		"count": 2
 	}`, buf.String())
 }
 
