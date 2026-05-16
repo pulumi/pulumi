@@ -1584,6 +1584,96 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContTok
 	return resp, nil, nil
 }
 
+// ListOrgRoles lists the custom roles defined in the given organization, optionally
+// filtered by their UX purpose (e.g. "organization", "team", "token"). An empty
+// uxPurpose returns all roles. The Pulumi Cloud REST API is not paginated for
+// this endpoint, so all roles are returned in a single call.
+func (pc *Client) ListOrgRoles(
+	ctx context.Context, orgName, uxPurpose string,
+) ([]apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles", url.PathEscape(orgName))
+	queryObj := struct {
+		UXPurpose string `url:"uxPurpose,omitempty"`
+	}{UXPurpose: uxPurpose}
+
+	var resp apitype.ListRolesResponse
+	if err := pc.restCall(ctx, "GET", path, queryObj, nil, &resp); err != nil {
+		return nil, fmt.Errorf("listing organization roles: %w", err)
+	}
+	return resp.Roles, nil
+}
+
+// CreateOrgRole creates a new custom role in the given organization.
+func (pc *Client) CreateOrgRole(
+	ctx context.Context, orgName string, req apitype.CreateRoleRequest,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles", url.PathEscape(orgName))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "POST", path, nil, &req, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("creating organization role: %w", err)
+	}
+	return resp, nil
+}
+
+// GetOrgRole fetches a single custom role by its identifier.
+func (pc *Client) GetOrgRole(
+	ctx context.Context, orgName, roleID string,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("getting organization role: %w", err)
+	}
+	return resp, nil
+}
+
+// UpdateOrgRole updates an existing custom role's name, description, and details.
+// The service requires all three fields; callers that want to leave any of them
+// unchanged should fetch the current role first and merge.
+func (pc *Client) UpdateOrgRole(
+	ctx context.Context, orgName, roleID string, req apitype.UpdateRoleRequest,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "PATCH", path, nil, &req, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("updating organization role: %w", err)
+	}
+	return resp, nil
+}
+
+// DeleteOrgRole deletes a custom role from an organization. When force is true,
+// the service will delete the role even if it is currently assigned to members
+// or teams (and revoke those assignments).
+func (pc *Client) DeleteOrgRole(
+	ctx context.Context, orgName, roleID string, force bool,
+) error {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	queryObj := struct {
+		Force bool `url:"force,omitempty"`
+	}{Force: force}
+	if err := pc.restCall(ctx, "DELETE", path, queryObj, nil, nil); err != nil {
+		return fmt.Errorf("deleting organization role: %w", err)
+	}
+	return nil
+}
+
+// AssignTeamRole upserts the role assignment for the given team. The Pulumi
+// Cloud REST API currently supports a single role per team, so calling this
+// method replaces any previously assigned custom role.
+func (pc *Client) AssignTeamRole(
+	ctx context.Context, orgName, teamName, roleID string,
+) error {
+	path := fmt.Sprintf("/api/orgs/%s/teams/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(teamName), url.PathEscape(roleID))
+	if err := pc.restCall(ctx, "POST", path, nil, nil, nil); err != nil {
+		return fmt.Errorf("assigning role to team: %w", err)
+	}
+	return nil
+}
+
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
 // the Policy Pack, it returns the version of the pack.
 func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
