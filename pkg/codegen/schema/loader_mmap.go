@@ -24,17 +24,11 @@ import (
 	"github.com/edsrzf/mmap-go"
 )
 
-var mmapedFiles = make(map[string]mmap.MMap)
-
 // loadCachedSchemaBytes returns the cached schema at path if the cache file is newer than
 // pluginInstallTime (i.e. the schema was written after the plugin was last installed).
 func (l *pluginLoader) loadCachedSchemaBytes(path string, pluginInstallTime time.Time) ([]byte, bool) {
 	if l.cacheOptions.disableFileCache {
 		return nil, false
-	}
-
-	if schemaMmap, ok := mmapedFiles[path]; ok {
-		return schemaMmap, true
 	}
 
 	success := false
