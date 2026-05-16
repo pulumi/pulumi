@@ -63,6 +63,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
@@ -227,7 +228,7 @@ func New(ctx context.Context, d diag.Sink,
 ) (Backend, error) {
 	contract.Requiref(d != nil, "d", "expected a non-nil diag.Sink")
 	cloudURL = ValueOrDefaultURL(pkgWorkspace.Instance, cloudURL)
-	account, err := workspace.GetAccount(cloudURL)
+	account, err := getBackendAccount(cloudURL)
 	if err != nil {
 		return nil, fmt.Errorf("getting stored credentials: %w", err)
 	}
@@ -273,6 +274,71 @@ func New(ctx context.Context, d diag.Sink,
 		defaultOrg:     defaultOrg,
 		currentProject: project,
 	}, nil
+}
+
+// getBackendAccount returns account credentials for a backend, falling back to
+// the shared agent cache when an agent cannot read the default credentials.
+func getBackendAccount(cloudURL string) (workspace.Account, error) {
+	account, err := workspace.GetAccount(cloudURL)
+	if err == nil {
+		if account.AccessToken != "" {
+			logging.V(7).Infof("Using backend account for %q from default credentials", cloudURL)
+			return account, nil
+		}
+		if agentdetect.Detect(os.Getenv) != "" && !hasExplicitPulumiPathEnv() {
+			logging.V(7).Infof(
+				"No backend account for %q found in default credentials; checking shared agent credentials", cloudURL)
+		} else {
+			logging.V(7).Infof("No backend account for %q found in default credentials", cloudURL)
+			return account, nil
+		}
+	}
+	agent := agentdetect.Detect(os.Getenv)
+	if agent == "" || hasExplicitPulumiPathEnv() {
+		logging.V(7).Infof(
+			"Could not get backend account from default credentials without agent fallback: %v", err)
+		return workspace.Account{}, err
+	}
+
+	logging.V(7).Infof(
+		"Could not get backend account from default credentials in agent mode (%s); checking shared agent credentials: %v",
+		agent, err)
+	agentAccount, agentErr := workspace.GetAgentAccount(cloudURL)
+	if agentErr != nil {
+		return workspace.Account{}, errors.Join(err, agentErr)
+	}
+	if agentAccount.AccessToken != "" {
+		logging.V(7).Infof("Using backend account for %q from shared agent credentials", cloudURL)
+	} else {
+		logging.V(7).Infof("No backend account for %q found in shared agent credentials", cloudURL)
+	}
+	return agentAccount, nil
+}
+
+func hasExplicitPulumiPathEnv() bool {
+	return os.Getenv(workspace.PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
+}
+
+// storeUserAccount stores credentials from a user-controlled source. In agent
+// mode, if the default path is not writable, it skips persistence rather than
+// copying user credentials into the shared agent cache.
+func storeUserAccount(cloudURL string, account workspace.Account, setCurrent bool) error {
+	err := workspace.StoreAccount(cloudURL, account, setCurrent)
+	if err == nil {
+		logging.V(7).Infof("Stored credentials for %q in default credentials", cloudURL)
+		return nil
+	}
+
+	agent := agentdetect.Detect(os.Getenv)
+	if agent == "" || hasExplicitPulumiPathEnv() {
+		return err
+	}
+
+	logging.V(7).Infof(
+		"Could not store credentials for %q in default credentials in agent mode (%s); "+
+			"continuing without persisting user credentials: %v",
+		cloudURL, agent, err)
+	return nil
 }
 
 // loginWithBrowser uses a web-browser to log into the cloud and returns the cloud backend for it.
@@ -425,6 +491,47 @@ var newLoginManager = func() LoginManager {
 
 type defaultLoginManager struct{}
 
+func validateStoredAccount(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	account workspace.Account,
+) (workspace.Account, bool, error) {
+	valid := true
+	username := account.Username
+	organizations := account.Organizations
+	tokenInfo := account.TokenInformation
+	now := time.Now()
+	if tokenInfo != nil && tokenInfo.ExpiresAt != nil && tokenInfo.ExpiresAt.Before(now) {
+		// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
+		valid = false
+	} else if username == "" || account.LastValidatedAt.Add(1*time.Hour).Before(now) {
+		// If the username has not yet been populated, fetch it now.
+		// Also, we do not store the expiration time of the backend access token if oidc token exchange is not used.
+		// So we need to check periodically if it is still valid.
+		// We do this every hour by fetching the account details again using the backend access token.
+		var err error
+		username, organizations, tokenInfo, err = getAccountDetails(
+			ctx, cloudURL, insecure, account.AccessToken,
+		)
+		if errors.Is(err, ErrUnauthorized) {
+			valid = false
+		} else if err != nil {
+			return workspace.Account{}, false, err
+		}
+		account.LastValidatedAt = now
+	}
+
+	if valid {
+		account.Username = username
+		account.Organizations = organizations
+		account.TokenInformation = tokenInfo
+		account.Insecure = insecure
+	}
+
+	return account, valid, nil
+}
+
 // Current returns the current cloud backend if one is already logged in.
 func (m defaultLoginManager) Current(
 	ctx context.Context,
@@ -443,39 +550,24 @@ func (m defaultLoginManager) Current(
 	// is not set use it.  If PULUMI_ACCESS_TOKEN does not match,
 	// we prefer that.
 	existingAccount, err := workspace.GetAccount(cloudURL)
+	if err == nil && existingAccount.AccessToken != "" {
+		logging.V(7).Infof("Found stored credentials for %q in default credentials", cloudURL)
+	} else if err != nil {
+		logging.V(7).Infof("Could not read default credentials for %q: %v", cloudURL, err)
+	}
 	if err == nil && existingAccount.AccessToken != "" &&
 		(accessToken == "" || existingAccount.AccessToken == accessToken) {
-		valid := true
-		username := existingAccount.Username
-		organizations := existingAccount.Organizations
-		tokenInfo := existingAccount.TokenInformation
-		now := time.Now()
-		if tokenInfo != nil && tokenInfo.ExpiresAt != nil && tokenInfo.ExpiresAt.Before(now) {
-			// TODO(https://github.com/pulumi/pulumi/issues/20986): Return expiresIn within TokenInformation.
-			valid = false
-		} else if username == "" || existingAccount.LastValidatedAt.Add(1*time.Hour).Before(now) {
-			// If the username has not yet been populated, fetch it now.
-			// Also, we do not store the expiration time of the backend access token if oidc token exchange is not used.
-			// So we need to check periodically if it is still valid.
-			// We do this every hour by fetching the account details again using the backend access token.
-			username, organizations, tokenInfo, err = getAccountDetails(
-				ctx, cloudURL, insecure, existingAccount.AccessToken,
-			)
-			if errors.Is(err, ErrUnauthorized) {
-				valid = false
-			} else if err != nil {
-				return nil, err
-			}
-			existingAccount.LastValidatedAt = now
+		var valid bool
+		logging.V(7).Infof("Validating stored credentials for %q", cloudURL)
+		existingAccount, valid, err = validateStoredAccount(ctx, cloudURL, insecure, existingAccount)
+		if err != nil {
+			return nil, err
 		}
 
 		if valid {
 			// Save the token. While it hasn't changed this will update the current cloud we are logged into, as well.
-			existingAccount.Username = username
-			existingAccount.Organizations = organizations
-			existingAccount.TokenInformation = tokenInfo
-			existingAccount.Insecure = insecure
-			if err = workspace.StoreAccount(cloudURL, existingAccount, setCurrent); err != nil {
+			logging.V(7).Infof("Using valid stored credentials for %q", cloudURL)
+			if err = storeUserAccount(cloudURL, existingAccount, setCurrent); err != nil {
 				return nil, err
 			}
 
@@ -487,11 +579,21 @@ func (m defaultLoginManager) Current(
 	// doesn't match what we have saved.  Prefer the new
 	// PULUMI_ACCESS_TOKEN.
 	if accessToken == "" {
-		// No access token available, this isn't an error per-se but we don't have a backend
+		agent := agentdetect.Detect(os.Getenv)
+		if agent != "" {
+			if err != nil && hasExplicitPulumiPathEnv() {
+				return nil, err
+			}
+			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
+			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent)
+		}
+		// No access token available, this isn't an error per-se but we don't have a backend.
+		logging.V(7).Infof("No access token or agent mode detected for %q", cloudURL)
 		return nil, nil
 	}
 
 	// If there's already a token from the environment, use it.
+	logging.V(7).Infof("Using access token from %s for %q", env.AccessToken.Var().Name(), cloudURL)
 	_, err = fmt.Fprintf(os.Stderr, "Logging in using access token from %s\n", env.AccessToken.Var().Name())
 	contract.IgnoreError(err)
 
@@ -508,11 +610,109 @@ func (m defaultLoginManager) Current(
 		LastValidatedAt:  time.Now(),
 		Insecure:         insecure,
 	}
-	if err = workspace.StoreAccount(cloudURL, account, setCurrent); err != nil {
+	if err = storeUserAccount(cloudURL, account, setCurrent); err != nil {
 		return nil, err
 	}
 
 	return &account, nil
+}
+
+// currentOrSignupAgentAccount returns credentials from the shared agent cache,
+// or creates a new agent account when no valid cached credentials exist.
+func (m defaultLoginManager) currentOrSignupAgentAccount(
+	ctx context.Context,
+	cloudURL string,
+	insecure bool,
+	setCurrent bool,
+) (*workspace.Account, error) {
+	if deleted, err := workspace.DeleteExpiredAgentCredentials(time.Now()); err != nil {
+		return nil, err
+	} else if deleted {
+		logging.V(7).Infof("Deleted expired shared agent credentials")
+	}
+
+	agentAccount, err := workspace.GetAgentAccount(cloudURL)
+	if err != nil {
+		return nil, err
+	}
+	if agentAccount.AccessToken != "" {
+		var valid bool
+		logging.V(7).Infof("Found shared agent credentials for %q; validating", cloudURL)
+		agentAccount, valid, err = validateStoredAccount(ctx, cloudURL, insecure, agentAccount)
+		if err != nil {
+			return nil, err
+		}
+		if valid {
+			logging.V(7).Infof("Using valid shared agent credentials for %q", cloudURL)
+			if err = workspace.StoreAgentAccount(cloudURL, agentAccount, setCurrent); err != nil {
+				return nil, err
+			}
+			return &agentAccount, nil
+		}
+		logging.V(7).Infof("Shared agent credentials for %q are not valid; creating a new agent account", cloudURL)
+	} else {
+		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
+	}
+
+	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
+	signup, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).SignupAgent(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("creating agent Pulumi account: %w", err)
+	}
+	if signup.AccessToken == "" {
+		return nil, errors.New("creating agent Pulumi account: signup response did not include an access token")
+	}
+
+	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, signup.AccessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	account := workspace.Account{
+		AccessToken:      signup.AccessToken,
+		Username:         username,
+		Organizations:    organizations,
+		TokenInformation: tokenInfo,
+		LastValidatedAt:  time.Now(),
+		Insecure:         insecure,
+	}
+	if err = workspace.StoreAgentAccount(cloudURL, account, setCurrent); err != nil {
+		return nil, err
+	}
+	logging.V(7).Infof("Stored shared agent credentials for %q", cloudURL)
+	if signup.ClaimURL != "" {
+		claim := workspace.AgentClaim{
+			ClaimURL: signup.ClaimURL,
+			CloudURL: cloudURL,
+		}
+		// TODO: Require validUntil once the signup endpoint includes it in the response.
+		if signup.ValidUntil != nil {
+			claim.ValidUntil = *signup.ValidUntil
+		}
+		if err = workspace.StoreAgentClaim(claim); err != nil {
+			return nil, err
+		}
+		if signup.ValidUntil != nil {
+			logging.V(7).Infof("Stored shared agent claim metadata for %q; valid until %s", cloudURL, *signup.ValidUntil)
+		} else {
+			logging.V(7).Infof("Stored shared agent claim metadata for %q without validUntil", cloudURL)
+		}
+		printAgentClaimWarning(signup.ClaimURL)
+	}
+
+	return &account, nil
+}
+
+// printAgentClaimWarning tells the user how to claim an automatically created
+// agent account.
+func printAgentClaimWarning(claimURL string) {
+	if claimURL == "" {
+		return
+	}
+	_, err := fmt.Fprintf(os.Stderr,
+		"Pulumi created this account automatically for an agent. Claim it to take ownership: %s\n",
+		claimURL)
+	contract.IgnoreError(err)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.

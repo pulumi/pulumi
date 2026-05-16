@@ -19,6 +19,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -89,6 +90,40 @@ func newMockClient(server *httptest.Server) *Client {
 			},
 		},
 	}
+}
+
+func TestSignupAgent(t *testing.T) {
+	t.Parallel()
+
+	validUntil := time.Now().UTC().Truncate(time.Second)
+	var gotPath, gotMethod, gotAuth, gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		gotPath = req.URL.Path
+		gotMethod = req.Method
+		gotAuth = req.Header.Get("Authorization")
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		gotBody = string(body)
+		err = json.NewEncoder(rw).Encode(AgentSignupResponse{
+			AccessToken: "agent-token",
+			ClaimURL:    "https://app.pulumi.com/claim/abc123",
+			ValidUntil:  &validUntil,
+		})
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	resp, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context())
+	require.NoError(t, err)
+
+	assert.Equal(t, http.MethodPost, gotMethod)
+	assert.Equal(t, "/api/signup", gotPath)
+	assert.Empty(t, gotAuth)
+	assert.JSONEq(t, "{}", gotBody)
+	assert.Equal(t, "agent-token", resp.AccessToken)
+	assert.Equal(t, "https://app.pulumi.com/claim/abc123", resp.ClaimURL)
+	require.NotNil(t, resp.ValidUntil)
+	assert.True(t, resp.ValidUntil.Equal(validUntil))
 }
 
 func TestAPIErrorResponses(t *testing.T) {

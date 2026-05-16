@@ -291,6 +291,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 			}
 
 			logging.InitLogging(logToStderr, verbose, logFlow)
+			maybePrintAgentClaimWarning()
 
 			// Start automatic logging. At this point we don't have a stack
 			// or secrets manager, so logs will be gzip-compressed (not
@@ -568,6 +569,33 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// environment variable declarations.
 	declareFlagsAsEnvironmentVariables(cmd)
 	return cmd, cleanup
+}
+
+// maybePrintAgentClaimWarning reminds users to claim automatically created
+// agent accounts while the claim URL is still valid.
+func maybePrintAgentClaimWarning() {
+	deleted, err := workspace.DeleteExpiredAgentCredentials(time.Now())
+	if err != nil {
+		logging.V(7).Infof("Could not delete expired agent credentials: %v", err)
+		return
+	}
+	if deleted {
+		return
+	}
+
+	claim, err := workspace.GetAgentClaim()
+	if err != nil || claim.ClaimURL == "" {
+		return
+	}
+	// TODO: Require validUntil once the signup endpoint includes it in the response.
+	if !claim.ValidUntil.IsZero() && !claim.ValidUntil.After(time.Now()) {
+		return
+	}
+
+	_, err = fmt.Fprintf(os.Stderr,
+		"Pulumi created this account automatically for an agent. Claim it to take ownership: %s\n",
+		claim.ClaimURL)
+	contract.IgnoreError(err)
 }
 
 // haveNewerDevVersion checks whethere we have a newer dev version available.

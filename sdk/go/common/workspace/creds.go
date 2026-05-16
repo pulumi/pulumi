@@ -27,6 +27,7 @@ import (
 	"github.com/rogpeppe/go-internal/lockedfile"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
@@ -211,13 +212,40 @@ func getCredsFilePath() (string, error) {
 	return filepath.Join(pulumiFolder, "credentials.json"), nil
 }
 
-// GetStoredCredentials returns any credentials stored on the local machine.
-func GetStoredCredentials() (Credentials, error) {
-	credsFile, err := getCredsFilePath()
-	if err != nil {
-		return Credentials{}, err
+// ensurePrivateAgentCredentialDir verifies that agent credentials can be
+// written to a private directory, creating it if necessary.
+func ensurePrivateAgentCredentialDir(dir string) error {
+	info, err := os.Lstat(dir)
+	if os.IsNotExist(err) {
+		if err := os.Mkdir(dir, 0o700); err != nil && !os.IsExist(err) {
+			return fmt.Errorf("failed to create temporary Pulumi credentials directory '%s': %w", dir, err)
+		}
+		info, err = os.Lstat(dir)
 	}
+	if err != nil {
+		return fmt.Errorf("failed to inspect temporary Pulumi credentials directory '%s': %w", dir, err)
+	}
+	// Refuse symlinks so a process cannot redirect credential writes to an
+	// unexpected path outside the shared agent credential directory.
+	if info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("temporary Pulumi credentials directory '%s' must not be a symlink", dir)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("temporary Pulumi credentials path '%s' is not a directory", dir)
+	}
+	// /tmp is shared across users, but the agent credentials are bearer tokens.
+	// Only the current OS user should be able to read, write, or traverse this
+	// directory.
+	if info.Mode().Perm()&0o077 != 0 {
+		if err := os.Chmod(dir, 0o700); err != nil {
+			return fmt.Errorf("temporary Pulumi credentials directory '%s' has insecure permissions: %w", dir, err)
+		}
+	}
+	return nil
+}
 
+// readCredentialsFile loads credentials from a specific file path.
+func readCredentialsFile(credsFile string) (Credentials, error) {
 	c, err := lockedfile.Read(credsFile)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -250,16 +278,10 @@ func GetStoredCredentials() (Credentials, error) {
 	return creds, nil
 }
 
-// StoreCredentials updates the stored credentials on the machine, replacing the existing set.  If the credentials
-// are empty, the auth file will be deleted rather than just serializing an empty map.
-func StoreCredentials(creds Credentials) error {
-	credsFile, err := getCredsFilePath()
-	if err != nil {
-		return err
-	}
-
+// writeCredentialsFile replaces credentials at a specific file path.
+func writeCredentialsFile(credsFile string, creds Credentials) error {
 	if len(creds.AccessTokens) == 0 {
-		err = os.Remove(credsFile)
+		err := os.Remove(credsFile)
 		if err != nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -274,6 +296,226 @@ func StoreCredentials(creds Credentials) error {
 	return lockedfile.Write(credsFile, bytes.NewReader(raw), 0o600)
 }
 
+// GetStoredCredentials returns any credentials stored on the local machine.
+func GetStoredCredentials() (Credentials, error) {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	logging.V(7).Infof("Reading Pulumi credentials from %q", credsFile)
+	return readCredentialsFile(credsFile)
+}
+
+// StoreCredentials updates the stored credentials on the machine, replacing the existing set.  If the credentials
+// are empty, the auth file will be deleted rather than just serializing an empty map.
+func StoreCredentials(creds Credentials) error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+
+	logging.V(7).Infof("Writing Pulumi credentials to %q", credsFile)
+	return writeCredentialsFile(credsFile, creds)
+}
+
+// AgentClaim is the claim metadata returned when the CLI automatically creates
+// an account for an agent.
+type AgentClaim struct {
+	ClaimURL   string    `json:"claimUrl"`
+	ValidUntil time.Time `json:"validUntil"`
+	CloudURL   string    `json:"cloudUrl"`
+}
+
+var agentPulumiDir = filepath.Join(string(os.PathSeparator), "tmp", BookkeepingDir)
+
+// getAgentPulumiDir returns the shared temporary directory used for agent
+// credentials, creating it if needed.
+func getAgentPulumiDir() (string, error) {
+	dir := agentPulumiDir
+	if err := ensurePrivateAgentCredentialDir(dir); err != nil {
+		return "", fmt.Errorf("agent mode requires read/write access to /tmp/.pulumi: %w", err)
+	}
+	logging.V(7).Infof("Using shared agent Pulumi directory %q", dir)
+	return dir, nil
+}
+
+// getAgentCredsFilePath returns the shared temporary agent credentials path.
+func getAgentCredsFilePath() (string, error) {
+	dir, err := getAgentPulumiDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "credentials.json"), nil
+}
+
+// getAgentCredsFilePathNoEnsure returns the agent credentials path without
+// creating the agent credentials directory.
+func getAgentCredsFilePathNoEnsure() string {
+	return filepath.Join(agentPulumiDir, "credentials.json")
+}
+
+// getAgentClaimFilePath returns the shared temporary agent claim metadata path.
+func getAgentClaimFilePath() (string, error) {
+	dir, err := getAgentPulumiDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "agent-claim.json"), nil
+}
+
+// getAgentClaimFilePathNoEnsure returns the agent claim metadata path without
+// creating the agent credentials directory.
+func getAgentClaimFilePathNoEnsure() string {
+	return filepath.Join(agentPulumiDir, "agent-claim.json")
+}
+
+// getAgentConfigFilePath returns the shared temporary agent config path.
+func getAgentConfigFilePath() (string, error) {
+	dir, err := getAgentPulumiDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "config.json"), nil
+}
+
+// getAgentConfigFilePathNoEnsure returns the agent config path without
+// creating the agent credentials directory.
+func getAgentConfigFilePathNoEnsure() string {
+	return filepath.Join(agentPulumiDir, "config.json")
+}
+
+// GetAgentAccount returns the account for the given cloud URL from the shared
+// agent credentials file.
+func GetAgentAccount(key string) (Account, error) {
+	creds, err := GetAgentStoredCredentials()
+	if err != nil {
+		return Account{}, err
+	}
+
+	if account, ok := creds.Accounts[key]; ok {
+		return account, nil
+	}
+	token, ok := creds.AccessTokens[key]
+	if !ok {
+		return Account{}, nil
+	}
+	return Account{AccessToken: token}, nil
+}
+
+// GetAgentStoredCredentials returns credentials stored in the shared temporary
+// agent credentials file.
+func GetAgentStoredCredentials() (Credentials, error) {
+	credsFile, err := getAgentCredsFilePath()
+	if err != nil {
+		return Credentials{}, err
+	}
+	logging.V(7).Infof("Reading shared agent credentials from %q", credsFile)
+	return readCredentialsFile(credsFile)
+}
+
+// StoreAgentAccount saves the account for the given cloud URL in the shared
+// temporary agent credentials file.
+func StoreAgentAccount(key string, account Account, current bool) error {
+	creds, err := GetAgentStoredCredentials()
+	if err != nil {
+		return err
+	}
+	if creds.AccessTokens == nil {
+		creds.AccessTokens = make(map[string]string)
+	}
+	if creds.Accounts == nil {
+		creds.Accounts = make(map[string]Account)
+	}
+	creds.AccessTokens[key], creds.Accounts[key] = account.AccessToken, account
+	if current {
+		creds.Current = key
+	}
+	return StoreAgentCredentials(creds)
+}
+
+// StoreAgentCredentials replaces the shared temporary agent credentials file.
+func StoreAgentCredentials(creds Credentials) error {
+	credsFile, err := getAgentCredsFilePath()
+	if err != nil {
+		return err
+	}
+	logging.V(7).Infof("Writing shared agent credentials to %q", credsFile)
+	return writeCredentialsFile(credsFile, creds)
+}
+
+// DeleteAgentCredentials removes shared temporary agent credentials, claim
+// metadata, and config.
+func DeleteAgentCredentials() error {
+	var result error
+	for _, path := range []string{
+		getAgentCredsFilePathNoEnsure(),
+		getAgentClaimFilePathNoEnsure(),
+		getAgentConfigFilePathNoEnsure(),
+	} {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			result = errors.Join(result, fmt.Errorf("removing '%s': %w", path, err))
+		}
+	}
+	return result
+}
+
+// GetAgentClaim returns claim metadata for an automatically created agent
+// account, if one has been stored.
+func GetAgentClaim() (AgentClaim, error) {
+	claimFile := getAgentClaimFilePathNoEnsure()
+
+	data, err := os.ReadFile(claimFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return AgentClaim{}, nil
+		}
+		return AgentClaim{}, fmt.Errorf("reading '%s': %w", claimFile, err)
+	}
+
+	var claim AgentClaim
+	if err := json.Unmarshal(data, &claim); err != nil {
+		return AgentClaim{}, fmt.Errorf("failed to read Pulumi agent claim file '%s': %w", claimFile, err)
+	}
+	return claim, nil
+}
+
+// DeleteExpiredAgentCredentials removes shared temporary agent credentials when
+// their claim URL has expired. It returns true when credentials were removed.
+func DeleteExpiredAgentCredentials(now time.Time) (bool, error) {
+	claim, err := GetAgentClaim()
+	if err != nil {
+		return false, err
+	}
+	if claim.ClaimURL == "" || claim.ValidUntil.IsZero() || claim.ValidUntil.After(now) {
+		if claim.ClaimURL != "" && !claim.ValidUntil.IsZero() {
+			logging.V(7).Infof("Shared agent claim metadata is valid until %s", claim.ValidUntil)
+		}
+		return false, nil
+	}
+	logging.V(7).Infof("Shared agent claim metadata expired at %s; deleting shared agent state", claim.ValidUntil)
+	if err := DeleteAgentCredentials(); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// StoreAgentClaim stores claim metadata for an automatically created agent
+// account alongside the shared temporary agent credentials.
+func StoreAgentClaim(claim AgentClaim) error {
+	claimFile, err := getAgentClaimFilePath()
+	if err != nil {
+		return err
+	}
+	logging.V(7).Infof("Writing shared agent claim metadata to %q", claimFile)
+
+	raw, err := json.MarshalIndent(claim, "", "    ")
+	if err != nil {
+		return fmt.Errorf("marshalling agent claim object: %w", err)
+	}
+	return lockedfile.Write(claimFile, bytes.NewReader(raw), 0o600)
+}
+
 type BackendConfig struct {
 	DefaultOrg string `json:"defaultOrg,omitempty"` // The default org for this backend config.
 }
@@ -286,6 +528,7 @@ func getConfigFilePath() (string, error) {
 	// Allow the folder we use to store config in to be overridden by tests
 	pulumiFolder := os.Getenv(PulumiCredentialsPathEnvVar)
 	if pulumiFolder == "" {
+		logging.V(7).Infof("Using default Pulumi config path")
 		folder, err := GetPulumiHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("failed to get the home path: %w", err)
@@ -301,18 +544,23 @@ func getConfigFilePath() (string, error) {
 	return filepath.Join(pulumiFolder, "config.json"), nil
 }
 
+func hasExplicitPulumiPathEnv() bool {
+	return os.Getenv(PulumiCredentialsPathEnvVar) != "" || os.Getenv(env.Home.Var().Name()) != ""
+}
+
 func GetPulumiConfig() (PulumiConfig, error) {
 	configFile, err := getConfigFilePath()
 	if err != nil {
-		return PulumiConfig{}, err
+		return getAgentPulumiConfigIfNeeded(err)
 	}
 
+	logging.V(7).Infof("Reading Pulumi config from %q", configFile)
 	c, err := os.ReadFile(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return PulumiConfig{}, nil
 		}
-		return PulumiConfig{}, fmt.Errorf("reading '%s': %w", configFile, err)
+		return getAgentPulumiConfigIfNeeded(fmt.Errorf("reading '%s': %w", configFile, err))
 	}
 
 	var config PulumiConfig
@@ -326,9 +574,17 @@ func GetPulumiConfig() (PulumiConfig, error) {
 func StorePulumiConfig(config PulumiConfig) error {
 	configFile, err := getConfigFilePath()
 	if err != nil {
-		return err
+		return storeAgentPulumiConfigIfNeeded(config, err)
 	}
+	logging.V(7).Infof("Writing Pulumi config to %q", configFile)
 
+	if err := writePulumiConfigFile(configFile, config); err != nil {
+		return storeAgentPulumiConfigIfNeeded(config, err)
+	}
+	return nil
+}
+
+func writePulumiConfigFile(configFile string, config PulumiConfig) error {
 	raw, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
 		return fmt.Errorf("marshalling config object: %w", err)
@@ -354,6 +610,57 @@ func StorePulumiConfig(config PulumiConfig) error {
 		return err
 	}
 
+	return nil
+}
+
+// getAgentPulumiConfigIfNeeded reads shared agent config when agent mode cannot
+// read the default Pulumi config path.
+func getAgentPulumiConfigIfNeeded(defaultErr error) (PulumiConfig, error) {
+	agent := agentdetect.Detect(os.Getenv)
+	if agent == "" || hasExplicitPulumiPathEnv() {
+		return PulumiConfig{}, defaultErr
+	}
+
+	configFile, err := getAgentConfigFilePath()
+	if err != nil {
+		return PulumiConfig{}, errors.Join(defaultErr, err)
+	}
+	logging.V(7).Infof(
+		"Could not read default Pulumi config in agent mode (%s); reading shared agent config from %q: %v",
+		agent, configFile, defaultErr)
+	c, err := os.ReadFile(configFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return PulumiConfig{}, nil
+		}
+		return PulumiConfig{}, errors.Join(defaultErr, fmt.Errorf("reading '%s': %w", configFile, err))
+	}
+
+	var config PulumiConfig
+	if err = json.Unmarshal(c, &config); err != nil {
+		return PulumiConfig{}, fmt.Errorf("failed to read Pulumi config file: %w", err)
+	}
+	return config, nil
+}
+
+// storeAgentPulumiConfigIfNeeded writes shared agent config when agent mode
+// cannot write the default Pulumi config path.
+func storeAgentPulumiConfigIfNeeded(config PulumiConfig, defaultErr error) error {
+	agent := agentdetect.Detect(os.Getenv)
+	if agent == "" || hasExplicitPulumiPathEnv() {
+		return defaultErr
+	}
+
+	configFile, err := getAgentConfigFilePath()
+	if err != nil {
+		return errors.Join(defaultErr, err)
+	}
+	logging.V(7).Infof(
+		"Could not write default Pulumi config in agent mode (%s); writing shared agent config to %q: %v",
+		agent, configFile, defaultErr)
+	if err = writePulumiConfigFile(configFile, config); err != nil {
+		return errors.Join(defaultErr, err)
+	}
 	return nil
 }
 

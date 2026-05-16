@@ -128,6 +128,14 @@ type NeoTaskMessage struct {
 	EntityDiff *NeoTaskEntityDiff `json:"entity_diff,omitempty"`
 }
 
+// AgentSignupResponse is returned by the unauthenticated agent signup endpoint.
+type AgentSignupResponse struct {
+	AccessToken string `json:"accessToken"`
+	ClaimURL    string `json:"claimUrl"`
+	// TODO: Make validUntil required once the signup endpoint includes it in the response.
+	ValidUntil *time.Time `json:"validUntil,omitempty"`
+}
+
 // NeoTaskEntityDiff represents entities to add or remove from the agent context.
 type NeoTaskEntityDiff struct {
 	Add    []NeoTaskEntity `json:"add,omitempty"`
@@ -245,6 +253,15 @@ func (pc *Client) WithHTTPClient(httpClient *http.Client) *Client {
 // URL returns the URL of the API endpoint this client interacts with
 func (pc *Client) URL() string {
 	return pc.apiURL
+}
+
+// SignupAgent creates an ephemeral account for an agent using the unauthenticated signup endpoint.
+func (pc *Client) SignupAgent(ctx context.Context) (AgentSignupResponse, error) {
+	var resp AgentSignupResponse
+	if err := pc.restCall(ctx, http.MethodPost, "/api/signup", nil, struct{}{}, &resp); err != nil {
+		return AgentSignupResponse{}, err
+	}
+	return resp, nil
 }
 
 // restCall makes a REST-style request to the Pulumi API using the given method, path, query object, and request

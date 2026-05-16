@@ -95,6 +95,14 @@ func TestEnabledFullyQualifiedStackNames(t *testing.T) {
 //nolint:paralleltest // mutates env vars and global state
 func TestMissingPulumiAccessToken(t *testing.T) {
 	t.Setenv("PULUMI_ACCESS_TOKEN", "")
+	t.Setenv("AI_AGENT", "")
+	t.Setenv("CODEX_SANDBOX", "")
+	t.Setenv("CODEX_CI", "")
+	t.Setenv("CODEX_THREAD_ID", "")
+	t.Setenv("CURSOR_TRACE_ID", "")
+	t.Setenv("CURSOR_AGENT", "")
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE", "")
 
 	{ // Disable interactive mode
 		disableInteractive := cmdutil.DisableInteractive
@@ -111,6 +119,116 @@ func TestMissingPulumiAccessToken(t *testing.T) {
 	if assert.ErrorAs(t, err, &expectedErr) {
 		assert.Equal(t, env.AccessToken.Var(), expectedErr.Var)
 	}
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestGetBackendAccountDoesNotFallbackToAgentCredentialsWithExplicitPath(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	badCredentialsDir := t.TempDir()
+	badCredentialsPath := badCredentialsDir + "/not-a-directory"
+	require.NoError(t, os.WriteFile(badCredentialsPath, []byte("not a directory"), 0o600))
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
+	t.Setenv("CODEX_SANDBOX", "1")
+
+	err = workspace.StoreAgentAccount("https://api.example.com", workspace.Account{AccessToken: "agent-token"}, true)
+	require.NoError(t, err)
+
+	account, err := getBackendAccount("https://api.example.com")
+	require.Error(t, err)
+	assert.Empty(t, account.AccessToken)
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestCurrentEnvTokenFailsWithInaccessibleExplicitPath(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	badCredentialsDir := t.TempDir()
+	badCredentialsPath := badCredentialsDir + "/not-a-directory"
+	require.NoError(t, os.WriteFile(badCredentialsPath, []byte("not a directory"), 0o600))
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, badCredentialsPath)
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		require.Equal(t, "/api/user", req.URL.Path)
+		err := json.NewEncoder(rw).Encode(map[string]any{
+			"githubLogin":   "agent-user",
+			"organizations": []map[string]string{},
+		})
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.Error(t, err)
+	assert.Nil(t, account)
+
+	agentAccount, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Empty(t, agentAccount.AccessToken)
+}
+
+//nolint:paralleltest // mutates env vars and shared temporary agent credentials
+func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	pulumiHome := t.TempDir()
+	t.Setenv("PULUMI_HOME", pulumiHome)
+	t.Setenv("CODEX_SANDBOX", "1")
+	t.Setenv("PULUMI_ACCESS_TOKEN", "env-token")
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		require.Equal(t, "/api/user", req.URL.Path)
+		err := json.NewEncoder(rw).Encode(map[string]any{
+			"githubLogin":   "agent-user",
+			"organizations": []map[string]string{},
+		})
+		require.NoError(t, err)
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := NewLoginManager().Current(t.Context(), server.URL, false, true)
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "env-token", account.AccessToken)
+
+	defaultAccount, err := workspace.GetAccount(server.URL)
+	require.NoError(t, err)
+	assert.Equal(t, "env-token", defaultAccount.AccessToken)
+	agentAccount, err := workspace.GetAgentAccount(server.URL)
+	require.NoError(t, err)
+	assert.Empty(t, agentAccount.AccessToken)
 }
 
 //nolint:paralleltest // mutates global configuration
