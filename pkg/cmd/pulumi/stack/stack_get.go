@@ -65,7 +65,7 @@ func newStackGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stackName, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&output, "output", "o", "default",
+	cmd.Flags().StringVar(&output, "output", "default",
 		"The output format: default (human-readable) or json")
 	cmd.Flags().BoolVar(&showSecrets, "show-secrets", false,
 		"Display stack outputs which are marked as secret in plaintext")

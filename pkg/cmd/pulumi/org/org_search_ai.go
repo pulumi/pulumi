@@ -135,7 +135,7 @@ func newSearchAICmd() *cobra.Command {
 		&scmd.queryString, "query", "q", "",
 		"Plaintext natural language query",
 	)
-	outputflag.VarP(cmd.PersistentFlags(), &scmd.outputFormat)
+	outputflag.Var(cmd.PersistentFlags(), &scmd.outputFormat)
 	cmd.PersistentFlags().Var(
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",

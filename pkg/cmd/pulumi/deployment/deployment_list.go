@@ -117,7 +117,7 @@ func newDeploymentListCmdWith(factory deploymentListClientFactory) *cobra.Comman
 		"Fetch all results (mutually exclusive with --count)")
 	cmd.Flags().StringVar(&args.sort, "sort", "", "The field to sort results by")
 	cmd.Flags().BoolVar(&args.asc, "asc", false, "Sort in ascending order (default descending)")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
+	cmd.Flags().StringVar(&args.output, "output", "default",
 		"Output format. One of: default, json")
 
 	return cmd

@@ -76,7 +76,7 @@ func newStackWebhookGetCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&output, "output", "o", "default",
+	cmd.Flags().StringVar(&output, "output", "default",
 		"The output format: default (human-readable text) or json")
 
 	return cmd

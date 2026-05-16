@@ -136,7 +136,7 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 	cmd.Flags().BoolVar(&args.all, "all", false,
 		"Return every matching account")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
-	outputflag.VarP(cmd.Flags(), &args.output)
+	outputflag.Var(cmd.Flags(), &args.output)
 
 	return cmd
 }

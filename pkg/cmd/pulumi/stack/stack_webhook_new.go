@@ -144,7 +144,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 		"The HMAC key for signature verification")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
-	cmd.Flags().StringVarP(&output, "output", "o", "default",
+	cmd.Flags().StringVar(&output, "output", "default",
 		"The output format: default (human-readable text) or json")
 
 	return cmd

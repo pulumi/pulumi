@@ -129,7 +129,7 @@ func newStackHistoryEventsCmd(
 	cmd.Flags().BoolVar(&args.all, "all", false,
 		"Return every event for the update")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
-	outputflag.VarP(cmd.Flags(), &outputFormat)
+	outputflag.Var(cmd.Flags(), &outputFormat)
 
 	return cmd
 }

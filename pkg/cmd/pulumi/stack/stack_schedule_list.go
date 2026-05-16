@@ -74,7 +74,7 @@ func newStackScheduleListCmdWith(factory stackScheduleListClientFactory) *cobra.
 		"The name of the stack to operate on. Defaults to the current stack")
 	cmd.Flags().IntVar(&count, "count", 0,
 		"Show only the first N schedules. 0 (the default) shows all")
-	outputflag.VarP(cmd.Flags(), &output)
+	outputflag.Var(cmd.Flags(), &output)
 
 	return cmd
 }

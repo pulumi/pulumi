@@ -93,7 +93,7 @@ func newStackDriftStatusCmdWith(factory driftStatusClientFactory) *cobra.Command
 
 	cmd.Flags().StringVarP(&dscmd.stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	outputflag.VarP(cmd.Flags(), &dscmd.output)
+	outputflag.Var(cmd.Flags(), &dscmd.output)
 
 	return cmd
 }

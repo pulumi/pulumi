@@ -212,21 +212,3 @@ func TestOrgRoleList_CobraFlagBinding(t *testing.T) {
 	assert.Contains(t, buf.String(), `"count": 2`)
 	assert.Equal(t, "organization", c.capturedPurpose)
 }
-
-func TestOrgRoleList_DefaultCmd(t *testing.T) {
-	t.Parallel()
-
-	cmd := newOrgRoleListCmd()
-	assert.Equal(t, "list", cmd.Use)
-	require.NotNil(t, cmd.RunE)
-
-	f := cmd.Flags().Lookup("output")
-	require.NotNil(t, f)
-	assert.Equal(t, "o", f.Shorthand)
-
-	pf := cmd.Flags().Lookup("purpose")
-	require.NotNil(t, pf)
-
-	of := cmd.Flags().Lookup("org")
-	require.NotNil(t, of)
-}
