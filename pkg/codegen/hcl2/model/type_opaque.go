@@ -65,7 +65,7 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 }
 
 func (t *OpaqueType) conversionFromImpl(
-	src Type, unifying, checkUnsafe bool, seen map[Type]struct{},
+	src Type, unifying, checkUnsafe bool, seen cycleSet,
 ) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(
 		t, src, unifying, seen, &gsync.Map[Type, cacheEntry]{}, func() (ConversionKind, lazyDiagnostics) {
@@ -124,7 +124,7 @@ func (t *OpaqueType) conversionFromImpl(
 		})
 }
 
-func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return t.conversionFromImpl(src, unifying, true, seen)
 }
 

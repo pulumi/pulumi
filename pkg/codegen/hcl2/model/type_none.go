@@ -60,7 +60,7 @@ func (noneType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (noneType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(NoneType, src, unifying, seen, &gsync.Map[Type, cacheEntry]{},
 		func() (ConversionKind, lazyDiagnostics) {
 			return NoConversion, func() hcl.Diagnostics {
