@@ -2169,8 +2169,11 @@ func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack Stack
 // For each property in the patch, the server starts with the current value,
 // removes it if the patch specifies null, or merges the new non-null value
 // with the existing one. Non-object properties are replaced entirely.
+//
+// Note we use json.RawMessage and not DeploymentSettings so that we can send
+// partial objects (ie undefined values) or null values to delete settings.
 func (pc *Client) PatchStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
-	patch *apitype.DeploymentSettings,
+	patch json.RawMessage,
 ) error {
 	return pc.restCall(ctx, http.MethodPost, getStackPath(stack, "deployments", "settings"), nil, patch, nil)
 }
