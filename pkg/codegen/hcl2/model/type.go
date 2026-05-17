@@ -90,7 +90,7 @@ type Type interface {
 	Pretty() pretty.Formatter
 
 	equals(other Type, seen map[Type]struct{}) bool
-	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)
+	conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics)
 	string(seen map[Type]struct{}) string
 	unify(other Type) (Type, ConversionKind)
 	isType()
@@ -126,7 +126,27 @@ type cacheEntry struct {
 	diags lazyDiagnostics
 }
 
-func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
+// cycleSet tracks `(destination, source)` pairs currently mid-flight in a
+// recursive [Type.conversionFrom] computation. Cycle detection is keyed by
+// the pair rather than the destination alone: re-entering the same destination
+// with a different source is a different question and must be checked, not
+// short-circuited.
+type cycleSet map[[2]Type]struct{}
+
+func (c cycleSet) has(dst, src Type) bool {
+	_, ok := c[[2]Type{dst, src}]
+	return ok
+}
+
+func (c cycleSet) push(dst, src Type) {
+	c[[2]Type{dst, src}] = struct{}{}
+}
+
+func (c cycleSet) pop(dst, src Type) {
+	delete(c, [2]Type{dst, src})
+}
+
+func conversionFrom(dest, src Type, unifying bool, seen cycleSet,
 	cache *gsync.Map[Type, cacheEntry],
 	conversionFromImpl func() (ConversionKind, lazyDiagnostics),
 ) (ConversionKind, lazyDiagnostics) {

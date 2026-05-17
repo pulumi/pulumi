@@ -726,6 +726,91 @@ func TestRecursiveObjectType(t *testing.T) {
 	assert.True(t, hasOutputs)
 }
 
+// TestRecursiveObjectTypeConvertsFromFiniteSource verifies that a finite source
+// value can be converted to a self-referential ObjectType.
+func TestRecursiveObjectTypeConvertsFromFiniteSource(t *testing.T) {
+	t.Parallel()
+
+	// Build a self-referential object type: Obj { a: Optional<Obj> }.
+	props := map[string]Type{}
+	recursive := NewObjectType(props)
+	props["a"] = NewOptionalType(recursive)
+
+	// Optional `a` means the property may be absent, so an empty source satisfies.
+	t.Run("empty source converts safely", func(t *testing.T) {
+		t.Parallel()
+		empty := NewObjectType(map[string]Type{})
+		assert.Equal(t, SafeConversion, recursive.ConversionFrom(empty))
+	})
+
+	t.Run("none source converts safely", func(t *testing.T) {
+		t.Parallel()
+		// Source: { a: <recursive itself absent> } — the recursive property is Optional.
+		src := NewObjectType(map[string]Type{"a": NoneType})
+		assert.Equal(t, SafeConversion, recursive.ConversionFrom(src))
+	})
+
+	t.Run("source mirroring schema converges", func(t *testing.T) {
+		t.Parallel()
+		// Source: { a: { a: {} } } has finite depth and matches the recursive shape.
+		outer := NewObjectType(map[string]Type{
+			"a": NewObjectType(map[string]Type{
+				"a": NewObjectType(map[string]Type{}),
+			}),
+		})
+		assert.Equal(t, SafeConversion, recursive.ConversionFrom(outer))
+	})
+
+	t.Run("source with incompatible property still rejected", func(t *testing.T) {
+		t.Parallel()
+		// Coinductive cycle handling shouldn't make conversions universally permissive:
+		// a source whose recursive property has a primitive type that can't satisfy the
+		// recursive target should still fail to convert.
+		src := NewObjectType(map[string]Type{"a": StringType})
+		assert.Equal(t, NoConversion, recursive.ConversionFrom(src))
+	})
+
+	t.Run("source with deeply incompatible nested property still rejected", func(t *testing.T) {
+		t.Parallel()
+		// Source: { a: { a: "string" } }. The OUTER "a" matches the recursive shape
+		// (it's an object), but the INNER nested "a" is a string and can never satisfy
+		// Optional<recursive>. The conversion check must descend into the source rather
+		// than short-circuit on the destination cycle.
+		src := NewObjectType(map[string]Type{
+			"a": NewObjectType(map[string]Type{
+				"a": StringType,
+			}),
+		})
+		assert.Equal(t, NoConversion, recursive.ConversionFrom(src))
+	})
+}
+
+// TestRecursiveObjectTypeViaInputUnion mirrors the InputShape/PlainShape
+// pattern produced by codegen/pcl.schemaTypeToType: the schema property is
+// reachable as `Optional<Union<recursiveInputObj | Output<recursivePlainObj>>>`,
+// and the value is an empty object that should satisfy `recursiveInputObj`.
+// Before the cycle-handling fix, the conversion bailed out with NoConversion.
+func TestRecursiveObjectTypeViaInputUnion(t *testing.T) {
+	t.Parallel()
+
+	inputProps := map[string]Type{}
+	inputObj := NewObjectType(inputProps)
+	inputProps["a"] = NewOptionalType(inputObj)
+
+	plainProps := map[string]Type{}
+	plainObj := NewObjectType(plainProps)
+	plainProps["a"] = NewOptionalType(plainObj)
+
+	schemaTyp := NewOptionalType(NewUnionType(inputObj, NewOutputType(plainObj)))
+
+	// Value type: { a: {} } - finite, satisfies inputObj.
+	value := NewObjectType(map[string]Type{
+		"a": NewObjectType(map[string]Type{}),
+	})
+
+	assert.Equal(t, SafeConversion, schemaTyp.ConversionFrom(value))
+}
+
 // Tests that object type annotations can be added and queried correctly.
 func TestObjectTypeAnnotations(t *testing.T) {
 	t.Parallel()
