@@ -3265,9 +3265,11 @@ func parsePropertyGlobs(paths []string) ([]property.Glob, error) {
 	}
 	globs := make([]property.Glob, len(paths))
 	for i, p := range paths {
-		if err := globs[i].UnmarshalText([]byte(p)); err != nil {
+		var bc resource.BackCompatPropertyPath
+		if err := bc.UnmarshalText([]byte(p)); err != nil {
 			return nil, fmt.Errorf("%d: %w", i, err)
 		}
+		globs[i] = property.Glob(bc)
 	}
 	return globs, nil
 }

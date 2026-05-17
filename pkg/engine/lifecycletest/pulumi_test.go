@@ -1646,6 +1646,78 @@ func TestIgnoreChangesInvalidPaths(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestIgnoreChangesLegacyPaths(t *testing.T) {
+	t.Parallel()
+
+	legacyPaths := []string{"foo-bar", "root.foo-bar", "with:colon", "with/slash"}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	register := func(t *testing.T, monitor *deploytest.ResourceMonitor, inputs resource.PropertyMap) {
+		_, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:           inputs,
+			IgnoreChanges:    legacyPaths,
+			ReplaceOnChanges: legacyPaths,
+		})
+		require.NoError(t, err)
+	}
+
+	initial := resource.NewPropertyMapFromMap(map[string]any{
+		"foo-bar": "v1",
+		"root": map[string]any{
+			"foo-bar": "v1",
+		},
+	})
+	changed := resource.NewPropertyMapFromMap(map[string]any{
+		"foo-bar": "v2",
+		"root": map[string]any{
+			"foo-bar": "v2",
+		},
+	})
+
+	hostF := deploytest.NewPluginHostF(nil, nil,
+		deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			register(t, monitor, initial)
+			return nil
+		}),
+		loaders...)
+	p := &lt.TestPlan{Options: lt.TestUpdateOptions{T: t, HostF: hostF, SkipDisplayTests: true}}
+	project := p.GetProject()
+
+	snap, err := lt.TestOp(Update).RunStep(project, p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "create")
+	require.NoError(t, err)
+
+	hostF = deploytest.NewPluginHostF(nil, nil,
+		deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			register(t, monitor, changed)
+			return nil
+		}),
+		loaders...)
+	p.Options.HostF = hostF
+
+	var saw display.StepOp
+	p.Steps = []lt.TestStep{{
+		Op: Update,
+		Validate: func(_ workspace.Project, _ deploy.Target, _ JournalEntries, events []Event, err error) error {
+			for _, e := range events {
+				if e.Type != ResourcePreEvent {
+					continue
+				}
+				if md := e.Payload().(ResourcePreEventPayload).Metadata; md.URN == "urn:pulumi:test::test::pkgA:m:typA::resA" {
+					saw = md.Op
+				}
+			}
+			return err
+		},
+	}}
+	_ = p.RunWithName(t, snap, "update")
+	assert.Equal(t, deploy.OpSame, saw, "hyphenated ignoreChanges path should suppress the diff")
+}
+
 type DiffFunc = func(context.Context, plugin.DiffRequest) (plugin.DiffResult, error)
 
 func replaceOnChangesTest(t *testing.T, name string, diffFunc DiffFunc) {
