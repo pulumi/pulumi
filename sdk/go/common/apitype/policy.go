@@ -284,8 +284,8 @@ type UpdatePolicyGroupRequest struct {
 	AddPolicyPack    *PolicyPackMetadata `json:"addPolicyPack,omitempty"`
 	RemovePolicyPack *PolicyPackMetadata `json:"removePolicyPack,omitempty"`
 
-	AddInsightsAccount    *string `json:"addInsightsAccount,omitempty"`
-	RemoveInsightsAccount *string `json:"removeInsightsAccount,omitempty"`
+	AddInsightsAccount    *InsightsAccountReference `json:"addInsightsAccount,omitempty"`
+	RemoveInsightsAccount *InsightsAccountReference `json:"removeInsightsAccount,omitempty"`
 
 	// Stacks, when non-nil, replaces the full list of stacks in the group.
 	Stacks *[]PulumiStackReference `json:"stacks,omitempty"`
@@ -297,18 +297,24 @@ type UpdatePolicyGroupRequest struct {
 	InsightsAccounts *[]string `json:"insightsAccounts,omitempty"`
 }
 
+// InsightsAccountReference identifies an Insights account for policy group
+// membership. The server requires at least the Name field.
+type InsightsAccountReference struct {
+	Name string `json:"name"`
+}
+
 // PulumiStackReference contains the StackName and ProjectName of the stack.
 type PulumiStackReference struct {
 	Name           string `json:"name"`
-	RoutingProject string `json:"routingProject"`
+	RoutingProject string `json:"routingProject,omitempty"`
 }
 
 // PolicyPackMetadata is the metadata of a Policy Pack.
 type PolicyPackMetadata struct {
 	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
-	Version     int    `json:"version"`
-	VersionTag  string `json:"versionTag"`
+	DisplayName string `json:"displayName,omitempty"`
+	Version     int    `json:"version,omitempty"`
+	VersionTag  string `json:"versionTag,omitempty"`
 
 	// The configuration that is to be passed to the Policy Pack. This
 	// map ties Policies with their configuration.
