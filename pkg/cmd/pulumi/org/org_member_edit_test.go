@@ -72,6 +72,12 @@ func (m *mockOrgMemberEditClient) ListOrganizationMembers(
 	return page.resp, page.err
 }
 
+func (m *mockOrgMemberEditClient) ListOrgRoles(
+	_ context.Context, _, _ string,
+) ([]apitype.Role, error) {
+	return nil, nil
+}
+
 func stubOrgMemberEditFactory(c orgMemberEditClient, org string) orgMemberEditClientFactory {
 	return func(_ context.Context, _ string) (orgMemberEditClient, string, error) {
 		return c, org, nil
@@ -189,7 +195,7 @@ func TestOrgMemberEdit_NoFlagsChanged(t *testing.T) {
 		})
 	require.Error(t, err)
 	assert.Equal(t,
-		"no changes specified; pass at least one of --role or --fga-role-id",
+		"no changes specified; pass --role, --fga-role-id, or --fga-role-name",
 		err.Error())
 	assert.Empty(t, c.updateCalls)
 	assert.Empty(t, c.listCalls)

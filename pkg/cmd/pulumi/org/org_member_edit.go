@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -45,6 +46,7 @@ type orgMemberEditClient interface {
 	ListOrganizationMembers(
 		ctx context.Context, orgName, mode string, continuationToken *string,
 	) (apitype.ListOrganizationMembersResponse, error)
+	ListOrgRoles(ctx context.Context, orgName, uxPurpose string) ([]apitype.Role, error)
 }
 
 // orgMemberEditClientFactory resolves a cloud client and the organization
@@ -63,9 +65,10 @@ type orgMemberEditArgs struct {
 	outputFormat outputflag.OutputFlag[orgMemberGetRenderFunc]
 	role         string
 	fgaRoleID    string
+	fgaRoleName  string
 
 	// changedFlags records which mutation flags were set by the user. Keys
-	// are flag names: "role", "fga-role-id".
+	// are flag names: "role", "fga-role-id", "fga-role-name".
 	changedFlags map[string]bool
 }
 
@@ -81,23 +84,23 @@ func newOrgMemberEditCmdWith(factory orgMemberEditClientFactory) *cobra.Command 
 	args.outputFormat = defaultOrgMemberGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "edit <user-login>",
-		Short:  "[EXPERIMENTAL] Modify a member's role within an organization",
+		Use:   "edit <user-login>",
+		Short: "[EXPERIMENTAL] Modify a member's role within an organization",
 		Long: "[EXPERIMENTAL] Modify a member's role within an organization.\n" +
 			"\n" +
 			"Updates the role assigned to an organization member. Pass --role to\n" +
-			"assign one of the built-in roles (`member`, `admin`, `billingManager`),\n" +
-			"or --fga-role-id to assign a custom role. If both are provided the\n" +
-			"service uses --fga-role-id. At least one of --role or --fga-role-id\n" +
-			"must be supplied.\n" +
+			"assign one of the built-in roles (member, admin, or billing-manager),\n" +
+			"--fga-role-name to assign a custom role by name, or --fga-role-id to\n" +
+			"assign by ID. These flags are mutually exclusive.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"raw member record as JSON.",
-		Example: "  # Promote a member to admin in the default organization\n" +
+		Example: "  # Promote a member to admin\n" +
 			"  pulumi org member edit alice --role admin\n\n" +
-			"  # Assign a custom (FGA) role and emit JSON\n" +
-			"  pulumi org member edit alice --fga-role-id role-abc123 --output json",
+			"  # Assign a custom role by name\n" +
+			"  pulumi org member edit alice --fga-role-name \"Developer\"\n\n" +
+			"  # Assign a custom role by ID\n" +
+			"  pulumi org member edit alice --fga-role-id role-abc123",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			args.changedFlags = orgMemberEditChangedFlags(cmd)
 			return runOrgMemberEdit(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
@@ -114,9 +117,12 @@ func newOrgMemberEditCmdWith(factory orgMemberEditClientFactory) *cobra.Command 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the member")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 	cmd.Flags().StringVar(&args.role, "role", "",
-		"The built-in role to assign: member, admin, or billingManager")
+		"The built-in role to assign: member, admin, or billing-manager")
 	cmd.Flags().StringVar(&args.fgaRoleID, "fga-role-id", "",
-		"The custom role to assign (takes precedence over --role)")
+		"The custom role to assign (by ID)")
+	cmd.Flags().StringVar(&args.fgaRoleName, "fga-role-name", "",
+		"The custom role to assign (by name; resolved to ID automatically)")
+	cmd.MarkFlagsMutuallyExclusive("role", "fga-role-id", "fga-role-name")
 
 	return cmd
 }
@@ -126,7 +132,7 @@ func newOrgMemberEditCmdWith(factory orgMemberEditClientFactory) *cobra.Command 
 // inside RunE before calling into the cobra-decoupled body.
 func orgMemberEditChangedFlags(cmd *cobra.Command) map[string]bool {
 	out := make(map[string]bool, 2)
-	for _, n := range []string{"role", "fga-role-id"} {
+	for _, n := range []string{"role", "fga-role-id", "fga-role-name"} {
 		f := cmd.Flag(n)
 		out[n] = f != nil && f.Changed
 	}
@@ -183,10 +189,16 @@ func runOrgMemberEdit(
 	factory orgMemberEditClientFactory, userLogin string, args orgMemberEditArgs,
 ) error {
 	roleChanged := args.changedFlags["role"]
-	fgaChanged := args.changedFlags["fga-role-id"]
-	if !roleChanged && !fgaChanged {
+	fgaIDChanged := args.changedFlags["fga-role-id"]
+	fgaNameChanged := args.changedFlags["fga-role-name"]
+	if !roleChanged && !fgaIDChanged && !fgaNameChanged {
 		return errors.New(
-			"no changes specified; pass at least one of --role or --fga-role-id")
+			"no changes specified; pass --role, --fga-role-id, or --fga-role-name")
+	}
+
+	c, org, err := factory(ctx, args.org)
+	if err != nil {
+		return err
 	}
 
 	req := apitype.UpdateOrganizationMemberRequest{}
@@ -194,14 +206,27 @@ func runOrgMemberEdit(
 		role := args.role
 		req.Role = &role
 	}
-	if fgaChanged {
+	if fgaIDChanged {
 		fgaID := args.fgaRoleID
 		req.FgaRoleId = &fgaID
 	}
-
-	c, org, err := factory(ctx, args.org)
-	if err != nil {
-		return err
+	if fgaNameChanged {
+		roles, err := c.ListOrgRoles(ctx, org, "role")
+		if err != nil {
+			return err
+		}
+		var found bool
+		for _, r := range roles {
+			if strings.EqualFold(r.Name, args.fgaRoleName) {
+				id := r.ID
+				req.FgaRoleId = &id
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("custom role %q not found in organization %s", args.fgaRoleName, org)
+		}
 	}
 
 	if err := c.UpdateOrganizationMember(ctx, org, userLogin, req); err != nil {

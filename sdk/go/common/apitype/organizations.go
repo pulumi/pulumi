@@ -118,10 +118,21 @@ type ListAuditLogEventsResponse struct {
 // UpdateOrganizationMemberRequest modifies a member's role within an
 // organization. It is the body of the `UpdateOrganizationMember` Pulumi Cloud
 // REST endpoint (PATCH /api/orgs/{orgName}/members/{userLogin}). Set Role to
-// assign a built-in role (`member`, `admin`, or `billingManager`); set
-// FgaRoleId to assign a custom role. If both are provided FgaRoleId takes
-// precedence on the service.
+// assign a built-in role (member, admin, or billing-manager); set FgaRoleId
+// to assign a custom role. The two are mutually exclusive.
 type UpdateOrganizationMemberRequest struct {
 	Role      *string `json:"role,omitempty"`
 	FgaRoleId *string `json:"fgaRoleId,omitempty"`
+}
+
+// OrgRole describes a role available in an organization, as returned by the
+// list roles endpoint (GET /api/orgs/{orgName}/roles).
+type OrgRole struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ListOrgRolesResponse is the response from the list roles endpoint.
+type ListOrgRolesResponse struct {
+	Roles []OrgRole `json:"roles"`
 }
