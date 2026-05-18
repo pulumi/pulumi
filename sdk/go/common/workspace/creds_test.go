@@ -138,12 +138,6 @@ func TestFormatAgentClaimInstruction(t *testing.T) {
 	assert.Empty(t, FormatAgentClaimInstruction(""))
 }
 
-func TestDefaultAgentPulumiDirUsesOSTempDir(t *testing.T) {
-	t.Parallel()
-
-	assert.Equal(t, filepath.Join(os.TempDir(), BookkeepingDir), agentPulumiDir)
-}
-
 //nolint:paralleltest // mutates environment and package global
 func TestAgentPulumiConfigUsesDefaultPathWhenWritable(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir

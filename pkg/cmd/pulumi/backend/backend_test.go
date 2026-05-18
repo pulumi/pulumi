@@ -91,6 +91,9 @@ func TestGetCurrentCloudURLReturnsDefaultCredentialErrorsOutsideAgents(t *testin
 func clearAIAgentEnv(t *testing.T) {
 	t.Helper()
 
+	t.Setenv(workspace.PulumiCredentialsPathEnvVar, "")
+	t.Setenv(env.Home.Var().Name(), "")
+
 	for _, name := range []string{
 		"AI_AGENT",
 		"CURSOR_TRACE_ID",
