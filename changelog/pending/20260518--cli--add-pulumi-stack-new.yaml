@@ -1,0 +1,4 @@
+changes:
+  - type: feat
+    scope: cli
+    description: Add `pulumi stack new` to create a stack against the Pulumi Cloud

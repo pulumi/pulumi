@@ -24,6 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -50,12 +51,17 @@ type stackNewClient interface {
 	) (apitype.Stack, client.CreateStackDetails, error)
 }
 
-// stackNewClientFactory resolves a cloud client plus the organization the
-// stack should be created in. orgFlag is the raw value of --org (empty means
-// "use the default org").
-type stackNewClientFactory func(
-	ctx context.Context, orgFlag string,
-) (stackNewClient, string, error)
+// stackNewSession bundles the resources `pulumi stack new` needs once the
+// effective organization has been resolved.
+type stackNewSession struct {
+	client  stackNewClient
+	org     string
+	backend backend.Backend // optional; required only for --copy-config-from
+}
+
+// stackNewClientFactory resolves the session used to create the stack. orgFlag
+// is the raw value of --org (empty means "use the default org").
+type stackNewClientFactory func(ctx context.Context, orgFlag string) (*stackNewSession, error)
 
 // stackNewArgs collects the flag values for runStackNew.
 type stackNewArgs struct {
@@ -64,6 +70,8 @@ type stackNewArgs struct {
 	secretsProvider string
 	encryptedKey    string
 	encryptionSalt  string
+	teams           []string
+	copyConfigFrom  string
 }
 
 func newStackNewCmd() *cobra.Command {
@@ -79,9 +87,8 @@ func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "new <project> <name>",
-		Short:  "[EXPERIMENTAL] Create a new stack",
+		Use:   "new <project> <name>",
+		Short: "[EXPERIMENTAL] Create a new stack",
 		Long: "[EXPERIMENTAL] Create a new stack.\n" +
 			"\n" +
 			"Creates a new stack within a project in the organization. If the project\n" +
@@ -89,15 +96,15 @@ func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 			"configurable instance of a Pulumi program, typically representing a\n" +
 			"deployment environment (e.g. development, staging, production). The\n" +
 			"stack name must be unique within the project. This command does not\n" +
-			"select the new stack as the current stack or write any local project\n" +
-			"files.\n" +
-			"\n" +
-			"Default output is a human-readable confirmation; pass --output=json for\n" +
-			"the created stack identity and any backend messages as JSON.",
+			"select the new stack as the current stack. It does not write local\n" +
+			"project files unless --copy-config-from is used, in which case the\n" +
+			"new stack's local config file is written with the copied values.",
 		Example: "  # Create a stack in the default organization\n" +
 			"  pulumi stack new my-project dev\n\n" +
 			"  # Create a stack in a specific organization with an ESC environment\n" +
 			"  pulumi stack new my-project prod --org acme --environment acme/prod\n\n" +
+			"  # Seed the new stack's config from an existing stack\n" +
+			"  pulumi stack new my-project staging --copy-config-from dev\n\n" +
 			"  # Create a stack and emit JSON for scripting\n" +
 			"  pulumi stack new my-project dev --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
@@ -122,40 +129,44 @@ func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 		"KMS-encrypted ciphertext for the data key (cloud-based secrets providers)")
 	cmd.Flags().StringVar(&args.encryptionSalt, "encryption-salt", "",
 		"Base64-encoded encryption salt (passphrase-based secrets providers)")
+	cmd.Flags().StringArrayVar(&args.teams, "teams", nil,
+		"A list of team names that should have permission to read and update this stack, once created")
+	cmd.Flags().StringVar(&args.copyConfigFrom, "copy-config-from", "",
+		"The name of the stack to copy existing config from")
 	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
 
 // defaultStackNewClientFactory is the production wiring: resolve the cloud
-// backend, pick the effective organization, and hand back the underlying
-// *client.Client.
+// backend, pick the effective organization, and hand back a session that
+// carries the cloud client and the backend.
 func defaultStackNewClientFactory(
 	ctx context.Context, orgFlag string,
-) (stackNewClient, string, error) {
+) (*stackNewSession, error) {
 	ws := pkgWorkspace.Instance
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	be, err := cmdBackend.CurrentBackend(ctx, ws, cmdBackend.DefaultLoginManager, nil, opts)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	cloudBackend, ok := be.(httpstate.Backend)
 	if !ok {
-		return nil, "", errors.New(
+		return nil, errors.New(
 			"creating a stack requires the Pulumi Cloud backend; run `pulumi login`")
 	}
 
 	userName, orgs, _, err := cloudBackend.CurrentUser()
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 
 	org := orgFlag
 	if org == "" {
 		defaultOrg, err := cloudBackend.GetDefaultOrg(ctx)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 		org = defaultOrg
 	}
@@ -164,10 +175,14 @@ func defaultStackNewClientFactory(
 	}
 
 	if !slices.Contains(orgs, org) && org != userName {
-		return nil, "", fmt.Errorf("user %s is not a member of organization %s", userName, org)
+		return nil, fmt.Errorf("user %s is not a member of organization %s", userName, org)
 	}
 
-	return cloudBackend.Client(), org, nil
+	return &stackNewSession{
+		client:  cloudBackend.Client(),
+		org:     org,
+		backend: cloudBackend,
+	}, nil
 }
 
 // runStackNew is the cobra-decoupled body of `pulumi stack new`, so tests can
@@ -185,25 +200,94 @@ func runStackNew(
 		return fmt.Errorf("creating stack: %w", err)
 	}
 
-	c, org, err := factory(ctx, args.org)
+	session, err := factory(ctx, args.org)
 	if err != nil {
 		return err
 	}
 
 	stackID := client.StackIdentifier{
-		Owner:   org,
+		Owner:   session.org,
 		Project: project,
 		Stack:   stackName,
 	}
 
 	cfg := buildStackNewConfig(args)
+	teams := sanitizeTeams(args.teams)
 
-	_, details, err := c.CreateStack(ctx, stackID, nil, nil, nil, cfg)
+	_, details, err := session.client.CreateStack(ctx, stackID, nil, teams, nil, cfg)
 	if err != nil {
 		return fmt.Errorf("creating stack: %w", err)
 	}
 
+	if args.copyConfigFrom != "" {
+		if session.backend == nil {
+			return errors.New("--copy-config-from is not supported in this context")
+		}
+		if err := copyStackNewConfig(ctx, session.backend, args.copyConfigFrom, stackID); err != nil {
+			return err
+		}
+	}
+
 	return render(w, stackID, details)
+}
+
+// copyStackNewConfig mirrors `pulumi stack init --copy-config-from`: read the
+// source stack's local config, copy its config map (re-encrypting secrets for
+// the new stack), and save the result to the new stack's local config file.
+func copyStackNewConfig(
+	ctx context.Context,
+	b backend.Backend,
+	fromStackName string,
+	toStackID client.StackIdentifier,
+) error {
+	ws := pkgWorkspace.Instance
+	proj, _, err := ws.ReadProject()
+	if err != nil {
+		return err
+	}
+
+	fromRef, err := b.ParseStackReference(fromStackName)
+	if err != nil {
+		return err
+	}
+	fromStack, err := b.GetStack(ctx, fromRef)
+	if err != nil {
+		return err
+	}
+	if fromStack == nil {
+		return fmt.Errorf("stack %q not found", fromStackName)
+	}
+
+	toRef, err := b.ParseStackReference(toStackID.String())
+	if err != nil {
+		return err
+	}
+	toStack, err := b.GetStack(ctx, toRef)
+	if err != nil {
+		return err
+	}
+	if toStack == nil {
+		return fmt.Errorf("could not load newly created stack %q", toStackID)
+	}
+
+	fromPS, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, fromStack)
+	if err != nil {
+		return err
+	}
+	toPS, err := LoadProjectStack(ctx, cmdutil.Diag(), proj, toStack)
+	if err != nil {
+		return err
+	}
+
+	ssml := NewStackSecretsManagerLoaderFromEnv()
+	requiresSaving, err := CopyEntireConfigMap(ctx, ssml, fromStack, fromPS, toStack, toPS)
+	if err != nil {
+		return err
+	}
+	if requiresSaving {
+		return SaveProjectStack(ctx, toStack, toPS)
+	}
+	return nil
 }
 
 // buildStackNewConfig returns a *StackConfig only if at least one of the

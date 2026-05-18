@@ -67,14 +67,14 @@ func (m *mockStackNewClient) CreateStack(
 }
 
 func stubStackNewFactory(c stackNewClient, org string) stackNewClientFactory {
-	return func(_ context.Context, _ string) (stackNewClient, string, error) {
-		return c, org, nil
+	return func(_ context.Context, _ string) (*stackNewSession, error) {
+		return &stackNewSession{client: c, org: org}, nil
 	}
 }
 
 func failingStackNewFactory(err error) stackNewClientFactory {
-	return func(_ context.Context, _ string) (stackNewClient, string, error) {
-		return nil, "", err
+	return func(_ context.Context, _ string) (*stackNewSession, error) {
+		return nil, err
 	}
 }
 
@@ -203,4 +203,30 @@ func TestStackNew_ConfigFlagsBuildStackConfig(t *testing.T) {
 		Environment:     "acme/prod",
 		SecretsProvider: "awskms://key",
 	}, captured.config)
+}
+
+func TestStackNew_CopyConfigFromWithoutBackendErrors(t *testing.T) {
+	t.Parallel()
+
+	c := &mockStackNewClient{}
+	var buf bytes.Buffer
+	err := runStackNew(t.Context(), &buf, stubStackNewFactory(c, "acme"),
+		"my-project", "dev", stackNewArgs{copyConfigFrom: "src"}, renderStackNewText)
+	require.Error(t, err)
+	assert.Equal(t, "--copy-config-from is not supported in this context", err.Error())
+}
+
+func TestStackNew_TeamsPassedThrough(t *testing.T) {
+	t.Parallel()
+
+	var captured capturedStackNewCall
+	c := &mockStackNewClient{captured: &captured}
+
+	var buf bytes.Buffer
+	err := runStackNew(t.Context(), &buf, stubStackNewFactory(c, "acme"),
+		"my-project", "dev", stackNewArgs{
+			teams: []string{"platform", "  ", "  sre  ", ""},
+		}, renderStackNewText)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"platform", "sre"}, captured.teams)
 }
