@@ -203,6 +203,11 @@ func isMapType(t model.Type) bool {
 	}
 }
 
+func isMapIndexType(t model.Type) bool {
+	_, ok := pcl.UnwrapOption(model.ResolveOutputs(t)).(*model.MapType)
+	return ok
+}
+
 func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 	// Extract the list of outputs and the continuation expression from the `__apply` arguments.
 	applyArgs, then := pcl.ParseApplyCall(expr)
@@ -245,7 +250,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 		module = ""
 	}
 	module = moduleToPythonModule(module, nil)
-	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), title(member), diagnostics
+	return makeValidIdentifier(pkg), strings.ReplaceAll(module, "/", "."), PyName(member), diagnostics
 }
 
 var functionImports = map[string][]string{
@@ -671,6 +676,16 @@ func (g *generator) genRootDirectory(w io.Writer) {
 }
 
 func (g *generator) GenIndexExpression(w io.Writer, expr *model.IndexExpression) {
+	if key, ok := expr.Key.(*model.LiteralValueExpression); ok && key.Value.Type() == cty.String {
+		name := key.Value.AsString()
+		if !isMapIndexType(expr.Collection.Type()) {
+			_, diags := expr.Collection.Type().Traverse(hcl.TraverseAttr{Name: name})
+			if !diags.HasErrors() {
+				g.Fgenf(w, "%.16v.%s", expr.Collection, PyName(name))
+				return
+			}
+		}
+	}
 	g.Fgenf(w, "%.16v[%.v]", expr.Collection, expr.Key)
 }
 
