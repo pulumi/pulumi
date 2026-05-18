@@ -285,3 +285,50 @@ func TestNewShell_RejectsExtraRootThatIsAFile(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "is not a directory")
 }
+
+func TestShell_InjectsAIAgent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses /bin/sh semantics")
+	}
+	// Set AI_AGENT in the parent so we can prove the shell handler overrides
+	// (not just appends to) a pre-existing value. t.Setenv precludes t.Parallel.
+	t.Setenv("AI_AGENT", "claude")
+
+	sh, err := NewShell(t.TempDir())
+	require.NoError(t, err)
+	res, err := sh.Invoke(t.Context(), "shell_execute",
+		json.RawMessage(`{"command":"printenv AI_AGENT"}`))
+	require.NoError(t, err)
+	assert.Equal(t, "neo\n", res.(map[string]any)["stdout"])
+}
+
+func TestChildEnvWithAgent(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty parent", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, []string{"AI_AGENT=neo"}, childEnvWithAgent(nil))
+	})
+
+	t.Run("no AI_AGENT in parent", func(t *testing.T) {
+		t.Parallel()
+		parent := []string{"PATH=/usr/bin", "HOME=/home/x"}
+		got := childEnvWithAgent(parent)
+		assert.Equal(t, []string{"PATH=/usr/bin", "HOME=/home/x", "AI_AGENT=neo"}, got)
+	})
+
+	t.Run("strips existing AI_AGENT", func(t *testing.T) {
+		t.Parallel()
+		parent := []string{"PATH=/usr/bin", "AI_AGENT=claude", "HOME=/home/x"}
+		got := childEnvWithAgent(parent)
+		assert.Equal(t, []string{"PATH=/usr/bin", "HOME=/home/x", "AI_AGENT=neo"}, got)
+		// No duplicate AI_AGENT entries.
+		count := 0
+		for _, kv := range got {
+			if strings.HasPrefix(kv, "AI_AGENT=") {
+				count++
+			}
+		}
+		assert.Equal(t, 1, count)
+	})
+}

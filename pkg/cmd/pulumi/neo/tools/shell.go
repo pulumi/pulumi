@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -108,6 +109,20 @@ func (s *Shell) resolveDir(dir string) (string, error) {
 	return resolveUnderRoots(s.allowedRoots, dir, false)
 }
 
+// childEnvWithAgent returns parent with any existing AI_AGENT entry stripped
+// and AI_AGENT=neo appended, so nested `pulumi` invocations attribute the run
+// to Neo (via metadata.DetectAIAgent) rather than to whatever upstream agent
+// launched `pulumi neo`.
+func childEnvWithAgent(parent []string) []string {
+	out := make([]string, 0, len(parent)+1)
+	for _, kv := range parent {
+		if !strings.HasPrefix(kv, "AI_AGENT=") {
+			out = append(out, kv)
+		}
+	}
+	return append(out, "AI_AGENT=neo")
+}
+
 // maxOutputBytes is the maximum number of bytes captured from stdout or stderr.
 // Output beyond this limit is silently discarded and "truncated" is set in the result.
 const maxOutputBytes = 1 << 20 // 1 MiB
@@ -143,6 +158,7 @@ func (s *Shell) run(ctx context.Context, command string, dir string, timeout tim
 		cmd = exec.CommandContext(runCtx, "sh", "-c", command)
 	}
 	cmd.Dir = dir
+	cmd.Env = childEnvWithAgent(os.Environ())
 
 	// Run the command in its own process group so we can SIGKILL the whole tree
 	// (and not just sh) when the deadline fires; without this, long-running
