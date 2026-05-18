@@ -23,7 +23,7 @@ import (
 func newInsightsAccountCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "account",
-		Short: "Manage Pulumi Insights accounts",
+		Short: "[EXPERIMENTAL] Manage Pulumi Insights accounts",
 		Long:  "[EXPERIMENTAL] Manage Pulumi Insights accounts.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()

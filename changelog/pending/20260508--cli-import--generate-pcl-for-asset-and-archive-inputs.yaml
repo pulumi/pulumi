@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Generate PCL for asset and archive inputs when importing resources, instead of returning a "NYI" error

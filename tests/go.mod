@@ -25,12 +25,12 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
 	github.com/pulumi/pulumi/pkg/v3 v3.225.1
-	github.com/pulumi/pulumi/sdk/v3 v3.239.0
+	github.com/pulumi/pulumi/sdk/v3 v3.241.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.42.0
 	github.com/testcontainers/testcontainers-go/modules/postgres v0.42.0
 	golang.org/x/mod v0.35.0
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 )

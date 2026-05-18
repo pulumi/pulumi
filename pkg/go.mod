@@ -30,7 +30,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/pulumi/sdk/v3 v3.239.0
+	github.com/pulumi/pulumi/sdk/v3 v3.241.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/sergi/go-diff v1.4.0
 	github.com/spf13/cobra v1.10.2
@@ -46,7 +46,7 @@ require (
 	golang.org/x/sync v0.20.0
 	google.golang.org/api v0.169.0
 	google.golang.org/genproto v0.0.0-20240311173647-c811ad7063a7
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 	gopkg.in/yaml.v3 v3.0.1
 	pgregory.net/rapid v1.2.0
 )

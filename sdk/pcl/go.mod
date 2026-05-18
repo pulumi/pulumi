@@ -11,11 +11,11 @@ replace (
 require (
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/pulumi/pulumi/pkg/v3 v3.232.0
-	github.com/pulumi/pulumi/sdk/v3 v3.239.0
+	github.com/pulumi/pulumi/sdk/v3 v3.241.0
 	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.16.3
-	google.golang.org/grpc v1.81.0
+	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
 )
 

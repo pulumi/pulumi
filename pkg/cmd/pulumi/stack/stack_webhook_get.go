@@ -51,7 +51,7 @@ func newStackWebhookGetCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "get",
-		Short: "Get the details of a stack webhook",
+		Short: "[EXPERIMENTAL] Get the details of a stack webhook",
 		Long: "[EXPERIMENTAL] Get the details of a stack webhook.\n" +
 			"\n" +
 			"Displays the configuration of a single webhook including its ID, name,\n" +

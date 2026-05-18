@@ -81,7 +81,7 @@ func newStackDriftListCmdWith(factory driftListClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "[EXPERIMENTAL] List drift detection runs for a stack",
-		Long: "List drift detection runs for a stack.\n" +
+		Long: "[EXPERIMENTAL] List drift detection runs for a stack.\n" +
 			"\n" +
 			"Returns drift detection runs for the specified stack. Each run\n" +
 			"includes whether drift was detected, the run status, and details\n" +

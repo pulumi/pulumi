@@ -81,7 +81,7 @@ func newPolicyComplianceListCmdWith(factory complianceListClientFactory) *cobra.
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "[EXPERIMENTAL] List compliance results grouped by entity",
-		Long: "List compliance results grouped by entity.\n" +
+		Long: "[EXPERIMENTAL] List compliance results grouped by entity.\n" +
 			"\n" +
 			"Returns compliance results for policy issues grouped by stack,\n" +
 			"cloud account, or severity. Each row shows a compliance score\n" +

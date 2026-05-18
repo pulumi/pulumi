@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Preserve asset/archive/resource-reference values inside map and array inputs, and HCL-escape map keys containing `${` or `%{` template sequences

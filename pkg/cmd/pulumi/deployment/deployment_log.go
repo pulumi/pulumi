@@ -14,14 +14,14 @@
 
 package deployment
 
-// AI Generated - needs human review
-
 import (
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -40,6 +40,9 @@ import (
 
 // deploymentLogClient is the narrow API surface the log command depends on.
 type deploymentLogClient interface {
+	GetDeploymentByVersion(
+		ctx context.Context, stack client.StackIdentifier, version string,
+	) (apitype.GetDeploymentResponse, error)
 	GetDeploymentLogs(
 		ctx context.Context, stack client.StackIdentifier, id string,
 		opts client.GetDeploymentLogsOptions,
@@ -57,33 +60,22 @@ type deploymentLogClientFactory func(
 // directly from tests. Sentinel values (-1 for job/step, 0 for offset/count)
 // mean "unset" and are not sent to the API.
 type deploymentLogArgs struct {
-	stack        string
-	job          int
-	step         int
-	offset       int
-	count        int
-	all          bool
-	outputFormat outputflag.OutputFlag[deploymentLogRenderFunc]
+	stack  string
+	job    int
+	step   int
+	offset int
+	count  int
+	all    bool
 }
 
 // defaultDeploymentLogArgs returns the zero-args value with the documented
 // sentinel defaults (job/step = -1, offset/count = 0).
 func defaultDeploymentLogArgs() deploymentLogArgs {
 	return deploymentLogArgs{
-		job:          -1,
-		step:         -1,
-		offset:       0,
-		count:        0,
-		outputFormat: defaultDeploymentLogOutputFormat(),
-	}
-}
-
-// defaultDeploymentLogOutputFormat wires the OutputFlag to the per-format
-// renderers so `--output` selects between them.
-func defaultDeploymentLogOutputFormat() outputflag.OutputFlag[deploymentLogRenderFunc] {
-	return outputflag.OutputFlag[deploymentLogRenderFunc]{
-		RenderForTerminal: renderDeploymentLogText,
-		RenderJSON:        renderDeploymentLogJSON,
+		job:    -1,
+		step:   -1,
+		offset: 0,
+		count:  0,
 	}
 }
 
@@ -94,12 +86,17 @@ func newDeploymentLogCmd() *cobra.Command {
 func newDeploymentLogCmdWith(factory deploymentLogClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "deploymentLogClientFactory must not be nil")
 	args := defaultDeploymentLogArgs()
-
+	output := outputflag.OutputFlag[deploymentLogRenderFunc]{
+		RenderForTerminal: renderDeploymentLogText,
+		RenderJSON:        renderDeploymentLogJSON,
+	}
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "log <deployment-id>",
-		Short:  "[EXPERIMENTAL] Retrieve execution logs for a deployment",
+		Use:   "log <deployment-version>",
+		Short: "[EXPERIMENTAL] Retrieve execution logs for a deployment",
 		Long: "[EXPERIMENTAL] Retrieve execution logs for a deployment.\n" +
+			"\n" +
+			"The deployment may be referenced by its UUID or by its per-stack version\n" +
+			"number (the integer shown in the Pulumi Cloud UI, e.g. 9410 or #9410).\n" +
 			"\n" +
 			"Returns log lines from a deployment. Pass --job and --step to scope to a\n" +
 			"specific step within a specific job; in step mode --count must be 1-499\n" +
@@ -110,13 +107,13 @@ func newDeploymentLogCmdWith(factory deploymentLogClientFactory) *cobra.Command 
 			"Default output prints one log line per row; pass --output=json for a\n" +
 			"structured envelope.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
-			return runDeploymentLog(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
+			return runDeploymentLog(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args, output.Get())
 		},
 	}
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "deployment-id"},
+			{Name: "deployment-version"},
 		},
 		Required: 1,
 	})
@@ -134,7 +131,7 @@ func newDeploymentLogCmdWith(factory deploymentLogClientFactory) *cobra.Command 
 	cmd.Flags().BoolVar(&args.all, "all", false,
 		"Fetch every available log line, following server-side pagination; mutually exclusive with --count")
 	cmd.MarkFlagsMutuallyExclusive("count", "all")
-	outputflag.VarP(cmd.Flags(), &args.outputFormat)
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -184,6 +181,7 @@ func defaultDeploymentLogClientFactory(
 func runDeploymentLog(
 	ctx context.Context, w io.Writer,
 	factory deploymentLogClientFactory, deploymentID string, args deploymentLogArgs,
+	render deploymentLogRenderFunc,
 ) error {
 	if args.step >= 0 && args.job < 0 {
 		return errors.New("--step requires --job to also be set (>= 0)")
@@ -212,6 +210,14 @@ func runDeploymentLog(
 		return err
 	}
 
+	if version, ok := deploymentVersionRef(deploymentID); ok {
+		dep, err := c.GetDeploymentByVersion(ctx, stackID, version)
+		if err != nil {
+			return fmt.Errorf("resolving deployment version %s: %w", version, err)
+		}
+		deploymentID = dep.ID
+	}
+
 	resp, err := c.GetDeploymentLogs(ctx, stackID, deploymentID, opts)
 	if err != nil {
 		return fmt.Errorf("getting deployment logs: %w", err)
@@ -237,13 +243,30 @@ func runDeploymentLog(
 		}
 	}
 
-	return args.outputFormat.Get()(w, *resp)
+	return render(w, *resp)
+}
+
+// deploymentVersionPattern matches a per-stack deployment version number, with
+// an optional leading `#` for the convention used in the Pulumi Cloud UI and
+// chat. Deployment UUIDs (the other accepted form) contain hyphens and so are
+// never matched here.
+var deploymentVersionPattern = regexp.MustCompile(`^#?[0-9]+$`)
+
+// deploymentVersionRef reports whether `ref` is a version reference (e.g.
+// "9410" or "#9410") rather than a UUID, returning the bare version string.
+func deploymentVersionRef(ref string) (string, bool) {
+	if !deploymentVersionPattern.MatchString(ref) {
+		return "", false
+	}
+	return strings.TrimPrefix(ref, "#"), true
 }
 
 type deploymentLogRenderFunc func(w io.Writer, logs apitype.DeploymentLogs) error
 
-// renderDeploymentLogText prints one log line per row, prefixing each line
-// with `[header] ` when a header is present.
+// renderDeploymentLogText prints one log line per row. Header rows mark the
+// boundary between steps; body rows already carry a trailing newline from the
+// workflow runner, so we write them verbatim to avoid emitting a blank line
+// between every log entry.
 func renderDeploymentLogText(w io.Writer, logs apitype.DeploymentLogs) error {
 	if len(logs.Lines) == 0 {
 		fmt.Fprintln(w, "No log lines available.")
@@ -251,9 +274,11 @@ func renderDeploymentLogText(w io.Writer, logs apitype.DeploymentLogs) error {
 	}
 	for _, l := range logs.Lines {
 		if l.Header != "" {
-			fmt.Fprintf(w, "[%s] %s\n", l.Header, l.Line)
-		} else {
-			fmt.Fprintf(w, "%s\n", l.Line)
+			fmt.Fprintf(w, "[%s]\n", l.Header)
+			continue
+		}
+		if _, err := io.WriteString(w, l.Line); err != nil {
+			return err
 		}
 	}
 	return nil

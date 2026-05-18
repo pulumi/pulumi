@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/env
-  description: Update esc to v0.24.0

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `--output json` to `pulumi destroy` for a structured JSON summary of the operation result

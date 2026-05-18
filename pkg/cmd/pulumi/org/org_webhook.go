@@ -25,7 +25,7 @@ func newOrgWebhookCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "webhook",
-		Short:  "Manage organization-level webhooks",
+		Short:  "[EXPERIMENTAL] Manage organization-level webhooks",
 		Long:   "[EXPERIMENTAL] Manage organization-level webhooks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
