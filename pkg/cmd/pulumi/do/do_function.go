@@ -380,6 +380,8 @@ func (pc *packageCommand) newFunctionCommand(fn *schema.Function) *cobra.Command
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 
+			// We need to evaluate the provider configuration so we can call Configure on the provider before invoking
+			// the function.
 			config, err := evaluatePclResourceFile(
 				pc.providerFile, "provider", pc.spec.Provider, pc.evalContext)
 			if err != nil {
