@@ -179,6 +179,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 	var gitSSHPrivateKeyValue string
 
 	cmd := &cobra.Command{
+		Hidden:     true,
 		Use:        "init",
 		SuggestFor: []string{"new", "create"},
 		Short:      "Initialize the stack's deployment.yaml file",
@@ -294,9 +295,10 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 	var gitSSHPrivateKeyValue string
 
 	cmd := &cobra.Command{
-		Use:   "configure",
-		Short: "Updates stack's deployment settings secrets",
-		Long:  "",
+		Hidden: true,
+		Use:    "configure",
+		Short:  "Updates stack's deployment settings secrets",
+		Long:   "",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !cmdutil.Interactive() {
 				return errors.New("configure command is only supported in interactive mode")
