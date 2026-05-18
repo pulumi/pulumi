@@ -23,7 +23,7 @@ import (
 func newOrgAuditLogCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "audit-log",
-		Short: "Inspect organization audit logs",
+		Short: "[EXPERIMENTAL] Inspect organization audit logs",
 		Long:  "[EXPERIMENTAL] Inspect organization audit logs.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()

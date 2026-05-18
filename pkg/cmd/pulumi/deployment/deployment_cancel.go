@@ -100,7 +100,7 @@ func newDeploymentCancelCmdWith(
 
 	cmd := &cobra.Command{
 		Use:   "cancel <deployment-id>",
-		Short: "Cancel an in-progress deployment",
+		Short: "[EXPERIMENTAL] Cancel an in-progress deployment",
 		Long: "[EXPERIMENTAL] Cancel an in-progress deployment.\n" +
 			"\n" +
 			"Terminates an in-progress Pulumi Deployments execution. If the deployment is\n" +

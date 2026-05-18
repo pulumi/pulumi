@@ -58,7 +58,7 @@ func newStackScheduleListCmdWith(factory stackScheduleListClientFactory) *cobra.
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all scheduled actions configured for a stack",
+		Short: "[EXPERIMENTAL] List all scheduled actions configured for a stack",
 		Long:  "[EXPERIMENTAL] List all scheduled actions configured for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if factory == nil {

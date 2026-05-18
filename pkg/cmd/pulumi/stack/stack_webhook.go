@@ -25,7 +25,7 @@ func newStackWebhookCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "webhook",
-		Short:  "Manage stack webhooks",
+		Short:  "[EXPERIMENTAL] Manage stack webhooks",
 		Long:   "[EXPERIMENTAL] Manage stack webhooks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
