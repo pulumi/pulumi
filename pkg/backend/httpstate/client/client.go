@@ -858,6 +858,17 @@ func (pc *Client) GetDriftStatus(
 	return resp, nil
 }
 
+// UpdateStackWebhook updates an existing webhook for the given stack.
+func (pc *Client) UpdateStackWebhook(
+	ctx context.Context, stackID StackIdentifier, webhookName string, req apitype.Webhook,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	if err := pc.restCall(ctx, "PATCH", getStackPath(stackID, "hooks", webhookName), nil, &req, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
 // DeleteStackWebhook deletes the given webhook from the stack.
 func (pc *Client) DeleteStackWebhook(
 	ctx context.Context, stackID StackIdentifier, webhookName string,

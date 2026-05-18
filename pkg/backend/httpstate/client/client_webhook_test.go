@@ -442,6 +442,63 @@ func TestRedeliverStackWebhookEvent(t *testing.T) {
 
 		c := newMockClient(srv)
 		_, err := c.RedeliverStackWebhookEvent(t.Context(), stackID, "hook", "bad-id")
-		assert.Error(t, err)
+		assert.ErrorContains(t, err, "not found")
+	})
+}
+
+func TestUpdateStackWebhook(t *testing.T) {
+	t.Parallel()
+
+	stackID := StackIdentifier{
+		Owner:   "my-org",
+		Project: "my-project",
+		Stack:   tokens.MustParseStackName("dev"),
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		format := "slack"
+		want := apitype.Webhook{
+			OrganizationName: "my-org",
+			Name:             "my-hook",
+			DisplayName:      "Updated Hook",
+			PayloadURL:       "https://new.example.com",
+			Active:           false,
+			Format:           &format,
+		}
+
+		var gotPath, gotMethod string
+		var gotBody apitype.Webhook
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			gotMethod = r.Method
+			err := json.NewDecoder(r.Body).Decode(&gotBody)
+			require.NoError(t, err)
+			w.Header().Set("Content-Type", "application/json")
+			err = json.NewEncoder(w).Encode(want) //nolint:gosec // test data
+			require.NoError(t, err)
+		}))
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		got, err := c.UpdateStackWebhook(t.Context(), stackID, "my-hook", want)
+		require.NoError(t, err)
+
+		assert.Equal(t, "PATCH", gotMethod)
+		assert.Equal(t, "/api/stacks/my-org/my-project/dev/hooks/my-hook", gotPath)
+		assert.Equal(t, "Updated Hook", gotBody.DisplayName)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		t.Parallel()
+
+		srv := newMockServer(http.StatusNotFound, `{"message":"not found"}`)
+		defer srv.Close()
+
+		c := newMockClient(srv)
+		_, err := c.UpdateStackWebhook(t.Context(), stackID, "nope", apitype.Webhook{})
+		assert.ErrorContains(t, err, "not found")
 	})
 }
