@@ -287,7 +287,7 @@ func evaluatePclFunctionFile(
 		}
 		return attrs, inputType, properties, diags
 	}
-	return evaluatePclFile(path, fileType, bind, evalContext)
+	return evaluatePCLFile(path, fileType, bind, evalContext)
 }
 
 func evaluatePclResourceFile(
@@ -297,7 +297,7 @@ func evaluatePclResourceFile(
 		attrs, inputType, diags := pcl.BindResource(file, res)
 		return attrs, inputType, res.InputProperties, diags
 	}
-	return evaluatePclFile(path, fileType, bind, evalContext)
+	return evaluatePCLFile(path, fileType, bind, evalContext)
 }
 
 func functionSchemaHelp(fn *schema.Function) string {
