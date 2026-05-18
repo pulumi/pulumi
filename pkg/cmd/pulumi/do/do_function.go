@@ -187,7 +187,7 @@ func filterOutput(
 // unionVariantMatches reports whether the schema type is structurally compatible with the runtime kind of prop.
 // Used to pick a union variant for output filtering.
 func unionVariantMatches(prop resource.PropertyValue, typ schema.Type) bool {
-	// TODO: This needs to be smarter and handle Discriminator
+	// TODO https://github.com/pulumi/pulumi/issues/23234: This needs to be smarter and handle Discriminator
 	if opt, ok := typ.(*schema.OptionalType); ok {
 		typ = opt.ElementType
 	}
