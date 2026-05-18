@@ -45,11 +45,14 @@ import (
 // nonInteractivePromptPreamble nudges the agent away from follow-up questions
 // in modes where there's no way to send another user message: stdin isn't
 // wired and the caller (typically another agent or a script) is blocked
-// reading stdout, so anything that needs more input would hang.
-const nonInteractivePromptPreamble = "You are running in non-interactive mode: " +
-	"your final response will be written to stdout. Do not ask follow-up " +
-	"questions; make any reasonable assumptions explicit and return a complete " +
-	"final answer."
+// reading stdout, so anything that needs more input would hang. Wrapped in
+// <details> so it collapses in the rendered task view and doesn't clutter
+// the user's prompt.
+const nonInteractivePromptPreamble = "<details><summary>non-interactive mode</summary>\n\n" +
+	"You are running in non-interactive mode: your final response will be written " +
+	"to stdout. Do not ask follow-up questions; make any reasonable assumptions " +
+	"explicit and return a complete final answer.\n\n" +
+	"</details>"
 
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
