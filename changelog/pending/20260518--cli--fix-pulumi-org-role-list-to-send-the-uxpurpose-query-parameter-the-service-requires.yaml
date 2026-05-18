@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Fix `pulumi org role list` to send the `uxPurpose` query parameter the service requires
