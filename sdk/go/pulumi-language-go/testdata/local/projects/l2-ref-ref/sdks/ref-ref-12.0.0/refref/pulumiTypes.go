@@ -14,13 +14,14 @@ import (
 var _ = internal.GetEnvOrDefault
 
 type Data struct {
-	BoolArray []bool            `pulumi:"boolArray"`
-	Boolean   bool              `pulumi:"boolean"`
-	Float     float64           `pulumi:"float"`
-	InnerData InnerData         `pulumi:"innerData"`
-	Integer   int               `pulumi:"integer"`
-	String    string            `pulumi:"string"`
-	StringMap map[string]string `pulumi:"stringMap"`
+	BoolArray     []bool            `pulumi:"boolArray"`
+	Boolean       bool              `pulumi:"boolean"`
+	Float         float64           `pulumi:"float"`
+	InnerData     InnerData         `pulumi:"innerData"`
+	Integer       int               `pulumi:"integer"`
+	OptionalInner *InnerData        `pulumi:"optionalInner"`
+	String        string            `pulumi:"string"`
+	StringMap     map[string]string `pulumi:"stringMap"`
 }
 
 // DataInput is an input type that accepts DataArgs and DataOutput values.
@@ -35,13 +36,14 @@ type DataInput interface {
 }
 
 type DataArgs struct {
-	BoolArray pulumi.BoolArrayInput `pulumi:"boolArray"`
-	Boolean   pulumi.BoolInput      `pulumi:"boolean"`
-	Float     pulumi.Float64Input   `pulumi:"float"`
-	InnerData InnerDataInput        `pulumi:"innerData"`
-	Integer   pulumi.IntInput       `pulumi:"integer"`
-	String    pulumi.StringInput    `pulumi:"string"`
-	StringMap pulumi.StringMapInput `pulumi:"stringMap"`
+	BoolArray     pulumi.BoolArrayInput `pulumi:"boolArray"`
+	Boolean       pulumi.BoolInput      `pulumi:"boolean"`
+	Float         pulumi.Float64Input   `pulumi:"float"`
+	InnerData     InnerDataInput        `pulumi:"innerData"`
+	Integer       pulumi.IntInput       `pulumi:"integer"`
+	OptionalInner InnerDataPtrInput     `pulumi:"optionalInner"`
+	String        pulumi.StringInput    `pulumi:"string"`
+	StringMap     pulumi.StringMapInput `pulumi:"stringMap"`
 }
 
 func (DataArgs) ElementType() reflect.Type {
@@ -88,6 +90,10 @@ func (o DataOutput) InnerData() InnerDataOutput {
 
 func (o DataOutput) Integer() pulumi.IntOutput {
 	return o.ApplyT(func(v Data) int { return v.Integer }).(pulumi.IntOutput)
+}
+
+func (o DataOutput) OptionalInner() InnerDataPtrOutput {
+	return o.ApplyT(func(v Data) *InnerData { return v.OptionalInner }).(InnerDataPtrOutput)
 }
 
 func (o DataOutput) String() pulumi.StringOutput {
@@ -139,6 +145,47 @@ func (i InnerDataArgs) ToInnerDataOutputWithContext(ctx context.Context) InnerDa
 	return pulumi.ToOutputWithContext(ctx, i).(InnerDataOutput)
 }
 
+func (i InnerDataArgs) ToInnerDataPtrOutput() InnerDataPtrOutput {
+	return i.ToInnerDataPtrOutputWithContext(context.Background())
+}
+
+func (i InnerDataArgs) ToInnerDataPtrOutputWithContext(ctx context.Context) InnerDataPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(InnerDataOutput).ToInnerDataPtrOutputWithContext(ctx)
+}
+
+// InnerDataPtrInput is an input type that accepts InnerDataArgs, InnerDataPtr and InnerDataPtrOutput values.
+// You can construct a concrete instance of `InnerDataPtrInput` via:
+//
+//	        InnerDataArgs{...}
+//
+//	or:
+//
+//	        nil
+type InnerDataPtrInput interface {
+	pulumi.Input
+
+	ToInnerDataPtrOutput() InnerDataPtrOutput
+	ToInnerDataPtrOutputWithContext(context.Context) InnerDataPtrOutput
+}
+
+type innerDataPtrType InnerDataArgs
+
+func InnerDataPtr(v *InnerDataArgs) InnerDataPtrInput {
+	return (*innerDataPtrType)(v)
+}
+
+func (*innerDataPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**InnerData)(nil)).Elem()
+}
+
+func (i *innerDataPtrType) ToInnerDataPtrOutput() InnerDataPtrOutput {
+	return i.ToInnerDataPtrOutputWithContext(context.Background())
+}
+
+func (i *innerDataPtrType) ToInnerDataPtrOutputWithContext(ctx context.Context) InnerDataPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(InnerDataPtrOutput)
+}
+
 type InnerDataOutput struct{ *pulumi.OutputState }
 
 func (InnerDataOutput) ElementType() reflect.Type {
@@ -151,6 +198,16 @@ func (o InnerDataOutput) ToInnerDataOutput() InnerDataOutput {
 
 func (o InnerDataOutput) ToInnerDataOutputWithContext(ctx context.Context) InnerDataOutput {
 	return o
+}
+
+func (o InnerDataOutput) ToInnerDataPtrOutput() InnerDataPtrOutput {
+	return o.ToInnerDataPtrOutputWithContext(context.Background())
+}
+
+func (o InnerDataOutput) ToInnerDataPtrOutputWithContext(ctx context.Context) InnerDataPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v InnerData) *InnerData {
+		return &v
+	}).(InnerDataPtrOutput)
 }
 
 func (o InnerDataOutput) BoolArray() pulumi.BoolArrayOutput {
@@ -177,9 +234,89 @@ func (o InnerDataOutput) StringMap() pulumi.StringMapOutput {
 	return o.ApplyT(func(v InnerData) map[string]string { return v.StringMap }).(pulumi.StringMapOutput)
 }
 
+type InnerDataPtrOutput struct{ *pulumi.OutputState }
+
+func (InnerDataPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**InnerData)(nil)).Elem()
+}
+
+func (o InnerDataPtrOutput) ToInnerDataPtrOutput() InnerDataPtrOutput {
+	return o
+}
+
+func (o InnerDataPtrOutput) ToInnerDataPtrOutputWithContext(ctx context.Context) InnerDataPtrOutput {
+	return o
+}
+
+func (o InnerDataPtrOutput) Elem() InnerDataOutput {
+	return o.ApplyT(func(v *InnerData) InnerData {
+		if v != nil {
+			return *v
+		}
+		var ret InnerData
+		return ret
+	}).(InnerDataOutput)
+}
+
+func (o InnerDataPtrOutput) BoolArray() pulumi.BoolArrayOutput {
+	return o.ApplyT(func(v *InnerData) []bool {
+		if v == nil {
+			return nil
+		}
+		return v.BoolArray
+	}).(pulumi.BoolArrayOutput)
+}
+
+func (o InnerDataPtrOutput) Boolean() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *InnerData) *bool {
+		if v == nil {
+			return nil
+		}
+		return &v.Boolean
+	}).(pulumi.BoolPtrOutput)
+}
+
+func (o InnerDataPtrOutput) Float() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *InnerData) *float64 {
+		if v == nil {
+			return nil
+		}
+		return &v.Float
+	}).(pulumi.Float64PtrOutput)
+}
+
+func (o InnerDataPtrOutput) Integer() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v *InnerData) *int {
+		if v == nil {
+			return nil
+		}
+		return &v.Integer
+	}).(pulumi.IntPtrOutput)
+}
+
+func (o InnerDataPtrOutput) String() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v *InnerData) *string {
+		if v == nil {
+			return nil
+		}
+		return &v.String
+	}).(pulumi.StringPtrOutput)
+}
+
+func (o InnerDataPtrOutput) StringMap() pulumi.StringMapOutput {
+	return o.ApplyT(func(v *InnerData) map[string]string {
+		if v == nil {
+			return nil
+		}
+		return v.StringMap
+	}).(pulumi.StringMapOutput)
+}
+
 func init() {
 	pulumi.RegisterInputType(reflect.TypeOf((*DataInput)(nil)).Elem(), DataArgs{})
 	pulumi.RegisterInputType(reflect.TypeOf((*InnerDataInput)(nil)).Elem(), InnerDataArgs{})
+	pulumi.RegisterInputType(reflect.TypeOf((*InnerDataPtrInput)(nil)).Elem(), InnerDataArgs{})
 	pulumi.RegisterOutputType(DataOutput{})
 	pulumi.RegisterOutputType(InnerDataOutput{})
+	pulumi.RegisterOutputType(InnerDataPtrOutput{})
 }
