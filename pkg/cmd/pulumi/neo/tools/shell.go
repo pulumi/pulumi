@@ -110,9 +110,7 @@ func (s *Shell) resolveDir(dir string) (string, error) {
 }
 
 // childEnvWithAgent returns parent with any existing AI_AGENT entry stripped
-// and AI_AGENT=neo appended, so nested `pulumi` invocations attribute the run
-// to Neo (via metadata.DetectAIAgent) rather than to whatever upstream agent
-// launched `pulumi neo`.
+// and AI_AGENT=neo appended.
 func childEnvWithAgent(parent []string) []string {
 	out := make([]string, 0, len(parent)+1)
 	for _, kv := range parent {
