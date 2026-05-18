@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
@@ -117,7 +118,7 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	}
 
 	// Capitalize and make a valid identifier.
-	safeName = makeValidIdentifier(title(safeName))
+	safeName = makeValidIdentifier(cgstrings.UppercaseFirst(safeName))
 
 	// If there are multiple underscores in a row, replace with one.
 	regex := regexp.MustCompile(`_+`)
