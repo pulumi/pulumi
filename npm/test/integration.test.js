@@ -54,12 +54,7 @@ describe(`pulumi v${version} integration`, () => {
     let env;
 
     it("resolves and downloads the CLI", async () => {
-        bin = await resolve({
-            pathEnv: "", // bypass PATH deferral — exercise the download path
-            version,
-            targetOS: process.platform === "win32" ? "windows" : process.platform,
-            targetArch: process.arch,
-        });
+        bin = await resolve({ version });
         binDir = path.dirname(bin);
 
         assert.ok(fs.existsSync(bin), `pulumi binary not found at ${bin}`);

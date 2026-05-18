@@ -9,52 +9,22 @@ const { installCLI, fetchLatestVersion } = require("./download");
 
 const pkg = require("../package.json");
 
-// Canonical path of this package's entry point. Used by isExecutable to skip
-// our own wrapper when a global `npm install` symlinks it onto PATH, which
-// would otherwise cause infinite recursion.
-const SELF = fs.realpathSync(path.resolve(__dirname, "..", "run.js"));
-
-// isExecutable returns true if filePath is a non-empty executable that does
-// not resolve to this package's own entry point.
 function isExecutable(filePath) {
     try {
         fs.accessSync(filePath, fs.constants.X_OK);
-        return fs.realpathSync(filePath) !== SELF && fs.statSync(filePath).size > 0;
+        return fs.statSync(filePath).size > 0;
     } catch {
         return false;
     }
 }
 
-// findSystemPulumi searches PATH for a native pulumi binary, skipping any
-// path component that contains "node_modules" to avoid calling ourselves.
-// pathEnv defaults to process.env.PATH and is injectable for testing.
-function findSystemPulumi(pathEnv) {
-    const search = pathEnv !== undefined ? pathEnv : process.env.PATH || "";
-    const exe = process.platform === "win32" ? "pulumi.exe" : "pulumi";
-    for (const dir of search.split(path.delimiter)) {
-        if (!dir || dir.includes("node_modules")) continue;
-        const candidate = path.join(dir, exe);
-        if (isExecutable(candidate)) return candidate;
-    }
-    return null;
-}
-
-// resolve returns the path to the pulumi binary to invoke, using the
-// following priority:
-//   1. A native pulumi binary found on PATH (defers to existing installs).
-//   2. A version-pinned binary in the local cache.
-//   3. A freshly installed binary (cached for future invocations).
-//
-// IO functions are injectable for testing.
+// resolve returns the path to the pulumi binary, installing it if not already
+// cached. IO functions are injectable for testing.
 async function resolve({
-    pathEnv,
     version = process.env.PULUMI_VERSION || pkg.version,
     install = installCLI,
     getLatestVersion = fetchLatestVersion,
 } = {}) {
-    const system = findSystemPulumi(pathEnv);
-    if (system) return system;
-
     if (!version) {
         version = await getLatestVersion();
     }
@@ -69,4 +39,4 @@ async function resolve({
     return dest;
 }
 
-module.exports = { resolve, findSystemPulumi, isExecutable };
+module.exports = { resolve, isExecutable };

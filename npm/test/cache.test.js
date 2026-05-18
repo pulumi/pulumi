@@ -4,38 +4,31 @@
 
 const { describe, it, beforeEach, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
+const os = require("os");
 const path = require("path");
 const { cacheDir } = require("../lib/cache");
 
 describe("cacheDir()", () => {
-    let savedNpmConfigCache;
+    let savedPulumiHome;
 
-    beforeEach(() => {
-        savedNpmConfigCache = process.env.npm_config_cache;
-    });
-
+    beforeEach(() => { savedPulumiHome = process.env.PULUMI_HOME; });
     afterEach(() => {
-        if (savedNpmConfigCache !== undefined) process.env.npm_config_cache = savedNpmConfigCache;
-        else delete process.env.npm_config_cache;
+        if (savedPulumiHome !== undefined) process.env.PULUMI_HOME = savedPulumiHome;
+        else delete process.env.PULUMI_HOME;
     });
 
-    it("uses npm_config_cache when set", () => {
-        process.env.npm_config_cache = "/npm-cache";
-        assert.equal(cacheDir("3.99.0"), path.join("/npm-cache", "_pulumi", "3.99.0"));
+    it("uses ~/.pulumi/versions/{version} by default", () => {
+        delete process.env.PULUMI_HOME;
+        assert.equal(cacheDir("3.99.0"), path.join(os.homedir(), ".pulumi", "versions", "3.99.0"));
     });
 
-    it("falls back to npm's default cache directory when npm_config_cache is not set", () => {
-        if (process.platform === "win32") return; // default path is platform-specific
-        delete process.env.npm_config_cache;
-        const dir = cacheDir("3.99.0");
-        assert.ok(
-            dir.startsWith(require("path").join(require("os").homedir(), ".npm")),
-            `expected ~/.npm prefix, got ${dir}`,
-        );
+    it("respects PULUMI_HOME", () => {
+        process.env.PULUMI_HOME = "/custom/pulumi";
+        assert.equal(cacheDir("3.99.0"), path.join("/custom/pulumi", "versions", "3.99.0"));
     });
 
     it("different versions produce different paths", () => {
-        process.env.npm_config_cache = "/npm-cache";
+        process.env.PULUMI_HOME = "/pulumi";
         assert.notEqual(cacheDir("3.1.0"), cacheDir("3.2.0"));
     });
 });

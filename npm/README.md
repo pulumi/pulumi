@@ -15,13 +15,8 @@ npx pulumi up
 ## How it works
 
 On first use, the package downloads the Pulumi CLI binary for your platform from
-[get.pulumi.com](https://get.pulumi.com) and caches it in npm's cache directory
-(`~/.npm/_pulumi/` by default). The download is checksum-verified to detect
-corruption in transit. Subsequent invocations use the cached binary directly.
-
-If a `pulumi` binary is already on your `PATH` (e.g. installed via Homebrew or
-the [install script](https://www.pulumi.com/docs/install/)), that installation
-is used instead of downloading a new one.
+[get.pulumi.com](https://get.pulumi.com) and caches it under `~/.pulumi/versions/`.
+Subsequent invocations use the cached binary directly.
 
 ## Version pinning
 
@@ -34,9 +29,17 @@ npx pulumi@3.323.0 up
 
 ## Cache location
 
-Binaries are cached at `_pulumi/<version>/` inside npm's configured cache
-directory. To change the location, set `npm_config_cache`:
+Binaries are cached at `~/.pulumi/versions/<version>/bin/`, shared with the
+[Automation API](https://www.pulumi.com/docs/iac/packages/pulumi-automation/) so
+both never download the same version twice. Set `PULUMI_HOME` to use a different
+base directory:
 
 ```sh
-npm_config_cache=/path/to/cache npx pulumi up
+PULUMI_HOME=/path/to/pulumi npx pulumi up
+```
+
+To clear the cache:
+
+```sh
+rm -rf ~/.pulumi/versions
 ```
