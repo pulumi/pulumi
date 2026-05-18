@@ -99,7 +99,9 @@ func branchArgs() deploymentSettingsEditArgs {
 	}
 }
 
-func captureEditPatch(t *testing.T, args deploymentSettingsEditArgs, c *mockDeploymentSettingsEditClient) json.RawMessage {
+func captureEditPatch(
+	t *testing.T, args deploymentSettingsEditArgs, c *mockDeploymentSettingsEditClient,
+) json.RawMessage {
 	t.Helper()
 	captured := &capturedEditPatch{}
 	c.captured = captured

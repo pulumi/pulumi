@@ -145,11 +145,11 @@ const (
 	flagOIDCAzureClear          = "oidc-azure-clear"
 
 	flagOIDCGCPProjectNumber  = "oidc-gcp-project-number"
-	flagOIDCGCPWorkloadPoolID = "oidc-gcp-workload-pool-id"
+	flagOIDCGCPWorkloadPoolID = "oidc-gcp-workload-pool-id" //nolint:gosec // flag name, not a credential
 	flagOIDCGCPProviderID     = "oidc-gcp-provider-id"
 	flagOIDCGCPServiceAccount = "oidc-gcp-service-account"
 	flagOIDCGCPRegion         = "oidc-gcp-region"
-	flagOIDCGCPTokenLifetime  = "oidc-gcp-token-lifetime"
+	flagOIDCGCPTokenLifetime  = "oidc-gcp-token-lifetime" //nolint:gosec // flag name, not a credential
 	flagOIDCGCPClear          = "oidc-gcp-clear"
 )
 
