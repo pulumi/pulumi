@@ -92,7 +92,7 @@ func NewDoCmd(
 		}
 
 		// package may be in the form "name@version" and further may have space separated parameters, e.g.
-		// "name@version param1 "multi word param"".
+		// "name@version param1 \"multi word param\"".
 		pkgargs, err := shlex.Split(pargs[0])
 		if err != nil {
 			return nil, nil, fmt.Errorf("parse package arguments: %w", err)

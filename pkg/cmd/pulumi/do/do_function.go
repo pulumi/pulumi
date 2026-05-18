@@ -203,7 +203,7 @@ func unionVariantMatches(prop resource.PropertyValue, typ schema.Type) bool {
 // evaluatePclFile reads, binds, and evaluates a PCL input file against a caller-supplied schema. The bind callback
 // decides how the parsed file is type-checked (function vs. resource) and returns the schema property list used to
 // coerce values during evaluation.
-func evaluatePclFile(
+func evaluatePCLFile(
 	path, fileType string,
 	bind func(*hclsyntax.File) ([]*model.Attribute, model.Type, []*schema.Property, hcl.Diagnostics),
 	evalContext functionEvalContext,
