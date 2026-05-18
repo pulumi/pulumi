@@ -76,7 +76,7 @@ func newStackScheduleNewCmdWith(factory stackScheduleNewClientFactory) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:   "new",
-		Short: "Create a scheduled deployment action for a stack",
+		Short: "[EXPERIMENTAL] Create a scheduled deployment action for a stack",
 		Long: "[EXPERIMENTAL] Create a scheduled deployment action for a stack.\n\n" +
 			"The --kind flag selects the schedule type:\n" +
 			"  raw   — runs a Pulumi operation on a cron or one-time schedule.\n" +

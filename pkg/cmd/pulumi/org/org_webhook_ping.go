@@ -64,7 +64,7 @@ func newOrgWebhookPingCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ping",
 		Short: "[EXPERIMENTAL] Send a test ping to an organization webhook",
-		Long: "Send a test ping to an organization webhook.\n" +
+		Long: "[EXPERIMENTAL] Send a test ping to an organization webhook.\n" +
 			"\n" +
 			"Issues a test ping event to the specified webhook to verify it is\n" +
 			"properly configured and reachable. Returns the delivery result\n" +

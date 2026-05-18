@@ -22,9 +22,9 @@ import (
 
 func newOrgWebhookCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "webhook",
-		Short: "Manage organization-level webhooks",
-		Long:  "[EXPERIMENTAL] Manage organization-level webhooks.",
+		Use:    "webhook",
+		Short:  "[EXPERIMENTAL] Manage organization-level webhooks",
+		Long:   "[EXPERIMENTAL] Manage organization-level webhooks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

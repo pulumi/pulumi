@@ -77,7 +77,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 	cmd := &cobra.Command{
 		Use:   "new",
 		Short: "[EXPERIMENTAL] Create a new stack webhook",
-		Long: "Create a new stack webhook.\n" +
+		Long: "[EXPERIMENTAL] Create a new stack webhook.\n" +
 			"\n" +
 			"Creates a webhook that delivers events for the specified stack to a\n" +
 			"given URL.\n" +

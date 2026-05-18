@@ -35,7 +35,7 @@ func newOrgRoleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "role",
-		Short:  "Manage organization custom roles",
+		Short:  "[EXPERIMENTAL] Manage organization custom roles",
 		Long:   "[EXPERIMENTAL] Manage organization custom roles.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()

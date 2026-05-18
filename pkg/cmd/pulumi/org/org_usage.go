@@ -45,7 +45,7 @@ func newOrgUsageCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "usage",
-		Short:  "Inspect organization resource usage",
+		Short:  "[EXPERIMENTAL] Inspect organization resource usage",
 		Long:   "[EXPERIMENTAL] Inspect organization resource usage.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
@@ -102,7 +102,7 @@ func newOrgUsageGetCmd(factory orgUsageGetClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "get",
-		Short:  "Fetch the resources-under-management summary for an organization",
+		Short:  "[EXPERIMENTAL] Fetch the resources-under-management summary for an organization",
 		Long: "[EXPERIMENTAL] Fetch the resources-under-management summary for an organization.\n" +
 			"\n" +
 			"Returns the Resources Under Management (RUM) and Resource Hours Under\n" +

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/neo
-  description: Show `preparing` in the live preview/up block until the first resource arrives

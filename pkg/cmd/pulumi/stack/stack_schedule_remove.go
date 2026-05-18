@@ -52,7 +52,7 @@ func newStackScheduleRemoveCmdWith(factory stackScheduleRemoveClientFactory) *co
 
 	cmd := &cobra.Command{
 		Use:   "remove <schedule-id>",
-		Short: "Delete a scheduled deployment action",
+		Short: "[EXPERIMENTAL] Delete a scheduled deployment action",
 		Long: "[EXPERIMENTAL] Delete a scheduled deployment action.\n\n" +
 			"You will be prompted to confirm by typing `remove` unless --yes is passed.",
 		Example: "  # Remove a schedule (prompts for confirmation)\n" +
