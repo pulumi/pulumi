@@ -14,8 +14,6 @@
 
 package stack
 
-// AI Generated - needs human review
-
 import (
 	"context"
 	"encoding/json"
@@ -66,16 +64,6 @@ type stackNewArgs struct {
 	secretsProvider string
 	encryptedKey    string
 	encryptionSalt  string
-	outputFormat    outputflag.OutputFlag[stackNewRenderFunc]
-}
-
-// defaultStackNewOutputFormat wires the OutputFlag to the per-format renderers
-// so `--output` selects between them.
-func defaultStackNewOutputFormat() outputflag.OutputFlag[stackNewRenderFunc] {
-	return outputflag.OutputFlag[stackNewRenderFunc]{
-		RenderForTerminal: renderStackNewText,
-		RenderJSON:        renderStackNewJSON,
-	}
 }
 
 func newStackNewCmd() *cobra.Command {
@@ -85,7 +73,10 @@ func newStackNewCmd() *cobra.Command {
 func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 	contract.Assertf(factory != nil, "stackNewClientFactory must not be nil")
 	var args stackNewArgs
-	args.outputFormat = defaultStackNewOutputFormat()
+	output := outputflag.OutputFlag[stackNewRenderFunc]{
+		RenderForTerminal: renderStackNewText,
+		RenderJSON:        renderStackNewJSON,
+	}
 
 	cmd := &cobra.Command{
 		Hidden: true,
@@ -110,7 +101,7 @@ func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 			"  # Create a stack and emit JSON for scripting\n" +
 			"  pulumi stack new my-project dev --output json",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
-			return runStackNew(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], posArgs[1], args)
+			return runStackNew(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], posArgs[1], args, output.Get())
 		},
 	}
 
@@ -131,7 +122,7 @@ func newStackNewCmdWith(factory stackNewClientFactory) *cobra.Command {
 		"KMS-encrypted ciphertext for the data key (cloud-based secrets providers)")
 	cmd.Flags().StringVar(&args.encryptionSalt, "encryption-salt", "",
 		"Base64-encoded encryption salt (passphrase-based secrets providers)")
-	outputflag.VarP(cmd.Flags(), &args.outputFormat)
+	outputflag.VarP(cmd.Flags(), &output)
 
 	return cmd
 }
@@ -187,6 +178,7 @@ func runStackNew(
 	factory stackNewClientFactory,
 	project, name string,
 	args stackNewArgs,
+	render stackNewRenderFunc,
 ) error {
 	stackName, err := tokens.ParseStackName(name)
 	if err != nil {
@@ -211,7 +203,7 @@ func runStackNew(
 		return fmt.Errorf("creating stack: %w", err)
 	}
 
-	return args.outputFormat.Get()(w, stackID, details)
+	return render(w, stackID, details)
 }
 
 // buildStackNewConfig returns a *StackConfig only if at least one of the
