@@ -341,7 +341,7 @@ func FormatAgentClaimInstruction(claimURL string) string {
 		claimURL)
 }
 
-var agentPulumiDir = filepath.Join(string(os.PathSeparator), "tmp", BookkeepingDir)
+var agentPulumiDir = filepath.Join(os.TempDir(), BookkeepingDir)
 
 // getAgentPulumiDir returns the shared temporary directory used for agent
 // credentials, creating it if needed.
