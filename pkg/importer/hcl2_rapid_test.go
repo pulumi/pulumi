@@ -47,7 +47,13 @@ func TestRapidGenerateHCL2Definition(t *testing.T) {
 
 	rapid.Check(t, func(t *rapid.T) {
 		pkg := rapidschema.Package().Filter(hasSelectableResource).Draw(t, "pkg")
-		sample := rapidimporter.State(pkg).Draw(t, "sample")
+		// TODO[https://github.com/pulumi/pulumi/issues/23232]: drop the
+		// allPathRootsAreHCLIdentifiers filter once schema property names are
+		// constrained to be valid HCL identifiers. Today the schema permits
+		// names like `a-` that have no valid PCL property-path expression.
+		sample := rapidimporter.State(pkg).
+			Filter(allPathRootsAreHCLIdentifiers).
+			Draw(t, "sample")
 
 		if checkPropertyMap(sample.State.Inputs, property.Value.IsNull) {
 			// generatePropertyValue (pkg/importer/hcl2.go:588) normalizes a
@@ -223,6 +229,23 @@ func hasSelectableResource(pkg *schema.Package) bool {
 		}
 	}
 	return false
+}
+
+func allPathRootsAreHCLIdentifiers(s *rapidimporter.Sample) bool {
+	for _, globs := range [][]property.Glob{s.State.IgnoreChanges, s.State.ReplaceOnChanges} {
+		for _, g := range globs {
+			var first property.GlobSegment
+			for seg := range g.Segments {
+				first = seg
+				break
+			}
+			key, ok := first.(property.KeySegment)
+			if !ok || !isHCLIdentifier(key.Key()) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // buildImportState assembles the [ImportState] needed by

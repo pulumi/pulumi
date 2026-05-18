@@ -20,7 +20,9 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -324,22 +326,28 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 		})
 	}
 	if len(state.IgnoreChanges) > 0 {
-		ignoreChanges := make([]model.Expression, len(state.IgnoreChanges))
-		for i, prop := range state.IgnoreChanges {
-			text, err := prop.MarshalText()
-			if err != nil {
-				return nil, err
+		ignoreChanges := make([]model.Expression, 0, len(state.IgnoreChanges))
+		var skipped []string
+		for _, g := range state.IgnoreChanges {
+			expr, reason := globToTraversal(g)
+			if expr == nil {
+				text, _ := g.MarshalText()
+				skipped = append(skipped, fmt.Sprintf(
+					"// WARNING: dropped ignoreChanges path %s (%s)\n",
+					string(text), reason))
+				continue
 			}
-			v := cty.StringVal(string(text))
-			ignoreChanges[i] = &model.LiteralValueExpression{
-				Tokens: syntax.NewLiteralValueTokens(v),
-				Value:  v,
-			}
+			ignoreChanges = append(ignoreChanges, expr)
 		}
-		resourceOptions = appendResourceOption(resourceOptions, "ignoreChanges", &model.TupleConsExpression{
-			Tokens:      syntax.NewTupleConsTokens(len(ignoreChanges)),
-			Expressions: ignoreChanges,
-		})
+		if len(ignoreChanges) > 0 {
+			resourceOptions = appendResourceOption(resourceOptions, "ignoreChanges", &model.TupleConsExpression{
+				Tokens:      syntax.NewTupleConsTokens(len(ignoreChanges)),
+				Expressions: ignoreChanges,
+			})
+		}
+		if len(skipped) > 0 {
+			attachIgnoreChangesWarnings(resourceOptions, skipped)
+		}
 	}
 	if state.DeletedWith != "" {
 		name, ok := names[state.DeletedWith]
@@ -381,6 +389,87 @@ func makeResourceOptions(state *resource.State, names NameTable, addedRefs map[s
 	}
 
 	return resourceOptions, nil
+}
+
+// globToTraversal converts a property.Glob into a PCL property-path
+// traversal. Returns (nil, reason) when the glob has no PCL representation:
+// HCL traversals must start with an identifier root, and have no wildcard
+// counterpart to property.SplatSegment.
+func globToTraversal(g property.Glob) (*model.ScopeTraversalExpression, string) {
+	segments := slices.Collect(g.Segments)
+	if len(segments) == 0 {
+		return nil, "empty path"
+	}
+
+	root, ok := segments[0].(property.KeySegment)
+	if !ok {
+		return nil, fmt.Sprintf("path root is %T; PCL requires an identifier", segments[0])
+	}
+	if !isHCLIdentifier(root.Key()) {
+		return nil, fmt.Sprintf("path root %q is not a valid HCL identifier", root.Key())
+	}
+
+	traversal := hcl.Traversal{hcl.TraverseRoot{Name: root.Key()}}
+	for _, s := range segments[1:] {
+		switch s := s.(type) {
+		case property.KeySegment:
+			if isHCLIdentifier(s.Key()) {
+				traversal = append(traversal, hcl.TraverseAttr{Name: s.Key()})
+			} else {
+				traversal = append(traversal, hcl.TraverseIndex{Key: cty.StringVal(s.Key())})
+			}
+		case property.IndexSegment:
+			traversal = append(traversal, hcl.TraverseIndex{Key: cty.NumberIntVal(int64(s.Index()))})
+		case property.SplatSegment:
+			return nil, "path contains a splat (`*`) segment; PCL has no traversal counterpart"
+		default:
+			return nil, fmt.Sprintf("unknown path segment type %T", s)
+		}
+	}
+
+	return &model.ScopeTraversalExpression{
+		RootName:  root.Key(),
+		Traversal: traversal,
+	}, ""
+}
+
+func isHCLIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, c := range s {
+		isLetter := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+		isDigit := c >= '0' && c <= '9'
+		if !isLetter && (i == 0 || !isDigit) {
+			return false
+		}
+	}
+	return true
+}
+
+func attachIgnoreChangesWarnings(options *model.Block, warnings []string) {
+	if options == nil {
+		return
+	}
+	var attr *model.Attribute
+	for _, item := range options.Body.Items {
+		a, ok := item.(*model.Attribute)
+		if ok && a.Name == "ignoreChanges" {
+			attr = a
+		}
+	}
+
+	trivia := make(syntax.TriviaList, 0, len(warnings))
+	for _, w := range warnings {
+		trivia = append(trivia, syntax.NewWhitespace([]byte("\n"+w)...))
+	}
+
+	switch {
+	case attr != nil:
+		attr.Tokens.Name.LeadingTrivia = append(attr.Tokens.Name.LeadingTrivia, trivia...)
+	case options.Tokens != nil:
+		options.Tokens.OpenBrace.TrailingTrivia = append(options.Tokens.OpenBrace.TrailingTrivia, trivia...)
+	}
 }
 
 // typeRank orders types by their simplicity.
