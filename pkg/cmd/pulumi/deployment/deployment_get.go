@@ -84,9 +84,8 @@ func newDeploymentGetCmdWith(factory deploymentGetClientFactory) *cobra.Command 
 	args.outputFormat = defaultDeploymentGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get <deployment-version>",
-		Short:  "[EXPERIMENTAL] Get details for a specific deployment",
+		Use:   "get <deployment-version>",
+		Short: "[EXPERIMENTAL] Get details for a specific deployment",
 		Long: "[EXPERIMENTAL] Get details for a specific deployment.\n" +
 			"\n" +
 			"The deployment may be referenced by its UUID or by its per-stack version\n" +
