@@ -234,7 +234,7 @@ func NewDoCmd(
 	cmd := &cobra.Command{
 		// Hidden for now while we iterate.
 		Hidden: true,
-		Use:    "do",
+		Use:    "do <package> [args...]",
 		Short:  "Interact directly with cloud resources",
 		Long: `Interact with any cloud
 
@@ -242,6 +242,11 @@ pulumi do dynamically builds a CLI from any Pulumi provider's schema, giving you
 direct CRUD access to cloud resources without a Pulumi program or state file.
 Each provider plugin contributes its own resources, functions, and
 configuration flags, all discoverable via --help on the provider subcommand.
+
+packages can be a package name or the path to a plugin binary or folder.
+Further parameters can be passed after the package name which will be used to
+parameterize the plugin loaded. 
+e.g. pulumi do "name@version param1 \"multi word param\""
 
 Resource operations: list, create, read, patch, delete
 Functions are invoked directly by name.
