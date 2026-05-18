@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/cloud
-  description: "`pulumi deployment settings edit` no longer clears fields that the patch does not mention"
