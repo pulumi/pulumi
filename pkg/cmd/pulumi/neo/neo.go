@@ -36,7 +36,6 @@ import (
 	displaytypes "github.com/pulumi/pulumi/pkg/v3/display"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
@@ -126,8 +125,7 @@ func NewNeoCmd() *cobra.Command {
 			"tool loop. Filesystem and shell tool calls from the agent run on this machine, " +
 			"in the working directory you select, instead of in the cloud agent container. " +
 			"If no prompt is provided, the TUI starts and waits for your first message.",
-		Hidden: !env.Experimental.Value(),
-		Args:   cobra.MaximumNArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			var prompt string
