@@ -110,20 +110,27 @@ func TestDeploymentSettingsEdit_DefaultOutput(t *testing.T) {
 	require.NotNil(t, captured.patch)
 	assert.JSONEq(t, patchJSON, string(captured.patch))
 
-	assert.Equal(t, `Executor image:          pulumi/pulumi:latest
-Working directory:       /work
-Source repo URL:         https://github.com/acme/infra
-Source branch:           main
-Source commit:           abc123
-Source repo dir:         stacks/prod
-GitHub repository:       acme/infra
-GitHub deploy commits:   true
-GitHub preview PRs:      true
-GitHub PR template:      false
-GitHub paths:            1
-Agent pool ID:           pool-1
-Env var keys:            2
-Pre-run commands:        1
+	assert.Equal(t, `Source: GitHub
+  Repository:               acme/infra
+  Branch:                   main
+  Commit:                   abc123
+  Pulumi.yaml folder:       stacks/prod
+  Run previews for PRs:     yes
+  Run updates on push:      yes
+  PR stack template:        no
+  Path filters:             stacks/prod/**
+
+Deployment runner
+  Runner pool:              pool-1
+  Executor image:           pulumi/pulumi:latest
+  Working directory:        /work
+
+Pre-run commands
+  echo hi
+
+Environment variables
+  BAZ
+  FOO
 `, buf.String())
 }
 
@@ -142,34 +149,24 @@ func TestDeploymentSettingsEdit_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
-		"executorContext": {
-			"workingDirectory": "/work",
-			"executorImage": "pulumi/pulumi:latest"
-		},
-		"sourceContext": {
-			"git": {
-				"repoUrl": "https://github.com/acme/infra",
-				"branch": "main",
-				"commit": "abc123",
-				"repoDir": "stacks/prod"
-			}
-		},
-		"gitHub": {
+		"source": {
+			"kind": "github",
 			"repository": "acme/infra",
-			"pullRequestTemplate": false,
-			"deployCommits": true,
+			"branch": "main",
+			"commit": "abc123",
+			"folder": "stacks/prod",
 			"previewPullRequests": true,
-			"paths": ["stacks/prod/**"]
+			"runUpdatesOnPush": true,
+			"pullRequestTemplate": false,
+			"pathFilters": ["stacks/prod/**"]
 		},
-		"operationContext": {
-			"preRunCommands": ["echo hi"],
-			"operation": "update",
-			"environmentVariables": {
-				"FOO": "bar",
-				"BAZ": "qux"
-			}
+		"runner": {
+			"pool": "pool-1",
+			"executorImage": "pulumi/pulumi:latest",
+			"workingDirectory": "/work"
 		},
-		"agentPoolID": "pool-1"
+		"preRunCommands": ["echo hi"],
+		"environmentVariables": ["BAZ", "FOO"]
 	}`, buf.String())
 }
 
