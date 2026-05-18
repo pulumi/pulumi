@@ -20,13 +20,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/23009]: Not yet implemented.
 func newOrgMemberCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "member",
-		Short:  "Manage organization members",
-		Long:   "[EXPERIMENTAL] Manage organization members.",
+		Use:   "member",
+		Short: "Manage organization members",
+		Long:  "[EXPERIMENTAL] Manage organization members.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
