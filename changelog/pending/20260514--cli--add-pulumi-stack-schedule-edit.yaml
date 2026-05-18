@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `pulumi stack schedule edit` to update an existing scheduled deployment action

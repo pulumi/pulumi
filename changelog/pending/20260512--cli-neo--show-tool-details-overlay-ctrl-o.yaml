@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/neo
-  description: Show tool call arguments and results in `pulumi neo` via a `ctrl+o` overlay
