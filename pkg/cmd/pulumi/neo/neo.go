@@ -42,14 +42,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-// nonInteractivePromptPreamble is prepended to the user's prompt in --print
-// mode and the no-TTY path. The agent has no way to ask follow-up questions
-// since stdin isn't wired and the caller (typically another AI agent) is
-// blocked waiting on stdout — anything that requires more input would hang.
+// nonInteractivePromptPreamble nudges the agent away from follow-up questions
+// in modes where there's no way to send another user message: stdin isn't
+// wired and the caller (typically another agent or a script) is blocked
+// reading stdout, so anything that needs more input would hang.
 const nonInteractivePromptPreamble = "You are running in non-interactive mode: " +
-	"your final response will be written to stdout and consumed by another agent " +
-	"or script. Do not ask follow-up questions; make any reasonable assumptions " +
-	"explicit and return a complete final answer."
+	"your final response will be written to stdout. Do not ask follow-up " +
+	"questions; make any reasonable assumptions explicit and return a complete " +
+	"final answer."
 
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
@@ -150,14 +150,14 @@ func NewNeoCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// In --print mode there's no UI to approve from. Reject an explicit manual
-			// (would deadlock); default to auto if the user didn't pick something.
+			// --print has no UI; manual approval would deadlock. Reject if explicit,
+			// otherwise upgrade the default.
 			if printMode {
-				if cmd.Flags().Changed("approval-mode") && approvalMode == client.NeoApprovalModeManual {
+				switch {
+				case cmd.Flags().Changed("approval-mode") && approvalMode == client.NeoApprovalModeManual:
 					return errors.New(
 						"--approval-mode=manual is incompatible with --print: there is no UI to approve from")
-				}
-				if !cmd.Flags().Changed("approval-mode") {
+				case !cmd.Flags().Changed("approval-mode"):
 					approvalMode = client.NeoApprovalModeAuto
 				}
 			}
@@ -274,15 +274,10 @@ func runNeo(
 	}
 	handlers["pulumi"] = pu
 
-	// --print or no TTY: run the task non-interactively. Print mode writes the
-	// agent's final response to stdout and exits; status output goes to stderr.
 	if printMode || !isInteractive() {
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
-		// Tell the agent up front it can't ask follow-ups — its final response
-		// will be piped to another agent or script, so anything that requires
-		// further user input will hang the caller.
 		taskPrompt := nonInteractivePromptPreamble + "\n\n" + prompt
 		resp, err := createNeoTaskWithEntityRetry(
 			ctx, pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{

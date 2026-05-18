@@ -40,10 +40,9 @@ var (
 	reconnectTotalBudget    = 5 * time.Minute
 )
 
-// errSessionDone is returned from handleEvent when Output is set and the agent
-// has emitted its final assistant message. Run treats it as a clean exit so
-// `pulumi neo --print` terminates without waiting for the server to close the
-// SSE stream (which it won't, since the task stays "active" awaiting more input).
+// errSessionDone short-circuits Run after the agent's final assistant message in
+// Output mode. The server keeps the SSE stream open in case more user input
+// arrives, so the loop has to terminate itself.
 var errSessionDone = errors.New("session done")
 
 // ToolHandler executes a single named method on a Neo CLI-local tool. The method is the
@@ -81,9 +80,9 @@ type Session struct {
 	// other writers (dispatchUserEvents, createTask, the pulumi sink), and closing
 	// from here races them (pulumi/pulumi-service#42773).
 	UIEvents chan<- UIEvent
-	// Output, when non-nil, makes the session single-shot: it writes the Content
-	// of the agent's first assistant_message with IsFinal=true and no pending CLI
-	// tool calls to Output, then Run returns nil. Used by `pulumi neo --print`.
+	// Output, when non-nil, makes the session single-shot: the first IsFinal
+	// assistant_message with no pending CLI tool calls is written to it and Run
+	// returns nil.
 	Output io.Writer
 }
 

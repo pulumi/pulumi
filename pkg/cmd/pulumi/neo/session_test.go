@@ -356,10 +356,8 @@ func TestSession_OutputWritesFinalContentAndReturnsCleanly(t *testing.T) {
 
 	streamer := newFakeStreamer()
 
-	// The agent never closes the SSE stream on its own — the task stays "active"
-	// in case more user input arrives. With Output set, Session.Run must detect
-	// the final-no-cli message, write its Content, and return promptly anyway.
-	// Crucially: the stream is NOT closed here.
+	// Note: the stream is intentionally NOT closed. Output mode has to terminate
+	// itself; the server keeps the SSE channel open waiting for more user input.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
 		Type:    backendEventAssistantMessage,
 		Content: "the final answer",
@@ -394,7 +392,6 @@ func TestSession_OutputSkipsEmptyContent(t *testing.T) {
 
 	streamer := newFakeStreamer()
 
-	// Empty Content still ends the run cleanly — we just don't write anything.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
 		Type:    backendEventAssistantMessage,
 		IsFinal: true,
@@ -427,9 +424,8 @@ func TestSession_OutputRunsCliCallsThenWritesFinal(t *testing.T) {
 
 	streamer := newFakeStreamer()
 
-	// Two-message turn: first message has a CLI tool call (the agent is paused
-	// waiting for the result). After the CLI runs the tool, the agent posts the
-	// final response with no more CLI calls. Output captures only the second.
+	// First message has a CLI tool call; the agent only resumes once the CLI
+	// posts a tool_result. The second message is the real final answer.
 	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
 		Type:    backendEventAssistantMessage,
 		IsFinal: true,
@@ -469,7 +465,6 @@ func TestSession_OutputRunsCliCallsThenWritesFinal(t *testing.T) {
 
 	assert.Equal(t, "done.\n", out.String(), "Output must carry the final message's Content only")
 
-	// Sanity: tool execution still happened (exec_tool_call + tool_result posts).
 	streamer.mu.Lock()
 	defer streamer.mu.Unlock()
 	require.Len(t, streamer.posted, 2, "expected exec_tool_call then tool_result")
