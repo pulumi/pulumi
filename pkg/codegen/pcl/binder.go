@@ -208,6 +208,15 @@ func bindInputFile(file *syntax.File, opts ...BindOption) (
 			Value:  expr,
 		})
 	}
+
+	for _, block := range file.Body.Blocks {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf("unexpected block %q", block.Type),
+			Subject:  &block.TypeRange,
+		})
+	}
+
 	return b, args, inputRanges, diagnostics
 }
 

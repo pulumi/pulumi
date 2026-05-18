@@ -55,11 +55,11 @@ func jsonifyPropertyValue(v resource.PropertyValue, showSecrets bool) (any, erro
 	}
 
 	if v.IsSecret() {
-		v = v.SecretValue().Element
+		return jsonifyPropertyValue(v.SecretValue().Element, showSecrets)
 	}
 
 	if v.IsOutput() {
-		v = v.OutputValue().Element
+		return jsonifyPropertyValue(v.OutputValue().Element, showSecrets)
 	}
 
 	if v.IsAsset() {
@@ -114,6 +114,9 @@ func jsonifyProperty(prop resource.PropertyValue, showSecrets bool) (string, err
 	return json, nil
 }
 
+// filterOutputs recursively filters the given property map to only include properties present in the schema. This is
+// used to filter out any "internal" keys the provider might return that aren't part of the declared outputs, which
+// would otherwise cause the JSON output to be noisy and potentially break consumers expecting a specific shape.
 func filterOutputs(props resource.PropertyMap, properties []*schema.Property) resource.PropertyMap {
 	filtered := resource.PropertyMap{}
 	for _, property := range properties {
@@ -127,7 +130,7 @@ func filterOutputs(props resource.PropertyMap, properties []*schema.Property) re
 
 func filterOutput(
 	prop resource.PropertyValue, typ schema.Type,
-) (result resource.PropertyValue) {
+) resource.PropertyValue {
 	if typ == nil {
 		return prop
 	}
@@ -142,10 +145,7 @@ func filterOutput(
 
 	isSecret := prop.IsSecret()
 	if isSecret {
-		prop = prop.SecretValue().Element
-		defer func() {
-			result = resource.MakeSecret(result)
-		}()
+		return resource.MakeSecret(filterOutput(prop.SecretValue().Element, typ))
 	}
 
 	switch t := typ.(type) {

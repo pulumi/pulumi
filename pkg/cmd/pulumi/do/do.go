@@ -188,7 +188,7 @@ func NewDoCmd(
 		// Name() is just the first token (e.g. "name@version"). Substitute the quoted spec with its first token
 		// in the dispatch args so Find can match.
 		fullArgs := slices.Clone(args)
-		if pargs[0] != pkgargs[0] {
+		if expanded := pargs[0] != pkgargs[0]; expanded {
 			for i, a := range fullArgs {
 				if a == pargs[0] {
 					fullArgs[i] = pkgargs[0]

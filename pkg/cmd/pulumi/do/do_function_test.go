@@ -950,6 +950,62 @@ func TestDoCmdFunctionInvokeInputFileForInputlessFunction(t *testing.T) {
 	assert.ErrorContains(t, err, "unsupported attribute 'bogus'")
 }
 
+// TestDoCmdFunctionInvokeInputFileRejectsHCLBlocks asserts that PCL input files containing top-level HCL blocks
+// (e.g. `something { ... }`) are rejected at bind time. Without this, blocks would be silently dropped — easy to
+// mistake for "the schema doesn't honor my settings" rather than a syntax mistake.
+func TestDoCmdFunctionInvokeInputFileRejectsHCLBlocks(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {
+					Inputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"param1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+					Outputs: &schema.ObjectTypeSpec{
+						Properties: map[string]schema.PropertySpec{
+							"output1": {TypeSpec: schema.TypeSpec{Type: "string"}},
+						},
+					},
+				},
+			},
+		}
+		return closer(t), &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
+					require.Fail(t, "provider invoke should not be called when input file contains HCL blocks")
+					return plugin.InvokeResponse{}, nil
+				},
+			},
+		}, nil
+	}
+
+	// PCL syntax for nested objects is `param = { ... }` — using HCL block syntax (`stuff { ... }`) is a
+	// frequent mistake and should be flagged rather than silently dropped.
+	inputFile := writeHCLFile(t, "inputs.pcl", `
+param1 = "hello"
+stuff {
+    nested = "value"
+}
+`)
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure", "myFunction", "--input-file", inputFile})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, `unexpected block "stuff"`)
+}
+
 func TestDoCmdFunctionInvokeInputFileSchemaConversions(t *testing.T) {
 	t.Parallel()
 
