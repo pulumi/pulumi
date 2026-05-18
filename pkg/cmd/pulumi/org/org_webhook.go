@@ -20,13 +20,11 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/22964]: Not yet implemented.
 func newOrgWebhookCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "webhook",
-		Short:  "Manage organization-level webhooks",
-		Long:   "[EXPERIMENTAL] Manage organization-level webhooks.",
+		Use:   "webhook",
+		Short: "Manage organization-level webhooks",
+		Long:  "[EXPERIMENTAL] Manage organization-level webhooks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
