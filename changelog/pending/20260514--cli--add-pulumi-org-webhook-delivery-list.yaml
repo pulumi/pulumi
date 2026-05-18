@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi org webhook delivery list` to list recent deliveries for an organization webhook

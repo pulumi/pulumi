@@ -752,10 +752,56 @@ func (pc *Client) CreateOrgWebhook(
 	return resp, nil
 }
 
+// GetOrgWebhook returns a single webhook by name for the given organization.
+func (pc *Client) GetOrgWebhook(ctx context.Context, org, webhookName string) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName)
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
+// UpdateOrgWebhook updates an existing webhook for the given organization.
+func (pc *Client) UpdateOrgWebhook(
+	ctx context.Context, org, webhookName string, req apitype.Webhook,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName)
+	if err := pc.restCall(ctx, "PATCH", path, nil, &req, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
 // DeleteOrgWebhook deletes the given webhook from the organization.
 func (pc *Client) DeleteOrgWebhook(ctx context.Context, org, webhookName string) error {
 	return pc.restCall(ctx, "DELETE",
 		"/api/orgs/"+url.PathEscape(org)+"/hooks/"+url.PathEscape(webhookName), nil, nil, nil)
+}
+
+// PingOrgWebhook sends a test ping to the given organization webhook.
+func (pc *Client) PingOrgWebhook(
+	ctx context.Context, org, webhookName string,
+) (apitype.WebhookDelivery, error) {
+	var resp apitype.WebhookDelivery
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName) + "/ping"
+	if err := pc.restCall(ctx, "POST", path, nil, nil, &resp); err != nil {
+		return apitype.WebhookDelivery{}, err
+	}
+	return resp, nil
+}
+
+// ListOrgWebhookDeliveries returns recent deliveries for the given org webhook.
+func (pc *Client) ListOrgWebhookDeliveries(
+	ctx context.Context, org, webhookName string,
+) ([]apitype.WebhookDelivery, error) {
+	var resp []apitype.WebhookDelivery
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName) + "/deliveries"
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // ListStackWebhooks returns all webhooks configured for the given stack.
