@@ -40,6 +40,11 @@ var (
 	reconnectTotalBudget    = 5 * time.Minute
 )
 
+// errSessionDone short-circuits Run after the agent's final assistant message in
+// Output mode. The server keeps the SSE stream open in case more user input
+// arrives, so the loop has to terminate itself.
+var errSessionDone = errors.New("session done")
+
 // ToolHandler executes a single named method on a Neo CLI-local tool. The method is the
 // part of the agent's full tool name after the "<server>__" prefix; args is the raw JSON
 // arguments object. The returned value is JSON-encoded into the AgentUserEventToolResultItem
@@ -75,6 +80,10 @@ type Session struct {
 	// other writers (dispatchUserEvents, createTask, the pulumi sink), and closing
 	// from here races them (pulumi/pulumi-service#42773).
 	UIEvents chan<- UIEvent
+	// Output, when non-nil, makes the session single-shot: the first IsFinal
+	// assistant_message with no pending CLI tool calls is written to it and Run
+	// returns nil.
+	Output io.Writer
 }
 
 // Run drives the loop. It blocks until ctx is cancelled (clean shutdown, returns nil),
@@ -105,7 +114,7 @@ func (s *Session) Run(ctx context.Context) error {
 				failures = 0
 				deadline = time.Time{}
 			}
-			if drainErr == nil {
+			if drainErr == nil || errors.Is(drainErr, errSessionDone) {
 				return nil
 			}
 			if !isTransientStreamError(drainErr) {
@@ -256,6 +265,12 @@ func (s *Session) handleEvent(ctx context.Context, raw []byte) error {
 		// the turn is complete and the TUI can re-enable input.
 		if msg.IsFinal {
 			sendUI(s.UIEvents, UITaskIdle{})
+			if s.Output != nil {
+				if msg.Content != "" {
+					fmt.Fprintln(s.Output, msg.Content)
+				}
+				return errSessionDone
+			}
 		}
 		return nil
 	}
