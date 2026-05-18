@@ -448,7 +448,7 @@ func TestConfigEnvInit_RemoteConfig_AllSecretsDecrypted(t *testing.T) {
 	)
 
 	cmd := &configEnvInitCmd{parent: parent, remoteConfig: true, yes: true}
-	err = cmd.run(context.Background(), nil)
+	err = cmd.run(t.Context(), nil)
 	require.NoError(t, err)
 
 	require.NotNil(t, tb.createdYAML, "environment should have been created")
@@ -492,7 +492,7 @@ func TestConfigEnvInit_RemoteConfig_DecryptionFailure(t *testing.T) {
 	)
 
 	cmd := &configEnvInitCmd{parent: parent, remoteConfig: true, yes: true}
-	err = cmd.run(context.Background(), nil)
+	err = cmd.run(t.Context(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "decrypting config")
 
@@ -533,7 +533,7 @@ func TestConfigEnvInit_RemoteConfig_IdempotentMerge(t *testing.T) {
 	)
 
 	cmd := &configEnvInitCmd{parent: parent, remoteConfig: true, yes: true}
-	err = cmd.run(context.Background(), nil)
+	err = cmd.run(t.Context(), nil)
 	require.NoError(t, err)
 
 	require.NotNil(t, tb.updatedYAML, "environment should have been updated")
@@ -577,7 +577,7 @@ func TestConfigEnvInit_RemoteConfig_EmptyExistingEnvironmentUpdates(t *testing.T
 	)
 
 	cmd := &configEnvInitCmd{parent: parent, remoteConfig: true, yes: true}
-	err = cmd.run(context.Background(), nil)
+	err = cmd.run(t.Context(), nil)
 	require.NoError(t, err)
 
 	require.NotNil(t, tb.updatedYAML, "empty existing environments should be updated, not recreated")
@@ -603,7 +603,7 @@ func TestConfigEnvInit_RemoteConfig_AlreadyRemoteConfig(t *testing.T) {
 	)
 
 	cmd := &configEnvInitCmd{parent: parent, remoteConfig: true, yes: true}
-	err := cmd.run(context.Background(), nil)
+	err := cmd.run(t.Context(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "already uses remote configuration")
 

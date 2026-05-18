@@ -165,7 +165,7 @@ func TestConfigPin_ToRevision(t *testing.T) {
 		},
 	}
 
-	err := cmd.pinStack(context.Background(), stack, &workspace.Project{}, "myproject/dev", "3")
+	err := cmd.pinStack(t.Context(), stack, &workspace.Project{}, "myproject/dev", "3")
 	require.NoError(t, err)
 	assert.Equal(t, "myproject/dev@3", savedEnvRef)
 	assert.Contains(t, stdout.String(), "Pinned config to version 3")
@@ -199,7 +199,7 @@ func TestConfigPin_ToTag(t *testing.T) {
 		},
 	}
 
-	err := cmd.pinStack(context.Background(), stack, &workspace.Project{}, "myproject/dev", "stable")
+	err := cmd.pinStack(t.Context(), stack, &workspace.Project{}, "myproject/dev", "stable")
 	require.NoError(t, err)
 	assert.Equal(t, "myproject/dev@stable", savedEnvRef)
 	assert.Contains(t, stdout.String(), `Pinned config to tag "stable"`)
@@ -229,7 +229,7 @@ func TestConfigPin_UnpinWithLatest(t *testing.T) {
 		},
 	}
 
-	err := cmd.pinStack(context.Background(), stack, &workspace.Project{}, "myproject/dev@3", "latest")
+	err := cmd.pinStack(t.Context(), stack, &workspace.Project{}, "myproject/dev@3", "latest")
 	require.NoError(t, err)
 	assert.Equal(t, "myproject/dev", savedEnvRef)
 	assert.Contains(t, stdout.String(), "Unpinned")
@@ -248,7 +248,7 @@ func TestConfigPin_RejectNotFoundVersion(t *testing.T) {
 		},
 	}
 
-	err := cmd.pinStack(context.Background(), stack, &workspace.Project{}, "myproject/dev", "999")
+	err := cmd.pinStack(t.Context(), stack, &workspace.Project{}, "myproject/dev", "999")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `version "999" not found`)
 }
@@ -266,7 +266,7 @@ func TestConfigPin_RejectDeletedTag(t *testing.T) {
 		},
 	}
 
-	err := cmd.pinStack(context.Background(), stack, &workspace.Project{}, "myproject/dev", "deleted-tag")
+	err := cmd.pinStack(t.Context(), stack, &workspace.Project{}, "myproject/dev", "deleted-tag")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `version "deleted-tag" not found`)
 }
@@ -297,7 +297,7 @@ func TestConfigPin_ValidationError(t *testing.T) {
 		},
 	}
 
-	err := cmd.pinStack(context.Background(), stack, &workspace.Project{}, "myproject/dev", "3")
+	err := cmd.pinStack(t.Context(), stack, &workspace.Project{}, "myproject/dev", "3")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "validating version")
 }

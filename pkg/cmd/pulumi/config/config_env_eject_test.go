@@ -211,7 +211,7 @@ func TestEject_GetEnvironment_NonNotFound_ReturnsError(t *testing.T) {
 		},
 	}
 
-	_, _, _, getErr := eb.GetEnvironment(context.Background(), "myorg", "myproject", "dev", "", true)
+	_, _, _, getErr := eb.GetEnvironment(t.Context(), "myorg", "myproject", "dev", "", true)
 	require.Error(t, getErr)
 	assert.False(t, isHTTPNotFound(getErr),
 		"a 500 must not be treated as not-found; eject should abort, not strip config and unlink")
@@ -279,7 +279,7 @@ func TestConfigEnvEject_WritesLocalConfigBeforeUnlinking(t *testing.T) {
 		},
 	}
 
-	err := cmd.run(context.Background())
+	err := cmd.run(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, []string{"save", "unlink", "delete-env"}, callOrder)
 	require.NotNil(t, savedStack)
@@ -351,7 +351,7 @@ func TestConfigEnvEject_DefaultsToStackSecretsProvider(t *testing.T) {
 		},
 	}
 
-	err := cmd.run(context.Background())
+	err := cmd.run(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, savedStack)
 
@@ -426,7 +426,7 @@ func TestConfigEnvEject_PreservesEnvironmentImports(t *testing.T) {
 		},
 	}
 
-	err := cmd.run(context.Background())
+	err := cmd.run(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, savedStack)
 	require.NotNil(t, savedStack.Environment)
@@ -493,7 +493,7 @@ func TestConfigEnvEject_SaveFailureDoesNotUnlink(t *testing.T) {
 		},
 	}
 
-	err := cmd.run(context.Background())
+	err := cmd.run(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "writing local config file: disk full")
 	assert.False(t, unlinked)

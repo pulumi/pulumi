@@ -39,7 +39,7 @@ values:
 		var stdout bytes.Buffer
 		parent := newRemoteConfigEnvCmd(stdin, &stdout, envYAML, &savedYAML)
 		add := &configEnvAddCmd{parent: parent}
-		err := add.run(context.Background(), []string{"myorg/new-env"})
+		err := add.run(t.Context(), []string{"myorg/new-env"})
 		require.NoError(t, err)
 
 		assert.Contains(t, savedYAML, "myorg/base-env")
@@ -57,7 +57,7 @@ values:
 		var stdout bytes.Buffer
 		parent := newRemoteConfigEnvCmd(nil, &stdout, envYAML, &savedYAML)
 		add := &configEnvAddCmd{parent: parent, yes: true}
-		err := add.run(context.Background(), []string{"myorg/new-env"})
+		err := add.run(t.Context(), []string{"myorg/new-env"})
 		require.NoError(t, err)
 
 		assert.Contains(t, savedYAML, "myorg/new-env")

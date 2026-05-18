@@ -1036,7 +1036,7 @@ config:
 
 //nolint:paralleltest // changes global ConfigFile variable
 func TestConfigSetAllRejectsConfigFileForRemoteStacks(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	stackName := "testStack"
 	escEnv := "testProject/dev"
 

@@ -166,7 +166,7 @@ func TestLoadProjectStack_ConflictDetection_HardErrorWithConfigValues(t *testing
 	s := newRemoteStack(t, "dev", "myproject/dev")
 	project := &workspace.Project{Name: "myproject"}
 
-	_, err := LoadProjectStack(context.Background(), cmdutil.Diag(), project, s)
+	_, err := LoadProjectStack(t.Context(), cmdutil.Diag(), project, s)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "both remote and local configuration exist")
 }
@@ -183,7 +183,7 @@ func TestLoadProjectStack_ConflictDetection_HardErrorWithEnvironmentImports(t *t
 	s := newRemoteStack(t, "dev", "myproject/dev")
 	project := &workspace.Project{Name: "myproject"}
 
-	_, err := LoadProjectStack(context.Background(), cmdutil.Diag(), project, s)
+	_, err := LoadProjectStack(t.Context(), cmdutil.Diag(), project, s)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "both remote and local configuration exist")
 }
@@ -201,7 +201,7 @@ func TestLoadProjectStack_ConflictDetection_NoErrorForMetadataOnlyFile(t *testin
 	project := &workspace.Project{Name: "myproject"}
 
 	// Should succeed: metadata-only file does not conflict with remote config.
-	ps, err := LoadProjectStack(context.Background(), cmdutil.Diag(), project, s)
+	ps, err := LoadProjectStack(t.Context(), cmdutil.Diag(), project, s)
 	require.NoError(t, err)
 	require.NotNil(t, ps)
 }
@@ -217,7 +217,7 @@ func TestLoadProjectStack_ConflictDetection_NoErrorWhenNoLocalFile(t *testing.T)
 	project := &workspace.Project{Name: "myproject"}
 
 	// Should succeed: no local file, no conflict.
-	ps, err := LoadProjectStack(context.Background(), cmdutil.Diag(), project, s)
+	ps, err := LoadProjectStack(t.Context(), cmdutil.Diag(), project, s)
 	require.NoError(t, err)
 	require.NotNil(t, ps)
 }

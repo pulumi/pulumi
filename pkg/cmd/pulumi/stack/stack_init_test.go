@@ -103,7 +103,7 @@ func TestStackInit_RemoteConfig_NonCloudBackend(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), nil)
+	err := cmd.Run(t.Context(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--remote-config is not supported by the filestate backend")
 }
@@ -133,7 +133,7 @@ func TestStackInit_RemoteConfig_SecretsProviderConflict(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), nil)
+	err := cmd.Run(t.Context(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--remote-config cannot be used with --secrets-provider")
 }
@@ -163,7 +163,7 @@ func TestStackInit_RemoteConfig_CopyConfigConflict(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), nil)
+	err := cmd.Run(t.Context(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "--remote-config cannot be used with --copy-config-from")
 }
@@ -217,7 +217,7 @@ func TestStackInit_NonInteractive_DefaultsToLocalConfig(t *testing.T) {
 		},
 	}
 
-	err := cmd.Run(context.Background(), nil)
+	err := cmd.Run(t.Context(), nil)
 	require.NoError(t, err)
 	assert.False(t, capturedUseRemoteConfig, "non-interactive should default to local config")
 }

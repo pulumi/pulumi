@@ -78,7 +78,7 @@ func TestLocalConfigEditor_SetPlainValue(t *testing.T) {
 
 	key := config.MustMakeKey("myproject", "host")
 	v := config.NewValue("localhost")
-	require.NoError(t, editor.Set(context.Background(), key, v, false))
+	require.NoError(t, editor.Set(t.Context(), key, v, false))
 
 	got, ok, err := ps.Config.Get(key, false)
 	require.NoError(t, err)
@@ -99,7 +99,7 @@ func TestLocalConfigEditor_SetSecretValue_EncryptsEagerly(t *testing.T) {
 	key := config.MustMakeKey("myproject", "password")
 	// Handler passes plaintext with secure=true; editor must encrypt in Set().
 	v := config.NewSecureValue("hunter2")
-	require.NoError(t, editor.Set(context.Background(), key, v, false))
+	require.NoError(t, editor.Set(t.Context(), key, v, false))
 
 	got, ok, err := ps.Config.Get(key, false)
 	require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestLocalConfigEditor_SetPath(t *testing.T) {
 	// --path: key name contains the property path
 	key := config.MustMakeKey("myproject", "db.host")
 	v := config.NewValue("localhost")
-	require.NoError(t, editor.Set(context.Background(), key, v, true /*path*/))
+	require.NoError(t, editor.Set(t.Context(), key, v, true /*path*/))
 
 	// The parent key "db" should exist as an object.
 	parentKey := config.MustMakeKey("myproject", "db")
@@ -138,9 +138,9 @@ func TestLocalConfigEditor_RemoveExistingKey(t *testing.T) {
 	editor := newTestEditor(t, ps, config.NopEncrypter)
 
 	key := config.MustMakeKey("myproject", "host")
-	require.NoError(t, editor.Set(context.Background(), key, config.NewValue("localhost"), false))
+	require.NoError(t, editor.Set(t.Context(), key, config.NewValue("localhost"), false))
 
-	require.NoError(t, editor.Remove(context.Background(), key, false))
+	require.NoError(t, editor.Remove(t.Context(), key, false))
 
 	_, ok, err := ps.Config.Get(key, false)
 	require.NoError(t, err)
@@ -154,7 +154,7 @@ func TestLocalConfigEditor_RemoveNonexistentKey_IsNoOp(t *testing.T) {
 	editor := newTestEditor(t, ps, config.NopEncrypter)
 
 	key := config.MustMakeKey("myproject", "missing")
-	err := editor.Remove(context.Background(), key, false)
+	err := editor.Remove(t.Context(), key, false)
 	require.NoError(t, err, "removing a non-existent key should be a no-op")
 }
 
@@ -165,7 +165,7 @@ func TestLocalConfigEditor_SetAll_Batch(t *testing.T) {
 	enc := &fakeEncrypter{prefix: "enc:"}
 	editor := newTestEditor(t, ps, enc)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	pairs := []struct {
 		key    config.Key
 		val    config.Value
@@ -212,7 +212,7 @@ func TestLocalConfigEditor_RemoveAll_Batch(t *testing.T) {
 	ps := newEmptyProjectStack()
 	editor := newTestEditor(t, ps, config.NopEncrypter)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	keys := []config.Key{
 		config.MustMakeKey("myproject", "a"),
 		config.MustMakeKey("myproject", "b"),
@@ -235,7 +235,7 @@ func TestLocalConfigEditor_RemoveAll_Batch(t *testing.T) {
 
 //nolint:paralleltest // changes global ConfigFile variable
 func TestLocalConfigEditor_Save_WritesToFile(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	ps := newEmptyProjectStack()
 	editor := newTestEditor(t, ps, config.NopEncrypter)
@@ -265,7 +265,7 @@ func TestLocalConfigEditor_SetOverwritesPrevious(t *testing.T) {
 
 	ps := newEmptyProjectStack()
 	editor := newTestEditor(t, ps, config.NopEncrypter)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	key := config.MustMakeKey("myproject", "host")
 	require.NoError(t, editor.Set(ctx, key, config.NewValue("first"), false))
@@ -289,7 +289,7 @@ func TestNewConfigEditor_ReturnsLocalEditorForLocalStack(t *testing.T) {
 	}
 	ps := newEmptyProjectStack()
 
-	editor, err := NewConfigEditor(context.Background(), s, ps, config.NopEncrypter)
+	editor, err := NewConfigEditor(t.Context(), s, ps, config.NopEncrypter)
 	require.NoError(t, err)
 	_, ok := editor.(*LocalConfigEditor)
 	assert.True(t, ok, fmt.Sprintf("expected *LocalConfigEditor, got %T", editor))
@@ -351,8 +351,8 @@ func TestESCConfigEditor_SetPlainValue(t *testing.T) {
 	e := newESCEditor(t, nil, "etag1", &captured, nil)
 
 	key := config.MustMakeKey("myproject", "host")
-	require.NoError(t, e.Set(context.Background(), key, config.NewValue("localhost"), false))
-	require.NoError(t, e.Save(context.Background()))
+	require.NoError(t, e.Set(t.Context(), key, config.NewValue("localhost"), false))
+	require.NoError(t, e.Save(t.Context()))
 
 	pc := parsePulumiConfig(t, captured)
 	assert.Equal(t, "localhost", pc["myproject:host"])
@@ -365,8 +365,8 @@ func TestESCConfigEditor_SetSecretValue_WrapsFnSecret(t *testing.T) {
 	e := newESCEditor(t, nil, "etag1", &captured, nil)
 
 	key := config.MustMakeKey("myproject", "password")
-	require.NoError(t, e.Set(context.Background(), key, config.NewSecureValue("hunter2"), false))
-	require.NoError(t, e.Save(context.Background()))
+	require.NoError(t, e.Set(t.Context(), key, config.NewSecureValue("hunter2"), false))
+	require.NoError(t, e.Save(t.Context()))
 
 	pc := parsePulumiConfig(t, captured)
 	secretNode, ok := pc["myproject:password"].(map[string]any)
@@ -381,8 +381,8 @@ func TestESCConfigEditor_SetPath_NestedNavigation(t *testing.T) {
 	e := newESCEditor(t, nil, "etag1", &captured, nil)
 
 	key := config.MustMakeKey("myproject", "db.host")
-	require.NoError(t, e.Set(context.Background(), key, config.NewValue("localhost"), true /*path*/))
-	require.NoError(t, e.Save(context.Background()))
+	require.NoError(t, e.Set(t.Context(), key, config.NewValue("localhost"), true /*path*/))
+	require.NoError(t, e.Save(t.Context()))
 
 	pc := parsePulumiConfig(t, captured)
 	nested, ok := pc["myproject:db"].(map[string]any)
@@ -404,8 +404,8 @@ func TestESCConfigEditor_RemoveExistingKey(t *testing.T) {
 	e := newESCEditor(t, initial, "etag1", &captured, nil)
 
 	key := config.MustMakeKey("myproject", "host")
-	require.NoError(t, e.Remove(context.Background(), key, false))
-	require.NoError(t, e.Save(context.Background()))
+	require.NoError(t, e.Remove(t.Context(), key, false))
+	require.NoError(t, e.Save(t.Context()))
 
 	pc := parsePulumiConfig(t, captured)
 	_, exists := pc["myproject:host"]
@@ -417,7 +417,7 @@ func TestESCConfigEditor_RemoveNonexistentKey_IsNoOp(t *testing.T) {
 
 	e := newESCEditor(t, nil, "etag1", nil, nil)
 	key := config.MustMakeKey("myproject", "missing")
-	require.NoError(t, e.Remove(context.Background(), key, false))
+	require.NoError(t, e.Remove(t.Context(), key, false))
 }
 
 func TestESCConfigEditor_Save_EtagConflict_ReturnsError(t *testing.T) {
@@ -427,9 +427,9 @@ func TestESCConfigEditor_Save_EtagConflict_ReturnsError(t *testing.T) {
 	e := newESCEditor(t, nil, "stale-etag", nil, conflictErr)
 
 	key := config.MustMakeKey("myproject", "host")
-	require.NoError(t, e.Set(context.Background(), key, config.NewValue("localhost"), false))
+	require.NoError(t, e.Set(t.Context(), key, config.NewValue("localhost"), false))
 
-	err := e.Save(context.Background())
+	err := e.Save(t.Context())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "modified concurrently")
 }
@@ -451,8 +451,8 @@ func TestESCConfigEditor_PreservesExistingEnvSections(t *testing.T) {
 	e := newESCEditor(t, initial, "etag1", &captured, nil)
 
 	key := config.MustMakeKey("myproject", "host")
-	require.NoError(t, e.Set(context.Background(), key, config.NewValue("localhost"), false))
-	require.NoError(t, e.Save(context.Background()))
+	require.NoError(t, e.Set(t.Context(), key, config.NewValue("localhost"), false))
+	require.NoError(t, e.Save(t.Context()))
 
 	var root map[string]any
 	require.NoError(t, yaml.Unmarshal(captured, &root))
@@ -490,7 +490,7 @@ func TestNewConfigEditor_ReturnsESCEditorForRemoteStack(t *testing.T) {
 	}
 	ps := newEmptyProjectStack()
 
-	editor, err := NewConfigEditor(context.Background(), s, ps, config.NopEncrypter)
+	editor, err := NewConfigEditor(t.Context(), s, ps, config.NopEncrypter)
 	require.NoError(t, err)
 	_, ok := editor.(*escConfigEditor)
 	assert.True(t, ok, fmt.Sprintf("expected *escConfigEditor, got %T", editor))
@@ -503,7 +503,7 @@ func TestESCConfigEditor_SetPath_ArrayIndexReturnsError(t *testing.T) {
 
 	// foo[0] produces path segments ["foo", 0] — the integer index should be rejected.
 	key := config.MustMakeKey("myproject", "foo[0]")
-	err := e.Set(context.Background(), key, config.NewValue("bar"), true /*path*/)
+	err := e.Set(t.Context(), key, config.NewValue("bar"), true /*path*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "array index paths are not supported")
 }
@@ -521,7 +521,7 @@ func TestESCConfigEditor_RemovePath_ArrayIndexReturnsError(t *testing.T) {
 	e := newESCEditor(t, initial, "etag1", nil, nil)
 
 	key := config.MustMakeKey("myproject", "foo[0]")
-	err := e.Remove(context.Background(), key, true /*path*/)
+	err := e.Remove(t.Context(), key, true /*path*/)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "array index paths are not supported")
 }

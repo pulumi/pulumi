@@ -77,7 +77,7 @@ func TestConfigRestore_CreatesNewRevision(t *testing.T) {
 		},
 	}
 
-	err := cmd.restoreRevision(context.Background(), stack, "myproject/dev", "3")
+	err := cmd.restoreRevision(t.Context(), stack, "myproject/dev", "3")
 	require.NoError(t, err)
 	assert.Equal(t, oldContent, writtenYAML)
 	assert.Equal(t, "etag-current", writtenEtag)
@@ -109,7 +109,7 @@ func TestConfigRestore_EtagConflict(t *testing.T) {
 		},
 	}
 
-	err := cmd.restoreRevision(context.Background(), stack, "myproject/dev", "3")
+	err := cmd.restoreRevision(t.Context(), stack, "myproject/dev", "3")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "modified concurrently")
 }
@@ -132,7 +132,7 @@ func TestConfigRestore_LocalStack(t *testing.T) {
 		stdout: &bytes.Buffer{},
 	}
 
-	err := cmd.restoreRevision(context.Background(), stack, "myproject/dev", "3")
+	err := cmd.restoreRevision(t.Context(), stack, "myproject/dev", "3")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not support ESC environments")
 }
@@ -156,7 +156,7 @@ func TestConfigRestore_RevisionNotFound(t *testing.T) {
 		},
 	}
 
-	err := cmd.restoreRevision(context.Background(), stack, "myproject/dev", "999")
+	err := cmd.restoreRevision(t.Context(), stack, "myproject/dev", "999")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "revision 999 not found")
 }

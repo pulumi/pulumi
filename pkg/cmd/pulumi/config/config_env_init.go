@@ -97,10 +97,10 @@ type configEnvInitCmd struct {
 
 	newCrypter func() (evalCrypter, error)
 
-	envName       string
-	showSecrets   bool
-	keepConfig    bool
-	yes           bool
+	envName      string
+	showSecrets  bool
+	keepConfig   bool
+	yes          bool
 	remoteConfig bool
 }
 

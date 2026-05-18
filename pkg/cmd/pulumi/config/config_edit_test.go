@@ -68,7 +68,7 @@ func TestConfigEdit_RemoteStack_NoChanges(t *testing.T) {
 	// openEditor does nothing — file content remains identical to what was written.
 	noopEditor := func(filename string) error { return nil }
 
-	err := cmd.editRemote(context.Background(), stack, noopEditor)
+	err := cmd.editRemote(t.Context(), stack, noopEditor)
 	require.NoError(t, err)
 }
 
@@ -104,7 +104,7 @@ func TestConfigEdit_RemoteStack_WithChanges(t *testing.T) {
 		return os.WriteFile(filename, []byte(newYAML), 0o600)
 	}
 
-	err := cmd.editRemote(context.Background(), stack, editingEditor)
+	err := cmd.editRemote(t.Context(), stack, editingEditor)
 	require.NoError(t, err)
 	assert.Equal(t, []byte(newYAML), uploadedYAML)
 	assert.Equal(t, "etag123", uploadedEtag)
