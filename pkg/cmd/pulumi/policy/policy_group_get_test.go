@@ -154,7 +154,7 @@ func TestPolicyGroupGet_JSONOutput(t *testing.T) {
 		],
 		"appliedPolicyPacks": [
 			{"name": "aws-guardrails", "displayName": "AWS Guardrails", "version": 3, "versionTag": "1.2.0"},
-			{"name": "tagging", "displayName": "Tagging", "version": 1, "versionTag": ""}
+			{"name": "tagging", "displayName": "Tagging", "version": 1}
 		],
 		"accounts": [],
 		"agentPoolId": "pool-1"

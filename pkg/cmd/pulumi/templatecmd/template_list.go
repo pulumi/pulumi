@@ -93,7 +93,7 @@ func newTemplateListCmd(
 		"Filter to templates owned by the given organization")
 	cmd.Flags().StringVar(&args.search, "search", "",
 		"Free-text search across name, display name, description, metadata values, and runtime")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
+	cmd.Flags().StringVar(&args.output, "output", "default",
 		"Output format. One of: default, json")
 
 	return cmd

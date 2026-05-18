@@ -206,7 +206,7 @@ func newSearchCmd() *cobra.Command {
 			"\t-q \"type:aws:s3/bucketv2:BucketV2\" -q \"modified:>=2023-09-01\"\n"+
 			"See https://www.pulumi.com/docs/pulumi-cloud/insights/search/#query-syntax for syntax reference.",
 	)
-	outputflag.VarP(cmd.PersistentFlags(), &scmd.outputFormat)
+	outputflag.Var(cmd.PersistentFlags(), &scmd.outputFormat)
 	cmd.PersistentFlags().Var(
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",

@@ -27,7 +27,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/util/testutil"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -667,7 +669,7 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 						Name:      "gh-org/repo/name",
 						Source:    "github",
 						Publisher: "pulumi-org",
-						RepoSlug:  ref("gh-org/repo"),
+						RepoSlug:  ptr("gh-org/repo"),
 					}, nil) {
 						return
 					}
@@ -675,7 +677,7 @@ func TestVCSBasedTemplateNames(t *testing.T) {
 						Name:      "gl-org/repo/name",
 						Source:    "gitlab",
 						Publisher: "pulumi-org",
-						RepoSlug:  ref("gl-org/repo"),
+						RepoSlug:  ptr("gl-org/repo"),
 					}, nil) {
 						return
 					}
@@ -728,9 +730,9 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 					if !yield(apitype.TemplateMetadata{
 						Name:        "gh-org/repo/target",
 						Source:      "github",
-						Description: ref("This is from GH"),
+						Description: ptr("This is from GH"),
 						Publisher:   "pulumi-org",
-						RepoSlug:    ref("gh-org/repo"),
+						RepoSlug:    ptr("gh-org/repo"),
 					}, nil) {
 						return
 					}
@@ -738,14 +740,14 @@ func TestVCSBasedTemplateNameFilter(t *testing.T) {
 						Name:      "gl-org/repo/name",
 						Source:    "gitlab",
 						Publisher: "pulumi-org",
-						RepoSlug:  ref("gl-org/repo"),
+						RepoSlug:  ptr("gl-org/repo"),
 					}, nil) {
 						return
 					}
 					if !yield(apitype.TemplateMetadata{
 						Name:        "target",
 						Source:      "private",
-						Description: ref("This is from the registry"),
+						Description: ptr("This is from the registry"),
 						Publisher:   "pulumi-org",
 					}, nil) {
 						return
@@ -794,7 +796,7 @@ func testContext(t *testing.T) context.Context {
 	return ctx
 }
 
-func ref[T any](v T) *T { return &v }
+func ptr[T any](v T) *T { return &v }
 
 //nolint:paralleltest // replaces global backend instance
 func TestRegistryTemplateResolution(t *testing.T) {
@@ -810,7 +812,7 @@ func TestRegistryTemplateResolution(t *testing.T) {
 						Name:        "csharp-documented",
 						Source:      "private",
 						Publisher:   "pulumi_local",
-						Description: ref("A C# template"),
+						Description: ptr("A C# template"),
 					}, nil)
 					yield(apitype.TemplateMetadata{
 						Name:      "csharp-documented",
@@ -821,14 +823,14 @@ func TestRegistryTemplateResolution(t *testing.T) {
 						Name:        "gh-org/repo/target",
 						Source:      "github",
 						Publisher:   "pulumi-org",
-						RepoSlug:    ref("gh-org/repo"),
-						Description: ref("A template from VCS"),
+						RepoSlug:    ptr("gh-org/repo"),
+						Description: ptr("A template from VCS"),
 					}, nil)
 					yield(apitype.TemplateMetadata{
 						Name:        "whatever-template",
 						Source:      "private",
 						Publisher:   "test-org",
-						Description: ref("A template with special chars"),
+						Description: ptr("A template with special chars"),
 					}, nil)
 				}
 			},
@@ -984,4 +986,188 @@ func TestRegistryTemplateResolution(t *testing.T) {
 			}
 		})
 	}
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestVersionedTemplateResolution(t *testing.T) {
+	ctx := testContext(t)
+
+	type getCall struct {
+		source, publisher, name, version string
+	}
+	var getTemplateCalls []getCall
+
+	mockRegistry := &backend.MockCloudRegistry{
+		Mock: registry.Mock{
+			GetTemplateF: func(
+				ctx context.Context, source, publisher, name string, version *semver.Version,
+			) (apitype.TemplateMetadata, error) {
+				v := ""
+				if version != nil {
+					v = version.String()
+				}
+				getTemplateCalls = append(getTemplateCalls, getCall{source, publisher, name, v})
+
+				if version != nil && version.String() == "1.0.0" {
+					return apitype.TemplateMetadata{
+						Name:        name,
+						Source:      source,
+						Publisher:   publisher,
+						Description: ptr("A versioned template"),
+					}, nil
+				}
+				return apitype.TemplateMetadata{}, backenderr.NotFoundError{}
+			},
+			ListTemplatesF: func(
+				ctx context.Context, opts registry.ListTemplatesOptions,
+			) iter.Seq2[apitype.TemplateMetadata, error] {
+				return func(yield func(apitype.TemplateMetadata, error) bool) {
+					yield(apitype.TemplateMetadata{
+						Name:        "my-template",
+						Source:      "private",
+						Publisher:   "my-org",
+						Description: ptr("Latest version"),
+					}, nil)
+				}
+			},
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+
+	testCases := []struct {
+		name                string
+		templateURL         string
+		shouldMatch         bool
+		expectedName        string
+		expectedDisplayName string
+		description         string
+		expectSpecificError string
+		expectedGetCalls    []getCall
+	}{
+		{
+			name:                "versioned template with full URL",
+			templateURL:         "private/my-org/my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "A versioned template",
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "1.0.0"}},
+		},
+		{
+			name:                "versioned template with registry URL",
+			templateURL:         "registry://templates/private/my-org/my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "A versioned template",
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "1.0.0"}},
+		},
+		{
+			name:                "versioned template not found",
+			templateURL:         "private/my-org/my-template@2.0.0",
+			shouldMatch:         false,
+			expectSpecificError: "version '2.0.0' not found",
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "2.0.0"}},
+		},
+		{
+			name:                "two-part with version uses private then version",
+			templateURL:         "my-org/my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "A versioned template",
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "1.0.0"}},
+		},
+		{
+			name:                "partial URL with version discovers source from list",
+			templateURL:         "my-template@1.0.0",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "A versioned template",
+			expectedGetCalls:    []getCall{{"private", "my-org", "my-template", "1.0.0"}},
+		},
+		{
+			name:                "without version uses ListTemplates",
+			templateURL:         "private/my-org/my-template",
+			shouldMatch:         true,
+			expectedName:        "my-template",
+			expectedDisplayName: "my-template [my-org]",
+			description:         "Latest version",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			getTemplateCalls = nil
+
+			source := newImpl(ctx, tc.templateURL, ScopeAll, workspace.TemplateKindPulumiProject,
+				templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+				env.NewEnv(env.MapStore{
+					"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
+					"PULUMI_EXPERIMENTAL":             "true",
+				}))
+
+			templates, err := source.Templates()
+
+			assert.Equal(t, tc.expectedGetCalls, getTemplateCalls,
+				"GetTemplate call sequence does not match")
+
+			if tc.shouldMatch {
+				require.NoError(t, err)
+				require.Len(t, templates, 1)
+				assert.Equal(t, tc.expectedName, templates[0].Name())
+				assert.Equal(t, tc.expectedDisplayName, templates[0].DisplayName())
+				if tc.description != "" {
+					assert.Equal(t, tc.description, templates[0].Description())
+				}
+			} else {
+				require.Error(t, err)
+				if tc.expectSpecificError != "" {
+					assert.Contains(t, err.Error(), tc.expectSpecificError)
+				}
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // replaces global backend instance
+func TestVCSBackedTemplateRejectsVersion(t *testing.T) {
+	ctx := testContext(t)
+
+	mockRegistry := &backend.MockCloudRegistry{
+		Mock: registry.Mock{
+			GetTemplateF: func(
+				ctx context.Context, source, publisher, name string, version *semver.Version,
+			) (apitype.TemplateMetadata, error) {
+				return apitype.TemplateMetadata{
+					Name:      "pulumi/templates/typescript",
+					Source:    "github",
+					Publisher: "pulumi",
+				}, nil
+			},
+		},
+	}
+	mockBackend := &backend.MockBackend{
+		GetReadOnlyCloudRegistryF: func() registry.Registry { return mockRegistry },
+	}
+	testutil.MockBackendInstance(t, mockBackend)
+	testutil.MockLoginManager(t, &cmdBackend.MockLoginManager{ /* panic on use */ })
+
+	source := newImpl(ctx, "github/pulumi/pulumi%2Ftemplates%2Ftypescript@1.0.0",
+		ScopeAll, workspace.TemplateKindPulumiProject,
+		templateRepository(workspace.TemplateRepository{}, workspace.TemplateNotFoundError{}),
+		env.NewEnv(env.MapStore{
+			"PULUMI_DISABLE_REGISTRY_RESOLVE": "false",
+			"PULUMI_EXPERIMENTAL":             "true",
+		}))
+
+	_, err := source.Templates()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "VCS-backed")
+	assert.Contains(t, err.Error(), "does not support specific versions")
 }

@@ -152,7 +152,7 @@ func newInsightsResourceSearchCmd(factory searchClientFactory) *cobra.Command {
 		"Include resource input/output values (requires a supported subscription)")
 	cmd.Flags().BoolVar(&args.collapse, "collapse", false,
 		"Consolidate resources that exist in multiple sources into a single result")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
+	cmd.Flags().StringVar(&args.output, "output", "default",
 		"Output format. One of: default, table, json")
 
 	return cmd

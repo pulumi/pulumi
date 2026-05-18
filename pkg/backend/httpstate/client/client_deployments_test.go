@@ -162,37 +162,33 @@ func TestPatchStackDeploymentSettings(t *testing.T) {
 		Stack:   tokens.MustParseStackName("prod"),
 	}
 
-	t.Run("posts patch to settings endpoint", func(t *testing.T) {
+	t.Run("posts patch verbatim to settings endpoint", func(t *testing.T) {
 		t.Parallel()
 
 		var (
 			capturedMethod string
 			capturedURI    string
-			capturedBody   apitype.DeploymentSettings
+			capturedBody   []byte
 		)
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			capturedMethod = r.Method
 			capturedURI = r.URL.RequestURI()
 			body, err := io.ReadAll(r.Body)
 			require.NoError(t, err)
-			require.NoError(t, json.Unmarshal(body, &capturedBody))
+			capturedBody = body
 			w.WriteHeader(http.StatusNoContent)
 		}))
 		defer server.Close()
 
 		c := newMockClient(server)
-		patch := &apitype.DeploymentSettings{
-			SourceContext: &apitype.SourceContext{
-				Git: &apitype.SourceContextGit{Branch: "feature"},
-			},
-		}
+		patch := json.RawMessage(`{"operationContext":{"preRunCommands":["echo hi"]}}`)
 		require.NoError(t, c.PatchStackDeploymentSettings(t.Context(), stackID, patch))
 
 		assert.Equal(t, http.MethodPost, capturedMethod)
 		assert.Equal(t, "/api/stacks/acme/web/prod/deployments/settings", capturedURI)
-		require.NotNil(t, capturedBody.SourceContext)
-		require.NotNil(t, capturedBody.SourceContext.Git)
-		assert.Equal(t, "feature", capturedBody.SourceContext.Git.Branch)
+		assert.JSONEq(t, string(patch), string(capturedBody))
+		assert.NotContains(t, string(capturedBody), "environmentVariables",
+			"patch must not introduce keys the caller did not write")
 	})
 
 	t.Run("propagates HTTP errors", func(t *testing.T) {
@@ -205,7 +201,7 @@ func TestPatchStackDeploymentSettings(t *testing.T) {
 		defer server.Close()
 
 		c := newMockClient(server)
-		err := c.PatchStackDeploymentSettings(t.Context(), stackID, &apitype.DeploymentSettings{})
+		err := c.PatchStackDeploymentSettings(t.Context(), stackID, json.RawMessage(`{}`))
 		require.Error(t, err)
 	})
 }

@@ -115,7 +115,7 @@ func newStackDriftListCmdWith(factory driftListClientFactory) *cobra.Command {
 		"Number of results to display (fetches multiple pages if needed)")
 	cmd.Flags().BoolVar(&dlcmd.all, "all", false,
 		"Fetch all results (mutually exclusive with --count)")
-	outputflag.VarP(cmd.Flags(), &dlcmd.output)
+	outputflag.Var(cmd.Flags(), &dlcmd.output)
 
 	return cmd
 }

@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi org webhook ping` to send a test ping to an organization webhook

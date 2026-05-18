@@ -19,6 +19,7 @@ package deployment
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ import (
 // tests can assert the call shape.
 type capturedEditPatch struct {
 	stack client.StackIdentifier
-	patch *apitype.DeploymentSettings
+	patch json.RawMessage
 }
 
 // mockDeploymentSettingsEditClient stubs the patch + get pair. patchErr fires
@@ -49,7 +50,7 @@ type mockDeploymentSettingsEditClient struct {
 }
 
 func (m *mockDeploymentSettingsEditClient) PatchStackDeploymentSettings(
-	_ context.Context, stack client.StackIdentifier, patch *apitype.DeploymentSettings,
+	_ context.Context, stack client.StackIdentifier, patch json.RawMessage,
 ) error {
 	if m.captured != nil {
 		m.captured.stack = stack
@@ -107,24 +108,29 @@ func TestDeploymentSettingsEdit_DefaultOutput(t *testing.T) {
 
 	assert.Equal(t, testStackID, captured.stack)
 	require.NotNil(t, captured.patch)
-	require.NotNil(t, captured.patch.SourceContext)
-	require.NotNil(t, captured.patch.SourceContext.Git)
-	assert.Equal(t, "feature", captured.patch.SourceContext.Git.Branch)
+	assert.JSONEq(t, patchJSON, string(captured.patch))
 
-	assert.Equal(t, `Executor image:          pulumi/pulumi:latest
-Working directory:       /work
-Source repo URL:         https://github.com/acme/infra
-Source branch:           main
-Source commit:           abc123
-Source repo dir:         stacks/prod
-GitHub repository:       acme/infra
-GitHub deploy commits:   true
-GitHub preview PRs:      true
-GitHub PR template:      false
-GitHub paths:            1
-Agent pool ID:           pool-1
-Env var keys:            2
-Pre-run commands:        1
+	assert.Equal(t, `Source: GitHub
+  Repository:               acme/infra
+  Branch:                   main
+  Commit:                   abc123
+  Pulumi.yaml folder:       stacks/prod
+  Run previews for PRs:     yes
+  Run updates on push:      yes
+  PR stack template:        no
+  Path filters:             stacks/prod/**
+
+Deployment runner
+  Runner pool:              pool-1
+  Executor image:           pulumi/pulumi:latest
+  Working directory:        /work
+
+Pre-run commands
+  echo hi
+
+Environment variables
+  BAZ
+  FOO
 `, buf.String())
 }
 
@@ -143,34 +149,24 @@ func TestDeploymentSettingsEdit_JSONOutput(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.JSONEq(t, `{
-		"executorContext": {
-			"workingDirectory": "/work",
-			"executorImage": "pulumi/pulumi:latest"
-		},
-		"sourceContext": {
-			"git": {
-				"repoUrl": "https://github.com/acme/infra",
-				"branch": "main",
-				"commit": "abc123",
-				"repoDir": "stacks/prod"
-			}
-		},
-		"gitHub": {
+		"source": {
+			"kind": "github",
 			"repository": "acme/infra",
-			"pullRequestTemplate": false,
-			"deployCommits": true,
+			"branch": "main",
+			"commit": "abc123",
+			"folder": "stacks/prod",
 			"previewPullRequests": true,
-			"paths": ["stacks/prod/**"]
+			"runUpdatesOnPush": true,
+			"pullRequestTemplate": false,
+			"pathFilters": ["stacks/prod/**"]
 		},
-		"operationContext": {
-			"preRunCommands": ["echo hi"],
-			"operation": "update",
-			"environmentVariables": {
-				"FOO": "bar",
-				"BAZ": "qux"
-			}
+		"runner": {
+			"pool": "pool-1",
+			"executorImage": "pulumi/pulumi:latest",
+			"workingDirectory": "/work"
 		},
-		"agentPoolID": "pool-1"
+		"preRunCommands": ["echo hi"],
+		"environmentVariables": ["BAZ", "FOO"]
 	}`, buf.String())
 }
 
@@ -284,7 +280,8 @@ func TestDeploymentSettingsEdit_StdinPatch(t *testing.T) {
 		captured: captured,
 	}
 
-	stdin := strings.NewReader(`{"sourceContext":{"git":{"branch":"from-stdin"}}}`)
+	patchJSON := `{"sourceContext":{"git":{"branch":"from-stdin"}}}`
+	stdin := strings.NewReader(patchJSON)
 
 	var buf bytes.Buffer
 	err := runDeploymentSettingsEdit(t.Context(), &buf, stdin,
@@ -293,7 +290,50 @@ func TestDeploymentSettingsEdit_StdinPatch(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, captured.patch)
-	require.NotNil(t, captured.patch.SourceContext)
-	require.NotNil(t, captured.patch.SourceContext.Git)
-	assert.Equal(t, "from-stdin", captured.patch.SourceContext.Git.Branch)
+	assert.JSONEq(t, patchJSON, string(captured.patch))
+}
+
+// TestDeploymentSettingsEdit_ForwardsExplicitNull pins the documented
+// "null property means delete" semantic: if the user writes a literal null,
+// the bytes must reach the server unchanged so the server-side merge clears
+// the field.
+func TestDeploymentSettingsEdit_ForwardsExplicitNull(t *testing.T) {
+	t.Parallel()
+
+	patchJSON := `{"operationContext":{"environmentVariables":null}}`
+	patchFile := writePatchFile(t, patchJSON)
+
+	captured := &capturedEditPatch{}
+	c := &mockDeploymentSettingsEditClient{
+		getResp:  &apitype.DeploymentSettings{},
+		captured: captured,
+	}
+
+	var buf bytes.Buffer
+	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
+		stubSettingsEditFactory(c),
+		deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()})
+	require.NoError(t, err)
+
+	require.NotNil(t, captured.patch)
+	assert.JSONEq(t, patchJSON, string(captured.patch),
+		"explicit null must reach the server so the merge deletes the property")
+	assert.Contains(t, string(captured.patch), "null",
+		"the literal null must survive — JSONEq alone wouldn't catch a re-encoding that dropped it")
+}
+
+func TestDeploymentSettingsEdit_RejectsUnknownFields(t *testing.T) {
+	t.Parallel()
+
+	// Typo: enviornmentVariables instead of environmentVariables.
+	patchFile := writePatchFile(t, `{"operationContext":{"enviornmentVariables":{"X":"y"}}}`)
+
+	c := &mockDeploymentSettingsEditClient{getResp: &apitype.DeploymentSettings{}}
+
+	var buf bytes.Buffer
+	err := runDeploymentSettingsEdit(t.Context(), &buf, nil,
+		stubSettingsEditFactory(c),
+		deploymentSettingsEditArgs{file: patchFile, outputFormat: defaultDeploymentSettingsGetOutputFormat()})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "enviornmentVariables")
 }

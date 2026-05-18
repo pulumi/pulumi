@@ -537,7 +537,7 @@ func TestDynamicPythonDisableSerializationAsSecret(t *testing.T) {
 				}
 			},
 		}},
-		UseSharedVirtualEnv: boolPointer(false),
+		UseSharedVirtualEnv: ptr(false),
 	})
 }
 

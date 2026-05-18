@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -144,7 +145,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 		"The HMAC key for signature verification")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false,
 		"Skip prompts and proceed with default values")
-	cmd.Flags().StringVarP(&output, "output", "o", "default",
+	cmd.Flags().StringVar(&output, "output", "default",
 		"The output format: default (human-readable text) or json")
 
 	return cmd
@@ -184,6 +185,66 @@ var groupFilters = map[string][]string{
 	"policies": {
 		"policy_violation_mandatory", "policy_violation_advisory",
 	},
+}
+
+// validGroupSet is the set of valid group names for fast lookup.
+var validGroupSet = func() map[string]bool {
+	m := make(map[string]bool, len(stackWebhookGroups))
+	for _, g := range stackWebhookGroups {
+		m[g] = true
+	}
+	return m
+}()
+
+// validEventSet is the set of all valid event names for fast lookup.
+var validEventSet = func() map[string]bool {
+	m := make(map[string]bool)
+	for _, events := range groupFilters {
+		for _, e := range events {
+			m[e] = true
+		}
+	}
+	return m
+}()
+
+// validateGroupsAndEvents checks that all group and event names are valid,
+// and that no event is already covered by a selected group.
+func validateGroupsAndEvents(groups, events []string) error {
+	for _, g := range groups {
+		if !validGroupSet[g] {
+			return fmt.Errorf("invalid group %q; valid groups: %s",
+				g, joinQuoted(stackWebhookGroups))
+		}
+	}
+	for _, e := range events {
+		if !validEventSet[e] {
+			return fmt.Errorf("invalid event %q", e)
+		}
+	}
+
+	// Build the set of events already covered by the selected groups.
+	covered := make(map[string]string) // event -> group
+	for _, g := range groups {
+		for _, e := range groupFilters[g] {
+			covered[e] = g
+		}
+	}
+	for _, e := range events {
+		if g, ok := covered[e]; ok {
+			return fmt.Errorf(
+				"event %q is already included by group %q; "+
+					"remove the event or the group", e, g)
+		}
+	}
+	return nil
+}
+
+func joinQuoted(ss []string) string {
+	quoted := make([]string, len(ss))
+	for i, s := range ss {
+		quoted[i] = fmt.Sprintf("%q", s)
+	}
+	return strings.Join(quoted, ", ")
 }
 
 // filtersNotCoveredByGroups returns event filters that are not already
@@ -283,6 +344,10 @@ func resolveNewArgs(
 				remaining, nil,
 				opts.Color)
 		}
+	}
+
+	if err := validateGroupsAndEvents(groups, filters); err != nil {
+		return stackWebhookNewArgs{}, err
 	}
 
 	return stackWebhookNewArgs{

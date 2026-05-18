@@ -52,7 +52,7 @@ require (
 	github.com/pgavlin/fx v0.1.6
 	github.com/pkg/term v1.1.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/esc v0.17.0
+	github.com/pulumi/esc v0.24.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	go.opentelemetry.io/collector/pdata v1.53.0
 	go.opentelemetry.io/otel v1.43.0

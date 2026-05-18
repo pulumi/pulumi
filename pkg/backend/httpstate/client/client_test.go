@@ -764,8 +764,6 @@ func TestListPackages(t *testing.T) {
 	})
 }
 
-func ptr[T any](v T) *T { return &v }
-
 func TestCallCopilot(t *testing.T) {
 	t.Parallel()
 

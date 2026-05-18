@@ -96,7 +96,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231
-	github.com/pulumi/esc v0.17.0
+	github.com/pulumi/esc v0.24.0
 	github.com/rivo/uniseg v0.4.7
 	github.com/segmentio/encoding v0.3.5
 	github.com/shirou/gopsutil/v3 v3.22.3

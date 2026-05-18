@@ -729,3 +729,191 @@ func TestGetInsightsScanLogs(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestCreateInsightsAccount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("sends request and returns nil on 204", func(t *testing.T) {
+		t.Parallel()
+
+		req := apitype.CreateInsightsAccountRequest{
+			Provider:       "aws",
+			Environment:    "infra/prod-aws-creds",
+			ScanSchedule:   "daily",
+			AgentPoolID:    "pool-123",
+			ProviderConfig: json.RawMessage(`{"regions":["us-east-1"]}`),
+		}
+
+		var (
+			capturedMethod string
+			capturedPath   string
+			capturedBody   apitype.CreateInsightsAccountRequest
+		)
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedMethod = r.Method
+			capturedPath = r.URL.EscapedPath()
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			require.NoError(t, json.Unmarshal(body, &capturedBody))
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		err := client.CreateInsightsAccount(t.Context(), "acme", "prod-aws", req)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.MethodPost, capturedMethod)
+		// orgName is single-encoded ("acme" has no special chars to encode);
+		// accountName is double-encoded — same convention as ReadResource.
+		assert.Equal(t, "/api/preview/insights/acme/accounts/prod-aws", capturedPath)
+		assert.Equal(t, req, capturedBody)
+	})
+
+	t.Run("double-encodes accountName", func(t *testing.T) {
+		t.Parallel()
+
+		// The service double-decodes accountName, so the wire form must be
+		// double-encoded. `/` becomes `%2F` once, then `%252F` — matching
+		// the convention asserted by the GetInsightsResource test above.
+		var capturedPath string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.EscapedPath()
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		err := client.CreateInsightsAccount(t.Context(), "acme", "team/a",
+			apitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
+		require.NoError(t, err)
+		assert.Equal(t, "/api/preview/insights/acme/accounts/team%252Fa", capturedPath)
+	})
+
+	t.Run("omits optional fields when unset", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedRaw json.RawMessage
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			capturedRaw = body
+			w.WriteHeader(http.StatusNoContent)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		err := client.CreateInsightsAccount(t.Context(), "acme", "prod-aws",
+			apitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
+		require.NoError(t, err)
+
+		var decoded map[string]any
+		require.NoError(t, json.Unmarshal(capturedRaw, &decoded))
+		// Required fields are always present.
+		assert.Equal(t, "aws", decoded["provider"])
+		assert.Equal(t, "infra/creds", decoded["environment"])
+		// `omitempty` keeps the wire payload tight when optional flags are
+		// unset; the server uses its own defaults for these.
+		assert.NotContains(t, decoded, "scanSchedule")
+		assert.NotContains(t, decoded, "agentPoolID")
+		assert.NotContains(t, decoded, "providerConfig")
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("organization not found"))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		err := client.CreateInsightsAccount(t.Context(), "nonexistent", "prod-aws",
+			apitype.CreateInsightsAccountRequest{Provider: "aws", Environment: "infra/creds"})
+		require.Error(t, err)
+	})
+}
+
+func TestGetInsightsAccount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns parsed account", func(t *testing.T) {
+		t.Parallel()
+
+		finished := time.Date(2026, 5, 13, 10, 0, 0, 0, time.UTC)
+		want := apitype.InsightsAccount{
+			ID:                   "acc-123",
+			Name:                 "prod-aws",
+			Provider:             "aws",
+			ProviderVersion:      "6.0.0",
+			ProviderEnvRef:       "infra/prod-aws-creds",
+			ScheduledScanEnabled: true,
+			AgentPoolID:          "pool-1",
+			ProviderConfig:       json.RawMessage(`{"regions":["us-east-1"]}`),
+			OwnedBy: apitype.InsightsAccountOwner{
+				Name:        "Jane Doe",
+				GitHubLogin: "jdoe",
+				AvatarURL:   "https://example.com/avatar.png",
+			},
+			ScanStatus: &apitype.InsightsAccountScanStatus{
+				ID:            "scan-1",
+				OrgID:         "org-1",
+				UserID:        "user-1",
+				Status:        "succeeded",
+				ResourceCount: 42,
+				StartedAt:     time.Date(2026, 5, 13, 9, 30, 0, 0, time.UTC),
+				FinishedAt:    &finished,
+				LastUpdatedAt: finished,
+				JobTimeout:    time.Date(2026, 5, 13, 11, 30, 0, 0, time.UTC),
+			},
+		}
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			require.NoError(t, json.NewEncoder(w).Encode(want))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		got, err := client.GetInsightsAccount(t.Context(), "acme", "prod-aws")
+		require.NoError(t, err)
+		// ProviderConfig is `json.RawMessage`, so the encoder may re-emit
+		// the bytes with normalized whitespace. Compare it semantically and
+		// the rest of the struct field-by-field.
+		assert.JSONEq(t, string(want.ProviderConfig), string(got.ProviderConfig))
+		want.ProviderConfig, got.ProviderConfig = nil, nil
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("double-encodes accountName", func(t *testing.T) {
+		t.Parallel()
+
+		var capturedPath string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			capturedPath = r.URL.EscapedPath()
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"x","name":"team/a","provider":"aws"}`))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.GetInsightsAccount(t.Context(), "acme", "team/a")
+		require.NoError(t, err)
+		assert.Equal(t, "/api/preview/insights/acme/accounts/team%252Fa", capturedPath)
+	})
+
+	t.Run("propagates HTTP errors", func(t *testing.T) {
+		t.Parallel()
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("not found"))
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		_, err := client.GetInsightsAccount(t.Context(), "acme", "missing")
+		require.Error(t, err)
+	})
+}

@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	sdkproviders "github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/archive"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -601,30 +603,22 @@ func generatePropertyValue(
 
 // valueStructurallyTypedAs returns true if the given value is structurally typed as the given schema type.
 func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool {
+removeNonStructuralTypes:
 	for {
-		if input, ok := schemaType.(*schema.InputType); ok {
-			schemaType = input.ElementType
-		} else {
-			break
-		}
-	}
-	// An enum value is represented as a value of the enum's underlying primitive
-	// type at the wire level (e.g. a string for a string-typed enum). Substitute
-	// the underlying type so the primitive-value branches below match.
-	if enum, ok := schemaType.(*schema.EnumType); ok {
-		schemaType = enum.ElementType
-	}
-	if union, ok := schemaType.(*schema.UnionType); ok {
-		schemaType = reduceUnionType(union, value)
-	}
-	// reduceUnionType returns a member of the union as-is, which is often an
-	// *schema.InputType wrapping the real type. Strip those wrappers again so
-	// the type switch below can match on the underlying type.
-	for {
-		if input, ok := schemaType.(*schema.InputType); ok {
-			schemaType = input.ElementType
-		} else {
-			break
+		switch t := schemaType.(type) {
+		case *schema.InputType:
+			schemaType = t.ElementType
+		case *schema.OptionalType:
+			if value.IsNull() {
+				return true
+			}
+			schemaType = t.ElementType
+		case *schema.EnumType:
+			schemaType = t.ElementType
+		case *schema.UnionType:
+			schemaType = reduceUnionType(t, value)
+		default:
+			break removeNonStructuralTypes
 		}
 	}
 
@@ -755,6 +749,42 @@ func valueStructurallyTypedAs(value property.Value, schemaType schema.Type) bool
 				}
 			}
 		}
+
+	case value.IsArchive():
+		if schemaType == schema.ArchiveType {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsAsset():
+		if schemaType == schema.AssetType {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
+
+	case value.IsResourceReference():
+		if _, ok := schemaType.(*schema.ResourceType); ok {
+			return true
+		}
+		if union, ok := schemaType.(*schema.UnionType); ok {
+			for _, elementType := range union.ElementTypes {
+				if valueStructurallyTypedAs(value, elementType) {
+					return true
+				}
+			}
+		}
 	}
 
 	return false
@@ -859,7 +889,7 @@ func generateValue(
 
 	switch {
 	case value.IsArchive():
-		return nil, errors.New("NYI: archives")
+		return generateArchive(value.AsArchive())
 	case value.IsArray():
 		elementType := schema.AnyType
 		if typ, ok := typ.(*schema.ArrayType); ok {
@@ -880,7 +910,7 @@ func generateValue(
 			Expressions: exprs,
 		}, nil
 	case value.IsAsset():
-		return nil, errors.New("NYI: assets")
+		return generateAsset(value.AsAsset())
 	case value.IsBool():
 		return &model.LiteralValueExpression{
 			Value: cty.BoolVal(value.AsBool()),
@@ -931,12 +961,9 @@ func generateValue(
 					return nil, err
 				}
 
-				// Always quote the key in case it includes invalid identifier characters (like '/' or ':')
-				propKey := fmt.Sprintf("%q", k)
-
 				items = append(items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Value: cty.StringVal(propKey),
+						Value: cty.StringVal(`"` + model.EscapeString(k) + `"`),
 					},
 					Value: x,
 				})
@@ -995,4 +1022,82 @@ func generateValue(
 		contract.Failf("unexpected property value %v", value)
 		return nil, nil
 	}
+}
+
+// stringLiteralCall builds an HCL call to fn with a single string argument.
+func stringLiteralCall(fn, s string) *model.FunctionCallExpression {
+	return &model.FunctionCallExpression{
+		Name: fn,
+		Args: []model.Expression{
+			&model.TemplateExpression{
+				Parts: []model.Expression{
+					&model.LiteralValueExpression{
+						Value: cty.StringVal(s),
+					},
+				},
+			},
+		},
+	}
+}
+
+// generateAsset emits a PCL function call that constructs the given asset.
+func generateAsset(a *asset.Asset) (model.Expression, error) {
+	switch {
+	case a.IsText():
+		text, _ := a.GetText()
+		return stringLiteralCall("stringAsset", text), nil
+	case a.IsPath():
+		path, _ := a.GetPath()
+		return stringLiteralCall("fileAsset", path), nil
+	case a.IsURI():
+		uri, _ := a.GetURI()
+		return stringLiteralCall("remoteAsset", uri), nil
+	}
+	return nil, errors.New("asset has no text, path, or uri")
+}
+
+// generateArchive emits a PCL function call that constructs the given archive.
+func generateArchive(a *archive.Archive) (model.Expression, error) {
+	switch {
+	case a.IsAssets():
+		assets, _ := a.GetAssets()
+		items := slice.Prealloc[model.ObjectConsItem](len(assets))
+		for k, v := range assets {
+			var elem model.Expression
+			var err error
+			switch v := v.(type) {
+			case *asset.Asset:
+				elem, err = generateAsset(v)
+			case *archive.Archive:
+				elem, err = generateArchive(v)
+			default:
+				return nil, fmt.Errorf("unexpected archive entry type %T", v)
+			}
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, model.ObjectConsItem{
+				Key: &model.LiteralValueExpression{
+					Value: cty.StringVal(fmt.Sprintf("%q", k)),
+				},
+				Value: elem,
+			})
+		}
+		return &model.FunctionCallExpression{
+			Name: "assetArchive",
+			Args: []model.Expression{
+				&model.ObjectConsExpression{
+					Tokens: syntax.NewObjectConsTokens(len(items)),
+					Items:  items,
+				},
+			},
+		}, nil
+	case a.IsPath():
+		path, _ := a.GetPath()
+		return stringLiteralCall("fileArchive", path), nil
+	case a.IsURI():
+		uri, _ := a.GetURI()
+		return stringLiteralCall("remoteArchive", uri), nil
+	}
+	return nil, errors.New("archive has no assets, path, or uri")
 }

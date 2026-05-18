@@ -142,13 +142,10 @@ func scheduleSettings(s apitype.ScheduledAction) string {
 	}
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23050]: Not yet implemented.
 func newStackScheduleCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "schedule",
-		Short:  "Manage scheduled deployment actions for a stack",
-		Long:   "[EXPERIMENTAL] Manage scheduled deployment actions for a stack.",
+		Use:   "schedule",
+		Short: "[EXPERIMENTAL] Manage scheduled deployment actions for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

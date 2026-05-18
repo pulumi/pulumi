@@ -439,6 +439,7 @@ func (pc *Client) ExchangeOidcToken(
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -752,6 +753,58 @@ func (pc *Client) CreateOrgWebhook(
 	return resp, nil
 }
 
+// GetOrgWebhook returns a single webhook by name for the given organization.
+func (pc *Client) GetOrgWebhook(ctx context.Context, org, webhookName string) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName)
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
+// UpdateOrgWebhook updates an existing webhook for the given organization.
+func (pc *Client) UpdateOrgWebhook(
+	ctx context.Context, org, webhookName string, req apitype.Webhook,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName)
+	if err := pc.restCall(ctx, "PATCH", path, nil, &req, &resp); err != nil {
+		return apitype.Webhook{}, err
+	}
+	return resp, nil
+}
+
+// DeleteOrgWebhook deletes the given webhook from the organization.
+func (pc *Client) DeleteOrgWebhook(ctx context.Context, org, webhookName string) error {
+	return pc.restCall(ctx, "DELETE",
+		"/api/orgs/"+url.PathEscape(org)+"/hooks/"+url.PathEscape(webhookName), nil, nil, nil)
+}
+
+// PingOrgWebhook sends a test ping to the given organization webhook.
+func (pc *Client) PingOrgWebhook(
+	ctx context.Context, org, webhookName string,
+) (apitype.WebhookDelivery, error) {
+	var resp apitype.WebhookDelivery
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName) + "/ping"
+	if err := pc.restCall(ctx, "POST", path, nil, nil, &resp); err != nil {
+		return apitype.WebhookDelivery{}, err
+	}
+	return resp, nil
+}
+
+// ListOrgWebhookDeliveries returns recent deliveries for the given org webhook.
+func (pc *Client) ListOrgWebhookDeliveries(
+	ctx context.Context, org, webhookName string,
+) ([]apitype.WebhookDelivery, error) {
+	var resp []apitype.WebhookDelivery
+	path := "/api/orgs/" + url.PathEscape(org) + "/hooks/" + url.PathEscape(webhookName) + "/deliveries"
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 // ListStackWebhooks returns all webhooks configured for the given stack.
 func (pc *Client) ListStackWebhooks(ctx context.Context, stackID StackIdentifier) ([]apitype.Webhook, error) {
 	var resp []apitype.Webhook
@@ -801,6 +854,17 @@ func (pc *Client) GetDriftStatus(
 	var resp apitype.StackDriftStatus
 	if err := pc.restCall(ctx, "GET", getStackPath(stackID, "drift", "status"), nil, nil, &resp); err != nil {
 		return apitype.StackDriftStatus{}, err
+	}
+	return resp, nil
+}
+
+// UpdateStackWebhook updates an existing webhook for the given stack.
+func (pc *Client) UpdateStackWebhook(
+	ctx context.Context, stackID StackIdentifier, webhookName string, req apitype.Webhook,
+) (apitype.Webhook, error) {
+	var resp apitype.Webhook
+	if err := pc.restCall(ctx, "PATCH", getStackPath(stackID, "hooks", webhookName), nil, &req, &resp); err != nil {
+		return apitype.Webhook{}, err
 	}
 	return resp, nil
 }
@@ -936,6 +1000,18 @@ func (pc *Client) ListStackWebhookDeliveries(
 	path := getStackPath(stackID, "hooks", webhookName, "deliveries")
 	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
 		return nil, err
+	}
+	return resp, nil
+}
+
+// RedeliverStackWebhookEvent triggers redelivery of a specific event to the given webhook.
+func (pc *Client) RedeliverStackWebhookEvent(
+	ctx context.Context, stackID StackIdentifier, webhookName, eventID string,
+) (apitype.WebhookDelivery, error) {
+	var resp apitype.WebhookDelivery
+	path := getStackPath(stackID, "hooks", webhookName, "deliveries", eventID, "redeliver")
+	if err := pc.restCall(ctx, "POST", path, nil, nil, &resp); err != nil {
+		return apitype.WebhookDelivery{}, err
 	}
 	return resp, nil
 }
@@ -1285,8 +1361,9 @@ func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContTo
 }
 
 // CreatePolicyGroup creates a new Policy Group in the given organization.
-func (pc *Client) CreatePolicyGroup(ctx context.Context, orgName, name string) error {
-	req := apitype.CreatePolicyGroupRequest{Name: name}
+func (pc *Client) CreatePolicyGroup(
+	ctx context.Context, orgName string, req apitype.CreatePolicyGroupRequest,
+) error {
 	if err := pc.restCall(ctx, "POST", listPolicyGroupsPath(orgName), nil, req, nil); err != nil {
 		return fmt.Errorf("creating policy group: %w", err)
 	}
@@ -1521,6 +1598,20 @@ func (pc *Client) ListPolicyIssues(
 	return resp, nil
 }
 
+// GetPolicyComplianceResults returns compliance results for policy issues
+// grouped by entity.
+func (pc *Client) GetPolicyComplianceResults(
+	ctx context.Context, orgName string, req apitype.GetPolicyComplianceResultsRequest,
+) (apitype.GetPolicyComplianceResultsResponse, error) {
+	path := fmt.Sprintf("/api/orgs/%s/policyresults/compliance", url.PathEscape(orgName))
+	var resp apitype.GetPolicyComplianceResultsResponse
+	if err := pc.restCall(ctx, http.MethodPost, path, nil, req, &resp); err != nil {
+		return apitype.GetPolicyComplianceResultsResponse{},
+			fmt.Errorf("getting policy compliance results: %w", err)
+	}
+	return resp, nil
+}
+
 // GetPolicyIssue returns the details of a single policy issue in the given
 // organization, wrapping the `GetPolicyIssue` Pulumi Cloud REST endpoint
 // (GET /api/orgs/{orgName}/policyresults/issues/{issueId}).
@@ -1531,11 +1622,11 @@ func (pc *Client) GetPolicyIssue(
 		"/api/orgs/%s/policyresults/issues/%s",
 		url.PathEscape(orgName), url.PathEscape(issueID))
 
-	var resp apitype.PolicyIssue
+	var resp apitype.GetPolicyIssueResponse
 	if err := pc.restCall(ctx, http.MethodGet, path, nil, nil, &resp); err != nil {
 		return apitype.PolicyIssue{}, fmt.Errorf("getting policy issue: %w", err)
 	}
-	return resp, nil
+	return resp.PolicyIssue, nil
 }
 
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
@@ -1549,6 +1640,96 @@ func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContTok
 		return resp, nil, fmt.Errorf("List Policy Packs failed: %w", err)
 	}
 	return resp, nil, nil
+}
+
+// ListOrgRoles lists the custom roles defined in the given organization, optionally
+// filtered by their UX purpose (e.g. "organization", "team", "token"). An empty
+// uxPurpose returns all roles. The Pulumi Cloud REST API is not paginated for
+// this endpoint, so all roles are returned in a single call.
+func (pc *Client) ListOrgRoles(
+	ctx context.Context, orgName, uxPurpose string,
+) ([]apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles", url.PathEscape(orgName))
+	queryObj := struct {
+		UXPurpose string `url:"uxPurpose,omitempty"`
+	}{UXPurpose: uxPurpose}
+
+	var resp apitype.ListRolesResponse
+	if err := pc.restCall(ctx, "GET", path, queryObj, nil, &resp); err != nil {
+		return nil, fmt.Errorf("listing organization roles: %w", err)
+	}
+	return resp.Roles, nil
+}
+
+// CreateOrgRole creates a new custom role in the given organization.
+func (pc *Client) CreateOrgRole(
+	ctx context.Context, orgName string, req apitype.CreateRoleRequest,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles", url.PathEscape(orgName))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "POST", path, nil, &req, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("creating organization role: %w", err)
+	}
+	return resp, nil
+}
+
+// GetOrgRole fetches a single custom role by its identifier.
+func (pc *Client) GetOrgRole(
+	ctx context.Context, orgName, roleID string,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("getting organization role: %w", err)
+	}
+	return resp, nil
+}
+
+// UpdateOrgRole updates an existing custom role's name, description, and details.
+// The service requires all three fields; callers that want to leave any of them
+// unchanged should fetch the current role first and merge.
+func (pc *Client) UpdateOrgRole(
+	ctx context.Context, orgName, roleID string, req apitype.UpdateRoleRequest,
+) (apitype.Role, error) {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	var resp apitype.Role
+	if err := pc.restCall(ctx, "PATCH", path, nil, &req, &resp); err != nil {
+		return apitype.Role{}, fmt.Errorf("updating organization role: %w", err)
+	}
+	return resp, nil
+}
+
+// DeleteOrgRole deletes a custom role from an organization. When force is true,
+// the service will delete the role even if it is currently assigned to members
+// or teams (and revoke those assignments).
+func (pc *Client) DeleteOrgRole(
+	ctx context.Context, orgName, roleID string, force bool,
+) error {
+	path := fmt.Sprintf("/api/orgs/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(roleID))
+	queryObj := struct {
+		Force bool `url:"force,omitempty"`
+	}{Force: force}
+	if err := pc.restCall(ctx, "DELETE", path, queryObj, nil, nil); err != nil {
+		return fmt.Errorf("deleting organization role: %w", err)
+	}
+	return nil
+}
+
+// AssignTeamRole upserts the role assignment for the given team. The Pulumi
+// Cloud REST API currently supports a single role per team, so calling this
+// method replaces any previously assigned custom role.
+func (pc *Client) AssignTeamRole(
+	ctx context.Context, orgName, teamName, roleID string,
+) error {
+	path := fmt.Sprintf("/api/orgs/%s/teams/%s/roles/%s",
+		url.PathEscape(orgName), url.PathEscape(teamName), url.PathEscape(roleID))
+	if err := pc.restCall(ctx, "POST", path, nil, nil, nil); err != nil {
+		return fmt.Errorf("assigning role to team: %w", err)
+	}
+	return nil
 }
 
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes
@@ -2046,8 +2227,11 @@ func (pc *Client) UpdateStackDeploymentSettings(ctx context.Context, stack Stack
 // For each property in the patch, the server starts with the current value,
 // removes it if the patch specifies null, or merges the new non-null value
 // with the existing one. Non-object properties are replaced entirely.
+//
+// Note we use json.RawMessage and not DeploymentSettings so that we can send
+// partial objects (ie undefined values) or null values to delete settings.
 func (pc *Client) PatchStackDeploymentSettings(ctx context.Context, stack StackIdentifier,
-	patch *apitype.DeploymentSettings,
+	patch json.RawMessage,
 ) error {
 	return pc.restCall(ctx, http.MethodPost, getStackPath(stack, "deployments", "settings"), nil, patch, nil)
 }
@@ -3012,6 +3196,64 @@ func (pc *Client) ListInsightsAccounts(
 		return apitype.ListInsightsAccountsResponse{}, err
 	}
 	return resp, nil
+}
+
+// CreateInsightsAccount creates a new Pulumi Insights account.
+//
+// The `accountName` path parameter is double-decoded on the service side, so
+// we double-URL-encode it here — matching the convention already used by
+// GetInsightsResource. The endpoint returns 204 No Content on success; no
+// response body is parsed.
+func (pc *Client) CreateInsightsAccount(
+	ctx context.Context, org, account string, req apitype.CreateInsightsAccountRequest,
+) error {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+	)
+	return pc.restCall(ctx, "POST", path, nil, req, nil)
+}
+
+// GetInsightsAccount fetches the details of a Pulumi Insights account. The
+// `accountName` path parameter is double-decoded on the service side, so we
+// double-URL-encode it here — same convention as CreateInsightsAccount and
+// GetInsightsResource.
+func (pc *Client) GetInsightsAccount(
+	ctx context.Context, org, account string,
+) (apitype.InsightsAccount, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+	)
+	var resp apitype.InsightsAccount
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.InsightsAccount{}, err
+	}
+	return resp, nil
+}
+
+// ListESCEnvironments fetches a page of ESC environments visible to the
+// caller in the named organization. Mirrors the endpoint exposed by the ESC
+// CLI (`pulumi esc ls`) so the Pulumi CLI can offer the same picker without
+// pulling in the esc-cli library.
+//
+// The endpoint paginates with an opaque continuation token; nextToken is
+// empty on the last page.
+func (pc *Client) ListESCEnvironments(
+	ctx context.Context, org, continuationToken string,
+) ([]apitype.ESCEnvironment, string, error) {
+	queryObj := struct {
+		ContinuationToken string `url:"continuationToken,omitempty"`
+	}{ContinuationToken: continuationToken}
+
+	path := "/api/esc/environments/" + url.PathEscape(org)
+	var resp apitype.ListESCEnvironmentsResponse
+	if err := pc.restCall(ctx, "GET", path, queryObj, nil, &resp); err != nil {
+		return nil, "", err
+	}
+	return resp.Environments, resp.NextToken, nil
 }
 
 // ListStackDeploymentsOptions are the optional query parameters accepted by

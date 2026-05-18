@@ -15,8 +15,6 @@
 package stack
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -55,44 +53,6 @@ func stackWebhookHookArg() *constrictor.Arguments {
 	}
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23059]: Not yet implemented.
-func newStackWebhookEditCmd() *cobra.Command {
-	var (
-		stack       string
-		url         string
-		format      string
-		filters     []string
-		active      bool
-		secret      string
-		displayName string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "edit",
-		Short:  "Update a stack webhook's configuration",
-		Long:   "[EXPERIMENTAL] Update a stack webhook's configuration.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, stackWebhookHookArg())
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&url, "url", "", "The webhook payload URL")
-	cmd.Flags().StringVar(&format, "format", "",
-		"The webhook format: raw, slack, ms_teams, or pulumi_deployments")
-	cmd.Flags().StringArrayVar(&filters, "filter", nil,
-		"An event type to subscribe to (repeatable)")
-	cmd.Flags().BoolVar(&active, "active", true, "Whether the webhook is active")
-	cmd.Flags().StringVar(&secret, "secret", "", "The HMAC key for signature verification")
-	cmd.Flags().StringVar(&displayName, "display-name", "", "The webhook display name")
-
-	return cmd
-}
-
 func newStackWebhookDeliveryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delivery",
@@ -105,34 +65,6 @@ func newStackWebhookDeliveryCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newStackWebhookDeliveryListCmd())
-	cmd.AddCommand(newStackWebhookDeliveryGetCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23054]: Not yet implemented.
-func newStackWebhookDeliveryGetCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Redeliver a specific webhook event",
-		Long:   "[EXPERIMENTAL] Redeliver a specific webhook event.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "webhook"},
-			{Name: "event-id"},
-		},
-		Required: 2,
-	})
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
+	cmd.AddCommand(newStackWebhookDeliveryRedeliverCmd())
 	return cmd
 }

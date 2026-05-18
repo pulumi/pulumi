@@ -41,7 +41,7 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 }
 
 func ExprNotConvertible(destType Type, expr Expression) *hcl.Diagnostic {
-	conversionKind, whyF := destType.conversionFrom(expr.Type(), false, map[Type]struct{}{})
+	conversionKind, whyF := destType.conversionFrom(expr.Type(), false, cycleSet{})
 	contract.Assertf(whyF != nil, "destType.conversionFrom (kind: %#v) should always have a reason: %T\n",
 		conversionKind, destType)
 	why := whyF()
@@ -60,10 +60,6 @@ func typeNotConvertible(dest, src Type) *hcl.Diagnostic {
 func tuplesHaveDifferentLengths(dest, src *TupleType) *hcl.Diagnostic {
 	return &hcl.Diagnostic{Severity: hcl.DiagError, Summary: fmt.Sprintf("tuples %v and %v have different lengths",
 		dest, src)}
-}
-
-func invalidRecursiveType(t Type) *hcl.Diagnostic {
-	return errorf(t.SyntaxNode().Range(), "invalid recursive type")
 }
 
 func objectKeysMustBeStrings(expr Expression) *hcl.Diagnostic {

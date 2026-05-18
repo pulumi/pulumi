@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add `pulumi policy group new` command to allow creating new policy groups

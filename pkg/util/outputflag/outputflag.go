@@ -30,7 +30,7 @@ func Var[R any](flags *pflag.FlagSet, output *OutputFlag[R]) {
 // VarP registers the OutputFlag on flags as --output with the conventional
 // -o shorthand.
 func VarP[R any](flags *pflag.FlagSet, output *OutputFlag[R]) {
-	flags.VarP(output, "output", "o", usage(*output))
+	flags.VarP(output, "output", "", usage(*output))
 }
 
 func usage[R any](output OutputFlag[R]) string {

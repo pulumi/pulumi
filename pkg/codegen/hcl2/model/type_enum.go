@@ -152,7 +152,7 @@ func (t *EnumType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *EnumType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (t *EnumType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		// We have a constant, of the correct type, so we might have a safe
 		// conversion.

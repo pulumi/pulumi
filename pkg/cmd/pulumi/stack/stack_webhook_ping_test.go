@@ -77,7 +77,8 @@ Request headers:
   Content-Type: application/json
 Payload:           {"timestamp":1715558400,"message":"ping"}
 Response code:     200
-Response body:     ok
+Response body:
+  ok
 `, buf.String())
 }
 

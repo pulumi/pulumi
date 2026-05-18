@@ -59,13 +59,13 @@ type policyGroupEditClientFactory func(
 
 // policyGroupEditArgs collects the flag values for the edit command. Only the
 // flags listed in changed are applied; this lets the run function distinguish
-// an explicit empty --new-name from "user did not pass --new-name", and lets
+// an explicit empty --name from "user did not pass --name", and lets
 // tests drive the command without spinning up cobra.
 type policyGroupEditArgs struct {
 	org          string
 	outputFormat outputflag.OutputFlag[policyGroupGetRenderFunc]
 
-	newName               string
+	rename                string
 	addStack              []string
 	removeStack           []string
 	addPolicyPack         []string
@@ -74,7 +74,7 @@ type policyGroupEditArgs struct {
 	removeInsightsAccount []string
 
 	// changed records which of the mutation flags were set by the user.
-	// Keys are the flag names: "new-name", "add-stack", "remove-stack",
+	// Keys are the flag names: "name", "add-stack", "remove-stack",
 	// "add-policy-pack", "remove-policy-pack", "add-insights-account",
 	// "remove-insights-account".
 	changed map[string]bool
@@ -92,9 +92,8 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 	args.outputFormat = defaultPolicyGroupGetOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "edit <name>",
-		Short:  "[EXPERIMENTAL] Update a Policy Group's configuration",
+		Use:   "edit <name>",
+		Short: "[EXPERIMENTAL] Update a Policy Group's configuration",
 		Long: "[EXPERIMENTAL] Update a Policy Group's configuration.\n" +
 			"\n" +
 			"Renames a Policy Group, adds or removes stacks, applies or detaches\n" +
@@ -104,7 +103,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 			"Default output is a human-readable summary; pass --output=json for the\n" +
 			"full response as JSON.",
 		Example: "  # Rename a Policy Group\n" +
-			"  pulumi policy group edit prod-policies --new-name production\n\n" +
+			"  pulumi policy group edit prod-policies --name production\n\n" +
 			"  # Add a stack and a Policy Pack to a group\n" +
 			"  pulumi policy group edit prod-policies " +
 			"--add-stack web/prod --add-policy-pack aws-guardrails@3",
@@ -123,7 +122,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the Policy Group")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
-	cmd.Flags().StringVar(&args.newName, "new-name", "", "Rename the Policy Group")
+	cmd.Flags().StringVar(&args.rename, "name", "", "Rename the Policy Group")
 	cmd.Flags().StringArrayVar(&args.addStack, "add-stack", nil,
 		"Add a stack to the Policy Group (repeatable). Format: 'project/stack' or 'stack'")
 	cmd.Flags().StringArrayVar(&args.removeStack, "remove-stack", nil,
@@ -143,7 +142,7 @@ func newPolicyGroupEditCmdWith(factory policyGroupEditClientFactory) *cobra.Comm
 // mutationFlagNames are the flags whose presence triggers a PATCH. --org and
 // --output are excluded because they are context, not mutations.
 var mutationFlagNames = []string{
-	"new-name",
+	"name",
 	"add-stack", "remove-stack",
 	"add-policy-pack", "remove-policy-pack",
 	"add-insights-account", "remove-insights-account",
@@ -218,7 +217,7 @@ func runPolicyGroupEdit(
 ) error {
 	if !anyMutationRequested(args) {
 		return errors.New(
-			"no changes specified; pass at least one of --new-name, --add-stack, --remove-stack, " +
+			"no changes specified; pass at least one of --name, --add-stack, --remove-stack, " +
 				"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account")
 	}
 
@@ -241,8 +240,8 @@ func runPolicyGroupEdit(
 		args.changed["add-insights-account"] || args.changed["remove-insights-account"]
 
 	patch := apitype.UpdatePolicyGroupRequest{}
-	if args.changed["new-name"] {
-		nn := args.newName
+	if args.changed["name"] {
+		nn := args.rename
 		patch.NewName = &nn
 	}
 

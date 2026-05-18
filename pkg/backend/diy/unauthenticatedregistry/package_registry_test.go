@@ -251,7 +251,7 @@ func TestListPackages(t *testing.T) {
 
 	//nolint:prealloc // capacity unknown ahead of time
 	results := []apitype.PackageMetadata{}
-	for pkg, err := range client.ListPackages(ctx, ref("castai")) {
+	for pkg, err := range client.ListPackages(ctx, ptr("castai")) {
 		require.NoError(t, err)
 		results = append(results, pkg)
 	}
@@ -310,7 +310,7 @@ func TestListPackagesNoMatches(t *testing.T) {
 
 	//nolint:prealloc // capacity unknown ahead of time
 	results := []apitype.PackageMetadata{}
-	for pkg, err := range client.ListPackages(ctx, ref("404-not-found")) {
+	for pkg, err := range client.ListPackages(ctx, ptr("404-not-found")) {
 		require.NoError(t, err)
 		results = append(results, pkg)
 	}
@@ -318,4 +318,4 @@ func TestListPackagesNoMatches(t *testing.T) {
 	assert.Equal(t, []apitype.PackageMetadata{}, results)
 }
 
-func ref[T any](v T) *T { return &v }
+func ptr[T any](v T) *T { return &v }

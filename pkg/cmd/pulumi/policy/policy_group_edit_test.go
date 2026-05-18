@@ -79,7 +79,7 @@ func failingPolicyGroupEditFactory(err error) policyGroupEditClientFactory {
 	}
 }
 
-func ptrString(s string) *string { return &s }
+func ptr[T any](v T) *T { return &v }
 
 func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	t.Parallel()
@@ -96,15 +96,15 @@ func TestPolicyGroupEdit_RenameOnly_DefaultOutput(t *testing.T) {
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			newName:      "production",
-			changed:      map[string]bool{"new-name": true},
+			rename:       "production",
+			changed:      map[string]bool{"name": true},
 		})
 	require.NoError(t, err)
 
 	// Rename-only does not touch any list, so the pre-edit GET is skipped.
 	assert.Equal(t, 1, c.getCalls)
 	assert.Equal(t, []apitype.UpdatePolicyGroupRequest{
-		{NewName: ptrString("production")},
+		{NewName: ptr("production")},
 	}, c.updates)
 	assert.Equal(t, []string{"prod-policies"}, c.updateGroups)
 	assert.Equal(t, "acme", c.gotGetOrg)
@@ -139,7 +139,7 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 
 	args := policyGroupEditArgs{
 		outputFormat:          defaultPolicyGroupGetOutputFormat(),
-		newName:               "production",
+		rename:                "production",
 		addStack:              []string{"web/prod", "standalone"},
 		removeStack:           []string{"web/legacy"},
 		addPolicyPack:         []string{"aws-guardrails@3", "tagging"},
@@ -147,7 +147,7 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 		addInsightsAccount:    []string{"acct-2"},
 		removeInsightsAccount: []string{"acct-1"},
 		changed: map[string]bool{
-			"new-name": true, "add-stack": true, "remove-stack": true,
+			"name": true, "add-stack": true, "remove-stack": true,
 			"add-policy-pack": true, "remove-policy-pack": true,
 			"add-insights-account": true, "remove-insights-account": true,
 		},
@@ -164,7 +164,7 @@ func TestPolicyGroupEdit_AddsAndRemoves_JSONOutput(t *testing.T) {
 	// A single batched PATCH with the rename and the full replacement lists.
 	require.Len(t, c.updates, 1)
 	got := c.updates[0]
-	assert.Equal(t, ptrString("production"), got.NewName)
+	assert.Equal(t, ptr("production"), got.NewName)
 
 	require.NotNil(t, got.Stacks)
 	assert.Equal(t, []apitype.PulumiStackReference{
@@ -207,7 +207,7 @@ func TestPolicyGroupEdit_NoFlagsChanged(t *testing.T) {
 		})
 	require.Error(t, err)
 	assert.Equal(t,
-		"no changes specified; pass at least one of --new-name, --add-stack, --remove-stack, "+
+		"no changes specified; pass at least one of --name, --add-stack, --remove-stack, "+
 			"--add-policy-pack, --remove-policy-pack, --add-insights-account, --remove-insights-account",
 		err.Error())
 	assert.Empty(t, c.updates)
@@ -221,8 +221,8 @@ func TestPolicyGroupEdit_UpdateError(t *testing.T) {
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			newName:      "production",
-			changed:      map[string]bool{"new-name": true},
+			rename:       "production",
+			changed:      map[string]bool{"name": true},
 		})
 	require.Error(t, err)
 	assert.Equal(t, "conflict", err.Error())
@@ -255,8 +255,8 @@ func TestPolicyGroupEdit_GetAfterEditError(t *testing.T) {
 	err := runPolicyGroupEdit(t.Context(), &buf,
 		stubPolicyGroupEditFactory(c, "acme"), "prod-policies", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			newName:      "production",
-			changed:      map[string]bool{"new-name": true},
+			rename:       "production",
+			changed:      map[string]bool{"name": true},
 		})
 	require.Error(t, err)
 	assert.Equal(t, "reading policy group after edit: boom", err.Error())
@@ -270,8 +270,8 @@ func TestPolicyGroupEdit_FactoryError(t *testing.T) {
 		failingPolicyGroupEditFactory(errors.New("not logged in")),
 		"prod-policies", policyGroupEditArgs{
 			outputFormat: defaultPolicyGroupGetOutputFormat(),
-			newName:      "production",
-			changed:      map[string]bool{"new-name": true},
+			rename:       "production",
+			changed:      map[string]bool{"name": true},
 		})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())

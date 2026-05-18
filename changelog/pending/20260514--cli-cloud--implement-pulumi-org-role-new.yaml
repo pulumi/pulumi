@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: Add `pulumi org role new` to create a custom role from a permission descriptor JSON file

@@ -59,7 +59,7 @@ func TestPolicyGroupRemove_DefaultOutput(t *testing.T) {
 	c := &mockPolicyGroupRemoveClient{}
 	err := runPolicyGroupRemove(t.Context(), &buf,
 		stubPolicyGroupRemoveFactory(c, "acme"), "prod-policies",
-		policyGroupRemoveArgs{outputFormat: defaultPolicyGroupRemoveOutputFormat()})
+		policyGroupRemoveArgs{yes: true, outputFormat: defaultPolicyGroupRemoveOutputFormat()})
 	require.NoError(t, err)
 
 	assert.Equal(t, "Removed policy group prod-policies from organization acme.\n", buf.String())
@@ -72,7 +72,7 @@ func TestPolicyGroupRemove_JSONOutput(t *testing.T) {
 
 	var buf bytes.Buffer
 	c := &mockPolicyGroupRemoveClient{}
-	args := policyGroupRemoveArgs{outputFormat: defaultPolicyGroupRemoveOutputFormat()}
+	args := policyGroupRemoveArgs{yes: true, outputFormat: defaultPolicyGroupRemoveOutputFormat()}
 	require.NoError(t, args.outputFormat.Set("json"))
 	err := runPolicyGroupRemove(t.Context(), &buf,
 		stubPolicyGroupRemoveFactory(c, "acme"), "prod-policies", args)
@@ -91,7 +91,7 @@ func TestPolicyGroupRemove_ClientError(t *testing.T) {
 	c := &mockPolicyGroupRemoveClient{err: errors.New("cannot delete default group")}
 	err := runPolicyGroupRemove(t.Context(), &buf,
 		stubPolicyGroupRemoveFactory(c, "acme"), "default-policy-group",
-		policyGroupRemoveArgs{outputFormat: defaultPolicyGroupRemoveOutputFormat()})
+		policyGroupRemoveArgs{yes: true, outputFormat: defaultPolicyGroupRemoveOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "removing policy group: cannot delete default group", err.Error())
 	assert.Equal(t, "", buf.String())
@@ -103,7 +103,7 @@ func TestPolicyGroupRemove_FactoryError(t *testing.T) {
 	var buf bytes.Buffer
 	err := runPolicyGroupRemove(t.Context(), &buf,
 		failingPolicyGroupRemoveFactory(errors.New("not logged in")),
-		"prod-policies", policyGroupRemoveArgs{outputFormat: defaultPolicyGroupRemoveOutputFormat()})
+		"prod-policies", policyGroupRemoveArgs{yes: true, outputFormat: defaultPolicyGroupRemoveOutputFormat()})
 	require.Error(t, err)
 	assert.Equal(t, "not logged in", err.Error())
 }

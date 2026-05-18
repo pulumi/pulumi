@@ -88,9 +88,8 @@ func newOrgAuditLogListCmdWith(factory orgAuditLogListClientFactory) *cobra.Comm
 	args.outputFormat = defaultOrgAuditLogListOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "[EXPERIMENTAL] List audit log events for an organization",
+		Use:   "list",
+		Short: "[EXPERIMENTAL] List audit log events for an organization",
 		Long: "[EXPERIMENTAL] List audit log events for an organization.\n" +
 			"\n" +
 			"Returns audit log events for the organization. Results may be filtered\n" +
@@ -237,7 +236,7 @@ func renderOrgAuditLogListTable(
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	t.AppendHeader(table.Row{"TIMESTAMP", "USER", "EVENT", "NAME", "SOURCE IP"})
+	t.AppendHeader(table.Row{"TIMESTAMP", "USER", "EVENT", "DESCRIPTION", "SOURCE IP"})
 
 	for _, ev := range resp.AuditLogEvents {
 		user := ev.User.GitHubLogin
@@ -248,9 +247,9 @@ func renderOrgAuditLogListTable(
 		if event == "" {
 			event = "-"
 		}
-		name := ev.Name
-		if name == "" {
-			name = "-"
+		description := ev.Description
+		if description == "" {
+			description = "-"
 		}
 		sourceIP := ev.SourceIP
 		if sourceIP == "" {
@@ -260,7 +259,7 @@ func renderOrgAuditLogListTable(
 			formatAuditLogTimestamp(ev.Timestamp),
 			user,
 			event,
-			name,
+			description,
 			sourceIP,
 		})
 	}
