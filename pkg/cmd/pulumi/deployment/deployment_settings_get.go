@@ -174,7 +174,7 @@ type sourceView struct {
 type runnerView struct {
 	Pool             string `json:"pool,omitempty"`
 	ExecutorImage    string `json:"executorImage,omitempty"`
-	WorkingDirectory string `json:"workingDirectory,omitempty"`
+	ExecutorRootPath string `json:"executorRootPath,omitempty"`
 }
 
 type oidcView struct {
@@ -280,9 +280,11 @@ func buildRunnerView(s apitype.DeploymentSettings) *runnerView {
 		if s.Executor.ExecutorImage != nil {
 			out.ExecutorImage = s.Executor.ExecutorImage.Reference
 		}
-		out.WorkingDirectory = s.Executor.WorkingDirectory
+		if s.Executor.ExecutorRootPath != nil {
+			out.ExecutorRootPath = *s.Executor.ExecutorRootPath
+		}
 	}
-	if out.Pool == "" && out.ExecutorImage == "" && out.WorkingDirectory == "" {
+	if out.Pool == "" && out.ExecutorImage == "" && out.ExecutorRootPath == "" {
 		return nil
 	}
 	return out
@@ -421,8 +423,8 @@ func renderDeploymentSettingsGetText(w io.Writer, s apitype.DeploymentSettings) 
 		if v.Runner.ExecutorImage != "" {
 			kv(2, "Executor image", v.Runner.ExecutorImage)
 		}
-		if v.Runner.WorkingDirectory != "" {
-			kv(2, "Working directory", v.Runner.WorkingDirectory)
+		if v.Runner.ExecutorRootPath != "" {
+			kv(2, "Executor root path", v.Runner.ExecutorRootPath)
 		}
 	}
 

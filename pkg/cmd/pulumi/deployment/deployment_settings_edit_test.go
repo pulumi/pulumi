@@ -145,7 +145,6 @@ func TestDeploymentSettingsEdit_DefaultOutput(t *testing.T) {
 Deployment runner
   Runner pool:              pool-1
   Executor image:           pulumi/pulumi:latest
-  Working directory:        /work
 
 Pre-run commands
   echo hi
@@ -182,8 +181,7 @@ func TestDeploymentSettingsEdit_JSONOutput(t *testing.T) {
 		},
 		"runner": {
 			"pool": "pool-1",
-			"executorImage": "pulumi/pulumi:latest",
-			"workingDirectory": "/work"
+			"executorImage": "pulumi/pulumi:latest"
 		},
 		"preRunCommands": ["echo hi"],
 		"environmentVariables": ["BAZ", "FOO"]

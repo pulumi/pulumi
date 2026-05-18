@@ -71,8 +71,9 @@ type deploymentSettingsEditArgs struct {
 	pathFilters  []string
 
 	// Runner
-	runnerPool    string
-	executorImage string
+	runnerPool       string
+	executorImage    string
+	executorRootPath string
 
 	// Operation
 	preRunCommands []string
@@ -122,6 +123,7 @@ const (
 	flagPathFilter         = "path-filter"
 	flagRunnerPool         = "runner-pool"
 	flagExecutorImage      = "executor-image"
+	flagExecutorRootPath   = "executor-root-path"
 	flagPreRunCommand      = "pre-run-command"
 	flagEnv                = "env"
 	flagSecretEnv          = "secret-env"
@@ -214,6 +216,8 @@ func newDeploymentSettingsEditCmdWith(factory deploymentSettingsEditClientFactor
 		"Deployment runner pool ID; empty string clears it to the Pulumi-hosted pool")
 	f.StringVar(&args.executorImage, flagExecutorImage, "",
 		"Custom executor image; empty string clears it to the default image")
+	f.StringVar(&args.executorRootPath, flagExecutorRootPath, "",
+		"Executor root path; empty string clears it to the default (/)")
 
 	// Operation
 	f.StringArrayVar(&args.preRunCommands, flagPreRunCommand, nil,

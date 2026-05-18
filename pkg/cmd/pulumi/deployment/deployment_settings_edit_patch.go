@@ -30,7 +30,7 @@ import (
 var editFlagNames = []string{
 	flagGitHubRepo, flagGitURL, flagBranch, flagCommit, flagFolder,
 	flagPreviewPRs, flagPushToDeploy, flagPRTemplate, flagPathFilter,
-	flagRunnerPool, flagExecutorImage,
+	flagRunnerPool, flagExecutorImage, flagExecutorRootPath,
 	flagPreRunCommand, flagEnv, flagSecretEnv, flagRemoveEnv,
 	flagSkipInstallDeps, flagSkipIntermediate, flagShell, flagDeleteAfterDestroy,
 	flagOIDCAWSRoleARN, flagOIDCAWSSessionName, flagOIDCAWSDuration, flagOIDCAWSPolicyARN, flagOIDCAWSClear,
@@ -193,6 +193,13 @@ func buildEditFlagPatch(
 			v = nil
 		}
 		setNested(patch, []string{"executorContext", "executorImage"}, v)
+	}
+	if changed(flagExecutorRootPath) {
+		var v any = args.executorRootPath
+		if args.executorRootPath == "" {
+			v = nil
+		}
+		setNested(patch, []string{"executorContext", "executorRootPath"}, v)
 	}
 
 	if changed(flagPreRunCommand) {
