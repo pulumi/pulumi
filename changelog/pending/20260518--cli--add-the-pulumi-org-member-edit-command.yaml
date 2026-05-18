@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: Add the `pulumi org member edit` command
