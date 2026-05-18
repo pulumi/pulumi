@@ -51,7 +51,7 @@ func jsonifyPropertyValue(v resource.PropertyValue, showSecrets bool) (any, erro
 	}
 
 	if v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known) {
-		return "<unknown>", nil
+		return "[unknown]", nil
 	}
 
 	if v.IsSecret() {

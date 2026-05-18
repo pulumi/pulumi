@@ -1094,7 +1094,7 @@ param3 = true
 	expected := `{
   "output1": "world",
   "output2": 43,
-  "output3": "<unknown>"
+  "output3": "[unknown]"
 }
 `
 	assert.Equal(t, expected, stdout.String())
