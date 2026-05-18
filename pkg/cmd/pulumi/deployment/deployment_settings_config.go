@@ -73,12 +73,15 @@ func newDeploymentSettingsCmd() *cobra.Command {
 
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
+	// Commands to edit `Pulumi.<stack>.deployment.yaml`
 	cmd.AddCommand(newDeploymentSettingsInitCmd())
 	cmd.AddCommand(newDeploymentSettingsPullCmd())
 	cmd.AddCommand(newDeploymentSettingsUpdateCmd())
 	cmd.AddCommand(newDeploymentSettingsDestroyCmd())
 	cmd.AddCommand(newDeploymentSettingsEnvCmd())
 	cmd.AddCommand(newDeploymentSettingsConfigureCmd())
+
+	// Edit the settings in cloud
 	cmd.AddCommand(newDeploymentSettingsGetCmd())
 	cmd.AddCommand(newDeploymentSettingsEditCmd())
 
