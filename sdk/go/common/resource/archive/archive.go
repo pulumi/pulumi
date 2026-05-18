@@ -696,6 +696,7 @@ func (a *Archive) archiveTar(w io.Writer, wd string) error {
 
 func (a *Archive) archiveTarGZIP(w io.Writer, wd string) error {
 	z := gzip.NewWriter(w)
+	defer z.Close()
 	return a.archiveTar(z, wd)
 }
 

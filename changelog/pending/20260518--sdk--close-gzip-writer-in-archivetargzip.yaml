@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: sdk
+  description: Close gzip.Writer in archiveTarGZIP to produce valid tar.gz output
