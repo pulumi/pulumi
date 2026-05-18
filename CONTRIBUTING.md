@@ -47,7 +47,7 @@ $ golangci-lint fmt path/to/file.go
 $ golangci-lint fmt path/to/dir
 ```
 
-We require a changelog entry for all PR that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
+We require a changelog entry for all PRs that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
 
 ```bash
 $ make changelog
@@ -77,7 +77,7 @@ Good examples for changelog entries are:
 - Exit immediately from state edit when no change was made
 - Fix root and program paths to always be absolute
 
-Here's some examples of what we're trying to avoid:
+Here are some examples of what we're trying to avoid:
 - Fixes a bug
 - Adds a feature
 - Feature now does something
