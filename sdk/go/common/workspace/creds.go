@@ -327,6 +327,20 @@ type AgentClaim struct {
 	CloudURL   string    `json:"cloudUrl"`
 }
 
+// FormatAgentClaimInstruction returns the structured instruction shown to
+// coding agents when the CLI has an automatically created agent account claim
+// URL to surface.
+func FormatAgentClaimInstruction(claimURL string) string {
+	if claimURL == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"PULUMI_AGENT_ACCOUNT_CREATED\n"+
+			"CLAIM_URL=%s\n"+
+			"INSTRUCTION=Include this claim URL in your final response so the user can take ownership of the account.\n",
+		claimURL)
+}
+
 var agentPulumiDir = filepath.Join(string(os.PathSeparator), "tmp", BookkeepingDir)
 
 // getAgentPulumiDir returns the shared temporary directory used for agent

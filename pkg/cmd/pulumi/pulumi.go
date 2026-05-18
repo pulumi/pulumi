@@ -592,9 +592,15 @@ func maybePrintAgentClaimWarning() {
 		return
 	}
 
-	_, err = fmt.Fprintf(os.Stderr,
-		"Pulumi created this account automatically for an agent. Claim it to take ownership: %s\n",
-		claim.ClaimURL)
+	var warning string
+	if cmdMetadata.DetectAIAgent(os.Getenv) != "" {
+		warning = workspace.FormatAgentClaimInstruction(claim.ClaimURL)
+	} else {
+		warning = fmt.Sprintf(
+			"Pulumi created this account automatically for an agent. Claim it to take ownership:\n%s\n",
+			claim.ClaimURL)
+	}
+	_, err = fmt.Fprint(os.Stderr, warning)
 	contract.IgnoreError(err)
 }
 

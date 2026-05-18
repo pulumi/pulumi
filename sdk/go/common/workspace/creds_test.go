@@ -125,6 +125,19 @@ func TestAgentCredentialsAndClaim(t *testing.T) {
 	assert.True(t, claim.ValidUntil.Equal(validUntil))
 }
 
+func TestFormatAgentClaimInstruction(t *testing.T) {
+	t.Parallel()
+
+	claimURL := "https://app.pulumi.com/signup?claim=abc123"
+
+	assert.Equal(t,
+		"PULUMI_AGENT_ACCOUNT_CREATED\n"+
+			"CLAIM_URL=https://app.pulumi.com/signup?claim=abc123\n"+
+			"INSTRUCTION=Include this claim URL in your final response so the user can take ownership of the account.\n",
+		FormatAgentClaimInstruction(claimURL))
+	assert.Empty(t, FormatAgentClaimInstruction(""))
+}
+
 //nolint:paralleltest // mutates environment and package global
 func TestAgentPulumiConfigUsesDefaultPathWhenWritable(t *testing.T) {
 	oldAgentPulumiDir := agentPulumiDir

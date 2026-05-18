@@ -697,22 +697,11 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		} else {
 			logging.V(7).Infof("Stored shared agent claim metadata for %q without validUntil", cloudURL)
 		}
-		printAgentClaimWarning(signup.ClaimURL)
+		_, err = fmt.Fprint(os.Stderr, workspace.FormatAgentClaimInstruction(signup.ClaimURL))
+		contract.IgnoreError(err)
 	}
 
 	return &account, nil
-}
-
-// printAgentClaimWarning tells the user how to claim an automatically created
-// agent account.
-func printAgentClaimWarning(claimURL string) {
-	if claimURL == "" {
-		return
-	}
-	_, err := fmt.Fprintf(os.Stderr,
-		"Pulumi created this account automatically for an agent. Claim it to take ownership: %s\n",
-		claimURL)
-	contract.IgnoreError(err)
 }
 
 // Login logs into the target cloud URL and returns the cloud backend for it.
