@@ -23,8 +23,6 @@ import (
 
 func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 	cmd := &cobra.Command{
-		// This is temporarily hidden while we iterate over the new set of commands,
-		// we will remove before releasing these new set of features.
 		Use:   "deployment",
 		Short: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud",
 		Long: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud.\n" +

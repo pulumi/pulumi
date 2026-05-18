@@ -14,8 +14,6 @@
 
 package deployment
 
-// AI Generated - needs human review
-
 import (
 	"context"
 	"encoding/json"
@@ -41,31 +39,21 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// deploymentSettingsGetClient is the narrow API surface this command depends
-// on. Defined per-command so tests can stub it without implementing the full
-// cloud client.
 type deploymentSettingsGetClient interface {
 	GetStackDeploymentSettings(
 		ctx context.Context, stack client.StackIdentifier,
 	) (*apitype.DeploymentSettings, error)
 }
 
-// deploymentSettingsGetClientFactory resolves a client and StackIdentifier
-// for the get command. stackFlag carries the raw `--stack` value (empty means
-// "use the current stack").
 type deploymentSettingsGetClientFactory func(
 	ctx context.Context, stackFlag string,
 ) (deploymentSettingsGetClient, client.StackIdentifier, error)
 
-// deploymentSettingsGetArgs collects the resolved flag values so Run can be
-// driven directly from tests.
 type deploymentSettingsGetArgs struct {
 	stack        string
 	outputFormat outputflag.OutputFlag[deploymentSettingsGetRenderFunc]
 }
 
-// defaultDeploymentSettingsGetOutputFormat wires the OutputFlag to the
-// per-format renderers so `--output` selects between them.
 func defaultDeploymentSettingsGetOutputFormat() outputflag.OutputFlag[deploymentSettingsGetRenderFunc] {
 	return outputflag.OutputFlag[deploymentSettingsGetRenderFunc]{
 		RenderForTerminal: renderDeploymentSettingsGetText,
@@ -73,8 +61,6 @@ func defaultDeploymentSettingsGetOutputFormat() outputflag.OutputFlag[deployment
 	}
 }
 
-// newDeploymentSettingsGetCmd builds `pulumi deployment settings get` wired to
-// the real cloud client factory.
 func newDeploymentSettingsGetCmd() *cobra.Command {
 	return newDeploymentSettingsGetCmdWith(defaultDeploymentSettingsGetClientFactory)
 }
@@ -87,18 +73,7 @@ func newDeploymentSettingsGetCmdWith(factory deploymentSettingsGetClientFactory)
 	cmd := &cobra.Command{
 		Use:   "get",
 		Short: "[EXPERIMENTAL] Retrieve the deployment settings for a stack",
-		Long: "[EXPERIMENTAL] Retrieve the deployment settings for a stack.\n" +
-			"\n" +
-			"Returns the saved Pulumi Deployments configuration for the selected stack,\n" +
-			"including source context (git repository, branch, commit, working directory),\n" +
-			"executor context (image), operation context (environment variable names and\n" +
-			"pre-run commands), GitHub integration triggers, and the agent pool ID if set.\n" +
-			"\n" +
-			"Secret material (git credentials and environment variable values) is never\n" +
-			"emitted by this command.\n" +
-			"\n" +
-			"Default output is a human-readable summary; pass --output=json for the raw\n" +
-			"response as JSON.",
+		Long:  "[EXPERIMENTAL] Retrieve the deployment settings for a stack.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runDeploymentSettingsGet(cmd.Context(), cmd.OutOrStdout(), factory, args)
 		},
@@ -113,9 +88,6 @@ func newDeploymentSettingsGetCmdWith(factory deploymentSettingsGetClientFactory)
 	return cmd
 }
 
-// defaultDeploymentSettingsGetClientFactory mirrors the production wiring used
-// by `pulumi deployment get`: resolve the stack, ensure we're on the Pulumi
-// Cloud backend, and hand back the underlying *client.Client.
 func defaultDeploymentSettingsGetClientFactory(
 	ctx context.Context, stackFlag string,
 ) (deploymentSettingsGetClient, client.StackIdentifier, error) {
@@ -153,8 +125,6 @@ func defaultDeploymentSettingsGetClientFactory(
 	return be.Client(), stackID, nil
 }
 
-// runDeploymentSettingsGet is the cobra-decoupled entry point so tests can
-// drive the command without parsing flags.
 func runDeploymentSettingsGet(
 	ctx context.Context, w io.Writer,
 	factory deploymentSettingsGetClientFactory, args deploymentSettingsGetArgs,
@@ -204,7 +174,7 @@ type sourceView struct {
 type runnerView struct {
 	Pool             string `json:"pool,omitempty"`
 	ExecutorImage    string `json:"executorImage,omitempty"`
-	WorkingDirectory string `json:"workingDirectory,omitempty"`
+	ExecutorRootPath string `json:"executorRootPath,omitempty"`
 }
 
 type oidcView struct {
@@ -310,9 +280,11 @@ func buildRunnerView(s apitype.DeploymentSettings) *runnerView {
 		if s.Executor.ExecutorImage != nil {
 			out.ExecutorImage = s.Executor.ExecutorImage.Reference
 		}
-		out.WorkingDirectory = s.Executor.WorkingDirectory
+		if s.Executor.ExecutorRootPath != nil {
+			out.ExecutorRootPath = *s.Executor.ExecutorRootPath
+		}
 	}
-	if out.Pool == "" && out.ExecutorImage == "" && out.WorkingDirectory == "" {
+	if out.Pool == "" && out.ExecutorImage == "" && out.ExecutorRootPath == "" {
 		return nil
 	}
 	return out
@@ -323,7 +295,7 @@ func buildOIDCView(o *apitype.OperationContextOIDCConfiguration) *oidcView {
 		return nil
 	}
 	out := &oidcView{}
-	if o.AWS != nil && o.AWS.RoleARN != "" {
+	if o.AWS != nil {
 		out.AWS = &oidcAWSView{
 			RoleARN:         o.AWS.RoleARN,
 			SessionName:     o.AWS.SessionName,
@@ -331,14 +303,14 @@ func buildOIDCView(o *apitype.OperationContextOIDCConfiguration) *oidcView {
 			PolicyARNs:      o.AWS.PolicyARNs,
 		}
 	}
-	if o.Azure != nil && (o.Azure.ClientID != "" || o.Azure.TenantID != "" || o.Azure.SubscriptionID != "") {
+	if o.Azure != nil {
 		out.Azure = &oidcAzureView{
 			ClientID:       o.Azure.ClientID,
 			TenantID:       o.Azure.TenantID,
 			SubscriptionID: o.Azure.SubscriptionID,
 		}
 	}
-	if o.GCP != nil && o.GCP.ProjectID != "" {
+	if o.GCP != nil {
 		out.GCP = &oidcGCPView{
 			ProjectNumber:  o.GCP.ProjectID,
 			WorkloadPool:   o.GCP.WorkloadPoolID,
@@ -451,8 +423,8 @@ func renderDeploymentSettingsGetText(w io.Writer, s apitype.DeploymentSettings) 
 		if v.Runner.ExecutorImage != "" {
 			kv(2, "Executor image", v.Runner.ExecutorImage)
 		}
-		if v.Runner.WorkingDirectory != "" {
-			kv(2, "Working directory", v.Runner.WorkingDirectory)
+		if v.Runner.ExecutorRootPath != "" {
+			kv(2, "Executor root path", v.Runner.ExecutorRootPath)
 		}
 	}
 
@@ -474,7 +446,9 @@ func renderDeploymentSettingsGetText(w io.Writer, s apitype.DeploymentSettings) 
 		section("OIDC")
 		if v.OIDC.AWS != nil {
 			fmt.Fprintln(w, "  AWS")
-			kv(4, "Role ARN", v.OIDC.AWS.RoleARN)
+			if v.OIDC.AWS.RoleARN != "" {
+				kv(4, "Role ARN", v.OIDC.AWS.RoleARN)
+			}
 			if v.OIDC.AWS.SessionName != "" {
 				kv(4, "Session name", v.OIDC.AWS.SessionName)
 			}

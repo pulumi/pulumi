@@ -157,6 +157,10 @@ type ExecutorContext struct {
 
 	// Defines the image that the pulumi operations should run in.
 	ExecutorImage *DockerImage `json:"executorImage,omitempty" yaml:"executorImage,omitempty"`
+
+	// ExecutorRootPath overrides the default root path (`/`) used by the deployment executor. Useful when running
+	// with non-root users (e.g. set to `/tmp`).
+	ExecutorRootPath *string `json:"executorRootPath,omitempty" yaml:"executorRootPath,omitempty"`
 }
 
 // A DockerImage describes a Docker image reference + optional credentials for use with a job definition.
