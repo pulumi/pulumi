@@ -30,10 +30,12 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // orgMemberRemoveClient is the narrow subset of cloud-API operations the
@@ -52,6 +54,7 @@ type orgMemberRemoveClientFactory func(
 // orgMemberRemoveArgs collects the flag values for the remove command.
 type orgMemberRemoveArgs struct {
 	org          string
+	yes          bool
 	outputFormat outputflag.OutputFlag[orgMemberRemoveRenderFunc]
 }
 
@@ -76,22 +79,18 @@ func newOrgMemberRemoveCmdWith(factory orgMemberRemoveClientFactory) *cobra.Comm
 	args.outputFormat = defaultOrgMemberRemoveOutputFormat()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "remove <user-login>",
-		Short:  "[EXPERIMENTAL] Remove a member from an organization",
+		Use:   "remove <user-login>",
+		Short: "[EXPERIMENTAL] Remove a member from an organization",
 		Long: "[EXPERIMENTAL] Remove a member from an organization.\n" +
 			"\n" +
 			"Removes a user from an organization. The removed user loses access to\n" +
-			"all organization resources including stacks, teams, and projects. The\n" +
-			"caller cannot remove themselves from the organization. The user is\n" +
-			"also removed from all teams they belong to within the organization.\n" +
-			"\n" +
-			"Default output is a human-readable confirmation; pass --output=json for\n" +
-			"a machine-readable summary.",
-		Example: "  # Remove a member from the default organization\n" +
+			"all organization resources including stacks, teams, and projects.\n" +
+			"This cannot be undone. You will be prompted to confirm unless\n" +
+			"--yes is passed.",
+		Example: "  # Remove a member (will prompt for confirmation)\n" +
 			"  pulumi org member remove alice\n\n" +
-			"  # Remove a member from a specific organization and emit JSON\n" +
-			"  pulumi org member remove alice --org acme --output json",
+			"  # Remove without confirmation\n" +
+			"  pulumi org member remove alice --yes",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runOrgMemberRemove(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
@@ -105,6 +104,7 @@ func newOrgMemberRemoveCmdWith(factory orgMemberRemoveClientFactory) *cobra.Comm
 	})
 
 	cmd.Flags().StringVar(&args.org, "org", "", "The organization that owns the member")
+	cmd.Flags().BoolVarP(&args.yes, "yes", "y", false, "Skip confirmation prompts")
 	outputflag.VarP(cmd.Flags(), &args.outputFormat)
 
 	return cmd
@@ -159,6 +159,19 @@ func runOrgMemberRemove(
 	ctx context.Context, w io.Writer,
 	factory orgMemberRemoveClientFactory, userLogin string, args orgMemberRemoveArgs,
 ) error {
+	if !args.yes {
+		if !cmdutil.Interactive() {
+			return errors.New(
+				"confirmation required; pass --yes (-y) to confirm in non-interactive mode")
+		}
+		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
+		prompt := fmt.Sprintf(
+			"This will permanently remove member '%s' from the organization!", userLogin)
+		if !ui.ConfirmPrompt(prompt, userLogin, opts) {
+			return result.FprintBailf(w, "confirmation declined")
+		}
+	}
+
 	c, org, err := factory(ctx, args.org)
 	if err != nil {
 		return err
