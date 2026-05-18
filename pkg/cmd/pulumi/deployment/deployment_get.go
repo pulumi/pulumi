@@ -14,8 +14,6 @@
 
 package deployment
 
-// AI Generated - needs human review
-
 import (
 	"context"
 	"encoding/json"
@@ -44,6 +42,9 @@ import (
 type deploymentGetClient interface {
 	GetDeployment(
 		ctx context.Context, stack client.StackIdentifier, id string,
+	) (apitype.GetDeploymentResponse, error)
+	GetDeploymentByVersion(
+		ctx context.Context, stack client.StackIdentifier, version string,
 	) (apitype.GetDeploymentResponse, error)
 }
 
@@ -84,14 +85,17 @@ func newDeploymentGetCmdWith(factory deploymentGetClientFactory) *cobra.Command 
 
 	cmd := &cobra.Command{
 		Hidden: true,
-		Use:    "get <deployment-id>",
+		Use:    "get <deployment-version>",
 		Short:  "[EXPERIMENTAL] Get details for a specific deployment",
 		Long: "[EXPERIMENTAL] Get details for a specific deployment.\n" +
 			"\n" +
-			"Retrieves detailed information about a single Pulumi Deployments execution\n" +
-			"by its deployment ID. The response includes the deployment's current status,\n" +
-			"creation and modification timestamps, version number, the user who requested\n" +
-			"the deployment, the Pulumi operation type, the list of jobs (with their\n" +
+			"The deployment may be referenced by its UUID or by its per-stack version\n" +
+			"number (the integer shown in the Pulumi Cloud UI, e.g. 9410 or #9410).\n" +
+			"\n" +
+			"Retrieves detailed information about a single Pulumi Deployments execution.\n" +
+			"The response includes the deployment's current status, creation and\n" +
+			"modification timestamps, version number, the user who requested the\n" +
+			"deployment, the Pulumi operation type, the list of jobs (with their\n" +
 			"step-level status), and any stack updates produced by the deployment.\n" +
 			"\n" +
 			"Default output is a human-readable summary; pass --output=json for the full\n" +
@@ -103,7 +107,7 @@ func newDeploymentGetCmdWith(factory deploymentGetClientFactory) *cobra.Command 
 
 	constrictor.AttachArguments(cmd, &constrictor.Arguments{
 		Arguments: []constrictor.Argument{
-			{Name: "deployment-id"},
+			{Name: "deployment-version"},
 		},
 		Required: 1,
 	})
@@ -157,17 +161,24 @@ func defaultDeploymentGetClientFactory(
 }
 
 // runDeploymentGet is the cobra-decoupled command body so tests can drive it
-// directly without spinning up the flag parser.
+// directly without spinning up the flag parser. `deploymentRef` is either a
+// UUID or a per-stack version number (see deploymentVersionRef); the two
+// forms hit different endpoints but return the same shape.
 func runDeploymentGet(
 	ctx context.Context, w io.Writer,
-	factory deploymentGetClientFactory, deploymentID string, args deploymentGetArgs,
+	factory deploymentGetClientFactory, deploymentRef string, args deploymentGetArgs,
 ) error {
 	c, stackID, err := factory(ctx, args.stack)
 	if err != nil {
 		return err
 	}
 
-	resp, err := c.GetDeployment(ctx, stackID, deploymentID)
+	var resp apitype.GetDeploymentResponse
+	if version, ok := deploymentVersionRef(deploymentRef); ok {
+		resp, err = c.GetDeploymentByVersion(ctx, stackID, version)
+	} else {
+		resp, err = c.GetDeployment(ctx, stackID, deploymentRef)
+	}
 	if err != nil {
 		return fmt.Errorf("getting deployment: %w", err)
 	}
