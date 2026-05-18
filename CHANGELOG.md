@@ -1,5 +1,309 @@
 # Changelog
 
+## 3.241.0 (2026-05-18)
+
+
+### Features
+
+- [cli] Add `--output json` to `pulumi preview` for a structured JSON summary of the operation result
+  [#22927](https://github.com/pulumi/pulumi/pull/22927)
+
+- [cli] Add `--output json` to `pulumi refresh` for a structured JSON summary of the operation result
+  [#22928](https://github.com/pulumi/pulumi/pull/22928)
+
+- [cli] Add `--output json` to `pulumi destroy` for a structured JSON summary of the operation result
+  [#22875](https://github.com/pulumi/pulumi/pull/22875)
+
+- [cli] Add `pulumi stack schedule get` to retrieve the configuration of a scheduled action
+  [#23153](https://github.com/pulumi/pulumi/pull/23153)
+
+- [cli] Add `pulumi stack schedule list` to list all scheduled actions configured for a stack
+  [#23153](https://github.com/pulumi/pulumi/pull/23153)
+
+- [cli] Add `pulumi stack schedule new` to create a raw, drift, or TTL deployment schedule for a stack
+  [#23153](https://github.com/pulumi/pulumi/pull/23153)
+
+- [cli] Add `pulumi stack webhook delivery list` to list recent deliveries for a stack webhook
+  [#23116](https://github.com/pulumi/pulumi/pull/23116)
+
+- [cli] Add `pulumi stack webhook delivery redeliver` to redeliver a webhook event
+  [#23118](https://github.com/pulumi/pulumi/pull/23118)
+
+- [cli] Add `pulumi stack webhook edit` to update an existing stack webhook
+  [#23139](https://github.com/pulumi/pulumi/pull/23139)
+
+- [cli] Add `pulumi stack webhook new` to create a new stack webhook
+  [#23101](https://github.com/pulumi/pulumi/pull/23101)
+
+- [cli] Add `pulumi stack webhook remove` to delete a stack webhook
+  [#23102](https://github.com/pulumi/pulumi/pull/23102)
+
+- [cli] Add `pulumi org webhook delivery list` to list recent deliveries for an organization webhook
+  [#23179](https://github.com/pulumi/pulumi/pull/23179)
+
+- [cli] Add `pulumi org webhook edit` to update an organization webhook
+  [#23179](https://github.com/pulumi/pulumi/pull/23179)
+
+- [cli] Add `pulumi org webhook list` to list all webhooks configured for an organization
+  [#23174](https://github.com/pulumi/pulumi/pull/23174)
+
+- [cli] Add `pulumi org webhook new` to create a new organization webhook
+  [#23172](https://github.com/pulumi/pulumi/pull/23172)
+
+- [cli] Add `pulumi org webhook ping` to send a test ping to an organization webhook
+  [#23179](https://github.com/pulumi/pulumi/pull/23179)
+
+- [cli] Add `pulumi org webhook remove` to delete an organization webhook
+  [#23177](https://github.com/pulumi/pulumi/pull/23177)
+
+- [cli] Add `pulumi stack drift list` to list drift detection runs for a stack
+  [#23159](https://github.com/pulumi/pulumi/pull/23159)
+
+- [cli] Add `pulumi stack drift status` to show the drift detection status for a stack
+  [#23161](https://github.com/pulumi/pulumi/pull/23161)
+
+- [cli] Add `pulumi stack schedule edit` to update an existing scheduled deployment action
+  [#23153](https://github.com/pulumi/pulumi/pull/23153)
+
+- [cli] Add `pulumi stack schedule remove` to delete a scheduled deployment action
+  [#23153](https://github.com/pulumi/pulumi/pull/23153)
+
+- [cli] Add `pulumi audit-log export` command
+  [#23212](https://github.com/pulumi/pulumi/pull/23212)
+
+- [cli] Add `pulumi org audit-log list`
+  [#23211](https://github.com/pulumi/pulumi/pull/23211)
+
+- [cli] Add `pulumi policy compliance list` to list compliance results grouped by entity
+  [#23209](https://github.com/pulumi/pulumi/pull/23209)
+
+- [cli] Add `pulumi policy group new` command to allow creating new policy groups
+  [#23202](https://github.com/pulumi/pulumi/pull/23202)
+
+- [cli] Add the `pulumi policy issue get` command
+  [#23200](https://github.com/pulumi/pulumi/pull/23200)
+
+- [cli/cloud] Add `pulumi insights account list` to list Insights accounts in an organization
+  [#23091](https://github.com/pulumi/pulumi/pull/23091)
+
+- [cli/cloud] Add `pulumi insights account new` to create a Pulumi Insights account
+  [#23093](https://github.com/pulumi/pulumi/pull/23093)
+
+- [cli/cloud] Add `pulumi insights account scan log` to fetch log output for a Pulumi Insights scan
+  [#23092](https://github.com/pulumi/pulumi/pull/23092)
+
+- [cli/cloud] Add `pulumi insights account scan` to trigger a resource discovery scan for an Insights account
+  [#23094](https://github.com/pulumi/pulumi/pull/23094)
+
+- [cli/cloud] Implement `pulumi stack history events` to retrieve engine events for a Pulumi Cloud update
+  [#23109](https://github.com/pulumi/pulumi/pull/23109)
+
+- [cli/cloud] Add `pulumi deployment cancel` to terminate an in-progress deployment
+  [#23164](https://github.com/pulumi/pulumi/pull/23164)
+
+- [cli/cloud] Add `pulumi org member list` to list the members of an organization
+  [#23170](https://github.com/pulumi/pulumi/pull/23170)
+
+- [cli/cloud] Add `pulumi org usage get` to fetch the resources-under-management summary for an organization
+  [#23166](https://github.com/pulumi/pulumi/pull/23166)
+
+- [cli/cloud] Add `pulumi org role assign` to assign a custom role to a team
+  [#23117](https://github.com/pulumi/pulumi/pull/23117)
+
+- [cli/cloud] Add `pulumi org role edit` to update a custom role's name, description, or permission tree
+  [#23117](https://github.com/pulumi/pulumi/pull/23117)
+
+- [cli/cloud] Add `pulumi org role list` to list custom roles for an organization
+  [#23117](https://github.com/pulumi/pulumi/pull/23117)
+
+- [cli/cloud] Add `pulumi org role new` to create a custom role from a permission descriptor JSON file
+  [#23117](https://github.com/pulumi/pulumi/pull/23117)
+
+- [cli/cloud] Add `pulumi org role remove` to delete a custom role from an organization
+  [#23117](https://github.com/pulumi/pulumi/pull/23117)
+
+- [cli/env] Update esc to v0.24.0
+  [#23213](https://github.com/pulumi/pulumi/pull/23213)
+
+- [cli/neo] Show tool call arguments and results in `pulumi neo` via a `ctrl+o` overlay
+  [#23075](https://github.com/pulumi/pulumi/pull/23075)
+
+- [cli/neo] Multi-line input in `pulumi neo` - Enter sends, Shift+Enter / Alt+Enter / Ctrl+J / trailing `\` insert a newline
+  [#23151](https://github.com/pulumi/pulumi/pull/23151)
+
+- [cli/neo] Make `pulumi neo` visible by default; the `PULUMI_EXPERIMENTAL` gate has been removed
+  [#23228](https://github.com/pulumi/pulumi/pull/23228)
+
+- [cli/policy] Add `pulumi policy group edit` to edit policy groups
+  [#23206](https://github.com/pulumi/pulumi/pull/23206)
+
+- [cli/policy] Add `pulumi policy group remove` command to remove policies
+  [#23208](https://github.com/pulumi/pulumi/pull/23208)
+
+- [cli/policy] Add the `pulumi policy group get` command
+  [#23203](https://github.com/pulumi/pulumi/pull/23203)
+
+
+### Bug Fixes
+
+- [cli] Add `pulumi policy issue list` command
+  [#23198](https://github.com/pulumi/pulumi/pull/23198)
+
+- [cli] Fix `pulumi org role list` to send the `uxPurpose` query parameter the service requires
+  [#23231](https://github.com/pulumi/pulumi/pull/23231)
+
+- [engine] Fix `pulumi import` dropping map entries whose value matched the enum member of a `Union<Input<Enum<T>>, ...>` element type
+  [#23190](https://github.com/pulumi/pulumi/pull/23190)
+
+- [cli/cloud] Surface a clear error when `pulumi api --all` is used against an endpoint whose response is not paginatable, instead of silently emitting an empty array
+  [#23191](https://github.com/pulumi/pulumi/pull/23191)
+  [#23128](https://github.com/pulumi/pulumi/pull/23128)
+
+- [cli/cloud] `pulumi deployment settings edit` no longer clears fields that the patch does not mention
+  [#23217](https://github.com/pulumi/pulumi/pull/23217)
+
+- [cli/import] Generate PCL for asset and archive inputs when importing resources, instead of returning a "NYI" error
+  [#22938](https://github.com/pulumi/pulumi/pull/22938)
+
+- [cli/import] Preserve asset/archive/resource-reference values inside map and array inputs, and HCL-escape map keys containing `${` or `%{` template sequences
+  [#23222](https://github.com/pulumi/pulumi/pull/23222)
+
+- [cli/install] Hint at adding a `.git` / `_git` when VCS URL resolution fails
+  [#22831](https://github.com/pulumi/pulumi/pull/22831)
+
+- [cli/neo] Transparently reconnect the Neo event stream after a transient network drop, resuming from the last seen event ID
+  [#23134](https://github.com/pulumi/pulumi/pull/23134)
+
+- [cli/neo] Show `preparing` in the live preview/up block until the first resource arrives
+  [#23155](https://github.com/pulumi/pulumi/pull/23155)
+
+- [cli/new] Support specific versions when using registry-backed templates with `pulumi new`
+  [#22909](https://github.com/pulumi/pulumi/pull/22909)
+
+## 3.239.0 (2026-05-14)
+
+
+### Features
+
+- [cli] Add `--output json` to `pulumi import` for a structured JSON summary of the operation result
+  [#22929](https://github.com/pulumi/pulumi/pull/22929)
+
+- [cli] Add `pulumi stack get` to retrieve detailed information about a stack
+  [#23106](https://github.com/pulumi/pulumi/pull/23106)
+
+- [cli] Add `pulumi stack webhook get` to inspect a single stack webhook
+  [#23088](https://github.com/pulumi/pulumi/pull/23088)
+
+- [cli] Add `pulumi stack webhook ping` to send a test ping to a stack webhook
+
+- [cli/cloud] Add `pulumi deployment list` to list deployment executions for a stack
+  [#23114](https://github.com/pulumi/pulumi/pull/23114)
+
+- [sdkgen] Validate that schema names can't conflict with module paths
+  [#22956](https://github.com/pulumi/pulumi/pull/22956)
+
+
+### Bug Fixes
+
+- [engine] Fix batch encrypt/decrypt errors being silently dropped
+  [#23149](https://github.com/pulumi/pulumi/pull/23149)
+
+- [cli/cloud] Fix `pulumi api` help examples that referenced non-existent operation IDs and response fields
+  [#23125](https://github.com/pulumi/pulumi/pull/23125)
+
+## 3.238.0 (2026-05-13)
+
+
+### Features
+
+- [cli] Add a `--language` flag to `pulumi package add` to run outside a Pulumi project or plugin
+  [#22791](https://github.com/pulumi/pulumi/pull/22791)
+
+- [cli] Add `--output json` to `pulumi up` for a structured JSON summary of the operation result
+  [#22870](https://github.com/pulumi/pulumi/pull/22870)
+
+- [cli] Recommend `pulumi cloud api describe` in `pulumi cloud api --help` to verify operation parameters before calling
+  [#22881](https://github.com/pulumi/pulumi/pull/22881)
+
+- [cli] Add `pulumi stack webhook list` to list all webhooks configured for a stack
+  [#23082](https://github.com/pulumi/pulumi/pull/23082)
+
+- [cli/cloud] Rename `pulumi cloud api` to `pulumi api`
+  [#22970](https://github.com/pulumi/pulumi/pull/22970)
+
+- [cli/cloud] Add `pulumi insights resource get` to look up a single resource discovered by Pulumi Insights
+  [#23077](https://github.com/pulumi/pulumi/pull/23077)
+
+- [cli/cloud] Add `pulumi template list` to list registry-backed templates
+  [#23074](https://github.com/pulumi/pulumi/pull/23074)
+
+- [cli/cloud] Rename the `--format` flag to `--output` on `pulumi api` and its subcommands
+  [#23072](https://github.com/pulumi/pulumi/pull/23072)
+
+- [cli/cloud] Add `pulumi insights resource search` to search for resources discovered by Pulumi Insights
+  [#23087](https://github.com/pulumi/pulumi/pull/23087)
+
+- [cli/engine] Add `--skip-plugin-pre-install` to skip up-front plugin installation
+
+- [engine] Fail the deployment when an after hook fails
+  [#22935](https://github.com/pulumi/pulumi/pull/22935)
+
+- [cli/neo] Render the agent's TODO list in the `pulumi neo` TUI
+  [#22864](https://github.com/pulumi/pulumi/pull/22864)
+
+- [cli/neo] Add `--approval-mode` and `--permission-mode` flags to `pulumi neo`, with Ctrl+A and Ctrl+R hotkeys to switch modes mid-session
+  [#22950](https://github.com/pulumi/pulumi/pull/22950)
+
+- [cli/package] When invoked by an AI coding agent, print `pulumi api` pointers after `pulumi package add` and `pulumi package gen-sdk`
+  [#22904](https://github.com/pulumi/pulumi/pull/22904)
+
+- [pkg/testing] Recognize the `hcl` and `pcl` runtimes in `integration.ProgramTest`
+  [#23018](https://github.com/pulumi/pulumi/pull/23018)
+
+- [pkg/testing] Add `l1-config-types-optional` conformance test for PCL's `optional` type constructor
+  [#23108](https://github.com/pulumi/pulumi/pull/23108)
+
+
+### Bug Fixes
+
+- [backend/diy] Minify JSON persisted by the DIY backend for checkpoints, history, and stack tags
+  [#22245](https://github.com/pulumi/pulumi/pull/22245)
+
+- [cli/import] Ignore property values that do not conform to the schema in maps
+  [#23076](https://github.com/pulumi/pulumi/pull/23076)
+
+- [cli/import] Stop dropping map values whose element type is a union of Input-wrapped types during HCL2 import
+
+- [cli/neo] Use the selected stack's organization when starting a `pulumi neo` task instead of the user's default organization
+  [#22951](https://github.com/pulumi/pulumi/pull/22951)
+
+- [cli/neo] Include the failure reason in `pulumi_preview` and `pulumi_up` tool results when they fail, so the agent can react instead of seeing a blank error
+  [#22948](https://github.com/pulumi/pulumi/pull/22948)
+
+- [cli/neo] Retry `pulumi neo` task creation without the attached stack when the backend rejects it with an "invalid entities" error
+  [#22945](https://github.com/pulumi/pulumi/pull/22945)
+
+- [cli/neo] Surface the failure reason when a `filesystem` tool call fails, instead of returning an empty result to the agent
+  [#23019](https://github.com/pulumi/pulumi/pull/23019)
+
+- [cli/package] Use `--output=markdown` (not the renamed-away `--format=markdown`) in the `pulumi api` pointers printed by `pulumi package add` and `pulumi package gen-sdk`
+  [#23098](https://github.com/pulumi/pulumi/pull/23098)
+
+- [programgen/pcl] Stop reporting spurious circular references when an `ignoreChanges`, `hideDiffs`, `replaceOnChanges`, or `additionalSecretOutputs` entry shares a name with a top-level node
+  [#22931](https://github.com/pulumi/pulumi/pull/22931)
+
+- [sdk/python] Speed up python program resolution by using a set instead of deque to track outputs
+  [#22946](https://github.com/pulumi/pulumi/pull/22946)
+
+
+### Miscellaneous
+
+- [cli/neo] Tag Neo tasks created from the CLI with a `cli` source so the service can attribute their origin
+  [#23099](https://github.com/pulumi/pulumi/pull/23099)
+
+- [sdk/nodejs] Add registerPackage helper to cache package references per deployment
+  [#23014](https://github.com/pulumi/pulumi/pull/23014)
+
 ## 3.237.0 (2026-05-08)
 
 

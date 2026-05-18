@@ -103,7 +103,7 @@ func TestStackWebhookList_TableOutput(t *testing.T) {
 	// Table should contain data
 	assert.Contains(t, out, "deploy-hook")
 	assert.Contains(t, out, "Deploy Hook")
-	assert.Contains(t, out, "https://example.com/webhook")
+	assert.Contains(t, out, "https://example.com")
 	assert.Contains(t, out, "raw")
 	assert.Contains(t, out, "stacks")
 	assert.Contains(t, out, "stack_update")
@@ -354,7 +354,7 @@ func TestStackWebhookList_DefaultCmd(t *testing.T) {
 
 	f := cmd.Flags().Lookup("output")
 	require.NotNil(t, f)
-	assert.Equal(t, "o", f.Shorthand)
+	assert.Equal(t, "", f.Shorthand)
 	assert.Equal(t, "default", f.DefValue)
 
 	sf := cmd.Flags().Lookup("stack")

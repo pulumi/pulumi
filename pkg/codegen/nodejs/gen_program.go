@@ -28,6 +28,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -1109,7 +1110,7 @@ func resourceTypeName(r *pcl.Resource) (string, string, string, hcl.Diagnostics)
 		module = moduleName(module, r.Schema.PackageReference)
 	}
 
-	return pkg, module, title(member), diagnostics
+	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
 }
 
 func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diagnostics) {
@@ -1119,7 +1120,7 @@ func readResourceTypeName(r *pcl.ReadResource) (string, string, string, hcl.Diag
 		module = moduleName(module, r.Schema.PackageReference)
 	}
 
-	return pkg, module, title(member), diagnostics
+	return pkg, module, cgstrings.UppercaseFirst(member), diagnostics
 }
 
 func moduleName(module string, pkg schema.PackageReference) string {
@@ -1759,7 +1760,7 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%s", g.Indent)
 			g.Fgenf(w, "const [%s, resolve%s] = pulumi.deferredOutput<%s>();\n",
 				output.Name,
-				title(output.Name),
+				cgstrings.UppercaseFirst(output.Name),
 				typeParameter)
 		}
 	}
@@ -1849,9 +1850,9 @@ func (g *generator) genComponent(w io.Writer, component *pcl.Component) {
 			g.Fgenf(w, "%s", g.Indent)
 			expr := g.lowerExpression(output.Expr, output.Expr.Type())
 			if _, ok := output.Expr.(*model.ScopeTraversalExpression); ok {
-				g.Fgenf(w, "resolve%s(%v);\n", title(output.Name), expr)
+				g.Fgenf(w, "resolve%s(%v);\n", cgstrings.UppercaseFirst(output.Name), expr)
 			} else {
-				g.Fgenf(w, "resolve%s(pulumi.output(%v));\n", title(output.Name), expr)
+				g.Fgenf(w, "resolve%s(pulumi.output(%v));\n", cgstrings.UppercaseFirst(output.Name), expr)
 			}
 		}
 	}

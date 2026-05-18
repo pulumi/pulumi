@@ -19,12 +19,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/pkg/browser"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/pkg/v3/util/outputflag"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -42,10 +44,6 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 
 	if cmd.Stdout == nil {
 		cmd.Stdout = os.Stdout
-	}
-
-	if cmd.outputFormat == "" {
-		cmd.outputFormat = outputFormatTable
 	}
 
 	if cmd.currentBackend == nil {
@@ -93,7 +91,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 			userName,
 		)
 	}
-	if !sliceContains(orgs, cmd.orgName) && cmd.orgName != "" {
+	if !slices.Contains(orgs, cmd.orgName) && cmd.orgName != "" {
 		return fmt.Errorf("user %s is not a member of org %s", userName, cmd.orgName)
 	}
 
@@ -101,7 +99,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = cmd.Render(&cmd.searchCmd, res)
+	err = cmd.outputFormat.Get()(&cmd.searchCmd, res)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err)
 	}
@@ -116,6 +114,7 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 
 func newSearchAICmd() *cobra.Command {
 	var scmd searchAICmd
+	scmd.outputFormat = defaultSearchOutputFormat()
 	cmd := &cobra.Command{
 		Use:   "ai",
 		Short: "Search for resources in Pulumi Cloud using Pulumi AI",
@@ -136,10 +135,7 @@ func newSearchAICmd() *cobra.Command {
 		&scmd.queryString, "query", "q", "",
 		"Plaintext natural language query",
 	)
-	cmd.PersistentFlags().VarP(
-		&scmd.outputFormat, "output", "o",
-		"Output format. Supported formats are 'table', 'json', 'csv' and 'yaml'.",
-	)
+	outputflag.Var(cmd.PersistentFlags(), &scmd.outputFormat)
 	cmd.PersistentFlags().Var(
 		&scmd.csvDelimiter, "delimiter",
 		"Delimiter to use when rendering CSV output.",

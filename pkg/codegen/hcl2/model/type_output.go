@@ -105,7 +105,7 @@ func (t *OutputType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *OutputType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+func (t *OutputType) conversionFrom(src Type, unifying bool, seen cycleSet) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *OutputType:

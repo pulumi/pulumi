@@ -15,8 +15,6 @@
 package org
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -24,10 +22,9 @@ import (
 
 func newOrgAuditLogCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "audit-log",
-		Short:  "Inspect organization audit logs",
-		Long:   "[EXPERIMENTAL] Inspect organization audit logs.",
+		Use:   "audit-log",
+		Short: "[EXPERIMENTAL] Inspect organization audit logs",
+		Long:  "[EXPERIMENTAL] Inspect organization audit logs.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -37,73 +34,5 @@ func newOrgAuditLogCmd() *cobra.Command {
 
 	cmd.AddCommand(newOrgAuditLogListCmd())
 	cmd.AddCommand(newOrgAuditLogExportCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23001]: Not yet implemented.
-func newOrgAuditLogListCmd() *cobra.Command {
-	var (
-		org       string
-		eventType string
-		userLogin string
-		startTime string
-		token     string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List audit log events for an organization",
-		Long:   "[EXPERIMENTAL] List audit log events for an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to list audit logs for")
-	cmd.Flags().StringVar(&eventType, "event-type", "", "Filter by event type")
-	cmd.Flags().StringVar(&userLogin, "user", "", "Filter by user login")
-	cmd.Flags().StringVar(&startTime, "start-time", "",
-		"The upper bound of the time range (V1 semantics)")
-	cmd.Flags().StringVar(&token, "continuation-token", "",
-		"The continuation token for paginated retrieval")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23000]: Not yet implemented.
-func newOrgAuditLogExportCmd() *cobra.Command {
-	var (
-		org       string
-		format    string
-		eventType string
-		userLogin string
-		startTime string
-		token     string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "export",
-		Short:  "Export audit log events for an organization",
-		Long:   "[EXPERIMENTAL] Export audit log events for an organization.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVar(&org, "org", "", "The organization to export audit logs for")
-	cmd.Flags().StringVar(&format, "format", "csv", "The export format: csv or cef")
-	cmd.Flags().StringVar(&eventType, "event-type", "", "Filter by event type")
-	cmd.Flags().StringVar(&userLogin, "user", "", "Filter by user login")
-	cmd.Flags().StringVar(&startTime, "start-time", "",
-		"The upper bound of the time range (V1 semantics)")
-	cmd.Flags().StringVar(&token, "continuation-token", "",
-		"The continuation token for paginated retrieval")
-
 	return cmd
 }

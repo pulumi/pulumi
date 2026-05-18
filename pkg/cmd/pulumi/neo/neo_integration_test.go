@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -661,7 +661,6 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 //nolint:paralleltest // mutates package globals
 func TestRunNeoIntegration_NewNeoCmdRunE(t *testing.T) {
 	isolateWorkspace(t)
-	t.Setenv("PULUMI_EXPERIMENTAL", "true")
 
 	srv := newNeoFakeServer(t)
 	installNeoTestEnv(t, srv, false /*interactive*/)

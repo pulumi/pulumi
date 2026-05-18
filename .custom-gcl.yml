@@ -1,0 +1,12 @@
+# Builds a custom golangci-lint binary that includes the requiredfield
+# linter as a module plugin. The version below must match
+# GOLANGCI_LINT_VERSION in .github/workflows/ci-lint.yml.
+#
+# Build with: golangci-lint custom
+# Result:     bin/custom-gcl
+version: v2.9.0
+name: custom-gcl
+destination: ./bin
+plugins:
+  - module: github.com/pulumi/pulumi/.golangci/plugins/requiredfield
+    path: ./.golangci/plugins/requiredfield

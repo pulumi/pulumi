@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/neo
-  description: Use the selected stack's organization when starting a `pulumi neo` task instead of the user's default organization

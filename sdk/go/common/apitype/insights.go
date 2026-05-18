@@ -19,6 +19,32 @@ import (
 	"time"
 )
 
+// CreateInsightsAccountRequest is the body sent to the Pulumi Insights
+// CreateAccount endpoint. The shape mirrors the OpenAPI schema of the same
+// name in the Pulumi Cloud REST API.
+//
+// Both required fields (Provider, Environment) are server-validated; the CLI
+// surfaces the validation error rather than re-checking the enum locally.
+type CreateInsightsAccountRequest struct {
+	// Provider is the cloud provider the account discovers resources from.
+	// Server-side enum: aws, gcp, azure-native, oci, kubernetes.
+	Provider string `json:"provider"`
+	// Environment is the ESC environment reference holding provider
+	// credentials, in the form `project/environment` with an optional
+	// `@version` suffix.
+	Environment string `json:"environment"`
+	// ScanSchedule controls automated discovery scans. Server-side enum:
+	// none, 12h, daily. Empty means "use the server default."
+	ScanSchedule string `json:"scanSchedule,omitempty"`
+	// AgentPoolID selects an agent pool for discovery workflows. Empty
+	// means the org's default pool.
+	AgentPoolID string `json:"agentPoolID,omitempty"`
+	// ProviderConfig is provider-specific configuration (e.g. the list of
+	// regions to scan). The shape is provider-dependent; the CLI passes it
+	// through verbatim as JSON.
+	ProviderConfig json.RawMessage `json:"providerConfig,omitempty"`
+}
+
 // InsightsResourceWithVersion is a single discovered resource as returned by the
 // Pulumi Insights ReadResource endpoint. The shape mirrors the OpenAPI schema of
 // the same name in the Pulumi Cloud REST API.
@@ -142,4 +168,211 @@ type InsightsResourceSearchAggregation struct {
 type InsightsResourceSearchAggregationBucket struct {
 	Name  string `json:"name,omitempty"`
 	Count int64  `json:"count,omitempty"`
+}
+
+// ListInsightsAccountsParams are the query parameters for the Pulumi Insights
+// ListAccounts endpoint.
+type ListInsightsAccountsParams struct {
+	// ContinuationToken is the opaque cursor returned by a previous response;
+	// pass it on subsequent calls to fetch the next page.
+	ContinuationToken string `url:"continuationToken,omitempty"`
+	// Count is the maximum number of results to return on a single page.
+	// Defaults to 100 server-side; capped at 1000.
+	Count int `url:"count,omitempty"`
+	// Parent filters results to child accounts of the named parent account
+	// (e.g. an AWS Organizations management account).
+	Parent string `url:"parent,omitempty"`
+	// RoleID filters results to accounts accessible by the named role.
+	RoleID string `url:"roleID,omitempty"`
+}
+
+// ListInsightsAccountsResponse is the envelope returned by the ListAccounts
+// endpoint. NextToken is empty on the last page.
+type ListInsightsAccountsResponse struct {
+	Accounts  []InsightsAccount `json:"accounts"`
+	NextToken string            `json:"nextToken,omitempty"`
+}
+
+// InsightsAccount describes a single Pulumi Insights account as returned by
+// the ListAccounts endpoint. The shape mirrors the OpenAPI schema of the same
+// name in the Pulumi Cloud REST API.
+type InsightsAccount struct {
+	// ID is the unique identifier of the account.
+	ID string `json:"id"`
+	// Name is the human-readable name of the account.
+	Name string `json:"name"`
+	// Provider is the cloud provider for the account (e.g. `aws`, `gcp`,
+	// `azure-native`).
+	Provider string `json:"provider"`
+	// ProviderVersion is the version of the Pulumi provider package used for
+	// discovery, when set.
+	ProviderVersion string `json:"providerVersion,omitempty"`
+	// ProviderEnvRef is a `project/environment[@version]` reference to an ESC
+	// environment that supplies the account's provider credentials.
+	ProviderEnvRef string `json:"providerEnvRef,omitempty"`
+	// ScheduledScanEnabled indicates whether the account is scheduled for
+	// recurring discovery.
+	ScheduledScanEnabled bool `json:"scheduledScanEnabled"`
+	// AgentPoolID is the agent pool that runs discovery workflows for this
+	// account; empty means the default agent pool.
+	AgentPoolID string `json:"agentPoolID,omitempty"`
+	// ProviderConfig is the provider-specific configuration for the account.
+	// Passed through as JSON because the shape varies per provider.
+	ProviderConfig json.RawMessage `json:"providerConfig,omitempty"`
+	// OwnedBy is the display information for the user that owns the account.
+	OwnedBy InsightsAccountOwner `json:"ownedBy"`
+	// ScanStatus is the most recent discovery run for the account.
+	ScanStatus *InsightsAccountScanStatus `json:"scanStatus,omitempty"`
+}
+
+// InsightsAccountOwner is the display information for an Insights account's
+// owner. Mirrors the cloud `UserInfo` schema, restricted to the fields the
+// ListAccounts response includes.
+type InsightsAccountOwner struct {
+	Name        string `json:"name"`
+	GitHubLogin string `json:"githubLogin"`
+	AvatarURL   string `json:"avatarUrl"`
+}
+
+// InsightsAccountScanStatus describes the most recent discovery workflow run
+// for an Insights account, as returned alongside the account record. The
+// related but distinct `InsightsScanResponse` is the full WorkflowRun shape
+// returned synchronously from ScanAccount; this one is a per-account summary
+// returned alongside a ListAccounts row.
+type InsightsAccountScanStatus struct {
+	// AccountName is the name of the Insights account this scan belongs to.
+	AccountName string `json:"accountName,omitempty"`
+	// ID is the unique identifier of the workflow run.
+	ID string `json:"id"`
+	// OrgID is the organization ID the workflow ran under.
+	OrgID string `json:"orgId"`
+	// ResourceCount is the number of resources discovered by this scan, when
+	// the scan has completed.
+	ResourceCount int64 `json:"resourceCount,omitempty"`
+	// UserID is the user that initiated the workflow run.
+	UserID string `json:"userId"`
+	// Status is the run's current status: `running`, `failed`, or `succeeded`.
+	Status string `json:"status"`
+	// StartedAt is the time the workflow run started.
+	StartedAt time.Time `json:"startedAt"`
+	// FinishedAt is the time the workflow run finished, if it has completed.
+	FinishedAt *time.Time `json:"finishedAt"`
+	// LastUpdatedAt is the time the workflow run was last updated.
+	LastUpdatedAt time.Time `json:"lastUpdatedAt"`
+	// JobTimeout is the deadline for jobs in the workflow run.
+	JobTimeout time.Time `json:"jobTimeout"`
+}
+
+// InsightsScanRequest configures a scan started via the Pulumi Insights
+// ScanAccount endpoint. Every field is optional; zero values are omitted from
+// the JSON payload so the server can fall back to its own defaults.
+type InsightsScanRequest struct {
+	// AgentPoolID is the ID of the agent pool to use for scanning. Empty
+	// selects the default agent pool.
+	AgentPoolID string `json:"agentPoolID,omitempty"`
+	// ListConcurrency caps the parallelism of list operations during the scan.
+	ListConcurrency int64 `json:"listConcurrency,omitempty"`
+	// ReadConcurrency caps the parallelism of read operations during the scan.
+	ReadConcurrency int64 `json:"readConcurrency,omitempty"`
+	// BatchSize is the number of resources processed in a single batch.
+	BatchSize int64 `json:"batchSize,omitempty"`
+	// ReadTimeout is the per-read timeout as a Go duration string (e.g. "30s",
+	// "5m"). Empty leaves the server-side default in place.
+	ReadTimeout string `json:"readTimeout,omitempty"`
+}
+
+// InsightsScanResponse is the workflow run returned by the Pulumi Insights
+// ScanAccount endpoint. The shape mirrors the OpenAPI `WorkflowRun` schema.
+// Related to `InsightsAccountScanStatus`, which is the per-account summary
+// embedded in ListAccounts rows.
+//
+// The service currently responds with 204 No Content on success, so the
+// in-tree CLI surfaces the zero value of this struct for successful scans.
+// The fields are kept in place so we pick the payload up automatically when
+// the server starts returning it.
+type InsightsScanResponse struct {
+	// ID is the unique identifier of the workflow run. It is also the scan ID
+	// used by follow-up endpoints (e.g. ReadScanStatus, GetScanLogs).
+	ID string `json:"id"`
+	// OrgID is the organization that owns the scan.
+	OrgID string `json:"orgId"`
+	// UserID is the user that initiated the scan.
+	UserID string `json:"userId"`
+	// Status is the workflow status: "running", "failed", or "succeeded". A
+	// freshly initiated scan reports "running".
+	Status string `json:"status"`
+	// StartedAt is when the workflow run began.
+	StartedAt time.Time `json:"startedAt"`
+	// FinishedAt is when the workflow run completed. Zero when still running.
+	FinishedAt time.Time `json:"finishedAt"`
+	// LastUpdatedAt is the most recent state-change timestamp.
+	LastUpdatedAt time.Time `json:"lastUpdatedAt"`
+	// JobTimeout is the deadline for jobs in the workflow run. Modeled as a
+	// timestamp on the wire (not a duration), matching the OpenAPI schema.
+	JobTimeout time.Time `json:"jobTimeout"`
+	// Jobs is the list of job runs within the workflow. Empty for a scan that
+	// has not been scheduled yet.
+	Jobs []InsightsScanJobRun `json:"jobs,omitempty"`
+}
+
+// InsightsScanJobRun is one job within an Insights scan workflow.
+type InsightsScanJobRun struct {
+	// Status is the job status: one of "not-started", "accepted", "running",
+	// "failed", "succeeded", "skipped".
+	Status string `json:"status"`
+	// Started is when the job began running. Zero before then.
+	Started time.Time `json:"started,omitempty"`
+	// LastUpdated is the most recent state-change timestamp for the job.
+	LastUpdated time.Time `json:"lastUpdated,omitempty"`
+	// Timeout is the per-job timeout in nanoseconds (Go time.Duration).
+	Timeout int64 `json:"timeout"`
+	// Steps is the ordered list of steps within the job.
+	Steps []InsightsScanStepRun `json:"steps"`
+	// Worker is opaque metadata about the worker executing the job. The shape
+	// is server-defined and forwarded verbatim.
+	Worker json.RawMessage `json:"worker,omitempty"`
+}
+
+// InsightsScanStepRun is one step within an Insights scan job.
+type InsightsScanStepRun struct {
+	// Name is the step name.
+	Name string `json:"name"`
+	// Status is the step status: one of "not-started", "running", "failed",
+	// "succeeded".
+	Status string `json:"status"`
+	// Started is when the step began running. Zero before then.
+	Started time.Time `json:"started,omitempty"`
+	// LastUpdated is the most recent state-change timestamp for the step.
+	LastUpdated time.Time `json:"lastUpdated,omitempty"`
+}
+
+// InsightsScanLogsParams are the query parameters for GetScanLogs. The endpoint
+// has two modes; setting Job switches from continuation-token mode to step mode.
+//
+// Job, Step, and Offset are pointers because zero is a legitimate index in the
+// underlying API.
+type InsightsScanLogsParams struct {
+	ContinuationToken string `url:"continuationToken,omitempty"`
+	Count             int    `url:"count,omitempty"`
+	Job               *int   `url:"job,omitempty"`
+	Step              *int   `url:"step,omitempty"`
+	Offset            *int64 `url:"offset,omitempty"`
+}
+
+// InsightsScanLogs is the response from GetScanLogs. Type is the
+// DeploymentLogsBase discriminator; only the fields relevant to the active
+// mode (continuation-token vs step) are populated.
+type InsightsScanLogs struct {
+	Type              string                `json:"__type,omitempty"`
+	Lines             []InsightsScanLogLine `json:"lines,omitempty"`
+	ContinuationToken string                `json:"continuationToken,omitempty"`
+	Output            string                `json:"output,omitempty"`
+	NextOffset        int64                 `json:"nextOffset,omitempty"`
+}
+
+// InsightsScanLogLine mirrors apitype.DeploymentLogLine.
+type InsightsScanLogLine struct {
+	Header    string    `json:"header,omitempty"`
+	Timestamp time.Time `json:"timestamp,omitempty"`
+	Line      string    `json:"line,omitempty"`
 }

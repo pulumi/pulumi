@@ -57,7 +57,7 @@ func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Co
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List all webhooks configured for a stack",
+		Short: "[EXPERIMENTAL] List all webhooks configured for a stack",
 		Long: "[EXPERIMENTAL] List all webhooks configured for a stack.\n" +
 			"\n" +
 			"Displays the ID, name, payload URL, format, event groups, events, and active\n" +
@@ -75,7 +75,7 @@ func newStackWebhookListCmdWith(factory stackWebhookListClientFactory) *cobra.Co
 
 	cmd.Flags().StringVarP(&stack, "stack", "s", "",
 		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVarP(&output, "output", "o", "default",
+	cmd.Flags().StringVar(&output, "output", "default",
 		"The output format: default (human-readable table) or json")
 
 	return cmd
@@ -276,18 +276,57 @@ func renderWebhookListTable(w io.Writer, webhooks []apitype.Webhook) error {
 		t.AppendRow(row)
 	}
 
-	// Let URL absorb remaining width.
+	// Wrap URL, EVENT GROUPS, and EVENTS to fit the terminal.
+	// Compute actual widths of fixed columns from the data so flex columns
+	// get an accurate share of the remaining space.
 	cols := cmdCmd.StdoutWidth()
-	// 3 chars per column separator + 1 outer border each side = 3*ncols + 1.
 	borderWidth := 3*len(header) + 1
-	fixedColsWidth := 40 // rough room for the non-URL columns
-	urlWidth := cols - borderWidth - fixedColsWidth
-	if urlWidth < 20 {
-		urlWidth = 20
+	idWidth, nameWidth, activeWidth, formatWidth := len("ID"), len("NAME"), len("ACTIVE"), len("FORMAT")
+	for _, r := range rows {
+		if len(r.id) > idWidth {
+			idWidth = len(r.id)
+		}
+		if len(r.name) > nameWidth {
+			nameWidth = len(r.name)
+		}
+		if len(r.active) > activeWidth {
+			activeWidth = len(r.active)
+		}
+		if len(r.format) > formatWidth {
+			formatWidth = len(r.format)
+		}
 	}
-	t.SetColumnConfigs([]table.ColumnConfig{
-		{Name: "URL", WidthMax: urlWidth, WidthMaxEnforcer: text.WrapText},
-	})
+	fixedWidth := borderWidth + idWidth + activeWidth
+	if hasName {
+		fixedWidth += nameWidth
+	}
+	if hasFormat {
+		fixedWidth += formatWidth
+	}
+	flexCols := 1 // URL always present
+	if hasGroups {
+		flexCols++
+	}
+	if hasEvents {
+		flexCols++
+	}
+	remaining := cols - fixedWidth
+	if remaining < 20*flexCols {
+		remaining = 20 * flexCols
+	}
+	flexWidth := remaining / flexCols
+	colConfigs := []table.ColumnConfig{
+		{Name: "URL", WidthMax: flexWidth, WidthMaxEnforcer: text.WrapText},
+	}
+	if hasGroups {
+		colConfigs = append(colConfigs,
+			table.ColumnConfig{Name: "EVENT GROUPS", WidthMax: flexWidth, WidthMaxEnforcer: text.WrapText})
+	}
+	if hasEvents {
+		colConfigs = append(colConfigs,
+			table.ColumnConfig{Name: "EVENTS", WidthMax: flexWidth, WidthMaxEnforcer: text.WrapText})
+	}
+	t.SetColumnConfigs(colConfigs)
 	t.Render()
 
 	fmt.Fprintf(w, "\n%d webhook(s)\n", len(webhooks))

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli
-  description: Add `pulumi stack webhook list` to list all webhooks configured for a stack

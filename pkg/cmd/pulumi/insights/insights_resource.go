@@ -23,7 +23,7 @@ import (
 func newInsightsResourceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "resource",
-		Short: "Inspect resources discovered by Pulumi Insights",
+		Short: "[EXPERIMENTAL] Inspect resources discovered by Pulumi Insights",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},

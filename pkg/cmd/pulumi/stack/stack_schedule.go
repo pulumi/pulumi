@@ -15,20 +15,137 @@
 package stack
 
 import (
-	"errors"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
-// TODO[https://github.com/pulumi/pulumi/issues/23050]: Not yet implemented.
+// parseScheduleTimestamp normalizes a schedule timestamp to the ISO 8601 form the service's request expects. It accepts
+// either that form (what users type into --once) or the SQL-style "2006-01-02 15:04:05.000" format the Cloud API
+// returns in response bodies
+func parseScheduleTimestamp(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.UTC().Format(time.RFC3339), nil
+	}
+	if t, err := time.ParseInLocation("2006-01-02 15:04:05.999", s, time.UTC); err == nil {
+		return t.Format(time.RFC3339), nil
+	}
+	return "", fmt.Errorf(
+		"invalid timestamp %q: must be ISO 8601 (e.g. 2026-12-31T23:59:00Z)", s,
+	)
+}
+
+const (
+	scheduleKindRaw   = "raw"
+	scheduleKindDrift = "drift"
+	scheduleKindTTL   = "ttl"
+)
+
+type scheduleSummary struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Settings string `json:"settings"`
+	Schedule string `json:"schedule"`
+	NextRun  string `json:"nextRun,omitempty"`
+	LastRun  string `json:"lastRun,omitempty"`
+	Created  string `json:"created,omitempty"`
+}
+
+// scheduleKindLabel returns the user-facing schedule kind (raw / drift / ttl) matching
+// the Cloud UI.
+//
+//   - operation == detect-drift                       -> drift
+//   - operation == destroy && operationContext != nil -> ttl
+//   - operation == destroy && operationContext == nil -> raw
+//   - anything else                                   -> raw
+func scheduleKindLabel(s apitype.ScheduledAction) string {
+	if s.Kind != apitype.ScheduledActionKindDeployment {
+		return string(s.Kind)
+	}
+	var def apitype.ScheduledDeploymentDefinition
+	if err := json.Unmarshal(s.Definition, &def); err != nil || def.Request == nil {
+		return scheduleKindRaw
+	}
+	req := def.Request
+	if req.Op == apitype.DetectDrift {
+		return scheduleKindDrift
+	}
+	if req.Op == apitype.Destroy && req.Operation != nil {
+		return scheduleKindTTL
+	}
+	return scheduleKindRaw
+}
+
+func summarizeSchedule(s apitype.ScheduledAction) scheduleSummary {
+	lastRun := ""
+	if s.LastExecuted != nil {
+		lastRun = *s.LastExecuted
+	}
+	return scheduleSummary{
+		ID:       s.ID,
+		Type:     scheduleKindLabel(s),
+		Settings: scheduleSettings(s),
+		Schedule: formatSchedule(s),
+		NextRun:  s.NextExecution,
+		LastRun:  lastRun,
+		Created:  s.Created,
+	}
+}
+
+// scheduleSettings returns a compact, user-readable summary of what the schedule does,
+// modeled on the Cloud UI's Settings column.
+//
+//	"detect"                  — drift detection only
+//	"detect + auto-remediate" — drift detection that auto-applies a remediation update
+//	"destroy"                 — TTL destroy
+//	"destroy + delete stack"  — TTL destroy that also deletes the stack from Pulumi Cloud
+//	"pulumi update"           — raw schedule running a Pulumi operation
+func scheduleSettings(s apitype.ScheduledAction) string {
+	if s.Kind != apitype.ScheduledActionKindDeployment {
+		return ""
+	}
+	var def apitype.ScheduledDeploymentDefinition
+	if err := json.Unmarshal(s.Definition, &def); err != nil || def.Request == nil {
+		return ""
+	}
+	req := def.Request
+	var opts apitype.OperationContextOptions
+	if req.Operation != nil && req.Operation.Options != nil {
+		opts = *req.Operation.Options
+	}
+	//exhaustive:ignore // other operations fall through to the default branch.
+	switch req.Op {
+	case apitype.DetectDrift:
+		parts := []string{"detect"}
+		if opts.RemediateIfDriftDetected {
+			parts = append(parts, "auto-remediate")
+		}
+		return strings.Join(parts, " + ")
+	case apitype.Destroy:
+		parts := []string{"destroy"}
+		if opts.DeleteAfterDestroy {
+			parts = append(parts, "delete stack")
+		}
+		return strings.Join(parts, " + ")
+	default:
+		return "pulumi " + string(req.Op)
+	}
+}
+
 func newStackScheduleCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "schedule",
-		Short:  "Manage scheduled deployment actions for a stack",
-		Long:   "[EXPERIMENTAL] Manage scheduled deployment actions for a stack.",
+		Use:   "schedule",
+		Short: "[EXPERIMENTAL] Manage scheduled deployment actions for a stack.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -41,152 +158,5 @@ func newStackScheduleCmd() *cobra.Command {
 	cmd.AddCommand(newStackScheduleGetCmd())
 	cmd.AddCommand(newStackScheduleEditCmd())
 	cmd.AddCommand(newStackScheduleRemoveCmd())
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23049]: Not yet implemented.
-func newStackScheduleListCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List all scheduled actions configured for a stack",
-		Long:   "[EXPERIMENTAL] List all scheduled actions configured for a stack.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23048]: Not yet implemented.
-func newStackScheduleNewCmd() *cobra.Command {
-	var (
-		stack     string
-		cron      string
-		once      string
-		operation string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "new",
-		Short:  "Create a custom deployment schedule for a stack",
-		Long:   "[EXPERIMENTAL] Create a custom deployment schedule for a stack.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&cron, "cron", "",
-		"A cron expression for recurring executions (e.g. '0 */4 * * *')")
-	cmd.Flags().StringVar(&once, "once", "",
-		"An ISO 8601 timestamp for a one-time execution")
-	cmd.Flags().StringVar(&operation, "operation", "",
-		"The Pulumi operation to perform: update, preview, refresh, or destroy")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23047]: Not yet implemented.
-func newStackScheduleGetCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Retrieve the configuration of a scheduled action",
-		Long:   "[EXPERIMENTAL] Retrieve the configuration of a scheduled action.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "schedule-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23046]: Not yet implemented.
-func newStackScheduleEditCmd() *cobra.Command {
-	var (
-		stack     string
-		cron      string
-		once      string
-		operation string
-	)
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "edit",
-		Short:  "Update the configuration of a custom deployment schedule",
-		Long:   "[EXPERIMENTAL] Update the configuration of a custom deployment schedule.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "schedule-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().StringVar(&cron, "cron", "",
-		"A cron expression for recurring executions")
-	cmd.Flags().StringVar(&once, "once", "",
-		"An ISO 8601 timestamp for a one-time execution")
-	cmd.Flags().StringVar(&operation, "operation", "",
-		"The Pulumi operation to perform: update, preview, refresh, or destroy")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23045]: Not yet implemented.
-func newStackScheduleRemoveCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "remove",
-		Short:  "Permanently delete a scheduled deployment action",
-		Long:   "[EXPERIMENTAL] Permanently delete a scheduled deployment action.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, &constrictor.Arguments{
-		Arguments: []constrictor.Argument{
-			{Name: "schedule-id"},
-		},
-		Required: 1,
-	})
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
 	return cmd
 }

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/package
-  description: When invoked by an AI coding agent, print `pulumi api` pointers after `pulumi package add` and `pulumi package gen-sdk`

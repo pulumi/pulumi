@@ -109,7 +109,7 @@ func (p *EnumProvider) CheckConfig(
 
 func (p *EnumProvider) GetPluginInfo(context.Context) (plugin.PluginInfo, error) {
 	return plugin.PluginInfo{
-		Version: ref(p.version()),
+		Version: ptr(p.version()),
 	}, nil
 }
 

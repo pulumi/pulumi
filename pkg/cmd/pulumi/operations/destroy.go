@@ -67,6 +67,7 @@ func NewDestroyCmd() *cobra.Command {
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
+	var output string
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int32
@@ -128,6 +129,16 @@ func NewDestroyCmd() *cobra.Command {
 				return backenderr.NoConfirmationInNonInteractiveError{}
 			}
 
+			// Validate --output up front. We keep the existing --json flag (which
+			// emits a JSONL stream of engine events) backwards compatible, and
+			// only emit the structured operation summary when --output=json.
+			switch output {
+			case "default", "json":
+				// No-op.
+			default:
+				return fmt.Errorf("invalid --output value %q (expected %q or %q)", output, "default", "json")
+			}
+
 			opts, err := updateFlagsToOptions(interactive, skipPreview, yes, previewOnly)
 			if err != nil {
 				return err
@@ -152,6 +163,7 @@ func NewDestroyCmd() *cobra.Command {
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
 				JSONDisplay:          jsonDisplay,
+				SummaryJSON:          output == "json",
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -295,7 +307,7 @@ func NewDestroyCmd() *cobra.Command {
 				if err != nil {
 					return err
 				} else if protectedCount == len(snapshot.Resources) {
-					if !jsonDisplay {
+					if !jsonDisplay && output != "json" {
 						fmt.Printf("There were no unprotected resources to destroy. There are still %d"+
 							" protected resources associated with this stack.\n", protectedCount)
 					}
@@ -339,11 +351,11 @@ func NewDestroyCmd() *cobra.Command {
 				Scopes:             backend.CancellationScopes,
 			})
 
-			if destroyErr == nil && protectedCount > 0 && !jsonDisplay {
+			if destroyErr == nil && protectedCount > 0 && !jsonDisplay && output != "json" {
 				fmt.Printf("All unprotected resources were destroyed. There are still %d protected resources"+
 					" associated with this stack.\n", protectedCount)
 			} else if destroyErr == nil && len(*targets) == 0 {
-				if !jsonDisplay && !remove && !previewOnly {
+				if !jsonDisplay && output != "json" && !remove && !previewOnly {
 					fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 						"associated with the stack are still maintained. \nIf you want to remove the stack "+
 						"completely, run `pulumi stack rm %s`.\n", s.Ref())
@@ -356,7 +368,7 @@ func NewDestroyCmd() *cobra.Command {
 					if _, path, detectErr := workspace.DetectProjectStackPath(s.Ref().Name().Q()); detectErr == nil {
 						if detectErr = os.Remove(path); detectErr != nil && !os.IsNotExist(detectErr) {
 							return detectErr
-						} else if !jsonDisplay {
+						} else if !jsonDisplay && output != "json" {
 							fmt.Printf("The resources in the stack have been deleted, and the history and " +
 								"configuration removed.\n")
 						}
@@ -430,6 +442,12 @@ func NewDestroyCmd() *cobra.Command {
 	cmd.Flags().BoolVarP(
 		&jsonDisplay, "json", "j", false,
 		"Serialize the destroy diffs, operations, and overall output as JSON")
+	cmd.Flags().StringVar(
+		&output, "output", "default",
+		"Output format. Supported values are: default, json")
+	// Hidden until --output is wired up across all operations (preview, refresh, ...).
+	_ = cmd.Flags().MarkHidden("output")
+	cmd.MarkFlagsMutuallyExclusive("json", "output")
 	cmd.PersistentFlags().Int32VarP(
 		&parallel, "parallel", "p", defaultParallel(),
 		"Allow P resource operations to run in parallel at once (1 for no parallelism).")

@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/neo/tools"
 	"github.com/pulumi/pulumi/pkg/v3/display"
@@ -100,6 +100,8 @@ func (m *Model) renderPulumiBlock(st *pulumiBlockState) string {
 	header := pulumiHeaderStyle.Render(title)
 	var status string
 	switch {
+	case !st.done && len(st.resources) == 0:
+		status = pulumiMetaStyle.Render(" · preparing")
 	case !st.done:
 		status = pulumiMetaStyle.Render(" · running")
 	case st.err != "":

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Ignore property values that do not conform to the schema in maps

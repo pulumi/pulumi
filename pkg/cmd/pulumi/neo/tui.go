@@ -19,11 +19,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textarea"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/glamour"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
@@ -62,6 +63,15 @@ type approvalDebounceTickMsg struct {
 
 type permissionDebounceTickMsg struct {
 	gen int
+}
+
+// firstFlushReadyMsg defers the welcome banner / pre-seeded blocks to
+// tea.Println until after bubbletea v2's first renderer flush. Calling
+// Println inside the WindowSizeMsg handler runs while cellbuf is still
+// sized to the terminal, so insertAbove would scroll a screenful of blank
+// lines above the prompt.
+type firstFlushReadyMsg struct {
+	rendered []string
 }
 
 // blockKind identifies the type of rendered block in the output log.
@@ -195,10 +205,16 @@ type ModelConfig struct {
 // an in-flight pulumi op that hasn't received UIPulumiEnd yet.
 type Model struct {
 	welcome   welcomeModel
-	textInput textinput.Model
-	blocks    []block
-	eventCh   <-chan UIEvent
-	outCh     chan<- outboundEvent
+	textInput textarea.Model
+	// approvalPromptText, when non-empty, is rendered as a header line above
+	// the textarea. Used in pending-approval and ask-user-question states
+	// where the chrome that used to live in textinput.Prompt has nowhere to
+	// go in a multi-line textarea (textarea's Prompt is per-line, not a
+	// global prefix). Cleared by clearPendingPrompt.
+	approvalPromptText string
+	blocks             []block
+	eventCh            <-chan UIEvent
+	outCh              chan<- outboundEvent
 	// sizeReceived flips on the first WindowSizeMsg. The first resize is also
 	// the moment we know the terminal width, so it's when we emit the welcome
 	// banner and any pre-seeded committed blocks (e.g. an InitialPrompt user
@@ -291,7 +307,10 @@ type Model struct {
 	hasEmittedScrollback bool
 	// pendingTodos buffers the latest UITodoList while planMode is true so
 	// the list lands inside the same block as the Proposed plan, not above it.
-	pendingTodos []UITodoItem
+	pendingTodos  []UITodoItem
+	toolHistory   []toolCallRecord
+	overlayActive bool
+	overlay       overlayModel
 }
 
 var (
@@ -379,12 +398,42 @@ func renderIndented(style lipgloss.Style, termWidth int, content string) string 
 
 // NewModel creates a new TUI Model.
 func NewModel(cfg ModelConfig) Model {
-	ti := textinput.New()
-	ti.Prompt = "❯ "
-	ti.PromptStyle = promptStyle
+	ti := textarea.New()
 	ti.Placeholder = "Send a message..."
-	ti.Focus()
 	ti.CharLimit = 4096
+	ti.ShowLineNumbers = false
+	// DynamicHeight starts the input at one visible line and grows it as the
+	// user adds newlines, capped at MaxHeight so a long paste scrolls inside
+	// the textarea rather than pushing scrollback off-screen.
+	ti.DynamicHeight = true
+	ti.MinHeight = 1
+	// MaxHeight=0 disables both the visual cap and atContentLimit, so the
+	// textarea grows with content. CharLimit is the real upper bound.
+	ti.MaxHeight = 0
+	// textarea defaults to height 6 and only recalculates inside SetWidth.
+	// Force the first frame to 1 line so there's no gap above the welcome
+	// banner before the WindowSizeMsg handler fires.
+	ti.SetHeight(1)
+	// First line carries the prompt chevron; subsequent lines indent to keep
+	// continuation lines visually aligned under the chevron.
+	ti.SetPromptFunc(2, func(info textarea.PromptInfo) string {
+		if info.LineNumber == 0 {
+			return "❯ "
+		}
+		return "  "
+	})
+	styles := ti.Styles()
+	styles.Focused.Prompt = promptStyle
+	styles.Blurred.Prompt = promptStyle
+	ti.SetStyles(styles)
+	// Keep Enter as submit. Shift+Enter / Alt+Enter need kitty keyboard
+	// protocol; Ctrl+J (== LF) is the portable fallback. Trailing backslash
+	// + Enter inserts a newline via the bare-Enter branch of Update.
+	ti.KeyMap.InsertNewline = key.NewBinding(
+		key.WithKeys("shift+enter", "alt+enter", "ctrl+j"),
+		key.WithHelp("shift+enter / alt+enter / ctrl+j", "newline"),
+	)
+	ti.Focus()
 
 	sp := spinner.New(
 		spinner.WithSpinner(spinner.MiniDot),
@@ -411,6 +460,7 @@ func NewModel(cfg ModelConfig) Model {
 		taskCreated:    cfg.TaskCreated,
 		approvalMode:   cfg.InitialApprovalMode,
 		permissionMode: cfg.InitialPermissionMode,
+		overlay:        newOverlayModel(80, 24),
 	}
 	if cfg.InitialPrompt != "" {
 		// Render the initial-prompt block now so tests can find it via
@@ -431,7 +481,7 @@ func NewModel(cfg ModelConfig) Model {
 
 // Init returns the initial command that starts listening for events.
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{waitForEvent(m.eventCh), textinput.Blink}
+	cmds := []tea.Cmd{waitForEvent(m.eventCh), textarea.Blink}
 	if m.busy {
 		cmds = append(cmds, m.spinner.Tick)
 	}
@@ -449,7 +499,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		safeWidth := m.liveWidth()
 		m.welcome.termWidth = safeWidth
-		m.textInput.Width = max(safeWidth-lipgloss.Width(m.textInput.Prompt)-1, 1)
+		// SetWidth accounts for the prompt width registered via SetPromptFunc.
+		m.textInput.SetWidth(max(safeWidth, 3))
+		m.overlay.SetSize(m.width, m.height)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 
 		// Glamour's wrap width is baked in at construction, so rebuild on resize.
 		// Wrap at liveWidth-4 so glamour-rendered output (assistant finals, plan
@@ -469,12 +524,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderBlock(&m.blocks[i])
 		}
 		if firstSize {
-			cmds = append(cmds, m.printlnBlock(m.welcome.View()))
+			rendered := []string{m.welcome.View()}
 			for _, b := range m.blocks {
 				if isCommittedKind(b) && b.rendered != "" {
-					cmds = append(cmds, m.printlnBlock(b.rendered))
+					rendered = append(rendered, b.rendered)
 				}
 			}
+			// 50ms covers ~3 ticks at bubbletea's 60Hz default — see
+			// firstFlushReadyMsg for why we defer at all.
+			cmds = append(cmds, tea.Tick(50*time.Millisecond, func(time.Time) tea.Msg {
+				return firstFlushReadyMsg{rendered: rendered}
+			}))
+		}
+
+	case firstFlushReadyMsg:
+		for _, r := range msg.rendered {
+			cmds = append(cmds, m.printlnBlock(r))
 		}
 
 	case ctrlCDisarmMsg:
@@ -509,11 +574,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
+		keyStr := msg.String()
+		// While the overlay is open, ctrl+o / esc / ctrl+c / ctrl+d all close
+		// it; scroll keys go to the viewport; everything else is swallowed so
+		// it can't leak into the hidden input bar. Closing on ctrl+c/d means a
+		// reflexive "abort" tap dismisses the overlay rather than killing the
+		// session — the user can press ctrl+c again from the inline view to
+		// quit. Alt-screen toggling happens in View() via tea.View.AltScreen.
+		if m.overlayActive {
+			switch keyStr {
+			case "ctrl+o", "esc", "ctrl+c", "ctrl+d":
+				m.overlayActive = false
+				return m, nil
+			case "up", "down", "pgup", "pgdown", "home", "end":
+				return m, m.overlay.Update(msg)
+			default:
+				return m, nil
+			}
+		}
 		// Ctrl+D mirrors Ctrl+C: same arm/quit gate, same cancel-when-busy
 		// semantics. Two bindings is friendlier than picking one and forcing
 		// users to discover it.
-		if msg.Type == tea.KeyCtrlC || msg.Type == tea.KeyCtrlD {
+		if keyStr == "ctrl+c" || keyStr == "ctrl+d" {
 			if m.ctrlCArmed {
 				return m, tea.Quit
 			}
@@ -537,12 +620,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// will fire later but no-op because ctrlCArmed is already false.
 		m.ctrlCArmed = false
 
+		// Ctrl+O opens the overlay. Sits above the busy/approval gates so
+		// users can peek mid-turn. Closing is handled by the overlayActive
+		// branch above. Alt-screen toggling happens in View() via the
+		// tea.View.AltScreen field.
+		if keyStr == "ctrl+o" {
+			m.overlayActive = true
+			m.overlay.SetSize(m.width, m.height)
+			m.overlay.Refresh(m.toolHistory)
+			return m, nil
+		}
+
 		// Shift+Tab toggles plan mode. The toggle must run before the approval
 		// and busy guards so users can flip the indicator at any point in the
 		// pre-task window, even while the startup spinner is up. It also has to
-		// intercept the key before textinput.Update sees it, since textinput
+		// intercept the key before textarea.Update sees it, since textarea
 		// otherwise treats Shift+Tab as a keypress with no visible effect.
-		if msg.Type == tea.KeyShiftTab {
+		if keyStr == "shift+tab" {
 			if m.messageSent {
 				// Plan mode is task-level on the wire and gets snapshotted at
 				// the moment the first message is sent. A post-send toggle
@@ -566,7 +660,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// drop the update. Swallow the keypress in that window so the status
 		// bar can't get out of sync with the cloud — the user can press again
 		// once the task URL arrives.
-		if msg.Type == tea.KeyCtrlA {
+		if keyStr == "ctrl+a" {
 			if m.messageSent && !m.taskCreated {
 				return m, nil
 			}
@@ -580,7 +674,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Ctrl+R toggles the permission mode (default ↔ read-only). Same
 		// pre/post-send semantics — and the same create-task race window and
 		// debounce mechanics — as the approval-mode cycle above.
-		if msg.Type == tea.KeyCtrlR {
+		if keyStr == "ctrl+r" {
 			if m.messageSent && !m.taskCreated {
 				return m, nil
 			}
@@ -597,7 +691,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// cancelled / error / a new final assistant_message. Ignored when the
 		// TUI isn't busy or is already waiting on an approval (where the
 		// agent is paused for us anyway).
-		if msg.Type == tea.KeyEsc {
+		if keyStr == "esc" {
 			if m.busy && !m.pendingApproval && !m.cancelling {
 				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
 				m.cancelling = true
@@ -609,7 +703,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Handled before the busy check because the agent is intentionally
 		// paused here waiting for the user.
 		if m.pendingApproval {
-			if msg.Type == tea.KeyEnter {
+			if keyStr == "enter" {
 				text := strings.TrimSpace(m.textInput.Value())
 				if m.pendingIsQuestion {
 					if text == "" {
@@ -666,13 +760,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tiCmd
 		}
 
-		if msg.Type == tea.KeyEnter {
+		if keyStr == "enter" {
 			if m.busy {
 				// Agent is mid-turn — leave the typed text in the input so
 				// the user can send it after the next UITaskIdle.
 				return m, nil
 			}
-			text := strings.TrimSpace(m.textInput.Value())
+			raw := m.textInput.Value()
+			// Backslash-Enter: a trailing `\` rewrites this Enter from submit
+			// to newline, so users on terminals that can't distinguish
+			// Shift+Enter still have a way to add a line.
+			if stripped, ok := strings.CutSuffix(raw, "\\"); ok {
+				m.textInput.SetValue(stripped)
+				m.textInput.InsertRune('\n')
+				return m, nil
+			}
+			text := strings.TrimSpace(raw)
 			// Typing `quit` or `exit` and pressing Enter cleanly closes the
 			// session, complementing Ctrl+C / Ctrl+D for users who reach for
 			// shell-style commands first. Strict whole-input match so messages
@@ -734,6 +837,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolStarted:
+		m.toolHistory = appendToolStart(m.toolHistory, msg.Name, msg.Args)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 		cmds = append(cmds, m.applyBusyForEvent(msg))
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -742,6 +849,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	case UIToolCompleted:
+		completeToolCall(m.toolHistory, msg.Name, msg.Result, msg.IsError)
+		if m.overlayActive {
+			m.overlay.Refresh(m.toolHistory)
+		}
 		marker := toolOKMarker
 		if msg.IsError {
 			marker = toolErrMarker
@@ -890,7 +1001,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.pendingApprovalID = msg.ApprovalID
 		m.pendingApprovalType = msg.ApprovalType
 		m.pendingIsQuestion = false
-		m.textInput.PromptStyle = warningStyle
 		m.textInput.Placeholder = ""
 		m.textInput.Reset()
 		switch {
@@ -900,15 +1010,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			planBlock := block{kind: blockApprovalPlan, raw: msg.PlanDescription, todos: m.pendingTodos}
 			m.pendingTodos = nil
 			cmds = append(cmds, m.commitBlock(planBlock))
-			m.textInput.Prompt = "Approve plan? [y to approve / reason to deny]: "
+			m.approvalPromptText = warningStyle.Render("Approve plan? [y to approve / reason to deny]:")
 		case isAskUserToolName(msg.ToolName):
 			m.pendingIsQuestion = true
 			cmds = append(cmds, m.commitBlock(block{kind: blockQuestion, raw: msg.Message}))
-			m.textInput.Prompt = "Your answer: "
-			m.textInput.PromptStyle = promptStyle
+			m.approvalPromptText = promptStyle.Render("Your answer:")
 		default:
 			cmds = append(cmds, m.commitBlock(block{kind: blockApprovalGeneral, raw: msg.Message}))
-			m.textInput.Prompt = "Approve? [y to approve / reason to deny]: "
+			m.approvalPromptText = warningStyle.Render("Approve? [y to approve / reason to deny]:")
 		}
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
@@ -931,7 +1040,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, waitForEvent(m.eventCh))
 
 	default:
-		// Pass unhandled messages to textinput (e.g. blink).
+		// Pass unhandled messages to the textarea (e.g. blink).
 		var tiCmd tea.Cmd
 		m.textInput, tiCmd = m.textInput.Update(msg)
 		cmds = append(cmds, tiCmd)
@@ -943,11 +1052,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View returns the rendered live frame: live blocks (busy spinner, in-flight
 // streaming, in-flight pulumi op) above the input bar. Completed blocks aren't
 // drawn here — they were committed to terminal scrollback via tea.Println as
-// soon as they reached a terminal state.
-func (m Model) View() string {
-	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · ctrl+r read-only · ctrl+c to quit"
+// soon as they reached a terminal state. When the overlay is open the
+// inline frame is suspended and the alt-screen overlay view is returned
+// instead (with View.AltScreen=true so bubbletea v2 enters the alt buffer).
+func (m Model) View() tea.View {
+	if m.overlayActive {
+		v := tea.NewView(m.overlay.View())
+		v.AltScreen = true
+		return v
+	}
+	return tea.NewView(m.viewString())
+}
+
+// viewString builds the live frame as a plain string. Kept separate from View
+// so tests (and the View() wrapper) can compose its output without unpacking
+// the tea.View struct.
+func (m Model) viewString() string {
+	hintText := "enter to send · shift+tab plan · ctrl+a auto-approval · " +
+		"ctrl+r read-only · ctrl+o tool details · ctrl+c to quit"
 	if m.busy {
-		hintText = "agent is working · enter disabled · esc or ctrl+c to cancel"
+		hintText = "agent is working · enter disabled · ctrl+o tool details · esc or ctrl+c to cancel"
 	}
 	hint := "  "
 	chips := m.modeChips()
@@ -970,10 +1094,13 @@ func (m Model) View() string {
 	// as part of the same input zone, and a chat-style spinner pinned to the
 	// prompt is what users expect. The prompt and hint stay adjacent for
 	// the same reason.
-	parts := make([]string, 0, 4)
+	parts := make([]string, 0, 5)
 	parts = append(parts, "")
 	if live := m.liveView(); live != "" {
 		parts = append(parts, live)
+	}
+	if m.approvalPromptText != "" {
+		parts = append(parts, "  "+m.approvalPromptText)
 	}
 	parts = append(parts, m.textInput.View(), hint)
 	return strings.Join(parts, "\n")
@@ -1003,7 +1130,7 @@ func (m Model) modeChips() string {
 
 // liveWidth returns the width to use when rendering live-frame content:
 // the terminal width minus a small cushion that keeps glamour, lipgloss,
-// and the textinput off the wrap column.
+// and the textarea off the wrap column.
 func (m *Model) liveWidth() int {
 	const (
 		margin         = 4
@@ -1184,8 +1311,7 @@ func (m *Model) clearPendingPrompt() {
 	m.pendingApprovalID = ""
 	m.pendingApprovalType = ""
 	m.pendingIsQuestion = false
-	m.textInput.Prompt = "❯ "
-	m.textInput.PromptStyle = promptStyle
+	m.approvalPromptText = ""
 	m.textInput.Placeholder = "Send a message..."
 	m.textInput.Reset()
 }

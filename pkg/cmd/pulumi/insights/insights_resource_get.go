@@ -70,7 +70,7 @@ func newInsightsResourceGetCmd(factory clientFactory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "get",
-		Short: "Get a single resource discovered by Pulumi Insights",
+		Short: "[EXPERIMENTAL] Get a single resource discovered by Pulumi Insights",
 		Long: "[EXPERIMENTAL] Look up a single resource discovered by Pulumi Insights.\n" +
 			"\n" +
 			"The positional argument identifies the resource within an Insights account, in\n" +
@@ -102,7 +102,7 @@ func newInsightsResourceGetCmd(factory clientFactory) *cobra.Command {
 		"Organization that owns the Insights account (defaults to the current default org)")
 	cmd.Flags().StringVar(&args.account, "account", "",
 		"Insights account containing the resource")
-	cmd.Flags().StringVarP(&args.output, "output", "o", "default",
+	cmd.Flags().StringVar(&args.output, "output", "default",
 		"Output format. One of: default, json")
 	// MarkFlagRequired only errors when the flag isn't defined, which is a
 	// programming bug — the immediate StringVar above guarantees it exists.

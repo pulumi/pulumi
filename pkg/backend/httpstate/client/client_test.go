@@ -764,8 +764,6 @@ func TestListPackages(t *testing.T) {
 	})
 }
 
-func ptr[T any](v T) *T { return &v }
-
 func TestCallCopilot(t *testing.T) {
 	t.Parallel()
 
@@ -1245,7 +1243,7 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
 		require.NoError(t, err)
 
 		got := make([][]byte, 0, 2)
@@ -1268,10 +1266,70 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer server.Close()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1")
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
 		require.Error(t, err)
 		assert.Nil(t, stream)
 		assert.Contains(t, err.Error(), "401")
+	})
+
+	t.Run("ParsesEventIDsAndSendsLastEventIDHeader", func(t *testing.T) {
+		t.Parallel()
+
+		// The Neo CLI tracks the last event ID it consumed and sends it back as
+		// `Last-Event-ID` on reconnect so the service can replay missed events.
+		// Verify both halves: outgoing header propagation and incoming `id:` parsing.
+		var gotLastEventID string
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			gotLastEventID = req.Header.Get("Last-Event-ID")
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+			flusher, ok := rw.(http.Flusher)
+			require.True(t, ok)
+			// First event carries id:42; second event omits id: — per the SSE spec
+			// the "last event ID buffer" persists, so the second event also reports 42.
+			_, _ = rw.Write([]byte("id: 42\ndata: a\n\n"))
+			_, _ = rw.Write([]byte("data: b\n\n"))
+			flusher.Flush()
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "17")
+		require.NoError(t, err)
+
+		got := make([]NeoStreamEvent, 0, 2)
+		for evt := range stream {
+			require.NoError(t, evt.Err)
+			got = append(got, evt)
+		}
+		assert.Equal(t, "17", gotLastEventID, "outgoing Last-Event-ID header")
+		require.Len(t, got, 2)
+		assert.Equal(t, "a", string(got[0].Data))
+		assert.Equal(t, "42", got[0].ID)
+		assert.Equal(t, "b", string(got[1].Data))
+		assert.Equal(t, "42", got[1].ID, "id buffer should persist across events without id:")
+	})
+
+	t.Run("OmitsLastEventIDHeaderWhenEmpty", func(t *testing.T) {
+		t.Parallel()
+
+		// On the very first connection the caller has no event ID yet — make sure
+		// we don't send `Last-Event-ID:` (with an empty value), which some proxies
+		// reject.
+		var headerWasSet bool
+		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			_, headerWasSet = req.Header["Last-Event-Id"]
+			rw.Header().Set("Content-Type", "text/event-stream")
+			rw.WriteHeader(http.StatusOK)
+		}))
+		defer server.Close()
+
+		client := newMockClient(server)
+		stream, err := client.StreamNeoTaskEvents(t.Context(), "my-org", "task_1", "")
+		require.NoError(t, err)
+		for range stream {
+		}
+		assert.False(t, headerWasSet, "Last-Event-ID must not be sent when empty")
 	})
 
 	t.Run("ContextCancelClosesStream", func(t *testing.T) {
@@ -1299,7 +1357,7 @@ func TestStreamNeoTaskEvents(t *testing.T) {
 		defer cancel()
 
 		client := newMockClient(server)
-		stream, err := client.StreamNeoTaskEvents(ctx, "my-org", "task_1")
+		stream, err := client.StreamNeoTaskEvents(ctx, "my-org", "task_1", "")
 		require.NoError(t, err)
 
 		<-ready

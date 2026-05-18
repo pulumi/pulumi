@@ -104,7 +104,7 @@ func (t *PromiseType) ConversionFrom(src Type) ConversionKind {
 }
 
 func (t *PromiseType) conversionFrom(
-	src Type, unifying bool, seen map[Type]struct{},
+	src Type, unifying bool, seen cycleSet,
 ) (ConversionKind, lazyDiagnostics) {
 	return conversionFrom(t, src, unifying, seen, t.cache, func() (ConversionKind, lazyDiagnostics) {
 		if src, ok := src.(*PromiseType); ok {

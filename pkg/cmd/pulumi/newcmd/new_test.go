@@ -1050,7 +1050,7 @@ Available Templates:
 	assert.Equal(t, "", stderr.String())
 }
 
-func ref[T any](v T) *T { return &v }
+func ptr[T any](v T) *T { return &v }
 
 //nolint:paralleltest // Sets a global mock backend
 func TestPulumiNewWithRegistryTemplates(t *testing.T) {
@@ -1063,12 +1063,12 @@ func TestPulumiNewWithRegistryTemplates(t *testing.T) {
 			) iter.Seq2[apitype.TemplateMetadata, error] {
 				return func(yield func(apitype.TemplateMetadata, error) bool) {
 					if !yield(apitype.TemplateMetadata{
-						Name: "template-1", Description: ref("Describe 1"), Publisher: "Some org",
+						Name: "template-1", Description: ptr("Describe 1"), Publisher: "Some org",
 					}, nil) {
 						return
 					}
 					if !yield(apitype.TemplateMetadata{
-						Name: "template-2", Description: ref("Describe 2"), RepoSlug: ref("some-org/repo"), Source: "github",
+						Name: "template-2", Description: ptr("Describe 2"), RepoSlug: ptr("some-org/repo"), Source: "github",
 					}, nil) {
 						return
 					}

@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/import
-  description: Stop dropping map values whose element type is a union of Input-wrapped types during HCL2 import

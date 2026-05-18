@@ -15,8 +15,6 @@
 package stack
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
@@ -27,7 +25,7 @@ func newStackDriftCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "drift",
-		Short:  "Inspect stack drift detection results",
+		Short:  "[EXPERIMENTAL] Inspect stack drift detection results",
 		Long:   "[EXPERIMENTAL] Inspect stack drift detection results.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
@@ -37,56 +35,10 @@ func newStackDriftCmd() *cobra.Command {
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
 
 	cmd.AddCommand(newStackDriftListCmd())
-	cmd.AddCommand(newStackDriftGetCmd())
+	cmd.AddCommand(newStackDriftStatusCmd())
 	return cmd
 }
 
-// TODO[https://github.com/pulumi/pulumi/issues/23051]: Not yet implemented.
-func newStackDriftListCmd() *cobra.Command {
-	var (
-		stack    string
-		page     int
-		pageSize int
-	)
+// newStackDriftListCmd is defined in stack_drift_list.go.
 
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "list",
-		Short:  "List drift detection runs for a stack",
-		Long:   "[EXPERIMENTAL] List drift detection runs for a stack.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-	cmd.Flags().IntVar(&page, "page", 1, "The page of results to return")
-	cmd.Flags().IntVar(&pageSize, "page-size", 10, "The number of results per page (1-100)")
-
-	return cmd
-}
-
-// TODO[https://github.com/pulumi/pulumi/issues/23052]: Not yet implemented.
-func newStackDriftGetCmd() *cobra.Command {
-	var stack string
-
-	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "get",
-		Short:  "Retrieve the current drift detection status for a stack",
-		Long:   "[EXPERIMENTAL] Retrieve the current drift detection status for a stack.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return errors.New("not yet implemented")
-		},
-	}
-
-	constrictor.AttachArguments(cmd, constrictor.NoArgs)
-
-	cmd.Flags().StringVarP(&stack, "stack", "s", "",
-		"The name of the stack to operate on. Defaults to the current stack")
-
-	return cmd
-}
+// newStackDriftStatusCmd is defined in stack_drift_status.go.

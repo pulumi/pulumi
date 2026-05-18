@@ -88,8 +88,8 @@ func newPackageNewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:        "new [template|url]",
 		SuggestFor: []string{"init", "create"},
-		Short:      "Create a new Pulumi package",
-		Long: "Create a new Pulumi package from a template.\n" +
+		Short:      "[EXPERIMENTAL] Create a new Pulumi package",
+		Long: "[EXPERIMENTAL] Create a new Pulumi package from a template.\n" +
 			"\n" +
 			"To create a package from a specific template, pass the template name (such as\n" +
 			"`component-nodejs` or `component-python`). If no template name is provided, a list of\n" +
