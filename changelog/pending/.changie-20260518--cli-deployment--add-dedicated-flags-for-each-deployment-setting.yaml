@@ -1,0 +1,6 @@
+body: Add dedicated flags for each deployment setting
+custom:
+  PR: ''
+  Scope: cli/deployment
+kind: feat
+time: '2026-05-18T00:00:00Z'
