@@ -288,11 +288,13 @@ func runNeo(
 		if err != nil {
 			return err
 		}
-		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
-		if consoleURL != "" {
-			fmt.Fprintln(os.Stderr, consoleURL)
-		} else {
-			fmt.Fprintf(os.Stderr, "Neo task created (id %s)\n", resp.TaskID)
+		if !printMode {
+			consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
+			if consoleURL != "" {
+				fmt.Fprintln(os.Stderr, consoleURL)
+			} else {
+				fmt.Fprintf(os.Stderr, "Neo task created (id %s)\n", resp.TaskID)
+			}
 		}
 		session := &Session{
 			Client:   pc,
