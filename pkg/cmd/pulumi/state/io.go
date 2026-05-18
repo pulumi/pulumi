@@ -130,7 +130,8 @@ func TotalStateEdit(
 		if err = survey.AskOne(&survey.Confirm{
 			Message: prompt,
 		}, &confirm, ui.SurveyIcons(opts.Color)); err != nil || !confirm {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
+			// Shared helper; uses process stdout when not given a writer.
+			return result.FprintBailf(os.Stdout, "confirmation declined") //nolint:forbidigo
 		}
 	}
 

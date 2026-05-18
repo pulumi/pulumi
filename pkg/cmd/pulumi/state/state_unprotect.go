@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -56,12 +57,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			showPrompt := !yes
 
 			if unprotectAll {
-				return unprotectAllResources(ctx, sink, ws, stack, showPrompt)
+				return unprotectAllResources(ctx, cmd.OutOrStdout(), sink, ws, stack, showPrompt)
 			}
 
 			// If URN arguments were provided, use those
 			if len(args) > 0 {
-				return unprotectMultipleResources(ctx, sink, ws, stack, args, showPrompt)
+				return unprotectMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt)
 			}
 
 			// Otherwise, use interactive selection
@@ -82,7 +83,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return unprotectResource(ctx, sink, ws, stack, urn, showPrompt)
+			return unprotectResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt)
 		},
 	}
 
@@ -104,7 +105,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 }
 
 func unprotectAllResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
 ) error {
 	err := runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
@@ -126,7 +128,7 @@ func unprotectAllResources(
 	if err != nil {
 		return err
 	}
-	fmt.Println("All resources unprotected")
+	fmt.Fprintln(stdout, "All resources unprotected")
 	return nil
 }
 
@@ -164,7 +166,8 @@ func unprotectResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []
 
 // unprotectMultipleResources unprotects multiple resources specified by their URNs.
 func unprotectMultipleResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
 ) error {
 	return runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
@@ -172,7 +175,7 @@ func unprotectMultipleResources(
 			resourceCount, errs := unprotectResourcesInSnapshot(snap, urns)
 
 			if resourceCount > 0 && len(errs) == 0 {
-				fmt.Printf("%d resources unprotected\n", resourceCount)
+				fmt.Fprintf(stdout, "%d resources unprotected\n", resourceCount)
 			}
 
 			if len(errs) > 0 {
@@ -188,7 +191,8 @@ func unprotectMultipleResources(
 }
 
 func unprotectResource(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	return unprotectMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return unprotectMultipleResources(ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt)
 }

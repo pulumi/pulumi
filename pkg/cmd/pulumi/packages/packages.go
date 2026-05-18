@@ -66,7 +66,7 @@ func BindSpec(spec schema.PackageSpec) (*schema.Package, error) {
 
 // InstallPackage installs a package to the project by generating an SDK and linking it.
 // It returns the path to the installed package.
-func InstallPackage(ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
+func InstallPackage(stdout io.Writer, ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *plugin.Context,
 	language, root, schemaSource string, parameters plugin.ParameterizeParameters,
 	registry registry.Registry, e env.Env, concurrency int,
 ) (*schema.Package, *workspace.PackageSpec, hcl.Diagnostics, error) {
@@ -110,7 +110,7 @@ func InstallPackage(ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *p
 	}
 
 	out := filepath.Join(root, "sdks")
-	fmt.Printf("Successfully generated an SDK for the %s package at %s\n", pkg.Name, out)
+	fmt.Fprintf(stdout, "Successfully generated an SDK for the %s package at %s\n", pkg.Name, out)
 
 	err = os.MkdirAll(out, 0o755)
 	if err != nil {
@@ -137,7 +137,7 @@ func InstallPackage(ws pkgWorkspace.Context, proj workspace.BaseProject, pctx *p
 
 	// Link the package to the project
 	if err := LinkPackages(&LinkPackagesContext{
-		Writer:        os.Stdout,
+		Writer:        stdout,
 		Project:       proj,
 		Language:      language,
 		Root:          root,
@@ -326,7 +326,9 @@ func LinkPackages(ctx *LinkPackagesContext) error {
 }
 
 func NewPluginContext(cwd string) (*plugin.Context, error) {
-	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{
+	// Helper used by callers without a *cobra.Command writer; emits to
+	// process stderr.
+	sink := diag.DefaultSink(os.Stderr, os.Stderr, diag.FormatOptions{ //nolint:forbidigo
 		Color: cmdutil.GetGlobalColorization(),
 	})
 	pluginCtx, err := plugin.NewContext(context.TODO(), sink, sink, nil, nil, cwd, nil, true, nil,
@@ -460,6 +462,8 @@ func ProviderFromSource(
 		}
 	}
 
+	// Helper without a *cobra.Command writer; plumbing the writer into
+	// packageworkspace.New would require a much larger API change.
 	f, spec, err := packageinstallation.InstallPlugin(pctx.Request(), packageSpec, nil, "", packageinstallation.Options{
 		Options: packageresolution.Options{
 			ResolveWithRegistry:                        !e.GetBool(env.DisableRegistryResolve),
@@ -467,7 +471,7 @@ func ProviderFromSource(
 			AllowNonInvertableLocalWorkspaceResolution: true,
 		},
 		Concurrency: concurrency,
-	}, reg, packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr,
+	}, reg, packageworkspace.New(pluginstorage.Instance, ws, pctx.Host, os.Stderr, os.Stderr, //nolint:forbidigo
 		nil, packageworkspace.Options{}))
 	if err != nil {
 		return nil, workspace.PackageSpec{}, fmt.Errorf("unable to install %s: %w", packageSpec, err)

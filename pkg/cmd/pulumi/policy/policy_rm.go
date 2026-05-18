@@ -16,7 +16,6 @@ package policy
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
@@ -63,7 +62,7 @@ func newPolicyRmCmd() *cobra.Command {
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])
 			if !yes && !ui.ConfirmPrompt(prompt, args[0], opts) {
-				return result.FprintBailf(os.Stdout, "confirmation declined")
+				return result.FprintBailf(cmd.OutOrStdout(), "confirmation declined")
 			}
 
 			// Attempt to remove the Policy Pack.

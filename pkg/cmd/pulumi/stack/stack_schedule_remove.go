@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -108,7 +107,7 @@ func runStackScheduleRemove(
 		}
 		prompt := fmt.Sprintf("This will remove the schedule '%s'!", scheduleID)
 		if !ui.ConfirmPrompt(prompt, "remove", opts) {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
+			return result.FprintBailf(w, "confirmation declined")
 		}
 	}
 

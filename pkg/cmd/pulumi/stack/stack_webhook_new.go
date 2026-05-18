@@ -109,7 +109,7 @@ func newStackWebhookNewCmdWith(factory stackWebhookNewClientFactory) *cobra.Comm
 			opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 			webhookArgs, err := resolveNewArgs(
-				skipPrompts, name, url, format,
+				cmd.OutOrStdout(), skipPrompts, name, url, format,
 				filters, groups, opts,
 			)
 			if err != nil {
@@ -270,6 +270,7 @@ func filtersNotCoveredByGroups(selectedGroups []string) []string {
 
 // resolveNewArgs prompts for any required values not provided via flags.
 func resolveNewArgs(
+	stdout io.Writer,
 	skipPrompts bool,
 	name, url, format string,
 	filters, groups []string,
@@ -299,7 +300,7 @@ func resolveNewArgs(
 	// URL is required.
 	if url == "" {
 		if !skipPrompts {
-			fmt.Println("Enter the URL that will receive webhook payloads " +
+			fmt.Fprintln(stdout, "Enter the URL that will receive webhook payloads "+
 				"(e.g. https://example.com/webhook).")
 		}
 		urlErrMsg := "a payload URL is required (use --url)"

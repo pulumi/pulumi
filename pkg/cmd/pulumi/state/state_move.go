@@ -121,6 +121,9 @@ splitting a stack into multiple stacks or when merging multiple stacks into one.
 				StackName: destStack.Ref().FullyQualifiedName().String(),
 			}
 
+			if stateMove.Stdout == nil {
+				stateMove.Stdout = cmd.OutOrStdout()
+			}
 			return stateMove.Run(ctx, sourceStack, destStack, args, sourceSecretsProvider, destSecretsProvider)
 		},
 	}
@@ -148,9 +151,6 @@ func (cmd *stateMoveCmd) Run(
 ) error {
 	if cmd.Stdin == nil {
 		cmd.Stdin = os.Stdin
-	}
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
 	}
 	if cmd.ws == nil {
 		cmd.ws = pkgWorkspace.Instance
@@ -457,7 +457,7 @@ func (cmd *stateMoveCmd) Run(
 		case yes:
 		// continue
 		case no:
-			fmt.Println("Confirmation denied, not proceeding with the state move")
+			fmt.Fprintln(cmd.Stdout, "Confirmation denied, not proceeding with the state move")
 			return nil
 		}
 	}

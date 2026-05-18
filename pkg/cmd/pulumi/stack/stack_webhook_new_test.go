@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -209,7 +210,7 @@ func TestStackWebhookNew_ResolveArgs_Yes(t *testing.T) {
 	t.Parallel()
 
 	// With skipPrompts=true and --name/--url set, should use values without prompting.
-	args, err := resolveNewArgs(true, "My Hook", "https://example.com", "raw",
+	args, err := resolveNewArgs(io.Discard, true, "My Hook", "https://example.com", "raw",
 		nil, nil, display.Options{})
 	require.NoError(t, err)
 
@@ -224,7 +225,7 @@ func TestStackWebhookNew_ResolveArgs_YesNoName(t *testing.T) {
 	t.Parallel()
 
 	// With skipPrompts=true but no name, should error because name is required.
-	_, err := resolveNewArgs(true, "", "https://example.com", "raw",
+	_, err := resolveNewArgs(io.Discard, true, "", "https://example.com", "raw",
 		nil, nil, display.Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "webhook name is required")
@@ -235,7 +236,7 @@ func TestStackWebhookNew_ResolveArgs_YesNoURL(t *testing.T) {
 	t.Parallel()
 
 	// With skipPrompts=true but no URL, should error because URL is required.
-	_, err := resolveNewArgs(true, "My Hook", "", "raw",
+	_, err := resolveNewArgs(io.Discard, true, "My Hook", "", "raw",
 		nil, nil, display.Options{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "payload URL is required")

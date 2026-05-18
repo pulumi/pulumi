@@ -167,7 +167,7 @@ func renderScheduleListTable(w io.Writer, schedules []apitype.ScheduledAction) e
 	}
 
 	// Let SETTINGS absorb extra width when the terminal is wide.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(w)
 	borderWidth := 3*len(header) + 1
 	fixedColsWidth := 100
 	settingsWidth := max(cols-borderWidth-fixedColsWidth, 20)

@@ -242,7 +242,7 @@ func (c *complianceListCmd) renderTable(
 
 	// Score columns are short (e.g. "100%", "N/A"). Let the ENTITY column
 	// and any long column headers wrap to fit the terminal.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(c.w)
 	// Each score column needs ~6 chars + borders. Reserve the rest for ENTITY.
 	scoreCols := len(columns)
 	borders := 3*(scoreCols+1) + 1

@@ -17,7 +17,7 @@ package policy
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"path/filepath"
 
 	"github.com/opentracing/opentracing-go"
@@ -48,7 +48,9 @@ func ReadPolicyProject(pwd string) (*workspace.PolicyPackProject, string, string
 	return proj, path, filepath.Dir(path), nil
 }
 
-func InstallPluginDependencies(ctx context.Context, root string, projRuntime workspace.ProjectRuntimeInfo) error {
+func InstallPluginDependencies(
+	ctx context.Context, stdout, stderr io.Writer, root string, projRuntime workspace.ProjectRuntimeInfo,
+) error {
 	span := opentracing.SpanFromContext(ctx)
 	// Bit of a hack here. Creating a plugin context requires a "program project", but we've only got a
 	// policy project. Ideally we should be able to make a plugin context without any related project. But
@@ -82,7 +84,7 @@ func InstallPluginDependencies(ctx context.Context, root string, projRuntime wor
 	err = pkgCmdUtil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 		Info:     programInfo,
 		IsPlugin: true,
-	}, os.Stdout, os.Stderr)
+	}, stdout, stderr)
 	if err != nil {
 		return fmt.Errorf("installing dependencies failed: %w", err)
 	}

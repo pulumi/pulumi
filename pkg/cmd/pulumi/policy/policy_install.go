@@ -49,6 +49,9 @@ func newPolicyInstallCmd() *cobra.Command {
 			"This command installs the policy packs required by the stack's organization.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if policyInstallCmd.stderr == nil {
+				policyInstallCmd.stderr = cmd.ErrOrStderr()
+			}
 			return policyInstallCmd.Run(ctx, stack)
 		},
 	}
@@ -82,10 +85,6 @@ func (cmd *policyInstallCmd) Run(
 	if cmd.diag == nil {
 		cmd.diag = cmdutil.Diag()
 	}
-	if cmd.stderr == nil {
-		cmd.stderr = os.Stderr
-	}
-
 	if cmd.requireStack == nil {
 		cmd.requireStack = func(ctx context.Context, stackName string) (backend.Stack, error) {
 			displayOpts := display.Options{
