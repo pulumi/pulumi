@@ -96,10 +96,7 @@ func newDeploymentGetCmdWith(factory deploymentGetClientFactory) *cobra.Command 
 			"The response includes the deployment's current status, creation and\n" +
 			"modification timestamps, version number, the user who requested the\n" +
 			"deployment, the Pulumi operation type, the list of jobs (with their\n" +
-			"step-level status), and any stack updates produced by the deployment.\n" +
-			"\n" +
-			"Default output is a human-readable summary; pass --output=json for the full\n" +
-			"response as JSON.",
+			"step-level status), and any stack updates produced by the deployment.",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			return runDeploymentGet(cmd.Context(), cmd.OutOrStdout(), factory, posArgs[0], args)
 		},
