@@ -2276,7 +2276,11 @@ func (pc *Client) GetStackDeploymentSettings(ctx context.Context,
 
 func getDeploymentPath(stack StackIdentifier, components ...string) string {
 	prefix := fmt.Sprintf("/api/stacks/%s/%s/%s/deployments", stack.Owner, stack.Project, stack.Stack)
-	return path.Join(append([]string{prefix}, components...)...)
+	escaped := make([]string, len(components))
+	for i, c := range components {
+		escaped[i] = url.PathEscape(c)
+	}
+	return path.Join(append([]string{prefix}, escaped...)...)
 }
 
 func (pc *Client) CreateDeployment(ctx context.Context, stack StackIdentifier,
@@ -2304,6 +2308,22 @@ func (pc *Client) GetDeployment(
 	err := pc.restCall(ctx, http.MethodGet, getDeploymentPath(stack, id), nil, nil, &resp)
 	if err != nil {
 		return apitype.GetDeploymentResponse{}, fmt.Errorf("getting deployment %s failed: %w", id, err)
+	}
+	return resp, nil
+}
+
+// GetDeploymentByVersion retrieves a single deployment for a stack by its
+// per-program version number. It wraps the Pulumi Cloud REST endpoint
+// (GET /api/stacks/{org}/{project}/{stack}/deployments/version/{version}).
+// The response is the same shape as GetDeployment; in particular `ID` is the
+// deployment's UUID, which can be passed to the other per-deployment routes.
+func (pc *Client) GetDeploymentByVersion(
+	ctx context.Context, stack StackIdentifier, version string,
+) (apitype.GetDeploymentResponse, error) {
+	var resp apitype.GetDeploymentResponse
+	err := pc.restCall(ctx, http.MethodGet, getDeploymentPath(stack, "version", version), nil, nil, &resp)
+	if err != nil {
+		return apitype.GetDeploymentResponse{}, fmt.Errorf("getting deployment by version %s failed: %w", version, err)
 	}
 	return resp, nil
 }
