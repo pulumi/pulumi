@@ -51,7 +51,7 @@ func newOrgRoleListCmdWith(factory orgRoleClientFactory) *cobra.Command {
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "list",
-		Short:  "List custom roles for an organization",
+		Short:  "[EXPERIMENTAL] List custom roles for an organization",
 		Long: "[EXPERIMENTAL] List custom roles for an organization.\n" +
 			"\n" +
 			"Displays the ID, name, description, UX purpose, and version of each role.\n" +

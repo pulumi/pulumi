@@ -125,7 +125,7 @@ func newOrgWebhookNewCmdWith(
 	cmd := &cobra.Command{
 		Use:   "new",
 		Short: "[EXPERIMENTAL] Create a new organization webhook",
-		Long: "Create a new organization webhook.\n" +
+		Long: "[EXPERIMENTAL] Create a new organization webhook.\n" +
 			"\n" +
 			"Creates a webhook that delivers events for the specified organization\n" +
 			"to a given URL. Organization webhooks can fire on stack lifecycle,\n" +

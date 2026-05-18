@@ -105,7 +105,7 @@ func newInsightsResourceSearchCmd(factory searchClientFactory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "search",
-		Short: "Search for resources discovered by Pulumi Insights",
+		Short: "[EXPERIMENTAL] Search for resources discovered by Pulumi Insights",
 		Long: "[EXPERIMENTAL] Search resources discovered by Pulumi Insights across an\n" +
 			"organization, with advanced filtering, sorting, and pagination.\n" +
 			"\n" +

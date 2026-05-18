@@ -76,7 +76,7 @@ func newInsightsAccountScanLogCmd(factory scanLogClientFactory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "log <account> <scan-id>",
-		Short: "Retrieve log output for an Insights scan",
+		Short: "[EXPERIMENTAL] Retrieve log output for an Insights scan",
 		Long: "[EXPERIMENTAL] Retrieve log output for an Insights scan.\n" +
 			"\n" +
 			"By default, a single page of log entries is returned. Use --count\n" +

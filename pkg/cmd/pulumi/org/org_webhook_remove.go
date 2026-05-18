@@ -51,7 +51,7 @@ func newOrgWebhookRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "remove",
 		Short: "[EXPERIMENTAL] Delete an organization webhook",
-		Long: "Delete an organization webhook.\n" +
+		Long: "[EXPERIMENTAL] Delete an organization webhook.\n" +
 			"\n" +
 			"Permanently removes the specified webhook from the organization.\n" +
 			"This cannot be undone. You will be prompted to confirm unless\n" +

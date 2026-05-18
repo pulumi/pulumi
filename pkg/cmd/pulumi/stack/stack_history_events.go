@@ -81,7 +81,7 @@ func newStackHistoryEventsCmd(
 
 	cmd := &cobra.Command{
 		Use:   "events",
-		Short: "Retrieve engine events for an update",
+		Short: "[EXPERIMENTAL] Retrieve engine events for an update",
 		Long: "[EXPERIMENTAL] Retrieve engine events for a specific update of a stack.\n" +
 			"\n" +
 			"Engine events represent individual resource operations and diagnostic\n" +

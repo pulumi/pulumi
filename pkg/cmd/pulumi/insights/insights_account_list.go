@@ -96,7 +96,7 @@ func newInsightsAccountListCmd(factory accountListClientFactory) *cobra.Command 
 	cmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List Insights accounts available to the authenticated user",
+		Short:   "[EXPERIMENTAL] List Insights accounts available to the authenticated user",
 		Long: "[EXPERIMENTAL] List Pulumi Insights accounts within an organization.\n" +
 			"\n" +
 			"The organization defaults to the current default org and can be overridden\n" +
