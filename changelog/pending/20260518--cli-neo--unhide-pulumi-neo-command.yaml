@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/neo
+  description: Make `pulumi neo` visible by default; the `PULUMI_EXPERIMENTAL` gate has been removed

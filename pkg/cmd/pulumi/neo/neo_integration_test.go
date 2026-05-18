@@ -661,7 +661,6 @@ func TestRunNeoIntegration_InteractiveCreateNeoTaskFailureExits(t *testing.T) {
 //nolint:paralleltest // mutates package globals
 func TestRunNeoIntegration_NewNeoCmdRunE(t *testing.T) {
 	isolateWorkspace(t)
-	t.Setenv("PULUMI_EXPERIMENTAL", "true")
 
 	srv := newNeoFakeServer(t)
 	installNeoTestEnv(t, srv, false /*interactive*/)
