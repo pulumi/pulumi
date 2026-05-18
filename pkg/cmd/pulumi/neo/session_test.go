@@ -351,6 +351,130 @@ func TestSession_FinalAssistantMessageWithoutCliCallsEmitsTaskIdle(t *testing.T)
 	assert.True(t, hasUIEvent[UITaskIdle](events), "expected UITaskIdle after final assistant_message with no cli calls")
 }
 
+func TestSession_OutputWritesFinalContentAndReturnsCleanly(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// The agent never closes the SSE stream on its own — the task stays "active"
+	// in case more user input arrives. With Output set, Session.Run must detect
+	// the final-no-cli message, write its Content, and return promptly anyway.
+	// Crucially: the stream is NOT closed here.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		Content: "the final answer",
+		IsFinal: true,
+	})}
+
+	var out strings.Builder
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		Output:   &out,
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Session.Run did not return after the final assistant message — " +
+			"Output mode must terminate without relying on the server to close the stream")
+	}
+
+	assert.Equal(t, "the final answer\n", out.String())
+}
+
+func TestSession_OutputSkipsEmptyContent(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// Empty Content still ends the run cleanly — we just don't write anything.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+	})}
+
+	var out strings.Builder
+	s := &Session{
+		Client:   streamer,
+		Handlers: map[string]ToolHandler{},
+		OrgName:  "o",
+		TaskID:   "t",
+		Output:   &out,
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Session.Run did not return after a final empty assistant message")
+	}
+
+	assert.Empty(t, out.String())
+}
+
+func TestSession_OutputRunsCliCallsThenWritesFinal(t *testing.T) {
+	t.Parallel()
+
+	streamer := newFakeStreamer()
+
+	// Two-message turn: first message has a CLI tool call (the agent is paused
+	// waiting for the result). After the CLI runs the tool, the agent posts the
+	// final response with no more CLI calls. Output captures only the second.
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		IsFinal: true,
+		ToolCalls: []apitype.AgentBackendEventToolCall{{
+			ToolCallID:    "call-1",
+			Name:          "filesystem__read",
+			Args:          json.RawMessage(`{"file_path":"x"}`),
+			ExecutionMode: toolExecutionModeCLI,
+		}},
+	})}
+	streamer.stream <- client.NeoStreamEvent{Data: mustAgentResponseEnvelope(t, apitype.AgentBackendEventAssistantMessage{
+		Type:    backendEventAssistantMessage,
+		Content: "done.",
+		IsFinal: true,
+	})}
+
+	var out strings.Builder
+	s := &Session{
+		Client: streamer,
+		Handlers: map[string]ToolHandler{
+			"filesystem": &fakeHandler{wantMethod: "read", result: map[string]string{"text": "hi"}},
+		},
+		OrgName: "o",
+		TaskID:  "t",
+		Output:  &out,
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- s.Run(t.Context()) }()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Session.Run did not return after the final assistant message")
+	}
+
+	assert.Equal(t, "done.\n", out.String(), "Output must carry the final message's Content only")
+
+	// Sanity: tool execution still happened (exec_tool_call + tool_result posts).
+	streamer.mu.Lock()
+	defer streamer.mu.Unlock()
+	require.Len(t, streamer.posted, 2, "expected exec_tool_call then tool_result")
+}
+
 func TestSession_StreamingAssistantMessageDoesNotEmitTaskIdle(t *testing.T) {
 	t.Parallel()
 

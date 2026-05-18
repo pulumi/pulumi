@@ -337,10 +337,29 @@ func TestNewNeoCmd_RegistersFlags(t *testing.T) {
 	require.NotNil(t, cmd.Flags().Lookup("org"), "--org flag must be registered")
 	require.NotNil(t, cmd.Flags().Lookup("cwd"), "--cwd flag must be registered")
 
+	print := cmd.Flags().Lookup("print")
+	require.NotNil(t, print, "--print flag must be registered")
+	assert.Equal(t, "p", print.Shorthand)
+
 	// cobra.MaximumNArgs(1): 0 or 1 prompt args OK, 2+ rejected.
 	require.NoError(t, cmd.Args(cmd, []string{}))
 	require.NoError(t, cmd.Args(cmd, []string{"hello"}))
 	require.Error(t, cmd.Args(cmd, []string{"a", "b"}), "more than one positional arg must be rejected")
+}
+
+// TestNewNeoCmd_PrintRejectsManualApproval pins the RunE pre-check that refuses
+// `--print --approval-mode=manual` before any network call: there is no UI to
+// approve from, so the agent would deadlock on the first approval prompt.
+func TestNewNeoCmd_PrintRejectsManualApproval(t *testing.T) {
+	t.Parallel()
+	cmd := NewNeoCmd()
+	cmd.SetContext(t.Context())
+	require.NoError(t, cmd.Flags().Set("print", "true"))
+	require.NoError(t, cmd.Flags().Set("approval-mode", "manual"))
+
+	err := cmd.RunE(cmd, []string{"hello"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--approval-mode=manual is incompatible with --print")
 }
 
 func TestDedupeExistingRoots(t *testing.T) {

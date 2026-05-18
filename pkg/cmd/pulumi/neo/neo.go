@@ -42,6 +42,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// nonInteractivePromptPreamble is prepended to the user's prompt in --print
+// mode and the no-TTY path. The agent has no way to ask follow-up questions
+// since stdin isn't wired and the caller (typically another AI agent) is
+// blocked waiting on stdout — anything that requires more input would hang.
+const nonInteractivePromptPreamble = "You are running in non-interactive mode: " +
+	"your final response will be written to stdout and consumed by another agent " +
+	"or script. Do not ask follow-up questions; make any reasonable assumptions " +
+	"explicit and return a complete final answer."
+
 // createNeoTaskWithEntityRetry creates a Neo task; if the backend rejects the
 // attached stack with "invalid entities" (typically a permissions issue) it retries
 // once without the stack so the task is still created. onEntityDropped, if non-nil,
@@ -116,6 +125,7 @@ func NewNeoCmd() *cobra.Command {
 		cwdFlag            string
 		approvalModeFlag   string
 		permissionModeFlag string
+		printMode          bool
 	)
 
 	cmd := &cobra.Command{
@@ -140,7 +150,18 @@ func NewNeoCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return runNeo(ctx, prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode)
+			// In --print mode there's no UI to approve from. Reject an explicit manual
+			// (would deadlock); default to auto if the user didn't pick something.
+			if printMode {
+				if cmd.Flags().Changed("approval-mode") && approvalMode == client.NeoApprovalModeManual {
+					return errors.New(
+						"--approval-mode=manual is incompatible with --print: there is no UI to approve from")
+				}
+				if !cmd.Flags().Changed("approval-mode") {
+					approvalMode = client.NeoApprovalModeAuto
+				}
+			}
+			return runNeo(ctx, prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode)
 		},
 	}
 
@@ -156,6 +177,9 @@ func NewNeoCmd() *cobra.Command {
 	cmd.Flags().StringVar(&permissionModeFlag, "permission-mode", string(client.NeoPermissionModeDefault),
 		"Permission mode for the agent: 'default' grants full role-based capabilities, "+
 			"'read-only' blocks state-mutating operations")
+	cmd.Flags().BoolVarP(&printMode, "print", "p", false,
+		"Run a single prompt non-interactively, print the agent's final response to "+
+			"stdout, and exit. Intended for use with other AI agents and scripts.")
 
 	return cmd
 }
@@ -188,6 +212,7 @@ func runNeo(
 	prompt, stackName, orgFlag, cwdFlag string,
 	approvalMode client.NeoApprovalMode,
 	permissionMode client.NeoPermissionMode,
+	printMode bool,
 ) error {
 	if cwdFlag == "" {
 		var err error
@@ -249,13 +274,18 @@ func runNeo(
 	}
 	handlers["pulumi"] = pu
 
-	// Non-interactive mode requires a prompt — there's no input mechanism.
-	if !isInteractive() {
+	// --print or no TTY: run the task non-interactively. Print mode writes the
+	// agent's final response to stdout and exits; status output goes to stderr.
+	if printMode || !isInteractive() {
 		if prompt == "" {
 			return errors.New("a prompt argument is required in non-interactive mode")
 		}
+		// Tell the agent up front it can't ask follow-ups — its final response
+		// will be piped to another agent or script, so anything that requires
+		// further user input will hang the caller.
+		taskPrompt := nonInteractivePromptPreamble + "\n\n" + prompt
 		resp, err := createNeoTaskWithEntityRetry(
-			ctx, pc, orgName, prompt, stackRefName, projectName, client.CreateNeoTaskOptions{
+			ctx, pc, orgName, taskPrompt, stackRefName, projectName, client.CreateNeoTaskOptions{
 				ToolExecutionMode: "cli",
 				ApprovalMode:      approvalMode,
 				PermissionMode:    permissionMode,
@@ -265,9 +295,9 @@ func runNeo(
 		}
 		consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 		if consoleURL != "" {
-			fmt.Println(consoleURL)
+			fmt.Fprintln(os.Stderr, consoleURL)
 		} else {
-			fmt.Printf("Neo task created (id %s)\n", resp.TaskID)
+			fmt.Fprintf(os.Stderr, "Neo task created (id %s)\n", resp.TaskID)
 		}
 		session := &Session{
 			Client:   pc,
@@ -275,6 +305,9 @@ func runNeo(
 			OrgName:  orgName,
 			TaskID:   resp.TaskID,
 			Log:      os.Stderr,
+		}
+		if printMode {
+			session.Output = os.Stdout
 		}
 		return session.Run(ctx)
 	}
