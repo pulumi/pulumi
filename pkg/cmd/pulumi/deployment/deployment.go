@@ -26,8 +26,8 @@ func NewDeploymentCmd(ws pkgWorkspace.Context) *cobra.Command {
 		// This is temporarily hidden while we iterate over the new set of commands,
 		// we will remove before releasing these new set of features.
 		Use:   "deployment",
-		Short: "Manage stack deployments on Pulumi Cloud",
-		Long: "Manage stack deployments on Pulumi Cloud.\n" +
+		Short: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud",
+		Long: "[EXPERIMENTAL] Manage stack deployments on Pulumi Cloud.\n" +
 			"\n" +
 			"Use this command to trigger deployment jobs and manage deployment settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {

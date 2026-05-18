@@ -59,7 +59,7 @@ func newStackWebhookDeliveryRedeliverCmdWith(
 	cmd := &cobra.Command{
 		Use:   "redeliver",
 		Short: "[EXPERIMENTAL] Redeliver a specific webhook event",
-		Long: "Redeliver a specific webhook event.\n" +
+		Long: "[EXPERIMENTAL] Redeliver a specific webhook event.\n" +
 			"\n" +
 			"Triggers the Pulumi Service to redeliver a specific event to a\n" +
 			"webhook. This is useful for resending an event that the webhook\n" +

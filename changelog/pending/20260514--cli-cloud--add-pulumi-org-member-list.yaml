@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Add `pulumi org member list` to list the members of an organization

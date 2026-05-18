@@ -80,7 +80,7 @@ func newOrgMemberListCmdWith(factory orgMemberListClientFactory) *cobra.Command 
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "list",
-		Short:  "List members of an organization",
+		Short:  "[EXPERIMENTAL] List members of an organization",
 		Long: "[EXPERIMENTAL] List members of an organization.\n" +
 			"\n" +
 			"Returns the members of the organization, showing each member's user name,\n" +

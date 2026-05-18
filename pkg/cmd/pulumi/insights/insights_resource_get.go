@@ -70,7 +70,7 @@ func newInsightsResourceGetCmd(factory clientFactory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "get",
-		Short: "Get a single resource discovered by Pulumi Insights",
+		Short: "[EXPERIMENTAL] Get a single resource discovered by Pulumi Insights",
 		Long: "[EXPERIMENTAL] Look up a single resource discovered by Pulumi Insights.\n" +
 			"\n" +
 			"The positional argument identifies the resource within an Insights account, in\n" +

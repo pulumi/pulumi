@@ -85,7 +85,7 @@ func newOrgWebhookListCmdWith(
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "[EXPERIMENTAL] List all webhooks configured for an organization",
-		Long: "List all webhooks configured for an organization.\n" +
+		Long: "[EXPERIMENTAL] List all webhooks configured for an organization.\n" +
 			"\n" +
 			"Returns all webhooks configured at the organization level. Each\n" +
 			"webhook includes its ID, name, payload URL, format, event groups,\n" +

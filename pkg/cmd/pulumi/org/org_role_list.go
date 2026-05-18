@@ -32,13 +32,6 @@ import (
 // roleListRender renders a list of roles.
 type roleListRender func(w io.Writer, orgName string, roles []apitype.Role) error
 
-func defaultRoleListOutput() outputflag.OutputFlag[roleListRender] {
-	return outputflag.OutputFlag[roleListRender]{
-		RenderForTerminal: renderRoleListTable,
-		RenderJSON:        renderRoleListJSON,
-	}
-}
-
 func newOrgRoleListCmd() *cobra.Command {
 	return newOrgRoleListCmdWith(defaultOrgRoleClientFactory)
 }
@@ -50,12 +43,15 @@ func newOrgRoleListCmdWith(factory orgRoleClientFactory) *cobra.Command {
 		org     string
 		purpose string
 	)
-	output := defaultRoleListOutput()
+	output := outputflag.OutputFlag[roleListRender]{
+		RenderForTerminal: renderRoleListTable,
+		RenderJSON:        renderRoleListJSON,
+	}
 
 	cmd := &cobra.Command{
 		Hidden: true,
 		Use:    "list",
-		Short:  "List custom roles for an organization",
+		Short:  "[EXPERIMENTAL] List custom roles for an organization",
 		Long: "[EXPERIMENTAL] List custom roles for an organization.\n" +
 			"\n" +
 			"Displays the ID, name, description, UX purpose, and version of each role.\n" +
@@ -70,9 +66,9 @@ func newOrgRoleListCmdWith(factory orgRoleClientFactory) *cobra.Command {
 
 	cmd.Flags().StringVar(&org, "org", "",
 		"The organization to list roles for. Defaults to the current default organization")
-	cmd.Flags().StringVar(&purpose, "purpose", "",
-		"Filter by UX purpose: organization, team, or token")
-	outputflag.VarP(cmd.Flags(), &output)
+	cmd.Flags().StringVar(&purpose, "purpose", "role",
+		"Filter by UX purpose: role, role_private, role_temporary, policy, or set")
+	outputflag.Var(cmd.Flags(), &output)
 
 	return cmd
 }

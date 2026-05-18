@@ -196,19 +196,3 @@ func TestOrgRoleList_FactoryError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not logged in")
 }
-
-func TestOrgRoleList_CobraFlagBinding(t *testing.T) {
-	t.Parallel()
-
-	c := &mockOrgRoleClient{roles: sampleRoles()}
-	cmd := newOrgRoleListCmdWith(stubRoleFactory(c, "my-org"))
-
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
-	cmd.SetArgs([]string{"--output", "json", "--purpose", "organization"})
-
-	err := cmd.ExecuteContext(t.Context())
-	require.NoError(t, err)
-	assert.Contains(t, buf.String(), `"count": 2`)
-	assert.Equal(t, "organization", c.capturedPurpose)
-}

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Add `pulumi org role assign` to assign a custom role to a team

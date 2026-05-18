@@ -88,7 +88,7 @@ func newInsightsAccountScanCmd(factory scanClientFactory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "scan",
-		Short: "Trigger a resource discovery scan for an Insights account",
+		Short: "[EXPERIMENTAL] Trigger a resource discovery scan for an Insights account",
 		Long: "[EXPERIMENTAL] Trigger a resource discovery scan for an Insights account.\n" +
 			"\n" +
 			"The positional argument is the Insights account to scan; the organization\n" +

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/neo
-  description: Multi-line input in `pulumi neo` - Enter sends, Shift+Enter / Alt+Enter / Ctrl+J / trailing `\` insert a newline
