@@ -585,7 +585,7 @@ func (m defaultLoginManager) Current(
 				return nil, err
 			}
 			logging.V(7).Infof("Detected agent mode (%s); checking shared agent credentials", agent)
-			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent)
+			return m.currentOrSignupAgentAccount(ctx, cloudURL, insecure, setCurrent, agent)
 		}
 		// No access token available, this isn't an error per-se but we don't have a backend.
 		logging.V(7).Infof("No access token or agent mode detected for %q", cloudURL)
@@ -618,14 +618,17 @@ func (m defaultLoginManager) Current(
 }
 
 // currentOrSignupAgentAccount returns credentials from the shared agent cache,
-// or creates a new agent account when no valid cached credentials exist.
+// or creates a new agent account for the detected agent when no valid cached
+// credentials exist.
 func (m defaultLoginManager) currentOrSignupAgentAccount(
 	ctx context.Context,
 	cloudURL string,
 	insecure bool,
 	setCurrent bool,
+	agentName string,
 ) (*workspace.Account, error) {
-	if deleted, err := workspace.DeleteExpiredAgentCredentials(time.Now()); err != nil {
+	now := time.Now()
+	if deleted, err := workspace.DeleteExpiredAgentCredentials(now); err != nil {
 		return nil, err
 	} else if deleted {
 		logging.V(7).Infof("Deleted expired shared agent credentials")
@@ -649,13 +652,26 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			}
 			return &agentAccount, nil
 		}
+		claim, err := workspace.GetAgentClaim()
+		if err != nil {
+			return nil, err
+		}
+		if claim.ClaimURL != "" && (claim.ValidUntil.IsZero() || claim.ValidUntil.After(now)) {
+			logging.V(7).Infof(
+				"Shared agent credentials for %q are not valid, but claim metadata is still active; "+
+					"not creating a new agent account",
+				cloudURL)
+			return nil, fmt.Errorf(
+				"shared agent credentials for %q are no longer valid; claim the account to regain access: %w",
+				cloudURL, ErrUnauthorized)
+		}
 		logging.V(7).Infof("Shared agent credentials for %q are not valid; creating a new agent account", cloudURL)
 	} else {
 		logging.V(7).Infof("No shared agent credentials found for %q; creating a new agent account", cloudURL)
 	}
 
 	logging.V(7).Infof("Calling agent signup endpoint for %q", cloudURL)
-	signup, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).SignupAgent(ctx)
+	signup, err := client.NewClient(cloudURL, "", insecure, cmdutil.Diag()).SignupAgent(ctx, agentName)
 	if err != nil {
 		return nil, fmt.Errorf("creating agent Pulumi account: %w", err)
 	}
@@ -666,6 +682,13 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, signup.AccessToken)
 	if err != nil {
 		return nil, err
+	}
+	if signup.AccessTokenValidUntil != 0 {
+		expiresAt := time.Unix(signup.AccessTokenValidUntil, 0)
+		if tokenInfo == nil {
+			tokenInfo = &workspace.TokenInformation{}
+		}
+		tokenInfo.ExpiresAt = &expiresAt
 	}
 
 	account := workspace.Account{
@@ -685,19 +708,23 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 			ClaimURL: signup.ClaimURL,
 			CloudURL: cloudURL,
 		}
-		// TODO: Require validUntil once the signup endpoint includes it in the response.
-		if signup.ValidUntil != nil {
-			claim.ValidUntil = *signup.ValidUntil
+		if signup.ClaimURLValidUntil != 0 {
+			claim.ValidUntil = time.Unix(signup.ClaimURLValidUntil, 0)
 		}
 		if err = workspace.StoreAgentClaim(claim); err != nil {
 			return nil, err
 		}
-		if signup.ValidUntil != nil {
-			logging.V(7).Infof("Stored shared agent claim metadata for %q; valid until %s", cloudURL, *signup.ValidUntil)
+		if !claim.ValidUntil.IsZero() {
+			logging.V(7).Infof("Stored shared agent claim metadata for %q; valid until %s", cloudURL, claim.ValidUntil)
 		} else {
-			logging.V(7).Infof("Stored shared agent claim metadata for %q without validUntil", cloudURL)
+			logging.V(7).Infof("Stored shared agent claim metadata for %q without claimUrlValidUntil", cloudURL)
 		}
-		_, err = fmt.Fprint(os.Stderr, workspace.FormatAgentClaimInstruction(signup.ClaimURL))
+		var accessTokenExpiresAt *time.Time
+		if account.TokenInformation != nil {
+			accessTokenExpiresAt = account.TokenInformation.ExpiresAt
+		}
+		_, err = fmt.Fprint(os.Stderr,
+			workspace.FormatAgentClaimInstruction(signup.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, time.Now()))
 		contract.IgnoreError(err)
 	}
 

@@ -572,9 +572,10 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 }
 
 // maybePrintAgentClaimWarning reminds users to claim automatically created
-// agent accounts while the claim URL is still valid.
+// agent accounts while either the access token or claim URL is still valid.
 func maybePrintAgentClaimWarning() {
-	deleted, err := workspace.DeleteExpiredAgentCredentials(time.Now())
+	now := time.Now()
+	deleted, err := workspace.DeleteExpiredAgentCredentials(now)
 	if err != nil {
 		logging.V(7).Infof("Could not delete expired agent credentials: %v", err)
 		return
@@ -587,18 +588,38 @@ func maybePrintAgentClaimWarning() {
 	if err != nil || claim.ClaimURL == "" {
 		return
 	}
-	// TODO: Require validUntil once the signup endpoint includes it in the response.
-	if !claim.ValidUntil.IsZero() && !claim.ValidUntil.After(time.Now()) {
+	var account workspace.Account
+	if claim.CloudURL != "" {
+		account, err = workspace.GetAgentAccount(claim.CloudURL)
+		if err != nil {
+			logging.V(7).Infof("Could not read agent account credentials: %v", err)
+			return
+		}
+	}
+	var accessTokenExpiresAt *time.Time
+	if account.TokenInformation != nil {
+		accessTokenExpiresAt = account.TokenInformation.ExpiresAt
+	}
+	if (accessTokenExpiresAt == nil || !accessTokenExpiresAt.After(now)) &&
+		(claim.ValidUntil.IsZero() || !claim.ValidUntil.After(now)) {
 		return
 	}
 
 	var warning string
 	if cmdMetadata.DetectAIAgent(os.Getenv) != "" {
-		warning = workspace.FormatAgentClaimInstruction(claim.ClaimURL)
+		warning = workspace.FormatAgentClaimInstruction(claim.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, now)
 	} else {
-		warning = fmt.Sprintf(
-			"Pulumi created this account automatically for an agent. Claim it to take ownership:\n%s\n",
-			claim.ClaimURL)
+		if accessTokenExpiresAt != nil && accessTokenExpiresAt.After(now) {
+			warning = fmt.Sprintf(
+				"Using an ephemeral Pulumi agent account that will expire in %s. Claim it to take ownership:\n%s\n",
+				workspace.FormatAgentClaimValidFor(*accessTokenExpiresAt, now),
+				claim.ClaimURL)
+		} else {
+			warning = fmt.Sprintf(
+				"Using an ephemeral Pulumi agent account. The access token has expired, but this claim URL is valid for %s:\n%s\n",
+				workspace.FormatAgentClaimValidFor(claim.ValidUntil, now),
+				claim.ClaimURL)
+		}
 	}
 	_, err = fmt.Fprint(os.Stderr, warning)
 	contract.IgnoreError(err)

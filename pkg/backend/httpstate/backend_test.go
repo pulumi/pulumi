@@ -231,6 +231,98 @@ func TestCurrentEnvTokenStoresInDefaultPathWhenWritable(t *testing.T) {
 	assert.Empty(t, agentAccount.AccessToken)
 }
 
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	expiredAt := time.Now().Add(-time.Hour)
+	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken: "expired-agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiredAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/signup?claim=abc123",
+		ValidUntil: time.Now().Add(time.Hour),
+		CloudURL:   server.URL,
+	})
+	require.NoError(t, err)
+
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	require.ErrorIs(t, err, ErrUnauthorized)
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/api/agents/signup" {
+			signupCalls++
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	expiresAt := time.Now().Add(time.Hour)
+	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken:     "valid-agent-token",
+		Username:        "agent-user",
+		Organizations:   []string{"agent-org"},
+		LastValidatedAt: time.Now(),
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/signup?claim=abc123",
+		ValidUntil: time.Now().Add(-time.Hour),
+		CloudURL:   server.URL,
+	})
+	require.NoError(t, err)
+
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "valid-agent-token", account.AccessToken)
+	assert.Equal(t, 0, signupCalls)
+}
+
 //nolint:paralleltest // mutates global configuration
 func TestDisabledFullyQualifiedStackNames(t *testing.T) {
 	// Arrange

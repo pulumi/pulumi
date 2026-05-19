@@ -17,6 +17,7 @@ package workspace
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -129,13 +130,80 @@ func TestFormatAgentClaimInstruction(t *testing.T) {
 	t.Parallel()
 
 	claimURL := "https://app.pulumi.com/signup?claim=abc123"
+	now := time.Date(2026, time.May, 17, 8, 24, 56, 0, time.UTC)
+	validUntil := now.Add(3*24*time.Hour + 4*time.Hour + 10*time.Minute + 30*time.Second)
+	expiresAt := now.Add(2*24*time.Hour + 3*time.Hour + 9*time.Minute)
 
 	assert.Equal(t,
-		"PULUMI_AGENT_ACCOUNT_CREATED\n"+
+		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
 			"CLAIM_URL=https://app.pulumi.com/signup?claim=abc123\n"+
-			"INSTRUCTION=Include this claim URL in your final response so the user can take ownership of the account.\n",
-		FormatAgentClaimInstruction(claimURL))
-	assert.Empty(t, FormatAgentClaimInstruction(""))
+			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
+			"ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"+
+			"INSTRUCTION=Tell the user Pulumi created an ephemeral agent account. "+
+			"Include the claim URL and say they must claim the account within 2d3h9m before agent access expires.\n",
+		FormatAgentClaimInstruction(claimURL, &expiresAt, validUntil, now))
+	expiredAt := now.Add(-time.Minute)
+	assert.Equal(t,
+		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
+			"CLAIM_URL=https://app.pulumi.com/signup?claim=abc123\n"+
+			"CLAIM_URL_VALID_FOR=3d4h10m\n"+
+			"ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"+
+			"INSTRUCTION=Tell the user this ephemeral agent account can no longer authenticate, "+
+			"but the claim URL is still valid for 3d4h10m. Include the claim URL and the remaining time.\n",
+		FormatAgentClaimInstruction(claimURL, &expiredAt, validUntil, now))
+	assert.Empty(t, FormatAgentClaimInstruction(claimURL, nil, time.Time{}, now))
+	assert.Empty(t, FormatAgentClaimInstruction("", &expiresAt, validUntil, now))
+}
+
+func TestFormatAgentClaimValidFor(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, time.May, 17, 8, 24, 56, 0, time.UTC)
+	tests := []struct {
+		name       string
+		validUntil time.Time
+		want       string
+	}{
+		{
+			name:       "days hours minutes",
+			validUntil: now.Add(3*24*time.Hour + 4*time.Hour + 10*time.Minute + 30*time.Second),
+			want:       "3d4h10m",
+		},
+		{
+			name:       "hours only",
+			validUntil: now.Add(2 * time.Hour),
+			want:       "2h",
+		},
+		{
+			name:       "less than minute",
+			validUntil: now.Add(30 * time.Second),
+			want:       "<1m",
+		},
+		{
+			name:       "expired",
+			validUntil: now.Add(-time.Minute),
+			want:       "expired",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, FormatAgentClaimValidFor(tt.validUntil, now))
+		})
+	}
+}
+
+func TestDefaultAgentPulumiDir(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		tempDir := t.TempDir()
+		t.Setenv("TMP", tempDir)
+		t.Setenv("TEMP", tempDir)
+		assert.Equal(t, filepath.Join(tempDir, BookkeepingDir), defaultAgentPulumiDir())
+		return
+	}
+	assert.Equal(t, filepath.Join("/tmp", BookkeepingDir), defaultAgentPulumiDir())
 }
 
 //nolint:paralleltest // mutates environment and package global
@@ -210,7 +278,13 @@ func TestDeleteExpiredAgentCredentials(t *testing.T) {
 		agentPulumiDir = oldAgentPulumiDir
 	})
 	now := time.Now().UTC()
-	err := StoreAgentAccount("https://api.example.com", Account{AccessToken: "token-value"}, true)
+	expiresAt := now.Add(2 * time.Hour)
+	err := StoreAgentAccount("https://api.example.com", Account{
+		AccessToken: "token-value",
+		TokenInformation: &TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
 	require.NoError(t, err)
 	err = StoreAgentClaim(AgentClaim{
 		ClaimURL:   "https://app.pulumi.com/claim/abc123",
@@ -244,6 +318,19 @@ func TestDeleteExpiredAgentCredentials(t *testing.T) {
 
 	deleted, err = DeleteExpiredAgentCredentials(now)
 	require.NoError(t, err)
+	assert.False(t, deleted)
+
+	account, err = GetAgentAccount("https://api.example.com")
+	require.NoError(t, err)
+	assert.Equal(t, "token-value", account.AccessToken)
+
+	expiredAt := now.Add(-time.Minute)
+	account.TokenInformation.ExpiresAt = &expiredAt
+	err = StoreAgentAccount("https://api.example.com", account, true)
+	require.NoError(t, err)
+
+	deleted, err = DeleteExpiredAgentCredentials(now)
+	require.NoError(t, err)
 	assert.True(t, deleted)
 
 	account, err = GetAgentAccount("https://api.example.com")
@@ -254,6 +341,38 @@ func TestDeleteExpiredAgentCredentials(t *testing.T) {
 	assert.Empty(t, claim.ClaimURL)
 	_, err = os.Stat(filepath.Join(agentPulumiDir, "config.json"))
 	require.True(t, os.IsNotExist(err))
+}
+
+//nolint:paralleltest // mutates package global
+func TestDeleteExpiredAgentCredentialsDoesNotReuseUnrelatedValidAccount(t *testing.T) {
+	oldAgentPulumiDir := agentPulumiDir
+	agentPulumiDir = filepath.Join(t.TempDir(), ".pulumi")
+	t.Cleanup(func() {
+		agentPulumiDir = oldAgentPulumiDir
+	})
+	now := time.Now().UTC()
+	expiresAt := now.Add(2 * time.Hour)
+	err := StoreAgentAccount("https://api.example.com", Account{
+		AccessToken: "token-value",
+		TokenInformation: &TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = StoreAgentClaim(AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
+		ValidUntil: now.Add(-time.Hour),
+		CloudURL:   "https://api.other.example.com",
+	})
+	require.NoError(t, err)
+
+	deleted, err := DeleteExpiredAgentCredentials(now)
+	require.NoError(t, err)
+	assert.True(t, deleted)
+
+	account, err := GetAgentAccount("https://api.example.com")
+	require.NoError(t, err)
+	assert.Empty(t, account.AccessToken)
 }
 
 //nolint:paralleltest // mutates package global

@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -96,34 +98,213 @@ func TestSignupAgent(t *testing.T) {
 	t.Parallel()
 
 	validUntil := time.Now().UTC().Truncate(time.Second)
-	var gotPath, gotMethod, gotAuth, gotBody string
+	expiresAt := validUntil.Add(-time.Hour)
+	const challengeID = "challenge-1"
+	const challengeData = "v1:abcdef:8"
+	var requests []agentSignupRequest
+	var gotPaths, gotMethods, gotAuths []string
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		gotPath = req.URL.Path
-		gotMethod = req.Method
-		gotAuth = req.Header.Get("Authorization")
+		gotPaths = append(gotPaths, req.URL.Path)
+		gotMethods = append(gotMethods, req.Method)
+		gotAuths = append(gotAuths, req.Header.Get("Authorization"))
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
-		gotBody = string(body)
-		err = json.NewEncoder(rw).Encode(AgentSignupResponse{
-			AccessToken: "agent-token",
-			ClaimURL:    "https://app.pulumi.com/claim/abc123",
-			ValidUntil:  &validUntil,
+		var signupReq agentSignupRequest
+		require.NoError(t, json.Unmarshal(body, &signupReq))
+		requests = append(requests, signupReq)
+
+		switch len(requests) {
+		case 1:
+			err = json.NewEncoder(rw).Encode(AgentSignupResponse{
+				ChallengeID:   challengeID,
+				ChallengeData: challengeData,
+			})
+			require.NoError(t, err)
+		case 2:
+			assert.Equal(t, challengeID, signupReq.ChallengeID)
+			assert.Equal(t, "codex", signupReq.AgentName)
+			require.NoError(t, verifyAgentSignupChallenge(challengeData, signupReq.ChallengeResult))
+			err = json.NewEncoder(rw).Encode(AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: expiresAt.Unix(),
+				ClaimURL:              "https://app.pulumi.com/claim/abc123",
+				ClaimURLValidUntil:    validUntil.Unix(),
+			})
+			require.NoError(t, err)
+		default:
+			t.Fatalf("unexpected signup request %d", len(requests))
+		}
+	}))
+	defer server.Close()
+
+	resp, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{http.MethodPost, http.MethodPost}, gotMethods)
+	assert.Equal(t, []string{"/api/agents/signup", "/api/agents/signup"}, gotPaths)
+	assert.Equal(t, []string{"", ""}, gotAuths)
+	require.Len(t, requests, 2)
+	assert.Empty(t, requests[0].ChallengeID)
+	assert.Empty(t, requests[0].ChallengeResult)
+	assert.Empty(t, requests[0].AgentName)
+	assert.Equal(t, "agent-token", resp.AccessToken)
+	assert.Equal(t, "https://app.pulumi.com/claim/abc123", resp.ClaimURL)
+	assert.Equal(t, expiresAt.Unix(), resp.AccessTokenValidUntil)
+	assert.Equal(t, validUntil.Unix(), resp.ClaimURLValidUntil)
+}
+
+func TestSignupAgentRequiresChallengeData(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/agents/signup", req.URL.Path)
+		err := json.NewEncoder(rw).Encode(AgentSignupResponse{})
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	require.ErrorContains(t, err, "signup response did not include challenge data")
+}
+
+func TestSignupAgentReturnsInitialSignupError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/agents/signup", req.URL.Path)
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	require.Error(t, err)
+}
+
+func TestSignupAgentReturnsChallengeError(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/agents/signup", req.URL.Path)
+		err := json.NewEncoder(rw).Encode(AgentSignupResponse{
+			ChallengeID:   "challenge-1",
+			ChallengeData: "v2:abcdef:8",
 		})
 		require.NoError(t, err)
 	}))
 	defer server.Close()
 
-	resp, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context())
-	require.NoError(t, err)
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	require.ErrorContains(t, err, "invalid challenge data")
+}
 
-	assert.Equal(t, http.MethodPost, gotMethod)
-	assert.Equal(t, "/api/signup", gotPath)
-	assert.Empty(t, gotAuth)
-	assert.JSONEq(t, "{}", gotBody)
-	assert.Equal(t, "agent-token", resp.AccessToken)
-	assert.Equal(t, "https://app.pulumi.com/claim/abc123", resp.ClaimURL)
-	require.NotNil(t, resp.ValidUntil)
-	assert.True(t, resp.ValidUntil.Equal(validUntil))
+func TestSignupAgentReturnsFinalSignupError(t *testing.T) {
+	t.Parallel()
+
+	var requestCount int
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, "/api/agents/signup", req.URL.Path)
+		requestCount++
+		if requestCount == 1 {
+			err := json.NewEncoder(rw).Encode(AgentSignupResponse{
+				ChallengeID:   "challenge-1",
+				ChallengeData: "v1:abcdef:8",
+			})
+			require.NoError(t, err)
+			return
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	require.Error(t, err)
+	assert.Equal(t, 2, requestCount)
+}
+
+func TestSolveAgentSignupChallengeHonorsCancellation(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	_, err := solveAgentSignupChallenge(ctx, "v1:abcdef:256")
+	require.ErrorIs(t, err, context.Canceled)
+}
+
+func TestParseAgentSignupChallengeDifficulty(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		data      string
+		want      int
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:      "valid",
+			data:      "v1:abcdef:8",
+			want:      8,
+			assertErr: require.NoError,
+		},
+		{
+			name:      "invalid version",
+			data:      "v2:abcdef:8",
+			assertErr: require.Error,
+		},
+		{
+			name:      "missing part",
+			data:      "v1:abcdef",
+			assertErr: require.Error,
+		},
+		{
+			name:      "invalid difficulty",
+			data:      "v1:abcdef:nope",
+			assertErr: require.Error,
+		},
+		{
+			name:      "zero difficulty",
+			data:      "v1:abcdef:0",
+			assertErr: require.Error,
+		},
+		{
+			name:      "excessive difficulty",
+			data:      "v1:abcdef:257",
+			assertErr: require.Error,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := parseAgentSignupChallengeDifficulty(tt.data)
+			tt.assertErr(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestLeadingZeroBits(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, 0, leadingZeroBits([]byte{0xff}))
+	assert.Equal(t, 4, leadingZeroBits([]byte{0x0f}))
+	assert.Equal(t, 12, leadingZeroBits([]byte{0x00, 0x0f}))
+	assert.Equal(t, 16, leadingZeroBits([]byte{0x00, 0x00}))
+}
+
+func verifyAgentSignupChallenge(data, result string) error {
+	difficulty, err := parseAgentSignupChallengeDifficulty(data)
+	if err != nil {
+		return err
+	}
+	hash := sha256.Sum256([]byte(data + ":" + result))
+	if leadingZeroBits(hash[:]) < difficulty {
+		return errors.New("insufficient work for challenge")
+	}
+	return nil
 }
 
 func TestAPIErrorResponses(t *testing.T) {

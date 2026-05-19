@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
@@ -329,19 +331,94 @@ type AgentClaim struct {
 
 // FormatAgentClaimInstruction returns the structured instruction shown to
 // coding agents when the CLI has an automatically created agent account claim
-// URL to surface.
-func FormatAgentClaimInstruction(claimURL string) string {
+// URL to surface. It prefers the access token expiration while the token is
+// still valid, then falls back to the claim URL expiration.
+func FormatAgentClaimInstruction(
+	claimURL string,
+	accessTokenExpiresAt *time.Time,
+	claimValidUntil time.Time,
+	now time.Time,
+) string {
 	if claimURL == "" {
 		return ""
 	}
-	return fmt.Sprintf(
-		"PULUMI_AGENT_ACCOUNT_CREATED\n"+
-			"CLAIM_URL=%s\n"+
-			"INSTRUCTION=Include this claim URL in your final response so the user can take ownership of the account.\n",
+	var expirationLine string
+	var instruction string
+	if accessTokenExpiresAt != nil && accessTokenExpiresAt.After(now) {
+		validFor := FormatAgentClaimValidFor(*accessTokenExpiresAt, now)
+		expirationLine = fmt.Sprintf("EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n", validFor)
+		instruction = fmt.Sprintf(
+			"Tell the user Pulumi created an ephemeral agent account. "+
+				"Include the claim URL and say they must claim the account within %s before agent access expires.\n",
+			validFor)
+	} else if !claimValidUntil.IsZero() && claimValidUntil.After(now) {
+		validFor := FormatAgentClaimValidFor(claimValidUntil, now)
+		expirationLine = fmt.Sprintf("CLAIM_URL_VALID_FOR=%s\n", validFor)
+		instruction = fmt.Sprintf(
+			"Tell the user this ephemeral agent account can no longer authenticate, "+
+				"but the claim URL is still valid for %s. Include the claim URL and the remaining time.\n",
+			validFor)
+	} else {
+		return ""
+	}
+	message := fmt.Sprintf(
+		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
+			"CLAIM_URL=%s\n",
 		claimURL)
+	message += expirationLine
+	message += "ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"
+	message += "INSTRUCTION=" + instruction
+	return message
 }
 
-var agentPulumiDir = filepath.Join(os.TempDir(), BookkeepingDir)
+// FormatAgentClaimValidFor returns a compact, approximate duration until an
+// agent account or claim URL expires.
+func FormatAgentClaimValidFor(validUntil, now time.Time) string {
+	validFor := validUntil.Sub(now)
+	if validFor <= 0 {
+		return "expired"
+	}
+	validFor = validFor.Truncate(time.Minute)
+	if validFor < time.Minute {
+		return "<1m"
+	}
+
+	days := int(validFor / (24 * time.Hour))
+	validFor -= time.Duration(days) * 24 * time.Hour
+	hours := int(validFor / time.Hour)
+	validFor -= time.Duration(hours) * time.Hour
+	minutes := int(validFor / time.Minute)
+
+	var b strings.Builder
+	if days > 0 {
+		fmt.Fprintf(&b, "%dd", days)
+	}
+	if hours > 0 {
+		fmt.Fprintf(&b, "%dh", hours)
+	}
+	if minutes > 0 || b.Len() == 0 {
+		fmt.Fprintf(&b, "%dm", minutes)
+	}
+	return b.String()
+}
+
+// agentAccessTokenExpiresAt returns the agent account access-token expiration,
+// plus whether the token is still valid at now.
+func agentAccessTokenExpiresAt(account Account, now time.Time) (*time.Time, bool) {
+	if account.TokenInformation == nil || account.TokenInformation.ExpiresAt == nil {
+		return nil, false
+	}
+	return account.TokenInformation.ExpiresAt, account.TokenInformation.ExpiresAt.After(now)
+}
+
+func defaultAgentPulumiDir() string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(os.TempDir(), BookkeepingDir)
+	}
+	return filepath.Join("/tmp", BookkeepingDir)
+}
+
+var agentPulumiDir = defaultAgentPulumiDir()
 
 // getAgentPulumiDir returns the shared temporary directory used for agent
 // credentials, creating it if needed.
@@ -495,7 +572,8 @@ func GetAgentClaim() (AgentClaim, error) {
 }
 
 // DeleteExpiredAgentCredentials removes shared temporary agent credentials when
-// their claim URL has expired. It returns true when credentials were removed.
+// both the claim URL and access token have expired. It returns true when
+// credentials were removed.
 func DeleteExpiredAgentCredentials(now time.Time) (bool, error) {
 	claim, err := GetAgentClaim()
 	if err != nil {
@@ -506,6 +584,21 @@ func DeleteExpiredAgentCredentials(now time.Time) (bool, error) {
 			logging.V(7).Infof("Shared agent claim metadata is valid until %s", claim.ValidUntil)
 		}
 		return false, nil
+	}
+	creds, err := GetAgentStoredCredentials()
+	if err != nil {
+		return false, err
+	}
+	if claim.CloudURL != "" {
+		if expiresAt, valid := agentAccessTokenExpiresAt(creds.Accounts[claim.CloudURL], now); valid {
+			// This is defensive: normally the access token should expire before
+			// the claim URL, but do not delete still-usable credentials if the
+			// service returns a different ordering.
+			logging.V(7).Infof(
+				"Shared agent claim metadata expired at %s, but access token for %q is valid until %s",
+				claim.ValidUntil, claim.CloudURL, *expiresAt)
+			return false, nil
+		}
 	}
 	logging.V(7).Infof("Shared agent claim metadata expired at %s; deleting shared agent state", claim.ValidUntil)
 	if err := DeleteAgentCredentials(); err != nil {
