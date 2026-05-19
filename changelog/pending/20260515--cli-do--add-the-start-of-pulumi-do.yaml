@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/do
-  description: Add the start of `pulumi do`

@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/cloud
-  description: Add `pulumi insights account scan get <account> <scan-id>` to show the full workflow run for a single Insights scan
