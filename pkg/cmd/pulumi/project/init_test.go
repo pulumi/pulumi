@@ -15,39 +15,38 @@
 package project
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 )
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
-func TestInitCmdWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
+func TestNewCmdYesWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	var output bytes.Buffer
-	cmd := newInitCmd()
-	cmd.SetOut(&output)
-	cmd.SetArgs([]string{"my-project"})
+	cmd := newcmd.NewNewCmd()
+	cmd.SetArgs([]string{"-y", "--name", "my-project"})
 
 	err := cmd.Execute()
 
 	require.NoError(t, err)
-	assert.Equal(t, "Created Pulumi.yaml\n", output.String())
 	contents, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.yaml"))
 	require.NoError(t, readErr)
 	assert.Equal(t, "name: my-project\n", string(contents))
 }
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
-func TestInitCmdUsesCurrentDirectoryNameByDefault(t *testing.T) {
+func TestNewCmdYesUsesCurrentDirectoryNameByDefault(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "my-project")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	t.Chdir(dir)
-	cmd := newInitCmd()
+	cmd := newcmd.NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
 
 	err := cmd.Execute()
 
@@ -58,12 +57,12 @@ func TestInitCmdUsesCurrentDirectoryNameByDefault(t *testing.T) {
 }
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
-func TestInitCmdSanitizesDefaultDirectoryName(t *testing.T) {
+func TestNewCmdYesSanitizesDefaultDirectoryName(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "my project!")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	t.Chdir(dir)
-	cmd := newInitCmd()
-	cmd.SetArgs([]string{})
+	cmd := newcmd.NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
 
 	err := cmd.Execute()
 
@@ -74,11 +73,11 @@ func TestInitCmdSanitizesDefaultDirectoryName(t *testing.T) {
 }
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
-func TestInitCmdRejectsInvalidExplicitName(t *testing.T) {
+func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	cmd := newInitCmd()
-	cmd.SetArgs([]string{"my project"})
+	cmd := newcmd.NewNewCmd()
+	cmd.SetArgs([]string{"-y", "--name", "my project"})
 
 	err := cmd.Execute()
 
@@ -88,12 +87,13 @@ func TestInitCmdRejectsInvalidExplicitName(t *testing.T) {
 }
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
-func TestInitCmdDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
+func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 	dir := t.TempDir()
 	existing := filepath.Join(dir, "Pulumi.yaml")
 	require.NoError(t, os.WriteFile(existing, []byte("name: existing\n"), 0o600))
 	t.Chdir(dir)
-	cmd := newInitCmd()
+	cmd := newcmd.NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
 
 	err := cmd.Execute()
 
@@ -101,15 +101,4 @@ func TestInitCmdDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 	contents, readErr := os.ReadFile(existing)
 	require.NoError(t, readErr)
 	assert.Equal(t, "name: existing\n", string(contents))
-}
-
-func TestInitCmdRejectsTooManyArgs(t *testing.T) {
-	t.Parallel()
-
-	cmd := newInitCmd()
-	cmd.SetArgs([]string{"one", "two"})
-
-	err := cmd.Execute()
-
-	require.ErrorContains(t, err, "accepts at most 1 arg(s), received 2")
 }
