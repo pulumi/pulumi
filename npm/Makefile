@@ -18,7 +18,7 @@ build:: ensure
 
 test:: ensure
 	npm test
-	PULUMI_VERSION=$(VERSION) npm run test:integration
+	npm run test:integration
 
 publish:: build
 	NPM_PKG_JSON=$(CURDIR)/package.json NPM_ARTIFACT_GLOB="sdk-npm-*.tgz" bash -c ../scripts/publish_npm.sh

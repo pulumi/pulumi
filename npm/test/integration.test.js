@@ -1,7 +1,8 @@
 // Copyright 2026, Pulumi Corporation. All rights reserved.
 //
 // Integration tests: real network requests and binary execution.
-// Run via `make test_fast` (uses $(VERSION)) or directly:
+// Always runs against the latest stable release. Set PULUMI_VERSION to test a
+// specific version:
 //
 //   PULUMI_VERSION=3.237.0 node --test test/integration.test.js
 
@@ -15,17 +16,15 @@ const os = require("os");
 const path = require("path");
 const { fetchLatestVersion } = require("../lib/download");
 
-if (!process.env.PULUMI_VERSION) {
-    throw new Error("PULUMI_VERSION must be set");
-}
-
-// Pre-release build versions (e.g. 3.239.0-alpha.123) are not published to
-// the CDN. Resolve to the latest stable release for integration testing.
-let version = process.env.PULUMI_VERSION;
+// Default to the latest released version so CI always tests against something
+// real, regardless of what version is currently being built.
+let version = process.env.PULUMI_VERSION || "";
 before(async () => {
-    if (version.includes("-")) {
+    if (!version || version.includes("-")) {
         const stable = await fetchLatestVersion();
-        process.stderr.write(`PULUMI_VERSION ${version} is pre-release; using latest stable ${stable}\n`);
+        if (version) {
+            process.stderr.write(`PULUMI_VERSION ${version} is not a stable release; using latest stable ${stable}\n`);
+        }
         version = stable;
     }
 });
