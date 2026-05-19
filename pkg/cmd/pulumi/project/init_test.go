@@ -108,7 +108,7 @@ func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
 
 	err := cmd.Execute()
 
-	require.ErrorContains(t, err, existing+" already exists")
+	require.ErrorContains(t, err, dir+" is not empty;")
 	contents, readErr := os.ReadFile(existing)
 	require.NoError(t, readErr)
 	assert.Equal(t, "name: existing\n", string(contents))
