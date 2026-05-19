@@ -875,3 +875,120 @@ func TestTargetedUpdateRefreshWithDeletedParent(t *testing.T) {
 		p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
 	require.NoError(t, err)
 }
+
+// TestTargetedUpdateRefreshReparentedProvider reproduces a fuzz-found snapshot
+// integrity error where a targeted update with refresh runs against a snapshot
+// containing a child provider (a provider whose URN has a non-empty parent),
+// while the program registers a same-Type+Name top-level provider. The child
+// provider's refresh read fails and other targeted resources are reported
+// deleted upstream, but a non-targeted component in the snapshot is
+// re-registered by the program and continues to reference the snapshot's
+// child provider URN. During step generation the journal sees a resource
+// whose Provider points to a URN that is no longer present in the snapshot,
+// yielding "resource X refers to unknown provider Y".
+//
+// Reproducer for the fuzz failure at
+// https://github.com/pulumi/pulumi/actions/runs/26088164491/job/76706995563
+// (rapid seed 9660689335406562409).
+func TestTargetedUpdateRefreshReparentedProvider(t *testing.T) {
+	t.Parallel()
+
+	// TODO[pulumi/pulumi#23262]: Fix the underlying issue and re-enable this test.
+	t.Skip("Skipping: targeted update with refresh leaves a dangling reference " +
+		"to a reparented child provider URN")
+
+	p := &lt.TestPlan{Project: "test-project", Stack: "test-stack"}
+
+	const (
+		parentURN         = "urn:pulumi:test-stack::test-project::pkgA:m:Parent::parent"
+		childProvSnapURN  = "urn:pulumi:test-stack::test-project::pkgA:m:Parent$pulumi:providers:pkgB::childProv"
+		dependentURN      = "urn:pulumi:test-stack::test-project::pkgB:m:Component::dependent"
+		dependentChildURN = "urn:pulumi:test-stack::test-project::pkgB:m:Component$pkgB:m:Custom::dependentChild"
+	)
+
+	childProvRef := childProvSnapURN + "::id-childProv"
+
+	snap := &deploy.Snapshot{Resources: []*resource.State{
+		{
+			Type: "pkgA:m:Parent",
+			URN:  parentURN,
+		},
+		{
+			Type:   "pulumi:providers:pkgB",
+			URN:    childProvSnapURN,
+			Custom: true,
+			ID:     "id-childProv",
+			Parent: parentURN,
+		},
+		{
+			Type:     "pkgB:m:Component",
+			URN:      dependentURN,
+			Provider: childProvRef,
+		},
+		// A custom resource child of `dependent` that is targeted but is
+		// reported as deleted upstream during refresh. Targeting this resource
+		// pulls the child provider it references into the engine's dependent
+		// set, which is necessary to reach the broken code path.
+		{
+			Type:     "pkgB:m:Custom",
+			URN:      dependentChildURN,
+			Custom:   true,
+			ID:       "id-dependentChild",
+			Parent:   dependentURN,
+			Provider: childProvRef,
+		},
+	}}
+	require.NoError(t, snap.VerifyIntegrity(), "initial snapshot is not valid")
+
+	// The child provider's refresh read fails; other refreshed resources are
+	// reported as deleted upstream (empty ReadResponse).
+	readF := func(_ context.Context, req plugin.ReadRequest) (plugin.ReadResponse, error) {
+		if req.URN == childProvSnapURN {
+			return plugin.ReadResponse{Status: resource.StatusUnknown},
+				fmt.Errorf("read failure for %s", req.URN)
+		}
+		return plugin.ReadResponse{}, nil
+	}
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{ReadF: readF}, nil
+		}),
+	}
+
+	programF := deploytest.NewLanguageRuntimeF(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, err := monitor.RegisterResource("pkgA:m:Parent", "parent", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		// Re-register the child provider at the top level (no Parent). The
+		// URN differs from the snapshot's child provider only by the absence
+		// of the parent prefix.
+		_, err = monitor.RegisterResource("pulumi:providers:pkgB", "childProv", true, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		// Re-register `dependent`. Notably it does NOT name the snapshot's
+		// child provider explicitly — the engine resolves the default pkgB
+		// provider, which becomes the new top-level one.
+		_, err = monitor.RegisterResource("pkgB:m:Component", "dependent", false, deploytest.ResourceOptions{})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	// Target the parent of the child provider and the dependent's custom
+	// child, with refresh enabled.
+	hostF := deploytest.NewPluginHostF(nil, nil, programF, loaders...)
+	opts := lt.TestUpdateOptions{
+		T:                t,
+		HostF:            hostF,
+		SkipDisplayTests: true,
+		UpdateOptions: engine.UpdateOptions{
+			Refresh: true,
+			Targets: deploy.NewUrnTargets([]string{parentURN, dependentChildURN}),
+		},
+	}
+
+	_, err := lt.TestOp(engine.Update).RunStep(
+		p.GetProject(), p.GetTarget(t, snap), opts, false, p.BackendClient, nil, "1")
+	require.NoError(t, err)
+}

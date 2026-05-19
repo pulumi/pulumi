@@ -66,6 +66,8 @@ func DefaultExclusionRules() ExclusionRules {
 		ExcludeTargetedUpdateRefreshWithChildProvider,
 		// TODO[pulumi/pulumi#22923]
 		ExcludeTargetedUpdateRefreshWithDeletedParent,
+		// TODO[pulumi/pulumi#23262]
+		ExcludeTargetedUpdateRefreshReparentedProvider,
 	}
 }
 
@@ -789,6 +791,68 @@ func ExcludeTargetedUpdateRefreshWithDeletedParent(
 
 	for _, res := range snap.Resources {
 		if res.Parent != "" && deletedURNs[res.Parent] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ExcludeTargetedUpdateRefreshReparentedProvider excludes scenarios where a
+// targeted update with refresh runs against a snapshot containing a child
+// provider (a provider with a non-empty Parent), and the program registers a
+// provider of the same Type and Name but with a different URN (i.e., a
+// different parent path — typically a top-level reparenting). During such a
+// run the snapshot's child provider can be replaced by the program's provider
+// while a non-targeted snapshot resource (or one re-registered by the program
+// without an explicit Provider field) still records the original child
+// provider URN. The journal then sees a resource referring to a provider URN
+// that is no longer present in the snapshot.
+func ExcludeTargetedUpdateRefreshReparentedProvider(
+	snap *SnapshotSpec,
+	prog *ProgramSpec,
+	_ *ProviderSpec,
+	plan *PlanSpec,
+) bool {
+	if plan.Operation != PlanOperationUpdate {
+		return false
+	}
+	if !plan.Refresh {
+		return false
+	}
+	if len(plan.TargetURNs) == 0 {
+		return false
+	}
+
+	type providerKey struct {
+		Type tokens.Type
+		Name string
+	}
+
+	// Collect the URNs of all child providers in the snapshot, keyed by
+	// (Type, Name).
+	snapChildProviders := make(map[providerKey]resource.URN)
+	for _, res := range snap.Resources {
+		if providers.IsProviderType(res.Type) && res.Parent != "" {
+			snapChildProviders[providerKey{res.Type, res.Name}] = res.URN()
+		}
+	}
+	if len(snapChildProviders) == 0 {
+		return false
+	}
+
+	// If the program registers a provider with the same (Type, Name) but a
+	// different URN than the snapshot's child provider, the engine reparents
+	// the provider and we may leave a dangling reference.
+	for _, res := range prog.ResourceRegistrations {
+		if !providers.IsProviderType(res.Type) {
+			continue
+		}
+		snapURN, ok := snapChildProviders[providerKey{res.Type, res.Name}]
+		if !ok {
+			continue
+		}
+		if res.URN() != snapURN {
 			return true
 		}
 	}
