@@ -36,6 +36,11 @@ def main():
     with open("sdk/nodejs/version.ts", "w") as f:
         f.write("".join(node))
 
+    npm = open("npm/package.json").readlines()
+    replace_line(npm, "    \"version\":", f'    "version": "{version}",\n')
+    with open("npm/package.json", "w") as f:
+        f.write("".join(npm))
+
     python = open("sdk/python/lib/pulumi/_version.py").readlines()
     replace_line(python, "_VERSION = ", f'_VERSION = "{version}"\n')
     with open("sdk/python/lib/pulumi/_version.py", "w") as f:
