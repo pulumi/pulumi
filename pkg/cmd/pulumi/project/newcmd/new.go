@@ -216,7 +216,8 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 
 		template = workspace.Template{
-			Dir: temp,
+			Dir:         temp,
+			ProjectName: "${PROJECT}",
 		}
 	} else {
 		template, err = cmdTemplate.Download(ctx)

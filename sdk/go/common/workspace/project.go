@@ -1265,6 +1265,11 @@ func NewProjectRuntimeInfo(name string, options map[string]any) ProjectRuntimeIn
 	}
 }
 
+// Used for json/yaml marshalling so omitempty works.
+func (info ProjectRuntimeInfo) IsZero() bool {
+	return info.name == "" && len(info.options) == 0
+}
+
 func (info *ProjectRuntimeInfo) Name() string {
 	return info.name
 }
