@@ -348,12 +348,8 @@ func buildOptionsImports() *ast.GenDecl {
 }
 
 // basePackageImportPath is the canonical location of the `base` package
-// that generated code consumes. Today only commands.go imports it (to
-// build a base.BaseOptions value when calling a.run); per-command
-// Options structs embed the BaseOptions fields directly so that callers
-// can initialise them via composite literals. The integration PR (#4) is
-// where this flips over to the real sdk/go/auto address.
-const basePackageImportPath = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
+// that generated code consumes.
+const basePackageImportPath = "github.com/pulumi/pulumi/sdk/v3/go/auto/automation/base"
 
 // defaultAPIImportBase is the Go import path of the default outputDir.
 // It anchors the per-command opt-package imports emitted by commands.go
@@ -684,6 +680,25 @@ func toComment(desc string) *ast.CommentGroup {
 	return &ast.CommentGroup{List: list}
 }
 
+// docCommentLines splits a CLI description into trimmed non-empty lines,
+// ready to be rendered as a `// `-prefixed comment block in commands.go.
+// Embedding a multi-line description as a single `// {{.DocComment}}` line
+// would push the body of the description outside the comment block and
+// break gofmt; callers that need a Go doc comment must iterate over the
+// returned lines.
+func docCommentLines(desc string) []string {
+	desc = strings.TrimSpace(desc)
+	if desc == "" {
+		return nil
+	}
+	raw := strings.Split(desc, "\n")
+	lines := make([]string, 0, len(raw))
+	for _, line := range raw {
+		lines = append(lines, strings.TrimRight(line, " \t"))
+	}
+	return lines
+}
+
 func astTypeFor(typ string, repeatable bool) (ast.Expr, error) {
 	var base *ast.Ident
 	switch typ {
@@ -781,13 +796,17 @@ func readBoilerplateFile(dir string) ([]byte, error) {
 
 // commandMethod is the template payload for one generated method.
 type commandMethod struct {
-	Name         string
-	OptPkg       string
-	Breadcrumbs  []string
-	DocComment   string
-	RequiredArgs []methodArg
-	OptionalArgs []methodArg
-	VariadicArg  *methodArg
+	Name        string
+	OptPkg      string
+	Breadcrumbs []string
+	// DocCommentLines is the per-line breakdown of the spec's description.
+	// The template emits one `// ` prefixed line per entry so multi-line
+	// descriptions (e.g. for `pulumi new`, `pulumi cancel`) stay inside the
+	// comment block and survive gofmt.
+	DocCommentLines []string
+	RequiredArgs    []methodArg
+	OptionalArgs    []methodArg
+	VariadicArg     *methodArg
 	// Presets are pre-rendered Go statements appending preset flag values.
 	Presets []string
 	// Flags are pre-rendered Go statements appending user-supplied flag values.
@@ -901,10 +920,10 @@ func walkCommands(
 // node: method name, positional arguments, pre-rendered preset/flag bodies.
 func buildCommandMethod(node Structure, breadcrumbs []string, flags map[string]Flag) (commandMethod, error) {
 	m := commandMethod{
-		Name:        methodNameFor(breadcrumbs),
-		OptPkg:      packageNameFor(breadcrumbs),
-		Breadcrumbs: append([]string(nil), breadcrumbs...),
-		DocComment:  strings.TrimSpace(node.Description),
+		Name:            methodNameFor(breadcrumbs),
+		OptPkg:          packageNameFor(breadcrumbs),
+		Breadcrumbs:     append([]string(nil), breadcrumbs...),
+		DocCommentLines: docCommentLines(node.Description),
 	}
 
 	// Positional arguments. When `requiredArguments` is absent from the spec
@@ -1140,11 +1159,13 @@ var _ = fmt.Sprint
 var _ = context.Background
 
 {{range .Methods}}
-{{if .DocComment}}// {{.Name}} corresponds to ` + "`pulumi {{range $i, $c := .Breadcrumbs}}{{if $i}} {{end}}{{$c}}{{end}}`" + `.
+// {{.Name}} corresponds to ` + "`pulumi {{range $i, $c := .Breadcrumbs}}{{if $i}} {{end}}{{$c}}{{end}}`" + `.
+{{- if .DocCommentLines}}
 //
-// {{.DocComment}}
-{{else}}// {{.Name}} corresponds to ` + "`pulumi {{range $i, $c := .Breadcrumbs}}{{if $i}} {{end}}{{$c}}{{end}}`" + `.
-{{end -}}
+{{- range .DocCommentLines}}
+// {{.}}
+{{- end}}
+{{- end}}
 func (a *API) {{.Name}}(
 	ctx context.Context,
 {{- range .RequiredArgs}}
