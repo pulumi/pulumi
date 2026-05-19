@@ -37,7 +37,6 @@ func NewProjectCmd() *cobra.Command {
 	// Add subcommands
 	cmd.AddCommand(newProjectLsCmd())
 	cmd.AddCommand(newcmd.NewNewCmd())
-	cmd.AddCommand(newInitCmd())
 
 	return cmd
 }
