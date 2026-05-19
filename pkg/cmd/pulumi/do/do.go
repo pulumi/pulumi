@@ -50,14 +50,6 @@ func NewDoCmd(
 	lm cmdBackend.LoginManager, ws pkgWorkspace.Context,
 	pluginFromSource func(context.Context, *plugin.Context, string, string) (plugin.Provider, error),
 	newHost func() (plugin.Host, error),
-) *cobra.Command {
-	return newDoCmd(lm, ws, pluginFromSource, newHost, nil)
-}
-
-func newDoCmd(
-	lm cmdBackend.LoginManager, ws pkgWorkspace.Context,
-	pluginFromSource func(context.Context, *plugin.Context, string, string) (plugin.Provider, error),
-	newHost func() (plugin.Host, error),
 	loadConverterPlugin func(
 		*plugin.Context, string, func(sev diag.Severity, msg string),
 	) (plugin.Converter, error),

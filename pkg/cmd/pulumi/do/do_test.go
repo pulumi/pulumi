@@ -27,10 +27,17 @@ import (
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func panicLoadConverterPlugin(
+	*plugin.Context, string, func(sev diag.Severity, msg string),
+) (plugin.Converter, error) {
+	panic("unexpected call to load converter plugin")
+}
 
 func panicLoader(context.Context, *plugin.Context, string, string) (plugin.Provider, error) {
 	panic("not implemented")
@@ -59,7 +66,7 @@ func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
 			mws := &pkgWorkspace.MockContext{}
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, panicLoader, testHost)
+			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 			cmd.SetArgs(tc.args)
@@ -138,7 +145,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -232,7 +239,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 			postRunCount++
 		},
 	}
-	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost))
+	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin))
 
 	var stdout bytes.Buffer
 	rootCmd.SetOut(&stdout)
@@ -298,7 +305,7 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -357,7 +364,7 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader, testHost)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
