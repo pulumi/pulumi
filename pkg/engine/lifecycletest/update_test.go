@@ -639,9 +639,6 @@ func TestUntargetedComponentResource(t *testing.T) {
 func TestTargetedUpdateRefreshUnknownChildProvider(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#22511]: Fix the underlying issue and re-enable this test.
-	t.Skip("Skipping: targeted update with refresh produces unknown provider reference for child providers")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",

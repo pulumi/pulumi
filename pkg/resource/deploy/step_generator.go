@@ -1546,7 +1546,30 @@ func (sg *stepGenerator) continueStepsFromImport(
 				sg.sames[urn] = true
 				sg.sames[old.URN] = true
 
-				_, allDeps := old.GetAllDependencies()
+				providerRef, allDeps := old.GetAllDependencies()
+				if providerRef != "" {
+					provRef, err := sdkproviders.ParseReference(providerRef)
+					if err != nil {
+						return nil, fmt.Errorf(
+							"could not parse provider reference %s for %s: %w",
+							providerRef, old.URN, err)
+					}
+					provURN := provRef.URN()
+					// Check both the original URN and any alias. If the provider
+					// was renamed (e.g. reparented), the step was generated under
+					// the new URN, but the old resource still references the old one.
+					if !sg.hasGeneratedStep(provURN) && !sg.isOperatedOn(provURN) {
+						provOld, has := sg.deployment.Olds()[provURN]
+						if has && provOld.ID == provRef.ID() {
+							depSteps, err := getDependencySteps(provOld, nil)
+							if err != nil {
+								return nil, err
+							}
+							steps = append(steps, depSteps...)
+						}
+					}
+				}
+
 				for _, dep := range allDeps {
 					generatedDep := sg.hasGeneratedStep(dep.URN)
 					if !generatedDep {
