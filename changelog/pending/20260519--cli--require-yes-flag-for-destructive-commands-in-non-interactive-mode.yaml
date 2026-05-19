@@ -1,0 +1,4 @@
+changes:
+- type: fix
+  scope: cli
+  description: Require `--yes` to confirm `pulumi deployment cancel`, `pulumi stack schedule remove`, `pulumi org webhook remove`, and `pulumi stack webhook remove` when running non-interactively

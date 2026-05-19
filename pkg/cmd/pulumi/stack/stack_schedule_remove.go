@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -102,6 +103,9 @@ func runStackScheduleRemove(
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	if !yes {
+		if !cmdutil.Interactive() {
+			return backenderr.NonInteractiveRequiresYesError{}
+		}
 		prompt := fmt.Sprintf("This will remove the schedule '%s'!", scheduleID)
 		if !ui.ConfirmPrompt(prompt, "remove", opts) {
 			return result.FprintBailf(os.Stdout, "confirmation declined")
