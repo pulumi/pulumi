@@ -131,7 +131,7 @@ class ManagedFieldsEntryArgsDict(TypedDict):
     """
     FieldsType is the discriminator for the different fields format and version. There is currently only one possible value: "FieldsV1"
     """
-    fields_v1: NotRequired[Optional[Any]]
+    fields_v1: NotRequired[Any]
     """
     FieldsV1 holds the first JSON version format as described in the "FieldsV1" type.
     """
@@ -321,7 +321,7 @@ class ObjectMetaArgsDict(TypedDict):
     """
     Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels
     """
-    managed_fields: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['ManagedFieldsEntryArgs']]]]]
+    managed_fields: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['ManagedFieldsEntryArgsDict']]]]]
     """
     ManagedFields maps workflow-id and version to the set of fields that are managed by that workflow. This is mostly for internal housekeeping, and users typically shouldn't need to set or understand this field. A workflow can be the user's name, a controller's name, or the name of a specific apply path like "ci-cd". The set of fields is always in the version that the workflow used when modifying the object.
     """
@@ -335,7 +335,7 @@ class ObjectMetaArgsDict(TypedDict):
 
     Must be a DNS_LABEL. Cannot be updated. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces
     """
-    owner_references: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['OwnerReferenceArgs']]]]]
+    owner_references: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['OwnerReferenceArgsDict']]]]]
     """
     List of objects depended by this object. If ALL objects in the list have been deleted, this object will be garbage collected. If this object is managed by a controller, then an entry in this list will point to this controller, with the controller field set to true. There cannot be more than one managing controller.
     """

@@ -11,6 +11,7 @@ export interface DataArgs {
     float: pulumi.Input<number>;
     innerData: pulumi.Input<inputs.InnerDataArgs>;
     integer: pulumi.Input<number>;
+    optionalInner?: pulumi.Input<inputs.InnerDataArgs | undefined>;
     string: pulumi.Input<string>;
     stringMap: pulumi.Input<{[key: string]: pulumi.Input<string>}>;
 }

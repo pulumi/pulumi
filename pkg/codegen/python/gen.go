@@ -2556,10 +2556,16 @@ func (mod *modContext) typeString(t schema.Type, opts typeStringOpts) string {
 	case *schema.OptionalType:
 		// Rewrite Optional(Input(T)) to Input(Optional(T)) so that it accepts Output(Optional(T))
 		if lifted := codegen.PushOptionalIntoInput(t); lifted != t {
-			// Clear forDict so the inner Optional renders as Optional, not NotRequired.
-			innerOpts := opts
-			innerOpts.forDict = false
-			result := mod.typeString(lifted, innerOpts)
+			innerElem := lifted.(*schema.InputType).ElementType.(*schema.OptionalType).ElementType
+			elemStr := mod.typeString(innerElem, opts)
+			if elemStr == "Any" {
+				// Drop the Input wrapper around Optional[Any]: Any already accepts Output[...] values
+				if opts.forDict {
+					return "NotRequired[Any]"
+				}
+				return "Optional[Any]"
+			}
+			result := fmt.Sprintf("pulumi.Input[Optional[%s]]", elemStr)
 			if opts.forDict {
 				return fmt.Sprintf("NotRequired[%s]", result)
 			}

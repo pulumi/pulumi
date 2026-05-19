@@ -94,6 +94,12 @@ func (p *RefRefProvider) GetSchema(
 			Ref:  "#/types/ref-ref:index:InnerData",
 		},
 	}
+	dataProperties["optionalInner"] = schema.PropertySpec{
+		TypeSpec: schema.TypeSpec{
+			Type: "ref",
+			Ref:  "#/types/ref-ref:index:InnerData",
+		},
+	}
 	dataRequired := append(typeRequired, "innerData")
 
 	resourceProperties := map[string]schema.PropertySpec{

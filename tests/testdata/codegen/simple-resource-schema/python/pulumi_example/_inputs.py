@@ -80,13 +80,13 @@ class ObjectWithNodeOptionalInputsArgs:
 
 class ObjectArgsDict(TypedDict):
     bar: NotRequired[pulumi.Input[Optional[_builtins.str]]]
-    configs: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgs']]]]]
+    configs: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input['ConfigMapArgsDict']]]]]
     foo: NotRequired[pulumi.Input[Optional['Resource']]]
-    others: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]]
+    others: NotRequired[pulumi.Input[Optional[Sequence[pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]]
     """
     List of lists of other objects
     """
-    still_others: NotRequired[pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]]
+    still_others: NotRequired[pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgsDict']]]]]]]
     """
     Mapping from string to list of some other object
     """
