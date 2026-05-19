@@ -1,4 +1,0 @@
-changes:
-- type: chore
-  scope: contributing
-  description: Fix minor grammar typos in CONTRIBUTING.md (PR -> PRs, Here's -> Here are)
