@@ -220,20 +220,20 @@ var File_pulumi_codegen_mapper_proto protoreflect.FileDescriptor
 
 const file_pulumi_codegen_mapper_proto_rawDesc = "" +
 	"\n" +
-	"\x1bpulumi/codegen/mapper.proto\x12\x11pulumirpc.codegen\"\xbc\x01\n" +
+	"\x1bpulumi/codegen/mapper.proto\x12\acodegen\"\xb2\x01\n" +
 	"\x11GetMappingRequest\x12\x1a\n" +
 	"\bprovider\x18\x01 \x01(\tR\bprovider\x12'\n" +
-	"\x0fpulumi_provider\x18\x02 \x01(\tR\x0epulumiProvider\x12b\n" +
-	"\x15parameterization_hint\x18\x03 \x01(\v2-.pulumirpc.codegen.MapperParameterizationHintR\x14parameterizationHint\"`\n" +
+	"\x0fpulumi_provider\x18\x02 \x01(\tR\x0epulumiProvider\x12X\n" +
+	"\x15parameterization_hint\x18\x03 \x01(\v2#.codegen.MapperParameterizationHintR\x14parameterizationHint\"`\n" +
 	"\x1aMapperParameterizationHint\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x14\n" +
 	"\x05value\x18\x03 \x01(\fR\x05value\"(\n" +
 	"\x12GetMappingResponse\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\fR\x04data2e\n" +
-	"\x06Mapper\x12[\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data2Q\n" +
+	"\x06Mapper\x12G\n" +
 	"\n" +
-	"GetMapping\x12$.pulumirpc.codegen.GetMappingRequest\x1a%.pulumirpc.codegen.GetMappingResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
+	"GetMapping\x12\x1a.codegen.GetMappingRequest\x1a\x1b.codegen.GetMappingResponse\"\x00B2Z0github.com/pulumi/pulumi/sdk/v3/proto/go/codegenb\x06proto3"
 
 var (
 	file_pulumi_codegen_mapper_proto_rawDescOnce sync.Once
@@ -249,14 +249,14 @@ func file_pulumi_codegen_mapper_proto_rawDescGZIP() []byte {
 
 var file_pulumi_codegen_mapper_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_pulumi_codegen_mapper_proto_goTypes = []any{
-	(*GetMappingRequest)(nil),          // 0: pulumirpc.codegen.GetMappingRequest
-	(*MapperParameterizationHint)(nil), // 1: pulumirpc.codegen.MapperParameterizationHint
-	(*GetMappingResponse)(nil),         // 2: pulumirpc.codegen.GetMappingResponse
+	(*GetMappingRequest)(nil),          // 0: codegen.GetMappingRequest
+	(*MapperParameterizationHint)(nil), // 1: codegen.MapperParameterizationHint
+	(*GetMappingResponse)(nil),         // 2: codegen.GetMappingResponse
 }
 var file_pulumi_codegen_mapper_proto_depIdxs = []int32{
-	1, // 0: pulumirpc.codegen.GetMappingRequest.parameterization_hint:type_name -> pulumirpc.codegen.MapperParameterizationHint
-	0, // 1: pulumirpc.codegen.Mapper.GetMapping:input_type -> pulumirpc.codegen.GetMappingRequest
-	2, // 2: pulumirpc.codegen.Mapper.GetMapping:output_type -> pulumirpc.codegen.GetMappingResponse
+	1, // 0: codegen.GetMappingRequest.parameterization_hint:type_name -> codegen.MapperParameterizationHint
+	0, // 1: codegen.Mapper.GetMapping:input_type -> codegen.GetMappingRequest
+	2, // 2: codegen.Mapper.GetMapping:output_type -> codegen.GetMappingResponse
 	2, // [2:3] is the sub-list for method output_type
 	1, // [1:2] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name

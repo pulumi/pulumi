@@ -1,4 +1,4 @@
-// package: pulumirpc.codegen
+// package: codegen
 // file: pulumi/codegen/loader.proto
 
 /* tslint:disable */

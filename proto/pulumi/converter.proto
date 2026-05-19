@@ -109,7 +109,7 @@ message ConvertSnippetRequest {
     string target_loader = 3;
 
     // The package description to load which contains the token.
-    pulumirpc.codegen.GetSchemaRequest package = 4;
+    .codegen.GetSchemaRequest package = 4;
 
     // The token to use when converting the snippet. This may be a provider token, such as `pulumi:providers:pkg`,
     // a function token, or a resource token.

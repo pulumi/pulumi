@@ -565,12 +565,12 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\x04args\x18\x05 \x03(\tR\x04args\x12>\n" +
 	"\x1bgenerated_project_directory\x18\x06 \x01(\tR\x19generatedProjectDirectory\"Y\n" +
 	"\x16ConvertProgramResponse\x12?\n" +
-	"\vdiagnostics\x18\x01 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\"\xc5\x01\n" +
+	"\vdiagnostics\x18\x01 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\"\xbb\x01\n" +
 	"\x15ConvertSnippetRequest\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\fR\x06source\x12#\n" +
-	"\rtarget_loader\x18\x03 \x01(\tR\ftargetLoader\x12=\n" +
-	"\apackage\x18\x04 \x01(\v2#.pulumirpc.codegen.GetSchemaRequestR\apackage\x12\x14\n" +
+	"\rtarget_loader\x18\x03 \x01(\tR\ftargetLoader\x123\n" +
+	"\apackage\x18\x04 \x01(\v2\x19.codegen.GetSchemaRequestR\apackage\x12\x14\n" +
 	"\x05token\x18\x05 \x01(\tR\x05token\"\x8d\x01\n" +
 	"\x16ConvertSnippetResponse\x12?\n" +
 	"\vdiagnostics\x18\x01 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\x12\x1a\n" +
@@ -603,13 +603,13 @@ var file_pulumi_converter_proto_goTypes = []any{
 	(*ConvertSnippetRequest)(nil),    // 5: pulumirpc.ConvertSnippetRequest
 	(*ConvertSnippetResponse)(nil),   // 6: pulumirpc.ConvertSnippetResponse
 	(*codegen.Diagnostic)(nil),       // 7: pulumirpc.codegen.Diagnostic
-	(*codegen.GetSchemaRequest)(nil), // 8: pulumirpc.codegen.GetSchemaRequest
+	(*codegen.GetSchemaRequest)(nil), // 8: codegen.GetSchemaRequest
 }
 var file_pulumi_converter_proto_depIdxs = []int32{
 	1, // 0: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
 	7, // 1: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
 	7, // 2: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	8, // 3: pulumirpc.ConvertSnippetRequest.package:type_name -> pulumirpc.codegen.GetSchemaRequest
+	8, // 3: pulumirpc.ConvertSnippetRequest.package:type_name -> codegen.GetSchemaRequest
 	7, // 4: pulumirpc.ConvertSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
 	0, // 5: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
 	3, // 6: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest

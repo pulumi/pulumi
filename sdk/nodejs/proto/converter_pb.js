@@ -1620,16 +1620,16 @@ proto.pulumirpc.ConvertSnippetRequest.prototype.setTargetLoader = function(value
 
 /**
  * optional codegen.GetSchemaRequest package = 4;
- * @return {?proto.pulumirpc.codegen.GetSchemaRequest}
+ * @return {?proto.codegen.GetSchemaRequest}
  */
 proto.pulumirpc.ConvertSnippetRequest.prototype.getPackage = function() {
-  return /** @type{?proto.pulumirpc.codegen.GetSchemaRequest} */ (
+  return /** @type{?proto.codegen.GetSchemaRequest} */ (
     jspb.Message.getWrapperField(this, pulumi_codegen_loader_pb.GetSchemaRequest, 4));
 };
 
 
 /**
- * @param {?proto.pulumirpc.codegen.GetSchemaRequest|undefined} value
+ * @param {?proto.codegen.GetSchemaRequest|undefined} value
  * @return {!proto.pulumirpc.ConvertSnippetRequest} returns this
 */
 proto.pulumirpc.ConvertSnippetRequest.prototype.setPackage = function(value) {

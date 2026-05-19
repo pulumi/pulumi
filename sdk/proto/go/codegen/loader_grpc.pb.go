@@ -33,7 +33,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Loader_GetSchema_FullMethodName = "/pulumirpc.codegen.Loader/GetSchema"
+	Loader_GetSchema_FullMethodName = "/codegen.Loader/GetSchema"
 )
 
 // LoaderClient is the client API for Loader service.
@@ -130,7 +130,7 @@ func _Loader_GetSchema_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Loader_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pulumirpc.codegen.Loader",
+	ServiceName: "codegen.Loader",
 	HandlerType: (*LoaderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

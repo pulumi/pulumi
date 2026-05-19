@@ -23,7 +23,7 @@ class MapperStub(object):
             channel: A grpc.Channel.
         """
         self.GetMapping = channel.unary_unary(
-                '/pulumirpc.codegen.Mapper/GetMapping',
+                '/codegen.Mapper/GetMapping',
                 request_serializer=pulumi_dot_codegen_dot_mapper__pb2.GetMappingRequest.SerializeToString,
                 response_deserializer=pulumi_dot_codegen_dot_mapper__pb2.GetMappingResponse.FromString,
                 )
@@ -61,7 +61,7 @@ def add_MapperServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'pulumirpc.codegen.Mapper', rpc_method_handlers)
+            'codegen.Mapper', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
@@ -88,7 +88,7 @@ class Mapper(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.codegen.Mapper/GetMapping',
+        return grpc.experimental.unary_unary(request, target, '/codegen.Mapper/GetMapping',
             pulumi_dot_codegen_dot_mapper__pb2.GetMappingRequest.SerializeToString,
             pulumi_dot_codegen_dot_mapper__pb2.GetMappingResponse.FromString,
             options, channel_credentials,
