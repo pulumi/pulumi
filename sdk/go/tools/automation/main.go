@@ -224,6 +224,11 @@ func fixCommentPositions(fset *token.FileSet, decls []ast.Decl) {
 			if !ok {
 				continue
 			}
+			// Anchor the struct's opening brace one line above the first
+			// field so go/printer doesn't see a multi-line gap and decide
+			// to insert a blank separator at the top of the body.
+			st.Fields.Opening = file.LineStart(line)
+			line++
 			for _, f := range st.Fields.List {
 				if f.Doc != nil {
 					for _, c := range f.Doc.List {
@@ -326,7 +331,8 @@ func walkStructure(node Structure, breadcrumbs []string, inherited map[string]Fl
 }
 
 // buildOptionsImports returns the `import ( ... )` declaration that every
-// generated options file needs so it can embed base.BaseOptions.
+// generated options file needs so its inlined BaseOptions fields can refer
+// to io.Writer and io.Reader.
 func buildOptionsImports() *ast.GenDecl {
 	return &ast.GenDecl{
 		Tok: token.IMPORT,
@@ -334,7 +340,7 @@ func buildOptionsImports() *ast.GenDecl {
 			&ast.ImportSpec{
 				Path: &ast.BasicLit{
 					Kind:  token.STRING,
-					Value: `"` + basePackageImportPath + `"`,
+					Value: `"io"`,
 				},
 			},
 		},
@@ -342,8 +348,11 @@ func buildOptionsImports() *ast.GenDecl {
 }
 
 // basePackageImportPath is the canonical location of the `base` package
-// that generated code consumes. The integration PR (#4) is where this flips
-// over to the real sdk/go/auto address.
+// that generated code consumes. Today only commands.go imports it (to
+// build a base.BaseOptions value when calling a.run); per-command
+// Options structs embed the BaseOptions fields directly so that callers
+// can initialise them via composite literals. The integration PR (#4) is
+// where this flips over to the real sdk/go/auto address.
 const basePackageImportPath = "github.com/pulumi/pulumi/sdk/v3/go/tools/automation/boilerplate/base"
 
 // defaultAPIImportBase is the Go import path of the default outputDir.
@@ -436,18 +445,28 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, []
 	}
 	sort.Strings(names)
 
-	// Every generated Options struct embeds base.BaseOptions so that the
-	// API's `run` method has somewhere to read ambient invocation config
-	// (cwd, env, stdout/stderr, stdin) from.
-	fields := make([]*ast.Field, 0, len(names)+1)
-	fields = append(fields, &ast.Field{
-		Type: &ast.SelectorExpr{
-			X:   ast.NewIdent("base"),
-			Sel: ast.NewIdent("BaseOptions"),
-		},
-	})
+	// Every generated Options struct lifts the fields of base.BaseOptions
+	// inline rather than embedding the type. Embedding would block
+	// composite-literal initialisation of promoted fields, which the
+	// existing public Workspace API in sdk/go/auto relies on
+	// (`&optnew.Options{Stdout: os.Stdout}`). The shape is the Go
+	// counterpart of the Python TypedDict flattening done by #22657 and
+	// #22658.
+	baseFields := baseOptionFields()
+	fields := make([]*ast.Field, 0, len(baseFields)+len(names))
+	meta := make([]optionField, 0, len(baseFields)+len(names))
+	for _, bf := range baseFields {
+		field := &ast.Field{
+			Names: []*ast.Ident{{Name: bf.name}},
+			Type:  bf.typ,
+		}
+		if bf.doc != "" {
+			field.Doc = toComment(bf.doc)
+		}
+		fields = append(fields, field)
+		meta = append(meta, optionField{name: bf.name, typ: bf.typ})
+	}
 
-	meta := make([]optionField, 0, len(names))
 	for _, name := range names {
 		flag := flags[name]
 
@@ -474,6 +493,58 @@ func buildOptionsSpec(typeName string, flags map[string]Flag) (*ast.TypeSpec, []
 			Fields: &ast.FieldList{List: fields},
 		},
 	}, meta, nil
+}
+
+// baseOptionField describes one field that the generator inlines into
+// every Options struct, mirroring base.BaseOptions one-for-one.
+type baseOptionField struct {
+	name string
+	typ  ast.Expr
+	doc  string
+}
+
+// baseOptionFields returns the inlined BaseOptions fields in declaration
+// order. Each entry's name, type, and doc comment matches the source
+// definition in sdk/go/tools/automation/boilerplate/base/base.go; the
+// generator's output for the BaseOptions surface is structurally
+// identical to the embedded form, just expanded so composite-literal
+// initialisation works.
+func baseOptionFields() []baseOptionField {
+	stringType := ast.NewIdent("string")
+	stringMap := &ast.MapType{
+		Key:   ast.NewIdent("string"),
+		Value: ast.NewIdent("string"),
+	}
+	ioWriter := &ast.SelectorExpr{X: ast.NewIdent("io"), Sel: ast.NewIdent("Writer")}
+	ioReader := &ast.SelectorExpr{X: ast.NewIdent("io"), Sel: ast.NewIdent("Reader")}
+	return []baseOptionField{
+		{
+			name: "Cwd",
+			typ:  stringType,
+			doc: "Cwd is the working directory in which to run the pulumi CLI. " +
+				"When empty the caller's process-level cwd is used.",
+		},
+		{
+			name: "AdditionalEnv",
+			typ:  stringMap,
+			doc:  "AdditionalEnv is merged over the process environment before running the command.",
+		},
+		{
+			name: "Stdout",
+			typ:  ioWriter,
+			doc:  "Stdout, when non-nil, receives a copy of the child process' stdout in real time.",
+		},
+		{
+			name: "Stderr",
+			typ:  ioWriter,
+			doc:  "Stderr, when non-nil, receives a copy of the child process' stderr in real time.",
+		},
+		{
+			name: "Stdin",
+			typ:  ioReader,
+			doc:  "Stdin, when non-nil, is connected to the child process' stdin.",
+		},
+	}
 }
 
 func buildOptionHelpers(typeName, command string, fields []optionField) []ast.Decl {
@@ -514,8 +585,18 @@ func buildOptionHelpers(typeName, command string, fields []optionField) []ast.De
 		Specs: []ast.Spec{optionType},
 	})
 
+	// Helpers are emitted in alphabetical order regardless of the field
+	// layout in the struct. The struct keeps BaseOptions fields at the top
+	// (mirroring the previous embedded form) but the helper surface is
+	// flat and easier to scan when sorted.
+	sortedFields := make([]optionField, len(fields))
+	copy(sortedFields, fields)
+	sort.Slice(sortedFields, func(i, j int) bool {
+		return sortedFields[i].name < sortedFields[j].name
+	})
+
 	// One helper per field, named after the field itself.
-	for _, f := range fields {
+	for _, f := range sortedFields {
 		funcName := f.name
 
 		// func <Field>(v <T>) Option
@@ -1109,6 +1190,12 @@ func (a *API) {{.Name}}(
 		final = append(final, args...)
 	}
 {{end}}
-	return a.run(ctx, o.BaseOptions, final)
+	return a.run(ctx, base.BaseOptions{
+		Cwd:           o.Cwd,
+		AdditionalEnv: o.AdditionalEnv,
+		Stdout:        o.Stdout,
+		Stderr:        o.Stderr,
+		Stdin:         o.Stdin,
+	}, final)
 }
 {{end}}`))
