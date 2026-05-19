@@ -905,12 +905,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts, true /*remote*/", name)
 	} else {
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, resourceInputs, opts", name)
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			fmt.Fprintf(w, ", false /*dependency*/")
 		}
 	}
 
-	if pkg.Parameterization != nil {
+	if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 		fmt.Fprintf(w, ", utilities.getPackage()")
 	}
 
@@ -1031,7 +1031,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) (resourceFil
 		// If the call is on a parameterized package, make sure we pass the parameter.
 		pkg, err := fun.PackageReference.Definition()
 		contract.AssertNoErrorf(err, "can not load package definition for %s: %s", pkg.Name, err)
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			fmt.Fprintf(w, ", utilities.getPackage()")
 		}
 
@@ -1295,7 +1295,7 @@ func (mod *modContext) genFunctionDefinition(w io.Writer, fun *schema.Function, 
 		if err != nil {
 			return info, err
 		}
-		if pkg.Parameterization != nil {
+		if pkg.Parameterization != nil || pkg.ExtensionParameterization != nil {
 			fmt.Fprintf(w, ", utilities.getPackage()")
 		}
 
@@ -2468,16 +2468,20 @@ func genNPMPackageMetadata(
 	}
 
 	var pulumiPlugin plugin.PulumiPluginJSON
-	if pkg.Parameterization != nil {
+	param := pkg.Parameterization
+	if param == nil {
+		param = pkg.ExtensionParameterization
+	}
+	if param != nil {
 		pulumiPlugin = plugin.PulumiPluginJSON{
 			Resource: true,
 			Server:   pkg.PluginDownloadURL,
-			Name:     pkg.Parameterization.BaseProvider.Name,
-			Version:  pkg.Parameterization.BaseProvider.Version.String(),
+			Name:     param.BaseProvider.Name,
+			Version:  param.BaseProvider.Version.String(),
 			Parameterization: &plugin.PulumiParameterizationJSON{
 				Name:    pkg.Name,
 				Version: pkg.Version.String(),
-				Value:   pkg.Parameterization.Parameter,
+				Value:   param.Parameter,
 			},
 		}
 	} else {
@@ -2751,7 +2755,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 		}
 	}
 
-	scanResource(pkg.Provider)
+	// Extension-parameterized packages don't get their own Provider class — they
+	// reuse the base provider their extension was applied to.
+	if pkg.ExtensionParameterization == nil && pkg.Provider != nil {
+		scanResource(pkg.Provider)
+	}
 	for _, r := range pkg.Resources {
 		scanResource(r)
 	}
@@ -2945,8 +2953,13 @@ func (mod *modContext) genUtilitiesFile(w io.Writer) error {
 		return err
 	}
 
-	if def.Parameterization != nil {
-		base64Parameter := base64.StdEncoding.EncodeToString(def.Parameterization.Parameter)
+	if def.Parameterization != nil || def.ExtensionParameterization != nil {
+		param := def.Parameterization
+		isExtension := param == nil
+		if isExtension {
+			param = def.ExtensionParameterization
+		}
+		base64Parameter := base64.StdEncoding.EncodeToString(param.Parameter)
 
 		_, err = fmt.Fprintf(w, `
 export async function getPackage(): Promise<string | undefined> {
@@ -2957,15 +2970,17 @@ export async function getPackage(): Promise<string | undefined> {
 		packageName: "%s",
 		packageVersion: "%s",
 		base64Parameter: "%s",
+		extension: %t,
 	});
 }
 `,
-			def.Parameterization.BaseProvider.Name,
-			def.Parameterization.BaseProvider.Version.String(),
+			param.BaseProvider.Name,
+			param.BaseProvider.Version.String(),
 			def.PluginDownloadURL,
 			def.Name,
 			def.Version,
-			base64Parameter)
+			base64Parameter,
+			isExtension)
 	}
 
 	return err
