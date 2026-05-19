@@ -3218,6 +3218,50 @@ func (pc *Client) ListInsightsAccounts(
 	return resp, nil
 }
 
+// GetInsightsScan fetches the full workflow run for a single Pulumi Insights
+// scan, including jobs and steps. The list endpoint (ListInsightsAccountScans)
+// only returns the per-scan summary; this is the only way to see the run's
+// jobs/steps and per-step status.
+//
+// `account` and `scanId` are both path parameters; the service double-decodes
+// `account`, so we double-URL-encode it — same convention as GetInsightsAccount
+// / CreateInsightsAccount / GetInsightsResource.
+func (pc *Client) GetInsightsScan(
+	ctx context.Context, org, account, scanID string,
+) (apitype.InsightsScanResponse, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s/scans/%s",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+		url.PathEscape(scanID),
+	)
+	var resp apitype.InsightsScanResponse
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &resp); err != nil {
+		return apitype.InsightsScanResponse{}, err
+	}
+	return resp, nil
+}
+
+// ListInsightsAccountScans fetches a page of recent scans for an Insights account.
+// For parent accounts the endpoint returns scans across all child accounts,
+// so it is the recommended way to discover scan IDs to feed into GetInsightsScanLogs.
+//
+// The `accountName` path parameter is double-decoded on the service side
+func (pc *Client) ListInsightsAccountScans(
+	ctx context.Context, org, account string, params apitype.ListInsightsAccountScansParams,
+) (apitype.ListInsightsAccountScansResponse, error) {
+	path := fmt.Sprintf(
+		"/api/preview/insights/%s/accounts/%s/scans",
+		url.PathEscape(org),
+		url.PathEscape(url.PathEscape(account)),
+	)
+	var resp apitype.ListInsightsAccountScansResponse
+	if err := pc.restCall(ctx, "GET", path, &params, nil, &resp); err != nil {
+		return apitype.ListInsightsAccountScansResponse{}, err
+	}
+	return resp, nil
+}
+
 // CreateInsightsAccount creates a new Pulumi Insights account.
 //
 // The `accountName` path parameter is double-decoded on the service side, so

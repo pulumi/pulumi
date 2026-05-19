@@ -193,6 +193,25 @@ type ListInsightsAccountsResponse struct {
 	NextToken string            `json:"nextToken,omitempty"`
 }
 
+// ListInsightsAccountScansParams are the query parameters for the Pulumi
+// Insights ListAccountScans endpoint.
+type ListInsightsAccountScansParams struct {
+	// ContinuationToken is the opaque cursor returned by a previous response;
+	// pass it on subsequent calls to fetch the next page.
+	ContinuationToken string `url:"continuationToken,omitempty"`
+	// PageSize is the maximum number of scans returned on a single page.
+	// Defaults to the server-side default when zero.
+	PageSize int `url:"pageSize,omitempty"`
+}
+
+// ListInsightsAccountScansResponse is the envelope returned by the
+// ListAccountScans endpoint. For parent accounts the result includes scans
+// across all child accounts. ContinuationToken is empty on the last page.
+type ListInsightsAccountScansResponse struct {
+	ScanStatuses      []InsightsAccountScanStatus `json:"scanStatuses"`
+	ContinuationToken string                      `json:"continuationToken,omitempty"`
+}
+
 // InsightsAccount describes a single Pulumi Insights account as returned by
 // the ListAccounts endpoint. The shape mirrors the OpenAPI schema of the same
 // name in the Pulumi Cloud REST API.

@@ -129,6 +129,8 @@ func newInsightsAccountScanCmd(factory scanClientFactory) *cobra.Command {
 	outputflag.VarP(cmd.Flags(), &args.output)
 
 	cmd.AddCommand(newInsightsAccountScanLogCmd(nil))
+	cmd.AddCommand(newInsightsAccountScanListCmd(nil))
+	cmd.AddCommand(newInsightsAccountScanGetCmd(nil))
 
 	return cmd
 }

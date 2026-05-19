@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/cloud
+  description: Add `pulumi insights account scan list <account>` to discover recent scan IDs to feed into `pulumi insights account scan log`
