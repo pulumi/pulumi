@@ -498,10 +498,6 @@ func TestUpdateDeletedWithResourceDependedsOnDeleteResource(t *testing.T) {
 func TestPendingReplacementUpdateSnapshotIntegrity(t *testing.T) {
 	t.Parallel()
 
-	// TODO[pulumi/pulumi#21700]: Fix the underlying issue and re-enable this test. Note that this test is flaky,
-	// so you need to run it with `-count=1000` to make sure you see the failure.
-	t.Skip("Skipping test due to underlying panic")
-
 	p := &lt.TestPlan{
 		Project: "test-project",
 		Stack:   "test-stack",
