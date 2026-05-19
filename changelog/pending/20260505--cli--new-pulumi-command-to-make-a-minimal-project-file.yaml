@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli
+  description: `pulumi project new -y` will write a minimal project file
