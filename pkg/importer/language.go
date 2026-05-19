@@ -170,7 +170,114 @@ func createImportState(states []*resource.State, snapshot []*resource.State, nam
 	}
 }
 
-// GenerateLanguageDefintions generates a list of resource definitions for the given resource states. The current stack
+// GeneratePCLText generates PCL (HCL2) text from the given resource states. The current state snapshot is also
+// provided to allow the importer to resolve package providers. Returns the content suitable for writing to a .pp file.
+func GeneratePCLText(
+	loader schema.Loader,
+	states []*resource.State,
+	snapshot []*resource.State,
+	names NameTable,
+) ([]byte, error) {
+	if names == nil {
+		names = NameTable{}
+	}
+
+	importState := createImportState(states, snapshot, names)
+
+	var hcl2Text bytes.Buffer
+	seenPkgs := mapset.NewSet[string]()
+
+	for i, state := range states {
+		hcl2Def, pkgDesc, err := GenerateHCL2Definition(loader, state, importState)
+		if err != nil {
+			return nil, err
+		}
+		pre := ""
+		if i > 0 {
+			pre = "\n"
+		}
+
+		pkgName := pkgDesc.Name
+		if pkgDesc.Parameterization != nil {
+			pkgName = pkgDesc.Parameterization.Name
+		}
+		if !seenPkgs.Contains(pkgName) {
+			seenPkgs.Add(pkgName)
+
+			items := make([]model.BodyItem, 0)
+			items = append(items, &model.Attribute{
+				Name: "baseProviderName",
+				Value: &model.LiteralValueExpression{
+					Value: cty.StringVal("\"" + pkgDesc.Name + "\""),
+				},
+			})
+			if pkgDesc.Version != nil {
+				items = append(items, &model.Attribute{
+					Name: "baseProviderVersion",
+					Value: &model.LiteralValueExpression{
+						Value: cty.StringVal("\"" + pkgDesc.Version.String() + "\""),
+					},
+				})
+			}
+			if pkgDesc.DownloadURL != "" {
+				items = append(items, &model.Attribute{
+					Name: "baseProviderDownloadUrl",
+					Value: &model.LiteralValueExpression{
+						Value: cty.StringVal("\"" + pkgDesc.DownloadURL + "\""),
+					},
+				})
+			}
+			if pkgDesc.Parameterization != nil {
+				base64Value := base64.StdEncoding.EncodeToString(pkgDesc.Parameterization.Value)
+				items = append(items, &model.Block{
+					Tokens: syntax.NewBlockTokens("parameterization"),
+					Type:   "parameterization",
+					Body: &model.Body{
+						Items: []model.BodyItem{
+							&model.Attribute{
+								Name: "name",
+								Value: &model.LiteralValueExpression{
+									Value: cty.StringVal("\"" + pkgDesc.Parameterization.Name + "\""),
+								},
+							},
+							&model.Attribute{
+								Name: "version",
+								Value: &model.LiteralValueExpression{
+									Value: cty.StringVal("\"" + pkgDesc.Parameterization.Version.String() + "\""),
+								},
+							},
+							&model.Attribute{
+								Name: "value",
+								Value: &model.LiteralValueExpression{
+									Value: cty.StringVal("\"" + base64Value + "\""),
+								},
+							},
+						},
+					},
+				})
+			}
+
+			pkgBlock := &model.Block{
+				Tokens: syntax.NewBlockTokens("package", pkgName),
+				Type:   "package",
+				Labels: []string{pkgName},
+				Body: &model.Body{
+					Items: items,
+				},
+			}
+			_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, pkgBlock)
+			contract.IgnoreError(err)
+			pre = "\n"
+		}
+
+		_, err = fmt.Fprintf(&hcl2Text, "%s%v", pre, hcl2Def)
+		contract.IgnoreError(err)
+	}
+
+	return hcl2Text.Bytes(), nil
+}
+
+// GenerateLanguageDefintions generates a list of resource definitions for the given resource states. The current state
 // snapshot is also provided in order to allow the importer to resolve package providers.
 func GenerateLanguageDefinitions(
 	w io.Writer,

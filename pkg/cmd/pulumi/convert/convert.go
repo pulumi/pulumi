@@ -16,7 +16,9 @@ package convert
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -31,10 +33,13 @@ import (
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 
+	backendsecrets "github.com/pulumi/pulumi/pkg/v3/backend/secrets"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/constrictor"
 	cmdDiag "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/diag"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/newcmd"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
+	"github.com/pulumi/pulumi/pkg/v3/importer"
+	resstack "github.com/pulumi/pulumi/pkg/v3/resource/stack"
 
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
@@ -46,7 +51,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -67,7 +74,6 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 	var mappings []string
 	var strict bool
 	var name string
-
 	cmd := &cobra.Command{
 		Use:   "convert",
 		Short: "Convert Pulumi programs from a supported source program into other supported languages",
@@ -75,13 +81,15 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 			"\n" +
 			"The source program to convert will default to the current working directory.\n" +
 			"\n" +
-			"Valid source languages: yaml, terraform, bicep, arm, kubernetes\n" +
+			"Valid source languages: yaml, terraform, bicep, arm, kubernetes, state\n" +
 			"\n" +
 			"Valid target languages: typescript, python, csharp, go, java, yaml" +
 			"\n" +
 			"Example command usage:" +
 			"\n" +
 			"    pulumi convert --from yaml --language java --out . \n" +
+			"\n" +
+			"    pulumi convert --from state --language typescript --out . -- --file export.json \n" +
 			"\n\n" +
 			"Note that certain target languages may require additional arguments to be passed to this command.\n",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -367,7 +375,96 @@ func runConvert(
 	defer os.RemoveAll(pclDirectory)
 
 	pCtx.Diag.Infof(diag.Message("", "Converting from %s..."), from)
-	if from == "pcl" {
+	if from == "state" {
+		fs := flag.NewFlagSet("state", flag.ContinueOnError)
+		fileFlag := fs.String("file", "", "Input stack export file path")
+		if err := fs.Parse(args); err != nil {
+			return fmt.Errorf("parse state args: %w", err)
+		}
+		file := *fileFlag
+		if file == "" {
+			return errors.New("--file is required when --from state (pass after --, e.g. -- --file export.json)")
+		}
+
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("read state file: %w", err)
+		}
+
+		var deployment apitype.UntypedDeployment
+		if err := json.Unmarshal(data, &deployment); err != nil {
+			return fmt.Errorf("parse state file: %w", err)
+		}
+
+		snap, err := resstack.DeserializeUntypedDeployment(ctx, &deployment, backendsecrets.DefaultProvider)
+		if err != nil {
+			return fmt.Errorf("deserialize state: %w", err)
+		}
+
+		excludedURNs := map[resource.URN]struct{}{}
+
+		var states []*resource.State
+		for _, r := range snap.Resources {
+			if !r.Custom && r.Provider != "" {
+				excludedURNs[r.URN] = struct{}{}
+			}
+			if r.Delete || !r.Custom {
+				continue
+			}
+			if r.URN.Type() == resource.RootStackType {
+				continue
+			}
+			if providers.IsDefaultProvider(r.URN) {
+				continue
+			}
+			if _, excluded := excludedURNs[r.Parent]; excluded {
+				excludedURNs[r.URN] = struct{}{}
+				continue
+			}
+			states = append(states, r)
+		}
+
+		for _, r := range snap.Resources {
+			if r.Type.Module() == tokens.Module("pulumi-nodejs:dynamic") ||
+				r.Type.Module() == tokens.Module("pulumi-python:dynamic") {
+				pCtx.Diag.Warningf(diag.Message("", "state contains dynamic provider resources; "+
+					"the generated code may be incomplete and should be reviewed carefully"))
+				break
+			}
+		}
+
+		// Filter each state's Dependencies to only include URNs that are also in states.
+		// Dependencies pointing to filtered-out resources would cause GeneratePCLText to error.
+		includedURNs := make(map[resource.URN]struct{}, len(states))
+		for _, r := range states {
+			includedURNs[r.URN] = struct{}{}
+		}
+		filteredStates := make([]*resource.State, 0, len(states))
+		for _, r := range states {
+			if len(r.Dependencies) == 0 {
+				filteredStates = append(filteredStates, r)
+				continue
+			}
+			copied := r.Copy()
+			kept := copied.Dependencies[:0]
+			for _, dep := range copied.Dependencies {
+				if _, ok := includedURNs[dep]; ok {
+					kept = append(kept, dep)
+				}
+			}
+			copied.Dependencies = kept
+			filteredStates = append(filteredStates, copied)
+		}
+
+		pclBytes, err := importer.GeneratePCLText(loader, filteredStates, snap.Resources, importer.NameTable{})
+		if err != nil {
+			return fmt.Errorf("generate PCL from state: %w", err)
+		}
+
+		if err := os.WriteFile(filepath.Join(pclDirectory, "program.pp"), pclBytes, 0o600); err != nil {
+			return fmt.Errorf("write PCL file: %w", err)
+		}
+	} else if from == "pcl" {
 		// The source code is PCL, we don't need to do anything here, just repoint pclDirectory to it, but
 		// remove the temp dir we just created first
 		err = os.RemoveAll(pclDirectory)
