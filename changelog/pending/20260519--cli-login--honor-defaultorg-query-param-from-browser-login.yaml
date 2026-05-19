@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: cli/login
+  description: Honor an optional `defaultOrg` query parameter on the browser-login redirect, so a default organization picked on the Console can be persisted automatically (equivalent to `pulumi org set-default`). Older Consoles that don't send the parameter are unaffected.

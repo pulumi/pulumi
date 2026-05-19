@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1529,4 +1530,85 @@ func TestCreateNeoTaskOnError(t *testing.T) {
 		require.Error(t, err)
 		assert.Nil(t, resp)
 	})
+}
+
+func TestServeBrowserLoginServer(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		query         string
+		expectedNonce string
+		wantStatus    int
+		wantResult    *browserLoginResult
+	}{
+		{
+			name:          "valid token and nonce, no defaultOrg",
+			query:         "accessToken=tok1&nonce=N",
+			expectedNonce: "N",
+			wantStatus:    http.StatusTemporaryRedirect,
+			wantResult:    &browserLoginResult{accessToken: "tok1"},
+		},
+		{
+			name:          "valid token, nonce, and defaultOrg",
+			query:         "accessToken=tok2&nonce=N&defaultOrg=acme-cloud",
+			expectedNonce: "N",
+			wantStatus:    http.StatusTemporaryRedirect,
+			wantResult:    &browserLoginResult{accessToken: "tok2", defaultOrg: "acme-cloud"},
+		},
+		{
+			name:          "missing token returns 400",
+			query:         "nonce=N",
+			expectedNonce: "N",
+			wantStatus:    http.StatusBadRequest,
+			wantResult:    nil,
+		},
+		{
+			name:          "mismatched nonce returns 400",
+			query:         "accessToken=tok&nonce=X",
+			expectedNonce: "N",
+			wantStatus:    http.StatusBadRequest,
+			wantResult:    nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			l, err := net.Listen("tcp", "127.0.0.1:")
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = l.Close() })
+
+			ch := make(chan browserLoginResult, 1)
+			go serveBrowserLoginServer(l, tt.expectedNonce, "/welcome", ch)
+
+			// Don't follow the redirect so we can observe the response code directly.
+			client := &http.Client{
+				CheckRedirect: func(req *http.Request, via []*http.Request) error {
+					return http.ErrUseLastResponse
+				},
+			}
+			resp, err := client.Get("http://" + l.Addr().String() + "/?" + tt.query)
+			require.NoError(t, err)
+			defer resp.Body.Close()
+
+			assert.Equal(t, tt.wantStatus, resp.StatusCode)
+
+			if tt.wantResult != nil {
+				select {
+				case got := <-ch:
+					assert.Equal(t, *tt.wantResult, got)
+				case <-time.After(2 * time.Second):
+					t.Fatal("timed out waiting for channel result")
+				}
+			} else {
+				select {
+				case got := <-ch:
+					t.Fatalf("unexpected channel result on bad request: %+v", got)
+				case <-time.After(100 * time.Millisecond):
+				}
+			}
+		})
+	}
 }

@@ -299,7 +299,7 @@ func loginWithBrowser(
 	}
 
 	// Listen on localhost, have the kernel pick a random port for us
-	c := make(chan string)
+	c := make(chan browserLoginResult)
 	l, err := net.Listen("tcp", "127.0.0.1:")
 	if err != nil {
 		return nil, fmt.Errorf("could not start listener: %w", err)
@@ -352,7 +352,8 @@ func loginWithBrowser(
 
 	fmt.Println("\nWaiting for login to complete...")
 
-	accessToken := <-c
+	result := <-c
+	accessToken := result.accessToken
 
 	username, organizations, tokenInfo, err := getAccountDetails(ctx, cloudURL, insecure, accessToken)
 	if err != nil {
@@ -369,6 +370,15 @@ func loginWithBrowser(
 	}
 	if err = workspace.StoreAccount(cloudURL, account, current); err != nil {
 		return nil, err
+	}
+
+	// Persist the default organization the user selected on the Console's post-OAuth
+	// org-picker page, if any. Best-effort: warn but don't fail the login — the user
+	// has a working token and can run `pulumi org set-default` manually if this fails.
+	if result.defaultOrg != "" {
+		if err := workspace.SetBackendConfigDefaultOrg(cloudURL, result.defaultOrg); err != nil {
+			fmt.Printf("warning: could not set default organization to %q: %s\n", result.defaultOrg, err)
+		}
 	}
 
 	// Welcome the user since this was an interactive login.
@@ -990,10 +1000,19 @@ func (b *cloudBackend) CloudConsoleURL(paths ...string) string {
 }
 
 // serveBrowserLoginServer hosts the server that completes the browser based login flow.
-func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationURL string, c chan<- string) {
+// browserLoginResult is what the browser-side flow sends back to the CLI loopback
+// handler: the issued access token, and (optionally) a default organization the
+// user selected on the Console's post-OAuth org-picker page.
+type browserLoginResult struct {
+	accessToken string
+	defaultOrg  string
+}
+
+func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationURL string, c chan<- browserLoginResult) {
 	handler := func(res http.ResponseWriter, req *http.Request) {
 		tok := req.URL.Query().Get("accessToken")
 		nonce := req.URL.Query().Get("nonce")
+		defaultOrg := req.URL.Query().Get("defaultOrg")
 
 		if tok == "" || nonce != expectedNonce {
 			res.WriteHeader(400)
@@ -1001,7 +1020,7 @@ func serveBrowserLoginServer(l net.Listener, expectedNonce string, destinationUR
 		}
 
 		http.Redirect(res, req, destinationURL, http.StatusTemporaryRedirect)
-		c <- tok
+		c <- browserLoginResult{accessToken: tok, defaultOrg: defaultOrg}
 	}
 
 	mux := &http.ServeMux{}
