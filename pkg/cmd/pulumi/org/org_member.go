@@ -22,9 +22,9 @@ import (
 
 func newOrgMemberCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "member",
-		Short:  "[EXPERIMENTAL] Manage organization members",
-		Long:   "[EXPERIMENTAL] Manage organization members.",
+		Use:   "member",
+		Short: "[EXPERIMENTAL] Manage organization members",
+		Long:  "[EXPERIMENTAL] Manage organization members.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
