@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -206,12 +205,12 @@ func runNew(ctx context.Context, args newArgs) error {
 	if cmdTemplate == nil {
 		// Template might be nil if we're running in non-interactive mode and didn't pass a template to choose. In
 		// that case we'll write a minimal Pulumi.yaml.
-		temp, err := ioutil.TempDir("", "pulumi-new")
+		temp, err := os.MkdirTemp("", "pulumi-new")
 		if err != nil {
 			return fmt.Errorf("creating temporary directory for template: %w", err)
 		}
 		// Write the minimal template to the temp directory
-		err = os.WriteFile(filepath.Join(temp, "Pulumi.yaml"), []byte(`name: ${PROJECT}`), 0o644)
+		err = os.WriteFile(filepath.Join(temp, "Pulumi.yaml"), []byte(`name: ${PROJECT}`), 0o600)
 		if err != nil {
 			return fmt.Errorf("writing minimal Pulumi.yaml: %w", err)
 		}
