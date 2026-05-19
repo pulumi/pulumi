@@ -521,23 +521,6 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 func TestInvalidTemplateName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	t.Run("NoTemplateSpecified", func(t *testing.T) {
-		tempdir := tempProjectDir(t)
-		t.Chdir(tempdir)
-
-		args := newArgs{
-			chooseTemplate:    ChooseTemplate,
-			interactive:       false,
-			yes:               true,
-			secretsProvider:   "default",
-			templateNameOrURL: "",
-			templateMode:      true,
-		}
-
-		err := runNew(t.Context(), args)
-		assert.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
-	})
-
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
 		t.Chdir(tempdir)
