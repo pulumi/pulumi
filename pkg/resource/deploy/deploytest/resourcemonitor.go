@@ -864,6 +864,23 @@ func (rm *ResourceMonitor) RegisterPackage(pkg, version, downloadURL string, che
 	return resp.Ref, nil
 }
 
+// RegisterExtensionPackage registers a package with an extension parameterization
+// (as opposed to a replacement parameterization). The returned ref is a content
+// hash of the extension blob, stable across runs.
+func (rm *ResourceMonitor) RegisterExtensionPackage(pkg, version string,
+	extension *pulumirpc.Parameterization,
+) (string, error) {
+	resp, err := rm.resmon.RegisterPackage(context.Background(), &pulumirpc.RegisterPackageRequest{
+		Name:      pkg,
+		Version:   version,
+		Extension: extension,
+	})
+	if err != nil {
+		return "", err
+	}
+	return resp.Ref, nil
+}
+
 func (rm *ResourceMonitor) SignalAndWaitForShutdown(ctx context.Context) error {
 	_, err := rm.resmon.SignalAndWaitForShutdown(ctx, &emptypb.Empty{})
 	return err

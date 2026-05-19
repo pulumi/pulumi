@@ -555,7 +555,13 @@ func (ex *deploymentExecutor) performPostSteps(
 }
 
 func doesStepDependOn(step Step, skipped mapset.Set[urn.URN]) bool {
-	_, allDeps := step.Res().GetAllDependencies()
+	// Some step types (e.g. ParameterizeStep) operate on the provider rather than a
+	// resource and have no Res(). They can't depend on skipped resources.
+	res := step.Res()
+	if res == nil {
+		return false
+	}
+	_, allDeps := res.GetAllDependencies()
 	for _, dep := range allDeps {
 		if skipped.Contains(dep.URN) {
 			return true

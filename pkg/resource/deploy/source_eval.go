@@ -736,33 +736,39 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 	rm.packageRefLock.Lock()
 	defer rm.packageRefLock.Unlock()
 
-	// See if this package is already registered, else add it to the map.
-	for uuid, candidate := range rm.packageRefMap {
-		if reflect.DeepEqual(candidate, pi) {
-			logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) matched %s", req, uuid)
-			return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
-		}
-	}
-	// Wasn't found add it to the map
-	var ref string
+	// Extension calls dedup by content hash: identical (base, extension) pairs always
+	// produce the same ref, and pairs differing only in the extension produce different
+	// refs. Replacement / plain calls dedup by ProviderRequest as before.
 	if req.Extension != nil {
 		extension := apitype.Extension{
 			Name:    req.Extension.Name,
 			Version: req.Extension.Version,
 			Value:   req.Extension.Value,
 		}
-		// Use has of extension for reference
-		ref = hashExtension(extension)
+		ref := hashExtension(extension)
+
+		if _, already := rm.packageRefMap[ref]; already {
+			logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) matched %s", req, ref)
+			return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
+		}
 
 		rm.extensionRefLock.Lock()
 		rm.extensionRefMap[ref] = extension
 		rm.extensionRefLock.Unlock()
-	} else {
-		ref = uuid.New().String()
+
+		rm.packageRefMap[ref] = pi
+		logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, ref)
+		return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
 	}
 
+	for uuid, candidate := range rm.packageRefMap {
+		if reflect.DeepEqual(candidate, pi) {
+			logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) matched %s", req, uuid)
+			return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
+		}
+	}
+	ref := uuid.New().String()
 	rm.packageRefMap[ref] = pi
-
 	logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, ref)
 	return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
 }
@@ -2708,10 +2714,15 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		}.Make()
 
 		var ext *apitype.Extension
+		var extRef apitype.ExtensionRef
 		if packageRef := req.GetPackageRef(); packageRef != "" {
 			rm.extensionRefLock.RLock()
 			if e, has := rm.extensionRefMap[packageRef]; has {
 				ext = &e
+				// Only carry the ref onto the event when there's an actual
+				// extension blob — replacement-param packageRefs don't belong
+				// in ResourceV3.ExtensionRef.
+				extRef = apitype.ExtensionRef(packageRef)
 			}
 			rm.extensionRefLock.RUnlock()
 		}
@@ -2720,7 +2731,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			goal:         goal,
 			done:         make(chan *RegisterResult),
 			extension:    ext,
-			extensionRef: apitype.ExtensionRef(req.GetPackageRef()),
+			extensionRef: extRef,
 		}
 
 		select {
