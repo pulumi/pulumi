@@ -84,7 +84,7 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return backenderr.NonInteractiveRequiresYesError{}
+				return backenderr.ErrNonInteractiveRequiresYes
 			}
 
 			// Ensure the user really wants to do this.

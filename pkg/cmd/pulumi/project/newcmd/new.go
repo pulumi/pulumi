@@ -97,7 +97,7 @@ type newArgs struct {
 
 func runNew(ctx context.Context, args newArgs) error {
 	if !args.interactive && !args.yes {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	// Prepare options.

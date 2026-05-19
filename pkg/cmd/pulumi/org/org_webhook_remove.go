@@ -87,7 +87,7 @@ func (c *orgWebhookRemoveCmd) run(ctx context.Context, webhookName string) error
 
 	if !c.yes {
 		if !cmdutil.Interactive() {
-			return backenderr.NonInteractiveRequiresYesError{}
+			return backenderr.ErrNonInteractiveRequiresYes
 		}
 		prompt := fmt.Sprintf(
 			"This will permanently remove the webhook '%s'!", webhookName)

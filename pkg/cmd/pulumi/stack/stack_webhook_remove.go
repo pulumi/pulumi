@@ -108,7 +108,7 @@ func runStackWebhookRemove(
 
 	if !yes {
 		if !cmdutil.Interactive() {
-			return backenderr.NonInteractiveRequiresYesError{}
+			return backenderr.ErrNonInteractiveRequiresYes
 		}
 		prompt := fmt.Sprintf(
 			"This will permanently remove the webhook '%s'!",

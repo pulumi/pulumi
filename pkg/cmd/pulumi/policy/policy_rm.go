@@ -58,7 +58,7 @@ func newPolicyRmCmd() *cobra.Command {
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return backenderr.NonInteractiveRequiresYesError{}
+				return backenderr.ErrNonInteractiveRequiresYes
 			}
 
 			prompt := fmt.Sprintf("This will permanently remove the '%s' policy!", args[0])

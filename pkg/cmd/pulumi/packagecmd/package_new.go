@@ -146,7 +146,7 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 	}
 
 	if !opts.IsInteractive && !args.yes {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	if args.name != "" {

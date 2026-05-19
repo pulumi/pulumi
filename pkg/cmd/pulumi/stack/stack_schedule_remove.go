@@ -104,7 +104,7 @@ func runStackScheduleRemove(
 
 	if !yes {
 		if !cmdutil.Interactive() {
-			return backenderr.NonInteractiveRequiresYesError{}
+			return backenderr.ErrNonInteractiveRequiresYes
 		}
 		prompt := fmt.Sprintf("This will remove the schedule '%s'!", scheduleID)
 		if !ui.ConfirmPrompt(prompt, "remove", opts) {

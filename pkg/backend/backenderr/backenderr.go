@@ -30,6 +30,9 @@ var (
 	// ErrLoginRequired is returned when a command requires logging in.
 	ErrLoginRequired LoginRequiredError
 	ErrForbidden     ForbiddenError
+	// ErrNonInteractiveRequiresYes is returned when a command is run
+	// non-interactively without --yes.
+	ErrNonInteractiveRequiresYes NonInteractiveRequiresYesError
 )
 
 // StackNotFoundError is returned when a named stack cannot be found in the backend.
