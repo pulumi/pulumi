@@ -479,6 +479,7 @@ func ParseFiles(parser *syntax.Parser, directory string, files []fs.DirEntry) (h
 			}
 
 			err = parser.ParseFile(file, filepath.Base(path))
+			contract.IgnoreClose(file)
 			if err != nil {
 				return nil, err
 			}
