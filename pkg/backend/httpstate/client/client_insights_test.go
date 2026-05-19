@@ -568,7 +568,7 @@ func TestGetInsightsScanLogs(t *testing.T) {
 					Line:      "finished scan",
 				},
 			},
-			ContinuationToken: "next-page",
+			NextToken: "next-page",
 		}
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -588,8 +588,13 @@ func TestGetInsightsScanLogs(t *testing.T) {
 		t.Parallel()
 
 		want := apitype.InsightsScanLogs{
-			Type:       "step",
-			Output:     "scan output text\n",
+			Type: "DeploymentLogsStep",
+			Lines: []apitype.InsightsScanLogLine{
+				{
+					Timestamp: time.Date(2026, 5, 1, 14, 30, 0, 0, time.UTC),
+					Line:      "scan output text\n",
+				},
+			},
 			NextOffset: 1024,
 		}
 
