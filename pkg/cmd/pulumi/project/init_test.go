@@ -25,8 +25,15 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/project/newcmd"
 )
 
+// useTempFilestateBackend points the backend at a temp directory so tests don't hit the real backend.
+func useTempFilestateBackend(t *testing.T) {
+	t.Setenv("PULUMI_BACKEND_URL", "file://"+filepath.ToSlash(t.TempDir()))
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+}
+
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
 func TestNewCmdYesWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
+	useTempFilestateBackend(t)
 	dir := t.TempDir()
 	t.Chdir(dir)
 	cmd := newcmd.NewNewCmd()
@@ -42,6 +49,7 @@ func TestNewCmdYesWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
 func TestNewCmdYesUsesCurrentDirectoryNameByDefault(t *testing.T) {
+	useTempFilestateBackend(t)
 	dir := filepath.Join(t.TempDir(), "my-project")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	t.Chdir(dir)
@@ -58,6 +66,7 @@ func TestNewCmdYesUsesCurrentDirectoryNameByDefault(t *testing.T) {
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
 func TestNewCmdYesSanitizesDefaultDirectoryName(t *testing.T) {
+	useTempFilestateBackend(t)
 	dir := filepath.Join(t.TempDir(), "my project!")
 	require.NoError(t, os.Mkdir(dir, 0o755))
 	t.Chdir(dir)
@@ -74,6 +83,7 @@ func TestNewCmdYesSanitizesDefaultDirectoryName(t *testing.T) {
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
 func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
+	useTempFilestateBackend(t)
 	dir := t.TempDir()
 	t.Chdir(dir)
 	cmd := newcmd.NewNewCmd()
@@ -88,6 +98,7 @@ func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
 
 //nolint:paralleltest // These tests modify the working directory, so cannot be run in parallel.
 func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
+	useTempFilestateBackend(t)
 	dir := t.TempDir()
 	existing := filepath.Join(dir, "Pulumi.yaml")
 	require.NoError(t, os.WriteFile(existing, []byte("name: existing\n"), 0o600))

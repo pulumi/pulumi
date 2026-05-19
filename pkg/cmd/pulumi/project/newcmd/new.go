@@ -336,7 +336,9 @@ func runNew(ctx context.Context, args newArgs) error {
 		return err
 	}
 	proj.Name = tokens.PackageName(args.name)
-	proj.Description = &args.description
+	if args.description != "" {
+		proj.Description = &args.description
+	}
 	proj.Template = nil
 
 	// Set the pulumi:template tag to the template name or URL.
@@ -344,9 +346,11 @@ func runNew(ctx context.Context, args newArgs) error {
 	if args.templateNameOrURL != "" {
 		templateTag = sanitizeTemplate(args.templateNameOrURL)
 	}
-	proj.AddConfigStackTags(map[string]string{
-		apitype.ProjectTemplateTag: templateTag,
-	})
+	if templateTag != "" {
+		proj.AddConfigStackTags(map[string]string{
+			apitype.ProjectTemplateTag: templateTag,
+		})
+	}
 
 	for _, opt := range args.runtimeOptions {
 		parts := strings.Split(strings.TrimSpace(opt), "=")
@@ -397,37 +401,40 @@ func runNew(ctx context.Context, args newArgs) error {
 	}
 	defer pluginCtx.Close()
 
-	lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name())
-	if err != nil {
-		return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
-	}
-	defer lang.Close()
-
-	programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
-
-	// Query the language runtime for additional options.
-	if args.promptRuntimeOptions != nil {
-		options, err := args.promptRuntimeOptions(pluginCtx, lang, &proj.Runtime, entryPoint, opts,
-			args.yes, args.interactive, args.prompt)
+	// If we're creating an empty project we won't have a runtime name
+	if proj.Runtime.Name() != "" {
+		lang, err := pluginCtx.Host.LanguageRuntime(proj.Runtime.Name())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to load language plugin %s: %w", proj.Runtime.Name(), err)
 		}
-		if len(options) > 0 {
-			// Save the new options
-			for k, v := range options {
-				proj.Runtime.SetOption(k, v)
-			}
-			if err = workspace.SaveProject(proj); err != nil {
-				return fmt.Errorf("saving project: %w", err)
-			}
-			// update programInfo to have the new options
-			programInfo = plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
-		}
-	}
+		defer lang.Close()
 
-	// Let the language runtime do some templating
-	if err := args.languageTemplate(lang, programInfo, proj.Name); err != nil {
-		return fmt.Errorf("language template: %w", err)
+		programInfo := plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
+
+		// Query the language runtime for additional options.
+		if args.promptRuntimeOptions != nil {
+			options, err := args.promptRuntimeOptions(pluginCtx, lang, &proj.Runtime, entryPoint, opts,
+				args.yes, args.interactive, args.prompt)
+			if err != nil {
+				return err
+			}
+			if len(options) > 0 {
+				// Save the new options
+				for k, v := range options {
+					proj.Runtime.SetOption(k, v)
+				}
+				if err = workspace.SaveProject(proj); err != nil {
+					return fmt.Errorf("saving project: %w", err)
+				}
+				// update programInfo to have the new options
+				programInfo = plugin.NewProgramInfo(pluginCtx.Root, pluginCtx.Pwd, entryPoint, proj.Runtime.Options())
+			}
+		}
+
+		// Let the language runtime do some templating
+		if err := args.languageTemplate(lang, programInfo, proj.Name); err != nil {
+			return fmt.Errorf("language template: %w", err)
+		}
 	}
 
 	// Prompt for config values (if needed) and save.
@@ -457,8 +464,8 @@ func runNew(ctx context.Context, args newArgs) error {
 		contract.IgnoreError(state.SetCurrentStack(ws, s.Ref().FullyQualifiedName().String()))
 	}
 
-	// Install dependencies.
-	if !args.generateOnly {
+	// Install dependencies, but only if we have a runtime to install with.
+	if !args.generateOnly && proj.Runtime.Name() != "" {
 		registry := cmdCmd.NewDefaultRegistry(
 			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 		if err := InstallPackagesFromProject(ctx, proj, root,
