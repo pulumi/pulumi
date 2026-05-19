@@ -113,3 +113,24 @@ func TestLoader(t *testing.T) {
 	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
 	require.NoError(t, err)
 }
+
+// TestMapperAddressIsPassed verifies that the engine populates RunInfo.MapperAddress when
+// invoking the language runtime, so that program runtimes (e.g. HCL) can resolve provider
+// mappings while the program is executing.
+func TestMapperAddressIsPassed(t *testing.T) {
+	t.Parallel()
+
+	var observedMapperAddress string
+	programF := deploytest.NewLanguageRuntimeF(func(info plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		observedMapperAddress = info.MapperAddress
+		return nil
+	})
+	hostF := deploytest.NewPluginHostF(nil, nil, programF)
+
+	p := &lt.TestPlan{
+		Options: lt.TestUpdateOptions{T: t, HostF: hostF},
+	}
+	_, err := lt.TestOp(Update).RunStep(p.GetProject(), p.GetTarget(t, nil), p.Options, false, p.BackendClient, nil, "0")
+	require.NoError(t, err)
+	require.NotEmpty(t, observedMapperAddress, "engine did not pass a MapperAddress to the language runtime")
+}

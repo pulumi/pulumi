@@ -316,6 +316,8 @@ export class RunRequest extends jspb.Message {
     setLoaderTarget(value: string): RunRequest;
     getAttachDebugger(): boolean;
     setAttachDebugger(value: boolean): RunRequest;
+    getMapperTarget(): string;
+    setMapperTarget(value: string): RunRequest;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): RunRequest.AsObject;
@@ -346,6 +348,7 @@ export namespace RunRequest {
         info?: ProgramInfo.AsObject,
         loaderTarget: string,
         attachDebugger: boolean,
+        mapperTarget: string,
     }
 }
 

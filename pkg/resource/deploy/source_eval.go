@@ -40,8 +40,12 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
+	pconvert "github.com/pulumi/pulumi/pkg/v3/codegen/convert"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/pluginstorage"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/promise"
@@ -134,6 +138,44 @@ func (src *evalSource) Close() error {
 	return nil
 }
 
+// newRunMapper builds a caching provider mapper for use during a program run. It mirrors the mapper used during
+// `pulumi convert`: it enumerates installed resource plugins for mappings and can auto-install missing providers when
+// automatic plugin acquisition is enabled. The "terraform" conversion key matches the default used by the generic
+// plugin RPC server (see pkg/cmd/pulumi/plugin/rpc.go).
+func newRunMapper(ctx context.Context, pctx *plugin.Context) (pconvert.Mapper, error) {
+	log := func(sev diag.Severity, msg string) {
+		pctx.Diag.Logf(sev, diag.RawMessage("", msg))
+	}
+
+	installPlugin := func(pluginName string) *semver.Version {
+		if env.DisableAutomaticPluginAcquisition.Value() {
+			return nil
+		}
+		pluginSpec := workspace.PluginDescriptor{
+			Name: pluginName,
+			Kind: apitype.ResourcePlugin,
+		}
+		version, err := pkgWorkspace.InstallPlugin(pctx.Base(), pluginSpec, log, schema.NewLoaderServerFromHost)
+		if err != nil {
+			log(diag.Warning, fmt.Sprintf("failed to install provider %q: %v", pluginName, err))
+			return nil
+		}
+		return version
+	}
+
+	baseMapper, err := pconvert.NewBasePluginMapper(
+		pluginstorage.Instance,
+		"terraform",
+		pconvert.ProviderFactoryFromHost(ctx, pctx.Host),
+		installPlugin,
+		nil, /*mappings*/
+	)
+	if err != nil {
+		return nil, err
+	}
+	return pconvert.NewCachingMapper(baseMapper), nil
+}
+
 // Project is the name of the project being run by this evaluation source.
 func (src *evalSource) Project() tokens.PackageName {
 	return src.runinfo.Proj.Name
@@ -180,10 +222,18 @@ func (src *evalSource) Iterate(ctx context.Context, providers ProviderSource) (S
 		return nil, fmt.Errorf("failed to start resource monitor: %w", err)
 	}
 
-	// Also start up a schema loader for the language runtime to use to fetch schema information.
+	// Also start up a schema loader and a provider mapper for the language runtime to use to fetch
+	// schema and mapping information.
 	loaderRegistration := schema.LoaderRegistration(
 		schema.NewLoaderServer(schema.NewPluginLoader(src.plugctx.Host)))
-	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration)
+
+	mapper, err := newRunMapper(ctx, src.plugctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create provider mapper: %w", err)
+	}
+	mapperRegistration := pconvert.MapperRegistration(pconvert.NewMapperServer(mapper))
+
+	loaderServer, err := plugin.NewServer(src.plugctx, loaderRegistration, mapperRegistration)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start loader server: %w", err)
 	}

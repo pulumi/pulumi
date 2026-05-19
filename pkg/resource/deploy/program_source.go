@@ -116,6 +116,7 @@ func (src *programSource) forkRun(
 				Organization:     string(src.runinfo.Target.Organization),
 				Info:             programInfo,
 				LoaderAddress:    loaderServer.Addr(),
+				MapperAddress:    loaderServer.Addr(),
 				AttachDebugger:   src.plugctx.Host.AttachDebugger(plugin.DebugSpec{Type: plugin.DebugTypeProgram}),
 			})
 
