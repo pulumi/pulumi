@@ -16,17 +16,12 @@ const os = require("os");
 const path = require("path");
 const { fetchLatestVersion } = require("../lib/download");
 
-// Default to the latest released version so CI always tests against something
-// real, regardless of what version is currently being built.
-let version = process.env.PULUMI_VERSION || "";
+// Always test against the latest stable release. PULUMI_VERSION belongs to
+// the release pipeline and may point to an unreleased version; don't use it.
+// Override with PULUMI_TEST_VERSION to test a specific version manually.
+let version = "";
 before(async () => {
-    if (!version || version.includes("-")) {
-        const stable = await fetchLatestVersion();
-        if (version) {
-            process.stderr.write(`PULUMI_VERSION ${version} is not a stable release; using latest stable ${stable}\n`);
-        }
-        version = stable;
-    }
+    version = process.env.PULUMI_TEST_VERSION || await fetchLatestVersion();
 });
 
 const { resolve } = require("../lib/resolve");
