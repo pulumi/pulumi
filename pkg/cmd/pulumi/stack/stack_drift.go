@@ -22,9 +22,9 @@ import (
 
 func newStackDriftCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:    "drift",
-		Short:  "[EXPERIMENTAL] Inspect stack drift detection results",
-		Long:   "[EXPERIMENTAL] Inspect stack drift detection results.",
+		Use:   "drift",
+		Short: "[EXPERIMENTAL] Inspect stack drift detection results",
+		Long:  "[EXPERIMENTAL] Inspect stack drift detection results.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
