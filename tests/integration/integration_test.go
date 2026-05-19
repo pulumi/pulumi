@@ -220,7 +220,7 @@ func TestConfigPaths(t *testing.T) {
 }
 
 func testDestroyStackRef(e *ptesting.Environment, organization string) {
-	e.ImportDirectory("large_resource/nodejs")
+	e.ImportDirectory("empty/nodejs")
 
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
@@ -239,7 +239,7 @@ func testDestroyStackRef(e *ptesting.Environment, organization string) {
 	e.CWD = os.TempDir()
 	stackRef := stackName
 	if organization != "" {
-		stackRef = organization + "/large_resource_js/" + stackName
+		stackRef = organization + "/emptyjs/" + stackName
 	}
 
 	e.RunCommand("pulumi", "destroy", "--skip-preview", "--yes", "-s", stackRef)
@@ -951,7 +951,7 @@ func testConstructResourceOptions(t *testing.T, dir string, deps []string) {
 }
 
 func testProjectRename(e *ptesting.Environment, organization string) {
-	e.ImportDirectory("large_resource/nodejs")
+	e.ImportDirectory("empty/nodejs")
 
 	stackName, err := resource.NewUniqueHex("rm-test-", 8, -1)
 	contract.AssertNoErrorf(err, "resource.NewUniqueHex should not fail with no maximum length is set")
@@ -967,7 +967,7 @@ func testProjectRename(e *ptesting.Environment, organization string) {
 	e.RunCommandWithRetry("yarn", "install")
 
 	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
-	newProjectName := "new_large_resource_js"
+	newProjectName := "new_emptyjs"
 	stackRef := organization + "/" + newProjectName + "/" + stackName
 
 	e.RunCommand("pulumi", "stack", "rename", stackRef)
@@ -1057,11 +1057,11 @@ func TestParentRename_issue13179(t *testing.T) {
 
 func testStackRmConfig(e *ptesting.Environment, organization string) {
 	// We need to create two projects for this test
-	goDir := filepath.Join(e.RootPath, "large_resource_go")
+	goDir := filepath.Join(e.RootPath, "emptygo")
 	err := os.Mkdir(goDir, 0o700)
 	require.NoError(e, err)
 
-	jsDir := filepath.Join(e.RootPath, "large_resource_js")
+	jsDir := filepath.Join(e.RootPath, "emptyjs")
 	err = os.Mkdir(jsDir, 0o700)
 	require.NoError(e, err)
 
@@ -1071,20 +1071,20 @@ func testStackRmConfig(e *ptesting.Environment, organization string) {
 	qualifiedStackName := fmt.Sprintf("%s/%s", organization, stackName)
 	// Create a stack in the go project
 	e.CWD = goDir
-	e.ImportDirectory("large_resource/go")
+	e.ImportDirectory("empty/go")
 	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
 	// Now create the js project
 	e.CWD = jsDir
-	e.ImportDirectory("large_resource/nodejs")
+	e.ImportDirectory("empty/nodejs")
 	e.RunCommand("pulumi", "stack", "init", qualifiedStackName)
 	// Create a config value to ensure there's a Pulumi.<name>.yaml file.
 	e.RunCommand("pulumi", "config", "set", "key", "value")
 
 	// Now try and remove the go stack while still in the js directory
-	stackRef := organization + "/large_resource_go/" + stackName
+	stackRef := organization + "/emptygo/" + stackName
 	e.RunCommand("pulumi", "stack", "rm", "--yes", "-s", stackRef)
 
 	// And check that Pulumi.<name>.yaml file is still there for the js project

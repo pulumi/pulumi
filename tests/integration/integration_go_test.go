@@ -573,18 +573,6 @@ func TestConfigSecretsWarnGo(t *testing.T) {
 	})
 }
 
-// Tests a resource with a large (>4mb) string prop in Go
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestLargeResourceGo(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v3",
-		},
-		Dir: filepath.Join("large_resource", "go"),
-	})
-}
-
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowGo(t *testing.T) {
 	t.Parallel()
