@@ -97,6 +97,10 @@ func (p *UnimplementedProvider) Delete(context.Context, DeleteRequest) (DeleteRe
 	return DeleteResponse{}, status.Error(codes.Unimplemented, "Delete is not yet implemented")
 }
 
+func (p *UnimplementedProvider) List(context.Context, ListRequest) (*ListStream, error) {
+	return nil, status.Error(codes.Unimplemented, "List is not yet implemented")
+}
+
 func (p *UnimplementedProvider) Construct(context.Context, ConstructRequest) (ConstructResponse, error) {
 	return ConstructResponse{}, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }

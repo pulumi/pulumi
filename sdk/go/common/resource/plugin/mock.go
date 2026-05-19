@@ -168,6 +168,7 @@ type MockProvider struct {
 	ReadF               func(context.Context, ReadRequest) (ReadResponse, error)
 	UpdateF             func(context.Context, UpdateRequest) (UpdateResponse, error)
 	DeleteF             func(context.Context, DeleteRequest) (DeleteResponse, error)
+	ListF               func(context.Context, ListRequest) (*ListStream, error)
 	ConstructF          func(context.Context, ConstructRequest) (ConstructResponse, error)
 	InvokeF             func(context.Context, InvokeRequest) (InvokeResponse, error)
 	CallF               func(context.Context, CallRequest) (CallResponse, error)
@@ -277,6 +278,13 @@ func (m *MockProvider) Delete(ctx context.Context, req DeleteRequest) (DeleteRes
 		return m.DeleteF(ctx, req)
 	}
 	return DeleteResponse{}, errors.New("Delete not implemented")
+}
+
+func (m *MockProvider) List(ctx context.Context, req ListRequest) (*ListStream, error) {
+	if m.ListF != nil {
+		return m.ListF(ctx, req)
+	}
+	return nil, errors.New("List not implemented")
 }
 
 func (m *MockProvider) Construct(ctx context.Context, req ConstructRequest) (ConstructResponse, error) {

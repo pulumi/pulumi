@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -1811,6 +1812,83 @@ func (p *provider) Delete(ctx context.Context, req DeleteRequest) (DeleteRespons
 
 	logging.V(7).Infof("%s success", label)
 	return DeleteResponse{Status: resource.StatusOK}, err
+}
+
+func (p *provider) List(ctx context.Context, req ListRequest) (*ListStream, error) {
+	label := fmt.Sprintf("%s.List(%s)", p.label(), req.Token)
+	logging.V(7).Infof("%s executing (#query=%d)", label, len(req.Query))
+
+	client := p.clientRaw
+	protocol, pcfg, err := p.getPluginConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !pcfg.known {
+		return NewComputedListStream(), nil
+	}
+
+	query, err := MarshalProperties(req.Query, MarshalOptions{
+		Label:         label + ".query",
+		KeepSecrets:   protocol.acceptSecrets,
+		KeepResources: protocol.acceptResources,
+		PropagateNil:  true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Use a cancellable child of the context. We hold onto the cancel so we can release the underlying gRPC stream
+	// resources on every exit path from the iterator below — including when the caller breaks out of the range loop
+	// early (gRPC server streams only release on EOF, error, or context cancel).
+	streamCtx, cancel := context.WithCancel(ctx)
+	rpcStream, err := client.List(streamCtx, &pulumirpc.ListRequest{
+		Token:             string(req.Token),
+		Query:             query,
+		Limit:             req.Limit,
+		PageSize:          req.PageSize,
+		ContinuationToken: req.ContinuationToken,
+	})
+	if err != nil {
+		cancel()
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+		return nil, rpcError
+	}
+
+	// Drain the gRPC stream lazily. The closure mutates stream.Computed and stream.ContinuationToken as the
+	// trailing metadata arrives, so callers must iterate Items to completion to observe accurate values.
+	stream := &ListStream{}
+	stream.Items = func(yield func(ListResult, error) bool) {
+		defer cancel()
+		for {
+			item, err := rpcStream.Recv()
+			if errors.Is(err, io.EOF) {
+				return
+			}
+			if err != nil {
+				rpcError := rpcerror.Convert(err)
+				logging.V(7).Infof("%s failed: err=%v", label, rpcError.Message())
+				yield(ListResult{}, rpcError)
+				return
+			}
+
+			switch item.GetResponse().(type) {
+			case *pulumirpc.ListResponse_Computed_:
+				stream.Computed = true
+			case *pulumirpc.ListResponse_Result_:
+				result := item.GetResult()
+				if !yield(ListResult{
+					ID:   resource.ID(result.GetId()),
+					Name: result.GetName(),
+				}, nil) {
+					return
+				}
+			case *pulumirpc.ListResponse_Continuation_:
+				stream.ContinuationToken = item.GetContinuation().GetContinuationToken()
+			}
+		}
+	}
+	return stream, nil
 }
 
 // Construct creates a new component resource from the given type, name, parent, options, and inputs, and returns
