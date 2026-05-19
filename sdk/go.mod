@@ -41,7 +41,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/git-pkgs/manifests v0.4.1
-	github.com/go-git/go-git/v5 v5.19.0
+	github.com/go-git/go-git/v5 v5.19.1
 	github.com/go-test/deep v1.1.1
 	github.com/golang/glog v1.2.5
 	github.com/google/uuid v1.6.0
