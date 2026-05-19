@@ -22,6 +22,7 @@ import (
 
 	"github.com/go-test/deep"
 	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/slice"
@@ -40,6 +41,9 @@ type Snapshot struct {
 	PendingOperations []resource.Operation // all currently pending resource operations.
 	Metadata          SnapshotMetadata     // metadata associated with the snapshot.
 	Snippets          []resource.Snippet   // any PCL snippets associated with the snapshot.
+	// Extension-parameterization blobs keyed by content hash, persisted so destroy
+	// and refresh (which don't run the program) can re-parameterize from state alone.
+	Extensions map[apitype.ExtensionRef]apitype.Extension
 }
 
 // SnapshotMetadata contains metadata about a snapshot.
@@ -64,6 +68,7 @@ type SnapshotIntegrityErrorMetadata struct {
 func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 	resources []*resource.State, ops []resource.Operation,
 	metadata SnapshotMetadata, snippets []resource.Snippet,
+	extensions map[apitype.ExtensionRef]apitype.Extension,
 ) *Snapshot {
 	return &Snapshot{
 		Manifest:          manifest,
@@ -72,7 +77,42 @@ func NewSnapshot(manifest Manifest, secretsManager secrets.Manager,
 		PendingOperations: ops,
 		Metadata:          metadata,
 		Snippets:          snippets,
+		Extensions:        extensions,
 	}
+}
+
+// MaterializeExtensions builds the Extensions map for a snapshot. For each
+// distinct ExtensionRef referenced by resources, it takes the blob from live
+// (parameterizations registered during this run), falling back to base for refs
+// carried over from the prior snapshot. Refs no resource references are dropped;
+// any ref that resolves to no blob is returned in missing.
+func MaterializeExtensions(
+	resources []*resource.State,
+	live map[apitype.ExtensionRef]apitype.Extension,
+	base *Snapshot,
+) (extensions map[apitype.ExtensionRef]apitype.Extension, missing []apitype.ExtensionRef) {
+	for _, res := range resources {
+		if res.ExtensionRef == "" {
+			continue
+		}
+		ref := apitype.ExtensionRef(res.ExtensionRef)
+		if _, seen := extensions[ref]; seen {
+			continue
+		}
+		blob, ok := live[ref]
+		if !ok && base != nil {
+			blob, ok = base.Extensions[ref]
+		}
+		if !ok {
+			missing = append(missing, ref)
+			continue
+		}
+		if extensions == nil {
+			extensions = map[apitype.ExtensionRef]apitype.Extension{}
+		}
+		extensions[ref] = blob
+	}
+	return extensions, missing
 }
 
 // Prune removes all dangling dependencies from this snapshot, *which is assumed to be topologically sorted with respect

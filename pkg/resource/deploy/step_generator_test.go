@@ -1094,7 +1094,7 @@ func TestParameterizeStepApply_Success(t *testing.T) {
 	}
 
 	completionSource := &promise.CompletionSource[struct{}]{}
-	step := NewParameterizeStep(&Deployment{}, prov, extension, completionSource)
+	step := NewParameterizeStep(&Deployment{}, prov, apitype.ExtensionRef("ref-success"), extension, completionSource)
 
 	status, _, err := step.Apply()
 	require.NoError(t, err)
@@ -1126,6 +1126,7 @@ func TestParameterizeStepApply_ProviderError(t *testing.T) {
 	step := NewParameterizeStep(
 		&Deployment{},
 		prov,
+		apitype.ExtensionRef("ref-err"),
 		apitype.Extension{Name: "x", Version: "1.0.0", Value: []byte{}},
 		completionSource,
 	)
@@ -1152,6 +1153,7 @@ func TestParameterizeStepApply_MalformedVersion(t *testing.T) {
 	step := NewParameterizeStep(
 		&Deployment{},
 		prov,
+		apitype.ExtensionRef("ref-badver"),
 		apitype.Extension{Name: "x", Version: "not-a-version", Value: nil},
 		completionSource,
 	)

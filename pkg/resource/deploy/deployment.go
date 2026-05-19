@@ -25,6 +25,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/blang/semver"
 	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -682,6 +683,62 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
+// rehydrateExtensionsForProvider reapplies every extension parameterization in the previous
+// snapshot that targets the given provider. Called from SameProvider after the provider's
+// plugin has been loaded, so the plugin is ready to receive Parameterize calls before any
+// resource ops on extension resources begin.
+func (d *Deployment) rehydrateExtensionsForProvider(ctx context.Context, providerState *resource.State) error {
+	if d.prev == nil || len(d.prev.Extensions) == 0 {
+		return nil
+	}
+
+	providerURN := providerState.URN
+	providerRef, err := sdkproviders.NewReference(providerURN, providerState.ID)
+	if err != nil {
+		return fmt.Errorf("rehydrate extensions: build reference for provider %s: %w", providerURN, err)
+	}
+	provider, ok := d.providers.GetProvider(providerRef)
+	if !ok {
+		// Provider didn't actually get loaded into the registry. Nothing to rehydrate against.
+		return nil
+	}
+
+	// Collect the unique ExtensionRefs that resources in state attribute to this provider.
+	providerKey := providerRef.String()
+	seen := map[apitype.ExtensionRef]bool{}
+	for _, res := range d.prev.Resources {
+		if res.ExtensionRef == "" || res.Provider != providerKey {
+			continue
+		}
+		ref := apitype.ExtensionRef(res.ExtensionRef)
+		if seen[ref] {
+			continue
+		}
+		seen[ref] = true
+
+		blob, ok := d.prev.Extensions[ref]
+		if !ok {
+			return fmt.Errorf("rehydrate extensions: blob for ref %s (resource %s) not found in snapshot",
+				ref, res.URN)
+		}
+		version, err := semver.ParseTolerant(blob.Version)
+		if err != nil {
+			return fmt.Errorf("rehydrate extensions: parse version for ref %s: %w", ref, err)
+		}
+		if _, err := provider.Parameterize(ctx, plugin.ParameterizeRequest{
+			Parameters: &plugin.ParameterizeValue{
+				Name:    blob.Name,
+				Version: version,
+				Value:   blob.Value,
+			},
+		}); err != nil {
+			return fmt.Errorf("rehydrate extensions: parameterize provider %s with ref %s: %w",
+				providerRef, ref, err)
+		}
+	}
+	return nil
+}
+
 // SameProvider configures a provider from state without changes.
 // If fromCheck is true, the provider was loaded during Check/Diff and we can reuse it.
 // If fromCheck is false (e.g., from EnsureProvider), we load fresh and don't touch UnconfiguredID.
@@ -692,7 +749,12 @@ func (d *Deployment) SameProvider(res *resource.State, fromCheck bool) error {
 	} else {
 		ctx = d.ctx.Base()
 	}
-	return d.providers.Same(ctx, res, fromCheck)
+	if err := d.providers.Same(ctx, res, fromCheck); err != nil {
+		return err
+	}
+	// Reapply any extension parameterizations recorded in state for this provider so the
+	// just-loaded plugin recognizes extension resources before any ops touch them.
+	return d.rehydrateExtensionsForProvider(ctx, res)
 }
 
 // EnsureProvider ensures that the provider for the given resource is available in the registry. It assumes

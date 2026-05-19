@@ -170,7 +170,7 @@ type DeploymentV3 struct {
 	// dropping the resources they would produce.
 	Snippets []SnippetV1 `json:"snippets,omitempty" yaml:"snippets,omitempty"`
 	// Extensions is a map of extension blobs
-	Extensions map[string]Extension `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	Extensions map[ExtensionRef]Extension `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (snap *DeploymentV3) ToUntypedDeployment(version int, features []string) (*UntypedDeployment, error) {

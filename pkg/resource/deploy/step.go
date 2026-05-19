@@ -1705,6 +1705,7 @@ func (s *RefreshStep) Skip() {
 type ParameterizeStep struct {
 	deployment *Deployment
 	provider   plugin.Provider
+	ref        apitype.ExtensionRef
 	extension  apitype.Extension
 	cts        *promise.CompletionSource[struct{}]
 }
@@ -1716,16 +1717,25 @@ var _ Step = (*ParameterizeStep)(nil)
 func NewParameterizeStep(
 	deployment *Deployment,
 	provider plugin.Provider,
+	ref apitype.ExtensionRef,
 	extension apitype.Extension,
 	cts *promise.CompletionSource[struct{}],
 ) Step {
 	return &ParameterizeStep{
 		deployment: deployment,
 		provider:   provider,
+		ref:        ref,
 		extension:  extension,
 		cts:        cts,
 	}
 }
+
+// Ref returns the ExtensionRef this step is parameterizing for. SnapshotManager
+// uses this to record the blob keyed by ref when the step is dispatched.
+func (s *ParameterizeStep) Ref() apitype.ExtensionRef { return s.ref }
+
+// Extension returns the extension blob being applied. Counterpart to Ref().
+func (s *ParameterizeStep) Extension() apitype.Extension { return s.extension }
 
 func (s *ParameterizeStep) Apply() (resource.Status, StepCompleteFunc, error) {
 	version, err := semver.ParseTolerant(s.extension.Version)

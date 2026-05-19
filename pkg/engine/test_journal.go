@@ -183,7 +183,7 @@ func (entries JournalEntries) Snap(base *deploy.Snapshot) (*deploy.Snapshot, err
 	manifest := deploy.Manifest{}
 	manifest.Magic = manifest.NewMagic()
 
-	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets)
+	snap := deploy.NewSnapshot(manifest, secretsManager, filteredResources, operations, metadata, snippets, nil)
 	normSnap, err := snap.NormalizeURNReferences()
 	if err != nil {
 		return snap, err

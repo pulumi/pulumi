@@ -298,6 +298,7 @@ func (sm *JournalSnapshotManager) Write(base *deploy.Snapshot) error {
 		Resources:         make([]*resource.State, 0, len(base.Resources)),
 		PendingOperations: make([]resource.Operation, 0, len(base.PendingOperations)),
 		Metadata:          base.Metadata,
+		Extensions:        base.Extensions,
 	}
 
 	// Copy the resources from the base snapshot to the new snapshot.

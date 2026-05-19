@@ -94,7 +94,7 @@ func NewSnapshot(resources []*resource.State) *deploy.Snapshot {
 		Time:    time.Now(),
 		Version: version.Version,
 		Plugins: nil,
-	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{}, nil)
+	}, b64.NewBase64SecretsManager(), resources, nil, deploy.SnapshotMetadata{}, nil, nil)
 }
 
 var (

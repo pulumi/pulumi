@@ -16,6 +16,8 @@ package deploy
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -741,24 +743,41 @@ func (rm *resmon) RegisterPackage(ctx context.Context,
 			return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
 		}
 	}
-
 	// Wasn't found add it to the map
-	uuid := uuid.New().String()
-	rm.packageRefMap[uuid] = pi
-	// TODO: make sure to look up if we already registered this extension.
+	var ref string
 	if req.Extension != nil {
 		extension := apitype.Extension{
 			Name:    req.Extension.Name,
 			Version: req.Extension.Version,
 			Value:   req.Extension.Value,
 		}
+		// Use has of extension for reference
+		ref = hashExtension(extension)
 
 		rm.extensionRefLock.Lock()
-		rm.extensionRefMap[uuid] = extension
+		rm.extensionRefMap[ref] = extension
 		rm.extensionRefLock.Unlock()
+	} else {
+		ref = uuid.New().String()
 	}
-	logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, uuid)
-	return &pulumirpc.RegisterPackageResponse{Ref: uuid}, nil
+
+	rm.packageRefMap[ref] = pi
+
+	logging.V(5).Infof("ResourceMonitor.RegisterPackage(%v) created %s", req, ref)
+	return &pulumirpc.RegisterPackageResponse{Ref: ref}, nil
+}
+
+// hashExtension produces a stable content-based reference for an extension blob.
+// The hash includes Name, Version, and Value so semantically distinct extensions
+// never collide.
+func hashExtension(ext apitype.Extension) string {
+	h := sha256.New()
+	h.Write([]byte(ext.Name))
+	h.Write([]byte{0})
+	h.Write([]byte(ext.Version))
+	h.Write([]byte{0})
+	h.Write(ext.Value)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // lookupPackageRef returns the provider request for the given package ref,
