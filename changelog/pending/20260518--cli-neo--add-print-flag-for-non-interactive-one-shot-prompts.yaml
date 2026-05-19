@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/neo
-  description: Add `--print`/`-p` to `pulumi neo` to run a single prompt non-interactively and print the agent's final response to stdout

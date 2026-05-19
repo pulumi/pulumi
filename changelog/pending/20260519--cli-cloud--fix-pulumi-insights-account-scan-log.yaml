@@ -1,4 +1,0 @@
-changes:
-- type: fix
-  scope: cli/cloud
-  description: Fix `pulumi insights account scan log --all` to follow the server's pagination cursor through the end of the log, and render `--job/--step` mode as structured lines instead of an empty raw-string blob

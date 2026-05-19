@@ -1,4 +1,0 @@
-changes:
-- type: feat
-  scope: cli/deployment
-  description: Add dedicated flags for each deployment setting
