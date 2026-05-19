@@ -485,7 +485,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				deployment.NewDeploymentCmd(pkgWorkspace.Instance),
 				cloud.NewAPICmd(),
 				insights.NewInsightsCmd(),
-				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, nil),
+				cmdDo.NewDoCmd(cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, nil, nil, nil),
 			},
 		},
 		{
