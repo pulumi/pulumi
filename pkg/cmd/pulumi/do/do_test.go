@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,8 +33,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func panicLoader(context.Context, diag.Sink, string, string) (io.Closer, plugin.Provider, error) {
+func panicLoadConverterPlugin(
+	*plugin.Context, string, func(sev diag.Severity, msg string),
+) (plugin.Converter, error) {
+	panic("unexpected call to load converter plugin")
+}
+
+func panicLoader(context.Context, *plugin.Context, string, string) (plugin.Provider, error) {
 	panic("not implemented")
+}
+
+func testHost() (plugin.Host, error) {
+	return &plugin.MockHost{}, nil
 }
 
 func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
@@ -57,7 +66,7 @@ func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
 			mws := &pkgWorkspace.MockContext{}
 
 			var stdout bytes.Buffer
-			cmd := NewDoCmd(mlm, mws, panicLoader)
+			cmd := NewDoCmd(mlm, mws, panicLoader, testHost, panicLoadConverterPlugin)
 			cmd.SetOut(&stdout)
 			cmd.SetErr(&stdout)
 			cmd.SetArgs(tc.args)
@@ -70,24 +79,6 @@ func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
 			assert.Contains(t, output, "pulumi do")
 		})
 	}
-}
-
-type nopCloser struct {
-	closed bool
-}
-
-func (nc *nopCloser) Close() error {
-	nc.closed = true
-	return nil
-}
-
-func closer(t *testing.T) io.Closer {
-	c := &nopCloser{}
-	// Always assert that the plugin context is closed by the end of the test.
-	t.Cleanup(func() {
-		assert.True(t, c.closed, "expected closer to be closed")
-	})
-	return c
 }
 
 type testProvider struct {
@@ -127,7 +118,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
 			Name:        "aws",
@@ -150,11 +141,11 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{spec: spec}, nil
+		return &testProvider{spec: spec}, nil
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -181,8 +172,9 @@ Modules
   myModule    Functions and resources for the myModule module
 
 Flags:
-  -h, --help                   help for aws@4.1
-      --provider-file string   Path to a file containing provider configuration
+  -h, --help                     help for aws@4.1
+      --provider-file string     Path to a file containing provider configuration
+      --provider-format string   Format of the provider configuration file (default "pcl")
 
 Global Flags:
       --dry-run        Run the operation in preview mode
@@ -211,7 +203,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
 			Name:        "aws",
@@ -234,7 +226,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 				},
 			},
 		}
-		return closer(t), &testProvider{spec: spec}, nil
+		return &testProvider{spec: spec}, nil
 	}
 
 	var preRunCount, postRunCount int
@@ -247,7 +239,7 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 			postRunCount++
 		},
 	}
-	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader))
+	rootCmd.AddCommand(NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin))
 
 	var stdout bytes.Buffer
 	rootCmd.SetOut(&stdout)
@@ -278,8 +270,9 @@ Modules
   myModule    Functions and resources for the myModule module
 
 Flags:
-  -h, --help                   help for aws@4.1
-      --provider-file string   Path to a file containing provider configuration
+  -h, --help                     help for aws@4.1
+      --provider-file string     Path to a file containing provider configuration
+      --provider-format string   Format of the provider configuration file (default "pcl")
 
 Global Flags:
       --dry-run        Run the operation in preview mode
@@ -295,7 +288,7 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "aws@4.1", source)
 		spec := schema.PackageSpec{
 			Name: "aws",
@@ -308,11 +301,11 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 				"aws:myModule:myOtherResource": {},
 			},
 		}
-		return closer(t), &testProvider{spec: spec}, nil
+		return &testProvider{spec: spec}, nil
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -337,9 +330,10 @@ Flags:
   -h, --help   help for myModule
 
 Global Flags:
-      --dry-run                Run the operation in preview mode
-      --provider-file string   Path to a file containing provider configuration
-      --show-secrets           Show secret values in output
+      --dry-run                  Run the operation in preview mode
+      --provider-file string     Path to a file containing provider configuration
+      --provider-format string   Format of the provider configuration file (default "pcl")
+      --show-secrets             Show secret values in output
 
 Use "do aws@4.1 myModule [command] --help" for more information about a command.
 `
@@ -358,7 +352,7 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 
 	mlm := &cmdBackend.MockLoginManager{}
 	mws := &pkgWorkspace.MockContext{}
-	loader := func(ctx context.Context, sink diag.Sink, wd, source string) (io.Closer, plugin.Provider, error) {
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
 		assert.Equal(t, "pkg", source)
 		spec := schema.PackageSpec{
 			Name: "pkg",
@@ -366,11 +360,11 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 				"pkg:mod1/mod2:fun": {},
 			},
 		}
-		return closer(t), &testProvider{spec: spec}, nil
+		return &testProvider{spec: spec}, nil
 	}
 
 	var stdout bytes.Buffer
-	cmd := NewDoCmd(mlm, mws, loader)
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
@@ -390,8 +384,9 @@ Modules
   mod1/mod2        Functions and resources for the mod2 module
 
 Flags:
-  -h, --help                   help for pkg
-      --provider-file string   Path to a file containing provider configuration
+  -h, --help                     help for pkg
+      --provider-file string     Path to a file containing provider configuration
+      --provider-format string   Format of the provider configuration file (default "pcl")
 
 Global Flags:
       --dry-run        Run the operation in preview mode
@@ -417,9 +412,10 @@ Flags:
   -h, --help   help for mod1
 
 Global Flags:
-      --dry-run                Run the operation in preview mode
-      --provider-file string   Path to a file containing provider configuration
-      --show-secrets           Show secret values in output
+      --dry-run                  Run the operation in preview mode
+      --provider-file string     Path to a file containing provider configuration
+      --provider-format string   Format of the provider configuration file (default "pcl")
+      --show-secrets             Show secret values in output
 
 Use "do pkg mod1 [command] --help" for more information about a command.
 `
@@ -444,9 +440,10 @@ Flags:
   -h, --help   help for mod1/mod2
 
 Global Flags:
-      --dry-run                Run the operation in preview mode
-      --provider-file string   Path to a file containing provider configuration
-      --show-secrets           Show secret values in output
+      --dry-run                  Run the operation in preview mode
+      --provider-file string     Path to a file containing provider configuration
+      --provider-format string   Format of the provider configuration file (default "pcl")
+      --show-secrets             Show secret values in output
 
 Use "do pkg mod1/mod2 [command] --help" for more information about a command.
 `
