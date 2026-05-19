@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/maputil"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -161,6 +162,182 @@ func NonStrictBindOptions() []BindOption {
 		SkipInvokeTypechecking,
 		SkipRangeTypechecking,
 	}
+}
+
+// bindInputFile is the binder setup shared by BindFunction and BindResource: it constructs a binder, registers the
+// standard PCL builtins, walks the file's top-level attributes, and returns the bound arguments along with each
+// input's name range (for diagnostic Subjects).
+func bindInputFile(file *syntax.File, opts ...BindOption) (
+	*binder, []*model.Attribute, map[string]hcl.Range, hcl.Diagnostics,
+) {
+	var options bindOptions
+	for _, o := range opts {
+		o(&options)
+	}
+
+	b := &binder{
+		options:            options,
+		tokens:             syntax.NewTokenMapForFiles([]*syntax.File{file}),
+		packageDescriptors: map[string]*schema.PackageDescriptor{},
+		referencedPackages: map[string]schema.PackageReference{},
+		schemaTypes:        map[schema.Type]model.Type{},
+		root:               model.NewRootScope(syntax.None),
+	}
+
+	b.root.Define("null", &model.Constant{
+		Name:          "null",
+		ConstantValue: cty.NullVal(cty.DynamicPseudoType),
+	})
+	for name, fn := range pulumiBuiltins(options) {
+		b.root.DefineFunction(name, fn)
+	}
+	b.root.DefineFunction(Invoke, model.NewFunction(model.GenericFunctionSignature(b.bindInvokeSignature)))
+	b.root.DefineFunction(Call, model.NewFunction(model.GenericFunctionSignature(b.bindCallSignature)))
+
+	var diagnostics hcl.Diagnostics
+	args := make([]*model.Attribute, 0, len(file.Body.Attributes))
+	inputRanges := map[string]hcl.Range{}
+	for name, value := range file.Body.Attributes {
+		expr, diags := model.BindExpression(value.Expr, b.root, b.tokens, options.modelOptions()...)
+		diagnostics = append(diagnostics, diags...)
+		inputRanges[name] = value.NameRange
+		args = append(args, &model.Attribute{
+			Syntax: value,
+			Tokens: syntax.NewAttributeTokens(name),
+			Name:   name,
+			Value:  expr,
+		})
+	}
+
+	for _, block := range file.Body.Blocks {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf("unexpected block %q", block.Type),
+			Subject:  &block.TypeRange,
+		})
+	}
+
+	return b, args, inputRanges, diagnostics
+}
+
+// BindFunction binds a PCL file as an invoke function input and returns the bound arguments along with the model
+// type the inputs were typechecked against. The model type is used downstream (e.g. by RewriteConversions during
+// evaluation) so that conversions reference the same type instances the binder built.
+func BindFunction(
+	file *syntax.File, fn *schema.Function,
+	opts ...BindOption,
+) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
+	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+
+	argProperties := make(map[string]model.Type, len(args))
+	for _, item := range args {
+		argProperties[item.Name] = item.Value.Type()
+	}
+	argsType := model.NewObjectType(argProperties)
+
+	sig, err := b.signatureForArgs(fn, argsType)
+	if err != nil {
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  fmt.Sprintf("invalid function arguments: %v", err),
+		})
+		return nil, nil, diagnostics
+	}
+
+	contract.Assertf(
+		len(sig.Parameters) == 3,
+		"expected signature to have exactly three parameters, got %d", len(sig.Parameters))
+	inputType := sig.Parameters[1].Type
+	diagnostics = append(diagnostics,
+		typecheckObjectArgs(inputType, file.Body.Range().Ptr(), args, inputRanges)...)
+
+	if diagnostics.HasErrors() {
+		return nil, nil, diagnostics
+	}
+
+	return args, inputType, diagnostics
+}
+
+// BindResource binds a PCL file as a resource input and returns the bound arguments along with the model type the
+// inputs were typechecked against. The model type is used downstream (e.g. by RewriteConversions during evaluation)
+// so that conversions reference the same type instances the binder built.
+func BindResource(
+	file *syntax.File, res *schema.Resource,
+	opts ...BindOption,
+) ([]*model.Attribute, model.Type, hcl.Diagnostics) {
+	b, args, inputRanges, diagnostics := bindInputFile(file, opts...)
+
+	// resolveInputUnions expects a name → expression map; rebuild it from args rather than tracking the same thing
+	// twice during attribute binding.
+	inputs := make(map[string]model.Expression, len(args))
+	for _, item := range args {
+		inputs[item.Name] = item.Value
+	}
+	inputProperties := b.resolveInputUnions(inputs, res.InputProperties)
+	inputType := b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties})
+
+	diagnostics = append(diagnostics,
+		typecheckObjectArgs(inputType, file.Body.Range().Ptr(), args, inputRanges)...)
+
+	if diagnostics.HasErrors() {
+		return nil, nil, diagnostics
+	}
+
+	return args, inputType, diagnostics
+}
+
+func typecheckObjectArgs(
+	inputType model.Type,
+	rng *hcl.Range,
+	args []*model.Attribute,
+	inputRanges map[string]hcl.Range,
+) hcl.Diagnostics {
+	// Function signatures wrap input-less argument objects in Optional (Union[Object{}, None]); strip that so we can
+	// still report unsupported attributes against the underlying ObjectType.
+	objectType, ok := unwrapOptionalType(inputType).(*model.ObjectType)
+	if !ok {
+		return nil
+	}
+
+	var diagnostics hcl.Diagnostics
+	attrNames := map[string]struct{}{}
+	for _, item := range args {
+		attrNames[item.Name] = struct{}{}
+
+		expected, ok := objectType.Properties[item.Name]
+		if !ok {
+			diagnostics = append(diagnostics, unsupportedAttribute(item.Name, inputRanges[item.Name]))
+			continue
+		}
+		if !expected.ConversionFrom(item.Value.Type()).Exists() {
+			valueRange := item.Value.SyntaxNode().Range()
+			diagnostics = append(diagnostics, &hcl.Diagnostic{
+				Severity: hcl.DiagError,
+				Subject:  &valueRange,
+				Summary:  fmt.Sprintf("Cannot assign value to input %q", item.Name),
+				Detail: fmt.Sprintf("Cannot assign value %s to input %q of type %s",
+					item.Value.Type().Pretty().String(), item.Name, expected.Pretty().String()),
+			})
+		}
+	}
+
+	for _, name := range maputil.SortedKeys(objectType.Properties) {
+		expected := objectType.Properties[name]
+		_, hasAttribute := attrNames[name]
+		if model.IsOptionalType(expected) || hasAttribute {
+			continue
+		}
+		if model.IsConstType(expected) {
+			continue
+		}
+		diagnostics = append(diagnostics, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Subject:  rng,
+			Summary:  fmt.Sprintf("Missing required input %q", name),
+		})
+	}
+
+	return diagnostics
 }
 
 // BindProgram performs semantic analysis on the given set of HCL2 files that represent a single program. The given

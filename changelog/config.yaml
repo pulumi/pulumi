@@ -13,6 +13,7 @@ scopes:
     - config
     - deployment
     - display
+    - do
     - engine
     - env
     - import

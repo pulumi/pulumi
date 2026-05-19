@@ -1244,3 +1244,61 @@ func TestTerraformUp(t *testing.T) {
 		"please see the documentation at "+
 		"https://www.pulumi.com/docs/iac/guides/migration/migrating-to-pulumi/from-terraform/")
 }
+
+// Test that `pulumi do` can invoke a real provider function end-to-end. We use the command provider's local:run
+// function because it's small, well-behaved, and exercises both an input file and a structured JSON output.
+func TestDoCommandLocalRun(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	// Allow auto-acquiring the command plugin.
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	// logging = "none" suppresses the command provider's own stdout/stderr echo so the only thing on our stdout
+	// is the JSON result. The provider still captures stdout/stderr as outputs.
+	e.WriteTestFile("inputs.pcl", `command = "echo hello"`+"\n"+`logging = "none"`+"\n")
+
+	stdout, stderr := e.RunCommand("pulumi", "do", "command", "local", "run", "--input-file", "inputs.pcl")
+
+	// Guard against the dynamic-subcommand re-execute racing with the root command's update-check goroutine and
+	// producing a "send on closed channel" panic. The panic is intermittent so it doesn't always reproduce, but
+	// when it happens the test should fail loudly.
+	assert.NotContains(t, stderr, "panic:", "pulumi do should not panic; stderr:\n%s", stderr)
+
+	var result map[string]any
+	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "expected JSON output, got: %s", stdout)
+	assert.Equal(t, "hello", strings.TrimSpace(fmt.Sprint(result["stdout"])))
+}
+
+// Test that `pulumi do <pkg> <module>` renders the expected help text for a module-level command. We only assert on
+// the do-specific portion up to (and including) the "Flags:" section — the trailing "Global Flags:" comes from
+// pulumi's root command and changes as global flags are added, which isn't what we're trying to pin down here.
+func TestDoCommandLocalHelp(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+
+	e.Env = append(e.Env, "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=false")
+
+	stdout, _ := e.RunCommand("pulumi", "do", "command", "local")
+
+	expectedPrefix := `Functions and resources for the local module.
+
+Run 'pulumi do command local <resource/function> --help' for more details on usage.
+
+Usage:
+  pulumi do command local [command]
+
+Functions
+  run         Invoke the run function
+
+Resources
+  Command     Operate on the Command resource
+
+`
+	assert.True(t, strings.HasPrefix(stdout, expectedPrefix),
+		"stdout did not start with expected help prefix.\nExpected:\n%s\nActual:\n%s", expectedPrefix, stdout)
+}
