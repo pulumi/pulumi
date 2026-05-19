@@ -60,6 +60,8 @@ type publishPackageArgs struct {
 }
 
 type packagePublishCmd struct {
+	stdout io.Writer
+
 	extractSchema func(
 		ws pkgWorkspace.Context, pctx *plugin.Context, packageSource string, parameters plugin.ParameterizeParameters,
 		registry registry.Registry, e env.Env, concurrency int,
@@ -93,6 +95,7 @@ func newPackagePublishCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, cliArgs []string) error {
 			ctx := cmd.Context()
 			pkgPublishCmd.extractSchema = packages.SchemaFromSchemaSource
+			pkgPublishCmd.stdout = cmd.OutOrStdout()
 			parameters := &plugin.ParameterizeArgs{Args: cliArgs[1:]}
 			return pkgPublishCmd.Run(ctx, args, cliArgs[0], parameters)
 		},
@@ -271,7 +274,7 @@ func (cmd *packagePublishCmd) Run(
 		return fmt.Errorf("failed to publish package: %w", err)
 	}
 
-	fmt.Printf("Successfully published package %s/%s@%s\n", publisher, name, version)
+	fmt.Fprintf(cmd.stdout, "Successfully published package %s/%s@%s\n", publisher, name, version)
 
 	return nil
 }

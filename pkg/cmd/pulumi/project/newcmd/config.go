@@ -107,8 +107,9 @@ func HandleConfig(
 			return fmt.Errorf("saving config: %w", err)
 		}
 
-		fmt.Println("Saved config")
-		fmt.Println()
+		// Helper used by multiple commands; output goes to process stdout.
+		fmt.Println("Saved config") //nolint:forbidigo
+		fmt.Println()               //nolint:forbidigo
 	}
 
 	return nil

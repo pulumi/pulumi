@@ -110,8 +110,10 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 				resourceFilter = &rf
 			}
 
+			out := cobraCmd.OutOrStdout()
 			if !jsonOut {
-				fmt.Printf(
+				fmt.Fprintf(
+					out,
 					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
 					s.Ref().String(),
 					cmd.FormatTime(*startTime),
@@ -152,7 +154,7 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 						}
 					}
 
-					return ui.PrintJSON(entries)
+					return ui.FprintJSON(out, entries)
 				}
 
 				for _, logEntry := range logs {
@@ -160,14 +162,15 @@ func NewLogsCmd(ws pkgWorkspace.Context) *cobra.Command {
 						eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
 						if !jsonOut {
-							fmt.Printf(
+							fmt.Fprintf(
+								out,
 								"%30.30s[%30.30s] %v\n",
 								cmd.FormatTime(eventTime),
 								logEntry.ID,
 								strings.TrimRight(logEntry.Message, "\n"),
 							)
 						} else {
-							err = ui.PrintJSON(logEntryJSON{
+							err = ui.FprintJSON(out, logEntryJSON{
 								ID:        logEntry.ID,
 								Timestamp: cmd.FormatTime(eventTime.UTC()),
 								Message:   logEntry.Message,

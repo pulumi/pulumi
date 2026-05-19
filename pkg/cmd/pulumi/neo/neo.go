@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -164,7 +165,9 @@ func NewNeoCmd() *cobra.Command {
 					approvalMode = client.NeoApprovalModeAuto
 				}
 			}
-			return runNeo(ctx, prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode)
+			return runNeo(
+				ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(),
+				prompt, stackName, orgFlag, cwdFlag, approvalMode, permissionMode, printMode)
 		},
 	}
 
@@ -212,6 +215,7 @@ func parsePermissionMode(s string) (client.NeoPermissionMode, error) {
 
 func runNeo(
 	ctx context.Context,
+	stdout, stderr io.Writer,
 	prompt, stackName, orgFlag, cwdFlag string,
 	approvalMode client.NeoApprovalMode,
 	permissionMode client.NeoPermissionMode,
@@ -244,7 +248,7 @@ func runNeo(
 	pc := cloudBe.Client()
 
 	if msg := neoUpgradeMessage(cloudBe.Capabilities(ctx), version.Version); msg != "" {
-		return result.FprintBailf(os.Stderr, "%s", msg)
+		return result.FprintBailf(stderr, "%s", msg)
 	}
 
 	orgName, projectName, stackRefName, err := resolveTaskTarget(ctx, ws, cloudBe, project, stackName, orgFlag)
@@ -294,9 +298,9 @@ func runNeo(
 		if !printMode {
 			consoleURL := client.CloudConsoleURL(pc.URL(), orgName, "neo", "tasks", resp.TaskID)
 			if consoleURL != "" {
-				fmt.Fprintln(os.Stderr, consoleURL)
+				fmt.Fprintln(stderr, consoleURL)
 			} else {
-				fmt.Fprintf(os.Stderr, "Neo task created (id %s)\n", resp.TaskID)
+				fmt.Fprintf(stderr, "Neo task created (id %s)\n", resp.TaskID)
 			}
 		}
 		session := &Session{
@@ -304,10 +308,10 @@ func runNeo(
 			Handlers: handlers,
 			OrgName:  orgName,
 			TaskID:   resp.TaskID,
-			Log:      os.Stderr,
+			Log:      stderr,
 		}
 		if printMode {
-			session.Output = os.Stdout
+			session.Output = stdout
 		}
 		return session.Run(ctx)
 	}

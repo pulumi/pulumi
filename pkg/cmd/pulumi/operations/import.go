@@ -545,7 +545,7 @@ func generateImportedDefinitions(ctx *plugin.Context,
 				errMsg.WriteString("You will need to copy and paste the generated code into your Pulumi application and manually edit it to correct any errors.\n\n") //nolint:lll
 			}
 			fmt.Fprintf(&errMsg, "%v\n", v)
-			fmt.Print(errMsg.String())
+			fmt.Fprint(out, errMsg.String())
 		}
 	}()
 
@@ -845,7 +845,7 @@ func NewImportCmd() *cobra.Command {
 			}
 
 			if !generateCode && outputFilePath != "" {
-				fmt.Fprintln(os.Stderr, "Output file will not be used as --generate-code is false.")
+				fmt.Fprintln(cmd.ErrOrStderr(), "Output file will not be used as --generate-code is false.")
 			}
 
 			var outputResult bytes.Buffer
@@ -1036,15 +1036,17 @@ func NewImportCmd() *cobra.Command {
 					// It's a little bit more memory but is a better experience that writing to stdout and then an error
 					// occurring
 					if outputFilePath == "" && !jsonDisplay && outputFormat != "json" {
-						fmt.Print("Please copy the following code into your Pulumi application. Not doing so\n" +
-							"will cause Pulumi to report that an update will happen on the next update command.\n\n")
+						outW := cmd.OutOrStdout()
+						fmt.Fprint(outW,
+							"Please copy the following code into your Pulumi application. Not doing so\n"+
+								"will cause Pulumi to report that an update will happen on the next update command.\n\n")
 						if protectResources {
-							fmt.Print(("Please note that the imported resources are marked as protected. " +
-								"To destroy them\n" +
-								"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-								"the destroy will take effect.\n\n"))
+							fmt.Fprint(outW, "Please note that the imported resources are marked as protected. "+
+								"To destroy them\n"+
+								"you will need to remove the `protect` option and run `pulumi update` *before*\n"+
+								"the destroy will take effect.\n\n")
 						}
-						fmt.Print(outputResult.String())
+						fmt.Fprint(outW, outputResult.String())
 					}
 				}
 			}

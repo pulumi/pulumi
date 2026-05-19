@@ -70,7 +70,7 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 				return err
 			}
 			bytes = append(bytes, '\n')
-			n, err := os.Stdout.Write(bytes)
+			n, err := cmd.OutOrStdout().Write(bytes)
 			if err != nil {
 				return err
 			}

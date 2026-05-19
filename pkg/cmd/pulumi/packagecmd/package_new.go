@@ -271,7 +271,7 @@ func runNewPackage(ctx context.Context, out io.Writer, args newPackageArgs) erro
 	}
 
 	if !args.generateOnly {
-		if err := policy.InstallPluginDependencies(ctx, cwd, plugin.Runtime); err != nil {
+		if err := policy.InstallPluginDependencies(ctx, out, out, cwd, plugin.Runtime); err != nil {
 			return err
 		}
 	}

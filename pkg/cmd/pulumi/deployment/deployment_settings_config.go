@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -100,7 +101,7 @@ type deploymentSettingsCommandDependencies struct {
 }
 
 func initializeDeploymentSettingsCmd(
-	ctx context.Context, ws pkgWorkspace.Context, stack string,
+	ctx context.Context, stdout io.Writer, ws pkgWorkspace.Context, stack string,
 ) (*deploymentSettingsCommandDependencies, error) {
 	interactive := cmdutil.Interactive()
 
@@ -132,9 +133,9 @@ func initializeDeploymentSettingsCmd(
 		unsupportedBackendMsg = colors.Highlight(unsupportedBackendMsg,
 			"https://www.pulumi.com/docs/pulumi-cloud/deployments/", colors.BrightBlue+colors.Underline+colors.Bold)
 
-		fmt.Println()
-		fmt.Println(displayOpts.Color.Colorize(unsupportedBackendMsg))
-		fmt.Println()
+		fmt.Fprintln(stdout)
+		fmt.Fprintln(stdout, displayOpts.Color.Colorize(unsupportedBackendMsg))
+		fmt.Fprintln(stdout)
 
 		return nil, fmt.Errorf("unable to manage stack deployments for backend type: %s",
 			be.Name())
@@ -188,7 +189,7 @@ func newDeploymentSettingsInitCmd() *cobra.Command {
 		Short:      "Initialize the stack's deployment.yaml file",
 		Long:       "",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -307,7 +308,7 @@ func newDeploymentSettingsConfigureCmd() *cobra.Command {
 				return errors.New("configure command is only supported in interactive mode")
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}

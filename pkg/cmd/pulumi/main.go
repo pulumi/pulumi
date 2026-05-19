@@ -32,6 +32,11 @@ import (
 // finished should be set to false when the handler is deferred and set to true as the
 // last statement in the scope. This trick is necessary to avoid catching and then
 // discarding a panic(nil).
+//
+// The panic handler runs before (and around) the cobra command, so it writes
+// directly to os.Stderr rather than going through cmd.ErrOrStderr().
+//
+//nolint:forbidigo
 func panicHandler(finished *bool) {
 	if panicPayload := recover(); !*finished {
 		stack := string(debug.Stack())

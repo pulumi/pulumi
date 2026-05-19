@@ -46,7 +46,7 @@ func newAboutEnvCmd() *cobra.Command {
 					Columns: []string{v.Name(), v.Description, v.Value.String()},
 				})
 			}
-			ui.PrintTable(table, nil)
+			ui.FprintTable(cmd.OutOrStdout(), table, nil)
 			if foundError {
 				return errors.New("invalid environmental variables found")
 			}

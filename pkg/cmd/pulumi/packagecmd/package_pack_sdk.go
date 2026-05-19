@@ -57,7 +57,7 @@ func newPackagePackSdkCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Printf("%s", artifact)
+			fmt.Fprintf(cmd.OutOrStdout(), "%s", artifact)
 
 			return nil
 		},

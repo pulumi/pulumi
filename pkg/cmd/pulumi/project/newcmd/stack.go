@@ -78,7 +78,8 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 	}
 
 	if b.SupportsOrganizations() {
-		fmt.Print("Please enter your desired stack name.\n" +
+		// Helper used by multiple commands; uses process stdout.
+		fmt.Print("Please enter your desired stack name.\n" + //nolint:forbidigo
 			"To create a stack in an organization, " +
 			"use the format <org-name>/<stack-name> (e.g. `acmecorp/dev`).\n")
 	}
@@ -96,7 +97,7 @@ func PromptAndCreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.C
 		if err != nil {
 			if !yes {
 				// Let the user know about the error and loop around to try again.
-				fmt.Printf("Sorry, could not create stack '%s': %v\n", stackName, err)
+				fmt.Printf("Sorry, could not create stack '%s': %v\n", stackName, err) //nolint:forbidigo
 				continue
 			}
 			return nil, err

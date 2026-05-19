@@ -47,10 +47,12 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 	}
 
 	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, runtime.Options())
+	// Helper used by multiple commands; output goes to the process streams
+	// directly when not given a writer.
 	err = cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
 		Info:     programInfo,
 		IsPlugin: false,
-	}, os.Stdout, os.Stderr)
+	}, os.Stdout, os.Stderr) //nolint:forbidigo
 	if err != nil {
 		//revive:disable-next-line:error-strings // This error message is user facing.
 		return fmt.Errorf("installing dependencies failed: %w\nRun `pulumi install` to complete the installation.", err)

@@ -424,7 +424,7 @@ func handleResponse(w, errW io.Writer, resp *http.Response, api *apiCommand) err
 		return nil
 	}
 
-	return renderBody(w, resp.Header.Get("Content-Type"), body)
+	return renderBody(w, errW, resp.Header.Get("Content-Type"), body)
 }
 
 // writeStatusAndHeaders writes the status line + sorted headers to w.
@@ -507,7 +507,7 @@ func isJSONContentType(ct string) bool {
 // renderBody writes body to w, pretty-printing JSON when the content type
 // indicates JSON, passing through text/binary otherwise. A thin adapter
 // over format.go's existing helpers.
-func renderBody(w io.Writer, contentType string, body []byte) error {
+func renderBody(w, errW io.Writer, contentType string, body []byte) error {
 	ct := strings.ToLower(contentType)
 	switch {
 	case isJSONContentType(contentType), ct == "":
@@ -518,9 +518,9 @@ func renderBody(w io.Writer, contentType string, body []byte) error {
 		return formatText(w, body)
 	case strings.Contains(ct, "application/x-tar"),
 		strings.Contains(ct, "application/octet-stream"):
-		return formatBinary(w, body)
+		return formatBinary(w, errW, body)
 	default:
-		return formatBinary(w, body)
+		return formatBinary(w, errW, body)
 	}
 }
 
