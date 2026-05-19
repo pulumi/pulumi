@@ -152,6 +152,9 @@ func (cmd *stateMoveCmd) Run(
 	if cmd.Stdin == nil {
 		cmd.Stdin = os.Stdin
 	}
+	if cmd.Stdout == nil {
+		cmd.Stdout = io.Discard
+	}
 	if cmd.ws == nil {
 		cmd.ws = pkgWorkspace.Instance
 	}

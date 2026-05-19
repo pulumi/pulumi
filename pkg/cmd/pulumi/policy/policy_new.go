@@ -96,6 +96,9 @@ func newPolicyNewCmd() *cobra.Command {
 }
 
 func runNewPolicyPack(ctx context.Context, args newPolicyArgs) error {
+	if args.stdout == nil {
+		args.stdout = io.Discard
+	}
 	// Prepare options.
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),

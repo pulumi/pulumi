@@ -103,6 +103,9 @@ type stackLSArgs struct {
 }
 
 func runStackLS(ctx context.Context, args stackLSArgs) error {
+	if args.stdout == nil {
+		args.stdout = io.Discard
+	}
 	// Build up the stack filters. We do not support accepting empty strings as filters
 	// from command-line arguments, though the API technically supports it.
 	strPtrIfSet := func(s string) *string {

@@ -102,6 +102,14 @@ func runNew(ctx context.Context, args newArgs) error {
 		return backenderr.NonInteractiveRequiresYesError{}
 	}
 
+	// Default to discarding output when callers (e.g. tests) don't provide writers.
+	if args.stdout == nil {
+		args.stdout = io.Discard
+	}
+	if args.stderr == nil {
+		args.stderr = io.Discard
+	}
+
 	// Prepare options.
 	opts := display.Options{
 		Color:         cmdutil.GetGlobalColorization(),

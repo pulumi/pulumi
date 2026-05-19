@@ -85,6 +85,9 @@ func (cmd *policyInstallCmd) Run(
 	if cmd.diag == nil {
 		cmd.diag = cmdutil.Diag()
 	}
+	if cmd.stderr == nil {
+		cmd.stderr = io.Discard
+	}
 	if cmd.requireStack == nil {
 		cmd.requireStack = func(ctx context.Context, stackName string) (backend.Stack, error) {
 			displayOpts := display.Options{

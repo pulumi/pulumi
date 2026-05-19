@@ -145,6 +145,9 @@ func (cmd *packagePublishCmd) Run(
 	packageSrc string,
 	packageParams plugin.ParameterizeParameters,
 ) error {
+	if cmd.stdout == nil {
+		cmd.stdout = io.Discard
+	}
 	project, _, err := pkgWorkspace.Instance.ReadProject()
 	if err != nil && !errors.Is(err, workspace.ErrProjectNotFound) {
 		return fmt.Errorf("failed to determine current project: %w", err)
