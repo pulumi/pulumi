@@ -76,7 +76,7 @@ func samplePolicyIssueListResponse() apitype.ListPolicyIssuesResponse {
 				ResourceType:  "aws:s3/bucket:Bucket",
 				EntityID:      "prod",
 				EntityProject: "web",
-				Message:       "S3 bucket must not allow public access",
+				Status:        "active",
 				ObservedAt:    "2026-05-01T12:00:00Z",
 			},
 			{
@@ -86,9 +86,8 @@ func samplePolicyIssueListResponse() apitype.ListPolicyIssuesResponse {
 				Level:         string(apitype.Advisory),
 				EntityID:      "staging",
 				EntityProject: "web",
-				Message: "Resource is missing required tags: this message is intentionally " +
-					"long enough to exercise the truncation path in the table renderer",
-				ObservedAt: "2026-04-30T08:00:00Z",
+				Status:        "fixed",
+				ObservedAt:    "2026-04-30T08:00:00Z",
 			},
 		},
 	}
@@ -111,23 +110,25 @@ func TestPolicyIssueList_DefaultOutput(t *testing.T) {
 	assert.Contains(t, out, "POLICY")
 	assert.Contains(t, out, "ENFORCEMENT")
 	assert.Contains(t, out, "STACK")
-	assert.Contains(t, out, "MESSAGE")
+	assert.Contains(t, out, "STATUS")
+	// MESSAGE was dropped — the server doesn't hydrate it on the list
+	// endpoint, so it was always blank.
+	assert.NotContains(t, out, "MESSAGE")
 
-	// First row content.
+	// First row content (active issue).
 	assert.Contains(t, out, "issue-1")
 	assert.Contains(t, out, "aws-guardrails@1.2.0")
 	assert.Contains(t, out, "no-public-buckets")
 	assert.Contains(t, out, "mandatory")
 	assert.Contains(t, out, "web/prod")
-	assert.Contains(t, out, "S3 bucket must not allow public access")
+	assert.Contains(t, out, "active")
 
-	// Second row: long message should be truncated with an ellipsis.
+	// Second row (fixed issue).
 	assert.Contains(t, out, "issue-2")
 	assert.Contains(t, out, "tagging")
 	assert.Contains(t, out, "advisory")
 	assert.Contains(t, out, "web/staging")
-	assert.Contains(t, out, "...")
-	assert.NotContains(t, out, "truncation path in the table renderer")
+	assert.Contains(t, out, "fixed")
 
 	// Footer summary (no page number).
 	assert.Contains(t, out, "Showing 2 of 2 policy issue(s)")
@@ -169,7 +170,7 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 				"resourceType": "aws:s3/bucket:Bucket",
 				"entityId": "prod",
 				"entityProject": "web",
-				"message": "S3 bucket must not allow public access",
+				"status": "active",
 				"observedAt": "2026-05-01T12:00:00Z"
 			},
 			{
@@ -179,8 +180,7 @@ func TestPolicyIssueList_JSONOutput(t *testing.T) {
 				"level": "advisory",
 				"entityId": "staging",
 				"entityProject": "web",
-				"message": "Resource is missing required tags: this message is intentionally `+
-		`long enough to exercise the truncation path in the table renderer",
+				"status": "fixed",
 				"observedAt": "2026-04-30T08:00:00Z"
 			}
 		],

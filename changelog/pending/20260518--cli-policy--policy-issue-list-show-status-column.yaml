@@ -1,0 +1,4 @@
+changes:
+- type: chore
+  scope: cli/policy
+  description: Replace the always-blank MESSAGE column on `pulumi policy issue list` with a STATUS column

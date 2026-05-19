@@ -220,26 +220,6 @@ type policyIssueListRenderFunc func(
 	w io.Writer, resp apitype.ListPolicyIssuesResponse,
 ) error
 
-// policyIssueMessageMax is the maximum width of the message column in the
-// human-readable table. Longer messages are truncated with an ellipsis so the
-// table stays readable in narrow terminals.
-const policyIssueMessageMax = 60
-
-// truncateMessage shortens s to at most max runes, appending "..." when the
-// input would otherwise exceed the limit. max must be greater than the length
-// of the ellipsis or the function returns s unchanged.
-func truncateMessage(s string, max int) string {
-	const ellipsis = "..."
-	if max <= len(ellipsis) {
-		return s
-	}
-	runes := []rune(s)
-	if len(runes) <= max {
-		return s
-	}
-	return string(runes[:max-len(ellipsis)]) + ellipsis
-}
-
 func renderPolicyIssueListTable(
 	w io.Writer, resp apitype.ListPolicyIssuesResponse,
 ) error {
@@ -251,7 +231,7 @@ func renderPolicyIssueListTable(
 	t := table.NewWriter()
 	t.SetOutputMirror(w)
 	t.SetStyle(table.StyleLight)
-	t.AppendHeader(table.Row{"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "MESSAGE"})
+	t.AppendHeader(table.Row{"ID", "POLICY PACK", "POLICY", "ENFORCEMENT", "STACK", "STATUS"})
 
 	for _, issue := range resp.Issues {
 		pack := issue.PolicyPack
@@ -269,13 +249,17 @@ func renderPolicyIssueListTable(
 		if stack == "" {
 			stack = "-"
 		}
+		status := issue.Status
+		if status == "" {
+			status = "-"
+		}
 		t.AppendRow(table.Row{
 			issue.ID,
 			pack,
 			issue.PolicyName,
 			enforcement,
 			stack,
-			truncateMessage(issue.Message, policyIssueMessageMax),
+			status,
 		})
 	}
 	t.Render()
