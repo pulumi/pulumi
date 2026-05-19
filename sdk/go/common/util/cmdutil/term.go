@@ -101,11 +101,10 @@ func TerminateProcessGroup(proc *os.Process, cooldown time.Duration) (ok bool, e
 		return false, killProcessGroup(proc)
 	}
 
-	var waitErr error
+	waitErrCh := make(chan error, 1)
 	ctx, cancel := context.WithTimeout(context.Background(), cooldown)
+	defer cancel()
 	go func() {
-		defer cancel()
-
 		state, err := proc.Wait()
 		switch {
 		case err == nil && !state.Success():
@@ -116,7 +115,8 @@ func TerminateProcessGroup(proc *os.Process, cooldown time.Duration) (ok bool, e
 			err = nil
 		}
 
-		waitErr = err
+		waitErrCh <- err
+		cancel()
 	}()
 
 	// The context will be canceled when the timeout expires,
@@ -129,5 +129,5 @@ func TerminateProcessGroup(proc *os.Process, cooldown time.Duration) (ok bool, e
 		return false, killProcessGroup(proc)
 	}
 
-	return true, waitErr
+	return true, <-waitErrCh
 }
