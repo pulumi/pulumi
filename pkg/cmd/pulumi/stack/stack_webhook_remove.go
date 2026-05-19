@@ -22,6 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	cmdBackend "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/backend"
@@ -106,6 +107,9 @@ func runStackWebhookRemove(
 	opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 
 	if !yes {
+		if !cmdutil.Interactive() {
+			return backenderr.NonInteractiveRequiresYesError{}
+		}
 		prompt := fmt.Sprintf(
 			"This will permanently remove the webhook '%s'!",
 			webhookName)
