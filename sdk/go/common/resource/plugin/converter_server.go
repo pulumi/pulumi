@@ -96,10 +96,10 @@ func (c *converterServer) ConvertProgram(ctx context.Context,
 	}, nil
 }
 
-func (c *converterServer) GenerateSnippet(ctx context.Context,
-	req *pulumirpc.GenerateSnippetRequest,
-) (*pulumirpc.GenerateSnippetResponse, error) {
-	resp, err := c.converter.GenerateSnippet(ctx, &GenerateSnippetRequest{
+func (c *converterServer) ConvertSnippet(ctx context.Context,
+	req *pulumirpc.ConvertSnippetRequest,
+) (*pulumirpc.ConvertSnippetResponse, error) {
+	resp, err := c.converter.ConvertSnippet(ctx, &ConvertSnippetRequest{
 		Filename:     req.Filename,
 		Source:       req.Source,
 		TargetLoader: req.TargetLoader,
@@ -115,7 +115,7 @@ func (c *converterServer) GenerateSnippet(ctx context.Context,
 		diags = append(diags, HclDiagnosticToRPCDiagnostic(diag))
 	}
 
-	return &pulumirpc.GenerateSnippetResponse{
+	return &pulumirpc.ConvertSnippetResponse{
 		Diagnostics: diags,
 		Filename:    resp.Filename,
 		Source:      resp.Source,

@@ -182,7 +182,7 @@ class ConvertProgramResponse(google.protobuf.message.Message):
 global___ConvertProgramResponse = ConvertProgramResponse
 
 @typing.final
-class GenerateSnippetRequest(google.protobuf.message.Message):
+class ConvertSnippetRequest(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     FILENAME_FIELD_NUMBER: builtins.int
@@ -216,10 +216,10 @@ class GenerateSnippetRequest(google.protobuf.message.Message):
     def HasField(self, field_name: typing.Literal["package", b"package"]) -> builtins.bool: ...
     def ClearField(self, field_name: typing.Literal["filename", b"filename", "package", b"package", "source", b"source", "target_loader", b"target_loader", "token", b"token"]) -> None: ...
 
-global___GenerateSnippetRequest = GenerateSnippetRequest
+global___ConvertSnippetRequest = ConvertSnippetRequest
 
 @typing.final
-class GenerateSnippetResponse(google.protobuf.message.Message):
+class ConvertSnippetResponse(google.protobuf.message.Message):
     DESCRIPTOR: google.protobuf.descriptor.Descriptor
 
     DIAGNOSTICS_FIELD_NUMBER: builtins.int
@@ -242,4 +242,4 @@ class GenerateSnippetResponse(google.protobuf.message.Message):
     ) -> None: ...
     def ClearField(self, field_name: typing.Literal["diagnostics", b"diagnostics", "filename", b"filename", "source", b"source"]) -> None: ...
 
-global___GenerateSnippetResponse = GenerateSnippetResponse
+global___ConvertSnippetResponse = ConvertSnippetResponse

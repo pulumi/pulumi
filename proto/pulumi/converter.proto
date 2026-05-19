@@ -30,9 +30,9 @@ service Converter {
     // ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi.
     rpc ConvertProgram(ConvertProgramRequest) returns (ConvertProgramResponse) {}
 
-    // GenerateSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+    // ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
     // callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
-    rpc GenerateSnippet(GenerateSnippetRequest) returns (GenerateSnippetResponse) {}
+    rpc ConvertSnippet(ConvertSnippetRequest) returns (ConvertSnippetResponse) {}
 }
 
 message ConvertStateRequest {
@@ -98,7 +98,7 @@ message ConvertProgramResponse {
     repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
 }
 
-message GenerateSnippetRequest {
+message ConvertSnippetRequest {
     // The name of the source file. This is used for diagnostics.
     string filename = 1;
 
@@ -116,7 +116,7 @@ message GenerateSnippetRequest {
     string token = 5;
 }
 
-message GenerateSnippetResponse {
+message ConvertSnippetResponse {
     // Any diagnostics raised by code generation.
     repeated pulumirpc.codegen.Diagnostic diagnostics = 1;
 

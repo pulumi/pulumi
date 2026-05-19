@@ -392,7 +392,7 @@ func (x *ConvertProgramResponse) GetDiagnostics() []*codegen.Diagnostic {
 	return nil
 }
 
-type GenerateSnippetRequest struct {
+type ConvertSnippetRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The name of the source file. This is used for diagnostics.
 	Filename string `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
@@ -409,20 +409,20 @@ type GenerateSnippetRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GenerateSnippetRequest) Reset() {
-	*x = GenerateSnippetRequest{}
+func (x *ConvertSnippetRequest) Reset() {
+	*x = ConvertSnippetRequest{}
 	mi := &file_pulumi_converter_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GenerateSnippetRequest) String() string {
+func (x *ConvertSnippetRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateSnippetRequest) ProtoMessage() {}
+func (*ConvertSnippetRequest) ProtoMessage() {}
 
-func (x *GenerateSnippetRequest) ProtoReflect() protoreflect.Message {
+func (x *ConvertSnippetRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_converter_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -434,47 +434,47 @@ func (x *GenerateSnippetRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GenerateSnippetRequest.ProtoReflect.Descriptor instead.
-func (*GenerateSnippetRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use ConvertSnippetRequest.ProtoReflect.Descriptor instead.
+func (*ConvertSnippetRequest) Descriptor() ([]byte, []int) {
 	return file_pulumi_converter_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *GenerateSnippetRequest) GetFilename() string {
+func (x *ConvertSnippetRequest) GetFilename() string {
 	if x != nil {
 		return x.Filename
 	}
 	return ""
 }
 
-func (x *GenerateSnippetRequest) GetSource() []byte {
+func (x *ConvertSnippetRequest) GetSource() []byte {
 	if x != nil {
 		return x.Source
 	}
 	return nil
 }
 
-func (x *GenerateSnippetRequest) GetTargetLoader() string {
+func (x *ConvertSnippetRequest) GetTargetLoader() string {
 	if x != nil {
 		return x.TargetLoader
 	}
 	return ""
 }
 
-func (x *GenerateSnippetRequest) GetPackage() *codegen.GetSchemaRequest {
+func (x *ConvertSnippetRequest) GetPackage() *codegen.GetSchemaRequest {
 	if x != nil {
 		return x.Package
 	}
 	return nil
 }
 
-func (x *GenerateSnippetRequest) GetToken() string {
+func (x *ConvertSnippetRequest) GetToken() string {
 	if x != nil {
 		return x.Token
 	}
 	return ""
 }
 
-type GenerateSnippetResponse struct {
+type ConvertSnippetResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Any diagnostics raised by code generation.
 	Diagnostics []*codegen.Diagnostic `protobuf:"bytes,1,rep,name=diagnostics,proto3" json:"diagnostics,omitempty"`
@@ -486,20 +486,20 @@ type GenerateSnippetResponse struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *GenerateSnippetResponse) Reset() {
-	*x = GenerateSnippetResponse{}
+func (x *ConvertSnippetResponse) Reset() {
+	*x = ConvertSnippetResponse{}
 	mi := &file_pulumi_converter_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *GenerateSnippetResponse) String() string {
+func (x *ConvertSnippetResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*GenerateSnippetResponse) ProtoMessage() {}
+func (*ConvertSnippetResponse) ProtoMessage() {}
 
-func (x *GenerateSnippetResponse) ProtoReflect() protoreflect.Message {
+func (x *ConvertSnippetResponse) ProtoReflect() protoreflect.Message {
 	mi := &file_pulumi_converter_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -511,26 +511,26 @@ func (x *GenerateSnippetResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use GenerateSnippetResponse.ProtoReflect.Descriptor instead.
-func (*GenerateSnippetResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use ConvertSnippetResponse.ProtoReflect.Descriptor instead.
+func (*ConvertSnippetResponse) Descriptor() ([]byte, []int) {
 	return file_pulumi_converter_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *GenerateSnippetResponse) GetDiagnostics() []*codegen.Diagnostic {
+func (x *ConvertSnippetResponse) GetDiagnostics() []*codegen.Diagnostic {
 	if x != nil {
 		return x.Diagnostics
 	}
 	return nil
 }
 
-func (x *GenerateSnippetResponse) GetFilename() string {
+func (x *ConvertSnippetResponse) GetFilename() string {
 	if x != nil {
 		return x.Filename
 	}
 	return ""
 }
 
-func (x *GenerateSnippetResponse) GetSource() []byte {
+func (x *ConvertSnippetResponse) GetSource() []byte {
 	if x != nil {
 		return x.Source
 	}
@@ -565,21 +565,21 @@ const file_pulumi_converter_proto_rawDesc = "" +
 	"\x04args\x18\x05 \x03(\tR\x04args\x12>\n" +
 	"\x1bgenerated_project_directory\x18\x06 \x01(\tR\x19generatedProjectDirectory\"Y\n" +
 	"\x16ConvertProgramResponse\x12?\n" +
-	"\vdiagnostics\x18\x01 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\"\xc6\x01\n" +
-	"\x16GenerateSnippetRequest\x12\x1a\n" +
+	"\vdiagnostics\x18\x01 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\"\xc5\x01\n" +
+	"\x15ConvertSnippetRequest\x12\x1a\n" +
 	"\bfilename\x18\x01 \x01(\tR\bfilename\x12\x16\n" +
 	"\x06source\x18\x02 \x01(\fR\x06source\x12#\n" +
 	"\rtarget_loader\x18\x03 \x01(\tR\ftargetLoader\x12=\n" +
 	"\apackage\x18\x04 \x01(\v2#.pulumirpc.codegen.GetSchemaRequestR\apackage\x12\x14\n" +
-	"\x05token\x18\x05 \x01(\tR\x05token\"\x8e\x01\n" +
-	"\x17GenerateSnippetResponse\x12?\n" +
+	"\x05token\x18\x05 \x01(\tR\x05token\"\x8d\x01\n" +
+	"\x16ConvertSnippetResponse\x12?\n" +
 	"\vdiagnostics\x18\x01 \x03(\v2\x1d.pulumirpc.codegen.DiagnosticR\vdiagnostics\x12\x1a\n" +
 	"\bfilename\x18\x02 \x01(\tR\bfilename\x12\x16\n" +
-	"\x06source\x18\x03 \x01(\fR\x06source2\x93\x02\n" +
+	"\x06source\x18\x03 \x01(\fR\x06source2\x90\x02\n" +
 	"\tConverter\x12Q\n" +
 	"\fConvertState\x12\x1e.pulumirpc.ConvertStateRequest\x1a\x1f.pulumirpc.ConvertStateResponse\"\x00\x12W\n" +
-	"\x0eConvertProgram\x12 .pulumirpc.ConvertProgramRequest\x1a!.pulumirpc.ConvertProgramResponse\"\x00\x12Z\n" +
-	"\x0fGenerateSnippet\x12!.pulumirpc.GenerateSnippetRequest\x1a\".pulumirpc.GenerateSnippetResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
+	"\x0eConvertProgram\x12 .pulumirpc.ConvertProgramRequest\x1a!.pulumirpc.ConvertProgramResponse\"\x00\x12W\n" +
+	"\x0eConvertSnippet\x12 .pulumirpc.ConvertSnippetRequest\x1a!.pulumirpc.ConvertSnippetResponse\"\x00B4Z2github.com/pulumi/pulumi/sdk/v3/proto/go;pulumirpcb\x06proto3"
 
 var (
 	file_pulumi_converter_proto_rawDescOnce sync.Once
@@ -600,8 +600,8 @@ var file_pulumi_converter_proto_goTypes = []any{
 	(*ConvertStateResponse)(nil),     // 2: pulumirpc.ConvertStateResponse
 	(*ConvertProgramRequest)(nil),    // 3: pulumirpc.ConvertProgramRequest
 	(*ConvertProgramResponse)(nil),   // 4: pulumirpc.ConvertProgramResponse
-	(*GenerateSnippetRequest)(nil),   // 5: pulumirpc.GenerateSnippetRequest
-	(*GenerateSnippetResponse)(nil),  // 6: pulumirpc.GenerateSnippetResponse
+	(*ConvertSnippetRequest)(nil),    // 5: pulumirpc.ConvertSnippetRequest
+	(*ConvertSnippetResponse)(nil),   // 6: pulumirpc.ConvertSnippetResponse
 	(*codegen.Diagnostic)(nil),       // 7: pulumirpc.codegen.Diagnostic
 	(*codegen.GetSchemaRequest)(nil), // 8: pulumirpc.codegen.GetSchemaRequest
 }
@@ -609,14 +609,14 @@ var file_pulumi_converter_proto_depIdxs = []int32{
 	1, // 0: pulumirpc.ConvertStateResponse.resources:type_name -> pulumirpc.ResourceImport
 	7, // 1: pulumirpc.ConvertStateResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
 	7, // 2: pulumirpc.ConvertProgramResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
-	8, // 3: pulumirpc.GenerateSnippetRequest.package:type_name -> pulumirpc.codegen.GetSchemaRequest
-	7, // 4: pulumirpc.GenerateSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
+	8, // 3: pulumirpc.ConvertSnippetRequest.package:type_name -> pulumirpc.codegen.GetSchemaRequest
+	7, // 4: pulumirpc.ConvertSnippetResponse.diagnostics:type_name -> pulumirpc.codegen.Diagnostic
 	0, // 5: pulumirpc.Converter.ConvertState:input_type -> pulumirpc.ConvertStateRequest
 	3, // 6: pulumirpc.Converter.ConvertProgram:input_type -> pulumirpc.ConvertProgramRequest
-	5, // 7: pulumirpc.Converter.GenerateSnippet:input_type -> pulumirpc.GenerateSnippetRequest
+	5, // 7: pulumirpc.Converter.ConvertSnippet:input_type -> pulumirpc.ConvertSnippetRequest
 	2, // 8: pulumirpc.Converter.ConvertState:output_type -> pulumirpc.ConvertStateResponse
 	4, // 9: pulumirpc.Converter.ConvertProgram:output_type -> pulumirpc.ConvertProgramResponse
-	6, // 10: pulumirpc.Converter.GenerateSnippet:output_type -> pulumirpc.GenerateSnippetResponse
+	6, // 10: pulumirpc.Converter.ConvertSnippet:output_type -> pulumirpc.ConvertSnippetResponse
 	8, // [8:11] is the sub-list for method output_type
 	5, // [5:8] is the sub-list for method input_type
 	5, // [5:5] is the sub-list for extension type_name

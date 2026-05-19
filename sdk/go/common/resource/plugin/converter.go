@@ -58,7 +58,7 @@ type ConvertProgramResponse struct {
 	Diagnostics hcl.Diagnostics
 }
 
-type GenerateSnippetRequest struct {
+type ConvertSnippetRequest struct {
 	Filename     string
 	Source       []byte
 	TargetLoader string
@@ -68,7 +68,7 @@ type GenerateSnippetRequest struct {
 	Token   string
 }
 
-type GenerateSnippetResponse struct {
+type ConvertSnippetResponse struct {
 	Diagnostics hcl.Diagnostics
 	Filename    string
 	Source      []byte
@@ -81,5 +81,5 @@ type Converter interface {
 
 	ConvertProgram(ctx context.Context, req *ConvertProgramRequest) (*ConvertProgramResponse, error)
 
-	GenerateSnippet(ctx context.Context, req *GenerateSnippetRequest) (*GenerateSnippetResponse, error)
+	ConvertSnippet(ctx context.Context, req *ConvertSnippetRequest) (*ConvertSnippetResponse, error)
 }

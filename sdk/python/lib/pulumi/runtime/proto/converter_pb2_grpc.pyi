@@ -50,11 +50,11 @@ class ConverterStub:
     ]
     """ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi."""
 
-    GenerateSnippet: grpc.UnaryUnaryMultiCallable[
-        pulumi.converter_pb2.GenerateSnippetRequest,
-        pulumi.converter_pb2.GenerateSnippetResponse,
+    ConvertSnippet: grpc.UnaryUnaryMultiCallable[
+        pulumi.converter_pb2.ConvertSnippetRequest,
+        pulumi.converter_pb2.ConvertSnippetResponse,
     ]
-    """GenerateSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+    """ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
     callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
     """
 
@@ -75,11 +75,11 @@ class ConverterAsyncStub:
     ]
     """ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi."""
 
-    GenerateSnippet: grpc.aio.UnaryUnaryMultiCallable[
-        pulumi.converter_pb2.GenerateSnippetRequest,
-        pulumi.converter_pb2.GenerateSnippetResponse,
+    ConvertSnippet: grpc.aio.UnaryUnaryMultiCallable[
+        pulumi.converter_pb2.ConvertSnippetRequest,
+        pulumi.converter_pb2.ConvertSnippetResponse,
     ]
-    """GenerateSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+    """ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
     callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
     """
 
@@ -105,12 +105,12 @@ class ConverterServicer(metaclass=abc.ABCMeta):
         """ConvertProgram converts a program from the target ecosystem into a form that can be used with Pulumi."""
 
     
-    def GenerateSnippet(
+    def ConvertSnippet(
         self,
-        request: pulumi.converter_pb2.GenerateSnippetRequest,
+        request: pulumi.converter_pb2.ConvertSnippetRequest,
         context: _ServicerContext,
-    ) -> typing.Union[pulumi.converter_pb2.GenerateSnippetResponse, collections.abc.Awaitable[pulumi.converter_pb2.GenerateSnippetResponse]]:
-        """GenerateSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+    ) -> typing.Union[pulumi.converter_pb2.ConvertSnippetResponse, collections.abc.Awaitable[pulumi.converter_pb2.ConvertSnippetResponse]]:
+        """ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
         callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
         """
 

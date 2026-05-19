@@ -43,6 +43,28 @@ function deserialize_pulumirpc_ConvertProgramResponse(buffer_arg) {
   return pulumi_converter_pb.ConvertProgramResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_pulumirpc_ConvertSnippetRequest(arg) {
+  if (!(arg instanceof pulumi_converter_pb.ConvertSnippetRequest)) {
+    throw new Error('Expected argument of type pulumirpc.ConvertSnippetRequest');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConvertSnippetRequest(buffer_arg) {
+  return pulumi_converter_pb.ConvertSnippetRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_pulumirpc_ConvertSnippetResponse(arg) {
+  if (!(arg instanceof pulumi_converter_pb.ConvertSnippetResponse)) {
+    throw new Error('Expected argument of type pulumirpc.ConvertSnippetResponse');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_pulumirpc_ConvertSnippetResponse(buffer_arg) {
+  return pulumi_converter_pb.ConvertSnippetResponse.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_pulumirpc_ConvertStateRequest(arg) {
   if (!(arg instanceof pulumi_converter_pb.ConvertStateRequest)) {
     throw new Error('Expected argument of type pulumirpc.ConvertStateRequest');
@@ -63,28 +85,6 @@ function serialize_pulumirpc_ConvertStateResponse(arg) {
 
 function deserialize_pulumirpc_ConvertStateResponse(buffer_arg) {
   return pulumi_converter_pb.ConvertStateResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_GenerateSnippetRequest(arg) {
-  if (!(arg instanceof pulumi_converter_pb.GenerateSnippetRequest)) {
-    throw new Error('Expected argument of type pulumirpc.GenerateSnippetRequest');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GenerateSnippetRequest(buffer_arg) {
-  return pulumi_converter_pb.GenerateSnippetRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_pulumirpc_GenerateSnippetResponse(arg) {
-  if (!(arg instanceof pulumi_converter_pb.GenerateSnippetResponse)) {
-    throw new Error('Expected argument of type pulumirpc.GenerateSnippetResponse');
-  }
-  return Buffer.from(arg.serializeBinary());
-}
-
-function deserialize_pulumirpc_GenerateSnippetResponse(buffer_arg) {
-  return pulumi_converter_pb.GenerateSnippetResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -115,18 +115,18 @@ convertProgram: {
     responseSerialize: serialize_pulumirpc_ConvertProgramResponse,
     responseDeserialize: deserialize_pulumirpc_ConvertProgramResponse,
   },
-  // GenerateSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+  // ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
 // callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
-generateSnippet: {
-    path: '/pulumirpc.Converter/GenerateSnippet',
+convertSnippet: {
+    path: '/pulumirpc.Converter/ConvertSnippet',
     requestStream: false,
     responseStream: false,
-    requestType: pulumi_converter_pb.GenerateSnippetRequest,
-    responseType: pulumi_converter_pb.GenerateSnippetResponse,
-    requestSerialize: serialize_pulumirpc_GenerateSnippetRequest,
-    requestDeserialize: deserialize_pulumirpc_GenerateSnippetRequest,
-    responseSerialize: serialize_pulumirpc_GenerateSnippetResponse,
-    responseDeserialize: deserialize_pulumirpc_GenerateSnippetResponse,
+    requestType: pulumi_converter_pb.ConvertSnippetRequest,
+    responseType: pulumi_converter_pb.ConvertSnippetResponse,
+    requestSerialize: serialize_pulumirpc_ConvertSnippetRequest,
+    requestDeserialize: deserialize_pulumirpc_ConvertSnippetRequest,
+    responseSerialize: serialize_pulumirpc_ConvertSnippetResponse,
+    responseDeserialize: deserialize_pulumirpc_ConvertSnippetResponse,
   },
 };
 

@@ -81,9 +81,9 @@ func (c *testConverterClient) ConvertProgram(
 	}, nil
 }
 
-func (c *testConverterClient) GenerateSnippet(
-	ctx context.Context, req *pulumirpc.GenerateSnippetRequest, opts ...grpc.CallOption,
-) (*pulumirpc.GenerateSnippetResponse, error) {
+func (c *testConverterClient) ConvertSnippet(
+	ctx context.Context, req *pulumirpc.ConvertSnippetRequest, opts ...grpc.CallOption,
+) (*pulumirpc.ConvertSnippetResponse, error) {
 	if req.Filename != "inputs.yaml" {
 		return nil, fmt.Errorf("unexpected Filename: %s", req.Filename)
 	}
@@ -97,7 +97,7 @@ func (c *testConverterClient) GenerateSnippet(
 		return nil, fmt.Errorf("unexpected Token: %s", req.Token)
 	}
 
-	return &pulumirpc.GenerateSnippetResponse{
+	return &pulumirpc.ConvertSnippetResponse{
 		Diagnostics: c.diagnostics,
 		Filename:    "inputs.pp",
 		Source:      []byte("inputs = true"),
@@ -175,7 +175,7 @@ func TestConverterPlugin_Program(t *testing.T) {
 	assert.Equal(t, "test:detail", diag.Detail)
 }
 
-func TestConverterPlugin_GenerateSnippet(t *testing.T) {
+func TestConverterPlugin_ConvertSnippet(t *testing.T) {
 	t.Parallel()
 
 	plugin := &converter{
@@ -190,7 +190,7 @@ func TestConverterPlugin_GenerateSnippet(t *testing.T) {
 		},
 	}
 
-	resp, err := plugin.GenerateSnippet(t.Context(), &GenerateSnippetRequest{
+	resp, err := plugin.ConvertSnippet(t.Context(), &ConvertSnippetRequest{
 		Filename:     "inputs.yaml",
 		Source:       []byte("inputs: true"),
 		TargetLoader: "localhost:4321",

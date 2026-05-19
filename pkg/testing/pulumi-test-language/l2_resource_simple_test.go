@@ -572,9 +572,9 @@ func (c *convertTestConverter) ConvertProgram(
 	return &plugin.ConvertProgramResponse{}, err
 }
 
-func (c *convertTestConverter) GenerateSnippet(
-	_ context.Context, _ *plugin.GenerateSnippetRequest,
-) (*plugin.GenerateSnippetResponse, error) {
+func (c *convertTestConverter) ConvertSnippet(
+	_ context.Context, _ *plugin.ConvertSnippetRequest,
+) (*plugin.ConvertSnippetResponse, error) {
 	return nil, errors.New("not implemented")
 }
 

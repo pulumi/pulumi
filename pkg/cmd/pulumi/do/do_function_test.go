@@ -1825,8 +1825,8 @@ func TestDoCmdFunctionInvokeWithYAMLInputFile(t *testing.T) {
 		require.NotNil(t, pctx)
 		assert.Equal(t, "yaml", name)
 		return &plugin.MockConverter{
-			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
-				*plugin.GenerateSnippetResponse, error,
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
 			) {
 				assert.Equal(t, "inputs.yaml", filepath.Base(req.Filename))
 				assert.Equal(t, `
@@ -1842,7 +1842,7 @@ param3: true
 				assert.Equal(t, "azure", req.Package.Package)
 				assert.Empty(t, req.Package.Version)
 				assert.Nil(t, req.Package.Parameterization)
-				return &plugin.GenerateSnippetResponse{
+				return &plugin.ConvertSnippetResponse{
 					Filename: "inputs.pp",
 					Source: []byte(`
 param1 = "hello"
@@ -1932,7 +1932,7 @@ param3: true
 	assert.Equal(t, expected, stdout.String())
 }
 
-// TestDoCmdFunctionInvokeWithYAMLInputFileParameterized exercises the GenerateSnippet Package descriptor for a
+// TestDoCmdFunctionInvokeWithYAMLInputFileParameterized exercises the ConvertSnippet Package descriptor for a
 // parameterized package — version comes from the @version suffix and Parameterization is populated from the
 // provider's Parameterize response.
 func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
@@ -1948,23 +1948,27 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 		}, nil
 	}
 	subVersion := semver.MustParse("1.2.3")
+	parameterValue := []byte("opaque-parameter-blob")
 	loadConverter := func(
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
 	) (plugin.Converter, error) {
 		assert.Equal(t, "yaml", name)
 		return &plugin.MockConverter{
-			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
-				*plugin.GenerateSnippetResponse, error,
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
 			) {
 				// Package descriptor should carry the base provider name and version split out from the
 				// "terraform-provider@2.0.0" spec, plus the parameterization info we got back from Parameterize.
+				// The Value field is sourced from the schema's own Parameterization.Parameter bytes so the
+				// converter can call the loader and get back the same parameterized schema we did.
 				require.NotNil(t, req.Package)
 				assert.Equal(t, "terraform-provider", req.Package.Package)
 				assert.Equal(t, "2.0.0", req.Package.Version)
 				require.NotNil(t, req.Package.Parameterization)
 				assert.Equal(t, "myparam", req.Package.Parameterization.Name)
 				assert.Equal(t, subVersion.String(), req.Package.Parameterization.Version)
-				return &plugin.GenerateSnippetResponse{
+				assert.Equal(t, parameterValue, req.Package.Parameterization.Value)
+				return &plugin.ConvertSnippetResponse{
 					Filename: "inputs.pp",
 					Source:   []byte(`x = "hello"` + "\n"),
 				}, nil
@@ -1975,6 +1979,10 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 		assert.Equal(t, "terraform-provider@2.0.0", source)
 		spec := schema.PackageSpec{
 			Name: "myparam",
+			Parameterization: &schema.ParameterizationSpec{
+				BaseProvider: schema.BaseProviderSpec{Name: "terraform-provider", Version: "2.0.0"},
+				Parameter:    parameterValue,
+			},
 			Functions: map[string]schema.FunctionSpec{
 				"myparam:index:myFunction": {
 					Inputs: &schema.ObjectTypeSpec{
@@ -2023,6 +2031,48 @@ func TestDoCmdFunctionInvokeWithYAMLInputFileParameterized(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestDoCmdFunctionInvokeParameterizedSchemaWithoutArgs asserts the error path where a provider returns a
+// parameterized schema but the user invoked `pulumi do` without any parameterization args. We can't faithfully
+// describe such a package to a downstream converter, so the CLI surfaces the mismatch instead of silently
+// constructing a half-formed descriptor.
+func TestDoCmdFunctionInvokeParameterizedSchemaWithoutArgs(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "azure", source)
+		spec := schema.PackageSpec{
+			Name: "azure",
+			Parameterization: &schema.ParameterizationSpec{
+				BaseProvider: schema.BaseProviderSpec{Name: "azure", Version: "1.0.0"},
+				Parameter:    []byte("opaque-parameter-blob"),
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"azure:index:myFunction": {},
+			},
+		}
+		return &testProvider{
+			spec: spec,
+			MockProvider: plugin.MockProvider{
+				ParameterizeF: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+					require.Fail(t, "Parameterize should not be called when no args were supplied")
+					return plugin.ParameterizeResponse{}, nil
+				},
+			},
+		}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"azure", "myFunction"})
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "provider returned parameterization but no parameterization args were sent")
+}
+
 // TestDoCmdFunctionInvokeWithYAMLProviderFile exercises the provider-config converter path: --provider-format yaml
 // + --provider-file p.yaml should run the YAML through the converter, hand the resulting PCL to Configure, and
 // pass the right token (the provider's pulumi:providers:<pkg> token) and the same package descriptor we use for
@@ -2043,8 +2093,8 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 	) (plugin.Converter, error) {
 		assert.Equal(t, "yaml", name)
 		return &plugin.MockConverter{
-			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
-				*plugin.GenerateSnippetResponse, error,
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
 			) {
 				assert.Equal(t, "provider.yaml", filepath.Base(req.Filename))
 				assert.Equal(t, "opt1: val1\n", string(req.Source))
@@ -2054,7 +2104,7 @@ func TestDoCmdFunctionInvokeWithYAMLProviderFile(t *testing.T) {
 				assert.Equal(t, "pulumi:providers:azure", req.Token)
 				require.NotNil(t, req.Package)
 				assert.Equal(t, "azure", req.Package.Package)
-				return &plugin.GenerateSnippetResponse{
+				return &plugin.ConvertSnippetResponse{
 					Filename: "provider.pp",
 					Source:   []byte(`opt1 = "val1"` + "\n"),
 				}, nil
@@ -2170,7 +2220,7 @@ func TestDoCmdFunctionInvokeWithUnknownInputFormat(t *testing.T) {
 	assert.ErrorContains(t, err, "converter not found")
 }
 
-// TestDoCmdFunctionInvokeWithConverterDiagnostics asserts that diagnostic-level errors from GenerateSnippet are
+// TestDoCmdFunctionInvokeWithConverterDiagnostics asserts that diagnostic-level errors from ConvertSnippet are
 // surfaced and that Invoke is never called.
 func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 	t.Parallel()
@@ -2184,10 +2234,10 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
 	) (plugin.Converter, error) {
 		return &plugin.MockConverter{
-			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
-				*plugin.GenerateSnippetResponse, error,
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
 			) {
-				return &plugin.GenerateSnippetResponse{
+				return &plugin.ConvertSnippetResponse{
 					Diagnostics: hcl.Diagnostics{
 						{Severity: hcl.DiagError, Summary: "could not convert: synthetic failure"},
 					},
@@ -2217,7 +2267,7 @@ func TestDoCmdFunctionInvokeWithConverterDiagnostics(t *testing.T) {
 			spec: spec,
 			MockProvider: plugin.MockProvider{
 				InvokeF: func(ctx context.Context, req plugin.InvokeRequest) (plugin.InvokeResponse, error) {
-					require.Fail(t, "Invoke should not be called when GenerateSnippet returns error diagnostics")
+					require.Fail(t, "Invoke should not be called when ConvertSnippet returns error diagnostics")
 					return plugin.InvokeResponse{}, nil
 				},
 			},
@@ -2251,11 +2301,11 @@ func TestDoCmdFunctionInvokeWithConverterReturningInvalidPCL(t *testing.T) {
 		_ *plugin.Context, name string, _ func(sev diag.Severity, msg string),
 	) (plugin.Converter, error) {
 		return &plugin.MockConverter{
-			GenerateSnippetF: func(ctx context.Context, req *plugin.GenerateSnippetRequest) (
-				*plugin.GenerateSnippetResponse, error,
+			ConvertSnippetF: func(ctx context.Context, req *plugin.ConvertSnippetRequest) (
+				*plugin.ConvertSnippetResponse, error,
 			) {
 				// PCL parses fine but `not_an_input` isn't part of the function's schema — the bind step should reject it.
-				return &plugin.GenerateSnippetResponse{
+				return &plugin.ConvertSnippetResponse{
 					Filename: "inputs.pp",
 					Source:   []byte(`x = "hello"` + "\n" + `not_an_input = true` + "\n"),
 				}, nil

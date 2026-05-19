@@ -288,7 +288,7 @@ func evaluatePCL(
 }
 
 // evaluateFile reads an input file in the given format and evaluates it. For non-PCL formats the source is routed
-// through the named converter plugin's GenerateSnippet RPC and the resulting PCL is fed into the same bind pipeline.
+// through the named converter plugin's ConvertSnippet RPC and the resulting PCL is fed into the same bind pipeline.
 // An empty path is treated as "no input provided" and always goes through the PCL path so the bind step's
 // missing-required check still fires.
 func evaluateFile(
@@ -314,7 +314,7 @@ func evaluateFile(
 	if err != nil {
 		return nil, fmt.Errorf("read %s file: %w", fileType, err)
 	}
-	resp, err := converter.GenerateSnippet(ctx, &plugin.GenerateSnippetRequest{
+	resp, err := converter.ConvertSnippet(ctx, &plugin.ConvertSnippetRequest{
 		Filename:     path,
 		Source:       source,
 		TargetLoader: loaderTarget,

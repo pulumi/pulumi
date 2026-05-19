@@ -207,6 +207,14 @@ func newDoCmd(
 			return nil, nil, fmt.Errorf("unmarshal schema: %w", err)
 		}
 
+		// If this is a parameterized package, we need to pull of the parameter value from the spec.
+		if spec.Parameterization != nil {
+			if packageDescriptor.Parameterization == nil {
+				return nil, nil, errors.New("provider returned parameterization but no parameterization args were sent")
+			}
+			packageDescriptor.Parameterization.Value = spec.Parameterization.Parameter
+		}
+
 		boundpkg, err := packages.BindSpec(spec)
 		if err != nil {
 			cleanup()

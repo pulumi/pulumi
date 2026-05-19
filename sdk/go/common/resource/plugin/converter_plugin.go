@@ -181,13 +181,13 @@ func (c *converter) ConvertProgram(ctx context.Context, req *ConvertProgramReque
 	}, nil
 }
 
-func (c *converter) GenerateSnippet(
-	ctx context.Context, req *GenerateSnippetRequest,
-) (*GenerateSnippetResponse, error) {
-	label := c.label() + ".GenerateSnippet"
+func (c *converter) ConvertSnippet(
+	ctx context.Context, req *ConvertSnippetRequest,
+) (*ConvertSnippetResponse, error) {
+	label := c.label() + ".ConvertSnippet"
 	logging.V(7).Infof("%s executing", label)
 
-	resp, err := c.clientRaw.GenerateSnippet(ctx, &pulumirpc.GenerateSnippetRequest{
+	resp, err := c.clientRaw.ConvertSnippet(ctx, &pulumirpc.ConvertSnippetRequest{
 		Filename:     req.Filename,
 		Source:       req.Source,
 		TargetLoader: req.TargetLoader,
@@ -206,7 +206,7 @@ func (c *converter) GenerateSnippet(
 	}
 
 	logging.V(7).Infof("%s success", label)
-	return &GenerateSnippetResponse{
+	return &ConvertSnippetResponse{
 		Diagnostics: diags,
 		Filename:    resp.Filename,
 		Source:      resp.Source,

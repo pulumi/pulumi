@@ -94,9 +94,9 @@ func (c *testConverter) ConvertProgram(
 	}, nil
 }
 
-func (c *testConverter) GenerateSnippet(
-	ctx context.Context, req *GenerateSnippetRequest,
-) (*GenerateSnippetResponse, error) {
+func (c *testConverter) ConvertSnippet(
+	ctx context.Context, req *ConvertSnippetRequest,
+) (*ConvertSnippetResponse, error) {
 	if req.Filename != "inputs.yaml" {
 		return nil, fmt.Errorf("unexpected Filename: %s", req.Filename)
 	}
@@ -118,7 +118,7 @@ func (c *testConverter) GenerateSnippet(
 		},
 	}
 
-	return &GenerateSnippetResponse{
+	return &ConvertSnippetResponse{
 		Diagnostics: diags,
 		Filename:    "inputs.pp",
 		Source:      []byte("inputs = true"),
@@ -154,12 +154,12 @@ func TestConverterServer_State(t *testing.T) {
 	assert.Equal(t, "test:detail", diag.Detail)
 }
 
-func TestConverterServer_GenerateSnippet(t *testing.T) {
+func TestConverterServer_ConvertSnippet(t *testing.T) {
 	t.Parallel()
 
 	server := NewConverterServer(&testConverter{})
 
-	resp, err := server.GenerateSnippet(t.Context(), &pulumirpc.GenerateSnippetRequest{
+	resp, err := server.ConvertSnippet(t.Context(), &pulumirpc.ConvertSnippetRequest{
 		Filename:     "inputs.yaml",
 		Source:       []byte("inputs: true"),
 		TargetLoader: "localhost:4321",

@@ -26,10 +26,10 @@ class ConverterStub(object):
                 request_serializer=pulumi_dot_converter__pb2.ConvertProgramRequest.SerializeToString,
                 response_deserializer=pulumi_dot_converter__pb2.ConvertProgramResponse.FromString,
                 )
-        self.GenerateSnippet = channel.unary_unary(
-                '/pulumirpc.Converter/GenerateSnippet',
-                request_serializer=pulumi_dot_converter__pb2.GenerateSnippetRequest.SerializeToString,
-                response_deserializer=pulumi_dot_converter__pb2.GenerateSnippetResponse.FromString,
+        self.ConvertSnippet = channel.unary_unary(
+                '/pulumirpc.Converter/ConvertSnippet',
+                request_serializer=pulumi_dot_converter__pb2.ConvertSnippetRequest.SerializeToString,
+                response_deserializer=pulumi_dot_converter__pb2.ConvertSnippetResponse.FromString,
                 )
 
 
@@ -52,8 +52,8 @@ class ConverterServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GenerateSnippet(self, request, context):
-        """GenerateSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
+    def ConvertSnippet(self, request, context):
+        """ConvertSnippet generates a single PCL file from a single source file in the target ecosystem. It is used when
         callers need to convert a small source fragment, such as an input file, rather than a full Pulumi program.
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -73,10 +73,10 @@ def add_ConverterServicer_to_server(servicer, server):
                     request_deserializer=pulumi_dot_converter__pb2.ConvertProgramRequest.FromString,
                     response_serializer=pulumi_dot_converter__pb2.ConvertProgramResponse.SerializeToString,
             ),
-            'GenerateSnippet': grpc.unary_unary_rpc_method_handler(
-                    servicer.GenerateSnippet,
-                    request_deserializer=pulumi_dot_converter__pb2.GenerateSnippetRequest.FromString,
-                    response_serializer=pulumi_dot_converter__pb2.GenerateSnippetResponse.SerializeToString,
+            'ConvertSnippet': grpc.unary_unary_rpc_method_handler(
+                    servicer.ConvertSnippet,
+                    request_deserializer=pulumi_dot_converter__pb2.ConvertSnippetRequest.FromString,
+                    response_serializer=pulumi_dot_converter__pb2.ConvertSnippetResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -125,7 +125,7 @@ class Converter(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
-    def GenerateSnippet(request,
+    def ConvertSnippet(request,
             target,
             options=(),
             channel_credentials=None,
@@ -135,8 +135,8 @@ class Converter(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Converter/GenerateSnippet',
-            pulumi_dot_converter__pb2.GenerateSnippetRequest.SerializeToString,
-            pulumi_dot_converter__pb2.GenerateSnippetResponse.FromString,
+        return grpc.experimental.unary_unary(request, target, '/pulumirpc.Converter/ConvertSnippet',
+            pulumi_dot_converter__pb2.ConvertSnippetRequest.SerializeToString,
+            pulumi_dot_converter__pb2.ConvertSnippetResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
