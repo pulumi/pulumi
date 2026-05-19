@@ -1330,3 +1330,96 @@ func languageTemplateMock(language plugin.LanguageRuntime, info plugin.ProgramIn
 ) error {
 	return nil
 }
+
+// =======================
+// Tests for pulumi new -y
+// =======================
+
+// useTempFilestateBackend points the backend at a temp directory so tests don't hit the real backend.
+func useTempFilestateBackend(t *testing.T) {
+	t.Setenv("PULUMI_BACKEND_URL", "file://"+filepath.ToSlash(t.TempDir()))
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+}
+
+//nolint:paralleltest
+func TestNewCmdYesWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := t.TempDir()
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y", "--name", "my-project"})
+
+	err := cmd.Execute()
+
+	require.NoError(t, err)
+	contents, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.yaml"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "name: my-project\n", string(contents))
+}
+
+//nolint:paralleltest
+func TestNewCmdYesUsesCurrentDirectoryNameByDefault(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := filepath.Join(t.TempDir(), "my-project")
+	require.NoError(t, os.Mkdir(dir, 0o755))
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
+
+	err := cmd.Execute()
+
+	require.NoError(t, err)
+	contents, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.yaml"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "name: my-project\n", string(contents))
+}
+
+//nolint:paralleltest
+func TestNewCmdYesSanitizesDefaultDirectoryName(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := filepath.Join(t.TempDir(), "my project!")
+	require.NoError(t, os.Mkdir(dir, 0o755))
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
+
+	err := cmd.Execute()
+
+	require.NoError(t, err)
+	contents, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.yaml"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "name: myproject\n", string(contents))
+}
+
+//nolint:paralleltest
+func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := t.TempDir()
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y", "--name", "my project"})
+
+	err := cmd.Execute()
+
+	require.ErrorContains(t, err, "'my project' is not a valid project name")
+	_, statErr := os.Stat(filepath.Join(dir, "Pulumi.yaml"))
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+//nolint:paralleltest
+func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "Pulumi.yaml")
+	require.NoError(t, os.WriteFile(existing, []byte("name: existing\n"), 0o600))
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
+
+	err := cmd.Execute()
+
+	require.ErrorContains(t, err, dir+" is not empty;")
+	contents, readErr := os.ReadFile(existing)
+	require.NoError(t, readErr)
+	assert.Equal(t, "name: existing\n", string(contents))
+}
