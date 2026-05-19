@@ -1,4 +1,4 @@
 changes:
 - type: feat
   scope: cli
-  description: The `pulumi project new -y` command can now write a minimal project file with no template
+  description: Make the `pulumi project new -y` command write a minimal project file with no template
