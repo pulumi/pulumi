@@ -1,0 +1,6 @@
+kind: feat
+body: Add the `pulumi org member edit` command
+custom:
+  Scope: cli
+  PR: ''
+time: '2026-05-19T00:00:00Z'

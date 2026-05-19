@@ -1,0 +1,6 @@
+kind: fix
+body: Close gzip.Writer in archiveTarGZIP to produce valid tar.gz output
+custom:
+  Scope: sdk
+  PR: ''
+time: '2026-05-19T00:00:00Z'
