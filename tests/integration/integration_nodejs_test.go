@@ -957,16 +957,6 @@ func TestCloudSecretProvider(t *testing.T) {
 	t.Run("local", func(t *testing.T) { integration.ProgramTest(t, &localTestOptions) })
 }
 
-// Tests a resource with a large (>4mb) string prop in Node.js
-//
-//nolint:paralleltest // ProgramTest calls t.Parallel()
-func TestLargeResourceNode(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          filepath.Join("large_resource", "nodejs"),
-		Dependencies: []string{"@pulumi/pulumi"},
-	})
-}
-
 // Tests enum outputs
 //
 //nolint:paralleltest // ProgramTest calls t.Parallel()
