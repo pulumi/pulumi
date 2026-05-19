@@ -48,9 +48,8 @@ func newOrgRoleAssignCmdWith(factory orgRoleClientFactory) *cobra.Command {
 	output := defaultRoleAssignOutput()
 
 	cmd := &cobra.Command{
-		Hidden: true,
-		Use:    "assign <role-id> <team>",
-		Short:  "[EXPERIMENTAL] Assign a role to a team",
+		Use:   "assign <role-id> <team>",
+		Short: "[EXPERIMENTAL] Assign a role to a team",
 		Long: "[EXPERIMENTAL] Assign a custom role to a team.\n" +
 			"\n" +
 			"Each team can hold a single custom role at a time, so running this command\n" +
