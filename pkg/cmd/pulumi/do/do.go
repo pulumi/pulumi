@@ -283,6 +283,8 @@ func NewDoCmd(
 			current = nextParent
 			parent = parent.Parent()
 		}
+		current.SilenceErrors = true
+		current.SilenceUsage = true
 		current.SetArgs(fullArgs)
 
 		return current, cleanup, nil
