@@ -1198,6 +1198,7 @@ type AnalyzerInfo struct {
 	Provider       string                   `protobuf:"bytes,9,opt,name=provider,proto3" json:"provider,omitempty"`                                                                                     // Cloud provider/platform associated with the policy pack.
 	Tags           []string                 `protobuf:"bytes,10,rep,name=tags,proto3" json:"tags,omitempty"`                                                                                            // Tags for this policy pack.
 	Repository     string                   `protobuf:"bytes,11,opt,name=repository,proto3" json:"repository,omitempty"`                                                                                // A URL to the repository where the policy pack is defined.
+	Runtime        string                   `protobuf:"bytes,12,opt,name=runtime,proto3" json:"runtime,omitempty"`                                                                                      // The analyzer SDK runtime, e.g. "nodejs", "python", "opa".
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1305,6 +1306,13 @@ func (x *AnalyzerInfo) GetTags() []string {
 func (x *AnalyzerInfo) GetRepository() string {
 	if x != nil {
 		return x.Repository
+	}
+	return ""
+}
+
+func (x *AnalyzerInfo) GetRuntime() string {
+	if x != nil {
+		return x.Runtime
 	}
 	return ""
 }

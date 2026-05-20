@@ -41,6 +41,7 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 		Provider:    "aws",
 		Tags:        []string{"security", "compliance", "test"},
 		Repository:  "https://github.com/example/test-policy-pack",
+		Runtime:     "python",
 		Policies: []plugin.AnalyzerPolicyInfo{
 			{
 				Name:             "required-tags",
@@ -140,6 +141,7 @@ func TestPublishPolicyPack_AllAnalyzerInfoFieldsAreSent(t *testing.T) {
 	assert.Equal(t, analyzerInfo.Provider, capturedRequest.Provider)
 	assert.Equal(t, analyzerInfo.Tags, capturedRequest.Tags)
 	assert.Equal(t, analyzerInfo.Repository, capturedRequest.Repository)
+	assert.Equal(t, analyzerInfo.Runtime, capturedRequest.Runtime)
 
 	// Verify policies were converted correctly
 	require.Len(t, capturedRequest.Policies, 1)
@@ -238,6 +240,57 @@ func TestPublishPolicyPack_EmptyOptionalFields(t *testing.T) {
 	assert.Empty(t, capturedRequest.Provider)
 	assert.Empty(t, capturedRequest.Tags)
 	assert.Empty(t, capturedRequest.Repository)
+	assert.Empty(t, capturedRequest.Runtime)
+}
+
+// TestPublishPolicyPack_RuntimeIsForwarded covers the runtime-disambiguation
+// guard added so the service can reject cross-runtime version bumps. The CLI
+// reports the analyzer SDK runtime (e.g. "opa") via AnalyzerInfo.Runtime and
+// this test verifies it lands in the request body.
+func TestPublishPolicyPack_RuntimeIsForwarded(t *testing.T) {
+	t.Parallel()
+
+	analyzerInfo := plugin.AnalyzerInfo{
+		Name:    "runtime-test-pack",
+		Version: "1.0.0",
+		Runtime: "opa",
+		Policies: []plugin.AnalyzerPolicyInfo{
+			{Name: "p1", EnforcementLevel: apitype.Advisory},
+		},
+	}
+
+	var capturedRuntime string
+	var rawRequestBody []byte
+
+	server := newMockServerRequestProcessor(200, func(r *http.Request) string {
+		if strings.HasSuffix(r.URL.Path, "/policypacks") && r.Method == "POST" {
+			body, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			rawRequestBody = body
+
+			var captured apitype.CreatePolicyPackRequest
+			require.NoError(t, json.Unmarshal(body, &captured))
+			capturedRuntime = captured.Runtime
+
+			resp := apitype.CreatePolicyPackResponse{
+				Version:   1,
+				UploadURI: "http://" + r.Host + "/upload",
+			}
+			respJSON, err := json.Marshal(resp)
+			require.NoError(t, err)
+			return string(respJSON)
+		}
+		return ""
+	})
+	defer server.Close()
+
+	client := newMockClient(server)
+	_, err := client.PublishPolicyPack(t.Context(), "test-org",
+		analyzerInfo, bytes.NewReader([]byte("data")), nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, "opa", capturedRuntime)
+	assert.Contains(t, string(rawRequestBody), `"runtime":"opa"`)
 }
 
 func TestPublishPolicyPack_LegacyVersionHandling(t *testing.T) {

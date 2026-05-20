@@ -1779,6 +1779,7 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		Provider:    analyzerInfo.Provider,
 		Tags:        analyzerInfo.Tags,
 		Repository:  analyzerInfo.Repository,
+		Runtime:     analyzerInfo.Runtime,
 		Metadata:    metadata,
 	}
 

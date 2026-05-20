@@ -57,6 +57,11 @@ type analyzer struct {
 	// The description from the policy pack's PulumiPolicy.yaml file (if present).
 	description string
 
+	// The runtime name from the policy pack's PulumiPolicy.yaml `runtime:` field,
+	// used to populate AnalyzerInfo.Runtime on publish so the service can detect
+	// cross-runtime version bumps. Empty for `NewAnalyzer` (non-policy) callers.
+	runtime string
+
 	// Cached result of the first call to GetAnalyzerInfo, which will be returned from subsequent calls.
 	info *AnalyzerInfo
 	// Cached map of policy name to severity for quick lookup by policy name.
@@ -283,6 +288,7 @@ func NewPolicyAnalyzer(
 		client:      client,
 		version:     proj.Version,
 		description: description,
+		runtime:     proj.Runtime.Name(),
 	}, nil
 }
 
@@ -590,6 +596,12 @@ func (a *analyzer) GetAnalyzerInfo() (AnalyzerInfo, error) {
 		Provider:       resp.GetProvider(),
 		Tags:           resp.GetTags(),
 		Repository:     resp.GetRepository(),
+		Runtime:        resp.GetRuntime(),
+	}
+	// Fall back to the runtime from PulumiPolicy.yaml when the plugin itself
+	// doesn't report one — older SDKs predate the proto field.
+	if info.Runtime == "" {
+		info.Runtime = a.runtime
 	}
 	a.info = &info
 	return info, nil

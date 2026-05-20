@@ -235,6 +235,7 @@ func (a *analyzerServer) GetAnalyzerInfo(context.Context, *emptypb.Empty) (*pulu
 		Provider:       info.Provider,
 		Tags:           info.Tags,
 		Repository:     info.Repository,
+		Runtime:        info.Runtime,
 	}, nil
 }
 
