@@ -182,6 +182,6 @@ func TestDeploymentCancel_NonInteractiveRequiresYes(t *testing.T) {
 	err := runDeploymentCancel(t.Context(), &buf, stubCancelFactory(c, "prod"),
 		"dep-123", cancelArgs("", false, ""))
 	require.Error(t, err)
-	assert.ErrorIs(t, err, backenderr.NonInteractiveRequiresYesError{})
+	assert.ErrorIs(t, err, backenderr.ErrNonInteractiveRequiresYes)
 	assert.Equal(t, capturedCancelCall{}, captured, "client must not be called when confirmation is refused")
 }

@@ -101,7 +101,7 @@ type configEnvInitCmd struct {
 
 func (cmd *configEnvInitCmd) run(ctx context.Context, args []string) error {
 	if !cmd.yes && !cmd.parent.interactive {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	opts := display.Options{Color: cmd.parent.color}

@@ -31,7 +31,7 @@ func verifyInteractiveMode(yes bool) error {
 	interactive := cmdutil.Interactive()
 
 	if !interactive && !yes {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	return nil

@@ -122,7 +122,7 @@ func runDeploymentCancel(
 
 	if !args.yes {
 		if !cmdutil.Interactive() {
-			return backenderr.NonInteractiveRequiresYesError{}
+			return backenderr.ErrNonInteractiveRequiresYes
 		}
 		opts := display.Options{Color: cmdutil.GetGlobalColorization()}
 		prompt := fmt.Sprintf(

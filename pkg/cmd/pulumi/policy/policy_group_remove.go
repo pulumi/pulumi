@@ -165,7 +165,7 @@ func runPolicyGroupRemove(
 	factory policyGroupRemoveClientFactory, name string, args policyGroupRemoveArgs,
 ) error {
 	if !cmdutil.Interactive() && !args.yes {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	if !args.yes {

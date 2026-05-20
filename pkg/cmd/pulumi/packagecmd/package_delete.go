@@ -67,7 +67,7 @@ You must have publish permissions for the package to delete it.`,
 			}
 
 			if !cmdutil.Interactive() && !yes {
-				return backenderr.NonInteractiveRequiresYesError{}
+				return backenderr.ErrNonInteractiveRequiresYes
 			}
 
 			project, _, err := pkgWorkspace.Instance.ReadProject()

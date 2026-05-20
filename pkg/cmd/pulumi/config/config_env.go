@@ -185,7 +185,7 @@ func (cmd *configEnvCmd) editStackEnvironment(
 	edit func(stack *workspace.ProjectStack) error,
 ) error {
 	if !yes && !cmd.interactive {
-		return backenderr.NonInteractiveRequiresYesError{}
+		return backenderr.ErrNonInteractiveRequiresYes
 	}
 
 	projectStack, project, stack, err := cmd.loadEnvPreamble(ctx)
