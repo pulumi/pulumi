@@ -192,10 +192,12 @@ func runNew(ctx context.Context, args newArgs) error {
 
 	var cmdTemplate cmdTemplates.Template
 	if len(templates) == 0 {
-		return errors.New("no templates")
+		if !args.yes {
+			return errors.New("no templates")
+		}
 	} else if len(templates) == 1 {
 		cmdTemplate = templates[0]
-	} else {
+	} else if !args.yes {
 		if cmdTemplate, err = args.chooseTemplate(templates, opts); err != nil {
 			return err
 		}

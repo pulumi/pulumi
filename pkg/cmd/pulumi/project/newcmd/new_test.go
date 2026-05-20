@@ -772,6 +772,57 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // changes directory for process
+func TestPulumiNewWithEmptyTemplateSource(t *testing.T) {
+	tests := []struct {
+		name        string
+		interactive bool
+		yes         bool
+		wantErr     bool
+	}{
+		{
+			name: "yes creates empty project",
+			yes:  true,
+		},
+		{
+			name:        "interactive errors",
+			interactive: true,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempdir := tempProjectDir(t)
+			t.Chdir(tempdir)
+			emptyTemplateSource := t.TempDir()
+
+			args := newArgs{
+				generateOnly:      true,
+				interactive:       tt.interactive,
+				yes:               tt.yes,
+				prompt:            ui.PromptForValue,
+				secretsProvider:   "default",
+				templateNameOrURL: emptyTemplateSource,
+				languageTemplate:  languageTemplateMock,
+			}
+
+			err := runNew(t.Context(), args)
+			if tt.wantErr {
+				require.ErrorContains(t, err, "no templates")
+				_, statErr := os.Stat(filepath.Join(tempdir, "Pulumi.yaml"))
+				assert.ErrorIs(t, statErr, os.ErrNotExist)
+				return
+			}
+
+			require.NoError(t, err)
+			proj := loadProject(t, tempdir)
+			assert.Equal(t, filepath.Base(tempdir), proj.Name.String())
+			assert.Empty(t, proj.Runtime.Name())
+		})
+	}
+}
+
 func TestPulumiNewConflictingProject(t *testing.T) {
 	t.Parallel()
 
