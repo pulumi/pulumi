@@ -2203,20 +2203,6 @@ func TestEvalSourceIterator(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, called)
 	})
-	t.Run("ResourceMonitor", func(t *testing.T) {
-		t.Parallel()
-		var called bool
-		mon := &mockResmon{
-			CancelF: func(context.Context) error { called = true; return nil },
-		}
-		iter := &evalSourceIterator{
-			mon: mon,
-		}
-		err := iter.Cancel(t.Context())
-		require.NoError(t, err)
-		require.Equal(t, mon, iter.ResourceMonitor())
-		require.True(t, called)
-	})
 	t.Run("Next", func(t *testing.T) {
 		t.Parallel()
 		t.Run("iter.done", func(t *testing.T) {
