@@ -18,10 +18,10 @@ from .resource import Resource
 __all__ = [
     'ConfigMapArgs',
     'ConfigMapArgsDict',
-    'ObjectWithNodeOptionalInputsArgs',
-    'ObjectWithNodeOptionalInputsArgsDict',
     'ObjectArgs',
     'ObjectArgsDict',
+    'ObjectWithNodeOptionalInputsArgs',
+    'ObjectWithNodeOptionalInputsArgsDict',
     'SomeOtherObjectArgs',
     'SomeOtherObjectArgsDict',
 ]
@@ -44,38 +44,6 @@ class ConfigMapArgs:
     @config.setter
     def config(self, value: pulumi.Input[Optional[_builtins.str]]):
         pulumi.set(self, "config", value)
-
-
-class ObjectWithNodeOptionalInputsArgsDict(TypedDict):
-    foo: pulumi.Input[_builtins.str]
-    bar: NotRequired[pulumi.Input[Optional[_builtins.int]]]
-
-@pulumi.input_type
-class ObjectWithNodeOptionalInputsArgs:
-    def __init__(__self__, *,
-                 foo: pulumi.Input[_builtins.str],
-                 bar: pulumi.Input[Optional[_builtins.int]] = None):
-        pulumi.set(__self__, "foo", foo)
-        if bar is not None:
-            pulumi.set(__self__, "bar", bar)
-
-    @_builtins.property
-    @pulumi.getter
-    def foo(self) -> pulumi.Input[_builtins.str]:
-        return pulumi.get(self, "foo")
-
-    @foo.setter
-    def foo(self, value: pulumi.Input[_builtins.str]):
-        pulumi.set(self, "foo", value)
-
-    @_builtins.property
-    @pulumi.getter
-    def bar(self) -> pulumi.Input[Optional[_builtins.int]]:
-        return pulumi.get(self, "bar")
-
-    @bar.setter
-    def bar(self, value: pulumi.Input[Optional[_builtins.int]]):
-        pulumi.set(self, "bar", value)
 
 
 class ObjectArgsDict(TypedDict):
@@ -164,6 +132,38 @@ class ObjectArgs:
     @still_others.setter
     def still_others(self, value: pulumi.Input[Optional[Mapping[str, pulumi.Input[Sequence[pulumi.Input['SomeOtherObjectArgs']]]]]]):
         pulumi.set(self, "still_others", value)
+
+
+class ObjectWithNodeOptionalInputsArgsDict(TypedDict):
+    foo: pulumi.Input[_builtins.str]
+    bar: NotRequired[pulumi.Input[Optional[_builtins.int]]]
+
+@pulumi.input_type
+class ObjectWithNodeOptionalInputsArgs:
+    def __init__(__self__, *,
+                 foo: pulumi.Input[_builtins.str],
+                 bar: pulumi.Input[Optional[_builtins.int]] = None):
+        pulumi.set(__self__, "foo", foo)
+        if bar is not None:
+            pulumi.set(__self__, "bar", bar)
+
+    @_builtins.property
+    @pulumi.getter
+    def foo(self) -> pulumi.Input[_builtins.str]:
+        return pulumi.get(self, "foo")
+
+    @foo.setter
+    def foo(self, value: pulumi.Input[_builtins.str]):
+        pulumi.set(self, "foo", value)
+
+    @_builtins.property
+    @pulumi.getter
+    def bar(self) -> pulumi.Input[Optional[_builtins.int]]:
+        return pulumi.get(self, "bar")
+
+    @bar.setter
+    def bar(self, value: pulumi.Input[Optional[_builtins.int]]):
+        pulumi.set(self, "bar", value)
 
 
 class SomeOtherObjectArgsDict(TypedDict):
