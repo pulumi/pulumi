@@ -15,7 +15,7 @@
 [![GoDoc](https://pkg.go.dev/badge/github.com/pulumi/pulumi.svg)](https://pkg.go.dev/github.com/pulumi/pulumi)
 [![License](https://img.shields.io/github/license/pulumi/pulumi)](LICENSE)
 
-# Infrastructure as Code in any Programming Language
+# Infrastructure as code for humans and agents
 
 <a href="https://www.pulumi.com/docs/get-started/">
     <img src="https://www.pulumi.com/images/get-started.svg?" align="right" width="120">
