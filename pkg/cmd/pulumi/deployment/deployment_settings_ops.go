@@ -46,7 +46,7 @@ func newDeploymentSettingsPullCmd() *cobra.Command {
 		Short:  "Pull the stack's deployment settings from Pulumi Cloud into the deployment.yaml file",
 		Long:   "",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -96,7 +96,7 @@ func newDeploymentSettingsUpdateCmd() *cobra.Command {
 				return err
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -152,7 +152,7 @@ func newDeploymentSettingsDestroyCmd() *cobra.Command {
 				return err
 			}
 
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}
@@ -198,7 +198,7 @@ func newDeploymentSettingsEnvCmd() *cobra.Command {
 		Long:   "",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
-			d, err := initializeDeploymentSettingsCmd(cmd.Context(), pkgWorkspace.Instance, stack)
+			d, err := initializeDeploymentSettingsCmd(cmd.Context(), cmd.OutOrStdout(), pkgWorkspace.Instance, stack)
 			if err != nil {
 				return err
 			}

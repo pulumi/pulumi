@@ -17,15 +17,10 @@ package ui
 import (
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
-
-func PrintTable(table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
-	FprintTable(os.Stdout, table, opts)
-}
 
 func FprintTable(out io.Writer, table cmdutil.Table, opts *cmdutil.TableRenderOptions) {
 	fmt.Fprint(out, renderTable(table, opts))

@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"io"
 	"sort"
 
 	"github.com/dustin/go-humanize"
@@ -71,9 +72,9 @@ func newPluginLsCmd(pluginContext pluginstorage.Context) *cobra.Command {
 			})
 
 			if jsonOut {
-				return formatPluginsJSON(plugins)
+				return formatPluginsJSON(cmd.OutOrStdout(), plugins)
 			}
-			return formatPluginConsole(plugins)
+			return formatPluginConsole(cmd.OutOrStdout(), plugins)
 		},
 	}
 
@@ -100,7 +101,7 @@ type pluginInfoJSON struct {
 	LastUsedTime *string `json:"lastUsedTime,omitempty"`
 }
 
-func formatPluginsJSON(plugins []workspace.PluginInfo) error {
+func formatPluginsJSON(w io.Writer, plugins []workspace.PluginInfo) error {
 	makeStringRef := func(s string) *string {
 		return &s
 	}
@@ -129,10 +130,10 @@ func formatPluginsJSON(plugins []workspace.PluginInfo) error {
 		}
 	}
 
-	return ui.PrintJSON(jsonPluginInfo)
+	return ui.FprintJSON(w, jsonPluginInfo)
 }
 
-func formatPluginConsole(plugins []workspace.PluginInfo) error {
+func formatPluginConsole(w io.Writer, plugins []workspace.PluginInfo) error {
 	var totalSize uint64
 
 	rows := slice.Prealloc[cmdutil.TableRow](len(plugins))
@@ -170,13 +171,13 @@ func formatPluginConsole(plugins []workspace.PluginInfo) error {
 		totalSize += plugin.Size()
 	}
 
-	ui.PrintTable(cmdutil.Table{
+	ui.FprintTable(w, cmdutil.Table{
 		Headers: []string{"NAME", "KIND", "VERSION", "SIZE", "INSTALLED", "LAST USED"},
 		Rows:    rows,
 	}, nil)
 
-	fmt.Printf("\n")
-	fmt.Printf("TOTAL plugin cache size: %s\n", humanize.Bytes(totalSize))
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "TOTAL plugin cache size: %s\n", humanize.Bytes(totalSize))
 
 	return nil
 }

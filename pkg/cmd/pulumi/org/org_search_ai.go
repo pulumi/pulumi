@@ -42,10 +42,6 @@ type searchAICmd struct {
 func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	interactive := cmdutil.Interactive()
 
-	if cmd.Stdout == nil {
-		cmd.Stdout = os.Stdout
-	}
-
 	if cmd.currentBackend == nil {
 		cmd.currentBackend = cmdBackend.CurrentBackend
 	}
@@ -101,7 +97,8 @@ func (cmd *searchAICmd) Run(ctx context.Context, args []string) error {
 	}
 	err = cmd.outputFormat.Get()(&cmd.searchCmd, res)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err)
+		// Stderr is not threaded through this helper; defer to process stderr.
+		fmt.Fprintf(os.Stderr, "rendering error: %s\n", err) //nolint:forbidigo
 	}
 	if cmd.openWeb {
 		err = browser.OpenURL(res.URL)
@@ -121,6 +118,9 @@ func newSearchAICmd() *cobra.Command {
 		Long:  "Search for resources in Pulumi Cloud using Pulumi AI",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
+			if scmd.Stdout == nil {
+				scmd.Stdout = cmd.OutOrStdout()
+			}
 			return scmd.Run(ctx, args)
 		},
 	}

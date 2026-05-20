@@ -305,7 +305,7 @@ func (c *orgWebhookListCmd) renderTable(webhooks []apitype.Webhook) error {
 	}
 
 	// Wrap flexible columns to fit the terminal.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(c.w)
 	borderWidth := 3*len(header) + 1
 	fixedWidth := borderWidth + 12 + 6 // ID + ACTIVE
 	if hasName {

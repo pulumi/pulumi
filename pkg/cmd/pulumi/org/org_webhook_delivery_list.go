@@ -165,7 +165,7 @@ func (c *orgWebhookDeliveryListCmd) renderTable(deliveries []apitype.WebhookDeli
 		t.AppendRow(table.Row{d.ID, d.Kind, ts, duration, d.ResponseCode})
 	}
 
-	t.SetAllowedRowLength(cmdCmd.StdoutWidth())
+	t.SetAllowedRowLength(cmdCmd.WriterWidth(c.w))
 	t.Render()
 
 	fmt.Fprintf(c.w, "\n%d delivery(ies)\n", len(deliveries))

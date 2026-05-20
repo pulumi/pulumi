@@ -279,7 +279,7 @@ func renderWebhookListTable(w io.Writer, webhooks []apitype.Webhook) error {
 	// Wrap URL, EVENT GROUPS, and EVENTS to fit the terminal.
 	// Compute actual widths of fixed columns from the data so flex columns
 	// get an accurate share of the remaining space.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(w)
 	borderWidth := 3*len(header) + 1
 	idWidth, nameWidth, activeWidth, formatWidth := len("ID"), len("NAME"), len("ACTIVE"), len("FORMAT")
 	for _, r := range rows {

@@ -202,7 +202,7 @@ func emitLsTable(w io.Writer, idx *Index) error {
 		}
 	}
 	summaryWidth := min(maxSummary, lsSummaryHardMax)
-	cols := stdoutWidth(lsFallbackCols)
+	cols := writerWidth(w, lsFallbackCols)
 	pathWidth := max(lsMinPathWidth, min(maxPath, cols-maxTag-lsMethodWidth-summaryWidth-lsBorderWidth))
 
 	t := table.NewWriter()
@@ -223,13 +223,17 @@ func emitLsTable(w io.Writer, idx *Index) error {
 	return nil
 }
 
-// stdoutWidth reports the column count of stdout, falling back to fallback
-// when stdout isn't a terminal or the size can't be determined (e.g. when
-// the user piped --output=table to a file but still wants the table).
-func stdoutWidth(fallback int) int {
-	w, _, err := term.GetSize(int(os.Stdout.Fd()))
-	if err != nil || w <= 0 {
+// writerWidth reports the column count of w when it is a terminal, falling
+// back to fallback otherwise (e.g. when --output=table is piped to a file
+// but the user still wants table formatting).
+func writerWidth(w io.Writer, fallback int) int {
+	f, ok := w.(*os.File)
+	if !ok {
 		return fallback
 	}
-	return w
+	cols, _, err := term.GetSize(int(f.Fd()))
+	if err != nil || cols <= 0 {
+		return fallback
+	}
+	return cols
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
@@ -57,12 +58,12 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 			showPrompt := !yes
 
 			if untaintAll {
-				return untaintAllResources(ctx, sink, ws, stack, showPrompt)
+				return untaintAllResources(ctx, cmd.OutOrStdout(), sink, ws, stack, showPrompt)
 			}
 
 			// If URN arguments were provided, use those:
 			if len(args) > 0 {
-				return untaintMultipleResources(ctx, sink, ws, stack, args, showPrompt)
+				return untaintMultipleResources(ctx, cmd.OutOrStdout(), sink, ws, stack, args, showPrompt)
 			}
 
 			// Otherwise, use interactive selection:
@@ -83,7 +84,7 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 				return fmt.Errorf("failed to select resource: %w", err)
 			}
 
-			return untaintResource(ctx, sink, ws, stack, urn, showPrompt)
+			return untaintResource(ctx, cmd.OutOrStdout(), sink, ws, stack, urn, showPrompt)
 		},
 	}
 
@@ -105,7 +106,8 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.`,
 }
 
 func untaintAllResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, showPrompt bool,
 ) error {
 	err := runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
@@ -127,7 +129,7 @@ func untaintAllResources(
 	if err != nil {
 		return err
 	}
-	fmt.Println("All resources untainted")
+	fmt.Fprintln(stdout, "All resources untainted")
 	return nil
 }
 
@@ -165,7 +167,8 @@ func untaintResourcesInSnapshot(snap *deploy.Snapshot, urns []string) (int, []er
 
 // untaintMultipleResources untaints multiple resources specified by their URNs.
 func untaintMultipleResources(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urns []string, showPrompt bool,
 ) error {
 	return runTotalStateEdit(
 		ctx, sink, ws, backend.DefaultLoginManager, stackName, showPrompt,
@@ -173,7 +176,7 @@ func untaintMultipleResources(
 			resourceCount, errs := untaintResourcesInSnapshot(snap, urns)
 
 			if resourceCount > 0 && len(errs) == 0 {
-				fmt.Printf("%d resources untainted\n", resourceCount)
+				fmt.Fprintf(stdout, "%d resources untainted\n", resourceCount)
 			}
 
 			if len(errs) > 0 {
@@ -189,7 +192,8 @@ func untaintMultipleResources(
 }
 
 func untaintResource(
-	ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
+	ctx context.Context, stdout io.Writer,
+	sink diag.Sink, ws pkgWorkspace.Context, stackName string, urn resource.URN, showPrompt bool,
 ) error {
-	return untaintMultipleResources(ctx, sink, ws, stackName, []string{string(urn)}, showPrompt)
+	return untaintMultipleResources(ctx, stdout, sink, ws, stackName, []string{string(urn)}, showPrompt)
 }

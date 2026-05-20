@@ -73,9 +73,11 @@ func newStateRepairCommand() *cobra.Command {
 		Args: &stateRepairArgs{
 			Colorizer: cmdutil.GetGlobalColorization(),
 		},
-		Stdin:        os.Stdin,
-		Stdout:       os.Stdout,
-		Stderr:       os.Stderr,
+		Stdin: os.Stdin,
+		// Survey terminal.FileWriter requires a *os.File so we can't thread
+		// the cobra writer here without changing the contract.
+		Stdout:       os.Stdout, //nolint:forbidigo
+		Stderr:       os.Stderr, //nolint:forbidigo
 		Workspace:    pkgWorkspace.Instance,
 		LoginManager: cmdBackend.DefaultLoginManager,
 	}

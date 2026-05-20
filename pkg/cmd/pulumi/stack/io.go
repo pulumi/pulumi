@@ -150,9 +150,11 @@ func RequireStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context, 
 	}
 
 	// No stack was found.  If we're in a terminal, prompt to create one.
+	// Writes go to the process streams: this helper is shared across many
+	// commands and is only reached in interactive terminal sessions.
 	if lopt.OfferNew() && cmdutil.Interactive() {
-		fmt.Printf("The stack '%s' does not exist.\n", stackName)
-		fmt.Printf("\n")
+		fmt.Printf("The stack '%s' does not exist.\n", stackName) //nolint:forbidigo
+		fmt.Printf("\n")                                          //nolint:forbidigo
 		_, err = cmdutil.ReadConsole("If you would like to create this stack now, please press <ENTER>, otherwise " +
 			"press ^C")
 		if err != nil {
@@ -410,7 +412,8 @@ func CreateStack(ctx context.Context, sink diag.Sink, ws pkgWorkspace.Context,
 	}
 
 	if escEnvironment != "" {
-		fmt.Printf("Created environment %s for stack configuration\n", escEnvironment)
+		// Shared helper without a *cobra.Command writer; uses process stdout.
+		fmt.Printf("Created environment %s for stack configuration\n", escEnvironment) //nolint:forbidigo
 	}
 
 	// Now that we've created the stack, we'll write out any necessary configuration changes.

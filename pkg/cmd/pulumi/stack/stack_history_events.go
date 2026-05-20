@@ -304,7 +304,7 @@ func renderHistoryEventsTable(
 		return nil
 	}
 
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(w)
 	// Borders and separators take ~3 chars per column plus 1 outer border each side.
 	borderWidth := 3*3 + 1
 	detailsWidth := cols - borderWidth - historyEventsFixedColsWidth

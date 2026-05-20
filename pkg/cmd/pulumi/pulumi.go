@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -118,7 +119,7 @@ func (c *commandGroup) commandWidth() int {
 	return width
 }
 
-func displayCommands(cgs []commandGroup) {
+func displayCommands(w io.Writer, cgs []commandGroup) {
 	width := 0
 	for _, cg := range cgs {
 		newWidth := cg.commandWidth()
@@ -131,15 +132,15 @@ func displayCommands(cgs []commandGroup) {
 		if cg.commandWidth() == 0 {
 			continue
 		}
-		fmt.Printf("%s:\n", cg.Name)
+		fmt.Fprintf(w, "%s:\n", cg.Name)
 		for _, com := range cg.Commands {
 			if com.Hidden {
 				continue
 			}
 			spacing := strings.Repeat(" ", width-len(com.Name()))
-			fmt.Println("  " + com.Name() + spacing + strings.Repeat(" ", 8) + com.Short)
+			fmt.Fprintln(w, "  "+com.Name()+spacing+strings.Repeat(" ", 8)+com.Short)
 		}
-		fmt.Println()
+		fmt.Fprintln(w)
 	}
 }
 
@@ -151,31 +152,32 @@ func setCommandGroups(cmd *cobra.Command, rootCgs []commandGroup) {
 	}
 
 	cmd.SetHelpFunc(func(c *cobra.Command, args []string) {
+		w := c.OutOrStdout()
 		header := c.Long
 		if header == "" {
 			header = c.Short
 		}
 
 		if header != "" {
-			fmt.Println(strings.TrimSpace(header))
-			fmt.Println()
+			fmt.Fprintln(w, strings.TrimSpace(header))
+			fmt.Fprintln(w)
 		}
 
 		if c != cmd.Root() {
-			fmt.Print(c.UsageString())
+			fmt.Fprint(w, c.UsageString())
 			return
 		}
 
-		fmt.Println("Usage:")
-		fmt.Println("  pulumi [command]")
-		fmt.Println()
+		fmt.Fprintln(w, "Usage:")
+		fmt.Fprintln(w, "  pulumi [command]")
+		fmt.Fprintln(w)
 
-		displayCommands(rootCgs)
+		displayCommands(w, rootCgs)
 
-		fmt.Println("Flags:")
-		fmt.Println(cmd.Flags().FlagUsages())
+		fmt.Fprintln(w, "Flags:")
+		fmt.Fprintln(w, cmd.Flags().FlagUsages())
 
-		fmt.Println("Use `pulumi [command] --help` for more information about a command.")
+		fmt.Fprintln(w, "Use `pulumi [command] --help` for more information about a command.")
 	})
 }
 
@@ -205,6 +207,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 
 	updateCheckResult := make(chan *updateCheckResult)
 
+	var cmd *cobra.Command
 	cleanup := func() {
 		// Logger.Close is a no-op when autoLogger is nil.
 		if err := autoLogger.Close(); err != nil {
@@ -224,7 +227,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 				logging.Warningf("could not find the log file: %s", err)
 				logging.Flush()
 			} else {
-				fmt.Fprintf(os.Stderr, "The log file for this run is at %s\n", logFile)
+				fmt.Fprintf(cmd.ErrOrStderr(), "The log file for this run is at %s\n", logFile)
 			}
 		}
 
@@ -239,7 +242,7 @@ func NewPulumiCmd() (*cobra.Command, func()) {
 	// to understand ANSI escape codes.
 	_, _, _ = term.StdStreams()
 
-	cmd := &cobra.Command{
+	cmd = &cobra.Command{
 		Use:           "pulumi",
 		Short:         "Pulumi command line",
 		SilenceErrors: true,

@@ -60,7 +60,7 @@ func newPolicyValidateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Println("Policy Pack configuration is valid.")
+			fmt.Fprintln(cmd.OutOrStdout(), "Policy Pack configuration is valid.")
 			return nil
 		},
 	}

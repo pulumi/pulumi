@@ -17,6 +17,7 @@ package policy
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -88,9 +89,9 @@ func newPolicyLsCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.
 			}
 
 			if jsonOut {
-				return formatPolicyPacksJSON(allPolicyPacks)
+				return formatPolicyPacksJSON(cmd.OutOrStdout(), allPolicyPacks)
 			}
-			return formatPolicyPacksConsole(allPolicyPacks)
+			return formatPolicyPacksConsole(cmd.OutOrStdout(), allPolicyPacks)
 		},
 	}
 
@@ -106,7 +107,7 @@ func newPolicyLsCmd(ws pkgWorkspace.Context, lm cmdBackend.LoginManager) *cobra.
 	return cmd
 }
 
-func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) error {
+func formatPolicyPacksConsole(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error {
 	// Header string and formatting options to align columns.
 	headers := []string{"NAME", "VERSIONS"}
 
@@ -123,7 +124,7 @@ func formatPolicyPacksConsole(policyPacks []apitype.PolicyPackWithVersions) erro
 		columns := []string{name, versionTags}
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
-	ui.PrintTable(cmdutil.Table{
+	ui.FprintTable(w, cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
 	}, nil)
@@ -138,7 +139,7 @@ type policyPacksJSON struct {
 	Versions []string `json:"versions"`
 }
 
-func formatPolicyPacksJSON(policyPacks []apitype.PolicyPackWithVersions) error {
+func formatPolicyPacksJSON(w io.Writer, policyPacks []apitype.PolicyPackWithVersions) error {
 	output := make([]policyPacksJSON, len(policyPacks))
 	for i, pack := range policyPacks {
 		output[i] = policyPacksJSON{
@@ -146,5 +147,5 @@ func formatPolicyPacksJSON(policyPacks []apitype.PolicyPackWithVersions) error {
 			Versions: pack.VersionTags,
 		}
 	}
-	return ui.PrintJSON(output)
+	return ui.FprintJSON(w, output)
 }

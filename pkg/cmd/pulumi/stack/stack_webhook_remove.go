@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -114,7 +113,7 @@ func runStackWebhookRemove(
 			"This will permanently remove the webhook '%s'!",
 			webhookName)
 		if !ui.ConfirmPrompt(prompt, webhookName, opts) {
-			return result.FprintBailf(os.Stdout, "confirmation declined")
+			return result.FprintBailf(w, "confirmation declined")
 		}
 	}
 

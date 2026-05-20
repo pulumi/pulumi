@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -263,7 +262,7 @@ func NewRefreshCmd() *cobra.Command {
 			if importPendingCreates != nil && len(*importPendingCreates) > 0 {
 				stderr := opts.Display.Stderr
 				if stderr == nil {
-					stderr = os.Stderr
+					stderr = cmd.ErrOrStderr()
 				}
 				if unused, err := pendingCreatesToImports(ctx, s, yes, opts.Display, *importPendingCreates); err != nil {
 					return err

@@ -134,11 +134,11 @@ To see the list of URNs in a stack, use ` + "`pulumi stack --show-urns`" + `.
 				}
 			}
 			if all {
-				fmt.Println("Resources deleted")
+				fmt.Fprintln(cmd.OutOrStdout(), "Resources deleted")
 			} else if nDeleted == 1 {
-				fmt.Println("Resource deleted")
+				fmt.Fprintln(cmd.OutOrStdout(), "Resource deleted")
 			} else {
-				fmt.Printf("%d resources deleted\n", nDeleted)
+				fmt.Fprintf(cmd.OutOrStdout(), "%d resources deleted\n", nDeleted)
 			}
 			return nil
 		},

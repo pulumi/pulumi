@@ -73,7 +73,7 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 					if err != nil {
 						return err
 					}
-					return policy.InstallPluginDependencies(ctx, root, proj.Runtime)
+					return policy.InstallPluginDependencies(ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), root, proj.Runtime)
 				}
 			}
 
@@ -107,7 +107,8 @@ func NewInstallCmd(ws pkgWorkspace.Context) *cobra.Command {
 						return fmt.Errorf("installing `packages` from PulumiPlugin.yaml: %w", err)
 					}
 
-					return policy.InstallPluginDependencies(ctx, filepath.Dir(pluginPath), proj.Runtime)
+					return policy.InstallPluginDependencies(
+						ctx, cmd.OutOrStdout(), cmd.ErrOrStderr(), filepath.Dir(pluginPath), proj.Runtime)
 				}
 			}
 

@@ -245,7 +245,7 @@ func (c *driftListCmd) renderTable(runs []apitype.DriftRun, total int) error {
 	// Let go-pretty wrap columns to fit the terminal. Fixed-width columns
 	// (CREATED, STATUS, DRIFT) are short enough to never need wrapping.
 	// ID, DETECT, and REMEDIATE get max widths so they wrap if needed.
-	cols := cmdCmd.StdoutWidth()
+	cols := cmdCmd.WriterWidth(c.w)
 	// CREATED(25) + STATUS(11) + DRIFT(5) + borders(~22) = 63 fixed
 	flexible := cols - 63
 	if flexible < 30 {

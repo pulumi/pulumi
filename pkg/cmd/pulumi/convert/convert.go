@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -97,6 +98,8 @@ func NewConvertCmd(lm cmdBackend.LoginManager, ws pkgWorkspace.Context) *cobra.C
 
 			return runConvert(
 				cmd.Context(),
+				cmd.OutOrStdout(),
+				cmd.ErrOrStderr(),
 				lm,
 				ws,
 				env.Global(),
@@ -183,6 +186,7 @@ type projectGeneratorFunction func(
 
 func runConvert(
 	ctx context.Context,
+	stdout, stderr io.Writer,
 	lm cmdBackend.LoginManager,
 	ws pkgWorkspace.Context,
 	e env.Env,
@@ -302,6 +306,7 @@ func runConvert(
 
 			err = generateAndLinkSdksForPackages(
 				pCtx,
+				stdout,
 				language,
 				targetDirectory,
 				packageBlockDescriptors,
@@ -444,12 +449,12 @@ func runConvert(
 	if diagnostics.HasErrors() {
 		// Don't print the notice about this being a bug if we're in strict mode
 		if !strict {
-			fmt.Fprintln(os.Stderr, "================================================================================")
-			fmt.Fprintln(os.Stderr, "The Pulumi CLI encountered a code generation error. This is a bug!")
-			fmt.Fprintln(os.Stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
-			fmt.Fprintln(os.Stderr, "Please provide all of the below text in your report.")
-			fmt.Fprintln(os.Stderr, "================================================================================")
-			fmt.Fprintf(os.Stderr, "Pulumi Version:   %s\n", version.Version)
+			fmt.Fprintln(stderr, "================================================================================")
+			fmt.Fprintln(stderr, "The Pulumi CLI encountered a code generation error. This is a bug!")
+			fmt.Fprintln(stderr, "We would appreciate a report: https://github.com/pulumi/pulumi/issues/")
+			fmt.Fprintln(stderr, "Please provide all of the below text in your report.")
+			fmt.Fprintln(stderr, "================================================================================")
+			fmt.Fprintf(stderr, "Pulumi Version:   %s\n", version.Version)
 		}
 		cmdDiag.PrintDiagnostics(pCtx.Diag, diagnostics)
 		if err != nil {
@@ -531,6 +536,7 @@ func getPackagesToGenerateSdks(
 
 func generateAndLinkSdksForPackages(
 	pctx *plugin.Context,
+	stdout io.Writer,
 	language string,
 	targetDirectory string,
 	pkgs map[string]*schema.PackageDescriptor,
@@ -602,11 +608,11 @@ func generateAndLinkSdksForPackages(
 
 		packagesToLink = append(packagesToLink, packages.PackageToLink{Pkg: pkgSchema, Out: sdkOut})
 
-		fmt.Printf("Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
+		fmt.Fprintf(stdout, "Generated local SDK for package '%s:%s'\n", pkg.Name, pkg.Parameterization.Name)
 	}
 
 	if err := packages.LinkPackages(&packages.LinkPackagesContext{
-		Writer:        os.Stdout,
+		Writer:        stdout,
 		Project:       proj,
 		Language:      language,
 		Root:          targetDirectory,

@@ -20,6 +20,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"sort"
@@ -70,9 +71,9 @@ func NewAboutCmd(ws pkgWorkspace.Context) *cobra.Command {
 			ctx := cmd.Context()
 			summary := getSummaryAbout(ctx, ws, cmdBackend.DefaultLoginManager, transitiveDependencies, stack)
 			if jsonOut {
-				return ui.PrintJSON(summary)
+				return ui.FprintJSON(cmd.OutOrStdout(), summary)
 			}
-			summary.Print()
+			summary.Print(cmd.OutOrStdout())
 			return nil
 		},
 	}
@@ -204,28 +205,28 @@ func getSummaryAbout(
 	return result
 }
 
-func (summary *summaryAbout) Print() {
-	fmt.Println(summary.CLI)
+func (summary *summaryAbout) Print(w io.Writer) {
+	fmt.Fprintln(w, summary.CLI)
 	if summary.Plugins != nil {
-		fmt.Println(formatPlugins(summary.Plugins))
+		fmt.Fprintln(w, formatPlugins(summary.Plugins))
 	}
 	if summary.Host != nil {
-		fmt.Println(summary.Host)
+		fmt.Fprintln(w, summary.Host)
 	}
 	if summary.Runtime != nil {
-		fmt.Println(summary.Runtime)
+		fmt.Fprintln(w, summary.Runtime)
 	}
 	if summary.CurrentStack != nil {
-		fmt.Println(summary.CurrentStack)
+		fmt.Fprintln(w, summary.CurrentStack)
 	}
 	if summary.Backend != nil {
-		fmt.Println(summary.Backend)
+		fmt.Fprintln(w, summary.Backend)
 	}
-	formatEnvironmentVariables(env.ConfiguredVariables())
+	formatEnvironmentVariables(w, env.ConfiguredVariables())
 	if summary.Dependencies != nil {
-		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
+		fmt.Fprintln(w, formatProgramDependenciesAbout(summary.Dependencies))
 	}
-	fmt.Println(summary.LogMessage)
+	fmt.Fprintln(w, summary.LogMessage)
 	for _, err := range summary.Errors {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
@@ -484,7 +485,7 @@ type programDependencyAbout struct {
 	Version string `json:"version"`
 }
 
-func formatEnvironmentVariables(vars map[string]string) {
+func formatEnvironmentVariables(w io.Writer, vars map[string]string) {
 	table := cmdutil.Table{
 		Headers: []string{"Name", "Value"},
 		Rows:    []cmdutil.TableRow{},
@@ -497,8 +498,8 @@ func formatEnvironmentVariables(vars map[string]string) {
 	}
 
 	if len(table.Rows) > 0 {
-		fmt.Println("Environment Variables:")
-		fmt.Println(table.String())
+		fmt.Fprintln(w, "Environment Variables:")
+		fmt.Fprintln(w, table.String())
 	}
 }
 
@@ -608,6 +609,12 @@ func (runtime projectRuntimeAbout) String() string {
 
 // This is necessary because dotnet invokes build during the call to
 // getProjectPlugins.
+//
+// We swap out the process-wide os.Stdout because the dotnet build prints
+// to its file descriptor directly; capturing via cmd.OutOrStdout() would
+// not redirect those writes.
+//
+//nolint:forbidigo
 func getProjectPluginsSilently(
 	ctx *plugin.Context, proj *workspace.Project, pwd, main string,
 ) ([]workspace.PluginDescriptor, error) {

@@ -137,6 +137,7 @@ from the parameters, as in:
 			parameters := &plugin.ParameterizeArgs{Args: args[1:]}
 
 			pkg, packageSpec, diags, err := packages.InstallPackage(
+				cmd.OutOrStdout(),
 				pkgWorkspace.Instance,
 				target.proj,
 				pctx,

@@ -621,6 +621,8 @@ func (c *ctxOnlyCancellationScope) Close()                   { c.src.Cancel() }
 // the originals remain in place. bubbletea's tea.NewProgram captures a stable
 // reference to the terminal at construction, so this swap does not affect the
 // TUI's rendering; it only catches writes that look up os.Stdout dynamically.
+//
+//nolint:forbidigo
 func silenceStd() func() {
 	null, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	if err != nil {

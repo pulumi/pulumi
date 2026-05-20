@@ -100,8 +100,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 						return err
 					}
 				}
-				fmt.Fprintf(os.Stderr, "SDKs have been written to %s\n", out)
-				printRegistryDocsHint(os.Stderr, agent, cmd.Context(), registry, pkg)
+				fmt.Fprintf(cmd.ErrOrStderr(), "SDKs have been written to %s\n", out)
+				printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), registry, pkg)
 				return nil
 			}
 			diags, err := packages.GenSDK(cmd.Context(), language, out, pkg, overlays, local)
@@ -109,8 +109,8 @@ If a folder either the plugin binary must match the folder name (e.g. 'aws' and 
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(os.Stderr, "SDK has been written to %s\n", filepath.Join(out, language))
-			printRegistryDocsHint(os.Stderr, agent, cmd.Context(), registry, pkg)
+			fmt.Fprintf(cmd.ErrOrStderr(), "SDK has been written to %s\n", filepath.Join(out, language))
+			printRegistryDocsHint(cmd.ErrOrStderr(), agent, cmd.Context(), registry, pkg)
 			return nil
 		},
 	}

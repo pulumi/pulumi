@@ -93,11 +93,21 @@ type newArgs struct {
 	templateMode          bool
 	runtimeOptions        []string
 	remoteStackConfig     bool
+	stdout                io.Writer
+	stderr                io.Writer
 }
 
 func runNew(ctx context.Context, args newArgs) error {
 	if !args.interactive && !args.yes {
 		return backenderr.NonInteractiveRequiresYesError{}
+	}
+
+	// Default to discarding output when callers (e.g. tests) don't provide writers.
+	if args.stdout == nil {
+		args.stdout = io.Discard
+	}
+	if args.stderr == nil {
+		args.stderr = io.Discard
 	}
 
 	// Prepare options.
@@ -255,16 +265,16 @@ func runNew(ctx context.Context, args newArgs) error {
 	// Show instructions, if we're going to show at least one prompt.
 	hasAtLeastOnePrompt := (args.name == "") || (args.description == "") || (!args.generateOnly && args.stack == "")
 	if !args.yes && hasAtLeastOnePrompt {
-		fmt.Println("This command will walk you through creating a new Pulumi project.")
-		fmt.Println()
-		fmt.Println(
+		fmt.Fprintln(args.stdout, "This command will walk you through creating a new Pulumi project.")
+		fmt.Fprintln(args.stdout)
+		fmt.Fprintln(args.stdout,
 			opts.Color.Colorize(
 				colors.Highlight("Enter a value or leave blank to accept the (default), and press <ENTER>.",
 					"<ENTER>", colors.BrightCyan+colors.Bold)))
-		fmt.Println(
+		fmt.Fprintln(args.stdout,
 			opts.Color.Colorize(
 				colors.Highlight("Press ^C at any time to quit.", "^C", colors.BrightCyan+colors.Bold)))
-		fmt.Println()
+		fmt.Fprintln(args.stdout)
 	}
 
 	// Prompt for the project name, if it wasn't already specified.
@@ -308,8 +318,8 @@ func runNew(ctx context.Context, args newArgs) error {
 		return err
 	}
 
-	fmt.Printf("Created project '%s'\n", args.name)
-	fmt.Println()
+	fmt.Fprintf(args.stdout, "Created project '%s'\n", args.name)
+	fmt.Fprintln(args.stdout)
 
 	// Load the project, update the name & description, remove the template section, and save it.
 	proj, root, err := ws.ReadProject()
@@ -358,7 +368,7 @@ func runNew(ctx context.Context, args newArgs) error {
 			return err
 		}
 		// The backend will print "Created stack '<stack>'" on success.
-		fmt.Println()
+		fmt.Fprintln(args.stdout)
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
@@ -443,7 +453,7 @@ func runNew(ctx context.Context, args newArgs) error {
 		registry := cmdCmd.NewDefaultRegistry(
 			ctx, cmdBackend.DefaultLoginManager, pkgWorkspace.Instance, proj, cmdutil.Diag(), env.Global())
 		if err := InstallPackagesFromProject(ctx, proj, root,
-			registry, -1, false, os.Stderr, os.Stderr, env.Global()); err != nil {
+			registry, -1, false, args.stderr, args.stderr, env.Global()); err != nil {
 			return err
 		}
 		if err := InstallDependencies(pluginCtx, &proj.Runtime, entryPoint); err != nil {
@@ -451,17 +461,17 @@ func runNew(ctx context.Context, args newArgs) error {
 		}
 	}
 
-	fmt.Println(
+	fmt.Fprintln(args.stdout,
 		opts.Color.Colorize(
-			colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset) +
-			" " + cmdutil.EmojiOr("✨", ""))
-	fmt.Println()
+			colors.BrightGreen+colors.Bold+"Your new project is ready to go!"+colors.Reset)+
+			" "+cmdutil.EmojiOr("✨", ""))
+	fmt.Fprintln(args.stdout)
 
 	// Print out next steps.
-	printNextSteps(proj, originalCwd, cwd, args.generateOnly, opts)
+	printNextSteps(args.stdout, proj, originalCwd, cwd, args.generateOnly, opts)
 
 	if template.Quickstart != "" {
-		fmt.Println(template.Quickstart)
+		fmt.Fprintln(args.stdout, template.Quickstart)
 	}
 
 	return nil
@@ -573,6 +583,8 @@ func NewNewCmd() *cobra.Command {
 
 			args.yes = args.yes || env.SkipConfirmations.Value()
 			args.interactive = isInteractive()
+			args.stdout = cmd.OutOrStdout()
+			args.stderr = cmd.ErrOrStderr()
 			return runNew(ctx, args)
 		},
 	}
@@ -853,7 +865,9 @@ func makePromptValidator(prompt plugin.RuntimeOptionPrompt) func(string) error {
 }
 
 // printNextSteps prints out a series of commands that the user needs to run before their stack is able to be updated.
-func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOnly bool, opts display.Options) {
+func printNextSteps(
+	w io.Writer, proj *workspace.Project, originalCwd, cwd string, generateOnly bool, opts display.Options,
+) {
 	var commands []string
 
 	// If the target working directory is not the same as our current WD, tell the user to
@@ -886,8 +900,8 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 	if len(commands) == 0 { // No additional commands need to be run.
 		deployMsg := "To perform an initial deployment, run `pulumi up`"
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
-		fmt.Println(opts.Color.Colorize(deployMsg))
-		fmt.Println()
+		fmt.Fprintln(w, opts.Color.Colorize(deployMsg))
+		fmt.Fprintln(w)
 		return
 	}
 
@@ -895,23 +909,23 @@ func printNextSteps(proj *workspace.Project, originalCwd, cwd string, generateOn
 		deployMsg := fmt.Sprintf("To perform an initial deployment, run '%s', then, run `pulumi up`", commands[0])
 		deployMsg = colors.Highlight(deployMsg, commands[0], colors.BrightBlue+colors.Bold)
 		deployMsg = colors.Highlight(deployMsg, "pulumi up", colors.BrightBlue+colors.Bold)
-		fmt.Println(opts.Color.Colorize(deployMsg))
-		fmt.Println()
+		fmt.Fprintln(w, opts.Color.Colorize(deployMsg))
+		fmt.Fprintln(w)
 		return
 	}
 
 	// One or more additional commands needs to be run.
-	fmt.Println("To perform an initial deployment, run the following commands:")
-	fmt.Println()
+	fmt.Fprintln(w, "To perform an initial deployment, run the following commands:")
+	fmt.Fprintln(w)
 	for i, cmd := range commands {
 		cmdColors := colors.BrightBlue + colors.Bold + cmd + colors.Reset
-		fmt.Printf("   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
+		fmt.Fprintf(w, "   %d. %s\n", i+1, opts.Color.Colorize(cmdColors))
 	}
-	fmt.Println()
+	fmt.Fprintln(w)
 
 	upMsg := colors.Highlight("Then, run `pulumi up`", "pulumi up", colors.BrightBlue+colors.Bold)
-	fmt.Println(opts.Color.Colorize(upMsg))
-	fmt.Println()
+	fmt.Fprintln(w, opts.Color.Colorize(upMsg))
+	fmt.Fprintln(w)
 }
 
 // compareStackProjectName takes a stack name and a project name and returns an error if they are not the same.

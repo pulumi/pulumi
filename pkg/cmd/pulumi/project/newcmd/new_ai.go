@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 
 	survey "github.com/AlecAivazis/survey/v2"
@@ -112,6 +113,7 @@ func runAINew(
 
 func sendPromptToPulumiAI(
 	ctx context.Context,
+	stdout io.Writer,
 	backend httpstate.Backend,
 	promptMessage string,
 	conversationID string,
@@ -133,23 +135,23 @@ func sendPromptToPulumiAI(
 		ConversationID: conversationID,
 		ConnectionID:   connectionID,
 	}
-	fmt.Println("Sending prompt to Pulumi AI...")
+	fmt.Fprintln(stdout, "Sending prompt to Pulumi AI...")
 	res, err := backend.PromptAI(ctx, requestBody)
 	if err != nil {
 		return "", "", "", err
 	}
 	defer res.Body.Close()
 	reader := bufio.NewReader(res.Body)
-	fmt.Println("Pulumi AI response:")
+	fmt.Fprintln(stdout, "Pulumi AI response:")
 	for {
 		chunk, err := reader.ReadByte()
 		if err != nil && err.Error() != "EOF" {
 			return "", "", "", err
 		}
-		fmt.Print(string(chunk))
+		fmt.Fprint(stdout, string(chunk))
 		if err != nil && err.Error() == "EOF" {
 			// Add a newline to ensure we don't overwrite the last line of the Pulumi AI response
-			fmt.Println()
+			fmt.Fprintln(stdout)
 			break
 		}
 	}
@@ -157,7 +159,7 @@ func sendPromptToPulumiAI(
 	connectionID = res.Header.Get("x-connection-id")
 	projectURL := parsedURL.JoinPath("api", "project", url.PathEscape(conversationID+".zip")).String()
 	conversationURL := parsedURL.JoinPath("conversations", conversationID).String()
-	fmt.Println("View this conversation at: ", conversationURL)
+	fmt.Fprintln(stdout, "View this conversation at: ", conversationURL)
 	return projectURL, connectionID, conversationID, nil
 }
 
@@ -175,12 +177,14 @@ func isValidAiPrompt(prompt string) error {
 	return nil
 }
 
-func promptForAiMessage(prompt promptForValueFunc, opts display.Options, isInitial bool) (string, error) {
+func promptForAiMessage(
+	stdout io.Writer, prompt promptForValueFunc, opts display.Options, isInitial bool,
+) (string, error) {
 	for {
 		if isInitial {
-			fmt.Println(initialPromptPrompt)
+			fmt.Fprintln(stdout, initialPromptPrompt)
 		} else {
-			fmt.Println(refinePromptPrompt)
+			fmt.Fprintln(stdout, refinePromptPrompt)
 		}
 		promptMessage, err := prompt(false, "", "", false, isValidAiPrompt, opts)
 		if err != nil {
@@ -213,7 +217,7 @@ func runAINewPromptStep(
 	var promptMessage string
 	if args.aiPrompt == "" || currentContinueSelection != "" {
 		isInitial := currentContinueSelection == ""
-		promptMessage, err = promptForAiMessage(args.prompt, opts, isInitial)
+		promptMessage, err = promptForAiMessage(args.stdout, args.prompt, opts, isInitial)
 		if err != nil {
 			return "", "", "", "", err
 		}
@@ -222,6 +226,7 @@ func runAINewPromptStep(
 	}
 	conversationURLReturn, connectionIDReturn, conversationIDReturn, err = sendPromptToPulumiAI(
 		ctx,
+		args.stdout,
 		backend,
 		promptMessage,
 		conversationID,
@@ -233,7 +238,7 @@ func runAINewPromptStep(
 	}
 	if connectionID != "" && connectionID != connectionIDReturn {
 		connectionIDReturn = connectionID
-		fmt.Println("Connection ID changed, please restart the prompt")
+		fmt.Fprintln(args.stdout, "Connection ID changed, please restart the prompt")
 	}
 	if conversationID != "" && conversationID != conversationIDReturn {
 		return "", "", "", "", fmt.Errorf("conversation id %s changed to %s", conversationID, conversationIDReturn)

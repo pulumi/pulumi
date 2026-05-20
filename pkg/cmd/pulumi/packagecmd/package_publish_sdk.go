@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,7 +46,7 @@ func newPackagePublishSdkCmd() *cobra.Command {
 
 			switch lang {
 			case "nodejs":
-				err := publishToNPM(path)
+				err := publishToNPM(cmd.OutOrStdout(), cmd.ErrOrStderr(), path)
 				if err != nil {
 					return err
 				}
@@ -111,7 +112,7 @@ func determineNPMTagForStableVersion(npm, pkgName, currentVersion string) (strin
 	return determineNPMTagFromCommandResult(currentVersion, string(output), stderr.String(), err)
 }
 
-func publishToNPM(path string) error {
+func publishToNPM(stdout, stderr io.Writer, path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
 		return fmt.Errorf("reading path %s: %w", path, err)
@@ -128,7 +129,7 @@ func publishToNPM(path string) error {
 
 	// verify auth for npm
 	whoamiCmd := exec.Command(npm, "whoami")
-	whoamiCmd.Stderr = os.Stderr
+	whoamiCmd.Stderr = stderr
 	whoami, err := whoamiCmd.Output()
 	if err != nil {
 		return err
@@ -178,40 +179,40 @@ func publishToNPM(path string) error {
 
 	// Verify version doesn't already exist
 	infoCmd := exec.Command(npm, "info", pkgNameWithVersion)
-	infoCmd.Stderr = os.Stderr
+	infoCmd.Stderr = stderr
 	logging.V(1).Infof("Running %s", infoCmd)
 	// we actually do not care about the error here; we care whether the output is empty.
 	output, _ := infoCmd.Output()
 
 	if len(output) > 0 {
 		// the package already exists, and we no-op.
-		fmt.Printf("did not publish %s because version %s already exists\n", pkgInfo.Name, pkgNameWithVersion)
+		fmt.Fprintf(stdout, "did not publish %s because version %s already exists\n", pkgInfo.Name, pkgNameWithVersion)
 		return nil
 	}
 
 	logging.V(1).Infof("The version does not exist yet, and it is safe to publish")
-	fmt.Printf("Publishing %s to npm package registry...\n", pkgInfo.Name)
+	fmt.Fprintf(stdout, "Publishing %s to npm package registry...\n", pkgInfo.Name)
 	npmPublishCmd := exec.Command(npm, "publish", path, "-tag", npmTag)
-	npmPublishCmd.Stdout = os.Stdout
-	npmPublishCmd.Stderr = os.Stderr
+	npmPublishCmd.Stdout = stdout
+	npmPublishCmd.Stderr = stderr
 	err = npmPublishCmd.Run()
 	if err != nil {
 		logging.V(1).Infof("error publishing package, verifying...")
 		// first, check if the package was published after all, by re-running npm info
 		// to verify we're not encountering a time-of-check to time-of-use (TOC/TOU) issue.
 		infoCheckCmd := exec.Command("npm", "info", pkgNameWithVersion)
-		infoCheckCmd.Stderr = os.Stderr
+		infoCheckCmd.Stderr = stderr
 		// Ignore error. stdout will be empty if the package was not published.
 		checkOutput, _ := infoCheckCmd.Output()
 
 		if len(checkOutput) > 0 {
 			// this means the package was published after all
-			fmt.Println("success! published to npm")
+			fmt.Fprintln(stdout, "success! published to npm")
 			return nil
 		}
 		// if we get here, this means the package was not published. We bail.
 		return fmt.Errorf("publish package: %w", err)
 	}
-	fmt.Println("success! published to npm")
+	fmt.Fprintln(stdout, "success! published to npm")
 	return nil
 }

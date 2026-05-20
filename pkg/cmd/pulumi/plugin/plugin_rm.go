@@ -101,18 +101,19 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 				return nil
 			}
 
+			out := cmd.OutOrStdout()
 			// Confirm that the user wants to do this (unless --yes was passed).
 			if !yes {
 				var suffix string
 				if len(deletes) != 1 {
 					suffix = "s"
 				}
-				fmt.Print(
+				fmt.Fprint(out,
 					opts.Color.Colorize(
 						fmt.Sprintf("%sThis will remove %d plugin%s from the cache:%s\n",
 							colors.SpecAttention, len(deletes), suffix, colors.Reset)))
 				for _, del := range deletes {
-					fmt.Printf("    %s %s\n", del.Kind, del.String())
+					fmt.Fprintf(out, "    %s %s\n", del.Kind, del.String())
 				}
 				if !ui.ConfirmPrompt("", "yes", opts) {
 					return nil
@@ -123,7 +124,7 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 			var result error
 			for _, plugin := range deletes {
 				if err := plugin.Delete(); err == nil {
-					fmt.Printf("removed: %s %v\n", plugin.Kind, plugin)
+					fmt.Fprintf(out, "removed: %s %v\n", plugin.Kind, plugin)
 				} else {
 					result = multierror.Append(
 						result, fmt.Errorf("failed to delete %s plugin %s: %w", plugin.Kind, plugin, err))
