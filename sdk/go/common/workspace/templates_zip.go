@@ -99,6 +99,9 @@ func shouldRetry(err error, resp *http.Response) bool {
 }
 
 func drainBody(resp *http.Response) {
+	if resp == nil {
+		return
+	}
 	if resp.Body != nil {
 		_, err := io.Copy(io.Discard, resp.Body)
 		if err != nil {
@@ -172,6 +175,7 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string, opts ...Req
 	if err != nil {
 		return "", err
 	}
+	defer packageResponse.Body.Close()
 	if packageResponse.StatusCode == http.StatusUnauthorized && isPulumiHostResponse(packageResponse) {
 		return "", fmt.Errorf("failed to download template from pulumi host: %w", ErrPulumiCloudUnauthorized)
 	}
@@ -199,31 +203,37 @@ func RetrieveZIPTemplateFolder(templateURL *url.URL, tempDir string, opts ...Req
 	}
 
 	for _, file := range archive.File {
-		filePath, err := sanitizeArchivePath(tempDir, file.Name)
-		if err != nil {
+		if err := extractZipFile(file, tempDir); err != nil {
 			return "", err
-		}
-		if file.FileHeader.FileInfo().IsDir() {
-			err = os.MkdirAll(filePath, 0o777)
-			if err != nil {
-				return "", err
-			}
-		} else {
-			fileReader, err := file.Open()
-			if err != nil {
-				return "", err
-			}
-			defer fileReader.Close()
-			destinationFile, err := os.Create(filePath)
-			if err != nil {
-				return "", err
-			}
-			defer destinationFile.Close()
-			_, err = io.Copy(destinationFile, fileReader) // #nosec G110
-			if err != nil {
-				return "", err
-			}
 		}
 	}
 	return tempDir, nil
+}
+
+// extractZipFile extracts a single file from a zip archive into tempDir.
+// It is factored out of the loop so that defer runs per file rather than
+// accumulating open file descriptors until the calling function returns.
+func extractZipFile(file *zip.File, tempDir string) error {
+	filePath, err := sanitizeArchivePath(tempDir, file.Name)
+	if err != nil {
+		return err
+	}
+	if file.FileHeader.FileInfo().IsDir() {
+		return os.MkdirAll(filePath, 0o777)
+	}
+
+	fileReader, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer fileReader.Close()
+
+	destinationFile, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer destinationFile.Close()
+
+	_, err = io.Copy(destinationFile, fileReader) // #nosec G110
+	return err
 }
