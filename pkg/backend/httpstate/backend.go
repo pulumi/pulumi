@@ -617,6 +617,29 @@ func (m defaultLoginManager) Current(
 	return &account, nil
 }
 
+// deriveClaimURL builds the console-side claim URL from the API URL and an
+// opaque claim token. The signup endpoint returns only the token; the console
+// host is derived from the API host by swapping the leading "api" label for
+// "app" (covers `api.pulumi.com` → `app.pulumi.com` and review-stack hosts like
+// `api-jkeiser-dev.*` → `app-jkeiser-dev.*`). Self-hosted deployments on
+// different host shapes need their own derivation.
+func deriveClaimURL(cloudURL, claimToken string) string {
+	u, err := url.Parse(cloudURL)
+	if err != nil {
+		return ""
+	}
+	host := u.Host
+	switch {
+	case strings.HasPrefix(host, "api."):
+		host = "app." + host[len("api."):]
+	case strings.HasPrefix(host, "api-"):
+		host = "app-" + host[len("api-"):]
+	}
+	u.Host = host
+	u.Path = "/claim/" + url.PathEscape(claimToken)
+	return u.String()
+}
+
 // currentOrSignupAgentAccount returns credentials from the shared agent cache,
 // or creates a new agent account for the detected agent when no valid cached
 // credentials exist.
@@ -683,8 +706,8 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	if err != nil {
 		return nil, err
 	}
-	if signup.AccessTokenValidUntil != 0 {
-		expiresAt := time.Unix(signup.AccessTokenValidUntil, 0)
+	if !signup.AccessTokenValidUntil.IsZero() {
+		expiresAt := signup.AccessTokenValidUntil
 		if tokenInfo == nil {
 			tokenInfo = &workspace.TokenInformation{}
 		}
@@ -703,13 +726,14 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		return nil, err
 	}
 	logging.V(7).Infof("Stored shared agent credentials for %q", cloudURL)
-	if signup.ClaimURL != "" {
+	if signup.ClaimToken != "" {
+		claimURL := deriveClaimURL(cloudURL, signup.ClaimToken)
 		claim := workspace.AgentClaim{
-			ClaimURL: signup.ClaimURL,
+			ClaimURL: claimURL,
 			CloudURL: cloudURL,
 		}
-		if signup.ClaimURLValidUntil != 0 {
-			claim.ValidUntil = time.Unix(signup.ClaimURLValidUntil, 0)
+		if !signup.ClaimTokenValidUntil.IsZero() {
+			claim.ValidUntil = signup.ClaimTokenValidUntil
 		}
 		if err = workspace.StoreAgentClaim(claim); err != nil {
 			return nil, err
@@ -717,14 +741,14 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 		if !claim.ValidUntil.IsZero() {
 			logging.V(7).Infof("Stored shared agent claim metadata for %q; valid until %s", cloudURL, claim.ValidUntil)
 		} else {
-			logging.V(7).Infof("Stored shared agent claim metadata for %q without claimUrlValidUntil", cloudURL)
+			logging.V(7).Infof("Stored shared agent claim metadata for %q without claimTokenValidUntil", cloudURL)
 		}
 		var accessTokenExpiresAt *time.Time
 		if account.TokenInformation != nil {
 			accessTokenExpiresAt = account.TokenInformation.ExpiresAt
 		}
 		_, err = fmt.Fprint(os.Stderr,
-			workspace.FormatAgentClaimInstruction(signup.ClaimURL, accessTokenExpiresAt, claim.ValidUntil, time.Now()))
+			workspace.FormatAgentClaimInstruction(claimURL, accessTokenExpiresAt, claim.ValidUntil, time.Now()))
 		contract.IgnoreError(err)
 	}
 

@@ -132,12 +132,12 @@ type NeoTaskMessage struct {
 
 // AgentSignupResponse is returned by the unauthenticated agent signup endpoint.
 type AgentSignupResponse struct {
-	ChallengeID           string `json:"challengeID"`
-	ChallengeData         string `json:"challengeData"`
-	AccessToken           string `json:"accessToken"`
-	AccessTokenValidUntil int64  `json:"accessTokenValidUntil"`
-	ClaimURL              string `json:"claimUrl"`
-	ClaimURLValidUntil    int64  `json:"claimUrlValidUntil"`
+	ChallengeID           string    `json:"challengeID"`
+	ChallengeData         string    `json:"challengeData"`
+	AccessToken           string    `json:"accessToken"`
+	AccessTokenValidUntil time.Time `json:"accessTokenValidUntil"`
+	ClaimToken            string    `json:"claimToken"`
+	ClaimTokenValidUntil  time.Time `json:"claimTokenValidUntil"`
 }
 
 // agentSignupRequest is sent to the unauthenticated agent signup endpoint. The
@@ -272,7 +272,7 @@ func (pc *Client) URL() string {
 // unauthenticated signup endpoint.
 func (pc *Client) SignupAgent(ctx context.Context, agentName string) (AgentSignupResponse, error) {
 	var challenge AgentSignupResponse
-	if err := pc.restCall(ctx, http.MethodPost, "/api/agents/signup", nil, agentSignupRequest{}, &challenge); err != nil {
+	if err := pc.restCall(ctx, http.MethodGet, "/api/agents/signup", nil, nil, &challenge); err != nil {
 		return AgentSignupResponse{}, err
 	}
 	if challenge.ChallengeID == "" || challenge.ChallengeData == "" {
