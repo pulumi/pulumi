@@ -685,13 +685,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// ESC asks the agent to abort the current turn. Posts user_cancel
-		// upstream and flips the local cancelling flag so the spinner label
-		// switches to "Cancelling..." until the backend acknowledges via
-		// cancelled / error / a new final assistant_message. Ignored when the
-		// TUI isn't busy or is already waiting on an approval (where the
-		// agent is paused for us anyway).
+		// ESC has two roles, dispatched on whether there's a draft in the
+		// textarea. With content, it clears the draft (so users can wipe a
+		// half-written message without reaching for Backspace or Ctrl+C).
+		// With an empty textarea, it falls back to asking the agent to abort
+		// the current turn: posts user_cancel upstream and flips the local
+		// cancelling flag so the spinner label switches to "Cancelling..."
+		// until the backend acknowledges via cancelled / error / a new final
+		// assistant_message. The cancel branch is ignored when the TUI isn't
+		// busy or is already waiting on an approval (where the agent is
+		// paused for us anyway).
 		if keyStr == "esc" {
+			if m.textInput.Value() != "" {
+				m.textInput.Reset()
+				return m, nil
+			}
 			if m.busy && !m.pendingApproval && !m.cancelling {
 				m.sendOut(outboundEvent{event: apitype.AgentUserEventCancel{Type: userEventUserCancel}})
 				m.cancelling = true
