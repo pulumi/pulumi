@@ -37,45 +37,41 @@ For example, create three web servers:
 ```typescript
 import * as aws from "@pulumi/aws";
 
-const sg = new aws.ec2.SecurityGroup("web-sg", {
-    ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"] }],
+const ami = aws.ec2.getAmiOutput({
+    owners: ["amazon"],
+    mostRecent: true,
+    filters: [{ name: "name", values: ["al2023-ami-*-x86_64"] }],
 });
 
 for (let i = 0; i < 3; i++) {
     new aws.ec2.Instance(`web-${i}`, {
-        ami: "ami-7172b611",
-        instanceType: "t2.micro",
-        vpcSecurityGroupIds: [sg.id],
+        ami: ami.id,
+        instanceType: "t3.micro",
         userData: `#!/bin/bash
-            echo "Hello, World!" > index.html
+            echo "Hello from server ${i}" > /var/www/index.html
             nohup python3 -m http.server 80 &`,
     });
 }
 ```
 
-Or a simple serverless timer that archives Hacker News every day at 8:30AM:
+Or stand up a serverless HTTP API in a few lines:
 
 ```typescript
 import * as aws from "@pulumi/aws";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import * as apigateway from "@pulumi/aws-apigateway";
 
-const snapshots = new aws.dynamodb.Table("snapshots", {
-    attributes: [{ name: "id", type: "S" }],
-    hashKey: "id",
-    billingMode: "PAY_PER_REQUEST",
+const fn = new aws.lambda.CallbackFunction("hello", {
+    callback: async () => ({
+        statusCode: 200,
+        body: `Hello at ${new Date().toISOString()}`,
+    }),
 });
 
-aws.cloudwatch.onSchedule("daily-yc-snapshot", "cron(30 8 * * ? *)", async () => {
-    const res = await fetch("https://news.ycombinator.com");
-    const content = await res.text();
-
-    const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-    await ddb.send(new PutCommand({
-        TableName: snapshots.name.get(),
-        Item: { date: Date.now(), content },
-    }));
+const api = new apigateway.RestAPI("api", {
+    routes: [{ path: "/", method: "GET", eventHandler: fn }],
 });
+
+export const url = api.url;
 ```
 
 Many examples are available spanning containers, serverless, and infrastructure in
