@@ -49,6 +49,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/registry"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -130,23 +131,30 @@ type NeoTaskMessage struct {
 	EntityDiff *NeoTaskEntityDiff `json:"entity_diff,omitempty"`
 }
 
-// AgentSignupResponse is returned by the unauthenticated agent signup endpoint.
-type AgentSignupResponse struct {
-	ChallengeID           string `json:"challengeID"`
-	ChallengeData         string `json:"challengeData"`
-	AccessToken           string `json:"accessToken"`
-	AccessTokenValidUntil int64  `json:"accessTokenValidUntil"`
-	ClaimURL              string `json:"claimUrl"`
-	ClaimURLValidUntil    int64  `json:"claimUrlValidUntil"`
+// AgentSignupChallenge is returned by the unauthenticated agent signup
+// challenge endpoint.
+type AgentSignupChallenge struct {
+	ChallengeID   string `json:"challengeID"`
+	ChallengeData string `json:"challengeData"`
 }
 
-// agentSignupRequest is sent to the unauthenticated agent signup endpoint. The
-// first request is empty and receives a challenge; the second request includes
-// the solved challenge and the detected agent name.
+// AgentSignupResponse is returned after solving an unauthenticated agent signup
+// challenge.
+type AgentSignupResponse struct {
+	AccessToken           string    `json:"accessToken"`
+	AccessTokenValidUntil time.Time `json:"accessTokenValidUntil"`
+	ClaimToken            string    `json:"claimToken"`
+	ClaimTokenValidUntil  time.Time `json:"claimTokenValidUntil"`
+}
+
+// agentSignupRequest is sent to the unauthenticated agent signup endpoint with
+// the solved challenge and best-effort agent metadata.
 type agentSignupRequest struct {
-	ChallengeID     string `json:"challengeID,omitempty"`
-	ChallengeResult string `json:"challengeResult,omitempty"`
-	AgentName       string `json:"agentName,omitempty"`
+	ChallengeID              string `json:"challengeID,omitempty"`
+	ChallengeResult          string `json:"challengeResult,omitempty"`
+	AgentName                string `json:"agentName,omitempty"`
+	AgentModel               string `json:"agentModel,omitempty"`
+	ChallengeSolveDurationMS int64  `json:"challengeSolveDurationMs,omitempty"`
 }
 
 // NeoTaskEntityDiff represents entities to add or remove from the agent context.
@@ -270,9 +278,9 @@ func (pc *Client) URL() string {
 
 // SignupAgent creates an ephemeral account for the detected agent using the
 // unauthenticated signup endpoint.
-func (pc *Client) SignupAgent(ctx context.Context, agentName string) (AgentSignupResponse, error) {
-	var challenge AgentSignupResponse
-	if err := pc.restCall(ctx, http.MethodPost, "/api/agents/signup", nil, agentSignupRequest{}, &challenge); err != nil {
+func (pc *Client) SignupAgent(ctx context.Context, metadata agentdetect.Metadata) (AgentSignupResponse, error) {
+	var challenge AgentSignupChallenge
+	if err := pc.restCall(ctx, http.MethodGet, "/api/agents/signup", nil, nil, &challenge); err != nil {
 		return AgentSignupResponse{}, err
 	}
 	if challenge.ChallengeID == "" || challenge.ChallengeData == "" {
@@ -280,18 +288,38 @@ func (pc *Client) SignupAgent(ctx context.Context, agentName string) (AgentSignu
 			"creating agent Pulumi account: signup response did not include challenge data")
 	}
 
+	challengeStart := time.Now()
 	challengeResult, err := solveAgentSignupChallenge(ctx, challenge.ChallengeData)
 	if err != nil {
 		return AgentSignupResponse{}, err
 	}
+	challengeSolveDuration := time.Since(challengeStart)
 
 	var resp AgentSignupResponse
 	if err := pc.restCall(ctx, http.MethodPost, "/api/agents/signup", nil, agentSignupRequest{
-		ChallengeID:     challenge.ChallengeID,
-		ChallengeResult: challengeResult,
-		AgentName:       agentName,
+		ChallengeID:              challenge.ChallengeID,
+		ChallengeResult:          challengeResult,
+		AgentName:                metadata.Name,
+		AgentModel:               metadata.Model,
+		ChallengeSolveDurationMS: challengeSolveDuration.Milliseconds(),
 	}, &resp); err != nil {
 		return AgentSignupResponse{}, err
+	}
+	if resp.AccessToken == "" {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include an access token")
+	}
+	if resp.AccessTokenValidUntil.IsZero() {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include accessTokenValidUntil")
+	}
+	if resp.ClaimToken == "" {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include a claim token")
+	}
+	if resp.ClaimTokenValidUntil.IsZero() {
+		return AgentSignupResponse{}, errors.New(
+			"creating agent Pulumi account: signup response did not include claimTokenValidUntil")
 	}
 	return resp, nil
 }

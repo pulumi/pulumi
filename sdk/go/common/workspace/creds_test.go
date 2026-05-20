@@ -155,6 +155,22 @@ func TestFormatAgentClaimInstruction(t *testing.T) {
 	assert.Empty(t, FormatAgentClaimInstruction("", &expiresAt, validUntil, now))
 }
 
+func TestFormatAgentAuthRequiredInstruction(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, time.May, 17, 8, 24, 56, 0, time.UTC)
+	expiresAt := now.Add(2*24*time.Hour + 3*time.Hour + 9*time.Minute)
+
+	assert.Equal(t,
+		"PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n"+
+			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
+			"ACTION_REQUIRED=Tell the user to run pulumi login.\n"+
+			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate "+
+			"even though local access had not expired. The account was likely claimed or revoked. "+
+			"Ask the user to run pulumi login before retrying.\n",
+		FormatAgentAuthRequiredInstruction(expiresAt, now))
+}
+
 func TestFormatAgentClaimValidFor(t *testing.T) {
 	t.Parallel()
 

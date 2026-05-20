@@ -371,6 +371,21 @@ func FormatAgentClaimInstruction(
 	return message
 }
 
+// FormatAgentAuthRequiredInstruction returns the structured instruction shown
+// to coding agents when an ephemeral agent access token is rejected by Pulumi
+// Cloud before its locally stored expiration time.
+func FormatAgentAuthRequiredInstruction(accessTokenExpiresAt time.Time, now time.Time) string {
+	validFor := FormatAgentClaimValidFor(accessTokenExpiresAt, now)
+	return fmt.Sprintf(
+		"PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n"+
+			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n"+
+			"ACTION_REQUIRED=Tell the user to run pulumi login.\n"+
+			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate "+
+			"even though local access had not expired. The account was likely claimed or revoked. "+
+			"Ask the user to run pulumi login before retrying.\n",
+		validFor)
+}
+
 // FormatAgentClaimValidFor returns a compact, approximate duration until an
 // agent account or claim URL expires.
 func FormatAgentClaimValidFor(validUntil, now time.Time) string {
@@ -409,6 +424,23 @@ func agentAccessTokenExpiresAt(account Account, now time.Time) (*time.Time, bool
 		return nil, false
 	}
 	return account.TokenInformation.ExpiresAt, account.TokenInformation.ExpiresAt.After(now)
+}
+
+// AgentAccessTokenExpiresAt returns the locally stored agent account
+// access-token expiration, plus whether that expiration is still in the future.
+func AgentAccessTokenExpiresAt(account Account, now time.Time) (*time.Time, bool) {
+	return agentAccessTokenExpiresAt(account, now)
+}
+
+// GetAgentAccessTokenExpiresAt returns the locally stored access-token
+// expiration for the shared temporary agent credentials for cloudURL.
+func GetAgentAccessTokenExpiresAt(cloudURL string, now time.Time) (*time.Time, bool, error) {
+	account, err := GetAgentAccount(cloudURL)
+	if err != nil {
+		return nil, false, err
+	}
+	expiresAt, valid := agentAccessTokenExpiresAt(account, now)
+	return expiresAt, valid, nil
 }
 
 func defaultAgentPulumiDir() string {

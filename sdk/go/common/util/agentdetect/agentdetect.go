@@ -14,7 +14,20 @@
 
 package agentdetect
 
-import "strings"
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/BurntSushi/toml"
+)
+
+// Metadata describes the detected AI coding agent environment.
+type Metadata struct {
+	Name  string
+	Model string
+}
 
 // Detect returns a normalized name for the AI coding agent driving
 // the CLI (e.g. "claude", "cursor", "codex"), or "" if none is detected.
@@ -66,4 +79,113 @@ func Detect(getEnv func(string) string) string {
 	}
 
 	return ""
+}
+
+// DetectMetadata returns the normalized agent name and best-effort model
+// information for the AI coding agent driving the CLI.
+func DetectMetadata(getEnv func(string) string) Metadata {
+	name := Detect(getEnv)
+	return Metadata{
+		Name:  name,
+		Model: DetectModel(name, getEnv),
+	}
+}
+
+// DetectModel returns best-effort model information for the detected agent.
+func DetectModel(agentName string, getEnv func(string) string) string {
+	for _, envVar := range []string{"PULUMI_AGENT_MODEL", "AI_AGENT_MODEL"} {
+		if model := strings.TrimSpace(getEnv(envVar)); model != "" {
+			return model
+		}
+	}
+	switch strings.ToLower(strings.TrimSpace(agentName)) {
+	case "claude", "cowork":
+		if model := strings.TrimSpace(getEnv("ANTHROPIC_MODEL")); model != "" {
+			return model
+		}
+		return detectClaudeModel(getEnv)
+	case "codex":
+		return detectCodexModel(getEnv)
+	case "gemini":
+		return detectGeminiModel(getEnv)
+	default:
+		return ""
+	}
+}
+
+func detectCodexModel(getEnv func(string) string) string {
+	type codexConfig struct {
+		Model string `toml:"model"`
+	}
+	var cfg codexConfig
+	if readTOMLFile(filepath.Join(homeDir(getEnv), ".codex", "config.toml"), &cfg) {
+		return strings.TrimSpace(cfg.Model)
+	}
+	return ""
+}
+
+func detectClaudeModel(getEnv func(string) string) string {
+	type claudeSettings struct {
+		Model string `json:"model"`
+	}
+	configDir := strings.TrimSpace(getEnv("CLAUDE_CONFIG_DIR"))
+	if configDir == "" {
+		configDir = filepath.Join(homeDir(getEnv), ".claude")
+	}
+	for _, path := range []string{
+		filepath.Join(configDir, "settings.json"),
+		filepath.Join(configDir, "settings.local.json"),
+	} {
+		var settings claudeSettings
+		if readJSONFile(path, &settings) && strings.TrimSpace(settings.Model) != "" {
+			return strings.TrimSpace(settings.Model)
+		}
+	}
+	return ""
+}
+
+func detectGeminiModel(getEnv func(string) string) string {
+	type geminiSettings struct {
+		Model string `json:"model"`
+	}
+	var settings geminiSettings
+	if readJSONFile(filepath.Join(homeDir(getEnv), ".gemini", "settings.json"), &settings) {
+		return strings.TrimSpace(settings.Model)
+	}
+	return ""
+}
+
+func homeDir(getEnv func(string) string) string {
+	if home := strings.TrimSpace(getEnv("HOME")); home != "" {
+		return home
+	}
+	if home := strings.TrimSpace(getEnv("USERPROFILE")); home != "" {
+		return home
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return home
+}
+
+func readTOMLFile(path string, v any) bool {
+	if strings.TrimSpace(path) == "" {
+		return false
+	}
+	if _, err := toml.DecodeFile(path, v); err != nil {
+		return false
+	}
+	return true
+}
+
+func readJSONFile(path string, v any) bool {
+	if strings.TrimSpace(path) == "" {
+		return false
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	return json.Unmarshal(data, v) == nil
 }

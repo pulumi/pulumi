@@ -22,17 +22,21 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
+	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/snapshot"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Display an error to the user.
@@ -73,6 +77,14 @@ func processCmdErrors(err error) error {
 		return result.BailError(err)
 	}
 
+	if errors.Is(err, backenderr.LoginRequiredError{}) && agentdetect.Detect(os.Getenv) != "" {
+		if message := agentAuthRequiredMessage(time.Now()); message != "" {
+			_, printErr := fmt.Fprint(os.Stderr, message)
+			contract.IgnoreError(printErr)
+			return result.BailError(err)
+		}
+	}
+
 	// Other type-specific error handling.
 	if de, ok := engine.AsDecryptError(err); ok {
 		printDecryptError(*de)
@@ -88,6 +100,18 @@ func processCmdErrors(err error) error {
 
 	// In all other cases, return the unexpected error as-is for generic handling.
 	return err
+}
+
+func agentAuthRequiredMessage(now time.Time) string {
+	claim, err := workspace.GetAgentClaim()
+	if err != nil || claim.CloudURL == "" {
+		return ""
+	}
+	expiresAt, valid, err := workspace.GetAgentAccessTokenExpiresAt(claim.CloudURL, now)
+	if err != nil || !valid || expiresAt == nil {
+		return ""
+	}
+	return workspace.FormatAgentAuthRequiredInstruction(*expiresAt, now)
 }
 
 // A type-specific handler for engine.DecryptErrors that prints out help text

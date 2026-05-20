@@ -60,3 +60,20 @@ func TestConsoleURL(t *testing.T) {
 		assert.Equal(t, "", CloudConsoleURL("not-even-a-real-url", "pulumi-bot", "my-stack"))
 	})
 }
+
+//nolint:paralleltest // sets env var, must be run in isolation
+func TestAgentClaimURL(t *testing.T) {
+	assert.Equal(t,
+		"https://app.pulumi.com/signup?claim=abc123",
+		AgentClaimURL("https://api.pulumi.com", "abc123"))
+
+	t.Run("HonorEnvVar", func(t *testing.T) {
+		t.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
+		assert.Equal(t,
+			"https://pulumi-console.contoso.com/signup?claim=abc123",
+			AgentClaimURL("https://api.pulumi.contoso.com", "abc123"))
+	})
+
+	assert.Equal(t, "", AgentClaimURL("https://api.pulumi.com", ""))
+	assert.Equal(t, "", AgentClaimURL("https://pulumi.example.com", "abc123"))
+}

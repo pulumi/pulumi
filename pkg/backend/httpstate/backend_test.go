@@ -276,6 +276,57 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 }
 
 //nolint:paralleltest // mutates shared temporary agent credentials
+func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	signupCalls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/user":
+			rw.WriteHeader(http.StatusUnauthorized)
+		case "/api/agents/signup":
+			signupCalls++
+			rw.WriteHeader(http.StatusInternalServerError)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	expiresAt := time.Now().Add(time.Hour)
+	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken: "locally-unexpired-agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/signup?claim=abc123",
+		ValidUntil: time.Now().Add(-time.Hour),
+		CloudURL:   server.URL,
+	})
+	require.NoError(t, err)
+
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	require.ErrorIs(t, err, ErrUnauthorized)
+	require.ErrorIs(t, err, backenderr.LoginRequiredError{})
+	assert.ErrorContains(t, err, "ask the user to run `pulumi login`")
+	assert.Nil(t, account)
+	assert.Equal(t, 0, signupCalls)
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
 func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T) {
 	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
 	require.NoError(t, err)
@@ -321,6 +372,86 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	require.NotNil(t, account)
 	assert.Equal(t, "valid-agent-token", account.AccessToken)
 	assert.Equal(t, 0, signupCalls)
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials and console env
+func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+	t.Setenv(client.ConsoleDomainEnvVar, "app.example.com")
+
+	accessTokenValidUntil := time.Now().UTC().Add(time.Hour).Truncate(time.Second)
+	claimTokenValidUntil := accessTokenValidUntil.Add(24 * time.Hour)
+	var signupMethods []string
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/api/agents/signup":
+			signupMethods = append(signupMethods, req.Method)
+			switch req.Method {
+			case http.MethodGet:
+				err := json.NewEncoder(rw).Encode(client.AgentSignupChallenge{
+					ChallengeID:   "challenge-1",
+					ChallengeData: "v1:abcdef:8",
+				})
+				require.NoError(t, err)
+			case http.MethodPost:
+				var signupReq struct {
+					ChallengeID     string `json:"challengeID"`
+					ChallengeResult string `json:"challengeResult"`
+					AgentName       string `json:"agentName"`
+				}
+				require.NoError(t, json.NewDecoder(req.Body).Decode(&signupReq))
+				assert.Equal(t, "challenge-1", signupReq.ChallengeID)
+				assert.NotEmpty(t, signupReq.ChallengeResult)
+				assert.Equal(t, "codex", signupReq.AgentName)
+				err := json.NewEncoder(rw).Encode(client.AgentSignupResponse{
+					AccessToken:           "agent-token",
+					AccessTokenValidUntil: accessTokenValidUntil,
+					ClaimToken:            "claim-token",
+					ClaimTokenValidUntil:  claimTokenValidUntil,
+				})
+				require.NoError(t, err)
+			default:
+				rw.WriteHeader(http.StatusMethodNotAllowed)
+			}
+		case "/api/user":
+			assert.Equal(t, "token agent-token", req.Header.Get("Authorization"))
+			err := json.NewEncoder(rw).Encode(map[string]any{
+				"githubLogin": "agent-user",
+				"organizations": []map[string]string{
+					{"githubLogin": "agent-org"},
+				},
+			})
+			require.NoError(t, err)
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	account, err := defaultLoginManager{}.currentOrSignupAgentAccount(t.Context(), server.URL, false, true, "codex")
+	require.NoError(t, err)
+	require.NotNil(t, account)
+	assert.Equal(t, "agent-token", account.AccessToken)
+	require.NotNil(t, account.TokenInformation)
+	require.NotNil(t, account.TokenInformation.ExpiresAt)
+	assert.True(t, account.TokenInformation.ExpiresAt.Equal(accessTokenValidUntil))
+	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, signupMethods)
+
+	claim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	assert.Equal(t, "http://app.example.com/signup?claim=claim-token", claim.ClaimURL)
+	assert.True(t, claim.ValidUntil.Equal(claimTokenValidUntil))
+	assert.Equal(t, server.URL, claim.CloudURL)
 }
 
 //nolint:paralleltest // mutates global configuration

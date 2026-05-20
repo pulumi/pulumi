@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -95,8 +96,6 @@ func newMockClient(server *httptest.Server) *Client {
 }
 
 func TestSignupAgent(t *testing.T) {
-	t.Parallel()
-
 	validUntil := time.Now().UTC().Truncate(time.Second)
 	expiresAt := validUntil.Add(-time.Hour)
 	const challengeID = "challenge-1"
@@ -109,62 +108,67 @@ func TestSignupAgent(t *testing.T) {
 		gotAuths = append(gotAuths, req.Header.Get("Authorization"))
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
-		var signupReq agentSignupRequest
-		require.NoError(t, json.Unmarshal(body, &signupReq))
-		requests = append(requests, signupReq)
 
-		switch len(requests) {
+		switch len(gotMethods) {
 		case 1:
-			err = json.NewEncoder(rw).Encode(AgentSignupResponse{
+			assert.Equal(t, http.MethodGet, req.Method)
+			assert.Empty(t, body)
+			err = json.NewEncoder(rw).Encode(AgentSignupChallenge{
 				ChallengeID:   challengeID,
 				ChallengeData: challengeData,
 			})
 			require.NoError(t, err)
 		case 2:
+			assert.Equal(t, http.MethodPost, req.Method)
+			var signupReq agentSignupRequest
+			require.NoError(t, json.Unmarshal(body, &signupReq))
+			requests = append(requests, signupReq)
 			assert.Equal(t, challengeID, signupReq.ChallengeID)
 			assert.Equal(t, "codex", signupReq.AgentName)
+			assert.Equal(t, "gpt-test", signupReq.AgentModel)
+			assert.GreaterOrEqual(t, signupReq.ChallengeSolveDurationMS, int64(0))
 			require.NoError(t, verifyAgentSignupChallenge(challengeData, signupReq.ChallengeResult))
 			err = json.NewEncoder(rw).Encode(AgentSignupResponse{
 				AccessToken:           "agent-token",
-				AccessTokenValidUntil: expiresAt.Unix(),
-				ClaimURL:              "https://app.pulumi.com/claim/abc123",
-				ClaimURLValidUntil:    validUntil.Unix(),
+				AccessTokenValidUntil: expiresAt,
+				ClaimToken:            "abc123",
+				ClaimTokenValidUntil:  validUntil,
 			})
 			require.NoError(t, err)
 		default:
-			t.Fatalf("unexpected signup request %d", len(requests))
+			t.Fatalf("unexpected signup request %d", len(gotMethods))
 		}
 	}))
 	defer server.Close()
 
-	resp, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	resp, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{
+		Name:  "codex",
+		Model: "gpt-test",
+	})
 	require.NoError(t, err)
 
-	assert.Equal(t, []string{http.MethodPost, http.MethodPost}, gotMethods)
+	assert.Equal(t, []string{http.MethodGet, http.MethodPost}, gotMethods)
 	assert.Equal(t, []string{"/api/agents/signup", "/api/agents/signup"}, gotPaths)
 	assert.Equal(t, []string{"", ""}, gotAuths)
-	require.Len(t, requests, 2)
-	assert.Empty(t, requests[0].ChallengeID)
-	assert.Empty(t, requests[0].ChallengeResult)
-	assert.Empty(t, requests[0].AgentName)
+	require.Len(t, requests, 1)
 	assert.Equal(t, "agent-token", resp.AccessToken)
-	assert.Equal(t, "https://app.pulumi.com/claim/abc123", resp.ClaimURL)
-	assert.Equal(t, expiresAt.Unix(), resp.AccessTokenValidUntil)
-	assert.Equal(t, validUntil.Unix(), resp.ClaimURLValidUntil)
+	assert.Equal(t, "abc123", resp.ClaimToken)
+	assert.True(t, resp.AccessTokenValidUntil.Equal(expiresAt))
+	assert.True(t, resp.ClaimTokenValidUntil.Equal(validUntil))
 }
 
 func TestSignupAgentRequiresChallengeData(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, http.MethodGet, req.Method)
 		assert.Equal(t, "/api/agents/signup", req.URL.Path)
-		err := json.NewEncoder(rw).Encode(AgentSignupResponse{})
+		err := json.NewEncoder(rw).Encode(AgentSignupChallenge{})
 		require.NoError(t, err)
 	}))
 	defer server.Close()
 
-	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
 	require.ErrorContains(t, err, "signup response did not include challenge data")
 }
 
@@ -172,13 +176,13 @@ func TestSignupAgentReturnsInitialSignupError(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, http.MethodGet, req.Method)
 		assert.Equal(t, "/api/agents/signup", req.URL.Path)
 		rw.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 
-	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
 	require.Error(t, err)
 }
 
@@ -186,9 +190,9 @@ func TestSignupAgentReturnsChallengeError(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, http.MethodPost, req.Method)
+		assert.Equal(t, http.MethodGet, req.Method)
 		assert.Equal(t, "/api/agents/signup", req.URL.Path)
-		err := json.NewEncoder(rw).Encode(AgentSignupResponse{
+		err := json.NewEncoder(rw).Encode(AgentSignupChallenge{
 			ChallengeID:   "challenge-1",
 			ChallengeData: "v2:abcdef:8",
 		})
@@ -196,7 +200,7 @@ func TestSignupAgentReturnsChallengeError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
 	require.ErrorContains(t, err, "invalid challenge data")
 }
 
@@ -205,24 +209,112 @@ func TestSignupAgentReturnsFinalSignupError(t *testing.T) {
 
 	var requestCount int
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		assert.Equal(t, http.MethodPost, req.Method)
 		assert.Equal(t, "/api/agents/signup", req.URL.Path)
 		requestCount++
 		if requestCount == 1 {
-			err := json.NewEncoder(rw).Encode(AgentSignupResponse{
+			assert.Equal(t, http.MethodGet, req.Method)
+			err := json.NewEncoder(rw).Encode(AgentSignupChallenge{
 				ChallengeID:   "challenge-1",
 				ChallengeData: "v1:abcdef:8",
 			})
 			require.NoError(t, err)
 			return
 		}
+		assert.Equal(t, http.MethodPost, req.Method)
 		rw.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 
-	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), "codex")
+	_, err := NewClient(server.URL, "", true, nil).SignupAgent(t.Context(), agentdetect.Metadata{Name: "codex"})
 	require.Error(t, err)
 	assert.Equal(t, 2, requestCount)
+}
+
+func TestSignupAgentRequiresFinalSignupFields(t *testing.T) {
+	t.Parallel()
+
+	validUntil := time.Now().UTC().Truncate(time.Second)
+	tests := []struct {
+		name      string
+		response  AgentSignupResponse
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name: "missing access token",
+			response: AgentSignupResponse{
+				AccessTokenValidUntil: validUntil,
+				ClaimToken:            "claim-token",
+				ClaimTokenValidUntil:  validUntil,
+			},
+			assertErr: func(t require.TestingT, err error, i ...any) {
+				require.ErrorContains(t, err, "signup response did not include an access token", i...)
+			},
+		},
+		{
+			name: "missing access token valid until",
+			response: AgentSignupResponse{
+				AccessToken:          "agent-token",
+				ClaimToken:           "claim-token",
+				ClaimTokenValidUntil: validUntil,
+			},
+			assertErr: func(t require.TestingT, err error, i ...any) {
+				require.ErrorContains(t, err, "signup response did not include accessTokenValidUntil", i...)
+			},
+		},
+		{
+			name: "missing claim token",
+			response: AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: validUntil,
+				ClaimTokenValidUntil:  validUntil,
+			},
+			assertErr: func(t require.TestingT, err error, i ...any) {
+				require.ErrorContains(t, err, "signup response did not include a claim token", i...)
+			},
+		},
+		{
+			name: "missing claim token valid until",
+			response: AgentSignupResponse{
+				AccessToken:           "agent-token",
+				AccessTokenValidUntil: validUntil,
+				ClaimToken:            "claim-token",
+			},
+			assertErr: func(t require.TestingT, err error, i ...any) {
+				require.ErrorContains(t, err, "signup response did not include claimTokenValidUntil", i...)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var requestCount int
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, "/api/agents/signup", req.URL.Path)
+				requestCount++
+				if requestCount == 1 {
+					assert.Equal(t, http.MethodGet, req.Method)
+					err := json.NewEncoder(rw).Encode(AgentSignupChallenge{
+						ChallengeID:   "challenge-1",
+						ChallengeData: "v1:abcdef:8",
+					})
+					require.NoError(t, err)
+					return
+				}
+				assert.Equal(t, http.MethodPost, req.Method)
+				err := json.NewEncoder(rw).Encode(tt.response)
+				require.NoError(t, err)
+			}))
+			defer server.Close()
+
+			_, err := NewClient(server.URL, "", true, nil).SignupAgent(
+				t.Context(),
+				agentdetect.Metadata{Name: "codex"})
+			tt.assertErr(t, err)
+			assert.Equal(t, 2, requestCount)
+		})
+	}
 }
 
 func TestSolveAgentSignupChallengeHonorsCancellation(t *testing.T) {
