@@ -309,7 +309,7 @@ Resource operations: list, create, read, patch, delete
 Functions are invoked directly by name.
 
 Provider plugins are auto-installed on first use; you don't need to run
-'pulumi plugin install' ahead of time. Run 'pulumi package list' to see what is
+'pulumi plugin install' ahead of time. Run 'pulumi plugin list' to see what is
 installed locally.
 
 Provider configuration can be supplied via:
