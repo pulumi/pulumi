@@ -273,8 +273,53 @@ func drawUnionValue(t *rapid.T, u *schema.UnionType, label string, depth int) pr
 	if len(u.ElementTypes) == 0 {
 		return property.Value{}
 	}
-	idx := rapid.IntRange(0, len(u.ElementTypes)-1).Draw(t, label+":uidx")
-	return drawValue(t, u.ElementTypes[idx], fmt.Sprintf("%s:u%d", label, idx), depth)
+	// At low depth, prefer a "terminal-friendly" element: anything that won't
+	// drive further required-property recursion. rapidschema marks a union
+	// required only when at least one branch is safe (a primitive, an
+	// archive, etc.), but the value generator was previously free to pick a
+	// non-safe branch (e.g. an ObjectType containing another required union
+	// that loops back). At depth ≤ 0, restrict the draw to the non-recursive
+	// branches so the recursion bottoms out; if no such branch exists, fall
+	// through to the original behavior (the schema generator's
+	// isSafeForRequired check guarantees this only happens at higher
+	// depths).
+	candidates := u.ElementTypes
+	if depth <= 0 {
+		var safe []schema.Type
+		for _, t := range u.ElementTypes {
+			if isTerminalFriendly(t) {
+				safe = append(safe, t)
+			}
+		}
+		if len(safe) > 0 {
+			candidates = safe
+		}
+	}
+	idx := rapid.IntRange(0, len(candidates)-1).Draw(t, label+":uidx")
+	return drawValue(t, candidates[idx], fmt.Sprintf("%s:u%d", label, idx), depth)
+}
+
+// isTerminalFriendly reports whether drawValue(t) at depth ≤ 0 will produce
+// a value without descending into required-property recursion. The
+// ObjectType branch of drawValue ignores depth (objects must satisfy their
+// required-property schema), so any ObjectType — even nested inside an
+// Input/Optional/Union — is unsafe at depth ≤ 0. Array/Map already return
+// empty at depth ≤ 0, so they are always safe.
+func isTerminalFriendly(t schema.Type) bool {
+	t = codegen.UnwrapType(t)
+	switch tt := t.(type) {
+	case *schema.ObjectType:
+		return false
+	case *schema.UnionType:
+		for _, e := range tt.ElementTypes {
+			if isTerminalFriendly(e) {
+				return true
+			}
+		}
+		return false
+	default:
+		return true
+	}
 }
 
 // drawEnumValue samples one of the enum's declared values and lifts it into a

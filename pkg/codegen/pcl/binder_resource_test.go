@@ -482,6 +482,77 @@ resource property "foo:index:Foo" {
 	}
 }
 
+func TestResolveUnionOfObjectsToleratesNonStringDiscriminatorValue(t *testing.T) {
+	t.Parallel()
+
+	// resolveUnionOfObjects looks up the value at the discriminator key in
+	// the object expression. When that value is a non-string literal (e.g.
+	// `false` against a discriminator whose union mapping is keyed by
+	// string), AsString() used to panic with "not a string." The function
+	// must instead skip over the non-string value and leave the union
+	// unresolved so binding can continue.
+	obj := &model.ObjectConsExpression{
+		Items: []model.ObjectConsItem{{
+			Key: &model.LiteralValueExpression{
+				Value: cty.StringVal("kind"),
+			},
+			Value: &model.LiteralValueExpression{
+				Value: cty.False,
+			},
+		}},
+	}
+	union := &schema.UnionType{
+		Discriminator: "kind",
+		Mapping:       map[string]string{"a": "pkg:index:A"},
+		ElementTypes: []schema.Type{
+			&schema.ObjectType{Token: "pkg:index:A"},
+			&schema.ObjectType{Token: "pkg:index:B"},
+		},
+	}
+
+	require.NotPanics(t, func() {
+		got := resolveUnionOfObjects(obj, union)
+		// With a non-string discriminator value, the union cannot be
+		// reduced; the function returns the union unchanged.
+		require.Same(t, union, got)
+	})
+}
+
+func TestResolveUnionOfObjectsResolvesStringDiscriminatorValue(t *testing.T) {
+	t.Parallel()
+
+	// Sanity check that the non-panic path still resolves a well-formed
+	// discriminator. A string literal value at the discriminator key
+	// selects the corresponding object type via union.Mapping.
+	objA := &schema.ObjectType{Token: "pkg:index:A"}
+	objB := &schema.ObjectType{Token: "pkg:index:B"}
+	union := &schema.UnionType{
+		Discriminator: "kind",
+		Mapping:       map[string]string{"a": "pkg:index:A", "b": "pkg:index:B"},
+		ElementTypes:  []schema.Type{objA, objB},
+	}
+
+	obj := &model.ObjectConsExpression{
+		Items: []model.ObjectConsItem{{
+			Key:   &model.LiteralValueExpression{Value: cty.StringVal("kind")},
+			Value: &model.LiteralValueExpression{Value: cty.StringVal("b")},
+		}},
+	}
+	require.Same(t, objB, resolveUnionOfObjects(obj, union))
+
+	// Same input, expressed as a one-part TemplateExpression — the
+	// importer round-trips literal strings through TemplateExpression.
+	objTpl := &model.ObjectConsExpression{
+		Items: []model.ObjectConsItem{{
+			Key: &model.LiteralValueExpression{Value: cty.StringVal("kind")},
+			Value: &model.TemplateExpression{Parts: []model.Expression{
+				&model.LiteralValueExpression{Value: cty.StringVal("a")},
+			}},
+		}},
+	}
+	require.Same(t, objA, resolveUnionOfObjects(objTpl, union))
+}
+
 type stubSchemaLoader struct {
 	Package *schema.Package
 }

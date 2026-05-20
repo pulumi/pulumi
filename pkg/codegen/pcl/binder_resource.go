@@ -281,20 +281,42 @@ func AnnotateResourceInputs(node *Resource) {
 // then tries to find out which type from the union is the one that matches the object expression.
 // We do this based on the discriminator field in the object expression.
 func resolveUnionOfObjects(objectExpr *model.ObjectConsExpression, union *schema.UnionType) schema.Type {
+	// A discriminator value is always a string (it indexes union.Mapping,
+	// which is keyed by string). The key matched against union.Discriminator
+	// must likewise be a string. Non-string literals (e.g. a bool literal at
+	// the discriminator slot in a malformed input) must not panic AsString —
+	// fall through and leave the union unresolved so binding can continue
+	// (and the malformed input surfaces as a normal type-check diagnostic
+	// rather than a panic). See pkg/importer/hcl2_rapid_test.go for an input
+	// that previously crashed here.
+	asLiteralString := func(v cty.Value) (string, bool) {
+		if v.Type() != cty.String {
+			return "", false
+		}
+		return v.AsString(), true
+	}
+
 	var discriminatorValue string
 	for _, item := range objectExpr.Items {
-		if key, ok := item.Key.(*model.LiteralValueExpression); ok {
-			if key.Value.AsString() == union.Discriminator {
-				if value, ok := item.Value.(*model.LiteralValueExpression); ok {
-					discriminatorValue = value.Value.AsString()
+		key, ok := item.Key.(*model.LiteralValueExpression)
+		if !ok {
+			continue
+		}
+		keyStr, ok := asLiteralString(key.Value)
+		if !ok || keyStr != union.Discriminator {
+			continue
+		}
+		if value, ok := item.Value.(*model.LiteralValueExpression); ok {
+			if s, ok := asLiteralString(value.Value); ok {
+				discriminatorValue = s
+				break
+			}
+		}
+		if value, ok := item.Value.(*model.TemplateExpression); ok && len(value.Parts) == 1 {
+			if literalValue, ok := value.Parts[0].(*model.LiteralValueExpression); ok {
+				if s, ok := asLiteralString(literalValue.Value); ok {
+					discriminatorValue = s
 					break
-				}
-
-				if value, ok := item.Value.(*model.TemplateExpression); ok && len(value.Parts) == 1 {
-					if literalValue, ok := value.Parts[0].(*model.LiteralValueExpression); ok {
-						discriminatorValue = literalValue.Value.AsString()
-						break
-					}
 				}
 			}
 		}
