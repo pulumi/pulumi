@@ -35,21 +35,18 @@ and package management that you already know and love.
 For example, create three web servers:
 
 ```typescript
-import * as aws from "@pulumi/aws";
-
-const ami = aws.ec2.getAmiOutput({
-    owners: ["amazon"],
-    mostRecent: true,
-    filters: [{ name: "name", values: ["al2023-ami-*-x86_64"] }],
+const aws = require("@pulumi/aws");
+const sg = new aws.ec2.SecurityGroup("web-sg", {
+    ingress: [{ protocol: "tcp", fromPort: 80, toPort: 80, cidrBlocks: ["0.0.0.0/0"] }],
 });
-
 for (let i = 0; i < 3; i++) {
     new aws.ec2.Instance(`web-${i}`, {
-        ami: ami.id,
-        instanceType: "t3.micro",
+        ami: "ami-7172b611",
+        instanceType: "t2.micro",
+        vpcSecurityGroupIds: [sg.id],
         userData: `#!/bin/bash
-            echo "Hello from server ${i}" > /var/www/index.html
-            nohup python3 -m http.server 80 &`,
+            echo "Hello, World!" > index.html
+            nohup python -m SimpleHTTPServer 80 &`,
     });
 }
 ```
@@ -57,25 +54,23 @@ for (let i = 0; i < 3; i++) {
 Or a simple serverless timer that archives Hacker News every day at 8:30AM:
 
 ```typescript
-import * as aws from "@pulumi/aws";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+const aws = require("@pulumi/aws");
 
 const snapshots = new aws.dynamodb.Table("snapshots", {
-    attributes: [{ name: "id", type: "S" }],
-    hashKey: "id",
-    billingMode: "PAY_PER_REQUEST",
+    attributes: [{ name: "id", type: "S", }],
+    hashKey: "id", billingMode: "PAY_PER_REQUEST",
 });
 
-aws.cloudwatch.onSchedule("daily-yc-snapshot", "cron(30 8 * * ? *)", async () => {
-    const res = await fetch("https://news.ycombinator.com");
-    const content = await res.text();
-
-    const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-    await ddb.send(new PutCommand({
-        TableName: snapshots.name.get(),
-        Item: { date: Date.now(), content },
-    }));
+aws.cloudwatch.onSchedule("daily-yc-snapshot", "cron(30 8 * * ? *)", () => {
+    require("https").get("https://news.ycombinator.com", res => {
+        let content = "";
+        res.setEncoding("utf8");
+        res.on("data", chunk => content += chunk);
+        res.on("end", () => new aws.sdk.DynamoDB.DocumentClient().put({
+            TableName: snapshots.name.get(),
+            Item: { date: Date.now(), content },
+        }).promise());
+    }).end();
 });
 ```
 
