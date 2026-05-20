@@ -786,7 +786,7 @@ func (t *types) newUnionType(
 
 // typeHash is a structural fingerprint of a Type.
 //
-// It should be used for structural type comparisions, instead of [(Type).String()].
+// It should be used for structural type comparisons, instead of [(Type).String()].
 type typeHash uint64
 
 // hashType returns the structural hash of t.

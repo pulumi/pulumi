@@ -45,7 +45,7 @@ type Type interface {
 	isType()
 }
 
-type primitiveType int
+type primitiveType uint16
 
 const (
 	boolType        primitiveType = 1
