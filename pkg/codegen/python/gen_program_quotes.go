@@ -16,6 +16,7 @@ package python
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
@@ -314,9 +315,7 @@ func (g *generator) rewriteQuotes(x model.Expression) (model.Expression, []*quot
 	allocator := &quoteAllocator{allocated: codegen.StringSet{}, allocations: allocations}
 	x, rewriteDiags2 := model.VisitExpression(x, allocator.allocateExpression, allocator.freeExpression)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(rewriteDiags1)+len(rewriteDiags2))
-	diagnostics = append(diagnostics, rewriteDiags1...)
-	diagnostics = append(diagnostics, rewriteDiags2...)
+	diagnostics := slices.Concat(rewriteDiags1, rewriteDiags2)
 
 	return x, allocations.temps, diagnostics
 }

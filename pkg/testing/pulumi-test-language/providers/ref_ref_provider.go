@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/blang/semver"
 
@@ -85,8 +86,7 @@ func (p *RefRefProvider) GetSchema(
 			},
 		},
 	}
-	typeRequired := make([]string, 0, 7)
-	typeRequired = append(typeRequired, "boolean", "float", "integer", "string", "boolArray", "stringMap")
+	typeRequired := []string{"boolean", "float", "integer", "string", "boolArray", "stringMap"}
 
 	dataProperties := maps.Clone(typeProperties)
 	dataProperties["innerData"] = schema.PropertySpec{
@@ -101,7 +101,7 @@ func (p *RefRefProvider) GetSchema(
 			Ref:  "#/types/ref-ref:index:InnerData",
 		},
 	}
-	dataRequired := append(typeRequired, "innerData")
+	dataRequired := slices.Concat(typeRequired, []string{"innerData"})
 
 	resourceProperties := map[string]schema.PropertySpec{
 		"data": {

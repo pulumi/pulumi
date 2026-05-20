@@ -16,6 +16,7 @@ package model
 
 import (
 	"reflect"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
@@ -287,10 +288,7 @@ func (b *expressionBinder) bindBinaryOpExpression(syntax *hclsyntax.BinaryOpExpr
 
 	typecheckDiags := expr.Typecheck(false)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(leftDiags)+len(rightDiags)+len(typecheckDiags))
-	diagnostics = append(diagnostics, leftDiags...)
-	diagnostics = append(diagnostics, rightDiags...)
-	diagnostics = append(diagnostics, typecheckDiags...)
+	diagnostics := slices.Concat(leftDiags, rightDiags, typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -315,11 +313,7 @@ func (b *expressionBinder) bindConditionalExpression(syntax *hclsyntax.Condition
 	}
 	typecheckDiags := expr.Typecheck(false)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(conditionDiags)+len(trueDiags)+len(falseDiags)+len(typecheckDiags))
-	diagnostics = append(diagnostics, conditionDiags...)
-	diagnostics = append(diagnostics, trueDiags...)
-	diagnostics = append(diagnostics, falseDiags...)
-	diagnostics = append(diagnostics, typecheckDiags...)
+	diagnostics := slices.Concat(conditionDiags, trueDiags, falseDiags, typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -478,10 +472,7 @@ func (b *expressionBinder) bindIndexExpression(syntax *hclsyntax.IndexExpr) (Exp
 	}
 	typecheckDiags := expr.Typecheck(false)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(collectionDiags)+len(keyDiags)+len(typecheckDiags))
-	diagnostics = append(diagnostics, collectionDiags...)
-	diagnostics = append(diagnostics, keyDiags...)
-	diagnostics = append(diagnostics, typecheckDiags...)
+	diagnostics := slices.Concat(collectionDiags, keyDiags, typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -502,8 +493,7 @@ func (b *expressionBinder) bindLiteralValueExpression(
 	}
 	typecheckDiags := expr.Typecheck(false)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(typecheckDiags))
-	diagnostics = append(diagnostics, typecheckDiags...)
+	diagnostics := slices.Concat(typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -635,8 +625,7 @@ func (b *expressionBinder) bindScopeTraversalExpression(
 	}
 	typecheckDiags := expr.typecheck(false, b.options.allowMissingVariables)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(typecheckDiags))
-	diagnostics = append(diagnostics, typecheckDiags...)
+	diagnostics := slices.Concat(typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -669,10 +658,7 @@ func (b *expressionBinder) bindSplatExpression(syntax *hclsyntax.SplatExpr) (Exp
 	}
 	typecheckDiags := expr.typecheck(false, false)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(sourceDiags)+len(eachDiags)+len(typecheckDiags))
-	diagnostics = append(diagnostics, sourceDiags...)
-	diagnostics = append(diagnostics, eachDiags...)
-	diagnostics = append(diagnostics, typecheckDiags...)
+	diagnostics := slices.Concat(sourceDiags, eachDiags, typecheckDiags)
 
 	return expr, diagnostics
 }
@@ -775,9 +761,7 @@ func (b *expressionBinder) bindUnaryOpExpression(syntax *hclsyntax.UnaryOpExpr) 
 	}
 	typecheckDiags := expr.Typecheck(false)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(operandDiags)+len(typecheckDiags))
-	diagnostics = append(diagnostics, operandDiags...)
-	diagnostics = append(diagnostics, typecheckDiags...)
+	diagnostics := slices.Concat(operandDiags, typecheckDiags)
 
 	// simplify UnaryOperation(Negate, Number(N)) into Number(-N)
 	if syntax.Op == hclsyntax.OpNegate {

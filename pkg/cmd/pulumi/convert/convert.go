@@ -22,6 +22,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/blang/semver"
@@ -514,9 +515,7 @@ func getPackagesToGenerateSdks(
 
 	allPackageDescriptors, packageDiagnostics := pcl.ReadAllPackageDescriptors(parser.Files)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(parseDiagnostics)+len(packageDiagnostics))
-	diagnostics = append(diagnostics, parseDiagnostics...)
-	diagnostics = append(diagnostics, packageDiagnostics...)
+	diagnostics := slices.Concat(parseDiagnostics, packageDiagnostics)
 
 	if len(diagnostics) != 0 {
 		var errorDiags hcl.Diagnostics

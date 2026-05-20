@@ -50,9 +50,7 @@ func (b *binder) bindResource(ctx context.Context, node *Resource) hcl.Diagnosti
 
 	bodyDiags := b.bindResourceBody(node)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(typeDiags)+len(bodyDiags))
-	diagnostics = append(diagnostics, typeDiags...)
-	diagnostics = append(diagnostics, bodyDiags...)
+	diagnostics := slices.Concat(typeDiags, bodyDiags)
 
 	return diagnostics
 }

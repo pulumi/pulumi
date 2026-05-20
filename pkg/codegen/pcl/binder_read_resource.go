@@ -16,6 +16,7 @@ package pcl
 
 import (
 	"context"
+	"slices"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
@@ -27,9 +28,7 @@ func (b *binder) bindReadResource(ctx context.Context, node *ReadResource) hcl.D
 
 	bodyDiags := b.bindReadResourceBody(node)
 
-	diagnostics := make(hcl.Diagnostics, 0, len(typeDiags)+len(bodyDiags))
-	diagnostics = append(diagnostics, typeDiags...)
-	diagnostics = append(diagnostics, bodyDiags...)
+	diagnostics := slices.Concat(typeDiags, bodyDiags)
 
 	return diagnostics
 }
