@@ -40,8 +40,9 @@ func newPluginRmCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var all bool
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "rm",
-		Short: "Remove one or more plugins from the download cache",
+		Use:     "remove",
+		Aliases: []string{"rm"},
+		Short:   "Remove one or more plugins from the download cache",
 		Long: "Remove one or more plugins from the download cache.\n" +
 			"\n" +
 			"Specify KIND, NAME, and/or VERSION to narrow down what will be removed.\n" +
