@@ -154,7 +154,7 @@ func TestRestoreConfigFile_SuccessReportsRestored(t *testing.T) {
 func TestWriteBackupFile_CreatesTempBackupWithoutClobbering(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	path := dir + "/Pulumi.dev.yaml"
+	path := filepath.Join(dir, "Pulumi.dev.yaml")
 	require.NoError(t, os.WriteFile(path, []byte("current"), 0o600))
 	require.NoError(t, os.WriteFile(path+".bak", []byte("existing-backup"), 0o600))
 
