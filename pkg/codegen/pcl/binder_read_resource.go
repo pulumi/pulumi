@@ -23,12 +23,12 @@ import (
 )
 
 func (b *binder) bindReadResource(ctx context.Context, node *ReadResource) hcl.Diagnostics {
-	var diagnostics hcl.Diagnostics
-
 	typeDiags := b.bindReadResourceTypes(ctx, node)
-	diagnostics = append(diagnostics, typeDiags...)
 
 	bodyDiags := b.bindReadResourceBody(node)
+
+	diagnostics := make(hcl.Diagnostics, 0, len(typeDiags)+len(bodyDiags))
+	diagnostics = append(diagnostics, typeDiags...)
 	diagnostics = append(diagnostics, bodyDiags...)
 
 	return diagnostics

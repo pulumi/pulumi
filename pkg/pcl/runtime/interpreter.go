@@ -820,9 +820,9 @@ func getAllDependencies(value resource.PropertyValue) []string {
 	if value.IsOutput() {
 		output := value.OutputValue()
 		deps := output.Dependencies
-		strDeps := make([]string, len(deps))
-		for i, dep := range deps {
-			strDeps[i] = string(dep)
+		strDeps := make([]string, 0, len(deps))
+		for _, dep := range deps {
+			strDeps = append(strDeps, string(dep))
 		}
 		return append(strDeps, getAllDependencies(output.Element)...)
 	}

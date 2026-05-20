@@ -506,16 +506,16 @@ func runConvert(
 func getPackagesToGenerateSdks(
 	sourceDirectory string,
 ) (map[string]*schema.PackageDescriptor, hcl.Diagnostics, error) {
-	var diagnostics hcl.Diagnostics
-
 	parser := hclsyntax.NewParser()
 	parseDiagnostics, err := pcl.ParseDirectory(parser, sourceDirectory)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not parse PCL files: %w", err)
 	}
-	diagnostics = append(diagnostics, parseDiagnostics...)
 
 	allPackageDescriptors, packageDiagnostics := pcl.ReadAllPackageDescriptors(parser.Files)
+
+	diagnostics := make(hcl.Diagnostics, 0, len(parseDiagnostics)+len(packageDiagnostics))
+	diagnostics = append(diagnostics, parseDiagnostics...)
 	diagnostics = append(diagnostics, packageDiagnostics...)
 
 	if len(diagnostics) != 0 {

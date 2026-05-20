@@ -85,7 +85,8 @@ func (p *RefRefProvider) GetSchema(
 			},
 		},
 	}
-	typeRequired := []string{"boolean", "float", "integer", "string", "boolArray", "stringMap"}
+	typeRequired := make([]string, 0, 7)
+	typeRequired = append(typeRequired, "boolean", "float", "integer", "string", "boolArray", "stringMap")
 
 	dataProperties := maps.Clone(typeProperties)
 	dataProperties["innerData"] = schema.PropertySpec{

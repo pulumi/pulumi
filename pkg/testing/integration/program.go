@@ -1064,7 +1064,8 @@ func (pt *ProgramTester) pythonCmd(args []string) ([]string, error) {
 		return nil, err
 	}
 
-	cmd := []string{bin}
+	cmd := make([]string, 0, 1+len(args))
+	cmd = append(cmd, bin)
 	return append(cmd, args...), nil
 }
 
@@ -1074,7 +1075,8 @@ func (pt *ProgramTester) pipenvCmd(args []string) ([]string, error) {
 		return nil, err
 	}
 
-	cmd := []string{bin}
+	cmd := make([]string, 0, 1+len(args))
+	cmd = append(cmd, bin)
 	return append(cmd, args...), nil
 }
 

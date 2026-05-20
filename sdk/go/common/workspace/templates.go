@@ -844,7 +844,7 @@ func newExistingFilesError(existing []string) error {
 	var message strings.Builder
 	message.WriteString("creating this template will make changes to existing files:\n")
 	for _, file := range existing {
-		message.WriteString(fmt.Sprintf("  overwrite   %s\n", file))
+		fmt.Fprintf(&message, "  overwrite   %s\n", file)
 	}
 	message.WriteString("\nrerun the command and pass --force to accept and create")
 	return errors.New(message.String())
@@ -857,14 +857,14 @@ type TemplateNotFoundError struct {
 
 func (err TemplateNotFoundError) Error() string {
 	var message strings.Builder
-	message.WriteString(fmt.Sprintf("template '%s' not found", err.templateName))
+	fmt.Fprintf(&message, "template '%s' not found", err.templateName)
 	if len(err.suggestions) == 0 {
 		return message.String()
 	}
 	// Build-up error message with suggestions.
 	message.WriteString("\n\nDid you mean this?\n")
 	for _, suggestion := range err.suggestions {
-		message.WriteString(fmt.Sprintf("\t%s\n", suggestion))
+		fmt.Fprintf(&message, "\t%s\n", suggestion)
 	}
 
 	return message.String()

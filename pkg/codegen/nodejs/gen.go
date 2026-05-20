@@ -557,9 +557,9 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 		}
 
 		var envVars strings.Builder
-		envVars.WriteString(fmt.Sprintf("%q", dv.Environment[0]))
+		fmt.Fprintf(&envVars, "%q", dv.Environment[0])
 		for _, e := range dv.Environment[1:] {
-			envVars.WriteString(fmt.Sprintf(", %q", e))
+			fmt.Fprintf(&envVars, ", %q", e)
 		}
 
 		cast := ""

@@ -729,7 +729,7 @@ func gatherJoinSet(v reflect.Value, joins map[*WorkGroup]struct{}) {
 
 		//nolint:exhaustive // We only need to further process a few kinds of values.
 		switch v.Kind() {
-		case reflect.Interface, reflect.Ptr:
+		case reflect.Interface, reflect.Pointer:
 			if v.IsNil() {
 				return
 			}
@@ -820,7 +820,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 			// A non-input type is already fully-resolved.
 			return true, false, nil, nil
 		}
-		if val := reflect.ValueOf(input); val.Kind() == reflect.Ptr && val.IsNil() {
+		if val := reflect.ValueOf(input); val.Kind() == reflect.Pointer && val.IsNil() {
 			// A nil input is already fully-resolved.
 			return true, false, nil, nil
 		}
@@ -875,7 +875,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		// This requirement is trivially (and unintentionally) violated by `*T` if `*T` does not define `ElementType`,
 		// but `T` does (https://golang.org/ref/spec#Method_sets).
 		// In this case, dereference the pointer to get at its actual value.
-		if v.Kind() == reflect.Ptr && valueType.Kind() != reflect.Ptr {
+		if v.Kind() == reflect.Pointer && valueType.Kind() != reflect.Pointer {
 			v = v.Elem()
 			elemType := v.Interface().(Input).ElementType()
 			contract.Assertf(elemType == valueType, "input element type must be %v, got %v", valueType, elemType)
@@ -886,7 +886,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 			valueType = v.Type()
 		} else {
 			// Handle pointer inputs.
-			if v.Kind() == reflect.Ptr && !v.Type().Implements(resourceType) {
+			if v.Kind() == reflect.Pointer && !v.Type().Implements(resourceType) {
 				v = v.Elem()
 				valueType = valueType.Elem()
 				if resolved.Type() != anyType {
@@ -924,7 +924,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		if !v.IsNil() {
 			return awaitInputs(ctx, v.Elem(), resolved)
 		}
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if !v.IsNil() {
 			resolved.Set(reflect.New(resolved.Type().Elem()))
 			return awaitInputs(ctx, v.Elem(), resolved.Elem())

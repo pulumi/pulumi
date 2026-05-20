@@ -1684,7 +1684,7 @@ func (host *goLanguageHost) Link(
 		if !strings.HasPrefix(dep.Path, start) {
 			modules[modulePath] = start + dep.Path
 		}
-		imports.WriteString(fmt.Sprintf("    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference())))
+		fmt.Fprintf(&imports, "    \"%s\"\n", codegen.ExtractImportBasePath(pkg.Reference()))
 	}
 	instructions += imports.String()
 	instructions += "  )\n"

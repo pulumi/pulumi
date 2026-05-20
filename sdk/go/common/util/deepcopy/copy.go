@@ -63,7 +63,7 @@ func deepCopy(v reflect.Value) reflect.Value {
 			rv.Set(deepCopy(v.Elem()))
 		}
 		return rv
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.IsNil() {
 			return reflect.New(typ).Elem()
 		}
