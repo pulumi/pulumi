@@ -54,24 +54,29 @@ for (let i = 0; i < 3; i++) {
 }
 ```
 
-Or stand up a serverless HTTP API in a few lines:
+Or a simple serverless timer that archives Hacker News every day at 8:30AM:
 
 ```typescript
 import * as aws from "@pulumi/aws";
-import * as apigateway from "@pulumi/aws-apigateway";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 
-const fn = new aws.lambda.CallbackFunction("hello", {
-    callback: async () => ({
-        statusCode: 200,
-        body: `Hello at ${new Date().toISOString()}`,
-    }),
+const snapshots = new aws.dynamodb.Table("snapshots", {
+    attributes: [{ name: "id", type: "S" }],
+    hashKey: "id",
+    billingMode: "PAY_PER_REQUEST",
 });
 
-const api = new apigateway.RestAPI("api", {
-    routes: [{ path: "/", method: "GET", eventHandler: fn }],
-});
+aws.cloudwatch.onSchedule("daily-yc-snapshot", "cron(30 8 * * ? *)", async () => {
+    const res = await fetch("https://news.ycombinator.com");
+    const content = await res.text();
 
-export const url = api.url;
+    const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+    await ddb.send(new PutCommand({
+        TableName: snapshots.name.get(),
+        Item: { date: Date.now(), content },
+    }));
+});
 ```
 
 Many examples are available spanning containers, serverless, and infrastructure in
