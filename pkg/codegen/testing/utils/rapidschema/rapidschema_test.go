@@ -22,6 +22,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestVersionRoundTrips(t *testing.T) {
@@ -33,13 +34,21 @@ func TestVersionRoundTrips(t *testing.T) {
 	})
 }
 
-// TestPackageBinds is implicit: Package() fails the rapid test if BindSpec
-// ever returns an error or any diagnostics. This test exercises that contract
-// by drawing the default rapid.Check budget of packages.
-func TestPackageBinds(t *testing.T) {
+// TestPackageBindsMarshalsAndRoundTrips validates that a generated package is
+// round-tripable through a schema spec.
+//
+// Since all valid schemas must be round-trippable, this tests that we are
+// marshaling valid schemas.
+func TestPackageBindsMarshalsAndRoundTrips(t *testing.T) {
 	t.Parallel()
 	rapid.Check(t, func(t *rapid.T) {
-		Package().Draw(t, "pkg")
+		pkg := Package().Draw(t, "pkg")
+		spec, err := pkg.MarshalSpec()
+		require.NoError(t, err)
+		pkg2, diags, err := schema.BindSpec(*spec, schema.Loader(nil), schema.ValidationOptions{})
+		require.NoError(t, err)
+		assert.Empty(t, diags)
+		assert.Equal(t, pkg, pkg2)
 	})
 }
 
