@@ -445,14 +445,23 @@ func writeStatusAndHeaders(w io.Writer, resp *http.Response) {
 }
 
 // negotiateAccept picks the Accept header value to send for op based on the
-// user's --output flag. When --output is unset we use the op's primary
-// response content type (historically JSON for Pulumi Cloud). When the user
-// explicitly asks for JSON or markdown we validate against the op's declared
-// response content types so the call fails fast with a helpful message
-// instead of surprising the caller with a 406 from the server.
+// user's --output flag. An explicit --output that the op doesn't declare is
+// rejected here so the caller sees a helpful error instead of a 406 from
+// the server.
 func negotiateAccept(op *Operation, output string) (string, error) {
 	switch strings.ToLower(output) {
 	case "", "raw", "auto", "default":
+		if declaresMarkdown(op.SuccessContentTypes) {
+			// Fallback chain so a server that can't produce markdown still
+			// returns a usable body instead of a 406.
+			accept := []string{"text/markdown"}
+			for _, ct := range op.SuccessContentTypes {
+				if !strings.EqualFold(strings.TrimSpace(strings.SplitN(ct, ";", 2)[0]), "text/markdown") {
+					accept = append(accept, ct)
+				}
+			}
+			return strings.Join(accept, ", "), nil
+		}
 		if op.ResponseContentType != "" {
 			return op.ResponseContentType, nil
 		}
@@ -492,6 +501,15 @@ func unsupportedOutputError(op *Operation, want, mediaType string) error {
 	return NewAPIError(cmdutil.ExitCodeError, ErrInvalidFlags, msg).
 		WithField("output").
 		WithSuggestions(suggestions...)
+}
+
+func declaresMarkdown(contentTypes []string) bool {
+	for _, ct := range contentTypes {
+		if strings.EqualFold(strings.TrimSpace(strings.SplitN(ct, ";", 2)[0]), "text/markdown") {
+			return true
+		}
+	}
+	return false
 }
 
 // isJSONContentType loosely matches `application/json` plus any `+json`
