@@ -64,7 +64,7 @@ func TestProjectRuntimeInfoRoundtripYAML(t *testing.T) {
 	doTest(json.Marshal, json.Unmarshal)
 }
 
-func TestProjectValidationForNameAndRuntime(t *testing.T) {
+func TestProjectValidationForName(t *testing.T) {
 	t.Parallel()
 	var err error
 
@@ -72,12 +72,22 @@ func TestProjectValidationForNameAndRuntime(t *testing.T) {
 	proj := Project{}
 	err = proj.Validate()
 	assert.EqualError(t, err, "project is missing a 'name' attribute")
-	// Test lack of runtime
+	// Test success
 	proj.Name = "a project"
 	err = proj.Validate()
-	assert.EqualError(t, err, "project is missing a 'runtime' attribute")
+	require.NoError(t, err)
+}
 
-	// Test success
+func TestProjectValidationForRuntime(t *testing.T) {
+	t.Parallel()
+	var err error
+
+	// Test lack of runtime
+	proj := Project{Name: "a project"}
+	err = proj.Validate()
+	require.NoError(t, err)
+
+	// Test with runtime
 	proj.Runtime = NewProjectRuntimeInfo("test", nil)
 	err = proj.Validate()
 	require.NoError(t, err)
@@ -222,16 +232,6 @@ func TestProjectLoadJSON(t *testing.T) {
 		assert.ErrorContains(t, err, "project is missing a non-empty string 'name' attribute")
 	})
 
-	t.Run("missing runtime", func(t *testing.T) {
-		t.Parallel()
-
-		// Act.
-		_, err := writeAndLoad(t, "{\"name\": \"project\"}")
-
-		// Assert.
-		assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
-	})
-
 	t.Run("multiple errors 1", func(t *testing.T) {
 		t.Parallel()
 
@@ -309,17 +309,6 @@ func TestProjectLoadJSONInformativeErrors(t *testing.T) {
 		// Assert.
 		assert.ErrorContains(t, err, "project is missing a 'name' attribute")
 		assert.ErrorContains(t, err, "found 'Name' instead")
-	})
-
-	t.Run("a missing runtime attribute", func(t *testing.T) {
-		t.Parallel()
-
-		// Act.
-		_, err := writeAndLoad(t, `{"name": "project", "rutnime": "test"}`)
-
-		// Assert.
-		assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
-		assert.ErrorContains(t, err, "found 'rutnime' instead")
 	})
 
 	t.Run("a minor spelling mistake in a schema field", func(t *testing.T) {
@@ -1347,10 +1336,6 @@ func TestProjectLoadYAML(t *testing.T) {
 	// Test bad name
 	_, err = loadProjectFromText(t, "name:")
 	assert.ErrorContains(t, err, "project is missing a non-empty string 'name' attribute")
-
-	// Test missing runtime
-	_, err = loadProjectFromText(t, "name: project")
-	assert.ErrorContains(t, err, "project is missing a 'runtime' attribute")
 
 	// Test other schema errors
 	_, err = loadProjectFromText(t, "name: project\nruntime: 4")

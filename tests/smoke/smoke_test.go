@@ -1302,3 +1302,16 @@ Resources
 	assert.True(t, strings.HasPrefix(stdout, expectedPrefix),
 		"stdout did not start with expected help prefix.\nExpected:\n%s\nActual:\n%s", expectedPrefix, stdout)
 }
+
+// Sanity test that we can `pulumi new -y` and then do some basic operations like stack selection and config.
+func TestPulumiNewEmptyOperations(t *testing.T) {
+	t.Parallel()
+
+	e := ptesting.NewEnvironment(t)
+	defer e.DeleteIfNotFailed()
+	require.NoError(t, os.Remove(filepath.Join(e.RootPath, ".yarnrc")))
+
+	e.RunCommand("pulumi", "new", "-y")
+	e.RunCommand("pulumi", "stack", "init", "testing")
+	e.RunCommand("pulumi", "config", "set", "key", "value")
+}

@@ -23,7 +23,6 @@ import (
 	survey "github.com/AlecAivazis/survey/v2"
 	surveycore "github.com/AlecAivazis/survey/v2/core"
 
-	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdTemplates "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/templates"
@@ -38,9 +37,7 @@ const (
 // ChooseTemplate will prompt the user to choose amongst the available templates.
 func ChooseTemplate(templates []cmdTemplates.Template, opts display.Options) (cmdTemplates.Template, error) {
 	if !opts.IsInteractive {
-		return nil, backenderr.NonInteractiveInputRequiredError{
-			Detail: "template or url is required when running in non-interactive mode",
-		}
+		return nil, nil
 	}
 
 	// Customize the prompt a little bit (and disable color since it doesn't match our scheme).

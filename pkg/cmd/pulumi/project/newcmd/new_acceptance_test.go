@@ -235,27 +235,6 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 }
 
 //nolint:paralleltest // changes directory for process
-func TestRunNewYesNoTemplate(t *testing.T) {
-	tempdir := tempProjectDir(t)
-	t.Chdir(tempdir)
-
-	args := newArgs{
-		yes:               true,
-		interactive:       false,
-		templateNameOrURL: "", // empty
-		prompt:            ui.PromptForValue,
-		chooseTemplate:    ChooseTemplate,
-		secretsProvider:   "default",
-		stack:             stackName,
-		generateOnly:      true,
-		languageTemplate:  languageTemplateMock,
-	}
-
-	err := runNew(t.Context(), args)
-	require.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
-}
-
-//nolint:paralleltest // changes directory for process
 func TestRunNewYesWithTemplate(t *testing.T) {
 	tempdir := tempProjectDir(t)
 	t.Chdir(tempdir)

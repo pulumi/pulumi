@@ -521,23 +521,6 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 func TestInvalidTemplateName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	t.Run("NoTemplateSpecified", func(t *testing.T) {
-		tempdir := tempProjectDir(t)
-		t.Chdir(tempdir)
-
-		args := newArgs{
-			chooseTemplate:    ChooseTemplate,
-			interactive:       false,
-			yes:               true,
-			secretsProvider:   "default",
-			templateNameOrURL: "",
-			templateMode:      true,
-		}
-
-		err := runNew(t.Context(), args)
-		assert.ErrorContains(t, err, "template or url is required when running in non-interactive mode")
-	})
-
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		tempdir := tempProjectDir(t)
 		t.Chdir(tempdir)
@@ -789,6 +772,57 @@ func TestGenerateOnlyProjectCheck(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // changes directory for process
+func TestPulumiNewWithEmptyTemplateSource(t *testing.T) {
+	tests := []struct {
+		name        string
+		interactive bool
+		yes         bool
+		wantErr     bool
+	}{
+		{
+			name: "yes creates empty project",
+			yes:  true,
+		},
+		{
+			name:        "interactive errors",
+			interactive: true,
+			wantErr:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempdir := tempProjectDir(t)
+			t.Chdir(tempdir)
+			emptyTemplateSource := t.TempDir()
+
+			args := newArgs{
+				generateOnly:      true,
+				interactive:       tt.interactive,
+				yes:               tt.yes,
+				prompt:            ui.PromptForValue,
+				secretsProvider:   "default",
+				templateNameOrURL: emptyTemplateSource,
+				languageTemplate:  languageTemplateMock,
+			}
+
+			err := runNew(t.Context(), args)
+			if tt.wantErr {
+				require.ErrorContains(t, err, "no templates")
+				_, statErr := os.Stat(filepath.Join(tempdir, "Pulumi.yaml"))
+				assert.ErrorIs(t, statErr, os.ErrNotExist)
+				return
+			}
+
+			require.NoError(t, err)
+			proj := loadProject(t, tempdir)
+			assert.Equal(t, filepath.Base(tempdir), proj.Name.String())
+			assert.Empty(t, proj.Runtime.Name())
+		})
+	}
+}
+
 func TestPulumiNewConflictingProject(t *testing.T) {
 	t.Parallel()
 
@@ -889,7 +923,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			args := newArgs{
 				interactive:          tt.prompted != "",
 				generateOnly:         true,
-				yes:                  true,
+				yes:                  tt.prompted == "",
 				templateMode:         true,
 				name:                 projectName,
 				prompt:               promptMock(uniqueProjectName, stackName),
@@ -1346,4 +1380,97 @@ func languageTemplateMock(language plugin.LanguageRuntime, info plugin.ProgramIn
 	projectName tokens.PackageName,
 ) error {
 	return nil
+}
+
+// =======================
+// Tests for pulumi new -y
+// =======================
+
+// useTempFilestateBackend points the backend at a temp directory so tests don't hit the real backend.
+func useTempFilestateBackend(t *testing.T) {
+	t.Setenv("PULUMI_BACKEND_URL", "file://"+filepath.ToSlash(t.TempDir()))
+	t.Setenv("PULUMI_CONFIG_PASSPHRASE", "test")
+}
+
+//nolint:paralleltest
+func TestNewCmdYesWritesMinimalPulumiYAMLWithExplicitName(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := t.TempDir()
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y", "--name", "my-project"})
+
+	err := cmd.Execute()
+
+	require.NoError(t, err)
+	contents, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.yaml"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "name: my-project\n", string(contents))
+}
+
+//nolint:paralleltest
+func TestNewCmdYesUsesCurrentDirectoryNameByDefault(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := filepath.Join(t.TempDir(), "my-project")
+	require.NoError(t, os.Mkdir(dir, 0o755))
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
+
+	err := cmd.Execute()
+
+	require.NoError(t, err)
+	contents, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.yaml"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "name: my-project\n", string(contents))
+}
+
+//nolint:paralleltest
+func TestNewCmdYesSanitizesDefaultDirectoryName(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := filepath.Join(t.TempDir(), "my project!")
+	require.NoError(t, os.Mkdir(dir, 0o755))
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
+
+	err := cmd.Execute()
+
+	require.NoError(t, err)
+	contents, readErr := os.ReadFile(filepath.Join(dir, "Pulumi.yaml"))
+	require.NoError(t, readErr)
+	assert.Equal(t, "name: myproject\n", string(contents))
+}
+
+//nolint:paralleltest
+func TestNewCmdYesRejectsInvalidExplicitName(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := t.TempDir()
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y", "--name", "my project"})
+
+	err := cmd.Execute()
+
+	require.ErrorContains(t, err, "'my project' is not a valid project name")
+	_, statErr := os.Stat(filepath.Join(dir, "Pulumi.yaml"))
+	assert.ErrorIs(t, statErr, os.ErrNotExist)
+}
+
+//nolint:paralleltest
+func TestNewCmdYesDoesNotOverwriteExistingPulumiYAML(t *testing.T) {
+	useTempFilestateBackend(t)
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "Pulumi.yaml")
+	require.NoError(t, os.WriteFile(existing, []byte("name: existing\n"), 0o600))
+	t.Chdir(dir)
+	cmd := NewNewCmd()
+	cmd.SetArgs([]string{"-y"})
+
+	err := cmd.Execute()
+
+	require.ErrorContains(t, err, dir+" is not empty;")
+	contents, readErr := os.ReadFile(existing)
+	require.NoError(t, readErr)
+	assert.Equal(t, "name: existing\n", string(contents))
 }
