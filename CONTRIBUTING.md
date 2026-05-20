@@ -36,22 +36,22 @@ For contributors we use the [standard fork based workflow](https://gist.github.c
 Before you open a pull request, make sure all lint checks pass:
 
 ```bash
-$ make lint
+make lint
 ```
 
 If you see formatting failures, fix them with `make format`. To format a single file or directory directly:
 
 ```bash
-$ golangci-lint fmt path/to/file.go
+golangci-lint fmt path/to/file.go
 # or
-$ golangci-lint fmt path/to/dir
+golangci-lint fmt path/to/dir
 ```
 
 We require a changelog entry for all PRs that aren't labeled `impact/no-changelog-required`. To generate a new changelog entry, run…
 
 ```bash
-$ make changelog
-````
+make changelog
+```
 …and follow the prompts on screen.
 
 ### Pull Request Descriptions
