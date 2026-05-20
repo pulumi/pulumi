@@ -1,0 +1,4 @@
+changes:
+- type: feat
+  scope: sdk
+  description: Add `List` to the Go `plugin.Provider` interface, wired to the streaming `ResourceProvider.List` RPC

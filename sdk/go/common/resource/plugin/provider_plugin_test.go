@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"testing"
@@ -816,6 +817,7 @@ type stubClient struct {
 	DeleteF        func(*pulumirpc.DeleteRequest) error
 	GetSchemaF     func(*pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error)
 	GetPluginInfoF func() (*pulumirpc.PluginInfo, error)
+	ListF          func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error)
 	ReadF          func(*pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error)
 	UpdateF        func(*pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error)
 }
@@ -898,6 +900,17 @@ func (c *stubClient) GetPluginInfo(
 	return c.ResourceProviderClient.GetPluginInfo(ctx, in, opts...)
 }
 
+func (c *stubClient) List(
+	ctx context.Context,
+	req *pulumirpc.ListRequest,
+	opts ...grpc.CallOption,
+) (pulumirpc.ResourceProvider_ListClient, error) {
+	if f := c.ListF; f != nil {
+		return f(ctx, req)
+	}
+	return c.ResourceProviderClient.List(ctx, req, opts...)
+}
+
 func (c *stubClient) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
@@ -909,6 +922,28 @@ func (c *stubClient) Read(
 	return c.ResourceProviderClient.Read(ctx, req, opts...)
 }
 
+// stubListStream is a fake [pulumirpc.ResourceProvider_ListClient] that drains a pre-populated slice of responses.
+// It only implements the Recv method exercised by [provider.List]; other grpc.ClientStream methods panic on the
+// embedded nil interface if invoked.
+type stubListStream struct {
+	grpc.ClientStream
+
+	responses []*pulumirpc.ListResponse
+	err       error
+}
+
+func (s *stubListStream) Recv() (*pulumirpc.ListResponse, error) {
+	if len(s.responses) == 0 {
+		if s.err != nil {
+			return nil, s.err
+		}
+		return nil, io.EOF
+	}
+	resp := s.responses[0]
+	s.responses = s.responses[1:]
+	return resp, nil
+}
+
 func (c *stubClient) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
@@ -918,6 +953,304 @@ func (c *stubClient) Update(
 		return f(req)
 	}
 	return c.ResourceProviderClient.Update(ctx, req, opts...)
+}
+
+// drainListStream iterates stream.Items, collecting results into a slice and stopping at the first error.
+func drainListStream(t *testing.T, stream *ListStream) []ListResult {
+	t.Helper()
+	var got []ListResult //nolint:prealloc // Items is an iter
+	for item, err := range stream.Items {
+		require.NoError(t, err)
+		got = append(got, item)
+	}
+	return got
+}
+
+func TestProvider_List(t *testing.T) {
+	t.Parallel()
+
+	resultMsg := func(id, name string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{Id: id, Name: name},
+			},
+		}
+	}
+	continuationMsg := func(token string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Continuation_{
+				Continuation: &pulumirpc.ListResponse_Continuation{ContinuationToken: token},
+			},
+		}
+	}
+	computedMsg := &pulumirpc.ListResponse{
+		Response: &pulumirpc.ListResponse_Computed_{
+			Computed: &pulumirpc.ListResponse_Computed{},
+		},
+	}
+
+	tests := []struct {
+		desc                  string
+		responses             []*pulumirpc.ListResponse
+		wantResults           []ListResult
+		wantComputed          bool
+		wantContinuationToken string
+	}{
+		{
+			desc: "single page",
+			responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a", "alpha"),
+				resultMsg("id-b", "beta"),
+			},
+			wantResults: []ListResult{
+				{ID: "id-a", Name: "alpha"},
+				{ID: "id-b", Name: "beta"},
+			},
+		},
+		{
+			desc: "page with continuation",
+			responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a", "alpha"),
+				continuationMsg("next-cursor"),
+			},
+			wantResults:           []ListResult{{ID: "id-a", Name: "alpha"}},
+			wantContinuationToken: "next-cursor",
+		},
+		{
+			desc:      "empty page",
+			responses: nil,
+		},
+		{
+			desc:         "computed",
+			responses:    []*pulumirpc.ListResponse{computedMsg},
+			wantComputed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			t.Parallel()
+
+			var got *pulumirpc.ListRequest
+			client := &stubClient{
+				ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+					return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+				},
+				ListF: func(_ context.Context, req *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+					got = req
+					return &stubListStream{responses: tt.responses}, nil
+				},
+			}
+
+			p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+			_, err := p.Configure(t.Context(), ConfigureRequest{})
+			require.NoError(t, err)
+
+			stream, err := p.List(t.Context(), ListRequest{
+				Token:             tokens.Type("pkgA:index:Thing"),
+				Limit:             10,
+				PageSize:          5,
+				ContinuationToken: "cursor",
+			})
+			require.NoError(t, err)
+
+			gotResults := drainListStream(t, stream)
+			assert.Equal(t, tt.wantResults, gotResults)
+			assert.Equal(t, tt.wantComputed, stream.Computed)
+			assert.Equal(t, tt.wantContinuationToken, stream.ContinuationToken)
+
+			require.NotNil(t, got, "List was not called")
+			assert.Equal(t, "pkgA:index:Thing", got.Token)
+			assert.Equal(t, int64(10), got.Limit)
+			assert.Equal(t, int64(5), got.PageSize)
+			assert.Equal(t, "cursor", got.ContinuationToken)
+		})
+	}
+}
+
+func TestProvider_List_YieldsStreamError(t *testing.T) {
+	t.Parallel()
+
+	streamErr := status.Error(codes.Internal, "upstream blew up")
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			return &stubListStream{err: streamErr}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+
+	var gotErr error
+	var gotItems []ListResult
+	for item, err := range stream.Items {
+		if err != nil {
+			gotErr = err
+			break
+		}
+		gotItems = append(gotItems, item)
+	}
+	require.Error(t, gotErr)
+	assert.Contains(t, gotErr.Error(), "upstream blew up")
+	assert.Empty(t, gotItems)
+}
+
+// TestProvider_List_EarlyBreakCancelsRPC asserts that breaking out of the Items range loop early cancels the
+// context that was passed to the underlying gRPC call. Without that, the server stream would leak until the
+// provider's request context tears down.
+func TestProvider_List_EarlyBreakCancelsRPC(t *testing.T) {
+	t.Parallel()
+
+	resultMsg := func(id string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{Id: id},
+			},
+		}
+	}
+	var rpcCtx context.Context
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(ctx context.Context, _ *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			rpcCtx = ctx
+			return &stubListStream{responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a"), resultMsg("id-b"), resultMsg("id-c"),
+			}}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+	require.NotNil(t, rpcCtx, "ListF should have been called")
+	require.NoError(t, rpcCtx.Err(), "context should be live before iteration starts")
+
+	for item := range stream.Items {
+		_ = item
+		break
+	}
+
+	assert.Error(t, rpcCtx.Err(), "context should be cancelled after early break")
+	assert.ErrorIs(t, rpcCtx.Err(), context.Canceled)
+}
+
+// TestProvider_List_FullDrainCancelsRPC asserts that draining Items naturally (via EOF) also cancels the
+// per-call context so gRPC resources are released.
+func TestProvider_List_FullDrainCancelsRPC(t *testing.T) {
+	t.Parallel()
+
+	resultMsg := func(id string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{Id: id},
+			},
+		}
+	}
+	var rpcCtx context.Context
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(ctx context.Context, _ *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			rpcCtx = ctx
+			return &stubListStream{responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a"),
+			}}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+	for item, err := range stream.Items {
+		_ = item
+		require.NoError(t, err)
+	}
+	assert.ErrorIs(t, rpcCtx.Err(), context.Canceled)
+}
+
+// TestProvider_List_StreamErrorCancelsRPC asserts that mid-stream errors also release the per-call context.
+func TestProvider_List_StreamErrorCancelsRPC(t *testing.T) {
+	t.Parallel()
+
+	streamErr := status.Error(codes.Internal, "boom")
+	var rpcCtx context.Context
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(ctx context.Context, _ *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			rpcCtx = ctx
+			return &stubListStream{err: streamErr}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+	for _, err := range stream.Items {
+		if err != nil {
+			break
+		}
+	}
+	assert.ErrorIs(t, rpcCtx.Err(), context.Canceled)
+}
+
+func TestProvider_List_StopsEarly(t *testing.T) {
+	t.Parallel()
+
+	resultMsg := func(id string) *pulumirpc.ListResponse {
+		return &pulumirpc.ListResponse{
+			Response: &pulumirpc.ListResponse_Result_{
+				Result: &pulumirpc.ListResponse_Result{Id: id},
+			},
+		}
+	}
+	client := &stubClient{
+		ConfigureF: func(*pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+			return &pulumirpc.ConfigureResponse{AcceptSecrets: true}, nil
+		},
+		ListF: func(context.Context, *pulumirpc.ListRequest) (pulumirpc.ResourceProvider_ListClient, error) {
+			return &stubListStream{responses: []*pulumirpc.ListResponse{
+				resultMsg("id-a"), resultMsg("id-b"), resultMsg("id-c"),
+			}}, nil
+		},
+	}
+
+	p := NewProviderWithClient(newTestContext(t), "pkgA", client, false /* disablePreview */)
+	_, err := p.Configure(t.Context(), ConfigureRequest{})
+	require.NoError(t, err)
+
+	stream, err := p.List(t.Context(), ListRequest{Token: "pkgA:index:Thing"})
+	require.NoError(t, err)
+
+	var got []ListResult
+	for item, err := range stream.Items {
+		require.NoError(t, err)
+		got = append(got, item)
+		if len(got) == 1 {
+			break
+		}
+	}
+	require.Len(t, got, 1)
 }
 
 // Test for https://github.com/pulumi/pulumi/issues/14529, ensure a kubernetes DiffConfig error is ignored

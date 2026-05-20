@@ -1036,6 +1036,10 @@ func (r *Registry) Read(context.Context, plugin.ReadRequest) (plugin.ReadRespons
 	return plugin.ReadResponse{}, errors.New("provider resources may not be read")
 }
 
+func (r *Registry) List(context.Context, plugin.ListRequest) (*plugin.ListStream, error) {
+	return nil, errors.New("provider resources may not be listed")
+}
+
 func (r *Registry) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResponse, error) {
 	return plugin.ConstructResult{}, errors.New("provider resources may not be constructed")
 }
