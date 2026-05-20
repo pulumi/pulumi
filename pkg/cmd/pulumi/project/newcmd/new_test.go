@@ -923,7 +923,7 @@ func TestPulumiNewSetsTemplateTag(t *testing.T) {
 			args := newArgs{
 				interactive:          tt.prompted != "",
 				generateOnly:         true,
-				yes:                  true,
+				yes:                  tt.prompted == "",
 				templateMode:         true,
 				name:                 projectName,
 				prompt:               promptMock(uniqueProjectName, stackName),
