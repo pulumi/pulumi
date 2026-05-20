@@ -36,8 +36,9 @@ func newPluginLsCmd(pluginContext pluginstorage.Context) *cobra.Command {
 	var projectOnly bool
 	var jsonOut bool
 	cmd := &cobra.Command{
-		Use:   "ls",
-		Short: "List plugins",
+		Use:     "list",
+		Aliases: []string{"ls"},
+		Short:   "List plugins",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Produce a list of plugins, sorted by name and version.
 			var plugins []workspace.PluginInfo
