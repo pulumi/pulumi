@@ -966,7 +966,8 @@ func NewImportCmd() *cobra.Command {
 				// this is because we might generate unbound variables in the generated code that reference
 				// a parent resource or a provider
 				strict := false
-				files, diagnostics, err := languagePlugin.GenerateProgram(program.Source(), grpcServer.Addr(), strict)
+				files, diagnostics, err := languagePlugin.GenerateProgram(
+					pCtx.Request(), program.Source(), grpcServer.Addr(), strict)
 				if err != nil {
 					return nil, nil, err
 				}

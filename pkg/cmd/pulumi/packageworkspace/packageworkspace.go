@@ -115,7 +115,7 @@ func (w Workspace) InstallPluginAt(ctx context.Context, dirPath string, project 
 	}
 
 	info := plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options())
-	return cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+	return cmdutil.InstallDependencies(ctx, lang, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: w.options.UseLanguageVersionTools,
 		IsPlugin:                true,
@@ -137,7 +137,7 @@ func (w Workspace) GetRequiredPackages(
 			return nil, err
 		}
 	}
-	return lang.GetRequiredPackages(plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))
+	return lang.GetRequiredPackages(ctx, plugin.NewProgramInfo(dirPath, dirPath, ".", project.Runtime.Options()))
 }
 
 // IsExecutable returns if the file at binaryPath can be executed.
@@ -315,6 +315,7 @@ func (w Workspace) LinkIntoProject(
 	}
 
 	instructions, err := servers.lang.Link(
+		ctx,
 		plugin.NewProgramInfo(projectDir, projectDir, ".", runtimeInfo.Options()),
 		packageDescriptors,
 		servers.grpc.Addr(),
@@ -396,7 +397,7 @@ func (w Workspace) genSDK(ctx context.Context, language string, pkg *schema.Pack
 		return "", errors.Join(err, os.RemoveAll(tmpDir))
 	}
 
-	diags, err := s.lang.GeneratePackage(tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
+	diags, err := s.lang.GeneratePackage(ctx, tmpDir, string(jsonBytes), nil, s.grpc.Addr(), nil, true /* local */)
 	if err != nil {
 		return "", errors.Join(err, s.Close(), os.RemoveAll(tmpDir))
 	}

@@ -49,7 +49,7 @@ func InstallDependencies(ctx *plugin.Context, runtime *workspace.ProjectRuntimeI
 	programInfo := plugin.NewProgramInfo(ctx.Root, ctx.Pwd, main, runtime.Options())
 	// Helper used by multiple commands; output goes to the process streams
 	// directly when not given a writer.
-	err = cmdutil.InstallDependencies(lang, plugin.InstallDependenciesRequest{
+	err = cmdutil.InstallDependencies(ctx.Request(), lang, plugin.InstallDependenciesRequest{
 		Info:     programInfo,
 		IsPlugin: false,
 	}, os.Stdout, os.Stderr) //nolint:forbidigo

@@ -159,7 +159,7 @@ func getSummaryAbout(
 				addError(err, "Failed to load language plugin "+proj.Runtime.Name())
 			} else {
 				programInfo := plugin.NewProgramInfo(projinfo.Root, pwd, program, proj.Runtime.Options())
-				aboutResponse, err := lang.About(programInfo)
+				aboutResponse, err := lang.About(ctx, programInfo)
 				if err != nil {
 					addError(err, "Failed to get information about the project runtime")
 				} else {
@@ -171,7 +171,7 @@ func getSummaryAbout(
 					}
 				}
 
-				deps, err := lang.GetProgramDependencies(programInfo, transitiveDependencies)
+				deps, err := lang.GetProgramDependencies(ctx, programInfo, transitiveDependencies)
 				if err != nil {
 					addError(err, "Failed to get information about the Pulumi program's dependencies")
 				} else {
@@ -628,5 +628,5 @@ func getProjectPluginsSilently(
 
 	programInfo := plugin.NewProgramInfo(ctx.Root, pwd, main, proj.Runtime.Options())
 	runtimeName := proj.Runtime.Name()
-	return engine.GetRequiredPlugins(ctx.Host, runtimeName, programInfo)
+	return engine.GetRequiredPlugins(ctx.Request(), ctx.Host, runtimeName, programInfo)
 }

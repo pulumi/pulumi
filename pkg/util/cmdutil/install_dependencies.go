@@ -15,6 +15,7 @@
 package cmdutil
 
 import (
+	"context"
 	"errors"
 	"io"
 	"sync"
@@ -26,10 +27,11 @@ import (
 // complete. Standard output and error are streamed to os.Stdout and os.Stderr, respectively, and any errors encountered
 // during the installation or streaming of its output are returned.
 func InstallDependencies(
+	ctx context.Context,
 	lang plugin.LanguageRuntime, req plugin.InstallDependenciesRequest,
 	stdout, stderr io.Writer,
 ) error {
-	stdoutPipe, stderrPipe, done, err := lang.InstallDependencies(req)
+	stdoutPipe, stderrPipe, done, err := lang.InstallDependencies(ctx, req)
 	if err != nil {
 		return err
 	}

@@ -280,6 +280,7 @@ func (p PackageSet) UpdatesTo(old PackageSet) []PackageUpdate {
 
 // GetRequiredPlugins lists a full set of plugins that will be required by the given program.
 func GetRequiredPlugins(
+	ctx context.Context,
 	host plugin.Host,
 	runtime string,
 	info plugin.ProgramInfo,
@@ -293,7 +294,7 @@ func GetRequiredPlugins(
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 	// Query the language runtime plugin for its version.
-	langInfo, err := lang.GetPluginInfo()
+	langInfo, err := lang.GetPluginInfo(ctx)
 	if err != nil {
 		// Don't error if this fails, just warn and return the version as unknown.
 		host.Log(diag.Warning, "", fmt.Sprintf("failed to get plugin info for language plugin %s: %v", runtime, err), 0)
@@ -313,7 +314,7 @@ func GetRequiredPlugins(
 	// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
 	//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
 	//     later than we do (right now, we do it up front, but at that point we don't know the version).
-	deps, err := lang.GetRequiredPackages(info)
+	deps, err := lang.GetRequiredPackages(ctx, info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover plugin requirements: %w", err)
 	}
@@ -334,7 +335,7 @@ func gatherPackagesFromProgram(plugctx *plugin.Context, runtime string, info plu
 		return nil, fmt.Errorf("failed to load language plugin %s: %w", runtime, err)
 	}
 
-	pkgs, err := lang.GetRequiredPackages(info)
+	pkgs, err := lang.GetRequiredPackages(plugctx.Request(), info)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover package requirements: %w", err)
 	}

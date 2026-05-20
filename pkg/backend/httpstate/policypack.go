@@ -564,7 +564,7 @@ func installRequiredPolicy(ctx *plugin.Context, finalDir string, tgz io.ReadClos
 	}
 
 	info := plugin.NewProgramInfo(finalDir, finalDir, ".", proj.Runtime.Options())
-	err = pkgCmdUtil.InstallDependencies(language, plugin.InstallDependenciesRequest{
+	err = pkgCmdUtil.InstallDependencies(ctx.Request(), language, plugin.InstallDependenciesRequest{
 		Info:                    info,
 		UseLanguageVersionTools: false,
 		IsPlugin:                true,

@@ -599,7 +599,7 @@ func (host *defaultHost) LanguageRuntime(runtime string,
 		// If not, allocate a new one.
 		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.ctx.Pwd)
 		if err == nil && plug != nil {
-			info, infoerr := plug.GetPluginInfo()
+			info, infoerr := plug.GetPluginInfo(host.ctx.Request())
 			if infoerr != nil {
 				return nil, infoerr
 			}
@@ -699,7 +699,7 @@ func (host *defaultHost) SignalCancellation() error {
 
 		for _, plug := range host.languagePlugins {
 			wg.Go(func() {
-				if err := plug.Plugin.Cancel(); err != nil {
+				if err := plug.Plugin.Cancel(cancelCtx); err != nil {
 					mu.Lock()
 					errs = append(errs, fmt.Errorf(
 						"error signaling cancellation to language runtime '%s': %w", plug.Name, err))
@@ -750,7 +750,7 @@ func (host *defaultHost) Close() (err error) {
 
 		for _, plug := range host.languagePlugins {
 			wg.Go(func() {
-				contract.IgnoreError(plug.Plugin.Cancel())
+				contract.IgnoreError(plug.Plugin.Cancel(cancelCtx))
 				if err := plug.Plugin.Close(); err != nil {
 					logging.V(5).Infof("Error closing '%s' language plugin during shutdown; ignoring: %v", plug.Name, err)
 				}
