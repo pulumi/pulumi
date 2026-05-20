@@ -249,7 +249,7 @@ func TestPrintRegistryDocsHint(t *testing.T) {
 		cmdLine("/readme", "                    # package readme") +
 		cmdLine("/nav", "                       # doc tree (modules)") +
 		cmdLine("/nav?q=<term>&depth=full", "   # search for resources/functions") +
-		cmdLine("/docs/<token>", "              # one resource or function (token from /nav)")
+		cmdLine("/docs/<type-token>", "         # one resource or function (type token from /nav)")
 
 	tests := []struct {
 		name  string
