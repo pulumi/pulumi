@@ -18,8 +18,11 @@ import (
 	"cmp"
 	"context"
 	_ "embed"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"hash"
+	"hash/fnv"
 	"io"
 	"maps"
 	"math"
@@ -320,7 +323,7 @@ func newBinder(info PackageInfoSpec, spec specSource, loader Loader,
 		resources:    map[string]*ResourceType{},
 		arrays:       map[Type]*ArrayType{},
 		maps:         map[Type]*MapType{},
-		unions:       map[string]*UnionType{},
+		unions:       map[typeHash]*UnionType{},
 		tokens:       map[string]*TokenType{},
 		inputs:       map[Type]*InputType{},
 		optionals:    map[Type]*OptionalType{},
@@ -469,7 +472,7 @@ type types struct {
 	resources map[string]*ResourceType
 	arrays    map[Type]*ArrayType
 	maps      map[Type]*MapType
-	unions    map[string]*UnionType
+	unions    map[typeHash]*UnionType
 	tokens    map[string]*TokenType
 	inputs    map[Type]*InputType
 	optionals map[Type]*OptionalType
@@ -773,11 +776,94 @@ func (t *types) newUnionType(
 		Discriminator: discriminator,
 		Mapping:       mapping,
 	}
-	if typ, ok := t.unions[union.String()]; ok {
+	key := hashType(union)
+	if typ, ok := t.unions[key]; ok {
 		return typ
 	}
-	t.unions[union.String()] = union
+	t.unions[key] = union
 	return union
+}
+
+// typeHash is a structural fingerprint of a Type.
+//
+// It should be used for structural type comparisions, instead of [(Type).String()].
+type typeHash uint64
+
+// hashType returns the structural hash of t.
+func hashType(t Type) typeHash {
+	h := fnv.New64a()
+	hashTypeInto(h, t)
+	return typeHash(h.Sum64())
+}
+
+// hashTypeInto is the recursive worker behind hashType. It mirrors the
+// kinds handled by compareTypes; any new Type kind added there must be
+// added here too.
+func hashTypeInto(h hash.Hash64, t Type) {
+	var buf [8]byte
+	writeTag := func(b byte) { _, _ = h.Write([]byte{b}) }
+	writeUint := func(u uint64) {
+		binary.LittleEndian.PutUint64(buf[:], u)
+		_, _ = h.Write(buf[:])
+	}
+	writeStr := func(s string) {
+		writeUint(uint64(len(s)))
+		_, _ = h.Write([]byte(s))
+	}
+
+	switch t := t.(type) {
+	case nil:
+		writeTag(0)
+	case primitiveType:
+		writeTag(1)
+		writeUint(uint64(t))
+	case *ArrayType:
+		writeTag(2)
+		hashTypeInto(h, t.ElementType)
+	case *MapType:
+		writeTag(3)
+		hashTypeInto(h, t.ElementType)
+	case *OptionalType:
+		writeTag(4)
+		hashTypeInto(h, t.ElementType)
+	case *InputType:
+		writeTag(5)
+		hashTypeInto(h, t.ElementType)
+	case *UnionType:
+		writeTag(6)
+		writeUint(uint64(len(t.ElementTypes)))
+		for _, el := range t.ElementTypes {
+			hashTypeInto(h, el)
+		}
+		hashTypeInto(h, t.DefaultType)
+		writeStr(t.Discriminator)
+		writeUint(uint64(len(t.Mapping)))
+		for _, k := range slices.Sorted(maps.Keys(t.Mapping)) {
+			writeStr(k)
+			writeStr(t.Mapping[k])
+		}
+	case *ObjectType:
+		writeTag(7)
+		writeStr(t.Token)
+		if t.IsInputShape() {
+			writeTag(1)
+		} else {
+			writeTag(0)
+		}
+	case *ResourceType:
+		writeTag(8)
+		writeStr(t.Token)
+	case *EnumType:
+		writeTag(9)
+		writeStr(t.Token)
+	case *TokenType:
+		writeTag(10)
+		writeStr(t.Token)
+	case *InvalidType:
+		writeTag(11)
+	default:
+		contract.Failf("unknown type %T", t)
+	}
 }
 
 func (t *types) bindTypeDef(token string, options ValidationOptions) (Type, hcl.Diagnostics, error) {
