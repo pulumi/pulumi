@@ -74,16 +74,9 @@ func AgentClaimURL(cloudURL, claimToken string) string {
 	if strings.TrimSpace(claimToken) == "" {
 		return ""
 	}
-	claimURL := CloudConsoleURL(cloudURL, "signup")
+	claimURL := CloudConsoleURL(cloudURL, "claim", claimToken)
 	if claimURL == "" {
 		return ""
 	}
-	u, err := url.Parse(claimURL)
-	if err != nil {
-		return ""
-	}
-	q := u.Query()
-	q.Set("claim", claimToken)
-	u.RawQuery = q.Encode()
-	return u.String()
+	return claimURL
 }

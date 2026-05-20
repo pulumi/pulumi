@@ -64,13 +64,13 @@ func TestConsoleURL(t *testing.T) {
 //nolint:paralleltest // sets env var, must be run in isolation
 func TestAgentClaimURL(t *testing.T) {
 	assert.Equal(t,
-		"https://app.pulumi.com/signup?claim=abc123",
+		"https://app.pulumi.com/claim/abc123",
 		AgentClaimURL("https://api.pulumi.com", "abc123"))
 
 	t.Run("HonorEnvVar", func(t *testing.T) {
 		t.Setenv("PULUMI_CONSOLE_DOMAIN", "pulumi-console.contoso.com")
 		assert.Equal(t,
-			"https://pulumi-console.contoso.com/signup?claim=abc123",
+			"https://pulumi-console.contoso.com/claim/abc123",
 			AgentClaimURL("https://api.pulumi.contoso.com", "abc123"))
 	})
 

@@ -129,14 +129,14 @@ func TestAgentCredentialsAndClaim(t *testing.T) {
 func TestFormatAgentClaimInstruction(t *testing.T) {
 	t.Parallel()
 
-	claimURL := "https://app.pulumi.com/signup?claim=abc123"
+	claimURL := "https://app.pulumi.com/claim/abc123"
 	now := time.Date(2026, time.May, 17, 8, 24, 56, 0, time.UTC)
 	validUntil := now.Add(3*24*time.Hour + 4*time.Hour + 10*time.Minute + 30*time.Second)
 	expiresAt := now.Add(2*24*time.Hour + 3*time.Hour + 9*time.Minute)
 
 	assert.Equal(t,
 		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
-			"CLAIM_URL=https://app.pulumi.com/signup?claim=abc123\n"+
+			"CLAIM_URL=https://app.pulumi.com/claim/abc123\n"+
 			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=2d3h9m\n"+
 			"ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"+
 			"INSTRUCTION=Tell the user Pulumi created an ephemeral agent account. "+
@@ -145,7 +145,7 @@ func TestFormatAgentClaimInstruction(t *testing.T) {
 	expiredAt := now.Add(-time.Minute)
 	assert.Equal(t,
 		"PULUMI_EPHEMERAL_AGENT_ACCOUNT\n"+
-			"CLAIM_URL=https://app.pulumi.com/signup?claim=abc123\n"+
+			"CLAIM_URL=https://app.pulumi.com/claim/abc123\n"+
 			"CLAIM_URL_VALID_FOR=3d4h10m\n"+
 			"ACTION_REQUIRED=Tell the user to claim this Pulumi agent account.\n"+
 			"INSTRUCTION=Tell the user this ephemeral agent account can no longer authenticate, "+

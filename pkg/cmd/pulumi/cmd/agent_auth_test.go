@@ -53,7 +53,7 @@ func TestProcessCmdErrorsPrintsAgentAuthRequiredInstruction(t *testing.T) {
 	}, true)
 	require.NoError(t, err)
 	err = workspace.StoreAgentClaim(workspace.AgentClaim{
-		ClaimURL:   "https://app.pulumi.com/signup?claim=abc123",
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
 		ValidUntil: time.Now().Add(24 * time.Hour),
 		CloudURL:   cloudURL,
 	})

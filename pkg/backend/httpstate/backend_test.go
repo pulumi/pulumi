@@ -263,7 +263,7 @@ func TestCurrentInvalidAgentCredentialsWithActiveClaimDoesNotSignup(t *testing.T
 	}, true)
 	require.NoError(t, err)
 	err = workspace.StoreAgentClaim(workspace.AgentClaim{
-		ClaimURL:   "https://app.pulumi.com/signup?claim=abc123",
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
 		ValidUntil: time.Now().Add(time.Hour),
 		CloudURL:   server.URL,
 	})
@@ -312,7 +312,7 @@ func TestCurrentRejectedAgentCredentialsWithUnexpiredTokenDoesNotSignup(t *testi
 	}, true)
 	require.NoError(t, err)
 	err = workspace.StoreAgentClaim(workspace.AgentClaim{
-		ClaimURL:   "https://app.pulumi.com/signup?claim=abc123",
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
 		ValidUntil: time.Now().Add(-time.Hour),
 		CloudURL:   server.URL,
 	})
@@ -361,7 +361,7 @@ func TestCurrentValidAgentCredentialsWithExpiredClaimDoesNotSignup(t *testing.T)
 	}, true)
 	require.NoError(t, err)
 	err = workspace.StoreAgentClaim(workspace.AgentClaim{
-		ClaimURL:   "https://app.pulumi.com/signup?claim=abc123",
+		ClaimURL:   "https://app.pulumi.com/claim/abc123",
 		ValidUntil: time.Now().Add(-time.Hour),
 		CloudURL:   server.URL,
 	})
@@ -449,7 +449,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 
 	claim, err := workspace.GetAgentClaim()
 	require.NoError(t, err)
-	assert.Equal(t, "http://app.example.com/signup?claim=claim-token", claim.ClaimURL)
+	assert.Equal(t, "http://app.example.com/claim/claim-token", claim.ClaimURL)
 	assert.True(t, claim.ValidUntil.Equal(claimTokenValidUntil))
 	assert.Equal(t, server.URL, claim.CloudURL)
 }
