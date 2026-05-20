@@ -1,0 +1,6 @@
+component: engine
+kind: fix
+body: Fix PCL binder panicking with "not a string" when an object expression used as a union member has a non-string literal at the discriminator key
+time: 2026-07-06T11:20:15.982839+02:00
+custom:
+    PR: "23298"
