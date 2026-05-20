@@ -225,10 +225,6 @@ func (iter *evalSourceIterator) Cancel(ctx context.Context) error {
 	return iter.mon.Cancel(ctx)
 }
 
-func (iter *evalSourceIterator) ResourceMonitor() SourceResourceMonitor {
-	return iter.mon
-}
-
 func (iter *evalSourceIterator) Next() (SourceEvent, error) {
 	// if the iterator is aborted, return an error.
 	if iter.aborted {
