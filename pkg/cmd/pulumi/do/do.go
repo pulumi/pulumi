@@ -302,7 +302,7 @@ configuration flags, all discoverable via --help on the provider subcommand.
 
 packages can be a package name or the path to a plugin binary or folder.
 Further parameters can be passed after the package name which will be used to
-parameterize the plugin loaded. 
+parameterize the plugin loaded.
 e.g. pulumi do "name@version param1 \"multi word param\""
 
 Resource operations: list, create, read, patch, delete
@@ -395,8 +395,15 @@ func (pc *packageCommand) newCommand() *cobra.Command {
 		Use:   pc.args[0],
 		Short: shorthelp,
 		Long:  longhelp,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
 	}
 	constrictor.AttachArguments(cmd, constrictor.NoArgs)
+	cmd.Args = unknownSubcommandArgs
+	cmd.SetUsageTemplate(doUsageTemplate)
+	// Tolerate unknown flags so that we don't error on a flag that belongs to the child command.
+	cmd.FParseErrWhitelist.UnknownFlags = true
 
 	cmd.PersistentFlags().StringVar(
 		&pc.providerFile, "provider-file", "", "Path to a file containing provider configuration")
@@ -522,8 +529,14 @@ func newModuleCommand(args []string, use, shortDisplayName, longDisplayName, hel
 		GroupID: "Modules",
 		Short:   shorthelp,
 		Long:    longhelp,
-		Args:    cobra.NoArgs,
+		Args:    unknownSubcommandArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
 	}
+	cmd.SetUsageTemplate(doUsageTemplate)
+	// Tolerate unknown flags so that we don't error on a flag that belongs to the child command.
+	cmd.FParseErrWhitelist.UnknownFlags = true
 	return cmd
 }
 
@@ -537,4 +550,68 @@ func ensureCommandGroup(cmd *cobra.Command, id, title string) {
 		ID:    id,
 		Title: title,
 	})
+}
+
+// doUsageTemplate is cobra's default usage template tweaked so that container commands (package,
+// module, resource) show only "<cmd> [command]" and not the redundant "<cmd> [flags]" UseLine.
+// They're technically Runnable so ValidateArgs fires for unknown subcommands, but you can't actually
+// invoke them standalone. Leaf commands underneath (functions, create/read/patch/delete/list) still
+// render their UseLine, since cobra propagates UsageTemplate down the subtree.
+//
+// From cobra's defaultUsageTemplate: https://github.com/spf13/cobra/blob/v1.10.1/command.go#L1942
+// Only the "Usage:" line is changed; the rest is verbatim.
+const doUsageTemplate = `Usage:{{if .Runnable}}{{if not .HasAvailableSubCommands}}
+  {{.UseLine}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+  {{.CommandPath}} [command]{{end}}{{if gt (len .Aliases) 0}}
+
+Aliases:
+  {{.NameAndAliases}}{{end}}{{if .HasExample}}
+
+Examples:
+{{.Example}}{{end}}{{if .HasAvailableSubCommands}}{{$cmds := .Commands}}{{if eq (len .Groups) 0}}
+
+Available Commands:{{range $cmds}}{{if (or .IsAvailableCommand (eq .Name "help"))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{else}}{{range $group := .Groups}}
+
+{{.Title}}{{range $cmds}}{{if (and (eq .GroupID $group.ID) (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if not .AllChildCommandsHaveGroup}}
+
+Additional Commands:{{range $cmds}}{{if (and (eq .GroupID "") (or .IsAvailableCommand (eq .Name "help")))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasHelpSubCommands}}
+
+Additional help topics:{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}
+  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}
+`
+
+// unknownSubcommandArgs is a cobra positional-args validator for commands whose only valid positionals are subcommand
+// names. If extra args are supplied it returns "unknown command ..." and when available a hint for similarly named
+// subcommands.
+func unknownSubcommandArgs(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return nil
+	}
+	typed := args[0]
+	if cmd.SuggestionsMinimumDistance <= 0 {
+		cmd.SuggestionsMinimumDistance = 2
+	}
+	msg := fmt.Sprintf("unknown command %q for %q", typed, cmd.CommandPath())
+	suggestions := cmd.SuggestionsFor(typed)
+	if len(suggestions) == 0 {
+		return errors.New(msg)
+	}
+	var b strings.Builder
+	b.WriteString(msg)
+	b.WriteString("\n\nDid you mean this?\n")
+	for _, s := range suggestions {
+		fmt.Fprintf(&b, "\t%s\n", s)
+	}
+	return errors.New(b.String())
 }

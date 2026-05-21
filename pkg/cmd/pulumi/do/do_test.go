@@ -456,3 +456,172 @@ Use "do pkg mod1/mod2 [command] --help" for more information about a command.
 	require.NoError(t, err)
 	assert.Equal(t, expectedNestedModuleHelp, stdout.String())
 }
+
+func TestDoCmdUnknownSubcommandSuggests(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "aws", source)
+		spec := schema.PackageSpec{
+			Name: "aws",
+			Resources: map[string]schema.ResourceSpec{
+				"aws:s3:Bucket":   {},
+				"aws:index:Stack": {},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"aws:s3:getBucket": {},
+			},
+		}
+		return &testProvider{spec: spec}, nil
+	}
+
+	table := []struct {
+		name           string
+		args           []string
+		wantMsg        string
+		wantSuggestion string
+		noSuggestion   bool
+	}{
+		{
+			name:           "module subcommand wrong case",
+			args:           []string{"aws", "s3", "bucket"},
+			wantMsg:        `unknown command "bucket" for "do aws s3"`,
+			wantSuggestion: "Bucket",
+		},
+		{
+			name:           "module subcommand typo",
+			args:           []string{"aws", "s3", "Buckt"},
+			wantMsg:        `unknown command "Buckt" for "do aws s3"`,
+			wantSuggestion: "Bucket",
+		},
+		{
+			name:         "module subcommand no close match",
+			args:         []string{"aws", "s3", "nothinglikethis"},
+			wantMsg:      `unknown command "nothinglikethis" for "do aws s3"`,
+			noSuggestion: true,
+		},
+		{
+			name:           "package subcommand wrong case",
+			args:           []string{"aws", "stack"},
+			wantMsg:        `unknown command "stack" for "do aws"`,
+			wantSuggestion: "Stack",
+		},
+		{
+			name:           "resource subcommand typo",
+			args:           []string{"aws", "s3", "Bucket", "creat"},
+			wantMsg:        `unknown command "creat" for "do aws s3 Bucket"`,
+			wantSuggestion: "create",
+		},
+		{
+			name:           "function name wrong case",
+			args:           []string{"aws", "s3", "getbucket"},
+			wantMsg:        `unknown command "getbucket" for "do aws s3"`,
+			wantSuggestion: "getBucket",
+		},
+		{
+			name:           "typo'd subcommand followed by leaf flag",
+			args:           []string{"aws", "s3", "getbucket", "--input-file", "./inputs.pcl"},
+			wantMsg:        `unknown command "getbucket" for "do aws s3"`,
+			wantSuggestion: "getBucket",
+		},
+	}
+
+	for _, tc := range table {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var stdout, stderr bytes.Buffer
+			cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+			cmd.SetArgs(tc.args)
+
+			err := cmd.Execute()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.wantMsg)
+			if tc.noSuggestion {
+				assert.NotContains(t, err.Error(), "Did you mean")
+			} else {
+				assert.Contains(t, err.Error(), "Did you mean this?")
+				assert.Contains(t, err.Error(), tc.wantSuggestion)
+			}
+		})
+	}
+}
+
+// TestDoCmdLeafFlagValidationStrict validates that container commands (package, module, resource) tolerate unknown
+// flags so that typo'd subcommand names produce a "did you mean" hint instead of a confusing "unknown flag" error. Leaf
+// commands (functions, create/read/patch/delete/list) must still strictly reject unknown flags.
+func TestDoCmdLeafFlagValidationStrict(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "aws", source)
+		spec := schema.PackageSpec{
+			Name: "aws",
+			Resources: map[string]schema.ResourceSpec{
+				"aws:s3:Bucket": {},
+			},
+			Functions: map[string]schema.FunctionSpec{
+				"aws:s3:getBucket": {},
+			},
+		}
+		return &testProvider{spec: spec}, nil
+	}
+
+	table := []struct {
+		name        string
+		args        []string
+		wantUnknown bool
+	}{
+		{
+			name:        "function leaf unknown flag",
+			args:        []string{"aws", "s3", "getBucket", "--input-files", "/file"},
+			wantUnknown: true,
+		},
+		{
+			name:        "function leaf valid flag",
+			args:        []string{"aws", "s3", "getBucket", "--input-file", "/file"},
+			wantUnknown: false,
+		},
+		{
+			name:        "resource verb leaf unknown flag",
+			args:        []string{"aws", "s3", "Bucket", "read", "abc", "--no-such-flag"},
+			wantUnknown: true,
+		},
+		{
+			name:        "resource verb leaf valid args",
+			args:        []string{"aws", "s3", "Bucket", "read", "abc"},
+			wantUnknown: false,
+		},
+	}
+
+	for _, tc := range table {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var stdout, stderr bytes.Buffer
+			cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+			cmd.SetOut(&stdout)
+			cmd.SetErr(&stderr)
+			cmd.SetArgs(tc.args)
+
+			err := cmd.Execute()
+			if tc.wantUnknown {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "unknown flag")
+			} else {
+				// We don't care whether the command succeeds or fails downstream (the MockProvider
+				// returns "not implemented" for Read/Invoke); we just need to prove that the flag
+				// itself parsed cleanly and didn't trip the strict leaf parser.
+				if err != nil {
+					assert.NotContains(t, err.Error(), "unknown flag")
+				}
+			}
+		})
+	}
+}

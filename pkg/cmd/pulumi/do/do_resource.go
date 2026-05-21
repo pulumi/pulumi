@@ -95,11 +95,14 @@ func (pc *packageCommand) newResourceCommand(res *schema.Resource) *cobra.Comman
 		GroupID: "Resources",
 		Short:   shorthelp,
 		Long:    longhelp,
-		Args:    cobra.NoArgs,
+		Args:    unknownSubcommandArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
 	}
+	cmd.SetUsageTemplate(doUsageTemplate)
+	// Tolerate unknown flags so that we don't error on a flag that belongs to the child command.
+	cmd.FParseErrWhitelist.UnknownFlags = true
 	cmd.AddCommand(pc.newResourceCreateCommand(res))
 	cmd.AddCommand(pc.newResourceReadCommand(res))
 	cmd.AddCommand(pc.newResourcePatchCommand(res))
