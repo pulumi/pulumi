@@ -75,8 +75,7 @@ func TestDoCmdNoArgsPrintsHelp(t *testing.T) {
 
 			output := stdout.String()
 			assert.Contains(t, output, "Interact with any cloud")
-			assert.Contains(t, output, "Usage:")
-			assert.Contains(t, output, "pulumi do")
+			assert.Contains(t, output, "Usage:\n  do <pkg:mod:typ> [command] [flags]\n")
 		})
 	}
 }
@@ -113,7 +112,7 @@ func writeHCLFile(t *testing.T, name, contents string) string {
 	return path
 }
 
-func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
+func TestDoCmdWithPkgFlagPrintsHelp(t *testing.T) {
 	t.Parallel()
 
 	mlm := &cmdBackend.MockLoginManager{}
@@ -149,7 +148,7 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"aws@4.1"})
+	cmd.SetArgs([]string{"--package", "aws@4.1"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -157,38 +156,84 @@ func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
 
 Help text about aws.
 
-Run 'pulumi do aws@4.1 <module/resource/function> --help' for more details on usage.
+Run 'pulumi do --package aws@4.1 <module/resource/function> --help' for more details on usage.
 
-Usage:
-  do aws@4.1 [command]
+Modules:
+  aws:myModule
 
-Functions
-  myFunction  Invoke the myFunction function
+Functions:
+  aws:myFunction
 
-Resources
-  myResource  Operate on the myResource resource
+Resources:
+  aws:myResource
 
-Modules
-  myModule    Functions and resources for the myModule module
-
-Flags:
-  -h, --help                     help for aws@4.1
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-
-Global Flags:
-      --dry-run        Run the operation in preview mode
-      --show-secrets   Show secret values in output
-
-Use "do aws@4.1 [command] --help" for more information about a command.
 `
 	assert.Equal(t, expected, stdout.String())
 
 	// Ensure that extra flags don't confuse the help message.
 	stdout.Reset()
-	cmd.SetArgs([]string{"--dry-run", "aws@4.1"})
+	cmd.SetArgs([]string{"--dry-run", "--package", "aws@4.1"})
 	err = cmd.Execute()
 	require.NoError(t, err)
+	assert.Equal(t, expected, stdout.String())
+}
+
+func TestDoCmdWithPkgArgPrintsHelp(t *testing.T) {
+	t.Parallel()
+
+	mlm := &cmdBackend.MockLoginManager{}
+	mws := &pkgWorkspace.MockContext{}
+	loader := func(ctx context.Context, pctx *plugin.Context, wd, source string) (plugin.Provider, error) {
+		assert.Equal(t, "aws", source)
+		spec := schema.PackageSpec{
+			Name:        "aws",
+			Description: "Help text about aws.",
+			Functions: map[string]schema.FunctionSpec{
+				"aws:index:myFunction":         {},
+				"aws:myModule:myOtherFunction": {},
+			},
+			Resources: map[string]schema.ResourceSpec{
+				"aws:index:myResource":         {},
+				"aws:myModule:myOtherResource": {},
+			},
+			Provider: schema.ResourceSpec{
+				InputProperties: map[string]schema.PropertySpec{
+					"region": {
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
+					},
+				},
+			},
+		}
+		return &testProvider{spec: spec}, nil
+	}
+
+	var stdout bytes.Buffer
+	cmd := NewDoCmd(mlm, mws, loader, testHost, panicLoadConverterPlugin)
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+
+	cmd.SetArgs([]string{"aws"})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	expected := `Interact with aws resources and functions.
+
+Help text about aws.
+
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
+
+Modules:
+  aws:myModule
+
+Functions:
+  aws:myFunction
+
+Resources:
+  aws:myResource
+
+`
 	assert.Equal(t, expected, stdout.String())
 }
 
@@ -255,30 +300,17 @@ func TestDoCmdWithPkgArgPrintsHelpUnderRoot(t *testing.T) {
 
 Help text about aws.
 
-Run 'pulumi do aws@4.1 <module/resource/function> --help' for more details on usage.
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
 
-Usage:
-  pulumi do aws@4.1 [command]
+Modules:
+  aws:myModule
 
-Functions
-  myFunction  Invoke the myFunction function
+Functions:
+  aws:myFunction
 
-Resources
-  myResource  Operate on the myResource resource
+Resources:
+  aws:myResource
 
-Modules
-  myModule    Functions and resources for the myModule module
-
-Flags:
-  -h, --help                     help for aws@4.1
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-
-Global Flags:
-      --dry-run        Run the operation in preview mode
-      --show-secrets   Show secret values in output
-
-Use "pulumi do aws@4.1 [command] --help" for more information about a command.
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -309,39 +341,26 @@ func TestDoCmdWithModuleArgPrintsHelp(t *testing.T) {
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stdout)
 
-	cmd.SetArgs([]string{"aws@4.1", "myModule"})
+	cmd.SetArgs([]string{"--package", "aws@4.1", "aws:myModule"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
 	expected := `Functions and resources for the myModule module.
 
-Run 'pulumi do aws@4.1 myModule <resource/function> --help' for more details on usage.
+Run 'pulumi do --package aws@4.1 <module/resource/function> --help' for more details on usage.
 
-Usage:
-  do aws@4.1 myModule [command]
+Functions:
+  aws:myModule:myOtherFunction
 
-Functions
-  myOtherFunction Invoke the myOtherFunction function
+Resources:
+  aws:myModule:myOtherResource
 
-Resources
-  myOtherResource Operate on the myOtherResource resource
-
-Flags:
-  -h, --help   help for myModule
-
-Global Flags:
-      --dry-run                  Run the operation in preview mode
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-      --show-secrets             Show secret values in output
-
-Use "do aws@4.1 myModule [command] --help" for more information about a command.
 `
 	assert.Equal(t, expected, stdout.String())
 
 	// Ensure that extra flags don't confuse the help message.
 	stdout.Reset()
-	cmd.SetArgs([]string{"--dry-run", "aws@4.1", "myModule"})
+	cmd.SetArgs([]string{"--dry-run", "--package", "aws@4.1", "aws:myModule"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 	assert.Equal(t, expected, stdout.String())
@@ -374,84 +393,47 @@ func TestDoCmdWithNestedModulesPrintsHelp(t *testing.T) {
 
 	expectedPackageHelp := `Interact with pkg resources and functions.
 
-Run 'pulumi do pkg <module/resource/function> --help' for more details on usage.
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
 
-Usage:
-  do pkg [command]
+Modules:
+  pkg:mod1/mod2
 
-Modules
-  mod1             Functions and resources for the mod1 module
-  mod1/mod2        Functions and resources for the mod2 module
-
-Flags:
-  -h, --help                     help for pkg
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-
-Global Flags:
-      --dry-run        Run the operation in preview mode
-      --show-secrets   Show secret values in output
-
-Use "do pkg [command] --help" for more information about a command.
 `
 	assert.Equal(t, expectedPackageHelp, stdout.String())
 
 	stdout.Reset()
-	cmd.SetArgs([]string{"pkg", "mod1", "--help"})
+	cmd.SetArgs([]string{"pkg:mod1", "--help"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
 	expectedParentModuleHelp := `Functions and resources for the mod1 module.
 
-Run 'pulumi do pkg mod1 <resource/function> --help' for more details on usage.
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
 
-Usage:
-  do pkg mod1 [command]
+Modules:
+  pkg:mod1/mod2
 
-Flags:
-  -h, --help   help for mod1
-
-Global Flags:
-      --dry-run                  Run the operation in preview mode
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-      --show-secrets             Show secret values in output
-
-Use "do pkg mod1 [command] --help" for more information about a command.
 `
 	assert.Equal(t, expectedParentModuleHelp, stdout.String())
 
 	stdout.Reset()
-	cmd.SetArgs([]string{"pkg", "mod1/mod2", "--help"})
+	cmd.SetArgs([]string{"pkg:mod1/mod2", "--help"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
 	expectedNestedModuleHelp := `Functions and resources for the mod1/mod2 module.
 
-Run 'pulumi do pkg mod1/mod2 <resource/function> --help' for more details on usage.
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
 
-Usage:
-  do pkg mod1/mod2 [command]
+Functions:
+  pkg:mod1/mod2:fun
 
-Functions
-  fun         Invoke the fun function
-
-Flags:
-  -h, --help   help for mod1/mod2
-
-Global Flags:
-      --dry-run                  Run the operation in preview mode
-      --provider-file string     Path to a file containing provider configuration
-      --provider-format string   Format of the provider configuration file (default "pcl")
-      --show-secrets             Show secret values in output
-
-Use "do pkg mod1/mod2 [command] --help" for more information about a command.
 `
 	assert.Equal(t, expectedNestedModuleHelp, stdout.String())
 
 	// module isn't runnable so help should be printed even without --help flag
 	stdout.Reset()
-	cmd.SetArgs([]string{"pkg", "mod1/mod2"})
+	cmd.SetArgs([]string{"pkg:mod1/mod2"})
 	err = cmd.Execute()
 	require.NoError(t, err)
 	assert.Equal(t, expectedNestedModuleHelp, stdout.String())

@@ -94,10 +94,11 @@ func TestDoCmdResourceHelpListsOperations(t *testing.T) {
 	t.Parallel()
 
 	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(true)})
-	cmd.SetArgs([]string{"azure", "myResource", "--help"})
+	cmd.SetArgs([]string{"azure:index:myResource", "--help"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
+	//nolint:lll
 	expected := `Operate on the myResource resource.
 
 A test resource.
@@ -117,26 +118,27 @@ List Inputs:
   prefix (string, optional)
 
 Usage:
-  do azure myResource [flags]
-  do azure myResource [command]
+  myResource [flags]
+  myResource [command]
 
 Available Commands:
+  completion  Generate the autocompletion script for the specified shell
   create      Create a resource
   delete      Delete a resource
+  help        Help about any command
   list        List resources
   patch       Patch a resource
   read        Read a resource
 
 Flags:
-  -h, --help   help for myResource
-
-Global Flags:
       --dry-run                  Run the operation in preview mode
+  -h, --help                     help for do
+      --package string           The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider-file string     Path to a file containing provider configuration
       --provider-format string   Format of the provider configuration file (default "pcl")
       --show-secrets             Show secret values in output
 
-Use "do azure myResource [command] --help" for more information about a command.
+Use "myResource [command] --help" for more information about a command.
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -145,10 +147,11 @@ func TestDoCmdResourceHelpOmitsListWithoutListInputs(t *testing.T) {
 	t.Parallel()
 
 	cmd, stdout, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(false)})
-	cmd.SetArgs([]string{"azure", "myResource", "--help"})
+	cmd.SetArgs([]string{"azure:index:myResource", "--help"})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
+	//nolint:lll
 	expected := `Operate on the myResource resource.
 
 A test resource.
@@ -165,25 +168,26 @@ Outputs:
   size (integer)
 
 Usage:
-  do azure myResource [flags]
-  do azure myResource [command]
+  myResource [flags]
+  myResource [command]
 
 Available Commands:
+  completion  Generate the autocompletion script for the specified shell
   create      Create a resource
   delete      Delete a resource
+  help        Help about any command
   patch       Patch a resource
   read        Read a resource
 
 Flags:
-  -h, --help   help for myResource
-
-Global Flags:
       --dry-run                  Run the operation in preview mode
+  -h, --help                     help for do
+      --package string           The package to load, in the form 'name@version' or a path to a plugin binary or folder. If the package supports parameterization, additional space-separated parameters can be included after the package name, e.g. --package "name@version param1 \"multi word param\""
       --provider-file string     Path to a file containing provider configuration
       --provider-format string   Format of the provider configuration file (default "pcl")
       --show-secrets             Show secret values in output
 
-Use "do azure myResource [command] --help" for more information about a command.
+Use "myResource [command] --help" for more information about a command.
 `
 	assert.Equal(t, expected, stdout.String())
 }
@@ -221,7 +225,7 @@ func TestDoCmdResourceCreate(t *testing.T) {
 name = "example"
 size = 2
 `)
-	cmd.SetArgs([]string{"azure", "myResource", "create", "--yes", "--input-file", inputFile})
+	cmd.SetArgs([]string{"azure:index:myResource", "create", "--yes", "--input-file", inputFile})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
@@ -256,7 +260,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure", "myResource", "read", "res-1"})
+		cmd.SetArgs([]string{"azure:index:myResource", "read", "res-1"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"id":"res-1","name":"read","size":3}`, stdout.String())
@@ -277,7 +281,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure", "myResource", "delete", "res-1", "--yes"})
+		cmd.SetArgs([]string{"azure:index:myResource", "delete", "res-1", "--yes"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.True(t, deleted)
@@ -343,7 +347,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 name = "new"
 enabled = true
 `)
-		cmd.SetArgs([]string{"azure", "myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.Equal(t, []string{"read", "check", "diff", "update"}, calls)
@@ -392,7 +396,7 @@ enabled = true
 		})
 
 		inputFile := writeHCLFile(t, "patch.pcl", `enabled = true`)
-		cmd.SetArgs([]string{"azure", "myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.JSONEq(t, `{"id":"res-1","name":"existing","enabled":true}`, stdout.String())
@@ -416,7 +420,7 @@ func TestDoCmdResourceList(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "list.pcl", `prefix = "prod"`)
-		cmd.SetArgs([]string{"azure", "myResource", "list", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myResource", "list", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		require.Len(t, calls, 1)
@@ -442,7 +446,7 @@ func TestDoCmdResourceList(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure", "myResource", "list", "--count", "2"})
+		cmd.SetArgs([]string{"azure:index:myResource", "list", "--count", "2"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		require.Len(t, calls, 2)
@@ -466,7 +470,7 @@ func TestDoCmdResourceList(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure", "myResource", "list", "--all"})
+		cmd.SetArgs([]string{"azure:index:myResource", "list", "--all"})
 		err := cmd.Execute()
 		require.NoError(t, err)
 		require.Len(t, calls, 2)
@@ -477,7 +481,7 @@ func TestDoCmdResourceList(t *testing.T) {
 	t.Run("mutually exclusive flags", func(t *testing.T) {
 		t.Parallel()
 		cmd, _, _ := newDoResourceCommand(t, &testProvider{spec: doResourceSpec(true)})
-		cmd.SetArgs([]string{"azure", "myResource", "list", "--all", "--count", "1"})
+		cmd.SetArgs([]string{"azure:index:myResource", "list", "--all", "--count", "1"})
 		err := cmd.Execute()
 		require.ErrorContains(t, err, "--all and --count are mutually exclusive")
 	})
@@ -492,9 +496,9 @@ func TestDoCmdResourceNonInteractiveRequiresYes(t *testing.T) {
 		name string
 		args []string
 	}{
-		{"create", []string{"azure", "myResource", "create"}},
-		{"patch", []string{"azure", "myResource", "patch", "res-1"}},
-		{"delete", []string{"azure", "myResource", "delete", "res-1"}},
+		{"create", []string{"azure:index:myResource", "create"}},
+		{"patch", []string{"azure:index:myResource", "patch", "res-1"}},
+		{"delete", []string{"azure:index:myResource", "delete", "res-1"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -543,7 +547,7 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "inputs.pcl", `name = "example"`)
-		cmd.SetArgs([]string{"azure", "myResource", "create", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myResource", "create", "--yes", "--input-file", inputFile})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will create azure:index:myResource")
 		assert.NotContains(t, stdout.String(), "This will create")
@@ -578,7 +582,7 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 			},
 		})
 		inputFile := writeHCLFile(t, "patch.pcl", `name = "new"`)
-		cmd.SetArgs([]string{"azure", "myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
+		cmd.SetArgs([]string{"azure:index:myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), "This will update azure:index:myResource")
 		assert.Contains(t, stderr.String(), "~ name")
@@ -595,7 +599,7 @@ func TestDoCmdResourceConfirmationSummary(t *testing.T) {
 				},
 			},
 		})
-		cmd.SetArgs([]string{"azure", "myResource", "delete", "res-1", "--yes"})
+		cmd.SetArgs([]string{"azure:index:myResource", "delete", "res-1", "--yes"})
 		require.NoError(t, cmd.Execute())
 		assert.Contains(t, stderr.String(), `This will delete azure:index:myResource "res-1"`)
 		assert.Empty(t, stdout.String())
