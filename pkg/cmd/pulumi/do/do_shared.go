@@ -15,10 +15,8 @@
 package do
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,6 +27,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	hclsyntax "github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -40,6 +39,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	codegenrpc "github.com/pulumi/pulumi/sdk/v3/proto/go/codegen"
 )
@@ -414,8 +414,9 @@ func (pc *packageCommand) configureProvider(ctx context.Context) error {
 	return nil
 }
 
-// requireYesIfNonInteractive returns ErrNonInteractiveRequiresYes when the user is not on a TTY (so a y/n prompt
-// could never succeed) and --yes was not supplied. Dry-run is exempt since nothing destructive happens.
+// requireYesIfNonInteractive returns ErrNonInteractiveRequiresYes when the user is not on a TTY (so a confirmation
+// prompt could never succeed) and --yes was not supplied. Dry-run is exempt since nothing destructive happens.
+// This is the same pattern stack rm / package delete / config env init use.
 func (pc *packageCommand) requireYesIfNonInteractive(yes bool) error {
 	if yes || pc.dryrun {
 		return nil
@@ -426,11 +427,12 @@ func (pc *packageCommand) requireYesIfNonInteractive(yes bool) error {
 	return nil
 }
 
-// confirm prints summary to stderr (so it doesn't contaminate the JSON result on stdout) and, unless yes (or
-// --dry-run) was supplied, prompts the user for y/n. Returns nil to proceed, or an error when the user declines.
-// requireYesIfNonInteractive should have been called earlier; if somehow we reach here non-interactively without
-// --yes, we treat that as a decline.
-func (pc *packageCommand) confirm(cmd *cobra.Command, summary string, yes bool) error {
+// confirm prints summary and asks the user to type confirmName to proceed. The summary and prompt go to stderr so
+// that stdout stays a clean JSON channel for piping. Returns nil to proceed; a bail error (suppressed by the
+// outer CLI) when the user declines. requireYesIfNonInteractive should have been called earlier; if we somehow
+// reach here non-interactively without --yes we treat it as a decline. Uses ui.ConfirmPrompt for the prompt
+// itself so the look and feel matches stack rm and friends.
+func (pc *packageCommand) confirm(cmd *cobra.Command, summary, confirmName string, yes bool) error {
 	stderr := cmd.ErrOrStderr()
 	fmt.Fprint(stderr, summary)
 	if !strings.HasSuffix(summary, "\n") {
@@ -442,16 +444,13 @@ func (pc *packageCommand) confirm(cmd *cobra.Command, summary string, yes bool) 
 	if !cmdutil.Interactive() {
 		return backenderr.ErrNonInteractiveRequiresYes
 	}
-	fmt.Fprint(stderr, "Proceed? [y/N]: ")
-	reader := bufio.NewReader(cmd.InOrStdin())
-	line, err := reader.ReadString('\n')
-	if err != nil && err != io.EOF {
-		return fmt.Errorf("read confirmation: %w", err)
+	opts := display.Options{
+		Color:  cmdutil.GetGlobalColorization(),
+		Stdin:  cmd.InOrStdin(),
+		Stdout: stderr,
 	}
-	switch strings.ToLower(strings.TrimSpace(line)) {
-	case "y", "yes":
-		return nil
-	default:
-		return errors.New("confirmation declined")
+	if !ui.ConfirmPrompt("", confirmName, opts) {
+		return result.FprintBailf(stderr, "confirmation declined")
 	}
+	return nil
 }
