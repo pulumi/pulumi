@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -125,4 +127,52 @@ func TestProcessCmdErrorsPrintsAgentClaimWarningForNonLoginError(t *testing.T) {
 	assert.Same(t, inputErr, err)
 	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT")
 	assert.Contains(t, output.String(), "CLAIM_URL=https://app.pulumi.com/claim/non-login-error")
+}
+
+//nolint:paralleltest // mutates shared temporary agent credentials
+func TestProcessCmdErrorsDoesNotPrintClaimURLForUnauthorizedClaimedAccount(t *testing.T) {
+	oldAgentCreds, err := workspace.GetAgentStoredCredentials()
+	require.NoError(t, err)
+	oldAgentClaim, err := workspace.GetAgentClaim()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, workspace.DeleteAgentCredentials())
+		require.NoError(t, workspace.StoreAgentCredentials(oldAgentCreds))
+		if oldAgentClaim.ClaimURL != "" {
+			require.NoError(t, workspace.StoreAgentClaim(oldAgentClaim))
+		}
+	})
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		assert.Equal(t, http.MethodGet, req.Method)
+		assert.Equal(t, "/api/agents/signup/validate/claimed-token", req.URL.Path)
+		rw.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	t.Setenv("CODEX_SANDBOX", "1")
+	expiresAt := time.Now().Add(-time.Minute)
+	err = workspace.StoreAgentAccount(server.URL, workspace.Account{
+		AccessToken: "agent-token",
+		TokenInformation: &workspace.TokenInformation{
+			ExpiresAt: &expiresAt,
+		},
+	}, true)
+	require.NoError(t, err)
+	err = workspace.StoreAgentClaim(workspace.AgentClaim{
+		ClaimURL:   "https://app.pulumi.com/claim/claimed-token",
+		ClaimToken: "claimed-token",
+		CloudURL:   server.URL,
+		ValidUntil: time.Now().Add(24 * time.Hour),
+	})
+	require.NoError(t, err)
+	httpstate.MarkAgentCredentialsUsed(server.URL)
+
+	var output bytes.Buffer
+	err = processCmdErrors(httpstate.ErrUnauthorized, &output)
+
+	assert.True(t, result.IsBail(err))
+	assert.Contains(t, output.String(), "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED")
+	assert.NotContains(t, output.String(), "CLAIM_URL=")
+	assert.Contains(t, output.String(), "claim URL is no longer claimable")
 }

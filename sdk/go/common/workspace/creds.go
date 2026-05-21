@@ -368,6 +368,7 @@ func StoreCredentials(creds Credentials) error {
 // an account for an agent.
 type AgentClaim struct {
 	ClaimURL   string    `json:"claimUrl"`
+	ClaimToken string    `json:"claimToken,omitempty"`
 	ValidUntil time.Time `json:"validUntil"`
 	CloudURL   string    `json:"cloudUrl"`
 }
@@ -414,19 +415,44 @@ func FormatAgentClaimInstruction(
 	return message
 }
 
-// FormatAgentAuthRequiredInstruction returns the structured instruction shown
-// to coding agents when an ephemeral agent access token is rejected by Pulumi
-// Cloud before its locally stored expiration time.
-func FormatAgentAuthRequiredInstruction(accessTokenExpiresAt time.Time, now time.Time) string {
-	validFor := FormatAgentClaimValidFor(accessTokenExpiresAt, now)
-	return fmt.Sprintf(
-		"PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n"+
-			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n"+
-			"ACTION_REQUIRED=Tell the user to run pulumi login.\n"+
-			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate "+
-			"even though local access had not expired. The account was likely claimed or revoked. "+
-			"Ask the user to run pulumi login before retrying.\n",
-		validFor)
+// AgentLoginRequiredReason identifies why an agent must ask the user to log in.
+type AgentLoginRequiredReason int
+
+const (
+	// AgentLoginTokenRejected means a locally unexpired agent access token was
+	// rejected by the service.
+	AgentLoginTokenRejected AgentLoginRequiredReason = iota
+	// AgentLoginClaimUnavailable means the service reported the stored claim
+	// token is no longer claimable.
+	AgentLoginClaimUnavailable
+)
+
+// FormatAgentLoginRequiredInstruction returns the structured instruction shown
+// to coding agents when an ephemeral agent account can no longer authenticate
+// and the user must run pulumi login before retrying.
+func FormatAgentLoginRequiredInstruction(
+	reason AgentLoginRequiredReason,
+	accessTokenExpiresAt *time.Time,
+	now time.Time,
+) string {
+	message := "PULUMI_EPHEMERAL_AGENT_ACCOUNT_AUTH_REQUIRED\n"
+	if accessTokenExpiresAt != nil {
+		message += fmt.Sprintf(
+			"EPHEMERAL_ACCOUNT_ACCESS_EXPIRES_IN=%s\n",
+			FormatAgentClaimValidFor(*accessTokenExpiresAt, now))
+	}
+	message +=
+		"ACTION_REQUIRED=Tell the user to run pulumi login.\n" +
+			"INSTRUCTION=Tell the user this Pulumi ephemeral agent account can no longer authenticate"
+	switch reason {
+	case AgentLoginClaimUnavailable:
+		message += ", and its claim URL is no longer claimable. The account was likely already claimed, expired, " +
+			"or revoked. Ask the user to run pulumi login before retrying.\n"
+	default:
+		message += " even though local access had not expired. The account was likely claimed or revoked. " +
+			"Ask the user to run pulumi login before retrying.\n"
+	}
+	return message
 }
 
 // FormatAgentClaimValidFor returns a compact, approximate duration until an

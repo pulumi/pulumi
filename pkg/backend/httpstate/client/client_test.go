@@ -329,6 +329,65 @@ func TestSolveAgentSignupChallengeHonorsCancellation(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 }
 
+func TestValidateAgentClaim(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		statusCode    int
+		wantClaimable bool
+		wantErr       bool
+	}{
+		{
+			name:          "claimable",
+			statusCode:    http.StatusOK,
+			wantClaimable: true,
+		},
+		{
+			name:       "not found",
+			statusCode: http.StatusNotFound,
+		},
+		{
+			name:       "server error",
+			statusCode: http.StatusInternalServerError,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotAuth string
+			server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+				assert.Equal(t, http.MethodGet, req.Method)
+				assert.Equal(t, "/api/agents/signup/validate/claim-token", req.URL.Path)
+				gotAuth = req.Header.Get("Authorization")
+				rw.WriteHeader(tt.statusCode)
+				if tt.statusCode >= 400 {
+					err := json.NewEncoder(rw).Encode(apitype.ErrorResponse{
+						Code:    tt.statusCode,
+						Message: "validation failed",
+					})
+					require.NoError(t, err)
+				}
+			}))
+			defer server.Close()
+
+			claimable, err := NewClient(server.URL, "", true, nil).
+				ValidateAgentClaim(t.Context(), "claim-token")
+
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantClaimable, claimable)
+			assert.Empty(t, gotAuth)
+		})
+	}
+}
+
 func TestParseAgentSignupChallengeDifficulty(t *testing.T) {
 	t.Parallel()
 

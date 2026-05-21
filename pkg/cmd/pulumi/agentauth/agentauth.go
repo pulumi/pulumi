@@ -15,16 +15,22 @@
 package agentauth
 
 import (
+	"context"
 	"io"
 	"os"
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/agentdetect"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
+
+var validateAgentClaim = func(ctx context.Context, cloudURL, claimToken string) (bool, error) {
+	return client.NewClient(cloudURL, "", false, nil).ValidateAgentClaim(ctx, claimToken)
+}
 
 // MaybePrintClaimWarning reminds detected coding agents to tell the user about
 // a claim URL for shared agent credentials used by this CLI process.
@@ -87,8 +93,20 @@ func AuthRequiredMessage(now time.Time) string {
 		return ""
 	}
 	expiresAt, valid := workspace.AgentAccessTokenExpiresAt(account, now)
+	if claim.ClaimToken != "" {
+		claimable, err := validateAgentClaim(context.Background(), claim.CloudURL, claim.ClaimToken)
+		if err != nil {
+			logging.V(7).Infof("Could not validate agent claim token for %q: %v", claim.CloudURL, err)
+		} else if !claimable {
+			return workspace.FormatAgentLoginRequiredInstruction(
+				workspace.AgentLoginClaimUnavailable, expiresAt, now)
+		} else {
+			return workspace.FormatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
+		}
+	}
 	if valid && expiresAt != nil {
-		return workspace.FormatAgentAuthRequiredInstruction(*expiresAt, now)
+		return workspace.FormatAgentLoginRequiredInstruction(
+			workspace.AgentLoginTokenRejected, expiresAt, now)
 	}
 	return workspace.FormatAgentClaimInstruction(claim.ClaimURL, expiresAt, claim.ValidUntil, now)
 }

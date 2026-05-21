@@ -458,6 +458,7 @@ func TestCurrentSignupAgentAccountStoresClaimTokenURL(t *testing.T) {
 	claim, err := workspace.GetAgentClaim()
 	require.NoError(t, err)
 	assert.Equal(t, "http://app.example.com/claim/claim-token", claim.ClaimURL)
+	assert.Equal(t, "claim-token", claim.ClaimToken)
 	assert.True(t, claim.ValidUntil.Equal(claimTokenValidUntil))
 	assert.Equal(t, server.URL, claim.CloudURL)
 }

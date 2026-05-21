@@ -738,6 +738,7 @@ func (m defaultLoginManager) currentOrSignupAgentAccount(
 	logging.V(7).Infof("Stored shared agent credentials for %q", cloudURL)
 	claim := workspace.AgentClaim{
 		ClaimURL:   claimURL,
+		ClaimToken: signup.ClaimToken,
 		CloudURL:   cloudURL,
 		ValidUntil: signup.ClaimTokenValidUntil,
 	}

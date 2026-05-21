@@ -324,6 +324,23 @@ func (pc *Client) SignupAgent(ctx context.Context, metadata agentdetect.Metadata
 	return resp, nil
 }
 
+// ValidateAgentClaim reports whether an agent claim token is still claimable.
+// It uses the unauthenticated signup validation endpoint.
+func (pc *Client) ValidateAgentClaim(ctx context.Context, claimToken string) (bool, error) {
+	if strings.TrimSpace(claimToken) == "" {
+		return false, nil
+	}
+	err := pc.restCall(ctx, http.MethodGet, "/api/agents/signup/validate/"+url.PathEscape(claimToken), nil, nil, nil)
+	if err == nil {
+		return true, nil
+	}
+	var errResp *apitype.ErrorResponse
+	if errors.As(err, &errResp) && errResp.Code == http.StatusNotFound {
+		return false, nil
+	}
+	return false, err
+}
+
 // solveAgentSignupChallenge finds a nonce satisfying the signup proof-of-work
 // challenge and returns it as the challenge result.
 func solveAgentSignupChallenge(ctx context.Context, data string) (string, error) {

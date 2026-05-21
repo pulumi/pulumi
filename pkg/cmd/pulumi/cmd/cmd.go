@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/backenderr"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/agentauth"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cloud"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/ui"
@@ -77,7 +78,7 @@ func processCmdErrors(err error, stderr io.Writer) error {
 		return result.BailError(err)
 	}
 
-	if errors.Is(err, backenderr.LoginRequiredError{}) {
+	if errors.Is(err, backenderr.LoginRequiredError{}) || errors.Is(err, httpstate.ErrUnauthorized) {
 		if message := agentauth.AuthRequiredMessage(time.Now()); message != "" {
 			_, printErr := fmt.Fprint(stderr, message)
 			contract.IgnoreError(printErr)
