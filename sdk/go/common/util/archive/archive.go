@@ -115,6 +115,7 @@ func ExtractTGZ(r io.Reader, dir string) error {
 	if err != nil {
 		return fmt.Errorf("uncompressing: %w", err)
 	}
+	defer gzr.Close()
 	tr := tar.NewReader(gzr)
 	for {
 		header, err := tr.Next()
