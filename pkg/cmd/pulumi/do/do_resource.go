@@ -456,11 +456,8 @@ func (pc *packageCommand) printResourceResult(
 	if res.Properties != nil {
 		outputs = filterOutputs(outputs, res.Properties)
 	}
-	result := resource.PropertyMap{
-		"id":         resource.NewProperty(string(id)),
-		"properties": resource.NewProperty(outputs),
-	}
-	output, err := jsonifyProperty(resource.NewProperty(result), pc.showSecrets)
+	outputs["id"] = resource.NewProperty(string(id))
+	output, err := jsonifyProperty(resource.NewProperty(outputs), pc.showSecrets)
 	if err != nil {
 		return fmt.Errorf("failed to convert outputs to JSON: %w", err)
 	}

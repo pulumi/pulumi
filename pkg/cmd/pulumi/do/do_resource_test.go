@@ -228,11 +228,9 @@ size = 2
 	assert.Equal(t, []string{"check", "create"}, calls)
 	assert.JSONEq(t, `{
   "id": "res-1",
-  "properties": {
-    "name": "example",
-    "size": 2,
-    "extra": "hidden"
-  }
+  "name": "example",
+  "size": 2,
+  "extra": "hidden"
 }`, stdout.String())
 }
 
@@ -261,7 +259,7 @@ func TestDoCmdResourceReadDeletePatch(t *testing.T) {
 		cmd.SetArgs([]string{"azure", "myResource", "read", "res-1"})
 		err := cmd.Execute()
 		require.NoError(t, err)
-		assert.JSONEq(t, `{"id":"res-1","properties":{"name":"read","size":3}}`, stdout.String())
+		assert.JSONEq(t, `{"id":"res-1","name":"read","size":3}`, stdout.String())
 	})
 
 	t.Run("delete", func(t *testing.T) {
@@ -349,7 +347,7 @@ enabled = true
 		err := cmd.Execute()
 		require.NoError(t, err)
 		assert.Equal(t, []string{"read", "check", "diff", "update"}, calls)
-		assert.JSONEq(t, `{"id":"res-1","properties":{"name":"new","size":1,"enabled":true}}`, stdout.String())
+		assert.JSONEq(t, `{"id":"res-1","name":"new","size":1,"enabled":true}`, stdout.String())
 	})
 
 	// Partial patches should not require the user to restate required inputs that haven't changed; the existing
@@ -397,7 +395,7 @@ enabled = true
 		cmd.SetArgs([]string{"azure", "myResource", "patch", "res-1", "--yes", "--input-file", inputFile})
 		err := cmd.Execute()
 		require.NoError(t, err)
-		assert.JSONEq(t, `{"id":"res-1","properties":{"name":"existing","enabled":true}}`, stdout.String())
+		assert.JSONEq(t, `{"id":"res-1","name":"existing","enabled":true}`, stdout.String())
 	})
 }
 
