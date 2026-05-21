@@ -67,7 +67,7 @@ func (ps *packageSchema) LookupFunction(token string) (*schema.Function, string,
 
 	schemaToken, ok := ps.functionTokenMap[token]
 	if !ok {
-		token = canonicalizeToken(token, ps.schema)
+		token = ps.schema.CanonicalizeToken(token)
 		schemaToken, ok = ps.functionTokenMap[token]
 		if !ok {
 			return nil, "", false, nil
@@ -87,7 +87,7 @@ func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string,
 
 	schemaToken, ok := ps.resourceTokenMap[token]
 	if !ok {
-		token = canonicalizeToken(token, ps.schema)
+		token = ps.schema.CanonicalizeToken(token)
 		schemaToken, ok = ps.resourceTokenMap[token]
 		if !ok {
 			return nil, "", false, nil
@@ -101,7 +101,7 @@ func (ps *packageSchema) LookupResource(token string) (*schema.Resource, string,
 func (ps *packageSchema) initFunctionMap() {
 	functionTokenMap := map[string]string{}
 	for it := ps.schema.Functions().Range(); it.Next(); {
-		functionTokenMap[canonicalizeToken(it.Token(), ps.schema)] = it.Token()
+		functionTokenMap[ps.schema.CanonicalizeToken(it.Token())] = it.Token()
 	}
 	ps.functionTokenMap = functionTokenMap
 }
@@ -109,7 +109,7 @@ func (ps *packageSchema) initFunctionMap() {
 func (ps *packageSchema) initResourceMap() {
 	resourceTokenMap := map[string]string{}
 	for it := ps.schema.Resources().Range(); it.Next(); {
-		resourceTokenMap[canonicalizeToken(it.Token(), ps.schema)] = it.Token()
+		resourceTokenMap[ps.schema.CanonicalizeToken(it.Token())] = it.Token()
 	}
 	ps.resourceTokenMap = resourceTokenMap
 }
@@ -216,12 +216,6 @@ func (c *PackageCache) loadPackageSchemaFromDescriptor(
 	c.entries[pkgInfo] = schema
 
 	return schema, nil
-}
-
-// canonicalizeToken converts a Pulumi token into its canonical "pkg:module:member" form.
-func canonicalizeToken(tok string, pkg schema.PackageReference) string {
-	_, _, member, _ := DecomposeToken(tok, hcl.Range{})
-	return fmt.Sprintf("%s:%s:%s", pkg.Name(), pkg.TokenToModule(tok), member)
 }
 
 // getPkgOpts gets the package options from an unbound resource node.
@@ -433,7 +427,7 @@ func (b *binder) schemaTypeToType(src schema.Type) model.Type {
 		for _, el := range src.Elements {
 			values = append(values, buildEnumValue(el.Value))
 		}
-		tk := canonicalizeToken(src.Token, src.PackageReference)
+		tk := src.PackageReference.CanonicalizeToken(src.Token)
 		return model.NewEnumType(tk, elType, values, enumSchemaType{src})
 	case *schema.ObjectType:
 		if t, ok := b.schemaTypes[src]; ok {

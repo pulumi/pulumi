@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/google/shlex"
-	"github.com/hashicorp/hcl/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
@@ -32,7 +31,6 @@ import (
 	cmdCmd "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/cmd"
 	cmdConvert "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/convert"
 	"github.com/pulumi/pulumi/pkg/v3/cmd/pulumi/packages"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	pkgWorkspace "github.com/pulumi/pulumi/pkg/v3/workspace"
@@ -490,8 +488,7 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
 		for _, fn := range functions {
-			tok, diags := pcl.SimplifyToken(fn.Token, hcl.Range{})
-			contract.Assertf(!diags.HasErrors(), "Schema tokens should already be checked for validity: %s", tok)
+			tok := pc.spec.CanonicalizeToken(fn.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
@@ -499,8 +496,7 @@ func (pc *packageCommand) newPackageCommand() *cobra.Command {
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
 		for _, res := range resources {
-			tok, diags := pcl.SimplifyToken(res.Token, hcl.Range{})
-			contract.Assertf(!diags.HasErrors(), "Schema tokens should already be checked for validity: %s", tok)
+			tok := pc.spec.CanonicalizeToken(res.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
@@ -550,7 +546,7 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	for _, fn := range pc.spec.Functions {
 		mod := pc.spec.TokenToModule(fn.Token)
 		if mod == name {
-			functions[fn.Token] = fn
+			functions[pc.spec.CanonicalizeToken(fn.Token)] = fn
 		} else if strings.HasPrefix(mod, name+"/") {
 			tok := string(tokens.Token(fn.Token).Package()) + ":" + mod
 			modules[tok] = struct{}{}
@@ -577,8 +573,7 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	if len(functions) > 0 {
 		fmt.Fprintln(&help, "Functions:")
 		for _, fn := range functions {
-			tok, diags := pcl.SimplifyToken(fn.Token, hcl.Range{})
-			contract.Assertf(!diags.HasErrors(), "Schema tokens should already be checked for validity: %s", tok)
+			tok := pc.spec.CanonicalizeToken(fn.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")
@@ -586,8 +581,7 @@ func (pc *packageCommand) newModuleCommand() *cobra.Command {
 	if len(resources) > 0 {
 		fmt.Fprintln(&help, "Resources:")
 		for _, res := range resources {
-			tok, diags := pcl.SimplifyToken(res.Token, hcl.Range{})
-			contract.Assertf(!diags.HasErrors(), "Schema tokens should already be checked for validity: %s", tok)
+			tok := pc.spec.CanonicalizeToken(res.Token)
 			fmt.Fprintf(&help, "  %s\n", tok)
 		}
 		fmt.Fprintln(&help, "")

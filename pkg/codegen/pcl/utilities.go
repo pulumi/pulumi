@@ -119,19 +119,6 @@ func DecomposeToken(tok string, sourceRange hcl.Range) (string, string, string, 
 	return components[0], components[1], components[2], nil
 }
 
-// SimplifyToken removes the implicit "index" module from a token if it is present. For example, "pkg:index:typ" becomes
-// "pkg:typ".
-func SimplifyToken(tok string, sourceRange hcl.Range) (string, hcl.Diagnostics) {
-	pkg, mod, name, diag := DecomposeToken(tok, hcl.Range{})
-	if diag != nil {
-		return tok, diag
-	}
-	if mod == "index" {
-		return pkg + ":" + name, nil
-	}
-	return tok, nil
-}
-
 func hasDependencyOn(a, b Node) bool {
 	for _, d := range a.GetDependencies() {
 		if d.Name() == b.Name() {

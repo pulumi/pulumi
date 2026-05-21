@@ -253,11 +253,13 @@ func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
 			Description: "Help text about aws.",
 			Meta:        &schema.MetadataSpec{ModuleFormat: "(.*)(?:/[^/]*)"},
 			Functions: map[string]schema.FunctionSpec{
+				"aws:index/getArn:getArn":                                        {},
 				"aws:s3/getAccessPoint:getAccessPoint":                           {},
 				"aws:s3/getAccountPublicAccessBlock:getAccountPublicAccessBlock": {},
 				"aws:ec2/getInstance:getInstance":                                {},
 			},
 			Resources: map[string]schema.ResourceSpec{
+				"aws:index/object:Object":   {},
 				"aws:s3/bucket:Bucket":      {},
 				"aws:ec2/instance:Instance": {},
 			},
@@ -277,10 +279,45 @@ func TestDoCmdWithPkgArgPrintsHelpWithModuleFormat(t *testing.T) {
 	output := stdout.String()
 	// Modules should be listed in their simplified form, one entry per unique top-level namespace, not the raw
 	// "<pkg>:<ns>/<sub>" form.
-	assert.Contains(t, output, "  aws:s3\n")
-	assert.Contains(t, output, "  aws:ec2\n")
-	assert.NotContains(t, output, "aws:s3/")
-	assert.NotContains(t, output, "aws:ec2/")
+	expected := `Interact with aws resources and functions.
+
+Help text about aws.
+
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
+
+Modules:
+  aws:ec2
+  aws:s3
+
+Functions:
+  aws:getArn
+
+Resources:
+  aws:Object
+
+`
+	assert.Equal(t, expected, output)
+
+	// And ask for a module listing
+	stdout.Reset()
+	cmd.SetArgs([]string{"aws:s3"})
+	err = cmd.Execute()
+	require.NoError(t, err)
+
+	output = stdout.String()
+	expected = `Functions and resources for the s3 module.
+
+Run 'pulumi do <module/resource/function> --help' for more details on usage.
+
+Functions:
+  aws:s3:getAccessPoint
+  aws:s3:getAccountPublicAccessBlock
+
+Resources:
+  aws:s3:Bucket
+
+`
+	assert.Equal(t, expected, output)
 }
 
 // TestDoCmdWithPkgArgPrintsHelpUnderRoot wraps the do command beneath a synthetic root with PersistentPreRun /
