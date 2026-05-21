@@ -203,6 +203,45 @@ func getOperationSignature(op *hclsyntax.Operation) StaticFunctionSignature {
 	return sig
 }
 
+// expandFinalArg returns args with the final argument expanded into one synthetic Expression per
+// element type when expandFinal is true and the final argument's type is a tuple, list, or set.
+// The synthetic expressions only carry the element type and the source range of the expanding
+// argument; they are intended for use during signature resolution and typechecking. If the final
+// argument's type cannot be expanded (e.g. dynamic), the original args are returned unchanged.
+func expandFinalArg(args []Expression, expandFinal bool) []Expression {
+	if !expandFinal || len(args) == 0 {
+		return args
+	}
+
+	last := args[len(args)-1]
+	rng := last.SyntaxNode().Range()
+	expanded := make([]Expression, 0, len(args))
+	expanded = append(expanded, args[:len(args)-1]...)
+
+	switch t := ResolveOutputs(last.Type()).(type) {
+	case *TupleType:
+		for _, et := range t.ElementTypes {
+			expanded = append(expanded, &LiteralValueExpression{
+				Syntax:   &hclsyntax.LiteralValueExpr{SrcRange: rng},
+				exprType: et,
+			})
+		}
+	case *ListType:
+		expanded = append(expanded, &LiteralValueExpression{
+			Syntax:   &hclsyntax.LiteralValueExpr{SrcRange: rng},
+			exprType: t.ElementType,
+		})
+	case *SetType:
+		expanded = append(expanded, &LiteralValueExpression{
+			Syntax:   &hclsyntax.LiteralValueExpr{SrcRange: rng},
+			exprType: t.ElementType,
+		})
+	default:
+		return args
+	}
+	return expanded
+}
+
 // typecheckArgs typechecks the arguments against a given function signature.
 func typecheckArgs(srcRange hcl.Range, signature StaticFunctionSignature, args ...Expression) hcl.Diagnostics {
 	var diagnostics hcl.Diagnostics
@@ -430,20 +469,24 @@ func (b *expressionBinder) bindFunctionCallExpression(
 				VarargsParameter: &Parameter{Name: "args", Type: DynamicType},
 				ReturnType:       DynamicType,
 			},
-			Args: args,
+			Args:        args,
+			ExpandFinal: syntax.ExpandFinal,
 		}, diagnostics
 	}
 
-	// Compute the function's signature.
-	signature, sigDiags := function.GetSignature(args)
+	// Compute the function's signature. If the call uses `...` to expand its final argument, resolve
+	// the signature against the per-element types of the expanded collection so that signatures
+	// derived from argument types match the call's effective arity.
+	signature, sigDiags := function.GetSignature(expandFinalArg(args, syntax.ExpandFinal))
 	diagnostics = append(diagnostics, sigDiags...)
 
 	expr := &FunctionCallExpression{
-		Syntax:    syntax,
-		Tokens:    tokens,
-		Name:      syntax.Name,
-		Signature: signature,
-		Args:      args,
+		Syntax:      syntax,
+		Tokens:      tokens,
+		Name:        syntax.Name,
+		Signature:   signature,
+		Args:        args,
+		ExpandFinal: syntax.ExpandFinal,
 	}
 	typecheckDiags := expr.Typecheck(false)
 	diagnostics = append(diagnostics, typecheckDiags...)
